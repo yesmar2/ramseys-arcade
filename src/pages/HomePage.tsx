@@ -14,8 +14,8 @@ import { useRecentGames } from '../lib/lastPlayed'
 import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
 
-/** Today's row (lib/today.ts), the way to the Today page, in a chunk of its own with the dailies' plans. */
-const TodayRow = lazyPage(() => import('../components/TodayRow').then((m) => m.TodayRow))
+/** Today's row (lib/today.ts), the day's dailies as cards and the way to the Today page, in a chunk of its own with the dailies' plans. */
+const HomeToday = lazyPage(() => import('../components/HomeToday').then((m) => m.HomeToday))
 
 /** A phone, where the home page runs lighter (the rules in home.css under the same width). */
 const PHONE = '(max-width: 36rem)'
@@ -72,7 +72,7 @@ export function HomePage() {
     hero: <HomeHero key="hero" />,
     today: (
       <Suspense key="today" fallback={null}>
-        <TodayRow />
+        <HomeToday />
       </Suspense>
     ),
     hunt: <BugHuntStrip key="hunt" />,

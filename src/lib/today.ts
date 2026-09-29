@@ -8,7 +8,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
 
 /*
  * The Today set: the day's dailies on one punch card (components/TodayCard.tsx, on the Today page at
- * /today, pages/TodayPage.tsx, with a row of it on the home page, TodayRow.tsx), and a streak of days
+ * /today, pages/TodayPage.tsx, with a row of it on the home page, HomeToday.tsx), and a streak of days
  * kept, shown in the header too (components/TodayChip.tsx, the way to the page). The dailies are Ace
  * Chase's Today's Hole, Hot Lap's Today's Track and Find the Bug's Today's Wanted, and Half Full's Today's
  * Pour and Marble Run's Today's Course from the days they join (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more

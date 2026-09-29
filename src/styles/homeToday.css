@@ -1,0 +1,580 @@
+/*
+ * The home page's Today row (HomeToday.tsx): the day's dailies as cards, each with its own picture of the
+ * day, what it is today, and your result and place or the way in and who leads; over them, where the day
+ * stands. One card in the ticket's orange, as the Today page's ticket is (today.css). Five across on a
+ * desktop; below 64rem the cards scroll sideways, and on a phone the day's line wraps under the title.
+ */
+
+.home-day {
+  /* Your result on a punched card, dark enough to read on its tint in the light theme. */
+  --day-result: #a8380f;
+  /* Painted over the banner's glow above it (the banner is positioned, so its shadow would cover the day's line). */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1.2rem 1.4rem 1.4rem;
+  border-radius: 1.6rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--ticket, #ff8552) 38%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+html[data-theme='dark'] .home-day {
+  --day-result: var(--ticket-text, #ffab85);
+}
+
+/* ---------- where the day stands ---------- */
+
+.home-day__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.1rem;
+}
+
+.home-day__when {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.home-day__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.home-day__date {
+  font-size: 0.95rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.home-day__stand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding-left: 1.1rem;
+  border-left: 1px solid rgba(var(--ink-rgb), 0.12);
+  font-size: 0.9rem;
+}
+
+.home-day__pips {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.home-day__pip {
+  width: 1.85rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.14);
+}
+
+.home-day__pip--done {
+  background: var(--ticket, #ff8552);
+}
+
+/* The daily that keeps the day, ringed until it's punched. */
+.home-day__pip--keep {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ticket, #ff8552) 85%, transparent);
+}
+
+.home-day__pips--full .home-day__pip {
+  background: var(--today-full);
+}
+
+.home-day__count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-day__streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+}
+
+.home-day__streak svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: var(--ticket, #ff8552);
+}
+
+.home-day__streak--full svg {
+  color: var(--today-full);
+}
+
+.home-day__next {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-day__next svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: none;
+}
+
+/* The same, under the cards: a phone's. */
+.home-day__next--under {
+  display: none;
+  margin: 0;
+}
+
+.home-day__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0 0.9rem 0 1.15rem;
+  border-radius: 999px;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-day__open:hover,
+.home-day__open:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+  outline: none;
+}
+
+.home-day__open svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* ---------- the cards ---------- */
+
+.home-day__cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.home-day__cards > li {
+  display: flex;
+  min-width: 0;
+}
+
+.home-day__card {
+  /* Its colour as text: the daily's own in the dark, darker in the light, where it would be too pale to read. */
+  --day-text: color-mix(in srgb, var(--day) 45%, var(--ink));
+  /* A narrow card stacks its foot (below). */
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--playfield);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+html[data-theme='dark'] .home-day__card {
+  --day-text: var(--day);
+}
+
+.home-day__card:hover {
+  border-color: color-mix(in srgb, var(--day) 60%, transparent);
+}
+
+.home-day__card:focus-visible {
+  outline: 2px solid var(--ticket, #ff8552);
+  outline-offset: 2px;
+}
+
+/* The day's picture, 4:3, with the game's own picture in its place until it's drawn. */
+.home-day__pic {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #0c1218;
+}
+
+.home-day__pic > svg,
+.home-day__pic > img,
+.home-day__pic > canvas,
+.home-day__pic > .home-day__faces {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home-day__pic > svg,
+.home-day__pic > img,
+.home-day__pic > canvas {
+  display: block;
+}
+
+.home-day__pic > img {
+  object-fit: cover;
+}
+
+/* Who's wanted: their heads in a row on Find the Bug's teal. */
+.home-day__faces {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5%;
+  padding: 0 4%;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.12), transparent 45%),
+    linear-gradient(160deg, #2a7470 0%, #153f3e 100%);
+}
+
+.home-day__faces .home-day__face {
+  display: block;
+  flex: 0 1 17%;
+  width: 17%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f6efdc;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.55),
+    0 6px 14px rgba(8, 30, 30, 0.28);
+}
+
+/* Punched: the picture dimmed under the ticket's ring and check. */
+.home-day__card--done .home-day__pic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 18, 24, 0.42);
+}
+
+.home-day__stamp {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--ticket, #ff8552);
+  background: rgba(12, 18, 24, 0.72);
+  color: var(--ticket, #ff8552);
+}
+
+.home-day__stamp svg {
+  width: 55%;
+  height: 55%;
+}
+
+/* In its first week on the ticket. */
+.home-day__new {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 1.35rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: var(--day);
+  color: #16101c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-day__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 0.85rem 0.85rem;
+}
+
+.home-day__kicker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--day-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-day__name {
+  font-size: 1.06rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-day__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+}
+
+.home-day__result,
+.home-day__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+  min-height: 1.9rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-day__result {
+  padding: 0 0.7rem;
+  background: color-mix(in srgb, var(--ticket, #ff8552) 14%, transparent);
+  color: var(--day-result);
+}
+
+.home-day__result svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.home-day__go {
+  padding: 0 0.8rem 0 0.7rem;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.home-day__go svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+.home-day__card:hover .home-day__go {
+  background: var(--ticket-deep, #e0602e);
+}
+
+/* Your place, or who leads: beside the result or the way in, on two lines; a phone's on one. */
+.home-day__side {
+  min-width: 0;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: var(--muted);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.home-day__sep {
+  display: none;
+}
+
+/* A narrow card: the way in or your result, then who leads or your place on a line of its own. */
+@container (max-width: 13.5rem) {
+  .home-day__foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .home-day__side {
+    text-align: left;
+  }
+
+  .home-day__side br {
+    display: none;
+  }
+
+  .home-day__sep {
+    display: inline;
+  }
+
+  .home-day__kicker {
+    letter-spacing: 0.04em;
+  }
+}
+
+/* ---------- narrower: the cards scroll sideways, running out to the card's edge ---------- */
+
+@media (max-width: 64rem) {
+  .home-day {
+    padding: 1.1rem 0 1.1rem 1.2rem;
+  }
+
+  /* The title and the way to the Today page on the first line, where the day stands on the next. */
+  .home-day__head {
+    row-gap: 0.3rem;
+    padding-right: 1.2rem;
+  }
+
+  .home-day__open {
+    order: 1;
+    margin-left: auto;
+  }
+
+  /* The break between the two lines. */
+  .home-day__head::after {
+    content: '';
+    order: 2;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .home-day__stand {
+    order: 3;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .home-day__next {
+    order: 4;
+  }
+
+  .home-day__cards {
+    display: flex;
+    gap: 0.65rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 1.2rem;
+    padding-right: 1.2rem;
+    scrollbar-width: none;
+  }
+
+  .home-day__cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-day__cards > li {
+    flex: none;
+    width: 12.5rem;
+    scroll-snap-align: start;
+  }
+}
+
+/* With a mouse there's no swipe: a thin scrollbar to drag. */
+@media (max-width: 64rem) and (pointer: fine) {
+  .home-day__cards {
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+  }
+
+  .home-day__cards::-webkit-scrollbar {
+    display: block;
+    height: 6px;
+  }
+
+  .home-day__cards::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(var(--ink-rgb), 0.2);
+  }
+}
+
+/* A phone: the title and the way to the Today page on one line, where the day stands under them, then the cards. */
+@media (max-width: 48rem) {
+  .home-day {
+    gap: 0.85rem;
+    padding: 1rem 0 1rem 1rem;
+    border-radius: 1.4rem;
+  }
+
+  .home-day__head {
+    gap: 0.3rem 0.75rem;
+    padding-right: 1rem;
+  }
+
+  .home-day__title {
+    font-size: 1.4rem;
+  }
+
+  .home-day__open {
+    min-height: 2.75rem;
+    padding: 0 0.2rem 0 0.5rem;
+    background: none;
+    color: var(--day-result);
+  }
+
+  .home-day__open:hover,
+  .home-day__open:focus-visible {
+    background: none;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .home-day__stand {
+    font-size: 0.85rem;
+  }
+
+  /* The time to the next dailies goes under the cards. */
+  .home-day__head .home-day__next {
+    display: none;
+  }
+
+  .home-day__next--under {
+    display: inline-flex;
+    padding-right: 1rem;
+  }
+
+  .home-day__pip {
+    width: 1.3rem;
+  }
+
+  .home-day__cards {
+    scroll-padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .home-day__cards > li {
+    width: 11.75rem;
+  }
+
+  .home-day__name {
+    font-size: 0.98rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-day__card {
+    transition: none;
+  }
+}
