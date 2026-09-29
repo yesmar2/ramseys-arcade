@@ -409,8 +409,11 @@ html[data-theme='dark'] .home-day__card {
   display: none;
 }
 
-/* A narrow card: the way in or your result, then who leads or your place on a line of its own. */
-@container (max-width: 13.5rem) {
+/*
+ * A card up to 16rem across (all but the widest screens'): the way in or your result, then who leads or
+ * your place on a line of its own, so a long tag beside a long button never breaks into three lines.
+ */
+@container (max-width: 16rem) {
   .home-day__foot {
     flex-direction: column;
     align-items: flex-start;
