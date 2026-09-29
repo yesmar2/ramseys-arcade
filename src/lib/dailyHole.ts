@@ -136,12 +136,13 @@ function writeStore(next: Store) {
 
 /**
  * The viewer's own run at a day's hole on this device (lib/deviceRuns.ts): the one stamped with their
- * account, or signed out, the one played signed out (or kept from before runs had owners). Never another
- * account's, nor, signed in, one played signed out, which only Ace Chase itself offers to take up
- * (claimableDay). Null for none, and while the account signed in isn't known yet.
+ * account, or signed out, the one played signed out. Never another account's, nor one kept from before
+ * runs had owners (adopt takes that up only when it's exactly the account's result on the board), nor,
+ * signed in, one played signed out, which only Ace Chase itself offers to take up (claimableDay). Null
+ * for none, and while the account signed in isn't known yet.
  */
 export function dayProgress(day: string, viewer: Viewer): DayProgress | null {
-  return ownRun(current().days[day], legacyDays()[day], viewer)
+  return ownRun(current().days[day], viewer)
 }
 
 /** A run at a day's hole played signed out on this device, which the account signed in may take up in Ace Chase. */

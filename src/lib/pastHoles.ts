@@ -23,8 +23,6 @@ import { noteTicketsPaid } from './tickets'
 
 const SLUG = 'acechase'
 const STORE_KEY = 'skermix-acechase-past-holes'
-/** Where the device kept past holes before runs had owners: read, never written. */
-const LEGACY_KEY = 'skermix-acechase-holes'
 export const PAST_HOLE_EVENT = 'skermix-acechase-holes'
 /** Runs kept on this device, the most lately played. */
 const KEEP = 40
@@ -59,30 +57,13 @@ function readStore(): Store | null {
   }
 }
 
-/** The holes as the device kept them before runs had owners: one run a hole, whoever played it. */
-function readLegacy(): Record<string, PastProgress> {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(LEGACY_KEY) ?? 'null') as { v?: number; holes?: Record<string, PastProgress> } | null
-    if (parsed?.v === 1 && parsed.holes && typeof parsed.holes === 'object') return parsed.holes
-  } catch {
-    // Nothing kept from before, then.
-  }
-  return {}
-}
-
 let store: Store | null = null
-let legacy: Record<string, PastProgress> | null = null
 /** Storage didn't take the last write, so this visit's copy is the one to build on. */
 let unkept = false
 
 function current(): Store {
   store ??= readStore() ?? { v: 1, holes: {} }
   return store
-}
-
-function legacyHoles(): Record<string, PastProgress> {
-  legacy ??= readLegacy()
-  return legacy
 }
 
 function writeStore(next: Store) {
@@ -108,7 +89,7 @@ function keptRun(day: string, owner: string): PastProgress | null {
  * while the account signed in isn't known yet.
  */
 export function pastProgress(day: string, viewer: Viewer): PastProgress | null {
-  const kept = ownRun(current().holes[day], legacyHoles()[day], viewer)
+  const kept = ownRun(current().holes[day], viewer)
   if (kept) return kept
   const onItsDay = dayProgress(day, viewer)
   if (!onItsDay || onItsDay.tries <= 0 || onItsDay.solved) return null
@@ -122,7 +103,7 @@ export function claimablePast(day: string, viewer: Viewer): PastProgress | null 
 
 /** Whether the viewer has a result on a hole on this device: from its day, or since. */
 export function solvedHere(day: string, viewer: Viewer): DailySolved | null {
-  return dayProgress(day, viewer)?.solved ?? ownRun(current().holes[day], legacyHoles()[day], viewer)?.solved ?? null
+  return dayProgress(day, viewer)?.solved ?? ownRun(current().holes[day], viewer)?.solved ?? null
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100
@@ -353,9 +334,8 @@ export async function syncPastHoles(): Promise<void> {
 export function subscribePastHoles(onChange: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
     // A storage cleared all at once names no key.
-    if (e.key != null && e.key !== STORE_KEY && e.key !== LEGACY_KEY) return
+    if (e.key != null && e.key !== STORE_KEY) return
     store = null
-    legacy = null
     onChange()
   }
   const onViewer = () => {

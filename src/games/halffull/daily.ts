@@ -149,8 +149,8 @@ function keepRuns(store: Store, day: string, runs: OwnedRuns<DayRun>) {
 }
 
 /**
- * The day's run as it was kept before runs were stamped, or null: none, or one taken up here since (carried
- * on signed out, or found to be an account's own board result), which is kept under its owner now.
+ * The day's run as it was kept before runs were stamped, or null: none, or one taken up here since (found
+ * to be an account's own board result), which is kept under its owner now. Nobody's otherwise.
  */
 function legacyRun(store: Store, day: string): DayRun | null {
   let parsed: unknown = null
@@ -170,7 +170,7 @@ function legacyRun(store: Store, day: string): DayRun | null {
 export type ViewerRuns = {
   /** Their own run, or null. */
   own: DayRun | null
-  /** Where it's kept: their stamp (an account's id, or SIGNED_OUT); null for a run kept before runs were stamped. */
+  /** Where it's kept: their stamp (an account's id, or SIGNED_OUT); null with no run. */
   owner: string | null
   /** With no run of their own, one played signed out here that they may take up, in the game only; signed in only. */
   claimable: DayRun | null
@@ -180,10 +180,10 @@ export function viewerRuns(day: string, viewer: Viewer): ViewerRuns {
   const store = readStore()
   const runs = runsOn(store, day)
   const key = ownKey(viewer)
-  const own = ownRun(runs, key === SIGNED_OUT ? legacyRun(store, day) : null, viewer)
+  const own = ownRun(runs, viewer)
   return {
     own,
-    owner: own && key !== undefined && runs[key] === own ? key : null,
+    owner: own && key !== undefined ? key : null,
     claimable: own ? null : claimableRun(runs, viewer),
   }
 }
@@ -220,9 +220,9 @@ export function keepRunId(day: string, startedAt: number, runId: string) {
 
 /**
  * Stamp a run as `to`'s: one played signed out, taken up by the account signed in (carried on, or saved as
- * theirs), or one kept before runs were stamped, carried on signed out or found to be an account's own
- * board result. Known by when it began, and looked for only there: a run another account began is never
- * anyone else's. Whatever `to` had here that day gives way to it.
+ * theirs), or one kept before runs were stamped that is exactly an account's own board result. Known by
+ * when it began, and looked for only there: a run another account began is never anyone else's. Whatever
+ * `to` had here that day gives way to it.
  */
 export function claimDayRun(day: string, startedAt: number, to: string) {
   const store = readStore()

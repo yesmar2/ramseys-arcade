@@ -8,9 +8,11 @@ import { subscribeAccountId } from './accountEvents'
  *
  * The viewer is the account signed in now (auth.ts's currentAccountId): an id, null signed out, or
  * undefined while the session's account isn't known yet. A viewer's own run is the one stamped with
- * their account, or, signed out, the signed-out one; a run kept before runs were stamped (legacy) is
- * their own only while signed out, or once it matches their account's own board result exactly. While
- * the viewer is undefined nothing here is theirs, and no counted run may start or be sent.
+ * their account, or, signed out, the signed-out one. A run kept before runs were stamped (legacy) is
+ * nobody's until it matches a signed-in account's own board result exactly: nobody can say whose it was,
+ * and signed out it showed other accounts' old runs as the player's own (Ramsey, signed out, saw two of
+ * four dailies done that DAD and JERRY had played). While the viewer is undefined nothing here is theirs,
+ * and no counted run may start or be sent.
  *
  * A run played signed out can be taken up by whoever signs in on this device, but only in its game, by
  * something they do there (Carry on, "Put it on today's board", the save card up as they sign in): the
@@ -44,14 +46,12 @@ export function ownerAccount(owner: string): string | null {
 }
 
 /**
- * The viewer's own run of a day: the one stamped with their account, or signed out, the signed-out one,
- * else the legacy run (kept before runs were stamped; carried on, it's the signed-out run from then on).
- * Nothing while the account isn't known.
+ * The viewer's own run of a day: the one stamped with their account, or signed out, the signed-out one.
+ * Never one kept before runs were stamped. Nothing while the account isn't known.
  */
-export function ownRun<Run>(runs: OwnedRuns<Run> | null | undefined, legacy: Run | null | undefined, viewer: Viewer): Run | null {
+export function ownRun<Run>(runs: OwnedRuns<Run> | null | undefined, viewer: Viewer): Run | null {
   const key = ownKey(viewer)
-  if (key === undefined) return null
-  return runs?.[key] ?? (key === SIGNED_OUT ? (legacy ?? null) : null)
+  return key === undefined ? null : (runs?.[key] ?? null)
 }
 
 /**

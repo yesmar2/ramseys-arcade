@@ -156,15 +156,14 @@ function writeStore(store: Store, quiet: boolean) {
  * up); nothing while who's signed in isn't known.
  */
 export function dayRun(day: string, viewer: Viewer): DayRun | null {
-  return ownRun(readStore()[day], readLegacy()[day], viewer)
+  return ownRun(readStore()[day], viewer)
 }
 
 /**
- * Whose a day's run the game offers is: the viewer's own; their own kept before runs had players (signed
- * out only, and never put on a board from here); or one played signed out on this device, which the
- * signed-in viewer may take up.
+ * Whose a day's run the game offers is: the viewer's own, or one played signed out on this device, which
+ * the signed-in viewer may take up.
  */
-export type RunHold = 'own' | 'legacy' | 'claimable'
+export type RunHold = 'own' | 'claimable'
 
 /** A day's run as the game offers it to the viewer, and whose it is. */
 export type OfferedRun = { run: DayRun; hold: RunHold }
@@ -179,8 +178,6 @@ export function offeredRun(day: string, viewer: Viewer): OfferedRun | null {
   const runs = readStore()[day]
   const own = runs?.[key]
   if (own) return { run: own, hold: 'own' }
-  const legacy = key === SIGNED_OUT ? readLegacy()[day] : undefined
-  if (legacy) return { run: legacy, hold: 'legacy' }
   const spare = claimableRun(runs, viewer)
   return spare ? { run: spare, hold: 'claimable' } : null
 }
@@ -203,8 +200,7 @@ export function updateDayRun(day: string, owner: string, change: (run: DayRun | 
 
 /**
  * The run the viewer carries on is theirs from now on, kept under their own stamp: one played signed out
- * goes to the account that takes it up, and one kept before runs had players becomes the signed-out run.
- * The run, as it's kept now; null when there's none to carry on.
+ * goes to the account that takes it up. The run, as it's kept now; null when there's none to carry on.
  */
 export function takeUpRun(day: string, viewer: Viewer): DayRun | null {
   const key = ownKey(viewer)
@@ -213,10 +209,10 @@ export function takeUpRun(day: string, viewer: Viewer): DayRun | null {
   const runs = { ...store[day] }
   const own = runs[key]
   if (own) return own
-  const from = key === SIGNED_OUT ? readLegacy()[day] : runs[SIGNED_OUT]
+  const from = key === SIGNED_OUT ? undefined : runs[SIGNED_OUT]
   if (!from) return null
   runs[key] = from
-  if (key !== SIGNED_OUT) delete runs[SIGNED_OUT]
+  delete runs[SIGNED_OUT]
   store[day] = runs
   writeStore(store, false)
   return from

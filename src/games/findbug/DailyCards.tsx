@@ -190,8 +190,7 @@ export function TodayCard({
   const at = !result ? run?.at : undefined
   const started = Boolean(run && !result)
   const claimable = Boolean(run) && hold === 'claimable'
-  // One kept before runs had players can't be told apart from someone else's, so it isn't saved from here.
-  const offBoard = result && board && !board.you && result.found != null && hold !== 'legacy'
+  const offBoard = result && board && !board.you && result.found != null
   const head = (
     <div className="game-card__head">
       <span className="game-card__kicker">

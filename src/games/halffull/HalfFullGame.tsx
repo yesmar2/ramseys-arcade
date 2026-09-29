@@ -711,7 +711,6 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
                   plan={plan}
                   run={run}
                   kept={kept}
-                  legacy={run != null && runOwner == null}
                   claimable={claimable}
                   claimableKept={claimableKept}
                   waiting={!pastDay && viewer === undefined}
@@ -990,7 +989,6 @@ function StartCard({
   plan,
   run,
   kept,
-  legacy,
   claimable,
   claimableKept,
   waiting,
@@ -1007,8 +1005,6 @@ function StartCard({
   /** The player's own run of the day on this device. */
   run: DayRun | null
   kept: readonly PourResult[]
-  /** Their run is one kept from before runs were stamped (signed out only): whose it was isn't known. */
-  legacy: boolean
   /** With none of their own, a pour played signed out on this device, which they may take up. */
   claimable: DayRun | null
   claimableKept: readonly PourResult[]
@@ -1029,9 +1025,8 @@ function StartCard({
   const sum = done && kept.length >= ROUNDS ? summarize(kept) : null
   // Poured on another device: the board has the figure, this device never saw the pours.
   const elsewhere = done && !sum && run?.board != null ? run.board : null
-  // A finished first pour the board hasn't got (played signed out, or its save never landed). Not one kept
-  // from before runs were stamped: it may have been anyone's.
-  const offBoard = saves && sum != null && board != null && !board.you && !legacy
+  // A finished first pour the board hasn't got (played signed out, or its save never landed).
+  const offBoard = saves && sum != null && board != null && !board.you
   // Poured here while signed out, by whoever it was, and the player signed in has no pour of their own
   // here: theirs to take up if it was them (it goes on the board as theirs), or to leave, pouring their
   // own first pour. One begun but with nothing locked is nothing to take up.

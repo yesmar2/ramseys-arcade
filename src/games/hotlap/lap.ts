@@ -1,5 +1,5 @@
 import { ownKey, ownRun, SIGNED_OUT, type OwnedRuns, type Viewer } from '../../lib/deviceRuns'
-import { dailyTrack, FIRST_DAY, type DailyTrack } from './daily'
+import { dailyTrack, type DailyTrack } from './daily'
 import { botLap, buildTrack, GHOST_RATE, lapDistance, nearest, type GhostPath, type Track } from './sim'
 
 /*
@@ -19,13 +19,6 @@ export type GhostLap = { time: number; splits: number[]; ghost: GhostPath }
  * ticket, and never kept over theirs.
  */
 const LAPS_KEY = 'skermix-hotlap-owned-laps'
-/**
- * Laps kept before they had owners: read, never written again (a page still on an older bundle can
- * write it for a load or two). Nobody can say whose they are, so they're yours only signed out.
- */
-const UNOWNED_LAPS_KEY = 'skermix-hotlap-laps'
-/** From before the tracks were daily: a lap of the classic track, which is the first day's. */
-const OLD_LAP_KEY = 'skermix-hotlap-lap'
 const KEEP_DAYS = 3
 /** A lap and its path come to some 50 KB: a day keeps the laps of this many players, dropping the one kept longest ago. */
 const KEEP_OWNERS = 4
@@ -59,19 +52,6 @@ function readLaps(): Record<string, OwnedRuns<KeptLap>> {
   }
 }
 
-/** A day's lap kept before laps had owners, if there is one. */
-function unownedLap(day: string): GhostLap | null {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(UNOWNED_LAPS_KEY) ?? 'null') as { days?: Record<string, Partial<GhostLap>> } | null
-    const lap = validLap(parsed?.days?.[day])
-    if (lap || day !== FIRST_DAY) return lap
-    // The classic track's lap, kept before the tracks were daily, is the first day's.
-    return validLap(JSON.parse(localStorage.getItem(OLD_LAP_KEY) ?? 'null') as Partial<GhostLap> | null)
-  } catch {
-    return null
-  }
-}
-
 /** A day's laps written back, KEEP_OWNERS of them at most, and only the last KEEP_DAYS days. */
 function writeLaps(days: Record<string, OwnedRuns<KeptLap>>, day: string, laps: OwnedRuns<KeptLap>) {
   const newest = Object.entries(laps)
@@ -99,10 +79,8 @@ const sameLap = (kept: GhostLap | null | undefined, lap: GhostLap) =>
  * never another player's. Nothing while the account signed in isn't known yet.
  */
 export function keptLap(day: string, viewer: Viewer): GhostLap | null {
-  const own = ownKey(viewer)
-  if (own === undefined) return null
-  // The laps from before owners are read only for the one viewer they can be: signed out.
-  return ownRun(readLaps()[day], own === SIGNED_OUT ? unownedLap(day) : null, viewer)
+  // Laps kept before laps had owners are nobody's: nobody can say whose they were.
+  return ownRun(readLaps()[day], viewer)
 }
 
 /** A lap kept as `owner`'s best of the day (an account's id, or SIGNED_OUT), over theirs alone. */
