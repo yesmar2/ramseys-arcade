@@ -1,0 +1,15 @@
+/*
+ * Marble Run's course from above on Today's Course (TodaysCourseCard.tsx): the dark the game rolls in, the
+ * course in magenta light as the archive draws it (CourseDrawing.tsx). The same in either theme, as the game is.
+ */
+.evp-screen.tcc__screen {
+  background: #07040f;
+}
+
+.tcc-plan {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}

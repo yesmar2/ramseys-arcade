@@ -5,9 +5,9 @@ import '../styles/today.css'
 
 /*
  * The Today set in the header (lib/today.ts): the streak and how today's ticket stands, and the way to the
- * Today page from anywhere, marked as where you are while you're on it. It counts up to the dailies that
- * keep the streak ("2/3"), shows them all punched once the day is kept ("3/3"), and says "Full" when more
- * than three are live and every one is. Signed in with a tag only: a streak is kept by an account.
+ * Today page from anywhere, marked as where you are while you're on it. It counts the day's dailies done of
+ * all of them ("2/5"), lights up once enough are done to keep the streak, and says "Full" when every one is.
+ * Signed in with a tag only: a streak is kept by an account.
  */
 
 export const FlameIcon = () => (
@@ -35,8 +35,8 @@ export function TodayChip({ here }: { here: boolean }) {
   const marks = dayMarks(done, rule)
   const full = state.full ?? marks.full
   const streak = state.streak.current
-  const count = full ? 'Full' : marks.kept ? `${rule.need}/${rule.need}` : `${done}/${rule.need}`
-  const said = full ? 'a Full ticket' : `${marks.kept ? rule.need : done} of ${rule.need} done`
+  const count = full ? 'Full' : `${done}/${rule.count}`
+  const said = full ? 'a Full ticket' : `${done} of ${rule.count} done${marks.kept ? ', the day kept' : ''}`
   const label = `Today: ${said}${streak > 0 ? `, streak ${streak} ${streak === 1 ? 'day' : 'days'}` : ''}`
   return (
     <a

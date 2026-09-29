@@ -8,19 +8,23 @@ import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
+import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
 import { gamePlayHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { currentAccountId } from '../../lib/auth'
 import { ownerAccount, ownerOf, SIGNED_OUT } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { RollSound } from './audio'
+import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
 import { courseDay, msUntilNextCourse, untilWords } from './daily'
 import { CourseMap } from './map'
 import { PracticeResultCard, PracticeStartCard } from './PracticeCards'
@@ -58,8 +62,13 @@ const KEYS: Record<string, keyof Held> = {
   KeyD: 'right',
 }
 
-/** Whose run the ghost rolls: your own best here, or the blue ball's. */
-type Chasing = 'you' | 'pace'
+/** Whose run the ghost rolls: the board's #1, under their tag; your own best; or the blue ball's. */
+type Chasing = { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
+
+/** The name over the ghost: whose run it rolls. */
+function ghostTag(chasing: Chasing): string {
+  return chasing.who === 'rival' ? chasing.name : chasing.who === 'you' ? 'Your best' : 'Blue ball'
+}
 
 /** Everything a run is, held outside React: the loop changes it 240 times a second. */
 type Game = {
@@ -116,25 +125,42 @@ function bestOf(day: string, practice: boolean, viewer: string | null | undefine
   return tab && (!kept || tab.time < kept.time) ? tab : kept
 }
 
-/** The run to chase: your own best here when it beats the blue ball, else the blue ball's. */
-function chaseFor(day: string, practice: boolean): { ghost: Ghost; chasing: Chasing } {
+/** The run to chase, and whose it is. */
+type Chase = { ghost: Ghost; chasing: Chasing }
+
+/** Whose the #1's run is: yours, when it's your tag at the top. */
+const topChasing = (top: BoardGhost, me: string): Chasing => (top.name === me ? { who: 'you' } : { who: 'rival', name: top.name })
+
+/**
+ * The run to beat: the board's #1, on their own line, or on the blue ball's at their time when theirs isn't
+ * known (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board, your best
+ * here when it beats the blue ball, else the blue ball's. Your own is the one of whoever is signed in now.
+ */
+function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: string): Chase {
   const pace = paceOf(day)
   const mine = bestOf(day, practice, currentAccountId())
-  return mine && mine.time < pace.time ? { ghost: new Ghost(mine), chasing: 'you' } : { ghost: new Ghost(pace), chasing: 'pace' }
+  if (top && (!mine || top.time < mine.time - 0.0005)) {
+    return { ghost: new Ghost(top.run ?? standIn(pace, top.time)), chasing: topChasing(top, me) }
+  }
+  return mine && mine.time < pace.time ? { ghost: new Ghost(mine), chasing: { who: 'you' } } : { ghost: new Ghost(pace), chasing: { who: 'pace' } }
 }
 
 /**
  * The run to chase before the pace ball has rolled (paceOf warms it while the card is up): the card needs only
- * the blue ball's time, which the plan has, and the ghost isn't out until a run starts.
+ * the time to beat and whose it is, and the ghost isn't out until a run starts.
  */
-function cardChase(marble: MarbleDay, practice: boolean): { ghost: Ghost; chasing: Chasing } {
+function cardChase(marble: MarbleDay, practice: boolean, top: BoardGhost | null, me: string): Chase {
   const mine = bestOf(marble.day, practice, currentAccountId())
-  if (mine && mine.time < marble.pace) return { ghost: new Ghost(mine), chasing: 'you' }
   const sp = marble.course.spawns[0]!
-  return { ghost: new Ghost({ time: marble.pace, splits: [], ghost: [sp.x, sp.y, sp.z, sp.x, sp.y, sp.z] }), chasing: 'pace' }
+  const waiting = (time: number) => new Ghost({ time, splits: [], ghost: [sp.x, sp.y, sp.z, sp.x, sp.y, sp.z] })
+  if (top && (!mine || top.time < mine.time - 0.0005)) {
+    return { ghost: top.run ? new Ghost(top.run) : waiting(top.time), chasing: topChasing(top, me) }
+  }
+  if (mine && mine.time < marble.pace) return { ghost: new Ghost(mine), chasing: { who: 'you' } }
+  return { ghost: waiting(marble.pace), chasing: { who: 'pace' } }
 }
 
-function freshGame(marble: MarbleDay, chase: { ghost: Ghost; chasing: Chasing }): Game {
+function freshGame(marble: MarbleDay, chase: Chase): Game {
   return {
     phase: 'menu',
     day: marble.day,
@@ -170,7 +196,7 @@ function runShareLine(marble: MarbleDay, time: number, pace: number, falls: numb
   return [`Marble Run · Today’s Course #${marble.n} 🔮`, `${marble.name}: ${formatRun(time)}, ${against}, ${fell}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join('\n')
 }
 
-/** Today's course and its number, the run its ghost rolls (your best, or the blue ball's), and when the next course comes. */
+/** Today's course and its number, the run its ghost rolls (the #1's, your best, or the blue ball's), and when the next course comes. */
 function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: number; chasing: Chasing }) {
   const [left, setLeft] = useState(() => msUntilNextCourse())
   useEffect(() => {
@@ -184,7 +210,7 @@ function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: num
         <strong>{marble.name}</strong>
       </div>
       <div className="game-pause-meta__row">
-        <span>{chasing === 'you' ? 'Ghost · Your best' : 'Blue ball'}</span>
+        <span>{chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue ball'}</span>
         <strong>{formatRun(ghost)}</strong>
       </div>
       <div className="game-pause-meta__row">
@@ -208,7 +234,9 @@ function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: num
  *
  * Roll off an edge and the marble starts again at the last checkpoint, with the clock still running: a
  * fall costs the time it takes, never a penalty on top. The ghost is the run to beat, rolling alongside
- * the whole way with whose it is over it: your best here if it beats the blue ball, else the blue ball's.
+ * the whole way with whose it is over it: the board's #1 (today's, or on a past course the #1 its day
+ * closed with: boardGhost.ts), unless your own best here is faster; with nobody on the board, your best
+ * here if it beats the blue ball, else the blue ball's.
  *
  * Keys: ← → ↑ ↓ or WASD tilt, R start again, P or Escape pause. On a touch screen, a stick wherever a thumb
  * lands. A run is scored as its time: the board keeps a million less the milliseconds (score.ts), so the
@@ -229,11 +257,18 @@ function MarbleRunDay({
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest(SLUG)
   const viewer = useAccountId()
+  const { signedIn } = useAuth()
+  const playerName = normalizePlayerName(usePlayerName())
   const marble = marbleDay(day)
   const pace = marble.pace
+  /** The board's #1 as last told (boardGhost.ts), and the tag you play under, for whose the ghost is. */
+  const topRef = useRef<BoardGhost | null>(null)
+  const [top, setTop] = useState<BoardGhost | null>(null)
+  const nameRef = useRef(playerName)
+  nameRef.current = playerName
 
   const gameRef = useRef<Game | null>(null)
-  if (!gameRef.current) gameRef.current = freshGame(marble, cardChase(marble, practice))
+  if (!gameRef.current) gameRef.current = freshGame(marble, cardChase(marble, practice, null, playerName))
   const [ui, setUi] = useState<Ui>(() => snapshot(gameRef.current!))
   const [saveOpen, setSaveOpen] = useState(false)
   const saveOpenRef = useRef(false)
@@ -303,7 +338,7 @@ function MarbleRunDay({
       beginRun(SLUG)
     }
     previousBestRef.current = getPersonalBest(SLUG)
-    const g = freshGame(marble, chaseFor(day, practice))
+    const g = freshGame(marble, chaseFor(day, practice, topRef.current, nameRef.current))
     g.phase = 'countdown'
     g.owner = owner
     gameRef.current = g
@@ -320,7 +355,7 @@ function MarbleRunDay({
     if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
-    gameRef.current = freshGame(marble, chaseFor(day, practice))
+    gameRef.current = freshGame(marble, chaseFor(day, practice, topRef.current, nameRef.current))
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 300
     letGoStick()
@@ -334,15 +369,76 @@ function MarbleRunDay({
     start()
   }
 
-  // Signed in, out, or as someone else: at the start card, the ghost is the new player's to beat.
-  const chasedFor = useRef(viewer)
-  useEffect(() => {
-    if (chasedFor.current === viewer) return
-    chasedFor.current = viewer
+  /** At the start card, the run to beat worked out again: it changes at once. Mid-run, a run keeps the ghost it began with. */
+  const rechase = () => {
     if (gameRef.current!.phase !== 'menu') return
-    gameRef.current = freshGame(marble, cardChase(marble, practice))
+    gameRef.current = freshGame(marble, cardChase(marble, practice, topRef.current, nameRef.current))
     setUi(snapshot(gameRef.current))
-  }, [viewer, marble, day, practice])
+  }
+  const rechaseRef = useRef(rechase)
+  rechaseRef.current = rechase
+
+  /** The board's fastest run, as it's known: at the start card, the ghost to race changes to it at once. */
+  const takeTop = (next: BoardGhost | null) => {
+    topRef.current = next
+    setTop(next)
+    rechase()
+  }
+  const takeTopRef = useRef(takeTop)
+  takeTopRef.current = takeTop
+
+  // Signed in, out, or as someone else, or under another tag: at the start card, the ghost is the new player's to beat.
+  const chasedFor = useRef(`${viewer}|${playerName}`)
+  useEffect(() => {
+    const who = `${viewer}|${playerName}`
+    if (chasedFor.current === who) return
+    chasedFor.current = who
+    rechaseRef.current()
+  }, [viewer, playerName])
+
+  /**
+   * A run saved on the board sends where the marble went, unless the board's #1 is faster or their line is
+   * already known: the API keeps it if it's the tag's run on the board and the fastest there, and then it's
+   * everyone's ghost, yours included from your next run.
+   */
+  const sendGhost = (run: { time: number; score: number; splits: number[]; path: number[] }, name: string) => {
+    if (practice || !signedIn || !name) return
+    const known = topRef.current
+    // The #1 is faster, or their line is known already and at least as fast.
+    if (known && (known.time < run.time - 0.0005 || (known.run && known.run.time <= run.time + 0.0005))) return
+    void sendBoardGhost(marble.n, name, run).then(async (kept) => {
+      if (!kept) return
+      const fresh = await fetchBoardGhost(marble.n, true)
+      if (fresh) takeTopRef.current(fresh)
+    })
+  }
+  const sendGhostRef = useRef(sendGhost)
+  sendGhostRef.current = sendGhost
+
+  // The board's fastest run, for the ghost: asked for as the course opens (a past one's, the #1 its day closed with).
+  const [topAsked, setTopAsked] = useState(false)
+  useEffect(() => {
+    let live = true
+    void fetchBoardGhost(marble.n).then((found) => {
+      if (!live) return
+      if (found) takeTopRef.current(found)
+      setTopAsked(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [marble.n])
+
+  // Then your best here on this device, if it's faster than that: the API keeps it only if it's on the board
+  // under your tag. So a run saved before runs sent their paths, or on a card closed too soon, still gets there.
+  // Only your account's own run goes, once for each account signed in here: never one rolled signed out, or another's.
+  const offered = useRef<string | null>(null)
+  useEffect(() => {
+    if (practice || !topAsked || !signedIn || typeof viewer !== 'string' || !playerName || offered.current === viewer) return
+    offered.current = viewer
+    const mine = keptRun(day, viewer)
+    if (mine) sendGhostRef.current({ time: mine.time, score: marblerunBoardScore(mine.time), splits: mine.splits, path: mine.ghost }, playerName)
+  }, [practice, topAsked, signedIn, viewer, playerName, day])
 
   /**
    * A run rolled signed out, put on the board by whoever signed in on its card: it's theirs from now on,
@@ -558,7 +654,7 @@ function MarbleRunDay({
             mode: g.phase === 'menu' ? 'menu' : g.phase === 'fallen' ? 'fallen' : g.phase === 'finished' || g.phase === 'gameover' ? 'done' : 'play',
             doneFor: g.phase === 'finished' ? g.clock : g.phase === 'gameover' ? CARD_AFTER + 1 : 0,
             ghost: ghostAt,
-            ghostTag: g.chasing === 'you' ? 'Your best' : 'Blue ball',
+            ghostTag: ghostTag(g.chasing),
             passed: b.next,
           },
           live ? dt : 0,
@@ -852,7 +948,7 @@ function MarbleRunDay({
               />
               {showroom && !saveOpen && !paused && !noGl ? (
                 practice ? (
-                  <PracticeStartCard marble={marble} pace={pace} best={practiceBestTime} />
+                  <PracticeStartCard marble={marble} pace={pace} best={practiceBestTime} top={top} />
                 ) : (
                   <GameStartCard title="Marble Run" slug={SLUG} extraMeta={extra} />
                 )
@@ -866,6 +962,7 @@ function MarbleRunDay({
                     best={practiceBestTime ?? run.time}
                     improved={run.improved}
                     pace={pace}
+                    top={top}
                     onAgain={start}
                     onDone={toMenu}
                   />
@@ -881,6 +978,7 @@ function MarbleRunDay({
                     pace={Math.round(pace * 1000)}
                     shareLine={runShareLine(marble, run.time, pace, run.falls)}
                     owner={runOwner}
+                    onSettled={() => sendGhost(run, playerName)}
                     onSaved={() => claimSaved(g)}
                     onDone={toMenu}
                   />

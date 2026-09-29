@@ -4,14 +4,13 @@ import { dailyTrack, nextTrackAt, trackDay } from '../games/hotlap/daily'
 import { buildTrack, type Piece, type TrackShape } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
 import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
-import { usePersonalBest } from '../hooks/usePersonalBest'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
-import { playersFromRuns } from '../lib/gameBoard'
-import { getLeaderboard, normalizePlayerName, type LeaderboardEntry, type YouEntry } from '../lib/leaderboard'
+import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { ordinal } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
+import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
@@ -41,75 +40,6 @@ function useTrackDay(): string {
     return () => window.clearInterval(timer)
   }, [])
   return day
-}
-
-type TodayBoard = {
-  /** Players on today's board, at their best laps. */
-  count: number
-  leader: { name: string; score: number } | null
-  you: { place: number; score: number } | null
-}
-
-/** Runs per request, and the most read, as the game's page reads a board (useGameHub). */
-const PAGE = 500
-const RUN_CAP = 2000
-
-/*
- * The day's runs, best first, the whole board up to the cap. A board lists
- * runs, not players (the API's rank for you counts runs), so your place and
- * the count of drivers are taken from the runs as players (playersFromRuns),
- * the way the game's page takes them. The first read asks for you by name
- * too, so a best past the cap still has its place (the API's you.place).
- */
-async function todayRuns(me: string): Promise<{ runs: LeaderboardEntry[]; you: YouEntry | null }> {
-  const runs: LeaderboardEntry[] = []
-  let you: YouEntry | null = null
-  let total = Infinity
-  while (runs.length < total && runs.length < RUN_CAP) {
-    const first = runs.length === 0
-    const next = await getLeaderboard(SLUG, 'daily', first ? me || undefined : undefined, {
-      offset: runs.length,
-      limit: PAGE,
-    })
-    if (first) you = next.you
-    total = next.total
-    if (!next.entries.length) break
-    runs.push(...next.entries)
-  }
-  return { runs, you }
-}
-
-/** Today's board, fetched again when the day turns or your best today changes. */
-function useTodayBoard(day: string, me: string): TodayBoard | null {
-  const [board, setBoard] = useState<TodayBoard | null>(null)
-  const best = usePersonalBest(SLUG)
-  useEffect(() => {
-    let cancelled = false
-    todayRuns(me)
-      .then(({ runs, you }) => {
-        if (cancelled) return
-        const players = playersFromRuns(runs)
-        const top = players[0]
-        const mine = me ? players.find((p) => p.name === me) : undefined
-        setBoard({
-          count: players.length,
-          leader: top ? { name: top.name, score: top.best.score } : null,
-          // Past the read, the API's place for you (never its rank, which counts runs).
-          you: mine
-            ? { place: mine.place, score: mine.best.score }
-            : you?.place
-              ? { place: you.place, score: you.score }
-              : null,
-        })
-      })
-      .catch(() => {
-        if (!cancelled) setBoard(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [day, me, best])
-  return board
 }
 
 const lap = (score: number) => formatLeaderboardScore(SLUG, score)
@@ -151,7 +81,7 @@ export function TodaysTrackCard() {
   const day = useTrackDay()
   const track = useMemo(() => dailyTrack(day), [day])
   const me = normalizePlayerName(usePlayerName())
-  const board = useTodayBoard(day, me)
+  const board = useTodaysBoard(SLUG, day, me)
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#f2813a')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
@@ -200,7 +130,7 @@ export function TodaysTrackOnNow() {
   const day = useTrackDay()
   const track = useMemo(() => dailyTrack(day), [day])
   const me = normalizePlayerName(usePlayerName())
-  const board = useTodayBoard(day, me)
+  const board = useTodaysBoard(SLUG, day, me)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#f2813a')
   return (
     <a className="onnow-card" href={gamePlayHref(SLUG)} style={{ '--ev-accent': accent } as CSSProperties}>

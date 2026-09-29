@@ -35,6 +35,7 @@ const TodaysTrackCard = lazyPage(() => import('../components/TodaysTrackCard').t
 const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard').then((m) => m.TodaysWantedCard))
 /** Half Full's Today's Pour, the same way. */
 const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourCard))
+const TodaysCourseCard = lazyPage(() => import('../components/TodaysCourseCard').then((m) => m.TodaysCourseCard))
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -150,6 +151,11 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
           {game.slug === 'halffull' ? (
             <Suspense fallback={null}>
               <TodaysPourCard />
+            </Suspense>
+          ) : null}
+          {game.slug === 'marblerun' ? (
+            <Suspense fallback={null}>
+              <TodaysCourseCard />
             </Suspense>
           ) : null}
           {boardSlug ? (

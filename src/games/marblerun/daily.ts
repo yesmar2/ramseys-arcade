@@ -11,9 +11,9 @@ export const FIRST_DAY = '2026-09-29'
 
 /**
  * The first day Today's Course is on the Today ticket (lib/today.ts), as the API's today.ts
- * MARBLERUN_TODAY_FROM has it: the day after the game came, so the day it came is judged as it began.
+ * MARBLERUN_TODAY_FROM has it: the day the game came, so its first course is on the ticket too.
  */
-export const TODAY_FROM: string | null = '2026-09-30'
+export const TODAY_FROM: string | null = '2026-09-29'
 const TZ = 'America/New_York'
 
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -28,6 +28,11 @@ export function courseDay(now = Date.now()): string {
 export function msUntilNextCourse(now = Date.now()): number {
   const [h, m, s] = clockFormat.format(new Date(now)).split(':').map(Number)
   return Math.max(0, (24 * 3600 - (h! * 3600 + m! * 60 + s!)) * 1000)
+}
+
+/** When the next course comes, to the second: the same all day, for a countdown to hold on to. */
+export function nextCourseAt(now = Date.now()): number {
+  return Math.round((now + msUntilNextCourse(now)) / 1000) * 1000
 }
 
 /** A day's number: 1 on the first day. */

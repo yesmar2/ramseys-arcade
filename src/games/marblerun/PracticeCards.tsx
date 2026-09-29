@@ -69,8 +69,11 @@ function CourseNav({ day }: { day: string }) {
   )
 }
 
-/** A past course's start card: which day it was, the blue ball's run, and your best here. */
-export function PracticeStartCard({ marble, pace, best }: { marble: MarbleDay; pace: number; best: number | null }) {
+/** The #1 a past course's day closed with, whose ghost rolls it: their tag and time. */
+type DayTop = { name: string; time: number } | null
+
+/** A past course's start card: which day it was, the day's #1 and the blue ball's run, and your best here. */
+export function PracticeStartCard({ marble, pace, best, top }: { marble: MarbleDay; pace: number; best: number | null; top: DayTop }) {
   return (
     <div ref={fitCardToSpace} className="game-card game-card--start marblerun-practice" style={gameAccentStyle(SLUG)}>
       <div className="game-card__head">
@@ -87,6 +90,7 @@ export function PracticeStartCard({ marble, pace, best }: { marble: MarbleDay; p
         hideRecord
         extraMeta={
           <>
+            {top ? <Row label={`The day’s #1 · ${top.name}`}>{formatRun(top.time)}</Row> : null}
             <Row label="Blue ball">{formatRun(pace)}</Row>
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
           </>
@@ -100,7 +104,7 @@ export function PracticeStartCard({ marble, pace, best }: { marble: MarbleDay; p
   )
 }
 
-/** After a practice run: its time, against your best here and the blue ball's. */
+/** After a practice run: its time, against your best here, the day's #1 and the blue ball's. */
 export function PracticeResultCard({
   marble,
   time,
@@ -108,6 +112,7 @@ export function PracticeResultCard({
   best,
   improved,
   pace,
+  top,
   onAgain,
   onDone,
 }: {
@@ -117,6 +122,7 @@ export function PracticeResultCard({
   best: number
   improved: boolean
   pace: number
+  top: DayTop
   onAgain: () => void
   onDone: () => void
 }) {
@@ -145,6 +151,7 @@ export function PracticeResultCard({
       </div>
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
+        {top ? <Row label={`The day’s #1 · ${top.name}`}>{formatRun(top.time)}</Row> : null}
         <Row label="Blue ball">{formatRun(pace)}</Row>
       </div>
       <p className="game-card__hint">A practice run: not saved.</p>
