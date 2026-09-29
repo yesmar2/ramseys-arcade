@@ -13,6 +13,18 @@
   gap: 1.6rem;
 }
 
+/*
+ * Every part of the rail paints over the one above it. The banner is
+ * positioned, and a positioned box paints after plain ones, so its glow
+ * would lie over the top of whatever comes next: the games' heading on a
+ * first visit, today's row once you've played. Nothing inside a part is
+ * placed against a box farther out than the part itself, so this moves
+ * nothing.
+ */
+.home-rail > * {
+  position: relative;
+}
+
 /* ---------- per-tile best ---------- */
 
 .game-tile__best {

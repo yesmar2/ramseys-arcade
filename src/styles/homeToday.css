@@ -8,8 +8,6 @@
 .home-day {
   /* Your result on a punched card, dark enough to read on its tint in the light theme. */
   --day-result: #a8380f;
-  /* Painted over the banner's glow above it (the banner is positioned, so its shadow would cover the day's line). */
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1rem;
