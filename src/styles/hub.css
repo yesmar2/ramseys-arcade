@@ -55,11 +55,6 @@
   height: 0.95rem;
 }
 
-.gh-hot {
-  color: color-mix(in srgb, var(--gh-accent) 72%, var(--ink));
-  font-weight: 800;
-}
-
 .gh-card {
   display: flex;
   flex-direction: column;
@@ -494,7 +489,7 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 
 .gh-row {
   display: grid;
-  grid-template-columns: 1.7rem 1.9rem minmax(0, 1fr) auto 3.3rem;
+  grid-template-columns: 1.7rem 1.9rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.55rem;
   min-height: 2.7rem;
@@ -505,10 +500,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 
 .gh-row:hover {
   background: rgba(var(--ink-rgb), 0.04);
-}
-
-.gh-rows .gh-row:not(:has(.gh-row__pays)) {
-  grid-template-columns: 1.7rem 1.9rem minmax(0, 1fr) auto;
 }
 
 .gh-row__place {
@@ -578,13 +569,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   font-size: 0.68rem;
   font-weight: 650;
   color: var(--muted);
-}
-
-.gh-row__pays {
-  font-size: 0.76rem;
-  font-weight: 750;
-  color: var(--muted);
-  text-align: right;
 }
 
 .gh-row--you {
@@ -797,26 +781,11 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   color: var(--muted);
 }
 
-/* Where the place sits along the whole board, with the share lines on it. */
+/* Where the place sits along the whole board: a plain track from last to 1st, with your dot. */
 .gh-bar {
   position: relative;
   height: 3.9rem;
   margin: 0.2rem 0.3rem 0;
-}
-
-.gh-bar__label {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.gh-bar__label--next {
-  color: var(--ink);
-  font-weight: 800;
 }
 
 .gh-bar__track {
@@ -835,22 +804,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   height: 100%;
   border-radius: 999px;
   background: var(--gh-accent);
-}
-
-.gh-bar__line {
-  position: absolute;
-  top: 1.45rem;
-  width: 2px;
-  height: 1.1rem;
-  margin-left: -1px;
-  border-radius: 2px;
-  background: rgba(var(--ink-rgb), 0.22);
-}
-
-.gh-bar__line--next {
-  top: 1.25rem;
-  height: 1.5rem;
-  background: var(--ink);
 }
 
 .gh-bar__you {

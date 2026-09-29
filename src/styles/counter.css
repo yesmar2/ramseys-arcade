@@ -979,11 +979,6 @@ button.counter-goal:focus-visible {
   letter-spacing: 0.03em;
 }
 
-.prize-board__pts {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
 .prize-card {
   position: relative;
   display: flex;

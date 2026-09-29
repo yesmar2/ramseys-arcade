@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { gameHref, rankHref, tournamentCreateHref } from '../hooks/useHashRoute'
+import { gameHref, rankHowHref, rankHref, tournamentCreateHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import {
   gameName,
@@ -17,7 +17,7 @@ import {
   type GroupRecord,
   type GroupTable,
 } from '../lib/groupPages'
-import { groupsIndexHref, type GroupPublic } from '../lib/groups'
+import { appendGroupQuery, groupsIndexHref, type GroupPublic } from '../lib/groups'
 import { formatBoardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName, type GlobalBoardEntry } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
@@ -251,8 +251,9 @@ const SHOWN = 10
 
 /**
  * The group's table, by the boards' own points: each game pays the group by
- * place and a player's games add up. A quiet week says what the first run
- * does rather than showing an empty table.
+ * place and a player's games add up. It is the group's Standings, so it keeps
+ * its points, and links to the page that works them out. A quiet week says
+ * what the first run does rather than showing an empty table.
  */
 export function GroupStandings({
   group,
@@ -309,9 +310,7 @@ export function GroupStandings({
             <TrophyIcon />
           </span>
           <p className="grp-empty__title">Nobody’s played {period === 'weekly' ? 'this week' : `in ${periodWords(period)}`} yet</p>
-          <p className="grp-copy">
-            Any run on any game puts you top of the {group.name} table, and the first on each game takes all 100 points.
-          </p>
+          <p className="grp-copy">Any run on any game puts you top of the {group.name} table.</p>
         </div>
       ) : (
         <>
@@ -337,7 +336,10 @@ export function GroupStandings({
         </>
       )}
       <p className="grp-fine">
-        Points as on the boards: each game pays the {group.memberCount} of you by place, 100 for 1st, and your games add up.
+        {/* Carries the group, so the page works out these points rather than the header's. */}
+        <a className="grp-link" href={appendGroupQuery(rankHowHref(undefined, period), group.id)}>
+          How your rank works ›
+        </a>
       </p>
     </section>
   )

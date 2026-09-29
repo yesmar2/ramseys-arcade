@@ -53,10 +53,8 @@ import {
   eventsLineup,
   gameName,
   ordinal,
-  playedAll,
   resultLines,
   skipLesson,
-  standingsCount,
   standingsTable,
 } from '../lib/eventPages'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
@@ -146,7 +144,10 @@ function yourStandingPlace(detail: TournamentDetail, displayName: string): numbe
   return idx >= 0 ? (detail.standings[idx]!.place ?? idx + 1) : null
 }
 
-/** The current player's headline number, formatted the way the board shows it. */
+/**
+ * The current player's headline number, formatted the way the board shows it.
+ * An all-round event has none: the place says it.
+ */
 function yourStandingScore(detail: TournamentDetail, displayName: string): string | null {
   const youName = normalizePlayerName(displayName)
   if (!youName) return null
@@ -156,9 +157,9 @@ function yourStandingScore(detail: TournamentDetail, displayName: string): strin
     )
     return hit ? hit.score.toLocaleString() : null
   }
+  if (detail.format === 'place-points') return null
   const row = detail.standings.find((r) => normalizePlayerName(r.name) === youName)
   if (!row) return null
-  if (detail.format === 'place-points') return `${row.totalPoints} pts`
   const total = detail.games.reduce((sum, g) => sum + (row.byGame[g]?.score ?? 0), 0)
   return total.toLocaleString()
 }
@@ -387,19 +388,21 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
     }
     const rows = bracket ? [] : standingsTable(detail, displayName)
     const top = rows[0]
-    const usePoints = detail.format === 'place-points'
-    const runnersUp = rows
-      .slice(1, 3)
-      .map((r) => `${r.name} on ${usePoints ? r.total : r.total.toLocaleString()}`)
-      .join(' and ')
     const single = detail.games.length === 1 && !bracket ? scoredStandings(detail)[0] : null
+    // All-round, the names say it: its totals are only places added up. Scores keep theirs.
+    const allRound = detail.format === 'place-points' && !single
+    // Only who played: without a number beside them, a name that never posted a run would read as beaten.
+    const runnersUp = rows
+      .filter((r) => r.cells.some((c) => c.score != null))
+      .slice(1, 3)
+      .map((r) => (allRound ? r.name : `${r.name} on ${r.total.toLocaleString()}`))
+      .join(' and ')
     return (
       <div className="evp-banner__side">
         <WinnerCard
           winner={normalizePlayerName(winner)}
           avatarId={top?.avatarId ?? single?.row.avatarId}
-          total={single ? single.score : top ? top.total : null}
-          usePoints={usePoints && !single}
+          total={single ? single.score : top && !allRound ? top.total : null}
           mine={normalizePlayerName(winner) === normalizePlayerName(displayName)}
           runnersUp={runnersUp ? `Ahead of ${runnersUp}` : null}
         />
@@ -1165,13 +1168,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             const locked = detail.status === 'upcoming' || (joined && status === 'No tries left')
             return { slug, href: locked ? null : tournamentPlayHref(detail.id, slug, playInvite), status }
           })
-    const ownLesson = ended ? skipLesson(detail) : null
-    const priorLesson = !ended && previous ? skipLesson(previous) : null
-    const lesson = ownLesson
-      ? { lesson: ownLesson, all: playedAll(detail), field: standingsCount(detail) }
-      : priorLesson && previous
-        ? { lesson: priorLesson, all: playedAll(previous), field: standingsCount(previous) }
-        : null
+    const lesson = ended ? skipLesson(detail) : previous ? skipLesson(previous) : null
     const next = ended
       ? (live.official.find((t) => t.id !== detail.id && t.cadence != null && t.cadence === detail.cadence) ?? null)
       : null

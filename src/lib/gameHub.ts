@@ -1,5 +1,5 @@
 import type { Game } from '../data/games'
-import { placePoints, type BoardPlayer, type BoardYou } from './gameBoard'
+import { placeBeating, type BoardPlayer, type BoardYou } from './gameBoard'
 import { barPosition, nextLine, shareLines, talksInPlaces } from './profileMath'
 import { closestToInk, coverRecord, recordBrief, recordGap } from './recordBook'
 import { recordShut } from './recordPage'
@@ -7,50 +7,38 @@ import type { RecordSummary } from './records'
 
 /*
  * A game's page, worked out: where the viewer stands on its board and the one
- * run that moves them, what a first run would be worth, which records to put
+ * run that moves them, the scores a first run could aim at, which records to put
  * in front of them, and which games to suggest next. The page only fetches and
  * lays out. Boards are best first, and a higher stored score is always the
  * better one, time boards included (they store inverted time).
  */
 
-/** What beating one score does for a player: the place it takes, who it passes, what it pays. */
+/** What beating one score does for a player: the place it takes and who it passes. */
 export type Step = {
   /** The score to beat. */
   beat: number
   place: number
-  pays: number
-  /** Points over what the player is paid now; for a new player, the whole of it. */
-  gain: number
   /** The players it goes past, best first. */
   passes: string[]
-  /** The share line it crosses into, when it crosses one: "Top half". */
-  line: string | null
 }
 
-/** The place a run just better than `target` takes: above everyone at or below it. */
-function placeBeating(players: BoardPlayer[], target: number, me: string): number {
-  return players.filter((p) => p.name !== me && p.best.score > target).length + 1
-}
-
-/** The step from where `you` stand to just past `target`. */
-function stepFor(players: BoardPlayer[], you: BoardYou, target: number, line: string | null): Step {
+/** The step from where `you` stand to just past `target`: past anyone tied with it too (gameBoard placeBeating). */
+function stepFor(players: BoardPlayer[], you: BoardYou, target: number): Step {
   const place = placeBeating(players, target, you.player.name)
-  const pays = placePoints(place, you.field)
   const passes = players
     .filter((p) => p.place < you.player.place && p.best.score <= target)
     .map((p) => p.name)
-  return { beat: target, place, pays, gain: Math.max(0, pays - you.player.pays), passes, line }
+  return { beat: target, place, passes }
 }
 
 export type Standing = {
   place: number
   field: number
-  pays: number
   best: number
   runs: number
   /** Where the place sits along a bar of the whole board: 0 last, 1 first. */
   bar: number
-  /** The share lines to mark on the bar, where the board is big enough for them. */
+  /** The board's share lines, where it is big enough for them: the page draws the bar only then, unmarked. */
   lines: { label: string; rank: number; at: number }[]
   /** The run that moves them next; none for the player in first, or once their run is in on a one-run board. */
   next: Step | null
@@ -72,17 +60,17 @@ export function standingOn(players: BoardPlayer[], you: BoardYou, oneRun = false
   let next: Step | null = null
   if (above && !oneRun) {
     if (talksInPlaces(player.place, field)) {
-      next = stepFor(players, you, above.best.score, player.place - 1 === 10 ? 'Top ten' : null)
+      next = stepFor(players, you, above.best.score)
     } else {
+      // Further down, the run to chase is the next share line's score; the page just doesn't name the line.
       const line = nextLine(player.place, field)
       const at = line ? players[line.rank - 1] : null
-      next = at ? stepFor(players, you, at.best.score, line!.label) : stepFor(players, you, above.best.score, null)
+      next = stepFor(players, you, (at ?? above).best.score)
     }
   }
   return {
     place: player.place,
     field,
-    pays: player.pays,
     best: player.best.score,
     runs: player.runs,
     bar: barPosition(player.place, field),
@@ -93,38 +81,29 @@ export function standingOn(players: BoardPlayer[], you: BoardYou, oneRun = false
   }
 }
 
-/** A mark a first run could aim at: the score to beat (none: any run at all), the place it takes, and what the place pays. */
-export type Aim = { label: string; beat: number | null; place: number; pays: number }
+/** A mark a first run could aim at: the score to beat (none: any run at all) and the place it takes. */
+export type Aim = { label: string; beat: number | null; place: number }
 
 /**
- * What a first run is worth: the middle of the board, the top ten and the
- * record, each with the place and points it brings. Joining makes the field
- * one bigger, so the points are counted on that.
+ * What a first run could aim at: the middle of the board, the top ten and the
+ * record, each with the place it takes.
  */
 export function firstRunAims(players: BoardPlayer[]): Aim[] {
   const field = players.length
-  const aim = (label: string, at: BoardPlayer | undefined): Aim | null => {
-    if (!at) return null
-    const place = placeBeating(players, at.best.score, '')
-    return { label, beat: at.best.score, place, pays: placePoints(place, field + 1) }
-  }
+  const aim = (label: string, at: BoardPlayer | undefined): Aim | null =>
+    at ? { label, beat: at.best.score, place: placeBeating(players, at.best.score) } : null
   const aims = [
-    // On a small board, what just turning up is worth; on a bigger one, the middle.
+    // On a small board, just turning up; on a bigger one, the middle.
     field >= 6
       ? aim('Middle', players[Math.ceil(field / 2) - 1])
       : field > 0
-        ? { label: 'Any run', beat: null, place: field + 1, pays: anyRunPays(field) }
+        ? { label: 'Any run', beat: null, place: field + 1 }
         : null,
     field >= 14 ? aim('Top ten', players[9]) : null,
     aim('Record', players[0]),
   ].filter((a): a is Aim => a !== null)
   // Ties can make two marks the same run (beating the middle's score already reaches the top ten): keep the bigger claim.
   return aims.filter((a, i) => !aims.slice(i + 1).some((later) => later.place === a.place))
-}
-
-/** What any run at all pays, for a board with `field` players on it already. */
-export function anyRunPays(field: number): number {
-  return placePoints(field + 1, field + 1)
 }
 
 /* ---------- the record books ---------- */

@@ -14,17 +14,7 @@ import {
   type GlobalRankResult,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import {
-  barPosition,
-  nextLine,
-  ordinal,
-  periodWord,
-  pointsWord,
-  pts,
-  shareLines,
-  talksInPlaces,
-  toPass,
-} from '../lib/profileMath'
+import { ordinal, periodWord, talksInPlaces } from '../lib/profileMath'
 import { metalTone, summarizeTrophies, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { BackChevronIcon } from './PageBackLink'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
@@ -49,9 +39,11 @@ type Mark = { name: string; score: number; rank: number; me: boolean }
  * The players around a place in the top ten, on the site's race line: the
  * top of the three on the right, and the stretch between the middle and the
  * top lit in the player's colour. Chasing, the player is the middle; on top,
- * the player is the right end, with second and third behind.
+ * the player is the right end, with second and third behind. The dots sit by
+ * the points between them, but only the names are written: the points are on
+ * How your rank works.
  */
-function PlacesLine({ name, data }: { name: string; data: GlobalRankResult }) {
+function PlacesLine({ name, isSelf, data }: { name: string; isSelf: boolean; data: GlobalRankResult }) {
   const rank = data.rank
   if (rank == null) return null
   const around = neighboursOf(data)
@@ -69,7 +61,12 @@ function PlacesLine({ name, data }: { name: string; data: GlobalRankResult }) {
   const raw = lo && span > 0 ? 8 + (84 * (mid.score - lo.score)) / span : 50
   const x = lo ? { lo: 8, mid: Math.min(60, Math.max(34, raw)), hi: 92 } : { lo: 0, mid: 22, hi: 88 }
   const gap = hi.score - mid.score
-  const said = [hi, mid, lo].filter((m): m is Mark => m != null).map((m) => `${m.name} ${m.score}`)
+  const you = isSelf ? 'you' : name
+  const said = hi.me
+    ? gap > 0
+      ? `${isSelf ? 'You lead' : `${name} leads`}, with ${mid.name} second${lo ? ` and ${lo.name} third` : ''}`
+      : `${isSelf ? 'You' : name} and ${mid.name} are tied at the top${lo ? `, with ${lo.name} third` : ''}`
+    : `${gap > 0 ? `${hi.name} is just ahead of ${you}` : `${hi.name} is tied with ${you}`}${lo ? `, ${lo.name} just behind` : ''}`
 
   const dot = (m: Mark, left: number, slot: 'hi' | 'mid' | 'lo', edge: string) => {
     const who = m.me ? 'you' : slot === 'lo' ? 'trail' : 'rival'
@@ -81,14 +78,14 @@ function PlacesLine({ name, data }: { name: string; data: GlobalRankResult }) {
           style={{ left: `${left}%` }}
         >
           {slot === 'hi' && m.rank === 1 ? <Flag /> : null}
-          {m.name} {m.score.toLocaleString()}
+          {m.name}
         </span>
       </>
     )
   }
 
   return (
-    <div className="hero-race pcard__race" role="img" aria-label={`Points: ${said.join(', ')}`}>
+    <div className="hero-race pcard__race" role="img" aria-label={`${said}.`}>
       <span className="hero-race__track" />
       {gap > 0 ? <span className="hero-race__lit" style={{ left: `${x.mid}%`, width: `${x.hi - x.mid}%` }} /> : null}
       {lo ? dot(lo, x.lo, 'lo', ' hero-race__label--start') : null}
@@ -96,78 +93,9 @@ function PlacesLine({ name, data }: { name: string; data: GlobalRankResult }) {
       {dot(mid, x.mid, 'mid', lo ? ' hero-race__label--end' : '')}
       {gap > 0 ? (
         <span className="hero-race__label hero-race__label--under hero-race__label--gap" style={{ left: `${(x.mid + x.hi) / 2}%` }}>
-          {gap.toLocaleString()} {hi.me ? 'ahead' : 'to go'}
+          {hi.me ? (isSelf ? 'You lead' : `${name} leads`) : `Next: ${hi.name}`}
         </span>
       ) : null}
-    </div>
-  )
-}
-
-/**
- * Past the top ten, the whole board as one bar with last place on the left:
- * where the player sits, the share lines across it, and the points each line
- * still ahead would take. The bar reads the same with a hundred players or
- * ten thousand.
- */
-function ShareBar({
-  name,
-  data,
-  scores,
-}: {
-  name: string
-  data: GlobalRankResult
-  scores: Record<number, number>
-}) {
-  const rank = data.rank
-  const field = data.totalPlayers
-  if (rank == null) return null
-  const me = barPosition(rank, field)
-  const top = scores[1]
-  // The line ahead is named with its points; a line further on only where there is room for its name.
-  let lastShown = -1
-  const lines = shareLines(field).map((line) => {
-    const ahead = line.rank < rank
-    const score = scores[line.rank]
-    const pos = barPosition(line.rank, field)
-    const shown = ahead && (lastShown < 0 || pos - lastShown >= 0.22)
-    if (shown) lastShown = pos
-    return { ...line, ahead, shown, pos, need: ahead && score != null ? toPass(score, data.score) : null }
-  })
-  const said = lines
-    .filter((l) => l.need != null)
-    .map((l) => `${pointsWord(l.need!)} from the ${l.label.toLowerCase()}`)
-  const ahead = field - rank
-
-  return (
-    <div
-      className="pcard-bar"
-      role="img"
-      aria-label={`${name} is ahead of ${ahead.toLocaleString()} of ${field.toLocaleString()} players${said.length ? `: ${said.join(', ')}` : ''}.`}
-    >
-      {lines.map((l) => (
-        <span
-          key={l.key}
-          className={`pcard-bar__line${l.shown ? '' : ' pcard-bar__line--quiet'}${l.pos > 0.84 ? ' pcard-bar__line--end' : ''}`}
-          style={{ left: `${l.pos * 100}%` }}
-        >
-          <span className="pcard-bar__tick" />
-          {l.shown ? (
-            <span className="pcard-bar__label">
-              <span className="pcard-bar__name">{l.label}</span>
-              <span className="pcard-bar__need">{l.need != null ? `+${l.need.toLocaleString()} pts` : ' '}</span>
-            </span>
-          ) : null}
-        </span>
-      ))}
-      <span className="pcard-bar__track">
-        <span className="pcard-bar__fill" style={{ width: `${me * 100}%` }} />
-      </span>
-      <span className="pcard-bar__you" style={{ left: `${me * 100}%` }} />
-      <span className={`pcard-bar__who${me < 0.3 ? ' pcard-bar__who--start' : ''}`} style={{ left: `${me * 100}%` }}>
-        {name} {data.score.toLocaleString()}
-        {ahead > 0 ? ` · ahead of ${ahead.toLocaleString()}` : ''}
-      </span>
-      {top != null && me < 0.72 ? <span className="pcard-bar__top">#1 · {top.toLocaleString()}</span> : null}
     </div>
   )
 }
@@ -259,7 +187,15 @@ function TrophyCase({
   )
 }
 
-/** The words over the line: where the player stands this period, however the numbers fall. */
+/** "just ahead of JO" → "Just ahead of JO", to start a line. */
+function capital(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+/**
+ * The words over the line: where the player stands this period, however the numbers fall. Places and
+ * names only; the points behind them are on How your rank works.
+ */
 function standing({
   name,
   isSelf,
@@ -267,8 +203,6 @@ function standing({
   ranks,
   data,
   where,
-  scores,
-  scoresReady,
 }: {
   name: string
   isSelf: boolean
@@ -276,13 +210,9 @@ function standing({
   ranks: PeriodRanks
   data: GlobalRankResult
   where: string
-  scores: Record<number, number>
-  scoresReady: boolean
 }): { head: ReactNode; sub: ReactNode } {
   const word = periodWord(period)
   const rank = data.rank
-  const games = Object.keys(data.byGame).length
-  const from = `${pts(data.score)} from ${games} ${games === 1 ? 'game' : 'games'}`
   const you = isSelf ? 'you' : name
 
   if (rank == null) {
@@ -301,17 +231,15 @@ function standing({
 
   const field = data.totalPlayers
   if (talksInPlaces(rank, field)) {
+    // Who's either side, by name: chasing the one above, just ahead of the one below, or tied.
     const around = neighboursOf(data)
     const above = around.find((n) => n.rank === rank - 1)
     const below = around.find((n) => n.rank === rank + 1)
-    const parts: string[] = [from]
-    if (above) {
-      const gap = above.score - data.score
-      parts.push(gap > 0 ? `${gap.toLocaleString()} behind ${above.name}` : `tied with ${above.name}`)
-    }
+    const parts: string[] = []
+    if (above) parts.push(above.score > data.score ? `chasing ${above.name}` : `tied with ${above.name}`)
     if (below) {
-      const lead = data.score - below.score
-      parts.push(lead > 0 ? `${lead.toLocaleString()} ahead of ${below.name}` : `tied with ${below.name}`)
+      const ahead = rank === 1 ? 'ahead of' : 'just ahead of'
+      parts.push(data.score > below.score ? `${ahead} ${below.name}` : `tied with ${below.name}`)
     }
     return {
       head: (
@@ -319,32 +247,22 @@ function standing({
           <span className="pcard__hot">{ordinal(rank)}</span> {where} {word}
         </>
       ),
-      sub: parts.join(' · '),
+      sub: parts.length ? capital(parts.join(' · ')) : `Nobody else on the boards ${word} yet`,
     }
   }
 
-  const line = nextLine(rank, field)
-  const lineScore = line ? scores[line.rank] : undefined
-  const sub = `${from} ${word} · #${rank.toLocaleString()} of ${field.toLocaleString()} players`
-  if (line && lineScore != null) {
-    return {
-      head: (
-        <>
-          <span className="pcard__hot">{pointsWord(toPass(lineScore, data.score))}</span> from the{' '}
-          {line.label.toLowerCase()}
-        </>
-      ),
-      sub,
-    }
-  }
-  if (line && !scoresReady) return { head: <Skel w="14ch" />, sub }
+  // Past the top ten: the place, and how many are behind it.
+  const behind = field - rank
   return {
     head: (
       <>
         <span className="pcard__hot">#{rank.toLocaleString()}</span> {where} {word}
       </>
     ),
-    sub,
+    sub:
+      behind > 0
+        ? `Ahead of ${behind.toLocaleString()} ${behind === 1 ? 'player' : 'players'} ${word}`
+        : `Any better run moves ${you} up`,
   }
 }
 
@@ -352,10 +270,10 @@ function standing({
  * The top of a player's page: the card. The character big on the left, the
  * tag, where they stand this period and what's next, on a line; the week, the
  * month and all time down the right; and along the bottom what they've
- * collected. In the top ten it talks about the players around them; below it,
- * about the next share of the arcade to reach, which reads the same however
- * many are playing. Washed in the character's colour, like every banner on
- * the site.
+ * collected. In the top ten it talks about the players around them by name;
+ * below it, about the place and how many are behind it. The points behind a
+ * rank are one link away, on How your rank works. Washed in the character's
+ * colour, like every banner on the site.
  */
 export function PlayerCard({
   name,
@@ -368,7 +286,6 @@ export function PlayerCard({
   accent,
   art,
   onArtClick,
-  scores,
   trophies,
   actions,
   backHref,
@@ -388,12 +305,11 @@ export function PlayerCard({
   accent?: string
   art: ReactNode
   onArtClick?: () => void
-  /** Points at the share lines ahead, by place, and whether they have landed. */
-  scores: { scores: Record<number, number>; ready: boolean }
   trophies: TrophyAward[] | null
   actions: ReactNode
   /** Someone else's card has a way back to the standings. */
   backHref?: string
+  /** How this player's rank works: their own page of the points behind it. */
   howHref: string
   /** One more fact along the card's foot: on your own, the way to your stats. */
   extra?: ReactNode
@@ -409,9 +325,7 @@ export function PlayerCard({
   const title = prizeById(wornPrize(look, 'title'))
   const sign = wornPrize(look, 'sign')
   const word = periodWord(period)
-  const said = loading
-    ? null
-    : standing({ name, isSelf, period, ranks, data, where, scores: scores.scores, scoresReady: scores.ready })
+  const said = loading ? null : standing({ name, isSelf, period, ranks, data, where })
   const rank = data.rank
   const placed = Object.keys(data.byGame).length
   const inPlaces = rank != null && talksInPlaces(rank, data.totalPlayers)
@@ -421,14 +335,6 @@ export function PlayerCard({
   const go = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault()
     navigate(href)
-  }
-  const toHow = (e: MouseEvent<HTMLAnchorElement>) => {
-    const how = document.getElementById('rank-how')
-    if (!how) return
-    e.preventDefault()
-    if (how instanceof HTMLDetailsElement) how.open = true
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    how.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
   }
   // The shelf is further down the same page.
   const toShelf = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -484,11 +390,6 @@ export function PlayerCard({
               </a>
             ) : null}
             <p className="home-banner__kicker">{isSelf ? 'Your player card' : 'Player card'}</p>
-            {!loading && data.totalPlayers > 0 ? (
-              <span className="home-banner__kicker-note">
-                {data.totalPlayers.toLocaleString()} {data.totalPlayers === 1 ? 'player' : 'players'} {word}
-              </span>
-            ) : null}
           </div>
           {sign ? (
             <h1 className="pcard__name pcard__name--sign" aria-label={name}>
@@ -502,13 +403,8 @@ export function PlayerCard({
           {title ? <span className={`prize-plate prize-plate--${plateTier(title)} pcard__title`}>{title.name}</span> : null}
           <p className="pcard__head">{said ? said.head : <Skel w="16ch" />}</p>
           <p className="pcard__sub">{said ? said.sub : <Skel w="24ch" />}</p>
-          {!loading && rank != null ? (
-            inPlaces ? (
-              <PlacesLine name={name} data={data} />
-            ) : (
-              <ShareBar name={name} data={data} scores={scores.scores} />
-            )
-          ) : null}
+          {/* Past the top ten there is no line: the whole-board bar is on How your rank works. */}
+          {!loading && inPlaces ? <PlacesLine name={name} isSelf={isSelf} data={data} /> : null}
           {actions ? <div className="home-banner__acts pcard__acts">{actions}</div> : null}
         </div>
         <nav className="pcard__ladder" aria-label={isSelf ? 'Your rank by period' : `${name}'s rank by period`}>
@@ -526,21 +422,10 @@ export function PlayerCard({
               >
                 <span className="pcard__period-text">
                   <span className="pcard__period-label">{PERIOD_LABELS[p]}</span>
-                  <span className="pcard__period-sub">
-                    {!row ? (
-                      <Skel w="9ch" />
-                    ) : ranked ? (
-                      `${pts(row.score)} · ${
-                        talksInPlaces(row.rank!, row.totalPlayers) || row.rank === row.totalPlayers
-                          ? `of ${row.totalPlayers.toLocaleString()} players`
-                          : `ahead of ${(row.totalPlayers - row.rank!).toLocaleString()}`
-                      }`
-                    ) : p === 'all' ? (
-                      'No runs yet'
-                    ) : (
-                      `No runs ${periodWord(p)}`
-                    )}
-                  </span>
+                  {/* Just the place, on the right; a word under the label only when there isn't one. */}
+                  {row && !ranked ? (
+                    <span className="pcard__period-sub">{p === 'all' ? 'No runs yet' : `No runs ${periodWord(p)}`}</span>
+                  ) : null}
                 </span>
                 <span className="pcard__period-figure">
                   {!row ? <Skel w="3ch" /> : ranked ? `#${row.rank!.toLocaleString()}` : 'Not yet'}
@@ -559,7 +444,7 @@ export function PlayerCard({
             <Skel w="12ch" />
           ) : (
             <>
-              <b>{placed}</b> of {VISIBLE_LEADERBOARD_GAMES.length} games placed {word}
+              Played <b>{placed}</b> of {VISIBLE_LEADERBOARD_GAMES.length} games<span className="pcard__fact-when"> {word}</span>
             </>
           )}
         </span>
@@ -572,13 +457,8 @@ export function PlayerCard({
           <span className="pcard__fact">No trophies yet</span>
         ) : null}
         {extra}
-        {!loading && rank != null && !inPlaces && data.totalPlayers > rank ? (
-          <span className="pcard__fact">
-            Ahead of <b>{(data.totalPlayers - rank).toLocaleString()}</b> players {word}
-          </span>
-        ) : null}
-        <a className="home-banner__standing-link" href={howHref} onClick={toHow}>
-          How ranks work ›
+        <a className="home-banner__standing-link" href={howHref}>
+          {isSelf ? 'How your rank works' : `How ${name}’s rank works`} ›
         </a>
       </div>
     </section>

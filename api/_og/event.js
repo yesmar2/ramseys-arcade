@@ -15,6 +15,7 @@ import { API, COLUMN, fetchWithin, figure, FOOT, h, INK, lift, MUTED, rgba, TEAL
  * @typedef {{ name: string, place?: number, totalPoints: number, byGame: Record<string, Cell> }} Row
  * @typedef {{ id: string, title: string, games: string[], official: boolean, cadence?: string | null, status: string, private: boolean, kind?: string, standings: Row[], standingsTotal?: number, fieldByGame?: Record<string, number> }} EventDetail
  * @typedef {{ name: string, title: string, score: string, line: string, place: number, field: number, over: boolean, heading: string, description: string }} EventWords
+ * `score` is the card's big figure: the score on a one-game event, "All-round" on an event of several.
  */
 
 export const EVENT_ID = /^[A-Za-z0-9-]{3,64}$/
@@ -73,16 +74,12 @@ export function eventWords(event, name, games) {
   const single = event.games.length === 1 ? (event.games[0] ?? null) : null
   const info = single ? games[single] : undefined
   const cell = single ? row.byGame[single] : null
-  const score = single ? (cell?.score ?? null) : row.totalPoints
+  const score = single ? (cell?.score ?? null) : null
   const place = single ? (cell?.place ?? null) : (row.place ?? null)
-  if (score == null || place == null) return null
+  if ((single && score == null) || place == null) return null
   const field = (single ? event.fieldByGame?.[single] : undefined) ?? event.standingsTotal ?? event.standings.length
   const over = event.status === 'ended'
-  const figureText = single ? figure(info, score) : score.toLocaleString('en-US')
-  const unit = single ? unitOf(info, score) : score === 1 ? 'point' : 'points'
   const on = single ? (info?.name ?? single) : list(event.games.map((g) => games[g]?.name ?? g))
-  // What the figure counts and where: "points on Frenzy", "on Find the Bug" for a time, "points across Putt, Snake and Bop".
-  const line = `${unit ? `${unit} ` : ''}${single ? 'on' : 'across'} ${on}`
   const standing = `${ordinal(place)} of ${field}${over ? '' : ' so far'}`
   const again =
     event.official && (event.cadence === 'daily' || event.cadence === 'oneshot')
@@ -90,6 +87,26 @@ export function eventWords(event, name, games) {
       : event.official && event.cadence === 'weekly'
         ? 'There’s a new one every week.'
         : ''
+  const dare = over ? again : 'Can you beat it? It plays right here in your browser.'
+  const heading = over ? `${row.name} finished ${ordinal(place)} on ${event.title}` : `${row.name} is ${ordinal(place)} on ${event.title}`
+  // Several games: the place is the result, all-round across them. The points behind it aren't said.
+  if (score == null) {
+    return {
+      name: row.name,
+      title: event.title,
+      score: 'All-round',
+      line: `across ${on}`,
+      place,
+      field,
+      over,
+      heading,
+      description: `${standing} across ${on}. ${dare}`.trim(),
+    }
+  }
+  const figureText = figure(info, score)
+  const unit = unitOf(info, score)
+  // What the figure counts and where: "points on Frenzy", "on Find the Bug" for a time.
+  const line = `${unit ? `${unit} ` : ''}on ${on}`
   return {
     name: row.name,
     title: event.title,
@@ -98,10 +115,8 @@ export function eventWords(event, name, games) {
     place,
     field,
     over,
-    heading: over ? `${row.name} finished ${ordinal(place)} on ${event.title}` : `${row.name} is ${ordinal(place)} on ${event.title}`,
-    description: `${figureText} ${line}, ${standing}. ${
-      over ? again : 'Can you beat it? It plays right here in your browser.'
-    }`.trim(),
+    heading,
+    description: `${figureText} ${line}, ${standing}. ${dare}`.trim(),
   }
 }
 

@@ -41,9 +41,11 @@ export function eventShareMessage(detail: TournamentDetail, gameSlug: string, na
   const place = single ? cell?.place : row.place
   const field = (single ? detail.fieldByGame?.[gameSlug] : undefined) ?? detail.standingsTotal ?? detail.standings.length
   const where = place ? `, ${ordinal(place)} of ${field}` : ''
+  // All-round: the place is the result, said as yours, not the points behind it.
   if (!single) {
-    const pts = `${row.totalPoints.toLocaleString()} point${row.totalPoints === 1 ? '' : 's'}`
-    return `${detail.title} on ${APP_NAME}: ${pts}${where} so far. Can you beat it?`
+    return place
+      ? `${detail.title} on ${APP_NAME}: I’m ${ordinal(place)} of ${field} so far. Can you beat me?`
+      : `${detail.title} on ${APP_NAME}: I’m on the standings. Can you beat me?`
   }
   if (cell?.score == null) return null
   const what = `${scoreText(gameSlug, cell.score)} on ${getGame(gameSlug)?.name ?? gameSlug}`

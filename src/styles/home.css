@@ -645,10 +645,6 @@ html[data-theme="dark"] .home-banner {
   letter-spacing: -0.02em;
 }
 
-.home-banner__stat--next {
-  display: none;
-}
-
 .home-banner__standing-link {
   margin-left: auto;
   font-weight: 750;
@@ -802,8 +798,8 @@ html[data-theme="dark"] .home-banner {
 
 /*
  * On a phone the strip keeps to one line: your place across all games (still
- * labelled, so it isn't taken for a place on the game above), and what the
- * next one up costs.
+ * labelled, so it isn't taken for a place on the game above), and the way to
+ * your profile.
  */
 @media (max-width: 42rem) {
   .home-banner__standing {
@@ -816,14 +812,8 @@ html[data-theme="dark"] .home-banner {
     display: none;
   }
 
-  .home-banner__standing:not(:has(.home-banner__stat--next)) .home-banner__standing-link {
+  .home-banner__standing .home-banner__standing-link {
     display: inline;
-  }
-
-  .home-banner__stat--next {
-    display: inline-flex;
-    gap: 0.3rem;
-    margin-left: auto;
   }
 
   /* The promises shorten to three: no ads, no install, free. */
@@ -1144,13 +1134,6 @@ html[data-theme="dark"] .home-banner {
   text-overflow: ellipsis;
 }
 
-.onnow-podium__pts {
-  font-size: 0.74rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-
 /* Loading: three cards of the same shape hold the row. */
 .onnow-card--skel {
   --ev-accent: var(--muted);
@@ -1322,19 +1305,6 @@ html[data-theme="dark"] .home-banner {
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.hb-row__pts {
-  margin-left: auto;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.hb-row__pts small {
-  font-size: 0.7rem;
-  font-weight: 650;
-  color: var(--muted);
 }
 
 .hb-row--skel {

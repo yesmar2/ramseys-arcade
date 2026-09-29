@@ -167,9 +167,12 @@ export function useScoreboard(
             .catch(() => {})
         }
 
-        // The score that takes the next place up, on each board you are on.
+        // The score that takes the next place up, on each board scored by runs.
+        // A daily's week/month/all-time board is day points, which climb a day at a time: nothing reads a next score there.
         if (you && you.rank != null) {
-          const places = Object.entries(you.byGame).filter(([, p]) => p && p.place > 1)
+          const places = Object.entries(you.byGame).filter(
+            ([slug, p]) => p && p.place > 1 && !isDayPointsBoard(slug, period),
+          )
           const found = await Promise.all(
             places.map(async ([slug, place]) => {
               try {

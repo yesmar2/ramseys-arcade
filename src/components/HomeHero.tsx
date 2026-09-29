@@ -5,13 +5,20 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
-import { gapBetween, gapFigure } from '../lib/gameBoard'
+import { gapBetween, gapFigure, playersFromRuns, type BoardPlayer } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
-import { getLeaderboard, normalizePlayerName, PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
+import {
+  getLeaderboard,
+  normalizePlayerName,
+  PERIOD_LABELS,
+  type LeaderboardEntry,
+  type LeaderboardPeriod,
+  type YouEntry,
+} from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
@@ -25,74 +32,123 @@ import { GameThumbArt } from './GameThumbArt'
 
 type HeroScores = {
   best: number
-  rank: number
+  /** Your place among the board's players; 0 when it isn't known. */
+  place: number
   top: number
   topName: string
 }
 
-/** One run's place on a game's all-time board. */
-type Place = { name: string; score: number; rank: number }
+/** One player on a game's board: their best, and their place among its players. */
+type Place = { name: string; score: number; place: number }
 
 /**
- * Your best on the banner's game, all time, with the run just above it and
- * the nearest other player below; on top of the board, also the player after
- * that, so the line still shows second and third.
+ * Your best on the banner's game, all time, with the player just above you
+ * and the one just behind; on top of the board, also the player after that,
+ * so the line still shows second and third.
  */
 type Rung = { you: Place; above: Place | null; below: Place | null; third?: Place | null }
 
-/** A points figure that agrees with itself: 1 pt, 2 pts. */
-function pts(n: number) {
-  return `${n.toLocaleString()} ${n === 1 ? 'pt' : 'pts'}`
-}
-
-/** How far apart two players are on points; a tie says so rather than "by 0 pts". */
-function byOrLevel(gap: number) {
-  return gap > 0 ? `by ${pts(gap)}` : 'tied on points'
-}
-
 const RUNG_PAGE = 25
 
+/** Runs per request while reading a board down to your best, and the deepest best it is read down to. */
+const READ_PAGE = 500
+const READ_CAP = 2000
+
+/** `count` runs of a board from `offset`, best first, a page at a time; fewer where the board ends. */
+async function readRuns(slug: string, board: LeaderboardPeriod, offset: number, count: number): Promise<LeaderboardEntry[]> {
+  const runs: LeaderboardEntry[] = []
+  while (runs.length < count) {
+    const limit = Math.min(READ_PAGE, count - runs.length)
+    const { entries } = await getLeaderboard(slug, board, undefined, { offset: offset + runs.length, limit })
+    runs.push(...entries)
+    if (entries.length < limit) break
+  }
+  return runs
+}
+
 /*
- * A board lists runs, not players. Your best is your highest run, so the run
- * just above it is always someone else's. The runs below can be your own, or
- * another of that player's, so they are read a page at a time, one run per
- * player, until enough other players turn up: one behind you, or two when
- * nobody is ahead of you.
+ * A board lists runs, not players, and one player can hold several runs in a
+ * row, so the API's rank for your best counts runs: #5 there can be 3rd on
+ * the game's page. The API sends your place among the players with it; for
+ * one that doesn't yet, it is counted here the way that page counts it, as
+ * players (playersFromRuns), from every run above your best. Too deep to
+ * read, it isn't known: 0.
+ */
+async function placeOn(slug: string, board: LeaderboardPeriod, you: YouEntry): Promise<number> {
+  if (you.rank > READ_CAP) return 0
+  return playersFromRuns(await readRuns(slug, board, 0, you.rank - 1)).length + 1
+}
+
+/*
+ * Too deep to read from the top, the rung is taken from the place the API
+ * counted for your best and one window of runs around it: the run just above
+ * yours, and the next other player below, read on a page at a time. That far
+ * down it is near enough, though a player's other runs can sit between yours
+ * and their best.
+ */
+async function rungAround(slug: string, board: LeaderboardPeriod, name: string, you: YouEntry, place: number): Promise<Rung> {
+  const start = Math.max(0, you.rank - 2)
+  let above: Place | null = null
+  let below: Place | null = null
+  for (let page = 0; page < 3 && !below; page += 1) {
+    const offset = start + page * RUNG_PAGE
+    const runs = await readRuns(slug, board, offset, RUNG_PAGE)
+    for (const [i, e] of runs.entries()) {
+      if (e.name === name) continue
+      if (offset + i + 1 < you.rank) above = { name: e.name, score: e.score, place: place - 1 }
+      else if (!below && e.name !== above?.name) below = { name: e.name, score: e.score, place: place + 1 }
+    }
+    if (runs.length < RUNG_PAGE) break
+  }
+  return { you: { name, score: you.score, place }, above, below }
+}
+
+/*
+ * The board is read from the top, down past your best, and taken as players
+ * (see placeOn): your place, the player above you, and the ones behind. A
+ * player's other runs can sit just under yours, so the runs below are read on
+ * a page at a time until enough other players turn up: one behind you, or two
+ * when nobody is ahead of you.
  */
 async function fetchRung(slug: string, name: string): Promise<Rung | null> {
   // A daily's all time is its day points (leaderboardFormat isDayPointsBoard): its next place up is today's.
   const board: LeaderboardPeriod = isDailyGame(slug) ? 'daily' : 'all'
   const { you } = await getLeaderboard(slug, board, name, { limit: 1 })
   if (!you) return null
-  const wanted = you.rank === 1 ? 2 : 1
-  let above: Place | null = null
-  const behind: Place[] = []
-  let offset = Math.max(0, you.rank - 2)
-  for (let page = 0; page < 3 && behind.length < wanted; page += 1) {
-    const { entries } = await getLeaderboard(slug, board, name, { offset, limit: RUNG_PAGE })
-    for (const [i, e] of entries.entries()) {
-      const place: Place = { name: e.name, score: e.score, rank: offset + 1 + i }
-      if (place.name === name) continue
-      if (place.rank < you.rank) above = place
-      else if (place.name !== above?.name && !behind.some((b) => b.name === place.name)) behind.push(place)
-    }
-    if (entries.length < RUNG_PAGE) break
-    offset += RUNG_PAGE
+  // Deeper than that, a window around your best (rungAround) on the place the API counted; an API that sends
+  // none gets the plain banner, rather than a place counted wrong.
+  if (you.rank > READ_CAP) return you.place ? rungAround(slug, board, name, you, you.place) : null
+  const runs = await readRuns(slug, board, 0, you.rank + RUNG_PAGE)
+  let ended = runs.length < you.rank + RUNG_PAGE
+  let players = playersFromRuns(runs)
+  const at = players.findIndex((p) => p.name === name)
+  if (at < 0) return null
+  const wanted = at === 0 ? 2 : 1
+  for (let page = 0; page < 2 && !ended && players.length - at - 1 < wanted; page += 1) {
+    const more = await readRuns(slug, board, runs.length, RUNG_PAGE)
+    runs.push(...more)
+    ended = more.length < RUNG_PAGE
+    players = playersFromRuns(runs)
   }
-  return { you: { name, score: you.score, rank: you.rank }, above, below: behind[0] ?? null, third: behind[1] ?? null }
+  const place = (p: BoardPlayer | undefined): Place | null => (p ? { name: p.name, score: p.best.score, place: p.place } : null)
+  // Passing the player above you passes anyone tied with them too, so the place you're after is the first of those.
+  const over = players[at - 1]
+  const above = over ? players.find((p) => p.best.score === over.best.score) : undefined
+  return { you: place(players[at])!, above: place(above), below: place(players[at + 1]), third: place(players[at + 2]) }
 }
 
 /*
  * The last rungs this device saw, one per player, game and group, so a
  * returning player's banner opens on theirs instead of flashing the plain
- * banner while the board is asked again.
+ * banner while the board is asked again. One kept before places were counted
+ * as players carries a run's rank instead, and is passed over.
  */
 const RUNGS_KEY = 'skermix-hero-rungs'
 const RUNGS_KEPT = 12
 
 function isRung(value: unknown): value is Rung {
   const you = (value as Rung | null)?.you
-  return typeof you?.score === 'number' && typeof you.rank === 'number'
+  return typeof you?.score === 'number' && typeof you.place === 'number'
 }
 
 function readRungs(): Record<string, unknown> {
@@ -178,7 +234,7 @@ function RaceLine({ slug, name, rung }: { slug: string; name: string; rung: Rung
           className={`hero-race__label hero-race__label--${slot === 'mid' ? 'under' : 'over'} hero-race__label--${who}${edge}`}
           style={{ left: `${at}%` }}
         >
-          {slot === 'hi' && p.rank === 1 ? <Flag /> : null}
+          {slot === 'hi' && p.place === 1 ? <Flag /> : null}
           {p === rung.you ? 'You' : p.name} {fmt(p.score)}
         </span>
       </>
@@ -332,12 +388,15 @@ export function HomeHero() {
     }
     let cancelled = false
     getLeaderboard(slug, boardPeriod, name || undefined, { limit: 1 })
-      .then(({ entries, you }) => {
+      .then(async ({ entries, you }) => {
+        // Your place shows only on the plain banner. The API sends it with your best; for one that doesn't, the board
+        // is read down to you for it (placeOn), but not with a rung remembered, as the rung banner is what shows then.
+        const place = !you ? 0 : (you.place ?? (remembered ? 0 : await placeOn(slug, boardPeriod, you).catch(() => 0)))
         if (cancelled) return
         const leader = entries[0]
         setScores({
           best: you?.score ?? 0,
-          rank: you?.rank ?? 0,
+          place,
           top: leader?.score ?? 0,
           topName: leader?.name ?? '',
         })
@@ -348,7 +407,7 @@ export function HomeHero() {
     return () => {
       cancelled = true
     }
-  }, [name, slug, boardPeriod, groupId])
+  }, [name, slug, boardPeriod, groupId, remembered])
 
   useEffect(() => {
     if (!rungKey || !slug) return
@@ -408,7 +467,7 @@ export function HomeHero() {
   if (rung) {
     const { you, above, below } = rung
     const gap = above ? above.score - you.score : 0
-    const target = above ? (above.rank === 1 ? `the ${game.name} record` : `#${above.rank} on ${game.name}`) : ''
+    const target = above ? (above.place === 1 ? `the ${game.name} record` : `#${above.place} on ${game.name}`) : ''
     // Level with the player under you is a tie you got to first, not "0 behind".
     const belowGap = below ? you.score - below.score : 0
     const behind = below
@@ -416,16 +475,16 @@ export function HomeHero() {
         ? `${below.name} is ${gapBetween(slug, you.score, below.score)} behind you`
         : `${below.name} is tied with you`
       : null
-    const kicker = above ? (above.rank === 1 ? 'Your next record' : 'Your next place') : 'Your record'
+    const kicker = above ? (above.place === 1 ? 'Your next record' : 'Your next place') : 'Your record'
     const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
     const ahead = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! - 1) : undefined
     const trailing = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! + 1) : undefined
 
     let body: string
     if (above && gap > 0) {
-      body = `You’re #${you.rank} with ${fmt(you.score)}. ${above.name} holds ${above.rank === 1 ? 'it' : `#${above.rank}`} at ${fmt(above.score)}${behind ? `, and ${behind}` : ''}.`
+      body = `You’re #${you.place} with ${fmt(you.score)}. ${above.name} holds ${above.place === 1 ? 'it' : `#${above.place}`} at ${fmt(above.score)}${behind ? `, and ${behind}` : ''}.`
     } else if (above) {
-      body = `You’re #${you.rank} with ${fmt(you.score)}, tied with ${above.name}, who got there first.${behind ? ` ${behind}.` : ''}`
+      body = `You’re #${you.place} with ${fmt(you.score)}, tied with ${above.name}, who got there first.${behind ? ` ${behind}.` : ''}`
     } else if (below) {
       body =
         belowGap > 0
@@ -468,33 +527,21 @@ export function HomeHero() {
             <span className="home-banner__stat">
               <span className="home-banner__stat-k">Standings</span>
               <b className="home-banner__stat-rank">#{standing.rank}</b>
-              <span className="home-banner__stat-v">
-                {periodWord} · {pts(standing.score)}
-              </span>
+              <span className="home-banner__stat-v">{periodWord}</span>
             </span>
+            {/* Who is either side, by name: the points between you stay on the full Standings list. */}
             {ahead ? (
               <span className="home-banner__stat home-banner__stat--side">
                 <span className="home-banner__stat-k">Ahead</span>
                 <b>{ahead.name}</b>
-                <span className="home-banner__stat-v">{byOrLevel(ahead.score - standing.score)}</span>
+                {ahead.score === standing.score ? <span className="home-banner__stat-v">tied</span> : null}
               </span>
             ) : null}
             {trailing ? (
               <span className="home-banner__stat home-banner__stat--side">
                 <span className="home-banner__stat-k">Behind</span>
                 <b>{trailing.name}</b>
-                <span className="home-banner__stat-v">{byOrLevel(standing.score - trailing.score)}</span>
-              </span>
-            ) : null}
-            {ahead ? (
-              <span className="home-banner__stat home-banner__stat--next">
-                {ahead.score > standing.score ? (
-                  <>
-                    <b>{(ahead.score - standing.score).toLocaleString()}</b> to #{ahead.rank}
-                  </>
-                ) : (
-                  <>tied with #{ahead.rank}</>
-                )}
+                {trailing.score === standing.score ? <span className="home-banner__stat-v">tied</span> : null}
               </span>
             ) : null}
             <a className="home-banner__standing-link" href={rankHref()}>
@@ -578,7 +625,7 @@ export function HomeHero() {
               <dt>Your best</dt>
               <dd>
                 {scores.best > 0 ? fmt(scores.best) : '—'}
-                {scores.best > 0 && scores.rank > 0 ? <small> · #{scores.rank}</small> : null}
+                {scores.best > 0 && scores.place > 0 ? <small> · #{scores.place}</small> : null}
                 {scores.best === 0 ? <small> not on the board yet</small> : null}
               </dd>
             </div>

@@ -660,137 +660,6 @@ html[data-theme='dark'] .pf {
   text-underline-offset: 0.2em;
 }
 
-/*
- * The share bar: the whole board as one track, last place on the left. The
- * lit stretch is the share of the board behind the player; the ticks are the
- * share lines, the one ahead named with the points it would take.
- */
-.pcard-bar {
-  position: relative;
-  width: min(100%, 34rem);
-  height: 5.7rem;
-  margin-top: 0.35rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.pcard-bar__track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 3.1rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--banner-ink) 16%, transparent);
-  overflow: hidden;
-}
-
-.pcard-bar__fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--hero-accent) 30%, transparent), var(--banner-dot));
-  transform-origin: left center;
-  animation: pcard-fill 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both;
-}
-
-@keyframes pcard-fill {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.pcard-bar__you {
-  position: absolute;
-  top: 3.35rem;
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 50%;
-  background: var(--banner-dot);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hero-accent) 30%, transparent);
-  transform: translate(-50%, -50%);
-}
-
-.pcard-bar__who,
-.pcard-bar__top {
-  position: absolute;
-  top: 4.25rem;
-  white-space: nowrap;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-}
-
-.pcard-bar__who {
-  transform: translateX(calc(-100% + 0.55rem));
-  text-transform: uppercase;
-  color: var(--banner-accent-ink);
-}
-
-.pcard-bar__who--start {
-  transform: translateX(-0.55rem);
-}
-
-.pcard-bar__top {
-  right: 0;
-  font-size: 0.74rem;
-  font-weight: 750;
-  color: var(--banner-faint);
-}
-
-.pcard-bar__line {
-  position: absolute;
-  top: 0;
-}
-
-.pcard-bar__tick {
-  position: absolute;
-  left: -1px;
-  top: 2.05rem;
-  width: 2px;
-  height: 1.85rem;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--banner-ink) 38%, transparent);
-}
-
-.pcard-bar__label {
-  position: absolute;
-  left: 0.4rem;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  white-space: nowrap;
-}
-
-.pcard-bar__line--end .pcard-bar__label {
-  left: auto;
-  right: 0.4rem;
-  align-items: flex-end;
-}
-
-.pcard-bar__name {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--banner-muted);
-}
-
-.pcard-bar__need {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--banner-accent-ink);
-}
-
-.pcard-bar__line--quiet .pcard-bar__tick {
-  top: 2.75rem;
-  height: 1.15rem;
-  opacity: 0.45;
-}
-
 /* ---------- panels ---------- */
 
 .pcard-panel {
@@ -1287,27 +1156,22 @@ html[data-theme='dark'] .pbest__flag--ten {
   font-variant-numeric: tabular-nums;
 }
 
-.pgame__bar {
-  flex: none;
-  margin-left: auto;
-  width: 3.4rem;
-  height: 0.3rem;
-  border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.12);
-  overflow: hidden;
-}
-
-.pgame__bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--tile-accent);
-}
-
+/* The player's place all time, right after their best: 1,800 · 12th all time. */
 .pgame__of {
-  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* "this week" after a cabinet's place; a phone says just "week". */
+.pgame__when {
+  font-size: 0.72rem;
+}
+
+.pgame__when--short {
+  display: none;
 }
 
 .pgame__none {
@@ -1816,15 +1680,13 @@ html[data-theme='dark'] .pbest__flag--ten {
   font-weight: 600;
 }
 
-.prival__around,
-.prival__bars {
+.prival__around {
   padding: 0.75rem 0.6rem 0.6rem;
   border-radius: 1rem;
   background: rgba(var(--ink-rgb), 0.04);
 }
 
-.prival__around .prival__cap,
-.prival__bars .prival__cap {
+.prival__around .prival__cap {
   margin: 0 0.45rem 0.45rem;
 }
 
@@ -1839,7 +1701,7 @@ html[data-theme='dark'] .pbest__flag--ten {
 
 .prival__row {
   display: grid;
-  grid-template-columns: 2.6rem auto minmax(0, 1fr) auto;
+  grid-template-columns: 2.6rem auto minmax(0, 1fr);
   align-items: center;
   gap: 0.55rem;
   min-height: 2.2rem;
@@ -1881,77 +1743,8 @@ html[data-theme='dark'] .pbest__flag--ten {
   overflow: hidden;
 }
 
-.prival__pts {
-  font-size: 0.88rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
 .prival__line {
   margin: 0.15rem 0;
-}
-
-.prival__bars {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.8rem 0.9rem 0.9rem;
-}
-
-.prival__bars .prival__cap {
-  margin: 0 0 0.1rem;
-}
-
-.prival__bar {
-  display: grid;
-  grid-template-columns: 5rem minmax(0, 1fr) 3.4rem;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.prival__bar-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-}
-
-.prival__bar--first .prival__bar-name {
-  color: var(--pf-accent-ink);
-}
-
-.prival__bar--you .prival__bar-name {
-  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
-}
-
-.prival__bar-track {
-  height: 0.55rem;
-  border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.08);
-  overflow: hidden;
-}
-
-.prival__bar-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.prival__bar--first .prival__bar-track span {
-  background: var(--pf-accent);
-}
-
-.prival__bar--you .prival__bar-track span {
-  background: var(--accent);
-}
-
-.prival__bar-n {
-  text-align: right;
-  font-size: 0.88rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
 }
 
 .prival__table-head {
@@ -2157,7 +1950,6 @@ html[data-theme='dark'] .pbest__flag--ten {
   .pcard__head,
   .pcard__sub,
   .pcard__race,
-  .pcard-bar,
   .pcard__acts {
     grid-column: 1 / -1;
   }
@@ -2228,7 +2020,12 @@ html[data-theme='dark'] .pbest__flag--ten {
     height: 1.95rem;
   }
 
+  /* How your rank works is its own page now, so a phone keeps the link (home.css hides the banner's). */
   .pcard__strip .home-banner__standing-link {
+    display: inline;
+  }
+
+  .pcard__fact-when {
     display: none;
   }
 
@@ -2238,6 +2035,14 @@ html[data-theme='dark'] .pbest__flag--ten {
 
   .pgames__all {
     margin-left: 0;
+  }
+
+  .pgame__when {
+    display: none;
+  }
+
+  .pgame__when--short {
+    display: inline;
   }
 
   .prival__score {
@@ -2255,10 +2060,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pcard-bar__fill {
-    animation: none;
-  }
-
   .pcard__tile {
     transition: none;
   }

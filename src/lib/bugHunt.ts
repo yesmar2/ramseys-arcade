@@ -100,7 +100,7 @@ function possessive(name: string): string {
 }
 
 const GAME_PAGE_LESSON = 'Every game has a page of its own: its board, its record book, the events it’s in and how to play.'
-const BOARD_LESSON = 'Every game has a board of its own: each player’s best run this week, this month and all time. Its place pays points.'
+const BOARD_LESSON = 'Every game has a board of its own: each player’s best run this week, this month and all time.'
 const BOOK_LESSON = 'Record books keep feats inside a game, like the fastest wave cleared or the longest chain.'
 const ABOUT_LESSON = 'Original games, no ads, no install: About is the whole idea in one page.'
 const GROUPS_LESSON = 'Make a group, share its link, and everyone in it gets boards of their own.'
@@ -138,7 +138,7 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     id: 'home-standings',
     page: 'on the home page',
     thing: 'the Standings',
-    lesson: 'Standings add up everyone’s points across all the games. Every game’s board pays points by place.',
+    lesson: 'The Standings rank everyone across all the games. Every game you play moves you up.',
   },
   {
     id: 'home-records',
@@ -156,13 +156,13 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     id: 'boards-you',
     page: 'on the Boards',
     thing: 'the card about you',
-    lesson: 'The Boards rank everyone by points across every game, and say where you stand or where you’d start.',
+    lesson: 'The Boards rank everyone across every game, and say where you stand or where you’d start.',
   },
   {
     id: 'boards-moves',
     page: 'on the Boards',
-    thing: 'the card about the next points',
-    lesson: 'The Boards point out where your next points come easiest.',
+    thing: 'the card about where to climb',
+    lesson: 'The Boards point out where you could climb next, and games nobody has played yet come first.',
   },
   { id: 'records-books', page: 'in the Record books', thing: 'the first book on the shelf', lesson: BOOK_LESSON },
   {

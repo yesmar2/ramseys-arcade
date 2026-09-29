@@ -1,5 +1,5 @@
 import { getGame } from '../data/games'
-import { rankHref } from '../hooks/useHashRoute'
+import { rankHowHref, rankHref } from '../hooks/useHashRoute'
 import { eventSpan, gameList, ordinal, standingsTable } from './eventPages'
 import { gapBetween } from './gameBoard'
 import { normalizePlayerName, type GlobalRankResult, type LeaderboardPeriod } from './leaderboard'
@@ -21,12 +21,14 @@ export type WinRow = {
   name: string
   place: string
   placeTone: 'gold' | 'silver' | 'bronze' | 'plain'
+  /** The game's score, or '' when the place says it all. */
   value: string
 }
 
 export type WinPodium = {
   place: 1 | 2 | 3
   name: string
+  /** Under the place: a score, or '' for names and places only. */
   value: string
   avatarId?: string
   mine: boolean
@@ -43,6 +45,8 @@ export type WinTakeoverData = {
   /** Engraved on the trophy's base, when it fits. */
   plate: string | null
   note: { text: string; href?: string } | null
+  /** A quiet link under the note: the standings' workings. */
+  more?: { text: string; href: string }
 }
 
 const PLATE_MAX = 16
@@ -118,40 +122,42 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
   const mine = table[0]
   if (!mine?.you || !mine.cells.some((cell) => cell.score != null)) return null
   const second = table[1] ?? null
-  const points = detail.format === 'place-points'
   const single = detail.games.length === 1 ? detail.games[0]! : null
-  const total = (value: number) =>
-    points ? `${value.toLocaleString()} ${value === 1 ? 'point' : 'points'}` : single ? formatLeaderboardScore(single, value) : value.toLocaleString()
+  // All-round: every game's place counts, and the screen says who won in words. What each place was
+  // worth stays off it. One game, or scores added up, say the scores.
+  const allRound = detail.format === 'place-points' && !single
+  // One game is its score, whatever the event ranks it by.
+  const scoreOf = (row: (typeof table)[number]) => (single ? (row.cells[0]?.score ?? 0) : row.total)
+  const total = (value: number) => (single ? formatLeaderboardScore(single, value) : value.toLocaleString())
   const count = detail.playerCount || table.length
 
   let how: string
-  if (points) how = `${total(mine.total)} from ${gameList(detail.games)}`
-  else if (single) how = `${total(mine.total)} on ${gameName(single)}`
+  if (allRound) how = `Best all-round across ${gameList(detail.games)}`
+  else if (single) how = `${total(scoreOf(mine))} on ${gameName(single)}`
   else how = `${total(mine.total)} across ${gameList(detail.games)}`
   let margin = ''
   if (second) {
-    const gap = mine.total - second.total
-    margin =
-      gap > 0
-        ? `, ${points ? gap.toLocaleString() : single ? gapBetween(single, mine.total, second.total) : gap.toLocaleString()} ahead of ${second.name}`
-        : `, tied with ${second.name} and ahead on the tie-break`
+    const gap = scoreOf(mine) - scoreOf(second)
+    if (allRound) margin = gap > 0 ? `, ahead of ${second.name}` : `, just edging out ${second.name}`
+    else {
+      margin =
+        gap > 0
+          ? `, ${single ? gapBetween(single, scoreOf(mine), scoreOf(second)) : gap.toLocaleString()} ahead of ${second.name}`
+          : `, tied with ${second.name} and ahead on the tie-break`
+    }
   }
 
-  const rows: WinRow[] =
-    detail.games.length > 1
-      ? mine.cells.map((cell) => ({
-          key: cell.slug,
-          color: gameColor(cell.slug),
-          name: gameName(cell.slug),
-          place: cell.place != null ? ordinal(cell.place) : 'Skipped',
-          placeTone: placeTone(cell.place),
-          value: points
-            ? `+${cell.points}`
-            : cell.score != null
-              ? formatLeaderboardScore(cell.slug, cell.score)
-              : '—',
-        }))
-      : []
+  const rows: WinRow[] = single
+    ? []
+    : mine.cells.map((cell) => ({
+        key: cell.slug,
+        color: gameColor(cell.slug),
+        name: gameName(cell.slug),
+        place: cell.place != null ? ordinal(cell.place) : 'Skipped',
+        placeTone: placeTone(cell.place),
+        // The game's own score beside its place; a game skipped has just the word.
+        value: cell.score != null ? formatLeaderboardScore(cell.slug, cell.score) : '',
+      }))
 
   return {
     kicker: words.kicker,
@@ -163,7 +169,8 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
     podium: table.slice(0, 3).map((row, i) => ({
       place: (i + 1) as 1 | 2 | 3,
       name: row.name,
-      value: points ? `${row.total} pts` : total(row.total),
+      // All-round, names and places only; a score event keeps its scores.
+      value: allRound ? '' : total(scoreOf(row)),
       avatarId: row.avatarId,
       mine: row.you,
     })),
@@ -178,33 +185,36 @@ export function standingsTakeover(after: GlobalRankResult, name: string, period:
   const copy = periodCopy(period)
   const near = (after.nearby ?? []).filter((n) => n.rank <= 3).sort((a, b) => a.rank - b.rank)
   const second = near.find((n) => n.rank === 2) ?? null
+  // The games that won it, best place first. What each place was worth is for How your rank works.
   const games = Object.entries(after.byGame)
     .filter((entry): entry is [string, NonNullable<(typeof entry)[1]>] => Boolean(entry[1]))
-    .sort((a, b) => b[1].points - a[1].points)
-  const points = `${after.score.toLocaleString()} ${after.score === 1 ? 'point' : 'points'}`
-  const from = games.length ? ` from ${gameList(games.map(([slug]) => slug))}` : ''
-  const margin = second ? `, ${(after.score - second.score).toLocaleString()} ahead of ${second.name}` : ''
+    .sort((a, b) => a[1].place - b[1].place)
+  // A long list of games reads as a count.
+  const on = games.length > 3 ? ` on ${games.length} games` : games.length ? ` on ${gameList(games.map(([slug]) => slug))}` : ''
+  const ahead = second ? `${second.name} and everyone else` : 'everyone else'
   return {
-    kicker: copy.noun ? `The standings · this ${copy.noun}` : 'The standings · all time',
+    kicker: `The standings · ${copy.phrase}`,
     lead: 'You’re',
-    prize: copy.noun ? `first this ${copy.noun}.` : 'first of all time.',
-    lede: `${points}${from}${margin}. ${players(after.totalPlayers)} on the standings.`,
+    prize: copy.noun ? `first ${copy.phrase}.` : 'first of all time.',
+    // All time has no period to name here: the title says it.
+    lede: `Your runs${on} put you ahead of ${ahead}${copy.noun ? ` ${copy.phrase}` : ''}.`,
     rows: games.slice(0, 5).map(([slug, place]) => ({
       key: slug,
       color: gameColor(slug),
       name: gameName(slug),
       place: ordinal(place.place),
       placeTone: placeTone(place.place),
-      value: `+${place.points}`,
+      value: '',
     })),
     podium: near.map((n) => ({
       place: n.rank as 1 | 2 | 3,
       name: n.name,
-      value: `${n.score.toLocaleString()} pts`,
+      value: '',
       avatarId: n.avatarId,
       mine: normalizePlayerName(n.name) === you,
     })),
     plate: null,
     note: copy.noun ? { text: copy.closes } : null,
+    more: { text: 'How your rank works ›', href: rankHowHref(undefined, period) },
   }
 }

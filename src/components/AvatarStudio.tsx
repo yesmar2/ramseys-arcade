@@ -365,7 +365,6 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
               {standing.rank != null ? <span className="studio__row-rank">{standing.rank}</span> : null}
               <Mark avatar={draft} name={name} size={28} />
               <PlayerName className="studio__row-name" name={name} style={wornPrize(draft, 'name')} />
-              {standing.rank != null ? <span className="studio__row-pts">{standing.score.toLocaleString()} pts</span> : null}
             </div>
             <div className="studio__where-more">
               <span className="studio__chip">

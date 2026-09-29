@@ -113,6 +113,7 @@ export function GroupFaces({ group, shown = 6, size = 'md' }: { group: GroupPubl
   )
 }
 
+/* Places and names: the points are on the group's own Standings table. */
 function MiniRow({ entry, you }: { entry: GlobalBoardEntry; you: boolean }) {
   return (
     <li className={`grp-mini__row${you ? ' grp-mini__row--you' : ''}`}>
@@ -122,10 +123,6 @@ function MiniRow({ entry, you }: { entry: GlobalBoardEntry; you: boolean }) {
         <span className="grp-name">{entry.name}</span>
         {you ? <span className="grp-tag grp-tag--you">You</span> : null}
       </a>
-      <span className="grp-pts">
-        {entry.score}
-        <small> pts</small>
-      </span>
     </li>
   )
 }
@@ -396,7 +393,7 @@ const STEPS: { icon: ReactNode; title: string; copy: string }[] = [
   {
     icon: <TableIcon />,
     title: 'Your own standings and records',
-    copy: 'Every game ranks just the group and pays points by place, like the boards.',
+    copy: 'A table of who’s ahead each week and month, and the group’s best on every game.',
   },
   { icon: <BookIcon />, title: 'Show it on every board', copy: 'Switch the boards to the group and the whole site counts only you lot.' },
 ]

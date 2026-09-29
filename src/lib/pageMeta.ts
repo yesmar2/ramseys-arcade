@@ -9,6 +9,7 @@ import {
   homeHref,
   plusHref,
   privacyHref,
+  rankHowHref,
   rankHref,
   recordsIndexHref,
   siteRecordsHref,
@@ -410,6 +411,13 @@ export function pageMeta(route: Route): PageMeta {
         ...site,
         title: titled(route.player ?? 'Profile'),
         path: rankHref(route.player, 'all'),
+        noindex: true,
+      }
+    case 'rankHow':
+      return {
+        ...site,
+        title: titled(route.player ? `How ${route.player}’s rank works` : 'How your rank works'),
+        path: rankHowHref(route.player, 'all'),
         noindex: true,
       }
     case 'groups':

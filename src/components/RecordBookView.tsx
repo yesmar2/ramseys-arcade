@@ -21,12 +21,12 @@ import {
   bookLede,
   closestToInk,
   coverRecord,
-  recordGap,
   recordGroups,
   recordValue,
   type RecordGroup,
 } from '../lib/recordBook'
 import type { RecordSummary } from '../lib/records'
+import { ordinal } from '../lib/scoreboard'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { GamePreview } from './GamePreview'
@@ -38,7 +38,7 @@ import { ShareBoardButton } from './ShareBoardButton'
  * One game's record book: its banner, with the game playing on the screen and
  * its best record over it; what you hold here and what you're nearest to
  * taking; then its records in three groups, each with its holder, when it was
- * set, what it leads the runner-up by, and where you stand.
+ * set, and where you stand.
  */
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
@@ -109,25 +109,8 @@ function RecordRow({
   const top = record.top
   const holder = top ? normalizePlayerName(top.name) : ''
   const mine = Boolean(you) && holder === you
-  const second = record.second
-  // A tie leaves the record with whoever set it first.
-  const runner = !top
-    ? 'Be the first to set it'
-    : second
-      ? second.score === top.score
-        ? `Tied with ${normalizePlayerName(second.name)}`
-        : `by ${recordGap(record, second.score, top.score)} over ${normalizePlayerName(second.name)}`
-      : record.second === null
-        ? 'Nobody else yet'
-        : ''
   const standing = record.you
-  const youLine = !top || !standing
-    ? ''
-    : standing.rank === 1
-      ? 'Yours'
-      : standing.score === top.score
-        ? `You #${standing.rank} · tied`
-        : `You #${standing.rank} · ${recordGap(record, standing.score, top.score)} off`
+  const youLine = !top || !standing ? '' : standing.rank === 1 ? 'Yours' : `You’re ${ordinal(standing.rank)}`
   return (
     <li className={`rbk-rec${mine ? ' rbk-rec--you' : ''}${top ? '' : ' rbk-rec--empty'}`}>
       <a className="rbk-rec__link" href={recordHref(game, record.id, period)}>
@@ -142,9 +125,8 @@ function RecordRow({
           ) : (
             <span className="rbk-rec__mark rbk-rec__mark--open" aria-hidden="true" />
           )}
-          <span className="rbk-rec__name">{top ? holder : 'Nobody yet'}</span>
+          <span className="rbk-rec__name">{top ? holder : 'Be the first to set it'}</span>
         </span>
-        <span className="rbk-rec__runner">{runner}</span>
         <span className={`rbk-rec__you${standing?.rank === 1 ? ' rbk-rec__you--on' : ''}`}>{youLine}</span>
       </a>
     </li>
@@ -321,7 +303,6 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
               <span>Record</span>
               <span>Best</span>
               <span>Held by</span>
-              <span>Runner-up</span>
               <span className="rbk-group__you">{you ? 'You' : ''}</span>
             </div>
             <ol className="rbk-recs">

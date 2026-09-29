@@ -31,7 +31,7 @@ const PLAY: Row[] = [
     label: 'Your stats',
     free: true,
     plus: true,
-    note: 'Per-game rank, percentile and trend, every day you have played, and the records you are closest to taking.',
+    note: 'Your rank on every game and how it’s trending, every day you have played, and the records you are closest to taking.',
   },
   {
     label: 'Joining events',

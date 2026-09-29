@@ -784,6 +784,21 @@ html[data-theme='light'] .site-menu__scrim {
   color: var(--muted);
 }
 
+/* The quiet way from your rank to how it's worked out. */
+.site-menu__card-how {
+  align-self: flex-start;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.site-menu__card-how:hover,
+.site-menu__card-how:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .site-menu__card-acts {
   display: flex;
   gap: 0.5rem;

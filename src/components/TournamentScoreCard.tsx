@@ -189,12 +189,13 @@ function eventReport(
       tone: improved ? 'accent' : 'plain',
     })
   }
+  // Places, not what each place is worth toward the event.
   if (!isBracket && cell?.place != null) {
     lines.push({
       id: 'game',
       icon: cell.place === 1 ? 'crown' : 'board',
       label: detail && detail.games.length > 1 ? `${game} in this event` : 'In this event',
-      detail: cell.points > 0 ? `${cell.points.toLocaleString()} point${cell.points === 1 ? '' : 's'} toward the standings` : null,
+      detail: null,
       value: `#${cell.place}`,
       tone: cell.place === 1 ? 'gold' : cell.place <= 3 ? 'accent' : 'plain',
     })
@@ -204,10 +205,7 @@ function eventReport(
       id: 'overall',
       icon: overallPlace === 1 ? 'crown' : 'sum',
       label: 'Event standings',
-      detail:
-        detail?.format === 'place-points' && standing
-          ? `${standing.totalPoints.toLocaleString()} point${standing.totalPoints === 1 ? '' : 's'}`
-          : null,
+      detail: null,
       value: `#${overallPlace}`,
       tone: overallPlace === 1 ? 'gold' : overallPlace <= 3 ? 'accent' : 'plain',
     })

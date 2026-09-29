@@ -10,19 +10,13 @@ import { ProfileGames } from '../components/ProfileGames'
 import { ProfileRival } from '../components/ProfileRival'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TrophyShelf } from '../components/TrophyShelf'
-import { focusFromUrl, rankHref, standingsHref, statsHref } from '../hooks/useHashRoute'
+import { focusFromUrl, rankHowHref, rankHref, standingsHref, statsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { refreshFriends } from '../hooks/useFriends'
 import { useMyStats } from '../hooks/useMyStats'
 import { usePlayerName } from '../hooks/usePlayerName'
-import {
-  EMPTY_RANK,
-  useGameBests,
-  usePeriodRanks,
-  useRankFor,
-  useScoresAt,
-} from '../hooks/useProfileBoards'
+import { EMPTY_RANK, useGameBests, usePeriodRanks, useRankFor } from '../hooks/useProfileBoards'
 import { AVATARS_ENABLED, AVATAR_EVENT, avatarWashColor, getLocalAvatarId, resolveAvatar } from '../lib/avatars'
 import { AvatarStudio } from '../components/AvatarStudio'
 import { FlameIcon, StatsIcon } from '../components/chromeIcons'
@@ -37,7 +31,7 @@ import {
   normalizePlayerName,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { nextLine, periodWord, pointsWord, shareLines, talksInPlaces, toPass } from '../lib/profileMath'
+import { talksInPlaces } from '../lib/profileMath'
 import { fetchTrophies, type TrophyAward } from '../lib/trophies'
 
 function AddFriendButton({ name }: { name: string }) {
@@ -94,8 +88,9 @@ function jumpTo(id: string) {
  * A player's page: their card, their best board, their games, their trophies
  * and whoever they're up against. Your own, or anyone's by name. Every part
  * reads from the period picked on the card, and each works however high or
- * low the player stands and however many are playing: the top ten are told in
- * places, everyone else in points to the next share of the arcade.
+ * low the player stands and however many are playing. It says places and
+ * names; the points behind them are on How your rank works, a link from the
+ * card.
  */
 export function RankPage({
   player,
@@ -179,11 +174,7 @@ export function RankPage({
   const loading = !ranks[period] && !cachedSelf
   const rank = data.rank
   const field = data.totalPlayers
-
-  // Below the top ten the card talks in points to the next share line, so it needs the points sitting on each.
-  const inShares = !loading && rank != null && !talksInPlaces(rank, field)
-  const linePlaces = inShares ? [1, ...shareLines(field).filter((l) => l.rank < rank!).map((l) => l.rank)] : []
-  const lineScores = useScoresAt(period, linePlaces, groupId)
+  const outsideTopTen = !loading && rank != null && !talksInPlaces(rank, field)
 
   // Every game ever placed on comes from the all-time rank; the best run on each, from its board.
   const allTime = ranks.all ?? null
@@ -228,13 +219,9 @@ export function RankPage({
   if (isSelf && !loading) {
     if (rank == null) {
       primary = { label: 'Pick a game', target: unplayed ? 'quick' : 'games' }
-    } else if (inShares) {
-      const line = nextLine(rank, field)
-      const lineScore = line ? lineScores.scores[line.rank] : undefined
-      primary = {
-        label: lineScore != null ? `Find ${pointsWord(toPass(lineScore, data.score))}` : 'Find more points',
-        target: unplayed ? 'quick' : 'rival',
-      }
+    } else if (outsideTopTen) {
+      // A game not played yet is the quickest way up, so the button goes there when there is one.
+      primary = unplayed ? { label: 'Try a new game', target: 'quick' } : { label: 'Climb higher', target: 'rival' }
     } else if (rank === 1) {
       primary = { label: 'Stay on top', target: 'rival' }
     } else {
@@ -296,16 +283,22 @@ export function RankPage({
                 )
               }
               onArtClick={editable ? () => setStudioOpen(true) : undefined}
-              scores={lineScores}
               trophies={trophies}
               actions={actions}
               backHref={isSelf ? undefined : standingsHref(period)}
-              howHref={rankHref(isSelf ? undefined : viewedName, period)}
+              howHref={rankHowHref(isSelf ? undefined : viewedName, period)}
               extra={statsLink}
               avatarId={avatarId}
             />
 
-            <ProfileBestBoard name={viewedName} isSelf={isSelf} viewer={isSelf ? '' : myName} bests={bests} groupId={groupId} />
+            <ProfileBestBoard
+              name={viewedName}
+              isSelf={isSelf}
+              viewer={isSelf ? '' : myName}
+              bests={bests}
+              allTimePlaces={allTime?.byGame ?? null}
+              groupId={groupId}
+            />
 
             {!loading ? (
               <ProfileGames
@@ -313,6 +306,7 @@ export function RankPage({
                 isSelf={isSelf}
                 period={period}
                 byGame={data.byGame}
+                allTimeByGame={allTime?.byGame ?? null}
                 everPlayed={everPlayed}
                 bests={bests}
                 quickest={isSelf && (rank == null || !talksInPlaces(rank, field))}
@@ -335,47 +329,13 @@ export function RankPage({
             </div>
 
             {isSelf && signedIn ? <FriendsCard /> : null}
-
-            <details className="rank-page__how game-lobby__how-panel" id="rank-how">
-              <summary className="rank-page__how-summary">
-                <span className="rank-page__h" id="rank-how-heading">
-                  How ranks work
-                </span>
-              </summary>
-              <div className="rank-page__how-body">
-                <p className="how-to-play__copy">
-                  A rank adds up a player’s places on every game they{' '}
-                  {period === 'all' ? 'ever played' : `played ${periodWord(period)}`}. Each game pays by the share of
-                  its players they beat:
-                </p>
-                <ul className="game-lobby__scoring">
-                  <li>
-                    <span>1st of the field</span>
-                    <strong>~100 pts</strong>
-                  </li>
-                  <li>
-                    <span>Middle of the pack</span>
-                    <strong>~50 pts</strong>
-                  </li>
-                  <li>
-                    <span>Last of the field</span>
-                    <strong>~1 pt</strong>
-                  </li>
-                </ul>
-                <p className="how-to-play__copy">
-                  So points mean the same however many are playing, and every game played adds some. Climb any board
-                  to move up; a game not played yet is the quickest way. Every score is kept, so the boards run all
-                  the way down.
-                </p>
-              </div>
-            </details>
           </>
         ) : (
           <PageBanner
             ariaLabel="Your profile"
             kicker={<span className="ev-kicker__bit">Your profile</span>}
             title="No gamer tag yet"
-            blurb="Set a gamer tag in the header to earn a global rank and start collecting trophies."
+            blurb="Pick a gamer tag to get on the boards and start collecting trophies."
             art={<span className="home-banner__glyph home-banner__glyph--faint">?</span>}
           />
         )}

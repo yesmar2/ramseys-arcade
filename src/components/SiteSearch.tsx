@@ -188,7 +188,7 @@ export function SiteSearch() {
           key: `player:${p.name}`,
           href: rankHref(p.name),
           label: p.name,
-          hint: `Player · #${p.rank}`,
+          hint: `Player · #${p.rank} all time`,
         })
       }
     }

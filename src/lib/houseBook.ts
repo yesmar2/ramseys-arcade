@@ -1,5 +1,6 @@
 import { normalizePlayerName } from './leaderboard'
 import { numberWord } from './numberWord'
+import { ordinal } from './scoreboard'
 import {
   formatDayKey,
   siteRecordUnitWord,
@@ -10,8 +11,8 @@ import {
 
 /*
  * The house book's arithmetic and words, as recordBook.ts is for a game's:
- * whose name is in the most of it, how its records group, what each leads
- * by, and which a player is closest to taking. The page only lays it out.
+ * whose name is in the most of it, how its records group, where you stand on
+ * each, and which a player is closest to taking. The page only lays it out.
  */
 
 function capital(text: string): string {
@@ -67,7 +68,7 @@ export function houseHeadline(boards: SiteRecordBoard[]): { name: string; rest: 
 }
 
 export const HOUSE_LEDE =
-  'Not one game: all of them. Who keeps turning up, who plays the widest, and whose streak is still alive. Nobody sets out to break these; they’re read off the boards.'
+  'Not one game: all of them. Who keeps turning up, who plays the widest, and whose streak is still alive.'
 
 export type HouseGroup = { key: string; title: string; sub: string; boards: SiteRecordBoard[] }
 
@@ -96,24 +97,12 @@ export function houseGroups(boards: SiteRecordBoard[]): HouseGroup[] {
   return out
 }
 
-/** What the holder leads by: "by 13 days over LOOPER", "Tied with LOOPER", or nobody else on it yet. */
-export function houseRunnerUp(board: SiteRecordBoard): string {
-  const [top, second] = board.entries
-  if (!top) return 'Be the first to set it'
-  if (!second) return 'Nobody else yet'
-  const name = normalizePlayerName(second.name)
-  if (second.value === top.value) return `Tied with ${name}`
-  return `by ${houseValue(board, top.value - second.value)} over ${name}`
-}
-
-/** Where you stand on a record, in the table's last column. */
+/** Where you stand on a record, in the table's last column: Yours, or your place. */
 export function houseYouLine(board: SiteRecordBoard, standing: SiteRecordStanding[SiteRecordId]): string {
   const top = board.entries[0]
   if (!top || !standing || standing.value <= 0) return ''
   if (standing.rank === 1) return 'Yours'
-  if (standing.value === top.value) return standing.rank ? `You #${standing.rank} · tied` : 'Tied'
-  const off = houseValue(board, top.value - standing.value)
-  return standing.rank ? `You #${standing.rank} · ${off} off` : `You · ${off} off`
+  return standing.rank ? `You’re ${ordinal(standing.rank)}` : 'You’re on it'
 }
 
 /** The records a player holds. */

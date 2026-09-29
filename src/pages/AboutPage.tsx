@@ -5,6 +5,7 @@ import {
   homeHref,
   leaderboardHref,
   privacyHref,
+  rankHowHref,
   termsHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
@@ -20,7 +21,7 @@ const HIGHLIGHTS = [
   },
   {
     title: 'Leaderboards',
-    body: 'Daily, weekly, monthly, and all-time boards — plus standings across all games, and record books.',
+    body: 'Daily, weekly, monthly and all-time boards for every game, an overall rank, and record books.',
   },
   {
     title: 'Play anywhere',
@@ -65,7 +66,8 @@ export function AboutPage() {
           books on select games, and jump into rotating{' '}
           <a href={tournamentsHref()}>events</a> when you want a little extra pressure. Your
           player name is your identity on the board — pick something you’re proud to see in
-          the top ten.
+          the top ten. Every game you play counts toward your overall rank, and{' '}
+          <a href={rankHowHref()}>How your rank works</a> shows yours, game by game.
         </p>
 
         <h3 className="home-about__subtitle">Classic inspiration, original games</h3>

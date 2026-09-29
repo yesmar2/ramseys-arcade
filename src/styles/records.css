@@ -440,7 +440,7 @@ html[data-theme="dark"] .rbk-book__value b {
 .rbk-group__cols,
 .rbk-rec__link {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 0.9fr);
   align-items: center;
   column-gap: 1rem;
 }
@@ -551,10 +551,10 @@ html[data-theme="dark"] .rbk-book__value b {
   color: var(--sb-brand-ink);
 }
 
-.rbk-rec__runner {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
+/* An open record's holder cell is an invitation, not a tag. */
+.rbk-rec--empty .rbk-rec__name {
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
 .rbk-rec__you {
@@ -567,7 +567,7 @@ html[data-theme="dark"] .rbk-book__value b {
   color: var(--sb-brand-ink);
 }
 
-/* Too narrow for the columns: what and how much on a line, then who, then the rest. */
+/* Too narrow for the columns: what and how much on a line, then who holds it and where you stand. */
 @media (max-width: 56rem) {
   .rbk-group__cols {
     display: none;
@@ -577,8 +577,7 @@ html[data-theme="dark"] .rbk-book__value b {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'what value'
-      'holder you'
-      'runner runner';
+      'holder you';
     row-gap: 0.3rem;
     padding: 0.7rem 0.6rem;
   }
@@ -598,14 +597,6 @@ html[data-theme="dark"] .rbk-book__value b {
 
   .rbk-rec__you {
     grid-area: you;
-  }
-
-  .rbk-rec__runner {
-    grid-area: runner;
-  }
-
-  .rbk-rec__runner:empty {
-    display: none;
   }
 }
 

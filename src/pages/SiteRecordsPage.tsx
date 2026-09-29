@@ -18,7 +18,6 @@ import {
   houseGroups,
   houseHeadline,
   houseHeld,
-  houseRunnerUp,
   houseValue,
   houseWhen,
   houseYouLine,
@@ -31,8 +30,8 @@ import { fetchSiteRecords, type SiteRecordBoard, type SiteRecordId, type SiteRec
  * The house book: the records about the arcade itself, laid out like a game's
  * record book. Its banner says whose name is in the most of it, over a wall of
  * cabinets with the longest streak on the marquee; then what you hold and are
- * closest to; then its records in three groups, each with its holder, what it
- * leads the runner-up by and where you stand; and last, each record's top ten.
+ * closest to; then its records in three groups, each with its holder and where
+ * you stand; and last, each record's top ten.
  *
  * Every other book belongs to a cabinet and asks how well somebody played it.
  * This one asks how they played: how often they turned up, how far they
@@ -71,7 +70,7 @@ function BookIcon() {
 
 type Standing = SiteRecordStanding[SiteRecordId]
 
-/** A record in its group's table: it, its holder, what it leads by, and you. The row goes to its top ten. */
+/** A record in its group's table: it, its holder, and you. The row goes to its top ten. */
 function HouseRow({ board, you, standing }: { board: SiteRecordBoard; you: string; standing: Standing }) {
   const top = board.entries[0]
   const holder = top ? normalizePlayerName(top.name) : ''
@@ -90,9 +89,8 @@ function HouseRow({ board, you, standing }: { board: SiteRecordBoard; you: strin
           ) : (
             <span className="rbk-rec__mark rbk-rec__mark--open" aria-hidden="true" />
           )}
-          <span className="rbk-rec__name">{top ? holder : 'Nobody yet'}</span>
+          <span className="rbk-rec__name">{top ? holder : 'Be the first to set it'}</span>
         </span>
-        <span className="rbk-rec__runner">{houseRunnerUp(board)}</span>
         <span className={`rbk-rec__you${standing?.rank === 1 ? ' rbk-rec__you--on' : ''}`}>{houseYouLine(board, standing)}</span>
       </a>
     </li>
@@ -315,7 +313,6 @@ export function SiteRecordsPage() {
                   <span>Record</span>
                   <span>Best</span>
                   <span>Held by</span>
-                  <span>Runner-up</span>
                   <span className="rbk-group__you">{you ? 'You' : ''}</span>
                 </div>
                 <ol className="rbk-recs">
@@ -331,7 +328,7 @@ export function SiteRecordsPage() {
                 <h2 id="hbk-tops-title" className="hbk-tops__title">
                   The top ten in each
                 </h2>
-                <p className="hbk-tops__sub">Most first. Two the same, and the name first in the alphabet goes first.</p>
+                <p className="hbk-tops__sub">Most first.</p>
               </div>
               <div className="hbk-tops__grid">
                 {groups

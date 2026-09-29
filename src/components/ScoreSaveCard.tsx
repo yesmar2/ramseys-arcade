@@ -136,6 +136,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   // A daily's board is the day's (the API keeps it so, whatever the period): its places are today's,
   // in the report as on the card.
   const period: LeaderboardPeriod = isDailyGame(gameSlug) ? 'daily' : defaultPeriod
+  // The Standings line keeps the header's period, so it never says "today" beside the header's weekly rank.
+  // Read as the save goes out, as the run's other extras are.
+  const standingsPeriodRef = useRef(defaultPeriod)
+  standingsPeriodRef.current = defaultPeriod
   const [phase, setPhase] = useState<Phase>('checking')
   const [error, setError] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')
@@ -283,6 +287,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         name,
         score,
         period,
+        standingsPeriod: standingsPeriodRef.current,
         priorBest: recordRef.current,
         challengeId: against?.id,
         run,
@@ -348,6 +353,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         name,
         score,
         period,
+        standingsPeriod: standingsPeriodRef.current,
         priorBest: recordRef.current,
         challengeId: facingRef.current?.id,
         run: runRef.current ?? runIdFor(gameSlug),
@@ -553,10 +559,11 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
   const lines = pending ? null : (data?.lines ?? [])
   const heading = ribbon?.text ?? title
-  // First in the standings takes the whole screen, once, with the report under it.
+  // First in the standings takes the whole screen, once, with the report under it, in the standings' own period.
+  const standingsPeriod = facts?.standingsPeriod ?? period
   const takeover =
     data?.standingsTop && facts?.overall.after && !takeoverDone
-      ? standingsTakeover(facts.overall.after, facts.name, period)
+      ? standingsTakeover(facts.overall.after, facts.name, standingsPeriod)
       : null
   return (
     <>
@@ -604,7 +611,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       {takeover ? (
         <WinTakeover
           data={takeover}
-          primary={{ label: 'See the standings', href: leaderboardHref(period) }}
+          primary={{ label: 'See the standings', href: leaderboardHref(standingsPeriod) }}
           onClose={() => setTakeoverDone(true)}
         />
       ) : null}

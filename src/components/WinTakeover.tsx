@@ -9,7 +9,8 @@ import { ReportConfetti } from './RunReport'
  * The whole screen, once: an event won, or first in the standings. The prize
  * in gold beside a trophy and the podium, how it was won in a line, the games
  * that won it, and two ways on. Carry on (or Esc, or the close) goes back to
- * whatever it covered, the run report or the event's page.
+ * whatever it covered, the run report or the event's page. A value left empty
+ * (a podium of names, rows of places) isn't drawn.
  */
 
 export type WinAction = { label: string; href?: string; onClick?: () => void }
@@ -81,6 +82,8 @@ export function WinTakeover({
   const carryRef = useRef<HTMLButtonElement>(null)
   // It opens as a run ends: the run's last presses don't reach its buttons (useDeliberatePress).
   const allow = useDeliberatePress()
+  // Rows of places only (the standings'): no empty column where a value would sit.
+  const bare = data.rows.every((row) => !row.value)
 
   return (
     <Panel
@@ -113,7 +116,7 @@ export function WinTakeover({
                   <span className="win__step-name">{p.name}</span>
                   <span className="win__block">
                     <span className="win__block-place">{ORDINAL[p.place]}</span>
-                    <span className="win__block-value">{p.value}</span>
+                    {p.value ? <span className="win__block-value">{p.value}</span> : null}
                   </span>
                 </li>
               ))}
@@ -129,11 +132,11 @@ export function WinTakeover({
           {data.rows.length ? (
             <ul className="win__rows" aria-label="How it was won">
               {data.rows.map((row) => (
-                <li key={row.key} className="win__row">
+                <li key={row.key} className={bare ? 'win__row win__row--bare' : 'win__row'}>
                   <span className="win__dot" style={{ background: row.color }} aria-hidden="true" />
                   <span className="win__row-name">{row.name}</span>
                   <span className={`win__row-place win__row-place--${row.placeTone}`}>{row.place}</span>
-                  <span className="win__row-value">{row.value}</span>
+                  {row.value ? <span className="win__row-value">{row.value}</span> : null}
                 </li>
               ))}
             </ul>
@@ -175,7 +178,30 @@ export function WinTakeover({
           </div>
           {data.note ? (
             <p className="win__note">
-              {data.note.href ? <a href={data.note.href}>{data.note.text}</a> : data.note.text}
+              {data.note.href ? (
+                <a
+                  href={data.note.href}
+                  onClick={(e) => {
+                    if (!allow(e)) e.preventDefault()
+                  }}
+                >
+                  {data.note.text}
+                </a>
+              ) : (
+                data.note.text
+              )}
+            </p>
+          ) : null}
+          {data.more ? (
+            <p className="win__more">
+              <a
+                href={data.more.href}
+                onClick={(e) => {
+                  if (!allow(e)) e.preventDefault()
+                }}
+              >
+                {data.more.text}
+              </a>
             </p>
           ) : null}
         </div>

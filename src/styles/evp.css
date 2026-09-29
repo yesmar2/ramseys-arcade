@@ -1384,6 +1384,11 @@ a.evp-result:focus-visible {
   color: var(--muted);
 }
 
+/* An all-round event has no total column: the order and each game's place say it. */
+.evp-table--all-round .evp-table__row {
+  grid-template-columns: 2.2rem minmax(0, 1fr) repeat(var(--games, 3), 5.4rem);
+}
+
 .evp-table__cell {
   display: flex;
   align-items: center;
@@ -1825,7 +1830,7 @@ a.evp-result:focus-visible {
     height: 1.9rem;
   }
 
-  /* Each game's score over its place, narrow enough for three in a row; the points are in the total. */
+  /* Each game's score over its place, narrow enough for three in a row. */
   .evp-cell {
     align-items: flex-start;
   }
@@ -1834,12 +1839,17 @@ a.evp-result:focus-visible {
     font-size: 0.86rem;
   }
 
-  .evp-cell__pts {
-    display: none;
-  }
-
   .evp-cell small {
     font-size: 0.72rem;
+  }
+
+  /* No total on the right, so the name runs to the edge. */
+  .evp-table--all-round .evp-table__row {
+    grid-template-columns: 1.6rem repeat(var(--games, 3), max-content) minmax(0, 1fr);
+  }
+
+  .evp-table--all-round .evp-table__who {
+    grid-column: 2 / -1;
   }
 
   .evp-how-all {

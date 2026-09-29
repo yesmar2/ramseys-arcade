@@ -22,11 +22,6 @@ import { PlayerMark } from './PlayerMark'
 import { medalKind } from './PodiumMedal'
 import { PlayerName } from './PlayerName'
 
-/** A points figure that agrees with itself: 1 pt, 2 pts. */
-function pts(n: number) {
-  return `${n.toLocaleString()} ${n === 1 ? 'pt' : 'pts'}`
-}
-
 /** The house records worth a plaque on the front page, in the order they hang. */
 const PLAQUES: SiteRecordId[] = ['day-streak', 'days-played', 'runs-in-a-day', 'boards-topped']
 
@@ -55,6 +50,7 @@ function Standings({
   const ahead = rank != null ? nearby.find((n) => n.rank === rank - 1) : undefined
   const behind = rank != null ? nearby.find((n) => n.rank === rank + 1) : undefined
 
+  // Places and names only: the points behind them stay on the full Standings list, a tap away.
   const row = (e: GlobalBoardEntry) => {
     const medal = medalKind(e.rank)
     return (
@@ -63,9 +59,6 @@ function Standings({
         <PlayerMark name={e.name} avatarId={e.avatarId} className="hb-row__mark" />
         <PlayerName className="hb-row__name" name={e.name} avatarId={e.avatarId} />
         {e.name === you ? <span className="hb-row__you">You</span> : null}
-        <span className="hb-row__pts">
-          {e.score.toLocaleString()} <small>{e.score === 1 ? 'pt' : 'pts'}</small>
-        </span>
       </li>
     )
   }
@@ -103,25 +96,25 @@ function Standings({
       )}
       {you && rank != null && !loading ? (
         <div className="hb-gaps">
+          {/* Who is either side of you, by name: the label first, so it reads "Next up: SAM at #13". */}
           {ahead ? (
             <div className="hb-gap">
-              <b>{pts(ahead.score - score)}</b>
-              <span>
-                to catch {ahead.name} at #{ahead.rank}
-              </span>
+              <span>Next up</span>
+              <b>
+                {ahead.name} at #{ahead.rank}
+              </b>
             </div>
           ) : null}
           {behind ? (
             <div className="hb-gap">
-              <b>{pts(score - behind.score)}</b>
-              <span>{rank === 1 ? `your lead over ${behind.name}` : `between you and ${behind.name}`}</span>
+              <span>{rank === 1 ? 'You lead' : 'Right behind you'}</span>
+              <b>{behind.name}</b>
             </div>
           ) : null}
         </div>
       ) : (
         <p className="hb-note">
-          Every game&rsquo;s board pays points by place, and first pays 100.{' '}
-          {you ? 'Post one score anywhere and you are on this list.' : 'Sign in with a gamer tag and your scores count here.'}
+          {you ? 'Post a score in any game and you’re on this list.' : 'Sign in and your scores count here.'}
         </p>
       )}
     </article>

@@ -45,7 +45,7 @@ export function SiteHeader() {
   const routeKey = JSON.stringify(route)
   const { signedIn } = useAuth()
   const impersonation = useImpersonation()
-  const { rank, score, avatarId: rankAvatarId } = useGlobalRank()
+  const { rank, avatarId: rankAvatarId } = useGlobalRank()
   const rankLoading = useGlobalRankLoading()
   const playerName = normalizePlayerName(usePlayerName())
   const trophySummary = useTrophySummary(signedIn ? playerName : '')
@@ -321,7 +321,7 @@ export function SiteHeader() {
           name={playerName}
           impersonating={Boolean(impersonation)}
           avatarId={avatarId}
-          standing={{ loading: rankLoading, rank, score, period, where }}
+          standing={{ loading: rankLoading, rank, period, where }}
           trophies={trophySummary}
           friends={friendsState.loaded ? friendsState.friends.length : null}
           friendRequests={friendRequests}

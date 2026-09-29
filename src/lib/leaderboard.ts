@@ -444,7 +444,12 @@ export async function setPlayerAvatar(
   return data.avatarId
 }
 
-export type YouEntry = LeaderboardEntry & { rank: number }
+/**
+ * Your best on a board: `rank` is its place among the board's runs, `place`
+ * yours among its players. An API from before places were sent leaves `place`
+ * out, since the site and the API go live separately.
+ */
+export type YouEntry = LeaderboardEntry & { rank: number; place?: number }
 
 export type GameBoardPreview = {
   slug: LeaderboardGame

@@ -48,15 +48,15 @@ function trophyWhen(t: TrophyAward): string {
 }
 
 /**
- * What the trophy was won with: 583 pts over 6 games. A bracket is won on matches, not points, so it says
- * nothing. A secret says how it was found only on your own shelf: on anyone else's it stays a secret.
+ * What the trophy was won over: over 6 games. Its points stay off the shelf, as they do everywhere but the
+ * Standings. A bracket is won on matches, so it says nothing. A secret says how it was found only on your own
+ * shelf: on anyone else's it stays a secret.
  */
 function trophyHaul(t: TrophyAward, isSelf: boolean): string | null {
   if (t.period === 'hunt') return `All ${numberWord(SET_SIZE)} bugs`
   if (t.period === 'secret') return isSelf ? (secretByNumber(t.periodKey)?.says ?? null) : 'Nobody says how to find it'
-  if (t.score <= 0) return null
-  const points = `${t.score.toLocaleString()} ${t.score === 1 ? 'pt' : 'pts'}`
-  return t.games > 0 ? `${points} over ${t.games} ${t.games === 1 ? 'game' : 'games'}` : points
+  if (t.score <= 0 || t.games <= 0) return null
+  return t.games === 1 ? 'on 1 game' : `over ${t.games} games`
 }
 
 /**

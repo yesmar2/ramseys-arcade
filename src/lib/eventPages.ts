@@ -5,7 +5,6 @@ import {
   eventKind,
   isDoubleElim,
   triesCountAtStart,
-  type StandingRow,
   type TournamentDetail,
   type TournamentSummary,
 } from './tournaments'
@@ -14,7 +13,7 @@ import {
  * The events pages, worked out: which events lead the list, how results
  * group, the standings as a table of games, each game's best, the lesson a
  * finished multi-game event teaches (winning a game is not winning the
- * event), and how an event scores, in words. The pages only fetch and lay out.
+ * event), and how an event works, in words. The pages only fetch and lay out.
  */
 
 export function gameName(slug: string): string {
@@ -138,7 +137,6 @@ export type StandingCell = {
   slug: string
   /** Null when they skipped the game. */
   place: number | null
-  points: number
   score: number | null
 }
 
@@ -189,7 +187,7 @@ export function standingsTable(detail: TournamentDetail, me: string): TableRow[]
       cells: detail.games.map((slug) => {
         const cell = row.byGame[slug]
         const played = cell?.score != null
-        return { slug, place: played ? (cell.place ?? null) : null, points: played ? cell.points : 0, score: played ? cell.score : null }
+        return { slug, place: played ? (cell.place ?? null) : null, score: played ? cell.score : null }
       }),
     }
   })
@@ -236,7 +234,6 @@ export type SkipLesson = {
   won: string[]
   skipped: string[]
   winner: string
-  winnerTotal: number
 }
 
 /**
@@ -260,20 +257,14 @@ export function skipLesson(detail: TournamentDetail): SkipLesson | null {
     won: lesson.cells.filter((c) => c.place === 1).map((c) => c.slug),
     skipped: lesson.cells.filter((c) => c.place == null).map((c) => c.slug),
     winner: winner.name,
-    winnerTotal: winner.total,
   }
 }
 
-/** How many players placed on every game: the server's count of the whole field when it sends one. */
-export function playedAll(detail: TournamentDetail): number {
-  if (detail.playedAll != null) return detail.playedAll
-  return detail.standings.filter((r: StandingRow) => detail.games.every((g) => r.byGame[g]?.score != null)).length
-}
-
-/** How an event scores, as short steps. */
+/**
+ * How an event works, as short steps. An all-round event's points per place
+ * stay off them: what counts is playing every game and placing well on each.
+ */
 export function scoringSteps(detail: TournamentDetail): string[] {
-  const top = detail.placePoints?.top ?? 10
-  const last = detail.placePoints?.last ?? 1
   const tries = detail.rules.maxAttempts
   const atStart = triesCountAtStart(detail)
   const triesLine =
@@ -305,14 +296,14 @@ export function scoringSteps(detail: TournamentDetail): string[] {
   if (detail.format === 'place-points' && detail.games.length > 1) {
     return [
       'Each game ranks everyone who played it, by their best run.',
-      `1st on a game pays ${top} points and last pays ${last}. A game you skip pays nothing.`,
+      'Play them all: a game you skip counts for nothing.',
       detail.cadence === 'weekly'
-        ? 'The highest total on Sunday night wins the week, and its trophy.'
-        : 'The highest total when it ends wins, and takes the trophy.',
+        ? 'The best all-round player on Sunday night wins the week, and its trophy.'
+        : 'The best all-round player when it ends wins, and takes the trophy.',
     ]
   }
   if (detail.format === 'place-points') {
-    return [triesLine, `1st pays ${top} points and last pays ${last}.`, 'The most points when it ends wins.']
+    return [triesLine, 'The best run when it ends wins.', 'The winner takes a trophy for their player card.']
   }
   if (detail.format === 'cumulative' || detail.rules.scoring === 'sum') {
     return [triesLine, 'Every run adds to your total.', 'The biggest total when it ends wins.']

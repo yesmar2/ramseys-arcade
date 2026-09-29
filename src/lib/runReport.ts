@@ -91,6 +91,8 @@ export type RunFacts = {
   score: number
   name: string
   period: LeaderboardPeriod
+  /** The standings' period, the header's; left out, the board's. A daily's board is the day's, its Standings aren't. */
+  standingsPeriod?: LeaderboardPeriod
   /** The player's best on this game before the run; 0 when there was none. */
   priorBest: number
   /** This run's place among every run ever, and the player's best's place before it. */
@@ -98,6 +100,7 @@ export type RunFacts = {
   priorAllTimeRank: number | null
   /** The period's board as players, after the save and as it stood without this run. */
   board: { after: BoardPlayer[]; before: BoardPlayer[] } | null
+  /** The player's Standings before and after the save; before is null when the read before the save failed. */
   overall: { before: GlobalRankResult | null; after: GlobalRankResult | null }
   books: BookFact[]
   /** The run's id on the boards, so it can go out as a challenge. */
@@ -126,10 +129,6 @@ function figure(slug: string, score: number): string {
 function namesText(names: string[]): string {
   if (names.length <= 2) return names.join(' and ')
   return `${names[0]} and ${names.length - 1} more`
-}
-
-function pointsText(points: number): string {
-  return `${points.toLocaleString()} point${points === 1 ? '' : 's'}`
 }
 
 /** A board and its period read as a place: Crosswalk this month, Standings, all time. */
@@ -187,8 +186,8 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
   const label = boardLabel(slug, copy)
   const index = after.findIndex((p) => p.name === me)
   if (index < 0) {
-    // Below the runs read: the standings still know the place.
-    const place = f.overall.after?.byGame[slug]?.place
+    // Below the runs read: the standings still know the place, when they cover the board's period.
+    const place = (f.standingsPeriod ?? f.period) === f.period ? f.overall.after?.byGame[slug]?.place : undefined
     if (!place) return null
     const leader = after[0]
     return {
@@ -246,32 +245,31 @@ function overallLine(f: RunFacts, copy: PeriodCopy): { line: ReportLine; newTop:
   const after = f.overall.after
   const rank = after?.rank
   if (!after || !rank) return null
-  const before = f.overall.before?.rank ?? null
-  const points = `${pointsText(after.score)} across all games`
-  const near = after.nearby ?? []
-  const above = near.find((n) => n.rank === rank - 1)
-  const below = near.find((n) => n.rank === rank + 1)
-  // Every game's points added up: the Standings, as the Boards page names that
-  // table, and the points say what it counts. Beside the game's own line,
-  // "Overall" read as one more place on this game, and "All games" as the list
-  // of games it names everywhere else on the site.
+  // The before read failed: whether the run moved the rank is unknown, so say nothing,
+  // not "new on the standings" or a false "passed" at the top (which would also set newTop).
+  if (!f.overall.before) return null
+  const before = f.overall.before.rank ?? null
+  const below = (after.nearby ?? []).find((n) => n.rank === rank + 1)
+  // Every game added up: the Standings, as the Boards page names that table.
+  // Beside the game's own line, "Overall" read as one more place on this game,
+  // and "All games" as the list of games it names everywhere else on the site.
   const label = scopeLabel('Standings', copy)
   const line = (detail: string, tone: ReportTone, icon: ReportIcon, newTop = false) => ({
     line: { id: 'overall', icon, label, detail, value: `#${rank}`, tone },
     newTop,
   })
+  // Said only when the run moved it, or kept first: the header already shows the rank.
   if (rank === 1) {
-    if (!below) return line(points, 'plain', 'sum')
-    if (before !== 1) return line(`${points}, passed ${below.name}`, 'gold', 'crown', true)
-    return line(`${points}, ${(after.score - below.score).toLocaleString()} ahead of ${below.name}`, 'plain', 'sum')
+    if (!below) return line('Nobody else on it yet', 'plain', 'sum')
+    if (before !== 1) return line(`passed ${below.name}`, 'gold', 'crown', true)
+    return line(`still ahead of ${below.name}`, 'plain', 'sum')
   }
-  if (before == null) return line(`${points}, new on the standings`, 'accent', 'up')
-  if (rank < before) return line(`${points}, up ${before - rank}`, 'accent', 'up')
-  if (above) {
-    const gap = above.score - after.score
-    return line(gap > 0 ? `${points}, ${gap.toLocaleString()} behind ${above.name}` : `${points}, tied with ${above.name}`, 'plain', 'sum')
+  if (before == null) return line('new on the standings', 'accent', 'up')
+  if (rank < before) {
+    const up = before - rank
+    return line(`up ${up} ${up === 1 ? 'place' : 'places'}`, 'accent', 'up')
   }
-  return line(points, 'plain', 'sum')
+  return null
 }
 
 function bookLine(f: RunFacts, book: BookFact, i: number): ReportLine {
@@ -329,7 +327,7 @@ export function composeReport(f: RunFacts): RunReportData {
   const copy = periodCopy(f.period)
   const me = normalizePlayerName(f.name)
   const board = boardLine(f, copy)
-  const overall = overallLine(f, copy)
+  const overall = overallLine(f, periodCopy(f.standingsPeriod ?? f.period))
   const books = [...f.books]
     .sort((a, b) => (a.hit.rank ?? 99) - (b.hit.rank ?? 99))
     .slice(0, MAX_BOOKS)
@@ -458,7 +456,7 @@ async function readBoardRuns(slug: string, period: LeaderboardPeriod) {
 
 /**
  * Where a score would place on the period's board, for a run not saved yet;
- * null when the board can't be read, or the score falls below what was read.
+ * null when the board can't be read, or the score doesn't beat the lowest run read.
  */
 export async function wouldPlaceOnBoard(
   slug: string,
@@ -468,7 +466,7 @@ export async function wouldPlaceOnBoard(
   try {
     const board = await readBoardRuns(slug, period)
     const lowest = board.entries[board.entries.length - 1]
-    if (board.entries.length < board.total && lowest && score < lowest.score) return null
+    if (board.entries.length < board.total && lowest && score <= lowest.score) return null
     return wouldPlace(playersFromRuns(board.entries), score).place
   } catch {
     return null
@@ -480,6 +478,8 @@ type SaveInput = {
   name: string
   score: number
   period: LeaderboardPeriod
+  /** The standings' period, when it isn't the board's (see RunFacts). */
+  standingsPeriod?: LeaderboardPeriod
   priorBest: number
   /** A friend's challenge this run was played against. */
   challengeId?: string
@@ -517,9 +517,9 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
   return promise
 }
 
-async function saveAndRead({ slug, name, score, period, priorBest, challengeId, run, pickups, pace, pours }: SaveInput): Promise<RunFacts> {
+async function saveAndRead({ slug, name, score, period, standingsPeriod = period, priorBest, challengeId, run, pickups, pace, pours }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
-  const priorOverall = await fetchGlobalRank(me, period).catch(() => null)
+  const priorOverall = await fetchGlobalRank(me, standingsPeriod).catch(() => null)
   const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours })
   noteTicketsPaid(saved.tickets)
   for (const hit of saved.streakRecords ?? []) {
@@ -546,7 +546,7 @@ async function saveAndRead({ slug, name, score, period, priorBest, challengeId, 
     readBoardRuns(slug, period)
       .then((b) => b.entries)
       .catch(() => null),
-    fetchGlobalRank(me, period).catch(() => null),
+    fetchGlobalRank(me, standingsPeriod).catch(() => null),
     readBookFacts(slug, me, hits),
   ])
 
@@ -564,6 +564,7 @@ async function saveAndRead({ slug, name, score, period, priorBest, challengeId, 
     score,
     name: me,
     period,
+    standingsPeriod,
     priorBest,
     allTimeRank: saved.ranks?.all ?? null,
     priorAllTimeRank: saved.previousBestRanks?.all ?? null,

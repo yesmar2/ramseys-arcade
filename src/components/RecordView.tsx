@@ -325,10 +325,7 @@ function YouCard({
       <div className="sb-card sb-you__card sb-first">
         <p className="sb-kicker">Get in the book</p>
         <h2 className="sb-first__title">{onTheBoard(game, record)} and you’re on it.</h2>
-        <p className="sb-first__text">
-          Sign in to save your runs. Only your best counts, and the best of all is the record: your name beside it
-          until someone beats it.
-        </p>
+        <p className="sb-first__text">Sign in to save your runs. Beat the best and your name goes beside it.</p>
         <div className="sb-you__foot sb-you__foot--acts">
           <PlayLink game={game} record={record} />
         </div>
@@ -644,7 +641,7 @@ function Board({
           </span>
         ) : null}
       </div>
-      <p className="gb-board__note">One row per player, at their best. A tie goes to whoever got there first.</p>
+      <p className="gb-board__note">One row per player, at their best.</p>
       {loading || !record ? (
         <BoardSkeleton rows={FIRST_ROWS} />
       ) : !top ? (
@@ -815,7 +812,7 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
   const story = record ? recordStory(record, data.progression, data.youProgression, period, you) : null
   const when = period === 'all' ? '' : ` ${recordWhen(period)}`
   const takesSub = total
-    ? `${total.toLocaleString()} ${total === 1 ? 'player' : 'players'} on it${when}. ${shut ? `Each player’s first ${firstRunWord(game)} is the one that counts.` : 'Only each player’s best counts.'}`
+    ? `${total.toLocaleString()} ${total === 1 ? 'player' : 'players'} on it${when}.${shut ? ` Each player’s first ${firstRunWord(game)} is the one that counts.` : ''}`
     : `Nobody is on it ${period === 'all' ? 'yet' : recordWhen(period)}.`
 
   return (

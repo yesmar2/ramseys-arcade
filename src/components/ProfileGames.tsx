@@ -10,25 +10,27 @@ import {
   type LeaderboardGame,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { formatDayPoints } from '../lib/leaderboardFormat'
-import { ordinal, periodWord, scoreWithUnit } from '../lib/profileMath'
+import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { ordinal, periodWord } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
 import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 
-/** The short name of a period, for the cabinet's line: WEEK, MONTH, ALL. */
-const PERIOD_TAG: Record<LeaderboardPeriod, string> = {
-  daily: 'TODAY',
-  weekly: 'WEEK',
-  monthly: 'MONTH',
-  all: 'ALL',
+/** The period after a cabinet's place, cut short on a phone: #3 week. */
+const PERIOD_SHORT: Record<LeaderboardPeriod, string> = {
+  daily: 'today',
+  weekly: 'week',
+  monthly: 'month',
+  all: 'all time',
 }
 
 function Cabinet({
   game,
   period,
   place,
+  allTime,
+  allTimeLoading,
   best,
   bestsLoading,
 }: {
@@ -36,28 +38,39 @@ function Cabinet({
   period: LeaderboardPeriod
   /** Where the player is on the game's board this period; null when they have no run on it this period. */
   place: GlobalGamePlace | null
+  /** Where the player is on the game's all-time board, among players. */
+  allTime: GlobalGamePlace | null
+  allTimeLoading: boolean
   best: GameBest | null
   bestsLoading: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
   const style = { '--tile-accent': accent } as CSSProperties
-  const flag = best
-    ? best.rank <= 3
-      ? { text: `${ordinal(best.rank)} all time`, tone: best.rank === 1 ? 'gold' : best.rank === 2 ? 'silver' : 'bronze' }
-      : best.rank <= 10
-        ? { text: 'Top 10 all time', tone: 'ten' }
-        : null
-    : null
   const word = periodWord(period)
-  // A daily's all-time board is its day points, not a run (leaderboardFormat isDayPointsBoard).
+  // A daily's all-time board is its day points, a row per player, so it says only the place (leaderboardFormat isDayPointsBoard).
   const daily = isDailyGame(game.slug)
-  const bestFigure = (score: number) => (daily ? formatDayPoints(score) : scoreWithUnit(game.slug, score))
+  // The player's place among players. A best run's rank counts every run, other players' second-bests too, so it reads lower.
+  const allPlace = allTime?.place ?? (daily ? (best?.rank ?? null) : null)
+  const flag =
+    allPlace == null
+      ? null
+      : allPlace <= 3
+        ? { text: `${ordinal(allPlace)} all time`, tone: allPlace === 1 ? 'gold' : allPlace === 2 ? 'silver' : 'bronze' }
+        : allPlace <= 10
+          ? { text: 'Top 10 all time', tone: 'ten' }
+          : null
+  // Looking at all time, the place beside the name is already the all-time one.
+  const allTimeShown = period === 'all' ? null : allPlace
   const label = [
     game.name,
-    place
-      ? `${ordinal(place.place)}${place.total ? ` of ${place.total}` : ''} ${word}, ${place.points} points`
-      : `no run ${word}`,
-    best ? `${daily ? 'day points' : 'best run'} ${bestFigure(best.score)}, ${ordinal(best.rank)} of ${best.total} all time` : null,
+    place ? `${ordinal(place.place)} ${word}` : `no run ${word}`,
+    daily
+      ? allTimeShown != null
+        ? `${ordinal(allTimeShown)} all time`
+        : null
+      : best
+        ? `best run ${formatLeaderboardScore(game.slug, best.score)}${allTimeShown != null ? `, ${ordinal(allTimeShown)} all time` : ''}`
+        : null,
   ]
     .filter(Boolean)
     .join(', ')
@@ -87,38 +100,44 @@ function Cabinet({
             {place ? (
               <span className="pgame__place">
                 <b className={place.place <= 3 ? `pgame__medal pgame__medal--${place.place}` : undefined}>#{place.place}</b>
-                {place.total ? ` of ${place.total}` : ''}
+                <span className="pgame__when"> {word}</span>
+                <span className="pgame__when pgame__when--short"> {PERIOD_SHORT[period]}</span>
               </span>
-            ) : null}
-          </span>
-          <span className="pgame__line">
-            <span className="pgame__tag">{PERIOD_TAG[period]}</span>
-            {place ? (
-              <>
-                <span className="pgame__figure">{place.points} pts</span>
-                <span className="pgame__bar">
-                  <span style={{ width: `${Math.min(100, place.points)}%` }} />
-                </span>
-              </>
             ) : (
-              <span className="pgame__none">No run {word}</span>
+              <span className="pgame__place">
+                No run<span className="pgame__when"> {word}</span>
+              </span>
             )}
           </span>
-          <span className="pgame__line">
-            <span className="pgame__tag">{daily ? 'ALL TIME' : 'BEST'}</span>
-            {best ? (
-              <>
-                <span className="pgame__figure">{bestFigure(best.score)}</span>
-                <span className="pgame__of">
-                  {ordinal(best.rank)} of {best.total.toLocaleString()}
-                </span>
-              </>
-            ) : bestsLoading ? (
-              <span className="skel-line pgame__skel" />
-            ) : (
-              <span className="pgame__none">—</span>
-            )}
-          </span>
+          {daily ? (
+            // All time is the place beside the name already.
+            period === 'all' ? null : (
+              <span className="pgame__line">
+                <span className="pgame__tag">ALL TIME</span>
+                {allPlace != null ? (
+                  <span className="pgame__figure">{ordinal(allPlace)}</span>
+                ) : allTimeLoading ? (
+                  <span className="skel-line pgame__skel" />
+                ) : (
+                  <span className="pgame__none">—</span>
+                )}
+              </span>
+            )
+          ) : (
+            <span className="pgame__line">
+              <span className="pgame__tag">BEST</span>
+              {best ? (
+                <>
+                  <span className="pgame__figure">{formatLeaderboardScore(game.slug, best.score)}</span>
+                  {allTimeShown != null ? <span className="pgame__of">· {ordinal(allTimeShown)} all time</span> : null}
+                </>
+              ) : bestsLoading ? (
+                <span className="skel-line pgame__skel" />
+              ) : (
+                <span className="pgame__none">—</span>
+              )}
+            </span>
+          )}
         </span>
       </a>
     </li>
@@ -127,16 +146,17 @@ function Cabinet({
 
 /**
  * The player's games as cabinets, like the home wall's: each one's screen,
- * where they placed on it this period and for how many points, and their best
- * run on it ever, with where that stands. Games played before but not this
- * period stand after them, quieter. Every game never played goes in a panel
- * underneath, as what it is: up to a hundred more points each.
+ * their place on it this period, and their best run on it ever, with their
+ * place all time. Games played before but not this period stand after them,
+ * quieter. Every game never played goes in a panel underneath, as the next
+ * ones to try.
  */
 export function ProfileGames({
   name,
   isSelf,
   period,
   byGame,
+  allTimeByGame,
   everPlayed,
   bests,
   quickest,
@@ -147,10 +167,12 @@ export function ProfileGames({
   period: LeaderboardPeriod
   /** This period's places. */
   byGame: Partial<Record<string, GlobalGamePlace>>
+  /** All-time places, among players; null while they load. */
+  allTimeByGame: Partial<Record<string, GlobalGamePlace>> | null
   /** Every game the player has ever placed on, from the all-time rank; null while it loads. */
   everPlayed: Set<string> | null
   bests: Record<string, GameBest> | null
-  /** Tell the unplayed games as the player's quickest points, as it is for anyone outside the top ten. */
+  /** Put the unplayed games first as the ones to try next, as it is for anyone outside the top ten. */
   quickest: boolean
   /** On your own card: your stats, where each game's progress is. */
   progressHref?: string
@@ -173,9 +195,8 @@ export function ProfileGames({
           Games
         </h2>
         <span className="pgames__count">
-          {placed.length === 0 ? `None placed ${word}` : `${placed.length} placed ${word}`}
-          {earlier.length > 0 ? `, ${earlier.length} played before` : ''}
-          {shown.length > 0 ? ' · the best run on each, all time' : ''}
+          {placed.length === 0 ? `None played ${word}` : `${placed.length} played ${word}`}
+          {earlier.length > 0 ? `, ${earlier.length} before` : ''}
         </span>
         {progressHref && shown.length > 0 ? (
           <a className="pgames__progress" href={progressHref}>
@@ -194,6 +215,8 @@ export function ProfileGames({
               game={g}
               period={period}
               place={byGame[g.slug] ?? null}
+              allTime={allTimeByGame?.[g.slug] ?? null}
+              allTimeLoading={allTimeByGame === null}
               best={bests?.[g.slug] ?? null}
               bestsLoading={bestsLoading}
             />
@@ -203,10 +226,10 @@ export function ProfileGames({
       {never.length > 0 ? (
         <div className={`pgames__todo${quickest ? ' pgames__todo--quick' : ''}`} id="quick">
           <div className="pgames__todo-head">
-            <h3 className="pgames__todo-title">{quickest ? 'Your quickest points' : 'Not played yet'}</h3>
+            <h3 className="pgames__todo-title">{quickest ? 'Try these next' : 'Not played yet'}</h3>
             <p className="pgames__todo-note">
               {isSelf
-                ? `Each game you place on ${period === 'all' ? '' : `${word} `}adds up to 100 points. A run in the middle of its board is worth about 50.`
+                ? 'Every new game you play moves you up.'
                 : `${never.length} ${never.length === 1 ? 'game' : 'games'} ${name} hasn’t posted a score on yet.`}
             </p>
           </div>

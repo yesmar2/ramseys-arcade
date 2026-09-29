@@ -9,6 +9,7 @@ import {
   privacyHref,
   rankHref,
   prizesHref,
+  rankHowHref,
   statsHref,
   termsHref,
 } from '../hooks/useHashRoute'
@@ -18,7 +19,7 @@ import { APP_NAME } from '../lib/brand'
 import { openFeedback } from '../lib/feedback'
 import { inkOn } from '../lib/color'
 import { groupsIndexHref } from '../lib/groups'
-import { ordinal, periodWord, pts } from '../lib/profileMath'
+import { ordinal, periodWord } from '../lib/profileMath'
 import { setTheme, themeLabel, type Theme } from '../lib/theme'
 import type { LeaderboardPeriod } from '../lib/leaderboard'
 import type { TrophySummary } from '../lib/trophies'
@@ -55,7 +56,6 @@ const THEME_CHOICES: Theme[] = ['light', 'dark']
 export type MenuStanding = {
   loading: boolean
   rank: number | null
-  score: number
   period: LeaderboardPeriod
   /** "in the arcade", or "in" a group while the boards are scoped to one. */
   where: string
@@ -126,8 +126,8 @@ export function SiteMenu({
   const tagged = signedIn && Boolean(name)
   const accent = tagged && AVATARS_ENABLED ? avatarWashColor(resolveAvatar(avatarId, name)) : undefined
   const word = periodWord(standing.period)
+  // The rank line says where you stand; the points behind it are on How your rank works.
   const facts = [
-    standing.rank != null ? pts(standing.score) : null,
     trophies.total > 0 ? `${trophies.total} ${trophies.total === 1 ? 'trophy' : 'trophies'}` : null,
     trophies.events > 0 ? `${trophies.events} ${trophies.events === 1 ? 'event' : 'events'} won` : null,
   ].filter(Boolean)
@@ -173,6 +173,11 @@ export function SiteMenu({
               `Not on the boards ${word} yet`
             )}
           </span>
+          {!impersonating && !standing.loading && standing.rank != null ? (
+            <a className="site-menu__card-how" href={rankHowHref()} onClick={onClose}>
+              How your rank works ›
+            </a>
+          ) : null}
           {facts.length > 0 ? <span className="site-menu__card-facts">{facts.join(' · ')}</span> : null}
         </div>
       </div>

@@ -118,7 +118,7 @@ export const LISTED_EVENT_GAMES: EventGame[] = EVENT_GAMES.filter((g) => isGameL
 
 export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   open: 'Open · Best score',
-  'place-points': 'Place points',
+  'place-points': 'All-round',
   'attempt-limited': 'Limited attempts',
   'single-run': 'One run only',
   cumulative: 'Total score',
@@ -128,7 +128,7 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
 export function howItWins(t: Pick<TournamentSummary, 'format' | 'games'>): string {
   switch (t.format) {
     case 'place-points':
-      return t.games.length === 3 ? 'Places on all three games earn points' : 'Places on every game earn points'
+      return t.games.length === 3 ? 'Play all three; best all-round wins' : 'Play them all; best all-round wins'
     case 'single-run':
       return 'One run each; best score wins'
     case 'attempt-limited':
@@ -165,11 +165,8 @@ export function formatRulesSummary(
     const style = t.rules.elimination === 'double' ? 'Double-elim' : 'Single-elim'
     return `${style} bracket · ${cap || 'set'} players · ${tries} per match${round ? ` · ${round}` : ''}.`
   }
-  if (t.format === 'place-points') {
-    return t.games.length > 1
-      ? 'Place points across games — highest total wins.'
-      : 'Place points — highest total wins.'
-  }
+  // One game ranks by its best score, so it reads like any other; several are won all-round.
+  if (t.format === 'place-points' && t.games.length > 1) return 'Every game counts — best all-round wins.'
   const n = t.rules.maxAttempts
   const gameWord = t.games.length === 1 ? 'game' : 'games'
   if (t.format === 'open' || n === 0) {

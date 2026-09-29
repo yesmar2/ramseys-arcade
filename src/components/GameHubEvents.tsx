@@ -60,7 +60,7 @@ function EventBlock({ t, joined }: { t: TournamentSummary; joined: boolean }) {
   const upcoming = t.status === 'upcoming'
   const who =
     t.yourPlace != null
-      ? `You’re ${ordinal(t.yourPlace)}${t.yourPoints ? ` with ${t.yourPoints} points` : ''}, of ${t.playerCount}.`
+      ? `You’re ${ordinal(t.yourPlace)} of ${t.playerCount}.`
       : t.playerCount === 0
         ? 'Nobody has joined yet.'
         : `${t.playerCount} ${t.playerCount === 1 ? 'player is' : 'players are'} in.`

@@ -14,24 +14,16 @@ import { ordinal, type PeriodCopy, type Stat } from './scoreboard'
 /*
  * One game's board as players rather than runs. The API lists runs, best
  * first, so one player can hold several places in a row; a player's place is
- * their best run, and that place is what pays (placePoints in the API's store).
- * Everything the game board page says about places, gaps and what a score is
- * worth is worked out here from the runs.
+ * their best run's. Everything the game board page says about places, gaps
+ * and the scores to beat is worked out here from the runs.
  */
 
-/** One player on a board: their best run, how many runs they have, and what their place pays. */
+/** One player on a board: their best run and how many runs they have. */
 export type BoardPlayer = {
   place: number
   name: string
   best: LeaderboardEntry
   runs: number
-  pays: number
-}
-
-/** What a place pays toward the period's standings: first 100, last a point or two. */
-export function placePoints(place: number, field: number): number {
-  if (place < 1 || field < 1 || place > field) return 0
-  return Math.max(1, Math.round((100 * (field - place + 1)) / field))
 }
 
 /** A board's runs, best first, as players: each at their best run, with a count of their runs. */
@@ -51,8 +43,16 @@ export function playersFromRuns(runs: LeaderboardEntry[]): BoardPlayer[] {
   }
   return order.map((name, i) => {
     const { best, runs: count } = byName.get(name)!
-    return { place: i + 1, name, best, runs: count, pays: placePoints(i + 1, order.length) }
+    return { place: i + 1, name, best, runs: count }
   })
+}
+
+/**
+ * The place a run just better than `score` takes: above everyone at or below it, so past anyone tied
+ * with it as well (two tied on top, and beating their score takes 1st, not 2nd). `me` isn't counted.
+ */
+export function placeBeating(players: BoardPlayer[], score: number, me = ''): number {
+  return players.filter((p) => p.name !== me && p.best.score > score).length + 1
 }
 
 /* ---------- words ---------- */
@@ -135,20 +135,20 @@ export function boardHeadline(
   return { name: '', rest: `Nobody’s played ${game} ${copy.noun ? copy.phrase : 'yet'}.` }
 }
 
-/** The line under the headline: how busy the board is, and what it pays. */
+/** The line under the headline: how busy the board is. */
 export function boardLede(slug: string, copy: PeriodCopy, players: BoardPlayer[], runs: number): string {
-  const toward = copy.noun ? `the ${copy.noun}` : 'the all-time standings'
   if (players.length >= 2) {
     const when = copy.noun ? ` ${copy.phrase}` : ', all time'
-    return `${count(players.length, 'player')} and ${count(runs, 'run')}${when}. A player’s best run is their place, and first pays 100 points toward ${toward}.`
+    return `${count(players.length, 'player')} and ${count(runs, 'run')}${when}.`
   }
   if (players.length === 1) {
     const only = players[0]
     const soFar = only.runs === 1 ? 'One run so far' : `${capital(numberWord(only.runs))} runs so far`
-    const score = formatLeaderboardScore(slug, only.best.score)
-    return `${soFar}, ${scoreText(slug, only.best.score)}. ${whatPutsYouOn(slug)}, and beating ${score} takes first and all 100 points.`
+    // With several runs, "it" could be any of them: name the best.
+    const beat = only.runs === 1 ? 'it' : formatLeaderboardScore(slug, only.best.score)
+    return `${soFar}, ${scoreText(slug, only.best.score)}. Beat ${beat} to take first.`
   }
-  return `The first run takes first place, and all 100 points toward ${toward}.`
+  return 'The first run takes first place.'
 }
 
 function capital(text: string): string {
@@ -163,6 +163,8 @@ export type BoardYou = {
   field: number
   above: BoardPlayer | null
   below: BoardPlayer | null
+  /** The place a run just better than the player above takes (placeBeating); for the player in first, 1. */
+  nextPlace: number
   runs: LeaderboardEntry[]
 }
 
@@ -170,11 +172,13 @@ export function youOnBoard(players: BoardPlayer[], runs: LeaderboardEntry[], me:
   if (!me) return null
   const index = players.findIndex((p) => p.name === me)
   if (index < 0) return null
+  const above = players[index - 1] ?? null
   return {
     player: players[index],
     field: players.length,
-    above: players[index - 1] ?? null,
+    above,
     below: players[index + 1] ?? null,
+    nextPlace: above ? placeBeating(players, above.best.score, me) : 1,
     runs: runs.filter((r) => normalizePlayerName(r.name ?? '') === me),
   }
 }
@@ -193,11 +197,12 @@ export function boardYouStats(slug: string, you: BoardYou): Stat[] {
 
 /** The one thing to do next on this board: on one that takes a run a player (oneRunBoard), that yours is in. */
 export function boardCallout(slug: string, you: BoardYou, period: LeaderboardPeriod): string {
-  const { player, above, below, field } = you
+  const { player, above, below, nextPlace } = you
   if (above) {
     if (oneRunBoard(slug, period)) return dayRunIn(slug)
-    return `Beat ${formatLeaderboardScore(slug, above.best.score)} for ${ordinal(player.place - 1)}, and it pays ${placePoints(player.place - 1, field)}.`
+    return `Beat ${formatLeaderboardScore(slug, above.best.score)} to take ${ordinal(nextPlace)}.`
   }
+  if (below && below.best.score === player.best.score) return `You hold first, tied with ${below.name}: you got there first.`
   if (below) return `You hold first. ${below.name} is ${gapBetween(slug, player.best.score, below.best.score)} back.`
   return 'You hold first.'
 }
@@ -237,10 +242,12 @@ export function dayRunIn(slug: string): string {
   return `That’s your ${firstRunWord(slug)} for today. A new board at midnight, New York time.`
 }
 
-/** Where a best from outside this period would land on it, and what that place would pay. */
-export function wouldPlace(players: BoardPlayer[], best: number): { place: number; pays: number } {
-  const place = players.filter((p) => p.best.score > best).length + 1
-  return { place, pays: placePoints(place, players.length + 1) }
+/**
+ * Where a run of `best` would land on this board if played now: behind everyone at or above it, as a tie
+ * goes to whoever got there first and a new run is the latest. (placeBeating is a run just better than it.)
+ */
+export function wouldPlace(players: BoardPlayer[], best: number): { place: number } {
+  return { place: players.filter((p) => p.best.score >= best).length + 1 }
 }
 
 /** For a player not on this board yet: what their best elsewhere would do here, or how to get on. */
@@ -252,47 +259,51 @@ export function offBoardLines(
 ): { line: string; callout: string } {
   const game = gameName(slug)
   const when = copy.noun ? ` ${copy.phrase}` : ''
-  let line: string
-  if (allTimeBest != null && allTimeBest > 0) {
-    const { place, pays } = wouldPlace(players, allTimeBest)
-    line = `Your best, ${formatLeaderboardScore(slug, allTimeBest)}, would put you ${ordinal(place)}${when}, and pay ${pays} points.`
-  } else {
-    line = `You haven’t played ${game}${copy.noun ? when : ' yet'}. ${whatPutsYouOn(slug)}.`
-  }
   const field = players.length
   const halfway = field >= 6 ? players[Math.ceil(field / 2) - 1] : null
   const callout = halfway
-    ? `Beat ${formatLeaderboardScore(slug, halfway.best.score)} to be halfway up, worth about 50 points.`
+    ? `Beat ${formatLeaderboardScore(slug, halfway.best.score)} to be halfway up the board.`
     : field
-      ? `Any run pays at least ${placePoints(field + 1, field + 1)}.`
-      : 'Any run takes first, and all 100 points.'
+      ? `${whatPutsYouOn(slug)}.`
+      : 'Any run takes first.'
+  let line: string
+  if (allTimeBest != null && allTimeBest > 0) {
+    const { place } = wouldPlace(players, allTimeBest)
+    line = `Your best, ${formatLeaderboardScore(slug, allTimeBest)}, would put you ${ordinal(place)}${when}.`
+  } else {
+    // How to get on, unless the callout under it already says so.
+    const on = halfway || !field ? ` ${whatPutsYouOn(slug)}.` : ''
+    line = `You haven’t played ${game}${copy.noun ? when : ' yet'}.${on}`
+  }
   return { line, callout }
 }
 
-/* ---------- what a run is worth ---------- */
+/* ---------- scores to beat ---------- */
 
-export type PriceRow = { beat: string; what: string; pays: string }
+export type PriceRow = { beat: string; what: string }
 
 /**
- * The scores that take each step up the board, and what the step pays: first,
- * the podium, the top ten, halfway up, and any run at all.
+ * The scores that take each step up the board, best first: first, the
+ * podium, the top ten and halfway up (on a small board halfway comes before
+ * the top ten), then any run at all. Ties can make two steps one score (three
+ * tied on top: beating them is first and the podium both), so only the
+ * bigger step is kept.
  */
 export function priceList(slug: string, players: BoardPlayer[]): PriceRow[] {
   const field = players.length
+  const steps: { place: number; what: string }[] = [{ place: 1, what: '1st' }]
+  if (field >= 3) steps.push({ place: 3, what: 'Podium' })
+  if (field >= 10) steps.push({ place: 10, what: 'Top ten' })
+  if (field >= 6) steps.push({ place: Math.ceil(field / 2), what: 'Halfway up' })
   const rows: PriceRow[] = []
-  const step = (place: number, what: string) => {
+  let last: number | null = null
+  for (const { place, what } of steps.sort((a, b) => a.place - b.place)) {
     const at = players[place - 1]
-    if (at) rows.push({ beat: `Beat ${formatLeaderboardScore(slug, at.best.score)}`, what, pays: String(at.pays) })
+    if (!at || at.best.score === last) continue
+    last = at.best.score
+    rows.push({ beat: `Beat ${formatLeaderboardScore(slug, at.best.score)}`, what })
   }
-  step(1, '1st')
-  if (field >= 3) step(3, 'Podium')
-  if (field >= 10) step(10, 'Top ten')
-  if (field >= 6) step(Math.ceil(field / 2), 'Halfway up')
-  rows.push({
-    beat: 'Any run',
-    what: field ? 'On the board' : 'Takes first',
-    pays: field ? `${placePoints(field + 1, field + 1)}+` : '100',
-  })
+  rows.push({ beat: 'Any run', what: field ? 'On the board' : 'Takes first' })
   return rows
 }
 
@@ -310,11 +321,11 @@ const CHART_RUNS = 12
 export function runsChart(slug: string, you: BoardYou, players: BoardPlayer[]) {
   const runs = [...you.runs].sort((a, b) => a.at - b.at).slice(-CHART_RUNS)
   const lines: { label: string; score: number }[] = []
-  if (you.above) lines.push({ label: `${ordinal(you.player.place - 1)} · ${formatLeaderboardScore(slug, you.above.best.score)}`, score: you.above.best.score })
-  // First as well, when it is in reach and not the same score as the next place.
+  if (you.above) lines.push({ label: `${ordinal(you.nextPlace)} · ${formatLeaderboardScore(slug, you.above.best.score)}`, score: you.above.best.score })
+  // First as well, when it is in reach and the next place isn't it already.
   const lead = players[0]
   const inReach = (score: number) => isInvertedBoard(slug) || score <= you.player.best.score * 1.6
-  if (lead && you.player.place > 2 && inReach(lead.best.score) && lead.best.score !== you.above?.best.score) {
+  if (lead && you.nextPlace > 1 && inReach(lead.best.score)) {
     lines.push({ label: `1st · ${formatLeaderboardScore(slug, lead.best.score)}`, score: lead.best.score })
   }
   const values = [...runs.map((r) => r.score), ...lines.map((l) => l.score)]

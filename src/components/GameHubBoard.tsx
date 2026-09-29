@@ -20,11 +20,11 @@ const TOP_ROWS = 5
 const ALL_ROWS = 8
 
 /** An empty board's words, by period. */
-const OPEN_WORDS: Record<LeaderboardPeriod, { title: string; when: string; toward: string }> = {
-  daily: { title: 'Today is open', when: 'today', toward: 'the day' },
-  weekly: { title: 'The week is open', when: 'this week', toward: 'the week' },
-  monthly: { title: 'The month is open', when: 'this month', toward: 'the month' },
-  all: { title: 'The board is open', when: 'yet', toward: 'the all-time standings' },
+const OPEN_WORDS: Record<LeaderboardPeriod, { title: string; when: string }> = {
+  daily: { title: 'Today is open', when: 'today' },
+  weekly: { title: 'The week is open', when: 'this week' },
+  monthly: { title: 'The month is open', when: 'this month' },
+  all: { title: 'The board is open', when: 'yet' },
 }
 
 /** Whose best an empty board points at instead. */
@@ -122,7 +122,7 @@ export function GameHubBoard({
             </span>
             <p className="gh-open__title">{groupBoardEmptyTitle(open.title)}</p>
             <p className="gh-open__copy">
-              Nobody has played {gameName} {open.when}. The first run takes 1st, and 100 points toward {open.toward}.
+              Nobody has played {gameName} {open.when}. The first run takes 1st.
             </p>
           </div>
           {aimAt ? (
@@ -130,7 +130,7 @@ export function GameHubBoard({
               <p className="gh-cap">To aim at: {AIM_WORDS[aimAt.period]}</p>
               <ol className="gh-rows">
                 {aimAt.players.map((p) => (
-                  <BoardRow key={p.name} slug={slug} player={p} me={me} showPays={false} />
+                  <BoardRow key={p.name} slug={slug} player={p} me={me} />
                 ))}
               </ol>
             </div>
@@ -161,17 +161,7 @@ export function GameHubBoard({
   )
 }
 
-function BoardRow({
-  slug,
-  player,
-  me,
-  showPays = true,
-}: {
-  slug: LeaderboardGame
-  player: BoardPlayer
-  me: string
-  showPays?: boolean
-}) {
+function BoardRow({ slug, player, me }: { slug: LeaderboardGame; player: BoardPlayer; me: string }) {
   const you = Boolean(me) && player.name === me
   const medal = player.place <= 3 ? ` gh-row--p${player.place}` : ''
   return (
@@ -188,7 +178,6 @@ function BoardRow({
           {player.runs} {player.runs === 1 ? 'run' : 'runs'}
         </small>
       </span>
-      {showPays ? <span className="gh-row__pays">{player.pays} pts</span> : null}
     </li>
   )
 }

@@ -57,6 +57,7 @@ const ArchivePage = lazyPage(() => import('./pages/ArchivePage').then((m) => m.A
 const AdminPage = lazyPage(() => import('./pages/AdminPage').then((m) => m.AdminPage))
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
 const RankPage = lazyPage(() => import('./pages/RankPage').then((m) => m.RankPage))
+const RankHowPage = lazyPage(() => import('./pages/RankHowPage').then((m) => m.RankHowPage))
 const StatsPage = lazyPage(() => import('./pages/StatsPage').then((m) => m.StatsPage))
 const PrizeCounterPage = lazyPage(() => import('./pages/PrizeCounterPage').then((m) => m.PrizeCounterPage))
 /** The Today page, in a chunk of its own with the dailies' plans. */
@@ -237,6 +238,7 @@ const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] 
   { test: /^\/groups\/[^/?#]+/, page: GroupDetailPage },
   { test: /^\/groups(?:[/?#]|$)/, page: GroupsPage },
   { test: /^\/rank(?:[/?#]|$)/, page: RankPage },
+  { test: /^\/how-ranks-work(?:[/?#]|$)/, page: RankHowPage },
   { test: /^\/stats(?:[/?#]|$)/, page: StatsPage },
   { test: /^\/prizes(?:[/?#]|$)/, page: PrizeCounterPage },
   { test: /^\/today(?:[/?#]|$)/, page: TodayPage },
@@ -283,6 +285,9 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
   if (route.name === 'rank') {
     return <RankPage player={route.player} period={route.period ?? defaultPeriod()} />
+  }
+  if (route.name === 'rankHow') {
+    return <RankHowPage player={route.player} period={route.period ?? defaultPeriod()} />
   }
   if (route.name === 'leaderboards') {
     return <LeaderboardsPage period={route.period ?? defaultPeriod()} />

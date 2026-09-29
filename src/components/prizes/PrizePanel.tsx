@@ -132,7 +132,7 @@ export function PrizePanel({
     const top = on.offsetTop
     if (top < box.scrollTop || top + on.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top - 8
   }, [prize.id])
-  const standingLine = standing.rank != null ? `#${standing.rank} in the standings · ${standing.score.toLocaleString()} pts` : undefined
+  const standingLine = standing.rank != null ? `#${standing.rank} in the standings` : undefined
 
   const pick = (id: string) => {
     setConfirming(false)
@@ -276,7 +276,6 @@ export function PrizePanel({
                   <span className="prize-board__rank">{standing.rank ?? '–'}</span>
                   <PlayerAvatar avatar={tryOn} name={tag} size="md" />
                   <PlayerName className="prize-board__name" name={tag} style={wornPrize(tryOn, 'name')} />
-                  <span className="prize-board__pts">{standing.rank != null ? `${standing.score.toLocaleString()} pts` : ''}</span>
                 </div>
                 <div className="prize-board__row prize-board__row--ghost" aria-hidden="true">
                   <span />

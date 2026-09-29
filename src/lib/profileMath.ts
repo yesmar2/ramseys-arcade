@@ -5,8 +5,9 @@ import { formatLeaderboardScore, isInvertedBoard, isPercentBoard } from './leade
  * The arithmetic behind a player's card. Global points are shares: each game
  * pays 1 to 100 by the share of its field a player beats, so a player's points
  * mean the same with a hundred players or ten thousand, and only places grow.
- * The page leans on that: past the top ten it talks in gaps to share lines,
- * which read the same at any size, rather than in places, which don't.
+ * How your rank works leans on that: past the top ten it talks in gaps to
+ * share lines, which read the same at any size. Everyday pages, the player
+ * card among them, say only places and names.
  */
 
 /** Placement points as the API awards them: 1st of the field about 100, last about 1. */
@@ -26,16 +27,6 @@ export function ordinal(n: number): string {
   if (tens >= 11 && tens <= 13) return `${n}th`
   const unit = n % 10
   return `${n}${unit === 1 ? 'st' : unit === 2 ? 'nd' : unit === 3 ? 'rd' : 'th'}`
-}
-
-/** 1 point, 2 points. */
-export function pointsWord(n: number): string {
-  return `${n.toLocaleString()} ${n === 1 ? 'point' : 'points'}`
-}
-
-/** 1 pt, 2 pts. */
-export function pts(n: number): string {
-  return `${n.toLocaleString()} ${n === 1 ? 'pt' : 'pts'}`
 }
 
 /** Below this many players, shares say little, and the card talks about the players around you instead. */

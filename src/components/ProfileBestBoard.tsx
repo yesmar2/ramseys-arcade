@@ -4,7 +4,7 @@ import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { useRunsAround, type BoardRow, type GameBest } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
 import { hasGamePreview } from '../lib/gamePreviews'
-import type { LeaderboardGame } from '../lib/leaderboard'
+import type { GlobalGamePlace, LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { bestBoard, nextRunLine, ordinal, scoreWithUnit } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
@@ -19,15 +19,22 @@ type Row =
   | { kind: 'gap'; runs: number }
   | { kind: 'line'; label: string }
 
+/** The lines drawn across the list and named in the copy; a share line (the top 10%, 25% or half) is told as its place. */
+function namedLine(label: string): boolean {
+  return label === 'top ten' || label === 'top three'
+}
+
 /**
  * The rows to show from a board: the top five when the run is among them;
  * otherwise the record, the run on the line being chased, and the runs either
- * side of the player's, with the line drawn where it falls.
+ * side of the player's, with the line drawn where it falls when it is the top
+ * ten or the top three.
  */
 function boardRows(best: GameBest, rows: BoardRow[], line: { rank: number; label: string } | null, lineRow: BoardRow | null): Row[] {
   const run = (r: BoardRow): Row => ({ kind: 'run', rank: r.rank, name: r.entry.name, score: r.entry.score, avatarId: r.entry.avatarId })
   const out: Row[] = []
   const lineLabel = line && line.label !== 'record' ? line.label : null
+  const drawn = lineLabel && namedLine(lineLabel) ? lineLabel : null
   const pinned = lineRow && lineLabel && !rows.some((r) => r.rank === lineRow.rank) ? lineRow : null
   // With the line's run pinned above them, the runs around the player's are cut to one either side.
   const window = pinned ? rows.filter((r) => Math.abs(r.rank - best.rank) <= 1) : rows
@@ -39,28 +46,29 @@ function boardRows(best: GameBest, rows: BoardRow[], line: { rank: number; label
   }
   if (pinned) {
     out.push(run(pinned))
-    out.push({ kind: 'line', label: lineLabel! })
+    if (drawn) out.push({ kind: 'line', label: drawn })
     if (first > pinned.rank + 1) out.push({ kind: 'gap', runs: first - pinned.rank - 1 })
   }
   for (const r of window) {
     out.push(run(r))
-    if (lineLabel && !pinned && line && r.rank === line.rank) out.push({ kind: 'line', label: lineLabel })
+    if (drawn && !pinned && line && r.rank === line.rank) out.push({ kind: 'line', label: drawn })
   }
   return out
 }
 
 /**
- * The player's best board: the game whose board their best run beats most
- * of, on its screen, how far the run stands, and the next line on that board
- * worth chasing, with the runs around it. The record for someone already in
- * the top three; the top ten, the top 10%, the top quarter or the top half
- * for everyone else, so there is always something within reach.
+ * The player's best game: the one whose board their best run beats most of,
+ * on its screen, how far the run stands, and the next run on that board worth
+ * chasing, with the runs around it. The record for someone already in the top
+ * three; the top ten, or a place a share of the board up, for everyone else,
+ * so there is always something within reach.
  */
 export function ProfileBestBoard({
   name,
   isSelf,
   viewer,
   bests,
+  allTimePlaces,
   groupId,
 }: {
   name: string
@@ -68,6 +76,8 @@ export function ProfileBestBoard({
   /** Who is looking, when it isn't the player: their rows on the board say so. */
   viewer: string
   bests: Record<string, GameBest> | null
+  /** The player's all-time place on each game, among players. */
+  allTimePlaces: Partial<Record<string, GlobalGamePlace>> | null
   groupId: string | null
 }) {
   // A daily's all-time board is its day points, not a run: the best board is a run's (leaderboardFormat isDayPointsBoard).
@@ -105,18 +115,20 @@ export function ProfileBestBoard({
           ? ` ${gap} short of your record.`
           : ` ${gap} short of the record, held by ${recordHolder}.`
     } else if (line && lineScore != null) {
-      copy += isSelf
-        ? ` Beat ${fmt(lineScore)} and you’re in the ${line.label}.`
-        : ` Beat ${fmt(lineScore)} and ${name} is in the ${line.label}.`
+      // The target counts runs, as the list beside it does; the flag is the player's place among players, so it's said of the run.
+      const lands = namedLine(line.label) ? `in the ${line.label}` : `#${line.rank.toLocaleString()}`
+      copy += isSelf ? ` Beat ${fmt(lineScore)} and your run is ${lands}.` : ` Beat ${fmt(lineScore)} and ${name}’s run is ${lands}.`
     }
   }
 
+  // The flag is the player's place among players, as the game cabinets say it; the list beside it counts runs.
+  const place = allTimePlaces?.[best.slug]?.place ?? best.rank
   const flag =
-    best.rank <= 3
-      ? { text: `${ordinal(best.rank)} all time`, tone: best.rank === 1 ? 'gold' : best.rank === 2 ? 'silver' : 'bronze' }
-      : best.rank <= 10
+    place <= 3
+      ? { text: `${ordinal(place)} all time`, tone: place === 1 ? 'gold' : place === 2 ? 'silver' : 'bronze' }
+      : place <= 10
         ? { text: 'Top 10 all time', tone: 'ten' }
-        : { text: `#${best.rank.toLocaleString()} all time`, tone: 'plain' }
+        : { text: `#${place.toLocaleString()} all time`, tone: 'plain' }
   const rows = runs ? boardRows(best, runs.rows, line, runs.line) : null
   const style = { '--tile-accent': accent, '--tile-ink': inkOn(accent) } as CSSProperties
 
@@ -130,7 +142,7 @@ export function ProfileBestBoard({
         <span className={`pbest__flag pbest__flag--${flag.tone}`}>{flag.text}</span>
       </a>
       <div className="pbest__text">
-        <p className="pbest__cap">{isSelf ? 'Your best board' : `${name}’s best board`}</p>
+        <p className="pbest__cap">{isSelf ? 'Your best game' : `${name}’s best game`}</p>
         <h2 className="pbest__title" id="pbest-title">
           <span className="pbest__score">{scoreWithUnit(best.slug, best.score)}</span>
           <br />

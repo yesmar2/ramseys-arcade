@@ -4,6 +4,7 @@ import { tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { numberWord } from '../lib/numberWord'
 import { resolveGameAccent } from '../lib/theme'
 import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
@@ -15,10 +16,6 @@ const PLACES = ['1st', '2nd', '3rd']
 /** The row's layout for how many cards are in it: three across, four, or the day's three over the week's two. */
 function gridClass(count: number) {
   return `onnow__grid${count === 4 ? ' onnow__grid--four' : count === 5 ? ' onnow__grid--five' : ''}`
-}
-
-function pts(n: number) {
-  return `${n} ${n === 1 ? 'pt' : 'pts'}`
 }
 
 function gameNames(t: TournamentSummary): string {
@@ -59,21 +56,22 @@ function RunningCard({
   champion: boolean
 }) {
   const place = mine?.yourPlace ?? null
-  const points = mine?.yourPoints ?? null
   const sub = t.games.length > 1 ? gameNames(t) : howItWins(t)
   const players = t.playerCount
   // A line about you stays on a phone, where the card is a slim row; the others go (home.css).
   const aboutYou = Boolean(joined || champion)
   let line: string
   if (joined && place) {
-    const onPoints = points != null && t.format === 'place-points' ? `, on ${pts(points)}` : ''
-    line = `You're ${PLACES[place - 1] ?? `#${place}`} of ${players}${onPoints}.`
+    line = `You're ${PLACES[place - 1] ?? `#${place}`} of ${players}.`
   } else if (champion) {
-    line = `You won last week's. ${howItWins(t)}; hold the title.`
+    line = "You won last week's. Hold the title."
   } else if (joined) {
     line = "You're in. Post a score to get on its board."
   } else if (t.games.length > 1) {
-    line = `${howItWins(t)}; the highest total wins.${players > 0 ? ` ${players} in so far.` : ''}`
+    // How the event scores its games is on its own page; the card says what to do.
+    const count = numberWord(t.games.length)
+    const all = t.games.length === 2 ? 'play both' : 'play them all'
+    line = `${count.charAt(0).toUpperCase()}${count.slice(1)} games, one winner: ${all}.${players > 0 ? ` ${players} in so far.` : ''}`
   } else if (players === 0) {
     line = 'No entries yet. The first score in sets the bar.'
   } else {
@@ -102,7 +100,7 @@ function RunningCard({
   )
 }
 
-/** Last week's weekly, over: who stood on the podium and how many played. */
+/** Last week's weekly, over: who stood on the podium, by place and name, and how many played. */
 function ResultCard({ t, you }: { t: TournamentSummary; you: string }) {
   const title = t.title.startsWith('Weekly ') ? `Last week's ${t.title.slice('Weekly '.length)}` : `Last week: ${t.title}`
   return (
@@ -130,7 +128,6 @@ function ResultCard({ t, you }: { t: TournamentSummary; you: string }) {
           >
             <span className="onnow-podium__rank">{PLACES[p.place - 1] ?? `#${p.place}`}</span>
             <span className="onnow-podium__name">{p.name}</span>
-            <span className="onnow-podium__pts">{pts(p.points)}</span>
           </li>
         ))}
       </ol>

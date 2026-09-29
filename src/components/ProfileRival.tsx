@@ -10,7 +10,6 @@ import {
   ordinal,
   periodWord,
   pointsFromMissing,
-  pts,
   shareLines,
   sharedGames,
   type ByGame,
@@ -43,9 +42,11 @@ function onWall(byGame: ByGame): ByGame {
  * Two players side by side: on your own card, you and whoever is just above
  * you (on top, whoever is chasing you); on someone else's, you and them; for
  * a visitor with no rank, them and whoever is just above them. The players
- * around, the games both have placed on and who placed higher, where the other
- * one's points come from, and what it would take to pass them. However big the
- * arcade gets, the player just above is close, so there is always a way past.
+ * around, the games both have played and who placed higher, the games the
+ * other one has played that you haven't, and what it would take to pass them.
+ * However big the arcade gets, the player just above is close, so there is
+ * always a way past. It says it in places and names; the points it works from
+ * are on How your rank works.
  */
 export function ProfileRival({
   name,
@@ -94,45 +95,38 @@ export function ProfileRival({
   const score = headToHead(shared)
 
   const gap = them.score - you.score
-  const relation =
-    gap > 0 ? `${gap.toLocaleString()} ahead of ${youWord}` : gap < 0 ? `${(-gap).toLocaleString()} behind ${youWord}` : `tied with ${youWord}`
+  const relation = gap > 0 ? `just ahead of ${youWord}` : gap < 0 ? `just behind ${youWord}` : `tied with ${youWord}`
   const sub = visiting
-    ? `You’re #${you.rank.toLocaleString()} ${word} · ${pts(you.score)}`
-    : `#${them.rank.toLocaleString()} ${word} · ${pts(them.score)} · ${relation}`
+    ? `You’re #${you.rank.toLocaleString()} ${word}`
+    : `#${them.rank.toLocaleString()} ${word}, ${relation}`
 
-  // Games on the wall only: a hidden game's points still count, but it can't be named as somewhere to go.
+  // Games on the wall only: a hidden game still counts, but it can't be named as somewhere to go.
   const missing = pointsFromMissing(onWall(them.byGame), you.byGame)
   const missingNames = missing.slugs.map(gameName)
   const when = period === 'all' ? '' : ` ${word}`
   const theirsFrom =
-    missing.points > 0
-      ? `${missing.points.toLocaleString()} of ${them.name}’s ${them.score.toLocaleString()} points come from ${
-          missing.slugs.length === 1 ? 'a game' : `${missing.slugs.length} games`
-        } ${youWord} ${haveWord} played${when}: ${andList(missingNames)}.`
-      : null
+    missing.slugs.length > 0 ? `${them.name} has played ${andList(missingNames)}${when}, and ${youWord} ${haveWord} yet.` : null
 
-  // How to get past them, when they're ahead and right there.
+  // How to get past them, when they're ahead and right there. The sums stay hidden: a climb or a new game that would do it.
   let pass: string | null = null
   let climbSlug: string | null = null
   if (!visiting && gap >= 0) {
     const climb = cheapestClimb(you.byGame, gap)
     const unplayed = VISIBLE_LEADERBOARD_GAMES.some((slug) => !you.byGame[slug])
     const middling = unplayed && gap < MIDDLING
-    const line = shareLines(data.totalPlayers).find((l) => l.rank === them.rank)
-    const into = line ? ` into the ${line.label.toLowerCase()}` : ''
     const passWord = second ? 'pass' : 'passes'
     if (climb) {
       climbSlug = climb.slug
       const places = `${climb.places} ${climb.places === 1 ? 'place' : 'places'}`
       pass = middling
-        ? `Climb ${places} on ${gameName(climb.slug)}, or post a middling run on a game ${youWord} ${haveWord} played${when}, and ${youWord} ${passWord} ${them.name}${into}.`
-        : `Climb ${places} on ${gameName(climb.slug)} and ${youWord} ${passWord} ${them.name}${into}.`
+        ? `Climb ${places} on ${gameName(climb.slug)}, or try a game ${youWord} ${haveWord} played${when}, and ${youWord} could pass ${them.name}.`
+        : `Climb ${places} on ${gameName(climb.slug)} and ${youWord} ${passWord} ${them.name}.`
     } else if (middling) {
-      pass = `A middling run on any game ${youWord} ${haveWord} played${when} would pass ${them.name}${into}.`
+      pass = `Play any game ${youWord} ${haveWord} tried${when} and ${youWord} could pass ${them.name}.`
     }
   }
   if (data.rank === 1 && isSelf) {
-    pass = gap < 0 ? `Your lead is ${pts(-gap)}.` : `${them.name} is tied with you on points.`
+    pass = gap < 0 ? `You’re in front of ${them.name}.` : `You and ${them.name} are tied.`
   }
 
   const startWith = missing.slugs[0]
@@ -147,8 +141,8 @@ export function ProfileRival({
       : null
 
   const around = !visiting ? neighboursOf(data) : []
-  const lines = shareLines(data.totalPlayers)
-  const top = Math.max(first.score, other.score, 1)
+  // Of the lines across the board, only the top ten is drawn: the rest are shares, on How your rank works.
+  const lines = shareLines(data.totalPlayers).filter((l) => l.key === 'ten')
 
   return (
     <article className="prival pcard-panel" id="rival" aria-labelledby="prival-title">
@@ -169,23 +163,7 @@ export function ProfileRival({
         ) : null}
       </div>
 
-      {visiting ? (
-        <div className="prival__bars" role="img" aria-label={`Points ${word}: ${first.name} ${first.score}, you ${other.score}`}>
-          <span className="prival__cap">Points {word}</span>
-          {[
-            { label: first.name, score: first.score, cls: 'prival__bar--first' },
-            { label: 'You', score: other.score, cls: 'prival__bar--you' },
-          ].map((b) => (
-            <span key={b.label} className={`prival__bar ${b.cls}`}>
-              <span className="prival__bar-name">{b.label}</span>
-              <span className="prival__bar-track">
-                <span style={{ width: `${(100 * b.score) / top}%` }} />
-              </span>
-              <span className="prival__bar-n">{b.score.toLocaleString()}</span>
-            </span>
-          ))}
-        </div>
-      ) : around.length > 1 ? (
+      {!visiting && around.length > 1 ? (
         <div className="prival__around">
           <span className="prival__cap">Around {isSelf ? 'you' : name} {word}</span>
           <ol className="prival__list">
@@ -201,7 +179,6 @@ export function ProfileRival({
                       {n.name}
                       {mine && isSelf ? <span className="pbest__you">You</span> : null}
                     </span>
-                    <span className="prival__pts">{n.score.toLocaleString()}</span>
                   </a>
                   {line ? (
                     <span className="pbest__line prival__line">
@@ -217,7 +194,7 @@ export function ProfileRival({
 
       <div className="prival__table">
         <div className="prival__table-head">
-          <span>{shared.length > 0 ? 'Games you both placed on' : 'Games in common'}</span>
+          <span>{shared.length > 0 ? (second ? 'Games you’ve both played' : 'Games both have played') : 'Games in common'}</span>
           {shared.length > 0 ? (
             <>
               <span className="prival__col prival__col--first">{firstLabel}</span>

@@ -88,9 +88,9 @@ export function periodWords(period: GroupPeriod, now = new Date()): string {
 }
 
 /**
- * "OWEN leads September by 127 over FRAN." Said to someone at the top, it is
- * about them: "You lead…", or "…over you." from second, so the line under it
- * need not say the same gap again.
+ * "OWEN leads September, ahead of FRAN." Said to someone at the top, it is
+ * about them: "You lead…", or "…ahead of you." from second, so the line under
+ * it need not say the same again. The table beside it has the points.
  */
 export function leadLine(entries: GlobalBoardEntry[], period: GroupPeriod, me = ''): string | null {
   const [first, second] = entries
@@ -102,14 +102,14 @@ export function leadLine(entries: GlobalBoardEntry[], period: GroupPeriod, me = 
     const where = period === 'all' ? 'so far' : when === 'this week' ? 'this week' : `in ${when}`
     return isMe(first) ? `You’re the only one on the table ${where}.` : `${first.name} is the only one on the table ${where}.`
   }
-  const gap = first.score - second.score
-  if (isMe(first)) return gap === 0 ? `You lead ${when}, tied with ${second.name}.` : `You lead ${when} by ${gap} over ${second.name}.`
+  const tied = first.score === second.score
+  if (isMe(first)) return tied ? `You lead ${when}, tied with ${second.name}.` : `You lead ${when}.`
   const over = isMe(second) ? 'you' : second.name
-  return gap === 0 ? `${first.name} leads ${when}, tied with ${over}.` : `${first.name} leads ${when} by ${gap} over ${over}.`
+  return tied ? `${first.name} leads ${when}, tied with ${over}.` : `${first.name} leads ${when}, ahead of ${over}.`
 }
 
 /**
- * "You're 5th, 18 behind DEX." — or how to get onto the table. Beside the
+ * "You're 5th, just behind DEX." — or how to get onto the table. Beside the
  * lead line (afterLead), first and second have been told already.
  */
 export function youLine(entries: GlobalBoardEntry[], me: string, period: GroupPeriod, afterLead = false): string | null {
@@ -123,11 +123,12 @@ export function youLine(entries: GlobalBoardEntry[], me: string, period: GroupPe
   const mine = entries[i]!
   if (i === 0) {
     const next = entries[1]
-    return next ? `You lead, ${mine.score - next.score} clear of ${next.name}.` : 'You lead.'
+    return next && next.score === mine.score ? `You lead, tied with ${next.name}.` : 'You lead.'
   }
   const above = entries[i - 1]!
-  const gap = above.score - mine.score
-  return gap === 0 ? `You’re ${ordinal(mine.rank)}, tied with ${above.name}.` : `You’re ${ordinal(mine.rank)}, ${gap} behind ${above.name}.`
+  return above.score === mine.score
+    ? `You’re ${ordinal(mine.rank)}, tied with ${above.name}.`
+    : `You’re ${ordinal(mine.rank)}, just behind ${above.name}.`
 }
 
 export function ordinal(n: number): string {

@@ -52,7 +52,7 @@ function TicketsPart({ slug }: { slug: string }) {
       </ul>
       <p className="htp__note">
         {isDailyGame(slug)
-          ? 'Your best step of the day is paid once, as you reach it. With three or more playing, the day’s top three get 10, 6 and 3 more after midnight.'
+          ? 'Your best of the day pays once. Finish in the day’s top three for bonus tickets after midnight.'
           : 'Every saved run pays, up to 200 tickets a day. A new best pays 5 more.'}
       </p>
     </section>

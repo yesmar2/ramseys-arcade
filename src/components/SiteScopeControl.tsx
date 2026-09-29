@@ -218,7 +218,7 @@ export function SiteScopeControl() {
               </a>
             </li>
           </ul>
-          <p className="site-scope__note">Every board, rank and banner on the site follows this.</p>
+          <p className="site-scope__note">Changes what every board on the site shows.</p>
         </div>
       ) : null}
     </div>

@@ -1,20 +1,17 @@
 import type { ReactNode } from 'react'
 import type { HubBoard } from '../hooks/useGameHub'
 import { dayRunIn, gapBetween, oneRunBoard, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
-import { anyRunPays, firstRunAims, standingOn, type Standing } from '../lib/gameHub'
+import { firstRunAims, standingOn, type Standing } from '../lib/gameHub'
 import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { andList, ordinal, periodWord } from '../lib/profileMath'
 import { openSiteMenu } from './siteNav'
 
-/** What an empty period is called in a sentence. */
-const NOUN: Record<LeaderboardPeriod, string> = { daily: 'day', weekly: 'week', monthly: 'month', all: 'board' }
-
 /**
  * Where you stand on the game's board this period, and the one run that moves
- * you: past the player above in the top ten or on a small board, and to the
- * next share line (the top half, 25%, 10%) further down. Off the board, what
- * your best would do on it; never played, what a first run is worth.
+ * you: past the player above in the top ten or on a small board, and a bigger
+ * jump further down (gameHub standingOn picks it). Off the board, what your
+ * best would do on it; never played, the scores a first run could aim at.
  */
 export function GameHubStanding({
   slug,
@@ -60,13 +57,11 @@ export function GameHubStanding({
         <Callout badge={field ? ordinal(landing.place) : '1st'}>
           {field ? (
             <>
-              A run like your best puts you <b>{ordinal(landing.place)}</b> {when}, and pays{' '}
-              <b className="gh-hot">{landing.pays} points</b>.
+              A run like your best would put you <b>{ordinal(landing.place)}</b> {when}.
             </>
           ) : (
             <>
-              The {NOUN[period]} is empty, so <b>any run</b> takes 1st and <b className="gh-hot">100 points</b> until
-              someone beats it.
+              Nobody’s played {when === 'all time' ? '' : `${when} `}yet, so <b>any run</b> takes 1st.
             </>
           )}
         </Callout>
@@ -81,7 +76,7 @@ export function GameHubStanding({
           <p className="gh-stand__big gh-stand__big--words">Your first run</p>
           <p className="gh-stand__sub">
             {field
-              ? `${field} ${field === 1 ? 'player' : 'players'} ${when}. ${whatPutsYouOn(slug)}, and every place pays points toward the ${NOUN[period] === 'board' ? 'all-time standings' : NOUN[period]}.`
+              ? `${field} ${field === 1 ? 'player' : 'players'} ${when}. ${whatPutsYouOn(slug)}.`
               : `Nobody has played ${gameName} ${when === 'all time' ? 'yet' : when}. Whatever you score, you start in 1st.`}
           </p>
         </div>
@@ -91,16 +86,13 @@ export function GameHubStanding({
               <li key={aim.label} className="gh-aim">
                 <span className="gh-cap">{aim.label}</span>
                 <b>{aim.beat == null ? 'Any score' : `Beat ${fmt(aim.beat)}`}</b>
-                <span>
-                  {ordinal(aim.place)} · {aim.pays} pts
-                </span>
+                <span>{ordinal(aim.place)}</span>
               </li>
             ))}
           </ul>
         ) : (
           <Callout badge="1st">
-            <b>Any run</b> takes 1st and <b className="gh-hot">{field ? anyRunPays(field) : 100} points</b> until someone
-            beats it.
+            <b>Any run</b> takes 1st until someone beats it.
           </Callout>
         )}
         {!signedIn ? (
@@ -128,13 +120,10 @@ export function GameHubStanding({
 
 function OnBoard({ slug, standing, when }: { slug: LeaderboardGame; standing: Standing; when: string }) {
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
-  const { place, field, pays, best, runs, bar, lines, next, chaser, settled } = standing
-  const nextLabel = next?.line ?? null
-  // Name the line being chased; the top ten as well, when it is far enough along not to collide.
-  const target = lines.find((l) => l.label === nextLabel)
-  const labelled = lines.filter(
-    (l) => l === target || (l.label === 'Top ten' && (!target || Math.abs(l.at - target.at) >= 0.2)),
-  )
+  const { place, field, best, runs, bar, lines, next, chaser, settled } = standing
+  // Past three names the list counts the rest ("Sam, Jo and 2 more"), and a comma keeps that "and" off "and move up".
+  const passes = next ? andList(next.passes, 3) : ''
+  const counted = next ? next.passes.length > 3 : false
   return (
     <>
       <div className="gh-stand__lead gh-stand__lead--row">
@@ -143,9 +132,7 @@ function OnBoard({ slug, standing, when }: { slug: LeaderboardGame; standing: St
             {ordinal(place)}
             <span> of {field}</span>
           </p>
-          <p className="gh-stand__sub">
-            {when} · pays <b className="gh-hot">{pays}</b> of 100 points
-          </p>
+          <p className="gh-stand__sub">{when}</p>
         </div>
         <div className="gh-stand__best">
           <b>{fmt(best)}</b>
@@ -155,27 +142,12 @@ function OnBoard({ slug, standing, when }: { slug: LeaderboardGame; standing: St
         </div>
       </div>
 
+      {/* On a board too big for a place alone to say where it sits, a plain track from last to 1st with your dot. */}
       {lines.length > 0 ? (
-        <div className="gh-bar" role="img" aria-label={`${ordinal(place)} of ${field}${target ? `; the ${target.label.toLowerCase()} starts at ${ordinal(target.rank)}` : ''}`}>
-          {labelled.map((l) => (
-            <span
-              key={l.label}
-              className={`gh-bar__label${l === target ? ' gh-bar__label--next' : ''}`}
-              style={{ left: `${l.at * 100}%` }}
-            >
-              {l === target && next ? `${l.label} · ${fmt(next.beat)}` : l.label}
-            </span>
-          ))}
+        <div className="gh-bar" role="img" aria-label={`${ordinal(place)} of ${field}`}>
           <span className="gh-bar__track">
             <span className="gh-bar__fill" style={{ width: `${bar * 100}%` }} />
           </span>
-          {lines.map((l) => (
-            <span
-              key={l.label}
-              className={`gh-bar__line${l === target ? ' gh-bar__line--next' : ''}`}
-              style={{ left: `${l.at * 100}%` }}
-            />
-          ))}
           <span className="gh-bar__you" style={{ left: `${bar * 100}%` }} />
           <span className="gh-bar__end">{ordinal(field)}</span>
           <span className="gh-bar__end gh-bar__end--first">1st</span>
@@ -185,20 +157,19 @@ function OnBoard({ slug, standing, when }: { slug: LeaderboardGame; standing: St
       {next ? (
         <Callout badge={ordinal(next.place)}>
           Beat <b>{fmt(next.beat)}</b>
-          {next.passes.length ? ` to pass ${andList(next.passes, 3)}` : ''}: {ordinal(next.place)}
-          {next.line ? `, the ${next.line.toLowerCase()}` : ''}
-          {next.gain > 0 ? (
-            <>
-              , and <b className="gh-hot">+{next.gain} {next.gain === 1 ? 'point' : 'points'}</b>
-            </>
-          ) : null}
-          .
+          {passes ? ` to pass ${passes}${counted ? ',' : ''} and move up` : ' to move up'} to {ordinal(next.place)}.
         </Callout>
       ) : settled && place > 1 ? (
         <Callout badge={ordinal(place)}>{dayRunIn(slug)}</Callout>
       ) : (
         <Callout badge="1st">
-          You hold 1st{chaser ? `, and ${chaser.name} is ${gapBetween(slug, best, chaser.score)} back` : ''}.
+          You hold 1st
+          {chaser
+            ? chaser.gap === 0
+              ? `, tied with ${chaser.name}: you got there first`
+              : `, and ${chaser.name} is ${gapBetween(slug, best, chaser.score)} back`
+            : ''}
+          .
         </Callout>
       )}
     </>

@@ -9,23 +9,35 @@ import {
   type LeaderboardPeriod,
 } from './leaderboard'
 import { formatDayPoints, formatLeaderboardScore } from './leaderboardFormat'
-import { numberWord } from './numberWord'
 import type { TrophyAward } from './trophies'
 
 /*
- * The boards page's arithmetic and its words: who leads and by how much, what
- * each board is worth, and where a player's next points are. The page and the
- * hook that loads it only carry numbers about; everything worked out from them
- * is here, so the page says the right thing however the numbers fall, on an
- * empty Monday as much as at the end of a busy month.
+ * The boards page's arithmetic and its words: who leads, who is either side of
+ * a player, and where they could climb next. The page and the hook that loads
+ * it only carry numbers about; everything worked out from them is here, so the
+ * page says the right thing however the numbers fall, on an empty Monday as
+ * much as at the end of a busy month.
  *
  * A board pays by place: first gets 100, last a point or two, and a board with
  * nobody on it pays its first run all 100. A player's total is their boards
- * added together (see placePoints in the API's store).
+ * added together (see placePoints in the API's store). The page says places
+ * and names; what each place pays, and a player's points game by game, are on
+ * How your rank works (lib/rankHow).
  */
 
 /** One player's best run on a board, or on a daily's board for longer than a day, their day points. */
-export type BoardTop = { name: string; score: number; avatarId?: string }
+export type BoardTop = {
+  name: string
+  score: number
+  avatarId?: string
+  /**
+   * For the player just above you (nextUp): the best place a run that beats their score takes. It is
+   * higher than their own place when they are tied with the players above them.
+   */
+  reach?: number
+  /** For nextUp: the places above you a run can land in, best first — the first place held at each score above you. */
+  places?: number[]
+}
 
 /** One game's board for the period: its top three players and how many are on it. */
 export type BoardLine = {
@@ -60,7 +72,8 @@ export type YouStanding = {
 export type LastFinal = { rank: number; name: string; score: number; games: number }[]
 
 export type Stat = { value: string; label: string }
-export type Move = { amount: string; what: string; why: string }
+/** A place to climb, told in words: a short tag, the games, and why it moves you up. */
+export type Climb = { tag: string; what: string; why: string }
 
 /* ---------- the period ---------- */
 
@@ -229,15 +242,6 @@ function count(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
 
-function capital(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
-}
-
-/** Three first runs, One first run */
-function firstRuns(n: number): string {
-  return `${capital(numberWord(n))} first run${n === 1 ? '' : 's'}`
-}
-
 /** 1st, 2nd, 3rd, 11th, 22nd */
 export function ordinal(n: number): string {
   const tens = n % 100
@@ -245,9 +249,9 @@ export function ordinal(n: number): string {
   return `${n}${n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th'}`
 }
 
-/** Barrage, Bop, Frenzy; past `max` of them, a count. */
-function gameList(slugs: string[], max = 4): string {
-  if (slugs.length > max) return count(slugs.length, 'board')
+/** Barrage, Bop, Frenzy; past `max` of them, "12 games", or "12 more games" beside the ones you're on. */
+function gameNames(slugs: string[], max = 4, more = false): string {
+  if (slugs.length > max) return `${slugs.length.toLocaleString()} ${more ? 'more games' : 'games'}`
   return slugs.map(gameName).join(', ')
 }
 
@@ -286,23 +290,30 @@ export function fieldSizes(
 /**
  * The player directly above `me`, from a board's runs down to `me`'s best.
  * Runs come best first, so each player's first run is their best, and the
- * last new name before `me` is the next place up.
+ * last new name before `me` is the next place up. A tie goes to whoever got
+ * there first, so players on the same score sit one under another: beating
+ * that score passes them all, and `reach` is the first place held at it.
  */
 export function nextUp(runsAbove: LeaderboardEntry[], me: string): BoardTop | null {
   const seen = new Set<string>()
+  const firstAt = new Map<number, number>()
   let last: BoardTop | null = null
   for (const entry of runsAbove) {
     const name = normalizePlayerName(entry.name ?? '')
     if (!name || name === me || seen.has(name)) continue
     seen.add(name)
+    if (!firstAt.has(entry.score)) firstAt.set(entry.score, seen.size)
     last = { name, score: entry.score, avatarId: entry.avatarId }
   }
-  return last
+  return last && { ...last, reach: firstAt.get(last.score), places: [...firstAt.values()] }
 }
 
 /* ---------- the race ---------- */
 
-/** The headline, with the leader's name apart so it can wear the gold. */
+/**
+ * The headline, with the leader's name apart so it can wear the gold. It says
+ * who leads, not by how many points: those are on How your rank works.
+ */
 export function headline(
   copy: PeriodCopy,
   standings: Standing[],
@@ -312,18 +323,14 @@ export function headline(
   if (totalPlayers < 2 || !first || !second) {
     return { name: '', rest: copy.noun ? `The ${copy.noun} is wide open.` : 'The boards are wide open.' }
   }
-  const gap = first.score - second.score
-  if (gap <= 0) {
+  if (first.score - second.score <= 0) {
     const where = copy.noun ? ` of the ${copy.noun}` : ''
     return { name: '', rest: `${first.name} and ${second.name} are tied at the top${where}.` }
   }
-  return {
-    name: first.name,
-    rest: ` leads ${copy.noun ? `the ${copy.noun}` : 'all time'} by ${count(gap, 'point')}.`,
-  }
+  return { name: first.name, rest: ` leads ${copy.noun ? `the ${copy.noun}` : 'all time'}.` }
 }
 
-/** The line under the headline: how many are playing, and what the boards pay. */
+/** The line under the headline: how many are playing, and how to climb. */
 export function lede(
   copy: PeriodCopy,
   period: LeaderboardPeriod,
@@ -334,49 +341,43 @@ export function lede(
   const played = boards.filter((b) => b.top.length > 0)
   const open = boards.length - played.length
   if (totalPlayers === 0 || !standings[0]) {
-    return `Nobody has a run on the boards ${copy.noun ? copy.phrase : 'yet'}. The first run on each board pays all 100 points.`
+    return `Nobody has played ${copy.noun ? `${copy.phrase} ` : ''}yet. Your first run puts you on top.`
   }
   if (totalPlayers === 1) {
     const leader = standings[0]
     const where =
-      played.length === 1 ? `with one ${gameName(played[0].slug)} run` : `on ${count(played.length, 'board')}`
+      played.length === 1 ? `with one ${gameName(played[0].slug)} run` : `on ${count(played.length, 'game')}`
     const start =
       period === 'weekly' ? 'It started Monday, and ' : period === 'monthly' ? 'It started on the 1st, and ' : ''
-    const rest =
-      open > 0
-        ? ` The other ${count(open, 'board')} ${open === 1 ? 'has' : 'have'} no runs, and the first run on ${open === 1 ? 'it' : 'each'} pays all 100 points.`
-        : ''
+    const rest = open > 0 ? ` Nobody has played the other ${open === 1 ? 'one' : open.toLocaleString()} yet.` : ''
     return `${start}${leader.name}’s the only name up so far, ${where}.${rest}`
   }
-  const who = `${count(totalPlayers, 'player')} on ${count(played.length, 'board')}.`
-  if (!copy.noun) return `${who} Your best run on each board counts, and each board pays up to 100 points.`
-  return `${who} Every board you place on pays up to 100 points, and the most points takes the ${copy.noun}.`
+  const who = `${count(totalPlayers, 'player')} on ${count(played.length, 'game')}`
+  if (!copy.noun) return `${who}. Your best run on each game counts.`
+  return `${who} ${copy.phrase}. Play more games and finish higher to climb.`
 }
 
 /* ---------- you ---------- */
 
 /**
- * Where you stand against the players either side of you. Each gap says it is
- * points, and a tie says "Tied": the two sit side by side, and a bare word
- * beside a bare number read as one thing ("Level 8").
+ * Who is either side of you, by name: the gaps between you are points, and
+ * those are on How your rank works. A tie says "Tied", with the name under it.
  */
 export function youStats(you: YouStanding, standings: Standing[]): Stat[] {
   if (you.rank == null) return []
   const rank = you.rank
   const around: { rank: number; name: string; score: number }[] = [...you.nearby, ...standings]
   const at = (r: number) => around.find((e) => e.rank === r && e.name !== you.name)
-  const versus = (other: { name: string; score: number }, gap: number, side: string): Stat =>
-    gap > 0
-      ? { value: gap.toLocaleString(), label: `${gap === 1 ? 'point' : 'points'} ${side} ${other.name}` }
-      : { value: 'Tied', label: `on points with ${other.name}` }
+  const versus = (other: { name: string }, gap: number, side: string): Stat =>
+    gap > 0 ? { value: other.name, label: side } : { value: 'Tied', label: `with ${other.name}` }
   const stats: Stat[] = []
   const above = rank > 1 ? at(rank - 1) : undefined
   const below = at(rank + 1)
-  if (above) stats.push(versus(above, above.score - you.score, 'behind'))
-  if (below) stats.push(versus(below, you.score - below.score, 'ahead of'))
+  if (above) stats.push(versus(above, above.score - you.score, 'just ahead of you'))
+  if (below) stats.push(versus(below, you.score - below.score, 'just behind you'))
   if (rank === 1) {
     const led = Object.values(you.byGame).filter((p) => p?.place === 1).length
-    stats.push({ value: led.toLocaleString(), label: led === 1 ? 'board you lead' : 'boards you lead' })
+    stats.push({ value: led.toLocaleString(), label: led === 1 ? 'game you lead' : 'games you lead' })
   }
   return stats.slice(0, 2)
 }
@@ -386,42 +387,34 @@ export function lastStats(copy: PeriodCopy, last: LastFinal | null, me: string):
   if (!last || !copy.noun || !me) return []
   const mine = last.find((row) => row.name === me)
   if (!mine) return []
-  const stats: Stat[] = [
-    { value: ordinal(mine.rank), label: `last ${copy.noun}, with ${mine.score.toLocaleString()}` },
-  ]
-  const third = last.find((row) => row.rank === 3)
-  if (mine.rank > 3 && third) {
-    stats.push({ value: (third.score - mine.score).toLocaleString(), label: `points off last ${copy.noun}’s podium` })
-  } else if (mine.rank <= 3) {
-    stats.push({ value: 'Podium', label: `last ${copy.noun}, and a trophy for it` })
-  }
+  const stats: Stat[] = [{ value: ordinal(mine.rank), label: `last ${copy.noun}` }]
+  if (mine.rank <= 3) stats.push({ value: 'Podium', label: `last ${copy.noun}, and a trophy for it` })
   return stats
 }
 
-/** A board with one player on it pays any run 50, and a run that beats theirs 100. */
-function loneBoard(line: BoardLine): Move {
+/** A game with one player on it: beating them takes 1st. */
+function loneGame(line: BoardLine): Climb {
   const holder = line.top[0]
-  const score = lineScore(line, holder.score)
   return {
-    amount: '50 to 100',
+    tag: 'Just one player',
     what: gameName(line.slug),
     why: line.points
-      ? `${holder.name}’s alone on it with ${score}. Play a day and it pays 50; out-point them and it pays 100.`
-      : `${holder.name}’s alone on it with ${score}. Any run pays 50; beat ${score} and it pays 100.`,
+      ? `Only ${holder.name} has played it. Beat them on a day to take 1st.`
+      : `Only ${holder.name} has played it. Beat ${lineScore(line, holder.score)} to take 1st.`,
   }
 }
 
 /**
- * Where the next points are, biggest first: boards nobody has played, boards
- * you have not played, and the places you could climb on your own. The foot
- * line says what that adds up to against the player ahead of you.
+ * The boards page's Moves card: the games that would move you up, the ones
+ * nobody has played first, each saying why rather than what it pays. The foot
+ * names the player to catch.
  */
-export function moves(
+export function climbs(
   copy: PeriodCopy,
   boards: BoardLine[],
   standings: Standing[],
   you: YouStanding | null,
-): { rows: Move[]; foot: string } {
+): { rows: Climb[]; foot: string } {
   const named = Boolean(you)
   const ranked = you?.rank != null
   const mine = you?.byGame ?? {}
@@ -429,101 +422,93 @@ export function moves(
   const others = boards.filter((b) => b.top.length > 0 && !mine[b.slug])
   const lonely = others.filter((b) => b.players === 1)
   const crowded = others.filter((b) => b.players !== 1)
-  const rows: Move[] = []
+  const rows: Climb[] = []
 
   if (empties.length) {
-    const one = empties.length === 1
     rows.push({
-      amount: one ? '+100' : '+100 each',
-      what: gameList(empties.map((b) => b.slug)),
-      why: `Nobody’s played ${one ? 'it' : 'them'} ${copy.noun ? copy.phrase : 'yet'}. The first run on ${one ? 'it' : 'each'} takes all 100.`,
+      tag: 'Be first',
+      what: gameNames(empties.map((b) => b.slug)),
+      why: `Nobody’s played ${empties.length === 1 ? 'it' : 'them'} ${copy.noun ? copy.phrase : 'yet'}.`,
     })
   }
 
   if (ranked) {
     if (others.length === 1 && lonely.length === 1) {
-      rows.push(loneBoard(lonely[0]))
+      rows.push(loneGame(lonely[0]))
     } else if (others.length) {
       rows.push({
-        amount: 'up to +100',
-        what: gameList(
+        tag: 'New to you',
+        what: gameNames(
           others.map((b) => b.slug),
           5,
+          true,
         ),
-        why: `Boards you haven’t played${copy.noun ? ` ${copy.phrase}` : ''}. Halfway up one pays about 50.`,
+        why: `Games you haven’t played${copy.noun ? ` ${copy.phrase}` : ''}.`,
       })
     }
-    // A place is worth about 100 over the board's field, so a small board's places are worth
-    // more. Only boards with a place left to climb count; when they differ, say so as a range.
+    // The games you're on, while one has a place left to climb.
     const placed = Object.values(mine).filter((p): p is GlobalGamePlace => Boolean(p))
-    const steps = placed
-      .filter((p) => p.place > 1)
-      .map((p) => Math.max(1, Math.round(100 / Math.max(1, p.total ?? 50))))
-      .sort((a, b) => a - b)
-    if (steps.length) {
-      const low = steps[0]
-      const high = steps[steps.length - 1]
-      const middle = steps[Math.floor(steps.length / 2)]
+    if (placed.some((p) => p.place > 1)) {
       rows.push({
-        amount: high - low <= 1 ? `about +${middle}` : `+${low} to +${high}`,
-        what: `Your ${count(placed.length, 'board')}`,
-        why: 'What each place you climb on one of them is worth.',
+        tag: 'Any game',
+        what: `Your ${count(placed.length, 'game')}`,
+        why: 'Only your best run on each counts, so a better run moves you up.',
       })
     }
   } else {
-    if (lonely.length === 1) rows.push(loneBoard(lonely[0]))
+    if (lonely.length === 1) rows.push(loneGame(lonely[0]))
     else if (lonely.length > 1) {
       rows.push({
-        amount: 'at least +50',
-        what: gameList(lonely.map((b) => b.slug)),
-        why: 'One player on each. Any run pays 50, and beating theirs pays 100.',
+        tag: 'Just one player',
+        what: gameNames(lonely.map((b) => b.slug)),
+        why: 'Only one player on each so far.',
       })
     }
     if (crowded.length) {
       rows.push({
-        amount: 'up to +100',
+        tag: 'Any game',
         what:
           named || crowded.length <= 2
-            ? gameList(
+            ? gameNames(
                 crowded.map((b) => b.slug),
                 5,
               )
             : empties.length || lonely.length
-              ? 'Every other board'
-              : 'Every board',
-        why: 'Halfway up a board pays about 50, and only your best run on it counts.',
+              ? 'Every other game'
+              : 'Every game',
+        why: 'Only your best run on each counts.',
       })
     }
   }
 
-  return { rows, foot: movesFoot(copy, empties.length, standings, you) }
+  return { rows, foot: climbsFoot(copy, empties.length, standings, you) }
 }
 
-function movesFoot(copy: PeriodCopy, empties: number, standings: Standing[], you: YouStanding | null): string {
+/**
+ * The Moves card's foot: who to catch next, and whether open games are the
+ * fastest way up (each open game is a first place, so enough of them pass the
+ * leader).
+ */
+function climbsFoot(copy: PeriodCopy, empties: number, standings: Standing[], you: YouStanding | null): string {
   const lead = copy.noun ? `lead the ${copy.noun}` : 'lead all time'
+  const fastest = 'Open games are the fastest way up.'
   if (you && you.rank != null) {
     const rank = you.rank
     const around: { rank: number; name: string; score: number }[] = [...you.nearby, ...standings]
     if (rank === 1) {
       const second = around.find((e) => e.rank === 2 && e.name !== you.name)
       if (!second) return `You’re the only one on the boards${copy.noun ? ` ${copy.phrase}` : ''}.`
-      const margin = you.score - second.score
-      return margin > 0 ? `You ${lead} by ${count(margin, 'point')}.` : `You’re tied with ${second.name} at the top.`
+      return you.score > second.score ? `You ${lead}.` : `You’re tied with ${second.name} at the top.`
     }
     const above = around.find((e) => e.rank === rank - 1 && e.name !== you.name)
     if (!above) return ''
-    const gap = above.score - you.score
-    if (gap <= 0) return `You’re tied on points with ${above.name}.`
-    // Passing means more points than theirs, so a gap of exactly 300 takes four.
-    const needed = Math.floor(gap / 100) + 1
-    if (empties >= needed) return `${firstRuns(needed)} would put you past ${above.name}.`
-    if (empties > 0) return `${firstRuns(empties)} would bring you within ${gap - 100 * empties} of ${above.name}.`
-    return `${count(gap, 'point')} behind ${above.name}.`
+    if (above.score <= you.score) return `You’re tied with ${above.name}.`
+    return empties > 0 ? `${above.name} is next up. ${fastest}` : `${above.name} is next up.`
   }
   const leader = standings[0]
   if (!leader) return copy.noun ? `Your first run puts you top of the ${copy.noun}.` : 'Your first run puts you top of the boards.'
-  const needed = Math.floor(leader.score / 100) + 1
-  if (empties >= needed) return `${firstRuns(needed)} and you’d ${lead}.`
+  // Enough open games, each a first place, to pass the leader.
+  if (empties >= Math.floor(leader.score / 100) + 1) return fastest
   if (you) return `Your first run puts you on ${copy.noun ? `this ${copy.noun}’s` : 'the all-time'} standings.`
   return 'Any run you save puts you on a board.'
 }
@@ -532,7 +517,19 @@ function movesFoot(copy: PeriodCopy, empties: number, standings: Standing[], you
 
 export type YouCell = { a: string; b: string; tone: 'on' | 'hint' | 'off' }
 
-/** Your place on one board and the score that takes the next one, for a player with a name. */
+/**
+ * The best place a run that beats `next` takes. Players tied on a score sit one under another,
+ * whoever got there first on top, so beating the one just above you can pass the ones above them
+ * too: it takes the first place held at that score. nextUp works that out from every run above
+ * you; without it, the board's top three still catch a tie up there.
+ */
+function reachFor(line: BoardLine, own: number, next: BoardTop): number {
+  if (next.reach) return Math.min(next.reach, own - 1)
+  const first = line.top.findIndex((t) => t.score === next.score)
+  return first >= 0 ? Math.min(first + 1, own - 1) : own - 1
+}
+
+/** Your place on one board and the score that takes a place higher, for a player with a name. */
 export function youCell(
   line: BoardLine,
   you: YouStanding,
@@ -541,20 +538,21 @@ export function youCell(
 ): YouCell {
   const place = you.byGame[line.slug]
   if (place) {
+    // A daily's week is its days added up, so it climbs a day at a time: there's no one score to beat.
+    if (line.points) {
+      return { a: `#${place.place}`, b: place.place === 1 ? 'You lead it' : 'Play every day to climb', tone: 'on' }
+    }
     const a = best != null ? `#${place.place} · ${lineScore(line, best)}` : `#${place.place}`
-    // A daily's day points climb a day at a time: say how far the next place is, not a score to beat.
     const b =
       place.place === 1
         ? 'You lead it'
-        : next && line.points && best != null
-          ? `${formatDayPoints(Math.max(0, next.score - best))} off ${ordinal(place.place - 1)}`
-          : next
-            ? `Beat ${lineScore(line, next.score)} for ${ordinal(place.place - 1)}`
-            : count(place.points, 'point')
+        : next
+          ? `Beat ${lineScore(line, next.score)} for ${ordinal(reachFor(line, place.place, next))}`
+          : ''
     return { a, b, tone: 'on' }
   }
   if (line.players === 1 && line.top[0]) {
-    return { a: '–', b: `Just ${line.top[0].name}. Any run pays 50`, tone: 'hint' }
+    return { a: '–', b: `Just ${line.top[0].name} so far`, tone: 'hint' }
   }
   return { a: '–', b: 'Not played yet', tone: 'off' }
 }
@@ -565,74 +563,16 @@ export function phoneLine(line: BoardLine, you: YouStanding | null, cell: YouCel
     if (cell.tone === 'on') {
       const place = you.byGame[line.slug]?.place ?? 0
       if (place === 1) return 'You lead it'
+      if (!cell.b) return `You #${place}`
       return `You #${place} · ${cell.b.charAt(0).toLowerCase()}${cell.b.slice(1)}`
     }
     if (cell.tone === 'hint') return cell.b
     return 'You haven’t played it yet'
   }
+  // A daily's week is in points, which stay on its own board: here it is names.
   const rest = line.top
     .slice(1)
-    .map((t, i) => `${ordinal(i + 2)} ${t.name} ${lineScore(line, t.score)}`)
+    .map((t, i) => `${ordinal(i + 2)} ${t.name}${line.points ? '' : ` ${lineScore(line, t.score)}`}`)
   if (rest.length) return rest.join(' · ')
-  return line.top[0] ? `Just ${line.top[0].name} so far. Any run pays 50` : ''
-}
-
-/* ---------- points ---------- */
-
-export type ChartColumn = { slug: LeaderboardGame; points: number | null }
-
-/**
- * A player's points board by board: yours when you have some, else the
- * leader's, so a newcomer sees what a full set of boards adds up to.
- */
-export function pointsChart(
-  copy: PeriodCopy,
-  boards: BoardLine[],
-  standings: Standing[],
-  you: YouStanding | null,
-): { title: string; sub: string; columns: ChartColumn[]; legend: string } {
-  const total = boards.length
-  const when = copy.noun ? ` ${copy.phrase}` : ', all time'
-  const columnsFor = (byGame: Partial<Record<string, GlobalGamePlace>>) =>
-    boards.map((b) => ({ slug: b.slug, points: byGame[b.slug]?.points ?? null }))
-  const legendFor = (byGame: Partial<Record<string, GlobalGamePlace>>) =>
-    boards
-      .filter((b) => byGame[b.slug])
-      .sort((a, b) => (byGame[b.slug]?.points ?? 0) - (byGame[a.slug]?.points ?? 0))
-      .map((b) => `${gameName(b.slug)} ${byGame[b.slug]?.points}`)
-      .join(' · ')
-
-  if (you && you.rank != null) {
-    const played = Object.keys(you.byGame).length
-    return {
-      title: `Your ${you.score.toLocaleString()}, board by board`,
-      sub: `${played} of ${total} boards${when}`,
-      columns: columnsFor(you.byGame),
-      legend: legendFor(you.byGame),
-    }
-  }
-  if (you) {
-    return {
-      title: copy.noun ? `Your ${copy.noun} so far` : 'Your boards so far',
-      sub: `Nothing on the board yet. ${capital(numberWord(total))} boards, up to 100 each.`,
-      columns: columnsFor({}),
-      legend: `Nothing on the board yet${copy.noun ? ` ${copy.phrase}` : ''}.`,
-    }
-  }
-  const leader = standings[0]
-  if (!leader?.byGame) {
-    return {
-      title: 'Board by board',
-      sub: `Nothing on the boards${copy.noun ? ` ${copy.phrase}` : ' yet'}.`,
-      columns: columnsFor({}),
-      legend: '',
-    }
-  }
-  const played = Object.keys(leader.byGame).length
-  return {
-    title: `${leader.name}’s ${leader.score.toLocaleString()}, board by board`,
-    sub: played === 1 ? `One board so far${when}` : `${played} of ${total} boards${when}`,
-    columns: columnsFor(leader.byGame),
-    legend: legendFor(leader.byGame),
-  }
+  return line.top[0] ? `Just ${line.top[0].name} so far` : ''
 }

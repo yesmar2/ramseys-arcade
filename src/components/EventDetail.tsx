@@ -16,7 +16,7 @@ import {
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { resolveGameAccent } from '../lib/theme'
-import { eventKind, formatEventCountdown, type TournamentDetail, type TournamentSummary } from '../lib/tournaments'
+import { formatEventCountdown, type TournamentDetail, type TournamentSummary } from '../lib/tournaments'
 import { getGame } from '../data/games'
 import { eventAccent } from './EventCard'
 import { EventScreen } from './EventScreen'
@@ -61,11 +61,10 @@ export function EventGames({ games }: { games: GameCardState[] }) {
 }
 
 /*
- * What a player scored on a game, where it placed them and, in a points
- * event, what that place paid. A points event used to show only the points,
- * so nobody could see what anyone had actually scored.
+ * What a player scored on a game, and where it placed them. The place is
+ * what counts in an all-round event, but the score is what they played for.
  */
-function Cell({ slug, place, points, score, usePoints }: { slug: string; place: number | null; points: number; score: number | null; usePoints: boolean }) {
+function Cell({ slug, place, score }: TableRow['cells'][number]) {
   if (place == null) {
     return (
       <span className="evp-cell evp-cell--skipped">
@@ -76,21 +75,21 @@ function Cell({ slug, place, points, score, usePoints }: { slug: string; place: 
   return (
     <span className={`evp-cell${place === 1 ? ' evp-cell--won' : ''}`}>
       <b>{formatLeaderboardScore(slug, score ?? 0)}</b>
-      <small>
-        {ordinal(place)}
-        {usePoints ? <span className="evp-cell__pts"> · {points} pts</span> : null}
-      </small>
+      <small>{ordinal(place)}</small>
     </span>
   )
 }
 
-function cellTitle(cell: TableRow['cells'][number], usePoints: boolean): string {
+function cellTitle(cell: TableRow['cells'][number]): string {
   if (cell.place == null) return `${gameName(cell.slug)}: skipped`
-  const scored = `${gameName(cell.slug)}: ${formatLeaderboardScore(cell.slug, cell.score ?? 0)}, ${ordinal(cell.place)}`
-  return usePoints ? `${scored}, ${cell.points} ${cell.points === 1 ? 'point' : 'points'}` : scored
+  return `${gameName(cell.slug)}: ${formatLeaderboardScore(cell.slug, cell.score ?? 0)}, ${ordinal(cell.place)}`
 }
 
-function StandingsRow({ row, usePoints, cols, gap = false }: { row: TableRow; usePoints: boolean; cols: CSSProperties; gap?: boolean }) {
+/*
+ * An all-round event has no total column: its total is only the places added
+ * up, and the order already says it. Scores that add up keep theirs.
+ */
+function StandingsRow({ row, allRound, cols, gap = false }: { row: TableRow; allRound: boolean; cols: CSSProperties; gap?: boolean }) {
   const cls = [
     'evp-table__row',
     row.you ? 'evp-table__row--you' : '',
@@ -108,25 +107,22 @@ function StandingsRow({ row, usePoints, cols, gap = false }: { row: TableRow; us
         {row.you ? <span className="evp-you">You</span> : null}
       </a>
       {row.cells.map((cell) => (
-        <span key={cell.slug} className="evp-table__cell" title={cellTitle(cell, usePoints)}>
+        <span key={cell.slug} className="evp-table__cell" title={cellTitle(cell)}>
           <span className="evp-table__cell-game" aria-hidden="true">
             <GameThumbArt slug={cell.slug} accent={gameAccent(cell.slug)} />
           </span>
-          <Cell {...cell} usePoints={usePoints} />
+          <Cell {...cell} />
         </span>
       ))}
-      <span className="evp-table__total">
-        {usePoints ? row.total : row.total.toLocaleString()}
-        {usePoints ? <small> pts</small> : null}
-      </span>
+      {allRound ? null : <span className="evp-table__total">{row.total.toLocaleString()}</span>}
     </li>
   )
 }
 
 /**
- * The standings, a row a player and a column a game: what each game paid and
- * where they placed on it, and the total. A game a player skipped shows as
- * skipped, which is most of the story of who won.
+ * The standings, a row a player and a column a game: what each scored and
+ * where they placed on it. A game a player skipped shows as skipped, which is
+ * most of the story of who won.
  */
 export function StandingsTable({
   detail,
@@ -137,7 +133,7 @@ export function StandingsTable({
   rows: TableRow[]
   limit?: number
 }) {
-  const usePoints = detail.format === 'place-points'
+  const allRound = detail.format === 'place-points'
   const ended = detail.status === 'ended'
   const total = standingsCount(detail)
   // The unbroken run from first place: everything on a small event's page, the top hundred on a big one's.
@@ -149,7 +145,7 @@ export function StandingsTable({
   const below = total - top.length
   const cols = { '--games': detail.games.length } as CSSProperties
   return (
-    <section className="evp-card evp-table" aria-labelledby="evp-table-title">
+    <section className={`evp-card evp-table${allRound ? ' evp-table--all-round' : ''}`} aria-labelledby="evp-table-title">
       <div className="evp-card__head">
         <h2 id="evp-table-title" className="evp-card__title">
           {ended ? 'Final standings' : 'Standings'}
@@ -166,20 +162,20 @@ export function StandingsTable({
             {gameName(slug)}
           </span>
         ))}
-        <span className="evp-cap evp-table__total">Total</span>
+        {allRound ? null : <span className="evp-cap evp-table__total">Total</span>}
       </div>
       <ol className="evp-table__rows">
         {shown.map((row) => (
-          <StandingsRow key={row.name} row={row} usePoints={usePoints} cols={cols} />
+          <StandingsRow key={row.name} row={row} allRound={allRound} cols={cols} />
         ))}
-        {extra ? <StandingsRow row={extra} usePoints={usePoints} cols={cols} gap /> : null}
+        {extra ? <StandingsRow row={extra} allRound={allRound} cols={cols} gap /> : null}
       </ol>
       {limit && top.length > shown.length ? (
         <details className="evp-table__all">
           <summary>{below > 0 ? `The top ${top.length}` : `All ${total.toLocaleString()} players`}</summary>
           <ol className="evp-table__rows">
             {top.slice(shown.length).map((row) => (
-              <StandingsRow key={row.name} row={row} usePoints={usePoints} cols={cols} />
+              <StandingsRow key={row.name} row={row} allRound={allRound} cols={cols} />
             ))}
           </ol>
           {below > 0 ? (
@@ -200,7 +196,6 @@ export function StandingsTable({
 /** Nobody in yet: the empty table says what the first run does. */
 export function StandingsEmpty({ detail }: { detail: TournamentDetail }) {
   const multi = detail.games.length > 1
-  const top = detail.placePoints?.top ?? 10
   return (
     <section className="evp-card evp-table" aria-labelledby="evp-table-title">
       <div className="evp-card__head">
@@ -218,7 +213,7 @@ export function StandingsEmpty({ detail }: { detail: TournamentDetail }) {
           {detail.status === 'upcoming'
             ? 'Join now and you’re on the board the moment it starts.'
             : multi && detail.format === 'place-points'
-              ? `A run on any of the ${detail.games.length} puts you 1st on it, and ${top} points up. The first player in leads.`
+              ? `Post a run on any of the ${detail.games.length} and you lead.`
               : 'The first run posted leads, whatever it scores.'}
         </p>
       </div>
@@ -231,7 +226,7 @@ export function EventPodium({ rows, detail }: { rows: TableRow[]; detail: Tourna
   const top = rows.filter((r) => r.place <= 3).slice(0, 3)
   if (top.length === 0) return null
   const order = [top[1], top[0], top[2]].filter(Boolean) as TableRow[]
-  const usePoints = detail.format === 'place-points'
+  const allRound = detail.format === 'place-points'
   const level = top[1] && top[1].total === top[0].total ? top[1] : null
   return (
     <section className="evp-card evp-podium-card" aria-label="Podium">
@@ -241,9 +236,8 @@ export function EventPodium({ rows, detail }: { rows: TableRow[]; detail: Tourna
             <a className="evp-podium__who" href={rankHref(row.name)}>
               <PlayerAvatar name={row.name} avatarId={row.avatarId} size={row.place === 1 ? 'lg' : 'md'} />
               <span className="evp-podium__name">{row.name}</span>
-              <span className="evp-podium__pts">
-                {usePoints ? `${row.total} pts` : row.total.toLocaleString()}
-              </span>
+              {/* An all-round podium is names and places; one where scores add up shows the total. */}
+              {allRound ? null : <span className="evp-podium__pts">{row.total.toLocaleString()}</span>}
             </a>
             <span className="evp-podium__block">{ordinal(row.place)}</span>
             {detail.games.length > 1 ? (
@@ -259,22 +253,22 @@ export function EventPodium({ rows, detail }: { rows: TableRow[]; detail: Tourna
       </ol>
       {level ? (
         <p className="evp-podium__tie">
-          {top[0].name} and {level.name} both finished on {usePoints ? `${level.total} points` : level.total.toLocaleString()}.
-          A tie goes to the higher best score.
+          {level.name} and {top[0].name} tied{allRound ? '' : ` on ${level.total.toLocaleString()}`}. The tie went to{' '}
+          {top[0].name}.
         </p>
       ) : null}
     </section>
   )
 }
 
-/** How the event scores, in steps; and, for a weekly, what last week showed. */
+/** How the event works, in steps; and, for a weekly, what last week showed. */
 export function HowItScores({
   detail,
   lesson,
   me,
 }: {
   detail: TournamentDetail
-  lesson: { lesson: SkipLesson; all: number; field: number } | null
+  lesson: SkipLesson | null
   me: string
 }) {
   const you = normalizePlayerName(me)
@@ -282,7 +276,7 @@ export function HowItScores({
   return (
     <section className="evp-card evp-scores" id="evp-how" aria-labelledby="evp-scores-title">
       <h2 id="evp-scores-title" className="evp-card__title">
-        {eventKind(detail) === 'bracket' ? 'How it works' : 'How it scores'}
+        How it works
       </h2>
       <ol className="evp-steps">
         {scoringSteps(detail).map((step, i) => (
@@ -296,10 +290,9 @@ export function HowItScores({
       </ol>
       {lesson ? (
         <p className="evp-lesson">
-          <b>{detail.status === 'ended' ? 'The lesson:' : 'Last time:'}</b> {who(lesson.lesson.name)} won{' '}
-          {lesson.lesson.won.length === 1 ? gameName(lesson.lesson.won[0]) : gameList(lesson.lesson.won)} but never played{' '}
-          {gameList(lesson.lesson.skipped)}, and finished {ordinal(lesson.lesson.place)}. {who(lesson.lesson.winner)} placed
-          on all of them and won with {lesson.lesson.winnerTotal} points. {lesson.all} of {lesson.field} played every game.
+          <b>{detail.status === 'ended' ? 'The lesson:' : 'Last time:'}</b> {who(lesson.name)} won{' '}
+          {lesson.won.length === 1 ? gameName(lesson.won[0]) : gameList(lesson.won)} but never played{' '}
+          {gameList(lesson.skipped)}, and finished {ordinal(lesson.place)}. {who(lesson.winner)} played them all and won.
         </p>
       ) : null}
     </section>
@@ -375,9 +368,9 @@ export function NextEventCard({ t }: { t: TournamentSummary }) {
   )
 }
 
-/** The winner, in the banner of a finished event. */
-export function WinnerCard({ winner, avatarId, total, usePoints, mine, runnersUp }: { winner: string; avatarId?: string; total: number | null; usePoints: boolean; mine: boolean; runnersUp: string | null }) {
-  const amount = total == null ? '' : usePoints ? `, with ${total} ${total === 1 ? 'point' : 'points'}` : `, with ${total.toLocaleString()}`
+/** The winner, in the banner of a finished event: with their score, when a score decided it. */
+export function WinnerCard({ winner, avatarId, total, mine, runnersUp }: { winner: string; avatarId?: string; total: number | null; mine: boolean; runnersUp: string | null }) {
+  const amount = total == null ? '' : `, with ${total.toLocaleString()}`
   return (
     <div className="evp-winner">
       <span className="evp-winner__mark">

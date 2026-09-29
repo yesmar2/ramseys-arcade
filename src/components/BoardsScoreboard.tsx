@@ -6,6 +6,7 @@ import {
   gameBoardHref,
   gamePlayHref,
   leaderboardHref,
+  rankHowHref,
   rankHref,
   ROUTE_EVENT,
 } from '../hooks/useHashRoute'
@@ -20,15 +21,14 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import {
+  climbs,
   headline,
   lastStats,
   lede,
   lineScore,
-  moves,
   ordinal,
   periodCopy,
   phoneLine,
-  pointsChart,
   youCell,
   youStats,
   type BoardLine,
@@ -46,10 +46,11 @@ import { PlayerName } from './PlayerName'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
- * race comes first, with who leads and by how much beside the top ten; then
- * where you stand and where your next points are; then every board's top
- * three, one player per place, with your place and the score that takes the
- * next one; then the boards nobody has played yet; then how the points add up.
+ * race comes first, with who leads beside the top ten; then where you stand
+ * and where to climb; then every board's top three, one player per place,
+ * with your place and the score that takes a higher one; then the boards
+ * nobody has played yet. It says places and names: how the points add up is
+ * on How your rank works, linked beside the standings.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -159,7 +160,7 @@ function StandingRow({
         <span className="sb-row__who">
           <PlayerName className="sb-row__name" name={row.name} avatarId={row.avatarId} />
           <span className="sb-row__boards">
-            {row.games} {row.games === 1 ? 'board' : 'boards'}
+            {row.games} {row.games === 1 ? 'game' : 'games'}
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
         </span>
@@ -266,6 +267,10 @@ function Standings({
             {totalPlayers.toLocaleString()} {totalPlayers === 1 ? 'player' : 'players'}
           </span>
         ) : null}
+        {/* The points beside each name are the one figure this page keeps; what makes them is there. */}
+        <a className="sb-standings__how" href={rankHowHref(undefined, period)}>
+          How your rank works ›
+        </a>
       </div>
       {loading ? (
         <ol className="sb-rows" aria-busy="true">
@@ -358,7 +363,7 @@ function Standings({
 function Stats({ stats }: { stats: Stat[] }) {
   if (!stats.length) return null
   return (
-    <dl className="sb-stats">
+    <dl className="sb-stats sb-stats--names">
       {stats.map((s) => (
         <div key={s.label} className="sb-stat">
           <dt className="visually-hidden">{s.label}</dt>
@@ -401,15 +406,12 @@ function YouCard({
             <span>of {standing.totalPlayers.toLocaleString()}</span>
           </p>
           <p className="sb-you__line">
-            {standing.score.toLocaleString()} points · on {played} of {boardsTotal} boards
+            Played {played} of {boardsTotal} games {copy.phrase}
           </p>
         </>
       ) : (
         <>
-          <p className="sb-you__big">
-            <b>0</b>
-            <span>points so far</span>
-          </p>
+          <p className="sb-you__none">Not on the board yet</p>
           <p className="sb-you__line">No runs yet {copy.noun ? copy.phrase : 'on the boards'}.</p>
         </>
       )}
@@ -428,22 +430,21 @@ function YouCard({
   )
 }
 
-function FirstVisitCard({ copy }: { copy: PeriodCopy }) {
-  const toward = copy.noun ? `this ${copy.noun}’s standings` : 'the all-time standings'
+function FirstVisitCard({ period }: { period: LeaderboardPeriod }) {
   return (
     <div className="sb-card sb-you__card sb-first" data-hunt="boards-you">
       <p className="sb-kicker">Get on the board</p>
       <h2 className="sb-first__title">Your first run puts you on it.</h2>
       <p className="sb-first__text">
-        Finish a run and sign in to save it, and you’re on that game’s board. Every board you place on
-        pays up to 100 points toward {toward}.
+        Finish a run and sign in to save it, and you’re on that game’s board. Every game you play moves
+        you up the standings.
       </p>
       <div className="sb-you__foot sb-you__foot--acts">
         <a className="sb-cta" href="/">
           Pick a game
         </a>
-        <a className="sb-ghost" href="#points">
-          How points work
+        <a className="sb-ghost" href={rankHowHref(undefined, period)}>
+          How your rank works
         </a>
       </div>
     </div>
@@ -457,14 +458,14 @@ function Moves({
   copy: PeriodCopy
   data: ReturnType<typeof useScoreboard>
 }) {
-  const { rows, foot } = moves(copy, data.boards, data.standings, data.you)
+  const { rows, foot } = climbs(copy, data.boards, data.standings, data.you)
   return (
     <div className="sb-card sb-moves" data-hunt="boards-moves">
-      <h2 className="sb-card__title">{data.you ? 'Where your next points are' : 'Easiest points right now'}</h2>
+      <h2 className="sb-card__title">{data.you ? 'Where to climb' : 'Where to start'}</h2>
       <ul className="sb-moves__list">
         {rows.map((m) => (
-          <li key={m.amount + m.what} className="sb-move">
-            <span className="sb-move__amount">{m.amount}</span>
+          <li key={m.tag + m.what} className="sb-move">
+            <span className="sb-move__amount sb-move__tag">{m.tag}</span>
             <span className="sb-move__body">
               <span className="sb-move__what">{m.what}</span>
               <span className="sb-move__why">{m.why}</span>
@@ -500,7 +501,8 @@ function Place({ line, top, place, you }: { line: BoardLine; top: BoardTop | und
         {place === 1 ? <CrownIcon /> : null}
         <span>{top.name}</span>
       </span>
-      <span className="sb-board__score">{lineScore(line, top.score)}</span>
+      {/* A daily's week is in points, which its own board shows: here it is names. */}
+      {line.points ? null : <span className="sb-board__score">{lineScore(line, top.score)}</span>}
     </span>
   )
 }
@@ -525,13 +527,17 @@ function BoardRow({
   const cell = standing ? youCell(line, standing, best, next) : null
   const players = line.players == null ? '' : `${line.players.toLocaleString()} ${line.players === 1 ? 'player' : 'players'}`
   const podium = line.top
-    .map((t, i) => `${ordinal(i + 1)} ${t.name} ${lineScore(line, t.score)}`)
+    .map((t, i) => `${ordinal(i + 1)} ${t.name}${line.points ? '' : ` ${lineScore(line, t.score)}`}`)
     .join(', ')
   const label = [
     `${name} board`,
     players,
     podium,
-    cell ? (cell.tone === 'on' ? `You: ${cell.a.replace('#', 'number ')}. ${cell.b}` : cell.b) : '',
+    cell
+      ? cell.tone === 'on'
+        ? [`You: ${cell.a.replace('#', 'number ')}`, cell.b].filter(Boolean).join('. ')
+        : cell.b
+      : '',
   ]
     .filter(Boolean)
     .join('. ')
@@ -549,7 +555,7 @@ function BoardRow({
         {cell ? (
           <span className={`sb-board__you sb-board__you--${cell.tone}`}>
             <span className="sb-board__you-a">{cell.a}</span>
-            <span className="sb-board__you-b">{cell.b}</span>
+            {cell.b ? <span className="sb-board__you-b">{cell.b}</span> : null}
           </span>
         ) : null}
         <span className={`sb-board__line${cell?.tone === 'on' ? ' sb-board__line--on' : ''}`}>
@@ -585,18 +591,18 @@ function EveryBoard({
             Every board
           </h2>
           <p className="sb-sub">
-            Best run per player{copy.noun ? ` ${copy.phrase}` : ', all time'}. Pick a board for the full list.
+            Best run per player{copy.noun ? ` ${copy.phrase}` : ', all time'}. Pick a game for the full list.
           </p>
         </div>
         {!data.loading ? (
           <span className="sb-count">
-            {played.length} of {data.boards.length} boards {played.length === 1 ? 'has' : 'have'} runs{when}
+            {played.length} of {data.boards.length} games {played.length === 1 ? 'has' : 'have'} runs{when}
           </span>
         ) : null}
       </div>
       <div className={`sb-table${withYou ? ' sb-table--you' : ''}`}>
         <div className="sb-table__head" aria-hidden="true">
-          <span className="sb-table__board">Board</span>
+          <span className="sb-table__board">Game</span>
           <span className="sb-table__place sb-table__place--1">1st</span>
           <span className="sb-table__place sb-table__place--2">2nd</span>
           <span className="sb-table__place sb-table__place--3">3rd</span>
@@ -651,10 +657,10 @@ function UpForGrabs({ copy, boards }: { copy: PeriodCopy; boards: BoardLine[] })
           <h2 id="sb-grabs-title" className="sb-h2">
             Up for grabs
           </h2>
-          <p className="sb-sub">{nobody} The first run on each takes all 100 points.</p>
+          <p className="sb-sub">{nobody} Play one and you’re 1st.</p>
         </div>
         <span className="sb-count">
-          {empty.length} {empty.length === 1 ? 'board' : 'boards'}
+          {empty.length} {empty.length === 1 ? 'game' : 'games'}
         </span>
       </div>
       <ul className="sb-grabs">
@@ -669,7 +675,7 @@ function UpForGrabs({ copy, boards }: { copy: PeriodCopy; boards: BoardLine[] })
             >
               <div className="sb-grab__top">
                 <GameThumbArt slug={b.slug} accent={accent} className="sb-grab__thumb" />
-                <span className="sb-grab__pts">+100</span>
+                <span className="sb-grab__pts">Be 1st</span>
               </div>
               <h3 className="sb-grab__name">{name}</h3>
               <p className="sb-grab__line">{line}</p>
@@ -680,94 +686,6 @@ function UpForGrabs({ copy, boards }: { copy: PeriodCopy; boards: BoardLine[] })
           )
         })}
       </ul>
-    </section>
-  )
-}
-
-/* ---------- points ---------- */
-
-function Points({ copy, data }: { copy: PeriodCopy; data: ReturnType<typeof useScoreboard> }) {
-  const chart = pointsChart(copy, data.boards, data.standings, data.you)
-  return (
-    <section id="points" className="sb-section sb-points" aria-labelledby="sb-points-title">
-      <div className="sb-points__text">
-        <h2 id="sb-points-title" className="sb-h2">
-          How the points work
-        </h2>
-        <ol className="sb-rules">
-          <li className="sb-rule">
-            <span className="sb-rule__n" aria-hidden="true">
-              01
-            </span>
-            <span>
-              <span className="sb-rule__title">Each board pays up to 100.</span>
-              <span className="sb-rule__text">
-                Your best run sets your place, and your place pays by how much of the field you beat:
-                first gets 100, halfway up about 50, last a point or two.
-              </span>
-            </span>
-          </li>
-          <li className="sb-rule">
-            <span className="sb-rule__n" aria-hidden="true">
-              02
-            </span>
-            <span>
-              <span className="sb-rule__title">Your boards add up.</span>
-              <span className="sb-rule__text">
-                Your total is all your boards added together, so a board you haven’t played is the
-                biggest gain there is.
-              </span>
-            </span>
-          </li>
-          <li className="sb-rule">
-            <span className="sb-rule__n" aria-hidden="true">
-              03
-            </span>
-            <span>
-              <span className="sb-rule__title">The top ten take trophies.</span>
-              <span className="sb-rule__text">
-                When a week or a month closes, the top ten overall each take a trophy for it.
-              </span>
-            </span>
-          </li>
-        </ol>
-      </div>
-      {!data.loading ? (
-        <div className="sb-card sb-chart">
-          <div className="sb-chart__head">
-            <h3 className="sb-card__title">{chart.title}</h3>
-            <span className="sb-chart__sub">{chart.sub}</span>
-          </div>
-          <ul className="sb-chart__cols">
-            {chart.columns.map((c) => {
-              const accent = accentOf(c.slug)
-              return (
-                <li
-                  key={c.slug}
-                  className={`sb-col${c.points == null ? ' sb-col--empty' : ''}`}
-                  style={{ '--col-accent': accent } as CSSProperties}
-                >
-                  <span className="visually-hidden">
-                    {nameOf(c.slug)}: {c.points == null ? 'not played' : `${c.points} points`}
-                  </span>
-                  <span className="sb-col__value" aria-hidden="true">
-                    {c.points ?? '–'}
-                  </span>
-                  <span className="sb-col__track" aria-hidden="true">
-                    <span className="sb-col__fill" style={{ height: `${c.points ?? 0}%` }} />
-                  </span>
-                  <GameThumbArt slug={c.slug} accent={accent} className="sb-col__thumb" />
-                </li>
-              )
-            })}
-          </ul>
-          {chart.legend ? (
-            <p className="sb-chart__legend" aria-hidden="true">
-              {chart.legend}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
     </section>
   )
 }
@@ -830,7 +748,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
           {data.you ? (
             <YouCard copy={copy} standing={data.you} data={data} boardsTotal={data.boards.length} />
           ) : (
-            <FirstVisitCard copy={copy} />
+            <FirstVisitCard period={period} />
           )}
           <Moves copy={copy} data={data} />
         </section>
@@ -838,7 +756,6 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
 
       <EveryBoard period={period} copy={copy} data={data} you={you} />
       {!data.loading ? <UpForGrabs copy={copy} boards={data.boards} /> : null}
-      <Points copy={copy} data={data} />
     </div>
   )
 }

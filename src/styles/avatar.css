@@ -135,7 +135,7 @@
 
 .studio__row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 0.6rem;
   min-height: 2.6rem;
@@ -147,8 +147,7 @@
   font-weight: 750;
 }
 
-.studio__row-rank,
-.studio__row-pts {
+.studio__row-rank {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }

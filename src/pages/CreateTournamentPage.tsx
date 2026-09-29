@@ -641,7 +641,7 @@ export function CreateTournamentPage() {
                     >
                       <span className="ev-choice__name">Top scores</span>
                       <span className="ev-choice__desc">
-                        Everyone posts runs. With more than one game, places pay points across them.
+                        Everyone posts runs. With more than one game, the best all-round player wins.
                       </span>
                     </button>
                     <button
@@ -852,8 +852,8 @@ export function CreateTournamentPage() {
                           ? 'Each round is played on its own games. A round with more than one is a series: win the most of them to take the match. In a double-elim draw the losers round matches the winners round of the same number.'
                           : 'Every match is played on this game. Change a round below, or add a second game to it, to mix it up.'
                         : games.length > 1
-                          ? 'Places on each game pay points, and the highest total wins.'
-                          : 'Pick more than one and places on each pay points across them all.'}
+                          ? 'Every game counts, and the best all-round player wins.'
+                          : 'Pick more than one and every game counts toward the win.'}
                     </p>
                   )}
                 </>,
@@ -955,7 +955,7 @@ export function CreateTournamentPage() {
                     <EventArtBox games={isBracket && roundGames.length ? [...new Set(roundGames.flat())] : games} size="3rem" />
                     <span className="evp-create__card-text">
                       <span className="evp-kick">
-                        Invite only · {isBracket ? 'Bracket' : games.length > 1 ? 'Place points' : 'Top scores'}
+                        Invite only · {isBracket ? 'Bracket' : games.length > 1 ? 'All-round' : 'Top scores'}
                       </span>
                       <span className="evp-create__card-title">{title.trim() || 'Your event'}</span>
                     </span>

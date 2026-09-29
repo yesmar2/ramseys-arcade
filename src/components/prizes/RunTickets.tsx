@@ -30,8 +30,8 @@ function why(paid: RunTickets, game: string): string {
     switch (line.reason) {
       case 'run': {
         const what = paid.reached ? stepWords(paid.reached, game) : (paid.baseLabel ?? 'the run')
-        // A daily pays its best step of the day once: a climb is paid the difference.
-        parts.push(paid.paidBefore > 0 ? `${line.amount} more for ${what}, ${paid.step} today` : `${line.amount} for ${what}`)
+        // A daily pays its best step of the day once, a climb only the difference: said as what it reached.
+        parts.push(`${line.amount} for ${what}`)
         break
       }
       case 'best':
@@ -67,7 +67,9 @@ export function RunTicketsLine({ paid, game }: { paid: RunTickets; game: string 
     const said =
       paid.capped > 0 || paid.paidBefore <= 0
         ? 'Today’s run tickets are all in. Tomorrow’s runs pay again.'
-        : `Your best today already paid ${paid.paidBefore}.${paid.next ? ` Next: ${nextWords(paid.next, game)}.` : ' That’s the top step.'}`
+        : paid.next
+          ? `Today’s best already got its tickets. Next: ${nextWords(paid.next, game)}.`
+          : 'You’ve got every ticket today’s best can pay.'
     return (
       <div className="run-tix run-tix--dim">
         <TicketStub label="0" dim width={78} />

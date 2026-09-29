@@ -101,7 +101,7 @@ export function HomeGroupsBand() {
           <>
             <p className="gband__lead">
               Your groups keep a board where only your people count. Run an event for one of them: best
-              score, place points or a bracket.
+              score, every game counts, or a bracket.
             </p>
             <ul className="gband__groups">
               {mine.map((g) => (
@@ -119,7 +119,7 @@ export function HomeGroupsBand() {
         ) : (
           <p className="gband__lead">
             Start a group for the family, the office or the group chat: the same games, on a board where
-            only your people count. Then run an event with best score, place points or a bracket.
+            only your people count. Then run an event with best score, every game counts, or a bracket.
           </p>
         )}
         <div className="gband__acts">

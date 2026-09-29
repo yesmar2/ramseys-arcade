@@ -1609,23 +1609,6 @@ a.game-hud__board {
   color: inherit;
 }
 
-.how-to-play__copy {
-  margin: 0 0 0.75rem;
-  font-size: 0.92rem;
-  line-height: 1.45;
-  font-weight: 600;
-  color: var(--muted);
-  text-align: left;
-}
-
-.how-to-play__copy:last-child {
-  margin-bottom: 0;
-}
-
-.game-lobby__how-panel {
-  margin-top: 0.15rem;
-}
-
 .game-sound {
   pointer-events: auto;
   display: flex;
@@ -4416,15 +4399,6 @@ a.lb-share:visited:focus-visible {
   border-color: transparent;
 }
 
-.rank-page__h {
-  margin: 0 0 0.55rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .game-device-badge {
   display: inline-flex;
   flex: none;
@@ -4449,62 +4423,6 @@ a.lb-share:visited:focus-visible {
 .lb-tab:focus-visible .game-device-badge,
 .lb-tab--active .game-device-badge {
   color: color-mix(in srgb, var(--ink) 55%, var(--muted));
-}
-
-.rank-page__how {
-  padding: 0;
-  border-radius: var(--tile-radius);
-  background: rgba(var(--surface-rgb), 0.72);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-  overflow: hidden;
-}
-
-.rank-page__how-summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 0.85rem 1.05rem;
-  user-select: none;
-}
-
-.rank-page__how-summary::-webkit-details-marker {
-  display: none;
-}
-
-.rank-page__how-summary .rank-page__h {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.rank-page__how-summary .rank-page__h::after {
-  content: '+';
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.rank-page__how[open] .rank-page__how-summary .rank-page__h::after {
-  content: '\2212';
-}
-
-.rank-page__how-body {
-  padding: 0 1.05rem 1rem;
-}
-
-.rank-page__how-body p {
-  margin: 0 0 0.75rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.rank-page__how-body p:last-child {
-  margin-bottom: 0;
-}
-
-.rank-page__how-body .game-lobby__scoring {
-  margin-top: 0.75rem;
 }
 
 .rank-page__rules {
@@ -5650,33 +5568,6 @@ a.lb-share:visited:focus-visible {
   width: 100%;
   flex: none;
   margin-top: 0.15rem;
-}
-
-.game-lobby__scoring {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.35rem;
-}
-
-.game-lobby__scoring li {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.45rem 0.7rem;
-  border-radius: 0.7rem;
-  background: rgba(var(--surface-rgb), 0.72);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.game-lobby__scoring strong {
-  font-weight: 700;
-  color: var(--accent);
-  text-align: right;
-  flex: none;
 }
 
 /* Tablet+: roomier stats beside the matched square. */

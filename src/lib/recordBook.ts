@@ -210,19 +210,19 @@ const GROUPS: Record<RecordKind, { title: string; sub: string }> = {
 const COURSES: Partial<Record<string, { title: string; sub: string }>> = {
   hotlap: {
     title: 'Track records',
-    sub: 'Each track’s fastest lap. Its board stays open after its day, so a record can fall any time.',
+    sub: 'Each track’s fastest lap. You can still take one on a past track.',
   },
   acechase: {
     title: 'Hole records',
-    sub: 'Each hole’s fewest tries. A player’s first result on a hole is their only one, on its day or after.',
+    sub: 'Each hole’s fewest tries.',
   },
   findbug: {
     title: 'Day records',
-    sub: 'Each day’s fastest sweep of its five scenes. Only a day’s first run counts, so each is set on its day.',
+    sub: 'Each day’s fastest sweep of its five scenes.',
   },
   halffull: {
     title: 'Day records',
-    sub: 'Each day’s closest pour. Only a day’s first pour counts, so each is set on its day.',
+    sub: 'Each day’s closest pour.',
   },
 }
 

@@ -167,8 +167,8 @@ export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolea
           {gameList(t.games)}
         </h1>
         <p className="evp-hero__lede">
-          Place on all {t.games.length === 3 ? 'three' : t.games.length} by Sunday night. Every place pays points, 1st the
-          most, and the highest total takes the week and its trophy.
+          Play all {t.games.length === 3 ? 'three' : t.games.length} by Sunday night. Do well on every one: the best
+          all-round player takes the week and its trophy.
         </p>
         <p className="evp-metas">
           <span className="evp-meta">
@@ -186,8 +186,7 @@ export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolea
         </p>
         {you ? (
           <p className="evp-hero__you">
-            You’re <b>{ordinal(t.yourPlace!)}</b>
-            {t.yourPoints != null ? ` with ${t.yourPoints} ${t.yourPoints === 1 ? 'point' : 'points'}` : ''}.
+            You’re <b>{ordinal(t.yourPlace!)}</b>.
           </p>
         ) : null}
         <div className="evp-acts">
@@ -195,7 +194,7 @@ export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolea
             {joined ? 'Keep playing' : 'Join the Triple'}
           </a>
           <a className="evp-btn evp-btn--ghost" href={`${tournamentHref(t.id)}#evp-how`}>
-            How it scores
+            How it works
           </a>
         </div>
       </div>
@@ -304,7 +303,6 @@ export function LastWeekCard({
 }) {
   const winner = t.winner ?? t.podium?.[0]?.name ?? ''
   const mine = Boolean(me) && normalizePlayerName(winner) === normalizePlayerName(me)
-  const top = t.podium?.[0]
   const avatars = new Map((detail ? standingsTable(detail, '') : []).map((r) => [r.name, r.avatarId]))
   const podium = (t.podium ?? []).slice(0, 3)
   const order = [podium[1], podium[0], podium[2]].filter(Boolean)
@@ -319,7 +317,6 @@ export function LastWeekCard({
             {mine ? 'You won last week’s Triple' : `${winner} won last week’s Triple`}
           </h2>
           <p className="evp-card__copy">
-            {top?.points ? `${top.points} points over ` : ''}
             {gameList(t.games)}
             {mine ? '. The trophy is on your player card.' : `, from ${t.playerCount} players.`}
           </p>
@@ -332,7 +329,8 @@ export function LastWeekCard({
               <a className="evp-podium__who" href={rankHref(p!.name)}>
                 <PlayerAvatar name={p!.name} avatarId={avatars.get(normalizePlayerName(p!.name))} size="md" />
                 <span className="evp-podium__name">{p!.name}</span>
-                <span className="evp-podium__pts">{p!.points} pts</span>
+                {/* A one-game event's score; an all-round one's podium is names and places. */}
+                {p!.score != null ? <span className="evp-podium__pts">{p!.score.toLocaleString()}</span> : null}
               </a>
               <span className="evp-podium__block">{ordinal(p!.place)}</span>
             </li>
@@ -382,7 +380,7 @@ export function OwnEventsCard({
       <ul className="evp-own__list">
         <li>
           <ListIcon />
-          Top scores: everyone posts runs, places pay points
+          Top scores: everyone posts runs, the best wins
         </li>
         <li>
           <BracketIcon />
@@ -446,7 +444,7 @@ function ownStatus(t: TournamentSummary): string {
 const HOW: [() => ReactNode, string, string][] = [
   [SunIcon, 'The daily', 'One game, all day. The best score by midnight takes it.'],
   [OneIcon, 'The One Shot', 'Another game, one try each, all day. It counts the moment you start.'],
-  [ThreeIcon, 'The Weekly Triple', 'Three games, Monday to Sunday. Every place pays points, and the total wins.'],
+  [ThreeIcon, 'The Weekly Triple', 'Three games, Monday to Sunday. Do well on all three to win.'],
   [LockIcon, 'Your own', 'Invite only. Top scores or a bracket, for an hour or a week.'],
   [MedalIcon, 'Trophies', 'Win any event and its trophy goes on your player card.'],
 ]
@@ -534,11 +532,8 @@ export function ResultsList({
                   <span className="evp-result__winner">
                     <TrophyIcon />
                     <b>{winner}</b>
-                    {top ? (
-                      <span className="evp-result__score">
-                        {top.score != null && t.format !== 'place-points' ? top.score.toLocaleString() : `${top.points} pts`}
-                      </span>
-                    ) : null}
+                    {/* A one-game event's winning score; an all-round one's winner is enough. */}
+                    {top?.score != null ? <span className="evp-result__score">{top.score.toLocaleString()}</span> : null}
                   </span>
                 ) : null}
               </a>

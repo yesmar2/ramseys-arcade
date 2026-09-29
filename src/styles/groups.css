@@ -517,7 +517,7 @@ html[data-theme='dark'] .grp-btn--danger {
 
 .grp-mini__row {
   display: grid;
-  grid-template-columns: 1.4rem minmax(0, 1fr) auto;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
   align-items: center;
   gap: 0.6rem;
   min-height: 2.7rem;

@@ -206,7 +206,7 @@ export function recordHeadline(
   }
 }
 
-/** The line under it: what the record is and what it leads by, or how to take an empty one while it can be. */
+/** The line under it: what the record is, or how to take an empty one while it can be. */
 export function recordLede(
   game: string,
   record: Rec,
@@ -228,8 +228,9 @@ export function recordLede(
   }
   const rule = recordRule(game, record, period, top.score)
   if (!second) return `${rule} Nobody else is on it ${soFar(period)}.`
+  // A tie says why the order is what it is; a plain lead needs no numbers here.
   if (second.score === top.score) return `${rule} ${second.name} has matched it, but ${top.name} got there first.`
-  return `${rule} It leads ${second.name}’s ${recordValue(record, second.score)} by ${recordGap(record, second.score, top.score)}.`
+  return rule
 }
 
 /* ---------- you ---------- */
@@ -272,33 +273,36 @@ export function recordStanding(
   const { entries, total, you, progression } = board
   const [top, second] = entries
   if (you && top && you.rank === 1) {
-    const stats: Stat[] = []
-    if (second) stats.push({ value: recordGap(record, second.score, top.score), label: `ahead of ${second.name}` })
-    const held = stints(progression)
-    if (held.length) stats.push({ value: ordinal(held.length), label: 'to hold it' })
-    if (total > 1) stats.push({ value: (total - 1).toLocaleString(), label: total === 2 ? 'player chasing' : 'players chasing' })
+    // One number: how far ahead of the next best you are.
+    const tied = second?.score === top.score
+    const stats: Stat[] = !second
+      ? []
+      : tied
+        ? [{ value: 'Tied', label: `with ${second.name}` }]
+        : [{ value: recordGap(record, second.score, top.score), label: `ahead of ${second.name}` }]
     return {
       mode: 'held',
       big: 'It’s yours',
       of: `#1 of ${total.toLocaleString()}`,
       line: `${recordValue(record, top.score)} · set ${recordDay(top.at)} · held ${heldFor(top.at, now)}`,
       stats,
-      callout: second ? `${second.name} is ${recordGap(record, second.score, top.score)} behind.` : 'Nobody else is on it yet.',
+      callout: !second
+        ? 'Nobody else is on it yet.'
+        : tied
+          ? `${second.name} has matched it, but you got there first.`
+          : `${second.name} is ${recordGap(record, second.score, top.score)} behind.`,
     }
   }
   if (you && top) {
     const rank = you.rank
     const next = entries[rank - 2]
-    const below = entries[rank]
-    const stats: Stat[] = [{ value: recordGap(record, you.score, top.score), label: 'off the record' }]
-    if (next && rank > 2) {
-      stats.push(
-        next.score === you.score
-          ? { value: 'Tied', label: `with ${next.name}` }
-          : { value: recordGap(record, you.score, next.score), label: `behind ${next.name}` },
-      )
-    }
-    if (below) stats.push({ value: recordGap(record, below.score, you.score), label: `ahead of ${below.name}` })
+    // One number: the gap to the place above (from 2nd, the holder); past the players listed, to the holder.
+    const ahead = next ?? top
+    const stats: Stat[] = [
+      ahead.score === you.score
+        ? { value: 'Tied', label: `with ${ahead.name}` }
+        : { value: recordGap(record, you.score, ahead.score), label: `behind ${ahead.name}` },
+    ]
     const callout = shut
       ? shutLine(game, shut)
       : !next
@@ -348,7 +352,7 @@ export function recordStanding(
 export type RecordTake = { what: string; beat: string; who: string; done: boolean }
 
 /**
- * What each rung takes: the record, the podium, the top half, and getting on at all, ticked where the viewer is.
+ * What each rung takes: the record, the podium, and getting on at all, ticked where the viewer is.
  * On a shut record (recordShut) no run takes one, so each is where it stands: its number and who holds it.
  */
 export function recordTakes(
@@ -376,16 +380,6 @@ export function recordTakes(
       what: shut ? 'The podium' : 'Make the podium',
       beat: mark(entries[2].score),
       who: done ? at : shut ? `${entries[2].name}, 3rd` : `past ${entries[2].name}, now 3rd`,
-      done,
-    })
-  }
-  if (entries.length >= 6) {
-    const half = Math.ceil(entries.length / 2)
-    const done = Boolean(rank && rank <= half)
-    takes.push({
-      what: 'The top half',
-      beat: mark(entries[half - 1].score),
-      who: done ? at : shut ? `${entries[half - 1].name}, ${ordinal(half)}` : `past ${entries[half - 1].name}, now ${ordinal(half)}`,
       done,
     })
   }

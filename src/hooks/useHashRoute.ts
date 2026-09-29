@@ -41,6 +41,8 @@ export type Route =
   | { name: 'siteRecords' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string; period?: LeaderboardPeriod }
+  /** How a player's rank is worked out, from their own numbers: yours, or `player`'s. */
+  | { name: 'rankHow'; player?: string; period?: LeaderboardPeriod }
   | { name: 'groups' }
   | { name: 'group'; id: string; invite?: string }
   | { name: 'tournaments' }
@@ -141,6 +143,21 @@ export function rankHref(
     : `/rank/${period}`
   return focus ? `${base}?focus=${focus}` : base
 }
+
+/**
+ * How your rank works: the one page that shows a player's rank worked out, game by game and day by
+ * day, so every other page can say places and names. /how-ranks-work is yours, at the header's period;
+ * /how-ranks-work/<period> yours at that period; /how-ranks-work/<TAG>/<period> someone else's. Not
+ * under /rank/, where a tag like HOW would read as a player.
+ */
+export function rankHowHref(player?: string, period: LeaderboardPeriod = defaultPeriod()) {
+  const cleaned = player?.trim().toUpperCase().slice(0, 12)
+  return cleaned
+    ? `/${RANK_HOW_PATH}/${encodeURIComponent(cleaned)}/${period}`
+    : `/${RANK_HOW_PATH}/${period}`
+}
+
+const RANK_HOW_PATH = 'how-ranks-work'
 
 /** Section the current URL asks to be scrolled to, if any. */
 export function focusFromUrl(): string | null {
@@ -422,6 +439,8 @@ export function hrefForRoute(
       return appendGroupQuery(leaderboardHref(period))
     case 'rank':
       return appendGroupQuery(rankHref(route.player, period))
+    case 'rankHow':
+      return appendGroupQuery(rankHowHref(route.player, period))
     case 'records':
       if (route.recordId) {
         return appendGroupQuery(recordHref(route.game, route.recordId, period))
@@ -460,6 +479,7 @@ export function periodFromRoute(route: Route): LeaderboardPeriod | undefined {
     case 'game':
     case 'leaderboards':
     case 'rank':
+    case 'rankHow':
     case 'records':
       return route.period ? coerceVisiblePeriod(route.period) : undefined
     default:
@@ -519,6 +539,16 @@ export function parseUrl(pathname: string, search: string): Route {
   }
   if (path === 'leaderboards') return { name: 'leaderboards', period: defaultPeriod() }
   if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
+  if (path === RANK_HOW_PATH) return { name: 'rankHow', period: defaultPeriod() }
+  const rankHowMatch = new RegExp(`^${RANK_HOW_PATH}/([^/]+)(?:/([^/]+))?$`).exec(path)
+  if (rankHowMatch) {
+    const part1 = decodeURIComponent(rankHowMatch[1]!).trim()
+    const part2 = rankHowMatch[2] ? decodeURIComponent(rankHowMatch[2]).trim() : undefined
+    if (!part2 && isLeaderboardPeriod(part1)) return { name: 'rankHow', period: part1 }
+    const player = part1.toUpperCase().slice(0, 12)
+    const period = part2 && isLeaderboardPeriod(part2) ? part2 : defaultPeriod()
+    return player ? { name: 'rankHow', player, period } : { name: 'rankHow', period }
+  }
   if (path === 'records') return { name: 'recordsIndex' }
   // Before the game-record patterns below, which would read "site" as a slug.
   if (path === 'records/site') return { name: 'siteRecords' }
@@ -674,6 +704,7 @@ const SITE_SECTIONS: ReadonlySet<string> = new Set([
   'e',
   'games',
   'groups',
+  'how-ranks-work',
   'index.html',
   'leaderboards',
   'og',

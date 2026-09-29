@@ -1,0 +1,1504 @@
+/*
+ * How your rank works (pages/RankHowPage.tsx): a big place up top with the period's tabs, then four
+ * steps, each its words beside a picture (under it, narrower): every game's field with the player lit,
+ * a bar per game for what the place pays, the rank as stacked bars beside the players around it, and
+ * a daily's days as circles adding up to its week, with every day in a table behind a fold. Then the
+ * ways up as cards and the whole standings as a bar, and the small print. Colours are the site's
+ * tokens; a game's own colour comes in as --g.
+ */
+
+.lb-page__inner.rh-page {
+  --rh-line: rgba(var(--ink-rgb), 0.09);
+  --rh-soft: color-mix(in srgb, var(--ink) 82%, var(--muted));
+  --rh-faint: color-mix(in srgb, var(--muted) 72%, transparent);
+  --rh-accent-ink: color-mix(in srgb, var(--accent) 72%, var(--ink));
+  /* Words set on a game's colour: every swatch is light enough for dark ink. */
+  --rh-on-game: rgba(8, 18, 14, 0.86);
+  display: flex;
+  flex-direction: column;
+  width: min(100% - 2rem, 75rem);
+  padding-bottom: 3.5rem;
+}
+
+.rh-card {
+  box-sizing: border-box;
+  min-width: 0;
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--rh-line);
+  box-shadow: var(--shadow-soft);
+}
+
+.rh-thumb {
+  --inline-thumb-size: 1.45rem;
+}
+
+/* ---------- the top ---------- */
+
+.rh-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1.1rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.rh-crumbs a {
+  color: var(--ink);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.rh-crumbs a:hover,
+.rh-crumbs a:focus-visible {
+  text-decoration: underline;
+}
+
+.rh-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.2rem 2.5rem;
+  margin-top: 1.25rem;
+}
+
+.rh-hero__text {
+  flex: 1 1 26rem;
+  min-width: 0;
+}
+
+.rh-kicker {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rh-accent-ink);
+}
+
+.rh-title {
+  margin: 0.6rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 7.2vw, 5.25rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.rh-title small {
+  font-size: clamp(1.3rem, 2.4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+.rh-title--words {
+  font-size: clamp(2.1rem, 4.6vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.rh-lede {
+  max-width: 44rem;
+  margin: 1rem 0 0;
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  line-height: 1.45;
+  color: var(--rh-soft);
+}
+
+.seg.rh-periods {
+  flex: 0 1 25rem;
+}
+
+.rh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.9rem;
+}
+
+.rh-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 1rem 0.4rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--rh-line);
+  background: rgba(var(--ink-rgb), 0.04);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--rh-soft);
+  text-decoration: none;
+}
+
+.rh-chip:hover,
+.rh-chip:focus-visible {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rh-chip i {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--rh-accent-ink);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+/* ---------- a step ---------- */
+
+.rh-step {
+  display: grid;
+  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  gap: 1.5rem 3rem;
+  margin-top: 3.5rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid var(--rh-line);
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
+}
+
+.rh-step--words {
+  grid-template-columns: minmax(0, 46rem);
+}
+
+.rh-step__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.1rem;
+}
+
+.rh-step__n {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #03211b;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.rh-step__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 2.9vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.rh-step__p {
+  margin: 0.9rem 0 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--rh-soft);
+}
+
+.rh-step__p b,
+.rh-callout b {
+  color: var(--ink);
+}
+
+.rh-step__show {
+  min-width: 0;
+}
+
+/* ---------- 1: every game's field ---------- */
+
+.rh-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  align-items: start;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rh-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "thumb name"
+    "n n"
+    "strip strip"
+    "place place";
+  column-gap: 0.55rem;
+  padding: 1.1rem 1rem 1rem;
+}
+
+.rh-field__thumb {
+  grid-area: thumb;
+}
+
+.rh-field__name {
+  grid-area: name;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.4rem;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.rh-tag {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--g, var(--accent)) 55%, transparent);
+  color: color-mix(in srgb, var(--g, var(--accent)) 70%, var(--ink));
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rh-field__n {
+  grid-area: n;
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.rh-strip {
+  grid-area: strip;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 0.9rem;
+}
+
+.rh-strip i {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.12);
+  font-style: normal;
+}
+
+.rh-strip i.rh-strip__you {
+  display: flex;
+  align-items: center;
+  height: 1.15rem;
+  padding: 0 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--accent);
+  color: #03211b;
+}
+
+.rh-strip__you b {
+  overflow: hidden;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rh-field__place {
+  grid-area: place;
+  margin: 0.9rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.rh-field__place small {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* ---------- 2: what each place pays ---------- */
+
+.rh-pays {
+  --rh-pay-cols: 10rem minmax(0, 1fr) 3.4rem;
+  --rh-pay-gap: 1.25rem;
+  padding: 1.5rem 1.75rem;
+}
+
+.rh-pays__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rh-pay {
+  display: grid;
+  grid-template-columns: var(--rh-pay-cols);
+  align-items: center;
+  gap: var(--rh-pay-gap);
+  padding: 0.65rem 0;
+}
+
+.rh-pay__game {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.rh-pay__game > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rh-pay__game small {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.rh-ruler {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.rh-ruler i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--g, var(--accent));
+}
+
+.rh-ruler b {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid var(--surface);
+  background: var(--g, var(--accent));
+}
+
+.rh-pay__v {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rh-scale {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.35rem calc(3.4rem + var(--rh-pay-gap)) 0 calc(10rem + var(--rh-pay-gap));
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.rh-callout {
+  margin: 1.1rem 0 0;
+  padding: 0.9rem 1.1rem;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+/* ---------- 3: the rank adds them up ---------- */
+
+.rh-sums {
+  padding: 1.4rem 1.75rem;
+}
+
+.rh-sums__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rh-sum {
+  display: grid;
+  grid-template-columns: 1.7rem 8.5rem minmax(0, 1fr) 4rem;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.6rem 0;
+}
+
+.rh-sum--you {
+  margin: 0.25rem -0.85rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.rh-sum__rank {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rh-sum__who {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.rh-sum__who:hover .rh-sum__name,
+.rh-sum__who:focus-visible .rh-sum__name {
+  text-decoration: underline;
+}
+
+.rh-sum__who > span[aria-hidden] {
+  display: flex;
+  flex: none;
+}
+
+.rh-sum__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rh-sum--you .rh-sum__who {
+  color: var(--rh-accent-ink);
+}
+
+.rh-segs {
+  display: block;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* Games share the ten swatches, so a game the player isn't on is one plain tint, keyed as Other games. */
+.rh-segs__bar i.rh-seg--other,
+.rh-key i.rh-key__other {
+  background: rgba(var(--ink-rgb), 0.16);
+}
+
+.rh-segs__bar i.rh-seg--other {
+  color: var(--ink);
+}
+
+/* A thin segment keeps its figure only where the bar is wide enough to fit it. */
+@container (max-width: 26rem) {
+  .rh-segs__bar i.rh-seg--thin {
+    color: transparent;
+  }
+}
+
+.rh-segs__bar {
+  display: flex;
+  gap: 2px;
+  min-width: 4px;
+  height: 1.9rem;
+}
+
+.rh-segs__bar i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-basis: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  color: var(--rh-on-game);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.rh-segs__bar i.rh-segs__plain {
+  background: rgba(var(--ink-rgb), 0.18);
+}
+
+.rh-sum__t {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rh-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 1rem 0 0;
+  padding: 0.9rem 0 0;
+  border-top: 1px solid var(--rh-line);
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.rh-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rh-key i {
+  display: block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 3px;
+}
+
+/* ---------- 4: the dailies, day by day ---------- */
+
+.rh-daily {
+  --g: var(--accent);
+  padding: 1.5rem 1.75rem;
+}
+
+.rh-daily--none p {
+  margin: 0;
+  line-height: 1.55;
+  color: var(--rh-soft);
+}
+
+.rh-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.2rem;
+}
+
+.rh-pick button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.3rem;
+  padding: 0.2rem 0.85rem 0.2rem 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--rh-line);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rh-pick button:hover,
+.rh-pick button:focus-visible {
+  color: var(--ink);
+}
+
+.rh-pick button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--g) 50%, transparent);
+  background: color-mix(in srgb, var(--g) 14%, transparent);
+  color: var(--ink);
+}
+
+.rh-days {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rh-day {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.rh-day__c {
+  display: grid;
+  place-content: center;
+  width: 3.6rem;
+  max-width: 100%;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--ink-rgb), 0.12);
+  color: var(--rh-faint);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.rh-day__c small {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.rh-day--played .rh-day__c {
+  border-color: var(--g);
+  background: var(--g);
+  color: var(--rh-on-game);
+}
+
+.rh-day--today .rh-day__c {
+  border-style: dashed;
+  border-color: var(--g);
+  color: color-mix(in srgb, var(--g) 70%, var(--ink));
+}
+
+.rh-day--before .rh-day__c {
+  border-style: dotted;
+  opacity: 0.55;
+}
+
+.rh-day__n {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.rh-days--month {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.35rem, 1fr));
+  gap: 0.5rem 0.3rem;
+}
+
+.rh-days--month .rh-day__c {
+  width: 2.15rem;
+  border-width: 1.5px;
+  font-size: 0.62rem;
+}
+
+.rh-days--month .rh-day__n {
+  font-size: 0.68rem;
+}
+
+.rh-daily__skel {
+  display: block;
+  height: 4.4rem;
+  border-radius: 1rem;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+.rh-daily__count,
+.rh-daily__note {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--rh-soft);
+}
+
+.rh-daily__count b {
+  color: var(--ink);
+}
+
+.rh-down {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.1rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.rh-down::before {
+  content: "↓";
+  font-size: 1rem;
+  color: var(--rh-faint);
+}
+
+.rh-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2.4rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rh-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.9rem 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid var(--rh-line);
+  background: rgba(var(--ink-rgb), 0.05);
+  text-align: center;
+}
+
+.rh-box + .rh-box::before {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  left: -1.7rem;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: var(--rh-faint);
+}
+
+.rh-box span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--muted);
+}
+
+.rh-box b {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.rh-box b small {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.rh-box--pay {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.rh-box--pay b {
+  color: var(--rh-accent-ink);
+}
+
+.rh-also {
+  margin: 1.1rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rh-line);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.rh-fold,
+.rh-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.4rem;
+  margin-top: 1rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--rh-line);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rh-fold:hover,
+.rh-fold:focus-visible,
+.rh-more:hover,
+.rh-more:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.rh-fold svg {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.rh-fold[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.rh-everyday {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  margin-top: 1.4rem;
+}
+
+.rh-everyday[hidden] {
+  display: none;
+}
+
+.rh-daytable__title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.rh-daytable__title small {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rh-table-wrap {
+  margin-top: 0.6rem;
+  overflow-x: auto;
+}
+
+.rh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rh-table thead th {
+  padding: 0 0.6rem 0.6rem;
+  border-bottom: 1px solid var(--rh-line);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rh-table tbody th,
+.rh-table tbody td {
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--rh-line);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.rh-table tbody th {
+  font-weight: 700;
+}
+
+.rh-table tfoot th,
+.rh-table tfoot td {
+  padding: 0.8rem 0.6rem 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.rh-table .rh-num {
+  text-align: right;
+}
+
+.rh-table .rh-row--missed,
+.rh-table .rh-row--ahead,
+.rh-table .rh-row--before {
+  color: var(--muted);
+}
+
+.rh-go {
+  display: inline-flex;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  background: var(--g, var(--accent));
+  color: var(--rh-on-game);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.rh-sumline {
+  margin: 0.9rem 0 0;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  background: rgba(var(--ink-rgb), 0.04);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.rh-sumline b {
+  color: var(--ink);
+}
+
+/* ---------- the ways up ---------- */
+
+.rh-ways {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+.rh-moves {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rh-moves--skel span {
+  display: block;
+  height: 12rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+.rh-move {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.35rem;
+}
+
+.rh-move__big {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rh-move__thumb {
+  --inline-thumb-size: 2.75rem;
+}
+
+.rh-move__big b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.rh-move__big small {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--rh-accent-ink);
+}
+
+.rh-move__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.rh-move__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.rh-move__title a:hover,
+.rh-move__title a:focus-visible {
+  text-decoration: underline;
+}
+
+.rh-move__text {
+  margin: 0.45rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--rh-soft);
+}
+
+.rh-whole {
+  padding: 1.4rem 1.6rem 1.5rem;
+}
+
+.rh-whole__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.3rem 1rem;
+}
+
+.rh-whole__head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.rh-whole__head p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* --rows: how many rows of labels sit over the track, so the room above it grows a row at a time. */
+.rh-track {
+  position: relative;
+  height: 12px;
+  margin: calc(3.4rem + (var(--rows, 1) - 1) * 2.25rem) 0.6rem 0;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.rh-track__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 35%, transparent), var(--accent));
+}
+
+.rh-mark {
+  position: absolute;
+  top: -8px;
+  width: 2px;
+  height: 28px;
+  margin-left: -1px;
+  background: rgba(var(--ink-rgb), 0.35);
+}
+
+/* --row lifts a label clear of the ones it would sit on. */
+.rh-mark > span {
+  position: absolute;
+  bottom: calc(34px + var(--row, 0) * 36px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.rh-mark > span b {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--rh-accent-ink);
+}
+
+.rh-mark--start > span {
+  left: 0;
+  transform: none;
+  text-align: left;
+}
+
+.rh-mark--end > span {
+  right: 0;
+  left: auto;
+  transform: none;
+  text-align: right;
+}
+
+.rh-mark--next > span {
+  color: var(--ink);
+}
+
+.rh-mark--next > span b {
+  color: color-mix(in srgb, var(--accent-2) 78%, var(--ink));
+}
+
+/* On white the amber needs more ink to be read. */
+html[data-theme='light'] .rh-mark--next > span b {
+  color: color-mix(in srgb, var(--accent-2) 45%, var(--ink));
+}
+
+.rh-track__dot {
+  position: absolute;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.rh-track__ends {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.8rem 0.6rem 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* ---------- the small print, and the general page ---------- */
+
+.rh-fine {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem;
+  margin-top: 3.5rem;
+}
+
+.rh-note {
+  padding: 1.25rem 1.5rem;
+}
+
+.rh-note__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rh-note__head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.rh-note__head span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.rh-note p {
+  margin: 0.6rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--rh-soft);
+}
+
+.rh-note b {
+  color: var(--ink);
+}
+
+.rh-invite {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-top: 2rem;
+  padding: 1.5rem 1.75rem;
+}
+
+.rh-invite h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.rh-invite p {
+  max-width: 36rem;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.rh-invite__go {
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211b;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rh-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+.rh-loading span {
+  display: block;
+  height: 16rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+/* ---------- narrower ---------- */
+
+@media (max-width: 62rem) {
+  .rh-step {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .rh-step__head {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .rh-step__n {
+    width: 2.3rem;
+    height: 2.3rem;
+    font-size: 1.05rem;
+  }
+}
+
+/* A phone: the fields become one card of rows, the day boxes lose their arrows, the chips go. */
+@media (max-width: 40rem) {
+  .rh-chips {
+    display: none;
+  }
+
+  .seg.rh-periods {
+    flex: 1 1 100%;
+  }
+
+  .rh-step {
+    margin-top: 2.2rem;
+    padding-top: 1.6rem;
+  }
+
+  .rh-step__p {
+    font-size: 1rem;
+  }
+
+  .rh-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0.2rem 1rem;
+    border-radius: 1.25rem;
+    border: 1px solid var(--rh-line);
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .rh-field {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "thumb name place"
+      "strip strip strip";
+    align-items: center;
+    padding: 0.75rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--rh-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .rh-field:last-child {
+    border-bottom: 0;
+  }
+
+  .rh-field__n {
+    display: none;
+  }
+
+  .rh-field__place {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .rh-strip {
+    flex-direction: row;
+    margin-top: 0.55rem;
+  }
+
+  .rh-strip i,
+  .rh-strip i.rh-strip__you {
+    flex: 1 1 0;
+    height: 10px;
+    padding: 0;
+    border-radius: 3px;
+  }
+
+  .rh-strip__you b {
+    display: none;
+  }
+
+  .rh-pays,
+  .rh-sums,
+  .rh-daily,
+  .rh-whole {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .rh-pays {
+    --rh-pay-cols: 6.4rem minmax(0, 1fr) 2.2rem;
+    --rh-pay-gap: 0.75rem;
+  }
+
+  .rh-scale {
+    margin-right: calc(2.2rem + var(--rh-pay-gap));
+    margin-left: calc(6.4rem + var(--rh-pay-gap));
+  }
+
+  .rh-pay__thumb,
+  .rh-scale__w {
+    display: none;
+  }
+
+  .rh-pay__game {
+    font-size: 0.9rem;
+  }
+
+  .rh-pay__v {
+    font-size: 1.2rem;
+  }
+
+  .rh-sum {
+    grid-template-columns: 4.4rem minmax(0, 1fr) 2.6rem;
+    gap: 0.6rem;
+  }
+
+  .rh-sum--you {
+    margin: 0.2rem -0.6rem;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .rh-sum__rank,
+  .rh-sum__who > span[aria-hidden] {
+    display: none;
+  }
+
+  .rh-sum__who {
+    font-size: 0.82rem;
+  }
+
+  .rh-segs__bar {
+    height: 1.5rem;
+  }
+
+  .rh-segs__bar i {
+    font-size: 0.6rem;
+  }
+
+  .rh-sum__t {
+    font-size: 1rem;
+  }
+
+  .rh-days {
+    gap: 0.25rem;
+  }
+
+  .rh-day__c {
+    width: 2.5rem;
+    border-width: 1.5px;
+    font-size: 0.64rem;
+  }
+
+  .rh-day__c small {
+    font-size: 0.56rem;
+  }
+
+  .rh-day--today .rh-day__c {
+    font-size: 0.56rem;
+  }
+
+  .rh-flow {
+    gap: 0.5rem;
+  }
+
+  .rh-box {
+    padding: 0.65rem 0.4rem;
+    border-radius: 0.8rem;
+  }
+
+  .rh-box + .rh-box::before {
+    content: none;
+  }
+
+  .rh-box span {
+    font-size: 0.68rem;
+  }
+
+  .rh-box b {
+    font-size: 1.3rem;
+  }
+
+  .rh-box b small {
+    display: block;
+    font-size: 0.72rem;
+  }
+
+  .rh-table {
+    font-size: 0.82rem;
+  }
+
+  .rh-table thead th {
+    padding: 0 0.35rem 0.5rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
+
+  .rh-table tbody th,
+  .rh-table tbody td {
+    padding: 0.5rem 0.35rem;
+  }
+
+  .rh-table tfoot th,
+  .rh-table tfoot td {
+    padding: 0.7rem 0.35rem 0;
+    font-size: 0.95rem;
+  }
+
+  .rh-move {
+    padding: 1rem;
+    gap: 0.7rem;
+  }
+
+  .rh-move__thumb {
+    --inline-thumb-size: 2.3rem;
+  }
+
+  .rh-move__big b {
+    font-size: 1.5rem;
+  }
+
+  .rh-mark > span {
+    font-size: 0.66rem;
+  }
+
+  .rh-mark > span b {
+    font-size: 0.64rem;
+  }
+
+  .rh-fine {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 2.2rem;
+  }
+
+  .rh-note {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rh-loading span,
+  .rh-moves--skel span,
+  .rh-daily__skel {
+    animation: none;
+  }
+
+  .rh-fold svg {
+    transition: none;
+  }
+}

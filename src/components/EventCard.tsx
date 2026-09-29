@@ -64,7 +64,7 @@ export function eventDay(t: Pick<TournamentSummary, 'startsAt'>): string {
 export function formatWord(format: TournamentFormat): string {
   switch (format) {
     case 'place-points':
-      return 'Place points'
+      return 'All-round'
     case 'attempt-limited':
       return 'Limited tries'
     case 'single-run':
@@ -214,10 +214,13 @@ export function EventKicker({
 
 /* ---------- list: live card ---------- */
 
-function podiumValue(row: PodiumEntry): string {
-  if (row.score != null) return row.score.toLocaleString()
-  if (row.points > 0) return `${row.points} pts`
-  return '—'
+/*
+ * A one-game event's leaders show their scores. An all-round event's show
+ * just names: its points only add up the places, and the event page has each
+ * game's score.
+ */
+function podiumValue(row: PodiumEntry): string | null {
+  return row.score != null ? row.score.toLocaleString() : null
 }
 
 function cardClock(t: TournamentSummary): ReactNode {
@@ -318,13 +321,14 @@ export function EventLiveCard({
         <ol className="evc__leaders">
           {podium.slice(0, 3).map((row) => {
             const medal = medalKind(row.place)
+            const value = podiumValue(row)
             return (
               <li key={row.name} className={`evc__leader evc__leader--${row.place}`}>
                 <span className="evc__pos">
                   {medal ? <PodiumMedal kind={medal} size="sm" /> : row.place}
                 </span>
                 <span className="evc__who">{row.name}</span>
-                <span className="evc__val">{podiumValue(row)}</span>
+                {value ? <span className="evc__val">{value}</span> : null}
               </li>
             )
           })}
@@ -333,10 +337,7 @@ export function EventLiveCard({
         <span className="evc__empty">{emptyLine(t)}</span>
       )}
       {t.yourPlace != null && !onPodium ? (
-        <span className="evc__you">
-          You {ordinal(t.yourPlace)}
-          {t.yourPoints ? ` · ${t.yourPoints} pts` : ''}
-        </span>
+        <span className="evc__you">You {ordinal(t.yourPlace)}</span>
       ) : null}
       <span className="evc__foot">
         <span className="evc__clock">{cardClock(t)}</span>
@@ -385,7 +386,7 @@ export function EventResultRow({ t, href }: { t: TournamentSummary; href?: strin
         <span className="evr__winner">
           <PodiumMedal kind="gold" size="sm" />
           <span className="evr__name">{winner}</span>
-          {value && value !== '—' ? <span className="evr__val">{value}</span> : null}
+          {value ? <span className="evr__val">{value}</span> : null}
         </span>
       ) : (
         <span className="evr__none">Nobody played</span>
