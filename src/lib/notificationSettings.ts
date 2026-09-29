@@ -1,5 +1,6 @@
 import { isGameListed } from '../data/games'
 import { TODAY_FROM } from '../games/halffull/daily'
+import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
 import { API_BASE, authHeaders } from './auth'
 
 /**
@@ -11,7 +12,10 @@ import { API_BASE, authHeaders } from './auth'
 
 export type NotificationLevel = 'push' | 'inbox' | 'off'
 
-/** A kind of note, except that a friend beating your lap on Today's Track is apart from the hole and the Wanted. */
+/**
+ * A kind of note, except that a friend beating your lap on Today's Track, or your run on Today's Course, is
+ * apart from the hole, the Wanted and the pour: those two you can still take back.
+ */
 export type NotificationTopic =
   | 'match-open'
   | 'match-closing'
@@ -37,16 +41,24 @@ export type TopicInfo = {
 
 /** Today's Pour is on the ticket (lib/today.ts), so its "beat you" notes come under the same topic. */
 const POUR_ON_TICKET = TODAY_FROM != null && isGameListed('halffull')
+/** Today's Course is on the ticket, so its "beat you" notes come with the lap's: a run can be rolled again too. */
+const COURSE_ON_TICKET = COURSE_FROM != null && isGameListed('marblerun')
 
 export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[] }[] = [
   {
     title: 'Today',
     topics: [
-      {
-        topic: 'today-lap',
-        label: 'A friend beats your lap',
-        hint: 'On Today’s Track, while there’s still time to take it back.',
-      },
+      COURSE_ON_TICKET
+        ? {
+            topic: 'today-lap',
+            label: 'A friend beats your lap or your run',
+            hint: 'On Today’s Track or Today’s Course, while there’s still time to take it back.',
+          }
+        : {
+            topic: 'today-lap',
+            label: 'A friend beats your lap',
+            hint: 'On Today’s Track, while there’s still time to take it back.',
+          },
       POUR_ON_TICKET
         ? {
             topic: 'today-beaten',

@@ -18,6 +18,9 @@ import { formatBoard, judgeLevels, markFor, tierFor } from '../games/halffull/sc
 import { dailyTrack, trackDay } from '../games/hotlap/daily'
 import { keptLap } from '../games/hotlap/lap'
 import { formatLap } from '../games/hotlap/score'
+import { courseDay, dailyCourse } from '../games/marblerun/daily'
+import { keptRun } from '../games/marblerun/runStore'
+import { formatRun } from '../games/marblerun/score'
 import { todayShareHref } from '../hooks/useHashRoute'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
 import type { Viewer } from '../lib/deviceRuns'
@@ -46,11 +49,11 @@ import {
 export type Punch = {
   key: TodayKey
   slug: TodayDaily['slug']
-  /** The short name a phone's punch shows: Hole, Track, Bugs, Pour. */
+  /** The short name a phone's punch shows: Hole, Track, Bugs, Pour, Marble. */
   label: string
   kicker: string
   game: string
-  /** The day's own: the hole's name, the track's, the bugs wanted, the glasses. */
+  /** The day's own: the hole's name, the track's, the bugs wanted, the glasses, the course's name. */
   title: string
   done: boolean
   /** Your result, in words, once there is one. */
@@ -222,10 +225,31 @@ function pourPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   }
 }
 
+function coursePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
+  const cday = courseDay()
+  const course = dailyCourse(cday)
+  const serverRun = server?.results.course?.score ?? null
+  // The viewer's own best run on this device (never another player's, nor one rolled signed out while they're signed in).
+  const runTime = keptRun(cday, viewer)?.time ?? null
+  const runWords = serverRun != null ? formatLeaderboardScore('marblerun', serverRun) : runTime != null ? formatRun(runTime) : null
+  const done = runWords != null || Boolean(server?.done.course)
+  return {
+    kicker: `Today’s Course #${course.n}`,
+    title: course.name,
+    done,
+    mine: runWords ? `${runWords} run` : done ? 'Done' : null,
+    short: runWords,
+    carry: null,
+    share: runWords ? `${course.name} ${runWords}` : null,
+    go: 'Roll the course',
+  }
+}
+
 function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer: Viewer): PunchDay {
   if (key === 'hole') return holePunch(day, server, viewer)
   if (key === 'track') return trackPunch(server, viewer)
   if (key === 'wanted') return wantedPunch(server, viewer)
+  if (key === 'course') return coursePunch(server, viewer)
   return pourPunch(server, viewer)
 }
 

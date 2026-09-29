@@ -8,6 +8,12 @@ import { DAILY_COURSES } from './dailyPlan.ts'
 
 /** Day 1, Marble Run's first course (the API's marblerunPace.ts MARBLERUN_FIRST_DAY). */
 export const FIRST_DAY = '2026-09-29'
+
+/**
+ * The first day Today's Course is on the Today ticket (lib/today.ts), as the API's today.ts
+ * MARBLERUN_TODAY_FROM has it: the day after the game came, so the day it came is judged as it began.
+ */
+export const TODAY_FROM: string | null = '2026-09-30'
 const TZ = 'America/New_York'
 
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })

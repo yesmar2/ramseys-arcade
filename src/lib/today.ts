@@ -1,5 +1,6 @@
 import { isGameListed } from '../data/games'
 import { TODAY_FROM } from '../games/halffull/daily'
+import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
 import { ROUTE_EVENT } from '../hooks/useHashRoute'
 import { sessionFingerprint, subscribeAccountId } from './auth'
 import { api, ApiError, type LeaderboardGame } from './leaderboard'
@@ -10,7 +11,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * /today, pages/TodayPage.tsx, with a row of it on the home page, TodayRow.tsx), and a streak of days
  * kept, shown in the header too (components/TodayChip.tsx, the way to the page). The dailies are Ace
  * Chase's Today's Hole, Hot Lap's Today's Track and Find the Bug's Today's Wanted, and Half Full's Today's
- * Pour from the day it joins (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more
+ * Pour and Marble Run's Today's Course from the days they join (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more
  * than three live, punching every one is a Full ticket. The Daily, the One Shot and the bug hunt are
  * bonus punches that don't count.
  *
@@ -22,7 +23,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * punches at once and works signed out.
  */
 
-export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour'
+export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course'
 
 /** One of the Today set's dailies. */
 export type TodayDaily = {
@@ -47,6 +48,7 @@ export const TODAY_DAILIES: readonly TodayDaily[] = [
   { key: 'track', slug: 'hotlap', label: 'Track', emoji: '🏎️', better: 'higher', from: '' },
   { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '' },
   { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM },
+  { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
 ]
 
 /** Any this many of a day's live dailies keep the streak (the API's TODAY_KEEP). */
@@ -55,14 +57,15 @@ export const TODAY_KEEP = 3
 export type TodayServer = {
   /** The boards' day, YYYY-MM-DD. */
   day: string
-  /** Whether each is done today. An API from before Today's Pour leaves `pour` out. */
-  done: Record<Exclude<TodayKey, 'pour'>, boolean> & { pour?: boolean }
-  /** Today's results as the boards keep them: tries, and board scores for the lap, the run and the pour. */
+  /** Whether each is done today. An API from before Today's Pour or Today's Course leaves them out. */
+  done: Record<Exclude<TodayKey, 'pour' | 'course'>, boolean> & { pour?: boolean; course?: boolean }
+  /** Today's results as the boards keep them: tries, and board scores for the lap, the bug run, the pour and the marble's run. */
   results: {
     hole: { tries: number } | null
     track: { score: number } | null
     wanted: { score: number } | null
     pour?: { score: number } | null
+    course?: { score: number } | null
   }
   streak: { current: number; best: number }
   /** The last seven days, oldest first, ending today: kept, and a Full ticket (left out by an older API). */
@@ -118,7 +121,7 @@ export const TODAY_MILESTONES: readonly { day: number; prize: string }[] = [
 /** The API's word changed. */
 export const TODAY_EVENT = 'skermix:today'
 
-/** Things that may move the card along: a hole solved, a day's bugs found or glasses poured, tickets paid for a lap. */
+/** Things that may move the card along: a hole solved, a day's bugs found or glasses poured, tickets paid for a lap or a run. */
 const NUDGES = ['skermix-acechase-daily', 'skermix-findbug-daily', 'skermix-halffull-daily', 'arcade-tickets', ROUTE_EVENT] as const
 /** Asked again at most this often, however many nudges come. */
 const FRESH_MS = 4000
@@ -215,6 +218,7 @@ const STILL: Record<TodayKey, string> = {
   track: 'still to drive',
   wanted: 'still to find',
   pour: 'still to pour',
+  course: 'still to roll',
 }
 
 /**
@@ -245,13 +249,14 @@ export type TodayRival = {
   name: string
   me: boolean
   /**
-   * Tries on today's hole, the best lap's board score, the bug run's board score and the pour's; null if
-   * not yet. An API from before Today's Pour leaves `pour` out.
+   * Tries on today's hole, the best lap's board score, the bug run's board score, the pour's and the best
+   * marble run's; null if not yet. An API from before Today's Pour or Today's Course leaves them out.
    */
   hole: number | null
   track: number | null
   wanted: number | null
   pour?: number | null
+  course?: number | null
   streak: number
   avatarId: string
 }

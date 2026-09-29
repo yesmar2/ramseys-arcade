@@ -12,7 +12,7 @@ import { OUTFIT } from '../api/_og/fonts.js'
  * Every daily's Share sends that day's link. Its page is the site's shell with the day's title, words and
  * card stamped in (the app opens the Today page, useHashRoute.ts), and its card is a picture of the
  * day: the hole drawn from above, the track, and the five bugs wanted, the same for everyone that day, and
- * from the day Today's Pour joins the ticket, the day's glasses, empty. Both are made here, at build, for
+ * from the days they join the ticket, the day's glasses, empty, and the day's course from above. Both are made here, at build, for
  * the days either side of it (a link is sent the day it's played, and unfurled then), so a link costs
  * nothing to open: no function, no API, nothing to wake. A day outside the window falls back to the shell
  * and the site's own card.
@@ -35,17 +35,22 @@ const W = 1200
 const H = 630
 
 /**
- * The card's measures: three dailies across it, or four from the day Today's Pour joins the ticket
- * (Half Full's TODAY_FROM), each picture narrower and its words smaller, to fit the same width. Each has
- * its picture's box, its kicker's size and spacing, its name's size, and the wanted faces' size and gap.
+ * The card's measures: three dailies across it, four from the day Today's Pour joins the ticket (Half
+ * Full's TODAY_FROM), five from the day Today's Course does (Marble Run's), each picture narrower and its
+ * words smaller, to fit the same width. Each has its picture's box, its kicker's size and spacing, its
+ * name's size, and the wanted faces' size and gap.
  */
 const THREE = { picW: 344, picH: 206, kicker: 18, spacing: 3, name: 29, face: 58, faceGap: 7 }
 const FOUR = { picW: 254, picH: 206, kicker: 14, spacing: 1.5, name: 24, face: 42, faceGap: 5 }
+const FIVE = { picW: 202, picH: 190, kicker: 12, spacing: 1, name: 20, face: 34, faceGap: 4 }
+const SIZES = { 3: THREE, 4: FOUR, 5: FIVE }
+const COUNT_WORDS = { 3: 'three', 4: 'four', 5: 'five' }
 
 const HOLE_ACCENT = '#3ec8cf'
 const TRACK_ACCENT = '#f2813a'
 const BUG_ACCENT = '#5fd3c4'
 const POUR_ACCENT = '#f5b942'
+const COURSE_ACCENT = '#d774f0'
 
 /* ---------- a PNG from pixels, for the hole's shaded green ---------- */
 
@@ -131,6 +136,43 @@ function trackSvg(plan, { picW, picH }) {
   )
 }
 
+/**
+ * The course from above as Marble Run draws it, in a picture's box: the track in magenta light on the dark,
+ * over a faint violet grid, from its start (amber) to its goal (white). `point` is the game's sim.ts.
+ */
+function courseSvg(course, point, { picW, picH }) {
+  const [x0, x1, z0, z1] = course.box
+  const pad = 16
+  const scale = Math.min((picW - pad * 2) / (x1 - x0), (picH - pad * 2) / (z1 - z0))
+  const ox = (picW - (x1 - x0) * scale) / 2
+  const oz = (picH - (z1 - z0) * scale) / 2
+  const at = (x, z) => `${(ox + (x - x0) * scale).toFixed(1)} ${(oz + (z - z0) * scale).toFixed(1)}`
+  const paths = []
+  for (const p of course.pieces) {
+    if (p.gap) continue
+    const n = Math.max(2, Math.ceil(p.len / 2))
+    const pts = []
+    for (let i = 0; i <= n; i++) pts.push(at(...point(p, (p.len * i) / n, 0)))
+    paths.push(`M${pts.join(' L')}`)
+  }
+  const d = paths.join(' ')
+  const road = Math.max(3, 5.5 * scale)
+  const [sx, sz] = at(...point(course.pieces[0], 0, 0)).split(' ')
+  const goal = course.lines[course.lines.length - 1]
+  const [gx, gz] = at(...point(goal.p, goal.u, 0)).split(' ')
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${picW}" height="${picH}" viewBox="0 0 ${picW} ${picH}">` +
+    `<defs><pattern id="grid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M16 0H0V16" fill="none" stroke="rgba(138,92,255,0.18)" stroke-width="1"/></pattern></defs>` +
+    `<rect width="${picW}" height="${picH}" fill="#07040f"/>` +
+    `<rect width="${picW}" height="${picH}" fill="url(#grid)"/>` +
+    `<path d="${d}" fill="none" stroke="rgba(255,92,225,0.25)" stroke-width="${road * 2.6}" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="${d}" fill="none" stroke="#ff5ce1" stroke-width="${road}" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<circle cx="${sx}" cy="${sz}" r="${road * 1.2}" fill="#f5b942"/>` +
+    `<circle cx="${gx}" cy="${gz}" r="${road * 1.3}" fill="#ffffff"/>` +
+    `</svg>`
+  )
+}
+
 /* ---------- the card ---------- */
 
 const text = (style, words) => h('div', { style: { display: 'flex', ...style } }, words)
@@ -200,7 +242,7 @@ function faces(bugs, size) {
   )
 }
 
-/** The day's card, in the measures its dailies take (THREE or FOUR). */
+/** The day's card, in the measures its dailies take (THREE, FOUR or FIVE). */
 function card(day, size) {
   const panels = [
     panel(size, {
@@ -232,6 +274,17 @@ function card(day, size) {
       }),
     )
   }
+  if (day.course) {
+    panels.push(
+      panel(size, {
+        kicker: `MARBLE RUN · COURSE #${day.course.n}`,
+        accent: COURSE_ACCENT,
+        name: day.course.name,
+        picture: h('img', { src: day.course.picture, width: size.picW, height: size.picH }),
+      }),
+    )
+  }
+  const count = COUNT_WORDS[panels.length]
   const mark = wordmark(38)
   return h(
     'div',
@@ -257,8 +310,8 @@ function card(day, size) {
         `TODAY · ${day.words.toUpperCase()}`,
       ),
     ),
-    text({ marginTop: 22, fontSize: 64, fontWeight: 700, lineHeight: 1, letterSpacing: -1 }, day.pour ? 'Today’s four' : 'Today’s three'),
-    text({ marginTop: 12, fontSize: 28, color: MUTED }, `${day.pour ? 'Four' : 'Three'} quick games, the same for everyone. No ads.`),
+    text({ marginTop: 22, fontSize: 64, fontWeight: 700, lineHeight: 1, letterSpacing: -1 }, `Today’s ${count}`),
+    text({ marginTop: 12, fontSize: 28, color: MUTED }, `${count.charAt(0).toUpperCase()}${count.slice(1)} quick games, the same for everyone. No ads.`),
     h('div', { style: { display: 'flex', justifyContent: 'space-between', marginTop: 34 } }, ...panels),
   )
 }
@@ -279,10 +332,14 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { TODAY_FROM, dayNumber: pourNumber } = await server.ssrLoadModule('/src/games/halffull/daily.ts')
   const { dayPlan } = await server.ssrLoadModule('/src/games/halffull/plan.ts')
   const { glassNames, pourPlanSvg } = await server.ssrLoadModule('/src/games/halffull/planSvg.ts')
+  const { dailyCourse, laidNumber, TODAY_FROM: COURSE_FROM } = await server.ssrLoadModule('/src/games/marblerun/daily.ts')
+  const { plannedCourse, point } = await server.ssrLoadModule('/src/games/marblerun/sim.ts')
   const { isGameListed } = await server.ssrLoadModule('/src/data/games.ts')
   const { gamePlayHref } = await server.ssrLoadModule('/src/hooks/useHashRoute.ts')
-  // Today's Pour is on a day's card from the day it joins the ticket, as long as Half Full is listed (lib/today.ts).
+  // Today's Pour and Today's Course are on a day's card from the days they join the ticket, as long as their
+  // games are listed (lib/today.ts).
   const pourFrom = TODAY_FROM && isGameListed('halffull') ? TODAY_FROM : null
+  const courseFrom = COURSE_FROM && isGameListed('marblerun') ? COURSE_FROM : null
 
   const fonts = OUTFIT.map(({ weight, base64 }) => ({ name: 'Outfit', data: Buffer.from(base64, 'base64'), weight, style: 'normal' }))
   const faceOf = new Map()
@@ -305,7 +362,8 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
     const track = dailyTrack(day)
     const wanted = dayWanted(day)
     const poured = pourFrom != null && day >= pourFrom
-    const size = poured ? FOUR : THREE
+    const rolled = courseFrom != null && day >= courseFrom
+    const size = SIZES[3 + (poured ? 1 : 0) + (rolled ? 1 : 0)]
     const info = {
       words: dayWords(day),
       hole: {
@@ -324,6 +382,11 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
       // The day's glasses, empty: nothing on the card shows where half is.
       const plan = dayPlan(day)
       info.pour = { n: pourNumber(day), names: glassNames(plan), picture: svgUrl(pourPlanSvg(plan, size.picW, size.picH)) }
+    }
+    if (rolled) {
+      const daily = dailyCourse(day)
+      const course = plannedCourse(laidNumber(daily), daily.attempt)
+      info.course = { n: daily.n, name: daily.name, picture: svgUrl(courseSvg(course, point, size)) }
     }
     const tree = card(info, size)
     const kept = join(CACHE, `${createHash('sha256').update(JSON.stringify(tree)).digest('hex').slice(0, 24)}.png`)
@@ -352,9 +415,14 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
       dailies.push(`Today’s Pour #${info.pour.n}: ${info.pour.names}`)
       links.push({ href: gamePlayHref('halffull'), label: `Pour Today’s Pour #${info.pour.n}` })
     }
+    if (info.course) {
+      dailies.push(`Today’s Course #${info.course.n}, ${info.course.name}`)
+      links.push({ href: gamePlayHref('marblerun'), label: `Roll Today’s Course #${info.course.n}` })
+    }
+    const count = COUNT_WORDS[dailies.length]
     const description =
       `${dailies.slice(0, -1).join('; ')}; and ${dailies[dailies.length - 1]}. ` +
-      `${info.pour ? 'Four' : 'Three'} quick games, the same for everyone, free in your browser with no ads.`
+      `${count.charAt(0).toUpperCase()}${count.slice(1)} quick games, the same for everyone, free in your browser with no ads.`
     const meta = { path: `/today/${day}`, title, description, image: `/og/today/${day}.png` }
     const content = { heading: title, paragraphs: [description], links }
     const file = outFile(meta.path)
