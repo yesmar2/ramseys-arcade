@@ -286,7 +286,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'A lap of a past track', pts: 'its own board', sub: 'taking its record pays 15 tickets' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
-    tip: 'Brake in a straight line before a corner, then squeeze back on the gas as it opens out. The blue car is the lap to beat: your best today, or the pace car’s.',
+    tip: 'The call under the clock names the next corner and counts down to it: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
   },
   halffull: {
     goal: 'Fill each of today’s glasses exactly half full: by what it holds, not how tall it is. New glasses every day at midnight, New York time.',

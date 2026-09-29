@@ -26,6 +26,7 @@ import { useTrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
 import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
+import { paceNotes, type PaceCall } from './calls'
 import { dayWords, msUntilNextTrack, trackDay, trackState, untilWords } from './daily'
 import { bestLapOf, claimLap, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
@@ -52,6 +53,11 @@ const STEER_EASE = 7
 const WIDE = '(min-width: 900px) and (min-aspect-ratio: 4/3)'
 /** Room for the latest sector only, beside the clock. */
 const NARROW = '(max-width: 720px)'
+/**
+ * m before its turn-in that a corner's call comes up. One closer than that behind another is called as the
+ * car turns into that one.
+ */
+const CALL_FROM = 300
 
 type Held = { gas: boolean; brake: boolean; left: boolean; right: boolean }
 const NONE: Held = { gas: false, brake: false, left: false, right: false }
@@ -131,6 +137,8 @@ type Ui = {
   cut: boolean
   /** Against the ghost at the same point of the lap; null before that's known. */
   ahead: boolean | null
+  /** The corner being called (calls.ts): its number on the track, or −1 for none. */
+  call: number
 }
 
 const snapshot = (g: Game): Ui => ({
@@ -139,7 +147,25 @@ const snapshot = (g: Game): Ui => ({
   splits: [...g.run.splits],
   cut: g.run.cut,
   ahead: aheadOf(g),
+  call: callFor(g),
 })
+
+/** Metres from the car to where a corner turns in. */
+function callDistance(track: Track, call: PaceCall, index: number) {
+  const d = track.s[call.from]! - track.s[index]!
+  return d < 0 ? d + track.length : d
+}
+
+/** While racing, the next corner, once it's within CALL_FROM of the car. */
+function callFor(g: Game): number {
+  if (g.phase !== 'racing') return -1
+  const notes = paceNotes(g.track)
+  const k = notes.next[g.run.index]!
+  return callDistance(g.track, notes.calls[k]!, g.run.index) <= CALL_FROM ? k : -1
+}
+
+/** The distance on the call, in tens of metres: it changes a few times a second, not every frame. */
+const callMetres = (d: number) => String(Math.max(10, Math.ceil(d / 10) * 10))
 
 function lightsFor(g: Game) {
   if (g.phase === 'countdown') return g.clock < LIGHTS_OUT ? Math.min(3, Math.floor(g.clock / LIGHT_GAP) + 1) : 4
@@ -262,6 +288,9 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
  * if it gets there first. A cut across the grass skips a gate and the lap
  * can't count; R or the restart button starts another.
  *
+ * Under the clock, a co-driver's call names the corner coming: its shape, how sharp, what follows it, and
+ * the metres to its turn-in (calls.ts).
+ *
  * Keys: ↑ or W gas, ↓, S or Space brake, ← → or A D steer, R restart, P or Escape pause. On a touch
  * screen: steer with the left thumb, pedals under the right. A lap is scored as its time: the board
  * keeps a million less the milliseconds (score.ts), so the fastest lap is the highest score.
@@ -324,6 +353,10 @@ function HotLapDay({
   const mapRef = useRef<HTMLCanvasElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
   const speedRef = useRef<HTMLElement>(null)
+  const callFarRef = useRef<HTMLElement>(null)
+  const callBarRef = useRef<HTMLElement>(null)
+  /** The call on the card as last drawn: the loop counts down only that one's distance. */
+  const callShownRef = useRef(-1)
   const sceneRef = useRef<HotLapScene | null>(null)
   const soundRef = useRef<CarSound | null>(null)
   const keysRef = useRef<Held>({ ...NONE })
@@ -656,10 +689,18 @@ function HotLapDay({
         const text = String(Math.round(run.v * 2.237))
         if (speedRef.current.textContent !== text) speedRef.current.textContent = text
       }
+      // The call's distance counts down; the card itself changes with the corner, below.
+      const called = callShownRef.current
+      if (called >= 0 && callFarRef.current && callBarRef.current) {
+        const d = callDistance(track, paceNotes(track).calls[called]!, run.index)
+        const text = callMetres(d)
+        if (callFarRef.current.textContent !== text) callFarRef.current.textContent = text
+        callBarRef.current.style.transform = `scaleX(${Math.min(1, d / CALL_FROM).toFixed(3)})`
+      }
 
-      // The rest of the heads-up changes only when something happens: the lights, a sector, the ghost.
+      // The rest of the heads-up changes only when something happens: the lights, a sector, the ghost, a corner.
       const next = snapshot(g)
-      const key = `${next.phase}|${next.lights}|${next.splits.length}|${next.cut}|${next.ahead}`
+      const key = `${next.phase}|${next.lights}|${next.splits.length}|${next.cut}|${next.ahead}|${next.call}`
       if (key !== shown) {
         shown = key
         setUi(next)
@@ -834,6 +875,10 @@ function HotLapDay({
   )
   const bestText = test ? (testBest < Infinity ? formatLap(testBest) : '–') : best > 0 ? formatLap(hotlapMsFromBoardScore(best) / 1000) : '–'
   const showroom = ui.phase === 'menu'
+  // The corner being called, on its card under the clock: not while paused, nor under a notice there.
+  const call = ui.call >= 0 && !paused && !toast ? paceNotes(g.track).calls[ui.call] : undefined
+  callShownRef.current = call ? ui.call : -1
+  const callFar = call ? callDistance(g.track, call, g.run.index) : 0
   const lap = g.lap
   // Whose the lap is, for its card: an account's lap waits for that account; one driven signed out goes to whoever signs in.
   const lapOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
@@ -896,6 +941,27 @@ function HotLapDay({
               <div className="hotlap__speed" aria-hidden="true">
                 <b ref={speedRef}>0</b>
                 <span>mph</span>
+              </div>
+            ) : null}
+
+            {call ? (
+              <div key={ui.call} className={`hotlap__call hotlap__call--${call.grade}`} aria-hidden="true">
+                <svg className="hotlap__call-shape" viewBox="-6 -6 112 112">
+                  <path className="hotlap__call-glow" d={call.line} />
+                  <path d={call.line} />
+                  <path d={call.arrow} />
+                </svg>
+                <span className="hotlap__call-words">
+                  <b>{call.word}</b>
+                  <span>{call.more}</span>
+                </span>
+                <span className="hotlap__call-far">
+                  <b ref={callFarRef}>{callMetres(callFar)}</b>
+                  <span>m</span>
+                </span>
+                <i className="hotlap__call-bar">
+                  <i ref={callBarRef} style={{ transform: `scaleX(${Math.min(1, callFar / CALL_FROM).toFixed(3)})` }} />
+                </i>
               </div>
             ) : null}
 

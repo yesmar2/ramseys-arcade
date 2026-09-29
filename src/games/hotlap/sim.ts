@@ -573,6 +573,21 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
  */
 export function speedPlan(track: Track, margin = 0.86) {
   const { n, grade, crest } = track
+  const v = cornerSpeeds(track, margin)
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = n - 1; i >= 0; i--) {
+      const next = v[(i + 1) % n]!
+      const grip = 0.78 * CAR.mu * Math.max(0.3 * G, load(next) + (crest ? Math.min(0, crest[i]!) * next * next : 0))
+      const brake = Math.max(1, grip + (grade ? G * grade[i]! : 0))
+      v[i] = Math.min(v[i]!, Math.sqrt(next * next + 2 * brake))
+    }
+  }
+  return v
+}
+
+/** The speed each metre could be taken at for its own bend (and crest or dip), before braking for what comes next. */
+export function cornerSpeeds(track: Track, margin = 0.86) {
+  const { n, crest } = track
   const v = new Float64Array(n)
   for (let i = 0; i < n; i++) {
     let k = 0
@@ -585,14 +600,6 @@ export function speedPlan(track: Track, margin = 0.86) {
     // Cornering: v² k = margin µ (g + (downforce + crest) v²), so v² = margin µ g / (k − margin µ (downforce + crest)).
     const reach = margin * CAR.mu * (CAR.downforce + lift)
     v[i] = k > reach + 1e-5 ? Math.min(80, Math.sqrt((margin * CAR.mu * G) / (k - reach))) : 80
-  }
-  for (let pass = 0; pass < 2; pass++) {
-    for (let i = n - 1; i >= 0; i--) {
-      const next = v[(i + 1) % n]!
-      const grip = 0.78 * CAR.mu * Math.max(0.3 * G, load(next) + (crest ? Math.min(0, crest[i]!) * next * next : 0))
-      const brake = Math.max(1, grip + (grade ? G * grade[i]! : 0))
-      v[i] = Math.min(v[i]!, Math.sqrt(next * next + 2 * brake))
-    }
   }
   return v
 }

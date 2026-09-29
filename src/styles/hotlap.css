@@ -1,8 +1,8 @@
 /*
  * Hot Lap: the track fills the screen in 3D, seen from behind the car. Over it, the site's play readout
- * (the lap clock, your best and the sectors), a map of the circuit under the chrome, the speed at the
- * foot, the start lights, and on a touch screen the steering and pedals under each thumb. Before a lap
- * the camera shows the car off; the start card stands clear of it.
+ * (the lap clock, your best and the sectors), the call for the next corner under it, a map of the circuit
+ * under the chrome, the speed at the foot, the start lights, and on a touch screen the steering and pedals
+ * under each thumb. Before a lap the camera shows the car off; the start card stands clear of it.
  */
 
 .hotlap--fullscreen {
@@ -192,6 +192,147 @@ html[data-theme='dark'] .hotlap--fullscreen {
   from {
     opacity: 0;
     transform: translate(-50%, -6px);
+  }
+}
+
+/*
+ * The pace note (calls.ts): the corner coming, under the clock where a notice would go. Its shape, how
+ * sharp in words and colour (orange sharp, yellow medium, cyan fast), what follows it, and the metres to its
+ * turn-in, with a bar that runs down to it. Lit in the track's own light, whatever the site's theme.
+ */
+.hotlap__call {
+  --call: #3ff0ff;
+  --call-rgb: 63, 240, 255;
+  position: absolute;
+  top: calc(var(--readout-middle) + 2.4rem);
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  padding: 0.55em 1.1em 0.85em 0.7em;
+  border: 1.5px solid var(--call);
+  border-radius: 1.1em;
+  background: rgba(3, 7, 12, 0.84);
+  box-shadow:
+    0 0 22px rgba(var(--call-rgb), 0.34),
+    inset 0 0 14px rgba(var(--call-rgb), 0.1);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hotlap-in 0.18s ease-out;
+}
+
+.hotlap__call--hairpin,
+.hotlap__call--sharp {
+  --call: #ff8b2e;
+  --call-rgb: 255, 139, 46;
+}
+
+.hotlap__call--medium {
+  --call: #ffd23f;
+  --call-rgb: 255, 210, 63;
+}
+
+.hotlap__call-shape {
+  flex: none;
+  width: 3.1em;
+  height: 3.1em;
+  overflow: visible;
+}
+
+.hotlap__call-shape path {
+  fill: none;
+  stroke: var(--call);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hotlap__call-shape .hotlap__call-glow {
+  stroke-width: 23;
+  stroke-opacity: 0.26;
+}
+
+.hotlap__call-words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+
+.hotlap__call-words b {
+  font-size: 1.35em;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hotlap__call-words span {
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(231, 238, 243, 0.74);
+}
+
+.hotlap__call-far {
+  margin-left: 0.5em;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2em;
+  color: var(--call);
+}
+
+.hotlap__call-far b {
+  min-width: 3ch;
+  font-size: 1.6em;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.hotlap__call-far span {
+  font-size: 0.75em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hotlap__call-bar {
+  position: absolute;
+  left: 1em;
+  right: 1em;
+  bottom: 0.32em;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(231, 238, 243, 0.12);
+  overflow: hidden;
+}
+
+.hotlap__call-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--call);
+  box-shadow: 0 0 8px var(--call);
+  transform-origin: left center;
+}
+
+/* A friend's challenge hangs under the clock too: the call goes under that. */
+@media (min-width: 721px) {
+  .hotlap__play:has(.challenge-chip) .hotlap__call {
+    top: calc(var(--readout-middle) + var(--score-size) / 2 + 3.2rem);
+  }
+}
+
+/* Too narrow for it beside the corner map: under the map, in the sky. */
+@media (max-width: 720px) {
+  .hotlap__call {
+    top: calc(var(--readout-middle) + 1.6rem + 96px + 0.6rem);
   }
 }
 
@@ -424,10 +565,16 @@ html[data-theme='dark'] .hotlap--fullscreen {
     height: 72px;
   }
 
+  .hotlap__call {
+    top: calc(var(--readout-middle) + 1.6rem + 72px + 0.6rem);
+    font-size: 0.82rem;
+  }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hotlap__toast {
+  .hotlap__toast,
+  .hotlap__call {
     animation: none;
   }
 
