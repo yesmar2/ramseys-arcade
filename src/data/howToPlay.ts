@@ -304,6 +304,19 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ends: 'After the fifth glass. Your first pour of the day is your result; after that, pour it again for practice.',
     tip: 'Wide at the top? Half is higher than it looks. Narrow at the top? Lower. And some glasses are just what they look like.',
   },
+  marblerun: {
+    goal: 'The fastest run down today’s course. A new one comes every day at midnight, New York time.',
+    controls: [
+      { does: 'Tilt the world', touch: 'Drag anywhere', keys: '← → ↑ ↓ or WASD' },
+      { does: 'Start the run again', touch: '↻', keys: 'R' },
+    ],
+    scores: [
+      { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
+      { what: 'Off the edge', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
+    ],
+    ends: 'At the goal. Roll it as often as you like.',
+    tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. The ghost is the run to beat.',
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {

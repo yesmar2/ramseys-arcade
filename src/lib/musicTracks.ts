@@ -398,8 +398,9 @@ const GAME_MUSIC: Record<string, TrackId> = {
   asteroids: 'night',
   barrage: 'night',
   patriot: 'night',
-  // A lap wants a drive to it.
+  // A lap wants a drive to it, and so does a run down a course in the dark.
   hotlap: 'night',
+  marblerun: 'night',
   snake: 'pocket',
   crosswalk: 'pocket',
   pellets: 'pocket',

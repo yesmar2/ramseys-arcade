@@ -19,6 +19,7 @@ export const GAME_PAGES: Record<string, LazyPage<object>> = {
   frenzy: lazyPage(() => import('./FrenzyPage').then((m) => m.FrenzyPage)),
   halffull: lazyPage(() => import('./HalfFullPage').then((m) => m.HalfFullPage)),
   hotlap: lazyPage(() => import('./HotLapPage').then((m) => m.HotLapPage)),
+  marblerun: lazyPage(() => import('./MarbleRunPage').then((m) => m.MarbleRunPage)),
   patriot: lazyPage(() => import('./PatriotPage').then((m) => m.PatriotPage)),
   pellets: lazyPage(() => import('./PelletsPage').then((m) => m.PelletsPage)),
   pop: lazyPage(() => import('./WhackPage').then((m) => m.WhackPage)),

@@ -239,6 +239,16 @@ export const games: Game[] = [
     inDevelopment: true,
     daily: true,
   },
+  {
+    name: 'Marble Run',
+    slug: 'marblerun',
+    tags: ['arcade', 'quick'],
+    description: 'A new course every day, the same for everyone, in 3D. Tilt the world to roll a marble down it against the clock: fall off and you’re back at the last checkpoint. Beat the blue ball.',
+    accent: PALETTE.magenta,
+    playable: true,
+    inDevelopment: true,
+    daily: true,
+  },
 ]
 
 export function getGame(slug: string) {

@@ -425,6 +425,7 @@ const DAYS_COUNT_FROM: Partial<Record<string, string>> = {
   acechase: '2026-09-27',
   findbug: '2026-09-27',
   halffull: '2026-09-28',
+  marblerun: '2026-09-29',
 }
 
 /**
@@ -454,6 +455,7 @@ export const RESULT_WORD: Record<string, string> = {
   findbug: 'Time',
   acechase: 'Tries',
   halffull: 'Pour',
+  marblerun: 'Run',
 }
 
 /** A daily's today, as the site names it. */
@@ -462,6 +464,7 @@ export const TODAY_NAME: Record<string, string> = {
   findbug: 'Today’s Wanted',
   acechase: 'Today’s Hole',
   halffull: 'Today’s Pour',
+  marblerun: 'Today’s Course',
 }
 
 /** A day's result in the game's own terms: a lap, a time, tries, a pour. */

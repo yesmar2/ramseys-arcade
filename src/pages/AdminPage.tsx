@@ -261,6 +261,10 @@ function DailyGamesCard() {
           <a href={gamePlayHref('halffull')}>Half Full · Today’s Pour</a>
           <span>the real one, where your first pour counts; the Pour Book pours any past day again</span>
         </li>
+        <li>
+          <a href={gamePlayHref('marblerun')}>Marble Run · Today’s Course</a>
+          <span>the real one, where your best run today counts</span>
+        </li>
         {HUNT_ANCHORS[0] ? (
           <li>
             <a href={huntTestHref({ anchor: HUNT_ANCHORS[0], pose: 'top', at: 0.5 })}>Bug hunt · test mode</a>

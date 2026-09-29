@@ -16,6 +16,7 @@ const HoleArchive = lazyPage(() => import('../components/archive/HoleArchive').t
 const TrackArchive = lazyPage(() => import('../components/archive/TrackArchive').then((m) => m.TrackArchive))
 const BugArchive = lazyPage(() => import('../components/archive/BugArchive').then((m) => m.BugArchive))
 const PourArchive = lazyPage(() => import('../components/archive/PourArchive').then((m) => m.PourArchive))
+const CourseArchive = lazyPage(() => import('../components/archive/CourseArchive').then((m) => m.CourseArchive))
 
 /** What each daily game's archive is called, and says about itself. */
 const ARCHIVES: Record<string, { title: string; blurb: string }> = {
@@ -35,6 +36,10 @@ const ARCHIVES: Record<string, { title: string; blurb: string }> = {
     title: 'Past days',
     blurb: 'Every day’s five glasses since the first, and who poured closest. Pour any of them again: here they’re practice, so they don’t count for boards, tickets or records.',
   },
+  marblerun: {
+    title: 'Past courses',
+    blurb: 'Every day’s course since the first, and who rolled it fastest. Roll any of them again: here they’re practice, so they don’t count for boards or tickets.',
+  },
 }
 
 /** Each daily game's list of its days. */
@@ -43,6 +48,7 @@ const LISTS: Record<string, typeof HoleArchive> = {
   hotlap: TrackArchive,
   findbug: BugArchive,
   halffull: PourArchive,
+  marblerun: CourseArchive,
 }
 
 export function ArchivePage({ slug }: { slug: string }) {

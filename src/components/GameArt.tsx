@@ -1375,6 +1375,88 @@ function HalfFull({ id }: { id: Id }) {
   )
 }
 
+/**
+ * Marble Run's course hanging in the dark: a ribbon of violet glass edged in magenta light, curving away
+ * right over a floor of light far below, an amber checkpoint gate across it, the swirled marble rolling
+ * down with its glow on the glass, and the blue ball's wire ghost a little ahead.
+ */
+function MarbleRun({ id }: { id: Id }) {
+  // The track's two edges, from under the marble out to where it bends away right.
+  const left = 'M3 31 C6.8 25.6 12.6 21 17.4 17.8 C20.6 15.6 24.4 14.2 28.4 13.4'
+  const right = 'M37 31 C33.8 26.4 30 22.8 27 20.2 C25.8 19 26.4 17.2 29.4 15.8 C30.6 15.2 31.6 14.8 32.2 14.6'
+  const edge = '#ff5ce1'
+  const grid = '#8a5cff'
+  return (
+    <>
+      <defs>
+        <linearGradient id={id('sky')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#050311" />
+          <stop offset="1" stopColor="#2a0e45" />
+        </linearGradient>
+        <linearGradient id={id('skirt')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#a33ad6" />
+          <stop offset="1" stopColor="#07040f" />
+        </linearGradient>
+        <radialGradient id={id('ball')} cx="0.38" cy="0.34" r="0.75">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.5" stopColor="#d9d0ee" />
+          <stop offset="0.88" stopColor="#6a4a9e" />
+          <stop offset="1" stopColor="#3a1f66" />
+        </radialGradient>
+        <clipPath id={id('marble')}>
+          <circle cx="16.4" cy="24.2" r="3.4" />
+        </clipPath>
+      </defs>
+      <rect x="-1" y="-1" width="42" height="14" fill={`url(#${id('sky')})`} />
+      <Stars
+        points={[
+          [3, 3, 0.16],
+          [9, 6.5, 0.13, 0.55],
+          [15, 2.4, 0.15],
+          [22, 5.2, 0.13, 0.55],
+          [30, 2.8, 0.16],
+          [36.5, 6, 0.13, 0.55],
+          [38.5, 1.8, 0.14],
+        ]}
+        colour="#d9ccff"
+      />
+      {/* Peaks of wire on the floor far off, and the floor of light itself, ruled toward the horizon. */}
+      <path d="M1.6 12.8 L5.2 6.6 L8.8 12.8 M6.8 12.8 L9.6 8.8 L12.4 12.8 M30 12.8 L33.8 5.8 L37.6 12.8" {...line('#4b2585', 0.26, 0.9)} />
+      <rect x="-1" y="12.8" width="42" height="19" fill="#07040f" />
+      {[13.2, 13.8, 14.8, 16.4, 18.8, 22.6, 28.6].map((y) => (
+        <path key={y} d={`M-1 ${y} H41`} {...line('#3a2270', 0.16, 0.8)} />
+      ))}
+      {[-30, -16, -4, 6, 14, 22, 30, 40, 52, 66].map((x) => (
+        <path key={x} d={`M20 12.8 L${x} 31`} {...line('#3a2270', 0.16, 0.8)} />
+      ))}
+      <path d="M-1 12.8 H41" {...line('#c65bd9', 0.22, 0.55)} />
+      {/* The track: its skirt hanging below the left edge, its glass, its grid, its edges of light. */}
+      <path d={`${left} L28.4 15.1 C24.6 15.9 20.8 17.4 17.6 19.6 C12.8 22.8 7 27.2 3.2 32.4 Z`} fill={`url(#${id('skirt')})`} opacity="0.9" />
+      <path d={`${left} L32.2 14.6 C31.6 14.8 30.6 15.2 29.4 15.8 C26.4 17.2 25.8 19 27 20.2 C30 22.8 33.8 26.4 37 31 Z`} fill="#191233" />
+      <path d="M20 31 C21.4 26.4 22.8 22 24.2 19.4 M9.4 29 C18 27.6 27 27.4 34.6 28.4 M13.8 24.2 C19 23.2 25 23 29.6 23.6 M17.8 20.2 C21.2 19.4 24.4 19.2 26.6 19.6 M22 16.8 C24.8 15.9 27.4 15.4 29.8 15.2" {...line(grid, 0.16, 0.65)} />
+      <path d={left} {...line(edge, 1.4, 0.25)} />
+      <path d={right} {...line(edge, 1.4, 0.25)} />
+      <path d={left} {...line(edge, 0.45)} />
+      <path d={right} {...line(edge, 0.45)} />
+      {/* The checkpoint gate, amber, across the track where it bends. */}
+      <path d="M20.2 18.6 V14.2 M27.2 19.6 V15.1" {...line('#f5b942', 0.3)} />
+      <path d="M20 14.2 L27.4 15.1" {...line('#f5b942', 0.34)} />
+      {/* The blue ball's ghost, a little ahead. */}
+      <circle cx="24.4" cy="18.9" r="1.15" {...line('#46e4ff', 0.2)} fill="#46e4ff" fillOpacity="0.14" strokeDasharray="0.55 0.35" />
+      {/* The marble, its glow on the glass under it, and its swirl. */}
+      <Glow id={id} name="pool" cx={16.8} cy={27.2} r={5.4} colour="#ff8cf0" strength={0.5} />
+      <Glow id={id} name="halo" cx={16.4} cy={24.2} r={6} colour="#ff5ce1" strength={0.3} />
+      <circle cx="16.4" cy="24.2" r="3.4" fill={`url(#${id('ball')})`} />
+      <g clipPath={`url(#${id('marble')})`}>
+        <path d="M12.6 23.6 C14.2 22 16 25.4 17.6 23.4 C18.6 22.2 19.4 22.4 20.4 21.6" {...line('#ff4fd8', 1)} />
+        <path d="M12.8 26 C14.8 25.2 16.8 27.4 19 25.8 C19.6 25.4 20 25.2 20.4 25" {...line('#46e4ff', 0.6)} />
+      </g>
+      <circle cx="16.4" cy="24.2" r="3.4" {...line('#ff5ce1', 0.28, 0.8)} />
+      <ellipse cx="15.1" cy="22.7" rx="0.8" ry="0.5" transform="rotate(-30 15.1 22.7)" fill="#fff" opacity="0.9" />
+    </>
+  )
+}
+
 const SCENES: Record<string, Scene> = {
   asteroids: Asteroids,
   patriot: Patriot,
@@ -1394,6 +1476,7 @@ const SCENES: Record<string, Scene> = {
   acechase: AceChase,
   hotlap: HotLap,
   halffull: HalfFull,
+  marblerun: MarbleRun,
 }
 
 /**

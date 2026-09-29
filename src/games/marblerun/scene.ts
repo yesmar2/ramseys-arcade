@@ -1,0 +1,761 @@
+import * as THREE from 'three'
+import { BALL_R, ease, halfWidth, hashString, headingAt, heightAt, local, mulberry32, point, RAIL_H, surfaceAt, type Ball, type Course, type Piece, type Tilt } from './sim'
+
+/*
+ * Marble Run in 3D: a course of dark glass drawn in light, hanging over a floor of light far below, and
+ * the marble rolling down it. The whole course is built once, into a handful of meshes; each frame moves
+ * the marble, its ghost and the camera, and leans the world the way it's tilted.
+ */
+
+/** The colours of the dark. Marble Run's own is the arcade's magenta, lifted to glow; the ghost is Hot Lap's cyan. */
+const NEON = {
+  night: '#06040e',
+  fog: '#120a22',
+  skyTop: '#050311',
+  horizon: '#2a0e45',
+  track: '#191233',
+  edge: '#ff5ce1',
+  skirtTop: '#a33ad6',
+  skirtLow: '#07040f',
+  rail: '#46e4ff',
+  post: '#ffb347',
+  gate: '#f5b942',
+  passed: '#3ecf8e',
+  goal: '#ff5ce1',
+  kicker: '#ffb347',
+  floor: '#3a2270',
+  peaks: '#4b2585',
+  ghost: '#46e4ff',
+} as const
+
+/** What a frame shows. */
+export type SceneFrame = {
+  ball: Ball
+  /** How the world is tilted this moment (sim.ts Tilt), for the lean the camera shows. */
+  tilt: Tilt
+  /** The start card's view of the whole course; a run; the ball falling; the run over. */
+  mode: 'menu' | 'play' | 'fallen' | 'done'
+  /** Seconds since the run ended, for the camera's pull back. */
+  doneFor: number
+  ghost: { x: number; y: number; z: number } | null
+  ghostTag: string
+  /** Lines crossed so far (checkpoints, then the goal): their gates turn green. */
+  passed: number
+}
+
+type Paint = (g: CanvasRenderingContext2D, w: number, h: number) => void
+
+/** One growing mesh per look, so the whole course draws in a handful of calls. */
+class Layer {
+  pos: number[] = []
+  col: number[] = []
+  uv: number[] = []
+  idx: number[] = []
+  vert(x: number, y: number, z: number, c: THREE.Color, u = 0, v = 0) {
+    this.pos.push(x, y, z)
+    this.col.push(c.r, c.g, c.b)
+    this.uv.push(u, v)
+    return this.pos.length / 3 - 1
+  }
+  tri(a: number, b: number, c: number) {
+    this.idx.push(a, b, c)
+  }
+  get empty() {
+    return this.idx.length === 0
+  }
+  mesh(material: THREE.Material) {
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3))
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3))
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2))
+    geo.setIndex(this.idx)
+    geo.computeBoundingSphere()
+    return new THREE.Mesh(geo, material)
+  }
+}
+
+const WHITE = new THREE.Color(1, 1, 1)
+const LIGHT = new THREE.Vector3(0.35, 1, 0.55).normalize()
+const UP = new THREE.Vector3(0, 1, 0)
+/** The pool of light under the ball is a grid this many cells a side, laid on the track. */
+const POOL_GRID = 6
+const angleTo = (a: number, b: number) => Math.atan2(Math.sin(b - a), Math.cos(b - a))
+
+/** Rows along a piece, `cols` across: `at(u, j)` gives [x, y, z, colour, uvU, uvV]. */
+function sheet(layer: Layer, p: Piece, cols: number, at: (u: number, j: number) => [number, number, number, THREE.Color, number?, number?], step = 0.5) {
+  const rows = Math.max(2, Math.ceil(p.len / step) + 1)
+  const first = layer.pos.length / 3
+  for (let i = 0; i < rows; i++) {
+    const u = (p.len * i) / (rows - 1)
+    for (let j = 0; j < cols; j++) {
+      const [x, y, z, c, a, b] = at(u, j)
+      layer.vert(x, y, z, c, a, b)
+    }
+  }
+  for (let i = 0; i < rows - 1; i++)
+    for (let j = 0; j < cols - 1; j++) {
+      const a = first + i * cols + j
+      const c = a + cols
+      layer.tri(a, c, a + 1)
+      layer.tri(a + 1, c, c + 1)
+    }
+}
+
+/** How lit a spot of track is, from which way its slope faces. */
+function shadeAt(p: Piece, u: number, v: number) {
+  const e = 0.05
+  const dyu = (heightAt(p, u + e, v) - heightAt(p, u - e, v)) / (2 * e)
+  const dyv = (heightAt(p, u, v + e) - heightAt(p, u, v - e)) / (2 * e)
+  const h = headingAt(p, u)
+  const gx = dyu * Math.cos(h) - dyv * Math.sin(h)
+  const gz = dyu * Math.sin(h) + dyv * Math.cos(h)
+  const n = new THREE.Vector3(-gx, 1, -gz).normalize()
+  return Math.max(0.35, Math.min(1.15, 0.2 + 0.95 * n.dot(LIGHT)))
+}
+
+type Gate = { mat: THREE.MeshBasicMaterial; curtain: THREE.MeshBasicMaterial; goal: boolean }
+
+export class MarbleScene {
+  private readonly renderer: THREE.WebGLRenderer
+  private readonly scene = new THREE.Scene()
+  private readonly camera = new THREE.PerspectiveCamera(62, 1, 0.1, 4000)
+  private readonly course: Course
+  private readonly textures: THREE.Texture[] = []
+  private readonly lettered: [THREE.CanvasTexture, Paint][] = []
+  private readonly gates: Gate[] = []
+  private readonly ball: THREE.Mesh
+  private readonly glow: THREE.Sprite
+  private readonly pool: THREE.Mesh
+  /** The pool's grid as made: a 1 m square, flat, round the origin. */
+  private readonly poolAt: Float32Array
+  private readonly ghost = new THREE.Group()
+  private readonly ghostWire: THREE.LineBasicMaterial
+  private readonly ghostTag: THREE.Sprite
+  private readonly ghostTagTex: THREE.CanvasTexture
+  private ghostTagText = ''
+  private readonly calm: boolean
+  private width = 0
+  private height = 0
+  private passedShown = -1
+  private menuAngle = 0
+  private snapNext = true
+  private yaw = -Math.PI / 2
+  private followY = 0
+  private readonly shownTilt = new THREE.Vector2()
+  private readonly wantTilt = new THREE.Vector2()
+  private disposed = false
+  // Scratch, so a frame makes no garbage.
+  private readonly spin = new THREE.Quaternion()
+  private readonly lean = new THREE.Quaternion()
+  private readonly focus = new THREE.Vector3()
+  private readonly eye = new THREE.Vector3()
+  private readonly look = new THREE.Vector3()
+  private readonly camUp = new THREE.Vector3()
+  private readonly axis = new THREE.Vector3()
+
+  constructor(canvas: HTMLCanvasElement, course: Course) {
+    this.course = course
+    this.calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.renderer = renderer
+    this.scene.background = new THREE.Color(NEON.night)
+    this.scene.fog = new THREE.Fog(NEON.fog, 70, 330)
+    this.menuAngle = (hashString(course.key) % 628) / 100
+
+    this.buildSky()
+    this.buildCourse()
+    this.buildFloor()
+
+    // The marble: white glass with a swirl, lit by a painted light so it shines without lamps.
+    const matcap = this.paint(256, 256, (g, w, h) => {
+      const base = g.createRadialGradient(w * 0.42, h * 0.38, 4, w / 2, h / 2, w / 2)
+      base.addColorStop(0, '#ffffff')
+      base.addColorStop(0.45, '#d9d0ee')
+      base.addColorStop(0.85, '#5b3f8c')
+      base.addColorStop(1, '#2a1650')
+      g.fillStyle = base
+      g.fillRect(0, 0, w, h)
+      const rim = g.createRadialGradient(w / 2, h / 2, w * 0.36, w / 2, h / 2, w / 2)
+      rim.addColorStop(0, 'rgba(255,92,225,0)')
+      rim.addColorStop(1, 'rgba(255,92,225,0.65)')
+      g.fillStyle = rim
+      g.fillRect(0, 0, w, h)
+      g.fillStyle = 'rgba(255,255,255,0.95)'
+      g.beginPath()
+      g.ellipse(w * 0.36, h * 0.3, w * 0.07, h * 0.045, -0.6, 0, Math.PI * 2)
+      g.fill()
+    })
+    const swirl = this.paint(512, 256, (g, w, h) => {
+      g.fillStyle = '#ffffff'
+      g.fillRect(0, 0, w, h)
+      const band = (color: string, phase: number, y: number, amp: number, thick: number) => {
+        g.strokeStyle = color
+        g.lineWidth = thick
+        g.lineCap = 'round'
+        g.beginPath()
+        for (let x = -10; x <= w + 10; x += 6) {
+          const yy = y + Math.sin((x / w) * Math.PI * 4 + phase) * amp
+          if (x === -10) g.moveTo(x, yy)
+          else g.lineTo(x, yy)
+        }
+        g.stroke()
+      }
+      band('#ff4fd8', 0, h * 0.42, h * 0.1, 26)
+      band('#46e4ff', 1.9, h * 0.62, h * 0.08, 14)
+      band('#8a5cff', 3.4, h * 0.26, h * 0.06, 8)
+    })
+    this.ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 48, 32), new THREE.MeshMatcapMaterial({ matcap, map: swirl }))
+    const dot = this.dotTexture()
+    this.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: dot, color: '#ff8cf0', transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }))
+    this.glow.scale.setScalar(BALL_R * 4.2)
+    // A pool of light on the track under the ball: where it'll come down, when it's flying. It's laid on the
+    // track's own shape each frame (frame), so it lies flush in a bowl or over a roller.
+    const poolGeo = new THREE.PlaneGeometry(1, 1, POOL_GRID, POOL_GRID)
+    poolGeo.rotateX(-Math.PI / 2)
+    this.poolAt = Float32Array.from(poolGeo.attributes.position!.array)
+    this.pool = new THREE.Mesh(
+      poolGeo,
+      new THREE.MeshBasicMaterial({ map: dot, color: '#ff8cf0', transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }),
+    )
+    this.pool.frustumCulled = false
+    this.pool.renderOrder = 3
+    this.scene.add(this.ball, this.glow, this.pool)
+
+    // The ghost: a ball of cyan wire, with whose run it is over it.
+    const shell = new THREE.IcosahedronGeometry(BALL_R, 1)
+    this.ghostWire = new THREE.LineBasicMaterial({ color: NEON.ghost, transparent: true, opacity: 0.9 })
+    const fill = new THREE.Mesh(shell, new THREE.MeshBasicMaterial({ color: NEON.ghost, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false }))
+    this.ghost.add(new THREE.LineSegments(new THREE.EdgesGeometry(shell), this.ghostWire), fill)
+    const tagDraw: Paint = (g, w, h) => {
+      g.clearRect(0, 0, w, h)
+      g.fillStyle = 'rgba(7,5,15,0.78)'
+      g.beginPath()
+      if (g.roundRect) g.roundRect(4, 8, w - 8, h - 16, (h - 16) / 2)
+      else g.rect(4, 8, w - 8, h - 16)
+      g.fill()
+      g.strokeStyle = NEON.ghost
+      g.lineWidth = 3
+      g.stroke()
+      g.fillStyle = NEON.ghost
+      g.font = '700 30px "Outfit", system-ui, sans-serif'
+      g.textAlign = 'center'
+      g.textBaseline = 'middle'
+      g.fillText(this.ghostTagText, w / 2, h / 2 + 1)
+    }
+    this.ghostTagTex = this.paint(256, 64, tagDraw, true)
+    this.ghostTag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.ghostTagTex, transparent: true, depthWrite: false, sizeAttenuation: false }))
+    this.ghostTag.position.set(0, 1.25, 0)
+    this.ghost.add(this.ghostTag)
+    this.ghost.visible = false
+    this.scene.add(this.ghost)
+
+    // Signs are painted before the display face has arrived; paint them again once it has.
+    if (typeof document !== 'undefined' && document.fonts) {
+      Promise.all([document.fonts.load('800 60px "Outfit"'), document.fonts.load('700 30px "Outfit"')])
+        .then(() => {
+          if (this.disposed) return
+          for (const [tex, draw] of this.lettered) {
+            const c = tex.image as HTMLCanvasElement
+            draw(c.getContext('2d')!, c.width, c.height)
+            tex.needsUpdate = true
+          }
+        })
+        .catch(() => {})
+    }
+  }
+
+  private paint(w: number, h: number, draw: Paint, hasText = false): THREE.CanvasTexture {
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    draw(c.getContext('2d')!, w, h)
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
+    this.textures.push(tex)
+    if (hasText) this.lettered.push([tex, draw])
+    return tex
+  }
+
+  private dotTexture() {
+    return this.paint(128, 128, (g, w, h) => {
+      const grad = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
+      grad.addColorStop(0, 'rgba(255,255,255,1)')
+      grad.addColorStop(0.25, 'rgba(255,255,255,0.55)')
+      grad.addColorStop(1, 'rgba(255,255,255,0)')
+      g.fillStyle = grad
+      g.fillRect(0, 0, w, h)
+    })
+  }
+
+  private buildSky() {
+    const geo = new THREE.SphereGeometry(1800, 32, 16)
+    const top = new THREE.Color(NEON.skyTop)
+    const mid = new THREE.Color(NEON.horizon)
+    const low = new THREE.Color(NEON.fog)
+    const colors: number[] = []
+    for (let i = 0; i < geo.attributes.position!.count; i++) {
+      const up = geo.attributes.position!.getY(i) / 1800
+      const c = up > 0 ? mid.clone().lerp(top, Math.pow(up, 0.45)) : low.clone()
+      colors.push(c.r, c.g, c.b)
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+    this.scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })))
+    const r = mulberry32(7)
+    const pos: number[] = []
+    for (let i = 0; i < 700; i++) {
+      const a = r() * Math.PI * 2
+      const up = 0.08 + Math.pow(r(), 0.7) * 0.92
+      const flat = Math.sqrt(1 - up * up)
+      pos.push(Math.cos(a) * flat * 1600, up * 1600, Math.sin(a) * flat * 1600)
+    }
+    const sg = new THREE.BufferGeometry()
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    this.scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: '#d9ccff', size: 1.6, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.75, depthWrite: false })))
+  }
+
+  private buildCourse() {
+    const course = this.course
+    const surface = new Layer()
+    const skirts = new Layer()
+    const edges = new Layer()
+    const halos = new Layer()
+    const railWalls = new Layer()
+    const railTops = new Layer()
+    const edgeColor = new THREE.Color(NEON.edge)
+    const railColor = new THREE.Color(NEON.rail)
+    const skirtTop = new THREE.Color(NEON.skirtTop)
+    const skirtLow = new THREE.Color(NEON.skirtLow)
+    const kick = new THREE.Color(NEON.kicker)
+    const DEPTH = 0.9
+
+    for (const p of course.solid) {
+      const hw = (u: number) => halfWidth(p, u)
+      const cols = p.pipe || p.rollers || p.bank ? 13 : 7
+      const narrow = p.w1 < 3.4 || p.w0 < 3.4
+      // The top: shaded by its slopes, its grid running on from piece to piece; a kicker glows amber.
+      sheet(surface, p, cols, (u, j) => {
+        const v = -hw(u) + (2 * hw(u) * j) / (cols - 1)
+        const [x, z] = point(p, u, v)
+        let c = WHITE.clone().multiplyScalar(shadeAt(p, u, v))
+        if (p.kicker) c = c.lerp(kick, 0.45 * ease(p, u) + 0.35 * (u / p.len))
+        else if (narrow) c = c.lerp(edgeColor, 0.12)
+        return [x, heightAt(p, u, v), z, c, v / 2, (p.d0 + u) / 2]
+      })
+      for (const side of [-1, 1]) {
+        // The edge: a line of light and a glow falling off inward, and a skirt hanging below.
+        sheet(edges, p, 2, (u, j) => {
+          const v = side * (hw(u) - j * 0.09)
+          const [x, z] = point(p, u, v)
+          return [x, heightAt(p, u, v) + 0.015, z, edgeColor]
+        })
+        sheet(halos, p, 2, (u, j) => {
+          const v = side * (hw(u) - j * 0.9)
+          const [x, z] = point(p, u, v)
+          return [x, heightAt(p, u, v) + 0.01, z, edgeColor, j, 0]
+        })
+        sheet(skirts, p, 2, (u, j) => {
+          const v = side * hw(u)
+          const [x, z] = point(p, u, v)
+          return [x, heightAt(p, u, v) - j * DEPTH, z, j ? skirtLow : skirtTop]
+        })
+        if (side < 0 ? p.railL : p.railR) {
+          sheet(railWalls, p, 2, (u, j) => {
+            const v = side * hw(u)
+            const [x, z] = point(p, u, v)
+            return [x, heightAt(p, u, v) + j * RAIL_H, z, railColor, j, 0]
+          })
+          sheet(railTops, p, 2, (u, j) => {
+            const v = side * (hw(u) - j * 0.08)
+            const [x, z] = point(p, u, v)
+            return [x, heightAt(p, u, side * hw(u)) + RAIL_H, z, railColor]
+          })
+        }
+      }
+      // Where the track ends, at the start, the goal and either side of a gap, a face across it and a lip of light.
+      const prev = course.pieces[p.index - 1]
+      const next = course.pieces[p.index + 1]
+      const ends: number[] = []
+      if (!prev || prev.gap) ends.push(0)
+      if (!next || next.gap) ends.push(p.len)
+      for (const u of ends) {
+        const n = 9
+        const face = skirts.pos.length / 3
+        const lip = edges.pos.length / 3
+        const back = u + (u === 0 ? 0.09 : -0.09)
+        for (let j = 0; j < n; j++) {
+          const v = -hw(u) + (2 * hw(u) * j) / (n - 1)
+          const [x, z] = point(p, u, v)
+          const y = heightAt(p, u, v)
+          skirts.vert(x, y, z, skirtTop)
+          skirts.vert(x, y - DEPTH, z, skirtLow)
+          const [bx, bz] = point(p, back, v)
+          edges.vert(x, y + 0.015, z, p.kicker ? kick : edgeColor)
+          edges.vert(bx, heightAt(p, back, v) + 0.015, bz, p.kicker ? kick : edgeColor)
+        }
+        for (let j = 0; j < n - 1; j++) {
+          const a = face + j * 2
+          skirts.tri(a, a + 1, a + 2)
+          skirts.tri(a + 1, a + 3, a + 2)
+          const b = lip + j * 2
+          edges.tri(b, b + 1, b + 2)
+          edges.tri(b + 1, b + 3, b + 2)
+        }
+      }
+    }
+
+    // The wall behind the start and the one past the goal: glass, like the rails.
+    for (const w of course.walls) {
+      const p = w.p
+      const hw = halfWidth(p, w.u)
+      const n = 9
+      const wall = railWalls.pos.length / 3
+      const top = railTops.pos.length / 3
+      for (let j = 0; j < n; j++) {
+        const v = -hw + (2 * hw * j) / (n - 1)
+        const [x, z] = point(p, w.u, v)
+        const y = heightAt(p, w.u, v)
+        railWalls.vert(x, y, z, railColor)
+        railWalls.vert(x, y + RAIL_H, z, railColor)
+        const [bx, bz] = point(p, w.u + w.dir * 0.08, v)
+        railTops.vert(x, y + RAIL_H, z, railColor)
+        railTops.vert(bx, y + RAIL_H, bz, railColor)
+      }
+      for (let j = 0; j < n - 1; j++) {
+        const a = wall + j * 2
+        railWalls.tri(a, a + 1, a + 2)
+        railWalls.tri(a + 1, a + 3, a + 2)
+        const c = top + j * 2
+        railTops.tri(c, c + 1, c + 2)
+        railTops.tri(c + 1, c + 3, c + 2)
+      }
+    }
+
+    // The track's glass: dark, with a violet grid, a cell every 2 m.
+    const grid = this.paint(256, 256, (g, w, h) => {
+      g.fillStyle = NEON.track
+      g.fillRect(0, 0, w, h)
+      const glow = g.createLinearGradient(0, 0, 0, h)
+      glow.addColorStop(0, 'rgba(138, 92, 255, 0.10)')
+      glow.addColorStop(0.5, 'rgba(138, 92, 255, 0.02)')
+      glow.addColorStop(1, 'rgba(138, 92, 255, 0.10)')
+      g.fillStyle = glow
+      g.fillRect(0, 0, w, h)
+      g.strokeStyle = 'rgba(160, 120, 255, 0.55)'
+      g.lineWidth = 3
+      g.strokeRect(1.5, 1.5, w - 3, h - 3)
+    })
+    grid.wrapS = grid.wrapT = THREE.RepeatWrapping
+    const fade = this.paint(64, 8, (g, w, h) => {
+      const grad = g.createLinearGradient(0, 0, w, 0)
+      grad.addColorStop(0, 'rgba(255,255,255,1)')
+      grad.addColorStop(0.35, 'rgba(255,255,255,0.35)')
+      grad.addColorStop(1, 'rgba(255,255,255,0)')
+      g.fillStyle = grad
+      g.fillRect(0, 0, w, h)
+    })
+    const group = this.scene
+    group.add(surface.mesh(new THREE.MeshBasicMaterial({ map: grid, vertexColors: true, side: THREE.DoubleSide })))
+    group.add(skirts.mesh(new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })))
+    group.add(edges.mesh(new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })))
+    const halo = halos.mesh(new THREE.MeshBasicMaterial({ map: fade, vertexColors: true, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }))
+    halo.renderOrder = 1
+    group.add(halo)
+    if (!railWalls.empty) {
+      const walls = railWalls.mesh(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }))
+      walls.renderOrder = 2
+      group.add(walls)
+      group.add(railTops.mesh(new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })))
+    }
+
+    // Posts to weave round.
+    const postMat = new THREE.MeshBasicMaterial({ color: NEON.post })
+    const postGlow = new THREE.MeshBasicMaterial({ color: NEON.post, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false })
+    for (const k of course.posts) {
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(k.r, k.r, k.h, 20), postMat)
+      core.position.set(k.x, k.y + k.h / 2, k.z)
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(k.r * 1.45, k.r * 1.45, k.h * 1.04, 20, 1, true), postGlow)
+      glow.position.copy(core.position)
+      group.add(core, glow)
+    }
+
+    // Gates: the start's, one at every checkpoint, and the goal's.
+    const start = course.pieces[0]!
+    this.gate(start, start.len - 0.2, NEON.gate, false, fade, `${course.name.toUpperCase()}`)
+    for (const L of course.lines) this.gates.push(this.gate(L.p, L.u, L.goal ? NEON.goal : NEON.gate, !!L.goal, fade, L.goal ? 'GOAL' : null))
+  }
+
+  private gate(p: Piece, u: number, color: string, goal: boolean, fade: THREE.Texture, label: string | null): Gate {
+    const hw = halfWidth(p, u) + 0.2
+    const [x, z] = point(p, u, 0)
+    const y = heightAt(p, u, 0)
+    const g = new THREE.Group()
+    g.position.set(x, y, z)
+    g.rotation.y = -headingAt(p, u)
+    const mat = new THREE.MeshBasicMaterial({ color })
+    const H = 2.7
+    for (const s of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, H, 0.16), mat)
+      post.position.set(0, H / 2 + heightAt(p, u, s * hw) - y, s * hw)
+      g.add(post)
+    }
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 2 * hw + 0.16), mat)
+    bar.position.set(0, H, 0)
+    g.add(bar)
+    const curtain = new THREE.MeshBasicMaterial({ color, map: fade, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+    const sheetGeo = new THREE.PlaneGeometry(2 * hw, H)
+    // The fade runs up the curtain: bright at the track, gone at the bar.
+    const uv = sheetGeo.attributes.uv!
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getY(i), 0)
+    const drape = new THREE.Mesh(sheetGeo, curtain)
+    drape.rotation.y = Math.PI / 2
+    drape.position.set(0, H / 2, 0)
+    g.add(drape)
+    if (label) {
+      const tex = this.paint(
+        512,
+        96,
+        (c, w, hh) => {
+          c.clearRect(0, 0, w, hh)
+          c.fillStyle = 'rgba(7,5,15,0.85)'
+          c.fillRect(0, 0, w, hh)
+          c.strokeStyle = color
+          c.lineWidth = 6
+          c.strokeRect(3, 3, w - 6, hh - 6)
+          c.fillStyle = '#ffffff'
+          c.font = '800 54px "Outfit", system-ui, sans-serif'
+          c.textAlign = 'center'
+          c.textBaseline = 'middle'
+          c.fillText(label, w / 2, hh / 2 + 2, w - 40)
+        },
+        true,
+      )
+      const width = Math.min(2 * hw, 5)
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(width, width * (96 / 512)), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }))
+      sign.rotation.y = -Math.PI / 2
+      sign.position.set(0, H + 0.62, 0)
+      g.add(sign)
+    }
+    this.scene.add(g)
+    return { mat, curtain, goal }
+  }
+
+  /** Far below, a floor of light, and peaks of wire standing on it. */
+  private buildFloor() {
+    const course = this.course
+    const floorY = course.minY - 42
+    const tex = this.paint(128, 128, (g, w, h) => {
+      g.fillStyle = NEON.night
+      g.fillRect(0, 0, w, h)
+      g.strokeStyle = NEON.floor
+      g.lineWidth = 2
+      g.strokeRect(1, 1, w - 2, h - 2)
+    })
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(3000 / 14, 3000 / 14)
+    const cx = (course.box[0] + course.box[1]) / 2
+    const cz = (course.box[2] + course.box[3]) / 2
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshBasicMaterial({ map: tex }))
+    floor.rotation.x = -Math.PI / 2
+    floor.position.set(cx, floorY, cz)
+    this.scene.add(floor)
+    const peakMat = new THREE.LineBasicMaterial({ color: NEON.peaks })
+    const r = mulberry32(hashString(`peaks:${course.key}`))
+    const span = Math.max(course.box[1] - course.box[0], course.box[3] - course.box[2]) / 2
+    for (let i = 0; i < 26; i++) {
+      const a = r() * Math.PI * 2
+      const d = span + 40 + r() * 260
+      const height = 25 + r() * 70
+      const cone = new THREE.ConeGeometry(height * (0.35 + r() * 0.25), height, 4, 1)
+      const lines = new THREE.LineSegments(new THREE.EdgesGeometry(cone), peakMat)
+      cone.dispose()
+      lines.position.set(cx + Math.cos(a) * d, floorY + height / 2, cz + Math.sin(a) * d)
+      lines.rotation.y = r() * Math.PI
+      this.scene.add(lines)
+    }
+  }
+
+  /** Whose run the ghost is. */
+  private setGhostTag(text: string) {
+    if (text === this.ghostTagText) return
+    this.ghostTagText = text
+    const found = this.lettered.find(([t]) => t === this.ghostTagTex)
+    if (found) {
+      const c = this.ghostTagTex.image as HTMLCanvasElement
+      found[1](c.getContext('2d')!, c.width, c.height)
+      this.ghostTagTex.needsUpdate = true
+    }
+  }
+
+  resize(width: number, height: number) {
+    if (width === this.width && height === this.height) return
+    if (width <= 0 || height <= 0) return
+    this.width = width
+    this.height = height
+    this.renderer.setSize(width, height, false)
+    this.camera.aspect = width / height
+    // A tall screen sees little either side, so it looks wider, and from further back (frame).
+    this.camera.fov = this.camera.aspect < 1 ? 62 + (1 - this.camera.aspect) * 34 : 62
+    this.camera.updateProjectionMatrix()
+    const k = this.camera.aspect < 1 ? 0.78 : 1
+    this.ghostTag.scale.set(0.2 * k, 0.05 * k, 1)
+  }
+
+  /** The next frame puts the camera straight behind the ball: a run begins, or starts again at a checkpoint. */
+  snap() {
+    this.snapNext = true
+  }
+
+  /** The way the camera looks, across the ground: a tilt forward on the keys or the stick leans the world that way. */
+  heading(): number {
+    return this.yaw
+  }
+
+  frame(f: SceneFrame, dt: number) {
+    const b = f.ball
+    this.placeCamera(f, dt)
+
+    // The marble, rolling: it turns about the line across the way it's going.
+    this.ball.position.set(b.x, b.y, b.z)
+    this.glow.position.copy(this.ball.position)
+    const sp = Math.hypot(b.vx, b.vy, b.vz)
+    if (!b.air && sp > 1e-3 && dt > 0) {
+      this.axis.set(b.vz, 0, -b.vx).normalize()
+      this.spin.setFromAxisAngle(this.axis, (sp * dt) / BALL_R)
+      this.ball.quaternion.premultiply(this.spin)
+    }
+    // The pool of light on the track below it, laid on the track's own shape, wider and fainter the higher it flies.
+    const under = f.mode === 'menu' ? null : surfaceAt(this.course, b.x, b.z, b.y)
+    if (under) {
+      const high = b.y - BALL_R - under.y
+      const size = 1.6 + Math.min(4, high) * 0.35
+      const p = under.p
+      const pos = this.pool.geometry.attributes.position!
+      const at = this.poolAt
+      for (let i = 0; i < pos.count; i++) {
+        const x = b.x + at[i * 3]! * size
+        const z = b.z + at[i * 3 + 2]! * size
+        const l = local(p, x, z)
+        pos.setXYZ(i, x, heightAt(p, l.u, l.v) + 0.04, z)
+      }
+      pos.needsUpdate = true
+      this.pool.visible = true
+      ;(this.pool.material as THREE.MeshBasicMaterial).opacity = 0.65 / (1 + high * 0.6)
+    } else this.pool.visible = false
+
+    // The ghost, where the run to beat was at this moment; fainter while it's on top of you.
+    if (f.ghost) {
+      this.ghost.visible = true
+      this.ghost.position.set(f.ghost.x, f.ghost.y, f.ghost.z)
+      this.ghost.rotation.y += dt * 1.5
+      this.ghostWire.opacity = Math.min(0.9, 0.2 + this.ghost.position.distanceTo(this.ball.position) * 0.18)
+      this.setGhostTag(f.ghostTag)
+    } else this.ghost.visible = false
+
+    // Gates crossed turn green.
+    if (f.passed !== this.passedShown) {
+      this.passedShown = f.passed
+      this.gates.forEach((g, i) => {
+        const c = i < f.passed ? NEON.passed : g.goal ? NEON.goal : NEON.gate
+        g.mat.color.set(c)
+        g.curtain.color.set(c)
+      })
+    }
+    this.renderer.render(this.scene, this.camera)
+  }
+
+  private placeCamera(f: SceneFrame, dt: number) {
+    const course = this.course
+    const cam = this.camera
+    if (f.mode === 'menu') {
+      // Circle high over the whole course.
+      this.menuAngle += dt * (this.calm ? 0.02 : 0.06)
+      const cx = (course.box[0] + course.box[1]) / 2
+      const cz = (course.box[2] + course.box[3]) / 2
+      const span = Math.max(course.box[1] - course.box[0], course.box[3] - course.box[2])
+      const d = span * (cam.aspect < 1 ? 0.95 : 0.72) + 30
+      cam.position.set(cx + Math.cos(this.menuAngle) * d, course.maxY + span * 0.42 + 18, cz + Math.sin(this.menuAngle) * d)
+      cam.up.set(0, 1, 0)
+      cam.lookAt(cx, (course.minY + course.maxY) / 2 - 4, cz)
+      this.snapNext = true
+      return
+    }
+    const b = f.ball
+    const sp = Math.hypot(b.vx, b.vz)
+    // Look the way the track goes here, leaning toward the way the ball is going.
+    let target = this.yaw
+    const s = b.support
+    if (s) target = headingAt(s.p, Math.max(0, Math.min(s.p.len, s.u)))
+    if (sp > 2) target += Math.max(-0.9, Math.min(0.9, angleTo(target, Math.atan2(b.vz, b.vx)))) * 0.55
+    if (this.snapNext) {
+      this.yaw = target
+      this.followY = b.y
+      this.shownTilt.set(0, 0)
+      this.snapNext = false
+    }
+    const falling = f.mode === 'fallen'
+    if (!falling) {
+      if (f.mode === 'done') this.yaw += dt * (this.calm ? 0.08 : 0.3)
+      else this.yaw += angleTo(this.yaw, target) * (1 - Math.exp(-dt * 3.2))
+      // The height follows a little behind, so hops don't shake the view.
+      this.followY += (b.y - this.followY) * (1 - Math.exp(-dt * 9))
+    }
+    const fx = Math.cos(this.yaw)
+    const fz = Math.sin(this.yaw)
+    const tall = cam.aspect < 1 ? 1.2 : 1
+    const dist = (6.2 + Math.min(sp, 16) * 0.13) * tall
+    const height = (2.5 + Math.min(sp, 16) * 0.05) * tall
+    const focus = this.focus.set(b.x, this.followY, b.z)
+    const eye = this.eye.set(b.x - fx * dist, this.followY + height, b.z - fz * dist)
+    const look = this.look.set(b.x + fx * 3.2, this.followY + 0.35, b.z + fz * 3.2)
+    // The world leans the way it's tilted: turn the camera the other way round the ball. Side to side it
+    // leans half as far as the tilt; forward and back much less, so the track ahead stays in view.
+    this.shownTilt.lerp(this.wantTilt.set(f.tilt.x, f.tilt.z), 1 - Math.exp(-dt * 10))
+    const t = this.shownTilt
+    const along = (t.x * fx + t.y * fz) * 0.4
+    const across = t.x * -fz + t.y * fx
+    const sx = along * fx - across * fz
+    const sz = along * fz + across * fx
+    const tl = Math.hypot(sx, sz)
+    this.camUp.copy(UP)
+    if (tl > 1e-4) {
+      this.axis.set(-sz, 0, sx).normalize()
+      this.lean.setFromAxisAngle(this.axis, Math.asin(Math.min(1, tl)) * (this.calm ? 0.25 : 0.5))
+      eye.sub(focus).applyQuaternion(this.lean).add(focus)
+      look.sub(focus).applyQuaternion(this.lean).add(focus)
+      this.camUp.applyQuaternion(this.lean)
+    }
+    if (f.mode === 'done') {
+      // Pull back and look down on it; on a tall screen, keep it above the card.
+      const k = Math.min(1, f.doneFor / 1.2)
+      this.axis.copy(eye).sub(focus)
+      eye.addScaledVector(this.axis, 0.5 * k)
+      eye.y += 2.5 * k
+      if (cam.aspect < 1) look.y -= 3.2 * k
+    }
+    if (falling) {
+      // Watch it go: the camera stays where it was.
+      cam.up.copy(this.camUp)
+      cam.lookAt(b.x, b.y, b.z)
+      return
+    }
+    cam.position.copy(eye)
+    cam.up.copy(this.camUp)
+    cam.lookAt(look)
+  }
+
+  dispose() {
+    this.disposed = true
+    this.scene.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      mesh.geometry?.dispose()
+      const mats = mesh.material
+      for (const m of Array.isArray(mats) ? mats : mats ? [mats] : []) m.dispose()
+    })
+    for (const t of this.textures) t.dispose()
+    this.renderer.dispose()
+    this.renderer.forceContextLoss()
+  }
+}

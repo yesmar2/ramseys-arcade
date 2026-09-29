@@ -1,0 +1,279 @@
+/*
+ * Marble Run: the course fills the screen in 3D, seen from behind the marble. Over it, the site's play
+ * readout (the clock, your best, the last checkpoint against the ghost, and the falls), a map of the course
+ * under the chrome, the countdown, and on a touch screen a stick wherever a thumb lands. Before a run the
+ * camera circles the course; the start card stands clear of it.
+ */
+
+.marblerun--fullscreen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  --marblerun-good: #23a66c;
+  --marblerun-bad: #d9453d;
+  --marblerun-accent: var(--celeb-accent, var(--accent));
+}
+
+html[data-theme='dark'] .marblerun--fullscreen {
+  --marblerun-good: #3ecf8e;
+  --marblerun-bad: #f07a8a;
+}
+
+.marblerun .game-play {
+  position: relative;
+}
+
+.marblerun__play {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.marblerun__holder {
+  position: absolute;
+  inset: 0;
+}
+
+.marblerun__view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.marblerun--showroom .marblerun__view {
+  cursor: pointer;
+}
+
+/* Before a run the card has the corner the map would take. */
+.marblerun--showroom .marblerun__map {
+  display: none;
+}
+
+/* The clock and its figures sit over the dark: give them a surface to read on. */
+.marblerun .play-readout__score,
+.marblerun .play-stats {
+  text-shadow:
+    0 1px 0 rgba(var(--surface-rgb), 0.9),
+    0 0 14px rgba(var(--surface-rgb), 0.75);
+}
+
+.marblerun__delta--good {
+  color: var(--marblerun-good);
+}
+
+.marblerun__delta--bad {
+  color: var(--marblerun-bad);
+}
+
+/* ---------- the map, the countdown, the notices ---------- */
+
+.marblerun__map {
+  position: absolute;
+  top: calc(var(--readout-middle) + 1.6rem);
+  right: max(0.6rem, env(safe-area-inset-right, 0px));
+  z-index: 9;
+  width: 120px;
+  height: 120px;
+  box-sizing: border-box;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 1.1rem;
+  background: rgba(var(--surface-rgb), 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.marblerun__count {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 16vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #fff;
+  text-shadow:
+    0 0 28px color-mix(in srgb, var(--marblerun-accent) 85%, transparent),
+    0 0 3px rgba(7, 5, 15, 0.9);
+  pointer-events: none;
+}
+
+.marblerun__count.is-go {
+  color: #3ecf8e;
+  text-shadow:
+    0 0 28px rgba(62, 207, 142, 0.8),
+    0 0 3px rgba(7, 5, 15, 0.9);
+}
+
+.marblerun__toast {
+  position: absolute;
+  top: calc(var(--readout-middle) + 2.4rem);
+  left: 50%;
+  z-index: 11;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(26rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 1.1rem;
+  background: var(--surface);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  animation: marblerun-in 0.18s ease-out;
+}
+
+@keyframes marblerun-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+.marblerun__nogl {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--ink);
+  background: var(--playfield, var(--bg));
+}
+
+/* ---------- touch: a stick wherever a thumb lands ---------- */
+
+.marblerun__stick {
+  position: absolute;
+  z-index: 9;
+  width: 128px;
+  height: 128px;
+  margin: -64px 0 0 -64px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--marblerun-accent) 12%, transparent), rgba(12, 8, 26, 0.35) 70%);
+  pointer-events: none;
+}
+
+.marblerun__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--marblerun-accent) 60%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--marblerun-accent) 60%, transparent);
+}
+
+.marblerun__hint {
+  position: absolute;
+  left: 50%;
+  bottom: max(1.75rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+  z-index: 9;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.82);
+  color: rgba(var(--ink-rgb), 0.72);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------- the cards ---------- */
+
+.marblerun__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4.75rem 0.85rem max(1rem, env(safe-area-inset-bottom));
+  overflow: auto;
+  pointer-events: none;
+}
+
+/* Before a run the course is shown off: on a phone the card sits low and the course above it. */
+.marblerun--showroom .marblerun__overlay {
+  align-items: flex-end;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+/* On a wide screen the cards stand at the right, like a game's menu, and the course has the left. */
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) {
+  .marblerun__overlay,
+  .marblerun--showroom .marblerun__overlay {
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: max(2.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* Today's course, by name, across the card's figures. */
+.game-card .marblerun-course {
+  grid-column: 1 / -1;
+}
+
+/* A past course's cards (PracticeCards.tsx): the run's card takes the pointer; under Start, the courses either side. */
+.game-card.marblerun-practice:not(.game-card--start) {
+  pointer-events: auto;
+}
+
+.marblerun-practice__nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.marblerun-practice__nav a {
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.8;
+  pointer-events: auto;
+}
+
+.marblerun-practice__nav a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.marblerun-practice__nav > :first-child {
+  justify-self: start;
+}
+
+.marblerun-practice__nav > :last-child {
+  justify-self: end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marblerun__toast {
+    animation: none;
+  }
+}
