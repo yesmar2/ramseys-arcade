@@ -21,20 +21,16 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import {
-  climbs,
   headline,
-  lastStats,
   lede,
   lineScore,
   ordinal,
   periodCopy,
   phoneLine,
   youCell,
-  youStats,
   type BoardLine,
   type BoardTop,
   type PeriodCopy,
-  type Stat,
   type Standing,
   type YouStanding,
 } from '../lib/scoreboard'
@@ -46,11 +42,13 @@ import { PlayerName } from './PlayerName'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
- * race comes first, with who leads beside the top ten; then where you stand
- * and where to climb; then every board's top three, one player per place,
- * with your place and the score that takes a higher one; then the boards
- * nobody has played yet. It says places and names: how the points add up is
- * on How your rank works, linked beside the standings.
+ * race comes first: who leads, then the top ten the width of the page under
+ * it (beside the words, the list left the space under them empty, Ramsey
+ * found); then every board's top three, one player per place, with your
+ * place and the score that takes a higher one; then the boards nobody has
+ * played yet. It says places and names: how the points add up is on How your
+ * rank works, linked beside the standings. The cards under the standings,
+ * yours and Where to climb, went at Ramsey's word (2026-09-30).
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -87,15 +85,6 @@ function ChevronIcon() {
   return (
     <svg className="sb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M9 6l6 6-6 6" />
-    </svg>
-  )
-}
-
-function ArrowIcon() {
-  return (
-    <svg className="sb-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 12h14" />
-      <path d="M13 6l6 6-6 6" />
     </svg>
   )
 }
@@ -259,7 +248,7 @@ function Standings({
   const below = standing && standing.rank != null && standing.rank > rows.length ? standing : null
   const lastTop = last?.[0]?.score ?? 0
   return (
-    <div ref={ref} id="standings" className="sb-card sb-standings">
+    <div ref={ref} id="standings" className="sb-card sb-standings" data-hunt="boards-standings">
       <div className="sb-standings__head">
         <h2 className="sb-card__title">Standings</h2>
         {!loading ? (
@@ -353,131 +342,6 @@ function Standings({
             ))}
           </ol>
         </div>
-      ) : null}
-    </div>
-  )
-}
-
-/* ---------- you ---------- */
-
-function Stats({ stats }: { stats: Stat[] }) {
-  if (!stats.length) return null
-  return (
-    <dl className="sb-stats sb-stats--names">
-      {stats.map((s) => (
-        <div key={s.label} className="sb-stat">
-          <dt className="visually-hidden">{s.label}</dt>
-          <dd>
-            <b>{s.value}</b>
-            <span aria-hidden="true">{s.label}</span>
-          </dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
-
-function YouCard({
-  copy,
-  standing,
-  data,
-  boardsTotal,
-}: {
-  copy: PeriodCopy
-  standing: YouStanding
-  data: ReturnType<typeof useScoreboard>
-  boardsTotal: number
-}) {
-  const ranked = standing.rank != null
-  const stats = ranked ? youStats(standing, data.standings) : lastStats(copy, data.last, standing.name)
-  const played = Object.keys(standing.byGame).length
-  return (
-    <div className="sb-card sb-you__card" data-hunt="boards-you">
-      <div className="sb-you__top">
-        <PlayerMark name={standing.name} avatarId={standing.avatarId} className="sb-you__mark" />
-        <span className="sb-you__kicker">
-          {standing.name} · {copy.phrase}
-        </span>
-      </div>
-      {ranked ? (
-        <>
-          <p className="sb-you__big">
-            <b>#{standing.rank}</b>
-            <span>of {standing.totalPlayers.toLocaleString()}</span>
-          </p>
-          <p className="sb-you__line">
-            Played {played} of {boardsTotal} games {copy.phrase}
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="sb-you__none">Not on the board yet</p>
-          <p className="sb-you__line">No runs yet {copy.noun ? copy.phrase : 'on the boards'}.</p>
-        </>
-      )}
-      {stats.length ? (
-        <div className="sb-you__foot">
-          <Stats stats={stats} />
-        </div>
-      ) : !ranked ? (
-        <div className="sb-you__foot sb-you__foot--acts">
-          <a className="sb-cta" href="/">
-            Pick a game
-          </a>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function FirstVisitCard({ period }: { period: LeaderboardPeriod }) {
-  return (
-    <div className="sb-card sb-you__card sb-first" data-hunt="boards-you">
-      <p className="sb-kicker">Get on the board</p>
-      <h2 className="sb-first__title">Your first run puts you on it.</h2>
-      <p className="sb-first__text">
-        Finish a run and sign in to save it, and you’re on that game’s board. Every game you play moves
-        you up the standings.
-      </p>
-      <div className="sb-you__foot sb-you__foot--acts">
-        <a className="sb-cta" href="/">
-          Pick a game
-        </a>
-        <a className="sb-ghost" href={rankHowHref(undefined, period)}>
-          How your rank works
-        </a>
-      </div>
-    </div>
-  )
-}
-
-function Moves({
-  copy,
-  data,
-}: {
-  copy: PeriodCopy
-  data: ReturnType<typeof useScoreboard>
-}) {
-  const { rows, foot } = climbs(copy, data.boards, data.standings, data.you)
-  return (
-    <div className="sb-card sb-moves" data-hunt="boards-moves">
-      <h2 className="sb-card__title">{data.you ? 'Where to climb' : 'Where to start'}</h2>
-      <ul className="sb-moves__list">
-        {rows.map((m) => (
-          <li key={m.tag + m.what} className="sb-move">
-            <span className="sb-move__amount sb-move__tag">{m.tag}</span>
-            <span className="sb-move__body">
-              <span className="sb-move__what">{m.what}</span>
-              <span className="sb-move__why">{m.why}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-      {foot ? (
-        <p className="sb-moves__foot">
-          <ArrowIcon />
-          <span>{foot}</span>
-        </p>
       ) : null}
     </div>
   )
@@ -734,25 +598,16 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
               lede(copy, period, data.standings, data.totalPlayers, data.boards)
             )}
           </p>
-          <PeriodTabs period={period} />
-          <p className="sb-closes">
-            <TrophyIcon />
-            <span>{copy.closes}</span>
-          </p>
+          <div className="sb-hero__row">
+            <PeriodTabs period={period} />
+            <p className="sb-closes">
+              <TrophyIcon />
+              <span>{copy.closes}</span>
+            </p>
+          </div>
         </div>
         <Standings period={period} copy={copy} data={data} you={you} />
       </section>
-
-      {!data.loading ? (
-        <section className="sb-you" aria-label="Your standing">
-          {data.you ? (
-            <YouCard copy={copy} standing={data.you} data={data} boardsTotal={data.boards.length} />
-          ) : (
-            <FirstVisitCard period={period} />
-          )}
-          <Moves copy={copy} data={data} />
-        </section>
-      ) : null}
 
       <EveryBoard period={period} copy={copy} data={data} you={you} />
       {!data.loading ? <UpForGrabs copy={copy} boards={data.boards} /> : null}

@@ -173,10 +173,29 @@ html[data-theme="dark"] .sb {
   align-items: start;
 }
 
+/*
+ * The words across the top and the standings the width of the page under them. Side by side, the list ran on
+ * well past the words and left the space under them empty (Ramsey, 2026-09-30).
+ */
+.sb-hero__row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* On a desk, the period and when it closes share a line. */
 @media (min-width: 64rem) {
-  .sb-hero {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
-    gap: 3.5rem;
+  .sb-hero__row {
+    flex-direction: row;
+    align-items: center;
+    gap: 1.6rem;
+    margin-top: 2rem;
+  }
+
+  .sb-hero__row .seg.sb-periods,
+  .sb-hero__row .sb-closes {
+    margin-top: 0;
   }
 }
 
@@ -526,8 +545,7 @@ a.sb-row__link:focus-visible {
   }
 }
 
-.sb-you__card,
-.sb-moves {
+.sb-you__card {
   display: flex;
   flex-direction: column;
   padding: 1.7rem 1.8rem;
@@ -579,16 +597,6 @@ a.sb-row__link:focus-visible {
   font-weight: 650;
 }
 
-/* Before your first run: words where the place goes. */
-.sb-you__none {
-  margin: 1.3rem 0 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.6rem, 3vw, 2.1rem);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
-}
-
 .sb-you__foot {
   margin-top: auto;
   padding-top: 1.5rem;
@@ -630,17 +638,6 @@ a.sb-row__link:focus-visible {
   font-weight: 650;
   line-height: 1.4;
   color: var(--muted);
-}
-
-/* The boards page's pair is names, and a twelve-letter tag must not push past its half on a phone. */
-.sb-stats--names .sb-stat {
-  min-width: 0;
-}
-
-.sb-stats--names .sb-stat b {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sb-first__title {
@@ -694,67 +691,6 @@ a.sb-row__link:focus-visible {
 .sb-ghost:focus-visible {
   background: rgba(var(--ink-rgb), 0.05);
   outline: none;
-}
-
-/* Where the next points are, biggest first. */
-.sb-moves__list {
-  list-style: none;
-  margin: 1rem 0 0;
-  padding: 0;
-}
-
-.sb-move {
-  display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: 1.4rem;
-  padding: 1.05rem 0;
-  border-top: 1px solid var(--sb-line);
-}
-
-.sb-move__amount {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--sb-brand-ink);
-  white-space: nowrap;
-}
-
-/* A climb's tag is a word or three, not a figure: a size smaller, and free to wrap. */
-.sb-move__tag {
-  font-size: 1.02rem;
-  line-height: 1.35;
-  white-space: normal;
-}
-
-.sb-move__what {
-  display: block;
-  font-weight: 800;
-}
-
-.sb-move__why {
-  display: block;
-  margin-top: 0.2rem;
-  font-size: 0.92rem;
-  font-weight: 550;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.sb-moves__foot {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  margin: auto 0 0;
-  padding-top: 1.05rem;
-  border-top: 1px solid var(--sb-line);
-  font-weight: 800;
-  line-height: 1.4;
-}
-
-.sb-moves__foot .sb-icon {
-  margin-top: 0.05rem;
-  color: var(--sb-brand-ink);
 }
 
 /* ---------- section heads ---------- */
@@ -1222,15 +1158,8 @@ a.sb-board__link:hover .sb-board__go {
     display: inline-flex;
   }
 
-  .sb-you__card,
-  .sb-moves {
+  .sb-you__card {
     padding: 1.35rem 1.25rem;
-  }
-
-  .sb-move {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.3rem;
-    padding: 0.9rem 0;
   }
 
   .sb-grabs {

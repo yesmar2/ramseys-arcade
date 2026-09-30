@@ -156,16 +156,10 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     lesson: 'A group is a board of just the people you play with: family, friends, the office.',
   },
   {
-    id: 'boards-you',
+    id: 'boards-standings',
     page: 'on the Boards',
-    thing: 'the card about you',
-    lesson: 'The Boards rank everyone across every game, and say where you stand or where you’d start.',
-  },
-  {
-    id: 'boards-moves',
-    page: 'on the Boards',
-    thing: 'the card about where to climb',
-    lesson: 'The Boards point out where you could climb next, and games nobody has played yet come first.',
+    thing: 'the standings',
+    lesson: 'The standings rank everyone by points across all games: every board you play pays points for your place on it.',
   },
   { id: 'records-books', page: 'in the Record books', thing: 'the first book on the shelf', lesson: BOOK_LESSON },
   {

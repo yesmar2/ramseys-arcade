@@ -72,8 +72,6 @@ export type YouStanding = {
 export type LastFinal = { rank: number; name: string; score: number; games: number }[]
 
 export type Stat = { value: string; label: string }
-/** A place to climb, told in words: a short tag, the games, and why it moves you up. */
-export type Climb = { tag: string; what: string; why: string }
 
 /* ---------- the period ---------- */
 
@@ -249,12 +247,6 @@ export function ordinal(n: number): string {
   return `${n}${n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th'}`
 }
 
-/** Barrage, Bop, Frenzy; past `max` of them, "12 games", or "12 more games" beside the ones you're on. */
-function gameNames(slugs: string[], max = 4, more = false): string {
-  if (slugs.length > max) return `${slugs.length.toLocaleString()} ${more ? 'more games' : 'games'}`
-  return slugs.map(gameName).join(', ')
-}
-
 /* ---------- boards ---------- */
 
 /** The first `n` different players down a board's runs, each at their best. */
@@ -355,162 +347,6 @@ export function lede(
   const who = `${count(totalPlayers, 'player')} on ${count(played.length, 'game')}`
   if (!copy.noun) return `${who}. Your best run on each game counts.`
   return `${who} ${copy.phrase}. Play more games and finish higher to climb.`
-}
-
-/* ---------- you ---------- */
-
-/**
- * Who is either side of you, by name: the gaps between you are points, and
- * those are on How your rank works. A tie says "Tied", with the name under it.
- */
-export function youStats(you: YouStanding, standings: Standing[]): Stat[] {
-  if (you.rank == null) return []
-  const rank = you.rank
-  const around: { rank: number; name: string; score: number }[] = [...you.nearby, ...standings]
-  const at = (r: number) => around.find((e) => e.rank === r && e.name !== you.name)
-  const versus = (other: { name: string }, gap: number, side: string): Stat =>
-    gap > 0 ? { value: other.name, label: side } : { value: 'Tied', label: `with ${other.name}` }
-  const stats: Stat[] = []
-  const above = rank > 1 ? at(rank - 1) : undefined
-  const below = at(rank + 1)
-  if (above) stats.push(versus(above, above.score - you.score, 'just ahead of you'))
-  if (below) stats.push(versus(below, you.score - below.score, 'just behind you'))
-  if (rank === 1) {
-    const led = Object.values(you.byGame).filter((p) => p?.place === 1).length
-    stats.push({ value: led.toLocaleString(), label: led === 1 ? 'game you lead' : 'games you lead' })
-  }
-  return stats.slice(0, 2)
-}
-
-/** For a player with no runs yet: how they finished the period before, if they made its top ten. */
-export function lastStats(copy: PeriodCopy, last: LastFinal | null, me: string): Stat[] {
-  if (!last || !copy.noun || !me) return []
-  const mine = last.find((row) => row.name === me)
-  if (!mine) return []
-  const stats: Stat[] = [{ value: ordinal(mine.rank), label: `last ${copy.noun}` }]
-  if (mine.rank <= 3) stats.push({ value: 'Podium', label: `last ${copy.noun}, and a trophy for it` })
-  return stats
-}
-
-/** A game with one player on it: beating them takes 1st. */
-function loneGame(line: BoardLine): Climb {
-  const holder = line.top[0]
-  return {
-    tag: 'Just one player',
-    what: gameName(line.slug),
-    why: line.points
-      ? `Only ${holder.name} has played it. Beat them on a day to take 1st.`
-      : `Only ${holder.name} has played it. Beat ${lineScore(line, holder.score)} to take 1st.`,
-  }
-}
-
-/**
- * The boards page's Moves card: the games that would move you up, the ones
- * nobody has played first, each saying why rather than what it pays. The foot
- * names the player to catch.
- */
-export function climbs(
-  copy: PeriodCopy,
-  boards: BoardLine[],
-  standings: Standing[],
-  you: YouStanding | null,
-): { rows: Climb[]; foot: string } {
-  const named = Boolean(you)
-  const ranked = you?.rank != null
-  const mine = you?.byGame ?? {}
-  const empties = boards.filter((b) => b.top.length === 0)
-  const others = boards.filter((b) => b.top.length > 0 && !mine[b.slug])
-  const lonely = others.filter((b) => b.players === 1)
-  const crowded = others.filter((b) => b.players !== 1)
-  const rows: Climb[] = []
-
-  if (empties.length) {
-    rows.push({
-      tag: 'Be first',
-      what: gameNames(empties.map((b) => b.slug)),
-      why: `Nobody’s played ${empties.length === 1 ? 'it' : 'them'} ${copy.noun ? copy.phrase : 'yet'}.`,
-    })
-  }
-
-  if (ranked) {
-    if (others.length === 1 && lonely.length === 1) {
-      rows.push(loneGame(lonely[0]))
-    } else if (others.length) {
-      rows.push({
-        tag: 'New to you',
-        what: gameNames(
-          others.map((b) => b.slug),
-          5,
-          true,
-        ),
-        why: `Games you haven’t played${copy.noun ? ` ${copy.phrase}` : ''}.`,
-      })
-    }
-    // The games you're on, while one has a place left to climb.
-    const placed = Object.values(mine).filter((p): p is GlobalGamePlace => Boolean(p))
-    if (placed.some((p) => p.place > 1)) {
-      rows.push({
-        tag: 'Any game',
-        what: `Your ${count(placed.length, 'game')}`,
-        why: 'Only your best run on each counts, so a better run moves you up.',
-      })
-    }
-  } else {
-    if (lonely.length === 1) rows.push(loneGame(lonely[0]))
-    else if (lonely.length > 1) {
-      rows.push({
-        tag: 'Just one player',
-        what: gameNames(lonely.map((b) => b.slug)),
-        why: 'Only one player on each so far.',
-      })
-    }
-    if (crowded.length) {
-      rows.push({
-        tag: 'Any game',
-        what:
-          named || crowded.length <= 2
-            ? gameNames(
-                crowded.map((b) => b.slug),
-                5,
-              )
-            : empties.length || lonely.length
-              ? 'Every other game'
-              : 'Every game',
-        why: 'Only your best run on each counts.',
-      })
-    }
-  }
-
-  return { rows, foot: climbsFoot(copy, empties.length, standings, you) }
-}
-
-/**
- * The Moves card's foot: who to catch next, and whether open games are the
- * fastest way up (each open game is a first place, so enough of them pass the
- * leader).
- */
-function climbsFoot(copy: PeriodCopy, empties: number, standings: Standing[], you: YouStanding | null): string {
-  const lead = copy.noun ? `lead the ${copy.noun}` : 'lead all time'
-  const fastest = 'Open games are the fastest way up.'
-  if (you && you.rank != null) {
-    const rank = you.rank
-    const around: { rank: number; name: string; score: number }[] = [...you.nearby, ...standings]
-    if (rank === 1) {
-      const second = around.find((e) => e.rank === 2 && e.name !== you.name)
-      if (!second) return `You’re the only one on the boards${copy.noun ? ` ${copy.phrase}` : ''}.`
-      return you.score > second.score ? `You ${lead}.` : `You’re tied with ${second.name} at the top.`
-    }
-    const above = around.find((e) => e.rank === rank - 1 && e.name !== you.name)
-    if (!above) return ''
-    if (above.score <= you.score) return `You’re tied with ${above.name}.`
-    return empties > 0 ? `${above.name} is next up. ${fastest}` : `${above.name} is next up.`
-  }
-  const leader = standings[0]
-  if (!leader) return copy.noun ? `Your first run puts you top of the ${copy.noun}.` : 'Your first run puts you top of the boards.'
-  // Enough open games, each a first place, to pass the leader.
-  if (empties >= Math.floor(leader.score / 100) + 1) return fastest
-  if (you) return `Your first run puts you on ${copy.noun ? `this ${copy.noun}’s` : 'the all-time'} standings.`
-  return 'Any run you save puts you on a board.'
 }
 
 /* ---------- every board ---------- */
