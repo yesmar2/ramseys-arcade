@@ -517,6 +517,56 @@ export async function getLeaderboard(
   })
 }
 
+/** A player on a daily's board on one day: their run that counted, and their place among that day's players. */
+export type DayBoardEntry = LeaderboardEntry & { place: number }
+
+/**
+ * A daily's board on one day (GET /leaderboards/:game?period=daily&day=): one row a player, in the order
+ * the day's board had them. `counted` is false for a day before the daily's days counted toward rank;
+ * `final` once the day is over. `total` is how many played it (in a group's view, how many of its members).
+ */
+export type DayBoard = {
+  day: string
+  counted: boolean
+  final: boolean
+  offset: number
+  total: number
+  entries: DayBoardEntry[]
+  you: { score: number; place: number } | null
+}
+
+/**
+ * A page of a daily's board on one day, with `name`'s place on it, in the group the boards are looking
+ * at. Throws the API's error for a day it has no board for (DAY_AHEAD, BEFORE_FIRST_DAY, NOT_DAILY).
+ */
+export async function getDayBoard(
+  slug: string,
+  day: string,
+  name?: string,
+  page?: { offset?: number; limit?: number },
+): Promise<DayBoard> {
+  return withGroupFallback(async () => {
+    const params = applyBoardScope(new URLSearchParams({ period: 'daily', day }))
+    const cleaned = normalizePlayerName(name ?? '')
+    if (cleaned) params.set('name', cleaned)
+    if (page?.offset) params.set('offset', String(Math.max(0, Math.floor(page.offset))))
+    if (page?.limit) params.set('limit', String(Math.max(1, Math.floor(page.limit))))
+    const data = await api<Partial<DayBoard>>(`/leaderboards/${encodeURIComponent(slug)}?${params.toString()}`)
+    // An API from before day boards answers with today's board, which isn't that day's.
+    if (data.day !== day) throw new ApiError('No board for that day', 404, 'NO_DAY_BOARD')
+    const entries = data.entries ?? []
+    return {
+      day,
+      counted: data.counted !== false,
+      final: data.final === true,
+      offset: data.offset ?? page?.offset ?? 0,
+      total: data.total ?? entries.length,
+      entries,
+      you: data.you ?? null,
+    }
+  })
+}
+
 export async function fetchTopScore(slug: string): Promise<number> {
   // A daily's best run is today's: its all-time board is day points, not a run (leaderboardFormat isDayPointsBoard).
   const { entries } = await getLeaderboard(slug, isDailyGame(slug) ? 'daily' : 'all')

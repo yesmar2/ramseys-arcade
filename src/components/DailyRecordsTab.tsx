@@ -426,8 +426,12 @@ function RecordsBody({
       <p className="drt-aside">
         <InfoIcon />
         <span>
-          Looking for 1st today or this week’s places? Those are boards, not records:{' '}
+          Looking for 1st today, a past day’s places or this week’s? Those are boards, not records:{' '}
           <a href={dailyTabHref(slug)}>today’s board is on the Today tab</a>
+          {boards ? ', ' : ' and '}
+          <a href={dailyTabHref(slug, 'past')}>
+            each past day’s final board is on {words.pastTab}
+          </a>
           {boards ? (
             <>
               , and {name}’s week is on <a href={gameBoardHref(slug as LeaderboardGame, 'weekly')}>its board</a>

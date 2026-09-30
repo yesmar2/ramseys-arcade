@@ -6,6 +6,7 @@ import { claimableRun, ownerAccount, ownRun, SIGNED_OUT, subscribeViewer, type O
 import { detectDeviceType } from './device'
 import { api, getClaimToken, getLastPlayerName, normalizePlayerName } from './leaderboard'
 import { noteTicketsPaid } from './tickets'
+import { pageParams, type BoardPage } from './trackBoards'
 
 /*
  * Ace Chase's past holes (/games/acechase/play?hole=day:YYYY-MM-DD, from the past holes tab). Every hole
@@ -162,6 +163,9 @@ export function takeUpPast(day: string): boolean {
 
 export type HoleFigure = { name: string; tries: number; avatarId?: string }
 
+/** A player's result on a hole's board: `at` is when it was set, `place` where it stands on the whole board. */
+export type HoleBoardRow = HoleFigure & { at?: number; place?: number }
+
 /** A hole's board, as the API has it. */
 export type HoleBoard = {
   day: string
@@ -169,7 +173,15 @@ export type HoleBoard = {
   /** Past: a first result on it counts here. Today: it's Today's Hole. Ahead: only a trial. */
   state: 'past' | 'today' | 'ahead'
   players: number
-  entries: HoleFigure[]
+  /** The page asked for: the top ten unless asked otherwise. */
+  entries: HoleBoardRow[]
+  /**
+   * The first ten whatever the page, where the page starts, and how many are on it (always `players`).
+   * An API from before boards were paged leaves them out, since the site and the API go live separately.
+   */
+  top?: HoleBoardRow[]
+  offset?: number
+  total?: number
   you: { tries: number; place: number } | null
 }
 
@@ -205,10 +217,12 @@ export type PastHoleResult = {
 /** The API lets a browser keep these a few seconds; asked again after a result is sent, they have to be fresh. */
 const FRESH: RequestInit = { cache: 'no-cache' }
 
-/** A hole's board, with `name`'s place on it. */
-export function fetchHoleBoard(day: string, name: string): Promise<HoleBoard> {
+/** A hole's board, with `name`'s place on it: its top ten, or the page asked for. */
+export function fetchHoleBoard(day: string, name: string, page?: BoardPage): Promise<HoleBoard> {
   const who = normalizePlayerName(name)
-  return api<HoleBoard>(`/holes/${SLUG}/${day}/board${who ? `?name=${encodeURIComponent(who)}` : ''}`, FRESH)
+  const params = pageParams(new URLSearchParams(who ? { name: who } : {}), page)
+  const query = params.toString()
+  return api<HoleBoard>(`/holes/${SLUG}/${day}/board${query ? `?${query}` : ''}`, FRESH)
 }
 
 /** A hole's board, asked again when `version` changes. Null until it comes, or for no hole. */

@@ -604,7 +604,7 @@ export function recordsIntro(slug: string): { lede: string; link: string } {
     }
   }
   return {
-    lede: `${name}’s own records, made over many days. Who was 1st on each day is on ${words.pastTab}.`,
+    lede: `${name}’s own records, made over many days. Each day’s final board is on ${words.pastTab}.`,
     link: words.pastTab,
   }
 }

@@ -3,12 +3,13 @@ import { useAccountId } from '../hooks/useAccountId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { archiveDayWords, dayBefore } from './archive'
 import { dailyWords, type PastKind } from './dailyWords'
-import { normalizePlayerName } from './leaderboard'
+import { api, normalizePlayerName } from './leaderboard'
 
 /*
  * The past tab of a daily's page (components/DailyPastTab.tsx): every course before today's, newest
- * first, each with how it went on its day and, for a game whose past courses keep boards of their own
- * (Hot Lap's tracks, Ace Chase's holes), that board. Each game says what its courses are in a source
+ * first, each with how it went on its day (its day's final board, the top ten on the row and all of it
+ * on its own page) and, for a game whose past courses keep boards of their own (Hot Lap's tracks, Ace
+ * Chase's holes), that board. Each game says what its courses are in a source
  * (components/archive/*Archive.tsx); what's the same for every game is here.
  */
 
@@ -26,9 +27,52 @@ export type CourseBoard = {
 
 /** One course's board opened on its row: the top ten and where you stand. */
 export type CourseTop = {
-  top: CourseFigure[]
+  /** `place` when the API says it; else the list's order is the place. */
+  top: (CourseFigure & { place?: number })[]
   players: number
   you: { score: number; place: number } | null
+}
+
+/** A past day's final board opened on its row: its top ten, you, and whether it counted toward rank. */
+export type DayTop = CourseTop & { counted: boolean }
+
+/**
+ * The anchor that opens a past day's board page (components/DayBoard.tsx) at the course's own board, Hot
+ * Lap's track or Ace Chase's hole, rather than its day's. A hash, as the page's address keeps no query.
+ */
+export const COURSE_BOARD_ANCHOR = 'course-board'
+
+type RawDayBoard = {
+  day?: string
+  counted?: boolean
+  total: number
+  entries: { name: string; score: number; place?: number; avatarId?: string }[]
+  you: { score: number; place: number } | null
+}
+
+/**
+ * A past day's final board, the top ten and `name`'s place (GET /leaderboards/:game?period=daily&day=):
+ * one row a player, in the order the day's board had them when it ended. Over everyone, as a row's "On
+ * its day" is, never a group's.
+ */
+export async function fetchDayTop(slug: string, day: string, name: string): Promise<DayTop> {
+  const params = new URLSearchParams({ period: 'daily', day, limit: '10' })
+  const who = normalizePlayerName(name)
+  if (who) params.set('name', who)
+  const board = await api<RawDayBoard>(`/leaderboards/${encodeURIComponent(slug)}?${params.toString()}`)
+  // An API from before day boards answers with today's board: that's not this day's.
+  if (board.day !== day) throw new Error('No board for that day')
+  return {
+    top: board.entries.map((e) => ({
+      name: normalizePlayerName(e.name),
+      score: e.score,
+      ...(e.place != null ? { place: e.place } : {}),
+      ...(e.avatarId ? { avatarId: e.avatarId } : {}),
+    })),
+    players: board.total,
+    you: board.you,
+    counted: board.counted !== false,
+  }
 }
 
 /** Who's looking: signed in, signed out, or not known yet (a session that hasn't said whose it is). */

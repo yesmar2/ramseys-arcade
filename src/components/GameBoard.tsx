@@ -1,8 +1,10 @@
-import { useState, type CSSProperties } from 'react'
+import { Suspense, useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame, isDailyGame } from '../data/games'
+import { useDayCourse } from '../hooks/useDayBoard'
 import { useGameBoard } from '../hooks/useGameBoard'
-import { dailyTabHref, gameBoardHref, gamePlayHref, leaderboardHref, rankHref, recordsHref } from '../hooks/useHashRoute'
+import { dailyTabHref, dayBoardHref, gameBoardHref, gamePlayHref, leaderboardHref, rankHref, recordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { dayBefore } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { useDeviceType } from '../lib/device'
@@ -25,6 +27,7 @@ import {
   type BoardYou,
 } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
+import { lazyPage } from '../lib/lazyPage'
 import { cachedMyGroups, groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import {
   normalizePlayerName,
@@ -83,7 +86,7 @@ function ChevronIcon() {
   )
 }
 
-function BackIcon() {
+export function BackIcon() {
   return (
     <svg className="sb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M15 6l-6 6 6 6" />
@@ -91,7 +94,7 @@ function BackIcon() {
   )
 }
 
-function ArrowIcon() {
+export function ArrowIcon() {
   return (
     <svg className="sb-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M5 12h14" />
@@ -100,7 +103,7 @@ function ArrowIcon() {
   )
 }
 
-function TrophyIcon() {
+export function TrophyIcon() {
   return (
     <svg className="sb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M8 21h8" />
@@ -134,20 +137,25 @@ function Stats({ stats }: { stats: Stat[] }) {
 /** A daily's boards: today's runs, then its day points for the week, the month and all time. */
 const DAILY_PERIODS: readonly LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'all']
 
-function PeriodTabs({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
+/**
+ * The board's periods, as links. With no `period` none is on, and they're plain links, not tabs: a daily's
+ * board on a past day, whose Today is today's.
+ */
+export function PeriodTabs({ slug, period }: { slug: LeaderboardGame; period?: LeaderboardPeriod }) {
   const periods = isDailyGame(slug) ? DAILY_PERIODS : VISIBLE_LEADERBOARD_PERIODS
+  const tabs = period != null
   return (
     <div
       className="seg sb-periods gb-periods"
-      role="tablist"
-      aria-label="Period"
+      role={tabs ? 'tablist' : 'group'}
+      aria-label={tabs ? 'Period' : 'Today’s boards'}
       style={{ '--seg-count': periods.length } as CSSProperties}
     >
       {periods.map((p) => (
         <a
           key={p}
-          role="tab"
-          aria-selected={p === period}
+          role={tabs ? 'tab' : undefined}
+          aria-selected={tabs ? p === period : undefined}
           className={`seg__item${p === period ? ' seg__item--active' : ''}`}
           href={gameBoardHref(slug, p)}
         >
@@ -184,6 +192,10 @@ function Banner({
   const leader = players[0]
   // When it closes, without the trophies: those go to the standings across every board, not one game's.
   const closes = periodCopy(period, Date.now(), true).closes
+  // A daily's today board steps back to yesterday's final, as that day's page steps on to today's; not on its first day.
+  const { course } = useDayCourse(slug)
+  const yesterday = course && period === 'daily' ? dayBefore(course.today()) : null
+  const stepBack = course && yesterday && yesterday >= course.first ? yesterday : null
   const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
   return (
     <section className="home-banner gb-banner" style={style} aria-labelledby="gb-title" data-hunt={`b-head-${slug}`}>
@@ -238,6 +250,11 @@ function Banner({
           ) : gameHasRecords(slug) ? (
             <a className="home-banner__ghost" href={recordsHref(slug, period)}>
               Record books
+            </a>
+          ) : null}
+          {stepBack ? (
+            <a className="home-banner__ghost" href={dayBoardHref(slug, stepBack)}>
+              ‹ Yesterday’s final
             </a>
           ) : null}
           <ShareBoardButton
@@ -783,7 +800,37 @@ function PointsBoard({
 
 /* ---------- the page ---------- */
 
-export function GameBoard({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
+/** A daily's board on a past day (components/DayBoard.tsx): its own chunk, as few visitors open one. */
+const DayBoard = lazyPage(() => import('./DayBoard').then((m) => m.DayBoard))
+
+/** While a past day's page is on its way: the banner's room and the board's rows, so nothing jumps. */
+function DayBoardWaiting() {
+  return (
+    <div className="sb gb" aria-busy="true">
+      <div className="home-banner gb-banner" />
+      <div className="sb-card gb-board">
+        <BoardSkeleton rows={FIRST_ROWS} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * One game's board for a period; with `day`, a daily's board on that past day, as it finished. A new day
+ * is a new page: nothing carries over from the day before.
+ */
+export function GameBoard({ slug, period, day }: { slug: LeaderboardGame; period: LeaderboardPeriod; day?: string }) {
+  if (day) {
+    return (
+      <Suspense fallback={<DayBoardWaiting />}>
+        <DayBoard key={day} slug={slug} day={day} />
+      </Suspense>
+    )
+  }
+  return <PeriodBoard slug={slug} period={period} />
+}
+
+function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useGameBoard(slug, period, you, groupId)

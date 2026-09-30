@@ -313,7 +313,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
       return <ComingSoonPage slug={route.game} />
     }
     return (
-      <GameLeaderboardPage game={route.game} period={route.period ?? defaultPeriod()} />
+      <GameLeaderboardPage game={route.game} period={route.period ?? defaultPeriod()} day={route.day} />
     )
   }
   if (route.name === 'recordsIndex') return <RecordsIndexPage />

@@ -4,6 +4,7 @@ import {
   aboutHref,
   adminHref,
   dailyTabHref,
+  dayBoardHref,
   gameHref,
   gamePlayHref,
   homeHref,
@@ -24,6 +25,7 @@ import {
   tournamentsHref,
   type Route,
 } from '../hooks/useHashRoute'
+import { archiveDayWords } from './archive'
 import { APP_NAME, SITE_LINE } from './brand'
 import { dailyWords } from './dailyWords'
 import { groupHref, groupsIndexHref } from './groups'
@@ -396,6 +398,15 @@ export function pageMeta(route: Route): PageMeta {
         path: '/leaderboards',
       }
     case 'gameLeaderboard': {
+      // A daily's board on a past day is known by its day: "Hot Lap · Mon, Sep 28 · Final board".
+      if (route.day) {
+        const when = archiveDayWords(route.day)
+        return {
+          ...gameMeta(route.game, dayBoardHref(route.game, route.day)),
+          title: titled(`${gameName(route.game)} · ${when} · Final board`),
+          description: `How ${gameName(route.game)} finished on ${when}: every player’s place on that day’s board, in full.`,
+        }
+      }
       const meta = gameMeta(route.game, gameBoardPath(route.game))
       return {
         ...meta,

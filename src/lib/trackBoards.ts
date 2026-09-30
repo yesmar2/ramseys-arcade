@@ -26,14 +26,35 @@ export type TrackRecordRow = {
 /** Every track's row, or null while they're asked; `failed` when asking didn't work, and `retry` asks again. */
 export type TrackRecords = { rows: TrackRecordRow[] | null; failed: boolean; retry: () => void }
 
+/** A driver's best on a track's board: `at` is when it was driven, `place` where it stands on the whole board. */
+export type TrackBoardRow = TrackLapFigure & { at?: number; place?: number }
+
 export type TrackBoard = {
   track: number
   day: string
   /** Past: a lap on it counts here. Today: it's the Daily. Ahead: only a test drive. */
   state: 'past' | 'today' | 'ahead'
   drivers: number
-  entries: TrackLapFigure[]
+  /** The page asked for: the top ten unless asked otherwise. */
+  entries: TrackBoardRow[]
+  /**
+   * The first ten whatever the page, where the page starts, and how many are on it (always `drivers`).
+   * An API from before boards were paged leaves them out, since the site and the API go live separately.
+   */
+  top?: TrackBoardRow[]
+  offset?: number
+  total?: number
   you: { score: number; place: number } | null
+}
+
+/** A page of a board: from `offset`, `limit` long (the API's default is 10, its most 500). */
+export type BoardPage = { offset?: number; limit?: number }
+
+/** A board's page as the API's query asks for it: nothing for the first ten. */
+export function pageParams(params: URLSearchParams, page?: BoardPage): URLSearchParams {
+  if (page?.offset) params.set('offset', String(Math.max(0, Math.floor(page.offset))))
+  if (page?.limit) params.set('limit', String(Math.max(1, Math.floor(page.limit))))
+  return params
 }
 
 /** What came of saving a lap on a past track. */
@@ -56,10 +77,12 @@ const cleanName = (name: string) => normalizePlayerName(name)
 /** The API lets a browser keep these a few seconds; asked again after a lap is saved, they have to be fresh. */
 const FRESH: RequestInit = { cache: 'no-cache' }
 
-/** A track's board, with `name`'s place on it. */
-export function fetchTrackBoard(track: number, name: string): Promise<TrackBoard> {
+/** A track's board, with `name`'s place on it: its top ten, or the page asked for. */
+export function fetchTrackBoard(track: number, name: string, page?: BoardPage): Promise<TrackBoard> {
   const who = cleanName(name)
-  return api<TrackBoard>(`/tracks/hotlap/${track}/board${who ? `?name=${encodeURIComponent(who)}` : ''}`, FRESH)
+  const params = pageParams(new URLSearchParams(who ? { name: who } : {}), page)
+  const query = params.toString()
+  return api<TrackBoard>(`/tracks/hotlap/${track}/board${query ? `?${query}` : ''}`, FRESH)
 }
 
 /** A track's board, fetched again when `version` changes (after a lap is saved). Null while it's asked, or for no track. */

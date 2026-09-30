@@ -36,7 +36,11 @@ export type Route =
   | { name: 'home' }
   /** `global` is an old /leaderboards/global link; its URL becomes the standings' own (`standingsHref`). */
   | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod }
-  | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod }
+  /**
+   * One game's own board. `day`: a daily's board on that day, YYYY-MM-DD (dayBoardHref), with `period`
+   * 'daily'; the page sends a day that isn't past yet to today's.
+   */
+  | { name: 'gameLeaderboard'; game: LeaderboardGame; period?: LeaderboardPeriod; day?: string }
   | { name: 'recordsIndex' }
   | { name: 'siteRecords' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
@@ -107,6 +111,13 @@ function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
 }
 
+/** A real day, as YYYY-MM-DD: not a month 13 or a Feb 30. */
+function isDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const t = Date.parse(`${value}T12:00:00Z`)
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === value
+}
+
 /* ------------------------------------------------------------------ */
 /* Hrefs                                                               */
 /* ------------------------------------------------------------------ */
@@ -126,6 +137,14 @@ export function gameBoardHref(
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
   return `/leaderboards/${encodeURIComponent(game)}/${period}`
+}
+
+/**
+ * A daily's board on one past day, in full: how the day finished, the board its places counted from
+ * (`/leaderboards/<game>/day/<YYYY-MM-DD>`). Today's is the live one, `gameBoardHref(game, 'daily')`.
+ */
+export function dayBoardHref(slug: string, day: string) {
+  return `/leaderboards/${encodeURIComponent(slug)}/day/${encodeURIComponent(day)}`
 }
 
 /** The Boards page, scrolled to its standings: every player, ranked across all games. */
@@ -450,6 +469,8 @@ export function hrefForRoute(
 ): string | null {
   switch (route.name) {
     case 'gameLeaderboard':
+      // A past day's board is that day's: the site's period changes nothing on it.
+      if (route.day) return appendGroupQuery(dayBoardHref(route.game, route.day))
       return appendGroupQuery(gameBoardHref(route.game, period))
     case 'leaderboards':
       if (route.global) return appendGroupQuery(standingsHref(period))
@@ -509,7 +530,11 @@ export function periodFromRoute(route: Route): LeaderboardPeriod | undefined {
 export function applySitePeriod(period: LeaderboardPeriod, route: Route = currentRoute()) {
   const nextPeriod = coerceVisiblePeriod(period)
   setDefaultPeriod(nextPeriod)
-  const next = hrefForRoute(route, nextPeriod)
+  // A past day's board has no period of its own: picking one opens the game's board for it, as the page's own tabs do.
+  const next =
+    route.name === 'gameLeaderboard' && route.day
+      ? appendGroupQuery(gameBoardHref(route.game, nextPeriod))
+      : hrefForRoute(route, nextPeriod)
   if (next && normalizeHref(currentHref()) !== normalizeHref(next)) {
     navigate(next)
   }
@@ -625,6 +650,17 @@ export function parseUrl(pathname: string, search: string): Route {
       name: 'records',
       game: canonicalGameSlug(decodeURIComponent(recordsMatch[1])),
       period: 'all',
+    }
+  }
+
+  // A daily's board on one day. A date that isn't one opens its board today; a game that isn't a daily, its board.
+  const dayBoardMatch = /^leaderboards\/([^/]+)\/day\/([^/]+)$/.exec(path)
+  if (dayBoardMatch) {
+    const game = canonicalGameSlug(decodeURIComponent(dayBoardMatch[1]!))
+    const day = decodeURIComponent(dayBoardMatch[2]!)
+    if (isLeaderboardGame(game)) {
+      if (!isDailyGame(game)) return gameLeaderboardRoute(game, defaultPeriod())
+      return isDate(day) ? { name: 'gameLeaderboard', game, period: 'daily', day } : gameLeaderboardRoute(game, 'daily')
     }
   }
 

@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from 'react'
 import { useMyAvatarId } from '../../hooks/useMyAvatarId'
-import { gamePlayHref, rankHowHref, ROUTE_EVENT } from '../../hooks/useHashRoute'
+import { dayBoardHref, gamePlayHref, rankHowHref, ROUTE_EVENT } from '../../hooks/useHashRoute'
 import { archiveDayWords, useDailyDays, type ArchiveDay } from '../../lib/archive'
 import {
   capitalWord,
+  COURSE_BOARD_ANCHOR,
   coursesWord,
+  fetchDayTop,
   PAST_PAGE,
   pastDays,
   pastKindFor,
@@ -16,6 +18,7 @@ import {
   type CourseBoard,
   type CourseFigure,
   type CourseTop,
+  type DayTop,
   type PastSource,
   type PastViewer,
 } from '../../lib/dailyPast'
@@ -33,8 +36,9 @@ import '../../styles/dailyPast.css'
  * A daily's past courses, the past tab of its page: the rule (what a past course counts toward), the last
  * seven days with your place each day, then every course before today's, newest first. Each row says how
  * its day went (who was 1st, how many played, and you), for Hot Lap and Ace Chase its own board too, what
- * a run on it does now, and the way to play it. A row's drawing (and the line under its date) is worked
- * out only as it comes near the screen, so a long list costs no more to open than a short one.
+ * a run on it does now, and the way to play it. Its day's final board, and the course's own, open on the
+ * row (the top ten and you) or on the day's page (all of it). A row's drawing (and the line under its date) is worked out
+ * only as it comes near the screen, so a long list costs no more to open than a short one.
  */
 
 /** How the days' results stand: still asked, in, or not to be had. */
@@ -212,45 +216,112 @@ function StripDay({
   )
 }
 
-/** One course's board opened on its row: the top ten, and you under them if you're further down. */
-function BoardPanel({ source, day, name, id }: { source: PastSource; day: string; name: string; id: string }) {
-  const { slug } = source
-  const fetchTop = source.boards?.fetchTop
+/** Which board a row's peek shows: its day's final board, or (Hot Lap, Ace Chase) the course's own. */
+type PeekSide = 'day' | 'course'
+
+type Peek = { top: CourseTop | DayTop | null; failed: boolean }
+
+/** The day's page with all of a board on it: its day's final board, or opened at the course's own. */
+function fullBoardHref(slug: string, day: string, side: PeekSide): string {
+  return side === 'course' ? `${dayBoardHref(slug, day)}#${COURSE_BOARD_ANCHOR}` : dayBoardHref(slug, day)
+}
+
+/** "Final · the top 10 of 14 players", "Track board · all 3 drivers": what a peek's list is. */
+function peekHead(source: PastSource, side: PeekSide, board: CourseTop | DayTop): string {
+  const course = side === 'course'
+  const player = course ? (source.boards?.player ?? 'player') : 'player'
+  const many =
+    board.players > board.top.length ? `the top ${board.top.length} of ${count(board.players, player)}` : `all ${count(board.players, player)}`
+  if (course) return `${capitalWord(dailyWords(source.slug).course)} board · ${many}`
+  // A day before the game's days counted (Ace Chase's first two) kept a board all the same.
+  const early = 'counted' in board && !board.counted ? ' · before the daily’s days counted' : ''
+  return `Final · ${many}${early}`
+}
+
+/**
+ * A row's board, opened on it: the top ten of its day's final board, and you under them if you were further
+ * down, with a link to all of it. Where the course keeps a board of its own, a switch shows that one's
+ * top ten instead, and the link goes to all of that one. Each is asked for the first time it's shown.
+ */
+function BoardPeek({
+  source,
+  day,
+  name,
+  id,
+  side,
+  onSide,
+  label,
+}: {
+  source: PastSource
+  day: string
+  name: string
+  id: string
+  side: PeekSide
+  onSide: (side: PeekSide) => void
+  /** The row's course and day, for the link's name: "#3 Seneca Glen, Mon, Sep 28". */
+  label: string
+}) {
+  const { slug, boards } = source
+  const fetchTop = boards?.fetchTop
   const [asks, setAsks] = useState(0)
-  const [answer, setAnswer] = useState<{ top: CourseTop | null; failed: boolean }>({ top: null, failed: false })
+  const [peeks, setPeeks] = useState<Partial<Record<PeekSide, Peek>>>({})
   const myAvatar = useMyAvatarId(name)
+  const peek = peeks[side]
+  const loaded = Boolean(peek?.top)
   useEffect(() => {
-    if (!fetchTop) return
+    if (loaded) return
+    const ask = side === 'day' ? () => fetchDayTop(slug, day, name) : fetchTop ? () => fetchTop(day, name) : null
+    if (!ask) return
     let live = true
-    fetchTop(day, name)
+    ask()
       .then((top) => {
-        if (live) setAnswer({ top, failed: false })
+        if (live) setPeeks((p) => ({ ...p, [side]: { top, failed: false } }))
       })
       .catch(() => {
-        if (live) setAnswer({ top: null, failed: true })
+        if (live) setPeeks((p) => ({ ...p, [side]: { top: null, failed: true } }))
       })
     return () => {
       live = false
     }
-  }, [fetchTop, day, name, asks])
+  }, [side, loaded, slug, day, name, fetchTop, asks])
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
-  const board = answer.top
-  const course = capitalWord(dailyWords(slug).course)
-  const player = source.boards?.player ?? 'player'
+  const board = peek?.top ?? null
+  const courseWord = dailyWords(slug).course
+  const course = capitalWord(courseWord)
   return (
-    <div className="dp-board" id={id}>
+    <div className={`dp-board dp-board--${side}`} id={id}>
+      <div className="dp-board__bar">
+        {boards ? (
+          <div className="dp-board__switch" role="group" aria-label="Which board">
+            <button type="button" className="dp-board__side" aria-pressed={side === 'day'} onClick={() => onSide('day')}>
+              On its day
+            </button>
+            <button
+              type="button"
+              className="dp-board__side dp-board__side--course"
+              aria-pressed={side === 'course'}
+              onClick={() => onSide('course')}
+            >
+              <FlagIcon />
+              {course} board
+            </button>
+          </div>
+        ) : null}
+        {board ? <p className="dp-board__head">{peekHead(source, side, board)}</p> : null}
+        <a
+          className="dp-board__full"
+          href={fullBoardHref(slug, day, side)}
+          aria-label={side === 'course' ? `Full ${courseWord} board of ${label}` : `Full board of ${label}`}
+        >
+          {side === 'course' ? `Full ${courseWord} board ›` : 'Full board ›'}
+        </a>
+      </div>
       {board ? (
-        <>
-          <p className="dp-board__head">
-            {course} board ·{' '}
-            {board.players > board.top.length
-              ? `the top ${board.top.length} of ${count(board.players, player)}`
-              : `all ${count(board.players, player)}`}
-          </p>
+        board.top.length ? (
           <ol className="dp-board__list">
             {board.top.map((e, i) => (
               <li key={e.name} className={`dp-board__row${e.name === name ? ' dp-board__row--you' : ''}`}>
-                <span className="dp-board__place">{ordinal(i + 1)}</span>
+                <span className="dp-board__place">{ordinal(e.place ?? i + 1)}</span>
                 <PlayerAvatar avatarId={e.avatarId} name={e.name} size="sm" />
                 <PlayerName className="dp-board__name" name={e.name} avatarId={e.avatarId} />
                 <b className="dp-board__figure">{fmt(e.score)}</b>
@@ -265,15 +336,17 @@ function BoardPanel({ source, day, name, id }: { source: PastSource; day: string
               </li>
             ) : null}
           </ol>
-        </>
-      ) : answer.failed ? (
+        ) : (
+          <p className="dp-board__note">{side === 'day' ? `Nobody ${verbDone(slug)} it on its day.` : 'Nobody on its board yet.'}</p>
+        )
+      ) : peek?.failed ? (
         <p className="dp-board__note">
           Couldn’t load its board.{' '}
           <button
             type="button"
             className="dp-link-btn"
             onClick={() => {
-              setAnswer({ top: null, failed: false })
+              setPeeks((p) => ({ ...p, [side]: undefined }))
               setAsks((n) => n + 1)
             }}
           >
@@ -312,7 +385,7 @@ function PastRow({
   const [ref, near] = useNear<HTMLLIElement>()
   const sub = useMemo(() => (near ? describeSub(day) : null), [near, describeSub, day])
   const art = useMemo(() => (near ? drawArt(day) : null), [near, drawArt, day])
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<PeekSide | null>(null)
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
   const anchor = source.anchor(day)
   const signedIn = viewer.state !== 'out'
@@ -329,6 +402,19 @@ function PastRow({
   const record = board?.record ?? null
   const when = board && record ? recordWhen(board, record, entry, day, source.today) : null
   const panelId = `dp-board-${anchor}`
+  const label = `${title(day)}, ${archiveDayWords(day)}`
+  // Each card's Board opens the peek at its own board; again, it closes it.
+  const opener = (side: PeekSide) => (
+    <button
+      type="button"
+      className="dp-link-btn dp-fact__open"
+      aria-expanded={open === side}
+      aria-controls={open ? panelId : undefined}
+      onClick={() => setOpen((o) => (o === side ? null : side))}
+    >
+      {open === side ? 'Hide board' : 'Board ›'}
+    </button>
+  )
   return (
     <li
       ref={ref}
@@ -346,7 +432,12 @@ function PastRow({
       </div>
       <div className="dp-row__facts">
         <div className="dp-fact">
-          <p className="dp-fact__kicker">On its day</p>
+          <div className="dp-fact__top">
+            <p className="dp-fact__kicker">On its day</p>
+            <a className="dp-fact__full" href={dayBoardHref(slug, day)} aria-label={`Full board of ${label}`}>
+              Full board ›
+            </a>
+          </div>
           {daysState === 'wait' ? (
             <p className="dp-fact__wait" aria-busy="true">
               …
@@ -368,6 +459,7 @@ function PastRow({
               ) : null}
               <p className="dp-fact__note">
                 {count(entry.players, 'player')} {done} it that day
+                {opener('day')}
               </p>
             </>
           ) : (
@@ -376,10 +468,15 @@ function PastRow({
         </div>
         {boards ? (
           <div className="dp-fact dp-fact--board">
-            <p className="dp-fact__kicker">
-              <FlagIcon />
-              {capitalWord(words.course)} board
-            </p>
+            <div className="dp-fact__top">
+              <p className="dp-fact__kicker">
+                <FlagIcon />
+                {capitalWord(words.course)} board
+              </p>
+              <a className="dp-fact__full" href={fullBoardHref(slug, day, 'course')} aria-label={`Full ${words.course} board of ${label}`}>
+                Full board ›
+              </a>
+            </div>
             {boards.rows === null ? (
               boards.failed ? (
                 <p className="dp-fact__none">
@@ -409,15 +506,7 @@ function PastRow({
                 <p className="dp-fact__note">
                   {when ? `${when} · ` : ''}
                   {count(board.players, boards.player)}
-                  <button
-                    type="button"
-                    className="dp-link-btn dp-fact__open"
-                    aria-expanded={open}
-                    aria-controls={open ? panelId : undefined}
-                    onClick={() => setOpen((o) => !o)}
-                  >
-                    {open ? 'Hide board' : 'Board ›'}
-                  </button>
+                  {opener('course')}
                 </p>
               </>
             ) : (
@@ -442,7 +531,18 @@ function PastRow({
         </a>
         {hint ? <p className="dp-row__hint">{hint}</p> : null}
       </div>
-      {open && boards ? <BoardPanel source={source} day={day} name={viewer.name} id={panelId} /> : null}
+      {open ? (
+        <BoardPeek
+          key={viewer.name}
+          source={source}
+          day={day}
+          name={viewer.name}
+          id={panelId}
+          side={boards ? open : 'day'}
+          onSide={setOpen}
+          label={label}
+        />
+      ) : null}
     </li>
   )
 }
