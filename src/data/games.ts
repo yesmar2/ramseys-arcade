@@ -243,7 +243,7 @@ export const games: Game[] = [
     name: 'Marble Run',
     slug: 'marblerun',
     tags: ['arcade', 'quick'],
-    description: 'A new course every day, the same for everyone, in 3D. Tilt the world to roll a marble down it against the clock: fall off and you’re put back a little way behind. Beat the blue ball.',
+    description: 'A new course every day, the same for everyone, in 3D. Tilt the world to roll a marble down it against the clock: fall off and you’re back at the last checkpoint. Beat the blue ball.',
     accent: PALETTE.magenta,
     playable: true,
     inDevelopment: true,

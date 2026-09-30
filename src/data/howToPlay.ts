@@ -371,7 +371,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
-      { what: 'Off the edge', pts: 'the time it takes', sub: 'back a little way behind, clock running' },
+      { what: 'Off the edge', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
     ],
     ends: 'At the goal. Roll it as often as you like.',
     tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. The ghost is the run to beat.',

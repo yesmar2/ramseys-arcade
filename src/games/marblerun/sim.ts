@@ -3,8 +3,8 @@
  *
  * A course is laid like a road: pieces of track one after another, straight or curved, each with its own
  * width, slope, bank and bumps, hanging in the dark. Tilt the world and the ball rolls the way it leans.
- * Roll off an edge and it's gone: you start again at the start of the stretch you fell from (or the last
- * checkpoint, if that's nearer), and the clock keeps running while you do.
+ * Roll off an edge and it's gone: you start again from the last checkpoint, and the clock keeps running
+ * while you do.
  *
  * x and z run across the ground and y is up. A heading h points along (cos h, sin h) in (x, z); across a
  * piece, v is measured to the right of that, along (−sin h, cos h).
@@ -149,8 +149,6 @@ export type Wall = { p: Piece; u: number; dir: 1 | -1 }
 export type Line = { p: Piece; u: number; d: number; spawn?: number; goal?: boolean }
 /** Where a ball starts, or starts again: the start, then each checkpoint. */
 export type Spawn = { p: Piece; u: number; x: number; z: number; y: number; h: number; d: number; next: number }
-/** A place on the track to go back to after a fall. */
-export type Safe = Omit<Spawn, 'next'>
 
 export type Course = {
   key: string
@@ -163,13 +161,6 @@ export type Course = {
   walls: Wall[]
   lines: Line[]
   spawns: Spawn[]
-  /**
-   * Where a ball goes back to after a fall: the last of these it rolled past, or its checkpoint if that's
-   * further on. There's one near the start of every piece but a jump's run-up, kicker and gap (from a
-   * standstill there a jump can't be made), so a fall costs the fall and the stretch it was on, not
-   * everything since the checkpoint.
-   */
-  safe: Safe[]
   minY: number
   maxY: number
   box: [number, number, number, number]
@@ -352,7 +343,6 @@ export function makeCourse(pieces: Piece[], meta: { key: string; name: string; o
     walls: [],
     lines: [],
     spawns: [],
-    safe: [],
     minY: Infinity,
     maxY: -Infinity,
     box: [Infinity, -Infinity, Infinity, -Infinity],
@@ -405,10 +395,6 @@ export function makeCourse(pieces: Piece[], meta: { key: string; name: string; o
     }
     if (p.goal) course.lines.push({ p, u: p.goalU!, d: p.d0 + p.goalU!, goal: true })
   }
-  for (const p of pieces) {
-    if (p.start || p.gap || p.kicker || pieces[p.index + 1]?.kicker) continue
-    course.safe.push(spawnAt(p, Math.min(1.8, p.len / 2)))
-  }
   return course
 }
 
@@ -443,8 +429,6 @@ export type Ball = {
   groundY: number
   flight: number
   support: Surface | null
-  /** The last of the course's safe places it rolled past (course.safe), −1 before the first. */
-  safe: number
 }
 
 export function newBall(course: Course, at = 0): Ball {
@@ -470,21 +454,15 @@ export function newBall(course: Course, at = 0): Ball {
     groundY: 0,
     flight: 0,
     support: null,
-    safe: -1,
   }
   respawn(course, b, at)
   b.next = course.spawns[at]!.next
   return b
 }
 
-/**
- * Back on the track, still, with the clock where it was: at its checkpoint (the start, for a new ball), or
- * at the last safe place it rolled past if that's further on.
- */
+/** Back to a spawn, still, with the clock where it was. */
 export function respawn(course: Course, b: Ball, at = b.cp): Ball {
-  const cp = course.spawns[at]!
-  const safe = b.safe >= 0 ? course.safe[b.safe] : undefined
-  const sp = safe && safe.d > cp.d ? safe : cp
+  const sp = course.spawns[at]!
   b.x = sp.x
   b.z = sp.z
   b.y = sp.y + BALL_R
@@ -615,12 +593,6 @@ export function step(course: Course, b: Ball, tilt: Tilt): Ball {
       b.lost = true
       b.falls += 1
     }
-  }
-
-  // The last safe place it has rolled past, to go back to after a fall.
-  if (!b.air && b.support) {
-    const d = b.support.p.d0 + b.support.u
-    while (b.safe + 1 < course.safe.length && course.safe[b.safe + 1]!.d <= d) b.safe += 1
   }
 
   collide(course, b)
@@ -834,12 +806,18 @@ const FEATURES: Record<Feature, (r: () => number, ctx: Turner) => Spec[]> = {
 }
 
 /** The order of stretches for a course: every course has a jump, a narrow, turns and a drop. */
-function recipe(r: () => number): Feature[] | null {
+/**
+ * The first course laid longer, with two more stretches (2026-10-01; Ramsey: "make them a little longer"). The
+ * days before it keep the courses they were played on: a course is laid from its number the same way for good.
+ */
+export const LONGER_FROM = 3
+
+function recipe(r: () => number, longer: boolean): Feature[] | null {
   const must: Feature[] = ['jump', 'narrow', 'drop', r() < 0.5 ? 'posts' : 'rollers']
   const turns: Feature[] = ['sweeper', 'sweeper', 'esses', 'hairpin']
   const extra: Feature[] = ['sweeper', 'rollers', 'posts', 'chute', 'esses', 'hairpin', 'drop']
   const bag = [...must, ...turns]
-  const more = 2 + Math.floor(r() * 2)
+  const more = (longer ? 4 : 2) + Math.floor(r() * 2)
   for (let i = 0; i < more; i++) bag.push(extra[Math.floor(r() * extra.length)]!)
   for (let tries = 0; tries < 200; tries++) {
     const order = [...bag]
@@ -859,10 +837,13 @@ function recipe(r: () => number): Feature[] | null {
   return null
 }
 
-/** One try at a course from a key: its pieces laid out, or null if it ran into itself. */
-export function tryCourse(key: string): Course | null {
+/**
+ * One try at a course from a key: its pieces laid out, or null if it ran into itself. A longer one has two
+ * more stretches, with a checkpoint every third stretch as always.
+ */
+export function tryCourse(key: string, longer = false): Course | null {
   const r = mulberry32(hashString(`marble:${key}`))
-  const order = recipe(r)
+  const order = recipe(r, longer)
   if (!order) return null
   let net = 0
   const ctx: Turner = {
@@ -918,7 +899,7 @@ function crosses(pieces: readonly Piece[]): boolean {
 
 /** Course `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): laid the same on every device. */
 export function plannedCourse(n: number, attempt: number): Course {
-  const course = tryCourse(`${n}:${attempt}`)
+  const course = tryCourse(`${n}:${attempt}`, n >= LONGER_FROM)
   if (!course) throw new Error(`Marble Run: course #${n} try ${attempt} doesn't lay`)
   return course
 }
@@ -929,7 +910,7 @@ export function plannedCourse(n: number, attempt: number): Course {
  */
 export function firstGoodCourse(n: number): { course: Course; attempt: number; pace: PaceRun } {
   for (let attempt = 0; attempt < 200; attempt++) {
-    const course = tryCourse(`${n}:${attempt}`)
+    const course = tryCourse(`${n}:${attempt}`, n >= LONGER_FROM)
     if (!course) continue
     const pace = paceRun(course)
     if (pace.finished) return { course, attempt, pace }
@@ -1092,6 +1073,60 @@ function split(b: Ball, tx: number, tz: number, coast: boolean): Tilt {
 function clampTilt(x: number, z: number): Tilt {
   const l = Math.hypot(x, z)
   return l > TILT_MAX ? { x: (x * TILT_MAX) / l, z: (z * TILT_MAX) / l } : { x, z }
+}
+
+/* ------------------------------------------------------------ a player's hands --- */
+
+/** How much of a curve's pull toward its middle a player's marble gets by itself: the rest is theirs. */
+export const TURN_HELP = 0.5
+
+/** The piece `d` metres down the course, and how far along it: the last piece's end, past the course's. */
+export function pieceAt(course: Course, d: number): { p: Piece; u: number } {
+  for (const p of course.pieces) if (d < p.d0 + p.len) return { p, u: Math.max(0, d - p.d0) }
+  const last = course.pieces[course.pieces.length - 1]!
+  return { p: last, u: last.len }
+}
+
+/**
+ * A player's hands (x right, y forward, each −1 to 1) as a tilt, with the turning helped (Ramsey: "the
+ * turning and stuff should be a little easier"). Forward is the way the track goes just ahead of the marble,
+ * so holding it follows a bend, where it used to head off where the camera looked a moment before. And
+ * `help` of a curve's pull toward its middle, less what its bank already gives, comes by itself, before any
+ * push along it, as the pace ball's own hands turn first. The player still sets the speed, the braking and
+ * the line, and can lean against the help. `camera` is the way forward while there's no track under the
+ * marble yet. The blue ball never uses this: its runs, and the plan's times, are as they were.
+ */
+export function handsTilt(course: Course, b: Ball, hands: { x: number; y: number }, camera: number, help = TURN_HELP): Tilt {
+  const s = b.support
+  const sp = Math.hypot(b.vx, b.vz)
+  let h = camera
+  if (s) {
+    const ahead = pieceAt(course, s.p.d0 + clamp(s.u, 0, s.p.len) + 1 + 0.25 * sp)
+    h = headingAt(ahead.p, ahead.u)
+  }
+  const fx = Math.cos(h)
+  const fz = Math.sin(h)
+  const rx = -fz
+  const rz = fx
+  // The curve's pull where the marble is, toward its middle, less what the track's own slope gives that way.
+  let hx = 0
+  let hz = 0
+  if (help > 0 && s && !b.air && s.p.kind === 'arc') {
+    const c = headingAt(s.p, clamp(s.u, 0, s.p.len))
+    const nx = -Math.sin(c)
+    const nz = Math.cos(c)
+    const pull = (sp * sp * s.p.s) / s.p.R!
+    const [mx, my, mz] = normalAt(s.p, b.x, b.z)
+    const own = ROLL * G * my * (mx * nx + mz * nz)
+    const k = (help * (pull - own)) / (ROLL * G)
+    hx = k * nx
+    hz = k * nz
+  }
+  // Across first, the hands' and the help's; then along, with what's left.
+  const across = clamp(hands.x * TILT_MAX + hx * rx + hz * rz, -TILT_MAX, TILT_MAX)
+  const room = Math.sqrt(TILT_MAX * TILT_MAX - across * across)
+  const along = clamp(hands.y * TILT_MAX + hx * fx + hz * fz, -room, room)
+  return { x: along * fx + across * rx, z: along * fz + across * rz }
 }
 
 /** The pace ball's run: its time, its checkpoint splits, and where it was 30 times a second. */

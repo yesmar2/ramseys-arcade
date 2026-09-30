@@ -1,7 +1,8 @@
 // Marble Run's plan: which course each day gets, checked before it goes out.
 //
-//   node scripts/marblerun-daily.mjs plan [days]   add days after the last one planned (180 in all by default)
-//   node scripts/marblerun-daily.mjs show <n>       lay course #n from the plan and say how the pace ball does
+//   node scripts/marblerun-daily.mjs plan [days]    add days after the last one planned (180 in all by default)
+//   node scripts/marblerun-daily.mjs replan <n> [days]  lay every day from #n on again (only days nobody has played)
+//   node scripts/marblerun-daily.mjs show <n>        lay course #n from the plan and say how the pace ball does
 //
 // A day's course is laid from its number (src/games/marblerun/sim.ts tryCourse), and a try is kept only once
 // the pace ball has been all the way down it without falling off. The plan keeps which try that was, the
@@ -60,10 +61,11 @@ ${paces.join('\n')}
   )
 }
 
-const [cmd = 'plan', arg] = process.argv.slice(2)
-if (cmd === 'plan') {
-  const want = Number(arg ?? 180)
-  const days = readPlan()
+const [cmd = 'plan', arg, arg2] = process.argv.slice(2)
+if (cmd === 'plan' || cmd === 'replan') {
+  const want = Number((cmd === 'replan' ? arg2 : arg) ?? 180)
+  // replan keeps the days before #n as they were played and lays the rest again.
+  const days = cmd === 'replan' ? readPlan().slice(0, Math.max(0, Number(arg) - 1)) : readPlan()
   const t0 = Date.now()
   for (let n = days.length + 1; n <= want; n++) {
     const { course, attempt, pace } = firstGoodCourse(n)

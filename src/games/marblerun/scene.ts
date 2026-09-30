@@ -603,7 +603,7 @@ export class MarbleScene {
     this.ghostTag.scale.set(0.2 * k, 0.05 * k, 1)
   }
 
-  /** The next frame puts the camera straight behind the ball: a run begins, or the ball is put back after a fall. */
+  /** The next frame puts the camera straight behind the ball: a run begins, or starts again at a checkpoint. */
   snap() {
     this.snapNext = true
   }
