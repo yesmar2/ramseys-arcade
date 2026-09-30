@@ -28,12 +28,11 @@ import {
   recordStory,
   recordWhen,
   type RecordShut,
-  type RecordStanding,
   type RecordStory,
   type StorySeg,
 } from '../lib/recordPage'
 import type { RecordDef, RecordSummary } from '../lib/records'
-import { ordinal, type Stat } from '../lib/scoreboard'
+import { ordinal } from '../lib/scoreboard'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { DeviceIcon } from './DeviceIcon'
@@ -45,9 +44,9 @@ import { PlayerName } from './PlayerName'
 
 /*
  * One record. The banner is its game at the scale of the page, with the
- * record on the marquee, whose name is on it and for how long. Then where you
- * stand, when you're on it; every time it was broken, charted and listed;
- * everyone's best; and the records beside it in its book.
+ * record on the marquee, whose name is on it and for how long. Then, when you
+ * hold it, who's closest; everyone's best, and the records beside it in its
+ * book; and at the foot, every time it was broken, charted and listed.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -75,39 +74,11 @@ const BookIcon = () => (
     <path d="M4 19V5" />
   </Svg>
 )
-const ArrowIcon = () => (
-  <Svg size={18}>
-    <path d="M5 12h14" />
-    <path d="M13 6l6 6-6 6" />
-  </Svg>
-)
-const StarIcon = () => (
-  <Svg size={18}>
-    <path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z" />
-  </Svg>
-)
 const ChevronIcon = () => (
   <Svg size={14}>
     <path d="M9 6l6 6-6 6" />
   </Svg>
 )
-
-function Stats({ stats }: { stats: Stat[] }) {
-  if (!stats.length) return null
-  return (
-    <dl className="sb-stats">
-      {stats.map((s) => (
-        <div key={s.label} className="sb-stat">
-          <dt className="visually-hidden">{s.label}</dt>
-          <dd>
-            <b>{s.value}</b>
-            <span aria-hidden="true">{s.label}</span>
-          </dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
 
 /** Where a record is played: a daily's track or hole record on that track or hole (today's is the day's game), any other in the game. */
 function playTarget(game: string, name: string, record: { id: string } | null | undefined) {
@@ -284,53 +255,10 @@ function Banner({
 /* ---------- you ---------- */
 
 /**
- * Where you stand on the record, when you're on it. The cards that only said you weren't (Not on it yet, Get
- * in the book, a past day's This record is final) and What it takes beside them went at Ramsey's word
- * (2026-09-30): the page starts on the record itself.
+ * Holding the record: the next three, and how far behind you they are. It's all of you that's left on the page:
+ * at Ramsey's word (2026-09-30) the cards that only said you weren't on it (Not on it yet, Get in the book, a
+ * past day's This record is final), What it takes, and then the card with your place ("DAD · this week") went.
  */
-function YouCard({
-  period,
-  standing,
-  name,
-  avatarId,
-}: {
-  period: LeaderboardPeriod
-  standing: Exclude<RecordStanding, { mode: 'off' }>
-  name: string
-  avatarId?: string
-}) {
-  const held = standing.mode === 'held'
-  return (
-    <div className={`sb-card sb-you__card${held ? ' rcd-held' : ''}`}>
-      <div className="sb-you__top">
-        <PlayerMark name={name} avatarId={avatarId} className="sb-you__mark" />
-        <span className="sb-you__kicker">
-          {name} · {recordWhen(period)}
-        </span>
-      </div>
-      <p className="sb-you__big">
-        {held ? <StarIcon /> : null}
-        <b>{standing.big}</b>
-        <span>{standing.of}</span>
-      </p>
-      <p className="sb-you__line">{standing.line}</p>
-      <div className="sb-you__foot">
-        <Stats stats={standing.stats} />
-        <p className="gb-callout">
-          <ArrowIcon />
-          <span>{standing.callout}</span>
-        </p>
-        {standing.mode === 'on' && standing.heldBefore ? (
-          <p className="rcd-note">
-            <StarIcon />
-            <span>{standing.heldBefore}</span>
-          </p>
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
 function ClosestCard({ record, entries }: { record: RecordDef; entries: LeaderboardEntry[] }) {
   const [top, ...rest] = entries
   return (
@@ -427,8 +355,10 @@ function StoryCard({ story }: { story: RecordStory }) {
     },
     compact ? (d) => d.current || d.mine : undefined,
   )
+  // A streak's row for a holder who raised it ("110 → 117 in a row") is wider than one record's, and so is its column.
+  const wide = story.rows.some((r) => r.value.includes('→'))
   return (
-    <section className="sb-card rcd-story" aria-labelledby="rcd-story-title">
+    <section className={`sb-card rcd-story${wide ? ' rcd-story--wide' : ''}`} aria-labelledby="rcd-story-title">
       <div className="rcd-story__head">
         <h2 id="rcd-story-title" className="rcd-story__title">
           {story.title}
@@ -734,14 +664,11 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         shut={shut}
       />
 
-      {!data.loading && record && standing && standing.mode !== 'off' ? (
-        <section className={`sb-you gb-you${standing.mode === 'held' ? '' : ' sb-you--solo'}`} aria-label="You and this record">
-          <YouCard period={period} standing={standing} name={you} avatarId={data.you?.avatarId} />
-          {standing.mode === 'held' ? <ClosestCard record={record} entries={entries} /> : null}
+      {!data.loading && record && standing?.mode === 'held' ? (
+        <section className="sb-you gb-you sb-you--solo" aria-label="Who’s closest">
+          <ClosestCard record={record} entries={entries} />
         </section>
       ) : null}
-
-      {story ? <StoryCard story={story} /> : null}
 
       <div className="gb-main">
         <Board
@@ -760,6 +687,9 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
           </aside>
         ) : null}
       </div>
+
+      {/* Its history, at the foot of the page, under everyone's best (Ramsey, 2026-09-30). */}
+      {story ? <StoryCard story={story} /> : null}
     </div>
   )
 }

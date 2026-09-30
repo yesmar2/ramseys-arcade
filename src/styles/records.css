@@ -967,6 +967,14 @@ html[data-theme="dark"] .rbk-book__value b {
   column-gap: 1rem;
 }
 
+/* A streak its holder raised reads "110 → 117 in a row": a wider Record column, and Change needs less. Phones lay the row out their own way. */
+@media (min-width: 56.0625rem) {
+  .rcd-story--wide .rcd-story__cols,
+  .rcd-story--wide .rcd-moment {
+    grid-template-columns: 5.5rem minmax(0, 1fr) 12.5rem 6.5rem 9rem;
+  }
+}
+
 .rcd-story__cols {
   margin-top: 1.2rem;
   padding: 0 0.9rem 0.6rem;
