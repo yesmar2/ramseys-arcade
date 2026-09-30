@@ -101,7 +101,7 @@ export const PRIZES: readonly Prize[] = [
     name: 'Gold',
     price: 0,
     blurb: 'Your badge in gold leaf, with a shine across it.',
-    earned: { by: 'A 30-day Today streak', short: '30 days' },
+    earned: { by: 'A 30-day Dailies streak', short: '30 days' },
   },
   {
     id: 't-everyday',
@@ -109,7 +109,7 @@ export const PRIZES: readonly Prize[] = [
     name: 'Every Day',
     price: 0,
     blurb: LIT,
-    earned: { by: 'A 100-day Today streak', short: '100 days' },
+    earned: { by: 'A 100-day Dailies streak', short: '100 days' },
   },
 ]
 

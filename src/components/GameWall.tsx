@@ -169,7 +169,7 @@ const PLACES = ['1st', '2nd', '3rd']
  * under them, which on a phone runs on from the floor with
  * a New badge on each instead of a heading. Each cabinet's screen shows its game, which
  * plays when asked; under the screen go the name, the board's high score and
- * yours. The daily's game and the weekly's wear a badge. Tabs along the top
+ * yours. Today's event's game and the weekly's wear a badge. Tabs along the top
  * cut the wall by what kind of game it is, and say how many of each there are.
  */
 export function GameWall() {
@@ -188,7 +188,7 @@ export function GameWall() {
   const shown = all.filter((g) => inTab(g, tab))
   const floor = arrangeWall(shown.filter((g) => !isFresh(g)), null, () => ONE)
   const fresh = arrangeWall(shown.filter(isFresh), null, () => ONE)
-  // The daily's game and the weekly's wear their badges on the wall.
+  // Today's event's game and the weekly's wear their badges on the wall.
   const dailySlug = official.find((t) => t.cadence === 'daily')?.games[0] ?? null
   const weekly = new Set(official.find((t) => t.cadence === 'weekly')?.games ?? [])
 
@@ -296,7 +296,7 @@ export function WallTile({
   const flag = game.comingSoon
     ? { label: 'Coming soon', kind: 'soon' }
     : daily
-      ? { label: 'Daily', kind: 'daily' }
+      ? { label: 'Today’s event', kind: 'daily' }
       : weekly
         ? { label: 'Weekly', kind: 'weekly' }
         : newFlag && game.inDevelopment

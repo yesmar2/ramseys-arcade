@@ -21,7 +21,7 @@ const TROPHIES: Thing[] = [
     art: <EventCup size="md" />,
     tone: 'gold',
     name: 'Event win',
-    how: 'First place in any event: the official daily, weekly and One Shot events, and the ones players make for friends and groups.',
+    how: 'First place in any event: today’s event, the One Shot and the Weekly Triple, and the ones players make for friends and groups.',
   },
   {
     key: 'month-podium',
@@ -87,10 +87,10 @@ const SECRET_RULES: Record<SecretKey, string> = {
   continue: 'Putting a coin in at Game Over (see Easter eggs).',
 }
 
-/** What each Today streak reward is, beyond the card's words. */
+/** What each Dailies streak reward is, beyond the card's words. */
 const TODAY_REWARD_NOTES: Record<number, string> = {
   3: '10 tickets.',
-  7: 'The Today pin, a punched ticket on deep orange. The flame pin stays for playing any game seven days in a row.',
+  7: 'The Dailies pin, a punched ticket on deep orange. The flame pin stays for playing any game seven days in a row.',
   14: '25 tickets.',
   30: 'The Gold badge finish. Never for sale: it isn’t on the counter, and the API refuses to trade for it.',
   100: 'The “Every Day” title, on a plate in lights. Never for sale.',
@@ -195,16 +195,16 @@ export function AdminTrophies() {
       <section className="adm-card" aria-labelledby="adm-today">
         <div className="adm-card__head">
           <h2 className="adm-card__title" id="adm-today">
-            Today streak
+            Dailies streak
             <span className="adm-card__count">{TODAY_MILESTONES.length}</span>
           </h2>
         </div>
         <p className="adm-card__sub">
-          Today’s ticket, on the Today page: a streak day is one with any three of the day’s live dailies done (Today’s
+          Today’s ticket, on the Dailies page: a streak day is one with any three of the day’s live dailies done (Today’s
           Hole solved, a lap on Today’s Track saved, Today’s Wanted’s first run saved, Today’s Pour’s first pour
           saved), on the boards’ New York day. Before Today’s Pour joined, on 28 September 2026, that was all three.
           Doing all four is a Full ticket: a gold mark in the week and “Full” on the header chip, with no reward of
-          its own. The Daily, the One Shot and the bug hunt are bonus
+          its own. Today’s event, the One Shot and the bug hunt are bonus
           punches and don’t count. Signed-in players with a tag see the streak in the header too. Each reward comes
           once an account, however often a streak breaks, with a note in the inbox.
         </p>

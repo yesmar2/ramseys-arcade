@@ -46,7 +46,7 @@ const COURSE_ON_TICKET = COURSE_FROM != null && isGameListed('marblerun')
 
 export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[] }[] = [
   {
-    title: 'Today',
+    title: 'Dailies',
     topics: [
       COURSE_ON_TICKET
         ? {
@@ -118,7 +118,7 @@ export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[
       {
         topic: 'trophy',
         label: 'Trophies and rewards',
-        hint: 'A trophy for your shelf, a secret found, a Today streak reward.',
+        hint: 'A trophy for your shelf, a secret found, a Dailies streak reward.',
       },
     ],
   },

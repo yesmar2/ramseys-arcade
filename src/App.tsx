@@ -258,7 +258,8 @@ const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] 
   { test: /^\/how-ranks-work(?:[/?#]|$)/, page: RankHowPage },
   { test: /^\/stats(?:[/?#]|$)/, page: StatsPage },
   { test: /^\/prizes(?:[/?#]|$)/, page: PrizeCounterPage },
-  { test: /^\/today(?:[/?#]|$)/, page: TodayPage },
+  // The Dailies page, and its old address that inbox notes and day shares still use.
+  { test: /^\/(?:dailies|today)(?:[/?#]|$)/, page: TodayPage },
   { test: /^\/settings(?:[/?#]|$)/, page: NotificationSettingsPage },
   { test: /^\/plus(?:[/?#]|$)/, page: PlusPage },
   { test: /^\/about(?:[/?#]|$)/, page: AboutPage },

@@ -50,6 +50,6 @@ export function eventShareMessage(detail: TournamentDetail, gameSlug: string, na
   if (cell?.score == null) return null
   const what = `${scoreText(gameSlug, cell.score)} on ${getGame(gameSlug)?.name ?? gameSlug}`
   if (detail.official && detail.cadence === 'oneshot') return `${APP_NAME} One Shot, one try: ${what}${where}. Your turn.`
-  if (detail.official && detail.cadence === 'daily') return `Today’s ${APP_NAME} Daily: ${what}${where} so far. Can you beat it?`
+  if (detail.official && detail.cadence === 'daily') return `Today’s event on ${APP_NAME}: ${what}${where} so far. Can you beat it?`
   return `${detail.title} on ${APP_NAME}: ${what}${where} so far. Can you beat it?`
 }

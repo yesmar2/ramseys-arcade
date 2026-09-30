@@ -5,7 +5,7 @@ import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { dailyTabHref, gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { fitCardToSpace } from '../lib/cardFit'
-import { dailyWords } from '../lib/dailyWords'
+import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { pastKind, type PastPlay } from '../lib/pastPlay'
@@ -151,7 +151,7 @@ export function GamePanelBody({
   const boardLink = past ? past.href : board ? gameBoardHref(slug) : null
   const boardLabel = past
     ? pastKind(slug, past.kind) === 'board'
-      ? `This ${dailyWords(slug).course}’s board`
+      ? `This ${dailyWords(slug).course}’s ${BOARD_NAMES.allTime} board`
       : dailyWords(slug).pastTab
     : 'Leaderboard'
 

@@ -168,7 +168,7 @@ export function pinInfo(pin: AvatarPin): { label: string; rule: string } {
     case 'streak':
       return { label: 'Streak', rule: 'Play seven days in a row' }
     case 'today':
-      return { label: 'Today', rule: 'Punch any three of Today’s ticket seven days in a row' }
+      return { label: 'Dailies', rule: 'Punch any three of Today’s ticket seven days in a row' }
     case 'crown':
       return { label: 'Crown', rule: 'Win a month in the arcade' }
     case 'bugnet':

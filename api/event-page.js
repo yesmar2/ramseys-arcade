@@ -4,7 +4,7 @@ import { EVENT_ID, eventWords, readEvent } from './_og/event.js'
 /*
  * GET /e/<event>/<tag> (vercel.json rewrites it here): a player's place in an
  * event, shared. Whatever unfurls the link reads the tags, rewritten for that
- * player ("SAM2 is 3rd on Daily · Frenzy" over a card with the score); a
+ * player ("SAM2 is 3rd on Today’s event · Frenzy" over a card with the score); a
  * person is sent straight on to the event, where they can play it too. When
  * the API can't say in time, the tags stay the site's and the link still
  * works.

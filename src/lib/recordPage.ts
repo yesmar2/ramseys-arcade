@@ -148,8 +148,8 @@ export function onTheBoard(game: string, record: Rec): string {
   const kind = recordKind(record)
   if (kind === 'course') {
     if (record.id.startsWith('track-')) return 'Drive a lap of it'
-    if (record.id.startsWith('pour-')) return 'Pour it on its day'
-    return record.id.startsWith('day-') ? 'Play it on its day' : 'Hit the bullseye on it'
+    if (record.id.startsWith('pour-')) return 'Pour it while it’s the daily'
+    return record.id.startsWith('day-') ? 'Play it while it’s the daily' : 'Hit the bullseye on it'
   }
   if (kind === 'clock') return `${game === 'asteroids' ? 'Clear' : 'Reach'} ${milestone(game, record.label)} once`
   if (record.id === 'play-days-streak') return 'Play one day'

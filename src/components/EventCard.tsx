@@ -49,8 +49,8 @@ export function ordinal(n: number): string {
 /**
  * The day a finished event ran: "Sep 12".
  *
- * Taken from when it started, not when it ended — a daily closes at midnight,
- * so its end lands on the next day's date and every daily reads a day late.
+ * Taken from when it started, not when it ended — a day's event closes at
+ * midnight, so its end lands on the next day's date and every one reads a day late.
  */
 export function eventDay(t: Pick<TournamentSummary, 'startsAt'>): string {
   try {
@@ -164,7 +164,7 @@ type KickerSource = Pick<
 
 /**
  * One caption line that says what kind of thing this is and where it is up
- * to: "● Live · Daily · Best score". Replaces the old row of pills.
+ * to: "● Live · Today’s event · Best score". Replaces the old row of pills.
  */
 export function EventKicker({
   t,

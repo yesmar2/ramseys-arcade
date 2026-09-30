@@ -5,7 +5,7 @@ import { formatTries } from '../games/acechase/score'
 import { DAILY_TRACKS } from '../games/hotlap/dailyPlan'
 import { formatLapMs, hotlapMsFromBoardScore } from '../games/hotlap/score'
 import { todaysHole } from './dailyHole'
-import { dailyWords } from './dailyWords'
+import { BOARD_NAMES, dailyWords } from './dailyWords'
 import { FIRST_RUN_DAILIES } from './gameBoard'
 import { api, normalizePlayerName, type LeaderboardEntry } from './leaderboard'
 import { numberWord } from './numberWord'
@@ -18,7 +18,7 @@ import type { TrackRecordRow } from './trackBoards'
  * A daily's Records tab (components/DailyRecordsTab.tsx): only the records its boards don't already show,
  * the ones made over many days. Days played in a row (its record book's), the most days won, and for Hot
  * Lap and Ace Chase the most track or hole records held, then each track's or hole's record, which is just
- * the #1 on that course's board. The tab only fetches and lays out; this says it.
+ * the #1 on that course's All time board. The tab only fetches and lays out; this says it.
  *
  * Every list here shares a place between equal numbers: four players with a day each are all 1st, and the
  * line over the list says so in words.
@@ -514,12 +514,12 @@ export function daysWonCard(slug: string, tally: DailyRecordsResult['daysWon'] |
     unit: ['day', 'days'],
     you,
     signIn: viewer.signedIn ? null : `Sign in and ${todayWordsVerb(slug)} to win a day.`,
-    foot: { label: 'counts', text: `Won on its day only, never on a past ${words.course}.` },
+    foot: { label: 'counts', text: `Won on a day’s ${BOARD_NAMES.ranked} board only, never on a past ${words.course}.` },
   }
 }
 
 /**
- * Most track or hole records held: past courses whose board a player tops (today's #1 is only 1st today).
+ * Most track or hole records held: past courses whose All time board a player tops (today's #1 is only 1st today).
  * Your line points at what's still open to you: a Hot Lap track takes any lap, so your nearest one; an Ace
  * Chase hole takes only your first result, so the past holes you haven't played.
  */
@@ -556,7 +556,7 @@ export function coursesHeldCard(
     if (firstOnly) {
       const open = past.filter((c) => !c.you).length
       line = open
-        ? `${capital(numberWord(open))} past ${open === 1 ? `${course} you haven’t played is` : `${course}s you haven’t played are`} open to you: your first bullseye on one goes on its board.`
+        ? `${capital(numberWord(open))} past ${open === 1 ? `${course} you haven’t played is` : `${course}s you haven’t played are`} open to you: your first bullseye on one goes on its ${BOARD_NAMES.allTime} board.`
         : `You’ve played every past ${course}, and your first bullseye on each stands.`
       if (!aside && open) aside = `${counted(open, course)} open to you`
     } else {
@@ -572,7 +572,7 @@ export function coursesHeldCard(
             : `Your closest is ${c.name}, ${courseResult(slug, off)} off ${c.holder!.name}’s ${courseResult(slug, c.holder!.value)}.`
         if (!aside) aside = off === 0 ? 'tied on one' : `closest ${courseResult(slug, off)} off`
       } else {
-        line = `${words.verb} any past ${course}: your best goes on its board.`
+        line = `${words.verb} any past ${course}: your best goes on its ${BOARD_NAMES.allTime} board.`
       }
     }
     you = { value: n ? counted(n, course) : 'none yet', aside, line, have: n, of: Math.max(most, 1) }
@@ -585,10 +585,10 @@ export function coursesHeldCard(
     rows,
     unit,
     you,
-    signIn: viewer.signedIn ? null : `Sign in and your results on past ${course}s go on their boards.`,
+    signIn: viewer.signedIn ? null : `Sign in and your results on past ${course}s go on their ${BOARD_NAMES.allTime} boards.`,
     foot: {
       label: 'board',
-      text: firstOnly ? `Your first bullseye on a ${course}, on its day or after.` : `Any lap of any ${course}, any day.`,
+      text: firstOnly ? `Your first bullseye on any ${course}, any day.` : `Any lap of any ${course}, any day.`,
     },
   }
 }
@@ -599,12 +599,12 @@ export function recordsIntro(slug: string): { lede: string; link: string } {
   const name = getGame(slug)?.name ?? slug
   if (words.past === 'board') {
     return {
-      lede: `${name}’s own records, made over many days. A ${words.course}’s best is just the #1 on its board, so it stays with the ${words.course}.`,
-      link: `${capital(words.course)} boards are on ${words.pastTab}`,
+      lede: `${name}’s own records, made over many days. A ${words.course}’s best is just the #1 on its ${BOARD_NAMES.allTime} board, so it stays with the ${words.course}.`,
+      link: `${BOARD_NAMES.allTime} boards are on ${words.pastTab}`,
     }
   }
   return {
-    lede: `${name}’s own records, made over many days. Each day’s final board is on ${words.pastTab}.`,
+    lede: `${name}’s own records, made over many days. Each day’s ${BOARD_NAMES.ranked} board is on ${words.pastTab}.`,
     link: words.pastTab,
   }
 }

@@ -5,6 +5,7 @@ import { copyText } from '../../components/ShareBoardButton'
 import { gameArchiveHref, gamePlayHref, todayShareHref } from '../../hooks/useHashRoute'
 import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { fitCardToSpace } from '../../lib/cardFit'
+import { BOARD_NAMES } from '../../lib/dailyWords'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { onItsDayFact, type ItsDay } from '../../lib/onItsDay'
 import { ordinal } from '../../lib/profileMath'
@@ -383,7 +384,7 @@ function walkFor(day: string, today: string): { prev: PastWalkLink | null; next:
 const todayWanted = (today: string): TodayCourse => ({ name: `Wanted #${dayNumber(today)}` })
 
 /**
- * A past day's start card: who was wanted, that it's practice, how the day went on its day, Start, and the
+ * A past day's start card: who was wanted, that it's practice, how its Ranked board went, Start, and the
  * way back to its row on the past days.
  */
 export function PastDayStart({
@@ -426,25 +427,26 @@ function gapWords(ms: number, other: number): { tie: boolean; quicker: boolean; 
 }
 
 /**
- * The run against its day: your own result that day, and the day's 1st. "That's 3.9s quicker than your
- * 49.1s on its day. ODCHKA's 1st, 40.0s, is 5.2s away."
+ * The run against its Ranked board: your own result that day, and the day's 1st. "That's 3.9s quicker
+ * than your 49.1s on the Ranked board. ODCHKA's 1st, 40.0s, is 5.2s away."
  */
 function againstItsDay(ms: number, itsDay: ItsDay): string | null {
   const entry = itsDay.entry
   if (!entry) return null
   const out: string[] = []
   const you = itsDay.signedIn ? entry.you : null
+  const ranked = `on the ${BOARD_NAMES.ranked} board`
   if (you) {
     const yours = findbugMsFromBoardScore(you.score)
     const g = gapWords(ms, yours)
     const at = formatFindbugMs(yours)
-    out.push(g.tie ? `That ties your ${at} on its day.` : `That’s ${g.gap} ${g.quicker ? 'quicker' : 'slower'} than your ${at} on its day.`)
+    out.push(g.tie ? `That ties your ${at} ${ranked}.` : `That’s ${g.gap} ${g.quicker ? 'quicker' : 'slower'} than your ${at} ${ranked}.`)
     // You were the day's 1st: that's the line already said.
     if (you.place === 1) return out.join(' ')
   }
   const first = findbugMsFromBoardScore(entry.top.score)
   const g = gapWords(ms, first)
-  const whose = `${entry.top.name}’s 1st${you ? '' : ' on its day'}, ${formatFindbugMs(first)}`
+  const whose = `${entry.top.name}’s 1st${you ? '' : ` ${ranked}`}, ${formatFindbugMs(first)}`
   out.push(g.tie ? `That ties ${whose}.` : g.quicker ? `That beats ${whose}, by ${g.gap}.` : `${whose}, is ${g.gap} away.`)
   return out.join(' ')
 }

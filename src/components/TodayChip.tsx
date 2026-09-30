@@ -4,10 +4,10 @@ import { dayMarks, liveDailies, subscribeToday, todayRule, todayServer, type Tod
 import '../styles/today.css'
 
 /*
- * The Today set in the header (lib/today.ts): the streak and how today's ticket stands, and the way to the
- * Today page from anywhere, marked as where you are while you're on it. It counts the day's dailies done of
- * all of them ("2/5"), lights up once enough are done to keep the streak, and says "Full" when every one is.
- * Signed in with a tag only: a streak is kept by an account.
+ * The Today set in the header (lib/today.ts), named the Dailies: the streak and how today's ticket stands,
+ * and the way to the Dailies page from anywhere, marked as where you are while you're on it. It counts the
+ * day's dailies done of all of them ("Dailies 2/5"), lights up once enough are done to keep the streak, and
+ * says "Full" when every one is. Signed in with a tag only: a streak is kept by an account.
  */
 
 export const FlameIcon = () => (
@@ -37,7 +37,7 @@ export function TodayChip({ here }: { here: boolean }) {
   const streak = state.streak.current
   const count = full ? 'Full' : `${done}/${rule.count}`
   const said = full ? 'a Full ticket' : `${done} of ${rule.count} done${marks.kept ? ', the day kept' : ''}`
-  const label = `Today: ${said}${streak > 0 ? `, streak ${streak} ${streak === 1 ? 'day' : 'days'}` : ''}`
+  const label = `Dailies: ${said}${streak > 0 ? `, streak ${streak} ${streak === 1 ? 'day' : 'days'}` : ''}`
   return (
     <a
       className={`today-chip${full ? ' today-chip--full' : marks.kept ? ' today-chip--all' : ''}${here ? ' today-chip--here' : ''}`}
@@ -46,7 +46,7 @@ export function TodayChip({ here }: { here: boolean }) {
       aria-label={label}
     >
       {full ? <StarIcon /> : <FlameIcon />}
-      <span className="today-chip__word">Today</span>
+      <span className="today-chip__word">Dailies</span>
       {streak > 0 ? <span className="today-chip__day">Day {streak}</span> : null}
       <span className="today-chip__count">{count}</span>
     </a>

@@ -4,10 +4,9 @@ import { dailyWords } from '../lib/dailyWords'
 import '../styles/dailyPast.css'
 
 /*
- * A daily's past tab (/games/<slug>/past): Past tracks, Past holes, Past days or Past courses. What a past
- * course counts toward, the last seven days, and every course before today's with how its day went, each
- * to play again (components/archive/PastCourses.tsx). Each game's list comes in a chunk of its own, with
- * its plan.
+ * A daily's past tab (/games/<slug>/past): Past tracks, Past holes, Past days or Past courses. Every course
+ * before today's as a card, with how its day went and its boards, each to play again
+ * (components/archive/PastCourses.tsx). Each game's cards come in a chunk of their own, with its plan.
  */
 
 const TrackArchive = lazyPage(() => import('./archive/TrackArchive').then((m) => m.TrackArchive))
@@ -16,7 +15,7 @@ const BugArchive = lazyPage(() => import('./archive/BugArchive').then((m) => m.B
 const PourArchive = lazyPage(() => import('./archive/PourArchive').then((m) => m.PourArchive))
 const CourseArchive = lazyPage(() => import('./archive/CourseArchive').then((m) => m.CourseArchive))
 
-/** Each daily's list of its past courses. */
+/** Each daily's cards of its past courses. */
 const LISTS: Record<string, typeof TrackArchive> = {
   hotlap: TrackArchive,
   acechase: HoleArchive,
@@ -25,15 +24,19 @@ const LISTS: Record<string, typeof TrackArchive> = {
   marblerun: CourseArchive,
 }
 
-/** While a game's list is on its way: the shape of the tab, so nothing jumps when it comes. */
+/** While a game's cards are on their way: the tab's title and a row of cards' shapes, so nothing jumps when they come. */
 function PastTabWaiting({ slug }: { slug: string }) {
+  const words = dailyWords(slug)
   return (
-    <div className="dp dp--wait" aria-busy="true" aria-label={`Loading ${dailyWords(slug).pastTab.toLowerCase()}`}>
-      <div className="dp-skel dp-skel--rule" />
-      <div className="dp-skel dp-skel--week" />
-      <div className="dp-skel dp-skel--row" />
-      <div className="dp-skel dp-skel--row" />
-      <div className="dp-skel dp-skel--row" />
+    <div className="dp dp--wait" aria-busy="true" aria-label={`Loading ${words.pastTab.toLowerCase()}`}>
+      <div className="dp-head">
+        <h2 className="dp-head__title">{words.pastTab}</h2>
+      </div>
+      <div className="pc-grid">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={`dp-skel dp-skel--card${words.past === 'board' ? ' dp-skel--boards' : ''}`} />
+        ))}
+      </div>
     </div>
   )
 }

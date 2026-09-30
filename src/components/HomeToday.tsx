@@ -201,7 +201,7 @@ export function HomeToday() {
       <div className="home-day__head">
         <div className="home-day__when">
           <h2 id="home-day-title" className="home-day__title">
-            Today
+            Dailies
           </h2>
           <span className="home-day__date">{shortDate(day)}</span>
         </div>
@@ -220,7 +220,7 @@ export function HomeToday() {
         </div>
         <span className="home-day__next">{next}</span>
         <a className="home-day__open" href={todayHref()}>
-          Open today
+          Open Dailies
           <ChevronIcon />
         </a>
       </div>

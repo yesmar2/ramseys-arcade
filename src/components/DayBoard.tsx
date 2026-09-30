@@ -9,7 +9,7 @@ import { archiveDayWords, dayBefore, useDailyDays } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { capitalWord, COURSE_BOARD_ANCHOR, pastKindFor, stripDayWords, usePastViewer, verbDone } from '../lib/dailyPast'
-import { dailyWords } from '../lib/dailyWords'
+import { BOARD_NAMES, boardTip, dailyWords } from '../lib/dailyWords'
 import { dateOf, dayAfter, timeOfDay, type DayCourse } from '../lib/dayBoard'
 import { useDeviceType } from '../lib/device'
 import { FIRST_RUN_DAILIES, firstResultWord, firstRunWord, gapBetween } from '../lib/gameBoard'
@@ -32,11 +32,12 @@ import { openSiteMenu } from './siteNav'
 import '../styles/dayBoard.css'
 
 /*
- * A daily's board on one past day (/leaderboards/<game>/day/<YYYY-MM-DD>): the board its places counted
- * from, in full, as the day finished, with the day before and after a tap away (the day after the newest
- * is today's live board). Where you finished that day, the way to play the course again with what that
- * run counts toward, and for Hot Lap and Ace Chase the course's own board beside the day's: every lap or
- * first bullseye on it since, which isn't anyone's rank.
+ * A daily's board on one past day (/leaderboards/<game>/day/<YYYY-MM-DD>): its Ranked board, the one its
+ * places counted from, in full, as the day finished, with the day before and after a tap away (the day
+ * after the newest is today's live board). Where you finished that day, the way to play the course again
+ * with what that run counts toward, and for Hot Lap and Ace Chase the course's All time board beside the
+ * Ranked one: every lap or first bullseye on it since, which isn't anyone's rank. The two boards' names
+ * are lib/dailyWords.ts's BOARD_NAMES, as every page has them.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -128,7 +129,7 @@ function DaySteps({ slug, day, course, group }: { slug: LeaderboardGame; day: st
         </span>
       )}
       <p className="home-banner__kicker db-steps__day">
-        Final · {archiveDayWords(day)}
+        {BOARD_NAMES.ranked} · {archiveDayWords(day)}
         {group ? ` · ${group}` : ''}
       </p>
       {course ? (
@@ -168,7 +169,7 @@ function Banner({
   const loading = board.loading
   // Not "nobody played it": the day just didn't come.
   const failed = Boolean(board.error) && !board.rows.length
-  const head = failed ? { name: '', rest: 'Couldn’t load that day’s board.' } : dayHeadline(slug, board.rows, group)
+  const head = failed ? { name: '', rest: `Couldn’t load the ${BOARD_NAMES.ranked} board.` } : dayHeadline(slug, board.rows, group)
   const leader = board.rows[0]
   const counted = board.meta?.counted !== false
   const dayWords = archiveDayWords(day)
@@ -207,7 +208,7 @@ function Banner({
               {board.total ? `${count(board.total, 'player')}${group ? ` in ${group}` : ''} · ` : ''}
               {/* A day before the daily's days counted paid nobody's rank (Ace Chase's first two). A group's places
                   never did: the day paid by places over everyone. */}
-              {!counted ? 'before the daily’s days counted' : group ? 'places over everyone are what counted toward rank' : 'this counted toward rank on its day'}
+              {!counted ? 'before the daily’s days counted' : group ? 'places over everyone are what counted toward rank' : 'it counted toward rank'}
             </>
           )}
         </p>
@@ -219,7 +220,7 @@ function Banner({
           <ShareBoardButton
             className="home-banner__ghost"
             text="Share"
-            label={`${game.name}, ${dayWords}: the final board on ${APP_NAME}.`}
+            label={`${game.name}, ${dayWords}: the ${BOARD_NAMES.ranked} board on ${APP_NAME}.`}
             url={dayBoardHref(slug, day)}
           />
         </div>
@@ -345,7 +346,7 @@ function YouThatDay({
 
 /**
  * The way to play the course again, and what that run counts toward, as its row on the past tab says it:
- * a track's or (without a result on it yet) a hole's own board, or practice.
+ * a track's or (without a result on it yet) a hole's All time board, or practice.
  */
 function PlayAgain({
   slug,
@@ -384,7 +385,7 @@ function PlayAgain({
       ? null
       : signedIn
         ? `Your first ${run} here stands.`
-        : `Signed out, nothing is kept. Sign in and ${firstOnly ? `your first ${run} here goes` : `your ${run}s here go`} on its board.`
+        : `Signed out, nothing is kept. Sign in and ${firstOnly ? `your first ${run} here goes` : `your ${run}s here go`} on its ${BOARD_NAMES.allTime} board.`
   const record = courseBoard.rows[0]
   const player = slug === 'hotlap' ? 'driver' : 'player'
   return (
@@ -397,7 +398,9 @@ function PlayAgain({
       </h2>
       {keepsBoard ? (
         <p className="db-play__fact">
-          <span className="db-play__fact-kicker">{capitalWord(words.course)} board</span>
+          <span className="db-play__fact-kicker" title={boardTip('allTime', slug)}>
+            {BOARD_NAMES.allTime}
+          </span>
           {courseBoard.loading ? (
             <span aria-busy="true">…</span>
           ) : record ? (
@@ -514,16 +517,16 @@ function Board({
   onMore: (tab: 'day' | 'course') => void
   group?: string
 }) {
-  // A past row's track-board link opens this page on that side (#course-board).
+  // A past row's All time link opens this page on that side (#course-board).
   const [tab, setTab] = useState<'day' | 'course'>(() =>
     window.location.hash === `#${COURSE_BOARD_ANCHOR}` ? 'course' : 'day',
   )
   const myAvatar = useMyAvatarId(name)
   const words = dailyWords(slug)
-  const courseWord = capitalWord(words.course)
   const keepsBoard = Boolean(course?.board)
   const onCourse = tab === 'course' && keepsBoard
   const board = onCourse ? courseBoard : dayBoard
+  const boardName = onCourse ? BOARD_NAMES.allTime : BOARD_NAMES.ranked
   const limit = onCourse ? shown.course : shown.day
   const rows = board.rows.slice(0, limit)
   const you = (onCourse ? courseBoard.meta?.you : dayBoard.meta?.you) ?? null
@@ -531,18 +534,19 @@ function Board({
   const player = onCourse && slug === 'hotlap' ? 'driver' : 'player'
   const counted = dayBoard.meta?.counted !== false
   const firstOnly = FIRST_RUN_DAILIES.has(slug)
+  // What's on the board on show, in a line; each side's button says more when it's pointed at (boardTip).
   // A group's places never paid anything: the day paid by places over everyone, as Other days has them.
   const note = onCourse
-    ? `Each ${player}’s ${firstOnly ? `first ${firstRunWord(slug)}` : `best ${firstRunWord(slug)}`} on this ${words.course}, from its day ${firstOnly ? 'or' : 'and every day'} since${group ? ', over everyone' : ''}. It isn’t anyone’s rank.`
-    : group
-      ? `Each player’s ${dayResultWords(slug)} that day, among ${group}. ${counted ? 'Their places over everyone are what counted toward rank.' : 'It came before the daily’s days counted toward rank.'}`
-      : `Each player’s ${dayResultWords(slug)} that day, as the day finished. ${counted ? 'It counted toward rank.' : 'It came before the daily’s days counted toward rank.'}`
+    ? `Each ${player}’s ${firstOnly ? `first ${firstRunWord(slug)} on this ${words.course}, whenever it came` : `best ${firstRunWord(slug)} on this ${words.course}, any day`}${group ? ', over everyone' : ''}. It doesn’t count toward rank.`
+    : `Each player’s ${dayResultWords(slug)} that day${group ? `, among ${group}` : ''}. ${
+        !counted ? 'It came before the daily’s days counted.' : group ? 'Places over everyone counted toward rank.' : 'It counted toward rank.'
+      }`
   const waiting = board.more && rows.length < Math.min(limit, board.total)
   return (
     <section id={COURSE_BOARD_ANCHOR} className="sb-card gb-board gb-board--five db-board" aria-labelledby="gb-board-title">
       <div className="gb-board__head">
         <h2 id="gb-board-title" className="gb-board__title">
-          {onCourse ? `${courseWord} board` : 'Final board'}
+          {boardName} board
         </h2>
         {!board.loading && !board.error && board.total ? <span className="gb-board__count">{count(board.total, player)}</span> : null}
         {keepsBoard ? (
@@ -553,9 +557,10 @@ function Board({
                 type="button"
                 aria-pressed={tab === t}
                 className={`gb-tog__b${tab === t ? ' gb-tog__b--on' : ''}`}
+                title={boardTip(t === 'day' ? 'ranked' : 'allTime', slug)}
                 onClick={() => setTab(t)}
               >
-                {t === 'day' ? 'On its day' : `${courseWord} board`}
+                {t === 'day' ? BOARD_NAMES.ranked : BOARD_NAMES.allTime}
               </button>
             ))}
           </div>
@@ -566,7 +571,7 @@ function Board({
         <BoardSkeleton rows={FIRST_ROWS} />
       ) : board.error && !board.rows.length ? (
         <div className="gb-board__empty">
-          <p className="gb-board__empty-title">Couldn’t load {onCourse ? `its ${words.course} board` : 'that day’s board'}.</p>
+          <p className="gb-board__empty-title">Couldn’t load the {boardName} board.</p>
           <button type="button" className="sb-ghost" onClick={board.retry}>
             Try again
           </button>
@@ -574,7 +579,7 @@ function Board({
       ) : !board.rows.length ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">
-            {onCourse ? `Nobody’s on its ${words.course} board yet.` : groupBoardEmptyTitle(`Nobody ${verbDone(slug)} it that day.`)}
+            {onCourse ? 'Nobody’s on it yet.' : groupBoardEmptyTitle(`Nobody ${verbDone(slug)} it that day.`)}
           </p>
         </div>
       ) : (

@@ -348,7 +348,7 @@ export function NextEventCard({ t }: { t: TournamentSummary }) {
         {t.cadence === 'weekly'
           ? 'This week’s Triple is on'
           : t.cadence === 'daily'
-            ? 'Today’s daily is on'
+            ? 'Today’s event is on'
             : t.cadence === 'oneshot'
               ? 'Today’s One Shot is on'
               : 'On now'}

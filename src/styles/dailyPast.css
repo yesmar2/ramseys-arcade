@@ -1,24 +1,53 @@
 /*
- * A daily's past tab (DailyPastTab, archive/PastCourses.tsx): the rule, the last seven days, then every
- * past course as a row: its picture and name, how its day went, its own board if it keeps one, and the
- * way to play it; either board opens under it. The board and practice colours are the run labels'
- * (runLabel.css), so a row's facts, button and label read as one.
+ * A daily's past tab (DailyPastTab, archive/PastCourses.tsx): its title with the count and the ⓘ, then a
+ * card for every past course, four across on a desk, one or two on a phone. A card is its picture, name and
+ * day, its Ranked and All time lines, and its start button. The two boards' colours and marks are the run
+ * labels' (runLabel.css): Ranked wears the tick of "counts", All time the flag of the course's own board,
+ * practice the loop. The card's panels (PastBoardsModal, PastHowModal) and its labels' tips float over the
+ * page outside the tab, so they carry the same colours themselves (.dp-modal, .dp-tip).
  */
 
-.dp {
+.dp,
+.dp-modal,
+.dp-tip {
+  --dp-ranked: #11704f;
   --dp-board: #8f5a04;
   --dp-practice: #3f6d99;
+  --dp-crown: #a87400;
+  --dp-gold: #9a6b00;
+  --dp-silver: #5f6d7a;
+  --dp-bronze: #9a5a2e;
+  --dp-you: color-mix(in srgb, var(--dp-ranked) 80%, var(--ink));
   --dp-line: rgba(var(--ink-rgb), 0.09);
-  --dp-link: color-mix(in srgb, var(--gh-accent, var(--accent)) 70%, var(--ink));
+  --dp-well: rgba(var(--ink-rgb), 0.045);
+  /* A label's grey, between the ink and the muted. */
+  --dp-soft: color-mix(in srgb, var(--ink) 40%, var(--muted));
+}
+
+html[data-theme='dark'] .dp,
+html[data-theme='dark'] .dp-modal,
+html[data-theme='dark'] .dp-tip {
+  --dp-ranked: #38d39f;
+  --dp-board: #f5b544;
+  --dp-practice: #8fb3d9;
+  --dp-crown: #ffc94d;
+  --dp-gold: #e8bb58;
+  --dp-silver: #c2ccd6;
+  --dp-bronze: #d19a73;
+}
+
+.dp {
+  --dp-accent: var(--gh-accent, var(--accent));
+  --dp-link: color-mix(in srgb, var(--dp-accent) 70%, var(--ink));
   display: flex;
   flex-direction: column;
   gap: 1rem;
   min-width: 0;
 }
 
-html[data-theme='dark'] .dp {
-  --dp-board: #f5b544;
-  --dp-practice: #8fb3d9;
+.dp-modal {
+  --dp-accent: var(--celeb-accent, var(--accent));
+  --dp-link: color-mix(in srgb, var(--accent) 70%, var(--ink));
 }
 
 .dp-link-btn {
@@ -38,59 +67,6 @@ html[data-theme='dark'] .dp {
   text-underline-offset: 0.15em;
 }
 
-/* ---------- the rule: what a past course counts toward ---------- */
-
-.dp-rule {
-  --dp-tone: var(--dp-board);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.7rem 1.1rem;
-  padding: 0.9rem 1.3rem;
-  border-radius: 1.25rem;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--dp-tone) 11%, var(--surface)),
-    color-mix(in srgb, var(--dp-tone) 3%, var(--surface)) 70%
-  );
-  border: 1px solid color-mix(in srgb, var(--dp-tone) 32%, transparent);
-}
-
-.dp-rule--practice {
-  --dp-tone: var(--dp-practice);
-}
-
-.dp-rule__label {
-  flex: none;
-}
-
-.dp-rule__text {
-  flex: 1 1 22rem;
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.45;
-}
-
-.dp-rule__text b {
-  font-weight: 800;
-}
-
-.dp-rule__how {
-  flex: none;
-  margin-left: auto;
-  font-size: 0.95rem;
-  font-weight: 800;
-  white-space: nowrap;
-  text-decoration: none;
-  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
-}
-
-.dp-rule__how:hover,
-.dp-rule__how:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
 .dp-oops {
   margin: 0;
   padding: 0.75rem 1.1rem;
@@ -100,203 +76,76 @@ html[data-theme='dark'] .dp {
   border: 1px solid color-mix(in srgb, #e5484d 35%, transparent);
 }
 
-/* ---------- the last seven days ---------- */
+/* ---------- the tab's title: its name, how many, and the ⓘ ---------- */
 
-.dp-week {
+.dp-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 1.4rem;
-  padding: 1.1rem 1.3rem 1.2rem;
-  border-radius: 1.5rem;
-  background: var(--surface);
-  border: 1px solid var(--dp-line);
-  box-shadow: var(--shadow-soft);
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2rem;
+  padding: 0.375rem 0.375rem 0;
   scroll-margin-top: calc(var(--header-h, 4rem) + 1.25rem);
 }
 
-/* As wide as its days: a full week fills the row and yours goes under it; a game's first days leave it room. */
-.dp-week__main {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  min-width: 0;
-}
-
-.dp-week__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.2rem 0.8rem;
-}
-
-.dp-week__title {
+.dp-head__title {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+  line-height: 2rem;
 }
 
-.dp-week__lede {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-/* Room round the tiles so today's glow isn't cut off by the sideways scroll. */
-.dp-week__days {
-  list-style: none;
-  margin: -0.3rem;
-  padding: 0.3rem;
-  display: flex;
-  gap: 0.75rem;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scrollbar-width: thin;
-}
-
-.dp-week__item {
-  flex: 0 0 9.5rem;
-  scroll-snap-align: end;
-}
-
-.dp-day {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  height: 100%;
-  padding: 0.7rem 0.75rem 0.75rem;
-  border-radius: 1.1rem;
-  background: rgba(var(--ink-rgb), 0.04);
-  border: 1px solid var(--dp-line);
-  color: inherit;
-  text-decoration: none;
-}
-
-.dp-day:hover,
-.dp-day:focus-visible {
-  border-color: color-mix(in srgb, var(--gh-accent, var(--accent)) 55%, transparent);
-}
-
-.dp-day--today {
-  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.dp-day__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.4rem;
-  font-size: 1rem;
-  font-weight: 800;
-}
-
-.dp-day__n {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.dp-day__pill {
-  display: inline-flex;
-  align-items: center;
-  height: 1.35rem;
-  padding: 0 0.55rem;
+.dp-head__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.625rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
   border-radius: 999px;
-  background: var(--accent);
-  color: #052a1c;
-  font-size: 0.66rem;
+  background: rgba(var(--ink-rgb), 0.08);
+  color: color-mix(in srgb, var(--ink) 70%, var(--muted));
+  font-size: 0.8125rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
-.dp-day__date {
-  white-space: nowrap;
-}
-
-/* Today's number, and its pill over its result, are the phone's layout. */
-.dp-day__n--today,
-.dp-day__pill--you {
-  display: none;
-}
-
-.dp-day__art {
-  border-radius: 0.65rem;
-}
-
-.dp-day--missed .dp-day__art {
-  opacity: 0.5;
-}
-
-.dp-day__you {
-  min-height: 1.5em;
-  font-size: 0.85rem;
-  line-height: 1.3;
-  color: var(--muted);
-}
-
-.dp-day__you b {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.dp-signin {
-  margin: 0;
-  font-size: 0.92rem;
-  color: var(--muted);
-}
-
-/* Yours across every past course, beside the strip, or under it when there's no room. */
-.dp-sum {
-  flex: 1 1 22rem;
-  align-self: flex-end;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.9rem 1.1rem;
-  border-radius: 1.1rem;
-  background: rgba(var(--ink-rgb), 0.035);
-  border: 1px solid var(--dp-line);
-}
-
-.dp-sum__kicker,
-.dp-fact__kicker {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.dp-sum__stats {
+/* The ⓘ: small to see, a thumb's width to press. */
+.dp-head__how {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  gap: 0.6rem 1.1rem;
-}
-
-.dp-stat {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  padding-top: 0.45rem;
-  border-top: 1px solid var(--dp-line);
-}
-
-.dp-stat b {
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-}
-
-.dp-stat span {
-  font-size: 0.8rem;
-  line-height: 1.35;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  background: rgba(var(--ink-rgb), 0.04);
   color: var(--muted);
+  cursor: pointer;
+}
+
+.dp-head__how::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem;
+}
+
+.dp-head__how svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.dp-head__how:hover,
+.dp-head__how:focus-visible {
+  color: var(--ink);
+  border-color: rgba(var(--ink-rgb), 0.35);
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.dp-head__how:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: 2px;
 }
 
 /* ---------- a course's picture ---------- */
@@ -304,14 +153,13 @@ html[data-theme='dark'] .dp {
 .dp-art {
   position: relative;
   display: block;
-  aspect-ratio: 16 / 10;
   overflow: hidden;
-  border-radius: 0.9rem;
   background: #0b1016;
 }
 
 .dp-art > svg,
-.dp-art > canvas {
+.dp-art > canvas,
+.dp-art__ground > svg {
   position: absolute;
   inset: 0;
   display: block;
@@ -319,94 +167,59 @@ html[data-theme='dark'] .dp {
   height: 100%;
 }
 
-/* ---------- the list of past courses ---------- */
-
-.dp-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+/* A drawing that keeps its own shape (Marble Run's, 16:10) on the dark it's drawn on, filling the box round it. */
+.dp-art__ground {
+  position: absolute;
+  inset: 0;
+  display: block;
 }
 
-.dp-list__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.3rem 0.9rem;
-  padding: 0.4rem 0.4rem 0;
+.dp-art__ground--marble {
+  background: #07040f;
 }
 
-.dp-list__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
+/* ---------- the cards ---------- */
 
-.dp-list__count {
-  font-size: 0.95rem;
-  color: var(--muted);
-}
-
-.dp-legend {
-  margin: 0 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 1.2rem;
-  font-size: 0.86rem;
-  color: var(--muted);
-}
-
-.dp-legend b {
-  margin-right: 0.3rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-
-.dp-legend .dp-legend__board {
-  color: var(--dp-board);
-}
-
-.dp-list__rows {
+.pc-grid {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.25rem;
 }
 
-.dp-row {
-  display: grid;
-  grid-template-columns: 13.5rem minmax(10rem, 13rem) minmax(0, 1fr) 16rem;
-  grid-template-areas:
-    'art name facts go'
-    'board board board board';
-  align-items: center;
-  gap: 0 1.5rem;
-  padding: 0.9rem 1.3rem 0.9rem 0.9rem;
+.pc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.75rem 0.75rem 0.875rem;
   border-radius: 1.5rem;
   background: var(--surface);
   border: 1px solid var(--dp-line);
   box-shadow: var(--shadow-soft);
   scroll-margin-top: calc(var(--header-h, 4rem) + 1.25rem);
+  transition: border-color 0.15s ease;
 }
 
-.dp-row:focus {
+.pc:focus {
   outline: none;
 }
 
-/* Landed on from a link: a ring that fades, so the eye finds the row. */
-.dp-row--here {
+.pc:hover {
+  border-color: rgba(var(--ink-rgb), 0.16);
+}
+
+/* Landed on from a link: a ring that fades, so the eye finds the card. */
+.pc--here {
   animation: dp-here 2.6s ease-out;
 }
 
 @keyframes dp-here {
   from {
     box-shadow:
-      0 0 0 3px color-mix(in srgb, var(--gh-accent, var(--accent)) 75%, transparent),
+      0 0 0 3px color-mix(in srgb, var(--dp-accent) 75%, transparent),
       var(--shadow-soft);
   }
   to {
@@ -416,389 +229,393 @@ html[data-theme='dark'] .dp {
   }
 }
 
-.dp-row__art {
-  grid-area: art;
-}
-
-.dp-row__name {
-  grid-area: name;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
-.dp-row__title {
-  margin: 0;
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.12;
-  overflow-wrap: anywhere;
-}
-
-.dp-row__date {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
-}
-
-/* Two lines kept for it before it's worked out, so rows don't grow under a row just landed on. */
-.dp-row__sub {
-  min-height: 2.7em;
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.35;
-  color: var(--muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.pc-stage {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  border-radius: 1rem;
   overflow: hidden;
+  background: #01040a;
 }
 
-.dp-row__facts {
-  grid-area: facts;
+.pc-art {
+  position: absolute;
+  inset: 0;
+}
+
+/* The boards' mark in the picture's corner: the whole card opens them, this says so. */
+.pc-boards {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.8rem;
-  min-width: 0;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: rgba(12, 18, 24, 0.72);
+  border: 1px solid rgba(231, 238, 243, 0.2);
+  color: #e7eef3;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.dp-fact {
+.pc-boards svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
+}
+
+.pc:hover .pc-boards,
+.pc:has(.pc-open:focus-visible) .pc-boards {
+  background: rgba(12, 18, 24, 0.9);
+  border-color: rgba(231, 238, 243, 0.5);
+}
+
+.pc-name {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.125rem;
   min-width: 0;
-  padding: 0.75rem 0.95rem 0.85rem;
-  border-radius: 1rem;
-  background: rgba(var(--ink-rgb), 0.04);
-  border: 1px solid var(--dp-line);
+  padding: 0.875rem 0.25rem 0;
 }
 
-.dp-fact--board {
-  background: color-mix(in srgb, var(--dp-board) 6%, var(--surface));
-  border-color: color-mix(in srgb, var(--dp-board) 28%, transparent);
-}
-
-.dp-fact__kicker {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-/* The kicker, with the link to its whole board (the day's, or the course's own) on its right. */
-.dp-fact__top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.1rem 0.6rem;
-}
-
-.dp-fact__full,
-.dp-board__full {
+.pc-title {
+  margin: 0;
+  font-size: 1.1875rem;
   font-weight: 800;
-  white-space: nowrap;
-  text-decoration: none;
-  color: var(--dp-link);
+  letter-spacing: -0.02em;
+  line-height: 1.5rem;
 }
 
-.dp-fact__full {
-  font-size: 0.8rem;
-}
-
-.dp-fact__full:hover,
-.dp-fact__full:focus-visible,
-.dp-board__full:hover,
-.dp-board__full:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-.dp-fact--board .dp-fact__kicker {
-  color: var(--dp-board);
-}
-
-.dp-fact__kicker svg {
-  flex: none;
-  width: 0.9rem;
-  height: 0.9rem;
-}
-
-.dp-fact__lead {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-  font-size: 1rem;
-}
-
-.dp-fact__avatar {
-  flex: none;
-}
-
-.dp-fact__name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 800;
-}
-
-.dp-fact__what {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.dp-fact__figure {
-  margin-left: auto;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.dp-fact__lead .dp-fact__figure {
-  font-size: 1.05rem;
-}
-
-.dp-fact__you {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-size: 0.93rem;
-  font-weight: 700;
-}
-
-.dp-fact__you .dp-fact__figure {
-  font-weight: 700;
-  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
-}
-
-.dp-fact__you--none {
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.dp-fact__note {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.15rem 0.6rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.dp-fact__open {
-  margin-left: auto;
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.dp-fact__none,
-.dp-fact__wait {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.dp-row__go {
-  grid-area: go;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.65rem;
-  min-width: 0;
-}
-
-.dp-row .dp-narrow {
-  display: none;
-}
-
-/* A row's label before what a run there does can be told: a label's height, so nothing moves when it comes. */
-.dp-row__label--wait {
-  display: flex;
-  align-items: center;
-  min-height: 1.6rem;
-}
-
-.dp-go {
-  --dp-tone: var(--dp-board);
-  align-self: stretch;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.9rem;
-  padding: 0 1.3rem;
-  border-radius: 999px;
-  font-size: 1rem;
-  font-weight: 800;
-  text-decoration: none;
-  color: var(--ink);
-  background: color-mix(in srgb, var(--dp-tone) 14%, var(--surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-tone) 45%, transparent);
-}
-
-.dp-go--practice {
-  --dp-tone: var(--dp-practice);
-}
-
-.dp-go:hover,
-.dp-go:focus-visible {
-  background: color-mix(in srgb, var(--dp-tone) 24%, var(--surface));
-}
-
-.dp-row__hint {
-  margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.35;
-  color: var(--muted);
-}
-
-/* ---------- a board, opened on its row: its day's final, or the course's own ---------- */
-
-.dp-board {
-  grid-area: board;
-  margin-top: 0.9rem;
-  padding: 0.8rem 1rem;
-  border-radius: 1rem;
-  background: rgba(var(--ink-rgb), 0.035);
-  border: 1px solid var(--dp-line);
-}
-
-/* The course's own board wears the board colour, as its card on the row does. */
-.dp-board--course {
-  background: color-mix(in srgb, var(--dp-board) 4%, transparent);
-  border-color: color-mix(in srgb, var(--dp-board) 24%, transparent);
-}
-
-/* Which board, what the list is, and the way to all of it. */
-.dp-board__bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.9rem;
-  margin-bottom: 0.55rem;
-}
-
-.dp-board__head {
-  margin: 0;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.dp-board__full {
-  margin-left: auto;
-  font-size: 0.88rem;
-}
-
-.dp-board__switch {
-  display: inline-flex;
-  gap: 0.2rem;
-  padding: 0.2rem;
-  border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.06);
-  border: 1px solid var(--dp-line);
-}
-
-.dp-board__side {
+/* The card's button, its name, stretched over the whole card: the controls on it sit over it. */
+.pc-open {
   appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  min-height: 2.1rem;
-  padding: 0 0.85rem;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
   background: none;
   font: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--muted);
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
 
-.dp-board__side svg {
-  flex: none;
-  width: 0.85rem;
-  height: 0.85rem;
+.pc-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.5rem;
 }
 
-.dp-board__side:hover,
-.dp-board__side:focus-visible {
-  color: var(--ink);
+.pc-open:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
 }
 
-.dp-board__side[aria-pressed='true'] {
-  color: var(--ink);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.14);
+.pc-open:focus-visible {
+  outline: none;
 }
 
-.dp-board__side--course[aria-pressed='true'] {
-  color: var(--dp-board);
-  background: color-mix(in srgb, var(--dp-board) 12%, var(--surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-board) 40%, transparent);
+.pc-open:focus-visible::after {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dp-accent) 80%, transparent);
 }
 
-/* Down one column, then the next: 1st to 5th, then 6th to 10th. */
-.dp-board__list {
-  list-style: none;
+.pc-date {
   margin: 0;
-  padding: 0;
-  columns: 2 16rem;
-  column-gap: 1.75rem;
-}
-
-.dp-board__row {
-  break-inside: avoid;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.3rem 0.45rem;
-  border-radius: 0.6rem;
-  font-size: 0.93rem;
-}
-
-.dp-board__row--you {
-  background: color-mix(in srgb, var(--gh-accent, var(--accent)) 14%, transparent);
-}
-
-/* You, when you're below 10th, run under both columns, so the ten still split 1st to 5th, 6th to 10th. */
-.dp-board__row--gap {
-  column-span: all;
-  margin-top: 0.45rem;
-}
-
-.dp-board__place {
-  flex: 0 0 2.4rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  line-height: 1.125rem;
   color: var(--muted);
 }
 
-.dp-board__name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 700;
+/* ---------- a card's boards: a line each ---------- */
+
+.pc-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0.875rem 0 0;
 }
 
-.dp-board__figure {
-  margin-left: auto;
+.pc-stat {
+  --pc-tone: var(--dp-ranked);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem 0 0.625rem;
+  border-radius: 0.75rem;
+  background: var(--dp-well);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.pc-stat:has(.pc-label--allTime) {
+  --pc-tone: var(--dp-board);
+}
+
+/* Its tip up: the line lights in its board's colour. */
+.pc-stat:has(.pc-label[data-open]) {
+  background: color-mix(in srgb, var(--pc-tone) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pc-tone) 28%, transparent);
+}
+
+.pc-stat dt {
+  flex: none;
+  display: flex;
+}
+
+.pc-stat dd {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+  margin: 0;
+}
+
+/* The board's name, dotted under: hover, focus or tap it for its tip. */
+.pc-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  min-height: 2rem;
+  border-radius: 0.375rem;
+  font-size: 0.71875rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--dp-soft);
+}
+
+.pc-label svg {
+  flex: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  color: var(--pc-tone);
+}
+
+.pc-label__word {
+  text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+.pc-label:hover,
+.pc-label[data-open] {
+  color: var(--ink);
+}
+
+.pc-label[data-open] .pc-label__word {
+  text-decoration-style: solid;
+  text-decoration-color: color-mix(in srgb, var(--pc-tone) 85%, transparent);
+}
+
+.pc-label:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: 3px;
+}
+
+/* A line's figure: you, "14th of 65"; or a 1st, crowned, and their result. */
+.pc-val {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3125rem;
+  min-width: 0;
+  font-size: 1.03125rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.dp-board__note {
-  margin: 0;
-  font-size: 0.9rem;
+.pc-val b {
+  font-weight: 800;
+}
+
+.pc-val small {
+  flex: none;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pc-val .pc-val__me {
+  align-self: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.125rem;
+}
+
+.pc-val--first {
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.9375rem;
+}
+
+.pc-val__crown {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--dp-crown);
+}
+
+.pc-val__who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pc-val--first small {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--ink) 62%, var(--muted));
+}
+
+.pc-val--none {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pc-val--wait {
+  width: 4.5rem;
+  height: 0.875rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.06), rgba(var(--ink-rgb), 0.12), rgba(var(--ink-rgb), 0.06));
+  background-size: 200% 100%;
+  animation: dp-shimmer 1.4s linear infinite;
+}
+
+/* ---------- a card's start button, and practice's mark beside it ---------- */
+
+.pc-go {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.875rem;
+}
+
+.pc-play {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.875rem;
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dp-accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-accent) 50%, transparent);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+html[data-theme='dark'] .pc-play {
+  color: color-mix(in srgb, var(--dp-accent) 8%, #fff);
+}
+
+.pc-play svg {
+  flex: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  color: var(--dp-accent);
+}
+
+.pc-play:hover,
+.pc-play:focus-visible {
+  background: color-mix(in srgb, var(--dp-accent) 24%, transparent);
+}
+
+.pc-play:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: 2px;
+}
+
+.pc-prac {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.875rem;
+  height: 2.875rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--dp-practice) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-practice) 45%, transparent);
+  color: var(--dp-practice);
+  transition: background 0.15s ease;
+}
+
+.pc-prac svg {
+  width: 1.1875rem;
+  height: 1.1875rem;
+}
+
+.pc-prac:hover,
+.pc-prac[data-open] {
+  background: color-mix(in srgb, var(--dp-practice) 22%, transparent);
+}
+
+.pc-prac:focus-visible {
+  outline: 2px solid var(--dp-practice);
+  outline-offset: 2px;
+}
+
+/* ---------- a label's tip (InfoTip's, dressed): the board's name, what it is, then quieter, the rest ---------- */
+
+.dp-tip {
+  max-width: min(19.75rem, calc(100vw - 1.5rem));
+}
+
+.dp-tip__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.90625rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+html[data-theme='dark'] .dp-tip__head {
+  color: #fff;
+}
+
+.dp-tip__head svg {
+  flex: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.dp-tip--ranked .dp-tip__head svg {
+  color: var(--dp-ranked);
+}
+
+.dp-tip--allTime .dp-tip__head svg {
+  color: var(--dp-board);
+}
+
+.dp-tip__lead {
+  display: block;
+}
+
+.dp-tip__more {
+  display: block;
+  margin-top: 0.375rem;
+  font-size: 0.84375rem;
+  line-height: 1.1875rem;
   color: var(--muted);
 }
 
@@ -836,25 +653,21 @@ html[data-theme='dark'] .dp {
   color: var(--muted);
 }
 
-/* ---------- while the game's list is on its way ---------- */
+/* ---------- while the game's cards are on their way ---------- */
 
 .dp-skel {
-  border-radius: 1.25rem;
+  border-radius: 1.5rem;
   background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.09), rgba(var(--ink-rgb), 0.05));
   background-size: 200% 100%;
   animation: dp-shimmer 1.4s linear infinite;
 }
 
-.dp-skel--rule {
-  height: 3.6rem;
+.dp-skel--card {
+  height: 22rem;
 }
 
-.dp-skel--week {
-  height: 12rem;
-}
-
-.dp-skel--row {
-  height: 10rem;
+.dp-skel--boards {
+  height: 25rem;
 }
 
 @keyframes dp-shimmer {
@@ -866,186 +679,538 @@ html[data-theme='dark'] .dp {
   }
 }
 
+/* ---------- a course's boards, in a panel (PastBoardsModal) ---------- */
+
+.pbm-head {
+  position: relative;
+  flex: none;
+  display: grid;
+  grid-template-columns: 13.5rem minmax(0, 1fr);
+  grid-template-areas:
+    'art heading'
+    'art note';
+  grid-template-rows: auto 1fr;
+  column-gap: 1.125rem;
+  padding: 1.375rem 1.375rem 0;
+}
+
+.pbm-art {
+  grid-area: art;
+  align-self: start;
+  aspect-ratio: 2 / 1;
+  border-radius: 0.875rem;
+}
+
+.pbm-heading {
+  grid-area: heading;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  min-width: 0;
+  padding: 0.375rem 3rem 0 0;
+}
+
+.pbm-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5625rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.pbm-date {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pbm-note {
+  grid-area: note;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--ink) 70%, var(--muted));
+}
+
+.pbm-note svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.125rem;
+}
+
+.pbm-note--allTime svg {
+  color: var(--dp-board);
+}
+
+.pbm-note--practice svg {
+  color: var(--dp-practice);
+}
+
+.pbm-close {
+  position: absolute;
+  top: 1.125rem;
+  right: 1rem;
+}
+
+.pbm-body {
+  gap: 0;
+  padding: 1.25rem 1.375rem 0;
+}
+
+/* Which board: Ranked or All time. */
+.pbm-seg {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.1875rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.06);
+  border: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+html[data-theme='dark'] .pbm-seg {
+  background: rgba(12, 18, 24, 0.55);
+}
+
+.pbm-seg__side {
+  --pbm-tone: var(--dp-ranked);
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4375rem;
+  min-height: 2.375rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.pbm-seg__side--allTime {
+  --pbm-tone: var(--dp-board);
+}
+
+.pbm-seg__side svg {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--pbm-tone);
+}
+
+.pbm-seg__side:hover {
+  color: var(--ink);
+}
+
+.pbm-seg__side[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--pbm-tone) 16%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pbm-tone) 42%, transparent);
+  color: color-mix(in srgb, var(--pbm-tone) 70%, var(--ink));
+}
+
+.pbm-seg__side:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: 2px;
+}
+
+/* A practice game's one board, named over its list. */
+.pbm-board {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  min-height: 1.5rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  font-size: 0.71875rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--dp-soft);
+}
+
+.pbm-board svg {
+  flex: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  color: var(--dp-ranked);
+}
+
+.pbm-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.pbm-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.5rem 1.45rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.6875rem;
+  min-height: 2.625rem;
+  padding: 0 0.75rem;
+  border-radius: 0.75rem;
+}
+
+.pbm-place {
+  font-size: 0.875rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.pbm-place--1 {
+  color: var(--dp-gold);
+}
+
+.pbm-place--2 {
+  color: var(--dp-silver);
+}
+
+.pbm-place--3 {
+  color: var(--dp-bronze);
+}
+
+.pbm-who {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pbm-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.pbm-figure {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pbm-row--you {
+  background: color-mix(in srgb, var(--dp-ranked) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-ranked) 36%, transparent);
+}
+
+.pbm-row--you .pbm-place,
+.pbm-row--you .pbm-name {
+  color: var(--dp-you);
+}
+
+.pbm-you {
+  flex: none;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dp-ranked) 16%, transparent);
+  color: var(--dp-you);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* You, further down than the top five: under them, after a dashed break. */
+.pbm-row--gap {
+  margin-top: 0.75rem;
+}
+
+.pbm-row--gap::before {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: -0.4375rem;
+  border-top: 1px dashed rgba(var(--ink-rgb), 0.18);
+}
+
+.pbm-skel {
+  grid-column: 1 / -1;
+  height: 0.875rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: dp-shimmer 1.4s linear infinite;
+}
+
+.pbm-empty {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--muted);
+}
+
+.pbm-aside {
+  margin: 0.5rem 0.75rem 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.pbm-actions svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.pbm-actions .panel__btn--ghost svg {
+  margin: 0 -0.25rem 0 -0.125rem;
+  color: var(--muted);
+}
+
+/* ---------- "How past tracks work" (PastHowModal) ---------- */
+
+.phm-body {
+  gap: 0;
+  padding-top: 1.125rem;
+}
+
+.phm-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.phm-line {
+  display: flex;
+  align-items: center;
+  gap: 0.8125rem;
+  font-size: 0.96875rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+html[data-theme='dark'] .phm-line {
+  color: #dbe5ec;
+}
+
+.phm-mark {
+  --phm-tone: var(--dp-accent);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.375rem;
+  height: 2.375rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--phm-tone) 15%, transparent);
+  color: var(--phm-tone);
+}
+
+.phm-mark svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.phm-mark--play {
+  color: color-mix(in srgb, var(--dp-accent) 70%, var(--ink));
+}
+
+.phm-mark--allTime {
+  --phm-tone: var(--dp-board);
+}
+
+.phm-mark--ranked {
+  --phm-tone: var(--dp-ranked);
+}
+
+.phm-mark--practice {
+  --phm-tone: var(--dp-practice);
+}
+
+.phm-signin {
+  margin: 1rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.phm-how {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  align-self: flex-start;
+  margin-top: 1.125rem;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  text-decoration: none;
+  color: var(--dp-link);
+}
+
+.phm-how svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.phm-how:hover,
+.phm-how:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .dp-skel {
+  .dp-skel,
+  .pc-val--wait,
+  .pbm-skel {
     animation: none;
   }
 
-  .dp-row--here {
+  .pc--here {
     animation: none;
     box-shadow:
-      0 0 0 3px color-mix(in srgb, var(--gh-accent, var(--accent)) 75%, transparent),
+      0 0 0 3px color-mix(in srgb, var(--dp-accent) 75%, transparent),
       var(--shadow-soft);
   }
 }
 
-/* ---------- narrower: the facts go under the name ---------- */
+/* ---------- narrower: three across, then two ---------- */
 
-@media (max-width: 75rem) {
-  .dp-row {
-    grid-template-columns: 11rem minmax(0, 1fr) 15rem;
-    grid-template-areas:
-      'art name go'
-      'facts facts facts'
-      'board board board';
-    gap: 0.9rem 1.2rem;
-  }
-
-  .dp-board {
-    margin-top: 0;
+@media (max-width: 80rem) {
+  .pc-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* ---------- phones: each row stacks, the strip scrolls sideways ---------- */
+@media (max-width: 58rem) {
+  .pc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* ---------- phones: the panel is a sheet, its picture smaller and its line on what playing does under it ---------- */
 
 @media (max-width: 40rem) {
   .dp {
-    gap: 0.85rem;
+    gap: 0.75rem;
   }
 
-  .dp-rule {
-    padding: 0.9rem 1rem;
+  .dp-head {
+    gap: 0.5625rem;
+    padding-top: 0.125rem;
   }
 
-  .dp-rule__text {
-    flex-basis: 100%;
-    font-size: 0.95rem;
+  .dp-head__title {
+    font-size: 1.375rem;
   }
 
-  .dp-rule__how {
-    margin-left: 0;
+  .dp-head__count {
+    min-width: 1.5rem;
+    height: 1.375rem;
+    padding: 0 0.4375rem;
+    font-size: 0.78125rem;
   }
 
-  .dp-week {
-    padding: 0.95rem 0.95rem 1rem;
+  .dp-head__how {
+    width: 2rem;
+    height: 2rem;
   }
 
-  .dp-week__item {
-    flex-basis: 7.4rem;
+  .dp-head__how svg {
+    width: 1.0625rem;
+    height: 1.0625rem;
   }
 
-  .dp-day {
-    padding: 0.55rem 0.6rem 0.6rem;
+  .pc-grid {
+    gap: 0.75rem;
   }
 
-  .dp-day__top {
-    font-size: 0.9rem;
+  .pc {
+    border-radius: 1.375rem;
   }
 
-  /* No room for the pill beside the date: today's day reads "Tue 29 #4" like the rest, the pill goes over its result. */
-  .dp-day__pill--top {
-    display: none;
+  .pc-open::after {
+    border-radius: 1.375rem;
   }
 
-  .dp-day__n--today {
-    display: inline;
+  .pc-stage {
+    aspect-ratio: 2.25 / 1;
+    border-radius: 0.9375rem;
   }
 
-  .dp-day__pill--you {
-    display: flex;
-    width: max-content;
-    height: 1.1rem;
-    margin-bottom: 0.25rem;
-    padding: 0 0.45rem;
-    font-size: 0.6rem;
+  .pc-boards {
+    width: 2.375rem;
+    height: 2.375rem;
   }
 
-  .dp-sum {
-    padding: 0.75rem 0.85rem;
+  .pc-boards svg {
+    width: 1.125rem;
+    height: 1.125rem;
   }
 
-  .dp-sum__stats {
-    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  .pc-name {
+    gap: 0.0625rem;
+    padding-top: 0.75rem;
   }
 
-  .dp-stat b {
-    font-size: 1.2rem;
+  .pc-stats {
+    margin-top: 0.75rem;
   }
 
-  .dp-legend {
-    margin-left: 0;
+  .pc-go {
+    padding-top: 0.75rem;
   }
 
-  .dp-row {
-    grid-template-columns: 7rem minmax(0, 1fr);
+  .pbm-head {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
     grid-template-areas:
-      'art name'
-      'facts facts'
-      'go go'
-      'board board';
-    gap: 0.8rem 0.9rem;
-    padding: 0.9rem;
+      'art heading'
+      'note note';
+    grid-template-rows: auto auto;
+    column-gap: 0.875rem;
+    padding: 0.625rem 1.125rem 0;
   }
 
-  .dp-row__title {
-    font-size: 1.2rem;
+  .pbm-heading {
+    padding: 0.125rem 2.75rem 0 0;
   }
 
-  .dp-row__date {
-    font-size: 0.92rem;
+  .pbm-title {
+    font-size: 1.25rem;
   }
 
-  .dp-row__facts {
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: 0.6rem;
+  .pbm-date {
+    font-size: 0.875rem;
   }
 
-  .dp-fact {
-    padding: 0.6rem 0.7rem 0.7rem;
+  .pbm-close {
+    top: 0.625rem;
+    right: 0.875rem;
   }
 
-  /* No room beside the name for the result: it goes under it, bigger. */
-  .dp-fact__lead {
-    flex-wrap: wrap;
-    gap: 0.2rem 0.4rem;
+  .pbm-body {
+    padding: 1rem 1.125rem 0;
   }
+}
 
-  .dp-fact__lead .dp-fact__figure {
-    flex-basis: 100%;
-    margin-left: 0;
-    font-size: 1.3rem;
-  }
-
-  .dp-fact__you {
-    flex-wrap: wrap;
-    gap: 0 0.4rem;
-    font-size: 0.86rem;
-  }
-
-  .dp-fact__you .dp-fact__figure {
-    margin-left: 0;
-  }
-
-  .dp-row__go {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .dp-row .dp-wide {
-    display: none;
-  }
-
-  .dp-row .dp-narrow {
-    display: inline-flex;
-  }
-
-  .dp-go {
-    flex: 1 1 9rem;
-    align-self: auto;
-  }
-
-  .dp-row__hint {
-    flex-basis: 100%;
-  }
-
-  .dp-board {
-    padding: 0.7rem;
-  }
-
-  /* The switch and the link to all of it on a line, what the list is under them. */
-  .dp-board__switch ~ .dp-board__head {
-    order: 3;
-    flex-basis: 100%;
+/* One across on a phone held upright. */
+@media (max-width: 34rem) {
+  .pc-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

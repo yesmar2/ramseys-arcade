@@ -27,7 +27,7 @@ import {
 } from '../hooks/useHashRoute'
 import { archiveDayWords } from './archive'
 import { APP_NAME, SITE_LINE } from './brand'
-import { dailyWords } from './dailyWords'
+import { BOARD_NAMES, dailyWords } from './dailyWords'
 import { groupHref, groupsIndexHref } from './groups'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
 import { gameHasRecords } from './records'
@@ -164,8 +164,8 @@ function dailyTabMeta(slug: string, tab: 'past' | 'records'): PageMeta {
       ...meta,
       title: titled(`${name} · ${pastTab}`),
       description: board
-        ? `Every ${name} ${course} since the first: who was 1st on its day, its own board, and a way to ${verb.toLowerCase()} it again. Only today’s ${course} counts toward your rank.`
-        : `Every ${name} ${course} since the first, and who was 1st on its day. ${verb} any of them again as practice: only today’s counts toward your rank.`,
+        ? `Every ${name} ${course} since the first, with its ${BOARD_NAMES.ranked} and ${BOARD_NAMES.allTime} boards and a way to ${verb.toLowerCase()} it again. Only today’s ${course} counts toward your rank.`
+        : `Every ${name} ${course} since the first, and who was 1st on its ${BOARD_NAMES.ranked} board. ${verb} any of them again as practice: only today’s counts toward your rank.`,
     }
   }
   return {
@@ -370,9 +370,9 @@ export function pageMeta(route: Route): PageMeta {
     case 'today':
       return {
         ...site,
-        title: titled('Today'),
+        title: titled('Dailies'),
         description:
-          'The day’s dailies, new every day and the same for everyone: a hole, a lap, five bugs wanted and five glasses to pour. Play any three to keep your streak going.',
+          'The Dailies: five games, new every day and the same for everyone. A hole, a lap, five bugs wanted, five glasses to pour and a marble course. Play any three to keep your streak going.',
         path: todayHref(),
       }
     case 'privacy':
@@ -398,13 +398,13 @@ export function pageMeta(route: Route): PageMeta {
         path: '/leaderboards',
       }
     case 'gameLeaderboard': {
-      // A daily's board on a past day is known by its day: "Hot Lap · Mon, Sep 28 · Final board".
+      // A daily's board on a past day is known by its day: "Hot Lap · Mon, Sep 28 · Ranked board".
       if (route.day) {
         const when = archiveDayWords(route.day)
         return {
           ...gameMeta(route.game, dayBoardHref(route.game, route.day)),
-          title: titled(`${gameName(route.game)} · ${when} · Final board`),
-          description: `How ${gameName(route.game)} finished on ${when}: every player’s place on that day’s board, in full.`,
+          title: titled(`${gameName(route.game)} · ${when} · ${BOARD_NAMES.ranked} board`),
+          description: `How ${gameName(route.game)} finished on ${when}: every player’s place on its ${BOARD_NAMES.ranked} board, in full.`,
         }
       }
       const meta = gameMeta(route.game, gameBoardPath(route.game))

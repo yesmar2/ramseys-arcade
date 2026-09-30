@@ -32,6 +32,7 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import { fitCardToSpace } from '../../lib/cardFit'
+import { BOARD_NAMES } from '../../lib/dailyWords'
 import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { noteRunBegun } from '../../lib/engagement'
@@ -1360,7 +1361,7 @@ function PourGlasses({ plan }: { plan: DayPlan }) {
 }
 
 /**
- * A past day's start card: its glasses, that it's practice, how the day went on its day, Start, and the way
+ * A past day's start card: its glasses, that it's practice, how its Ranked board went, Start, and the way
  * back to its row on the past days. Brought up to Find the Bug's, as every daily's past course is.
  */
 function PastPourStart({ plan, today, itsDay, onStart }: { plan: DayPlan; today: string; itsDay: ItsDay; onStart: () => void }) {
@@ -1392,23 +1393,24 @@ function pointsGap(mine: number, other: number): { tie: boolean; higher: boolean
 }
 
 /**
- * The pour against its day: your own result that day, and the day's 1st. "That's 2.3 points closer than
- * your 94.1% on its day. ODCHKA's 1st, 99.9%, is 3.5 points above it."
+ * The pour against its Ranked board: your own result that day, and the day's 1st. "That's 2.3 points
+ * closer than your 94.1% on the Ranked board. ODCHKA's 1st, 99.9%, is 3.5 points above this."
  */
 function againstItsDay(board: number, itsDay: ItsDay): string | null {
   const entry = itsDay.entry
   if (!entry) return null
   const out: string[] = []
   const you = itsDay.signedIn ? entry.you : null
+  const ranked = `on the ${BOARD_NAMES.ranked} board`
   if (you) {
     const g = pointsGap(board, you.score)
     const at = formatBoard(you.score)
-    out.push(g.tie ? `That ties your ${at} on its day.` : `That’s ${g.gap} ${g.higher ? 'closer' : 'further off'} than your ${at} on its day.`)
+    out.push(g.tie ? `That ties your ${at} ${ranked}.` : `That’s ${g.gap} ${g.higher ? 'closer' : 'further off'} than your ${at} ${ranked}.`)
     // You were the day's 1st: that's the line already said.
     if (you.place === 1) return out.join(' ')
   }
   const g = pointsGap(board, entry.top.score)
-  const whose = `${entry.top.name}’s 1st${you ? '' : ' on its day'}, ${formatBoard(entry.top.score)}`
+  const whose = `${entry.top.name}’s 1st${you ? '' : ` ${ranked}`}, ${formatBoard(entry.top.score)}`
   out.push(g.tie ? `That ties ${whose}.` : g.higher ? `That beats ${whose}, by ${g.gap}.` : `${whose}, is ${g.gap} above this.`)
   return out.join(' ')
 }

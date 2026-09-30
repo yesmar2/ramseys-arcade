@@ -1,14 +1,14 @@
 import { useDailyDays, type ArchiveDay } from './archive'
 import { usePastViewer, verbDone } from './dailyPast'
-import { dailyWords } from './dailyWords'
+import { BOARD_NAMES } from './dailyWords'
 import { formatLeaderboardScore } from './leaderboardFormat'
 import type { PastFact } from './pastPlay'
 import { ordinal } from './scoreboard'
 
 /*
- * How a past day went on its day, for a daily played again as practice (Find the Bug's and Half Full's
- * past days): who was 1st, and you, as the API has the day (GET /leaderboards/:game/days, lib/archive.ts).
- * The past tab says the same about each of its rows.
+ * How a past day's Ranked board went, the board of the day it was the daily, for a daily played again as
+ * practice (Find the Bug's and Half Full's past days): who was 1st, and you, as the API has the day (GET
+ * /leaderboards/:game/days, lib/archive.ts). The past tab says the same about each of its rows.
  */
 
 /** A past day as the API has it: `entry` is undefined while it's asked, null when nobody played it. */
@@ -32,11 +32,11 @@ function firstWords(slug: string, score: number): string {
   return `1st ${slug === 'halffull' ? 'with' : 'in'} ${formatLeaderboardScore(slug, score)}`
 }
 
-/** "On its day: ODCHKA 1st in 40.0s · You 4th of 17 (49.1s)", for the start and pause cards. */
+/** "Ranked: ODCHKA 1st in 40.0s · You 4th of 17 (49.1s)", for the start and pause cards. */
 export function onItsDayFact(slug: string, itsDay: ItsDay): PastFact {
-  const label = 'On its day'
+  const label = BOARD_NAMES.ranked
   const { entry } = itsDay
-  if (entry === undefined) return { label, what: itsDay.failed ? 'Couldn’t load its day' : '…' }
+  if (entry === undefined) return { label, what: itsDay.failed ? 'Couldn’t load it' : '…' }
   if (entry === null) return { label, what: `Nobody ${verbDone(slug)} it` }
   const players = entry.players.toLocaleString()
   const you = itsDay.signedIn ? entry.you : null
@@ -49,6 +49,6 @@ export function onItsDayFact(slug: string, itsDay: ItsDay): PastFact {
       ? `${you.place != null ? `You ${ordinal(you.place)} of ${players}` : `You ${verbDone(slug)} it`} (${formatLeaderboardScore(slug, you.score)})`
       : null,
     // Signed in without a result that day: said plainly. Signed out: how many played it instead.
-    note: itsDay.signedIn ? `You didn’t ${dailyWords(slug).verb.toLowerCase()} it on its day` : `${players} ${verbDone(slug)} it`,
+    note: itsDay.signedIn ? 'You’re not on it' : `${players} ${verbDone(slug)} it`,
   }
 }

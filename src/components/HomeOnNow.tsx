@@ -39,7 +39,7 @@ function EventArt({ t }: { t: TournamentSummary }) {
 }
 
 /**
- * The daily or the weekly, running now: its game, its clock, how it is won,
+ * Today's event or the weekly, running now: its game, its clock, how it is won,
  * where you stand in it, and a way in.
  */
 function RunningCard({
@@ -149,10 +149,10 @@ function SkeletonCard() {
 }
 
 /**
- * On now, on the home page: today's daily, this week's weekly and how last
+ * On now, on the home page: today's event, this week's weekly and how last
  * week's finished. The day's dailies (Today's Hole, Track, Wanted, Pour and
- * Course) are cards on today's row above it (HomeToday). There is nearly
- * always a daily and a weekly running, and
+ * Course) are cards on the Dailies row above it (HomeToday). There is nearly
+ * always a day's event and a weekly running, and
  * last week's podium stays up until the next one ends, so the row reads full
  * on a quiet day as on a busy one. While the events load, cards of the same
  * shape hold the space.

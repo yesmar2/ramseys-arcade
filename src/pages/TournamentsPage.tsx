@@ -760,7 +760,7 @@ function SingleStandings({ detail, displayName }: { detail: TournamentDetail; di
 
 /**
  * The events page. This week's Triple leads, its games ready to play; then
- * today's daily, last week's winner and the lesson that week left, and your
+ * today's event, last week's winner and the lesson that week left, and your
  * own events; how events work; and the results, with the ones nobody played
  * gathered into a line.
  */
@@ -848,7 +848,7 @@ export function TournamentsPage() {
           </div>
         ) : error ? (
           <>
-            <PageBanner ariaLabel="Events" title="Events" blurb="The daily, the Weekly Triple and your own." />
+            <PageBanner ariaLabel="Events" title="Events" blurb="Today’s event, the Weekly Triple and your own." />
             <p className="lb-empty">Couldn’t load events. Check your connection and try again.</p>
           </>
         ) : (
@@ -859,7 +859,7 @@ export function TournamentsPage() {
               <PageBanner
                 ariaLabel="Events"
                 title="Events"
-                blurb="A daily game, a One Shot, a Weekly Triple, and events you make for your friends. Join one, post a score, and see where you land."
+                blurb="Today’s event, a One Shot, a Weekly Triple, and events you make for your friends. Join one, post a score, and see where you land."
                 actions={
                   account ? (
                     <a className="home-banner__cta" href={tournamentCreateHref()}>

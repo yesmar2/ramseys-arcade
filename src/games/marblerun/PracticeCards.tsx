@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
 import { gamePlayHref } from '../../hooks/useHashRoute'
 import { archiveDayWords } from '../../lib/archive'
+import { BOARD_NAMES } from '../../lib/dailyWords'
 import type { PastFact } from '../../lib/pastPlay'
 import { courseDay, courseNumber, dailyCourse, FIRST_DAY } from './daily'
 import { dayFirst, type DayTop, type ItsDay } from './pastDay'
@@ -36,9 +37,9 @@ function walkFor(day: string): { prev: PastWalkLink | null; next: PastWalkLink |
 const todayCourse = (): TodayCourse => ({ name: dailyCourse(courseDay()).name })
 
 /**
- * A past course's start card: which course it was and when, that it's practice, how its day went, the
- * blue ball's run and your best here (`tiles`, as the pause card has them). A tap anywhere starts, as on
- * today's card.
+ * A past course's start card: which course it was and when, that it's practice, how its Ranked board went,
+ * the blue ball's run and your best here (`tiles`, as the pause card has them). A tap anywhere starts, as
+ * on today's card.
  */
 export function PracticeStartCard({ marble, facts, tiles }: { marble: MarbleDay; facts: readonly PastFact[]; tiles: ReactNode }) {
   return (
@@ -74,14 +75,15 @@ function ballWords(time: number, pace: number, falls: number): string {
   return `${against}, with ${fallWords(falls)}.`
 }
 
-/** "MAYA's 1st on its day, 48.37s, is 1.20s away.": the run against the day's 1st. */
+/** "MAYA's 1st on the Ranked board, 48.37s, is 1.20s away.": the run against the day's 1st. */
 function firstWords(time: number, first: { name: string; time: number; mine: boolean }): string {
   const whose = first.mine ? 'your' : `${first.name}’s`
   const at = formatRun(first.time)
   const gap = time - first.time
-  if (Math.abs(gap) < 0.005) return `That ties ${whose} 1st on its day, ${at}.`
-  if (gap < 0) return `That beats ${whose} 1st on its day, ${at}, by ${(-gap).toFixed(2)}s.`
-  return `${first.mine ? 'Your' : whose} 1st on its day, ${at}, is ${gap.toFixed(2)}s away.`
+  const ranked = `on the ${BOARD_NAMES.ranked} board`
+  if (Math.abs(gap) < 0.005) return `That ties ${whose} 1st ${ranked}, ${at}.`
+  if (gap < 0) return `That beats ${whose} 1st ${ranked}, ${at}, by ${(-gap).toFixed(2)}s.`
+  return `${first.mine ? 'Your' : whose} 1st ${ranked}, ${at}, is ${gap.toFixed(2)}s away.`
 }
 
 /**

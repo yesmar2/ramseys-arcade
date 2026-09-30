@@ -123,13 +123,13 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     id: 'home-hero',
     page: 'on the home page',
     thing: 'the big banner at the top',
-    lesson: 'The banner at the top of the home page is the way in: today’s daily, or the next game to try.',
+    lesson: 'The banner at the top of the home page is the way in: today’s event, or the next game to try.',
   },
   {
     id: 'home-onnow',
     page: 'on the home page',
-    thing: 'today’s daily, under On now',
-    lesson: 'On now is today’s daily, this week’s weekly and last week’s winners. Join one and your runs count toward it.',
+    thing: 'today’s event, under On now',
+    lesson: 'On now is today’s event, this week’s weekly and last week’s winners. Join one and your runs count toward it.',
   },
   {
     id: 'home-wall',
@@ -178,7 +178,7 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     id: 'events-how',
     page: 'on the Events page',
     thing: 'How events work',
-    lesson: 'Events are tournaments: a daily, a weekly, and ones you make for friends. The winner’s cup stays on their shelf.',
+    lesson: 'Events are tournaments: today’s event, the Weekly Triple, and ones you make for friends. The winner’s cup stays on their shelf.',
   },
   { id: 'groups-start', page: 'on the Groups page', thing: 'the card for starting a group', lesson: GROUPS_LESSON },
   {

@@ -25,7 +25,7 @@ import { EventScreen } from './EventScreen'
 import { PlayerAvatar } from './PlayerAvatar'
 import { openSiteMenu } from './siteNav'
 
-/* The events page's pieces: this week's Triple up top, today's daily, last week's winner, your own, how it all works, and what has finished. */
+/* The events page's pieces: this week's Triple up top, today's event, last week's winner, your own, how it all works, and what has finished. */
 
 function accentStyle(games: string[]): CSSProperties {
   const accent = eventAccent(games)
@@ -210,7 +210,7 @@ export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolea
   )
 }
 
-/** Today's daily: the game on a screen, the clock, and who leads. */
+/** Today's event: the game on a screen, the clock, and who leads. */
 export function DailyCard({ t }: { t: TournamentSummary }) {
   const slug = t.games[0] ?? ''
   const leader = t.podium?.[0]
@@ -442,7 +442,7 @@ function ownStatus(t: TournamentSummary): string {
 }
 
 const HOW: [() => ReactNode, string, string][] = [
-  [SunIcon, 'The daily', 'One game, all day. The best score by midnight takes it.'],
+  [SunIcon, 'Today’s event', 'One game, all day. The best score by midnight takes it.'],
   [OneIcon, 'The One Shot', 'Another game, one try each, all day. It counts the moment you start.'],
   [ThreeIcon, 'The Weekly Triple', 'Three games, Monday to Sunday. Do well on all three to win.'],
   [LockIcon, 'Your own', 'Invite only. Top scores or a bracket, for an hour or a week.'],
@@ -499,7 +499,7 @@ export function ResultsList({
                   <span className="evp-result__title">
                     {line.events.length === 1
                       ? `${line.events[0].title}: nobody played`
-                      : `${line.events.length} ${line.events.every((t) => t.cadence === 'daily') ? 'dailies' : 'events'} nobody played`}
+                      : `${line.events.length} events nobody played`}
                   </span>
                   <span className="evp-result__sub">
                     {line.events

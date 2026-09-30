@@ -1,31 +1,30 @@
 import type { ReactNode } from 'react'
 import { useAccountId } from '../hooks/useAccountId'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { archiveDayWords, dayBefore } from './archive'
+import { dayBefore } from './archive'
 import { dailyWords, type PastKind } from './dailyWords'
 import { api, normalizePlayerName } from './leaderboard'
 
 /*
  * The past tab of a daily's page (components/DailyPastTab.tsx): every course before today's, newest
- * first, each with how it went on its day (its day's final board, the top ten on the row and all of it
- * on its own page) and, for a game whose past courses keep boards of their own (Hot Lap's tracks, Ace
- * Chase's holes), that board. Each game says what its courses are in a source
- * (components/archive/*Archive.tsx); what's the same for every game is here.
+ * first, each a card with how it went on its day (its Ranked board, the day's final one) and, for a game
+ * whose past courses keep boards of their own (Hot Lap's tracks, Ace Chase's holes), its All time board.
+ * A card's boards open in a panel, the top five and you; the way of it all is in "How past tracks work".
+ * Each game says what its courses are in a source (components/archive/*Archive.tsx); what's the same for
+ * every game is here.
  */
 
 /** A result on a course's own board, as the board scores it (Ace Chase's is a million less the tries). */
 export type CourseFigure = { name: string; score: number; avatarId?: string }
 
-/** A past course's own board, as its row shows it: its record, how many are on it, and your best and place. */
+/** A past course's All time board, as its card shows it: its record, how many are on it, and your best and place. */
 export type CourseBoard = {
   record: CourseFigure | null
-  /** The day, on the game's clock, its record was set, when the API says. */
-  setOn?: string
   players: number
   you: { score: number; place: number } | null
 }
 
-/** One course's board opened on its row: the top ten and where you stand. */
+/** One of a course's boards opened in its panel: the top few and where you stand. */
 export type CourseTop = {
   /** `place` when the API says it; else the list's order is the place. */
   top: (CourseFigure & { place?: number })[]
@@ -33,12 +32,15 @@ export type CourseTop = {
   you: { score: number; place: number } | null
 }
 
-/** A past day's final board opened on its row: its top ten, you, and whether it counted toward rank. */
+/** A past day's Ranked board opened in its panel: its top few, you, and whether it counted toward rank. */
 export type DayTop = CourseTop & { counted: boolean }
 
+/** How many of a board its panel shows, over you. */
+export const BOARD_TOP = 5
+
 /**
- * The anchor that opens a past day's board page (components/DayBoard.tsx) at the course's own board, Hot
- * Lap's track or Ace Chase's hole, rather than its day's. A hash, as the page's address keeps no query.
+ * The anchor that opens a past day's board page (components/DayBoard.tsx) at the course's All time board,
+ * Hot Lap's track or Ace Chase's hole, rather than its day's. A hash, as the page's address keeps no query.
  */
 export const COURSE_BOARD_ANCHOR = 'course-board'
 
@@ -51,12 +53,12 @@ type RawDayBoard = {
 }
 
 /**
- * A past day's final board, the top ten and `name`'s place (GET /leaderboards/:game?period=daily&day=):
- * one row a player, in the order the day's board had them when it ended. Over everyone, as a row's "On
- * its day" is, never a group's.
+ * A past day's Ranked board, its top five and `name`'s place (GET /leaderboards/:game?period=daily&day=):
+ * one row a player, in the order the day's board had them when it ended. Over everyone, as a card's
+ * Ranked line is (the API's days), never the group the boards are looking at.
  */
 export async function fetchDayTop(slug: string, day: string, name: string): Promise<DayTop> {
-  const params = new URLSearchParams({ period: 'daily', day, limit: '10' })
+  const params = new URLSearchParams({ period: 'daily', day, limit: String(BOARD_TOP) })
   const who = normalizePlayerName(name)
   if (who) params.set('name', who)
   const board = await api<RawDayBoard>(`/leaderboards/${encodeURIComponent(slug)}?${params.toString()}`)
@@ -78,65 +80,39 @@ export async function fetchDayTop(slug: string, day: string, name: string): Prom
 /** Who's looking: signed in, signed out, or not known yet (a session that hasn't said whose it is). */
 export type PastViewer = { name: string; state: 'in' | 'out' | 'pending' }
 
-/** What a row's line under its button is worked out from. */
-export type HintFacts = {
-  kind: PastKind
-  signedIn: boolean
-  board: CourseBoard | undefined
-}
-
-/** One daily's past courses: what each is, how to play it, and its board if it keeps one. */
+/** One daily's past courses: what each is, how to play it, and its All time board if it keeps one. */
 export type PastSource = {
   slug: string
   /** Today's course's day, YYYY-MM-DD, on the game's own clock. */
   today: string
   /** The game's first day. */
   first: string
-  number: (day: string) => number
-  /** What a row's id is made of, after "course-": a track's or hole's number, or the day. */
+  /** What a card's id is made of, after "course-": a track's or hole's number, or the day. */
   anchor: (day: string) => string
   /** The play page for a past course. */
   playHref: (day: string) => string
-  /** A row's title, "#3 Seneca Glen": cheap, so every row has its name from the start. */
+  /** A card's title, "#3 Seneca Glen": cheap, so every card has its name from the start. */
   title: (day: string) => string
-  /** The line under a row's date, worked out as the row comes near. */
-  sub: (day: string) => string
-  /** A course's picture, filling a 16:10 box. */
+  /** A course's picture, filling its box (2:1 on a card), drawn as the card comes near. */
   art: (day: string) => ReactNode
-  /** For a game whose past courses keep boards of their own. */
+  /** For a game whose past courses keep boards of their own: their All time boards. */
   boards?: {
     /** Each past course's board by its day; null while they're asked, or when they couldn't be had. */
     rows: ReadonlyMap<string, CourseBoard> | null
     /** The boards couldn't be had (rows stays null), and asking again. */
     failed?: boolean
     retry?: () => void
+    /** One course's board, its top five and `name`'s place, for its panel. */
     fetchTop: (day: string, name: string) => Promise<CourseTop>
-    /** What the rule box says goes on a course's board, after "Each keeps a board of its own: ". */
-    rule: string
-    /** What a board is, for the list's key: after "Track board". */
-    legend: string
-    /** Who is on a board: "driver", "player". */
-    player: string
-    /** How far a result is off a record, "6.63s", for a board you can climb (Hot Lap's): none for Ace Chase's. */
-    gap?: (you: number, record: number) => string
   }
   /** A course takes only a player's first result (Ace Chase): with one there already, playing it is practice. */
   firstResultOnly?: boolean
   /** Whether this device knows of a result of the viewer's on a course that the API may not have yet. */
   resultHere?: (day: string) => boolean
-  /** The line under a row's button, if any. */
-  hint?: (facts: HintFacts) => string | null
 }
 
-/** A row is paged in this many at a time. */
-export const PAST_PAGE = 14
-
-/** The days of the week strip: the last seven, today's included, none before the game's first; oldest first. */
-export function weekDays(today: string, first: string): string[] {
-  const out: string[] = []
-  for (let day = today; day >= first && out.length < 7; day = dayBefore(day)) out.unshift(day)
-  return out
-}
+/** Cards are paged in this many at a time: three rows of four. */
+export const PAST_PAGE = 12
 
 /** Every past course's day, newest first. */
 export function pastDays(today: string, first: string): string[] {
@@ -147,7 +123,7 @@ export function pastDays(today: string, first: string): string[] {
 
 const stripFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', day: 'numeric' })
 
-/** "Sat 26": a day on the week strip. */
+/** "Sat 26": a day in a strip of days. */
 export function stripDayWords(day: string): string {
   const parts = stripFormat.formatToParts(new Date(`${day}T12:00:00Z`))
   const weekday = parts.find((p) => p.type === 'weekday')?.value ?? ''
@@ -171,6 +147,10 @@ export function capitalWord(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
+function lowerWord(word: string): string {
+  return word.charAt(0).toLowerCase() + word.slice(1)
+}
+
 /**
  * What a run on a past course does for this player. Signed out, nothing is saved anywhere. Signed in, a
  * board game's run goes on the course's board, but where only a first result counts (Ace Chase), a
@@ -181,23 +161,59 @@ export function pastKindFor(slug: string, signedIn: boolean, firstResultOnly: bo
   return firstResultOnly && hadResult ? 'practice' : 'board'
 }
 
-/** The day a course's record was set, from when the API says it was (its `at`), on the game's clock. */
-export function recordSetOn(record: { at?: number } | null, dayOf: (ms: number) => string): string | undefined {
-  const at = record?.at
-  return typeof at === 'number' && Number.isFinite(at) ? dayOf(at) : undefined
-}
-
-/** "today", "Tue" in the last week, "Sep 22" before it: when a record was set, from today's day. */
-export function setOnWords(day: string, today: string): string {
-  if (day === today) return 'today'
-  if (weekDays(today, day)[0] === day) return stripDayWords(day).split(' ')[0]!
-  return archiveDayWords(day).split(', ')[1]!
-}
-
 /** Who's looking at the past tab, and the tag their results are asked by: none signed out. */
 export function usePastViewer(): PastViewer {
   const account = useAccountId()
   const name = normalizePlayerName(usePlayerName())
   if (account === null) return { name: '', state: 'out' }
   return { name, state: account === undefined ? 'pending' : 'in' }
+}
+
+/** A card's practice mark's tip: what a run does on a course that keeps no board for it. */
+export const PRACTICE_TIP = 'Practice: nothing is saved.'
+
+/** A line of "How past tracks work", with its mark: start one, where it goes, what counts. */
+export type PastHowLine = { mark: 'play' | 'allTime' | 'practice' | 'ranked'; text: string }
+
+/**
+ * "How past tracks work", in three short lines: any past course can be played; where a run on one goes
+ * (a board game's All time board, or nowhere, as practice); and that only today's counts toward rank.
+ */
+export function pastHowLines(slug: string): PastHowLine[] {
+  const words = dailyWords(slug)
+  let goes: PastHowLine
+  if (words.past === 'practice') goes = { mark: 'practice', text: `${words.pastTab} are practice: nothing is saved.` }
+  else if (slug === 'acechase') goes = { mark: 'allTime', text: 'Your first bullseye goes on its All time board, then it’s practice.' }
+  else goes = { mark: 'allTime', text: `Your best ${slug === 'hotlap' ? 'lap' : 'result'} goes on its All time board.` }
+  return [
+    { mark: 'play', text: `${words.verb} any past ${words.course}.` },
+    goes,
+    { mark: 'ranked', text: `Only ${lowerWord(words.today)} counts toward your rank.` },
+  ]
+}
+
+/** "How past tracks work": its panel's title, and its ⓘ's name. */
+export function pastHowTitle(slug: string): string {
+  return `How ${dailyWords(slug).pastTab.toLowerCase()} work`
+}
+
+/**
+ * The one line in a course's boards panel on what playing it now does: where the run goes, or that it's
+ * practice (signed out, a board game's is, as is a hole you have a result on already).
+ */
+export function pastPlayNote(slug: string, kind: PastKind, signedIn: boolean): { mark: 'allTime' | 'practice'; text: string } {
+  const words = dailyWords(slug)
+  // The board's name keeps to one line.
+  const allTime = 'All time'
+  if (kind === 'board') {
+    const result = slug === 'acechase' ? 'first bullseye' : slug === 'hotlap' ? 'best lap' : 'best result'
+    return { mark: 'allTime', text: `${words.verb} it now: your ${result} goes on ${allTime}, not your rank.` }
+  }
+  if (words.past === 'board') {
+    return {
+      mark: 'practice',
+      text: signedIn ? `${words.verb} it again as practice: your first bullseye stands.` : `${words.verb} it now as practice: sign in to go on ${allTime}.`,
+    }
+  }
+  return { mark: 'practice', text: `${words.verb} it now as practice: nothing is saved.` }
 }

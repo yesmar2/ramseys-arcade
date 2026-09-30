@@ -94,3 +94,28 @@ export function dailyWords(slug: string): DailyWords {
 
 /** The tabs of a daily game's page. `today` is the page itself, /games/<slug>. */
 export type DailyTab = 'today' | 'past' | 'records'
+
+/**
+ * A past course's two boards, named the same on every page (Ramsey picked the names, 2026-09-30):
+ * Ranked, the board the day it was the daily, which counted toward rank; and All time, every result on
+ * the course since, which doesn't. Only Hot Lap and Ace Chase keep an All time board.
+ */
+export type PastBoard = 'ranked' | 'allTime'
+
+export const BOARD_NAMES: Record<PastBoard, string> = {
+  ranked: 'Ranked',
+  allTime: 'All time',
+}
+
+/** What each board is, in a tooltip's few words: "Each driver’s best lap on this track, any day…". */
+export function boardTip(board: PastBoard, slug: string): string {
+  if (board === 'ranked') return 'The board the day it was the daily. It counted toward rank.'
+  const words = dailyWords(slug)
+  const what =
+    slug === 'hotlap'
+      ? 'Each driver’s best lap'
+      : slug === 'acechase'
+        ? 'Each player’s first bullseye'
+        : 'Each player’s best'
+  return `${what} on this ${words.course}, any day. Just for fun: it doesn’t count toward your rank.`
+}

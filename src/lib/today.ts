@@ -7,13 +7,14 @@ import { api, ApiError, type LeaderboardGame } from './leaderboard'
 import { formatLeaderboardScore } from './leaderboardFormat'
 
 /*
- * The Today set: the day's dailies on one punch card (components/TodayCard.tsx, on the Today page at
- * /today, pages/TodayPage.tsx, with a row of it on the home page, HomeToday.tsx), and a streak of days
- * kept, shown in the header too (components/TodayChip.tsx, the way to the page). The dailies are Ace
- * Chase's Today's Hole, Hot Lap's Today's Track and Find the Bug's Today's Wanted, and Half Full's Today's
- * Pour and Marble Run's Today's Course from the days they join (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more
- * than three live, punching every one is a Full ticket. The Daily, the One Shot and the bug hunt are
- * bonus punches that don't count.
+ * The Today set, which players know as the Dailies (since 2026-09-30): the day's dailies on one punch card
+ * (components/TodayCard.tsx, on the Dailies page at /dailies, pages/TodayPage.tsx, with a row of it on the
+ * home page, HomeToday.tsx), and a streak of days kept, shown in the header too (components/TodayChip.tsx,
+ * the way to the page). The dailies are Ace Chase's Today's Hole, Hot Lap's Today's Track and Find the
+ * Bug's Today's Wanted, and Half Full's Today's Pour and Marble Run's Today's Course from the days they join
+ * (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more than three live, punching
+ * every one is a Full ticket. Today's event, the One Shot and the bug hunt are bonus punches that don't
+ * count.
  *
  * The API keeps the streak for a signed-in account (GET /today, its today.ts), and settles its rewards
  * when asked. This module holds the API's word and asks again whenever something may have changed it:
@@ -112,7 +113,7 @@ export function dayMarks(done: number, rule: { need: number; count: number }): {
 /** What a streak earns, once an account (the API's TODAY_MILESTONES): looks and tickets, never score. */
 export const TODAY_MILESTONES: readonly { day: number; prize: string }[] = [
   { day: 3, prize: '10 tickets' },
-  { day: 7, prize: 'The Today pin for your badge' },
+  { day: 7, prize: 'The Dailies pin for your badge' },
   { day: 14, prize: '25 tickets' },
   { day: 30, prize: 'The gold badge finish' },
   { day: 100, prize: 'The “Every Day” title' },
@@ -233,7 +234,7 @@ export function todayShareText(opts: {
 }): string {
   const [y, m, d] = opts.day.split('-').map(Number)
   const date = new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-  const lines = [`Blipka · Today · ${date}`]
+  const lines = [`Blipka · Dailies · ${date}`]
   for (const { key, text } of opts.lines) {
     const daily = TODAY_DAILIES.find((t) => t.key === key)
     if (daily) lines.push(`${daily.emoji} ${text ?? STILL[key]}`)

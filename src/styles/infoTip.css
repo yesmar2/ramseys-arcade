@@ -1,0 +1,105 @@
+/*
+ * A tip on a word or an icon (components/InfoTip.tsx): its trigger, bare, for whoever uses it to dress,
+ * or a small "i" when it has nothing of its own; and the tip itself, floating over the page with its arrow
+ * at the trigger. Everything here is in :where(), so a page's own classes dress both, loaded before or after.
+ */
+
+:where(.infotip) {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+}
+
+:where(.infotip--i) {
+  display: inline-grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+:where(.infotip--i:hover, .infotip--i:focus-visible, .infotip--i[data-open]) {
+  color: var(--ink);
+  border-color: rgba(var(--ink-rgb), 0.35);
+}
+
+:where(.infotip-tip) {
+  --infotip-bg: var(--surface);
+  --infotip-line: rgba(var(--ink-rgb), 0.14);
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 85;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(20rem, calc(100vw - 1.5rem));
+  padding: 0.75rem 0.95rem 0.8rem;
+  border-radius: 0.875rem;
+  background: var(--infotip-bg);
+  border: 1px solid var(--infotip-line);
+  box-shadow: 0 18px 40px -8px rgba(var(--shade-rgb), 0.3);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: break-word;
+  animation: infotip-in 0.12s ease-out;
+}
+
+:where(html[data-theme='dark'] .infotip-tip) {
+  --infotip-bg: #263540;
+  --infotip-line: rgba(231, 238, 243, 0.16);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  color: #dbe5ec;
+}
+
+/* The arrow, at the trigger's middle: along the tip's top under its trigger, along its bottom over one. */
+:where(.infotip-tip)::before {
+  content: '';
+  position: absolute;
+  left: var(--infotip-arrow, 1.5rem);
+  top: -0.4rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-left: -0.375rem;
+  background: var(--infotip-bg);
+  border-left: 1px solid var(--infotip-line);
+  border-top: 1px solid var(--infotip-line);
+  transform: rotate(45deg);
+}
+
+:where(.infotip-tip[data-side='above'])::before {
+  top: auto;
+  bottom: -0.4rem;
+  transform: rotate(225deg);
+}
+
+@keyframes infotip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.infotip-tip) {
+    animation: none;
+  }
+}

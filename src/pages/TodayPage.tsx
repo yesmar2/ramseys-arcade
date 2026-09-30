@@ -32,11 +32,12 @@ import '../styles/today.css'
 import '../styles/todayPage.css'
 
 /*
- * The Today page (/today), the Today set's home (lib/today.ts): the day up top with where it stands (the
- * streak, how many are done), today's ticket (TodayCard) with your friends' day under it, and beside it
- * on a wide screen (under it, narrower) your last five weeks, the streak's rewards, and the day's share as
- * it would be sent. Signed out, it's the ticket as this device has it and a word on what signing in keeps.
- * The header's chip is the way here, and the home page's Today row. A day's share link opens it too.
+ * The Dailies page (/dailies, once /today), the Today set's home (lib/today.ts): the day up top with where
+ * it stands (the streak, how many are done), today's ticket (TodayCard) with your friends' day under it,
+ * and beside it on a wide screen (under it, narrower) your last five weeks, the streak's rewards, and the
+ * day's share as it would be sent. Signed out, it's the ticket as this device has it and a word on what
+ * signing in keeps. The header's chip is the way here, and the home page's Dailies row. A day's share link
+ * opens it too.
  */
 
 const GiftIcon = () => (
@@ -113,7 +114,7 @@ function TodayHead({ ticket, signedIn, loading }: { ticket: Ticket; signedIn: bo
       <div className="today-head__text">
         <span className="today-head__kicker">
           <i aria-hidden="true" />
-          Today
+          Dailies
         </span>
         <h1 id="today-page-title" className="today-head__title">
           {fullDate(day)}
@@ -196,7 +197,7 @@ function YourDays({ ticket }: { ticket: Ticket }) {
     kept: 'kept',
     open: `today, ${ticket.left} to go`,
     missed: 'missed',
-    before: 'before the Today set began',
+    before: 'before the Dailies began',
     after: 'still to come',
     unknown: 'not known',
   }

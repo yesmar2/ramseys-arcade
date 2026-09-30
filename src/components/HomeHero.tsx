@@ -309,7 +309,7 @@ function toWall(event: MouseEvent<HTMLAnchorElement>) {
   wall.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
 }
 
-/** Today's daily on the first-visit banner: its game, how it is won, its clock, and the way in. */
+/** Today's event on the first-visit banner: its game, how it is won, its clock, and the way in. */
 function DailyCard({ t }: { t: TournamentSummary }) {
   const lead = t.games[0] ?? null
   const only = t.games.length === 1 && lead ? getGame(lead) : null
@@ -321,7 +321,8 @@ function DailyCard({ t }: { t: TournamentSummary }) {
       </span>
       <span className="home-banner__daily-text">
         <span className="home-banner__daily-title">
-          {only ? `Today’s daily is ${only.name}` : `Today’s daily: ${t.title}`}
+          {/* Several games: the event's own title already says it's today's event. */}
+          {only ? `Today’s event is ${only.name}` : t.title}
         </span>
         <span className="home-banner__daily-sub">
           {howItWins(t)} ·{' '}
@@ -354,7 +355,7 @@ function DailyCard({ t }: { t: TournamentSummary }) {
  * it, who is close behind, all laid on a line; and along the bottom, where
  * they stand across the arcade this period. A first visit, with no tag and
  * nothing played on this device, gets what the arcade is: the promise, today's
- * daily, Play, and a way to the wall. Everyone else gets the kicker, the name,
+ * event, Play, and a way to the wall. Everyone else gets the kicker, the name,
  * the game's own line about itself, Play, and the board's top and their best.
  * Tinted from the game's colour, like every hero on the site.
  */

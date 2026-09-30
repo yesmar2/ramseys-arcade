@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { gamePlayHref } from '../../hooks/useHashRoute'
 import { useDailyDays } from '../../lib/archive'
+import { BOARD_NAMES } from '../../lib/dailyWords'
 import type { Viewer } from '../../lib/deviceRuns'
 import type { PastFact } from '../../lib/pastPlay'
 import { ordinal } from '../../lib/scoreboard'
@@ -8,8 +9,8 @@ import type { TrackBoard } from '../../lib/trackBoards'
 import { formatHotlapBoardScore } from './score'
 
 /*
- * A past track's figures, for its cards (PastTrackCards.tsx) and its pause card: how it went on its day,
- * from the day's board (GET /leaderboards/hotlap/days), and its own board since (lib/trackBoards.ts).
+ * A past track's figures, for its cards (PastTrackCards.tsx) and its pause card: its Ranked board, the
+ * day's board (GET /leaderboards/hotlap/days), and its All time board, every lap since (lib/trackBoards.ts).
  */
 
 const SLUG = 'hotlap'
@@ -30,8 +31,8 @@ export type PastTrackFigures = {
 }
 
 /**
- * A past track's figures, a line each: how it went on its day (who was 1st, and your place that day), and
- * its board (its record, and your place on it). Your part only while signed in: signed out, how many
+ * A past track's figures, a line each: its Ranked board (who was 1st, and your place that day), and its
+ * All time board (its record, and your place on it). Your part only while signed in: signed out, how many
  * raced it instead.
  */
 export function usePastTrackFigures(day: string, board: TrackBoard | null, viewer: Viewer, name: string): PastTrackFigures {
@@ -40,12 +41,13 @@ export function usePastTrackFigures(day: string, board: TrackBoard | null, viewe
   return useMemo(() => {
     const lap = formatHotlapBoardScore
     const entry = days?.find((d) => d.day === day)
+    const ranked = BOARD_NAMES.ranked
     let onItsDay: PastFact
-    if (!days) onItsDay = { label: 'On its day', what: failed ? 'Couldn’t load its day' : '…' }
-    else if (!entry) onItsDay = { label: 'On its day', what: 'Nobody raced it' }
+    if (!days) onItsDay = { label: ranked, what: failed ? 'Couldn’t load it' : '…' }
+    else if (!entry) onItsDay = { label: ranked, what: 'Nobody raced it' }
     else {
       onItsDay = {
-        label: 'On its day',
+        label: ranked,
         who: entry.top.name,
         what: `1st in ${lap(entry.top.score)}`,
         // A day before the game's days counted has your result but no place.
@@ -55,16 +57,17 @@ export function usePastTrackFigures(day: string, board: TrackBoard | null, viewe
               ? `You ${ordinal(entry.you.place)} of ${entry.players.toLocaleString()}`
               : 'You raced it'
             : null,
-        note: mine ? 'You didn’t race it on its day' : `${entry.players.toLocaleString()} raced it`,
+        note: mine ? 'You’re not on it' : `${entry.players.toLocaleString()} raced it`,
       }
     }
     const record = board?.entries[0]
+    const allTime = BOARD_NAMES.allTime
     let onBoard: PastFact
-    if (!board) onBoard = { label: 'Track board', what: '…' }
-    else if (!record) onBoard = { label: 'Track board', what: 'Nobody on it yet' }
+    if (!board) onBoard = { label: allTime, what: '…' }
+    else if (!record) onBoard = { label: allTime, what: 'Nobody on it yet' }
     else {
       onBoard = {
-        label: 'Track board',
+        label: allTime,
         who: record.name,
         what: lap(record.score),
         you: mine && board.you ? `You ${ordinal(board.you.place)} of ${board.drivers.toLocaleString()}` : null,

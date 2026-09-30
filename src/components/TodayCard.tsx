@@ -26,10 +26,10 @@ import '../styles/runLabel.css'
 import '../styles/today.css'
 
 /*
- * Today's ticket, on the Today page (lib/today.ts, pages/TodayPage.tsx): the day's live dailies as punches,
+ * Today's ticket, on the Dailies page (lib/today.ts, pages/TodayPage.tsx): the day's live dailies as punches,
  * all across on a desktop, and on a phone a strip with one of them shown big (the next to play, or the one
- * picked), the streak on its stub with the week under it, the day's share, and the bonus punches (the
- * Daily, the One Shot and the bug hunt, which don't count). What this device has done punches at once;
+ * picked), the streak on its stub with the week under it, the day's share, and the bonus punches (today's
+ * event, the One Shot and the bug hunt, which don't count). What this device has done punches at once;
  * the streak is the API's, for a signed-in account. The punches themselves are todayPunches.ts's, which
  * the home page's Today row draws from too.
  */
@@ -126,7 +126,7 @@ function BonusPunches() {
     <div className="today-card__bonus">
       <span className="today-card__label">Bonus punches</span>
       <ul>
-        {daily ? chip(daily, 'Daily') : null}
+        {daily ? chip(daily, 'Today’s event') : null}
         {oneShot ? chip(oneShot, 'One Shot') : null}
         <li>
           <button type="button" className={`today-bonus${hunt.found ? ' today-bonus--done' : ''}`} onClick={openBugHunt}>
@@ -313,7 +313,7 @@ export function TodayCard({ ticket, rivals, signedIn }: { ticket: Ticket; rivals
                     <li
                       key={d.day}
                       className={`today-week__day${full ? ' today-week__day--full' : kept ? ' today-week__day--kept' : ''}${isToday && !kept ? ' today-week__day--today' : ''}${before ? ' today-week__day--before' : ''}`}
-                      aria-label={`${WEEKDAY_NAMES[weekday]}: ${before ? 'before the Today set began' : full ? 'Full ticket' : kept ? 'kept' : isToday ? `${left} to go` : 'missed'}`}
+                      aria-label={`${WEEKDAY_NAMES[weekday]}: ${before ? 'before the Dailies began' : full ? 'Full ticket' : kept ? 'kept' : isToday ? `${left} to go` : 'missed'}`}
                     >
                       <span className="today-week__mark" aria-hidden="true">
                         {full ? <StarIcon /> : kept ? <CheckIcon /> : isToday ? left : null}

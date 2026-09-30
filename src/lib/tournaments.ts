@@ -291,8 +291,9 @@ export function joinedRosterLabel(
   return playerCountLabel(t.playerCount)
 }
 
+/** The arcade's own events by kind. The one-day event is "Today’s event": "Dailies" are the daily games. */
 export function cadenceLabel(cadence: TournamentCadence | null | undefined): string | null {
-  if (cadence === 'daily') return 'Daily'
+  if (cadence === 'daily') return 'Today’s event'
   if (cadence === 'weekly') return 'Weekly'
   if (cadence === 'oneshot') return 'One Shot'
   return null
@@ -962,7 +963,7 @@ export async function submitTournamentScore(
   youWonMatch?: boolean
   youWonTournament?: boolean
   matchOpponent?: string | null
-  /** Tickets the run paid here: a run in the day's Daily pays once a day. */
+  /** Tickets the run paid here: a run in today's event pays once a day. */
   tickets?: { earned: number; balance: number } | null
 }> {
   const cleaned = normalizePlayerName(name)

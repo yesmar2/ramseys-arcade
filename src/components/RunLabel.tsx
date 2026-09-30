@@ -1,10 +1,10 @@
-import { dailyWords } from '../lib/dailyWords'
+import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
 import '../styles/runLabel.css'
 
 /*
  * What a run on a daily counts toward, said the same way everywhere a run can start or end: today's
- * course counts toward your rank; a past course either goes on its own board, which isn't ranked, or is
- * practice that saves nothing. The same words, colour and icon on the game's page, its past days, the
+ * course counts toward your rank; a past course either goes on its All time board, which isn't ranked, or
+ * is practice that saves nothing. The same words, colour and icon on the game's page, its past days, the
  * start and result cards and the pause card, so "does this count?" never needs asking.
  */
 
@@ -21,11 +21,10 @@ export function runLabelWords(kind: RunLabelKind, slug: string): { full: string;
     }
   }
   if (kind === 'board') {
-    const course = words.course
     return {
-      full: `${capital(course)} board only · not your rank`,
-      short: `${capital(course)} board only`,
-      sub: `Your result goes on this ${course}’s own board. Today’s board, your week and your rank stay as they are.`,
+      full: `${BOARD_NAMES.allTime} only · not your rank`,
+      short: `${BOARD_NAMES.allTime} only`,
+      sub: `Your result goes on this ${words.course}’s ${BOARD_NAMES.allTime} board. Today’s board, your week and your rank stay as they are.`,
     }
   }
   return {
@@ -33,10 +32,6 @@ export function runLabelWords(kind: RunLabelKind, slug: string): { full: string;
     short: 'Practice',
     sub: 'Nothing here is kept: no board, no tickets, no rank.',
   }
-}
-
-function capital(word: string) {
-  return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
 const Icon = ({ kind }: { kind: RunLabelKind }) => {

@@ -26,7 +26,7 @@ import '../styles/counter.css'
 const EARN: { icon: string; amount: string; what: string }[] = [
   { icon: 'play', amount: '1–15', what: 'every saved run, by its score' },
   { icon: 'up', amount: '+5', what: 'a new best' },
-  { icon: 'calendar', amount: '+10', what: 'the Daily' },
+  { icon: 'calendar', amount: '+10', what: 'today’s event' },
   { icon: 'flame', amount: '+5', what: 'a day on a streak' },
   { icon: 'bug', amount: '+15', what: 'the day’s bug' },
   { icon: 'pad', amount: '+20', what: 'a first go at a game' },
@@ -299,7 +299,7 @@ export function PrizeCounterPage() {
             <Icon name="hand" />
             Earned, never bought
           </span>
-          <p>Tickets come from saved runs, the Daily, day streaks and the bug hunt. There’s no way to buy them.</p>
+          <p>Tickets come from saved runs, today’s event, day streaks and the bug hunt. There’s no way to buy them.</p>
         </div>
         <div className="counter-rule">
           <span className="counter-rule__t">
@@ -324,8 +324,8 @@ export function PrizeCounterPage() {
             A run pays by the score it reaches, like an arcade machine: 1 ticket, then 3, 5, 7 and 10 at the scores each game’s How to play
             shows. Today’s Hole, Today’s Track and Today’s Pour pay your best of the day once, up to 15, and each day’s top three get 10, 6 and 3 more after
             midnight. A new best pays 5 more, and Crosswalk one for each ticket picked up. Runs pay up to 200 tickets a day, bests and pickups
-            included. A first go at a game, a day on a streak, the Daily, the day’s bug, a top-three day, taking a past track’s or hole’s record
-            and a Today streak milestone still pay after that.
+            included. A first go at a game, a day on a streak, today’s event, the day’s bug, a top-three day, taking a past track’s or hole’s record
+            and a Dailies streak milestone still pay after that.
           </p>
         </div>
       </section>

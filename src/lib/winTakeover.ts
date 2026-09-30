@@ -75,8 +75,9 @@ function wonBy(match: PublicBracketMatch, you: string) {
 function prizeWords(detail: TournamentDetail) {
   const title = detail.title.trim()
   return {
-    // The arcade's own events read as a title ("the Weekly Triple"); a hosted one is its own name.
-    lead: detail.official ? 'You won the' : 'You won',
+    // The arcade's own events read as a title ("the Weekly Triple"); a hosted one is its own name, and so is
+    // the day's ("Today’s event · Pop", never "the Today’s event").
+    lead: detail.official && detail.cadence !== 'daily' ? 'You won the' : 'You won',
     prize: `${title}.`,
     plate: title.length <= PLATE_MAX ? title.toUpperCase() : null,
     kicker: `${title} · ${eventSpan(detail)}`,

@@ -2,15 +2,15 @@ import { useCallback, useState } from 'react'
 import { useDailyDays, type ArchiveDay } from '../../lib/archive'
 import type { DailySolved, TodaysHole } from '../../lib/dailyHole'
 import { pastKindFor } from '../../lib/dailyPast'
-import type { PastKind } from '../../lib/dailyWords'
+import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { useHoleBoard, useHoleRecordsAsked, type HoleBoard, type HoleRecordRow, type PastProgress } from '../../lib/pastHoles'
 import type { PastFact } from '../../lib/pastPlay'
 import { ordinal } from '../../lib/scoreboard'
 import { acechaseTriesFromBoardScore } from './score'
 
 /*
- * A past hole's figures, as its start card, the pause card and its result card show them: how its day
- * went (the days' list, GET /leaderboards/acechase/days) and its own board (lib/pastHoles.ts). Asked by
+ * A past hole's figures, as its start card, the pause card and its result card show them: its Ranked board
+ * (the days' list, GET /leaderboards/acechase/days) and its All time board (lib/pastHoles.ts). Asked by
  * the tag the past tab asks by, so what a row there has just shown is here at once. A hole's board takes
  * only a player's first result on it, so the same figures say what a run here does: goes on its board, or
  * practice.
@@ -72,8 +72,9 @@ export function nextHoleKind(signedIn: boolean, hadResult: boolean): PastKind {
 }
 
 /**
- * The hole's figures a line each, for its start card and the pause card: how its day went, and its board.
- * "On its day: ODCHKA 1st in 2 tries · You 13th of 42 (3 tries)", "Hole board: SECRETCHK 1 try · You 11th of 40 (3 tries)".
+ * The hole's figures a line each, for its start card and the pause card: its Ranked board, and its All
+ * time board. "Ranked: ODCHKA 1st in 2 tries · You 13th of 42 (3 tries)", "All time: SECRETCHK 1 try · You
+ * 11th of 40 (3 tries)".
  */
 export function pastHoleFacts({
   figures,
@@ -90,12 +91,13 @@ export function pastHoleFacts({
 }): PastFact[] {
   const facts: PastFact[] = []
   const day = figures.onItsDay
-  if (day === undefined && !figures.dayUnknown) facts.push({ label: 'On its day', what: '…' })
-  else if (day === null && !figures.dayUnknown) facts.push({ label: 'On its day', what: 'Nobody got it on its day' })
+  const ranked = BOARD_NAMES.ranked
+  if (day === undefined && !figures.dayUnknown) facts.push({ label: ranked, what: '…' })
+  else if (day === null && !figures.dayUnknown) facts.push({ label: ranked, what: 'Nobody got it' })
   else if (day) {
     const you = day.you
     facts.push({
-      label: 'On its day',
+      label: ranked,
       who: day.top.name,
       what: `1st in ${triesWords(acechaseTriesFromBoardScore(day.top.score))}`,
       // Holes #1 and #2 came before the days counted: a result there has no place.
@@ -103,17 +105,18 @@ export function pastHoleFacts({
         ? `${you.place != null ? `You ${ordinal(you.place)} of ${day.players}` : 'You played it'} (${triesWords(acechaseTriesFromBoardScore(you.score))})`
         : null,
       // Signed out there's no "you" to speak of: how many played it says what the 1st was of.
-      note: signedIn ? 'You didn’t play it on its day' : playersWords(day.players),
+      note: signedIn ? 'You’re not on it' : playersWords(day.players),
     })
   }
   const board = boardSoFar(figures)
-  if (!board) facts.push({ label: 'Hole board', what: '…' })
-  else if (!board.record) facts.push({ label: 'Hole board', what: 'Nobody has got it yet' })
+  const allTime = BOARD_NAMES.allTime
+  if (!board) facts.push({ label: allTime, what: '…' })
+  else if (!board.record) facts.push({ label: allTime, what: 'Nobody has got it yet' })
   else {
     const you = board.you
     const tries = progress?.tries ?? 0
     facts.push({
-      label: 'Hole board',
+      label: allTime,
       who: board.record.name,
       what: triesWords(board.record.tries),
       you: you ? `You ${ordinal(you.place)} of ${board.players} (${triesWords(you.tries)})` : null,

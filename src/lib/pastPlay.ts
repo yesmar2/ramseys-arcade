@@ -13,9 +13,9 @@ import { exitFullscreen } from './fullscreen'
  * and result cards are components/PastCourseCards.tsx.
  */
 
-/** One line of a past course's figures: who led it and where you stand, "On its day" or on its board. */
+/** One line of a past course's figures: who led it and where you stand, on its Ranked or All time board. */
 export type PastFact = {
-  /** What the line is of: "On its day", "Track board", "Hole board". */
+  /** What the line is of, its board's name (lib/dailyWords.ts BOARD_NAMES): "Ranked", "All time". */
   label: string
   /** Who leads, in bold: "LATTE". */
   who?: string | null
@@ -23,7 +23,7 @@ export type PastFact = {
   what?: string | null
   /** Your part, in the game's colour: "You 5th of 14", "You 4th of 17 (49.1s)". */
   you?: string | null
-  /** Said plainly where you have no part: "You didn't race it on its day". Shown when there's no `you`. */
+  /** Said plainly where you have no part: "You're not on it". Shown when there's no `you`. */
   note?: string | null
 }
 
@@ -35,7 +35,7 @@ export type PastPlay = {
   kind?: PastKind
   /** The course's name for the browser's tab: "Seneca Glen" makes "Hot Lap · Seneca Glen (past track)". */
   title?: string
-  /** Its figures on the pause card, the start card's lines: "On its day", "Track board". */
+  /** Its figures on the pause card, the start card's lines: "Ranked", "All time". */
   facts?: readonly PastFact[]
   /** False when the game shows PastPlayChip in its own HUD rather than under the back control. */
   chip?: boolean

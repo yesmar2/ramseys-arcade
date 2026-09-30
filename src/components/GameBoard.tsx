@@ -7,6 +7,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { dayBefore } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
+import { BOARD_NAMES } from '../lib/dailyWords'
 import { useDeviceType } from '../lib/device'
 import {
   boardCallout,
@@ -192,7 +193,7 @@ function Banner({
   const leader = players[0]
   // When it closes, without the trophies: those go to the standings across every board, not one game's.
   const closes = periodCopy(period, Date.now(), true).closes
-  // A daily's today board steps back to yesterday's final, as that day's page steps on to today's; not on its first day.
+  // A daily's today board steps back to yesterday's Ranked board, as that day's page steps on to today's; not on its first day.
   const { course } = useDayCourse(slug)
   const yesterday = course && period === 'daily' ? dayBefore(course.today()) : null
   const stepBack = course && yesterday && yesterday >= course.first ? yesterday : null
@@ -254,7 +255,7 @@ function Banner({
           ) : null}
           {stepBack ? (
             <a className="home-banner__ghost" href={dayBoardHref(slug, stepBack)}>
-              ‹ Yesterday’s final
+              ‹ Yesterday’s {BOARD_NAMES.ranked} board
             </a>
           ) : null}
           <ShareBoardButton

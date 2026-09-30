@@ -50,7 +50,7 @@ export type PastBoardRow = {
   you?: boolean
 }
 
-/** A past course's board, a few rows of it: "Seneca Glen's board", "15 drivers". */
+/** A past course's board, a few rows of it: "All time · Seneca Glen", "15 drivers". */
 export type PastBoard = { title: string; count?: string; rows: readonly PastBoardRow[] }
 
 /** A link along the course's neighbours on the start card: "‹ #2 Pine Circuit". */
@@ -156,8 +156,8 @@ export function PastRankNote({ slug }: { slug: string }) {
 
 /**
  * A past course's start card: what it is and when it was the day's, the label that says what a run here
- * does, its figures (on its day, and on its board where it keeps one), the sound and rules as on every
- * start card, the start button and the way back to its row.
+ * does, its figures (its Ranked board, and its All time board where it keeps one), the sound and rules as
+ * on every start card, the start button and the way back to its row.
  *
  * With `onStart`, the start button starts the run and the card keeps its presses. Without it, it starts
  * the way the game's own start card does: a tap anywhere on the stage, which the start button passes on.
@@ -189,7 +189,7 @@ export function PastCourseStart({
   course: string | number
   /** The day it was the day's course, YYYY-MM-DD. */
   day: string
-  /** What a run here does: 'board' goes on the course's own board; 'practice' saves nothing. */
+  /** What a run here does: 'board' goes on the course's All time board; 'practice' saves nothing. */
   kind: PastKind
   /** The course's name, big: "Seneca Glen". */
   title: string
@@ -201,7 +201,7 @@ export function PastCourseStart({
   art?: ReactNode
   /** In place of the label's own line: "Your first bullseye here stands." */
   labelSub?: ReactNode
-  /** "On its day", then its board's line where it keeps one. */
+  /** "Ranked", then its "All time" line where it keeps one. */
   facts: readonly PastFact[]
   /** A small line under the figures: "Taking its record pays 15 tickets, once. Blue car: 1:29.78." */
   note?: ReactNode
@@ -300,9 +300,9 @@ export function PastCourseStart({
 }
 
 /**
- * After a run on a past course: the result, where it went ("3rd on Seneca Glen's board", or practice,
- * saved nowhere), the course's board where it keeps one, that your week and rank are as they were, and
- * the ways on: again, back to its row, or today's course.
+ * After a run on a past course: the result, where it went ("3rd All time on Seneca Glen", or practice,
+ * saved nowhere), the course's All time board where it keeps one, that your week and rank are as they
+ * were, and the ways on: again, back to its row, or today's course.
  */
 export function PastCourseResult({
   slug,
@@ -334,13 +334,13 @@ export function PastCourseResult({
   /** The run's result, big: "1:19.80". */
   figure: ReactNode
   /**
-   * Where it went: "3rd on Seneca Glen's board". Practice says "Practice: nothing was saved" when left out,
-   * in the label's place.
+   * Where it went: "3rd All time on Seneca Glen". Practice says "Practice: nothing was saved" when left
+   * out, in the label's place.
    */
   headline?: ReactNode
   /** Under it: "Up from 6th: 2.11s quicker than your old best here." */
   line?: ReactNode
-  /** The course's board, a few rows of it, yours marked. */
+  /** The course's All time board, a few rows of it, yours marked. */
   board?: PastBoard | null
   /** A small line under the board: "DAD's record is 5.39s away. Taking it pays 15 tickets, once." */
   note?: ReactNode

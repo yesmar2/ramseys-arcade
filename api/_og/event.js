@@ -121,6 +121,17 @@ export function eventWords(event, name, games) {
 }
 
 /**
+ * The line over the score, kept to one line: 26px, or smaller for a long one
+ * ("GRANDPAJ · TODAY’S EVENT · CRUMBTRAIL"), which would otherwise wrap and
+ * push "Can you beat it?" into the wordmark. Outfit's bold capitals run about
+ * 0.55 of the size wide, with the 5px spacing on each.
+ * @param {string} kicker
+ */
+function kickerSize(kicker) {
+  return Math.max(16, Math.min(26, Math.floor(((COLUMN - 20) / kicker.length - 5) / 0.55)))
+}
+
+/**
  * The card a shared result unfurls into: the place in the game's tile, the
  * score and the event beside it. Without a result, the event's "Can you beat
  * it?", or the site's.
@@ -143,8 +154,9 @@ export function eventCard(words, info, title) {
       text({ fontSize: placeSize, fontWeight: 700, lineHeight: 1, letterSpacing: -2, color: TEXT }, place),
       text({ marginTop: 14, fontSize: 36, color: rgba('#ffffff', 0.85) }, `of ${words.field.toLocaleString('en-US')}`),
     ]
+    const kicker = `${words.name} · ${words.title}`.toUpperCase()
     column = [
-      text({ fontSize: 26, fontWeight: 700, letterSpacing: 5, color: accent }, `${words.name} · ${words.title}`.toUpperCase()),
+      text({ fontSize: kickerSize(kicker), fontWeight: 700, letterSpacing: 5, color: accent }, kicker),
       text({ marginTop: 18, fontSize: scoreSize, fontWeight: 700, lineHeight: 1, letterSpacing: -2, color: lift(accent) }, words.score),
       text({ marginTop: 20, fontSize: 40, color: MUTED }, words.line),
       text({ marginTop: 16, fontSize: 34, fontWeight: 700 }, words.over ? 'Final standings' : 'Can you beat it?'),

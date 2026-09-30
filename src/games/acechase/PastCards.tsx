@@ -10,7 +10,7 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { linkCurrentNameToAccount } from '../../lib/auth'
 import { dailyDay, PLACE_NAME, todaysHole, type DailySolved, type TodaysHole } from '../../lib/dailyHole'
-import type { PastKind } from '../../lib/dailyWords'
+import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { SIGNED_OUT } from '../../lib/deviceRuns'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
 import { pastHoleAnswer, sendPastResult, type HoleBoard, type PastHoleResult, type PastProgress } from '../../lib/pastHoles'
@@ -23,7 +23,7 @@ import { playersWords, triesWords, type PastHoleFigures } from './pastFigures'
 /*
  * A past hole's two cards (/games/acechase/play?hole=day:YYYY-MM-DD, from its row on Past holes): the one
  * it opens on, and the one a bullseye brings up, in the shared cards every daily's past course uses
- * (components/PastCourseCards.tsx). Every hole keeps a board of its own for good (lib/pastHoles.ts), but
+ * (components/PastCourseCards.tsx). Every hole keeps its All time board for good (lib/pastHoles.ts), but
  * takes only a player's first result on it. So a run here goes on its board only for a player signed in
  * with no result on it yet, from its day or since; for anyone else it's practice, and nothing is saved.
  */
@@ -31,6 +31,9 @@ import { playersWords, triesWords, type PastHoleFigures } from './pastFigures'
 const SLUG = 'acechase'
 /** What taking a past hole's record pays, once a hole: the API's tickets.ts RECORD_TICKETS. */
 const RECORD_TICKETS = 15
+
+/** The hole's own board, every first bullseye on it since its day, as it's called on the cards. */
+const ALL_TIME = BOARD_NAMES.allTime
 
 const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
 
@@ -74,7 +77,7 @@ function SignIn({ children }: { children: ReactNode }) {
   )
 }
 
-/** The card a past hole opens on: what a run here does, how its day went, its board, and the way back to its row. */
+/** The card a past hole opens on: what a run here does, its Ranked and All time boards, and the way back to its row. */
 export function PastStartCard({
   hole,
   kind,
@@ -97,10 +100,10 @@ export function PastStartCard({
   const viewer = useAccountId()
   const tries = kind === 'board' ? (progress?.tries ?? 0) : 0
   const labelSub = !signedIn
-    ? 'Signed out, nothing here is kept: no board, no tickets, no rank. Sign in and your first bullseye here goes on its board.'
+    ? `Signed out, nothing here is kept: no board, no tickets, no rank. Sign in and your first bullseye here goes on its ${ALL_TIME} board.`
     : kind === 'practice'
       ? 'Your first bullseye here stands. Play it as often as you like: nothing more is saved.'
-      : 'Your first bullseye here goes on this hole’s own board, and every try counts, even if you leave and come back. Today’s board, your week and your rank stay as they are.'
+      : `Your first bullseye here goes on this hole’s ${ALL_TIME} board, and every try counts, even if you leave and come back. Today’s board, your week and your rank stay as they are.`
   return (
     <PastCourseStart
       slug={SLUG}
@@ -139,7 +142,7 @@ type Send =
   | { phase: 'otherAccount' }
   | { phase: 'failed'; error: string }
 
-/** Signed in with no tag yet: a tag puts the result on the hole's board, which the card then does. */
+/** Signed in with no tag yet: a tag puts the result on the hole's All time board, which the card then does. */
 function HoleTag() {
   const id = useId()
   const [draft, setDraft] = useState(() => getLastPlayerName())
@@ -160,7 +163,14 @@ function HoleTag() {
   }
   return (
     <div className="acechase-daily__tag">
-      <TagSlots id={id} value={draft} onChange={setDraft} onSubmit={() => void submit()} lead="Put your tag on it and it goes on the hole’s board." error={error} />
+      <TagSlots
+        id={id}
+        value={draft}
+        onChange={setDraft}
+        onSubmit={() => void submit()}
+        lead={`Put your tag on it and it goes on the hole’s ${ALL_TIME} board.`}
+        error={error}
+      />
       <button type="button" className="panel__btn" disabled={!name || busy} onClick={() => void submit()}>
         {busy ? 'Saving…' : 'Put it on the board'}
       </button>
@@ -168,7 +178,7 @@ function HoleTag() {
   )
 }
 
-/** A few rows of the hole's board, yours marked: the top three, and yours under them if it's lower. */
+/** A few rows of the hole's All time board, yours marked: the top three, and yours under them if it's lower. */
 function boardRows(hole: TodaysHole, board: HoleBoard | null, players: number, name: string, you: HoleBoard['you']): PastBoard | null {
   if (!board || board.entries.length === 0) return null
   const rows: PastBoardRow[] = board.entries.slice(0, 3).map((e, i) => ({
@@ -183,7 +193,7 @@ function boardRows(hole: TodaysHole, board: HoleBoard | null, players: number, n
     if (you.place <= board.entries.length && !board.entries.some((e) => e.name === name)) return null
     rows.push({ place: you.place, name, result: triesWords(you.tries), you: true })
   }
-  return { title: `${hole.def.name}’s board`, count: playersWords(players), rows }
+  return { title: `${ALL_TIME} · ${hole.def.name}`, count: playersWords(players), rows }
 }
 
 /**
@@ -290,7 +300,7 @@ export function PastResultCard({
   // What the run did: went on the board, or saved nothing (practice, or a result there already stands).
   const kind: PastKind = practice || (answer && !answer.kept) ? 'practice' : 'board'
   const saving = !practice && (send.phase === 'sending' || (send.phase === 'waiting' && solved != null && !solved.sent))
-  const holeBoard = `${hole.def.name}’s board`
+  const holeBoard = `${hole.def.name}’s ${ALL_TIME} board`
 
   let headline: ReactNode = undefined
   let line: ReactNode = null
@@ -299,24 +309,27 @@ export function PastResultCard({
     const stands = you ?? (own ? { tries: own.tries, place: null } : null)
     if (stands) {
       line = stands.place
-        ? `Your first bullseye here stands: ${triesWords(stands.tries)}, ${ordinal(stands.place)} of ${players} on its board.`
+        ? `Your first bullseye here stands: ${triesWords(stands.tries)}, ${ordinal(stands.place)} of ${players} on its ${ALL_TIME} board.`
         : `Your first bullseye here stands: ${triesWords(stands.tries)}.`
     }
-    if (!signedIn) status = <SignIn>Sign in and your first bullseye here goes on its board.</SignIn>
+    if (!signedIn) status = <SignIn>Sign in and your first bullseye here goes on its {ALL_TIME} board.</SignIn>
   } else if (answer && !answer.kept) {
     headline = 'Your first bullseye here stands'
-    line = you ? `It’s ${triesWords(you.tries)}, ${ordinal(you.place)} of ${players} on its board. This one wasn’t saved.` : 'This one wasn’t saved.'
+    line = you
+      ? `It’s ${triesWords(you.tries)}, ${ordinal(you.place)} of ${players} on its ${ALL_TIME} board. This one wasn’t saved.`
+      : 'This one wasn’t saved.'
   } else if (answer) {
-    headline = you ? `${ordinal(you.place)} on ${holeBoard}` : `On ${holeBoard}`
+    // "3rd All time on Blizzard Bumps", as a past track's card says it.
+    headline = you ? `${ordinal(you.place)} ${ALL_TIME} on ${hole.def.name}` : `On ${holeBoard}`
     if (answer.tookRecord) status = <p className="acechase-past__news">Hole record! Nobody has done it in fewer.</p>
     else if (record && you && record.tries === you.tries) line = `Tied with ${record.name}’s record, ${triesWords(record.tries)}. They got there first.`
     else if (record) line = `The record is ${record.name}’s, in ${triesWords(record.tries)}.`
   } else if (saving) {
     headline = `Putting it on ${holeBoard}…`
   } else {
-    headline = 'Not on its board yet'
+    headline = `Not on its ${ALL_TIME} board yet`
     if (send.phase === 'otherAccount') status = <PlayedAs owner={owner} signedIn={signedIn} />
-    else if (send.phase === 'signedOut') status = <SignIn>Sign in and this result goes on the hole&rsquo;s board.</SignIn>
+    else if (send.phase === 'signedOut') status = <SignIn>Sign in and this result goes on the hole&rsquo;s {ALL_TIME} board.</SignIn>
     else if (send.phase === 'noTag') status = <HoleTag />
     else if (send.phase === 'failed') status = <p className="panel__error">{send.error}</p>
   }

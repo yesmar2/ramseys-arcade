@@ -21,7 +21,7 @@ import {
   type CourseRecordRow,
   type RecordCard,
 } from '../lib/dailyRecords'
-import { dailyWords } from '../lib/dailyWords'
+import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
 import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame } from '../lib/leaderboard'
 import { useHoleRecordsAsked } from '../lib/pastHoles'
 import { ordinal } from '../lib/scoreboard'
@@ -37,8 +37,8 @@ import '../styles/todaysTrack.css'
  * A daily's Records tab: only the records its boards don't already show. Days played in a row, the most
  * days won, and on Hot Lap and Ace Chase the most track or hole records held, each with its holder (or
  * everyone tied for it), the first five and you; then each track's or hole's record, which is just the #1
- * on its board, a row apiece that opens that course's row on the past tab. What each card says is worked
- * out in lib/dailyRecords.ts.
+ * on its All time board, a row apiece that opens that course's row on the past tab. What each card says is
+ * worked out in lib/dailyRecords.ts.
  */
 
 /** Course rows before "Show all". */
@@ -268,7 +268,7 @@ function CourseRecords({
         <span>{course}</span>
         <span>Its day</span>
         <span>Record</span>
-        <span>{me ? 'Your best' : 'On its board'}</span>
+        <span>{me ? 'Your best' : BOARD_NAMES.allTime}</span>
         <span />
       </div>
       {rows === null ? (
@@ -321,7 +321,7 @@ function CourseRecords({
                     )}
                   </span>
                   <span className="drt-row__you">
-                    <span className="drt-row__cap">{me ? 'You' : 'Board'}</span>
+                    <span className="drt-row__cap">{me ? 'You' : BOARD_NAMES.allTime}</span>
                     {row.you ? (
                       <>
                         <b>{courseResult(slug, row.you.value)}</b>
@@ -332,7 +332,7 @@ function CourseRecords({
                       </>
                     ) : (
                       <span className="drt-row__quiet">
-                        {/* Signed out there's no "you" to have played it, only how many have: the head and cap say "board". */}
+                        {/* Signed out there's no "you" to have played it, only how many are on it: the head and cap say "All time". */}
                         {me
                           ? `Not ${done(words.verb)} yet${row.players ? ` · ${counted(row.players, 'player')}` : ''}`
                           : row.players
@@ -357,7 +357,7 @@ function CourseRecords({
         </button>
       ) : null}
       <p className="drt-courses__note">
-        Each is that {course}’s #1: its board lives on {words.pastTab}.
+        Each is that {course}’s {BOARD_NAMES.allTime} #1.
       </p>
     </section>
   )
@@ -430,7 +430,7 @@ function RecordsBody({
           <a href={dailyTabHref(slug)}>today’s board is on the Today tab</a>
           {boards ? ', ' : ' and '}
           <a href={dailyTabHref(slug, 'past')}>
-            each past day’s final board is on {words.pastTab}
+            each past day’s {BOARD_NAMES.ranked} board is on {words.pastTab}
           </a>
           {boards ? (
             <>

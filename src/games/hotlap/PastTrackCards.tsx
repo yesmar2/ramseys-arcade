@@ -9,7 +9,7 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { useSaveWait } from '../../hooks/useSaveWait'
 import { useIsAdmin } from '../../lib/admin'
 import { linkCurrentNameToAccount, recallAccountTag } from '../../lib/auth'
-import type { PastKind } from '../../lib/dailyWords'
+import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
 import { leavePlay } from '../../lib/pastPlay'
 import { ordinal } from '../../lib/scoreboard'
@@ -21,11 +21,10 @@ import { formatHotlapBoardScore, formatLap, formatLapMs } from './score'
 
 /*
  * A past track's cards (/games/hotlap/play?track=<n>, from the Past tracks tab): the one it opens on, and
- * the one after a lap. A past track keeps a board of its own for good (lib/trackBoards.ts): signed in, your
+ * the one after a lap. A past track keeps its All time board for good (lib/trackBoards.ts): signed in, your
  * best lap goes on it, and never on today's board, your week or your rank. Signed out, a lap is practice:
  * nothing is kept, even if you sign in after it; signing in puts your next laps on its board. The cards
- * themselves are every daily's
- * (components/PastCourseCards.tsx); Hot Lap fills them in.
+ * themselves are every daily's (components/PastCourseCards.tsx); Hot Lap fills them in.
  */
 
 const SLUG = 'hotlap'
@@ -37,6 +36,9 @@ const lapOf = formatHotlapBoardScore
 
 /** A track's name by its number. */
 const trackName = (n: number) => dailyTrack(dayOfTrack(n)).name
+
+/** "Seneca Glen’s All time board": the track's own board, every lap on it since its day, named in a sentence. */
+const allTimeBoard = (name: string) => `${name}’s ${BOARD_NAMES.allTime} board`
 
 const weekdayFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
 const monthDayFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
@@ -57,8 +59,8 @@ function paceWords(time: number, pace: number): string {
 }
 
 /**
- * A past track's start card: what it is, that a lap here goes on its board and not your rank (or, signed
- * out, is practice), how it went on its day and where its board stands, and the way back to its row. Like
+ * A past track's start card: what it is, that a lap here goes on its All time board and not your rank (or,
+ * signed out, is practice), its Ranked and All time boards' figures, and the way back to its row. Like
  * the game's own, a tap anywhere but its links starts the lap. The tracks either side are a walk away:
  * the next only while it's a past one too, unless you're an admin, who may test-drive what's to come.
  */
@@ -103,7 +105,7 @@ export function PastTrackStart({
       blurb={`Hot Lap track #${n}. It was the day’s track ${whenItWas(course.day)}.`}
       labelSub={
         kind === 'board'
-          ? `Your best lap goes on ${name}’s board for good. Today’s board, your week and your rank stay as they are.`
+          ? `Your best lap goes on ${allTimeBoard(name)}. Today’s board, your week and your rank stay as they are.`
           : undefined
       }
       facts={figures.facts}
@@ -112,7 +114,7 @@ export function PastTrackStart({
       today={{ name: today }}
       walk={walk}
     >
-      {kind === 'practice' ? <p className="hotlap-past__line">Sign in and your laps here go on its board.</p> : null}
+      {kind === 'practice' ? <p className="hotlap-past__line">Sign in and your laps here go on its {BOARD_NAMES.allTime} board.</p> : null}
     </PastCourseStart>
   )
 }
@@ -143,7 +145,7 @@ function saveError(err: unknown): LapSave {
   return { phase: 'failed', error: message || 'That lap didn’t save. The next one will try again.' }
 }
 
-/** Signed in with no tag yet: a tag puts the lap on the track's board, which the card then does. */
+/** Signed in with no tag yet: a tag puts the lap on the track's All time board, which the card then does. */
 function LapTag() {
   const id = useId()
   const [draft, setDraft] = useState(() => getLastPlayerName())
@@ -164,7 +166,14 @@ function LapTag() {
   }
   return (
     <div className="hotlap-test__tag">
-      <TagSlots id={id} value={draft} onChange={setDraft} onSubmit={() => void submit()} lead="Put your tag on it and it goes on the track’s board." error={error} />
+      <TagSlots
+        id={id}
+        value={draft}
+        onChange={setDraft}
+        onSubmit={() => void submit()}
+        lead={`Put your tag on it and it goes on the track’s ${BOARD_NAMES.allTime} board.`}
+        error={error}
+      />
       <button type="button" className="panel__btn" disabled={!name || busy} onClick={() => void submit()}>
         {busy ? 'Saving…' : 'Put it on the board'}
       </button>
@@ -306,7 +315,9 @@ export function PastTrackResult({
   const kind: PastKind = save.phase === 'practice' ? 'practice' : 'board'
   const me = result?.name ?? (signedIn && !otherAccount && name ? name : null)
   const pace = paceWords(time, course.paceLap.time)
-  const boardName = `${course.name}’s board`
+  const boardName = allTimeBoard(course.name)
+  /** "3rd All time on Seneca Glen": a place on the track's All time board. */
+  const placed = (place: number) => `${ordinal(place)} ${BOARD_NAMES.allTime} on ${course.name}`
 
   // Where the lap went, and what it did there.
   let headline: ReactNode | undefined
@@ -320,7 +331,7 @@ export function PastTrackResult({
     )
   } else if (result && result.best === score) {
     const before = beforeRef.current
-    headline = `${ordinal(result.place)} on ${boardName}`
+    headline = placed(result.place)
     if (result.tookRecord) line = `Track record! Nobody has driven ${course.name} faster. ${pace}`
     else if (before && before.score < score) {
       line = (
@@ -330,19 +341,19 @@ export function PastTrackResult({
         </>
       )
     } else {
-      line = `Your first lap on its board. ${pace}`
+      line = `Your first lap on its ${BOARD_NAMES.allTime} board. ${pace}`
     }
   } else if (result) {
-    headline = `Still ${ordinal(result.place)} on ${boardName}`
+    headline = `Still ${placed(result.place)}`
     line = `Your best here, ${lapOf(result.best)}, is still quicker.`
   } else if (save.phase === 'stands' && board?.you) {
-    headline = `Still ${ordinal(board.you.place)} on ${boardName}`
+    headline = `Still ${placed(board.you.place)}`
     line = `Your best here, ${lapOf(board.you.score)}, stands: this lap was ${formatLapMs(board.you.score - score)} slower.`
   } else if (save.phase === 'practice') {
     // Its own headline says nothing was saved; signing in is for the laps to come.
     status = signedIn ? null : <ReportSignIn lead={`Sign in and your next laps here go on ${boardName}.`} onSignedIn={() => undefined} />
   } else {
-    headline = 'Not on its board yet'
+    headline = `Not on its ${BOARD_NAMES.allTime} board yet`
     if (save.phase === 'signedOut') {
       status = <ReportSignIn lead={`Sign in and this lap goes on ${boardName}.`} onSignedIn={() => undefined} />
     } else if (save.phase === 'otherAccount') {
@@ -398,7 +409,7 @@ export function PastTrackResult({
       figure={formatLap(time)}
       headline={headline}
       line={line}
-      board={rows.length > 0 ? { title: boardName, count: driversWords(drivers), rows } : null}
+      board={rows.length > 0 ? { title: `${BOARD_NAMES.allTime} · ${course.name}`, count: driversWords(drivers), rows } : null}
       note={note}
       today={{ name: today }}
       againBusy={holding}

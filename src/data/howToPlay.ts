@@ -1,10 +1,12 @@
+import { BOARD_NAMES } from '../lib/dailyWords'
+
 /*
  * How to play each game, in the same parts wherever it shows (the game's page
  * and the How to play panel in the game): what you're after, the controls,
  * what scores, what ends a run, and one tip where a game has a trap you would
  * otherwise miss. Only what a player needs before a first run; the rest they
  * learn by playing. A daily adds what counts: today's course toward your rank,
- * a past one on its own board or as practice.
+ * a past one on its All time board or as practice.
  *
  * A control names what it does, then how on a touch screen and how on a
  * keyboard. A phone shows only the touch one.
@@ -32,8 +34,8 @@ export type HowToScore = {
 
 /**
  * What a daily's run counts toward: today's course, then a past one. `kind` is the label it wears, the
- * same words everywhere (components/RunLabel.tsx): counts toward your rank, its own board and not your
- * rank, or practice that saves nothing.
+ * same words everywhere (components/RunLabel.tsx): counts toward your rank, its All time board and not
+ * your rank, or practice that saves nothing.
  */
 export type HowToCount = {
   /** Today’s track, A past track. */
@@ -304,7 +306,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       {
         what: 'A past hole you have no bullseye on',
         kind: 'board',
-        sub: 'Your first bullseye goes on that hole’s own board, not your rank. Taking its record pays 15 tickets, once.',
+        sub: `Your first bullseye goes on that hole’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
       },
       {
         what: 'A past hole you have a bullseye on',
@@ -336,7 +338,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       {
         what: 'A past track',
         kind: 'board',
-        sub: 'Your best lap goes on that track’s own board, not your rank. Taking its record pays 15 tickets, once.',
+        sub: `Your best lap goes on that track’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
       },
     ],
   },
