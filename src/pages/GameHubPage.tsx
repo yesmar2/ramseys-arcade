@@ -4,7 +4,6 @@ import { DailyTabs } from '../components/DailyTabs'
 import { GameHubBoard } from '../components/GameHubBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
 import { GameHubHero } from '../components/GameHubHero'
-import { GameHubHowTo } from '../components/GameHubHowTo'
 import { GameHubRecords } from '../components/GameHubRecords'
 import { GameHubStanding } from '../components/GameHubStanding'
 import { WallTile } from '../components/GameWall'
@@ -233,7 +232,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
             </Suspense>
           ) : (
             <>
-              {/* How to play goes under today's card, with the board and where you stand running down beside both (hub.css). */}
+              {/* Today's card, with the board and where you stand running down beside it (hub.css). */}
               <div className="gh-today">
                 <div className="gh-today__main">
                   {TodayCard ? (
@@ -248,7 +247,6 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                   {standing}
                   {eventsCard}
                 </div>
-                <GameHubHowTo game={game} />
               </div>
               {shelfSection}
             </>
@@ -271,8 +269,6 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
           {hasRecords ? <GameHubRecords slug={game.slug} gameName={game.name} records={records} me={playerName} /> : null}
           {eventsCard}
         </div>
-
-        <GameHubHowTo game={game} />
 
         {shelfSection}
       </div>

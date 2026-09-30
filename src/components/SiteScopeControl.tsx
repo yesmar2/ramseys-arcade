@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { isDailyGame } from '../data/games'
 import { applySitePeriod, applySiteGroup, periodFromRoute, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -69,13 +68,17 @@ function PlusIcon() {
  * What every board on the site shows: which period, and whether everyone or
  * one of your groups. One control in the header rather than two unlabelled
  * pills, so it says what it is, and a popover with both choices in it.
+ *
+ * It's in the header on every page, as Ramsey asked ("We need the time frame
+ * and group selector on header of all pages"). A page whose boards are its
+ * own (an event's, a group's, a daily's day, the Today page) just keeps the
+ * choice for the pages that follow it, as he chose; a daily's Today tab still
+ * shows the group picked.
  */
 export function SiteScopeControl() {
   const route = useRoute()
   const storedPeriod = useDefaultPeriod()
-  // A daily's page is always today's (its Today tab shows this only while a group is picked): the group is all there is to change.
-  const dailyPage = route.name === 'game' && isDailyGame(route.slug)
-  const period: LeaderboardPeriod = dailyPage ? 'daily' : coerceVisiblePeriod(periodFromRoute(route) ?? storedPeriod)
+  const period: LeaderboardPeriod = coerceVisiblePeriod(periodFromRoute(route) ?? storedPeriod)
   const { account } = useAuth()
   const activeId = useActiveGroup()
   const [groups, setGroups] = useState<GroupPublic[]>(() => cachedMyGroups())
@@ -156,18 +159,14 @@ export function SiteScopeControl() {
       </button>
       {open ? (
         <div className="site-scope__pop" role="dialog" aria-label="What the boards show">
-          {dailyPage ? null : (
-            <>
-              <p className="site-scope__cap">Boards show</p>
-              <div className="site-seg" role="group" aria-label="Period">
-                {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
-                  <button key={p} type="button" aria-pressed={p === period} onClick={() => pickPeriod(p)}>
-                    {PERIOD_LABELS[p]}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+          <p className="site-scope__cap">Boards show</p>
+          <div className="site-seg" role="group" aria-label="Period">
+            {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+              <button key={p} type="button" aria-pressed={p === period} onClick={() => pickPeriod(p)}>
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
           <p className="site-scope__cap">Among</p>
           <ul className="site-scope__groups">
             <li>

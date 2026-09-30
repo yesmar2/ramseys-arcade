@@ -10,9 +10,9 @@
   min-width: 0;
 }
 
-/* On a game's page, under the rest of How to play and in the game's colour. */
-.gh-how .wc {
-  --wc-accent: var(--gh-accent);
+/* In How to play's panel, under the rest of it and in the game's colour. */
+.panel .wc {
+  --wc-accent: var(--panel-accent);
   padding-top: 1.1rem;
   border-top: 1px solid rgba(var(--ink-rgb), 0.1);
 }

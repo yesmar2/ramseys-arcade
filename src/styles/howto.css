@@ -1,7 +1,7 @@
 /*
- * How to play: the same parts on a game's page and in its panel. The points
- * wear the game's colour, set by whichever card it sits in; the controls are a
- * gesture chip, and on anything with a keyboard, a key beside it.
+ * How to play, in its panel: opened from a game's page, and from its start and
+ * pause cards. The points wear the game's colour; the controls are a gesture
+ * chip, and on anything with a keyboard, a key beside it.
  */
 
 .htp {
@@ -10,11 +10,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.gh-how .htp {
-  --htp-accent: color-mix(in srgb, var(--gh-accent) 72%, var(--ink));
-  --htp-tint: var(--gh-accent);
 }
 
 .panel .htp {
@@ -162,19 +157,4 @@
   margin-right: 0.2rem;
   font-weight: 700;
   color: var(--ink);
-}
-
-/* A game's page is wide: the goal across the top, then controls, what scores, and how it ends side by side. */
-@media (min-width: 64rem) {
-  .gh-how .htp {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: 2.6rem;
-    row-gap: 1.1rem;
-    align-items: start;
-  }
-
-  .gh-how .htp__goal {
-    grid-column: 1 / -1;
-  }
 }

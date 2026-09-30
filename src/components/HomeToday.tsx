@@ -2,7 +2,7 @@ import { Suspense, type CSSProperties } from 'react'
 import { untilWords } from '../games/marblerun/daily'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
-import { gamePlayHref, todayHref } from '../hooks/useHashRoute'
+import { gameHref, todayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { msUntilNextHole } from '../lib/dailyHole'
 import { lazyPage } from '../lib/lazyPage'
@@ -121,7 +121,8 @@ function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DaySta
   return (
     <a
       className={`home-day__card${p.done ? ' home-day__card--done' : ''}`}
-      href={gamePlayHref(p.slug)}
+      // To the daily's page, its Today tab, rather than straight into the game (Ramsey, 2026-09-30).
+      href={gameHref(p.slug)}
       style={{ '--day': ACCENT[p.key] } as CSSProperties}
     >
       <span className="home-day__pic">

@@ -9,6 +9,7 @@ import { hasGamePreview } from '../lib/gamePreviews'
 import type { LeaderboardEntry, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { DevicesIcon, PlayIcon } from './chromeIcons'
+import { GameHubHowTo } from './GameHubHowTo'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { ShareBoardButton } from './ShareBoardButton'
@@ -103,6 +104,7 @@ export function GameHubHero({
                 Record books
               </a>
             ) : null}
+            <GameHubHowTo game={game} className="gh-ghost" />
             <ShareBoardButton
               className="gh-share"
               label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}

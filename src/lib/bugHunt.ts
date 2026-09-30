@@ -209,13 +209,6 @@ function gameAnchors(): HuntAnchor[] {
         thing: 'the game’s screen',
         lesson: 'The screen on a game’s page plays a little of the game. Tap it to play the real thing.',
       },
-      {
-        id: `g-howto-${slug}`,
-        href,
-        page,
-        thing: 'How to play',
-        lesson: 'Every game’s page ends with how to play: the goal, the controls, what scores, what ends a run, and a tip.',
-      },
     )
     if (boards.includes(slug)) {
       const board = `on ${possessive(game.name)} board`
