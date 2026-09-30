@@ -111,7 +111,9 @@ function RecordRow({
   const holder = top ? normalizePlayerName(top.name) : ''
   const mine = Boolean(you) && holder === you
   const standing = record.you
-  const youLine = !top || !standing ? '' : standing.rank === 1 ? 'Yours' : `You’re ${ordinal(standing.rank)}`
+  // With no run on it yet, the column says so rather than sitting blank (Ramsey, 2026-09-30).
+  const none = Boolean(you) && (!top || !standing)
+  const youLine = !you ? '' : none ? 'No run yet' : standing!.rank === 1 ? 'Yours' : `You’re ${ordinal(standing!.rank)}`
   return (
     <li className={`rbk-rec${mine ? ' rbk-rec--you' : ''}${top ? '' : ' rbk-rec--empty'}`}>
       <a className="rbk-rec__link" href={recordHref(game, record.id, period)}>
@@ -128,7 +130,9 @@ function RecordRow({
           )}
           <span className="rbk-rec__name">{top ? holder : 'Be the first to set it'}</span>
         </span>
-        <span className={`rbk-rec__you${standing?.rank === 1 ? ' rbk-rec__you--on' : ''}`}>{youLine}</span>
+        <span className={`rbk-rec__you${standing?.rank === 1 ? ' rbk-rec__you--on' : ''}${none ? ' rbk-rec__you--none' : ''}`}>
+          {youLine}
+        </span>
       </a>
     </li>
   )

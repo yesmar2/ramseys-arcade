@@ -567,6 +567,19 @@ html[data-theme="dark"] .rbk-book__value b {
   color: var(--sb-brand-ink);
 }
 
+/* No run on it yet: said quietly, so the column never sits blank. */
+.rbk-rec__you--none {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* A record's page with only your card in the row (you're on it, not holding it): the card takes the row. */
+@media (min-width: 56rem) {
+  .sb-you.sb-you--solo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Too narrow for the columns: what and how much on a line, then who holds it and where you stand. */
 @media (max-width: 56rem) {
   .rbk-group__cols {
@@ -689,7 +702,7 @@ html[data-theme="dark"] .rbk-book__value b {
   color: var(--muted);
 }
 
-/* What it takes: each rung's number, ticked where you already are. */
+/* Who's closest: each one's number, and how far behind. */
 .rcd-take__beat {
   display: inline-flex;
   align-items: center;
@@ -713,20 +726,6 @@ html[data-theme="dark"] .rbk-book__value b {
   font-size: 0.78rem;
   font-weight: 650;
   color: var(--muted);
-}
-
-.rcd-take--done .gb-price__beat span,
-.rcd-take--done .rcd-take__beat {
-  color: var(--sb-brand-ink);
-}
-
-.rcd-take__check {
-  display: grid;
-  place-items: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  background: var(--sb-brand-soft);
 }
 
 .rcd-closest {

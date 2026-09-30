@@ -6,7 +6,6 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { useDeviceType } from '../lib/device'
-import { firstRunWord } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { cachedMyGroups, groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import {
@@ -27,12 +26,10 @@ import {
   recordShut,
   recordStanding,
   recordStory,
-  recordTakes,
   recordWhen,
   type RecordShut,
   type RecordStanding,
   type RecordStory,
-  type RecordTake,
   type StorySeg,
 } from '../lib/recordPage'
 import type { RecordDef, RecordSummary } from '../lib/records'
@@ -49,8 +46,8 @@ import { PlayerName } from './PlayerName'
 /*
  * One record. The banner is its game at the scale of the page, with the
  * record on the marquee, whose name is on it and for how long. Then where you
- * stand and what the next place takes; every time it was broken, charted and
- * listed; everyone's best; and the records beside it in its book.
+ * stand, when you're on it; every time it was broken, charted and listed;
+ * everyone's best; and the records beside it in its book.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -87,11 +84,6 @@ const ArrowIcon = () => (
 const StarIcon = () => (
   <Svg size={18}>
     <path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z" />
-  </Svg>
-)
-const CheckIcon = () => (
-  <Svg size={14}>
-    <path d="M5 12.5l4.2 4.2L19 7" />
   </Svg>
 )
 const ChevronIcon = () => (
@@ -291,81 +283,31 @@ function Banner({
 
 /* ---------- you ---------- */
 
+/**
+ * Where you stand on the record, when you're on it. The cards that only said you weren't (Not on it yet, Get
+ * in the book, a past day's This record is final) and What it takes beside them went at Ramsey's word
+ * (2026-09-30): the page starts on the record itself.
+ */
 function YouCard({
-  game,
   period,
-  record,
   standing,
   name,
   avatarId,
-  shut,
 }: {
-  game: string
   period: LeaderboardPeriod
-  record: RecordDef
-  standing: RecordStanding | null
+  standing: Exclude<RecordStanding, { mode: 'off' }>
   name: string
   avatarId?: string
-  shut: RecordShut | null
 }) {
-  if (!standing && shut === 'over') {
-    return (
-      <div className="sb-card sb-you__card sb-first">
-        <p className="sb-kicker">Its day is over</p>
-        <h2 className="sb-first__title">This record is final.</h2>
-        <p className="sb-first__text">A replay of the day is practice. Sign in and play today’s for a record of your own.</p>
-        <div className="sb-you__foot sb-you__foot--acts">
-          <PlayLink game={game} record={record} />
-        </div>
-      </div>
-    )
-  }
-  if (!standing) {
-    return (
-      <div className="sb-card sb-you__card sb-first">
-        <p className="sb-kicker">Get in the book</p>
-        <h2 className="sb-first__title">{onTheBoard(game, record)} and you’re on it.</h2>
-        <p className="sb-first__text">Sign in to save your runs. Beat the best and your name goes beside it.</p>
-        <div className="sb-you__foot sb-you__foot--acts">
-          <PlayLink game={game} record={record} />
-        </div>
-      </div>
-    )
-  }
-  const top = (
-    <div className="sb-you__top">
-      <PlayerMark name={name} avatarId={avatarId} className="sb-you__mark" />
-      <span className="sb-you__kicker">
-        {name} · {recordWhen(period)}
-      </span>
-    </div>
-  )
-  if (standing.mode === 'off') {
-    return (
-      <div className="sb-card sb-you__card">
-        {top}
-        <h2 className="gb-you__title">Not on it yet</h2>
-        <p className="sb-you__line">{standing.line}</p>
-        <p className="gb-callout gb-callout--quiet">
-          <ArrowIcon />
-          <span>{standing.callout}</span>
-        </p>
-        {standing.best ? (
-          <p className="rcd-note">
-            <StarIcon />
-            <span>{standing.best}</span>
-          </p>
-        ) : null}
-        <div className="sb-you__foot sb-you__foot--acts">
-          <PlayLink game={game} record={record} />
-        </div>
-      </div>
-    )
-  }
   const held = standing.mode === 'held'
   return (
     <div className={`sb-card sb-you__card${held ? ' rcd-held' : ''}`}>
-      {top}
+      <div className="sb-you__top">
+        <PlayerMark name={name} avatarId={avatarId} className="sb-you__mark" />
+        <span className="sb-you__kicker">
+          {name} · {recordWhen(period)}
+        </span>
+      </div>
       <p className="sb-you__big">
         {held ? <StarIcon /> : null}
         <b>{standing.big}</b>
@@ -385,38 +327,6 @@ function YouCard({
           </p>
         ) : null}
       </div>
-    </div>
-  )
-}
-
-function TakesCard({ takes, sub, title }: { takes: RecordTake[]; sub: string; title: string }) {
-  return (
-    <div className="sb-card gb-price rcd-takes">
-      <h2 className="sb-card__title">{title}</h2>
-      <p className="gb-card__sub">{sub}</p>
-      <ul className="gb-price__rows">
-        {takes.map((t) => (
-          <li key={t.what} className={`gb-price__row${t.done ? ' rcd-take--done' : ''}`}>
-            <span className="gb-price__beat">
-              <b>{t.what}</b>
-              <span>{t.who}</span>
-            </span>
-            {/* A rung already reached needs no number: its number is the viewer's own place to beat. */}
-            <span className="rcd-take__beat">
-              {t.done ? (
-                <>
-                  <span className="rcd-take__check">
-                    <CheckIcon />
-                  </span>
-                  Done
-                </>
-              ) : (
-                t.beat
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }
@@ -810,10 +720,6 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
       ? recordStanding(game, record, period, { entries, total, you: data.you, progression: data.progression }, you, data.allTimeYou, shut)
       : null
   const story = record ? recordStory(record, data.progression, data.youProgression, period, you) : null
-  const when = period === 'all' ? '' : ` ${recordWhen(period)}`
-  const takesSub = total
-    ? `${total.toLocaleString()} ${total === 1 ? 'player' : 'players'} on it${when}.${shut ? ` Each player’s first ${firstRunWord(game)} is the one that counts.` : ''}`
-    : `Nobody is on it ${period === 'all' ? 'yet' : recordWhen(period)}.`
 
   return (
     <div className="sb gb rcd" style={style}>
@@ -828,26 +734,10 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         shut={shut}
       />
 
-      {!data.loading && record ? (
-        <section className="sb-you gb-you" aria-label="You and this record">
-          <YouCard
-            game={game}
-            period={period}
-            record={record}
-            standing={standing}
-            name={you}
-            avatarId={data.you?.avatarId}
-            shut={shut}
-          />
-          {standing?.mode === 'held' ? (
-            <ClosestCard record={record} entries={entries} />
-          ) : (
-            <TakesCard
-              title={shut ? 'Where it stands' : 'What it takes'}
-              takes={recordTakes(game, record, entries, data.you?.rank ?? null, shut)}
-              sub={takesSub}
-            />
-          )}
+      {!data.loading && record && standing && standing.mode !== 'off' ? (
+        <section className={`sb-you gb-you${standing.mode === 'held' ? '' : ' sb-you--solo'}`} aria-label="You and this record">
+          <YouCard period={period} standing={standing} name={you} avatarId={data.you?.avatarId} />
+          {standing.mode === 'held' ? <ClosestCard record={record} entries={entries} /> : null}
         </section>
       ) : null}
 

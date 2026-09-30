@@ -335,52 +335,6 @@ export function recordStanding(
   return { mode: 'off', line, callout, best }
 }
 
-export type RecordTake = { what: string; beat: string; who: string; done: boolean }
-
-/**
- * What each rung takes: the record, the podium, and getting on at all, ticked where the viewer is.
- * On a shut record (recordShut) no run takes one, so each is where it stands: its number and who holds it.
- */
-export function recordTakes(
-  game: string,
-  record: Rec,
-  entries: LeaderboardEntry[],
-  rank: number | null,
-  shut: RecordShut | null = null,
-): RecordTake[] {
-  const takes: RecordTake[] = []
-  const at = rank ? `you’re ${ordinal(rank)}` : ''
-  const mark = (score: number) => (shut ? recordValue(record, score) : capital(recordBeat(record, score)))
-  const [top] = entries
-  if (top) {
-    takes.push({
-      what: shut ? 'The record' : 'Take the record',
-      beat: mark(top.score),
-      who: rank === 1 ? 'it’s yours' : shut ? top.name : `from ${top.name}`,
-      done: rank === 1,
-    })
-  }
-  if (entries.length >= 3) {
-    const done = Boolean(rank && rank <= 3)
-    takes.push({
-      what: shut ? 'The podium' : 'Make the podium',
-      beat: mark(entries[2].score),
-      who: done ? at : shut ? `${entries[2].name}, 3rd` : `past ${entries[2].name}, now 3rd`,
-      done,
-    })
-  }
-  // Shut, there's no getting on it, so the rung is only there to tick.
-  if (!shut || rank) {
-    takes.push({
-      what: shut ? 'On it' : 'Get on it',
-      beat: onTheBoard(game, record),
-      who: rank ? 'you’re on it' : 'one result, any result',
-      done: Boolean(rank),
-    })
-  }
-  return takes
-}
-
 /* ---------- the story ---------- */
 
 /** A piece of the chart's line, in percent of the plot: a stretch held (run) or the step between two (drop). */
@@ -444,6 +398,12 @@ function holderColor(name: string, avatarId?: string): string {
  * Every time the record was broken, as a step line from the first setting to
  * today, each stretch in its holder's colour, with the viewer's own best
  * beside it; and the same as a list, newest first.
+ *
+ * A streak grows by one a run or a day, and every one of those is a new record: GHOSTRUN's own 99 on Snake
+ * were 99 marks and 99 rows. So a streak's steps are gathered into its holders' runs, as Ramsey chose
+ * (2026-09-30): the line still climbs through every step, but each holder's unbroken run is one mark, at the
+ * height it reached, and one row ("18 → 117 in a row"), and it was broken only when someone else took it.
+ * Any other record's steps are each a run of their own, as before.
  */
 export function recordStory(
   record: Rec,
@@ -482,20 +442,37 @@ export function recordStory(
     return segs
   }
 
-  const dots: StoryDot[] = progression.map((m, i) => ({
-    key: m.id,
-    left: x(m.at),
-    bottom: y(m.score),
-    name: m.name,
-    avatarId: m.avatarId,
-    value: recordValue(record, m.score),
-    mine: Boolean(me) && m.name === me,
-    current: i === progression.length - 1,
-  }))
+  // Each holder's unbroken run of a streak, first step to last; anything else, each step on its own.
+  const streak = recordKind(record) === 'streaks'
+  const runs: LeaderboardEntry[][] = []
+  for (const m of progression) {
+    const open = runs[runs.length - 1]
+    if (streak && open && open[0].name === m.name) open.push(m)
+    else runs.push([m])
+  }
+  const reached = (run: LeaderboardEntry[]) => run[run.length - 1]
+  // "117 in a row", or for a streak its holder raised, "18 → 117 in a row".
+  const runValue = (run: LeaderboardEntry[]) =>
+    run.length > 1 ? `${run[0].score.toLocaleString()} → ${recordValue(record, reached(run).score)}` : recordValue(record, run[0].score)
 
-  const rows: StoryRow[] = progression.map((m, i) => {
-    const prev = progression[i - 1]
-    const next = progression[i + 1]
+  const dots: StoryDot[] = runs.map((run, i) => {
+    const m = reached(run)
+    return {
+      key: m.id,
+      left: x(m.at),
+      bottom: y(m.score),
+      name: m.name,
+      avatarId: m.avatarId,
+      value: recordValue(record, m.score),
+      mine: Boolean(me) && m.name === me,
+      current: i === runs.length - 1,
+    }
+  })
+
+  const rows: StoryRow[] = runs.map((run, i) => {
+    const m = run[0]
+    const prev = i > 0 ? reached(runs[i - 1]) : undefined
+    const next = runs[i + 1]?.[0]
     const change = !prev
       ? 'first set'
       : record.unit === 'ms'
@@ -507,7 +484,7 @@ export function recordStory(
       at: m.at,
       name: m.name,
       avatarId: m.avatarId,
-      value: recordValue(record, m.score),
+      value: runValue(run),
       change,
       held: next ? held : `${held} so far`,
       mine: Boolean(me) && m.name === me,
@@ -516,18 +493,26 @@ export function recordStory(
   })
 
   const first = progression[0]
-  const top = progression[progression.length - 1]
-  const breaks = progression.length - 1
+  // The standing holder's run: when they took it, and how far they've taken it since.
+  const standingRun = runs[runs.length - 1]
+  const top = standingRun[0]
+  const last = reached(standingRun)
+  const breaks = runs.length - 1
   const holders = new Set(progression.map((m) => m.name)).size
   const within = period === 'all' ? '' : ` ${recordWhen(period)}`
+  const raisedTo = standingRun.length > 1 ? `, and has taken it to ${recordValue(record, last.score)}` : ''
   const sub = breaks
-    ? `${first.name} set the first${within}, ${recordValue(record, first.score)}, on ${recordDay(first.at)}. ${top.name} has held it since ${recordDay(top.at)}.`
-    : `${first.name} set it on ${recordDay(first.at)}${within}, and nobody has beaten it since.`
+    ? `${first.name} set the first${within}, ${recordValue(record, first.score)}, on ${recordDay(first.at)}. ${top.name} has held it since ${recordDay(top.at)}${raisedTo}.`
+    : standingRun.length > 1
+      ? `${first.name} set it on ${recordDay(first.at)}${within}, ${recordValue(record, first.score)}, and has taken it to ${recordValue(record, last.score)} since. Nobody else has held it.`
+      : `${first.name} set it on ${recordDay(first.at)}${within}, and nobody has beaten it since.`
   return {
-    title: breaks ? `Broken ${breaks} ${breaks === 1 ? 'time' : 'times'}` : 'Set once, never broken',
+    title: breaks ? `Broken ${breaks} ${breaks === 1 ? 'time' : 'times'}` : standingRun.length > 1 ? 'Never broken' : 'Set once, never broken',
     chip: `${holders} ${holders === 1 ? 'holder' : 'holders'}`,
     sub,
-    legend: `Each step is a new record, drawn in its holder’s colour.${yours.length ? ' The thin line is your own best.' : ''}`,
+    legend: streak
+      ? `The line climbs as the streak grows, in its holder’s colour, with a mark for how far each holder took it.${yours.length ? ' The thin line is your own best.' : ''}`
+      : `Each step is a new record, drawn in its holder’s colour.${yours.length ? ' The thin line is your own best.' : ''}`,
     best: recordValue(record, best),
     worst: recordValue(record, worst),
     flat: range === 0,
@@ -539,7 +524,7 @@ export function recordStory(
     ),
     dots,
     rows: rows.reverse(),
-    summary: progression.map((m) => `${m.name}, ${recordValue(record, m.score)}, on ${recordDay(m.at)}`).join('; '),
+    summary: runs.map((run) => `${run[0].name}, ${runValue(run)}, ${run.length > 1 ? 'from' : 'on'} ${recordDay(run[0].at)}`).join('; '),
   }
 }
 
