@@ -25,17 +25,18 @@ import { getActiveTournamentsForGame, type TournamentSummary } from '../lib/tour
 export type HubDay = { day: string; players: number; place: number | null; points: number | null }
 
 /**
- * A daily's viewer beyond today: their place on its week board (its day points, which is what their rank
- * takes from it), their place across every game this week, and every day they've played it. The page
- * says places, never the points.
+ * A daily's viewer beyond today, over the period the header picks (a week, a month or all time): their
+ * place on the daily's board for it (its day points, which is what their rank takes from it) and their
+ * place across every game. The page says places, never the points.
  */
-export type HubWeek = {
-  /** Their place on the daily's week board, of how many; null when they haven't played it this week. */
+export type HubBeyond = {
+  /** The period it's over: the header's, or a week when the header says today (today is the page's own board). */
+  period: LeaderboardPeriod
+  loading: boolean
+  /** Their place on the daily's board for the period, of how many; null when they aren't on it. */
   place: { place: number; field: number | null } | null
-  /** Their place across all games this week; null when they aren't on it, or it didn't load. */
+  /** Their place across all games for the period; null when they aren't on it, or it didn't load. */
   rank: { place: number; field: number } | null
-  /** Every day they've played it, newest first (today's too, once it's in). */
-  days: HubDay[]
 }
 
 export type HubBoard = {
@@ -48,36 +49,31 @@ export type HubBoard = {
   allTimeBest: number | null
   /** An empty period's stand-in: the month's best (or all time's), to aim at. */
   aimAt: { period: LeaderboardPeriod; players: BoardPlayer[] } | null
-  /** On a daily, the viewer's week and days; null for any other game, with no tag, or when their days didn't load. */
-  week: HubWeek | null
+  /**
+   * On a daily, every day the viewer has played it, newest first (today's too, once it's in); null for any
+   * other game, with no tag, or when they didn't load.
+   */
+  days: HubDay[] | null
 }
 
-const BOARD_LOADING: HubBoard = { loading: true, error: false, players: [], runs: [], allTimeBest: null, aimAt: null, week: null }
+const BOARD_LOADING: HubBoard = { loading: true, error: false, players: [], runs: [], allTimeBest: null, aimAt: null, days: null }
 
 /**
- * A daily's viewer beyond today (HubWeek), from the standings for this week and the daily's days. Null
- * when their days didn't load: the page then can't tell a new player from one back again, and says neither.
+ * Every day the viewer has played a daily, newest first. Null when they didn't load: the page then can't
+ * tell a new player from one back again, and says neither.
  */
-async function dailyWeek(slug: string, me: string, groupId: string | null): Promise<HubWeek | null> {
-  const [standings, days] = await Promise.all([
-    fetchGlobalRank(me, 'weekly').catch(() => null),
-    withGroupFallback(() => {
-      const params = applyBoardScope(new URLSearchParams({ name: me }), groupId)
-      return api<{ days?: RankDay[] }>(`/leaderboards/${encodeURIComponent(slug)}/days?${params}`)
-    })
-      .then((reply) => reply.days ?? [])
-      .catch(() => null),
-  ])
-  if (!days) return null
-  const onGame = standings?.byGame[slug]
-  return {
-    place: onGame ? { place: onGame.place, field: onGame.total ?? null } : null,
-    rank: standings?.rank != null && standings.totalPlayers ? { place: standings.rank, field: standings.totalPlayers } : null,
-    days: days
-      .filter((d) => d.you != null)
-      .map((d) => ({ day: d.day, players: d.players, place: d.you?.place ?? null, points: d.you?.points ?? null }))
-      .sort((a, b) => (a.day < b.day ? 1 : -1)),
-  }
+async function dailyDays(slug: string, me: string, groupId: string | null): Promise<HubDay[] | null> {
+  return withGroupFallback(() => {
+    const params = applyBoardScope(new URLSearchParams({ name: me }), groupId)
+    return api<{ days?: RankDay[] }>(`/leaderboards/${encodeURIComponent(slug)}/days?${params}`)
+  })
+    .then((reply) =>
+      (reply.days ?? [])
+        .filter((d) => d.you != null)
+        .map((d) => ({ day: d.day, players: d.players, place: d.you?.place ?? null, points: d.you?.points ?? null }))
+        .sort((a, b) => (a.day < b.day ? 1 : -1)),
+    )
+    .catch(() => null)
 }
 
 /** Runs per request, and the most read: places are counted from every run. */
@@ -115,11 +111,11 @@ export function useHubBoard(
     void (async () => {
       try {
         // A daily's other days were other tracks, holes and scenes: nothing there to measure today by. What
-        // they do tell is the viewer's week, and whether they're new to it; read beside today's board.
+        // they do tell is whether the viewer is new to it; read beside today's board.
         const daily = isDailyGame(slug)
-        const [{ runs, you }, week] = await Promise.all([
+        const [{ runs, you }, days] = await Promise.all([
           allRuns(slug, period, me),
-          daily && me ? dailyWeek(slug, me, groupId) : Promise.resolve(null),
+          daily && me ? dailyDays(slug, me, groupId) : Promise.resolve(null),
         ])
         const players = playersFromRuns(runs)
         let allTimeBest: number | null = null
@@ -141,7 +137,7 @@ export function useHubBoard(
             }
           }
         }
-        if (!cancelled) setData({ loading: false, error: false, players, runs, allTimeBest, aimAt, week })
+        if (!cancelled) setData({ loading: false, error: false, players, runs, allTimeBest, aimAt, days })
       } catch {
         if (!cancelled) setData({ ...BOARD_LOADING, loading: false, error: true })
       }
@@ -150,6 +146,51 @@ export function useHubBoard(
       cancelled = true
     }
   }, [slug, period, playerName, groupId])
+
+  return data
+}
+
+/**
+ * A daily's viewer beyond today over the header's period (HubBeyond), asked apart from today's board so a
+ * new period doesn't reload it. The standings read the header's group themselves: `groupId` only asks again
+ * when it changes.
+ */
+export function useDailyBeyond(
+  slug: LeaderboardGame | null,
+  playerName: string,
+  groupId: string | null,
+  period: LeaderboardPeriod,
+): HubBeyond {
+  const over: LeaderboardPeriod = period === 'daily' ? 'weekly' : period
+  const me = normalizePlayerName(playerName)
+  const daily = Boolean(slug && isDailyGame(slug))
+  const [data, setData] = useState<HubBeyond>({ period: over, loading: daily && Boolean(me), place: null, rank: null })
+
+  useEffect(() => {
+    if (!slug || !daily || !me) {
+      setData({ period: over, loading: false, place: null, rank: null })
+      return
+    }
+    let cancelled = false
+    setData({ period: over, loading: true, place: null, rank: null })
+    fetchGlobalRank(me, over)
+      .then((standings) => {
+        if (cancelled) return
+        const onGame = standings.byGame[slug]
+        setData({
+          period: over,
+          loading: false,
+          place: onGame ? { place: onGame.place, field: onGame.total ?? null } : null,
+          rank: standings.rank != null && standings.totalPlayers ? { place: standings.rank, field: standings.totalPlayers } : null,
+        })
+      })
+      .catch(() => {
+        if (!cancelled) setData({ period: over, loading: false, place: null, rank: null })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [slug, daily, me, over, groupId])
 
   return data
 }

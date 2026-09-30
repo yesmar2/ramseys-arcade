@@ -1,19 +1,10 @@
 import type { ReactNode } from 'react'
 import { isDailyGame } from '../data/games'
 import { rankHowHref } from '../hooks/useHashRoute'
-import type { HubBoard } from '../hooks/useGameHub'
+import type { HubBeyond, HubBoard } from '../hooks/useGameHub'
 import { dailyWords } from '../lib/dailyWords'
 import { dayRunIn, firstRunWord, gapBetween, oneRunBoard, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
-import {
-  dailyHistory,
-  daysThisWeek,
-  firstRunAims,
-  standingOn,
-  weekSoFar,
-  type Aim,
-  type DailyHistory,
-  type Standing,
-} from '../lib/gameHub'
+import { dailyHistory, daysIn, firstRunAims, soFar, standingOn, type Aim, type DailyHistory, type Standing } from '../lib/gameHub'
 import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { andList, ordinal, periodWord } from '../lib/profileMath'
@@ -28,13 +19,15 @@ import { openSiteMenu } from './siteNav'
  * best would do on it; never played, the scores a first run could aim at.
  *
  * A daily's board is today's, so its card also knows the player beyond today
- * (DailyStanding): their week on the game, which is what their rank takes from it.
+ * (DailyStanding): their week, month or all time on the game, as the header
+ * picks, which is what their rank takes from it.
  */
 export function GameHubStanding({
   slug,
   gameName,
   period,
   board,
+  beyond,
   me,
   signedIn,
 }: {
@@ -42,11 +35,13 @@ export function GameHubStanding({
   gameName: string
   period: LeaderboardPeriod
   board: HubBoard
+  /** A daily's viewer beyond today, over the header's period. */
+  beyond?: HubBeyond
   me: string
   signedIn: boolean
 }) {
   if (isDailyGame(slug)) {
-    return <DailyStanding slug={slug} gameName={gameName} board={board} me={me} signedIn={signedIn} />
+    return <DailyStanding slug={slug} gameName={gameName} board={board} beyond={beyond ?? NOT_ASKED} me={me} signedIn={signedIn} />
   }
 
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
@@ -117,40 +112,50 @@ export function GameHubStanding({
   )
 }
 
+/** Beyond today, when nothing asked: a week, and no places. */
+const NOT_ASKED: HubBeyond = { period: 'weekly', loading: false, place: null, rank: null }
+
 /**
- * A daily's card. Today's board is only the day: the player's week on the game is what their rank takes
- * from it, so the card says their week's place (never the points behind it) beside today's, the scores
- * that move them today, and where their rank is explained. Someone back again is never met with "your
- * first run"; someone new is welcomed rather than measured.
+ * A daily's card. Today's board is only the day: the player's week, month or all time on the game (the
+ * header's period) is what their rank takes from it, so the card says that place (never the points behind
+ * it) beside today's, the scores that move them today, and where their rank is explained. Someone back
+ * again is never met with "your first run"; someone new is welcomed rather than measured.
  */
 function DailyStanding({
   slug,
   gameName,
   board,
+  beyond,
   me,
   signedIn,
 }: {
   slug: LeaderboardGame
   gameName: string
   board: HubBoard
+  beyond: HubBeyond
   me: string
   signedIn: boolean
 }) {
   const words = dailyWords(slug)
   const today = boardDay()
-  const { week } = board
+  const { days } = board
   const field = board.players.length
   const you = board.loading ? null : youOnBoard(board.players, board.runs, me)
-  const history = dailyHistory(week, me)
+  const history = dailyHistory(days, me)
   const run = firstRunWord(slug)
   // "Today’s track" mid-sentence: the names (Today’s Wanted, Today’s Pour) keep their capitals.
   const todays = `t${words.today.slice(1)}`
-  const weekPlace = week?.place ?? null
+  const over = beyond.period
+  // "this week", "this month", "all time"; and the week or month a day counts toward, none for all time.
+  const when = periodWord(over)
+  const span = over === 'monthly' ? 'month' : over === 'all' ? null : 'week'
+  const counts = span ? `your ${span} and your rank` : 'your rank'
+  const place = beyond.place
 
   let title = 'Where you stand'
   let body: ReactNode
   let foot: ReactNode = null
-  if (board.loading) {
+  if (board.loading || beyond.loading) {
     body = <StandingSkeleton />
   } else if (board.error) {
     body = (
@@ -162,39 +167,41 @@ function DailyStanding({
   } else if (you) {
     body = <OnBoard slug={slug} standing={standingOn(board.players, you, oneRunBoard(slug, 'daily'))} when="today" daily />
     foot = (
-      <RankFoot>
-        {weekPlace ? (
+      <RankFoot period={over}>
+        {place ? (
           <>
-            You’re <b>{placeOf(weekPlace)}</b> this week on {gameName}.
+            You’re <b>{placeOf(place)}</b> {when} on {gameName}.
           </>
         ) : (
-          <>Today’s board counts toward your week and your rank.</>
+          <>Today’s board counts toward {counts}.</>
         )}
       </RankFoot>
     )
-  } else if (history === 'back' && week) {
-    title = `Your week on ${gameName}`
-    const soFar = weekSoFar(week, today)
-    // Their days can say they've played this week when the week's board didn't load: then no place, but no "no days" either.
-    const playedThisWeek = Boolean(weekPlace) || daysThisWeek(week, today).length > 0
+  } else if (history === 'back' && days) {
+    title = span ? `Your ${span} on ${gameName}` : `All time on ${gameName}`
+    const sofar = soFar(days, over, today)
+    // Their days can say they've played in the period when its board didn't load: then no place, but no "no days" either.
+    const played = Boolean(place) || daysIn(days, over, today).length > 0
     body = (
       <>
         <div className="gh-stand__lead">
-          {weekPlace ? (
+          {place ? (
             <p className="gh-stand__big">
-              {ordinal(weekPlace.place)}
-              <span>{weekPlace.field ? ` of ${weekPlace.field}` : ''} this week</span>
+              {ordinal(place.place)}
+              <span>
+                {place.field ? ` of ${place.field}` : ''} {when}
+              </span>
             </p>
           ) : (
-            <p className="gh-stand__big gh-stand__big--words">{playedThisWeek ? 'Your week so far' : 'No days this week yet'}</p>
+            <p className="gh-stand__big gh-stand__big--words">{played ? `Your ${span ?? 'days'} so far` : `No days ${when} yet`}</p>
           )}
           <p className="gh-stand__sub">
-            {soFar ? `${soFar} ` : ''}
-            {playedThisWeek
-              ? weekPlace?.place === 1
+            {sofar ? `${sofar} ` : ''}
+            {played
+              ? place?.place === 1
                 ? `${words.today} can keep you 1st.`
                 : `${words.today} can move you up.`
-              : `Play ${todays} to start your week.`}
+              : `Play ${todays} to start your ${span ?? 'days'}.`}
           </p>
         </div>
         <TodayAims slug={slug} board={board} lead={`${words.today}: `} run={run} history={history} />
@@ -202,10 +209,10 @@ function DailyStanding({
       </>
     )
     foot = (
-      <RankFoot>
-        {week.rank ? (
+      <RankFoot period={over}>
+        {beyond.rank ? (
           <>
-            All games: <b>{placeOf(week.rank)}</b> this week
+            All games: <b>{placeOf(beyond.rank)}</b> {when}
           </>
         ) : null}
       </RankFoot>
@@ -228,7 +235,7 @@ function DailyStanding({
         {!signedIn ? <SignIn /> : null}
       </>
     )
-    foot = <RankFoot>{fresh ? <>Each day you play counts toward your week and your rank.</> : null}</RankFoot>
+    foot = <RankFoot period={over}>{fresh ? <>Each day you play counts toward {counts}.</> : null}</RankFoot>
   }
 
   return (
@@ -330,13 +337,13 @@ function Aims({
 
 /**
  * A daily card's last line: where the player stands beyond today, and the page that explains a rank, at the
- * week the card talks about (a daily's page ignores the site period).
+ * period the card talks about: the header's.
  */
-function RankFoot({ children }: { children: ReactNode }) {
+function RankFoot({ period, children }: { period: LeaderboardPeriod; children: ReactNode }) {
   return (
     <p className="gh-stand__foot">
       {children ? <span>{children}</span> : null}
-      <a className="gh-more" href={rankHowHref(undefined, 'weekly')}>
+      <a className="gh-more" href={rankHowHref(undefined, period)}>
         How your rank works
         <ChevronRightIcon />
       </a>

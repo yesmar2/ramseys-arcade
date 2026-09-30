@@ -1,9 +1,10 @@
 import type { Game } from '../data/games'
-import type { HubDay, HubWeek } from '../hooks/useGameHub'
+import type { HubDay } from '../hooks/useGameHub'
 import { placeBeating, type BoardPlayer, type BoardYou } from './gameBoard'
+import type { LeaderboardPeriod } from './leaderboard'
 import { numberWord } from './numberWord'
 import { andList, barPosition, nextLine, shareLines, talksInPlaces } from './profileMath'
-import { dayInFull, inPeriod } from './rankHow'
+import { dayInFull, inPeriod, monthDay } from './rankHow'
 import { closestToInk, coverRecord, recordBrief, recordGap } from './recordBook'
 import { recordShut } from './recordPage'
 import type { RecordSummary } from './records'
@@ -119,10 +120,10 @@ export function firstRunAims(players: BoardPlayer[], daily = false): Aim[] {
  */
 export type DailyHistory = 'new' | 'back' | 'unknown'
 
-export function dailyHistory(week: HubWeek | null, me: string): DailyHistory {
+export function dailyHistory(days: HubDay[] | null, me: string): DailyHistory {
   if (!me) return 'new'
-  if (!week) return 'unknown'
-  return week.days.length > 0 ? 'back' : 'new'
+  if (!days) return 'unknown'
+  return days.length > 0 ? 'back' : 'new'
 }
 
 const weekdayLong = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
@@ -133,38 +134,43 @@ function weekdayOf(day: string): string {
   return weekdayLong.format(new Date(Date.UTC(y!, m! - 1, d!)))
 }
 
-/** 5th of 14 on Monday; on Monday alone when the place didn't come with it. */
-function dayPlace(d: HubDay): string {
-  return d.place != null ? `${ordinalOf(d.place)} of ${d.players} on ${weekdayOf(d.day)}` : `on ${weekdayOf(d.day)}`
+/**
+ * 5th of 14 on Monday, within a week; on Sep 28 over a month or all time, where a weekday alone could be
+ * any of several. The day alone when the place didn't come with it.
+ */
+function dayPlace(d: HubDay, period: LeaderboardPeriod): string {
+  const when = period === 'weekly' ? weekdayOf(d.day) : monthDay(d.day)
+  return d.place != null ? `${ordinalOf(d.place)} of ${d.players} on ${when}` : `on ${when}`
 }
 
-/** The days this week before today that the viewer played, newest first: today's is on today's board. */
-export function daysThisWeek(week: HubWeek, today: string): HubDay[] {
-  return week.days.filter((d) => inPeriod(d.day, 'weekly', today) && d.day !== today)
+/** The days in the period before today that the viewer played, newest first: today's is on today's board. */
+export function daysIn(days: HubDay[], period: LeaderboardPeriod, today: string): HubDay[] {
+  return days.filter((d) => inPeriod(d.day, period, today) && d.day !== today)
 }
 
 /**
- * What a daily's week so far is made of, in places and days, never its points: "From one day so far: 5th
- * of 14 on Monday." Past three days, the best of them. Not played this week: the last day they did, or
- * null for someone who never has.
+ * What a daily's week, month or all time so far is made of, in places and days, never its points: "From
+ * one day so far: 5th of 14 on Monday." Past three days, the best of them. None in the period: the last
+ * day they played it, or null for someone who never has.
  */
-export function weekSoFar(week: HubWeek, today: string): string | null {
-  const thisWeek = daysThisWeek(week, today)
-  if (thisWeek.length === 0) {
-    const last = week.days.find((d) => d.day < today)
+export function soFar(days: HubDay[], period: LeaderboardPeriod, today: string): string | null {
+  const these = daysIn(days, period, today)
+  if (these.length === 0) {
+    const last = days.find((d) => d.day < today)
     if (!last) return null
     return last.place != null
       ? `You last played it on ${dayInFull(last.day)}: ${ordinalOf(last.place)} of ${last.players}.`
       : `You last played it on ${dayInFull(last.day)}.`
   }
-  const oldestFirst = [...thisWeek].reverse()
-  if (oldestFirst.length === 1) return `From one day so far: ${dayPlace(oldestFirst[0]!)}.`
+  const oldestFirst = [...these].reverse()
+  const place = (d: HubDay) => dayPlace(d, period)
+  if (oldestFirst.length === 1) return `From one day so far: ${place(oldestFirst[0]!)}.`
   if (oldestFirst.length <= 3) {
-    return `From ${numberWord(oldestFirst.length)} days so far: ${andList(oldestFirst.map(dayPlace))}.`
+    return `From ${numberWord(oldestFirst.length)} days so far: ${andList(oldestFirst.map(place))}.`
   }
   // The best day is the one that paid most; the latest when two paid the same.
   const best = oldestFirst.reduce((a, b) => ((b.points ?? 0) >= (a.points ?? 0) ? b : a))
-  return `From ${numberWord(oldestFirst.length)} days so far. Your best: ${dayPlace(best)}.`
+  return `From ${numberWord(oldestFirst.length)} days so far. Your best: ${place(best)}.`
 }
 
 /* ---------- the record books ---------- */

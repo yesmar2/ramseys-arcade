@@ -11,7 +11,7 @@ import { PageShell } from '../components/PageShell'
 import { gamePlayableOn, getGame, wallGames } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
-import { useHubBoard, useHubEvents, useHubHighScore, useHubRecords } from '../hooks/useGameHub'
+import { useDailyBeyond, useHubBoard, useHubEvents, useHubHighScore, useHubRecords } from '../hooks/useGameHub'
 import { currentHref, homeHref, navigate, periodFromRoute, recordsHref, useRoute } from '../hooks/useHashRoute'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -90,6 +90,8 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const groupId = useActiveGroup()
   const boardSlug = isBoardGame(slug) ? slug : null
   const board = useHubBoard(boardSlug, period, playerName, groupId)
+  // A daily's board is today's; where you stand beyond it follows the header's period.
+  const beyond = useDailyBeyond(daily ? boardSlug : null, playerName, groupId, storedPeriod)
   const highScore = useHubHighScore(boardSlug, groupId)
   // A daily's records are its Records tab, not a card of the book.
   const records = useHubRecords(daily ? '' : slug, playerName, groupId)
@@ -180,6 +182,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
       gameName={game.name}
       period={period}
       board={board}
+      beyond={beyond}
       me={playerName}
       signedIn={signedIn}
     />

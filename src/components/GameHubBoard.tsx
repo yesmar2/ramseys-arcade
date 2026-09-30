@@ -154,7 +154,7 @@ export function GameHubBoard({
             <li className="gh-row gh-row--ghost">
               <PlusIcon />
               {daily ? (
-                <DailyGhost slug={slug} leader={players[0]} history={dailyHistory(board.week, me)} />
+                <DailyGhost slug={slug} leader={players[0]} history={dailyHistory(board.days, me)} />
               ) : (
                 <>Your {board.allTimeBest ? 'next' : 'first'} run goes here</>
               )}
