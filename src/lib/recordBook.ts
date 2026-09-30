@@ -1,10 +1,11 @@
-import { getGame, isGameListed } from '../data/games'
+import { games, getGame, isDailyGame, isGameListed } from '../data/games'
 import { formatBoard } from '../games/halffull/boardFigure'
-import { gamePlayHref } from '../hooks/useHashRoute'
-import { normalizePlayerName } from './leaderboard'
+import { dailyTabHref, gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
+import { FIRST_RUN_DAILIES } from './gameBoard'
+import { normalizePlayerName, type LeaderboardPeriod } from './leaderboard'
 import { formatPercentGap } from './leaderboardFormat'
 import { numberWord } from './numberWord'
-import { GAMES_WITH_RECORDS, type RecordGame, type RecordSummary } from './records'
+import { GAMES_WITH_RECORDS, type RecordDef, type RecordSummary } from './records'
 import { boardToday } from './scoreboard'
 
 /*
@@ -12,6 +13,10 @@ import { boardToday } from './scoreboard'
  * time, a count of days, a combo), how the records in a book group, whose
  * name is in the most of them, what was set lately, and which ones a player
  * is closest to taking. The pages only fetch and lay out; this says it.
+ *
+ * A daily's track, hole and day records stay out of the books: each is only its course's #1, which the
+ * daily's page already shows on that course's row (bookRecords). A daily's own records, the ones that
+ * span its days, are on its page's Records tab (DailyRecordsTab), where its book's links go.
  */
 
 type RecordLike = { id: string; unit: 'ms' | 'count' }
@@ -90,8 +95,86 @@ export function coursePlayHref(game: string, record: { id: string }, now = Date.
   return `${gamePlayHref(game)}?hole=day:${day}`
 }
 
-/** The books on show: every game with records, less the hidden and on-deck ones. */
-export const VISIBLE_RECORD_GAMES: readonly RecordGame[] = GAMES_WITH_RECORDS.filter((g) => isGameListed(g))
+/*
+ * A record no run can move for the viewer now. A Find the Bug or Half Full day's record takes each player's
+ * first run of that day and nothing after it, so once its day is over it's shut for everyone ('over'), and
+ * on its day for a player whose run is in ('today'). An Ace Chase hole's takes an account's first result on
+ * it, on its day or from its past holes after (the API's holes.ts), so it's shut only for a player who has
+ * one ('today' on its day, 'in' after). Hot Lap's tracks take any lap on any day, so they never shut.
+ */
+export type RecordShut = 'today' | 'in' | 'over'
+
+/** Whether this record is shut for the viewer, `onIt` saying whether they have a result on it at all. */
+export function recordShut(
+  game: string,
+  record: Pick<RecordDef, 'id'>,
+  onIt: boolean,
+  now = Date.now(),
+): RecordShut | null {
+  const n = courseNumber(record)
+  const today = courseToday(game, now)
+  if (!FIRST_RUN_DAILIES.has(game) || n == null || today == null) return null
+  if (n < today && game !== 'acechase') return 'over'
+  if (!onIt) return null
+  return n === today ? 'today' : 'in'
+}
+
+/* ---------- a daily's records live on its page ---------- */
+
+/**
+ * A book's records as the books show them: a daily's track, hole and day records left out, since each is
+ * just its course's #1 and lives on that course's row of the daily's page. Every other record stays.
+ */
+export function bookRecords<T extends { id: string }>(game: string, records: T[]): T[] {
+  if (!isDailyGame(game)) return records
+  return records.filter((r) => !isCourseRecord(r))
+}
+
+/**
+ * What a daily's course is called on its page's past tab (dailyTabHref's `course`): a Hot Lap track's or
+ * an Ace Chase hole's number, another daily's day as YYYY-MM-DD. Null for a game without numbered courses.
+ */
+export function courseKey(game: string, n: number): string | number | null {
+  const first = COURSE_FIRST_DAY[game]
+  if (!first || !(n >= 1)) return null
+  if (game === 'hotlap' || game === 'acechase') return n
+  const [y, m, d] = first.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + n - 1)).toISOString().slice(0, 10)
+}
+
+/**
+ * Where one of a daily's records is seen now: a track's, hole's or day's on that course's row of the past
+ * tab (today's is the page itself), and any other on its Records tab. Null for a game that isn't a daily,
+ * whose records stay in its book.
+ */
+export function dailyRecordHref(game: string, recordId?: string, now = Date.now()): string | null {
+  if (!isDailyGame(game)) return null
+  const n = recordId ? courseNumber({ id: recordId }) : null
+  if (n == null) return dailyTabHref(game, 'records')
+  const today = courseToday(game, now)
+  if (today != null && n >= today) return dailyTabHref(game)
+  const key = courseKey(game, n)
+  return key == null ? dailyTabHref(game, 'past') : dailyTabHref(game, 'past', key)
+}
+
+/** A game's record book, or for a daily its page's Records tab. */
+export function recordBookHref(game: string, period: LeaderboardPeriod = 'all'): string {
+  return dailyRecordHref(game) ?? recordsHref(game, period)
+}
+
+/** One record's page, or for a daily's the place on its page where it's shown. */
+export function bookRecordHref(game: string, recordId: string, period: LeaderboardPeriod = 'all'): string {
+  return dailyRecordHref(game, recordId) ?? recordHref(game, recordId, period)
+}
+
+/**
+ * The books on show: every game with records, less the hidden and on-deck ones. Every daily keeps one of its
+ * own, Days played in a row (the API gives each one), even one that has no book of course records.
+ */
+export const VISIBLE_RECORD_GAMES: readonly string[] = [
+  ...GAMES_WITH_RECORDS,
+  ...games.filter((g) => g.daily && !(GAMES_WITH_RECORDS as readonly string[]).includes(g.slug)).map((g) => g.slug),
+].filter((g) => isGameListed(g))
 
 function gameName(slug: string): string {
   return getGame(slug)?.name ?? slug
@@ -383,14 +466,18 @@ export type ClosestRecord = {
   off: string
 }
 
-/** The records a player is nearest to taking, nearest first. */
+/**
+ * The records a player is nearest to taking, nearest first. Never one no run can take any more
+ * (recordShut): a day that's over, or a hole whose one result of theirs is in.
+ */
 export function closestToInk(books: { game: string; records: RecordSummary[] }[], limit = 3): ClosestRecord[] {
   const near: (ClosestRecord & { share: number })[] = []
   for (const { game, records } of books) {
-    for (const record of records) {
+    for (const record of bookRecords(game, records)) {
       const you = record.you
       const top = record.top
       if (!you || !top || you.rank <= 1) continue
+      if (recordShut(game, record, true)) continue
       const gap = recordGap(record, you.score, top.score)
       near.push({
         game,
@@ -425,7 +512,7 @@ function dayOf(at: number): string {
 export function latestInk(books: { game: string; records: RecordSummary[] }[], limit = 6): InkEntry[] {
   const days = new Map<string, { name: string; game: string; records: RecordSummary[]; at: number }>()
   for (const { game, records } of books) {
-    for (const record of records) {
+    for (const record of bookRecords(game, records)) {
       if (!record.top) continue
       const name = normalizePlayerName(record.top.name)
       const key = `${name}|${game}|${dayOf(record.top.at)}`

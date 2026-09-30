@@ -4,6 +4,7 @@ import { deviceRequirementLabel, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, gamePlayHref, homeHref, recordsHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
+import { dailyWords } from '../lib/dailyWords'
 import { hasGamePreview } from '../lib/gamePreviews'
 import type { LeaderboardEntry, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -12,11 +13,19 @@ import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { ShareBoardButton } from './ShareBoardButton'
 
+/** "Race today’s track": a daily's Play says which run it starts, the one that counts. */
+function dailyPlayLabel(slug: string): string {
+  return dailyWords(slug).playToday
+}
+
 /**
  * The top of a game's page: its name and a way to play, beside its screen,
  * where the game plays itself the way the cabinet by an arcade's door runs its
  * demo, under the high score and whose it is. On a phone, once the page has
  * scrolled past Play, Play follows along above the tab bar.
+ *
+ * A daily's is shorter, with its tabs under it: Play starts today's course,
+ * the screen shows who is 1st today, and its records are a tab of their own.
  */
 export function GameHubHero({
   game,
@@ -52,9 +61,15 @@ export function GameHubHero({
   const tags = (game.tags ?? []).map((tag) => TAG_LABELS[tag])
   const where = `${deviceRequirementLabel(game) ?? 'Phone or desk'} · Free to play`
   const kicker = game.comingSoon ? 'Coming soon' : game.inDevelopment ? 'New' : null
+  const daily = Boolean(game.daily)
+  const playLabel = daily ? dailyPlayLabel(game.slug) : `Play ${game.name}`
 
   return (
-    <section className="gh-hero" aria-labelledby="gh-title" data-hunt={`g-hero-${game.slug}`}>
+    <section
+      className={`gh-hero${daily ? ' gh-hero--daily' : ''}`}
+      aria-labelledby="gh-title"
+      data-hunt={`g-hero-${game.slug}`}
+    >
       <div className="gh-hero__text">
         <nav className="gh-crumbs" aria-label="Breadcrumb">
           <a href={homeHref()}>Games</a>
@@ -80,10 +95,10 @@ export function GameHubHero({
             {canPlay ? (
               <a ref={ctaRef} className="gh-play" href={playHref}>
                 <PlayIcon />
-                Play {game.name}
+                {playLabel}
               </a>
             ) : null}
-            {hasRecords ? (
+            {hasRecords && !daily ? (
               <a className="gh-ghost" href={recordsHref(game.slug, period)}>
                 Record books
               </a>
@@ -124,7 +139,7 @@ export function GameHubHero({
         {hasGamePreview(game.slug) ? <GamePreview slug={game.slug} className="gh-screen__game" autoplay /> : null}
         <span className="gh-screen__top">
           <span className="gh-screen__hi">
-            {game.daily ? 'Today’s best' : 'Hi score'}
+            {daily ? '1st today' : 'Hi score'}
             <b>{highScore ? formatLeaderboardScore(game.slug, highScore.score) : 'Open'}</b>
           </span>
           {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}
@@ -142,7 +157,7 @@ export function GameHubHero({
               style={{ '--gh-accent': accent, '--gh-ink': inkOn(accent) } as CSSProperties}
             >
               <PlayIcon />
-              Play {game.name}
+              {playLabel}
             </a>,
             document.body,
           )

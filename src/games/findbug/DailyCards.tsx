@@ -1,13 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
+import { RunLabel } from '../../components/RunLabel'
 import { copyText } from '../../components/ShareBoardButton'
-import { gameArchiveHref, todayShareHref } from '../../hooks/useHashRoute'
-import { archiveDayWords } from '../../lib/archive'
+import { gameArchiveHref, gamePlayHref, todayShareHref } from '../../hooks/useHashRoute'
+import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { fitCardToSpace } from '../../lib/cardFit'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
+import { onItsDayFact, type ItsDay } from '../../lib/onItsDay'
 import { ordinal } from '../../lib/profileMath'
 import {
   dayNumber,
   DAY_SCENES,
+  FIRST_DAY,
   msUntilNextDay,
   sceneMark,
   shareText,
@@ -17,15 +21,16 @@ import {
   type RunHold,
 } from './daily'
 import { BugPortrait } from './Portrait'
-import { formatFindbugBoardScore, formatFindbugMs } from './score'
+import { findbugMsFromBoardScore, formatFindbugBoardScore, formatFindbugMs } from './score'
 import type { TodayBoard } from './todayBoard'
 import type { WantedBug } from './wanted'
 
 /*
  * Today's Wanted's cards, in the panel kit like every game's start and score cards: the one the day
  * opens on (Start, Carry on, or how the day went), and the ones for playing a day again as practice,
- * today's or a past one's from the archive. Their buttons are the only way on; a tap elsewhere on them
+ * today's or a past one's from the past days. Their buttons are the only way on; a tap elsewhere on them
  * does nothing, since there's more than one thing to do. The day's first run ends on the usual save card.
+ * A past day's cards are the ones every daily's past course shares (components/PastCourseCards.tsx).
  */
 
 const SLUG = 'findbug'
@@ -135,12 +140,17 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-/** Where today stands for everyone, and for you once you're on it. */
-function todayWords(board: TodayBoard | null): string | null {
+/** Where today stands: your place once you're on it, and who's 1st until then. */
+function TodayRow({ board }: { board: TodayBoard | null }) {
   if (!board) return null
-  if (board.you) return `${ordinal(board.you.place)} of ${board.count}`
-  if (!board.leader) return 'Nobody yet'
-  return `${board.leader.name} leads, ${formatFindbugBoardScore(board.leader.score)}`
+  if (board.you) {
+    return (
+      <Row label="Your place today">
+        {ordinal(board.you.place)} of {board.count}
+      </Row>
+    )
+  }
+  return <Row label="1st today">{board.leader ? `${board.leader.name} · ${formatFindbugBoardScore(board.leader.score)}` : 'Nobody yet'}</Row>
 }
 
 function resultWords(result: DayResult): string {
@@ -220,7 +230,7 @@ export function TodayCard({
         </p>
         <div className="game-pause-meta">
           <Row label="Signed out">{result ? resultWords(result) : at ? soFarWords(at) : 'Started'}</Row>
-          {todayWords(board) ? <Row label="Today">{todayWords(board)}</Row> : null}
+          <TodayRow board={board} />
         </div>
         {result?.times ? <SceneSquares times={result.times} /> : null}
         <div className="game-card__actions">
@@ -252,14 +262,16 @@ export function TodayCard({
         {started
           ? 'Your run today is waiting where you left it. The clock picks up where it stopped.'
           : result
-            ? 'That’s your result for today. Play the day again as much as you like: it won’t count.'
+            ? 'That’s your result for today. Play the day again as much as you like: it’s practice, and your result stands.'
             : 'Five scenes and a bug wanted in each, the same for everyone today. Your first run is your result, and the clock waits if you leave.'}
       </p>
+      {/* What a run from here does: the day's first counts; once it's done, the rest are practice. */}
+      <RunLabel kind={result ? 'practice' : 'counts'} slug={SLUG} className="findbug-daily__label" />
       <div className="game-pause-meta">
         <Row label="You">
           {waiting ? 'Checking who’s signed in…' : result ? resultWords(result) : at ? soFarWords(at) : started ? 'Started' : 'Not played yet'}
         </Row>
-        {todayWords(board) ? <Row label="Today">{todayWords(board)}</Row> : null}
+        <TodayRow board={board} />
       </div>
       {result?.times ? <SceneSquares times={result.times} /> : null}
       <div className="game-card__actions">
@@ -287,45 +299,15 @@ export function TodayCard({
   )
 }
 
-/** The card a past day opens on, from the archive: who was wanted, and Start. */
-export function PastDayCard({ day, wanted, onStart, onLeave }: { day: string; wanted: readonly WantedBug[]; onStart: () => void; onLeave: () => void }) {
-  const n = dayNumber(day)
-  return (
-    <Card label={`Wanted #${n}`}>
-      <div className="game-card__head">
-        <span className="game-card__kicker">
-          Wanted #{n} · {archiveDayWords(day)} · from the archive
-        </span>
-        <h2 className="game-card__title game-card__title--big">Find the Bug</h2>
-      </div>
-      <WantedLineup wanted={wanted} />
-      <p className="findbug-daily__rules">
-        A past day&rsquo;s five scenes, to play again. Nothing here is kept, so it counts for no board or tickets.
-      </p>
-      <div className="game-card__actions">
-        <button type="button" className="panel__btn" onClick={onStart} autoFocus>
-          Start
-        </button>
-        <button type="button" className="panel__btn panel__btn--ghost" onClick={onLeave}>
-          Back to the archive
-        </button>
-      </div>
-    </Card>
-  )
-}
-
-/** The end of a run that doesn't count: today's played again, or a past day's. */
+/** The end of today's scenes played again, after the day's first run: practice, and today's result stands. */
 export function PracticeCard({
   day,
-  today,
   run,
   standing,
   onAgain,
   onLeave,
 }: {
   day: string
-  /** Today's scenes played again, rather than a past day's. */
-  today: boolean
   run: DayResult
   /** Today's result, which this one doesn't change. */
   standing: DayResult | null
@@ -333,29 +315,174 @@ export function PracticeCard({
   onLeave: () => void
 }) {
   const n = dayNumber(day)
-  const found = run.found ?? 0
-  const title = found === DAY_SCENES ? 'Found every one' : `Found ${found} of ${DAY_SCENES}`
   return (
-    <Card label={`${today ? 'Today’s ' : ''}Wanted #${n}: ${title}`}>
+    <Card label={`Today’s Wanted #${n}: ${foundWords(run)}`}>
       <div className="game-card__head">
-        <span className="game-card__kicker">
-          {today ? `Today’s Wanted #${n} · practice` : `Wanted #${n} · ${archiveDayWords(day)} · from the archive`}
-        </span>
-        <h2 className="game-card__title game-card__title--big">{title}</h2>
+        <span className="game-card__kicker">Today&rsquo;s Wanted #{n} · practice</span>
+        <h2 className="game-card__title game-card__title--big">{foundWords(run)}</h2>
         <p className="game-card__blurb">
           {formatFindbugMs(run.ms)} this time.{' '}
-          {today ? (standing ? `Your result today stands: ${formatFindbugMs(standing.ms)}.` : 'It doesn’t count.') : 'Nothing here is kept.'}
+          {standing ? `Your result today stands: ${formatFindbugMs(standing.ms)}.` : 'Your first run today is the one that counts.'}
         </p>
       </div>
+      <RunLabel kind="practice" slug={SLUG} className="findbug-daily__label" />
       {run.times ? <SceneSquares times={run.times} /> : null}
       <div className="game-card__actions">
         <button type="button" className="panel__btn" onClick={onAgain} autoFocus>
           Play again
         </button>
         <button type="button" className="panel__btn panel__btn--ghost" onClick={onLeave}>
-          {today ? 'Back to today’s' : 'Back to the archive'}
+          Back to today&rsquo;s
         </button>
       </div>
     </Card>
+  )
+}
+
+/* ---------- a past day, played again from the past days ---------- */
+
+/** "Found every one", "Found 3 of 5". */
+function foundWords(run: DayResult): string {
+  const found = run.found ?? 0
+  return found === DAY_SCENES ? 'Found every one' : `Found ${found} of ${DAY_SCENES}`
+}
+
+/** "Wanted #2 · Mon, Sep 28 · Past day": which day it is, and that it's past. */
+function pastKicker(day: string): string {
+  return `Wanted #${dayNumber(day)} · ${archiveDayWords(day)} · Past day`
+}
+
+const weekdayFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
+
+/** "Monday’s five scenes": by its weekday while that's plain, within the week; "That day’s" before it. */
+function dayScenesWords(day: string, today: string): string {
+  let within = false
+  for (let d = dayBefore(today), i = 0; i < 6 && !within; i += 1, d = dayBefore(d)) within = d === day
+  const whose = within ? `${weekdayFormat.format(new Date(`${day}T12:00:00Z`))}’s` : 'That day’s'
+  return `${whose} five scenes, as often as you like. No board, no tickets, and your rank stays as it is.`
+}
+
+/** A past day's page on the play screen. */
+const pastPlayHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
+
+/** The day after a day, both as YYYY-MM-DD. */
+function dayAfter(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10)
+}
+
+/** "‹ Wanted #1" and "Wanted #3 ›": the days either side, while they're past ones. */
+function walkFor(day: string, today: string): { prev: PastWalkLink | null; next: PastWalkLink | null } {
+  const link = (other: string) => ({ label: `Wanted #${dayNumber(other)}`, href: pastPlayHref(other) })
+  const before = dayBefore(day)
+  const after = dayAfter(day)
+  return { prev: before >= FIRST_DAY ? link(before) : null, next: after < today ? link(after) : null }
+}
+
+/** Today's Wanted, which counts: "Today's Wanted is the one that counts: Wanted #3 ›". */
+const todayWanted = (today: string): TodayCourse => ({ name: `Wanted #${dayNumber(today)}` })
+
+/**
+ * A past day's start card: who was wanted, that it's practice, how the day went on its day, Start, and the
+ * way back to its row on the past days.
+ */
+export function PastDayStart({
+  day,
+  today,
+  wanted,
+  itsDay,
+  onStart,
+}: {
+  day: string
+  /** Today's day, whose Wanted counts. */
+  today: string
+  wanted: readonly WantedBug[]
+  itsDay: ItsDay
+  onStart: () => void
+}) {
+  return (
+    <PastCourseStart
+      slug={SLUG}
+      course={day}
+      day={day}
+      kind="practice"
+      title="Find the Bug"
+      kicker={pastKicker(day)}
+      art={<WantedLineup wanted={wanted} />}
+      labelSub={dayScenesWords(day, today)}
+      facts={[onItsDayFact(SLUG, itsDay)]}
+      startLabel="Start"
+      onStart={onStart}
+      today={todayWanted(today)}
+      walk={walkFor(day, today)}
+    />
+  )
+}
+
+/** One time against another, in tenths as the clock shows them: tied, or quicker or slower by "3.9s". */
+function gapWords(ms: number, other: number): { tie: boolean; quicker: boolean; gap: string } {
+  const tenths = Math.round((other - ms) / 100)
+  return { tie: tenths === 0, quicker: tenths > 0, gap: formatFindbugMs(Math.abs(tenths) * 100) }
+}
+
+/**
+ * The run against its day: your own result that day, and the day's 1st. "That's 3.9s quicker than your
+ * 49.1s on its day. ODCHKA's 1st, 40.0s, is 5.2s away."
+ */
+function againstItsDay(ms: number, itsDay: ItsDay): string | null {
+  const entry = itsDay.entry
+  if (!entry) return null
+  const out: string[] = []
+  const you = itsDay.signedIn ? entry.you : null
+  if (you) {
+    const yours = findbugMsFromBoardScore(you.score)
+    const g = gapWords(ms, yours)
+    const at = formatFindbugMs(yours)
+    out.push(g.tie ? `That ties your ${at} on its day.` : `That’s ${g.gap} ${g.quicker ? 'quicker' : 'slower'} than your ${at} on its day.`)
+    // You were the day's 1st: that's the line already said.
+    if (you.place === 1) return out.join(' ')
+  }
+  const first = findbugMsFromBoardScore(entry.top.score)
+  const g = gapWords(ms, first)
+  const whose = `${entry.top.name}’s 1st${you ? '' : ' on its day'}, ${formatFindbugMs(first)}`
+  out.push(g.tie ? `That ties ${whose}.` : g.quicker ? `That beats ${whose}, by ${g.gap}.` : `${whose}, is ${g.gap} away.`)
+  return out.join(' ')
+}
+
+/**
+ * After a past day's run: its time, that nothing was saved, the scenes, the run against its day, that your
+ * week and rank are as they were, and again, back to its row, or today's Wanted.
+ */
+export function PastDayResult({
+  day,
+  today,
+  run,
+  itsDay,
+  onAgain,
+}: {
+  day: string
+  today: string
+  run: DayResult
+  itsDay: ItsDay
+  onAgain: () => void
+}) {
+  const misses = run.misses ?? 0
+  const against = againstItsDay(run.ms, itsDay)
+  return (
+    <PastCourseResult
+      slug={SLUG}
+      course={day}
+      day={day}
+      kind="practice"
+      kicker={pastKicker(day)}
+      figure={formatFindbugMs(run.ms)}
+      line={`${foundWords(run)}, with ${misses === 0 ? 'no wrong taps' : misses === 1 ? '1 wrong tap' : `${misses} wrong taps`}.`}
+      today={todayWanted(today)}
+      againLabel="Play again"
+      onAgain={onAgain}
+    >
+      {run.times ? <SceneSquares times={run.times} /> : null}
+      {against ? <p className="past-card__note">{against}</p> : null}
+    </PastCourseResult>
   )
 }

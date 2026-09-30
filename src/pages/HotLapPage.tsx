@@ -3,8 +3,9 @@ import { HotLapGame } from '../games/hotlap/HotLapGame'
 import { useRoute } from '../hooks/useHashRoute'
 
 /**
- * Hot Lap's page: today's track; or with ?track=<number or day> on the play page, a test drive of any
- * track in the plan, ahead of its day (see TestCards.tsx). The Track Book links to those.
+ * Hot Lap's page: today's track; or with ?track=<number or day> on the play page, a past track raced on its
+ * own board (PastTrackCards.tsx). An admin may open any track that way, today's or one still to come, as a
+ * test drive (TestCards.tsx): the Track Book links to those.
  */
 export function HotLapPage() {
   const route = useRoute()

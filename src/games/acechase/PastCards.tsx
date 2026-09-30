@@ -1,208 +1,131 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { GoogleSignInButton } from '../../components/GoogleSignInButton'
+import { PastCourseResult, PastCourseStart, type PastBoard, type PastBoardRow } from '../../components/PastCourseCards'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { TagSlots } from '../../components/RunReport'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
-import { gameArchiveHref, navigate, prizesHref } from '../../hooks/useHashRoute'
+import { gamePlayHref, prizesHref } from '../../hooks/useHashRoute'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { linkCurrentNameToAccount } from '../../lib/auth'
-import { PLACE_NAME, type DailySolved, type TodaysHole } from '../../lib/dailyHole'
+import { dailyDay, PLACE_NAME, todaysHole, type DailySolved, type TodaysHole } from '../../lib/dailyHole'
+import type { PastKind } from '../../lib/dailyWords'
 import { SIGNED_OUT } from '../../lib/deviceRuns'
-import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../../lib/leaderboard'
 import { pastHoleAnswer, sendPastResult, type HoleBoard, type PastHoleResult, type PastProgress } from '../../lib/pastHoles'
+import { leavePlay, type PastFact } from '../../lib/pastPlay'
 import { ordinal } from '../../lib/scoreboard'
+import { DAILY_EPOCH } from './daily'
 import { PlayedAs } from './DailyCards'
+import { playersWords, triesWords, type PastHoleFigures } from './pastFigures'
 
 /*
- * A past hole's two cards (/games/acechase/play?hole=day:YYYY-MM-DD, from the archive): the one it opens
- * on, and the one a bullseye brings up. Every hole keeps a board of its own for good (lib/pastHoles.ts): a
- * player with no result on it yet plays it for one, and their first bullseye goes on its board, signed in;
- * with one already, from its day or since, it's practice. As on Today's Hole, the buttons are the only way
- * on.
+ * A past hole's two cards (/games/acechase/play?hole=day:YYYY-MM-DD, from its row on Past holes): the one
+ * it opens on, and the one a bullseye brings up, in the shared cards every daily's past course uses
+ * (components/PastCourseCards.tsx). Every hole keeps a board of its own for good (lib/pastHoles.ts), but
+ * takes only a player's first result on it. So a run here goes on its board only for a player signed in
+ * with no result on it yet, from its day or since; for anyone else it's practice, and nothing is saved.
  */
 
 const SLUG = 'acechase'
 /** What taking a past hole's record pays, once a hole: the API's tickets.ts RECORD_TICKETS. */
 const RECORD_TICKETS = 15
 
-const dayWords = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
+const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
 
-const triesWords = (n: number) => `${n} ${n === 1 ? 'try' : 'tries'}`
-
-function Card({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <div
-      className="game-card acechase-daily"
-      style={gameAccentStyle(SLUG)}
-      role="dialog"
-      aria-label={label}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      {children}
-    </div>
-  )
+/** "Monday" in the last week, "Sep 22" before it: the day a hole was the day's. */
+function whenWords(day: string): string {
+  const today = dailyDay()
+  let back = 0
+  for (let d = today; d > day && back < 7; d = dayBefore(d)) back++
+  if (back < 7) return weekday.format(new Date(`${day}T12:00:00Z`))
+  return archiveDayWords(day).split(', ')[1]!
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="game-pause-meta__row">
-      <span>{label}</span>
-      <strong>{children}</strong>
-    </div>
-  )
+/** The day after a day, both as YYYY-MM-DD. */
+function dayAfter(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10)
 }
 
-/** "Hole #9 · Thu, Oct 3", the day it was. */
-function kicker(hole: TodaysHole): string {
-  return `Hole #${hole.n} · ${dayWords.format(new Date(`${hole.day}T12:00:00Z`))}`
-}
+const holeHref = (day: string) => `${gamePlayHref(SLUG)}?hole=day:${day}`
 
-/** The hole's record, from its board. */
-function recordWords(record: { name: string; tries: number } | null | undefined, known: boolean): string {
-  if (record) return `${record.name} · ${triesWords(record.tries)}`
-  return known ? 'Nobody yet' : '…'
-}
-
-function Archive() {
-  return (
-    <a className="acechase-daily__archive" href={gameArchiveHref(SLUG)}>
-      Past holes ›
-    </a>
-  )
-}
-
-/**
- * A bullseye on a past hole from signed out on this device, put on the hole's board by the account signed
- * in, under its tag (a tag first, if it has none): theirs from then on (lib/pastHoles.ts).
- */
-function PutOnHoleBoard({ day, solved, onSent }: { day: string; solved: DailySolved; onSent: () => void }) {
-  const name = normalizePlayerName(usePlayerName())
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const put = async () => {
-    if (busy) return
-    setBusy(true)
-    setError(null)
-    try {
-      const answer = await sendPastResult(day, SIGNED_OUT, solved)
-      if (answer) onSent()
-      else setError('Sign in with a tag to put it on the board.')
-    } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : 'That result didn’t go on the board. Try again.')
-    } finally {
-      setBusy(false)
-    }
+/** The past holes either side, for the start card's "‹ #3 Blizzard Bumps": none before the first, none of today's. */
+function walkFrom(hole: TodaysHole) {
+  const link = (day: string) => {
+    const h = todaysHole(day)
+    return { label: `#${h.n} ${h.def.name}`, href: holeHref(day) }
   }
-  // Tagless: the tag first, and then it goes on the board in the same press.
-  if (!name) return <HoleTag onTagged={() => void put()} />
+  const before = dayBefore(hole.day)
+  const after = dayAfter(hole.day)
+  return { prev: before >= DAILY_EPOCH ? link(before) : null, next: after < dailyDay() ? link(after) : null }
+}
+
+/** Today's hole, the one that counts, for the line and button that go to it. */
+const todayCourse = () => ({ name: todaysHole().def.name })
+
+function SignIn({ children }: { children: ReactNode }) {
   return (
-    <>
-      {error ? <p className="panel__error">{error}</p> : null}
-      <button type="button" className="panel__btn" disabled={busy} onClick={() => void put()}>
-        {busy ? 'Saving…' : 'Put it on the hole’s board'}
-      </button>
-    </>
+    <div className="acechase-daily__signin">
+      <p>{children}</p>
+      <GoogleSignInButton />
+    </div>
   )
 }
 
-/** The card a past hole opens on: its record, where you stand, and how its board works. */
+/** The card a past hole opens on: what a run here does, how its day went, its board, and the way back to its row. */
 export function PastStartCard({
   hole,
+  kind,
+  facts,
   progress,
-  solved,
-  claim,
-  board,
+  hadResult,
   onStart,
-  onTakeUp,
-  onSent,
-  onPractice,
 }: {
   hole: TodaysHole
-  /** The player's own play at it on this device (lib/deviceRuns.ts). */
+  /** What the run it starts does. */
+  kind: PastKind
+  facts: readonly PastFact[]
+  /** The player's own play at it on this device (lib/deviceRuns.ts), which a run on its board carries on. */
   progress: PastProgress | null
-  /** The player's own result on it on this device, from its day or since. */
-  solved: DailySolved | null
-  /** Play at it from signed out on this device, which the account signed in may take up. */
-  claim: PastProgress | null
-  board: HoleBoard | null
+  /** The player has a result on it already. */
+  hadResult: boolean
   onStart: () => void
-  /** Carry on the play from signed out, as theirs. */
-  onTakeUp: () => void
-  /** A result from signed out went on the board. */
-  onSent: () => void
-  onPractice: () => void
 }) {
   const { signedIn } = useAuth()
   const viewer = useAccountId()
-  const you = board?.you ?? null
-  const done = Boolean(you || solved)
-  const tries = progress?.tries ?? 0
-  // Played signed out here, which the account signed in can make theirs while they've none of their own.
-  const open = !done && !progress ? claim : null
+  const tries = kind === 'board' ? (progress?.tries ?? 0) : 0
+  const labelSub = !signedIn
+    ? 'Signed out, nothing here is kept: no board, no tickets, no rank. Sign in and your first bullseye here goes on its board.'
+    : kind === 'practice'
+      ? 'Your first bullseye here stands. Play it as often as you like: nothing more is saved.'
+      : 'Your first bullseye here goes on this hole’s own board, and every try counts, even if you leave and come back. Today’s board, your week and your rank stay as they are.'
   return (
-    <Card label={`${hole.def.name}, a past hole`}>
-      <div className="game-card__head">
-        <span className="game-card__kicker">{kicker(hole)} · past hole</span>
-        <h2 className="game-card__title game-card__title--big">{hole.def.name}</h2>
-        <p className="game-card__blurb">
-          On {PLACE_NAME[hole.pick.style]}. {hole.def.note}
-        </p>
-      </div>
-      <p className="acechase-daily__rules">
-        {done
-          ? 'Your result here stands. Play it again for practice: that doesn’t count.'
-          : `Its board stays open. Every try counts, even if you leave and come back, and your first bullseye goes on it. Taking its record pays ${RECORD_TICKETS} tickets.`}
-      </p>
-      <div className="game-pause-meta">
-        <Row label="Hole record">{recordWords(board?.entries[0], board !== null)}</Row>
-        <Row label="You">
-          {you
-            ? `${triesWords(you.tries)} · ${ordinal(you.place)} of ${board!.players}`
-            : solved
-              ? `Bullseye in ${solved.tries}`
-              : tries > 0
-                ? `${triesWords(tries)} so far`
-                : 'Not played yet'}
-        </Row>
-        {open ? <Row label="Played signed out">{open.solved ? `Bullseye in ${open.solved.tries}` : `${triesWords(open.tries)} so far`}</Row> : null}
-      </div>
-      {!signedIn && !done ? <p className="game-card__hint">Sign in to put your result on its board.</p> : null}
-      {open ? (
-        <p className="game-card__hint">
-          {open.solved
-            ? 'Someone got it here signed out. Put it on the hole’s board as yours, or play your own.'
-            : 'Someone played it here signed out. Carry it on as yours, or start your own.'}
-        </p>
+    <PastCourseStart
+      slug={SLUG}
+      course={hole.n}
+      day={hole.day}
+      kind={kind}
+      title={hole.def.name}
+      blurb={`Ace Chase hole #${hole.n}, on ${PLACE_NAME[hole.pick.style]}. It was the day’s hole on ${whenWords(hole.day)}.`}
+      labelSub={labelSub}
+      facts={facts}
+      note={kind === 'board' ? `Taking its record pays ${RECORD_TICKETS} tickets, once.` : undefined}
+      startLabel={tries > 0 ? 'Carry on' : hadResult ? 'Play it again' : 'Play it'}
+      onStart={onStart}
+      // A run for its board is its player's, so it waits until the account signed in is known. Practice doesn't.
+      startDisabled={kind === 'board' && viewer === undefined}
+      today={todayCourse()}
+      walk={walkFrom(hole)}
+    >
+      {!signedIn ? (
+        <div className="acechase-daily__signin">
+          <GoogleSignInButton />
+        </div>
       ) : null}
-      <div className="game-card__actions">
-        {done ? (
-          <button type="button" className="panel__btn" onClick={onPractice}>
-            Play it again · doesn&rsquo;t count
-          </button>
-        ) : open ? (
-          <>
-            {open.solved ? (
-              <PutOnHoleBoard day={hole.day} solved={open.solved} onSent={onSent} />
-            ) : (
-              <button type="button" className="panel__btn" onClick={onTakeUp}>
-                Carry it on
-              </button>
-            )}
-            <button type="button" className="panel__btn panel__btn--ghost" onClick={onStart}>
-              {open.solved ? 'Play your own' : 'Start your own'}
-            </button>
-          </>
-        ) : (
-          // A counted run is its player's, so it waits until the account signed in is known.
-          <button type="button" className="panel__btn" disabled={viewer === undefined} onClick={onStart}>
-            {tries > 0 ? 'Carry on' : 'Start'}
-          </button>
-        )}
-      </div>
-      <Archive />
-    </Card>
+      {tries > 0 ? <p className="past-card__note">You&rsquo;re {triesWords(tries)} in. Every try counts, so they carry on.</p> : null}
+    </PastCourseStart>
   )
 }
 
@@ -217,7 +140,7 @@ type Send =
   | { phase: 'failed'; error: string }
 
 /** Signed in with no tag yet: a tag puts the result on the hole's board, which the card then does. */
-function HoleTag({ onTagged }: { onTagged?: () => void } = {}) {
+function HoleTag() {
   const id = useId()
   const [draft, setDraft] = useState(() => getLastPlayerName())
   const [busy, setBusy] = useState(false)
@@ -229,7 +152,6 @@ function HoleTag({ onTagged }: { onTagged?: () => void } = {}) {
     setError(null)
     try {
       await linkCurrentNameToAccount(name)
-      onTagged?.()
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'That tag didn’t work. Try another.')
     } finally {
@@ -246,35 +168,57 @@ function HoleTag({ onTagged }: { onTagged?: () => void } = {}) {
   )
 }
 
+/** A few rows of the hole's board, yours marked: the top three, and yours under them if it's lower. */
+function boardRows(hole: TodaysHole, board: HoleBoard | null, players: number, name: string, you: HoleBoard['you']): PastBoard | null {
+  if (!board || board.entries.length === 0) return null
+  const rows: PastBoardRow[] = board.entries.slice(0, 3).map((e, i) => ({
+    place: i + 1,
+    name: e.name,
+    result: triesWords(e.tries),
+    record: i === 0,
+    you: Boolean(name) && e.name === name,
+  }))
+  if (you && name && !rows.some((r) => r.you)) {
+    // A result just sent that the board, asked again, hasn't caught up with: the rows wait for it.
+    if (you.place <= board.entries.length && !board.entries.some((e) => e.name === name)) return null
+    rows.push({ place: you.place, name, result: triesWords(you.tries), you: true })
+  }
+  return { title: `${hole.def.name}’s board`, count: playersWords(players), rows }
+}
+
 /**
- * The card a past hole's bullseye brings up. The first one's result goes on the hole's board, signed in
- * with a tag, sent from here (once: lib/pastHoles.ts); after that, a bullseye is practice. It goes as its
- * own player's (lib/deviceRuns.ts): played signed out, as whoever signs in with the card up; played as an
- * account, only once that account is signed in.
+ * The card a past hole's bullseye brings up: where it went, the hole's board, and that your week and rank
+ * are as they were. A run for the board sends its first bullseye from here, signed in with a tag (once:
+ * lib/pastHoles.ts), as its own player's (lib/deviceRuns.ts): played as an account, only once that account
+ * is signed in. Practice sends nothing.
  */
 export function PastResultCard({
   hole,
   tries,
   practice,
   solved,
+  own,
   owner,
-  board,
+  figures,
+  next,
   onSent,
-  onPractice,
-  onLeave,
+  onAgain,
 }: {
   hole: TodaysHole
   /** The bullseye's tries. */
   tries: number
   practice: boolean
-  /** The hole's result on this device, to send if it hasn't gone. */
+  /** The run's result on this device, to send if it hasn't gone. */
   solved: (DailySolved & { sent?: boolean }) | null
+  /** The player's own bullseye on the hole on this device, which a practice run stands beside. */
+  own: DailySolved | null
   /** Whose the run is: its stamp (lib/deviceRuns.ts); null for practice. */
   owner: string | null
-  board: HoleBoard | null
+  figures: PastHoleFigures
+  /** What the next run here does, for the again button. */
+  next: PastKind
   onSent: (answer: PastHoleResult) => void
-  onPractice: () => void
-  onLeave: () => void
+  onAgain: () => void
 }) {
   const { signedIn, loading } = useAuth()
   const viewer = useAccountId()
@@ -286,6 +230,12 @@ export function PastResultCard({
   const shown = useRef(true)
   const sentRef = useRef(onSent)
   sentRef.current = onSent
+  // The play loop draws the card afresh several times a second, with a new `solved` each time: the send
+  // goes by what it is, not by that.
+  const solvedRef = useRef(solved)
+  solvedRef.current = solved
+  const solvedAt = solved?.at ?? null
+  const solvedSent = solved?.sent === true
   // Played as one account, and another (or nobody) signed in now: it waits for its own player.
   const otherAccount = owner != null && owner !== SIGNED_OUT && viewer !== undefined && owner !== viewer
 
@@ -298,7 +248,8 @@ export function PastResultCard({
 
   useEffect(() => {
     if (practice || loading || send.phase === 'done' || send.phase === 'sending') return
-    if (!solved || solved.sent || !owner) return
+    const result = solvedRef.current
+    if (!result || solvedSent || !owner) return
     if (otherAccount) {
       setSend({ phase: 'otherAccount' })
       return
@@ -314,7 +265,7 @@ export function PastResultCard({
       return
     }
     setSend({ phase: 'sending' })
-    sendPastResult(hole.day, owner, solved).then(
+    sendPastResult(hole.day, owner, result).then(
       (answer) => {
         if (answer) sentRef.current(answer)
         if (!shown.current) return
@@ -329,44 +280,62 @@ export function PastResultCard({
     )
     // The send's own phase changes aren't a reason to send again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [practice, loading, signedIn, viewer, otherAccount, name, solved, owner, hole.day])
+  }, [practice, loading, signedIn, viewer, otherAccount, name, solvedAt, solvedSent, owner, hole.day])
 
+  const board = figures.board
   const answer = send.phase === 'done' ? send.answer : null
-  const record = answer ? answer.record : (board?.entries[0] ?? null)
-  const you = answer ? answer.you : (board?.you ?? null)
-  const players = answer ? answer.players : (board?.players ?? 0)
-  const title = practice ? 'That one didn’t count' : tries === 1 ? 'First try!' : `Bullseye in ${tries}`
+  const you = answer?.you ?? board?.you ?? null
+  const players = answer?.players ?? board?.players ?? 0
+  const record = answer?.record ?? board?.entries[0] ?? null
+  // What the run did: went on the board, or saved nothing (practice, or a result there already stands).
+  const kind: PastKind = practice || (answer && !answer.kept) ? 'practice' : 'board'
+  const saving = !practice && (send.phase === 'sending' || (send.phase === 'waiting' && solved != null && !solved.sent))
+  const holeBoard = `${hole.def.name}’s board`
 
+  let headline: ReactNode = undefined
+  let line: ReactNode = null
   let status: ReactNode = null
-  if (practice) status = null
-  else if (send.phase === 'sending' || (send.phase === 'waiting' && solved && !solved.sent)) status = <p className="game-card__hint">Putting it on the hole’s board…</p>
-  else if (answer?.tookRecord) status = <p className="acechase-past__news">Hole record! Nobody has done it in fewer.</p>
-  else if (answer && !answer.kept) status = <p className="game-card__hint">You had a result here already, which stands.</p>
-  else if (answer && you) status = <p className="game-card__hint">On the hole’s board: {ordinal(you.place)} of {players}.</p>
-  else if (send.phase === 'otherAccount') status = <PlayedAs owner={owner} signedIn={signedIn} />
-  else if (send.phase === 'signedOut')
-    status = (
-      <div className="acechase-daily__signin">
-        <p>Sign in and this result goes on the hole’s board.</p>
-        <GoogleSignInButton />
-      </div>
-    )
-  else if (send.phase === 'noTag') status = <HoleTag />
-  else if (send.phase === 'failed') status = <p className="panel__error">{send.error}</p>
+  if (practice) {
+    const stands = you ?? (own ? { tries: own.tries, place: null } : null)
+    if (stands) {
+      line = stands.place
+        ? `Your first bullseye here stands: ${triesWords(stands.tries)}, ${ordinal(stands.place)} of ${players} on its board.`
+        : `Your first bullseye here stands: ${triesWords(stands.tries)}.`
+    }
+    if (!signedIn) status = <SignIn>Sign in and your first bullseye here goes on its board.</SignIn>
+  } else if (answer && !answer.kept) {
+    headline = 'Your first bullseye here stands'
+    line = you ? `It’s ${triesWords(you.tries)}, ${ordinal(you.place)} of ${players} on its board. This one wasn’t saved.` : 'This one wasn’t saved.'
+  } else if (answer) {
+    headline = you ? `${ordinal(you.place)} on ${holeBoard}` : `On ${holeBoard}`
+    if (answer.tookRecord) status = <p className="acechase-past__news">Hole record! Nobody has done it in fewer.</p>
+    else if (record && you && record.tries === you.tries) line = `Tied with ${record.name}’s record, ${triesWords(record.tries)}. They got there first.`
+    else if (record) line = `The record is ${record.name}’s, in ${triesWords(record.tries)}.`
+  } else if (saving) {
+    headline = `Putting it on ${holeBoard}…`
+  } else {
+    headline = 'Not on its board yet'
+    if (send.phase === 'otherAccount') status = <PlayedAs owner={owner} signedIn={signedIn} />
+    else if (send.phase === 'signedOut') status = <SignIn>Sign in and this result goes on the hole&rsquo;s board.</SignIn>
+    else if (send.phase === 'noTag') status = <HoleTag />
+    else if (send.phase === 'failed') status = <p className="panel__error">{send.error}</p>
+  }
 
   return (
-    <Card label={`${hole.def.name}: ${title}`}>
-      <div className="game-card__head">
-        <span className="game-card__kicker">{kicker(hole)} · past hole</span>
-        <h2 className="game-card__title game-card__title--big">{title}</h2>
-        <p className="game-card__blurb">
-          {practice && you ? `Your result here stands: ${triesWords(you.tries)}.` : `${hole.def.name}, on ${PLACE_NAME[hole.pick.style]}.`}
-        </p>
-      </div>
-      <div className="game-pause-meta">
-        <Row label="Hole record">{recordWords(record, answer !== null || board !== null)}</Row>
-        <Row label="You">{you ? `${triesWords(you.tries)} · ${ordinal(you.place)} of ${players}` : '–'}</Row>
-      </div>
+    <PastCourseResult
+      slug={SLUG}
+      course={hole.n}
+      day={hole.day}
+      kind={kind}
+      figure={triesWords(tries)}
+      headline={headline}
+      line={line}
+      board={boardRows(hole, board, players, answer?.name ?? name, you)}
+      today={todayCourse()}
+      againLabel={next === 'board' && kind === 'practice' ? 'Play it for its board' : undefined}
+      againBusy={saving}
+      onAgain={onAgain}
+    >
       {status}
       {answer?.tickets?.earned ? (
         <p className="acechase-daily__tix">
@@ -377,7 +346,7 @@ export function PastResultCard({
               href={prizesHref()}
               onClick={(e) => {
                 e.preventDefault()
-                navigate(prizesHref())
+                leavePlay(prizesHref())
               }}
             >
               Prize counter ›
@@ -385,14 +354,6 @@ export function PastResultCard({
           </span>
         </p>
       ) : null}
-      <div className="game-card__actions">
-        <button type="button" className="panel__btn" onClick={onPractice}>
-          Play it again · doesn&rsquo;t count
-        </button>
-        <button type="button" className="panel__btn panel__btn--ghost" onClick={onLeave}>
-          Back to the archive
-        </button>
-      </div>
-    </Card>
+    </PastCourseResult>
   )
 }

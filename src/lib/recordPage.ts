@@ -1,17 +1,16 @@
 import { getGame } from '../data/games'
 import { avatarWashColor, resolveAvatar } from './avatars'
-import { FIRST_RUN_DAILIES, firstRunWord } from './gameBoard'
+import { firstRunWord } from './gameBoard'
 import type { LeaderboardEntry, LeaderboardPeriod, YouEntry } from './leaderboard'
 import {
   courseName,
-  courseNumber,
-  courseToday,
   recordBrief,
   recordGap,
   recordKind,
   recordTime,
   recordValue,
   type RecordKind,
+  type RecordShut,
 } from './recordBook'
 import type { RecordDef, RecordSummary } from './records'
 import { boardToday, ordinal, type Stat } from './scoreboard'
@@ -160,24 +159,11 @@ export function onTheBoard(game: string, record: Rec): string {
   return 'Finish a run'
 }
 
-/**
- * A record no run can move for the viewer now. A Find the Bug or Half Full day's record takes each player's
- * first run of that day and nothing after it, so once its day is over it's shut for everyone ('over'), and
- * on its day for a player whose run is in ('today'). An Ace Chase hole's takes an account's first result on
- * it, on its day or from the archive after (the API's holes.ts), so it's shut only for a player who has
- * one ('today' on its day, 'in' after). Hot Lap's tracks take any lap on any day, so they never shut.
+/*
+ * Whether a record is shut for the viewer, no run able to move it: recordBook.ts's, where the books'
+ * "Closest to ink" leaves shut ones out too. Kept here as well for the pages that read it from here.
  */
-export type RecordShut = 'today' | 'in' | 'over'
-
-/** Whether this record is shut for the viewer, `onIt` saying whether they have a result on it at all. */
-export function recordShut(game: string, record: Rec, onIt: boolean, now = Date.now()): RecordShut | null {
-  const n = courseNumber(record)
-  const today = courseToday(game, now)
-  if (!FIRST_RUN_DAILIES.has(game) || n == null || today == null) return null
-  if (n < today && game !== 'acechase') return 'over'
-  if (!onIt) return null
-  return n === today ? 'today' : 'in'
-}
+export { recordShut, type RecordShut } from './recordBook'
 
 /** What comes at midnight on each first-run daily. */
 const NEXT_DAY: Partial<Record<string, string>> = { findbug: 'New scenes', acechase: 'A new hole', halffull: 'New glasses' }

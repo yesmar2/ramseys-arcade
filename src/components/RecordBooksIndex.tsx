@@ -1,18 +1,21 @@
 import type { CSSProperties } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isDailyGame } from '../data/games'
 import { useRecordBooks } from '../hooks/useRecordBooks'
-import { rankHref, recordHref, recordsHref, siteRecordsHref } from '../hooks/useHashRoute'
+import { rankHref, siteRecordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useActiveGroup } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import {
   bookHolders,
+  bookRecordHref,
+  bookRecords,
   booksHeadline,
   booksHeld,
   closestToInk,
   coverRecord,
   holderCounts,
   latestInk,
+  recordBookHref,
   recordValue,
 } from '../lib/recordBook'
 import type { RecordSummary } from '../lib/records'
@@ -27,7 +30,9 @@ import { PlayerName } from './PlayerName'
 /*
  * The record books' front page: who holds the most records, the ones you hold
  * and the ones you're nearest to taking, every book with its best record on
- * the cover, what was set lately, and the house book's records.
+ * the cover, what was set lately, and the house book's records. A daily's
+ * track, hole and day records aren't here (recordBook bookRecords): its book
+ * is its Days played in a row, and its tile opens its page's Records tab.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -82,7 +87,7 @@ function RecordItem({
   const accent = accentOf(game)
   return (
     <li>
-      <a className="rbk-item" href={recordHref(game, record.id)}>
+      <a className="rbk-item" href={bookRecordHref(game, record.id)}>
         <GameThumbArt slug={game} accent={accent} className="rbk-item__thumb" />
         <span className="rbk-item__text">
           <span className="rbk-item__label">{record.label}</span>
@@ -98,21 +103,23 @@ export function RecordBooksIndex() {
   const me = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useRecordBooks(me, groupId)
-  const all = data.books.flatMap((b) => b.records)
+  // Every count, list and cover here is of the books' own records, so a daily's courses weigh in nowhere.
+  const books = data.books.map(({ game, records }) => ({ game, records: bookRecords(game, records) }))
+  const all = books.flatMap((b) => b.records)
   const head = booksHeadline(all)
   const holders = holderCounts(all)
-  const inBooks = booksHeld(data.books)
+  const inBooks = booksHeld(books)
   const topCount = holders[0]?.count ?? 0
   const avatars = new Map(all.filter((r) => r.top).map((r) => [normalizePlayerName(r.top!.name), r.top!.avatarId]))
   const held = all.filter((r) => r.top).length
 
-  const mine = data.books.flatMap(({ game, records }) =>
+  const mine = books.flatMap(({ game, records }) =>
     records.filter((r) => me && r.top && normalizePlayerName(r.top.name) === me).map((record) => ({ game, record })),
   )
   // Older API builds don't say where you stand on each record; then there is nothing to be close to.
   const knowsYou = all.some((r) => r.you !== undefined)
-  const close = knowsYou ? closestToInk(data.books) : []
-  const latest = latestInk(data.books)
+  const close = knowsYou ? closestToInk(books) : []
+  const latest = latestInk(books)
 
   if (data.error) {
     return (
@@ -144,7 +151,7 @@ export function RecordBooksIndex() {
             {data.loading ? (
               <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} />
             ) : (
-              `${held} of them have a name in ink, across ${data.books.length} games. The books keep the best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each until someone beats it.`
+              `${held} of them have a name in ink, across ${books.length} games. The books keep the best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each until someone beats it.`
             )}
           </p>
           <div className="rbk-acts">
@@ -235,8 +242,7 @@ export function RecordBooksIndex() {
               </ul>
             ) : (
               <p className="rbk-card__note">
-                Every book has a streak for days played in a row and one for strong runs in a row. They are the
-                easiest way into ink.
+                Every book keeps a streak of days played in a row. Turning up is the easiest way into ink.
               </p>
             )}
           </div>
@@ -271,7 +277,7 @@ export function RecordBooksIndex() {
           </div>
         </div>
         <ul className="rbk-books">
-          {data.books.map(({ game, records }, i) => {
+          {books.map(({ game, records }, i) => {
             const accent = accentOf(game)
             const cover = coverRecord(records)
             const yours = records.filter((r) => me && r.top && normalizePlayerName(r.top.name) === me).length
@@ -279,7 +285,7 @@ export function RecordBooksIndex() {
               <li key={game} data-hunt={i === 0 ? 'records-books' : undefined}>
                 <a
                   className="rbk-book"
-                  href={recordsHref(game)}
+                  href={recordBookHref(game)}
                   style={{ '--book-accent': accent } as CSSProperties}
                 >
                   <span className="rbk-book__top">
@@ -288,7 +294,10 @@ export function RecordBooksIndex() {
                   </span>
                   <span className="rbk-book__name">{nameOf(game)}</span>
                   <span className="rbk-book__meta">
-                    {records.length} {records.length === 1 ? 'record' : 'records'} · {bookHolders(records)}
+                    {/* A daily's other records, days won and the like, are on its page, where the tile goes. */}
+                    {isDailyGame(game)
+                      ? 'A daily · more records on its page'
+                      : `${records.length} ${records.length === 1 ? 'record' : 'records'} · ${bookHolders(records)}`}
                   </span>
                   {cover ? (
                     <span className="rbk-book__cover">
@@ -313,7 +322,7 @@ export function RecordBooksIndex() {
           <ul className="rbk-latest">
             {latest.map((entry) => (
               <li key={`${entry.name}-${entry.game}-${entry.at}`}>
-                <a className="rbk-latest__row" href={recordsHref(entry.game)}>
+                <a className="rbk-latest__row" href={recordBookHref(entry.game)}>
                   <span className="rbk-latest__day">{dayOf(entry.at)}</span>
                   <PlayerMark name={entry.name} avatarId={avatars.get(entry.name)} className="rbk-latest__mark" />
                   <span className="rbk-latest__text">

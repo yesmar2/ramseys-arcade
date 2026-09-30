@@ -215,9 +215,12 @@ export function boardCallout(slug: string, you: BoardYou, period: LeaderboardPer
  */
 export const FIRST_RUN_DAILIES: ReadonlySet<string> = new Set(['findbug', 'acechase', 'halffull'])
 
-/** What a first-run daily calls its day's result: a run, a bullseye, a pour. */
+/** What a daily calls one go at its day, where it isn't a run: Ace Chase's bullseye, Half Full's pour, Hot Lap's lap. */
+const RUN_WORDS: Partial<Record<string, string>> = { acechase: 'bullseye', halffull: 'pour', hotlap: 'lap' }
+
+/** What a daily calls its day's result: a run, a bullseye, a pour, a lap ("Your first lap goes here"). */
 export function firstRunWord(slug: string): string {
-  return slug === 'acechase' ? 'bullseye' : slug === 'halffull' ? 'pour' : 'run'
+  return RUN_WORDS[slug] ?? 'run'
 }
 
 /**
@@ -240,6 +243,26 @@ export function oneRunBoard(slug: string, period: LeaderboardPeriod): boolean {
 /** What a player whose run is in on a one-run board is told, in place of a score to beat. */
 export function dayRunIn(slug: string): string {
   return `That’s your ${firstRunWord(slug)} for today. A new board at midnight, New York time.`
+}
+
+/** What a first-result daily keeps of each player's day, said plainly: Ace Chase's first bullseye, the others' first result. */
+export function firstResultWord(slug: string): string {
+  return slug === 'acechase' ? 'bullseye' : 'result'
+}
+
+/** The note over a board's players: each one's best run, or on today's board of a first-result daily, their first result. */
+export function playersNote(slug: string, period: LeaderboardPeriod): string {
+  if (oneRunBoard(slug, period)) return `Each player’s first ${firstResultWord(slug)} today.`
+  return 'Each player’s best run.'
+}
+
+/**
+ * Said on a first-result daily's punch once today's is in: playing today's again changes nothing, as the
+ * first result stands. Null for a daily whose best run counts (Hot Lap, Marble Run), where it still can.
+ */
+export function replayIsPractice(slug: string): string | null {
+  if (!FIRST_RUN_DAILIES.has(slug)) return null
+  return `Playing it again is practice: your first ${firstResultWord(slug)} stands.`
 }
 
 /**

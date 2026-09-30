@@ -29,9 +29,12 @@ export function headerHeight(canvasH: number): number {
   return Math.round(Math.max(44, Math.min(58, canvasH * 0.075)))
 }
 
-/** The field: as much of the canvas under the header as the scene's shape allows. */
-export function fitField(canvasW: number, canvasH: number, sceneW: number, sceneH: number): Field {
-  const top = headerHeight(canvasH)
+/**
+ * The field: as much of the canvas under the header as the scene's shape allows. `strip` px more under
+ * the header are kept clear, for a practice chip where the header's own line has no room for it.
+ */
+export function fitField(canvasW: number, canvasH: number, sceneW: number, sceneH: number, strip = 0): Field {
+  const top = headerHeight(canvasH) + strip
   const pad = canvasW > 700 ? 12 : 0
   const bottom = canvasW > 700 ? 12 : 0
   const availW = Math.max(1, canvasW - pad * 2)
@@ -42,9 +45,9 @@ export function fitField(canvasW: number, canvasH: number, sceneW: number, scene
   return { x: (canvasW - w) / 2, y: top + (availH - h) / 2, w, h, scale }
 }
 
-/** The shape a scene should be built in to fill this canvas. */
-export function fieldAspect(canvasW: number, canvasH: number): number {
-  const top = headerHeight(canvasH)
+/** The shape a scene should be built in to fill this canvas, with `strip` as fitField has it. */
+export function fieldAspect(canvasW: number, canvasH: number, strip = 0): number {
+  const top = headerHeight(canvasH) + strip
   const pad = canvasW > 700 ? 12 : 0
   return Math.max(1, canvasH - top - pad) / Math.max(1, canvasW - pad * 2)
 }

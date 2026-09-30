@@ -22,6 +22,7 @@ import { GameArt } from './GameArt'
 import { GameThumbArt } from './GameThumbArt'
 import { FlameIcon, StarIcon } from './TodayChip'
 import { dayParts, shortDate, streakLine, todayShareUrl, WEEKDAY_NAMES, type Punch, type Ticket } from './todayPunches'
+import '../styles/runLabel.css'
 import '../styles/today.css'
 
 /*
@@ -43,6 +44,12 @@ const PlayIcon = () => (
     <path d="M8 5.5v13l10.5-6.5z" />
   </svg>
 )
+/** The practice label's loop (RunLabel.tsx), beside a punched daily's word that playing it again is practice. */
+const LoopIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7M20 4v4.7h-4.7M20 12a8 8 0 0 1-13.7 5.6L4 15.3M4 20v-4.7h4.7" />
+  </svg>
+)
 const ShareIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 15V3" />
@@ -52,6 +59,26 @@ const ShareIcon = () => (
 )
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+/** A punched daily whose first result counts: playing today's again is practice, in the practice label's colour. */
+function Again({ punch }: { punch: Punch }) {
+  if (!punch.again) return null
+  return (
+    <span className="today-again run-label--practice">
+      <LoopIcon />
+      {punch.again}
+    </span>
+  )
+}
+
+/** The way to a punch's game's past courses: its page's Past tab. Named with the game, for a list of links read aloud. */
+function PastLink({ punch, className }: { punch: Punch; className: string }) {
+  return (
+    <a className={`today-past ${className}`} href={punch.pastHref} aria-label={`${punch.game}: ${punch.pastTab}`}>
+      {punch.pastTab} ›
+    </a>
+  )
+}
 
 /** The bug hunt, for its bonus punch: who's loose today, and whether you've caught it. */
 function useHuntPunch(): { name: string; bugId: string; found: boolean } {
@@ -180,6 +207,7 @@ function PunchRow({ punches, rival }: { punches: Punch[]; rival: (key: TodayKey)
               {p.done && p.mine ? <span className="today-slot__mine">You: {p.mine}</span> : null}
               {!p.done && p.carry ? <span className="today-slot__mine">{p.carry}</span> : null}
               {line ? <span className="today-slot__rival">{line}</span> : null}
+              <Again punch={p} />
             </div>
             {p.done ? null : (
               <a className="today-slot__go" href={href}>
@@ -187,6 +215,7 @@ function PunchRow({ punches, rival }: { punches: Punch[]; rival: (key: TodayKey)
                 {p.go}
               </a>
             )}
+            <PastLink punch={p} className="today-slot__past" />
           </li>
         )
       })}
@@ -212,6 +241,7 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
         {punch.done && punch.mine ? <span className="today-feature__mine">You: {punch.mine}</span> : null}
         {!punch.done && punch.carry ? <span className="today-feature__mine">{punch.carry}</span> : null}
         {rival ? <span className="today-feature__rival">{rival}</span> : null}
+        <Again punch={punch} />
         <div className="today-feature__row">
           {punch.done ? (
             <a className="today-feature__board" href={gameBoardHref(punch.slug, 'daily')}>
@@ -225,6 +255,7 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
           )}
           {then ? <span className="today-feature__then">Then {then.game}</span> : null}
         </div>
+        <PastLink punch={punch} className="today-feature__past" />
       </div>
     </div>
   )

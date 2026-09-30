@@ -1,5 +1,5 @@
 import '../../styles/hotlap.css'
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -10,30 +10,35 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { todayShareHref } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate, todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { useAdminState } from '../../lib/admin'
 import { currentAccountId } from '../../lib/auth'
+import type { PastKind } from '../../lib/dailyWords'
 import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
+import type { PastPlay } from '../../lib/pastPlay'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun, runIdFor } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
-import { useTrackBoard } from '../../lib/trackBoards'
+import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
 import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
 import { paceNotes, type PaceCall } from './calls'
-import { dayWords, msUntilNextTrack, trackDay, trackState, untilWords } from './daily'
+import { dayWords, msUntilNextTrack, trackDay, trackNumber, trackState, untilWords } from './daily'
 import { bestLapOf, claimLap, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
+import { usePastTrackFigures, type PastTrackFigures } from './pastTrack'
+import { PastTrackResult, PastTrackStart } from './PastTrackCards'
 import { HotLapScene } from './scene'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
 import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type GhostPath, type Run, type Track } from './sim'
-import { PastResultCard, TestResultCard, TestStartCard } from './TestCards'
+import { TestResultCard, TestStartCard } from './TestCards'
 
 const SLUG = 'hotlap'
 
@@ -79,9 +84,9 @@ type Game = {
   /** The day, and its track. */
   day: string
   track: Track
-  /** Another day's track (TestCards.tsx): its laps go on no day's board, and are kept only in the tab. */
+  /** Another day's track: its laps go on no day's board, and are kept only in the tab. */
   test: boolean
-  /** Of those, a track whose day has gone: its laps go on the track's own board (lib/trackBoards.ts). */
+  /** Of those, a track whose day has gone: its laps go on the track's own board (PastTrackCards.tsx). */
   past: boolean
   /**
    * Whose lap it is (lib/deviceRuns.ts): the account signed in as it started, or SIGNED_OUT; none at the
@@ -123,6 +128,9 @@ type Chasing = { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
 
 /** The lap to chase, and whose it is. */
 type Chase = { lap: GhostLap; chasing: Chasing }
+
+/** A past track as it stands: its board, its figures for the cards, and asking for them again once a lap is saved. */
+type PastTrack = { board: TrackBoard | null; figures: PastTrackFigures; refresh: () => void }
 
 /** The name over the ghost car: whose lap it drives. */
 function ghostTag(chasing: Chasing): string {
@@ -232,7 +240,8 @@ function lapShareLine(course: Course, time: number, pace: number): string {
 
 /**
  * Today's track and its number, the lap its ghost drives (the board's fastest, your best or the blue car's),
- * and when the next track comes (another day's track: its day).
+ * and when the next track comes (a test drive: its day). A past track's card says what it is and its
+ * figures itself (PastPlay), so its tiles are only the lap to beat.
  */
 function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; ghost: number; chasing: Chasing; test: boolean; past: boolean }) {
   const [left, setLeft] = useState(() => msUntilNextTrack())
@@ -240,18 +249,22 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
     const timer = window.setInterval(() => setLeft(msUntilNextTrack()), 20_000)
     return () => window.clearInterval(timer)
   }, [])
+  const chase = (
+    <div className="game-pause-meta__row">
+      <span>{chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue car'}</span>
+      <strong>{formatLap(ghost)}</strong>
+    </div>
+  )
+  if (past) return chase
   return (
     <>
       <div className="game-pause-meta__row hotlap-track">
         <span>
-          {past ? 'Past track' : test ? 'Test drive' : 'Today’s track'} · #{course.n}
+          {test ? 'Test drive' : 'Today’s track'} · #{course.n}
         </span>
         <strong>{course.name}</strong>
       </div>
-      <div className="game-pause-meta__row">
-        <span>{chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue car'}</span>
-        <strong>{formatLap(ghost)}</strong>
-      </div>
+      {chase}
       {test ? (
         <div className="game-pause-meta__row">
           <span>Its day</span>
@@ -276,10 +289,12 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
  * HotLapGame mounts it for today; when midnight has brought a new track by the next start, it asks for
  * the new day with `onNewDay`, which mounts it again, with `notice` to say why when a lap was lost to it.
  *
- * With `test`, it's the day's track driven on another day (TestCards.tsx): no score card, your best lap
- * is kept only in the tab, and midnight changes nothing. A track still to come is a test drive, on no
- * board. One whose day has gone keeps a board of its own for good: a lap on it goes there, under a run
- * of its own, and never on today's board.
+ * With `test`, it's the day's track driven on another day: no score card, your best lap is kept only in
+ * the tab, and midnight changes nothing. Today's track or one still to come is an admin's test drive, on
+ * no board (TestCards.tsx). With `pastTrack` too, the track's day has gone and it keeps a board of its own
+ * for good: a lap on it goes there, under a run of its own, and never on today's board, your week or your
+ * rank. Its cards say so (PastTrackCards.tsx), and so do the chip over the track, the tab's title and the
+ * pause card, and leaving goes back to its row on Past tracks.
  *
  * The ghost is the lap to beat, driven alongside you the whole way, its name over it: the board's #1
  * (today's #1, or a past track's record holder: boardGhost.ts), on the blue car's line at their time when
@@ -298,11 +313,14 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
 function HotLapDay({
   day,
   test = false,
+  pastTrack = null,
   onNewDay,
   notice,
 }: {
   day: string
   test?: boolean
+  /** A past track's board and figures (PastTrackDay): its laps go on its board. With `test`. */
+  pastTrack?: PastTrack | null
   onNewDay: (notice?: string) => void
   notice?: string
 }) {
@@ -310,13 +328,11 @@ function HotLapDay({
   const apiBest = usePersonalBest(SLUG)
   const course = hotlapCourse(day)
   const pace = course.paceLap
-  // A track whose day has gone, settled as it opens: its laps go on its own board.
-  const [past] = useState(() => test && trackState(course.n) === 'past')
+  const past = pastTrack !== null
   const { signedIn } = useAuth()
   const viewer = useAccountId()
   const playerName = normalizePlayerName(usePlayerName())
-  const [boardVersion, setBoardVersion] = useState(0)
-  const board = useTrackBoard(past ? course.n : null, playerName, boardVersion)
+  const board = pastTrack?.board ?? null
   // Today's track and a past one have boards, and so a #1 whose ghost to race; a track still to come has neither.
   const onBoard = !test || past
   const topRef = useRef<BoardGhost | null>(null)
@@ -883,6 +899,16 @@ function HotLapDay({
   // Whose the lap is, for its card: an account's lap waits for that account; one driven signed out goes to whoever signs in.
   const lapOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
   const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} chasing={g.chasing} test={test} past={past} />
+  // A past track, signed in: a lap goes on its board. Signed out it's practice, and so is a lap driven
+  // signed out, for good: signing in on its card is for the laps after it.
+  const pastKind: PastKind =
+    (viewer === null && (g.owner === undefined || g.owner === SIGNED_OUT)) || (ui.phase === 'gameover' && g.owner === SIGNED_OUT)
+      ? 'practice'
+      : 'board'
+  // The same one to the chrome and the pause card: the chip, the tab's title, Leave and the pause card's figures.
+  const pastPlay: PastPlay | null = pastTrack
+    ? { href: dailyTabHref(SLUG, 'past', course.n), kind: pastKind, title: course.name, facts: pastTrack.figures.facts }
+    : null
 
   return (
     <section
@@ -894,7 +920,7 @@ function HotLapDay({
           <div className="hotlap__play" onPointerDown={onPointerDown}>
             <div ref={holderRef} className="hotlap__holder" />
 
-            <GamePlayChrome slug={SLUG} inRun={() => IN_RUN.has(gameRef.current!.phase)} paused={paused}>
+            <GamePlayChrome slug={SLUG} inRun={() => IN_RUN.has(gameRef.current!.phase)} paused={paused} past={pastPlay}>
               {inRun && !paused ? (
                 <button
                   type="button"
@@ -1012,35 +1038,36 @@ function HotLapDay({
                 personalBest={inRun ? previousBestRef.current : apiBest}
                 hideBest={test}
                 hideRecord={test}
+                past={pastPlay}
                 paused={paused}
                 onResume={resume}
                 onRestart={start}
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noGl ? (
-                test ? (
-                  <TestStartCard course={course} ghost={g.ghost.lap.time} past={past ? { board, signedIn } : null} />
+                pastTrack ? (
+                  <PastTrackStart course={course} kind={pastKind} figures={pastTrack.figures} board={board} />
+                ) : test ? (
+                  <TestStartCard course={course} ghost={g.ghost.lap.time} />
                 ) : (
                   <GameStartCard title="Hot Lap" slug={SLUG} extraMeta={extra} />
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && lap ? (
-                past ? (
-                  <PastResultCard
+                pastTrack ? (
+                  <PastTrackResult
                     course={course}
                     time={lap.time}
                     score={lap.score}
-                    splits={lap.splits}
                     run={lap.run}
                     board={board}
                     owner={lapOwner}
                     onSaved={(result) => {
                       claimSaved(g)
-                      setBoardVersion((v) => v + 1)
+                      pastTrack.refresh()
                       sendGhost(lap, result.name)
                     }}
                     onAgain={start}
-                    onDone={toMenu}
                   />
                 ) : test ? (
                   <TestResultCard
@@ -1090,11 +1117,42 @@ function devDay(): string | null {
 }
 
 /**
- * Hot Lap on today's track, mounted again for the next when midnight brings it; with `testDay`, a test
- * drive of that day's track (the play page's ?track=, see TestCards.tsx).
+ * A past track, from its row on Past tracks: anyone's to race, and a lap on it goes on its own board
+ * (PastTrackCards.tsx). Its board and its figures are asked for here, and again once a lap is saved.
+ * Signed out, they're asked for without a tag: nobody's place is shown as yours.
+ */
+function PastTrackDay({ day }: { day: string }) {
+  const viewer = useAccountId()
+  const playerName = normalizePlayerName(usePlayerName())
+  const name = viewer === null ? '' : playerName
+  const [version, setVersion] = useState(0)
+  const board = useTrackBoard(trackNumber(day), name, version)
+  const figures = usePastTrackFigures(day, board, viewer, name)
+  const refresh = useCallback(() => setVersion((v) => v + 1), [])
+  return <HotLapDay day={day} test pastTrack={{ board, figures, refresh }} onNewDay={() => {}} />
+}
+
+/**
+ * Hot Lap on today's track, mounted again for the next when midnight brings it; with `testDay` (the play
+ * page's ?track=), another day's track. A past one is anyone's to race, on its own board. Today's, or one
+ * still to come, is a test drive, and only an admin's: anyone else is sent to today's track, with a word
+ * about why when the track's day hasn't come.
  */
 export function HotLapGame({ testDay }: { testDay?: string | null }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? trackDay() }))
-  if (testDay) return <HotLapDay key={`test-${testDay}`} day={testDay} test onNewDay={() => {}} />
-  return <HotLapDay key={today.day} day={today.day} notice={today.notice} onNewDay={(notice) => setToday({ day: trackDay(), notice })} />
+  const admin = useAdminState()
+  const { loading } = useAuth()
+  const state = testDay ? trackState(trackNumber(testDay)) : null
+  const gated = state !== null && state !== 'past'
+  // Sent away only once we know: signed in (or not), and the API has said this account isn't an admin.
+  const shut = gated && admin === false && !loading
+  useEffect(() => {
+    if (shut) navigate(gamePlayHref(SLUG), { replace: true })
+  }, [shut])
+  if (testDay && state === 'past') return <PastTrackDay key={`past-${testDay}`} day={testDay} />
+  if (testDay && admin === true) return <HotLapDay key={`test-${testDay}`} day={testDay} test onNewDay={() => {}} />
+  // Still signing in, or still asking the API whether this account is an admin.
+  if (testDay && !shut) return null
+  const notice = testDay && state === 'ahead' ? `Track #${trackNumber(testDay)}’s day hasn’t come yet. Here’s today’s.` : today.notice
+  return <HotLapDay key={today.day} day={today.day} notice={notice} onNewDay={(why) => setToday({ day: trackDay(), notice: why })} />
 }

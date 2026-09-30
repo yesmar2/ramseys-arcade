@@ -1,6 +1,9 @@
 import type { Game } from '../data/games'
+import type { HubDay, HubWeek } from '../hooks/useGameHub'
 import { placeBeating, type BoardPlayer, type BoardYou } from './gameBoard'
-import { barPosition, nextLine, shareLines, talksInPlaces } from './profileMath'
+import { numberWord } from './numberWord'
+import { andList, barPosition, nextLine, shareLines, talksInPlaces } from './profileMath'
+import { dayInFull, inPeriod } from './rankHow'
 import { closestToInk, coverRecord, recordBrief, recordGap } from './recordBook'
 import { recordShut } from './recordPage'
 import type { RecordSummary } from './records'
@@ -86,9 +89,10 @@ export type Aim = { label: string; beat: number | null; place: number }
 
 /**
  * What a first run could aim at: the middle of the board, the top ten and the
- * record, each with the place it takes.
+ * record, each with the place it takes. On a daily's board, which is today's,
+ * the top is 1st today: a course's record is the best on it of all time.
  */
-export function firstRunAims(players: BoardPlayer[]): Aim[] {
+export function firstRunAims(players: BoardPlayer[], daily = false): Aim[] {
   const field = players.length
   const aim = (label: string, at: BoardPlayer | undefined): Aim | null =>
     at ? { label, beat: at.best.score, place: placeBeating(players, at.best.score) } : null
@@ -100,10 +104,67 @@ export function firstRunAims(players: BoardPlayer[]): Aim[] {
         ? { label: 'Any run', beat: null, place: field + 1 }
         : null,
     field >= 14 ? aim('Top ten', players[9]) : null,
-    aim('Record', players[0]),
+    aim(daily ? '1st today' : 'Record', players[0]),
   ].filter((a): a is Aim => a !== null)
   // Ties can make two marks the same run (beating the middle's score already reaches the top ten): keep the bigger claim.
   return aims.filter((a, i) => !aims.slice(i + 1).some((later) => later.place === a.place))
+}
+
+/* ---------- a daily, beyond today ---------- */
+
+/**
+ * Whether the viewer is new to a daily, back again, or not known to be either (their days didn't load):
+ * someone back is never told about their "first run", and someone new is welcomed rather than measured.
+ * No tag at all is new: nothing of theirs is on any board.
+ */
+export type DailyHistory = 'new' | 'back' | 'unknown'
+
+export function dailyHistory(week: HubWeek | null, me: string): DailyHistory {
+  if (!me) return 'new'
+  if (!week) return 'unknown'
+  return week.days.length > 0 ? 'back' : 'new'
+}
+
+const weekdayLong = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
+
+/** Monday, from a board day's YYYY-MM-DD. */
+function weekdayOf(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return weekdayLong.format(new Date(Date.UTC(y!, m! - 1, d!)))
+}
+
+/** 5th of 14 on Monday; on Monday alone when the place didn't come with it. */
+function dayPlace(d: HubDay): string {
+  return d.place != null ? `${ordinalOf(d.place)} of ${d.players} on ${weekdayOf(d.day)}` : `on ${weekdayOf(d.day)}`
+}
+
+/** The days this week before today that the viewer played, newest first: today's is on today's board. */
+export function daysThisWeek(week: HubWeek, today: string): HubDay[] {
+  return week.days.filter((d) => inPeriod(d.day, 'weekly', today) && d.day !== today)
+}
+
+/**
+ * What a daily's week so far is made of, in places and days, never its points: "From one day so far: 5th
+ * of 14 on Monday." Past three days, the best of them. Not played this week: the last day they did, or
+ * null for someone who never has.
+ */
+export function weekSoFar(week: HubWeek, today: string): string | null {
+  const thisWeek = daysThisWeek(week, today)
+  if (thisWeek.length === 0) {
+    const last = week.days.find((d) => d.day < today)
+    if (!last) return null
+    return last.place != null
+      ? `You last played it on ${dayInFull(last.day)}: ${ordinalOf(last.place)} of ${last.players}.`
+      : `You last played it on ${dayInFull(last.day)}.`
+  }
+  const oldestFirst = [...thisWeek].reverse()
+  if (oldestFirst.length === 1) return `From one day so far: ${dayPlace(oldestFirst[0]!)}.`
+  if (oldestFirst.length <= 3) {
+    return `From ${numberWord(oldestFirst.length)} days so far: ${andList(oldestFirst.map(dayPlace))}.`
+  }
+  // The best day is the one that paid most; the latest when two paid the same.
+  const best = oldestFirst.reduce((a, b) => ((b.points ?? 0) >= (a.points ?? 0) ? b : a))
+  return `From ${numberWord(oldestFirst.length)} days so far. Your best: ${dayPlace(best)}.`
 }
 
 /* ---------- the record books ---------- */

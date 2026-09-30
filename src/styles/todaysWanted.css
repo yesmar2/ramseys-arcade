@@ -1,5 +1,5 @@
 /*
- * Today's Wanted (TodaysWantedCard.tsx) and Find the Bug's archive (BugArchive.tsx): the day's five
+ * Today's Wanted (TodaysWantedCard.tsx) and Find the Bug's past days (BugArchive.tsx): the day's five
  * wanted bugs, their faces side by side on the game's teal, each in a circle of poster paper.
  */
 .twc-faces {
@@ -21,7 +21,7 @@ html:not([data-theme='light']) .twc-faces {
     linear-gradient(160deg, #22625f 0%, #153f3e 100%);
 }
 
-/* Two classes, to outrank the archive's rule for a card's drawing (.arch-card__art canvas). */
+/* Each wanted bug's head, round on a cream plate: a sixth of the row, so five fit with gaps. */
 .twc-faces .twc-faces__face {
   display: block;
   flex: 0 1 16%;
@@ -33,12 +33,4 @@ html:not([data-theme='light']) .twc-faces {
   box-shadow:
     0 0 0 2px rgba(255, 255, 255, 0.55),
     0 6px 14px rgba(8, 30, 30, 0.28);
-}
-
-/* The day's name is its five wanted bugs, too long for one line in the archive: two lines there. */
-.arch-grid--findbug .arch-card__title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  white-space: normal;
 }

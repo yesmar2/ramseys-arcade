@@ -3,7 +3,8 @@
  * and the How to play panel in the game): what you're after, the controls,
  * what scores, what ends a run, and one tip where a game has a trap you would
  * otherwise miss. Only what a player needs before a first run; the rest they
- * learn by playing.
+ * learn by playing. A daily adds what counts: today's course toward your rank,
+ * a past one on its own board or as practice.
  *
  * A control names what it does, then how on a touch screen and how on a
  * keyboard. A phone shows only the touch one.
@@ -29,6 +30,19 @@ export type HowToScore = {
   sub?: string
 }
 
+/**
+ * What a daily's run counts toward: today's course, then a past one. `kind` is the label it wears, the
+ * same words everywhere (components/RunLabel.tsx): counts toward your rank, its own board and not your
+ * rank, or practice that saves nothing.
+ */
+export type HowToCount = {
+  /** Today’s track, A past track. */
+  what: string
+  kind: 'counts' | 'board' | 'practice'
+  /** What becomes of the result, in a line. */
+  sub: string
+}
+
 export type HowToPlay = {
   /** One line: what a run is for. */
   goal: string
@@ -40,6 +54,8 @@ export type HowToPlay = {
   /** What ends a run. */
   ends: string
   tip?: string
+  /** A daily's: what today's run counts toward, and what a past course's does (components/WhatCounts.tsx). */
+  counts?: HowToCount[]
 }
 
 export const HOW_TO_PLAY: Record<string, HowToPlay> = {
@@ -167,6 +183,14 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
     ends: 'After the fifth scene. Your first run of the day is your result; after that, play it again for practice.',
     tip: 'Only one bug matches all four clues: colours, hat, glasses and what it holds.',
+    counts: [
+      {
+        what: 'Today’s Wanted',
+        kind: 'counts',
+        sub: 'Your first run today goes on today’s board, your week and your rank. Runs after it are practice.',
+      },
+      { what: 'A past day', kind: 'practice', sub: 'Play any past day. Nothing is saved: no board, no tickets, no rank.' },
+    ],
   },
   barrage: {
     goal: 'Dodge the bullets. Break the ships.',
@@ -267,10 +291,27 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'the tries your first bullseye took', sub: 'fewest wins the day' },
       { what: 'Every try', pts: 'counts', sub: 'even if you leave and come back' },
-      { what: 'A past hole you didn’t play', pts: 'its own board', sub: 'taking its record pays 15 tickets' },
     ],
     ends: 'At your first bullseye. After that, play it again for practice; that doesn’t count.',
     tip: 'Each miss says how far off it was. Double-tap the green, or turn on Slopes, to see which way it runs.',
+    // A past hole's first bullseye goes on its board only while you have none there, from its day or after.
+    counts: [
+      {
+        what: 'Today’s hole',
+        kind: 'counts',
+        sub: 'Your first bullseye today goes on today’s board, your week and your rank.',
+      },
+      {
+        what: 'A past hole you have no bullseye on',
+        kind: 'board',
+        sub: 'Your first bullseye goes on that hole’s own board, not your rank. Taking its record pays 15 tickets, once.',
+      },
+      {
+        what: 'A past hole you have a bullseye on',
+        kind: 'practice',
+        sub: 'Your first bullseye there stands, from its day or after. Play it again as often as you like.',
+      },
+    ],
   },
   hotlap: {
     goal: 'The fastest lap of today’s track. A new one comes every day at midnight, New York time.',
@@ -283,10 +324,21 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
-      { what: 'A lap of a past track', pts: 'its own board', sub: 'taking its record pays 15 tickets' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'The call under the clock names the next corner and counts down to it: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
+    counts: [
+      {
+        what: 'Today’s track',
+        kind: 'counts',
+        sub: 'Your best lap today goes on today’s board, your week and your rank.',
+      },
+      {
+        what: 'A past track',
+        kind: 'board',
+        sub: 'Your best lap goes on that track’s own board, not your rank. Taking its record pays 15 tickets, once.',
+      },
+    ],
   },
   halffull: {
     goal: 'Fill each of today’s glasses exactly half full: by what it holds, not how tall it is. New glasses every day at midnight, New York time.',
@@ -299,10 +351,17 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Each glass', pts: 'up to 100', sub: 'less 2 for every point off half: 45% full scores 90' },
       { what: 'The last glass', pts: 'up to 100', sub: 'a fair share: 58 to 42 scores 84' },
       { what: 'Your day', pts: 'the average of the five' },
-      { what: 'Your first pour today', pts: 'today’s board', sub: 'and its record book · a past day is practice' },
     ],
     ends: 'After the fifth glass. Your first pour of the day is your result; after that, pour it again for practice.',
     tip: 'Wide at the top? Half is higher than it looks. Narrow at the top? Lower. And some glasses are just what they look like.',
+    counts: [
+      {
+        what: 'Today’s Pour',
+        kind: 'counts',
+        sub: 'Your first pour today goes on today’s board, your week and your rank. Pours after it are practice.',
+      },
+      { what: 'A past day', kind: 'practice', sub: 'Pour any past day. Nothing is saved: no board, no tickets, no rank.' },
+    ],
   },
   marblerun: {
     goal: 'The fastest run down today’s course. A new one comes every day at midnight, New York time.',
@@ -316,6 +375,14 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
     ends: 'At the goal. Roll it as often as you like.',
     tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. The ghost is the run to beat.',
+    counts: [
+      {
+        what: 'Today’s course',
+        kind: 'counts',
+        sub: 'Your best run today goes on today’s board, your week and your rank.',
+      },
+      { what: 'A past course', kind: 'practice', sub: 'Roll any past course. Nothing is saved: no board, no tickets, no rank.' },
+    ],
   },
 }
 
@@ -328,6 +395,9 @@ export function howToPlaySentences(slug: string): string[] {
   const how = howToPlayFor(slug)
   if (!how) return []
   const scores = how.scores.map((s) => `${s.what}: ${s.pts}${s.sub ? ` (${s.sub})` : ''}`).join('. ')
-  const ends = how.ends.charAt(0).toLowerCase() + how.ends.slice(1)
-  return [how.goal, `What scores. ${scores}.`, `How a run ends: ${ends}`]
+  const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
+  const ends = lower(how.ends)
+  const sentences = [how.goal, `What scores. ${scores}.`, `How a run ends: ${ends}`]
+  if (how.counts?.length) sentences.push(`What counts. ${how.counts.map((c) => `${c.what}: ${lower(c.sub)}`).join(' ')}`)
+  return sentences
 }

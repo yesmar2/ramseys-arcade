@@ -3,6 +3,7 @@ import { announceSecrets, type SecretFound } from './secrets'
 import { noteTicketsPaid } from './tickets'
 import {
   aboutHref,
+  dailyTabHref,
   gameBoardHref,
   gameHref,
   homeHref,
@@ -102,6 +103,8 @@ function possessive(name: string): string {
 const GAME_PAGE_LESSON = 'Every game has a page of its own: its board, its record book, the events it’s in and how to play.'
 const BOARD_LESSON = 'Every game has a board of its own: each player’s best run this week, this month and all time.'
 const BOOK_LESSON = 'Record books keep feats inside a game, like the fastest wave cleared or the longest chain.'
+const DAILY_RECORDS_LESSON =
+  'A daily’s Records tab keeps the records made over many days, like the most days played in a row and the most days won.'
 const ABOUT_LESSON = 'Original games, no ads, no install: About is the whole idea in one page.'
 const GROUPS_LESSON = 'Make a group, share its link, and everyone in it gets boards of their own.'
 
@@ -236,14 +239,26 @@ function gameAnchors(): HuntAnchor[] {
         { id: `b-board-${slug}`, href: boardHref, page: board, thing: 'the table', lesson: BOARD_LESSON },
       )
     }
+    // A daily has no book of its own: its records are its page's Records tab. Same id, same place in
+    // the list, so the days' shuffled order stays as it was.
     if (books.includes(slug)) {
-      out.push({
-        id: `r-head-${slug}`,
-        href: recordsHref(slug),
-        page: `in ${possessive(game.name)} record book`,
-        thing: 'the panel at the top',
-        lesson: BOOK_LESSON,
-      })
+      out.push(
+        game.daily
+          ? {
+              id: `r-head-${slug}`,
+              href: dailyTabHref(slug, 'records'),
+              page: `on ${possessive(game.name)} Records tab`,
+              thing: 'Records that span the days',
+              lesson: DAILY_RECORDS_LESSON,
+            }
+          : {
+              id: `r-head-${slug}`,
+              href: recordsHref(slug),
+              page: `in ${possessive(game.name)} record book`,
+              thing: 'the panel at the top',
+              lesson: BOOK_LESSON,
+            },
+      )
     }
   }
   return out

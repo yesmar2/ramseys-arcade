@@ -1,9 +1,9 @@
-import { games, getGame, isListedGame, type Game } from '../data/games'
+import { games, getGame, isDailyGame, isListedGame, type Game } from '../data/games'
 import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
   adminHref,
-  gameArchiveHref,
+  dailyTabHref,
   gameHref,
   gamePlayHref,
   homeHref,
@@ -25,6 +25,7 @@ import {
   type Route,
 } from '../hooks/useHashRoute'
 import { APP_NAME, SITE_LINE } from './brand'
+import { dailyWords } from './dailyWords'
 import { groupHref, groupsIndexHref } from './groups'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
 import { gameHasRecords } from './records'
@@ -143,16 +144,35 @@ function dailyMeta(slug: string): PageMeta | null {
   }
 }
 
-/** What each daily game's archive is called, and what it holds. */
-const ARCHIVE_META: Readonly<Record<string, { title: string; what: string }>> = {
-  acechase: { title: 'Past holes', what: 'hole' },
-  hotlap: { title: 'Past tracks', what: 'track' },
-  findbug: { title: 'Past days', what: 'five scenes' },
-  halffull: { title: 'Past days', what: 'five glasses' },
-}
-
 function gameName(slug: string) {
   return getGame(slug)?.name ?? 'Game'
+}
+
+/**
+ * A daily's other tabs: its past courses ("Hot Lap · Past tracks") and its records ("Hot Lap ·
+ * Records"), in the words lib/dailyWords.ts gives each game.
+ */
+function dailyTabMeta(slug: string, tab: 'past' | 'records'): PageMeta {
+  const name = gameName(slug)
+  const { course, pastTab, verb, past } = dailyWords(slug)
+  const meta = gameMeta(slug, dailyTabHref(slug, tab))
+  const board = past === 'board'
+  if (tab === 'past') {
+    return {
+      ...meta,
+      title: titled(`${name} · ${pastTab}`),
+      description: board
+        ? `Every ${name} ${course} since the first: who was 1st on its day, its own board, and a way to ${verb.toLowerCase()} it again. Only today’s ${course} counts toward your rank.`
+        : `Every ${name} ${course} since the first, and who was 1st on its day. ${verb} any of them again as practice: only today’s counts toward your rank.`,
+    }
+  }
+  return {
+    ...meta,
+    title: titled(`${name} · Records`),
+    description: board
+      ? `${name}’s records over many days: the most days played in a row, the most days won and the most ${course} records held, and every ${course}’s record.`
+      : `${name}’s records over many days: the most days played in a row and the most days won.`,
+  }
 }
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
@@ -194,9 +214,12 @@ export function publicRoutes(): Route[] {
   for (const game of visibleGames()) {
     routes.push({ name: 'game', slug: game.slug })
     if (game.playable) routes.push({ name: 'gamePlay', slug: game.slug })
-    if (game.playable && game.daily) routes.push({ name: 'gameArchive', slug: game.slug })
+    // A daily's past courses and records are tabs of its page; its record book isn't a page of its own.
+    if (game.daily) {
+      routes.push({ name: 'game', slug: game.slug, tab: 'past' }, { name: 'game', slug: game.slug, tab: 'records' })
+    }
     if (isBoardGame(game.slug)) routes.push({ name: 'gameLeaderboard', game: game.slug })
-    if (gameHasRecords(game.slug)) routes.push({ name: 'records', game: game.slug })
+    if (gameHasRecords(game.slug) && !game.daily) routes.push({ name: 'records', game: game.slug })
   }
   return routes
 }
@@ -228,7 +251,13 @@ function gameContentLinks(game: Game): PageLink[] {
   if (isBoardGame(game.slug)) {
     links.push({ href: gameBoardPath(game.slug), label: `${game.name} leaderboard` })
   }
-  if (gameHasRecords(game.slug)) {
+  if (game.daily) {
+    links.push(
+      { href: gameHref(game.slug), label: `${game.name} today` },
+      { href: dailyTabHref(game.slug, 'past'), label: `${game.name} · ${dailyWords(game.slug).pastTab}` },
+      { href: dailyTabHref(game.slug, 'records'), label: `${game.name} records` },
+    )
+  } else if (gameHasRecords(game.slug)) {
     links.push({ href: gameRecordsPath(game.slug), label: `${game.name} record books` })
   }
   links.push({ href: homeHref(), label: 'All games' })
@@ -250,6 +279,10 @@ export function pageContent(route: Route): PageContent {
     case 'gamePlay': {
       const game = getGame(route.slug)
       if (!game || game.hidden) break
+      // A daily's other tabs say what they hold, and lead to the rest of its pages.
+      if (route.name === 'game' && route.tab && game.daily) {
+        return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
+      }
       const [goal, ...rules] = howToPlaySentences(game.slug)
       const paragraphs = [game.description, ...(goal && goalBeyond(game) ? [goal] : []), ...rules]
       return { heading, paragraphs, links: gameContentLinks(game) }
@@ -257,11 +290,6 @@ export function pageContent(route: Route): PageContent {
     case 'gameLeaderboard':
     case 'records': {
       const game = getGame(route.game)
-      if (!game || game.hidden) break
-      return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
-    }
-    case 'gameArchive': {
-      const game = getGame(route.slug)
       if (!game || game.hidden) break
       return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
     }
@@ -367,15 +395,6 @@ export function pageMeta(route: Route): PageMeta {
         description: `Top scores for every ${APP_NAME} game, and the standings across all of them. Daily, weekly, monthly and all-time.`,
         path: '/leaderboards',
       }
-    case 'gameArchive': {
-      const meta = gameMeta(route.slug, gameArchiveHref(route.slug))
-      const words = ARCHIVE_META[route.slug] ?? { title: 'Past days', what: 'game' }
-      return {
-        ...meta,
-        title: titled(`${words.title} · ${gameName(route.slug)}`),
-        description: `Every day’s ${gameName(route.slug)} ${words.what} since the first, who did best each day, and each day to play again.`,
-      }
-    }
     case 'gameLeaderboard': {
       const meta = gameMeta(route.game, gameBoardPath(route.game))
       return {
@@ -441,8 +460,15 @@ export function pageMeta(route: Route): PageMeta {
         noindex: true,
       }
     case 'game':
+      if (route.tab && isDailyGame(route.slug)) return dailyTabMeta(route.slug, route.tab)
       return gameMeta(route.slug, gameHref(route.slug))
     case 'gamePlay':
+      // A daily asked for another day's course (?day=, ?hole=, ?track=): a plain title, since the page may still
+      // play today's course, or an admin's trial of one to come. A past course that really opens names itself
+      // in the tab, "Hot Lap · Seneca Glen (past track)", through its PastPlay (lib/pastPlay.ts).
+      if ((route.track || route.hole || route.day) && isDailyGame(route.slug)) {
+        return { ...gameMeta(route.slug, gamePlayHref(route.slug), 'Play'), noindex: true }
+      }
       return dailyMeta(route.slug) ?? gameMeta(route.slug, gamePlayHref(route.slug), 'Play')
     case 'authVerify':
       return { ...site, title: titled('Signing in'), path: homeHref(), noindex: true }

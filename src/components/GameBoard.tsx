@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame, isDailyGame } from '../data/games'
 import { useGameBoard } from '../hooks/useGameBoard'
-import { gameBoardHref, gamePlayHref, leaderboardHref, rankHref, recordsHref } from '../hooks/useHashRoute'
+import { dailyTabHref, gameBoardHref, gamePlayHref, leaderboardHref, rankHref, recordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
@@ -11,11 +11,13 @@ import {
   boardHeadline,
   boardLede,
   boardYouStats,
+  firstResultWord,
   firstRunWord,
   offBoardLines,
   oneRunBoard,
   placeBeating,
   playersFromRuns,
+  playersNote,
   priceList,
   runsChart,
   youOnBoard,
@@ -228,7 +230,12 @@ function Banner({
               {deviceRequirementLabel(game)}
             </p>
           )}
-          {gameHasRecords(slug) ? (
+          {/* A daily's records aren't in the record books: its page keeps them, on its Records tab. */}
+          {isDailyGame(slug) ? (
+            <a className="home-banner__ghost" href={dailyTabHref(slug, 'records')}>
+              Records
+            </a>
+          ) : gameHasRecords(slug) ? (
             <a className="home-banner__ghost" href={recordsHref(slug, period)}>
               Record books
             </a>
@@ -257,7 +264,8 @@ function Banner({
         ) : null}
         {leader ? (
           <span className="gb-marquee">
-            <span>{points ? 'Most points' : 'Hi-score'}</span>
+            {/* A daily's today board is led by whoever's 1st today: a record is a course's best across all time. */}
+            <span>{points ? 'Most points' : isDailyGame(slug) && period === 'daily' ? '1st today' : 'Hi-score'}</span>
             <b>{formatBoardScore(slug, leader.best.score, period)}</b>
             <span>{leader.name}</span>
           </span>
@@ -296,7 +304,10 @@ function YouOnBoard({
         <span>of {you.field.toLocaleString()}</span>
       </p>
       <p className="sb-you__line">
-        Best {formatLeaderboardScore(slug, you.player.best.score)} · {count} {count === 1 ? 'run' : 'runs'}
+        {/* On a board that keeps one result a player, that one is yours whether or not it's your best. */}
+        {oneRunBoard(slug, period)
+          ? `Your first ${firstResultWord(slug)} today: ${formatLeaderboardScore(slug, you.player.best.score)}`
+          : `Best ${formatLeaderboardScore(slug, you.player.best.score)} · ${count} ${count === 1 ? 'run' : 'runs'}`}
       </p>
       <div className="sb-you__foot">
         <Stats stats={boardYouStats(slug, you)} />
@@ -565,7 +576,7 @@ function Board({
         </div>
       </div>
       <p className="gb-board__note">
-        {byPlayer ? 'Each player’s best run.' : 'Every run, best first.'}
+        {byPlayer ? playersNote(slug, period) : 'Every run, best first.'}
       </p>
       {data.loading ? (
         <BoardSkeleton rows={FIRST_ROWS} />
@@ -581,7 +592,8 @@ function Board({
             <span>Place</span>
             <span />
             <span>Player</span>
-            <span className="gb-board__num">Best</span>
+            {/* A first-result daily's today board keeps each player's first result, which needn't be their best. */}
+            <span className="gb-board__num">{oneRunBoard(slug, period) ? 'Result' : 'Best'}</span>
             <span className="gb-board__set">Set</span>
           </div>
           <ol className="gb-rows">

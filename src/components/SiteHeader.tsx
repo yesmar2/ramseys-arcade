@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { isDailyGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useFriends } from '../hooks/useFriends'
 import { useImpersonation } from '../hooks/useImpersonation'
@@ -181,8 +182,12 @@ export function SiteHeader() {
 
   const path = currentPath()
   // Events and groups have boards of their own, and the Today page's are the day's, so the site's boards control stays off their pages.
+  // So does a daily's page, which is always today's: its tabs stand in for it. When a group is picked, its Today
+  // tab keeps the control: that tab's board, standing and Today card are the group's, and the control names the
+  // group and leads back to Everyone.
   const showScope =
     route.name !== 'today' &&
+    !(route.name === 'game' && isDailyGame(route.slug) && (route.tab != null || !groupId)) &&
     route.name !== 'tournaments' &&
     route.name !== 'tournament' &&
     route.name !== 'tournamentCreate' &&

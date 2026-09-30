@@ -842,6 +842,54 @@ html[data-theme='dark'] {
   color: var(--muted);
 }
 
+/*
+ * A punched daily whose first result counts: playing today's again is practice. In the practice label's
+ * colour (runLabel.css's --run-label, from the run-label--practice class beside this one), with its loop.
+ */
+.today-again {
+  display: block;
+  max-width: 100%;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--run-label, var(--muted));
+}
+
+.today-again svg {
+  display: inline-block;
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 0.3rem;
+  vertical-align: -0.15em;
+}
+
+/* A punch's way to its game's past courses: small, under its way in, with room round it for a thumb. */
+.today-past {
+  display: inline-block;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.today-past:hover,
+.today-past:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.today-slot__past {
+  margin-top: -0.55rem;
+}
+
+.today-feature__past {
+  margin-top: 0.1rem;
+}
+
 /* The bonus punches: the day's other things, which don't count. */
 .today-card__bonus {
   display: flex;

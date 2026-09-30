@@ -1,0 +1,945 @@
+/*
+ * A daily's past tab (DailyPastTab, archive/PastCourses.tsx): the rule, the last seven days, then every
+ * past course as a row: its picture and name, how its day went, its own board if it keeps one, and the
+ * way to play it. The board and practice colours are the run labels' (runLabel.css), so a row's facts,
+ * button and label read as one.
+ */
+
+.dp {
+  --dp-board: #8f5a04;
+  --dp-practice: #3f6d99;
+  --dp-line: rgba(var(--ink-rgb), 0.09);
+  --dp-link: color-mix(in srgb, var(--gh-accent, var(--accent)) 70%, var(--ink));
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+html[data-theme='dark'] .dp {
+  --dp-board: #f5b544;
+  --dp-practice: #8fb3d9;
+}
+
+.dp-link-btn {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 800;
+  color: var(--dp-link);
+  cursor: pointer;
+}
+
+.dp-link-btn:hover,
+.dp-link-btn:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* ---------- the rule: what a past course counts toward ---------- */
+
+.dp-rule {
+  --dp-tone: var(--dp-board);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem 1.1rem;
+  padding: 0.9rem 1.3rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--dp-tone) 11%, var(--surface)),
+    color-mix(in srgb, var(--dp-tone) 3%, var(--surface)) 70%
+  );
+  border: 1px solid color-mix(in srgb, var(--dp-tone) 32%, transparent);
+}
+
+.dp-rule--practice {
+  --dp-tone: var(--dp-practice);
+}
+
+.dp-rule__label {
+  flex: none;
+}
+
+.dp-rule__text {
+  flex: 1 1 22rem;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.dp-rule__text b {
+  font-weight: 800;
+}
+
+.dp-rule__how {
+  flex: none;
+  margin-left: auto;
+  font-size: 0.95rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+}
+
+.dp-rule__how:hover,
+.dp-rule__how:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.dp-oops {
+  margin: 0;
+  padding: 0.75rem 1.1rem;
+  border-radius: 1rem;
+  font-size: 0.95rem;
+  background: color-mix(in srgb, #e5484d 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, #e5484d 35%, transparent);
+}
+
+/* ---------- the last seven days ---------- */
+
+.dp-week {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.4rem;
+  padding: 1.1rem 1.3rem 1.2rem;
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--dp-line);
+  box-shadow: var(--shadow-soft);
+  scroll-margin-top: calc(var(--header-h, 4rem) + 1.25rem);
+}
+
+/* As wide as its days: a full week fills the row and yours goes under it; a game's first days leave it room. */
+.dp-week__main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.dp-week__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+}
+
+.dp-week__title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dp-week__lede {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Room round the tiles so today's glow isn't cut off by the sideways scroll. */
+.dp-week__days {
+  list-style: none;
+  margin: -0.3rem;
+  padding: 0.3rem;
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.dp-week__item {
+  flex: 0 0 9.5rem;
+  scroll-snap-align: end;
+}
+
+.dp-day {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  height: 100%;
+  padding: 0.7rem 0.75rem 0.75rem;
+  border-radius: 1.1rem;
+  background: rgba(var(--ink-rgb), 0.04);
+  border: 1px solid var(--dp-line);
+  color: inherit;
+  text-decoration: none;
+}
+
+.dp-day:hover,
+.dp-day:focus-visible {
+  border-color: color-mix(in srgb, var(--gh-accent, var(--accent)) 55%, transparent);
+}
+
+.dp-day--today {
+  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.dp-day__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.dp-day__n {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dp-day__pill {
+  display: inline-flex;
+  align-items: center;
+  height: 1.35rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #052a1c;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dp-day__date {
+  white-space: nowrap;
+}
+
+/* Today's number, and its pill over its result, are the phone's layout. */
+.dp-day__n--today,
+.dp-day__pill--you {
+  display: none;
+}
+
+.dp-day__art {
+  border-radius: 0.65rem;
+}
+
+.dp-day--missed .dp-day__art {
+  opacity: 0.5;
+}
+
+.dp-day__you {
+  min-height: 1.5em;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.dp-day__you b {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.dp-signin {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+/* Yours across every past course, beside the strip, or under it when there's no room. */
+.dp-sum {
+  flex: 1 1 22rem;
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 1.1rem;
+  background: rgba(var(--ink-rgb), 0.035);
+  border: 1px solid var(--dp-line);
+}
+
+.dp-sum__kicker,
+.dp-fact__kicker {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dp-sum__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.6rem 1.1rem;
+}
+
+.dp-stat {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--dp-line);
+}
+
+.dp-stat b {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.dp-stat span {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* ---------- a course's picture ---------- */
+
+.dp-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: #0b1016;
+}
+
+.dp-art > svg,
+.dp-art > canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- the list of past courses ---------- */
+
+.dp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dp-list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.9rem;
+  padding: 0.4rem 0.4rem 0;
+}
+
+.dp-list__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dp-list__count {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.dp-legend {
+  margin: 0 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.dp-legend b {
+  margin-right: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.dp-legend .dp-legend__board {
+  color: var(--dp-board);
+}
+
+.dp-list__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dp-row {
+  display: grid;
+  grid-template-columns: 13.5rem minmax(10rem, 13rem) minmax(0, 1fr) 16rem;
+  grid-template-areas:
+    'art name facts go'
+    'board board board board';
+  align-items: center;
+  gap: 0 1.5rem;
+  padding: 0.9rem 1.3rem 0.9rem 0.9rem;
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--dp-line);
+  box-shadow: var(--shadow-soft);
+  scroll-margin-top: calc(var(--header-h, 4rem) + 1.25rem);
+}
+
+.dp-row:focus {
+  outline: none;
+}
+
+/* Landed on from a link: a ring that fades, so the eye finds the row. */
+.dp-row--here {
+  animation: dp-here 2.6s ease-out;
+}
+
+@keyframes dp-here {
+  from {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--gh-accent, var(--accent)) 75%, transparent),
+      var(--shadow-soft);
+  }
+  to {
+    box-shadow:
+      0 0 0 3px transparent,
+      var(--shadow-soft);
+  }
+}
+
+.dp-row__art {
+  grid-area: art;
+}
+
+.dp-row__name {
+  grid-area: name;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.dp-row__title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.dp-row__date {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
+}
+
+/* Two lines kept for it before it's worked out, so rows don't grow under a row just landed on. */
+.dp-row__sub {
+  min-height: 2.7em;
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dp-row__facts {
+  grid-area: facts;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.dp-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem 0.95rem 0.85rem;
+  border-radius: 1rem;
+  background: rgba(var(--ink-rgb), 0.04);
+  border: 1px solid var(--dp-line);
+}
+
+.dp-fact--board {
+  background: color-mix(in srgb, var(--dp-board) 6%, var(--surface));
+  border-color: color-mix(in srgb, var(--dp-board) 28%, transparent);
+}
+
+.dp-fact__kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dp-fact--board .dp-fact__kicker {
+  color: var(--dp-board);
+}
+
+.dp-fact__kicker svg {
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.dp-fact__lead {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 1rem;
+}
+
+.dp-fact__avatar {
+  flex: none;
+}
+
+.dp-fact__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.dp-fact__what {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dp-fact__figure {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dp-fact__lead .dp-fact__figure {
+  font-size: 1.05rem;
+}
+
+.dp-fact__you {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.93rem;
+  font-weight: 700;
+}
+
+.dp-fact__you .dp-fact__figure {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
+}
+
+.dp-fact__you--none {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dp-fact__note {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.dp-fact__open {
+  margin-left: auto;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.dp-fact__none,
+.dp-fact__wait {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.dp-row__go {
+  grid-area: go;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.dp-row .dp-narrow {
+  display: none;
+}
+
+/* A row's label before what a run there does can be told: a label's height, so nothing moves when it comes. */
+.dp-row__label--wait {
+  display: flex;
+  align-items: center;
+  min-height: 1.6rem;
+}
+
+.dp-go {
+  --dp-tone: var(--dp-board);
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: 0 1.3rem;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 800;
+  text-decoration: none;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--dp-tone) 14%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-tone) 45%, transparent);
+}
+
+.dp-go--practice {
+  --dp-tone: var(--dp-practice);
+}
+
+.dp-go:hover,
+.dp-go:focus-visible {
+  background: color-mix(in srgb, var(--dp-tone) 24%, var(--surface));
+}
+
+.dp-row__hint {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* ---------- a course's board, opened on its row ---------- */
+
+.dp-board {
+  grid-area: board;
+  margin-top: 0.9rem;
+  padding: 0.8rem 1rem;
+  border-radius: 1rem;
+  background: rgba(var(--ink-rgb), 0.035);
+  border: 1px solid var(--dp-line);
+}
+
+.dp-board__head {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Down one column, then the next: 1st to 5th, then 6th to 10th. */
+.dp-board__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 2 16rem;
+  column-gap: 1.75rem;
+}
+
+.dp-board__row {
+  break-inside: avoid;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 0.6rem;
+  font-size: 0.93rem;
+}
+
+.dp-board__row--you {
+  background: color-mix(in srgb, var(--gh-accent, var(--accent)) 14%, transparent);
+}
+
+.dp-board__row--gap {
+  margin-top: 0.45rem;
+}
+
+.dp-board__place {
+  flex: 0 0 2.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.dp-board__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.dp-board__figure {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dp-board__note {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* ---------- paging ---------- */
+
+.dp-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  padding: 0.4rem 0;
+}
+
+.dp-more__btn {
+  appearance: none;
+  min-height: 2.75rem;
+  padding: 0 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: rgba(var(--ink-rgb), 0.06);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dp-more__btn:hover,
+.dp-more__btn:focus-visible {
+  background: rgba(var(--ink-rgb), 0.11);
+}
+
+.dp-more__count {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* ---------- while the game's list is on its way ---------- */
+
+.dp-skel {
+  border-radius: 1.25rem;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.09), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: dp-shimmer 1.4s linear infinite;
+}
+
+.dp-skel--rule {
+  height: 3.6rem;
+}
+
+.dp-skel--week {
+  height: 12rem;
+}
+
+.dp-skel--row {
+  height: 10rem;
+}
+
+@keyframes dp-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-skel {
+    animation: none;
+  }
+
+  .dp-row--here {
+    animation: none;
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--gh-accent, var(--accent)) 75%, transparent),
+      var(--shadow-soft);
+  }
+}
+
+/* ---------- narrower: the facts go under the name ---------- */
+
+@media (max-width: 75rem) {
+  .dp-row {
+    grid-template-columns: 11rem minmax(0, 1fr) 15rem;
+    grid-template-areas:
+      'art name go'
+      'facts facts facts'
+      'board board board';
+    gap: 0.9rem 1.2rem;
+  }
+
+  .dp-board {
+    margin-top: 0;
+  }
+}
+
+/* ---------- phones: each row stacks, the strip scrolls sideways ---------- */
+
+@media (max-width: 40rem) {
+  .dp {
+    gap: 0.85rem;
+  }
+
+  .dp-rule {
+    padding: 0.9rem 1rem;
+  }
+
+  .dp-rule__text {
+    flex-basis: 100%;
+    font-size: 0.95rem;
+  }
+
+  .dp-rule__how {
+    margin-left: 0;
+  }
+
+  .dp-week {
+    padding: 0.95rem 0.95rem 1rem;
+  }
+
+  .dp-week__item {
+    flex-basis: 7.4rem;
+  }
+
+  .dp-day {
+    padding: 0.55rem 0.6rem 0.6rem;
+  }
+
+  .dp-day__top {
+    font-size: 0.9rem;
+  }
+
+  /* No room for the pill beside the date: today's day reads "Tue 29 #4" like the rest, the pill goes over its result. */
+  .dp-day__pill--top {
+    display: none;
+  }
+
+  .dp-day__n--today {
+    display: inline;
+  }
+
+  .dp-day__pill--you {
+    display: flex;
+    width: max-content;
+    height: 1.1rem;
+    margin-bottom: 0.25rem;
+    padding: 0 0.45rem;
+    font-size: 0.6rem;
+  }
+
+  .dp-sum {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .dp-sum__stats {
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  }
+
+  .dp-stat b {
+    font-size: 1.2rem;
+  }
+
+  .dp-legend {
+    margin-left: 0;
+  }
+
+  .dp-row {
+    grid-template-columns: 7rem minmax(0, 1fr);
+    grid-template-areas:
+      'art name'
+      'facts facts'
+      'go go'
+      'board board';
+    gap: 0.8rem 0.9rem;
+    padding: 0.9rem;
+  }
+
+  .dp-row__title {
+    font-size: 1.2rem;
+  }
+
+  .dp-row__date {
+    font-size: 0.92rem;
+  }
+
+  .dp-row__facts {
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.6rem;
+  }
+
+  .dp-fact {
+    padding: 0.6rem 0.7rem 0.7rem;
+  }
+
+  /* No room beside the name for the result: it goes under it, bigger. */
+  .dp-fact__lead {
+    flex-wrap: wrap;
+    gap: 0.2rem 0.4rem;
+  }
+
+  .dp-fact__lead .dp-fact__figure {
+    flex-basis: 100%;
+    margin-left: 0;
+    font-size: 1.3rem;
+  }
+
+  .dp-fact__you {
+    flex-wrap: wrap;
+    gap: 0 0.4rem;
+    font-size: 0.86rem;
+  }
+
+  .dp-fact__you .dp-fact__figure {
+    margin-left: 0;
+  }
+
+  .dp-row__go {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .dp-row .dp-wide {
+    display: none;
+  }
+
+  .dp-row .dp-narrow {
+    display: inline-flex;
+  }
+
+  .dp-go {
+    flex: 1 1 9rem;
+    align-self: auto;
+  }
+
+  .dp-row__hint {
+    flex-basis: 100%;
+  }
+
+  .dp-board {
+    padding: 0.7rem;
+  }
+}

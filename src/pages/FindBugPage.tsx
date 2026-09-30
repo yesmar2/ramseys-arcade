@@ -3,7 +3,7 @@ import { useRoute } from '../hooks/useHashRoute'
 
 /**
  * Find the Bug's page: Today's Wanted, the day's five scenes. With ?day=YYYY-MM-DD, a past day's, played
- * again from the archive, where nothing is kept.
+ * again from the game page's Past days, where nothing is kept.
  */
 export function FindBugPage() {
   const route = useRoute()

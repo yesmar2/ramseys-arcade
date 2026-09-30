@@ -1,3 +1,4 @@
+import { isDailyGame } from '../data/games'
 import { recordHref, recordsHref } from '../hooks/useHashRoute'
 import { recordRows } from '../lib/gameHub'
 import { recordKind } from '../lib/recordBook'
@@ -8,6 +9,7 @@ import { ChevronRightIcon, EventsIcon, FlameIcon, SparkleIcon, TimerIcon } from 
  * The game's record book, from the viewer's side: the records they are tied
  * with (one better takes them), the ones they hold, the nearest, and one that
  * nobody has set. Someone not in the book sees the unset ones and the best.
+ * A daily has none here: its page's Records tab (DailyRecordsTab) is its book.
  */
 export function GameHubRecords({
   slug,
@@ -21,7 +23,7 @@ export function GameHubRecords({
   records: RecordSummary[] | null
   me: string
 }) {
-  if (records && records.length === 0) return null
+  if (isDailyGame(slug) || (records && records.length === 0)) return null
   const { rows, yours } = records ? recordRows(records, me) : { rows: [], yours: false }
 
   return (

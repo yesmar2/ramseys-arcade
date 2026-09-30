@@ -1,4 +1,6 @@
+import { isDailyGame } from '../data/games'
 import {
+  canonicalGameSlug,
   currentPath,
   homeHref,
   leaderboardHref,
@@ -45,17 +47,31 @@ function under(path: string, section: string) {
   return path === section || path.startsWith(`${section}/`)
 }
 
+/**
+ * `/games/<slug>/records` is an old link to a game's record book (its page sends it there), except
+ * for a daily, where it is its page's Records tab: under Games, like its Today and Past tabs.
+ */
+function isOldBookLink(p: string): boolean {
+  const m = /^\/games\/([^/]+)\/records(?:\/|$)/.exec(p)
+  if (!m) return false
+  let slug = m[1]!
+  try {
+    slug = decodeURIComponent(slug)
+  } catch {
+    // Not a real address; keep it as it is.
+  }
+  return !isDailyGame(canonicalGameSlug(slug))
+}
+
 /** Whether a primary nav item should show as the current section. */
 export function navActive(match: SiteNavItem['match'], path = currentPath()): boolean {
   const p = currentPath(path)
 
-  // A game's page is under Games; its record book is under Record books.
-  if (match === 'games') return p === '/' || (under(p, '/games') && !/\/records(?:\/|$)/.test(p))
+  // A game's page (a daily's tabs included) is under Games; an old link to its record book is under Record books.
+  const bookLink = isOldBookLink(p)
+  if (match === 'games') return p === '/' || (under(p, '/games') && !bookLink)
   if (match === 'boards') return under(p, '/leaderboards')
-  if (match === 'records') {
-    if (under(p, '/records')) return true
-    return /^\/games\/[^/]+\/records(?:\/|$)/.test(p)
-  }
+  if (match === 'records') return under(p, '/records') || bookLink
   if (match === 'events') return under(p, '/tournaments')
   if (match === 'groups') return under(p, '/groups')
   if (match === 'you') return under(p, '/rank')

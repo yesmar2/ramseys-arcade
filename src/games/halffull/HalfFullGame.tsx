@@ -9,10 +9,14 @@ import {
   type ReactNode,
 } from 'react'
 import '../../styles/halffull.css'
+import '../../styles/todaysPour.css'
 import { GamePlayChrome } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { HapticsToggle } from '../../components/HapticsToggle'
 import { MusicToggle } from '../../components/MusicToggle'
+import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
+import { PastPlayChip } from '../../components/PastPlay'
+import { RunLabel } from '../../components/RunLabel'
 import { ScoreGuide } from '../../components/ScoreGuide'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { copyText } from '../../components/ShareBoardButton'
@@ -22,9 +26,10 @@ import { isGameListed } from '../../data/games'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
-import { gameArchiveHref } from '../../hooks/useHashRoute'
+import { dailyTabHref, gameArchiveHref, gamePlayHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import { fitCardToSpace } from '../../lib/cardFit'
 import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
@@ -32,6 +37,8 @@ import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { noteRunBegun } from '../../lib/engagement'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
+import { onItsDayFact, useItsDay, type ItsDay } from '../../lib/onItsDay'
+import type { PastPlay } from '../../lib/pastPlay'
 import { ordinal } from '../../lib/profileMath'
 import { beginRun, resumeRun, runIdFor } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
@@ -39,6 +46,7 @@ import {
   claimDayRun,
   dayDone,
   dayTag,
+  FIRST_DAY,
   keepRunId,
   keptResults,
   msUntilNextDay,
@@ -72,8 +80,9 @@ import {
 import { absVolume, levelForAbsVol } from './glasses'
 import { glassOwner, guestFor, guestName } from './looks'
 import { dayPlan, ROUNDS, splitLevelB, type DayPlan } from './plan'
+import { glassNames, pourPlan } from './planSvg'
 import { dragSpan, renderHalfFull, splitDragSpan, splitGlassAt, splitLevels, type View } from './render'
-import { formatBoard, formatOff, formatPercent, formatPoints, judgeLevels, markFor, tierFor } from './score'
+import { boardScore, formatBoard, formatOff, formatPercent, formatPoints, judgeLevels, markFor, tierFor } from './score'
 import { useTodayBoard, type TodayBoard } from './todayBoard'
 
 /*
@@ -120,14 +129,17 @@ type Safe = { top: number; bottom: number }
 /**
  * Kept clear of the glasses: the prompt at the top, the controls at the bottom (px). On a phone with a
  * notch or a home bar, the prompt and the controls move in by the safe area (styles/halffull.css), and
- * the counter moves with them.
+ * the counter moves with them. A practice chip under the prompt takes `chip` px more.
  */
-function insets(h: number, safe: Safe) {
+function insets(h: number, safe: Safe, chip: number) {
   return {
-    top: Math.round(Math.min(118, Math.max(84, h * 0.11)) + Math.max(0, safe.top - 7)),
+    top: Math.round(Math.min(118, Math.max(84, h * 0.11)) + Math.max(0, safe.top - 7)) + chip,
     bottom: Math.round(Math.min(124, Math.max(92, h * 0.135)) + Math.max(0, safe.bottom - 12)),
   }
 }
+
+/** The room a practice run's chip takes under the prompt, for the whole run (px). */
+const CHIP_ROOM = 30
 
 /** Above the buttons, clear of the ring that closes round "That's half" (7 px) and of a glass's shadow. */
 const OVER_BUTTONS = 15
@@ -155,8 +167,19 @@ function useViewerRuns(day: string, viewer: Viewer): ViewerRuns {
 /** The counted run a page is playing: when it began, and whose it is (its stamp, lib/deviceRuns.ts). */
 type PageRun = { startedAt: number; owner: string }
 
+/** Half Full: today's five glasses, or with `testDay`, a past day's, poured again as practice. */
 export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
-  // Today moves on at midnight (checked below); a past day from the archive is always practice.
+  return testDay ? <PastPourGame day={testDay} /> : <PourGame testDay={null} itsDay={null} />
+}
+
+/** A past day's glasses, with how its day went: asked for only here, where it's shown. */
+function PastPourGame({ day }: { day: string }) {
+  const itsDay = useItsDay(SLUG, day)
+  return <PourGame testDay={day} itsDay={itsDay} />
+}
+
+function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay | null }) {
+  // Today moves on at midnight (checked below); a past day, from the game page's Past days, is always practice.
   const [today, setToday] = useState(pourDay)
   const day = testDay ?? today
   const pastDay = testDay != null
@@ -226,11 +249,19 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
 
   const refresh = useCallback(() => setUi(snapOf(stateRef.current, movedRef.current)), [])
 
+  // A run that saves nothing says so for the whole of it, in a chip under the prompt: a past day's, or
+  // today's poured again. The glasses keep clear of it.
+  const chipped = pastDay || ui.practice
+  const chipRoom = useRef(0)
+  useEffect(() => {
+    chipRoom.current = chipped ? CHIP_ROOM : 0
+  }, [chipped])
+
   const viewOf = useCallback((w: number, h: number, time: number): View => {
     // Until the row has been laid out, what the stylesheet makes it: 0.75rem (or the home bar) under a
     // 3.6rem button.
     const row = buttons.current || Math.max(12, safe.current.bottom) + 58
-    return { w, h, ...insets(h, safe.current), clear: row + OVER_BUTTONS, font: fontRef.current, time }
+    return { w, h, ...insets(h, safe.current, chipRoom.current), clear: row + OVER_BUTTONS, font: fontRef.current, time }
   }, [])
 
   /** Keep the counted run's pours on the device as they lock, and sound each one. */
@@ -329,6 +360,8 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
         noteRunBegun()
       }
       const s = startRun(plan, practice, done)
+      // The chip's room is there from the run's first frame, so the glasses don't jump as it comes up.
+      chipRoom.current = pastDay || practice ? CHIP_ROOM : 0
       stateRef.current = s
       handled.current = s.results.length
       stamped.current = -1
@@ -336,7 +369,7 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
       drag.current = null
       refresh()
     },
-    [claimable, claimableKept, day, keepRun, kept, plan, refresh, run, runOwner, testDay, today, viewer],
+    [claimable, claimableKept, day, keepRun, kept, pastDay, plan, refresh, run, runOwner, testDay, today, viewer],
   )
 
   const toMenu = useCallback(() => {
@@ -651,6 +684,23 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
 
   const split = isSplitRound(ui.round)
   const result = ui.phase === 'shown' || ui.phase === 'tip' ? ui.results[ui.round] : undefined
+  // A past day on the play screen: the tab's title names it, and leaving goes back to its row on the past days.
+  const past: PastPlay | null =
+    testDay && itsDay
+      ? { href: dailyTabHref(SLUG, 'past', testDay), kind: 'practice', title: `Pour ${dayTag(testDay)}`, facts: [onItsDayFact(SLUG, itsDay)], chip: false }
+      : null
+  const chip = pastDay ? (
+    <PastPlayChip slug={SLUG} kind="practice" />
+  ) : chipped ? (
+    <RunLabel kind="practice" slug={SLUG} short className="run-label--hud" />
+  ) : null
+  // Leaving the day's first pour throws nothing away: each glass is kept on the device as it locks, and the
+  // day's card offers to carry on. Today's poured again keeps nothing; a past day's says so already.
+  const leaveNote = pastDay
+    ? undefined
+    : ui.practice
+      ? 'It’s practice: nothing is saved.'
+      : 'The glasses you’ve poured are kept: you carry on where you left off.'
 
   return (
     <section className="halffull halffull--fullscreen" style={gameAccentStyle(SLUG)}>
@@ -674,10 +724,12 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
                 const phase = stateRef.current.phase
                 return phase === 'pour' || phase === 'tip' || phase === 'shown'
               }}
+              past={past}
+              leaveNote={leaveNote}
             />
 
             {ui.phase === 'pour' || ui.phase === 'tip' || ui.phase === 'shown' ? (
-              <Prompt plan={plan} ui={ui} result={ui.phase === 'shown' ? result : undefined} />
+              <Prompt plan={plan} ui={ui} result={ui.phase === 'shown' ? result : undefined} chip={chip} />
             ) : null}
 
             {ui.phase === 'pour' && !ui.moved ? (
@@ -706,18 +758,19 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
             ) : null}
 
             <div className="halffull__overlay">
-              {ui.phase === 'menu' ? (
+              {ui.phase === 'menu' && testDay && itsDay ? (
+                <PastPourStart plan={plan} today={today} itsDay={itsDay} onStart={() => begin(true)} />
+              ) : ui.phase === 'menu' ? (
                 <StartCard
                   plan={plan}
                   run={run}
                   kept={kept}
                   claimable={claimable}
                   claimableKept={claimableKept}
-                  waiting={!pastDay && viewer === undefined}
-                  pastDay={pastDay}
+                  waiting={viewer === undefined}
                   board={board}
                   saves={saves}
-                  onStart={() => begin(pastDay || dayDone(run))}
+                  onStart={() => begin(dayDone(run))}
                   onTakeUp={() => begin(false, true)}
                   onPractice={() => begin(true)}
                   onSave={() => saveLate(false)}
@@ -744,13 +797,20 @@ export function HalfFullGame({ testDay = null }: { testDay?: string | null }) {
                   onSettled={noteSaved}
                 />
               ) : null}
-              {ui.phase === 'done' && (ui.practice || pastDay || !saves) ? (
+              {ui.phase === 'done' && testDay ? (
+                <PastPourResult
+                  plan={plan}
+                  today={today}
+                  results={ui.results}
+                  itsDay={itsDay ?? { entry: undefined, failed: false, signedIn: false }}
+                  onAgain={() => begin(true)}
+                />
+              ) : ui.phase === 'done' && (ui.practice || !saves) ? (
                 <DayCard
                   plan={plan}
                   results={ui.results}
                   practice={ui.practice}
-                  pastDay={pastDay}
-                  standing={ui.practice && !pastDay && kept.length >= ROUNDS ? kept : null}
+                  standing={ui.practice && kept.length >= ROUNDS ? kept : null}
                   onAgain={() => begin(true)}
                   onDone={toMenu}
                 />
@@ -771,7 +831,8 @@ function offWords(percent: number, exact: string, under: string, over: string): 
   return `${off} ${percent < 50 ? under : over}`
 }
 
-function Prompt({ plan, ui, result }: { plan: DayPlan; ui: Snap; result?: PourResult }) {
+/** What the glass is and how to pour it; a pour's result once it's in; a practice run's chip under it. */
+function Prompt({ plan, ui, result, chip }: { plan: DayPlan; ui: Snap; result?: PourResult; chip?: ReactNode }) {
   const split = isSplitRound(ui.round)
   const kicker = split ? `Last glass · ${weekdayShort(plan.day)} · ${plan.label}` : `Glass ${ui.round + 1} of ${ROUNDS} · ${weekdayShort(plan.day)} · ${plan.label}`
   let main: ReactNode
@@ -819,10 +880,13 @@ function Prompt({ plan, ui, result }: { plan: DayPlan; ui: Snap; result?: PourRe
     }
   }
   return (
-    <div id={RESULT_ID} className={`halffull__prompt${result ? ' halffull__prompt--result' : ''}`} aria-live="polite">
-      <span className="halffull__kicker">{kicker}</span>
-      <p className="halffull__main">{main}</p>
-      {sub ? <p className="halffull__sub">{sub}</p> : null}
+    <div className="halffull__top">
+      <div id={RESULT_ID} className={`halffull__prompt${result ? ' halffull__prompt--result' : ''}`} aria-live="polite">
+        <span className="halffull__kicker">{kicker}</span>
+        <p className="halffull__main">{main}</p>
+        {sub ? <p className="halffull__sub">{sub}</p> : null}
+      </div>
+      {chip ? <div className="halffull__chip">{chip}</div> : null}
     </div>
   )
 }
@@ -977,14 +1041,15 @@ function Marks({ results, label = 'Your five pours' }: { results: readonly PourR
   )
 }
 
-/** Where today stands for everyone, and for you once you're on it. */
+/** Where today stands: your place once you're on it, and who's 1st until then. */
 function todayWords(board: TodayBoard | null): string | null {
   if (!board) return null
-  if (board.you) return `You’re ${ordinal(board.you.place)} of ${board.count}`
-  if (!board.leader) return 'Nobody’s poured yet'
-  return `${board.leader.name} leads with ${formatBoard(board.leader.score)}`
+  if (board.you) return `You’re ${ordinal(board.you.place)} of ${board.count} today`
+  if (!board.leader) return 'Nobody’s poured yet today'
+  return `1st today: ${board.leader.name}, with ${formatBoard(board.leader.score)}`
 }
 
+/** Today's start card: the day's glasses, Start, Carry on, or how the day went. A past day's is PastPourStart. */
 function StartCard({
   plan,
   run,
@@ -992,7 +1057,6 @@ function StartCard({
   claimable,
   claimableKept,
   waiting,
-  pastDay,
   board,
   saves,
   onStart,
@@ -1010,7 +1074,6 @@ function StartCard({
   claimableKept: readonly PourResult[]
   /** It isn't known yet who's signed in: a counted pour waits for it. */
   waiting: boolean
-  pastDay: boolean
   board: TodayBoard | null
   /** Whether a day goes on a board (not while the game is on deck). */
   saves: boolean
@@ -1020,8 +1083,8 @@ function StartCard({
   onSave: () => void
   onSaveClaimable: () => void
 }) {
-  const done = !pastDay && dayDone(run)
-  const started = !pastDay && kept.length > 0 && !done
+  const done = dayDone(run)
+  const started = kept.length > 0 && !done
   const sum = done && kept.length >= ROUNDS ? summarize(kept) : null
   // Poured on another device: the board has the figure, this device never saw the pours.
   const elsewhere = done && !sum && run?.board != null ? run.board : null
@@ -1030,33 +1093,32 @@ function StartCard({
   // Poured here while signed out, by whoever it was, and the player signed in has no pour of their own
   // here: theirs to take up if it was them (it goes on the board as theirs), or to leave, pouring their
   // own first pour. One begun but with nothing locked is nothing to take up.
-  const claim = pastDay || run || !claimable?.levels.length ? null : claimable
+  const claim = run || !claimable?.levels.length ? null : claimable
   const claimDone = dayDone(claim)
   const claimSum = claimDone && claimableKept.length >= ROUNDS ? summarize(claimableKept) : null
   const claimOffBoard = saves && claimSum != null && board != null && !board.you
-  const standing = pastDay ? null : todayWords(board)
+  const standing = todayWords(board)
   return (
     <Card label="Half Full">
       <div className="game-card__head">
         <span className="game-card__kicker">
-          {pastDay ? `Half Full ${dayTag(plan.day)}` : `Today’s Pour ${dayTag(plan.day)}`} · {weekdayShort(plan.day)} · {plan.label}
-          {pastDay ? ' · a past day' : ''}
+          Today’s Pour {dayTag(plan.day)} · {weekdayShort(plan.day)} · {plan.label}
         </span>
         <h2 className="game-card__title game-card__title--big">Half Full</h2>
         {/* The rules, which a short screen mustn't drop the way it drops a blurb. */}
         <p className="halffull-card__rules">
           {done
-            ? 'That’s your pour for today. New glasses at midnight; pour these again as much as you like, for practice.'
+            ? 'That’s your pour for today. New glasses at midnight; pour these again as much as you like: it’s practice, and your pour stands.'
             : started
               ? `Your pour today is waiting at glass ${kept.length + 1} of ${ROUNDS}. The ones you locked are kept.`
               : claim
                 ? claimDone
                   ? 'Today’s glasses were poured on this device while signed out. If that was you, put it on today’s board as yours; if not, pour your own.'
                   : `A pour begun on this device while signed out is waiting at glass ${claimableKept.length + 1} of ${ROUNDS}. Carry it on if it’s yours, or pour your own.`
-                : pastDay
-                  ? 'A past day’s five glasses, to pour again. Nothing here counts.'
-                  : 'Fill four glasses half full: by what they hold, not how tall they are. Then share one jug fairly between two friends. Your first pour of the day is your result.'}
+                : 'Fill four glasses half full: by what they hold, not how tall they are. Then share one jug fairly between two friends. Your first pour of the day is your result.'}
         </p>
+        {/* What a pour from here does: the day's first counts; once it's done, the rest are practice. */}
+        {saves && !claim ? <RunLabel kind={done ? 'practice' : 'counts'} slug={SLUG} /> : null}
       </div>
       {sum ? (
         <div className="halffull-card__result">
@@ -1114,7 +1176,7 @@ function StartCard({
           </>
         ) : (
           <button type="button" className="panel__btn" onClick={onStart} autoFocus disabled={waiting}>
-            {started ? 'Carry on' : pastDay ? 'Pour' : 'Start'}
+            {started ? 'Carry on' : 'Start'}
           </button>
         )}
       </div>
@@ -1123,7 +1185,7 @@ function StartCard({
           Checking who’s signed in…
         </p>
       ) : null}
-      {!pastDay ? <p className="halffull-card__note">New glasses in {untilNext(msUntilNextDay())}</p> : null}
+      <p className="halffull-card__note">New glasses in {untilNext(msUntilNextDay())}</p>
       {saves ? (
         <a className="halffull-card__archive" href={gameArchiveHref(SLUG)}>
           Past days ›
@@ -1188,7 +1250,6 @@ function DayCard({
   plan,
   results,
   practice,
-  pastDay,
   standing,
   onAgain,
   onDone,
@@ -1196,7 +1257,6 @@ function DayCard({
   plan: DayPlan
   results: readonly PourResult[]
   practice: boolean
-  pastDay: boolean
   standing: readonly PourResult[] | null
   onAgain: () => void
   onDone: () => void
@@ -1208,7 +1268,7 @@ function DayCard({
     <Card label={`Half Full: ${sum.scoreText}`}>
       <div className="game-card__head">
         <span className="game-card__kicker">
-          Half Full {dayTag(plan.day)} · {weekdayShort(plan.day)} · {plan.label}
+          Today’s Pour {dayTag(plan.day)} · {weekdayShort(plan.day)} · {plan.label}
           {practice ? ' · practice' : ''}
         </span>
         <div className="halffull-card__result halffull-card__result--big">
@@ -1216,15 +1276,16 @@ function DayCard({
           <span>{sum.tier}</span>
         </div>
       </div>
+      {practice ? <RunLabel kind="practice" slug={SLUG} className="halffull-card__label" /> : null}
       <Marks results={results} />
       <p className="halffull-card__team">
         <strong>Team Half-{sum.team}</strong>
-        <span>{sum.team === 'Full' ? 'You poured over half, on the whole.' : 'You stopped short of half, on the whole.'}</span>
+        <span>{teamWords(sum.team)}</span>
       </p>
       <p className="halffull-card__story">{sum.story}</p>
       {practice ? (
         <p className="halffull-card__note">
-          {pastDay ? 'A past day: nothing here counts.' : kept ? `Practice: your pour today stands at ${kept.scoreText}.` : 'Practice: it doesn’t count.'}
+          {kept ? `Your pour today stands at ${kept.scoreText}.` : 'Your first pour today is the one that counts.'}
         </p>
       ) : null}
       <div className="game-card__actions">
@@ -1242,6 +1303,150 @@ function DayCard({
         </button>
       </div>
     </Card>
+  )
+}
+
+function teamWords(team: 'Full' | 'Empty'): string {
+  return team === 'Full' ? 'You poured over half, on the whole.' : 'You stopped short of half, on the whole.'
+}
+
+/* ---------- a past day, poured again from the past days ---------- */
+
+/** "Pour #1 · Mon, Sep 28 · Past day": which day it is, and that it's past. */
+function pastKicker(day: string): string {
+  return `Pour ${dayTag(day)} · ${archiveDayWords(day)} · Past day`
+}
+
+const weekdayFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
+
+/** "Monday’s five glasses": by its weekday while that's plain, within the week; "That day’s" before it. */
+function dayGlassesWords(day: string, today: string): string {
+  let within = false
+  for (let d = dayBefore(today), i = 0; i < 6 && !within; i += 1, d = dayBefore(d)) within = d === day
+  const whose = within ? `${weekdayFormat.format(new Date(`${day}T12:00:00Z`))}’s` : 'That day’s'
+  return `${whose} five glasses, as often as you like. No board, no tickets, and your rank stays as it is.`
+}
+
+/** The day after a day, both as YYYY-MM-DD. */
+function dayAfter(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10)
+}
+
+/** "‹ Pour #1" and "Pour #3 ›": the days either side, while they're past ones. */
+function walkFor(day: string, today: string): { prev: PastWalkLink | null; next: PastWalkLink | null } {
+  const link = (other: string) => ({ label: `Pour ${dayTag(other)}`, href: `${gamePlayHref(SLUG)}?day=${other}` })
+  const before = dayBefore(day)
+  const after = dayAfter(day)
+  return { prev: before >= FIRST_DAY ? link(before) : null, next: after < today ? link(after) : null }
+}
+
+/** Today's Pour, which counts: "Today's Pour is the one that counts: Pour #2 ›". */
+const todayPour = (today: string): TodayCourse => ({ name: `Pour ${dayTag(today)}` })
+
+/** The day's glasses on the shelf and the counter, empty, as its row on the past days draws them. */
+function PourGlasses({ plan }: { plan: DayPlan }) {
+  // The card's box is about this shape: a wide shelf, glasses and all, rather than the rows' 16:10.
+  const picture = useMemo(() => pourPlan(plan, 360, 100), [plan])
+  return (
+    <div className="halffull-card__glasses" aria-hidden="true">
+      <svg className="tpc-plan" viewBox={`0 0 ${picture.width} ${picture.height}`} preserveAspectRatio="xMidYMid slice">
+        {picture.layers.map((layer, i) => (
+          <path key={i} className={`tpc-plan__${layer.part}`} d={layer.d} strokeWidth={layer.width} />
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+/**
+ * A past day's start card: its glasses, that it's practice, how the day went on its day, Start, and the way
+ * back to its row on the past days. Brought up to Find the Bug's, as every daily's past course is.
+ */
+function PastPourStart({ plan, today, itsDay, onStart }: { plan: DayPlan; today: string; itsDay: ItsDay; onStart: () => void }) {
+  return (
+    <PastCourseStart
+      slug={SLUG}
+      course={plan.day}
+      day={plan.day}
+      kind="practice"
+      title="Half Full"
+      kicker={pastKicker(plan.day)}
+      blurb={`${plan.label}: ${glassNames(plan).toLowerCase()}.`}
+      art={<PourGlasses plan={plan} />}
+      labelSub={dayGlassesWords(plan.day, today)}
+      facts={[onItsDayFact(SLUG, itsDay)]}
+      startLabel="Start"
+      onStart={onStart}
+      today={todayPour(today)}
+      walk={walkFor(plan.day, today)}
+    />
+  )
+}
+
+/** A day's figure against another, to a tenth of a point as the day shows it: tied, or higher or lower by "2.3 points". */
+function pointsGap(mine: number, other: number): { tie: boolean; higher: boolean; gap: string } {
+  const tenths = Math.floor(mine / 10) - Math.floor(other / 10)
+  const gap = (Math.abs(tenths) / 10).toFixed(1)
+  return { tie: tenths === 0, higher: tenths > 0, gap: `${gap} ${gap === '1.0' ? 'point' : 'points'}` }
+}
+
+/**
+ * The pour against its day: your own result that day, and the day's 1st. "That's 2.3 points closer than
+ * your 94.1% on its day. ODCHKA's 1st, 99.9%, is 3.5 points above it."
+ */
+function againstItsDay(board: number, itsDay: ItsDay): string | null {
+  const entry = itsDay.entry
+  if (!entry) return null
+  const out: string[] = []
+  const you = itsDay.signedIn ? entry.you : null
+  if (you) {
+    const g = pointsGap(board, you.score)
+    const at = formatBoard(you.score)
+    out.push(g.tie ? `That ties your ${at} on its day.` : `That’s ${g.gap} ${g.higher ? 'closer' : 'further off'} than your ${at} on its day.`)
+    // You were the day's 1st: that's the line already said.
+    if (you.place === 1) return out.join(' ')
+  }
+  const g = pointsGap(board, entry.top.score)
+  const whose = `${entry.top.name}’s 1st${you ? '' : ' on its day'}, ${formatBoard(entry.top.score)}`
+  out.push(g.tie ? `That ties ${whose}.` : g.higher ? `That beats ${whose}, by ${g.gap}.` : `${whose}, is ${g.gap} above this.`)
+  return out.join(' ')
+}
+
+/**
+ * After a past day's pour: the figure, that nothing was saved, the five, the pour against its day, that
+ * your week and rank are as they were, and again, back to its row, or today's Pour.
+ */
+function PastPourResult({
+  plan,
+  today,
+  results,
+  itsDay,
+  onAgain,
+}: {
+  plan: DayPlan
+  today: string
+  results: readonly PourResult[]
+  itsDay: ItsDay
+  onAgain: () => void
+}) {
+  const sum = summarize(results)
+  const against = againstItsDay(boardScore(sum.score), itsDay)
+  return (
+    <PastCourseResult
+      slug={SLUG}
+      course={plan.day}
+      day={plan.day}
+      kind="practice"
+      kicker={pastKicker(plan.day)}
+      figure={sum.scoreText}
+      line={`${sum.tier}. Team Half-${sum.team}: ${teamWords(sum.team).charAt(0).toLowerCase()}${teamWords(sum.team).slice(1)}`}
+      today={todayPour(today)}
+      onAgain={onAgain}
+    >
+      <Marks results={results} />
+      {against ? <p className="past-card__note">{against}</p> : null}
+    </PastCourseResult>
   )
 }
 

@@ -43,6 +43,8 @@ export type NotificationMeta = {
   field?: number
   /** A friend request still waiting for an answer. */
   requestId?: string
+  /** A record-lost note's record: track-4, hole-2, play-days-streak. */
+  recordId?: string
 }
 
 export type AppNotification = {

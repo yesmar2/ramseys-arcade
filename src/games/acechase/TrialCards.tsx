@@ -4,18 +4,19 @@ import { dailyDay, PLACE_NAME, type TodaysHole } from '../../lib/dailyHole'
 
 /*
  * A day's hole played ahead of its day, on trial (/games/acechase/play?hole=day:YYYY-MM-DD), from the
- * admin's Hole Book: the card it opens on, and the one a bullseye brings up. Nothing about it is kept. A
- * past day's hole plays on its own board instead (PastCards.tsx, lib/pastHoles.ts).
+ * admin's Hole Book, and only for an admin (AceChasePage): the card it opens on, and the one a bullseye
+ * brings up. Nothing about it is kept. A past day's hole plays on its own board instead (PastCards.tsx,
+ * lib/pastHoles.ts).
  */
 
-/** A past day's, from the archive, rather than one ahead of its day. */
+/** Its day has come and gone since the trial began: a past hole now. */
 const isPast = (hole: TodaysHole) => hole.day < dailyDay()
 
 const dayWords = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
 
-/** "Hole #9 · Thu, Oct 3 · from the archive", for the day it was, or is to be. */
+/** "Hole #9 · Thu, Oct 3 · on trial", for the day it is to be (or was, by now). */
 function kicker(hole: TodaysHole): string {
-  return `Hole #${hole.n} · ${dayWords.format(new Date(`${hole.day}T12:00:00Z`))} · ${isPast(hole) ? 'from the archive' : 'on trial'}`
+  return `Hole #${hole.n} · ${dayWords.format(new Date(`${hole.day}T12:00:00Z`))} · ${isPast(hole) ? 'past hole' : 'on trial'}`
 }
 
 const SLUG = 'acechase'
@@ -82,7 +83,7 @@ export function TrialResultCard({
           Play it again
         </button>
         <button type="button" className="panel__btn panel__btn--ghost" onClick={onLeave}>
-          {isPast(hole) ? 'Back to the archive' : 'Back to Ace Chase'}
+          {isPast(hole) ? 'Back to past holes' : 'Back to Ace Chase'}
         </button>
       </div>
     </Card>

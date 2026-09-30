@@ -16,7 +16,7 @@ import {
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
-import { coursePlayHref, lowerIsBetter, recordGap, recordShortLabel, recordValue } from '../lib/recordBook'
+import { bookRecords, coursePlayHref, lowerIsBetter, recordGap, recordShortLabel, recordValue } from '../lib/recordBook'
 import {
   nearbyRecords,
   onTheBoard,
@@ -866,7 +866,7 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         />
         {!data.loading && record ? (
           <aside className="gb-side" aria-label="More about this record">
-            <NearbyCard game={game} recordId={recordId} period={period} record={record} book={data.book} you={you} />
+            <NearbyCard game={game} recordId={recordId} period={period} record={record} book={bookRecords(game, data.book)} you={you} />
           </aside>
         ) : null}
       </div>

@@ -1,15 +1,14 @@
 import { useMemo } from 'react'
-import { bugDay, dayNumber, dayRun, dayWanted, FIRST_DAY, sceneMark, wantedNames } from '../../games/findbug/daily'
+import { bugDay, dayNumber, dayWanted, FIRST_DAY, wantedNames } from '../../games/findbug/daily'
 import { BugPortrait } from '../../games/findbug/Portrait'
-import { useAccountId } from '../../hooks/useAccountId'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import { dayBefore } from '../../lib/archive'
-import { ArchiveList, type ArchiveItem } from './ArchiveList'
+import type { PastSource } from '../../lib/dailyPast'
+import { PastCourses } from './PastCourses'
 import '../../styles/todaysWanted.css'
 
 const SLUG = 'findbug'
 
-/** A day's five wanted bugs side by side: its card's picture, as Today's Wanted draws them. */
+/** A day's five wanted bugs side by side: its picture, as Today's Wanted draws them. */
 function WantedFaces({ day }: { day: string }) {
   const wanted = useMemo(() => dayWanted(day), [day])
   return (
@@ -21,33 +20,22 @@ function WantedFaces({ day }: { day: string }) {
   )
 }
 
-/**
- * Find the Bug's archive: every day's Today's Wanted from the first, today's at the top. A past one plays
- * again as practice. What the player made of a day on this device shows as its squares, one a scene.
- */
+const anchor = (day: string) => day
+
+const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
+
+const title = (day: string) => `Wanted #${dayNumber(day)}`
+
+const sub = (day: string) => wantedNames(dayWanted(day))
+
+const art = (day: string) => <WantedFaces day={day} />
+
+/** Find the Bug's past days: every Today's Wanted before today's, newest first, each to play again as practice. */
 export function BugArchive() {
   const today = bugDay()
-  // The squares are the player's own: built again when someone else signs in or out.
-  const viewer = useAccountId()
-  const items = useMemo(() => {
-    const out: ArchiveItem[] = []
-    for (let day = today; day >= FIRST_DAY; day = dayBefore(day)) {
-      out.push({
-        day,
-        n: dayNumber(day),
-        today: day === today,
-        href: day === today ? gamePlayHref(SLUG) : `${gamePlayHref(SLUG)}?day=${day}`,
-        build: () => {
-          const mine = dayRun(day, viewer)?.result
-          return {
-            title: wantedNames(dayWanted(day)),
-            sub: mine?.times?.length ? mine.times.map(sceneMark).join('') : 'Five scenes, a bug wanted in each',
-            art: <WantedFaces day={day} />,
-          }
-        },
-      })
-    }
-    return out
-  }, [today, viewer])
-  return <ArchiveList slug={SLUG} items={items} />
+  const source = useMemo<PastSource>(
+    () => ({ slug: SLUG, today, first: FIRST_DAY, number: dayNumber, anchor, playHref, title, sub, art }),
+    [today],
+  )
+  return <PastCourses source={source} />
 }

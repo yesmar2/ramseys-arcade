@@ -49,7 +49,11 @@ export type Route =
   | { name: 'tournamentCreate' }
   | { name: 'tournament'; id: string; invite?: string }
   | { name: 'tournamentPlay'; id: string; game: string; invite?: string }
-  | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod }
+  /**
+   * A game's page. A daily's page has tabs (lib/dailyWords.ts): today's, the page itself, and `tab`
+   * 'past' (its past courses, /games/<slug>/past) or 'records' (its records, /games/<slug>/records).
+   */
+  | { name: 'game'; slug: string; board?: 'scores' | 'records'; period?: LeaderboardPeriod; tab?: 'past' | 'records' }
   /**
    * `hole`: one of Ace Chase's days played as practice, `?hole=day:YYYY-MM-DD` on the play page, from the
    * archive or the admin's Hole Book. `track`: a test drive of one of Hot Lap's daily tracks,
@@ -57,8 +61,6 @@ export type Route =
    * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive.
    */
   | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string }
-  /** A daily game's archive: every day since its first, each playable again (as practice, but for Hot Lap's tracks' own boards). */
-  | { name: 'gameArchive'; slug: string }
   | { name: 'authVerify'; token: string }
   | { name: 'about' }
   | { name: 'plus' }
@@ -218,9 +220,21 @@ export function gameHubHref(
   return `/games/${encodeURIComponent(slug)}/${period}`
 }
 
-/** A daily game's archive of past days. */
+/**
+ * A daily game's page at one of its tabs: today's (the page itself), its past courses, or its records.
+ * `course` lands on one past course's row: a Hot Lap track's number, an Ace Chase hole's or another
+ * daily's day (YYYY-MM-DD).
+ */
+export function dailyTabHref(slug: string, tab: 'today' | 'past' | 'records' = 'today', course?: string | number) {
+  const base = `/games/${encodeURIComponent(slug)}`
+  if (tab === 'today') return base
+  const anchor = tab === 'past' && course != null ? `#course-${encodeURIComponent(String(course))}` : ''
+  return `${base}/${tab}${anchor}`
+}
+
+/** A daily game's past courses: its page's Past tab (the old /games/<slug>/archive opens it too). */
 export function gameArchiveHref(slug: string) {
-  return `/games/${encodeURIComponent(slug)}/archive`
+  return dailyTabHref(slug, 'past')
 }
 
 export function gamePlayHref(slug: string) {
@@ -363,12 +377,15 @@ export function migrateLegacyHash(): boolean {
   return true
 }
 
-/** An in-app href (path, `#/…`, or absolute same-origin URL) as path + query. */
+/**
+ * An in-app href (path, `#/…`, or absolute same-origin URL) as path + query, and any anchor on it
+ * (a past course's row, `#course-3`) that isn't an old `#/…` route.
+ */
 function resolveInAppHref(href: string): string {
   const url = new URL(href, window.location.href)
   const legacy = legacyHashPath(url.hash)
   if (legacy) return legacy
-  return `${url.pathname}${url.search}`
+  return `${url.pathname}${url.search}${url.hash}`
 }
 
 /**
@@ -378,7 +395,7 @@ function resolveInAppHref(href: string): string {
  */
 export function navigate(href: string, options: { replace?: boolean } = {}) {
   const target = resolveInAppHref(href)
-  if (normalizeHref(target) !== normalizeHref(currentHref())) {
+  if (normalizeHref(target) !== normalizeHref(`${currentHref()}${window.location.hash}`)) {
     if (options.replace) window.history.replaceState(null, '', target)
     else window.history.pushState(null, '', target)
   }
@@ -447,6 +464,8 @@ export function hrefForRoute(
       }
       return appendGroupQuery(recordsHref(route.game, period))
     case 'game':
+      // A daily's page is today's and its tabs: the site's period changes nothing on it.
+      if (isDailyGame(route.slug)) return dailyTabHref(route.slug, route.tab ?? 'today')
       if (route.board === 'records') {
         return appendGroupQuery(gameHref(route.slug, 'records'))
       }
@@ -674,11 +693,12 @@ export function parseUrl(pathname: string, search: string): Route {
     if (segment === 'daily') {
       return { name: 'gamePlay', slug }
     }
-    if (segment === 'archive') {
-      return { name: 'gameArchive', slug }
+    // A daily's past courses are its page's Past tab; its old archive address opens that tab. No other game had one.
+    if (segment === 'past' || segment === 'archive') {
+      return isDailyGame(slug) ? { name: 'game', slug, tab: 'past' } : { name: 'game', slug }
     }
     if (segment === 'records') {
-      return { name: 'game', slug, board: 'records' }
+      return isDailyGame(slug) ? { name: 'game', slug, tab: 'records' } : { name: 'game', slug, board: 'records' }
     }
     if (segment && isLeaderboardPeriod(segment)) {
       return { name: 'game', slug, period: segment }
@@ -738,6 +758,11 @@ function sameRoute(a: Route, b: Route) {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
+/** Whether a route is a daily's own page (any tab): it ignores the site period. */
+function dailyPage(route: Route) {
+  return route.name === 'game' && isDailyGame(route.slug)
+}
+
 /* ------------------------------------------------------------------ */
 /* Hook                                                                */
 /* ------------------------------------------------------------------ */
@@ -750,15 +775,17 @@ export function useRoute(): Route {
     const p = periodFromRoute(start)
     // Record books default to `all`, a period of their own — landing on one
     // must not overwrite the sticky period the rest of the site shares. Nor
-    // does a daily's board for today, a period only a daily's board has.
-    if (p && p !== 'daily' && start.name !== 'records') setDefaultPeriod(p)
+    // does a daily's board for today, a period only a daily's board has, nor
+    // a daily's page, which has no period at all (its address has none).
+    if (p && p !== 'daily' && start.name !== 'records' && !dailyPage(start)) setDefaultPeriod(p)
   }, [])
 
   useEffect(() => {
     const syncRoute = () => {
       let next = currentRoute()
       const p = periodFromRoute(next)
-      if (p && p !== 'daily' && next.name !== 'records') setDefaultPeriod(p)
+      // A daily's page setting the period would push /games/<daily> over an old /games/<daily>/weekly entry, and Back would land there again.
+      if (p && p !== 'daily' && next.name !== 'records' && !dailyPage(next)) setDefaultPeriod(p)
       const groupParams = new URLSearchParams(window.location.search)
       if (groupParams.has('group')) {
         setActiveGroup(parseGroupQuery(window.location.search))
@@ -766,7 +793,8 @@ export function useRoute(): Route {
       const href = hrefForRoute(next, p ?? defaultPeriod())
       const canonical = href && keepFocus(href)
       if (canonical && normalizeHref(currentHref()) !== normalizeHref(canonical)) {
-        window.history.replaceState(window.history.state, '', canonical)
+        // The anchor stays: a past course's row the page is to land on.
+        window.history.replaceState(window.history.state, '', `${canonical}${window.location.hash}`)
         next = currentRoute()
       }
       setRoute((prev) => (sameRoute(prev, next) ? prev : next))

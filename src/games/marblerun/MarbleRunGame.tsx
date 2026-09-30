@@ -10,14 +10,17 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { gamePlayHref } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { useDailyDays } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
+import { usePastViewer } from '../../lib/dailyPast'
 import { ownerAccount, ownerOf, SIGNED_OUT } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
+import type { PastPlay } from '../../lib/pastPlay'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun } from '../../lib/runSession'
@@ -27,6 +30,7 @@ import { RollSound } from './audio'
 import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
 import { courseDay, msUntilNextCourse, untilWords } from './daily'
 import { CourseMap } from './map'
+import { onItsDayFact, type ItsDay } from './pastDay'
 import { PracticeResultCard, PracticeStartCard } from './PracticeCards'
 import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, marbleDay, paceOf, practiceBest, type GhostRun, type MarbleDay } from './runs'
 import { MarbleScene } from './scene'
@@ -96,8 +100,8 @@ type Game = {
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
-  /** The run's result, once it's over. */
-  run: { time: number; score: number; splits: number[]; falls: number; improved: boolean; path: number[] } | null
+  /** The run's result, once it's over, and your best here before it. */
+  run: { time: number; score: number; splits: number[]; falls: number; improved: boolean; before: number | null; path: number[] } | null
 }
 
 type Ui = {
@@ -245,12 +249,15 @@ function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: num
 function MarbleRunDay({
   day,
   practice = false,
+  itsDay,
   onNewDay,
   notice,
 }: {
   day: string
-  /** A past day's course, from the archive: its runs go on no board, and your best here lasts the tab. */
+  /** A past day's course, from the past tab: its runs go on no board, and your best here lasts the tab. */
   practice?: boolean
+  /** A past course's day as the API has it, for its cards: who was 1st, and you. */
+  itsDay?: ItsDay
   onNewDay: (notice?: string) => void
   notice?: string
 }) {
@@ -543,7 +550,7 @@ function MarbleRunDay({
         if (practice) keepPracticeRun(g.day, g.owner, run)
         else keepBestRun(g.day, g.owner, run)
       }
-      g.run = { time, score: marblerunBoardScore(time), splits: [...b.splits], falls: b.falls, improved, path }
+      g.run = { time, score: marblerunBoardScore(time), splits: [...b.splits], falls: b.falls, improved, before: kept?.time ?? null, path }
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
     }
@@ -843,15 +850,21 @@ function MarbleRunDay({
       : '–'
   // Whose the run is, for its card: an account's run waits for that account; one rolled signed out goes to whoever signs in.
   const runOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
+  // A past course: the chip, the tab's title, the way back to its row and its day's figures, the same on
+  // the play screen, the pause card and the start card (lib/pastPlay.ts).
+  const went: ItsDay = itsDay ?? { days: null, failed: false, me: null }
+  const past: PastPlay | null = practice
+    ? { href: dailyTabHref(SLUG, 'past', day), kind: 'practice', title: marble.name, facts: [onItsDayFact(day, went, top)] }
+    : null
   const extra = practice ? (
     <>
-      <div className="game-pause-meta__row marblerun-course">
-        <span>Practice · #{marble.n}</span>
-        <strong>{marble.name}</strong>
-      </div>
       <div className="game-pause-meta__row">
         <span>Blue ball</span>
         <strong>{formatRun(pace)}</strong>
+      </div>
+      <div className="game-pause-meta__row">
+        <span>Your best here</span>
+        <strong>{bestText}</strong>
       </div>
     </>
   ) : (
@@ -866,7 +879,7 @@ function MarbleRunDay({
 
   return (
     <section
-      className={`marblerun marblerun--fullscreen${showroom ? ' marblerun--showroom' : ''}${touch ? ' marblerun--touch' : ''}`}
+      className={`marblerun marblerun--fullscreen${showroom ? ' marblerun--showroom' : ''}${touch ? ' marblerun--touch' : ''}${past ? ' marblerun--past' : ''}`}
       style={gameAccentStyle(SLUG)}
     >
       <div className="game-play">
@@ -874,7 +887,7 @@ function MarbleRunDay({
           <div className="marblerun__play" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
             <div ref={holderRef} className="marblerun__holder" />
 
-            <GamePlayChrome slug={SLUG} inRun={() => IN_RUN.has(gameRef.current!.phase)} paused={paused}>
+            <GamePlayChrome slug={SLUG} inRun={() => IN_RUN.has(gameRef.current!.phase)} paused={paused} past={past}>
               {inRun && !paused ? (
                 <button
                   type="button"
@@ -941,14 +954,15 @@ function MarbleRunDay({
                 personalBest={inRun ? previousBestRef.current : apiBest}
                 hideBest={practice}
                 hideRecord={practice}
+                past={past}
                 paused={paused}
                 onResume={resume}
                 onRestart={start}
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noGl ? (
-                practice ? (
-                  <PracticeStartCard marble={marble} pace={pace} best={practiceBestTime} top={top} />
+                past ? (
+                  <PracticeStartCard marble={marble} facts={past.facts ?? []} tiles={extra} />
                 ) : (
                   <GameStartCard title="Marble Run" slug={SLUG} extraMeta={extra} />
                 )
@@ -960,11 +974,12 @@ function MarbleRunDay({
                     time={run.time}
                     falls={run.falls}
                     best={practiceBestTime ?? run.time}
+                    before={run.before}
                     improved={run.improved}
                     pace={pace}
+                    itsDay={went}
                     top={top}
                     onAgain={start}
-                    onDone={toMenu}
                   />
                 ) : tournament ? (
                   <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={run.score} onDone={toMenu} />
@@ -1003,13 +1018,21 @@ function devDay(): string | null {
   }
 }
 
+/** A past day's course, from the past tab, rolled as practice, with how its day went (lib/archive.ts) for its cards. */
+function PastMarbleRun({ day }: { day: string }) {
+  const viewer = usePastViewer()
+  const { days, failed } = useDailyDays(SLUG, viewer.name)
+  const itsDay: ItsDay = { days, failed, me: viewer.state === 'in' ? viewer.name : null }
+  return <MarbleRunDay day={day} practice itsDay={itsDay} onNewDay={() => {}} />
+}
+
 /**
  * Marble Run on today's course, mounted again for the next when midnight brings it; with `practiceDay`, a past
- * day's course from the archive, rolled as practice.
+ * day's course from the past tab, rolled as practice.
  */
 export function MarbleRunGame({ practiceDay }: { practiceDay?: string | null }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? courseDay() }))
-  if (practiceDay) return <MarbleRunDay key={`practice-${practiceDay}`} day={practiceDay} practice onNewDay={() => {}} />
+  if (practiceDay) return <PastMarbleRun key={`practice-${practiceDay}`} day={practiceDay} />
   return <MarbleRunDay key={today.day} day={today.day} notice={today.notice} onNewDay={(notice) => setToday({ day: courseDay(), notice })} />
 }
 

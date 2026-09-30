@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isDailyGame } from '../data/games'
 import { applySitePeriod, applySiteGroup, periodFromRoute, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -72,7 +73,9 @@ function PlusIcon() {
 export function SiteScopeControl() {
   const route = useRoute()
   const storedPeriod = useDefaultPeriod()
-  const period = coerceVisiblePeriod(periodFromRoute(route) ?? storedPeriod)
+  // A daily's page is always today's (its Today tab shows this only while a group is picked): the group is all there is to change.
+  const dailyPage = route.name === 'game' && isDailyGame(route.slug)
+  const period: LeaderboardPeriod = dailyPage ? 'daily' : coerceVisiblePeriod(periodFromRoute(route) ?? storedPeriod)
   const { account } = useAuth()
   const activeId = useActiveGroup()
   const [groups, setGroups] = useState<GroupPublic[]>(() => cachedMyGroups())
@@ -153,14 +156,18 @@ export function SiteScopeControl() {
       </button>
       {open ? (
         <div className="site-scope__pop" role="dialog" aria-label="What the boards show">
-          <p className="site-scope__cap">Boards show</p>
-          <div className="site-seg" role="group" aria-label="Period">
-            {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
-              <button key={p} type="button" aria-pressed={p === period} onClick={() => pickPeriod(p)}>
-                {PERIOD_LABELS[p]}
-              </button>
-            ))}
-          </div>
+          {dailyPage ? null : (
+            <>
+              <p className="site-scope__cap">Boards show</p>
+              <div className="site-seg" role="group" aria-label="Period">
+                {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+                  <button key={p} type="button" aria-pressed={p === period} onClick={() => pickPeriod(p)}>
+                    {PERIOD_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <p className="site-scope__cap">Among</p>
           <ul className="site-scope__groups">
             <li>

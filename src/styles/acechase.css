@@ -75,6 +75,16 @@
   transition: opacity 0.35s ease;
 }
 
+/*
+ * A past hole, or Today's Hole played again as practice: its chip ("Past hole · not ranked", "Practice")
+ * hangs under the back control for the whole run (pastCourse.css .play-past), so the hole's card starts
+ * under it rather than over it.
+ */
+.acechase--chip .acechase__hud {
+  --ace-chip: 1.9rem;
+  padding-top: calc(var(--readout-middle) + var(--score-size) / 2 + 0.65rem + var(--ace-chip) + 0.55rem);
+}
+
 .acechase--cinema .acechase__hud {
   opacity: 0;
 }
@@ -461,6 +471,13 @@
   z-index: 45;
 }
 
+/* A phone's chip is a little shorter (pastCourse.css). */
+@media (max-width: 420px) {
+  .acechase--chip .acechase__hud {
+    --ace-chip: 1.7rem;
+  }
+}
+
 /* A phone: the card full width, the two dials stacked beside a tall Putt, two tries in the log. */
 @media (max-width: 560px) {
   .acechase__card {
@@ -538,8 +555,12 @@
   }
 }
 
-/* Today's Hole's cards: the panel kit's game card, taking the pointer, with the day's marks and spread. */
-.acechase-daily {
+/*
+ * Today's Hole's cards: the panel kit's game card, taking the pointer, with the day's marks and spread. A
+ * past hole's cards, the shared past course cards (PastCards.tsx), take it too.
+ */
+.acechase-daily,
+.acechase__overlay .past-card {
   pointer-events: auto;
 }
 
@@ -549,6 +570,11 @@
   line-height: 1.45;
   color: var(--muted);
   text-align: center;
+}
+
+/* What a run from the card counts toward (RunLabel.tsx), under the day's rules. */
+.acechase-daily__label {
+  align-self: center;
 }
 
 /* One mark a try, the colours of the share line: off the rings, outer, inner, lost, and the bull. */
@@ -712,7 +738,7 @@
   text-align: center;
 }
 
-/* A past hole's result that took its record (PastCards.tsx). */
+/* A past hole's result that took its record (PastCards.tsx, in the shared past course card). */
 .acechase-past__news {
   margin: 0;
   text-align: center;

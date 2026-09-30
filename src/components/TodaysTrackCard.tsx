@@ -3,7 +3,7 @@ import { getGame } from '../data/games'
 import { dailyTrack, nextTrackAt, trackDay } from '../games/hotlap/daily'
 import { buildTrack, type Piece, type TrackShape } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
-import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
+import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -14,6 +14,7 @@ import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
+import { PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysTrack.css'
 
@@ -76,7 +77,7 @@ function TrackPlan({ pieces, shape }: { pieces: Piece[]; shape: TrackShape }) {
   )
 }
 
-/** Today's Track as a card: the track, how the day stands, the clock to the next, and Race. */
+/** Today's Track as a card: the track, that it counts, how the day stands, the clock to the next, Past tracks and Race. */
 export function TodaysTrackCard() {
   const day = useTrackDay()
   const track = useMemo(() => dailyTrack(day), [day])
@@ -104,22 +105,23 @@ export function TodaysTrackCard() {
         <h2 id="ttc-title" className="evp-card__title">
           {track.name}
         </h2>
+        <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
           Hot Lap, on a new track every day. One lap against the clock, the same track for everyone, and the fastest
           lap tops the day. {standingWords(board)}
         </p>
       </div>
-      <div className="evp-daily__foot">
+      <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
           <ClockIcon />
           <EventCountdown endsAt={nextTrackAt()} />
         </span>
-        <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
-          Past tracks
-        </a>
-        <a className="evp-btn evp-btn--small" href={href}>
-          {board?.you ? 'Beat your lap' : 'Race the track'}
-        </a>
+        <span className="evp-daily__go">
+          <PastTabButton slug={SLUG} />
+          <a className="evp-btn evp-btn--small" href={href}>
+            {board?.you ? 'Beat your lap' : 'Race the track'}
+          </a>
+        </span>
       </div>
     </section>
   )

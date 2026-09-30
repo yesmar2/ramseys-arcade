@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { detectDeviceType } from './device'
 import { api, getClaimToken, normalizePlayerName } from './leaderboard'
 import { noteTicketsPaid } from './tickets'
@@ -7,8 +7,8 @@ import { noteTicketsPaid } from './tickets'
  * Track records (the API's trackLaps.ts). Every Hot Lap track keeps a board of its own for good. On its
  * day a track is the Daily, and its laps are the day's board, which closes at midnight with the day's
  * places, points and tickets. After that a lap on it goes on the track's own board: its day's laps and
- * every lap since, each driver's best. The archive shows each track's record; a past track's cards show
- * its board and where you stand.
+ * every lap since, each driver's best. Hot Lap's past tracks tab and Records tab show each track's record;
+ * a past track's cards show its board and where you stand.
  */
 
 export type TrackLapFigure = { name: string; score: number; avatarId?: string }
@@ -18,9 +18,13 @@ export type TrackRecordRow = {
   track: number
   day: string
   drivers: number
-  record: TrackLapFigure | null
+  /** `at`: when the record was driven (ms), on the track's day or since. */
+  record: (TrackLapFigure & { at?: number }) | null
   you: { score: number; place: number } | null
 }
+
+/** Every track's row, or null while they're asked; `failed` when asking didn't work, and `retry` asks again. */
+export type TrackRecords = { rows: TrackRecordRow[] | null; failed: boolean; retry: () => void }
 
 export type TrackBoard = {
   track: number
@@ -84,12 +88,16 @@ export function useTrackBoard(track: number | null, name: string, version = 0): 
 const HOLD_MS = 60_000
 const held = new Map<string, { at: number; rows: TrackRecordRow[] }>()
 
-/** Every track that has had its day, the latest first, with `name`'s results: kept a minute. Null while it's asked. */
-export function useTrackRecords(name: string): TrackRecordRow[] | null {
+/**
+ * Every track that has had its day, the latest first, with `name`'s results: kept a minute. `rows` is null
+ * while it's asked; `failed` when the ask failed and nothing is kept, so a page can say so rather than "no tracks".
+ */
+export function useTrackRecordsAsked(name: string): TrackRecords {
   const who = cleanName(name)
-  const [answer, setAnswer] = useState<{ who: string; rows: TrackRecordRow[] } | null>(() => {
+  const [asks, setAsks] = useState(0)
+  const [answer, setAnswer] = useState<{ who: string; rows: TrackRecordRow[] | null; failed: boolean } | null>(() => {
     const hit = held.get(who)
-    return hit ? { who, rows: hit.rows } : null
+    return hit ? { who, rows: hit.rows, failed: false } : null
   })
   useEffect(() => {
     const hit = held.get(who)
@@ -98,17 +106,23 @@ export function useTrackRecords(name: string): TrackRecordRow[] | null {
     api<{ tracks: TrackRecordRow[] }>(`/tracks/hotlap/records${who ? `?name=${encodeURIComponent(who)}` : ''}`, FRESH)
       .then((reply) => {
         held.set(who, { at: Date.now(), rows: reply.tracks })
-        if (live) setAnswer({ who, rows: reply.tracks })
+        if (live) setAnswer({ who, rows: reply.tracks, failed: false })
       })
       .catch(() => {
-        if (live) setAnswer({ who, rows: [] })
+        // Records asked a while ago still stand; none at all is a failure to say, never an empty list.
+        const kept = held.get(who)?.rows ?? null
+        if (live) setAnswer({ who, rows: kept, failed: kept === null })
       })
     return () => {
       live = false
     }
-  }, [who])
-  if (answer?.who === who) return answer.rows
-  return held.get(who)?.rows ?? null
+  }, [who, asks])
+  const retry = useCallback(() => {
+    setAnswer(null)
+    setAsks((n) => n + 1)
+  }, [])
+  if (answer?.who === who) return { rows: answer.rows, failed: answer.failed, retry }
+  return { rows: held.get(who)?.rows ?? null, failed: false, retry }
 }
 
 /**
@@ -124,7 +138,7 @@ export async function saveTrackLap(track: number, name: string, score: number, r
     method: 'POST',
     body: JSON.stringify({ name: cleaned, score, device: detectDeviceType(), runId, ...(token ? { token } : {}) }),
   })
-  // The archive's records are stale now, and taking a record pays: the header's count goes up with it.
+  // The tracks' records are stale now, and taking a record pays: the header's count goes up with it.
   held.clear()
   noteTicketsPaid(result.tickets)
   return result

@@ -1,43 +1,34 @@
 import { useMemo } from 'react'
 import { CourseDrawing } from '../../games/marblerun/CourseDrawing'
-import { courseDay, courseNumber, FIRST_DAY } from '../../games/marblerun/daily'
-import { keptRun, marbleDay } from '../../games/marblerun/runs'
+import { courseDay, courseNumber, dailyCourse, FIRST_DAY } from '../../games/marblerun/daily'
+import { marbleDay } from '../../games/marblerun/runs'
 import { formatRun } from '../../games/marblerun/score'
-import { useAccountId } from '../../hooks/useAccountId'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import { dayBefore } from '../../lib/archive'
-import { ArchiveList, type ArchiveItem } from './ArchiveList'
+import type { PastSource } from '../../lib/dailyPast'
+import { PastCourses } from './PastCourses'
 
 const SLUG = 'marblerun'
 
-/**
- * Marble Run's archive: every day's course from the first, today's at the top. A past one rolls again as
- * practice. Your best run of a day on this device shows under its name while the device still has it.
- */
+const anchor = (day: string) => day
+
+const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
+
+// The name is the plan's, so a row has it without laying its course.
+const title = (day: string) => `#${courseNumber(day)} ${dailyCourse(day).name}`
+
+function sub(day: string) {
+  const marble = marbleDay(day)
+  return `${Math.round(marble.course.length)} m · the blue ball ${formatRun(marble.pace)}`
+}
+
+const art = (day: string) => <CourseDrawing course={marbleDay(day).course} />
+
+/** Marble Run's past courses: every day's course before today's, newest first, each to roll again as practice. */
 export function CourseArchive() {
   const today = courseDay()
-  // Your best here is your own: built again when someone else signs in or out.
-  const viewer = useAccountId()
-  const items = useMemo(() => {
-    const out: ArchiveItem[] = []
-    for (let day = today; day >= FIRST_DAY; day = dayBefore(day)) {
-      out.push({
-        day,
-        n: courseNumber(day),
-        today: day === today,
-        href: day === today ? gamePlayHref(SLUG) : `${gamePlayHref(SLUG)}?day=${day}`,
-        build: () => {
-          const marble = marbleDay(day)
-          const mine = keptRun(day, viewer)
-          return {
-            title: marble.name,
-            sub: mine ? `Your best here: ${formatRun(mine.time)}` : `${Math.round(marble.course.length)} m · the blue ball ${formatRun(marble.pace)}`,
-            art: <CourseDrawing course={marble.course} />,
-          }
-        },
-      })
-    }
-    return out
-  }, [today, viewer])
-  return <ArchiveList slug={SLUG} items={items} />
+  const source = useMemo<PastSource>(
+    () => ({ slug: SLUG, today, first: FIRST_DAY, number: courseNumber, anchor, playHref, title, sub, art }),
+    [today],
+  )
+  return <PastCourses source={source} />
 }

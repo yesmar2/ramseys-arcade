@@ -5,7 +5,7 @@ import { useRoute } from '../hooks/useHashRoute'
 const isDay = (day: string | undefined): day is string => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
 
 /**
- * Marble Run's page: today's course. With ?day=YYYY-MM-DD, a past day's from the archive, rolled again as
+ * Marble Run's page: today's course. With ?day=YYYY-MM-DD, a past day's from the Past tab, rolled again as
  * practice, where nothing is kept. A day still to come isn't shown, nor one before the first.
  */
 export function MarbleRunPage() {

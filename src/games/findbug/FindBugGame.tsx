@@ -12,20 +12,24 @@ import {
   PlayReadoutScore,
 } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
+import { PastPlayChip } from '../../components/PastPlay'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
+import { RunLabel } from '../../components/RunLabel'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useGamePause } from '../../hooks/useGamePause'
-import { gameArchiveHref, navigate } from '../../hooks/useHashRoute'
+import { dailyTabHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { currentAccountId } from '../../lib/auth'
 import { ownerAccount, ownerOf, ownKey, SIGNED_OUT } from '../../lib/deviceRuns'
 import { noteRunBegun } from '../../lib/engagement'
 import { normalizePlayerName } from '../../lib/leaderboard'
+import { onItsDayFact, useItsDay, type ItsDay } from '../../lib/onItsDay'
+import type { PastPlay } from '../../lib/pastPlay'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun, resumeRun, runIdFor } from '../../lib/runSession'
@@ -57,7 +61,7 @@ import {
   updateDayRun,
   type DayResult,
 } from './daily'
-import { PastDayCard, PracticeCard, TodayCard } from './DailyCards'
+import { PastDayResult, PastDayStart, PracticeCard, TodayCard } from './DailyCards'
 import {
   closeCard,
   createInitialState,
@@ -96,6 +100,14 @@ const TAP_SLOP_MOUSE = 5
 
 /** How often a counted run's progress is kept on the device while it's played. */
 const KEEP_EVERY_MS = 1000
+
+/**
+ * The chip that says a run is practice sits in the readout's line, after the scene, on a screen this wide
+ * or wider. On a narrower one there's no room beside the clock, so the strip over the scene grows by
+ * `CHIP_STRIP` px and the chip sits in that, never over the scene, where a bug could hide under it.
+ */
+const CHIP_INLINE_W = 900
+const CHIP_STRIP = 34
 
 /** A run from its very start. */
 const FROM_THE_START: Progress = { index: 0, bankedMs: 0, sceneMs: 0, found: 0, misses: 0, times: [] }
@@ -237,21 +249,37 @@ function SceneCard({
 /**
  * Find the Bug. On its own page it's Today's Wanted, the day's five scenes: the day's first run is the
  * one that counts, kept on the device as it goes so it can be carried on if it's left, and after it the
- * day plays again as practice. With `day`, a past day's scenes from the archive, all practice. In an
- * event it's a run of its own, on a fresh seed, as it always was.
+ * day plays again as practice. With `day`, a past day's scenes, played again from the game page's Past
+ * days: all practice, beside how the day went on its day. In an event it's a run of its own, on a fresh
+ * seed, as it always was.
  */
 export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   const tournament = useTournamentPlay()
+  // A past day's scenes. Never one ahead of its day: to know where a day's bugs hide
+  // before it comes would be to know its first run's answers. Today's own, asked for by date, are just
+  // today's. Settled as the page opens, so midnight doesn't swap the game out from under a run.
+  const [pastDay] = useState(() => (!tournament && isDay(askedDay) && askedDay >= FIRST_DAY && askedDay < bugDay() ? askedDay : null))
+  return pastDay ? <PastDayGame day={pastDay} /> : <DayGame pastDay={null} itsDay={null} />
+}
+
+/** A past day's scenes, with how its day went: asked for only here, where it's shown. */
+function PastDayGame({ day }: { day: string }) {
+  const itsDay = useItsDay(SLUG, day)
+  return <DayGame pastDay={day} itsDay={itsDay} />
+}
+
+function DayGame({ pastDay, itsDay }: { pastDay: string | null; itsDay: ItsDay | null }) {
+  const tournament = useTournamentPlay()
   const apiBest = usePersonalBest(SLUG)
   const [today, setToday] = useState(bugDay)
-  // A past day's scenes from the archive. Never one ahead of its day: to know where a day's bugs hide
-  // before it comes would be to know its first run's answers. Today's own, asked for by date, are just today's.
-  const pastDay = !tournament && isDay(askedDay) && askedDay >= FIRST_DAY && askedDay < today ? askedDay : null
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playRef = useRef<HTMLDivElement>(null)
+  /** A practice run's chip is up (a past day's, all the while): on a narrow screen the strip over the scene makes room for it. */
+  const chipUp = useRef(pastDay != null)
+  const stripFor = (w: number) => (chipUp.current && w < CHIP_INLINE_W ? CHIP_STRIP : 0)
   const stateRef = useRef<GameState | null>(null)
   if (!stateRef.current) {
-    const aspect = typeof window === 'undefined' ? 1.4 : fieldAspect(window.innerWidth, window.innerHeight)
+    const aspect = typeof window === 'undefined' ? 1.4 : fieldAspect(window.innerWidth, window.innerHeight, stripFor(window.innerWidth))
     stateRef.current = createInitialState(aspect, tournament ? undefined : daySeed(pastDay ?? today))
   }
   const camRef = useRef<Camera>(homeCamera(stateRef.current.scene.w, stateRef.current.scene.h))
@@ -280,6 +308,10 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   const [resumedAt, setResumedAt] = useState<number | null>(null)
   const [ended, setEnded] = useState<Ended | null>(null)
   const [lateSave, setLateSave] = useState<LateSave | null>(null)
+  /** A run that saves nothing is on: today's scenes played again, or a past day's. */
+  const [practising, setPractising] = useState(false)
+  /** The practice chip is in the strip over the scene, not the readout's line (CHIP_INLINE_W). */
+  const [chipInStrip, setChipInStrip] = useState(false)
   const pausable = isLive(ui.phase) && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -343,14 +375,19 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
       const h = host?.clientHeight || 0
 
       if (w > 0 && h > 0) {
-        stateRef.current = setAspect(stateRef.current!, fieldAspect(w, h))
+        const strip = stripFor(w)
+        stateRef.current = setAspect(stateRef.current!, fieldAspect(w, h, strip))
         // The readout strip is the canvas's header: tell the page where its
-        // middle is so the clock and the buttons share one line.
+        // middle is so the clock and the buttons share one line. A practice
+        // chip's room, where there is one, is under that line.
         const middle = Math.round(headerHeight(h) / 2)
-        if (host && host.dataset.readoutMiddle !== String(middle)) {
-          host.dataset.readoutMiddle = String(middle)
+        const layout = `${middle}|${strip}`
+        if (host && host.dataset.readoutLayout !== layout) {
+          host.dataset.readoutLayout = layout
           host.style.setProperty('--readout-middle', `${middle}px`)
-          host.style.setProperty('--findbug-header', `${middle * 2}px`)
+          host.style.setProperty('--findbug-header', `${middle * 2 + strip}px`)
+          host.style.setProperty('--findbug-strip', `${strip}px`)
+          setChipInStrip(strip > 0)
         }
       }
 
@@ -420,7 +457,7 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
         }
         const ctx = canvas.getContext('2d')
         if (ctx) {
-          const field = fitField(w, h, s.scene.w, s.scene.h)
+          const field = fitField(w, h, s.scene.w, s.scene.h, stripFor(w))
           fieldRef.current = field
           camRef.current = clampCamera(camRef.current, s.scene.w, s.scene.h)
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -517,7 +554,7 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
 
   const currentAspect = () => {
     const host = canvasRef.current?.parentElement
-    if (host && host.clientWidth > 0 && host.clientHeight > 0) return fieldAspect(host.clientWidth, host.clientHeight)
+    if (host && host.clientWidth > 0 && host.clientHeight > 0) return fieldAspect(host.clientWidth, host.clientHeight, stripFor(host.clientWidth))
     return stateRef.current!.aspect
   }
 
@@ -544,16 +581,23 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
     countedRun.current = null
     playedDay.current = null
     setResumedAt(null)
+    chipUp.current = false
+    setPractising(false)
     beginRun(SLUG)
     settle(startGame(stateRef.current!, currentAspect()))
   }
 
-  /** A day's scenes played again, today's or a past one's: nothing opened on the API, nothing kept. */
+  /**
+   * A day's scenes played again, today's or a past one's: nothing opened on the API, nothing kept. Its
+   * chip is up from the start, so the scenes are laid out round the room it takes.
+   */
   const practise = (day: string) => {
     countedDay.current = null
     countedRun.current = null
     playedDay.current = day
     setResumedAt(null)
+    chipUp.current = true
+    setPractising(true)
     noteRunBegun()
     settle(startGame(stateRef.current!, currentAspect(), daySeed(day)))
   }
@@ -580,6 +624,8 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
     }
     countedDay.current = day
     playedDay.current = day
+    chipUp.current = false
+    setPractising(false)
     if (run) {
       // Carried on, it's this player's own from here on.
       const taken = takeUpRun(day, viewer) ?? run
@@ -611,6 +657,9 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
     countedDay.current = null
     countedRun.current = null
     setResumedAt(null)
+    // Today's start card has no practice chip over it; a past day's keeps its own.
+    chipUp.current = pastDay != null
+    setPractising(false)
     settle(createInitialState(currentAspect(), tournament ? undefined : daySeed(pastDay ?? bugDay())))
   }
 
@@ -871,8 +920,8 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
       }
 
       if (e.code === 'Space' || e.code === 'Enter') {
-        // Tabbed to, the badge takes its own press, and so do the day's cards' buttons.
-        if (e.target instanceof Element && e.target.closest('.findbug__badge, .findbug-daily')) return
+        // Tabbed to, the badge takes its own press, and so do the day's cards' buttons and a past day's.
+        if (e.target instanceof Element && e.target.closest('.findbug__badge, .findbug-daily, .past-card')) return
         e.preventDefault()
         if (s.phase === 'menu') {
           if (performance.now() < startGrace.current) return
@@ -959,6 +1008,34 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
   const menuUp = ui.phase === 'menu' && !saveOpen && !lateUp && !paused
   const endTitle = ui.found === ROUNDS ? 'Found every one' : 'Run over'
   const endLine = `Found ${ui.found} of ${ROUNDS} · ${ui.misses} wrong tap${ui.misses === 1 ? '' : 's'}`
+  // A past day on the play screen: its chip, the tab's title, its figures on the pause card, and leaving
+  // goes back to its row on the past days.
+  const past: PastPlay | null =
+    pastDay && itsDay
+      ? {
+          href: dailyTabHref(SLUG, 'past', pastDay),
+          kind: 'practice',
+          title: `Wanted #${dayNumber(pastDay)}`,
+          facts: [onItsDayFact(SLUG, itsDay)],
+          chip: false,
+        }
+      : null
+  // Practice says so for the whole run: a past day's all the while, today's played again once it's on.
+  const chip = pastDay ? (
+    <PastPlayChip slug={SLUG} kind="practice" />
+  ) : practising && ui.phase !== 'menu' ? (
+    <RunLabel kind="practice" slug={SLUG} short className="run-label--hud" />
+  ) : null
+  // A past day's run over, or today's played again on past midnight: its day is a past one now.
+  const endedPast = ended?.day && ended.day !== today ? ended.day : null
+  // Leaving today's first run throws nothing away: it's kept on the device as it goes, and carries on from
+  // there. Practice, today's scenes played again or a past day's, keeps nothing. An event's run says what
+  // every game says.
+  const leaveNote = countedDay.current
+    ? 'Your run is kept: the clock stops, and you carry on where you left off.'
+    : practising
+      ? 'It’s practice: nothing is saved.'
+      : undefined
 
   return (
     <section className="findbug findbug--fullscreen">
@@ -974,7 +1051,13 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
           >
             <canvas ref={canvasRef} className="findbug__viewport" />
 
-            <GamePlayChrome slug={SLUG} inRun={() => isLive(stateRef.current!.phase)} paused={paused}>
+            <GamePlayChrome
+              slug={SLUG}
+              inRun={() => isLive(stateRef.current!.phase)}
+              paused={paused}
+              past={past}
+              leaveNote={leaveNote}
+            >
               {pausable || paused ? <PauseButton paused={paused} onToggle={togglePause} /> : null}
             </GamePlayChrome>
 
@@ -988,8 +1071,10 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
                   onToggle={ui.phase === 'playing' || ui.phase === 'recall' ? toggleCard : null}
                 />
                 <PlayStat label="Scene" value={`${Math.min(ROUNDS, ui.index + 1)}/${ROUNDS}`} />
+                {chip && !chipInStrip ? <span className="findbug__chip">{chip}</span> : null}
               </PlayReadoutStats>
             </PlayReadout>
+            {chip && chipInStrip ? <div className="findbug__chip findbug__chip--strip">{chip}</div> : null}
 
             {toast && !paused ? (
               <div key={toast.id} className={`findbug__toast findbug__toast--${toast.tone}`} role="status">
@@ -1024,6 +1109,7 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
               <GamePauseOverlay
                 slug={SLUG}
                 personalBest={isLive(ui.phase) ? previousBestRef.current : apiBest}
+                past={past}
                 paused={paused}
                 onResume={resume}
                 onRestart={countedDay.current ? undefined : () => (tournament ? startEventRun() : playedDay.current ? practise(playedDay.current) : undefined)}
@@ -1031,8 +1117,8 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
               {menuUp ? (
                 tournament ? (
                   <GameStartCard title="Find the Bug" slug={SLUG} />
-                ) : pastDay ? (
-                  <PastDayCard day={pastDay} wanted={wanted} onStart={() => practise(pastDay)} onLeave={() => navigate(gameArchiveHref(SLUG))} />
+                ) : pastDay && itsDay ? (
+                  <PastDayStart day={pastDay} today={today} wanted={wanted} itsDay={itsDay} onStart={() => practise(pastDay)} />
                 ) : (
                   <TodayCard
                     day={today}
@@ -1072,14 +1158,21 @@ export function FindBugGame({ day: askedDay }: { day?: string } = {}) {
                     onDone={toMenu}
                     onSaved={savedAs(ended.day, ended.counted)}
                   />
+                ) : endedPast ? (
+                  <PastDayResult
+                    day={endedPast}
+                    today={today}
+                    run={ended!.result}
+                    itsDay={itsDay ?? { entry: undefined, failed: false, signedIn: false }}
+                    onAgain={() => practise(endedPast)}
+                  />
                 ) : ended?.day ? (
                   <PracticeCard
                     day={ended.day}
-                    today={ended.day === today}
                     run={ended.result}
                     standing={todayRun?.hold === 'claimable' ? null : (todayRun?.run.result ?? null)}
                     onAgain={() => practise(ended.day!)}
-                    onLeave={() => (ended.day === today ? toMenu() : navigate(gameArchiveHref(SLUG)))}
+                    onLeave={toMenu}
                   />
                 ) : null
               ) : null}

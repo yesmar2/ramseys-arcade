@@ -2,14 +2,18 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { getGame } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
-import { gameBoardHref, recordsHref } from '../hooks/useHashRoute'
+import { dailyTabHref, gameBoardHref, recordsHref } from '../hooks/useHashRoute'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { fitCardToSpace } from '../lib/cardFit'
+import { dailyWords } from '../lib/dailyWords'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { pastKind, type PastPlay } from '../lib/pastPlay'
 import { gameHasRecords } from '../lib/records'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { Panel, PanelHead } from './Panel'
+import { PastFacts } from './PastPlay'
+import { RunLabel } from './RunLabel'
 import { ScoreGuide } from './ScoreGuide'
 import { SoundPackSelect } from './SoundPackSelect'
 import { HapticsToggle } from './HapticsToggle'
@@ -105,12 +109,17 @@ export function PauseOverlay({
  *
  * Shared with the start card so the screen you see before a run and the one you
  * see when you stop it are the same panel, rather than two that drift apart.
+ *
+ * With `past`, the run is on a daily's past course: today's bests aren't its, so
+ * the course's own figures stand in for them, and the board link goes to the
+ * course's row on the daily's past tab rather than the week's board.
  */
 export function GamePanelBody({
   slug,
   personalBest,
   hideBest = false,
   hideRecord = false,
+  past,
   extraMeta,
   tools,
 }: {
@@ -119,44 +128,61 @@ export function GamePanelBody({
   hideBest?: boolean
   /** Leaves out the board's best too, where the run isn't on it (a Hot Lap test drive). */
   hideRecord?: boolean
+  /** A daily's past course being played (PastPlay.tsx). */
+  past?: PastPlay | null
   extraMeta?: ReactNode
   tools?: ReactNode
 }) {
   const allTime = useBoardRecord(slug)
   const board = isBoardGame(slug)
-  const hasRecords = gameHasRecords(slug)
   const game = getGame(slug)
-  // A daily's board is the day's: its best and its record are today's.
+  // A daily's board is the day's: its best and its leader are today's.
   const daily = game?.daily === true
+  // A daily's records are on its page's Records tab, not in the record books.
+  const hasRecords = daily || gameHasRecords(slug)
+  const recordsLink = daily ? dailyTabHref(slug, 'records') : recordsHref(slug)
+  const recordsLabel = daily ? 'Records' : 'Record books'
   // In an event with a set number of tries: how many are left, and when one counts.
   const tournament = useTournamentPlay()
   const tries = tournament && tournament.maxAttempts != null ? tournament : null
+  const showBest = !hideBest && !past
+  const showRecord = !hideRecord && !past
+  // A past course's board link: its row, which holds its board (or its day, where it has none).
+  const boardLink = past ? past.href : board ? gameBoardHref(slug) : null
+  const boardLabel = past
+    ? pastKind(slug, past.kind) === 'board'
+      ? `This ${dailyWords(slug).course}’s board`
+      : dailyWords(slug).pastTab
+    : 'Leaderboard'
 
   return (
     <>
-      <div className="game-pause-meta">
-        {!hideBest ? (
-          <div className="game-pause-meta__row">
-            <span>{daily ? 'Your best today' : 'Your best'}</span>
-            <strong>{personalBest > 0 ? formatLeaderboardScore(slug, personalBest) : '—'}</strong>
-          </div>
-        ) : null}
-        {!hideRecord ? (
-          <div className="game-pause-meta__row">
-            <span>{daily ? 'Today’s best' : 'The record'}</span>
-            <strong>{allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}</strong>
-          </div>
-        ) : null}
-        {extraMeta}
-        {tries ? (
-          <div className="game-pause-meta__row">
-            <span>Tries left</span>
-            <strong>
-              {tries.attemptsRemaining ?? tries.maxAttempts} of {tries.maxAttempts}
-            </strong>
-          </div>
-        ) : null}
-      </div>
+      {past?.facts ? <PastFacts facts={past.facts} /> : null}
+      {showBest || showRecord || extraMeta || tries || !past ? (
+        <div className="game-pause-meta">
+          {showBest ? (
+            <div className="game-pause-meta__row">
+              <span>{daily ? 'Your best today' : 'Your best'}</span>
+              <strong>{personalBest > 0 ? formatLeaderboardScore(slug, personalBest) : '—'}</strong>
+            </div>
+          ) : null}
+          {showRecord ? (
+            <div className="game-pause-meta__row">
+              <span>{daily ? '1st today' : 'The record'}</span>
+              <strong>{allTime > 0 ? formatLeaderboardScore(slug, allTime) : '—'}</strong>
+            </div>
+          ) : null}
+          {extraMeta}
+          {tries ? (
+            <div className="game-pause-meta__row">
+              <span>Tries left</span>
+              <strong>
+                {tries.attemptsRemaining ?? tries.maxAttempts} of {tries.maxAttempts}
+              </strong>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {tries?.triesAtStart ? <p className="game-card__hint">A try counts the moment you start it.</p> : null}
       {tools}
       <div className="game-pause-actions">
@@ -168,14 +194,14 @@ export function GamePanelBody({
           <HapticsToggle />
         </div>
         {game && howToPlayFor(slug) ? <ScoreGuide slug={slug} game={game.name} style={gameAccentStyle(slug)} /> : null}
-        {board ? (
+        {boardLink ? (
           <a
             className="game-pause-btn game-pause-board"
-            href={gameBoardHref(slug)}
+            href={boardLink}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Leaderboard"
-            title="Leaderboard"
+            aria-label={boardLabel}
+            title={boardLabel}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -201,11 +227,11 @@ export function GamePanelBody({
         {hasRecords ? (
           <a
             className="game-pause-btn game-pause-board"
-            href={recordsHref(slug)}
+            href={recordsLink}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Record books"
-            title="Record books"
+            aria-label={recordsLabel}
+            title={recordsLabel}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -233,12 +259,16 @@ export function GamePanelBody({
   )
 }
 
-/** Pause panel with leave link, bests, optional extra rows, sound, guide, board, and Restart where a run can start again. */
+/**
+ * Pause panel with leave link, bests, optional extra rows, sound, guide, board, and Restart where a run can start again.
+ * With `past`, a daily's past course: its label and figures, and leaving goes back to its row.
+ */
 export function GamePauseOverlay({
   slug,
   personalBest,
   hideBest = false,
   hideRecord = false,
+  past,
   paused,
   onResume,
   onRestart,
@@ -249,6 +279,8 @@ export function GamePauseOverlay({
   personalBest: number
   hideBest?: boolean
   hideRecord?: boolean
+  /** A daily's past course being played: the same one the game's GamePlayChrome takes, whose Leave this uses. */
+  past?: PastPlay | null
   paused: boolean
   onResume: () => void
   /**
@@ -264,7 +296,11 @@ export function GamePauseOverlay({
   const tournament = useTournamentPlay()
   const game = getGame(slug)
   const gameName = game?.name ?? 'game'
-  const leaveLabel = tournament ? 'Back to event' : `Leave ${gameName}`
+  const leaveLabel = tournament
+    ? 'Back to event'
+    : past
+      ? `Back to ${dailyWords(slug).pastTab.toLowerCase()}`
+      : `Leave ${gameName}`
   // An event with a set number of tries spends one as each run starts: starting again would spend another.
   const canRestart = Boolean(onRestart) && !(tournament && tournament.maxAttempts != null)
   const [confirming, setConfirming] = useState(false)
@@ -299,14 +335,17 @@ export function GamePauseOverlay({
     <>
       <PauseOverlay paused={paused} onResume={onResume} showResume={false} style={gameAccentStyle(slug)}>
         <div className="game-card__head">
-          <span className="game-card__kicker">{gameName}</span>
+          {/* A past course: its name with the game's, so the card never reads as today's. */}
+          <span className="game-card__kicker">{past?.title ? `${gameName} · ${past.title}` : gameName}</span>
           <h2 className="game-card__title">Paused</h2>
+          {past ? <RunLabel kind={pastKind(slug, past.kind)} slug={slug} /> : null}
         </div>
         <GamePanelBody
           slug={slug}
           personalBest={personalBest}
           hideBest={hideBest}
           hideRecord={hideRecord}
+          past={past}
           extraMeta={extraMeta}
           tools={tools}
         />

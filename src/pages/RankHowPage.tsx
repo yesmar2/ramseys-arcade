@@ -834,7 +834,7 @@ function DailiesStep({
     >
       <p className="rh-step__p">
         Each day’s board pays its players the same way. The days add up to {up}, and then{' '}
-        <b>{ranked} is ranked like any other game</b>.
+        <b>{ranked} is ranked like any other game</b>. Only each day’s own run counts: playing a past day again never does.
       </p>
       {group ? (
         <p className="rh-step__p">
@@ -1300,7 +1300,7 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
       <Step id={STEP_IDS.dailies} n="4" title={stepTitles(who).dailies}>
         <p className="rh-step__p">
           Each day’s board pays its players the same way. The days add up to your {words.noun ?? 'total'}, and then{' '}
-          <b>that is ranked like any other game</b>.
+          <b>that is ranked like any other game</b>. Only each day’s own run counts: playing a past day again never does.
         </p>
         <p className="rh-step__p">
           So a daily still pays at most 100 toward your rank, however many days you play. Playing more days is how you climb.

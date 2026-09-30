@@ -1,17 +1,15 @@
 import { useMemo } from 'react'
-import { dayNumber, dayRun, FIRST_DAY, pourDay } from '../../games/halffull/daily'
-import { dayPlan, ROUNDS, type DayPlan } from '../../games/halffull/plan'
+import { dayNumber, FIRST_DAY, pourDay } from '../../games/halffull/daily'
+import { dayPlan, type DayPlan } from '../../games/halffull/plan'
 import { glassNames, pourPlan } from '../../games/halffull/planSvg'
-import { judgeLevels, markFor } from '../../games/halffull/score'
-import { useAccountId } from '../../hooks/useAccountId'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import { dayBefore } from '../../lib/archive'
-import { ArchiveList, type ArchiveItem } from './ArchiveList'
+import type { PastSource } from '../../lib/dailyPast'
+import { PastCourses } from './PastCourses'
 import '../../styles/todaysPour.css'
 
 const SLUG = 'halffull'
 
-/** A day's glasses on the shelf and the counter, empty: its card's picture, as Today's Pour draws them. */
+/** A day's glasses on the shelf and the counter, empty: its picture, as Today's Pour draws them. */
 function PourGlasses({ plan }: { plan: DayPlan }) {
   const picture = useMemo(() => pourPlan(plan, 320, 200), [plan])
   return (
@@ -23,36 +21,23 @@ function PourGlasses({ plan }: { plan: DayPlan }) {
   )
 }
 
-/**
- * Half Full's archive: every day's Today's Pour from the first, today's at the top. A past one pours again
- * as practice. What you poured on a day on this device shows as its squares, one a glass: your own pours
- * only (lib/deviceRuns.ts), drawn again for whoever signs in.
- */
+const anchor = (day: string) => day
+
+const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
+
+const title = (day: string) => `Pour #${dayNumber(day)}`
+
+const sub = (day: string) => glassNames(dayPlan(day))
+
+// A day's glasses are worked out only as its row comes near: a day can try a good many sets.
+const art = (day: string) => <PourGlasses plan={dayPlan(day)} />
+
+/** Half Full's past days: every Today's Pour before today's, newest first, each to pour again as practice. */
 export function PourArchive() {
   const today = pourDay()
-  const viewer = useAccountId()
-  const items = useMemo(() => {
-    const out: ArchiveItem[] = []
-    for (let day = today; day >= FIRST_DAY; day = dayBefore(day)) {
-      out.push({
-        day,
-        n: dayNumber(day),
-        today: day === today,
-        href: day === today ? gamePlayHref(SLUG) : `${gamePlayHref(SLUG)}?day=${day}`,
-        // A day's glasses are built only as its card comes near: a day can try a good many sets.
-        build: () => {
-          const plan = dayPlan(day)
-          const levels = dayRun(day, viewer)?.levels ?? []
-          const mine = levels.length >= ROUNDS ? judgeLevels(plan, levels.slice(0, ROUNDS)) : null
-          return {
-            title: glassNames(plan),
-            sub: mine ? mine.scores.map(markFor).join('') : `${plan.label}: four glasses and a fair split`,
-            art: <PourGlasses plan={plan} />,
-          }
-        },
-      })
-    }
-    return out
-  }, [today, viewer])
-  return <ArchiveList slug={SLUG} items={items} />
+  const source = useMemo<PastSource>(
+    () => ({ slug: SLUG, today, first: FIRST_DAY, number: dayNumber, anchor, playHref, title, sub, art }),
+    [today],
+  )
+  return <PastCourses source={source} />
 }

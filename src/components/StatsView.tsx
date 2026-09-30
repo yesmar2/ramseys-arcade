@@ -1,9 +1,10 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { getGame } from '../data/games'
-import { gameHubHref, homeHref, recordHref, recordsIndexHref } from '../hooks/useHashRoute'
+import { getGame, isDailyGame } from '../data/games'
+import { dailyTabHref, gameHubHref, homeHref, recordsIndexHref } from '../hooks/useHashRoute'
 import { PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { ordinal, periodWord } from '../lib/profileMath'
+import { bookRecordHref } from '../lib/recordBook'
 import type { GameStat, NearRecord, StatsHeadline, StatsStreak } from '../lib/stats'
 import {
   bestDay,
@@ -234,7 +235,7 @@ export function StatsRecords({ records }: { records: NearRecord[] }) {
             const accent = accentOf(r.game)
             return (
               <li key={`${r.game}-${r.recordId}`}>
-                <a className="sv-rec" href={recordHref(r.game, r.recordId, 'all')} style={{ '--g': accent } as CSSProperties}>
+                <a className="sv-rec" href={bookRecordHref(r.game, r.recordId)} style={{ '--g': accent } as CSSProperties}>
                   <span className="sv-rec__art" aria-hidden="true">
                     <GameThumbArt slug={r.game} accent={accent} />
                   </span>
@@ -370,7 +371,12 @@ function GameRow({
 
   return (
     <li>
-      <a className="sv-game" href={gameHubHref(stat.slug, period)} style={{ '--g': accent } as CSSProperties}>
+      {/* A daily's page has no period of its own: its address is the Today tab. */}
+      <a
+        className="sv-game"
+        href={isDailyGame(stat.slug) ? dailyTabHref(stat.slug) : gameHubHref(stat.slug, period)}
+        style={{ '--g': accent } as CSSProperties}
+      >
         <span className="sv-game__art" aria-hidden="true">
           <GameThumbArt slug={stat.slug} accent={accent} />
         </span>

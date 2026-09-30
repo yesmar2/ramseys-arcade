@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isDailyGame } from '../data/games'
 import { useFriends } from '../hooks/useFriends'
-import { notificationSettingsHref } from '../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, notificationSettingsHref } from '../hooks/useHashRoute'
 import { useInboxLook, type NotificationsState } from '../hooks/useNotifications'
 import { AVATAR_PINS, AVATAR_RINGS, type AvatarPin, type AvatarRing } from '../lib/avatars'
 import { inkOn } from '../lib/color'
+import { dailyWords } from '../lib/dailyWords'
 import {
   countdown,
   formatNotificationTime,
@@ -15,6 +16,7 @@ import {
   needsYou,
   type AppNotification,
 } from '../lib/notifications'
+import { coursePlayHref, dailyRecordHref, isCourseRecord, recordShut } from '../lib/recordBook'
 import type { AvatarWear } from './AvatarStudio'
 import { GameThumbGlyph } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
@@ -191,6 +193,50 @@ function ordinalSuffix(n: number): string {
 
 /* ------------------------------------------------------------ actions --- */
 
+/** A record's page in its book, /records/<game>/<id>/…, where record-lost notes led before a daily's courses left the books. */
+const RECORD_LINK = /^\/records\/[^/?#]+\/([^/?#]+)/
+
+/** Where a record-lost note about a daily leads, whether it's a course's, and where a run can win it back. */
+type DailyRecordNote = { href: string; course: boolean; winBack: string | null }
+
+/**
+ * Where a record-lost note about a daily leads: a track's, hole's or day's record to that course's row on
+ * the game's past tab (lib/recordBook dailyRecordHref), never today's play, and one like Days played in a
+ * row to the game's Records tab. Notes sent now lead to the course's row already, or to the game's Today
+ * tab while that course is still today's (it has no past row yet: its board is the Today tab), with a play
+ * link only where a run can still win it back. A Hot Lap track's is worked out as the note is read (it
+ * carries meta.recordId, 'track-N'): today's play while the track is today's, ?track=N once its day has
+ * passed. Older ones name the record in their meta or their link, and sent "Win it back" to today's play,
+ * whatever the course. Null for any other note.
+ */
+function dailyRecordNote(n: AppNotification): DailyRecordNote | null {
+  const game = n.meta.game
+  if (n.kind !== 'record-lost' || !game || !isDailyGame(game)) return null
+  const named = n.meta.recordId
+  if (n.href?.startsWith(dailyTabHref(game, 'past'))) {
+    // While the course is still today's it has no past row yet: its board is the Today tab.
+    const stillToday =
+      typeof named === 'string' && isCourseRecord({ id: named }) && dailyRecordHref(game, named) === dailyTabHref(game)
+    // A Hot Lap track takes any lap, any day, worked out as the note is read: while it's today's track, today's
+    // play (where the lap counts; ?track= would be an admin's unsaved test drive); once its day is gone, its own board.
+    const winBack =
+      game === 'hotlap' && typeof named === 'string' ? coursePlayHref(game, { id: named }) : (n.meta.playHref ?? null)
+    return { href: stillToday ? dailyTabHref(game) : n.href, course: true, winBack }
+  }
+  const fromLink = n.href ? RECORD_LINK.exec(n.href)?.[1] : undefined
+  const recordId = typeof named === 'string' ? named : fromLink ? decodeURIComponent(fromLink) : null
+  if (!recordId) {
+    // Nothing says which record it was: the game's past days, rather than today's play.
+    const own = n.href && !n.href.startsWith(gamePlayHref(game)) ? n.href : dailyTabHref(game, 'past')
+    return { href: own, course: false, winBack: null }
+  }
+  const href = dailyRecordHref(game, recordId) ?? dailyTabHref(game, 'records')
+  if (!isCourseRecord({ id: recordId })) return { href, course: false, winBack: n.meta.playHref ?? gamePlayHref(game) }
+  // A Hot Lap track takes any lap, any day. A hole's or a day's holder has their one result on it already.
+  const winBack = recordShut(game, { id: recordId }, true) ? null : coursePlayHref(game, { id: recordId })
+  return { href, course: true, winBack }
+}
+
 function isRing(id: string | undefined): id is AvatarRing {
   return Boolean(id && (AVATAR_RINGS as readonly string[]).includes(id))
 }
@@ -281,14 +327,22 @@ function Actions({
         link(n.href, 'See today ›')
       )
       break
-    case 'record-lost':
-      out = (
+    case 'record-lost': {
+      // A daily's course is won back on that course or not at all, and seen on its row of the past tab.
+      const daily = dailyRecordNote(n)
+      out = daily ? (
+        <>
+          {plain(daily.winBack, 'Win it back')}
+          {link(daily.href, daily.course ? `See the ${dailyWords(n.meta.game ?? '').course} ›` : 'See the record ›')}
+        </>
+      ) : (
         <>
           {plain(playHref, 'Win it back')}
           {link(n.href, 'See the record ›')}
         </>
       )
       break
+    }
     case 'trophy': {
       const wear: AvatarWear | null = isRing(ring) ? { ring } : isPin(pin) ? { pin } : null
       const label =
@@ -327,6 +381,7 @@ function Row({
   const needs = needsYou(n, now)
   const hot = needs && isClosing(n, now)
   const title = liveTitle(n, now)
+  const href = dailyRecordNote(n)?.href ?? n.href
   const endsAt = n.meta.endsAt
   const clock = needs && isMatch(n) && endsAt != null ? countdown(endsAt - now) : null
   const cls = ['inbox-row', needs ? 'inbox-row--needs' : '', hot ? 'inbox-row--hot' : ''].filter(Boolean).join(' ')
@@ -338,8 +393,8 @@ function Row({
         <div className="inbox-row__top">
           <p className="inbox-row__title">
             {fresh ? <span className="inbox-sr">New: </span> : null}
-            {n.href ? (
-              <a href={n.href} onClick={onNavigate}>
+            {href ? (
+              <a href={href} onClick={onNavigate}>
                 {title}
               </a>
             ) : (

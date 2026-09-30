@@ -4,7 +4,7 @@ import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { useSaveWait } from '../hooks/useSaveWait'
-import { gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
+import { dailyTabHref, gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
 import { currentAccountId, linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
 import {
   challengeMessage,
@@ -534,7 +534,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
   if (phase === 'saved' || phase === 'assisted' || phase === 'error') {
     links = [{ label: `${game} board`, onClick: () => leavePlayTo(boardsHref(gameSlug, period)) }]
-    if (gameHasRecords(gameSlug)) {
+    // A daily's records are on its page's Records tab, not in the record books.
+    if (isDailyGame(gameSlug)) {
+      links.push({ label: 'Records', onClick: () => leavePlayTo(dailyTabHref(gameSlug, 'records')) })
+    } else if (gameHasRecords(gameSlug)) {
       links.push({ label: 'Record book', onClick: () => leavePlayTo(recordsHref(gameSlug)) })
     }
   }

@@ -3,7 +3,7 @@ import { getGame } from '../data/games'
 import { CourseDrawing } from '../games/marblerun/CourseDrawing'
 import { courseDay, nextCourseAt } from '../games/marblerun/daily'
 import { marbleDay } from '../games/marblerun/runs'
-import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
+import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -13,6 +13,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
+import { PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysCourse.css'
 
@@ -60,7 +61,7 @@ function standingWords(board: TodayBoard | null): string {
   return 'Nobody has rolled it yet: the first run sets the bar.'
 }
 
-/** Today's Course as a card: the course, how the day stands, the clock to the next, and Roll. */
+/** Today's Course as a card: the course, that it counts, how the day stands, the clock to the next, Past courses and Roll. */
 export function TodaysCourseCard() {
   const day = useCourseDay()
   const marble = marbleDay(day)
@@ -88,22 +89,23 @@ export function TodaysCourseCard() {
         <h2 id="tcc-title" className="evp-card__title">
           {marble.name}
         </h2>
+        <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
           Marble Run, on a new course every day. Tilt the world to roll the marble down it against the clock, the same
           course for everyone, and the fastest run tops the day. {standingWords(board)}
         </p>
       </div>
-      <div className="evp-daily__foot">
+      <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
           <ClockIcon />
           <EventCountdown endsAt={nextCourseAt()} />
         </span>
-        <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
-          Past courses
-        </a>
-        <a className="evp-btn evp-btn--small" href={href}>
-          {board?.you ? 'Beat your run' : 'Roll the course'}
-        </a>
+        <span className="evp-daily__go">
+          <PastTabButton slug={SLUG} />
+          <a className="evp-btn evp-btn--small" href={href}>
+            {board?.you ? 'Beat your run' : 'Roll the course'}
+          </a>
+        </span>
       </div>
     </section>
   )

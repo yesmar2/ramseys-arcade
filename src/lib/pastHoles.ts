@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { PathPoint, Shot } from '../games/acechase/game'
 import { currentAccountId, getSessionToken } from './auth'
 import { dayProgress, type DailySolved } from './dailyHole'
@@ -8,8 +8,8 @@ import { api, getClaimToken, getLastPlayerName, normalizePlayerName } from './le
 import { noteTicketsPaid } from './tickets'
 
 /*
- * Ace Chase's past holes (/games/acechase/play?hole=day:YYYY-MM-DD, from the archive). Every hole keeps a
- * board of its own for good (the API's holes.ts). On its day a hole is Today's Hole (dailyHole.ts); after
+ * Ace Chase's past holes (/games/acechase/play?hole=day:YYYY-MM-DD, from the past holes tab). Every hole
+ * keeps a board of its own for good (the API's holes.ts). On its day a hole is Today's Hole (dailyHole.ts); after
  * it, a player with no result on it yet can play it for one, as on its day: every try counts, whenever it's
  * played, and the first bullseye is the result. This device keeps the tries, so leaving and coming back
  * carries on the count, and tries from the hole's own day carry on too. Signed in, the result goes on the
@@ -173,14 +173,18 @@ export type HoleBoard = {
   you: { tries: number; place: number } | null
 }
 
-/** A hole that has had its day, for the archive: its record, how many have played it, and your result and place. */
+/** A hole that has had its day, for the past holes tab: its record, how many have played it, and your result and place. */
 export type HoleRecordRow = {
   n: number
   day: string
   players: number
-  record: HoleFigure | null
+  /** `at`: when the record was set (ms), on the hole's day or since. */
+  record: (HoleFigure & { at?: number }) | null
   you: { tries: number; place: number } | null
 }
+
+/** Every hole's row, or null while they're asked; `failed` when asking didn't work, and `retry` asks again. */
+export type HoleRecords = { rows: HoleRecordRow[] | null; failed: boolean; retry: () => void }
 
 /** What came of sending a result on a past hole. */
 export type PastHoleResult = {
@@ -228,12 +232,16 @@ export function useHoleBoard(day: string | null, name: string, version = 0): Hol
 const HOLD_MS = 60_000
 const held = new Map<string, { at: number; rows: HoleRecordRow[] }>()
 
-/** Every hole that has had its day, the latest first, with `name`'s results: kept a minute. Null while it's asked. */
-export function useHoleRecords(name: string): HoleRecordRow[] | null {
+/**
+ * Every hole that has had its day, the latest first, with `name`'s results: kept a minute. `rows` is null
+ * while it's asked; `failed` when the ask failed and nothing is kept, so a page can say so rather than "no holes".
+ */
+export function useHoleRecordsAsked(name: string): HoleRecords {
   const who = normalizePlayerName(name)
-  const [answer, setAnswer] = useState<{ who: string; rows: HoleRecordRow[] } | null>(() => {
+  const [asks, setAsks] = useState(0)
+  const [answer, setAnswer] = useState<{ who: string; rows: HoleRecordRow[] | null; failed: boolean } | null>(() => {
     const hit = held.get(who)
-    return hit ? { who, rows: hit.rows } : null
+    return hit ? { who, rows: hit.rows, failed: false } : null
   })
   useEffect(() => {
     const hit = held.get(who)
@@ -242,17 +250,23 @@ export function useHoleRecords(name: string): HoleRecordRow[] | null {
     api<{ holes: HoleRecordRow[] }>(`/holes/${SLUG}/records${who ? `?name=${encodeURIComponent(who)}` : ''}`, FRESH)
       .then((reply) => {
         held.set(who, { at: Date.now(), rows: reply.holes })
-        if (live) setAnswer({ who, rows: reply.holes })
+        if (live) setAnswer({ who, rows: reply.holes, failed: false })
       })
       .catch(() => {
-        if (live) setAnswer({ who, rows: [] })
+        // Records asked a while ago still stand; none at all is a failure to say, never an empty list.
+        const kept = held.get(who)?.rows ?? null
+        if (live) setAnswer({ who, rows: kept, failed: kept === null })
       })
     return () => {
       live = false
     }
-  }, [who])
-  if (answer?.who === who) return answer.rows
-  return held.get(who)?.rows ?? null
+  }, [who, asks])
+  const retry = useCallback(() => {
+    setAnswer(null)
+    setAsks((n) => n + 1)
+  }, [])
+  if (answer?.who === who) return { rows: answer.rows, failed: answer.failed, retry }
+  return { rows: held.get(who)?.rows ?? null, failed: false, retry }
 }
 
 /** What the API said about each hole's result this visit, for its card: by the account it was sent as, and the hole. */

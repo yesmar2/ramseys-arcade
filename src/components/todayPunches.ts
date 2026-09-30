@@ -21,9 +21,11 @@ import { formatLap } from '../games/hotlap/score'
 import { courseDay, dailyCourse } from '../games/marblerun/daily'
 import { keptRun } from '../games/marblerun/runStore'
 import { formatRun } from '../games/marblerun/score'
-import { todayShareHref } from '../hooks/useHashRoute'
+import { dailyTabHref, todayShareHref } from '../hooks/useHashRoute'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
+import { dailyWords } from '../lib/dailyWords'
 import type { Viewer } from '../lib/deviceRuns'
+import { replayIsPractice } from '../lib/gameBoard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import {
@@ -67,10 +69,18 @@ export type Punch = {
   go: string
   /** In its first week on the ticket. */
   fresh: boolean
+  /** Its game's past courses, a tab of the game's page, and the tab's name: Past holes, Past tracks, Past days… */
+  pastHref: string
+  pastTab: string
+  /**
+   * Once it's punched, on a daily whose first result counts (Ace Chase, Find the Bug, Half Full): playing
+   * today's again is practice. Null where it isn't, or where a better run still counts (Hot Lap, Marble Run).
+   */
+  again: string | null
 }
 
 /** A daily's punch, apart from what every punch has from TODAY_DAILIES (its key, game and label, and whether it's new). */
-type PunchDay = Omit<Punch, 'key' | 'slug' | 'label' | 'game' | 'fresh'>
+type PunchDay = Omit<Punch, 'key' | 'slug' | 'label' | 'game' | 'fresh' | 'pastHref' | 'pastTab' | 'again'>
 
 export const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 /** How long a daily is new on the ticket, in days. */
@@ -304,14 +314,20 @@ export function useTicket(viewer: Viewer): Ticket {
   const raw = todayServer()
   const server = raw?.day === day ? raw : null
   const live = liveDailies(day, server)
-  const punches = live.map((d) => ({
-    key: d.key,
-    slug: d.slug,
-    label: d.label,
-    game: getGame(d.slug)?.name ?? d.label,
-    fresh: d.from ? daysBetween(d.from, day) < FRESH_DAYS : false,
-    ...punchDay(d.key, day, server, viewer),
-  }))
+  const punches = live.map((d): Punch => {
+    const own = punchDay(d.key, day, server, viewer)
+    return {
+      key: d.key,
+      slug: d.slug,
+      label: d.label,
+      game: getGame(d.slug)?.name ?? d.label,
+      fresh: d.from ? daysBetween(d.from, day) < FRESH_DAYS : false,
+      pastHref: dailyTabHref(d.slug, 'past'),
+      pastTab: dailyWords(d.slug).pastTab,
+      again: own.done ? replayIsPractice(d.slug) : null,
+      ...own,
+    }
+  })
   const done = punches.filter((p) => p.done).length
   const total = punches.length
   const rule = todayRule(total)

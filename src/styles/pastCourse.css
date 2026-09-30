@@ -1,0 +1,430 @@
+/*
+ * A daily's past course being played (components/PastPlay.tsx, PastCourseCards.tsx): the chip on the play
+ * screen, the course's figures on the start and pause cards, the big label, and the result card's board,
+ * rank note and today's line. Colours come from the card's game (--panel-accent) and the label's own
+ * (--run-label, set by the run-label--<kind> classes in runLabel.css).
+ */
+
+/* ---------- on the play screen ---------- */
+
+/*
+ * Under the back control, clear of the score's line and the figures beside it, for the whole run. A game
+ * with something of its own there moves it with --play-past-top, or shows PastPlayChip itself.
+ */
+.play-past {
+  position: absolute;
+  top: var(--play-past-top, calc(var(--readout-middle) + var(--score-size) / 2 + 0.65rem));
+  left: max(0.55rem, env(safe-area-inset-left, 0px));
+  z-index: 10;
+  display: flex;
+  max-width: calc(100% - 1.1rem);
+  pointer-events: none;
+}
+
+.play-past .run-label {
+  min-height: 1.9rem;
+  box-sizing: border-box;
+}
+
+/* A phone: narrower words, so the chip stays clear of a corner map. */
+@media (max-width: 420px) {
+  .play-past .run-label {
+    min-height: 1.7rem;
+    font-size: 0.64rem;
+    letter-spacing: 0.07em;
+  }
+}
+
+/* ---------- a past course's figures: the start card's, and the pause card's ---------- */
+
+.past-facts {
+  display: flex;
+  flex-direction: column;
+  border-radius: 1rem;
+  background: var(--panel-fill, rgba(var(--ink-rgb), 0.05));
+  border: 1px solid var(--panel-line, rgba(var(--ink-rgb), 0.12));
+  text-align: left;
+}
+
+.past-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.65rem 0.9rem;
+}
+
+.past-fact + .past-fact {
+  border-top: 1px solid var(--panel-line, rgba(var(--ink-rgb), 0.12));
+}
+
+.past-fact__k,
+.past-rank__k {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.past-fact__v {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.past-fact__v b {
+  font-weight: 800;
+}
+
+.past-fact__you {
+  color: var(--panel-accent-ink, var(--accent));
+  /* Short, and read as one: "You 13th of 42 (3 tries)" moves down whole rather than splitting. */
+  white-space: nowrap;
+}
+
+.past-fact__note {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.past-fact__dot {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* ---------- the label, big, on the start card ---------- */
+
+.past-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.85rem 0.95rem 0.8rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--run-label) 9%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--run-label) 40%, transparent);
+  text-align: left;
+}
+
+.past-label .run-label {
+  font-size: 0.9rem;
+}
+
+.past-label__sub {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--run-label) 22%, var(--muted));
+}
+
+.past-label__how,
+.past-rank__how {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.past-label__how {
+  color: var(--run-label);
+}
+
+.past-label__how:hover,
+.past-rank__how:hover,
+.past-counts:hover b,
+.past-card__walk a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- today's course is the one that counts ---------- */
+
+/* On the start card, a line of text with its tick in it, centred however it wraps. */
+.past-counts {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.past-counts b {
+  font-weight: 800;
+  color: var(--run-label);
+  /* The course's name wraps as one, not "Willow / Speedway". */
+  white-space: nowrap;
+}
+
+.past-counts__icon {
+  display: inline-grid;
+  place-items: center;
+  margin-right: 0.35rem;
+  vertical-align: -0.2em;
+  color: var(--run-label);
+}
+
+.past-counts__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+/* On the result card, a box of its own. */
+.past-counts--boxed {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--run-label) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--run-label) 40%, transparent);
+  color: var(--ink);
+  text-align: left;
+}
+
+.past-counts--boxed .past-counts__icon {
+  flex: none;
+  display: grid;
+  margin: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--run-label) 20%, transparent);
+}
+
+/* ---------- your week and rank, as they were ---------- */
+
+.past-rank {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 1rem;
+  background: var(--panel-fill, rgba(var(--ink-rgb), 0.05));
+  border: 1px solid var(--panel-line, rgba(var(--ink-rgb), 0.12));
+  text-align: left;
+}
+
+.past-rank__v {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.past-rank__v b {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.past-rank__how {
+  margin-top: 0.2rem;
+  color: var(--panel-accent-ink, var(--accent));
+}
+
+/* ---------- the start and result cards ---------- */
+
+.past-card {
+  width: min(25rem, calc(100% - 1.5rem));
+}
+
+/* Tapped through to the stage to start, but its links take their own presses. */
+.past-card.game-card--start a {
+  pointer-events: auto;
+}
+
+.past-card__play {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.past-card__note {
+  margin: -0.35rem 0 0;
+  padding: 0 0.25rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.past-card__walk {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.past-card__walk a {
+  color: var(--panel-accent-ink);
+  text-decoration: none;
+}
+
+.past-card__figure {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 9vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.past-card__headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--run-label) 78%, var(--ink));
+}
+
+.past-card__label {
+  align-self: center;
+}
+
+.past-card__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.past-card__pair .panel__btn {
+  padding-inline: 0.8rem;
+}
+
+.game-card .past-card__today {
+  border-color: color-mix(in srgb, var(--run-label) 45%, transparent);
+  color: var(--run-label);
+}
+
+/* A short screen: the card tightens before it scrolls (lib/cardFit). */
+.past-card[data-fit='1'] .past-card__figure,
+.past-card[data-fit='2'] .past-card__figure {
+  font-size: 2.3rem;
+}
+
+.past-card[data-fit='1'] .past-label,
+.past-card[data-fit='2'] .past-label {
+  padding: 0.65rem 0.8rem;
+}
+
+/*
+ * The last step leaves out the label's own line and the walk to the neighbours, which "Back to past
+ * tracks" does too. The notes stay ("You're 2 tries in. Every try counts…"), and so does the result's
+ * line under its figure, which the step leaves out of every other card as its blurb.
+ */
+.past-card[data-fit='2'] .past-label__sub,
+.past-card[data-fit='2'] .past-card__walk {
+  display: none;
+}
+
+.game-card.past-card[data-fit='2'] .past-card__line {
+  display: block;
+}
+
+/* ---------- the course's board on the result card ---------- */
+
+.past-board {
+  padding: 0.6rem 0.9rem 0.35rem;
+  border-radius: 1rem;
+  background: var(--panel-fill, rgba(var(--ink-rgb), 0.05));
+  border: 1px solid var(--panel-line, rgba(var(--ink-rgb), 0.12));
+  text-align: left;
+}
+
+.past-board__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.2rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.past-board ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.past-board li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.3rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.past-board li + li {
+  border-top: 1px solid var(--panel-line, rgba(var(--ink-rgb), 0.12));
+}
+
+.past-board li.is-you {
+  margin: 0 -0.55rem;
+  padding: 0 0.55rem;
+  border-radius: 0.7rem;
+  border-top-color: transparent;
+  background: color-mix(in srgb, var(--panel-accent) 14%, transparent);
+}
+
+.past-board li.is-you + li {
+  border-top-color: transparent;
+}
+
+.past-board__n {
+  flex: none;
+  width: 1.1rem;
+  font-weight: 800;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.past-board__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.past-board__name i {
+  font-style: normal;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.past-board__tag {
+  flex: none;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--run-label) 14%, transparent);
+  color: var(--run-label);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.past-board__t {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.past-board li.is-you .past-board__name,
+.past-board li.is-you .past-board__n,
+.past-board li.is-you .past-board__t {
+  color: var(--panel-accent-ink);
+}

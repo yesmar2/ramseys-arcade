@@ -8,9 +8,12 @@ import {
   subscribeFullscreen,
   toggleFullscreen,
 } from '../lib/fullscreen'
+import { dailyWords } from '../lib/dailyWords'
+import { pastKind, usePastPlayTitle, type PastPlay } from '../lib/pastPlay'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { ChallengeChip } from './ChallengeTarget'
 import { Panel, PanelHead } from './Panel'
+import { PastPlayChip } from './PastPlay'
 
 /** Plain playfield readouts (Asteroids-style): score left, secondary center. */
 export function PlayReadout({ children }: { children: ReactNode }) {
@@ -141,27 +144,51 @@ function resolveInRun(inRun: InRun) {
   return typeof inRun === 'function' ? inRun() : inRun
 }
 
-/** Stage chrome: leave (left icon) + fullscreen/pause (right). No header bar. */
+/**
+ * Stage chrome: leave (left icon) + fullscreen/pause (right). No header bar.
+ *
+ * With `past`, a daily's past course is being played: its chip stays up under the back control for the
+ * whole run, the browser's tab names it, and leaving goes back to its row on the daily's past tab.
+ */
 export function GamePlayChrome({
   slug,
   inRun = false,
   paused = false,
+  past,
+  leaveNote,
   children,
 }: {
   slug: string
   /** True when leaving would abandon an in-progress run. Prefer a getter over lagged UI. */
   inRun?: InRun
   paused?: boolean
+  /** A past course of a daily (PastPlay.tsx); the same one the pause card takes. */
+  past?: PastPlay | null
+  /**
+   * What the leave confirm says about the run under way, where some of it is kept: "Your tries so far
+   * are kept…". Left out, a practice past course says nothing is saved, and any other run says the score
+   * won't be saved.
+   */
+  leaveNote?: string
   children?: ReactNode
 }) {
+  usePastPlayTitle(slug, past?.title)
+  const note =
+    leaveNote ??
+    (past && pastKind(slug, past.kind) === 'practice' ? 'It’s practice: nothing is saved.' : 'Your score won’t be saved.')
   return (
     <>
       <div
         className="game-play-chrome game-play-chrome--leave"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <PlayLeaveButton slug={slug} inRun={inRun} paused={paused} />
+        <PlayLeaveButton slug={slug} inRun={inRun} paused={paused} pastHref={past?.href} note={note} />
       </div>
+      {past && past.chip !== false ? (
+        <div className="play-past">
+          <PastPlayChip slug={slug} kind={past.kind} />
+        </div>
+      ) : null}
       <div
         className="game-play-chrome game-play-chrome--actions"
         onPointerDown={(e) => e.stopPropagation()}
@@ -173,9 +200,9 @@ export function GamePlayChrome({
   )
 }
 
-function playLeaveHref(slug: string, tournamentId?: string) {
+function playLeaveHref(slug: string, tournamentId?: string, pastHref?: string) {
   if (tournamentId) return tournamentHref(tournamentId)
-  return gameHref(slug)
+  return pastHref ?? gameHref(slug)
 }
 
 /** Leave the stage for an in-app href. The same URL still re-syncs the route. */
@@ -204,15 +231,25 @@ function PlayLeaveButton({
   slug,
   inRun,
   paused,
+  pastHref,
+  note,
 }: {
   slug: string
   inRun: InRun
   paused: boolean
+  /** A past course's row on the daily's past tab: leaving goes back there. */
+  pastHref?: string
+  /** The confirm's line: what happens to the run if you leave. */
+  note: string
 }) {
   const tournament = useTournamentPlay()
-  const href = playLeaveHref(slug, tournament?.tournamentId)
+  const href = playLeaveHref(slug, tournament?.tournamentId, pastHref)
   const [confirming, setConfirming] = useState(false)
-  const label = tournament ? 'Back to event' : 'Leave game'
+  const label = tournament
+    ? 'Back to event'
+    : pastHref
+      ? `Back to ${dailyWords(slug).pastTab.toLowerCase()}`
+      : 'Leave game'
   const inRunRef = useRef(inRun)
   const pausedRef = useRef(paused)
   const hrefRef = useRef(href)
@@ -316,7 +353,7 @@ function PlayLeaveButton({
           />
           <div className="panel__body">
             <p id="game-leave-copy" className="panel__text">
-              Your score won’t be saved.
+              {note}
             </p>
           </div>
           <div className="panel__actions">

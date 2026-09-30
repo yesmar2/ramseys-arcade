@@ -16,7 +16,7 @@ import { glassesWords, glassNames, pourPlan } from '../games/halffull/planSvg'
 import { formatBoard, judgeLevels, markFor, tierFor, type JudgedDay } from '../games/halffull/score'
 import { useTodayBoard, type TodayBoard } from '../games/halffull/todayBoard'
 import { useAccountId } from '../hooks/useAccountId'
-import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
+import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -25,6 +25,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
 import { copyText } from './ShareBoardButton'
+import { PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysPour.css'
 
@@ -132,7 +133,7 @@ function ShareDay({ plan, run, className }: { plan: DayPlan; run: DayRun; classN
   )
 }
 
-/** Today's Pour as a card: the day's glasses, how it stands, the clock to the next, and Pour or Share. */
+/** Today's Pour as a card: the day's glasses, that it counts, how it stands, the clock to the next, Past days, and Pour or Share. */
 export function TodaysPourCard() {
   const { day, plan, run, judged, board } = useTodaysPour()
   const href = gamePlayHref(SLUG)
@@ -162,6 +163,7 @@ export function TodaysPourCard() {
         <h2 id="tpc-title" className="evp-card__title">
           {glassNames(plan)}
         </h2>
+        <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
           Half Full, with five new glasses every day, the same for everyone: easy on a Monday, brutal by Sunday. Your first
           pour is your result, and the closest to half tops the day. {standingWords(judged, run, board)}
@@ -173,21 +175,21 @@ export function TodaysPourCard() {
           </p>
         ) : null}
       </div>
-      <div className="evp-daily__foot">
+      <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
           <ClockIcon />
           <EventCountdown endsAt={nextPourAt()} />
         </span>
-        <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
-          Past days
-        </a>
-        {judged && run ? (
-          <ShareDay plan={plan} run={run} className="evp-btn evp-btn--small" />
-        ) : (
-          <a className="evp-btn evp-btn--small" href={href}>
-            {go}
-          </a>
-        )}
+        <span className="evp-daily__go">
+          <PastTabButton slug={SLUG} />
+          {judged && run ? (
+            <ShareDay plan={plan} run={run} className="evp-btn evp-btn--small" />
+          ) : (
+            <a className="evp-btn evp-btn--small" href={href}>
+              {go}
+            </a>
+          )}
+        </span>
       </div>
     </section>
   )

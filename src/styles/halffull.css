@@ -34,7 +34,8 @@
 
 /* ---------- the words over the counter ---------- */
 
-.halffull__prompt {
+/* The prompt, and under it a practice run's chip (the game keeps the glasses clear of it: CHIP_ROOM). */
+.halffull__top {
   position: absolute;
   z-index: 9;
   top: max(0.45rem, env(safe-area-inset-top, 0px));
@@ -42,6 +43,33 @@
   transform: translateX(-50%);
   width: max-content;
   max-width: min(28rem, calc(100% - 6.4rem));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.halffull__chip {
+  display: flex;
+  max-width: 100%;
+}
+
+.halffull__chip .run-label {
+  min-height: 1.6rem;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .halffull__chip .run-label {
+    font-size: 0.64rem;
+    letter-spacing: 0.07em;
+  }
+}
+
+.halffull__prompt {
+  max-width: 100%;
   box-sizing: border-box;
   padding: 0.35rem 0.95rem 0.45rem;
   border-radius: 1rem;
@@ -386,6 +414,25 @@
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--panel-accent-ink);
+}
+
+/* What a run from the card counts toward (RunLabel.tsx). */
+.halffull-card__label {
+  align-self: center;
+}
+
+/* A past day's glasses on its start card, as its row on the past days draws them (todaysPour.css). */
+.halffull-card__glasses {
+  position: relative;
+  flex: none;
+  height: 5.5rem;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--panel-line);
+}
+
+.past-card[data-fit='2'] .halffull-card__glasses {
+  height: 4rem;
 }
 
 .halffull-card__archive {

@@ -7,7 +7,7 @@ import { formatFindbugBoardScore, formatFindbugMs } from '../games/findbug/score
 import { useTodayBoard, type TodayBoard } from '../games/findbug/todayBoard'
 import type { WantedBug } from '../games/findbug/wanted'
 import { useAccountId } from '../hooks/useAccountId'
-import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
+import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -16,6 +16,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
+import { PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysWanted.css'
 
@@ -90,7 +91,7 @@ function WantedFaces({ wanted }: { wanted: readonly WantedBug[] }) {
   )
 }
 
-/** Today's Wanted as a card: the day's bugs, how it stands, the clock to the next, and Play or Share. */
+/** Today's Wanted as a card: the day's bugs, that it counts, how it stands, the clock to the next, Past days, and Play or Share. */
 export function TodaysWantedCard() {
   const { day, wanted, run, board } = useTodaysWanted()
   const n = dayNumber(day)
@@ -118,26 +119,27 @@ export function TodaysWantedCard() {
         <h2 id="twc-title" className="evp-card__title">
           {wantedNames(wanted)}
         </h2>
+        <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
           Find the Bug, with five new scenes every day and the same bugs wanted for everyone. Your first run is your result,
           and the quickest tops the day. {standingWords(run, board)}
         </p>
       </div>
-      <div className="evp-daily__foot">
+      <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
           <ClockIcon />
           <EventCountdown endsAt={nextDayAt()} />
         </span>
-        <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
-          Past days
-        </a>
-        {result ? (
-          <ShareDay day={day} result={result} className="evp-btn evp-btn--small" />
-        ) : (
-          <a className="evp-btn evp-btn--small" href={href}>
-            {started ? 'Carry on' : 'Find them'}
-          </a>
-        )}
+        <span className="evp-daily__go">
+          <PastTabButton slug={SLUG} />
+          {result ? (
+            <ShareDay day={day} result={result} className="evp-btn evp-btn--small" />
+          ) : (
+            <a className="evp-btn evp-btn--small" href={href}>
+              {started ? 'Carry on' : 'Find them'}
+            </a>
+          )}
+        </span>
       </div>
     </section>
   )

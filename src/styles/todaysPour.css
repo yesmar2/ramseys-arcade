@@ -1,5 +1,5 @@
 /*
- * Today's Pour (TodaysPourCard.tsx) and Half Full's archive (PourArchive.tsx): the day's glasses standing
+ * Today's Pour (TodaysPourCard.tsx) and Half Full's past days (PourArchive.tsx): the day's glasses standing
  * empty on the kitchen's shelf and counter (planSvg.ts), in the game's own colours, dimmer in the dark.
  * The colours are planSvg.ts's POUR_COLOURS, which draws the same picture for the build's cards.
  */
@@ -131,12 +131,4 @@ html:not([data-theme='light']) .tpc-plan__glint {
   line-height: 1.2;
   letter-spacing: 0.1em;
   white-space: nowrap;
-}
-
-/* A day's name is its four glasses, too long for one line in the archive: two lines there. */
-.arch-grid--halffull .arch-card__title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  white-space: normal;
 }

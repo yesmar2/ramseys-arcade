@@ -1,0 +1,791 @@
+/*
+ * A daily's Records tab (components/DailyRecordsTab.tsx): the records that span its days, each a card with
+ * its holder, the first five and you, then a table of its tracks' or holes' records. Everything wears the
+ * game's colour, --gh-accent, from the page; a place you're headed next wears the site's mint, as the
+ * Counts label does.
+ */
+
+.drt {
+  --drt-line: rgba(var(--ink-rgb), 0.09);
+  --drt-well: rgba(var(--ink-rgb), 0.04);
+  --drt-link: color-mix(in srgb, var(--gh-accent, var(--accent)) 70%, var(--ink));
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+/* ---------- the line over the tab ---------- */
+
+.drt-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 1.5rem;
+  padding: 0.2rem 0.35rem 0;
+}
+
+.drt-intro__text {
+  flex: 1 1 28rem;
+  min-width: 0;
+}
+
+.drt-intro__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 3.2vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.drt-intro__lede {
+  max-width: 56rem;
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
+}
+
+.drt-intro__link {
+  flex: none;
+  font-size: 0.95rem;
+  white-space: normal;
+}
+
+/* ---------- the record cards ---------- */
+
+.drt-cards {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1.1rem;
+  align-items: stretch;
+}
+
+/* Hot Lap and Ace Chase have three cards. Where only two fit a row (two 19rem columns plus the gap = 39.1rem; three = 59.2rem), the third takes the whole second row instead of half of it. */
+@container (min-width: 39.1rem) and (max-width: 59.19rem) {
+  .drt-cards--three > .drt-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+.drt-card {
+  gap: 1rem;
+  padding: 1.3rem 1.4rem 1.15rem;
+}
+
+.drt-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.drt-card__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--gh-accent, var(--accent)) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent, var(--accent)) 35%, transparent);
+  color: color-mix(in srgb, var(--gh-accent, var(--accent)) 80%, var(--ink));
+}
+
+.drt-card__icon svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.drt-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* Who holds it: their mark (or everyone tied for it), their names, and the number. */
+.drt-holder {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 5.5rem;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.95rem 1.1rem;
+  border-radius: 1.1rem;
+  background: var(--drt-well);
+  border: 1px solid var(--drt-line);
+}
+
+.drt-holder--empty {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.drt-holder--skel {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.drt-holder__marks {
+  display: flex;
+  flex: none;
+}
+
+.drt-holder__mark {
+  --pmark: 3rem;
+  border-radius: 50%;
+}
+
+.drt-holder__marks--stack .drt-holder__mark {
+  --pmark: 2.5rem;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+
+.drt-holder__marks--stack .drt-holder__mark + .drt-holder__mark {
+  margin-left: -0.6rem;
+}
+
+.drt-holder__who {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.drt-holder__who b {
+  font-size: 1.3rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.drt-holder__marks--stack + .drt-holder__who b {
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+/* Several tied: their marks and the number along the top, all their names under them. */
+.drt-holder--tied {
+  flex-wrap: wrap;
+  row-gap: 0.6rem;
+}
+
+.drt-holder--tied .drt-holder__who {
+  order: 2;
+  flex-basis: 100%;
+}
+
+.drt-holder__who span {
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.drt-holder__value {
+  flex: none;
+  margin: 0 0 0 auto;
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.drt-holder__value small {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* The first five, places shared between equal numbers. */
+.drt-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drt-top__row {
+  display: grid;
+  grid-template-columns: 2.2rem auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 0.7rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.drt-top__row:hover,
+.drt-top__row:focus-visible {
+  background: var(--drt-well);
+}
+
+.drt-top__row--you {
+  background: color-mix(in srgb, var(--gh-accent, var(--accent)) 10%, transparent);
+}
+
+.drt-top__place {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.drt-top__mark {
+  --pmark: 1.75rem;
+  border-radius: 50%;
+}
+
+.drt-top__name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drt-top__you {
+  flex: none;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gh-accent, var(--accent)) 18%, transparent);
+  color: var(--drt-link);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.drt-top__value {
+  font-size: 0.9rem;
+  font-weight: 750;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--ink) 85%, var(--muted));
+}
+
+/* You on it: your number, where it puts you, how near the holder you are, and what to do next. */
+.drt-you {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.drt-you__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.drt-you__mark {
+  --pmark: 1.75rem;
+  border-radius: 50%;
+}
+
+.drt-you__head b {
+  font-weight: 800;
+}
+
+.drt-you__aside {
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.drt-you__line {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
+}
+
+.drt-you__line--quiet {
+  color: var(--muted);
+}
+
+.drt-meter {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.drt-meter i {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: 99px;
+  background: rgba(var(--ink-rgb), 0.1);
+}
+
+.drt-meter i.drt-meter__on {
+  background: var(--gh-accent, var(--accent));
+}
+
+/* The next step: the site's mint, as on the Counts label, since it's what a run would do. */
+.drt-meter i.drt-meter__next {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.drt-meter--bar {
+  height: 0.5rem;
+  border-radius: 99px;
+  background: rgba(var(--ink-rgb), 0.1);
+  overflow: hidden;
+}
+
+.drt-meter--bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gh-accent, var(--accent));
+}
+
+.drt-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  margin: auto 0 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--drt-line);
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.drt-card__foot .run-label {
+  padding: 0.2rem 0.65rem 0.2rem 0.45rem;
+  font-size: 0.74rem;
+}
+
+.drt-card__foot .run-label svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* ---------- each track's or hole's record ---------- */
+
+.drt-courses {
+  gap: 0.35rem;
+  padding: 1.3rem 1.4rem 1rem;
+}
+
+.drt-courses__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.drt-courses__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.drt-courses__count {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.drt-courses__all {
+  margin-left: auto;
+  font-size: 0.95rem;
+}
+
+.drt-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drt-row {
+  display: grid;
+  grid-template-columns:
+    minmax(12rem, 1.45fr) minmax(7.5rem, 0.8fr) minmax(12rem, 1.35fr) minmax(9rem, 1fr)
+    minmax(8rem, auto);
+  align-items: center;
+  gap: 0.6rem 1.1rem;
+  padding: 0.6rem 0.3rem;
+  border-top: 1px solid var(--drt-line);
+  border-radius: 0.2rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.drt-row:hover,
+a.drt-row:focus-visible {
+  background: var(--drt-well);
+}
+
+.drt-row--head {
+  padding-block: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.drt-row--today {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%);
+}
+
+.drt-row__course {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.drt-row__course b {
+  min-width: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.drt-row__art {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 5rem;
+  height: 3.1rem;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--gh-accent, var(--accent)) 12%, var(--playfield));
+  border: 1px solid var(--drt-line);
+}
+
+.drt-row__day {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
+}
+
+.drt-row__today {
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #052a1c;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.drt-row__rec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.55rem;
+  min-width: 0;
+  font-size: 1rem;
+}
+
+.drt-row__mark {
+  --pmark: 1.85rem;
+  border-radius: 50%;
+}
+
+/* PlayerAvatar sets its size inline (2rem), which is larger than these round marks; fit it inside the mark's 1px border. */
+.drt-top__mark .player-avatar,
+.drt-you__mark .player-avatar,
+.drt-row__mark .player-avatar {
+  --avatar-size: calc(var(--pmark) - 2px) !important;
+}
+
+.drt-row__rec b {
+  font-weight: 800;
+}
+
+.drt-row__me {
+  color: var(--drt-link);
+}
+
+.drt-row__first {
+  display: inline-flex;
+  align-items: center;
+  height: 1.35rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gh-accent, var(--accent)) 15%, transparent);
+  color: var(--drt-link);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.drt-row__rec .drt-row__result {
+  font-size: 1.05rem;
+}
+
+.drt-row__set {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.drt-row__you {
+  min-width: 0;
+  font-size: 0.95rem;
+}
+
+.drt-row__you b {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.drt-row__you span,
+.drt-row__quiet {
+  color: var(--muted);
+}
+
+/* Above a phone the (aria-hidden) table heads label each figure for sighted players; the captions stay for screen readers. */
+.drt-row__cap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.drt-row__go {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.92rem;
+  font-weight: 750;
+  white-space: nowrap;
+  color: var(--drt-link);
+}
+
+.drt-row__go svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.drt-row__go--today {
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+a.drt-row:hover .drt-row__go,
+a.drt-row:focus-visible .drt-row__go {
+  color: var(--ink);
+}
+
+.drt-courses__skel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.9rem 0.3rem;
+  border-top: 1px solid var(--drt-line);
+}
+
+.drt-courses__empty {
+  margin: 0;
+  padding: 0.9rem 0.3rem;
+  border-top: 1px solid var(--drt-line);
+  color: var(--muted);
+}
+
+.drt-courses__more {
+  align-self: center;
+  margin-top: 0.5rem;
+  padding: 0.5rem 1.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.drt-courses__more:hover,
+.drt-courses__more:focus-visible {
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.drt-courses__note {
+  margin: 0;
+  padding: 0.75rem 0.3rem 0;
+  border-top: 1px solid var(--drt-line);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* ---------- where today's and the week's places are instead ---------- */
+
+.drt-aside {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0.85rem 1.2rem;
+  border-radius: 1.1rem;
+  border: 1px dashed rgba(var(--ink-rgb), 0.18);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.drt-aside svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.drt-aside a {
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.drt-aside a:hover,
+.drt-aside a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* ---------- narrower screens ---------- */
+
+@media (max-width: 1100px) {
+  .drt-row {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 1.3fr) minmax(0, 1fr) auto;
+    gap: 0.5rem 0.8rem;
+  }
+
+  .drt-row__art {
+    width: 4rem;
+    height: 2.6rem;
+  }
+
+  .drt-row__go-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* A phone: each course a small block of its own, the heads gone and each figure saying what it is. */
+@media (max-width: 760px) {
+  .drt-card,
+  .drt-courses {
+    padding: 1.1rem 1rem 1rem;
+  }
+
+  .drt-holder {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .drt-holder__value {
+    font-size: 2.1rem;
+  }
+
+  .drt-row--head {
+    display: none;
+  }
+
+  .drt-row {
+    grid-template-columns: 4.2rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      'art name go'
+      'art day go'
+      'rec rec rec'
+      'you you you';
+    gap: 0.2rem 0.8rem;
+    padding: 0.75rem 0.15rem;
+  }
+
+  .drt-row__course {
+    display: contents;
+  }
+
+  .drt-row__art {
+    grid-area: art;
+    width: 4.2rem;
+    height: 2.8rem;
+  }
+
+  .drt-row__course b {
+    grid-area: name;
+    align-self: end;
+    font-size: 1rem;
+  }
+
+  .drt-row__day {
+    grid-area: day;
+    align-self: start;
+    font-size: 0.85rem;
+  }
+
+  .drt-row__rec {
+    grid-area: rec;
+    margin-top: 0.45rem;
+    font-size: 0.95rem;
+  }
+
+  .drt-row__you {
+    grid-area: you;
+    font-size: 0.9rem;
+  }
+
+  .drt-row__go {
+    grid-area: go;
+    align-self: center;
+  }
+
+  .drt-row__cap {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    display: inline-block;
+    min-width: 3.6rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .drt-row__mark {
+    --pmark: 1.5rem;
+  }
+
+  .drt-aside {
+    align-items: flex-start;
+    padding: 0.8rem 0.95rem;
+    font-size: 0.9rem;
+  }
+}

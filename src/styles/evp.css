@@ -457,20 +457,31 @@ a.evp-screen:focus-visible .evp-screen__play {
   padding: 0 0.3rem;
 }
 
-/* A daily game's way to its archive, quiet beside the button. */
-.evp-daily__archive {
-  margin-left: auto;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-decoration: none;
-  white-space: nowrap;
+/*
+ * A daily's Today card (TodaysCardParts): the label that today's run counts, under the name, and its past
+ * courses as a real button beside Play. On a narrow card the buttons drop under the clock, together.
+ */
+.evp-daily__label {
+  align-self: flex-start;
+  margin: 0.1rem 0 0.2rem;
 }
 
-.evp-daily__archive:hover,
-.evp-daily__archive:focus-visible {
-  color: var(--text);
-  text-decoration: underline;
+.evp-daily__foot--wrap {
+  flex-wrap: wrap;
+  row-gap: 0.6rem;
+}
+
+.evp-daily__go {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.evp-daily__past svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .evp-last {

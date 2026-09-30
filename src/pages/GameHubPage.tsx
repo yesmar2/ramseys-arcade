@@ -1,5 +1,6 @@
-import { Suspense, useEffect, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ChevronRightIcon } from '../components/chromeIcons'
+import { DailyTabs } from '../components/DailyTabs'
 import { GameHubBoard } from '../components/GameHubBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
 import { GameHubHero } from '../components/GameHubHero'
@@ -16,6 +17,7 @@ import { currentHref, homeHref, navigate, periodFromRoute, recordsHref, useRoute
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
+import type { DailyTab } from '../lib/dailyWords'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { moreLike } from '../lib/gameHub'
@@ -37,13 +39,31 @@ const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard')
 const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourCard))
 const TodaysCourseCard = lazyPage(() => import('../components/TodaysCourseCard').then((m) => m.TodaysCourseCard))
 
+/** Each daily's Today card, the run that counts, at the top of its Today tab. */
+const TODAY_CARDS: Partial<Record<string, typeof TodaysHoleCard>> = {
+  acechase: TodaysHoleCard,
+  hotlap: TodaysTrackCard,
+  findbug: TodaysWantedCard,
+  halffull: TodaysPourCard,
+  marblerun: TodaysCourseCard,
+}
+
+/** A daily's other two tabs, each in a chunk of its own with the plans it reads. */
+const DailyPastTab = lazyPage(() => import('../components/DailyPastTab').then((m) => m.DailyPastTab))
+const DailyRecordsTab = lazyPage(() => import('../components/DailyRecordsTab').then((m) => m.DailyRecordsTab))
+
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
 }
 
+/** A past course's row, as dailyTabHref's anchor names it (`#course-3`): the Past tab lands on it itself. */
+const COURSE_ANCHOR = '#course-'
+
 type GameHubPageProps = {
   slug: string
   board?: 'scores' | 'records'
+  /** A daily's tab: its past courses or its records. Its page itself is the Today tab. */
+  tab?: 'past' | 'records'
 }
 
 /**
@@ -52,13 +72,19 @@ type GameHubPageProps = {
  * where you stand on it and the one run that moves you, your side of its
  * record book, and any event it is in; how to play it and what scores; and
  * the games most like it.
+ *
+ * A daily's page is today's, with tabs under its hero: Today (today's card,
+ * its board, where you stand and how to play), its past courses, and its
+ * records.
  */
-export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
+export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: GameHubPageProps) {
   const route = useRoute()
   const storedPeriod = useDefaultPeriod()
   const game = getGame(slug)
+  const daily = Boolean(game?.daily)
+  const tab: DailyTab = daily ? (tabFromRoute ?? 'today') : 'today'
   // A daily's board is the day's whatever period is picked (the API keeps it so): its page says today.
-  const period: LeaderboardPeriod = game?.daily ? 'daily' : (periodFromRoute(route) ?? storedPeriod)
+  const period: LeaderboardPeriod = daily ? 'daily' : (periodFromRoute(route) ?? storedPeriod)
   const device = useDeviceType()
   const { signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
@@ -66,13 +92,16 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
   const boardSlug = isBoardGame(slug) ? slug : null
   const board = useHubBoard(boardSlug, period, playerName, groupId)
   const highScore = useHubHighScore(boardSlug, groupId)
-  const records = useHubRecords(slug, playerName, groupId)
+  // A daily's records are its Records tab, not a card of the book.
+  const records = useHubRecords(daily ? '' : slug, playerName, groupId)
   const events = useHubEvents(slug)
   // For the games below: your best on each, your place on its board, and who leads it, as the wall shows them.
   const bests = usePlayerBests(playerName, period)
   const { byGame } = useGlobalRank()
   const leaders = useBoardLeaders(period)
   const [, setThemeTick] = useState(0)
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const shownTab = useRef(tab)
 
   // The game's colour is picked for the theme, so a theme change repaints the page.
   useEffect(() => {
@@ -88,12 +117,30 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     if (canPlay) preloadGamePage(slug)
   }, [slug, canPlay])
 
+  // A daily's other tabs are fetched while its page is up, so a tab opens without a wait.
+  useEffect(() => {
+    if (!daily) return
+    void DailyPastTab.preload()
+    void DailyRecordsTab.preload()
+  }, [daily])
+
   // An old link to the game's records tab goes to its record book.
   useEffect(() => {
-    if (boardFromRoute !== 'records' || !game) return
+    if (boardFromRoute !== 'records' || !game || daily) return
     const next = recordsHref(game.slug, period)
     if (currentHref() !== next) navigate(next, { replace: true })
-  }, [boardFromRoute, game, period])
+  }, [boardFromRoute, game, daily, period])
+
+  // A new tab keeps the hero and brings the tabs up to the top, unless they're already in the top half
+  // of the screen with the tab under them in view. A past course's row, when one is named, lands itself.
+  useEffect(() => {
+    if (shownTab.current === tab) return
+    shownTab.current = tab
+    const bar = tabsRef.current
+    if (!bar || window.location.hash.startsWith(COURSE_ANCHOR)) return
+    const top = bar.getBoundingClientRect().top
+    if (top < 0 || top > window.innerHeight * 0.5) bar.scrollIntoView({ block: 'start' })
+  }, [tab])
 
   if (!game) {
     return (
@@ -115,92 +162,119 @@ export function GameHubPage({ slug, board: boardFromRoute }: GameHubPageProps) {
     '--thumb-accent': accent,
   } as CSSProperties
 
+  const hero = (
+    <GameHubHero
+      game={game}
+      accent={accent}
+      canPlay={canPlay}
+      hasRecords={hasRecords}
+      period={period}
+      highScore={highScore}
+    />
+  )
+  const boardCard = boardSlug ? (
+    <GameHubBoard slug={boardSlug} gameName={game.name} period={period} board={board} me={playerName} />
+  ) : null
+  const standing = boardSlug ? (
+    <GameHubStanding
+      slug={boardSlug}
+      gameName={game.name}
+      period={period}
+      board={board}
+      me={playerName}
+      signedIn={signedIn}
+    />
+  ) : null
+  const eventsCard = events.length > 0 ? <GameHubEvents gameName={game.name} events={events} /> : null
+  const shelfSection =
+    more.length > 0 ? (
+      <section className="gh-shelf" aria-labelledby="gh-shelf-title">
+        <div className="gh-shelf__head">
+          <h2 id="gh-shelf-title" className="gh-shelf__title">
+            More like {game.name}
+          </h2>
+          <a className="gh-more" href={`${homeHref()}#games`}>
+            All {shelf.length} games
+            <ChevronRightIcon />
+          </a>
+        </div>
+        <ul className="wall__grid gh-shelf__grid">
+          {more.map((g, i) => (
+            <WallTile
+              key={g.slug}
+              game={g}
+              index={i}
+              best={bests?.[g.slug] ?? null}
+              standing={byGame[g.slug] ?? null}
+              top={leaders?.[g.slug] ?? null}
+              newFlag={false}
+              preview
+            />
+          ))}
+        </ul>
+      </section>
+    ) : null
+
+  if (daily) {
+    const TodayCard = TODAY_CARDS[game.slug]
+    return (
+      <PageShell innerClassName="gh-rail">
+        <div className="gh gh--daily" style={style}>
+          {hero}
+          <DailyTabs slug={game.slug} gameName={game.name} tab={tab} ref={tabsRef} />
+
+          {tab === 'past' ? (
+            <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
+              <DailyPastTab slug={game.slug} />
+            </Suspense>
+          ) : tab === 'records' ? (
+            <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
+              <DailyRecordsTab slug={game.slug} />
+            </Suspense>
+          ) : (
+            <>
+              {/* How to play goes under today's card, with the board and where you stand running down beside both (hub.css). */}
+              <div className="gh-today">
+                <div className="gh-today__main">
+                  {TodayCard ? (
+                    <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
+                      {/* Its board reads the picked group when it loads: a new group is a new card. */}
+                      <TodayCard key={groupId ?? 'everyone'} />
+                    </Suspense>
+                  ) : null}
+                </div>
+                <div className="gh-today__side">
+                  {boardCard}
+                  {standing}
+                  {eventsCard}
+                </div>
+                <GameHubHowTo game={game} />
+              </div>
+              {shelfSection}
+            </>
+          )}
+        </div>
+      </PageShell>
+    )
+  }
+
   return (
     <PageShell innerClassName="gh-rail">
       <div className="gh" style={style}>
         <div className={`gh-top${boardSlug ? '' : ' gh-top--solo'}`}>
-          <GameHubHero
-            game={game}
-            accent={accent}
-            canPlay={canPlay}
-            hasRecords={hasRecords}
-            period={period}
-            highScore={highScore}
-          />
-          {boardSlug ? (
-            <GameHubBoard slug={boardSlug} gameName={game.name} period={period} board={board} me={playerName} />
-          ) : null}
+          {hero}
+          {boardCard}
         </div>
 
         <div className="gh-band">
-          {game.slug === 'acechase' ? (
-            <Suspense fallback={null}>
-              <TodaysHoleCard />
-            </Suspense>
-          ) : null}
-          {game.slug === 'hotlap' ? (
-            <Suspense fallback={null}>
-              <TodaysTrackCard />
-            </Suspense>
-          ) : null}
-          {game.slug === 'findbug' ? (
-            <Suspense fallback={null}>
-              <TodaysWantedCard />
-            </Suspense>
-          ) : null}
-          {game.slug === 'halffull' ? (
-            <Suspense fallback={null}>
-              <TodaysPourCard />
-            </Suspense>
-          ) : null}
-          {game.slug === 'marblerun' ? (
-            <Suspense fallback={null}>
-              <TodaysCourseCard />
-            </Suspense>
-          ) : null}
-          {boardSlug ? (
-            <GameHubStanding
-              slug={boardSlug}
-              gameName={game.name}
-              period={period}
-              board={board}
-              me={playerName}
-              signedIn={signedIn}
-            />
-          ) : null}
+          {standing}
           {hasRecords ? <GameHubRecords slug={game.slug} gameName={game.name} records={records} me={playerName} /> : null}
-          {events.length > 0 ? <GameHubEvents gameName={game.name} events={events} /> : null}
+          {eventsCard}
         </div>
 
         <GameHubHowTo game={game} />
 
-        {more.length > 0 ? (
-          <section className="gh-shelf" aria-labelledby="gh-shelf-title">
-            <div className="gh-shelf__head">
-              <h2 id="gh-shelf-title" className="gh-shelf__title">
-                More like {game.name}
-              </h2>
-              <a className="gh-more" href={`${homeHref()}#games`}>
-                All {shelf.length} games
-                <ChevronRightIcon />
-              </a>
-            </div>
-            <ul className="wall__grid gh-shelf__grid">
-              {more.map((g, i) => (
-                <WallTile
-                  key={g.slug}
-                  game={g}
-                  index={i}
-                  best={bests?.[g.slug] ?? null}
-                  standing={byGame[g.slug] ?? null}
-                  top={leaders?.[g.slug] ?? null}
-                  newFlag={false}
-                  preview
-                />
-              ))}
-            </ul>
-          </section>
-        ) : null}
+        {shelfSection}
       </div>
     </PageShell>
   )

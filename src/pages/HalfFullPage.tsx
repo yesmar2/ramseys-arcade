@@ -3,8 +3,8 @@ import { HalfFullGame } from '../games/halffull/HalfFullGame'
 import { useRoute } from '../hooks/useHashRoute'
 
 /**
- * Half Full's page: today's five glasses. With ?day=YYYY-MM-DD, a past day's from the archive, poured
- * again as practice, where nothing is kept. A day still to come isn't shown, nor one before the first.
+ * Half Full's page: today's five glasses. With ?day=YYYY-MM-DD, a past day's from the game page's Past
+ * days, poured again as practice, where nothing is kept. A day still to come isn't shown, nor one before the first.
  */
 export function HalfFullPage() {
   const route = useRoute()

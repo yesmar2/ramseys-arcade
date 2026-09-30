@@ -53,7 +53,6 @@ const ChallengeLandingPage = lazyPage(() =>
 const GroupDetailPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupDetailPage))
 const GroupsPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupsPage))
 const PlusPage = lazyPage(() => import('./pages/PlusPage').then((m) => m.PlusPage))
-const ArchivePage = lazyPage(() => import('./pages/ArchivePage').then((m) => m.ArchivePage))
 const AdminPage = lazyPage(() => import('./pages/AdminPage').then((m) => m.AdminPage))
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
 const RankPage = lazyPage(() => import('./pages/RankPage').then((m) => m.RankPage))
@@ -130,15 +129,30 @@ function ComingSoonPage({ slug }: { slug: string }) {
   )
 }
 
+/** The element the address's `#anchor` names, when it's on the page already. */
+function anchorTarget(): HTMLElement | null {
+  const anchor = window.location.hash.slice(1)
+  if (!anchor || anchor.startsWith('/')) return null
+  try {
+    return document.getElementById(decodeURIComponent(anchor))
+  } catch {
+    return null
+  }
+}
+
 function isGameScreen(route: ReturnType<typeof useRoute>) {
   return route.name === 'gamePlay' || route.name === 'tournamentPlay'
 }
 
-/** Scroll on real navigation — not period-only changes on the same board/record. */
+/**
+ * Scroll on real navigation — not period-only changes on the same board/record, nor a daily's page
+ * changing tab, which keeps its hero and brings the tabs up itself (GameHubPage).
+ */
 function routeScrollKey(route: ReturnType<typeof useRoute>): string {
   const key = { ...route } as Record<string, unknown>
   delete key.period
   delete key.board
+  delete key.tab
   return JSON.stringify(key)
 }
 
@@ -148,8 +162,11 @@ function App() {
   const scrollKey = routeScrollKey(route)
   usePageMeta(route)
 
+  // A new page starts at its top, or at the place its link names (a past course's row, the home page's games).
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    const place = anchorTarget()
+    if (place) place.scrollIntoView({ block: 'start' })
+    else window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [scrollKey])
 
   // Opening a game is what "recently played" means — the home page offers the
@@ -243,7 +260,6 @@ const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] 
   { test: /^\/prizes(?:[/?#]|$)/, page: PrizeCounterPage },
   { test: /^\/today(?:[/?#]|$)/, page: TodayPage },
   { test: /^\/settings(?:[/?#]|$)/, page: NotificationSettingsPage },
-  { test: /^\/games\/[^/?#]+\/archive(?:[/?#]|$)/, page: ArchivePage },
   { test: /^\/plus(?:[/?#]|$)/, page: PlusPage },
   { test: /^\/about(?:[/?#]|$)/, page: AboutPage },
   { test: /^\/privacy(?:[/?#]|$)/, page: PrivacyPage },
@@ -325,10 +341,9 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'tournament') {
     return <TournamentDetailPage id={route.id} invite={route.invite} />
   }
-  if (route.name === 'gameArchive') return <ArchivePage slug={route.slug} />
   if (route.name === 'game') {
     if (isGameHidden(route.slug)) return <ComingSoonPage slug={route.slug} />
-    return <GameHubPage slug={route.slug} board={route.board} />
+    return <GameHubPage slug={route.slug} board={route.board} tab={route.tab} />
   }
   if (route.name === 'gamePlay' && isGameHidden(route.slug)) {
     return <ComingSoonPage slug={route.slug} />

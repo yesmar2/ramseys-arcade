@@ -68,7 +68,12 @@ function askApi(accountId: string): Promise<boolean> {
   return pending
 }
 
-export function useIsAdmin() {
+/**
+ * Whether this account is an admin, or undefined while the API is still being asked: signed in, not
+ * listed, not answered this visit, and no yes remembered on this device. For a gate that sends people
+ * away, which mustn't send an admin away before the answer comes.
+ */
+export function useAdminState(): boolean | undefined {
   const { account } = useAuth()
   const listed = isAdminAccount(account)
   const id = account?.id ?? null
@@ -86,7 +91,14 @@ export function useIsAdmin() {
   if (!id) return false
   if (listed) return true
   if (answer?.id === id) return answer.admin
-  return answers.get(id) ?? remembered(id)
+  const known = answers.get(id)
+  if (known !== undefined) return known
+  return remembered(id) ? true : undefined
+}
+
+/** Whether this account is an admin: no until the API says yes, unless this device remembers a yes. */
+export function useIsAdmin() {
+  return useAdminState() === true
 }
 
 /*

@@ -1,14 +1,14 @@
 import { useMemo } from 'react'
 import { dailyTrack, FIRST_DAY, trackDay, trackNumber } from '../../games/hotlap/daily'
-import { formatLap } from '../../games/hotlap/score'
+import { formatLap, formatLapMs } from '../../games/hotlap/score'
 import { buildTrack, type Piece, type TrackShape } from '../../games/hotlap/sim'
 import { trackPlan } from '../../games/hotlap/trackPlan'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import { usePlayerName } from '../../hooks/usePlayerName'
-import { dayBefore, useArchiveDays } from '../../lib/archive'
-import { normalizePlayerName } from '../../lib/leaderboard'
-import { useTrackRecords } from '../../lib/trackBoards'
-import { ArchiveGrid, type ArchiveItem, type ArchiveResult } from './ArchiveList'
+import type { CourseBoard, CourseTop, HintFacts, PastSource } from '../../lib/dailyPast'
+import { recordSetOn, usePastViewer } from '../../lib/dailyPast'
+import { formatLeaderboardScore } from '../../lib/leaderboardFormat'
+import { fetchTrackBoard, useTrackRecordsAsked } from '../../lib/trackBoards'
+import { PastCourses } from './PastCourses'
 import '../../styles/todaysTrack.css'
 
 const SLUG = 'hotlap'
@@ -29,42 +29,76 @@ function TrackThumb({ pieces, shape }: { pieces: Piece[]; shape: TrackShape }) {
   )
 }
 
+const anchor = (day: string) => String(trackNumber(day))
+
+const playHref = (day: string) => `${gamePlayHref(SLUG)}?track=${trackNumber(day)}`
+
+const title = (day: string) => `#${trackNumber(day)} ${dailyTrack(day).name}`
+
+const sub = (day: string) => `Blue car ${formatLap(dailyTrack(day).pace)}`
+
+function art(day: string) {
+  const track = dailyTrack(day)
+  return <TrackThumb pieces={track.pieces} shape={track.shape} />
+}
+
+async function fetchTop(day: string, name: string): Promise<CourseTop> {
+  const board = await fetchTrackBoard(trackNumber(day), name)
+  return { top: board.entries, players: board.drivers, you: board.you }
+}
+
+function hint({ signedIn, board }: HintFacts): string | null {
+  if (!signedIn) return 'Sign in and your laps here go on its board.'
+  const you = board?.you
+  if (!you) return 'Your first lap puts you on its board.'
+  if (you.place === 1) return 'You hold its record.'
+  if (you.place === 2 && board.record) return `Beat ${formatLeaderboardScore(SLUG, board.record.score)} to take its record.`
+  return `Beat your ${formatLeaderboardScore(SLUG, you.score)} to move up its board.`
+}
+
+/** A lap's time off the record, from their board scores (a million less the lap in milliseconds). */
+const gap = (you: number, record: number) => formatLapMs(Math.max(0, record - you))
+
 /**
- * Hot Lap's archive: every day's track from the first, today's at the top. Today's shows the day's best;
- * a past one shows its record, since its board stays open (lib/trackBoards.ts), and your best and place.
+ * Hot Lap's past tracks: every track before today's, newest first. Each keeps a board of its own for good
+ * (lib/trackBoards.ts): any lap on it, on its day or since, each driver's best.
  */
 export function TrackArchive() {
   const today = trackDay()
-  const me = normalizePlayerName(usePlayerName())
-  const days = useArchiveDays(SLUG, me)
-  const records = useTrackRecords(me)
-  const items = useMemo(() => {
-    const out: ArchiveItem[] = []
-    for (let day = today; day >= FIRST_DAY; day = dayBefore(day)) {
-      const n = trackNumber(day)
-      out.push({
-        day,
-        n,
-        today: day === today,
-        href: day === today ? gamePlayHref(SLUG) : `${gamePlayHref(SLUG)}?track=${n}`,
-        build: () => {
-          const track = dailyTrack(day)
-          return { title: track.name, sub: `Blue car ${formatLap(track.pace)}`, art: <TrackThumb pieces={track.pieces} shape={track.shape} /> }
-        },
-        ...(day === today ? {} : { empty: 'No laps on its board yet' }),
-      })
+  const viewer = usePastViewer()
+  const { rows: records, failed, retry } = useTrackRecordsAsked(viewer.name)
+  const rows = useMemo(() => {
+    if (!records) return null
+    const out = new Map<string, CourseBoard>()
+    for (const r of records) {
+      if (r.day < today) out.set(r.day, { record: r.record, setOn: recordSetOn(r.record, trackDay), players: r.drivers, you: r.you })
     }
     return out
-  }, [today])
-  const results = useMemo(() => {
-    const out = new Map<string, ArchiveResult>()
-    const now = days?.find((d) => d.day === today)
-    if (now) out.set(today, now)
-    for (const r of records ?? []) {
-      if (r.day === today || !r.record) continue
-      out.set(r.day, { top: r.record, players: r.drivers, you: r.you, record: true })
-    }
-    return out
-  }, [days, records, today])
-  return <ArchiveGrid slug={SLUG} items={items} results={results} asked={days !== null && records !== null} />
+  }, [records, today])
+  const source = useMemo<PastSource>(
+    () => ({
+      slug: SLUG,
+      today,
+      first: FIRST_DAY,
+      number: trackNumber,
+      anchor,
+      playHref,
+      title,
+      sub,
+      art,
+      boards: {
+        rows,
+        failed,
+        retry,
+        fetchTop,
+        rule: 'race one and your best lap goes on it.',
+        legend: 'everyone’s best lap, from its day and since',
+        player: 'driver',
+        gap,
+      },
+      hint,
+    }),
+    [today, rows, failed, retry],
+  )
+  return <PastCourses source={source} />
 }

@@ -1,17 +1,18 @@
-import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
-import { GamePanelBody } from '../../components/PauseControls'
-import { useDeliberatePress } from '../../hooks/useDeliberatePress'
-import { gameArchiveHref, gamePlayHref } from '../../hooks/useHashRoute'
-import { fitCardToSpace } from '../../lib/cardFit'
-import { gameAccentStyle } from '../../lib/gameAccentStyle'
-import { courseDay, courseNumber, FIRST_DAY } from './daily'
+import type { ReactNode } from 'react'
+import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
+import { gamePlayHref } from '../../hooks/useHashRoute'
+import { archiveDayWords } from '../../lib/archive'
+import type { PastFact } from '../../lib/pastPlay'
+import { courseDay, courseNumber, dailyCourse, FIRST_DAY } from './daily'
+import { dayFirst, type DayTop, type ItsDay } from './pastDay'
 import type { MarbleDay } from './runs'
 import { formatRun } from './score'
 
 /*
- * The cards of a past day's course rolled again from the archive (/games/marblerun/play?day=YYYY-MM-DD):
- * the one it opens on, and the one after a run. It's practice: its runs go on no board and pay nothing, and
- * your best here lasts only while the tab is open.
+ * The cards of a past day's course rolled again from the past tab (/games/marblerun/play?day=YYYY-MM-DD),
+ * on the cards every daily's past course shares (components/PastCourseCards.tsx): the one it opens on,
+ * and the one after a run. It's practice: its runs go on no board and pay nothing, and your best here
+ * lasts only while the tab is open.
  */
 
 const SLUG = 'marblerun'
@@ -22,159 +23,109 @@ const shiftDay = (day: string, n: number) => {
   const [y, m, d] = day.split('-').map(Number)
   return new Date(Date.UTC(y!, m! - 1, d! + n)).toISOString().slice(0, 10)
 }
-const holdPress = (e: ReactPointerEvent) => e.stopPropagation()
 
-/** "Mon, Sep 28": a course's day, in words. */
-function dayWords(day: string) {
-  const [y, m, d] = day.split('-').map(Number)
-  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' })
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="game-pause-meta__row">
-      <span>{label}</span>
-      <strong>{children}</strong>
-    </div>
-  )
-}
-
-/** The courses either side of a past day's, and back to today's. A tap here isn't a tap to start. */
-function CourseNav({ day }: { day: string }) {
+/** "‹ #2 Pebble Falls": the courses either side of a past day's, while they're past ones. */
+function walkFor(day: string): { prev: PastWalkLink | null; next: PastWalkLink | null } {
+  const link = (other: string) => ({ label: `#${courseNumber(other)} ${dailyCourse(other).name}`, href: practiceHref(other) })
   const before = shiftDay(day, -1)
   const after = shiftDay(day, 1)
-  const today = courseDay()
+  return { prev: before >= FIRST_DAY ? link(before) : null, next: after < courseDay() ? link(after) : null }
+}
+
+/** Today's course, which counts: "Today's course is the one that counts: Pebble Falls ›". */
+const todayCourse = (): TodayCourse => ({ name: dailyCourse(courseDay()).name })
+
+/**
+ * A past course's start card: which course it was and when, that it's practice, how its day went, the
+ * blue ball's run and your best here (`tiles`, as the pause card has them). A tap anywhere starts, as on
+ * today's card.
+ */
+export function PracticeStartCard({ marble, facts, tiles }: { marble: MarbleDay; facts: readonly PastFact[]; tiles: ReactNode }) {
   return (
-    <nav className="marblerun-practice__nav" aria-label="Other courses">
-      {before >= FIRST_DAY ? (
-        <a href={practiceHref(before)} onPointerDown={holdPress}>
-          ‹ #{courseNumber(before)}
-        </a>
-      ) : (
-        <span />
-      )}
-      <a href={gameArchiveHref(SLUG)} onPointerDown={holdPress}>
-        All courses
-      </a>
-      {after < today ? (
-        <a href={practiceHref(after)} onPointerDown={holdPress}>
-          #{courseNumber(after)} ›
-        </a>
-      ) : (
-        <a href={gamePlayHref(SLUG)} onPointerDown={holdPress}>
-          Today’s ›
-        </a>
-      )}
-    </nav>
+    <PastCourseStart
+      slug={SLUG}
+      course={marble.day}
+      day={marble.day}
+      kind="practice"
+      title={marble.name}
+      kicker={`Past course #${marble.n} · ${archiveDayWords(marble.day)}`}
+      facts={facts}
+      extraMeta={tiles}
+      note="Your best here lasts while this tab is open."
+      today={todayCourse()}
+      walk={walkFor(marble.day)}
+    />
   )
 }
 
-/** The #1 a past course's day closed with, whose ghost rolls it: their tag and time. */
-type DayTop = { name: string; time: number } | null
+const fallWords = (falls: number) => (falls === 0 ? 'no falls' : falls === 1 ? '1 fall' : `${falls} falls`)
 
-/** A past course's start card: which day it was, the day's #1 and the blue ball's run, and your best here. */
-export function PracticeStartCard({ marble, pace, best, top }: { marble: MarbleDay; pace: number; best: number | null; top: DayTop }) {
-  return (
-    <div ref={fitCardToSpace} className="game-card game-card--start marblerun-practice" style={gameAccentStyle(SLUG)}>
-      <div className="game-card__head">
-        <span className="game-card__kicker">Practice · #{marble.n}</span>
-        <h2 className="game-card__title game-card__title--big">{marble.name}</h2>
-        <p className="game-card__blurb">
-          Was the course {dayWords(marble.day)}. Runs here are practice: they go on no board, and your best here is gone when you close the tab.
-        </p>
-      </div>
-      <GamePanelBody
-        slug={SLUG}
-        personalBest={0}
-        hideBest
-        hideRecord
-        extraMeta={
-          <>
-            {top ? <Row label={`The day’s #1 · ${top.name}`}>{formatRun(top.time)}</Row> : null}
-            <Row label="Blue ball">{formatRun(pace)}</Row>
-            <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
-          </>
-        }
-      />
-      <button type="button" className="panel__btn game-card__start">
-        Start
-      </button>
-      <CourseNav day={marble.day} />
-    </div>
-  )
+/** "1.20s quicker than your old best here, 50.12s.": the run against your best here before it. */
+function bestWords(time: number, best: number, before: number | null, improved: boolean): string {
+  if (improved) return before == null ? 'That’s your best here.' : `${(before - time).toFixed(2)}s quicker than your old best here, ${formatRun(before)}.`
+  const gap = time - best
+  return gap < 0.005 ? `Tied with your best here, ${formatRun(best)}.` : `${gap.toFixed(2)}s off your best here, ${formatRun(best)}.`
 }
 
-/** After a practice run: its time, against your best here, the day's #1 and the blue ball's. */
+/** "You beat the blue ball by 1.20s, with no falls." */
+function ballWords(time: number, pace: number, falls: number): string {
+  const gap = time - pace
+  const against = Math.abs(gap) < 0.005 ? 'Tied with the blue ball' : gap < 0 ? `You beat the blue ball by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue ball`
+  return `${against}, with ${fallWords(falls)}.`
+}
+
+/** "MAYA's 1st on its day, 48.37s, is 1.20s away.": the run against the day's 1st. */
+function firstWords(time: number, first: { name: string; time: number; mine: boolean }): string {
+  const whose = first.mine ? 'your' : `${first.name}’s`
+  const at = formatRun(first.time)
+  const gap = time - first.time
+  if (Math.abs(gap) < 0.005) return `That ties ${whose} 1st on its day, ${at}.`
+  if (gap < 0) return `That beats ${whose} 1st on its day, ${at}, by ${(-gap).toFixed(2)}s.`
+  return `${first.mine ? 'Your' : whose} 1st on its day, ${at}, is ${gap.toFixed(2)}s away.`
+}
+
+/**
+ * After a practice run: its time, that nothing was saved, against your best here and the blue ball's, and
+ * against the day's 1st; then again, back to its row on the past tab, or today's course.
+ */
 export function PracticeResultCard({
   marble,
   time,
   falls,
   best,
+  before,
   improved,
   pace,
+  itsDay,
   top,
   onAgain,
-  onDone,
 }: {
   marble: MarbleDay
   time: number
   falls: number
+  /** Your best here, this run's included. */
   best: number
+  /** Your best here before this run, if you had one. */
+  before: number | null
   improved: boolean
   pace: number
+  itsDay: ItsDay
   top: DayTop
   onAgain: () => void
-  onDone: () => void
 }) {
-  // It opens as the run ends: the run's last presses don't reach its buttons.
-  const allow = useDeliberatePress()
-  const gap = time - pace
+  const first = dayFirst(marble.day, itsDay, top)
   return (
-    <div
-      ref={fitCardToSpace}
-      className="game-card marblerun-practice"
-      style={gameAccentStyle(SLUG)}
-      role="dialog"
-      aria-label={`${marble.name}: ${formatRun(time)}`}
-      onPointerDown={holdPress}
-    >
-      <div className="game-card__head">
-        <span className="game-card__kicker">
-          Practice · #{marble.n} {marble.name}
-        </span>
-        <h2 className="game-card__title game-card__title--big">{formatRun(time)}</h2>
-        <p className="game-card__blurb">
-          {Math.abs(gap) < 0.005 ? 'Tied with the blue ball' : gap < 0 ? `Beat the blue ball by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue ball`}
-          {' · '}
-          {falls === 0 ? 'no falls' : falls === 1 ? '1 fall' : `${falls} falls`}
-        </p>
-      </div>
-      <div className="game-pause-meta">
-        <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
-        {top ? <Row label={`The day’s #1 · ${top.name}`}>{formatRun(top.time)}</Row> : null}
-        <Row label="Blue ball">{formatRun(pace)}</Row>
-      </div>
-      <p className="game-card__hint">A practice run: not saved.</p>
-      <div className="game-card__actions">
-        <button
-          type="button"
-          className="panel__btn"
-          onClick={(e) => {
-            if (allow(e)) onAgain()
-          }}
-        >
-          Roll it again
-        </button>
-        <button
-          type="button"
-          className="panel__btn panel__btn--ghost"
-          onClick={(e) => {
-            if (allow(e)) onDone()
-          }}
-        >
-          Done
-        </button>
-      </div>
-    </div>
+    <PastCourseResult
+      slug={SLUG}
+      course={marble.day}
+      day={marble.day}
+      kind="practice"
+      kicker={`Past course #${marble.n} · ${marble.name}`}
+      figure={formatRun(time)}
+      line={`${bestWords(time, best, before, improved)} ${ballWords(time, pace, falls)}`}
+      note={first ? firstWords(time, first) : null}
+      today={todayCourse()}
+      onAgain={onAgain}
+    />
   )
 }

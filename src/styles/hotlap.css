@@ -329,6 +329,16 @@ html[data-theme='dark'] .hotlap--fullscreen {
   }
 }
 
+/*
+ * A past track's chip hangs under the back control (pastCourse.css .play-past). Until the screen is wide
+ * enough for the call to clear it, the call goes under the chip.
+ */
+@media (min-width: 721px) and (max-width: 959px) {
+  .hotlap__play:has(.play-past) .hotlap__call {
+    top: calc(var(--readout-middle) + var(--score-size) / 2 + 3.2rem);
+  }
+}
+
 /* Too narrow for it beside the corner map: under the map, in the sky. */
 @media (max-width: 720px) {
   .hotlap__call {
@@ -466,7 +476,26 @@ html[data-theme='dark'] .hotlap--fullscreen {
   grid-column: 1 / -1;
 }
 
-/* A test drive's cards (TestCards.tsx): the lap's card takes the pointer; under Start, the tracks either side. */
+/*
+ * A past track's cards (PastTrackCards.tsx) are every daily's (pastCourse.css). What becomes of the lap, or
+ * what signing in would do, stays on the card when it tightens on a short screen: its small print doesn't.
+ */
+.hotlap-past__line {
+  margin: -0.35rem 0 0;
+  padding: 0 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* The overlay lets presses through to the track; the card after a past track's lap takes them itself. Its start card is tapped through. */
+.hotlap__overlay .past-card:not(.game-card--start) {
+  pointer-events: auto;
+}
+
+/* An admin's test drive's cards (TestCards.tsx): the lap's card takes the pointer; under Start, the tracks either side. */
 .game-card.hotlap-test:not(.game-card--start) {
   pointer-events: auto;
 }
@@ -500,24 +529,12 @@ html[data-theme='dark'] .hotlap--fullscreen {
   justify-self: end;
 }
 
-/* Two figures a line, and a past track's record across the card (TestCards.tsx Standing). */
+/* Two figures a line. */
 .game-card.hotlap-test .game-pause-meta {
   grid-template-columns: 1fr 1fr;
 }
 
-.game-card .hotlap-test__wide {
-  grid-column: 1 / -1;
-}
-
-/* A past track's lap that took its record. */
-.hotlap-test__news {
-  margin: 0;
-  text-align: center;
-  font-weight: 800;
-  color: var(--panel-accent-ink);
-}
-
-/* What taking a track's record paid, as Today's Hole says a day's tickets. */
+/* What taking a past track's record paid, as Today's Hole says a day's tickets. */
 .hotlap-test__tix {
   display: flex;
   align-items: center;

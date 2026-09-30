@@ -1,7 +1,8 @@
 import { isDailyGame } from '../data/games'
 import { applySitePeriod, gameBoardHref, gameHubHref, rankHref, useRoute } from '../hooks/useHashRoute'
 import type { HubBoard } from '../hooks/useGameHub'
-import type { BoardPlayer } from '../lib/gameBoard'
+import { firstRunWord, type BoardPlayer } from '../lib/gameBoard'
+import { dailyHistory, type DailyHistory } from '../lib/gameHub'
 import { groupBoardEmptyTitle } from '../lib/groups'
 import {
   PERIOD_LABELS,
@@ -152,7 +153,11 @@ export function GameHubBoard({
           {!mine ? (
             <li className="gh-row gh-row--ghost">
               <PlusIcon />
-              Your {board.allTimeBest ? 'next' : 'first'} run goes here
+              {daily ? (
+                <DailyGhost slug={slug} leader={players[0]} history={dailyHistory(board.week, me)} />
+              ) : (
+                <>Your {board.allTimeBest ? 'next' : 'first'} run goes here</>
+              )}
             </li>
           ) : null}
         </ol>
@@ -161,9 +166,25 @@ export function GameHubBoard({
   )
 }
 
+/**
+ * Where a daily's player not on today's board would go, and what takes 1st today. Only someone new to
+ * the game hears about their first run; someone back has played it before.
+ */
+function DailyGhost({ slug, leader, history }: { slug: LeaderboardGame; leader: BoardPlayer | undefined; history: DailyHistory }) {
+  const run = firstRunWord(slug)
+  return (
+    <span>
+      {history === 'new' ? `Your first ${run} goes here.` : `Your ${run} today goes here.`}
+      {leader ? ` Beat ${formatLeaderboardScore(slug, leader.best.score)} for 1st today.` : ''}
+    </span>
+  )
+}
+
 function BoardRow({ slug, player, me }: { slug: LeaderboardGame; player: BoardPlayer; me: string }) {
   const you = Boolean(me) && player.name === me
   const medal = player.place <= 3 ? ` gh-row--p${player.place}` : ''
+  // Today's #1 on a daily is 1st today: a course's record is its best of all time, a thing apart.
+  const firstToday = player.place === 1 && isDailyGame(slug)
   return (
     <li className={`gh-row${you ? ' gh-row--you' : ''}${medal}`}>
       <span className="gh-row__place">{player.place}</span>
@@ -171,6 +192,7 @@ function BoardRow({ slug, player, me }: { slug: LeaderboardGame; player: BoardPl
       <a className="gh-row__name" href={rankHref(player.name)}>
         <PlayerName name={player.name} avatarId={player.best.avatarId} />
         {you ? <span className="gh-row__you">You</span> : null}
+        {firstToday ? <span className="gh-row__first">1st today</span> : null}
       </a>
       <span className="gh-row__score">
         {formatLeaderboardScore(slug, player.best.score)}

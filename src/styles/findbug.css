@@ -313,6 +313,40 @@
   display: block;
 }
 
+/*
+ * A practice run's chip ("Past day · practice", "Practice"), up for the whole run: in the readout's line
+ * after the scene where the screen is wide enough, and otherwise in a strip of its own under that line,
+ * which the game keeps clear of the scene (FindBugGame's CHIP_STRIP).
+ */
+.findbug__chip {
+  display: flex;
+  align-self: center;
+  pointer-events: none;
+}
+
+.findbug__chip .run-label {
+  min-height: 1.6rem;
+  box-sizing: border-box;
+}
+
+/* With the readout, under the cards. */
+.findbug__chip--strip {
+  position: absolute;
+  z-index: 8;
+  top: calc(var(--readout-middle) * 2);
+  left: max(0.55rem, env(safe-area-inset-left, 0px));
+  height: var(--findbug-strip, 34px);
+  align-items: center;
+  max-width: calc(100% - 1.1rem);
+}
+
+@media (max-width: 420px) {
+  .findbug__chip .run-label {
+    font-size: 0.64rem;
+    letter-spacing: 0.07em;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .findbug__badge--urgent,
   .findbug__card,
@@ -324,8 +358,14 @@
 /* ---------- Today's Wanted: the day's cards (DailyCards.tsx) ---------- */
 
 /* The overlay lets taps through to the scene; the day's cards keep theirs, and their buttons are the way on. */
-.findbug-daily {
+.findbug-daily,
+.findbug__overlay .past-card {
   pointer-events: auto;
+}
+
+/* What a run from the card counts toward (RunLabel.tsx), under the day's rules. */
+.findbug-daily__label {
+  align-self: center;
 }
 
 .findbug-daily__rules {

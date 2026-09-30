@@ -19,6 +19,7 @@ import {
 import {
   bookHeadline,
   bookLede,
+  bookRecords,
   closestToInk,
   coverRecord,
   recordGroups,
@@ -142,7 +143,8 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
   if (!meta) return null
   const accent = resolveGameAccent(game, meta.accent)
   const canPlay = gamePlayableOn(meta, device)
-  const records = data.records
+  // A daily's page takes its book's place (RecordsPage), but should one get here its courses stay out.
+  const records = bookRecords(game, data.records)
   const head = bookHeadline(game, records)
   const cover = coverRecord(records)
   const groups = recordGroups(game, records)

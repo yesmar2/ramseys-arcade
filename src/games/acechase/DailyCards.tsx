@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { GoogleSignInButton } from '../../components/GoogleSignInButton'
 import { TicketGlyph } from '../../components/prizes/Ticket'
+import { RunLabel } from '../../components/RunLabel'
 import { TagSlots } from '../../components/RunReport'
 import { copyText } from '../../components/ShareBoardButton'
 import { useAccountId } from '../../hooks/useAccountId'
@@ -274,8 +275,13 @@ export function DailyStartCard({
         </p>
       </div>
       <p className="acechase-daily__rules">
-        Everyone plays this hole today. Every try counts, even if you leave and come back; your first bullseye is your result.
+        {result
+          ? 'That’s your result for today. Play the hole again as much as you like: it’s practice, and your result stands.'
+          : 'Everyone plays this hole today. Every try counts, even if you leave and come back; your first bullseye is your result.'}
       </p>
+      {/* What a run from here does: the day's tries count until the first bullseye; after it, they're practice.
+          Left off while a run from signed out is on offer, as Find the Bug's and Half Full's cards do. */}
+      {open ? null : <RunLabel kind={result ? 'practice' : 'counts'} slug={SLUG} className="acechase-daily__label" />}
       <div className="game-pause-meta">
         <div className="game-pause-meta__row">
           <span>You</span>
@@ -407,12 +413,16 @@ export function DailyResultCard({
   return (
     <Card label={`Today's Hole #${hole.n}: ${title}`}>
       <div className="game-card__head">
-        <span className="game-card__kicker">Today&rsquo;s Hole #{hole.n}</span>
+        <span className="game-card__kicker">
+          Today&rsquo;s Hole #{hole.n}
+          {practice ? ' · practice' : ''}
+        </span>
         <h2 className="game-card__title game-card__title--big">{title}</h2>
         <p className="game-card__blurb">
           {practice && shown ? `Your result today stands: bullseye in ${shown.tries}.` : `${hole.def.name}, on ${PLACE_NAME[hole.pick.style]}.`}
         </p>
       </div>
+      {practice ? <RunLabel kind="practice" slug={SLUG} className="acechase-daily__label" /> : null}
       {shown?.pattern ? <Pattern pattern={shown.pattern} /> : null}
       <div className="game-pause-meta">
         {mine && you?.place != null && server ? (

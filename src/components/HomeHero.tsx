@@ -467,7 +467,15 @@ export function HomeHero() {
   if (rung) {
     const { you, above, below } = rung
     const gap = above ? above.score - you.score : 0
-    const target = above ? (above.place === 1 ? `the ${game.name} record` : `#${above.place} on ${game.name}`) : ''
+    // A daily's rung is today's board, so its top is 1st today: a record is a course's best across all time.
+    const daily = isDailyGame(slug)
+    const target = above
+      ? above.place === 1
+        ? daily
+          ? `1st today on ${game.name}`
+          : `the ${game.name} record`
+        : `#${above.place} on ${game.name}`
+      : ''
     // Level with the player under you is a tie you got to first, not "0 behind".
     const belowGap = below ? you.score - below.score : 0
     const behind = below
@@ -475,7 +483,13 @@ export function HomeHero() {
         ? `${below.name} is ${gapBetween(slug, you.score, below.score)} behind you`
         : `${below.name} is tied with you`
       : null
-    const kicker = above ? (above.place === 1 ? 'Your next record' : 'Your next place') : 'Your record'
+    const kicker = above
+      ? above.place === 1 && !daily
+        ? 'Your next record'
+        : 'Your next place'
+      : daily
+        ? 'Your place'
+        : 'Your record'
     const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
     const ahead = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! - 1) : undefined
     const trailing = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! + 1) : undefined
@@ -491,7 +505,7 @@ export function HomeHero() {
           ? `Your ${fmt(you.score)} leads ${below.name} by ${gapBetween(slug, you.score, below.score)}.`
           : `Your ${fmt(you.score)} is tied with ${below.name}, and you got there first.`
     } else {
-      body = `Your ${fmt(you.score)} tops the board.`
+      body = `Your ${fmt(you.score)} tops ${daily ? 'today’s' : 'the'} board.`
     }
 
     return (
@@ -501,7 +515,7 @@ export function HomeHero() {
             <p className="home-banner__kicker">{kicker}</p>
             <span className="home-banner__kicker-note">
               {/* A daily's rung is on today's board (fetchRung), so it says so. */}
-              {game.name} · {isDailyGame(slug) ? 'today' : 'all time'}{group ? ` · ${group}` : ''}
+              {game.name} · {daily ? 'today' : 'all time'}{group ? ` · ${group}` : ''}
             </span>
           </div>
           <h2 className="home-banner__goal">
@@ -510,7 +524,13 @@ export function HomeHero() {
                 <span className="home-banner__gap">{gapBetween(slug, above.score, you.score)}</span> from {target}.
               </>
             ) : above ? (
-              <>Tied with {target}.</>
+              daily && above.place === 1 ? (
+                <>Tied for {target}.</>
+              ) : (
+                <>Tied with {target}.</>
+              )
+            ) : daily ? (
+              <>You’re 1st today on {game.name}.</>
             ) : (
               <>You hold the {game.name} record.</>
             )}
@@ -615,14 +635,15 @@ export function HomeHero() {
         {scores && scores.top > 0 ? (
           <dl className="home-banner__figures" aria-label={`${game.name} scores`}>
             <div className="home-banner__figure">
-              <dt>Top {boardWord}</dt>
+              {/* A daily's figures are today's board: its top is 1st today, and yours is today's too. */}
+              <dt>{isDailyGame(slug) ? '1st today' : `Top ${boardWord}`}</dt>
               <dd>
                 {fmt(scores.top)}
                 {scores.topName ? <small> by {scores.topName}</small> : null}
               </dd>
             </div>
             <div className="home-banner__figure">
-              <dt>Your best</dt>
+              <dt>{isDailyGame(slug) ? 'You today' : 'Your best'}</dt>
               <dd>
                 {scores.best > 0 ? fmt(scores.best) : '—'}
                 {scores.best > 0 && scores.place > 0 ? <small> · #{scores.place}</small> : null}

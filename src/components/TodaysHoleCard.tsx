@@ -3,7 +3,7 @@ import { getGame } from '../data/games'
 import { ShareButton } from '../games/acechase/DailyCards'
 import { drawHolePlan } from '../games/acechase/holePlan'
 import { useAccountId } from '../hooks/useAccountId'
-import { gameArchiveHref, gamePlayHref } from '../hooks/useHashRoute'
+import { gamePlayHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
 import {
   PLACE_NAME,
@@ -25,6 +25,7 @@ import { GameThumbArt } from './GameThumbArt'
 import { resolveGameAccent } from '../lib/theme'
 import { formatEventCountdown } from '../lib/tournaments'
 import { PlayIcon } from './chromeIcons'
+import { PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 
 /*
@@ -111,7 +112,7 @@ function standing(progress: DayProgress | null, server: DailyServer | null): str
   }.${leads}`
 }
 
-/** Today's Hole as a card: the hole, how it's going, the clock to the next, and Play or Share. */
+/** Today's Hole as a card: the hole, that it counts, how it's going, the clock to the next, Past holes, and Play or Share. */
 export function TodaysHoleCard() {
   const { hole, progress, server } = useTodaysHole()
   const href = gamePlayHref(SLUG)
@@ -139,26 +140,27 @@ export function TodaysHoleCard() {
         <h2 id="thc-title" className="evp-card__title">
           {hole.def.name}
         </h2>
+        <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
           Ace Chase, on {PLACE_NAME[hole.pick.style]}. One hole for everyone today, every try counts, and the fewest to a
           bullseye top the list. {standing(progress, server)}
         </p>
       </div>
-      <div className="evp-daily__foot">
+      <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
           <ClockIcon />
           {formatEventCountdown(Date.now() + msUntilNextHole())}
         </span>
-        <a className="evp-daily__archive" href={gameArchiveHref(SLUG)}>
-          Past holes
-        </a>
-        {solved?.pattern ? (
-          <ShareButton hole={hole} tries={solved.tries} pattern={solved.pattern} className="evp-btn evp-btn--small" />
-        ) : (
-          <a className="evp-btn evp-btn--small" href={href}>
-            {solved ? 'Play again' : tries > 0 ? 'Carry on' : 'Play the hole'}
-          </a>
-        )}
+        <span className="evp-daily__go">
+          <PastTabButton slug={SLUG} />
+          {solved?.pattern ? (
+            <ShareButton hole={hole} tries={solved.tries} pattern={solved.pattern} className="evp-btn evp-btn--small" />
+          ) : (
+            <a className="evp-btn evp-btn--small" href={href}>
+              {solved ? 'Play again' : tries > 0 ? 'Carry on' : 'Play the hole'}
+            </a>
+          )}
+        </span>
       </div>
     </section>
   )
