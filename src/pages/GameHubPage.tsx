@@ -72,9 +72,9 @@ type GameHubPageProps = {
  * record book, and any event it is in; how to play it and what scores; and
  * the games most like it.
  *
- * A daily's page is today's, with tabs under its hero: Today (today's card,
- * its board, where you stand and how to play), its past courses, and its
- * records.
+ * A daily's page is today's, with tabs under its hero: Today (today's card
+ * across the page, then where you stand and its board), its past courses,
+ * and its records.
  */
 export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: GameHubPageProps) {
   const route = useRoute()
@@ -232,7 +232,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
             </Suspense>
           ) : (
             <>
-              {/* Today's card, with the board and where you stand running down beside it (hub.css). */}
+              {/* Today's card across the page, then where you stand and the board side by side under it (hub.css). */}
               <div className="gh-today">
                 <div className="gh-today__main">
                   {TodayCard ? (
@@ -242,9 +242,9 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                     </Suspense>
                   ) : null}
                 </div>
-                <div className="gh-today__side">
-                  {boardCard}
+                <div className="gh-today__below">
                   {standing}
+                  {boardCard}
                   {eventsCard}
                 </div>
               </div>

@@ -1018,6 +1018,27 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   }
 }
 
+/* Across the whole page, the course keeps to a size and the words get the room. */
+@container gh-today (min-width: 64rem) {
+  .gh-today__main .evp-daily {
+    grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
+    gap: 1rem 2rem;
+  }
+
+  .gh-today__main .evp-daily__text {
+    padding-top: 0.9rem;
+  }
+
+  .gh-today__main .evp-daily .evp-card__title {
+    font-size: 2.2rem;
+  }
+
+  .gh-today__main .evp-daily .evp-card__copy {
+    max-width: 44rem;
+    font-size: 1rem;
+  }
+}
+
 /* The record book, from your side. */
 .gh-records {
   padding: 1.3rem 0.8rem 0.8rem;
@@ -1418,25 +1439,37 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   max-height: 15rem;
 }
 
-/* Today: today's card, with the day's board and where you stand running down beside it. */
+/*
+ * Today: today's card across the page, then where you stand and the day's board side by side under it,
+ * the same height, and any event across under both. Narrow, they run down in that order.
+ */
 .gh-today {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 25.5rem;
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
-  align-items: start;
 }
 
-.gh-today__main,
-.gh-today__side {
+.gh-today__main {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   min-width: 0;
 }
 
-.gh-today__side {
-  grid-column: 2;
-  grid-row: 1;
+.gh-today__below {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 50rem) {
+  .gh-today__below {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .gh-today__below > .gh-events {
+    grid-column: 1 / -1;
+  }
 }
 
 /* A tab, or today's card, on its way: room held, so the page doesn't jump when it lands. */
@@ -1444,17 +1477,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   min-height: 24rem;
   border-radius: 1.5rem;
   background: rgba(var(--ink-rgb), 0.03);
-}
-
-@media (max-width: 64rem) {
-  .gh-today {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .gh-today__side {
-    grid-column: auto;
-    grid-row: auto;
-  }
 }
 
 /* Narrower, the screen stays beside the words rather than going on top. */
