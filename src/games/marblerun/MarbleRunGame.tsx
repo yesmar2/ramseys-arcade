@@ -10,9 +10,10 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { dailyTabHref, gamePlayHref } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { useAdminState } from '../../lib/admin'
 import { useDailyDays } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import { usePastViewer } from '../../lib/dailyPast'
@@ -28,13 +29,14 @@ import { sfx } from '../../lib/sound'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { RollSound } from './audio'
 import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
-import { courseDay, msUntilNextCourse, untilWords } from './daily'
+import { courseDay, courseNumber, msUntilNextCourse, untilWords } from './daily'
 import { CourseMap } from './map'
 import { onItsDayFact, type ItsDay } from './pastDay'
 import { PracticeResultCard, PracticeStartCard } from './PracticeCards'
 import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, marbleDay, paceOf, practiceBest, type GhostRun, type MarbleDay } from './runs'
 import { MarbleScene } from './scene'
 import { formatRun, marblerunBoardScore, marblerunMsFromBoardScore } from './score'
+import { TestResultCard, TestStartCard } from './TestCards'
 import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, racingPlan, respawn, step, type Ball, type Tilt } from './sim'
 
 const SLUG = 'marblerun'
@@ -249,6 +251,7 @@ function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: num
 function MarbleRunDay({
   day,
   practice = false,
+  test = false,
   itsDay,
   onNewDay,
   notice,
@@ -256,6 +259,11 @@ function MarbleRunDay({
   day: string
   /** A past day's course, from the past tab: its runs go on no board, and your best here lasts the tab. */
   practice?: boolean
+  /**
+   * An admin's test run of today's course or one still to come, from the Course Book: nothing kept, as in
+   * practice (and `practice` is set with it), on cards of its own (TestCards.tsx).
+   */
+  test?: boolean
   /** A past course's day as the API has it, for its cards: who was 1st, and you. */
   itsDay?: ItsDay
   onNewDay: (notice?: string) => void
@@ -423,10 +431,12 @@ function MarbleRunDay({
   sendGhostRef.current = sendGhost
 
   // The board's fastest run, for the ghost: asked for as the course opens (a past one's, the #1 its day closed with).
+  // A course whose day hasn't come, on an admin's test run, has no board yet.
   const [topAsked, setTopAsked] = useState(false)
   useEffect(() => {
     let live = true
-    void fetchBoardGhost(marble.n).then((found) => {
+    const asked = marble.day > courseDay() ? Promise.resolve(null) : fetchBoardGhost(marble.n)
+    void asked.then((found) => {
       if (!live) return
       if (found) takeTopRef.current(found)
       setTopAsked(true)
@@ -434,7 +444,7 @@ function MarbleRunDay({
     return () => {
       live = false
     }
-  }, [marble.n])
+  }, [marble.n, marble.day])
 
   // Then your best here on this device, if it's faster than that: the API keeps it only if it's on the board
   // under your tag. So a run saved before runs sent their paths, or on a card closed too soon, still gets there.
@@ -853,9 +863,10 @@ function MarbleRunDay({
   // A past course: the chip, the tab's title, the way back to its row and its day's figures, the same on
   // the play screen, the pause card and the start card (lib/pastPlay.ts).
   const went: ItsDay = itsDay ?? { days: null, failed: false, me: null }
-  const past: PastPlay | null = practice
-    ? { href: dailyTabHref(SLUG, 'past', day), kind: 'practice', title: marble.name, facts: [onItsDayFact(day, went, top)] }
-    : null
+  const past: PastPlay | null =
+    practice && !test
+      ? { href: dailyTabHref(SLUG, 'past', day), kind: 'practice', title: marble.name, facts: [onItsDayFact(day, went, top)] }
+      : null
   const extra = practice ? (
     <>
       <div className="game-pause-meta__row">
@@ -961,14 +972,26 @@ function MarbleRunDay({
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noGl ? (
-                past ? (
+                test ? (
+                  <TestStartCard marble={marble} best={practiceBestTime} />
+                ) : past ? (
                   <PracticeStartCard marble={marble} facts={past.facts ?? []} tiles={extra} />
                 ) : (
                   <GameStartCard title="Marble Run" slug={SLUG} extraMeta={extra} />
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && run ? (
-                practice ? (
+                test ? (
+                  <TestResultCard
+                    marble={marble}
+                    time={run.time}
+                    falls={run.falls}
+                    best={practiceBestTime ?? run.time}
+                    improved={run.improved}
+                    onAgain={start}
+                    onDone={toMenu}
+                  />
+                ) : practice ? (
                   <PracticeResultCard
                     marble={marble}
                     time={run.time}
@@ -1028,11 +1051,24 @@ function PastMarbleRun({ day }: { day: string }) {
 
 /**
  * Marble Run on today's course, mounted again for the next when midnight brings it; with `practiceDay`, a past
- * day's course from the past tab, rolled as practice.
+ * day's course from the past tab, rolled as practice; with `testDay`, today's course or one still to come,
+ * test run from the admin's Course Book. A test run is only an admin's: anyone else is sent to today's
+ * course, with a word about why when the course's day hasn't come.
  */
-export function MarbleRunGame({ practiceDay }: { practiceDay?: string | null }) {
+export function MarbleRunGame({ practiceDay, testDay }: { practiceDay?: string | null; testDay?: string | null }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? courseDay() }))
+  const admin = useAdminState()
+  const { loading } = useAuth()
+  // Sent away only once we know: signed in (or not), and the API has said this account isn't an admin.
+  const shut = Boolean(testDay) && admin === false && !loading
+  useEffect(() => {
+    if (shut) navigate(gamePlayHref(SLUG), { replace: true })
+  }, [shut])
   if (practiceDay) return <PastMarbleRun key={`practice-${practiceDay}`} day={practiceDay} />
-  return <MarbleRunDay key={today.day} day={today.day} notice={today.notice} onNewDay={(notice) => setToday({ day: courseDay(), notice })} />
+  if (testDay && admin === true) return <MarbleRunDay key={`test-${testDay}`} day={testDay} practice test onNewDay={() => {}} />
+  // Still signing in, or still asking the API whether this account is an admin.
+  if (testDay && !shut) return null
+  const notice = testDay && testDay !== courseDay() ? `Course #${courseNumber(testDay)}’s day hasn’t come yet. Here’s today’s.` : today.notice
+  return <MarbleRunDay key={today.day} day={today.day} notice={notice} onNewDay={(why) => setToday({ day: courseDay(), notice: why })} />
 }
 

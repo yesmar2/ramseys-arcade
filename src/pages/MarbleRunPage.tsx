@@ -1,4 +1,4 @@
-import { courseDay, FIRST_DAY } from '../games/marblerun/daily'
+import { courseDay, FIRST_DAY, testRunDay } from '../games/marblerun/daily'
 import { MarbleRunGame } from '../games/marblerun/MarbleRunGame'
 import { useRoute } from '../hooks/useHashRoute'
 
@@ -6,15 +6,17 @@ const isDay = (day: string | undefined): day is string => typeof day === 'string
 
 /**
  * Marble Run's page: today's course. With ?day=YYYY-MM-DD, a past day's from the Past tab, rolled again as
- * practice, where nothing is kept. A day still to come isn't shown, nor one before the first.
+ * practice, where nothing is kept; or today's or one still to come, from the admin's Course Book, as an
+ * admin's test run (MarbleRunGame sends anyone else to today's). A day before the first isn't shown.
  */
 export function MarbleRunPage() {
   const route = useRoute()
   const asked = route.name === 'gamePlay' ? route.day : undefined
   const day = isDay(asked) && asked >= FIRST_DAY && asked < courseDay() ? asked : null
+  const test = testRunDay(asked)
   return (
     <main className="game-page game-page--fullscreen">
-      <MarbleRunGame key={day ?? 'today'} practiceDay={day} />
+      <MarbleRunGame key={day ?? 'today'} practiceDay={day} testDay={test} />
     </main>
   )
 }

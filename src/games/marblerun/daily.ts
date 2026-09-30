@@ -42,6 +42,25 @@ export function courseNumber(day: string): number {
   return Math.round((Date.UTC(y!, m! - 1, d!) - Date.UTC(y0!, m0! - 1, d0!)) / 86_400_000) + 1
 }
 
+/** How many days the plan has laid out, from the first. */
+export const PLANNED_COURSES = DAILY_COURSES.length
+
+/** Course `n`'s day, YYYY-MM-DD. */
+export function dayOfCourse(n: number): string {
+  const [y0, m0, d0] = FIRST_DAY.split('-').map(Number)
+  return new Date(Date.UTC(y0!, m0! - 1, d0! + n - 1)).toISOString().slice(0, 10)
+}
+
+/**
+ * A day whose course an admin may test run (the play page's ?day=, from the Course Book): today's, or one
+ * still to come that the plan has laid out; null for anything else. A past day is practice, and anyone's.
+ */
+export function testRunDay(asked: string | undefined, today = courseDay()): string | null {
+  if (!asked || !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return null
+  const n = courseNumber(asked)
+  return asked >= today && n >= 1 && n <= PLANNED_COURSES && dayOfCourse(n) === asked ? asked : null
+}
+
 export type DailyCourse = {
   day: string
   /** The course's number: the day's, 1 on the first day. */

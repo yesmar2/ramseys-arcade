@@ -32,6 +32,7 @@ import '../styles/adminBooks.css'
 // The books draw every planned day, so each comes in a chunk of its own, when it's opened.
 const AdminHoleBook = lazyPage(() => import('../components/AdminHoleBook').then((m) => m.AdminHoleBook))
 const AdminTrackBook = lazyPage(() => import('../components/AdminTrackBook').then((m) => m.AdminTrackBook))
+const AdminCourseBook = lazyPage(() => import('../components/AdminCourseBook').then((m) => m.AdminCourseBook))
 const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
 
 const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: string }[] = [
@@ -54,6 +55,12 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
     blurb: 'Every planned day of Hot Lap’s Today’s Track, to test drive ahead of its day.',
   },
   {
+    section: 'courses',
+    label: 'Course Book',
+    title: 'Course Book',
+    blurb: 'Every planned day of Marble Run’s Today’s Course, to test run ahead of its day.',
+  },
+  {
     section: 'pours',
     label: 'Pour Book',
     title: 'Pour Book',
@@ -71,7 +78,7 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
  * The admin's page: what players sent, what broke in their browsers, scores
  * that looked wrong on the way in, tickets, and banned tags; and, a tab each,
  * the daily games' books of what's planned (/admin/holes, /admin/tracks,
- * /admin/pours) and every trophy, secret, easter egg and bit of flair there is
+ * /admin/courses, /admin/pours) and every trophy, secret, easter egg and bit of flair there is
  * (/admin/trophies). It opens for the emails in the API's ADMIN_EMAILS
  * (Render): the API is asked, and it's the API that answers every card.
  */
@@ -160,6 +167,10 @@ export function AdminPage({ section }: { section?: AdminSection }) {
               <Suspense fallback={<p className="adm-note">Opening the Track Book…</p>}>
                 <AdminTrackBook />
               </Suspense>
+            ) : section === 'courses' ? (
+              <Suspense fallback={<p className="adm-note">Opening the Course Book…</p>}>
+                <AdminCourseBook />
+              </Suspense>
             ) : section === 'pours' ? (
               <Suspense fallback={<p className="adm-note">Opening the Pour Book…</p>}>
                 <AdminPourBook />
@@ -247,6 +258,10 @@ function DailyGamesCard() {
           <b>Track Book</b>
           <span>Hot Lap: every planned Today’s Track, to test drive</span>
         </a>
+        <a className="adm-book" href={adminHref('courses')}>
+          <b>Course Book</b>
+          <span>Marble Run: every planned Today’s Course, to test run</span>
+        </a>
         <a className="adm-book" href={adminHref('pours')}>
           <b>Pour Book</b>
           <span>Half Full: every day’s glasses, how hard each came out, and any day off its band</span>
@@ -263,7 +278,7 @@ function DailyGamesCard() {
         </li>
         <li>
           <a href={gamePlayHref('marblerun')}>Marble Run · Today’s Course</a>
-          <span>the real one, where your best run today counts</span>
+          <span>the real one, where your best run today counts; the Course Book test-runs any day ahead</span>
         </li>
         {HUNT_ANCHORS[0] ? (
           <li>
