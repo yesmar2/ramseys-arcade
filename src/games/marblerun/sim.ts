@@ -3,8 +3,8 @@
  *
  * A course is laid like a road: pieces of track one after another, straight or curved, each with its own
  * width, slope, bank and bumps, hanging in the dark. Tilt the world and the ball rolls the way it leans.
- * Roll off an edge and it's gone: you start again from the last checkpoint, and the clock keeps running
- * while you do.
+ * Roll off an edge and it's gone: you start again at the start of the stretch you fell from (or the last
+ * checkpoint, if that's nearer), and the clock keeps running while you do.
  *
  * x and z run across the ground and y is up. A heading h points along (cos h, sin h) in (x, z); across a
  * piece, v is measured to the right of that, along (−sin h, cos h).
@@ -149,6 +149,8 @@ export type Wall = { p: Piece; u: number; dir: 1 | -1 }
 export type Line = { p: Piece; u: number; d: number; spawn?: number; goal?: boolean }
 /** Where a ball starts, or starts again: the start, then each checkpoint. */
 export type Spawn = { p: Piece; u: number; x: number; z: number; y: number; h: number; d: number; next: number }
+/** A place on the track to go back to after a fall. */
+export type Safe = Omit<Spawn, 'next'>
 
 export type Course = {
   key: string
@@ -161,6 +163,13 @@ export type Course = {
   walls: Wall[]
   lines: Line[]
   spawns: Spawn[]
+  /**
+   * Where a ball goes back to after a fall: the last of these it rolled past, or its checkpoint if that's
+   * further on. There's one near the start of every piece but a jump's run-up, kicker and gap (from a
+   * standstill there a jump can't be made), so a fall costs the fall and the stretch it was on, not
+   * everything since the checkpoint.
+   */
+  safe: Safe[]
   minY: number
   maxY: number
   box: [number, number, number, number]
@@ -343,6 +352,7 @@ export function makeCourse(pieces: Piece[], meta: { key: string; name: string; o
     walls: [],
     lines: [],
     spawns: [],
+    safe: [],
     minY: Infinity,
     maxY: -Infinity,
     box: [Infinity, -Infinity, Infinity, -Infinity],
@@ -395,6 +405,10 @@ export function makeCourse(pieces: Piece[], meta: { key: string; name: string; o
     }
     if (p.goal) course.lines.push({ p, u: p.goalU!, d: p.d0 + p.goalU!, goal: true })
   }
+  for (const p of pieces) {
+    if (p.start || p.gap || p.kicker || pieces[p.index + 1]?.kicker) continue
+    course.safe.push(spawnAt(p, Math.min(1.8, p.len / 2)))
+  }
   return course
 }
 
@@ -429,6 +443,8 @@ export type Ball = {
   groundY: number
   flight: number
   support: Surface | null
+  /** The last of the course's safe places it rolled past (course.safe), −1 before the first. */
+  safe: number
 }
 
 export function newBall(course: Course, at = 0): Ball {
@@ -454,15 +470,21 @@ export function newBall(course: Course, at = 0): Ball {
     groundY: 0,
     flight: 0,
     support: null,
+    safe: -1,
   }
   respawn(course, b, at)
   b.next = course.spawns[at]!.next
   return b
 }
 
-/** Back to a spawn, still, with the clock where it was. */
+/**
+ * Back on the track, still, with the clock where it was: at its checkpoint (the start, for a new ball), or
+ * at the last safe place it rolled past if that's further on.
+ */
 export function respawn(course: Course, b: Ball, at = b.cp): Ball {
-  const sp = course.spawns[at]!
+  const cp = course.spawns[at]!
+  const safe = b.safe >= 0 ? course.safe[b.safe] : undefined
+  const sp = safe && safe.d > cp.d ? safe : cp
   b.x = sp.x
   b.z = sp.z
   b.y = sp.y + BALL_R
@@ -471,7 +493,8 @@ export function respawn(course: Course, b: Ball, at = b.cp): Ball {
   b.lost = false
   b.groundY = sp.y
   b.flight = 0
-  b.support = null
+  // On the track there, so the camera looks along it at once.
+  b.support = { p: sp.p, u: sp.u, v: 0, y: sp.y }
   b.cp = at
   return b
 }
@@ -592,6 +615,12 @@ export function step(course: Course, b: Ball, tilt: Tilt): Ball {
       b.lost = true
       b.falls += 1
     }
+  }
+
+  // The last safe place it has rolled past, to go back to after a fall.
+  if (!b.air && b.support) {
+    const d = b.support.p.d0 + b.support.u
+    while (b.safe + 1 < course.safe.length && course.safe[b.safe + 1]!.d <= d) b.safe += 1
   }
 
   collide(course, b)

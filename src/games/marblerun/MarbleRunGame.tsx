@@ -46,7 +46,7 @@ const COUNT_FROM = 3
 const COUNT_STEP = 0.8
 /** Past the goal, a moment to see the time before the card comes. */
 const CARD_AFTER = 1.1
-/** Off the edge, how long the ball is watched falling before it starts again at the checkpoint. */
+/** Off the edge, how long the ball is watched falling before it's put back on the track. */
 const FALL_FOR = 1.1
 /** How far a thumb drags the stick for a full tilt, in CSS pixels. */
 const STICK_R = 58
@@ -236,8 +236,9 @@ function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: num
  * MarbleRunGame mounts it for today; when midnight has brought a new course by the next start, it asks for
  * the new day with `onNewDay`, which mounts it again, with `notice` to say why when a run was lost to it.
  *
- * Roll off an edge and the marble starts again at the last checkpoint, with the clock still running: a
- * fall costs the time it takes, never a penalty on top. The ghost is the run to beat, rolling alongside
+ * Roll off an edge and the marble is put back on the track at the start of the stretch it fell from (never
+ * a jump's run-up: sim.ts respawn), with the clock still running: a fall costs the time it takes, never a
+ * penalty on top. The ghost is the run to beat, rolling alongside
  * the whole way with whose it is over it: the board's #1 (today's, or on a past course the #1 its day
  * closed with: boardGhost.ts), unless your own best here is faster; with nobody on the board, your best
  * here if it beats the blue ball, else the blue ball's.
@@ -592,7 +593,7 @@ function MarbleRunDay({
           if (running && g.steps % GHOST_EVERY === 0) g.record.push(b.x, b.y, b.z)
           g.steps += 1
           if (g.phase === 'fallen') {
-            // Watched falling, with the clock running, then back to the checkpoint.
+            // Watched falling, with the clock running, then back on the track.
             b.t += DT
             b.vy -= G * DT
             b.x += b.vx * DT
@@ -624,12 +625,12 @@ function MarbleRunDay({
             }
           }
           if (b.lost) {
-            // Off the edge: watched a moment, then back at the checkpoint with the clock still running.
+            // Off the edge: watched a moment, then back on the track with the clock still running.
             g.phase = 'fallen'
             g.fallFor = FALL_FOR
             b.lost = false
             b.air = true
-            sayRef.current('Off the edge · back to the checkpoint', 1.4)
+            sayRef.current('Off the edge · back on the track', 1.4)
             sfx('whoosh')
             haptic('crash')
           } else if (b.finished) {
