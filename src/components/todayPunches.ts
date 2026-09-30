@@ -44,7 +44,7 @@ import {
 /*
  * Today's ticket as the viewer has it (lib/today.ts): the day's live dailies as punches, and where the day
  * stands (how many are punched, whether it's kept or a Full ticket, the streak with it, the day's share).
- * The Today page's ticket (TodayCard) and the home page's Today row (TodayRow) both draw from it, so the
+ * The Today page's ticket (TodayCard) and the home page's Today row (HomeToday) both draw from it, so the
  * two always agree. It comes in the chunk of whichever shows it, with the dailies' plans.
  */
 
