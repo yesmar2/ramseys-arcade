@@ -3,12 +3,13 @@ import { formatAcechaseBoardScore } from '../games/acechase/score'
 import { formatFindbugBoardScore } from '../games/findbug/score'
 import { formatBoard } from '../games/halffull/boardFigure'
 import { formatHotlapBoardScore } from '../games/hotlap/score'
+import { formatLanderBoardScore } from '../games/lander/score'
 import { formatMarblerunBoardScore } from '../games/marblerun/score'
 import { formatSpotterBoardScore } from '../games/spotter/score'
 
 /** Boards that store inverted time rather than points — they read as a clock. */
 export function isTimeBoard(slug: string): boolean {
-  return slug === 'spotter' || slug === 'findbug' || slug === 'hotlap' || slug === 'marblerun'
+  return slug === 'spotter' || slug === 'findbug' || slug === 'hotlap' || slug === 'marblerun' || slug === 'lander'
 }
 
 /** Boards that store inverted tries rather than points: Ace Chase's, the tries a day's first bullseye took. */
@@ -36,13 +37,14 @@ export function formatLeaderboardScore(slug: string, score: number): string {
   if (slug === 'findbug') return formatFindbugBoardScore(score)
   if (slug === 'hotlap') return formatHotlapBoardScore(score)
   if (slug === 'marblerun') return formatMarblerunBoardScore(score)
+  if (slug === 'lander') return formatLanderBoardScore(score)
   if (slug === 'halffull') return formatBoard(score)
   return score.toLocaleString()
 }
 
 /** The gap between two times on a time board: in tenths, or hundredths for a lap or a run, which are won by them. */
 export function formatTimeGap(slug: string, ms: number): string {
-  return `${(ms / 1000).toFixed(slug === 'hotlap' || slug === 'marblerun' ? 2 : 1)}s`
+  return `${(ms / 1000).toFixed(slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' ? 2 : 1)}s`
 }
 
 /**

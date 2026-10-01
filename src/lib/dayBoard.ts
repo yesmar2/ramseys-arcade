@@ -126,6 +126,16 @@ const LOADERS: Record<string, () => Promise<DayCourse>> = {
       playHref: (day) => `${gamePlayHref('marblerun')}?day=${day}`,
     }
   },
+  async lander() {
+    const { FIRST_DAY, caveDay, caveNumber, dailyCave } = await import('../games/lander/daily')
+    return {
+      first: FIRST_DAY,
+      today: () => caveDay(),
+      title: (day) => `#${caveNumber(day)} ${dailyCave(day).name}`,
+      anchor: (day) => day,
+      playHref: (day) => `${gamePlayHref('lander')}?day=${day}`,
+    }
+  },
 }
 
 const loaded = new Map<string, Promise<DayCourse>>()

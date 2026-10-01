@@ -132,12 +132,14 @@ try {
   const { SPOTTER_SCORE_BASE } = await server.ssrLoadModule('/src/games/spotter/score.ts')
   const { HOTLAP_SCORE_BASE } = await server.ssrLoadModule('/src/games/hotlap/score.ts')
   const { MARBLERUN_SCORE_BASE } = await server.ssrLoadModule('/src/games/marblerun/score.ts')
+  const { LANDER_SCORE_BASE } = await server.ssrLoadModule('/src/games/lander/score.ts')
   // The boards that keep a time, as each one prints it (leaderboardFormat.ts).
   const CLOCKS = {
     findbug: { clock: 'tenths', base: FINDBUG_SCORE_BASE },
     spotter: { clock: 'seconds', base: SPOTTER_SCORE_BASE },
     hotlap: { clock: 'hundredths', base: HOTLAP_SCORE_BASE },
     marblerun: { clock: 'hundredths', base: MARBLERUN_SCORE_BASE },
+    lander: { clock: 'hundredths', base: LANDER_SCORE_BASE },
   }
   // The boards that keep a percent, in hundredths of a point (Half Full's 9120 is 91.2%): the figure says its unit.
   const PERCENTS = new Set(['halffull'])

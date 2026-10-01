@@ -84,9 +84,12 @@ export type Route =
    */
   | { name: 'notFound'; killScreen?: boolean }
 
-/** The admin's tabs past the overview: Ace Chase's planned holes, Hot Lap's planned tracks, Marble Run's planned courses, Half Full's days, and every trophy and egg. */
-export type AdminSection = 'holes' | 'tracks' | 'courses' | 'pours' | 'trophies'
-const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', 'pours', 'trophies']
+/**
+ * The admin's tabs past the overview: Ace Chase's planned holes, Hot Lap's planned tracks, Marble Run's planned
+ * courses, Lander's planned caves, Half Full's days, and every trophy and egg.
+ */
+export type AdminSection = 'holes' | 'tracks' | 'courses' | 'caves' | 'pours' | 'trophies'
+const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', 'caves', 'pours', 'trophies']
 
 /** Fired after in-app navigation has changed the URL. */
 export const ROUTE_EVENT = 'skermix:route'

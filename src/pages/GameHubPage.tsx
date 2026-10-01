@@ -37,6 +37,7 @@ const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard')
 /** Half Full's Today's Pour, the same way. */
 const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourCard))
 const TodaysCourseCard = lazyPage(() => import('../components/TodaysCourseCard').then((m) => m.TodaysCourseCard))
+const TodaysCaveCard = lazyPage(() => import('../components/TodaysCaveCard').then((m) => m.TodaysCaveCard))
 
 /** Each daily's Today card, the run that counts, at the top of its Today tab. */
 const TODAY_CARDS: Partial<Record<string, typeof TodaysHoleCard>> = {
@@ -45,6 +46,7 @@ const TODAY_CARDS: Partial<Record<string, typeof TodaysHoleCard>> = {
   findbug: TodaysWantedCard,
   halffull: TodaysPourCard,
   marblerun: TodaysCourseCard,
+  lander: TodaysCaveCard,
 }
 
 /**

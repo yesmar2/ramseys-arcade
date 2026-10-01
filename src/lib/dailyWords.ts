@@ -5,7 +5,7 @@ import { isRankedGame } from '../data/games'
  * the game's page and its tabs, the past days, the start and result cards, and the labels that say what
  * a run counts toward (components/RunLabel.tsx).
  *
- * Only today's course counts toward your rank, on a daily that's ranked (Hot Lap, Marble Run); on one just
+ * Only today's course counts toward your rank, on a daily that's ranked (Hot Lap, Marble Run, Lander); on one just
  * for fun (Ace Chase, Find the Bug, Half Full: data/games.ts Game.ranked) it's only yours. A past course is
  * one of two things: a board of its own that isn't ranked (Hot Lap's tracks), or practice that saves
  * nothing (everyone else's).
@@ -77,6 +77,15 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     playToday: 'Roll today’s course',
     past: 'practice',
     hudPast: 'Past course · practice',
+  },
+  lander: {
+    course: 'cave',
+    today: 'Today’s cave',
+    pastTab: 'Past caves',
+    verb: 'Fly',
+    playToday: 'Fly today’s cave',
+    past: 'practice',
+    hudPast: 'Past cave · practice',
   },
 }
 

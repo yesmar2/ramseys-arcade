@@ -221,9 +221,10 @@ function counted(n: number, one: string): string {
   return `${n.toLocaleString()} ${n === 1 ? one : `${one}s`}`
 }
 
-/** "raced", "played": the verb on a start button, done. */
+/** "raced", "played", "flown": the verb on a start button, done ("Not flown yet"). */
 function done(verb: string): string {
   const v = verb.toLowerCase()
+  if (v === 'fly') return 'flown'
   return v.endsWith('e') ? `${v}d` : `${v}ed`
 }
 

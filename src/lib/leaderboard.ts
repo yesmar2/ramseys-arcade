@@ -43,6 +43,7 @@ export const LEADERBOARD_GAMES = [
   'hotlap',
   'halffull',
   'marblerun',
+  'lander',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 

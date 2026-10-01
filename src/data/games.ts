@@ -260,6 +260,16 @@ export const games: Game[] = [
     inDevelopment: true,
     daily: true,
   },
+  {
+    name: 'Lander',
+    slug: 'lander',
+    tags: ['arcade', 'quick'],
+    description: 'A new cave every day, the same for everyone. Fly the ship down it and set it down on the pad at the bottom against the clock: touch the rock and you’re back at the last gate. Beat the blue ship.',
+    accent: PALETTE.amber,
+    playable: true,
+    inDevelopment: true,
+    daily: true,
+  },
 ]
 
 export function getGame(slug: string) {

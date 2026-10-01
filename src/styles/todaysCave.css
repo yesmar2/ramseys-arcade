@@ -1,0 +1,15 @@
+/*
+ * Lander's cave from the side on Today's Cave (TodaysCaveCard.tsx): the rock the game flies in, the cave in
+ * violet and magenta light as the archive draws it (CaveDrawing.tsx). The same in either theme, as the game is.
+ */
+.evp-screen.tcv__screen {
+  background: #0b0716;
+}
+
+.tcv-plan {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}

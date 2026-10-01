@@ -167,7 +167,7 @@ html[data-theme='dark'] .dp-tip {
   height: 100%;
 }
 
-/* A drawing that keeps its own shape (Marble Run's, 16:10) on the dark it's drawn on, filling the box round it. */
+/* A drawing that keeps its own shape (Marble Run's 16:10, Lander's tall caves) on the dark it's drawn on, filling the box round it. */
 .dp-art__ground {
   position: absolute;
   inset: 0;
@@ -176,6 +176,10 @@ html[data-theme='dark'] .dp-tip {
 
 .dp-art__ground--marble {
   background: #07040f;
+}
+
+.dp-art__ground--cave {
+  background: #0b0716;
 }
 
 /* ---------- the cards ---------- */

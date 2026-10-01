@@ -1,0 +1,29 @@
+/*
+ * The admin's Cave Book (AdminCaveBook.tsx), on the Track Book's layout (adminBooks.css): Lander's caves drawn
+ * from the side in the game's dark rock, with the violet-to-magenta tunnel (CaveDrawing.tsx). Caves run tall,
+ * so their pictures are square.
+ */
+
+.vb-map {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0.7rem;
+  background: #0b0716;
+}
+
+.tb-feature .vb-map {
+  border-radius: 0.9rem;
+}
+
+/* Today's stretches, in the order they come. */
+.vb-stretches {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.vb-note {
+  margin-top: 1rem;
+}

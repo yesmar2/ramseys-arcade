@@ -1457,6 +1457,91 @@ function MarbleRun({ id }: { id: Id }) {
   )
 }
 
+/**
+ * Lander's cave: a shaft bending down out of the dark rock into the landing room, its walls lit violet near the
+ * top and magenta deeper down, an amber gate across it, the blue ship's cyan ghost on the way down, and your
+ * ship over the landing pad on a column of amber flame, the pad's lights running toward its middle.
+ */
+function Lander({ id }: { id: Id }) {
+  // The air: the shaft from the top, bending right into the landing room's ceiling, and the room.
+  const air =
+    'M8 -1 H18 V3 C18 6 20 8 23 9.5 C25.5 10.7 26 12 26 15 H36.5 V31 H4.5 V15 H16 C16 13 15 12 13 11 C10 9.5 8 7 8 3 Z'
+  const ship = 'M0 -1.35 L0.925 0.925 L0 0.375 L-0.925 0.925 Z'
+  return (
+    <>
+      <defs>
+        <linearGradient id={id('wall')} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8a5cff" />
+          <stop offset="1" stopColor="#ff4fd8" />
+        </linearGradient>
+        <clipPath id={id('air')}>
+          <path d={air} />
+        </clipPath>
+        <linearGradient id={id('wash')} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#ffb347" stopOpacity="0.42" />
+          <stop offset="1" stopColor="#ffb347" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <rect x="-1" y="-1" width="42" height="32" fill="#0b0716" />
+      <Stars
+        points={[
+          [2.4, 4, 0.18, 0.3],
+          [5.2, 10.5, 0.14, 0.25],
+          [23.5, 2.6, 0.16, 0.3],
+          [30.5, 6.4, 0.18, 0.3],
+          [36.8, 2.2, 0.14, 0.25],
+          [34, 11, 0.16, 0.3],
+          [1.6, 19, 0.15, 0.25],
+        ]}
+        colour="#7a5ac8"
+      />
+      {/* The walls' light spilling into the rock, the lit edge, then the air and its grid. */}
+      <path d={air} fill="none" stroke={`url(#${id('wall')})`} strokeWidth="2.6" strokeLinejoin="round" opacity="0.16" />
+      <path d={air} fill="none" stroke={`url(#${id('wall')})`} strokeWidth="1.3" strokeLinejoin="round" opacity="0.3" />
+      <path d={air} fill="#150d29" stroke={`url(#${id('wall')})`} strokeWidth="0.42" strokeLinejoin="round" />
+      <g clipPath={`url(#${id('air')})`}>
+        {[6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36].map((x) => (
+          <path key={`x${x}`} d={`M${x} -1 V31`} {...line('#8a5cff', 0.1, 0.22)} />
+        ))}
+        {[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29].map((y) => (
+          <path key={`y${y}`} d={`M4 ${y} H37`} {...line('#8a5cff', 0.1, 0.22)} />
+        ))}
+      </g>
+      {/* The gate across the shaft, dashed, with a post at each wall. */}
+      <path d="M8.3 4.6 L18.1 4.2" {...line('#f5b942', 0.32)} strokeDasharray="0.9 0.7" />
+      <circle cx="8.3" cy="4.6" r="0.42" fill="#f5b942" />
+      <circle cx="18.1" cy="4.2" r="0.42" fill="#f5b942" />
+      {/* The landing pad, its light rising, and its lights. */}
+      <rect x="21" y="23.6" width="11" height="3.6" fill={`url(#${id('wash')})`} />
+      <rect x="21" y="27.2" width="11" height="0.6" rx="0.2" fill="#ffb347" />
+      {[22, 24.2, 26.5, 28.8, 31].map((x, i) => (
+        <circle key={x} cx={x} cy="26.75" r="0.24" fill={i === 2 ? '#fff4d6' : '#ffb347'} opacity={i === 2 ? 1 : 0.55} />
+      ))}
+      {/* The blue ship's ghost, on its way down the shaft. */}
+      <g transform="translate(16.6 9.2) rotate(28) scale(1.5)">
+        <path d={ship} fill="#46e4ff" fillOpacity="0.14" stroke="#46e4ff" strokeWidth="0.13" strokeLinejoin="round" />
+      </g>
+      {/* Your ship, coming down on the pad on its flame, sparks falling away under it. */}
+      <Glow id={id} name="burn" cx={26.4} cy={23.4} r={4.2} colour="#ff9f45" strength={0.45} />
+      <g transform="translate(26.6 18.8) rotate(-9) scale(1.9)">
+        <path d="M-0.42 0.375 L0 2.7 L0.42 0.375 Z" fill="#ff8c32" opacity="0.92" />
+        <path d="M-0.22 0.375 L0 1.6 L0.22 0.375 Z" fill="#ffecaa" />
+        <path d={ship} fill="#ff9f45" fillOpacity="0.22" stroke="#ff9f45" strokeOpacity="0.25" strokeWidth="0.42" strokeLinejoin="round" />
+        <path d={ship} fill="none" stroke="#fff3e4" strokeWidth="0.17" strokeLinejoin="round" />
+        <circle cx="0" cy="-0.35" r="0.17" fill="#fff3e4" />
+      </g>
+      {[
+        [25.2, 25.4, 0.32],
+        [27.9, 25.9, 0.26],
+        [26.1, 26.4, 0.22],
+        [24.4, 26.2, 0.18],
+      ].map(([x, y, r]) => (
+        <rect key={`${x}-${y}`} x={x! - r!} y={y! - r!} width={r! * 2} height={r! * 2} fill="#ffc46a" opacity="0.85" />
+      ))}
+    </>
+  )
+}
+
 const SCENES: Record<string, Scene> = {
   asteroids: Asteroids,
   patriot: Patriot,
@@ -1477,6 +1562,7 @@ const SCENES: Record<string, Scene> = {
   hotlap: HotLap,
   halffull: HalfFull,
   marblerun: MarbleRun,
+  lander: Lander,
 }
 
 /**

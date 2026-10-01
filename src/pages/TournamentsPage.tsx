@@ -94,6 +94,7 @@ const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard')
 // Today's Pour builds the day's glasses, so it comes in one too.
 const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourCard))
 const TodaysCourseCard = lazyPage(() => import('../components/TodaysCourseCard').then((m) => m.TodaysCourseCard))
+const TodaysCaveCard = lazyPage(() => import('../components/TodaysCaveCard').then((m) => m.TodaysCaveCard))
 
 async function fetchTournamentDetail(
   id: string,
@@ -891,6 +892,11 @@ export function TournamentsPage() {
               {isGameListed('marblerun') ? (
                 <Suspense fallback={null}>
                   <TodaysCourseCard />
+                </Suspense>
+              ) : null}
+              {isGameListed('lander') ? (
+                <Suspense fallback={null}>
+                  <TodaysCaveCard />
                 </Suspense>
               ) : null}
               {lineup.lastWeekly ? (

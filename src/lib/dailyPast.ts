@@ -132,9 +132,10 @@ export function stripDayWords(day: string): string {
   return `${weekday} ${date}`
 }
 
-/** "raced", "played", "poured", "rolled": the game's verb, done. */
+/** "raced", "played", "poured", "rolled", "flew": the game's verb, done. */
 export function verbDone(slug: string): string {
   const verb = dailyWords(slug).verb.toLowerCase()
+  if (verb === 'fly') return 'flew'
   return verb.endsWith('e') ? `${verb}d` : `${verb}ed`
 }
 

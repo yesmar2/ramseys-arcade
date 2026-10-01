@@ -377,6 +377,28 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'A past course', kind: 'practice', sub: 'Roll any past course. Nothing is saved: no board, no tickets, no rank.' },
     ],
   },
+  lander: {
+    goal: 'Fly down today’s cave and land on the pad at the bottom, fastest. A new cave comes every day at midnight, New York time.',
+    controls: [
+      { does: 'Turn', touch: 'Drag anywhere: the nose points the way you drag', keys: '← → or A D' },
+      { does: 'Engine', touch: 'Drag further for more', keys: '↑, W or Space' },
+      { does: 'Start the run again', touch: '↻', keys: 'R' },
+    ],
+    scores: [
+      { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
+      { what: 'Touch the rock', pts: 'the time it takes', sub: 'back to the last gate, clock running' },
+    ],
+    ends: 'Down on the landing pad, slowly and level. Fly it as often as you like.',
+    tip: 'Gravity is free speed: let the ship fall down the shafts, then turn the nose up and brake before the bottom. Come down onto the pad slowly and level: the speed by your ship turns green when it’s slow enough.',
+    counts: [
+      {
+        what: 'Today’s cave',
+        kind: 'counts',
+        sub: 'Your best run today goes on today’s board, your week and your rank.',
+      },
+      { what: 'A past cave', kind: 'practice', sub: 'Fly any past cave. Nothing is saved: no board, no tickets, no rank.' },
+    ],
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {
