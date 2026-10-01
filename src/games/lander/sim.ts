@@ -4,9 +4,13 @@
  *
  * Metres and seconds, y up. A cave is a chain of nodes down its middle, each with a half-width: the air is
  * every point inside a node's circle or between two neighbouring nodes' sides, plus a room at each end, less
- * its pillars. Everything else is rock, and touching rock is a crash: the ship is back at the last gate it
- * passed, with the clock still running. The run ends set down on the landing pad at the bottom, gently and
- * near level.
+ * its pillars. Everything else is rock. Met gently, rock is a bump: the ship is knocked back off it and flies
+ * on. Hit hard, it's a crash: the ship is back at the last gate it passed, with the clock still running. The
+ * run ends set down on the landing pad at the bottom, gently and near level.
+ *
+ * Ramsey found the first caves "extremely hard" (2026-10-01) and kept the landing as it was: the ship slows
+ * itself (DRAG), turns a little slower and comes upright with hands off, the caves are a quarter roomier, and
+ * only a hard hit crashes (BUMP_SPEED).
  *
  * No imports, so a script can run this with plain Node (scripts/lander-daily.mjs plans the days with it).
  * The caves a day is dug from depend on everything here: once a day is planned, changing the digger or the
@@ -19,9 +23,18 @@ export const G = 4
 /** The engine's push along the nose, m/s²: nearly three times gravity. */
 export const THRUST = 11
 /** How fast the ship turns, rad/s. */
-export const TURN = 3.8
-export const DRAG = 0.05
+export const TURN = 3
+/** Air that slows the ship by itself: falling, it tops out near 14 m/s. */
+export const DRAG = 0.25
 export const DRAG2 = 0.003
+/** Hands off both controls, the nose eases back upright this fast, rad/s. */
+export const LEVEL_RATE = 1.4
+/** Rock met slower than this, m/s, straight into it, is a bump: the ship is knocked back off it. Faster is a crash. */
+export const BUMP_SPEED = 6
+/** A bump gives back this much of the speed it came into the rock with. */
+const BOUNCE = 0.35
+/** Sliding along rock loses speed this fast, a share a second. */
+const SCRAPE = 1.5
 /** A landing is a touch on the pad no faster than this, m/s, and no more tilted than this, rad (19°). */
 export const LAND_SPEED = 3.2
 export const LAND_ANGLE = 0.33
@@ -163,6 +176,49 @@ export function nearestNode(cave: Cave, x: number, y: number, hint: number): num
   return best
 }
 
+/** Whether the whole ship, at a place and angle, is in the air. */
+function hullInAir(cave: Cave, x: number, y: number, a: number, hint: number): boolean {
+  for (const [hx, hy] of HULL) {
+    const [wx, wy] = toWorld({ x, y, a }, hx, hy)
+    if (!inAir(cave, wx, wy, hint)) return false
+  }
+  return true
+}
+
+/**
+ * Which way is out of the rock at a point just inside it: the unit step toward the nearest air, from a
+ * pillar's middle outward, toward the tunnel's middle line, or into a room.
+ */
+export function outOfRock(cave: Cave, x: number, y: number, hint: number): [number, number] {
+  const unit = (dx: number, dy: number): [number, number] => {
+    const l = Math.hypot(dx, dy) || 1
+    return [dx / l, dy / l]
+  }
+  for (const p of cave.pillars) if ((x - p.x) ** 2 + (y - p.y) ** 2 < p.r * p.r) return unit(x - p.x, y - p.y)
+  // The air nearest the point: a node's circle (how far outside its edge), or a room (how far outside it).
+  let best: [number, number] = [0, 1]
+  let gap = Infinity
+  const N = cave.nodes
+  for (let i = Math.max(0, hint - 30), hi = Math.min(N.length - 1, hint + 30); i <= hi; i++) {
+    const a = N[i]!
+    const d = Math.hypot(a.x - x, a.y - y) - a.r
+    if (d < gap) {
+      gap = d
+      best = unit(a.x - x, a.y - y)
+    }
+  }
+  for (const m of cave.rooms) {
+    const cx = clamp(x, m.x0, m.x1)
+    const cy = clamp(y, m.y0, m.y1)
+    const d = Math.hypot(cx - x, cy - y)
+    if (d > 0 && d < gap) {
+      gap = d
+      best = unit(cx - x, cy - y)
+    }
+  }
+  return best
+}
+
 function crosses(ax: number, ay: number, bx: number, by: number, g: Gate): boolean {
   const d1 = (g.x1 - g.x0) * (ay - g.y0) - (g.y1 - g.y0) * (ax - g.x0)
   const d2 = (g.x1 - g.x0) * (by - g.y0) - (g.y1 - g.y0) * (bx - g.x0)
@@ -194,8 +250,8 @@ export type Ship = {
 /** The hands on the ship: turn −1…1 (right is +), and the engine 0…1. */
 export type Hands = { turn: number; thrust: number }
 
-/** A step's news: a crash, down on the landing pad, down gently on the start pad, or a gate passed. */
-export type StepEvent = 'crash' | 'landed' | 'rest' | { gate: number } | null
+/** A step's news: a crash, a bump off the rock, down on the landing pad, down gently on the start pad, or a gate passed. */
+export type StepEvent = 'crash' | 'bump' | 'landed' | 'rest' | { gate: number } | null
 
 /** A point on the ship, in the world: +y is the nose, +x the right wing. */
 export function toWorld(s: { x: number; y: number; a: number }, px: number, py: number): [number, number] {
@@ -233,10 +289,15 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT): StepEvent {
       return null
     }
   }
+  const pa = s.a
   if (s.rest) {
     if (hands.thrust * THRUST * Math.cos(s.a) <= G + 0.05) return null
     s.rest = false
-  } else s.a = wrap(s.a + clamp(hands.turn, -1, 1) * TURN * dt)
+  } else {
+    s.a = wrap(s.a + clamp(hands.turn, -1, 1) * TURN * dt)
+    // Hands off both controls: the nose comes back upright, so letting go is a way to steady the ship.
+    if (Math.abs(hands.turn) < 0.02 && hands.thrust < 0.02) s.a -= clamp(s.a, -LEVEL_RATE * dt, LEVEL_RATE * dt)
+  }
   const push = clamp(hands.thrust, 0, 1) * THRUST
   const speed = Math.hypot(s.vx, s.vy)
   const drag = DRAG + DRAG2 * speed
@@ -269,7 +330,24 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT): StepEvent {
   }
   for (const [hx, hy] of HULL) {
     const [wx, wy] = toWorld(s, hx, hy)
-    if (!inAir(cave, wx, wy, s.hint)) return 'crash'
+    if (inAir(cave, wx, wy, s.hint)) continue
+    // Rock. How fast the ship came straight into it says which: hard is a crash; gently, a bump, the ship back
+    // where it was, its speed into the rock turned round and mostly spent, a little of its speed along it lost.
+    const [nx, ny] = outOfRock(cave, wx, wy, s.hint)
+    const into = -(s.vx * nx + s.vy * ny)
+    if (into > BUMP_SPEED) return 'crash'
+    const vn = -into
+    const keep = Math.max(0, 1 - SCRAPE * dt)
+    const back = vn < 0 ? -vn * BOUNCE : vn
+    s.vx = (s.vx - vn * nx) * keep + back * nx
+    s.vy = (s.vy - vn * ny) * keep + back * ny
+    // From where it was, on along the rock with what's left: it slides, rather than sticking, where that's air.
+    const sx = px + s.vx * dt
+    const sy = py + s.vy * dt
+    if (hullInAir(cave, sx, sy, pa, s.hint)) Object.assign(s, { x: sx, y: sy, a: pa })
+    else Object.assign(s, { x: px, y: py, a: pa })
+    s.hint = nearestNode(cave, s.x, s.y, s.hint)
+    return 'bump'
   }
   const next = cave.gates[s.gate + 1]
   if (next && crosses(px, py, s.x, s.y, next)) {
@@ -386,14 +464,14 @@ function pillarAt(d: Digger, i: number, lateral: number, r: number) {
 const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void> = {
   /** Straight down: fall, then brake before the bottom. */
   shaft(d, rng) {
-    const r = within(rng, 4.6, 5.6)
+    const r = within(rng, 5.8, 7)
     d.turnTo(DOWN, d.r + within(rng, 2, 4), r)
     d.line(within(rng, 22, 38), r)
   },
   /** Level, left or right, sometimes over a hump. */
   corridor(d, rng) {
     const side = sideways(d, rng)
-    const r = within(rng, 4.2, 5)
+    const r = within(rng, 5.3, 6.3)
     d.turnTo(side, d.r + within(rng, 2, 4), r)
     d.line(within(rng, 8, 14))
     if (rng() < 0.6) {
@@ -412,13 +490,13 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
     const right = Math.cos(d.dir) > 0
     const R = d.r + within(rng, 2, 3.5)
     d.bend(R, right ? Math.PI / 2 : -Math.PI / 2)
-    d.line(within(rng, 10, 18), within(rng, 4.8, 5.6))
+    d.line(within(rng, 10, 18), within(rng, 6, 7))
     d.bend(d.r + within(rng, 2, 3.5), right ? -Math.PI / 2 : Math.PI / 2)
     d.line(within(rng, 5, 9))
   },
   /** Down in switchbacks, left and right. */
   zigzag(d, rng) {
-    const r = within(rng, 4.2, 4.7)
+    const r = within(rng, 5.3, 5.9)
     d.turnTo(DOWN, d.r + 3, r)
     const legs = 3 + Math.floor(rng() * 2)
     let side = rng() < 0.5 ? 1 : -1
@@ -429,12 +507,12 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
     }
     d.turnTo(DOWN, r + 2.2)
   },
-  /** A narrow pass. */
+  /** A narrow pass: the cave's tightest, still a ship and a half either side of the middle. */
   squeeze(d, rng) {
-    const r = within(rng, 3.1, 3.5)
+    const r = within(rng, 4.3, 4.7)
     d.line(6, r)
     d.line(within(rng, 10, 16), r)
-    d.line(6, within(rng, 4.4, 5))
+    d.line(6, within(rng, 5.5, 6.2))
   },
   /** A wide hall with pillars in the way. */
   chamber(d, rng) {
@@ -449,7 +527,7 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
       pillarAt(d, Math.round(i0 + (i1 - i0) * 0.28), side * within(rng, 3, 4), within(rng, 2, 2.6))
       pillarAt(d, Math.round(i0 + (i1 - i0) * 0.74), -side * within(rng, 3, 4), within(rng, 2, 2.6))
     }
-    d.line(9, within(rng, 4.4, 5))
+    d.line(9, within(rng, 5.5, 6.2))
   },
   /** Round a U-bend underneath and back the other way. */
   hairpin(d, rng) {
@@ -461,7 +539,7 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
   },
   /** A long slant down. */
   slant(d, rng) {
-    const r = within(rng, 4.3, 5.1)
+    const r = within(rng, 5.4, 6.4)
     const lean = within(rng, 0.65, 0.85)
     const dir = d.x > 38 ? DOWN - lean : d.x < -38 ? DOWN + lean : DOWN + (rng() < 0.5 ? lean : -lean)
     d.turnTo(dir, d.r + within(rng, 2, 4), r)
@@ -469,7 +547,8 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
   },
 }
 
-const WEIGHTS: Record<Stretch, number> = { shaft: 3, corridor: 3, climb: 1.2, zigzag: 2, squeeze: 1.4, chamber: 1.3, hairpin: 1.5, slant: 2.2 }
+// Climbs and squeezes the least: a chimney against gravity, and the tightest pass.
+const WEIGHTS: Record<Stretch, number> = { shaft: 3, corridor: 3, climb: 0.6, zigzag: 2, squeeze: 1, chamber: 1.3, hairpin: 1.5, slant: 2.2 }
 
 function pickKind(rng: () => number, kinds: Stretch[], d: Digger, tried: Set<Stretch>): Stretch | null {
   const last = kinds[kinds.length - 1]
@@ -528,7 +607,7 @@ export function caveName(n: number): string {
 export function dig(n: number, attempt = 0): Cave | null {
   const rng = mulberry32(hashString(`lander:${n}:${attempt}`))
   const start: Room = { x0: -11, x1: 11, y0: 0, y1: 13 }
-  const d = new Digger(5.5, 2.5, DOWN, 4.8)
+  const d = new Digger(5.5, 2.5, DOWN, 5.8)
   const target = within(rng, 370, 450)
   const kinds: Stretch[] = ['shaft']
   const ends: number[] = []
@@ -554,8 +633,8 @@ export function dig(n: number, attempt = 0): Cave | null {
 
   // Down into the landing room, with the pad off to one side of where the cave comes in.
   const k = d.save()
-  d.turnTo(DOWN, d.r + 3, 4.6)
-  d.line(10, 4.6)
+  d.turnTo(DOWN, d.r + 3, 5.8)
+  d.line(10, 5.8)
   if (!clear(d, k.n, start)) return null
   const last = d.nodes[d.nodes.length - 1]!
   const side = last.x > 20 ? -1 : last.x < -20 ? 1 : rng() < 0.5 ? -1 : 1
@@ -827,7 +906,8 @@ export function flyWith(cave: Cave, hands: (s: Ship) => Hands, limit = 150, cras
     if (steps % GHOST_EVERY === 0) ghost.push(r2(s.x), r2(s.y), r2(s.a), engineOn(s, input) ? ENGINE_ON : ENGINE_OFF)
     const ev = step(cave, s, input)
     steps++
-    if (ev === 'crash') {
+    // The blue ship's run (crashLimit 0) never touches rock: for it a bump is a crash.
+    if (ev === 'crash' || (ev === 'bump' && crashLimit === 0)) {
       crashes++
       if (crashes > crashLimit) break
       wreck = CRASH_FOR

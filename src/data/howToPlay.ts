@@ -386,10 +386,11 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
-      { what: 'Touch the rock', pts: 'the time it takes', sub: 'back to the last gate, clock running' },
+      { what: 'Bump the rock', pts: 'nothing', sub: 'a gentle knock bounces you off' },
+      { what: 'Hit the rock hard', pts: 'the time it takes', sub: 'back to the last gate, clock running' },
     ],
     ends: 'Down on the landing pad, slowly and level. Fly it as often as you like.',
-    tip: 'Gravity is free speed: let the ship fall down the shafts, then turn the nose up and brake before the bottom. Come down onto the pad slowly and level: the speed by your ship turns green when it’s slow enough.',
+    tip: 'Gravity is free speed: let the ship fall down the shafts, then turn the nose up and brake before the bottom. Let go of everything and the ship rights itself. Come down onto the pad slowly and level: the speed by your ship turns green when it’s slow enough.',
     counts: [
       {
         what: 'Today’s cave',

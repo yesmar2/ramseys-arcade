@@ -128,6 +128,8 @@ type Game = {
   /** Each gate's moment, then the landing's. */
   splits: number[]
   crashes: number
+  /** The run's clock at the last bump's knock, so sliding along rock knocks now and then, not every step. */
+  bumpAt: number
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
@@ -215,6 +217,7 @@ function freshGame(lander: LanderDay, chase: Chase): Game {
     throttle: 0,
     splits: [],
     crashes: 0,
+    bumpAt: -1,
     ghost: chase.ghost,
     chasing: chase.chasing,
     run: null,
@@ -279,8 +282,8 @@ function CaveTiles({ lander, ghost, chasing }: { lander: LanderDay; ghost: numbe
  * it for today; when midnight has brought a new cave by the next start, it asks for the new day with
  * `onNewDay`, which mounts it again, with `notice` to say why when a run was lost to it.
  *
- * Touch rock and the ship is back at the last gate, with the clock still running: a crash costs the time it
- * takes, never a penalty on top. The ghost is the run to beat, flying alongside the whole way with whose it is
+ * Bump the rock gently and the ship is knocked off it and flies on; hit it hard and the ship is back at the
+ * last gate, with the clock still running: a crash costs the time it takes, never a penalty on top. The ghost is the run to beat, flying alongside the whole way with whose it is
  * over it: the board's #1 (today's, or in a past cave the #1 its day closed with: boardGhost.ts), unless your
  * own best here is faster; with nobody on the board, your best here if it beats the blue ship, else the blue
  * ship's.
@@ -657,6 +660,13 @@ function LanderDayGame({
             sayRef.current(`Crashed · back to ${back}`, 1.6)
             sfx('boom')
             haptic('crash')
+          } else if (ev === 'bump') {
+            // Knocked off the rock, and on: a knock and a buzz, no more than a few times a second while it slides.
+            if (g.t - g.bumpAt > 0.3) {
+              sfx('hit')
+              haptic('hit')
+            }
+            g.bumpAt = g.t
           } else if (ev === 'landed') {
             g.phase = 'landed'
             g.clock = 0
