@@ -18,9 +18,13 @@ import {
  * It was five controls floating on a dotted floor, with the call written over
  * them and the clock as a ring round the middle button. Now the controls are
  * mounted in a body, each in its own socket, the call comes up on a screen at
- * the top, and the body's own rim is the clock: it lights in the colour of the
- * call and drains away round the edge, so the time left is in view wherever
- * your eye has gone to find the control.
+ * the top, and the body's own rim is the clock: it lights up and drains away
+ * round the edge, so the time left is in view wherever your eye has gone to
+ * find the control.
+ *
+ * The call, its screen and the clock are one colour whatever is called. They
+ * used to take the called control's colour, so a player could find Bop it by
+ * looking for the red one without reading the call or hearing it.
  *
  * Each control shows how it is worked: arrows round the knob, a track for the
  * lever, a chevron over the switch, a turning arrow on the wheel. With a mouse
@@ -55,6 +59,11 @@ const RED = 354
 
 function hsla(h: number, s: number, l: number, a: number) {
   return `hsla(${h}, ${s}%, ${l}%, ${a})`
+}
+
+/** The call's colour: the toy's ink, the same for every call, so it points at no control. */
+function callInk(dark: boolean, a: number) {
+  return dark ? `rgba(231, 238, 243, ${a})` : `rgba(26, 43, 60, ${a})`
 }
 
 function clamp01(v: number) {
@@ -486,7 +495,8 @@ function drawBody(
   ctx: CanvasRenderingContext2D,
   L: ConsoleLayout,
   dark: boolean,
-  hue: number | null,
+  /** A wash over the body, red when a run has ended, or null. */
+  tint: number | null,
   /** Time left on the call, 1 → 0, or null when nothing is being timed. */
   left: number | null,
   time: number,
@@ -496,8 +506,8 @@ function drawBody(
   rimPath(ctx, b)
   ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(255, 255, 255, 0.62)'
   ctx.fill()
-  if (hue !== null) {
-    ctx.fillStyle = hsla(hue, 70, 55, dark ? 0.055 : 0.045)
+  if (tint !== null) {
+    ctx.fillStyle = hsla(tint, 70, 55, dark ? 0.055 : 0.045)
     ctx.fill()
   }
   ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.14)' : 'rgba(26, 43, 60, 0.13)'
@@ -517,7 +527,7 @@ function drawBody(
     ctx.fill()
   }
 
-  if (hue === null || left === null) return
+  if (left === null) return
   /*
    * The clock, round the rim. Bright and heavy while an answer still pays
    * double, lighter once it only pays one, and beating in the last fifth.
@@ -529,7 +539,7 @@ function drawBody(
   rimPath(ctx, b)
   ctx.setLineDash([len * left, len + 1])
   ctx.lineCap = 'round'
-  ctx.strokeStyle = hsla(hue, 70, dark ? (quick ? 66 : 58) : quick ? 46 : 52, (quick ? 0.95 : 0.7) * beat)
+  ctx.strokeStyle = callInk(dark, (quick ? 0.9 : 0.5) * beat)
   ctx.lineWidth = Math.max(3, u * (quick ? 1.9 : 1.3))
   ctx.stroke()
   ctx.restore()
@@ -549,7 +559,7 @@ function drawScreen(
   L: ConsoleLayout,
   state: GameState,
   dark: boolean,
-  hue: number | null,
+  tint: number | null,
   word: string | null,
 ) {
   const s = L.screen
@@ -558,12 +568,12 @@ function drawScreen(
   ctx.roundRect(s.x, s.y, s.w, s.h, s.r)
   ctx.fillStyle = dark ? 'rgba(5, 9, 15, 0.5)' : 'rgba(255, 255, 255, 0.85)'
   ctx.fill()
-  if (hue !== null) {
-    ctx.fillStyle = hsla(hue, 70, 55, dark ? 0.1 : 0.07)
+  if (tint !== null) {
+    ctx.fillStyle = hsla(tint, 70, 55, dark ? 0.1 : 0.07)
     ctx.fill()
   }
   ctx.strokeStyle =
-    hue !== null ? hsla(hue, 62, dark ? 64 : 44, 0.55) : dark ? 'rgba(231, 238, 243, 0.14)' : 'rgba(26, 43, 60, 0.14)'
+    tint !== null ? hsla(tint, 62, dark ? 64 : 44, 0.55) : callInk(dark, word ? 0.5 : 0.14)
   ctx.lineWidth = Math.max(1.5, u * 0.6)
   ctx.stroke()
 
@@ -607,9 +617,9 @@ function drawScreen(
     return
   }
 
-  if (!word || hue === null) return
+  if (!word) return
   fitFont(ctx, word, s.h * 0.5, s.w * 0.86)
-  ctx.fillStyle = hsla(hue, 72, dark ? 70 : 42, 1)
+  ctx.fillStyle = callInk(dark, 1)
   ctx.fillText(word, cx, s.y + s.h * 0.53)
 }
 
@@ -693,7 +703,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
    * another with the right control answering each, so the words and the
    * controls they mean are shown together before anyone has to be quick.
    */
-  let hue: number | null = null
+  let tint: number | null = null
   let word: string | null = null
   let left: number | null = null
   const press = (control: Control) =>
@@ -703,19 +713,17 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   let spinAngle = state.spinAngle
 
   if (state.phase === 'call' && state.call) {
-    hue = CONTROL_HUE[state.call]
     if (state.gap <= 0) {
       word = CONTROL_LABEL[state.call].toUpperCase() + '!'
       left = clamp01(state.timer / state.window)
     }
   } else if (state.phase === 'gameover' && state.call) {
-    hue = RED
+    tint = RED
   } else if (state.phase === 'menu') {
     const n = Math.floor(time / DEMO_STEP)
     const demo = CONTROLS[n % CONTROLS.length]!
     const since = time - n * DEMO_STEP - 0.42
     const k = since >= 0 && since < PRESS_LIFE ? 1 - since / PRESS_LIFE : 0
-    hue = CONTROL_HUE[demo]
     word = CONTROL_LABEL[demo].toUpperCase() + '!'
     pressOf = (control) => (control === demo ? k : 0)
     // Turns already taken, so the knob and the wheel carry on from where they stopped.
@@ -736,8 +744,8 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
 
-  drawBody(ctx, L, dark, hue, left, time)
-  drawScreen(ctx, L, state, dark, hue, word)
+  drawBody(ctx, L, dark, tint, left, time)
+  drawScreen(ctx, L, state, dark, tint, word)
 
   drawBop(ctx, L, pressOf('bop'), dark, well)
   drawTwist(ctx, L, pressOf('twist'), twistAngle, dark, well)

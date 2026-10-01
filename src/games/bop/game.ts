@@ -1,5 +1,6 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx, type SoundName } from '../../lib/sound'
+import { sayCall } from './voice'
 
 /*
  * Bop: five controls on a console, and a voice that calls one at a time.
@@ -32,9 +33,10 @@ export const CONTROL_HUE: Record<Control, number> = {
 }
 
 /**
- * The sound each control makes, so the game can be played by ear: the toy
- * calls a control with its sound, and doing it makes a shorter one. They used
- * to be one chime at five pitches, which only a trained ear tells apart.
+ * The sound each control makes when it's worked. They used to be one chime at
+ * five pitches, which only a trained ear tells apart. The toy says its calls
+ * out loud now (voice.ts); a call sounds its control's sound only when the
+ * voice can't play.
  */
 export const CONTROL_SOUND: Record<Control, SoundName> = {
   bop: 'boing',
@@ -184,7 +186,7 @@ function nextCall(prev: Control | null): Control {
 
 function makeCall(state: GameState): GameState {
   const call = nextCall(state.call)
-  sfx(CONTROL_SOUND[call])
+  if (!sayCall(call)) sfx(CONTROL_SOUND[call])
   return {
     ...state,
     phase: 'call',

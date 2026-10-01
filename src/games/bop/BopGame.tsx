@@ -22,6 +22,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { loadVoice } from './voice'
 import { beginRun } from '../../lib/runSession'
 
 /**
@@ -123,6 +124,11 @@ export function BopGame() {
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
+
+  // The toy's voice, fetched while the start card is up so the first call is said.
+  useEffect(() => {
+    void loadVoice()
+  }, [])
 
   // Dev only: lets a script read the current call to drive a play-test.
   useEffect(() => {

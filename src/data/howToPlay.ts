@@ -238,6 +238,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Inside half the ring', pts: '+1 more' },
     ],
     ends: 'A wrong move, or too slow.',
+    tip: 'Turn the sound up: the toy says each call out loud.',
   },
   putt: {
     goal: 'Five holes of mini golf, each with a trick to it.',
