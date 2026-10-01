@@ -3,6 +3,7 @@ import {
   CLEAR_FLASH,
   CLEAR_TIME,
   createInitialState,
+  pelletsViewport,
   queueDir,
   startGame,
   surgeReady,
@@ -393,8 +394,12 @@ export function makeSim(): Sim<GameState> {
     render: (ctx, s, w, h) => renderGame(ctx, shown(s), w, h),
     // The maze does not depend on the screen, so a resize keeps the run.
     resize: (s) => s,
-    // The still: the chasers turned blue and the player running them down, trail and all.
-    poster: { seed: 3, at: 11 },
+    // The still: the chasers turned blue and the player running them down, trail and all. A maze on end
+    // plays out differently, so it has a pick of its own; the kit reads this as the preview is made.
+    get poster() {
+      const { cols, rows } = pelletsViewport()
+      return rows > cols ? { seed: 33, at: 10.2 } : { seed: 3, at: 11 }
+    },
     hold: 1.4,
     // Read by the kit at every frame, so it follows the shape of the maze being played.
     get zoom() {
