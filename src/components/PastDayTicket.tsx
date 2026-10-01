@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { getGame, isGameListed } from '../data/games'
 import { dailyNumber as holeNumber } from '../games/acechase/daily'
 import { dayNumber as wantedNumber, dayWanted, wantedNames } from '../games/findbug/daily'
@@ -8,31 +7,24 @@ import { glassNames } from '../games/halffull/planSvg'
 import { dailyTrack, trackNumber } from '../games/hotlap/daily'
 import { dailyCave } from '../games/lander/daily'
 import { dailyCourse } from '../games/marblerun/daily'
-import { dailyTabHref, dayBoardHref, gamePlayHref } from '../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref } from '../hooks/useHashRoute'
 import { useDailyDays, type ArchiveDay, type DailyDays } from '../lib/archive'
 import { todaysHole } from '../lib/dailyHole'
-import { verbDone } from '../lib/dailyPast'
 import { dailyWords } from '../lib/dailyWords'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { andList, ordinal } from '../lib/profileMath'
-import { doneOf, markOf } from '../lib/pastDays'
-import { liveDailies, TODAY_DAILIES, TODAY_KEEP, type TodayDaily, type TodayKey, type TodayServerDay } from '../lib/today'
-import { PlayIcon } from './chromeIcons'
-import { GameArt } from './GameArt'
-import { DailyKindTag } from './DailyKindTag'
-import { CheckIcon } from './TodayCard'
-import { StarIcon } from './TodayChip'
+import { doneOf, markOf, type DayMark } from '../lib/pastDays'
+import { liveDailies, TODAY_DAILIES, type TodayDaily, type TodayKey, type TodayServerDay } from '../lib/today'
+import { DayTicket, DoneCount, type TicketTile } from './DayTicket'
 import { capital, dayParts, shortDate, WEEKDAY_NAMES } from './todayPunches'
-import '../styles/today.css'
-import '../styles/pastDay.css'
 
 /*
- * A past day's ticket on the Dailies page (/dailies/YYYY-MM-DD), in place of today's: the dailies on that
- * day's card, each with its course that day, how you did (your place and result, from the day's board,
- * when the game has places), who was 1st, the way to play it again and its Ranked board; and on the stub,
- * whether the day was kept. A game without places that day (no 1st on its board) shows your result only.
- * Playing a past course again never changes the day.
+ * A past day's ticket on the Dailies page (/dailies/YYYY-MM-DD), in place of today's and in the same frame
+ * (DayTicket.tsx): the dailies on that day's card as tiles, each with how you did (your result, and your
+ * place under it where the game had places that day), or the way to play that day's course again, which
+ * never changes the day. A tile's picture and name open the course's card on its game's Past tab, with
+ * the day's boards. On the stub, whether the day was kept, and the streak as it stood that night.
  */
 
 /**
@@ -62,53 +54,39 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
   return { kicker: `Course #${course.n}`, title: course.name, play: `${gamePlayHref('marblerun')}?day=${day}`, page: dailyTabHref('marblerun', 'past', day) }
 }
 
-const CrownIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M3 8l4.5 3.5L12 5l4.5 6.5L21 8l-2 11H5z" />
-  </svg>
-)
-
-/** One daily on the day's ticket, worked out once for both layouts. */
-type Slot = {
-  daily: TodayDaily
-  game: string
-  kicker: string
-  title: string
-  play: string
-  /** The course's card on the game's Past tab. */
-  page: string
-  done: boolean
-  /** "38th of 65", or the result alone where there were no places; null when not played (or not known yet). */
-  you: { place: string | null; result: string } | null
-  /** "Not raced", once the day's known not to have been played; null signed out. */
-  not: string | null
-  /** The day's 1st and its field, where the day had places. */
-  first: { name: string; result: string; field: string } | null
-  /** The day's Ranked board, where it has one. */
-  board: string | null
-  verb: string
-}
-
-function slotOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServerDay | undefined, signedIn: boolean): Slot {
+/** A daily on the day's ticket, as its tile shows it. */
+function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServerDay | undefined): TicketTile {
   const slug = daily.slug
-  const own = courseOf(daily.key, day)
+  const game = getGame(slug)?.name ?? daily.label
+  const { kicker, title, play, page } = courseOf(daily.key, day)
   const entry: ArchiveDay | undefined = days.days?.find((d) => d.day === day)
-  const fmt = (score: number) => formatLeaderboardScore(slug, score)
   const you = entry?.you ?? null
   // The account's word first (it counts every tag it owns); the board's, for the tag on show, besides.
   const done = Boolean(said?.done?.includes(daily.key)) || you != null
-  const top = entry?.top ?? null
+  const verb = dailyWords(slug).verb
   return {
-    daily,
-    game: getGame(slug)?.name ?? daily.label,
-    ...own,
+    key: daily.key,
+    slug,
+    game,
+    course: `${kicker} · ${title}`,
+    page,
     done,
-    you: you ? { place: you.place != null && entry ? `${ordinal(you.place)} of ${entry.players}` : null, result: fmt(you.score) } : null,
-    not: signedIn && !done && (said || days.days) ? `Not ${verbDone(slug)}` : null,
-    first: top && entry ? { name: top.name, result: fmt(top.score), field: `${entry.players.toLocaleString()} ${verbDone(slug)}` } : null,
-    board: top ? dayBoardHref(slug, day) : null,
-    verb: dailyWords(slug).verb,
+    result: you ? formatLeaderboardScore(slug, you.score) : done ? 'Done' : null,
+    // "38th of 65", where the game had places that day.
+    note: you?.place != null && entry ? `${ordinal(you.place)} of ${entry.players}` : null,
+    play,
+    go: verb,
+    goLabel: `${verb} ${game}, ${kicker}`,
+    goTip: null,
   }
+}
+
+/** The stub's line: whether the day kept the streak, and how many were punched. */
+function markLine(mark: DayMark, done: number, total: number): string {
+  if (mark === 'full') return `Full ticket: all ${numberWord(total)} punched.`
+  if (mark === 'kept') return `Kept: ${numberWord(done)} of ${numberWord(total)} punched.`
+  if (mark === 'played') return `Not kept: ${numberWord(done)} of ${numberWord(total)} punched.`
+  return 'Missed.'
 }
 
 export function PastDayTicket({
@@ -137,160 +115,27 @@ export function PastDayTicket({
     cave: useDailyDays('lander', name),
   }
   const card = said?.live ? TODAY_DAILIES.filter((d) => said.live!.includes(d.key) && isGameListed(d.slug)) : liveDailies(day)
-  const slots = card.map((d) => slotOf(d, day, asked[d.key], said, signedIn))
+  const tiles = card.map((d) => tileOf(d, day, asked[d.key], said))
   const count = said ? doneOf(said) : null
-  const done = count?.done ?? slots.filter((s) => s.done).length
-  const total = count?.of ?? slots.length
-  const mark = said ? markOf(said) : null
-  const weekday = WEEKDAY_NAMES[dayParts(day).weekday]
-  const more = total > TODAY_KEEP
+  const done = count?.done ?? tiles.filter((t) => t.done).length
+  const total = count?.of ?? tiles.length
+  const mark = signedIn && said ? markOf(said) : null
   // The dailies listed now that joined after the day.
   const later = TODAY_DAILIES.filter((d) => d.from != null && d.from > day && isGameListed(d.slug)).map((d) => getGame(d.slug)?.name ?? d.label)
 
   return (
-    <section className="today pdt" aria-labelledby="pdt-title">
-      <div className="today-card">
-        <div className="today-card__stub">
-          <span className="today-card__notch today-card__notch--a" aria-hidden="true" />
-          <span className="today-card__notch today-card__notch--b" aria-hidden="true" />
-          <div className="today-card__stub-top">
-            <span className="today-card__label">{shortDate(day)}</span>
-          </div>
-          {signedIn && mark ? (
-            <>
-              <p className={`pdt-status pdt-status--${mark}`}>
-                <span className="pdt-status__mark" aria-hidden="true">
-                  {mark === 'full' ? <StarIcon /> : mark === 'kept' ? <CheckIcon /> : null}
-                </span>
-                {mark === 'full' ? 'Full ticket' : mark === 'kept' ? 'Kept' : mark === 'played' ? 'Not kept' : 'Missed'}
-              </p>
-              <p className="pdt-status__line">
-                {capital(numberWord(done))} of {numberWord(total)} punched
-                {(mark === 'kept' || mark === 'full') && streak > 0 ? `: day ${streak} of your streak.` : '.'}
-              </p>
-            </>
-          ) : signedIn ? null : (
-            <p className="today-card__signin">Sign in, and each day you play is marked here, with your places.</p>
-          )}
-          <p className="today-card__rule">
-            {more ? `Any three punched kept a day. All ${numberWord(total)} was a Full ticket.` : `A day counted once all ${numberWord(total)} were punched.`}
-          </p>
-        </div>
-
-        <div className="today-card__body">
-          <div className="today-card__head">
-            <div>
-              <h2 id="pdt-title" className="today-card__title">
-                {weekday}’s ticket
-              </h2>
-              <p className="today-card__date">{signedIn ? `${done} of ${total} done` : `${capital(numberWord(total))} dailies that day`}</p>
-            </div>
-          </div>
-
-          {/* A desktop's row, as today's ticket has it. */}
-          <ul
-            className={`today-row${slots.length > 3 ? ' today-row--wide' : ''}${slots.length > 4 ? ' today-row--many' : ''} pdt-row`}
-            style={{ '--n': slots.length } as CSSProperties}
-          >
-            {slots.map((s) => (
-              <li key={s.daily.key} className={`today-slot${s.done ? ' today-slot--done' : ''}`}>
-                <a className="today-slot__art" href={s.page} tabIndex={-1} aria-hidden="true">
-                  <GameArt slug={s.daily.slug} className="today-slot__scene" />
-                  {s.done ? <span className="today-slot__stamp">Punched</span> : null}
-                </a>
-                <div className="today-slot__text">
-                  <span className="today-slot__kicker">{s.kicker}</span>
-                  <a className="today-slot__game today-game" href={s.page}>
-                    {s.game}
-                    <span aria-hidden="true"> ›</span>
-                  </a>
-                  <DailyKindTag slug={s.daily.slug} className="today-slot__kind" />
-                  <span className="today-slot__title">{s.title}</span>
-                  {s.you ? (
-                    <span className="today-slot__mine">You: {s.you.place ?? s.you.result}</span>
-                  ) : s.done ? (
-                    <span className="today-slot__mine">You: done</span>
-                  ) : s.not ? (
-                    <span className="pdt-not">{s.not}</span>
-                  ) : null}
-                  {s.you?.place ? <span className="pdt-result">{s.you.result}</span> : null}
-                  {s.first ? (
-                    <span className="pdt-first">
-                      <CrownIcon />
-                      {s.first.name}, {s.first.result} · {s.first.field}
-                    </span>
-                  ) : null}
-                </div>
-                <a className={s.done ? 'pdt-again' : 'today-slot__go'} href={s.play}>
-                  <PlayIcon />
-                  {s.verb} {s.done ? 'again' : 'it'}
-                </a>
-                {s.board ? (
-                  <a className="today-past today-slot__past" href={s.board}>
-                    Ranked board ›
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-
-          {/* A phone's list: one row a daily. */}
-          <ul className="pdt-list">
-            {slots.map((s) => (
-              <li key={s.daily.key} className={`pdt-item${s.done ? ' pdt-item--done' : ''}`}>
-                <span className="pdt-item__art" aria-hidden="true">
-                  <GameArt slug={s.daily.slug} className="pdt-item__scene" />
-                  {s.done ? (
-                    <span className="pdt-item__check">
-                      <CheckIcon />
-                    </span>
-                  ) : null}
-                </span>
-                <span className="pdt-item__text">
-                  <a className="today-game" href={s.page}>
-                    <b>{s.game}</b>
-                    <span aria-hidden="true"> ›</span>
-                  </a>
-                  <DailyKindTag slug={s.daily.slug} className="pdt-item__kind" />
-                  <span>
-                    {s.kicker} · {s.title}
-                  </span>
-                </span>
-                <span className="pdt-item__you">
-                  {s.you ? (
-                    <>
-                      <b>{s.you.place ?? s.you.result}</b>
-                      {s.you.place ? <span>{s.you.result}</span> : null}
-                    </>
-                  ) : s.done ? (
-                    <b>Done</b>
-                  ) : s.not ? (
-                    <b className="pdt-item__no">{s.not}</b>
-                  ) : null}
-                  {s.first && !s.you ? (
-                    <span>
-                      1st {s.first.name}, {s.first.result}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="pdt-item__go">
-                  <a className={s.done ? 'pdt-again' : 'today-slot__go'} href={s.play}>
-                    <PlayIcon />
-                    {s.verb} {s.done ? 'again' : 'it'}
-                  </a>
-                  {s.board ? (
-                    <a className="today-past" href={s.board}>
-                      Ranked board ›
-                    </a>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          {later.length ? <p className="pdt-later">{andList(later)} joined the Dailies later.</p> : null}
-        </div>
-      </div>
-    </section>
+    <DayTicket
+      labelId="past-ticket-title"
+      title={`${WEEKDAY_NAMES[dayParts(day).weekday]}’s ticket`}
+      count={signedIn ? <DoneCount done={done} total={total} /> : `${capital(numberWord(total))} dailies that day`}
+      kicker={shortDate(day)}
+      streak={mark ? streak : null}
+      full={mark === 'full'}
+      line={mark ? markLine(mark, done, total) : signedIn ? null : 'Sign in, and each day you play is marked here.'}
+      punched={signedIn ? { done, total } : null}
+      tiles={tiles}
+    >
+      {later.length ? <p className="today-card__note">{andList(later)} joined the Dailies later.</p> : null}
+    </DayTicket>
   )
 }
