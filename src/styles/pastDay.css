@@ -1,0 +1,779 @@
+/*
+ * The Dailies page's past days: the strip of days under the head (DayStrip), the calendar of every day a
+ * month at a time (DayPicker), and a past day's ticket (PastDayTicket), which wears today's ticket's frame
+ * (today.css) with its own lines. Marks as the page's calendar has them: kept is the ticket's orange, a
+ * Full ticket gold, a day played but not kept a ring.
+ */
+
+/* ---------- the strip ---------- */
+
+.pds {
+  display: flex;
+  align-items: stretch;
+  gap: 0.6rem;
+  margin: 1rem 0 0;
+}
+
+.pds__days {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.6rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pds__days > li {
+  display: flex;
+  min-width: 0;
+}
+
+.pds__day {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  min-width: 0;
+  min-height: 5.1rem;
+  box-sizing: border-box;
+  padding: 0.7rem 0.85rem;
+  border-radius: 1.1rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.09);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.pds__day:hover {
+  border-color: rgba(var(--ink-rgb), 0.3);
+}
+
+a.pds__day:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
+}
+
+.pds__name {
+  grid-column: 1;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pds__n {
+  grid-column: 1;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pds__mark {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.pds__mark svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.pds__sub {
+  grid-column: 1 / -1;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pds__day--kept .pds__mark {
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.pds__day--full .pds__mark {
+  background: var(--today-full);
+  color: var(--ticket-ink, #3a1406);
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--today-full);
+}
+
+.pds__day--full .pds__mark svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.pds__day--played .pds__mark {
+  border: 2px solid rgba(var(--ink-rgb), 0.22);
+}
+
+.pds__day--today {
+  border-color: rgba(255, 133, 82, 0.55);
+}
+
+.pds__day--today .pds__name {
+  color: var(--ticket-text, #c2461d);
+}
+
+.pds__day--today:not(.pds__day--kept):not(.pds__day--full) .pds__mark {
+  border: 2px dashed var(--ticket, #ff8552);
+  color: var(--ticket-text, #c2461d);
+}
+
+/* The day the page shows. */
+.pds__day--on {
+  background:
+    linear-gradient(rgba(var(--ink-rgb), 0.07), rgba(var(--ink-rgb), 0.07)),
+    var(--surface);
+  border-color: rgba(var(--ink-rgb), 0.6);
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.35);
+}
+
+.pds__day--on .pds__name {
+  color: var(--ink);
+}
+
+.pds__day--off {
+  opacity: 0.42;
+}
+
+.pds__all {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 6rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pds__all svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.pds__all:hover,
+.pds__all:focus-visible {
+  border-color: rgba(var(--ink-rgb), 0.35);
+}
+
+.pds__all:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
+}
+
+/* Narrower, the week runs in a row that scrolls, each day a small square. */
+@media (max-width: 64rem) {
+  .pds__sub {
+    display: none;
+  }
+
+  .pds__day {
+    min-height: 4.3rem;
+  }
+}
+
+@media (max-width: 48rem) {
+  .pds {
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .pds__days {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  .pds__days::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pds__days > li {
+    flex: none;
+    scroll-snap-align: start;
+  }
+
+  .pds__day {
+    width: 4.4rem;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    row-gap: 0.15rem;
+    padding: 0.55rem 0.3rem 0.6rem;
+  }
+
+  .pds__mark {
+    grid-column: 1;
+    grid-row: auto;
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .pds__all {
+    width: 4.4rem;
+    font-size: 0.72rem;
+  }
+}
+
+/* ---------- the calendar ---------- */
+
+.panel.dpk {
+  width: min(24.5rem, 100%);
+  padding: 1rem 1rem 1.1rem;
+}
+
+@media (max-width: 40rem) {
+  .panel.dpk {
+    padding-bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.dpk__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dpk__step,
+.dpk__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.dpk__step svg,
+.dpk__close svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.dpk__step:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.dpk__close {
+  margin-left: 0.25rem;
+  border-color: transparent;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.dpk__title {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dpk__title svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.dpk__step:focus-visible,
+.dpk__close:focus-visible,
+.dpk__title:focus-visible,
+.dpk__d:focus-visible,
+.dpk__month:focus-visible,
+.dpk__today:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
+}
+
+.dpk__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  justify-items: center;
+  row-gap: 0.35rem;
+  margin-top: 0.9rem;
+}
+
+.dpk__dow {
+  padding-bottom: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.dpk__d {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+a.dpk__d:hover {
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.dpk__d--out {
+  color: var(--muted);
+  opacity: 0.35;
+}
+
+.dpk__d--off {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.dpk__d--kept,
+a.dpk__d--kept:hover {
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font-weight: 800;
+}
+
+.dpk__d--full,
+a.dpk__d--full:hover {
+  background: var(--today-full);
+  color: var(--ticket-ink, #3a1406);
+  font-weight: 800;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--today-full);
+}
+
+.dpk__d--played {
+  box-shadow: inset 0 0 0 2px rgba(var(--ink-rgb), 0.22);
+}
+
+.dpk__d--today:not(.dpk__d--kept):not(.dpk__d--full) {
+  box-shadow: inset 0 0 0 2px var(--ticket, #ff8552);
+  color: var(--ticket-text, #c2461d);
+  font-weight: 800;
+}
+
+.dpk__d--on {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.dpk__foot {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.09);
+}
+
+.dpk__key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.dpk__key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dpk__key span::before {
+  content: '';
+  width: 0.75rem;
+  height: 0.75rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+}
+
+.dpk__key-kept::before {
+  background: var(--ticket, #ff8552);
+}
+
+.dpk__key-full::before {
+  background: var(--today-full);
+}
+
+.dpk__key-played::before {
+  box-shadow: inset 0 0 0 2px rgba(var(--ink-rgb), 0.22);
+}
+
+.dpk__today {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 133, 82, 0.6);
+  color: var(--ticket-text, #c2461d);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.dpk__note {
+  margin: 0.6rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.dpk__months {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dpk__month {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 100%;
+  min-height: 3.6rem;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 0.9rem;
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dpk__month small {
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.dpk__month--on {
+  background: rgba(var(--ink-rgb), 0.1);
+  box-shadow: inset 0 0 0 2px rgba(var(--ink-rgb), 0.55);
+}
+
+.dpk__month--off {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---------- a past day's ticket ---------- */
+
+.pdt-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.pdt-status__mark {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: none;
+  box-sizing: border-box;
+  border-radius: 50%;
+}
+
+.pdt-status__mark svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.pdt-status--kept .pdt-status__mark {
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.pdt-status--full .pdt-status__mark {
+  background: var(--today-full);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.pdt-status--played .pdt-status__mark,
+.pdt-status--none .pdt-status__mark {
+  border: 2px solid rgba(var(--ink-rgb), 0.22);
+}
+
+.pdt-status__line {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.pdt-not {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink);
+  opacity: 0.85;
+}
+
+.pdt-result {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.pdt-first {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pdt-first svg {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-right: 0.3rem;
+  vertical-align: -0.08em;
+  color: var(--today-full, #f5c451);
+}
+
+.pdt-again {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.6rem;
+  box-sizing: border-box;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(var(--ink-rgb), 0.25);
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pdt-again svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.pdt-again:hover,
+.pdt-again:focus-visible {
+  border-color: rgba(var(--ink-rgb), 0.5);
+}
+
+.pdt-later {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* A phone has a list: one row a daily, with its result and its ways in under its name. */
+.pdt-list {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 48rem) {
+  .pdt .pdt-row {
+    display: none;
+  }
+
+  .pdt-list {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.pdt-item {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.55rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.09);
+}
+
+.pdt-item:first-child {
+  border-top: 0;
+}
+
+.pdt-item__art {
+  position: relative;
+  width: 3rem;
+  height: 3rem;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.pdt-item__scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pdt-item__check {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(12, 18, 24, 0.55);
+  color: var(--ticket, #ff8552);
+}
+
+.pdt-item__check svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.pdt-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.pdt-item__text b {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.pdt-item__text span {
+  overflow: hidden;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pdt-item__you {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.pdt-item__you b {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ticket-text, #c2461d);
+}
+
+.pdt-item__you b.pdt-item__no {
+  color: var(--ink);
+}
+
+.pdt-item__you span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pdt-item__go {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+}
+
+.pdt-item__go .today-slot__go,
+.pdt-item__go .pdt-again {
+  min-height: 2.5rem;
+}
+
+/* ---------- Your days: each day there were Dailies opens its ticket, the one shown ringed ---------- */
+
+.today-days__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  border-radius: 0.6rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.today-days__link:hover .today-days__mark {
+  outline: 2px solid rgba(var(--ink-rgb), 0.3);
+  outline-offset: 2px;
+}
+
+.today-days__link:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
+}
+
+.today-days__day--picked .today-days__link .today-days__mark {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.today-days__day--picked .today-days__n {
+  color: var(--ink);
+  font-weight: 800;
+  opacity: 1;
+}

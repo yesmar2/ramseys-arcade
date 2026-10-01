@@ -1,5 +1,7 @@
 import { useEffect, useReducer, useState } from 'react'
+import { DayStrip } from '../components/DayStrip'
 import { PageShell } from '../components/PageShell'
+import { PastDayTicket } from '../components/PastDayTicket'
 import { openSiteMenu } from '../components/siteNav'
 import { CheckIcon, ShareDay, TodayCard } from '../components/TodayCard'
 import { FlameIcon, StarIcon } from '../components/TodayChip'
@@ -16,8 +18,12 @@ import {
 import { TodayRivals } from '../components/TodayRivals'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
+import { navigate, todayHref, useRoute } from '../hooks/useHashRoute'
+import { usePlayerName } from '../hooks/usePlayerName'
 import type { Viewer } from '../lib/deviceRuns'
+import { normalizePlayerName } from '../lib/leaderboard'
 import { numberWord } from '../lib/numberWord'
+import { doneOf, markOf, monthOf, streakThrough, useAccountDays, type DayMark } from '../lib/pastDays'
 import {
   daysToGo,
   fetchRivals,
@@ -26,7 +32,9 @@ import {
   subscribeToday,
   TODAY_KEEP,
   TODAY_MILESTONES,
+  TODAY_SINCE_FALLBACK,
   type TodayRivals as Rivals,
+  type TodayServerDay,
 } from '../lib/today'
 import '../styles/today.css'
 import '../styles/todayPage.css'
@@ -38,6 +46,10 @@ import '../styles/todayPage.css'
  * day's share as it would be sent. Signed out, it's the ticket as this device has it and a word on what
  * signing in keeps. The header's chip is the way here, and the home page's Dailies row. A day's share link
  * opens it too.
+ *
+ * Under the head, a strip of the last week's days (DayStrip), and from it a calendar of every day there
+ * have been Dailies, a month at a time (DayPicker): a past day picked, /dailies/YYYY-MM-DD, puts that day
+ * in the head and its ticket (PastDayTicket) in place of today's, with how each daily went that day.
  */
 
 const GiftIcon = () => (
@@ -154,6 +166,47 @@ function TodayHead({ ticket, signedIn, loading }: { ticket: Ticket; signedIn: bo
   )
 }
 
+/** A past day's head: the day, and, signed in, whether it was kept and the streak with it then. */
+function PastHead({ day, said, streak, signedIn }: { day: string; said: TodayServerDay | undefined; streak: number; signedIn: boolean }) {
+  const mark = said ? markOf(said) : null
+  const count = said ? doneOf(said) : null
+  return (
+    <section className="today-head" aria-labelledby="today-page-title">
+      <div className="today-head__text">
+        <span className="today-head__kicker">
+          <i aria-hidden="true" />
+          Dailies
+        </span>
+        <h1 id="today-page-title" className="today-head__title">
+          {fullDate(day)}
+        </h1>
+        <p className="today-head__line">A past day, as it finished. Playing it again never changes what it counted.</p>
+      </div>
+      <div className="today-head__side">
+        {signedIn && mark ? (
+          <div className="today-head__streak">
+            <span className={`today-head__flame${mark === 'full' ? ' today-head__flame--full' : ''}`}>{mark === 'full' ? <StarIcon /> : mark === 'kept' ? <CheckIcon /> : <FlameIcon />}</span>
+            <span className="today-head__streak-text">
+              <b>{mark === 'full' ? 'Full ticket' : mark === 'kept' ? 'Kept' : mark === 'played' ? 'Not kept' : 'Missed'}</b>
+              <span>{(mark === 'kept' || mark === 'full') && streak > 0 ? `Day ${streak} of your streak` : 'It didn’t keep the streak'}</span>
+            </span>
+          </div>
+        ) : null}
+        {count?.of ? (
+          <div className="today-head__progress">
+            <span className={`today-head__bar${mark === 'full' ? ' today-head__bar--full' : ''}`} aria-hidden="true">
+              {Array.from({ length: count.of }, (_, i) => (
+                <i key={i} className={`today-head__seg${i < count.done ? ' today-head__seg--on' : ''}`} />
+              ))}
+            </span>
+            {count.done} of {count.of} done
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
 /** The calendar's weeks: five, Monday first, the last the one that holds today. */
 const CALENDAR_WEEKS = 5
 const CALENDAR_HEAD = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -187,8 +240,8 @@ function calendarDays({ day: today, server, marks }: Ticket): { day: string; sta
 const monthDay = (day: string) =>
   dayParts(day).date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
-/** Your last five weeks: the days you kept, your Full tickets, the ones missed, and today. */
-function YourDays({ ticket }: { ticket: Ticket }) {
+/** Your last five weeks: the days you kept, your Full tickets, the ones missed, and today. Each opens its ticket. */
+function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
   const days = calendarDays(ticket)
   const more = ticket.rule.count > TODAY_KEEP || days.some((d) => d.state === 'full')
   // Each day, said aloud: "Friday, September 25: kept".
@@ -217,8 +270,8 @@ function YourDays({ ticket }: { ticket: Ticket }) {
       <ol className="today-days__grid">
         {days.map(({ day, state }) => {
           const n = dayParts(day).date.getUTCDate()
-          return (
-            <li key={day} className={`today-days__day today-days__day--${state}`}>
+          const inner = (
+            <>
               <span className="today-days__mark" aria-hidden="true">
                 {state === 'full' ? <StarIcon /> : state === 'kept' ? <CheckIcon /> : state === 'open' ? ticket.left : null}
               </span>
@@ -227,6 +280,18 @@ function YourDays({ ticket }: { ticket: Ticket }) {
                 {n === 1 ? monthDay(day) : n}
               </span>
               <span className="visually-hidden">{`${fullDate(day)}: ${words[state]}`}</span>
+            </>
+          )
+          const open = state !== 'before' && state !== 'after'
+          return (
+            <li key={day} className={`today-days__day today-days__day--${state}${day === picked ? ' today-days__day--picked' : ''}`}>
+              {open ? (
+                <a className="today-days__link" href={todayHref(day === ticket.day ? undefined : day)} aria-current={day === picked ? 'date' : undefined}>
+                  {inner}
+                </a>
+              ) : (
+                inner
+              )}
             </li>
           )
         })}
@@ -310,23 +375,55 @@ export function TodayPage() {
   const viewer = useAccountId()
   const ticket = useTicket(viewer)
   const rivals = useRivals(signedIn, viewer)
+  const route = useRoute()
+  const name = normalizePlayerName(usePlayerName())
+  const today = ticket.day
+  const since = ticket.server?.since ?? TODAY_SINCE_FALLBACK
+  const asked = route.name === 'today' ? route.day : undefined
+  // A day picked: today, or one still to come, is the page itself, and a day before the Dailies has no ticket.
+  const day = asked && asked < today && asked >= since ? asked : null
+  useEffect(() => {
+    if (asked && !day) navigate(todayHref(), { replace: true })
+  }, [asked, day])
+  const known = useAccountDays(signedIn, day ? [monthOf(day)] : [])
+  const said = day ? known.get(day) : undefined
+  const streak = day ? streakThrough(day, known, (d) => addDays(d, -1)) : 0
+  const todayMark: DayMark = ticket.marks.full ? 'full' : ticket.marks.kept ? 'kept' : ticket.done > 0 ? 'played' : 'none'
   return (
     <PageShell innerClassName="lb-page__inner today-page">
-      <TodayHead ticket={ticket} signedIn={signedIn} loading={loading} />
+      {day ? (
+        <PastHead day={day} said={said} streak={streak} signedIn={signedIn} />
+      ) : (
+        <TodayHead ticket={ticket} signedIn={signedIn} loading={loading} />
+      )}
+      <DayStrip
+        today={today}
+        picked={day ?? today}
+        since={since}
+        known={known}
+        todayCount={{ done: ticket.done, of: ticket.total, mark: todayMark }}
+        signedIn={signedIn}
+      />
       <div className={`today-page__grid${signedIn ? ' today-page__grid--side' : ''}`}>
         <div className="today-page__main">
-          <TodayCard ticket={ticket} rivals={rivals.data} signedIn={signedIn} />
+          {day ? (
+            <PastDayTicket day={day} said={said} streak={streak} name={name} signedIn={signedIn} />
+          ) : (
+            <TodayCard ticket={ticket} rivals={rivals.data} signedIn={signedIn} />
+          )}
           {signedIn ? (
-            <TodayRivals data={rivals.data} dailies={ticket.live} group={rivals.group} onPick={rivals.pick} />
+            day ? null : (
+              <TodayRivals data={rivals.data} dailies={ticket.live} group={rivals.group} onPick={rivals.pick} />
+            )
           ) : loading ? null : (
             <KeepAStreak />
           )}
         </div>
         {signedIn ? (
           <div className="today-page__side">
-            <YourDays ticket={ticket} />
+            <YourDays ticket={ticket} picked={day ?? today} />
             <Rewards current={ticket.current} best={ticket.best} />
-            <SendDay ticket={ticket} />
+            {day ? null : <SendDay ticket={ticket} />}
           </div>
         ) : null}
       </div>
