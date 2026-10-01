@@ -6,6 +6,7 @@ import { GameStartCard } from '../../components/GameStartCard'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { reportEgg } from '../../lib/eggs'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -13,6 +14,7 @@ import {
   consoleLayout,
   controlAt,
   createInitialState,
+  pullJackpot,
   resizeState,
   startGame,
   tick,
@@ -63,7 +65,7 @@ function measureTop(play: HTMLElement): number | undefined {
  * round it, and a thumb turning a knob moves in an arc, which from the knob's
  * side runs up or down first, so it often didn't count and the call ran out.
  */
-type Drag = { control: Control; x: number; y: number; need: number; done: boolean }
+type Drag = { control: Control; x: number; y: number; need: number; done: boolean; jackpot?: boolean }
 
 export function BopGame() {
   const tournament = useTournamentPlay()
@@ -194,10 +196,30 @@ export function BopGame() {
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
 
+  /**
+   * The easter egg: a pull that started up by the lever's handle and goes on,
+   * after it has counted, all the way down to the cherry at the bottom of the
+   * slot. The engine only lets it come up just after a Pull it was answered.
+   */
+  const reachJackpot = (drag: Drag, y: number) => {
+    const s = stateRef.current
+    const lever = consoleLayout(s.stageW, s.stageH, s.stageTop).pull
+    if (drag.y > lever.y - lever.r * 0.3 || y < lever.y + lever.r) return
+    drag.jackpot = true
+    const { state, done } = pullJackpot(s)
+    if (!done) return
+    stateRef.current = state
+    void reportEgg('jackpot')
+  }
+
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
     const drag = dragRef.current
-    if (!drag || drag.done) return
+    if (!drag) return
     const rect = e.currentTarget.getBoundingClientRect()
+    if (drag.done) {
+      if (drag.control === 'pull' && !drag.jackpot) reachJackpot(drag, e.clientY - rect.top)
+      return
+    }
     const dx = e.clientX - rect.left - drag.x
     const dy = e.clientY - rect.top - drag.y
     const { need } = drag

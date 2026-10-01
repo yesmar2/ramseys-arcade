@@ -97,6 +97,9 @@ export type GameState = {
   /** Running animation angle for the wheel and knob. */
   spinAngle: number
   twistAngle: number
+  /** The jackpot's reels on the screen: seconds left, 0 when there are none; and whether this run has had one. */
+  reels: number
+  jackpotDone: boolean
   scale: number
   stageW: number
   stageH: number
@@ -138,6 +141,15 @@ export const QUICK_FRACTION = 0.5
 /** Every this many in a row gets its moment. */
 export const STREAK_STEP = 10
 const POP_LIFE = 0.7
+/**
+ * The easter egg: the lever pulled all the way down to the cherry at the
+ * bottom of its slot, on a Pull it, spins the screen like a fruit machine and
+ * lands on three cherries. The next call waits for it, once a run, so it is
+ * a moment's show and no way to rest.
+ */
+export const JACKPOT_TIME = 1.2
+/** How long the reels spin before they land. */
+export const REELS_SPIN = 0.75
 /** Room kept for the score and the page's buttons when nothing has been measured yet. */
 const DEFAULT_TOP = 56
 
@@ -166,6 +178,8 @@ export function createInitialState(w = 540, h = 540): GameState {
     overFor: 0,
     spinAngle: 0,
     twistAngle: 0,
+    reels: 0,
+    jackpotDone: false,
     scale: 1,
     stageW: w,
     stageH: h,
@@ -336,9 +350,15 @@ export function controlAt(state: GameState, x: number, y: number): Control | nul
   return best
 }
 
-/** The player did something. Right control in time scores; anything else ends the run. */
+/**
+ * The player did something. Right control in time scores; anything else ends the run.
+ *
+ * Nothing counts in the pause between an answer and the next call. It used to:
+ * the answered call was still up, so working the same control again scored it
+ * again and started the pause over, and mashing one control scored for ever.
+ */
 export function act(state: GameState, control: Control): GameState {
-  if (state.phase !== 'call' || !state.call) return state
+  if (state.phase !== 'call' || !state.call || state.gap > 0) return state
 
   // What you did makes its own sound, right or wrong.
   sfx(CONTROL_SOUND[control], 1)
@@ -391,8 +411,33 @@ export function act(state: GameState, control: Control): GameState {
   }
 }
 
+/**
+ * The lever pulled all the way to the cherry, just after a Pull it was
+ * answered: the jackpot, once a run. True in `done` if it came up.
+ */
+export function pullJackpot(state: GameState): { state: GameState; done: boolean } {
+  if (state.phase !== 'call' || state.call !== 'pull' || state.gap <= 0 || state.jackpotDone) {
+    return { state, done: false }
+  }
+  return {
+    state: { ...state, reels: JACKPOT_TIME, jackpotDone: true, gap: Math.max(state.gap, JACKPOT_TIME) },
+    done: true,
+  }
+}
+
 export function tick(state: GameState, dt: number): GameState {
   const s = { ...state }
+  if (s.reels > 0) {
+    const before = s.reels
+    s.reels = Math.max(0, s.reels - dt)
+    const spun = (r: number) => JACKPOT_TIME - r
+    // The reels clatter round, then land with a jingle.
+    if (spun(s.reels) < REELS_SPIN && Math.floor(spun(s.reels) / 0.09) > Math.floor(spun(before) / 0.09)) sfx('tap')
+    if (spun(before) < REELS_SPIN && spun(s.reels) >= REELS_SPIN) {
+      sfx('perfect')
+      s.pops = [...s.pops, { control: 'pull', text: 'Jackpot!', tone: 'streak', life: POP_LIFE * 1.8, max: POP_LIFE * 1.8 }]
+    }
+  }
   s.flash = Math.max(0, s.flash - dt * 1.8)
   s.shake = Math.max(0, s.shake - dt)
   s.pressLife = Math.max(0, s.pressLife - dt)

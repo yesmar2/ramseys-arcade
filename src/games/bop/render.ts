@@ -3,8 +3,10 @@ import {
   CONTROL_HUE,
   CONTROL_LABEL,
   CONTROLS,
+  JACKPOT_TIME,
   PRESS_LIFE,
   QUICK_FRACTION,
+  REELS_SPIN,
   consoleLayout,
   type ConsoleLayout,
   type Control,
@@ -131,6 +133,34 @@ function socket(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, 
   ctx.strokeStyle = well.line
   ctx.lineWidth = Math.max(1, u * 0.35)
   ctx.stroke()
+}
+
+/** A pair of cherries on their stems, `size` across, for the jackpot and its clue. */
+function cherries(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, dark: boolean, alpha = 1) {
+  const r = size * 0.24
+  const left = { x: x - size * 0.24, y: y + size * 0.18 }
+  const right = { x: x + size * 0.22, y: y + size * 0.26 }
+  const top = { x: x + size * 0.04, y: y - size * 0.36 }
+  ctx.save()
+  ctx.globalAlpha *= alpha
+  ctx.strokeStyle = hsla(110, 45, dark ? 52 : 34, 1)
+  ctx.lineWidth = Math.max(1, size * 0.07)
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(left.x, left.y - r * 0.8)
+  ctx.quadraticCurveTo(left.x + size * 0.04, top.y + size * 0.2, top.x, top.y)
+  ctx.moveTo(right.x, right.y - r * 0.8)
+  ctx.quadraticCurveTo(right.x - size * 0.02, top.y + size * 0.24, top.x, top.y)
+  ctx.stroke()
+  for (const c of [left, right]) {
+    circle(ctx, c.x, c.y, r)
+    ctx.fillStyle = hsla(RED, 75, dark ? 58 : 50, 1)
+    ctx.fill()
+    circle(ctx, c.x - r * 0.35, c.y - r * 0.35, r * 0.28)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+    ctx.fill()
+  }
+  ctx.restore()
 }
 
 /** An open chevron pointing up (dir -1) or down (dir 1). */
@@ -309,6 +339,8 @@ function drawPull(
   ctx.lineWidth = Math.max(1.5, L.u * 0.55)
   chevron(ctx, x, y + r * 0.2, r * 0.16, 1)
   chevron(ctx, x, y + r * 0.62, r * 0.16, 1)
+  // The jackpot's clue: a cherry worn into the very bottom of the slot, where a full pull ends.
+  cherries(ctx, x, bottom - r * 0.3, r * 0.36, dark, dark ? 0.18 : 0.2)
 
   // The handle: a T that comes down the track and springs back.
   const rest = top + r * 0.34
@@ -617,10 +649,67 @@ function drawScreen(
     return
   }
 
+  if (state.phase === 'call' && state.reels > 0) {
+    drawReels(ctx, L, state, dark)
+    return
+  }
+
   if (!word) return
   fitFont(ctx, word, s.h * 0.5, s.w * 0.86)
   ctx.fillStyle = callInk(dark, 1)
   ctx.fillText(word, cx, s.y + s.h * 0.53)
+}
+
+/** What the reels show while they spin: a fruit machine's old faces, the cherries among them. */
+const REEL_FACES = ['7', 'BAR', 'cherries', '★', 'BELL'] as const
+
+/**
+ * The jackpot on the screen: three reels spinning, landing one after another
+ * from the left, all on cherries.
+ */
+function drawReels(ctx: CanvasRenderingContext2D, L: ConsoleLayout, state: GameState, dark: boolean) {
+  const s = L.screen
+  const spun = JACKPOT_TIME - state.reels
+  const cellW = (s.w * 0.86) / 3
+  const x0 = s.x + s.w * 0.07
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(s.x, s.y, s.w, s.h, s.r)
+  ctx.clip()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  for (let i = 0; i < 3; i++) {
+    const cx = x0 + cellW * (i + 0.5)
+    const cy = s.y + s.h * 0.52
+    if (i > 0) {
+      ctx.strokeStyle = callInk(dark, 0.22)
+      ctx.lineWidth = Math.max(1, L.u * 0.4)
+      ctx.beginPath()
+      ctx.moveTo(x0 + cellW * i, s.y + s.h * 0.18)
+      ctx.lineTo(x0 + cellW * i, s.y + s.h * 0.82)
+      ctx.stroke()
+    }
+    const lands = REELS_SPIN * (0.55 + 0.225 * i)
+    const size = s.h * 0.62
+    if (spun >= lands) {
+      // A little bounce as it lands.
+      const k = Math.min(1, (spun - lands) / 0.12)
+      cherries(ctx, cx, cy - (1 - k) * size * 0.25, size, dark)
+      continue
+    }
+    // Spinning: the faces roll down past the window.
+    const roll = spun * 16 + i * 1.7
+    const face = REEL_FACES[Math.floor(roll) % REEL_FACES.length]!
+    const y = cy + (roll % 1 - 0.5) * s.h * 0.7
+    if (face === 'cherries') {
+      cherries(ctx, cx, y, size * 0.9, dark, 0.8)
+    } else {
+      fitFont(ctx, face, s.h * (face.length > 1 ? 0.3 : 0.5), cellW * 0.8)
+      ctx.fillStyle = callInk(dark, 0.8)
+      ctx.fillText(face, cx, y)
+    }
+  }
+  ctx.restore()
 }
 
 /* ---- Words off the controls. ---- */

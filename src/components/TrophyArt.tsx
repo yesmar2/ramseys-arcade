@@ -311,6 +311,92 @@ const SECRET_ART: Record<number, ReactNode> = {
       <path d="M22.5 20.5l-1.5-1.8M25.5 20.5l1.5-1.8M24 19.5v-2.2" />
     </>
   ),
+  // Placebo: the button at the crossing, on its pole, saying WAIT.
+  20: (
+    <>
+      <path d="M24 27v14M18 41h12" />
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="15" y="6" width="18" height="21" rx="3" />
+      <rect className="trophy-art__fill" x="18.5" y="9.5" width="11" height="4.5" rx="1.2" />
+      <circle className="trophy-art__fill" cx="24" cy="20.5" r="3.6" />
+    </>
+  ),
+  // Jackpot: cherries, two on a stem, and a sparkle.
+  21: (
+    <>
+      <path d="M17 26Q19 15 27 9M31.5 27Q30 17 27 9" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M27 9q6-4 10 0q-5 4-10 0Z" />
+      <circle className="trophy-art__fill" cx="16.5" cy="32" r="6.5" />
+      <circle className="trophy-art__fill" cx="31.5" cy="33.5" r="6.5" />
+      <path d="M40 17v5M37.5 19.5h5" />
+    </>
+  ),
+  // Donuts: a tyre going round and round.
+  22: (
+    <>
+      <circle className="trophy-art__fill" cx="24" cy="24" r="10.5" />
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="24" cy="24" r="4" />
+      <path d="M8.5 16A17 17 0 0 1 21 7.2M17.5 5.4 21 7.2l-2.3 3.4M39.5 32A17 17 0 0 1 27 40.8M30.5 42.6 27 40.8l2.3-3.4" />
+    </>
+  ),
+  // Lost Your Marbles: off the edge they go, one after another.
+  23: (
+    <>
+      <path d="M4 20h17v6" />
+      <circle className="trophy-art__fill" cx="14" cy="15.8" r="3.4" />
+      <circle className="trophy-art__fill" cx="30" cy="21" r="3.4" />
+      <circle className="trophy-art__fill" cx="36" cy="38" r="3.4" />
+    </>
+  ),
+  // Shall We Play a Game?: an old terminal, with noughts and crosses on it.
+  24: (
+    <>
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="6" y="7" width="36" height="27" rx="3" />
+      <path d="M20 12v17M28 12v17M13 17.5h22M13 23.5h22" />
+      <path d="M14.5 12.5l2.5 2.5M17 12.5l-2.5 2.5" />
+      <circle cx="31.5" cy="20.5" r="1.6" />
+      <path d="M20 34l-1.5 6h11L28 34M15 40h18" />
+    </>
+  ),
+  // Safe Spot: tucked in a corner of the maze while a chaser wonders where you went.
+  25: (
+    <>
+      <path d="M8 8h32M8 8v32h13" />
+      <circle className="trophy-art__fill" cx="14.5" cy="33.5" r="3.6" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M27 41v-9a6.5 6.5 0 0 1 13 0v9l-2.2-1.6-2.1 1.6-2.2-1.6-2.2 1.6-2.1-1.6Z" />
+      <Numeral n="?" x={33.5} y={24} size={11} />
+    </>
+  ),
+  // Little Green Friend: an alien in the dark, waving hello.
+  26: (
+    <>
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M24 14c7 0 11 5.5 11 12s-5 13-11 13-11-6.5-11-13 4-12 11-12Z" />
+      <path d="M19 14.5 15.5 8M29 14.5 32.5 8" />
+      <circle className="trophy-art__fill" cx="15.5" cy="7.5" r="1.7" />
+      <circle className="trophy-art__fill" cx="32.5" cy="7.5" r="1.7" />
+      <ellipse className="trophy-art__fill" cx="19.5" cy="25" rx="2.6" ry="3.8" />
+      <ellipse className="trophy-art__fill" cx="28.5" cy="25" rx="2.6" ry="3.8" />
+      <path d="M21.5 33q2.5 1.6 5 0M35 30l5-7M41.5 16.5l1.5-2.5M44 21h3" />
+    </>
+  ),
+  // Shooting Star: across the dusk, its tail behind it.
+  27: (
+    <>
+      <path className="trophy-art__fill" d="M31.0 8.5 32.9 13.4 38.1 13.7 34.0 17.0 35.4 22.1 31.0 19.2 26.6 22.1 28.0 17.0 23.9 13.7 29.1 13.4Z" />
+      <path d="M24 21 8 37M21 16.5 9 28.5M28.5 24.5 16.5 36.5" />
+      <path d="M8 12v3M6.5 13.5h3M40 33v3M38.5 34.5h3" />
+    </>
+  ),
+  // Shoot the Moon: a full moon with a black eye.
+  28: (
+    <>
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="24" cy="25" r="15" />
+      <circle className="trophy-art__fill" cx="18.5" cy="22" r="4.6" />
+      <circle cx="18.5" cy="22" r="1" />
+      <path d="M27.5 21.5h4.5M24 32.5q2.2-2 4.4 0" />
+      <circle cx="31" cy="31" r="1.6" />
+      <path d="M38 8l2 4M44 11l-4 1.5M42 4l-2.5 4" />
+    </>
+  ),
 }
 
 /** A secret trophy: its own picture, in the secrets' rose. */

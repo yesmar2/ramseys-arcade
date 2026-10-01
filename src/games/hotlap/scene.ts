@@ -25,6 +25,8 @@ export type SceneFrame = {
   ghostTag?: string | null
   /** The card stands at the right of a wide screen: the showroom keeps the car to its left. */
   cardAside: boolean
+  /** The donuts egg's clue (donuts.ts): old donut marks on the road just past the line. */
+  donutHint?: boolean
 }
 
 const W = (x: number, y: number, h = 0) => new THREE.Vector3(x, h, -y)
@@ -50,6 +52,17 @@ const GHOST_OVERLAP = 0.2
 const SKIDS = 1400
 /** How far a bank drops from the road's edge (and leans out), deep enough for any gap the ground leaves. */
 const BANK_DROP = 2.5
+/** The donuts egg's clue: old donut marks this many metres past the line, and how faint (the skid marks are 0.5). */
+const DONUT_MARKS_AHEAD = 14
+const DONUT_MARKS_SEE = 0.22
+/** The egg's smoke: puffs kept, a pair off the rear tyres this often (s), for this long, each lasting this long. */
+const PUFFS = 56
+const PUFF_EVERY = 0.05
+const SMOKE_TIME = 1.4
+const PUFF_LIFE = 1.3
+
+/** A puff of tyre smoke, drifting up and out from where it left a tyre. */
+type Puff = { sprite: THREE.Sprite; age: number; vx: number; vy: number }
 
 /**
  * The look, "A · Grid" of the three Ramsey was shown (2026-09-28): black ground ruled in cyan light, the
@@ -115,6 +128,12 @@ export class HotLapScene {
   private bankGrass: THREE.Material | null = null
   /** The soft falloff every glow strip shares. */
   private glowTex: THREE.CanvasTexture | null = null
+  /** The donuts egg: its clue's old marks, its smoke (made the first time it's needed), and how much longer the smoke pours. */
+  private donutMarks: THREE.Mesh | null = null
+  private readonly puffs: Puff[] = []
+  private puffNext = 0
+  private puffClock = 0
+  private smoking = 0
 
   constructor(canvas: HTMLCanvasElement, track: Track) {
     this.track = track
@@ -138,6 +157,7 @@ export class HotLapScene {
     this.ghostCar = buildCar(paint, true)
     this.scene.add(this.car.group, this.ghostCar.group)
     this.buildSkids()
+    this.buildDonutMarks()
 
     // Signs are painted before the display face may have arrived; paint them again once it has.
     void Promise.all([document.fonts.load(`800 60px ${FONT}`), document.fonts.load(`700 40px ${FONT}`)])
@@ -825,12 +845,141 @@ export class HotLapScene {
     }
   }
 
+  /* ---------- the donuts egg ---------- */
+
+  /**
+   * The egg's clue (donuts.ts): old rubber from three donuts on the road a little past the line, as if
+   * someone had spun there before. Each is the two rear tyres' tracks round the circle the car's own donuts
+   * make (8 m across), a little off the last and a little out of round, as a donut wanders. Fainter than the
+   * skid marks, and shown only while the page asks, till the device has spun its own.
+   */
+  private buildDonutMarks() {
+    const track = this.track
+    const at = (track.startIndex + DONUT_MARKS_AHEAD) % track.n
+    const h = track.h[at]!
+    // A little left of the middle; the widest loop keeps inside the edge lines.
+    const cx = track.x[at]! - Math.sin(h) * 0.8
+    const cy = track.y[at]! + Math.cos(h) * 0.8
+    const pos: number[] = []
+    const index: number[] = []
+    let near = at
+    const segments = 96
+    for (let loop = 0; loop < 3; loop++) {
+      // Each loop well off the last, so they cross one another as a wandering donut's do, not ripples.
+      const ox = cx + Math.cos(h + loop * 2.1) * 1.5
+      const oy = cy + Math.sin(h + loop * 2.1) * 1.5
+      // The inner and outer rear tyre, 3.1 and 4.65 m from the middle as the sim measures them.
+      for (const radius of [3.1, 4.65]) {
+        const first = pos.length / 3
+        for (let s = 0; s <= segments; s++) {
+          const a = (s / segments) * Math.PI * 2
+          const r = radius + 0.3 * Math.sin(2 * a + loop * 1.7)
+          for (const w of [-0.13, 0.13]) {
+            const x = ox + Math.cos(a) * (r + w)
+            const y = oy + Math.sin(a) * (r + w)
+            const spot = nearest(track, x, y, near)
+            near = spot.index
+            pos.push(x, this.surfaceZ(x, y, spot.index, spot.side) + 0.02, -y)
+          }
+          if (s < segments) {
+            const k = first + s * 2
+            index.push(k, k + 2, k + 1, k + 1, k + 2, k + 3)
+          }
+        }
+      }
+    }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    geo.setIndex(index)
+    const marks = new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({
+        color: 0x1d3440,
+        transparent: true,
+        opacity: DONUT_MARKS_SEE,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      }),
+    )
+    marks.renderOrder = 2
+    marks.visible = false
+    this.scene.add(marks)
+    this.donutMarks = marks
+  }
+
+  /** The egg: smoke pours off the rear tyres for a moment. */
+  smoke() {
+    if (!this.puffs.length) {
+      const tex = this.paint(64, 64, (g, w, h) => {
+        const soft = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
+        soft.addColorStop(0, 'rgba(255,255,255,0.9)')
+        soft.addColorStop(0.5, 'rgba(255,255,255,0.35)')
+        soft.addColorStop(1, 'rgba(255,255,255,0)')
+        g.fillStyle = soft
+        g.fillRect(0, 0, w, h)
+      })
+      for (let k = 0; k < PUFFS; k++) {
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0xa9c2cf, transparent: true, depthWrite: false, opacity: 0 }))
+        sprite.visible = false
+        this.scene.add(sprite)
+        this.puffs.push({ sprite, age: 0, vx: 0, vy: 0 })
+      }
+    }
+    this.smoking = SMOKE_TIME
+  }
+
+  /** While the smoke pours, a puff off each rear tyre; every puff rises, swells and thins away. */
+  private tickSmoke(run: Run, dt: number) {
+    if (this.smoking > 0) {
+      this.smoking -= dt
+      this.puffClock += dt
+      const c = Math.cos(run.h)
+      const s = Math.sin(run.h)
+      while (this.puffClock >= PUFF_EVERY) {
+        this.puffClock -= PUFF_EVERY
+        for (const [f, l] of [WHEELS[2]!, WHEELS[3]!]) {
+          const puff = this.puffs[this.puffNext]!
+          this.puffNext = (this.puffNext + 1) % this.puffs.length
+          const x = run.x + f * c - l * s
+          const y = run.y + f * s + l * c
+          // Blown out from its tyre's side and back off the car, each a little differently (golden-ratio steps, not chance).
+          const wander = ((this.puffNext * 0.618) % 1) - 0.5
+          const out = Math.sign(l) * (0.7 + wander * 0.5)
+          puff.vx = -s * out - c * (0.5 + wander * 0.4)
+          puff.vy = c * out - s * (0.5 + wander * 0.4)
+          puff.age = 0
+          puff.sprite.position.set(x, this.surfaceZ(x, y, run.index, run.side) + 0.4, -y)
+          puff.sprite.visible = true
+        }
+      }
+    }
+    for (const puff of this.puffs) {
+      if (!puff.sprite.visible) continue
+      puff.age += dt
+      const life = puff.age / PUFF_LIFE
+      if (life >= 1) {
+        puff.sprite.visible = false
+        continue
+      }
+      puff.sprite.position.x += puff.vx * dt
+      puff.sprite.position.y += 0.7 * dt
+      puff.sprite.position.z -= puff.vy * dt
+      const size = 1 + 2.4 * life
+      puff.sprite.scale.set(size, size, 1)
+      puff.sprite.material.opacity = 0.5 * Math.min(1, puff.age / 0.1) * (1 - life) ** 2
+    }
+  }
+
   /* ---------- each frame ---------- */
 
-  /** A new lap: the camera drops in behind the car, and the tyres start fresh marks. */
+  /** A new lap: the camera drops in behind the car, and the tyres start fresh marks (and stop smoking). */
   startLap() {
     this.lastMark.fill(null)
     this.snap = true
+    this.smoking = 0
   }
 
   /** The car hit the fence. */
@@ -852,6 +1001,8 @@ export class HotLapScene {
   frame(f: SceneFrame, dt: number) {
     this.poseCar(f.run, dt)
     if (f.driving) this.layRubber(f.run)
+    if (this.puffs.length) this.tickSmoke(f.run, dt)
+    if (this.donutMarks) this.donutMarks.visible = f.donutHint === true
     this.tagGhost(f.ghostTag ?? null)
     this.poseGhost(f.ghost, f.run, dt)
     this.frameCamera(f, dt)

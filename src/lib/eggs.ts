@@ -16,6 +16,11 @@ import { announceSecrets, SECRETS, type SecretFound } from './secrets'
  *   "Level 256" in the footer leads to one.
  * - In Centroid, a balanced plate tapped again while it sits on its pin shatters (games/dead-center).
  *   Till a device has broken one, a balanced plate shows a faint hairline crack round its pin.
+ * - Nine more live in their games, each with its clue in its own files (the admin page's Trophies tab
+ *   says each one in full): Crosswalk's crossing button that does nothing; Bop's lever pulled down to the
+ *   cherries; three donuts in Hot Lap; three falls before Marble Run's first checkpoint; a wave of
+ *   Patriot without a shot; Pellets' safe spot; the alien in Lander's cave; a shooting star over the
+ *   Fireflies pond; and Barrage's moon, shot till it has a black eye.
  */
 
 const EIGHT_BIT_KEY = 'skermix-eightbit'
@@ -65,7 +70,23 @@ export function setEightBit(on: boolean) {
   window.dispatchEvent(new Event(EIGHT_BIT_EVENT))
 }
 
-export type EggKey = 'konami' | 'blip' | 'barrelroll' | 'corner' | 'cheats' | 'continue' | 'shatter'
+export type EggKey =
+  | 'konami'
+  | 'blip'
+  | 'barrelroll'
+  | 'corner'
+  | 'cheats'
+  | 'continue'
+  | 'shatter'
+  | 'placebo'
+  | 'jackpot'
+  | 'donuts'
+  | 'marbles'
+  | 'wargames'
+  | 'safespot'
+  | 'alien'
+  | 'shootingstar'
+  | 'moon'
 
 /** Where a device remembers it found an egg (the blip's key is older than the rest). */
 function doneKey(key: EggKey) {

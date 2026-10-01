@@ -141,6 +141,14 @@ html[data-theme='dark'] .marblerun--fullscreen {
   animation: marblerun-in 0.18s ease-out;
 }
 
+/* The easter egg's line, after a third fall before the first checkpoint: the notice, edged in the marble's colour. */
+.marblerun__toast--marbles {
+  border-color: color-mix(in srgb, var(--marblerun-accent) 60%, transparent);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
 /* A past course's chip sits under the back control: on a narrow screen the notices go below it. */
 @media (max-width: 820px) {
   .marblerun--past .marblerun__toast {

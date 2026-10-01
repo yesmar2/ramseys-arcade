@@ -13,6 +13,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { eggDone, reportEgg } from '../../lib/eggs'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
 import {
@@ -28,6 +29,7 @@ import {
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
+  foundSafeSpot,
   jumpToLevel,
   pelletsViewport,
   queueDir,
@@ -75,7 +77,10 @@ export function PelletsGame() {
       last = now
 
       if (!pausedRef.current) {
-        stateRef.current = tick(stateRef.current, dt)
+        const before = stateRef.current
+        stateRef.current = tick(before, dt)
+        // The easter egg: ten seconds hidden on the safe spot.
+        if (foundSafeSpot(before, stateRef.current)) void reportEgg('safespot')
       }
       uiAcc += dt
       if (uiAcc > 0.08) {
@@ -168,6 +173,8 @@ export function PelletsGame() {
     startGrace.current = performance.now() + 220
     // Same reset, stopped at the start card instead of in play.
     if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
+    // The egg's clue, the scuff on the safe spot, till this device has hidden there.
+    stateRef.current.scuff = !eggDone('safespot')
     setUi(toSnapshot(stateRef.current))
   }
 

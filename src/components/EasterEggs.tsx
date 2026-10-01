@@ -305,15 +305,36 @@ export function EasterEggs() {
 }
 
 /** A secret found: its picture, its name and what it's for, for a few seconds. */
+/**
+ * A secret found. On a game's screen, where most eggs are found now and the
+ * bottom of the screen is the game's controls, it is a small card over the
+ * score instead, gone in four seconds, that taps go straight through, so the
+ * run carries on under it; the egg has already shown itself in the game.
+ */
 function SecretToast({ secret, onDone }: { secret: SecretFound; onDone: () => void }) {
   const done = useRef(onDone)
+  const [inGame] = useState(onGameScreen)
   useEffect(() => {
     done.current = onDone
   })
   useEffect(() => {
-    const id = window.setTimeout(() => done.current(), 7000)
+    const id = window.setTimeout(() => done.current(), inGame ? 4000 : 7000)
     return () => window.clearTimeout(id)
-  }, [])
+  }, [inGame])
+  if (inGame) {
+    return (
+      <div className="secret-toast secret-toast--in-game" role="status">
+        <span className="secret-toast__tile trophy-tone--secret">
+          <SecretArt n={secret.n} size="sm" />
+        </span>
+        <span className="secret-toast__words">
+          <span className="secret-toast__kicker">{secret.signedOut ? 'You found a secret' : 'Secret found'}</span>
+          <b className="secret-toast__name">{secret.name}</b>
+          {secret.signedOut ? <span className="secret-toast__says">Sign in and find it again to keep it.</span> : null}
+        </span>
+      </div>
+    )
+  }
   return (
     <div className="secret-toast" role="status">
       <span className="secret-toast__tile trophy-tone--secret">

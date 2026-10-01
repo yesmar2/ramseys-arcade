@@ -7,8 +7,11 @@ import {
   CRUMB_HUE,
   DEATH_TIME,
   GHOST_HUE,
+  HIDE_AFTER,
   PLAYER_HUE,
   READY_TIME,
+  SPOTTED_SHOW,
+  isHidden,
   type Dir,
   type GameState,
   type Ghost,
@@ -342,6 +345,49 @@ function drawClearFlash(g: Gfx) {
   ctx.stroke(walls.outer)
 }
 
+/**
+ * The egg's clue: the floor of the safe spot worn by everyone who has stood
+ * there pressed up against the den, a smudge and a few scratches along the
+ * wall side of the tile, barely there.
+ */
+function drawScuff(g: Gfx) {
+  const { ctx, s, dark, cell, X, Y } = g
+  const { x, y } = s.safe
+  // Which way the wall is: the side that is shut, with the way in opposite it.
+  const shut = (Object.keys(LOOK) as Dir[]).find((d) => {
+    const v = LOOK[d]
+    return !s.open[y + v.y]?.[x + v.x] && s.open[y - v.y]?.[x - v.x] === true
+  })
+  const wall = LOOK[shut ?? 'up']
+  // Across the tile along the wall (u) and toward it (v).
+  const at = (u: number, v: number) => ({
+    x: X(x + 0.5 + wall.x * v + wall.y * u),
+    y: Y(y + 0.5 + wall.y * v + wall.x * u),
+  })
+  const ink = dark ? '231, 238, 243' : '26, 43, 60'
+  const smudge = at(0, 0.3)
+  ctx.beginPath()
+  ctx.ellipse(smudge.x, smudge.y, cell * (wall.x ? 0.08 : 0.3), cell * (wall.x ? 0.3 : 0.08), 0, 0, TAU)
+  ctx.fillStyle = `rgba(${ink}, ${dark ? 0.045 : 0.05})`
+  ctx.fill()
+  ctx.beginPath()
+  for (const [u0, v0, u1, v1] of [
+    [-0.26, 0.24, -0.06, 0.33],
+    [-0.04, 0.27, 0.2, 0.36],
+    [0.1, 0.22, 0.26, 0.28],
+  ]) {
+    const a = at(u0, v0)
+    const b = at(u1, v1)
+    ctx.moveTo(a.x, a.y)
+    ctx.lineTo(b.x, b.y)
+  }
+  ctx.strokeStyle = `rgba(${ink}, ${dark ? 0.13 : 0.14})`
+  ctx.lineWidth = Math.max(0.8, cell * 0.022)
+  ctx.lineCap = 'round'
+  ctx.stroke()
+  ctx.lineCap = 'butt'
+}
+
 // ——————————————————————————————————————————————————————— crumbs
 
 function drawCrumbs(g: Gfx) {
@@ -481,16 +527,21 @@ function drawPlayer(g: Gfx) {
     ctx.fill()
   }
 
-  // A lamp on the floor under you, so the eye finds you first on a busy board.
-  const lamp = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * (surging ? 3 : 2.4))
-  lamp.addColorStop(0, hsla(surging ? CRUMB_HUE : PLAYER_HUE, 90, 60, dark ? 0.24 : 0.2))
-  lamp.addColorStop(1, hsla(surging ? CRUMB_HUE : PLAYER_HUE, 90, 60, 0))
-  ctx.fillStyle = lamp
-  ctx.beginPath()
-  ctx.arc(cx, cy, r * 3, 0, TAU)
-  ctx.fill()
+  // A lamp on the floor under you, so the eye finds you first on a busy board;
+  // hidden on the safe spot, the lamp is out and you keep to the shadow.
+  const hidden = isHidden(s)
+  if (!hidden) {
+    const lamp = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * (surging ? 3 : 2.4))
+    lamp.addColorStop(0, hsla(surging ? CRUMB_HUE : PLAYER_HUE, 90, 60, dark ? 0.24 : 0.2))
+    lamp.addColorStop(1, hsla(surging ? CRUMB_HUE : PLAYER_HUE, 90, 60, 0))
+    ctx.fillStyle = lamp
+    ctx.beginPath()
+    ctx.arc(cx, cy, r * 3, 0, TAU)
+    ctx.fill()
+  }
 
   if (s.invuln > 0 && s.ready <= 0 && Math.floor(s.invuln * 14) % 2 === 0) ctx.globalAlpha = 0.45
+  else if (hidden) ctx.globalAlpha = 0.6
 
   // The mouth works while you move and rests where it stopped.
   const open = 0.08 + 0.62 * (0.5 - 0.5 * Math.cos(s.mouth * Math.PI))
@@ -635,6 +686,16 @@ function drawGhost(g: Gfx, ghost: Ghost) {
 
   const dir = ghost.mode === 'den' ? (Math.sin(ghost.bob * 0.5) > 0 ? 'up' : 'down') : ghost.dir
   drawEyes(ctx, cx, cy, r, dir, dark, hsla(hue, 70, lineL(dark), 0.95))
+
+  // On the hunt and lost the player to the safe spot: a question over its
+  // head, and when it finds them at last, a start.
+  const lost = isHidden(s)
+  if (ghost.mode === 'chase' && (lost || s.spotted > 0)) {
+    ctx.globalAlpha = lost ? clamp01((s.hide - HIDE_AFTER) / 0.25) : clamp01(s.spotted / 0.25)
+    const lift = lost ? Math.sin(t * 4 + hue) * cell * 0.05 : -cell * 0.12 * clamp01((SPOTTED_SHOW - s.spotted) / 0.1)
+    haloText(ctx, lost ? '?' : '!', cx + r * 0.2, cy - r * 1.75 + lift, Math.max(10, cell * 0.55), hsla(hue, 70, lineL(dark)), 800)
+    ctx.globalAlpha = 1
+  }
 }
 
 // ——————————————————————————————————————————————————————— debris
@@ -838,6 +899,7 @@ export function renderGame(
   }
 
   drawClearFlash(g)
+  if (state.scuff) drawScuff(g)
   if (state.phase !== 'clearing' || CLEAR_TIME - state.clearAnim < CLEAR_FLASH) {
     drawCrumbs(g)
   }

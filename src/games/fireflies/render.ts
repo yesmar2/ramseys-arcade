@@ -4,11 +4,14 @@ import {
   CHIME_GAP,
   FLY_COLORS,
   LANTERNS,
+  STAR_BURST_TIME,
+  STAR_TIME,
   flySpot,
   hash,
   isPale,
   pondLayout,
   reflectionDrop,
+  starHead,
   type Fly,
   type GameState,
   type Layout,
@@ -317,6 +320,100 @@ function drawSkyLife(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal
     const y = Math.pow(hash(i * 4.1 + 9), 1.3) * L.bank * 0.7
     const tw = 0.5 + 0.5 * Math.sin(s.time * (1.2 + hash(i) * 2) + i * 5)
     glow(ctx, '#dfe6ff', x, y, 3.5 + tw * 2.5, (0.3 + 0.5 * tw) * pal.starAlpha)
+  }
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.globalAlpha = 1
+}
+
+function smooth(t: number) {
+  const k = clamp(t, 0, 1)
+  return k * k * (3 - 2 * k)
+}
+
+/**
+ * A shooting star, the easter egg, faint as the real thing: a bright head and
+ * a tail fading out behind it. It flares up quickly, burns out more slowly,
+ * and its tail shortens as it goes. It crosses behind the lanterns.
+ */
+function drawStar(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: Palette) {
+  const star = s.star
+  if (!star) return
+  const age = s.time - star.t0
+  if (age < 0 || age > STAR_TIME) return
+  const k = age / STAR_TIME
+  const a = smooth(k / 0.15) * smooth((1 - k) / 0.4) * (0.7 + 0.3 * pal.starAlpha)
+  if (a <= 0.01) return
+  const u = clamp(L.unit, 0.85, 1.3)
+  const head = starHead(star, age)
+  const len = Math.hypot(star.x1 - star.x0, star.y1 - star.y0) || 1
+  const tail = Math.min(len * k, len * 0.4) * (0.45 + 0.55 * a)
+  const tx = head.x - ((star.x1 - star.x0) / len) * tail
+  const ty = head.y - ((star.y1 - star.y0) / len) * tail
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.lineCap = 'round'
+  // A soft wide glow under a thin bright streak, both fading to nothing at the tail.
+  for (const [width, alpha] of [
+    [4.5, 0.14],
+    [1.4, 0.7],
+  ] as const) {
+    const grad = ctx.createLinearGradient(head.x, head.y, tx, ty)
+    grad.addColorStop(0, rgba('#fff6e4', alpha * a))
+    grad.addColorStop(1, rgba('#c9d4ff', 0))
+    ctx.globalAlpha = 1
+    ctx.strokeStyle = grad
+    ctx.lineWidth = width * u
+    ctx.beginPath()
+    ctx.moveTo(head.x, head.y)
+    ctx.lineTo(tx, ty)
+    ctx.stroke()
+  }
+  glow(ctx, '#fff1d0', head.x, head.y, 13 * u, 0.55 * a)
+  glow(ctx, '#ffffff', head.x, head.y, 4.5 * u, 0.95 * a)
+  ctx.lineCap = 'butt'
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.globalAlpha = 1
+}
+
+/**
+ * A caught star's sparkles: a flash and a ring where it was, and a spray of
+ * little four-pointed glints that fly out, drift down and twinkle out, most
+ * of them starlight and a few in the fireflies' colours.
+ */
+function drawStarBurst(ctx: CanvasRenderingContext2D, s: GameState, L: Layout) {
+  const b = s.starBurst
+  if (!b) return
+  const t = (s.time - b.t) / STAR_BURST_TIME
+  if (t < 0 || t >= 1) return
+  const u = clamp(L.unit, 0.85, 1.3)
+  const out = 1 - (1 - t) * (1 - t) * (1 - t)
+  ctx.globalCompositeOperation = 'lighter'
+  glow(ctx, '#fff1d0', b.x, b.y, (22 + 46 * out) * u, 0.75 * (1 - t) * (1 - t))
+  ctx.globalAlpha = 0.4 * (1 - t) * (1 - t)
+  ctx.strokeStyle = '#fff6e4'
+  ctx.lineWidth = 1.2 * u
+  ctx.beginPath()
+  ctx.arc(b.x, b.y, (8 + 40 * out) * u, 0, TAU)
+  ctx.stroke()
+  const seed = b.t * 7.31
+  for (let i = 0; i < 16; i++) {
+    const angle = ((i + hash(seed + i) * 0.8) / 16) * TAU
+    const reach = (34 + 46 * hash(seed + i * 2.3)) * u * out
+    const x = b.x + Math.cos(angle) * reach
+    const y = b.y + Math.sin(angle) * reach + 26 * u * t * t
+    const light = i % 4 === 1 ? FLY_COLORS[(i >> 2) % FLY_COLORS.length]!.light : '#fff6e4'
+    const twinkle = 0.65 + 0.35 * Math.sin(s.time * 30 + i * 2.1)
+    const fade = 1 - t
+    glow(ctx, light, x, y, 9 * u, 0.6 * fade * twinkle)
+    const arm = (3 + 3 * hash(seed + i * 5.7)) * u * (0.4 + 0.6 * fade) * twinkle
+    ctx.globalAlpha = 0.9 * fade
+    ctx.strokeStyle = light
+    ctx.lineWidth = 1.1 * u
+    ctx.beginPath()
+    ctx.moveTo(x - arm, y)
+    ctx.lineTo(x + arm, y)
+    ctx.moveTo(x, y - arm)
+    ctx.lineTo(x, y + arm)
+    ctx.stroke()
   }
   ctx.globalCompositeOperation = 'source-over'
   ctx.globalAlpha = 1
@@ -681,11 +778,13 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, w: numbe
   ctx.globalAlpha = 1
   ctx.drawImage(backdrop.canvas, 0, 0, w, h)
   drawSkyLife(ctx, s, L, pal)
+  drawStar(ctx, s, L, pal)
   drawWater(ctx, s, L, pal)
   drawLanterns(ctx, s, L, pal)
   drawFlies(ctx, s, L, pal, hud && hasKeys() && s.phase !== 'menu')
   drawReeds(ctx, s, L, pal)
   drawTaps(ctx, s, L)
+  drawStarBurst(ctx, s, L)
   ctx.globalCompositeOperation = 'source-over'
   ctx.globalAlpha = 1
   ctx.drawImage(backdrop.shade, 0, 0, w, h)

@@ -534,6 +534,53 @@ main.egg-roll {
   }
 }
 
+/*
+ * On a game's screen: small, up in the strip with the score, between the
+ * back button and the corner buttons, and nothing under a finger, so a tap
+ * there still reaches the game.
+ */
+.secret-toast.secret-toast--in-game {
+  top: calc(0.35rem + env(safe-area-inset-top));
+  bottom: auto;
+  width: max-content;
+  max-width: min(19rem, calc(100vw - 7.5rem));
+  gap: 0.55rem;
+  padding: 0.35rem 0.85rem 0.35rem 0.35rem;
+  border-radius: 0.9rem;
+  pointer-events: none;
+  animation-name: secret-drop;
+}
+
+.secret-toast--in-game .secret-toast__tile {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.7rem;
+}
+
+.secret-toast--in-game .secret-toast__words {
+  gap: 0;
+}
+
+.secret-toast--in-game .secret-toast__kicker {
+  font-size: 0.6rem;
+}
+
+.secret-toast--in-game .secret-toast__name {
+  font-size: 0.95rem;
+}
+
+.secret-toast--in-game .secret-toast__says {
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+@keyframes secret-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -1rem) scale(0.96);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .secret-toast,
   .site-bar__brand.egg-wobble,

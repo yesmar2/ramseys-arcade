@@ -1,5 +1,6 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
+import { starChime } from './chime'
 
 /*
  * Fireflies: a pond at dusk, and fireflies over it that each glow in a colour
@@ -17,6 +18,9 @@ import { sfx } from '../../lib/sound'
  *   one you followed.
  * A Catch or a Follow that goes wrong costs only its lantern, and the night
  * plays on until the string is full.
+ *
+ * Now and then a shooting star crosses the sky over the pond, and a tap on it
+ * catches it: an easter egg, with nothing in it for the score.
  *
  * Everything positional is kept in the field's own units (0 to 1 across the
  * patch of water the fireflies keep to), so a resize moves nothing, and the
@@ -197,6 +201,10 @@ export type Ripple = { id: number; u: number; v: number; t: number }
 export type Spark = { id: number; u: number; v: number; du: number; dv: number; t: number; life: number }
 /** Where a tap landed, in pixels, for its ring. */
 export type Tap = { x: number; y: number; t: number }
+/** A shooting star, in pixels: where it flares up, where it burns out, and when it set off. */
+export type Star = { x0: number; y0: number; x1: number; y1: number; t0: number }
+/** Where a caught star burst into sparkles, in pixels, and when. */
+export type StarBurst = { x: number; y: number; t: number }
 
 export type GameState = {
   phase: Phase
@@ -244,6 +252,15 @@ export type GameState = {
   ripples: Ripple[]
   sparks: Spark[]
   taps: Tap[]
+  /**
+   * The easter egg: a shooting star crossing the sky, and the sparkles of the
+   * last one caught. The page sends them (`shootStar`) with its own dice; the
+   * home page's preview never does, so its seeded runs never see one.
+   */
+  star: Star | null
+  starBurst: StarBurst | null
+  /** When the next star is due, by `time`; 0 till a run has asked for one. */
+  nextStar: number
   stageW: number
   stageH: number
   /** Where the page's own score and buttons end, so the scene hangs below them. */
@@ -333,9 +350,15 @@ function flyUV(s: GameState, f: Fly): [number, number] {
   return [u, v]
 }
 
-/** How far fireflies drift from their spot, in pixels: a little further as the run goes on. */
+/** How far fireflies drift from their spot, in pixels: a little further as the run goes on, up to DRIFT_MOST units. */
+const DRIFT_MOST = 16
 function driftAmp(s: GameState, unit: number) {
-  return (7 + Math.min(9, s.tunes * 0.9)) * unit
+  return (7 + Math.min(DRIFT_MOST - 7, s.tunes * 0.9)) * unit
+}
+
+/** How near a tap has to land to a firefly to reach it, in pixels. */
+function flyReach(unit: number) {
+  return Math.max(34, 48 * unit)
 }
 
 /** Where a firefly is on the screen, and how near a tap has to land to catch it. */
@@ -345,7 +368,7 @@ export function flySpot(s: GameState, f: Fly, layout = pondLayout(s.stageW, s.st
   const amp = driftAmp(s, unit)
   const x = field.x + u * field.w + Math.sin(s.time * 0.9 + f.phase) * amp + Math.sin(s.time * 2.3 + f.phase * 2) * 2 * unit
   const y = field.y + v * field.h + Math.sin(s.time * 1.25 + f.phase * 1.7) * amp * 0.75
-  return { x, y, r: Math.max(34, 48 * unit) }
+  return { x, y, r: flyReach(unit) }
 }
 
 /** How far below a firefly its light shows in the water. */
@@ -419,6 +442,9 @@ export function createInitialState(w = 390, h = 700): GameState {
     ripples: [],
     sparks: [],
     taps: [],
+    star: null,
+    starBurst: null,
+    nextStar: 0,
     stageW: w,
     stageH: h,
     stageTop: 0,
@@ -804,6 +830,8 @@ export function tick(state: GameState, dt: number): GameState {
   if (s.ripples.length && s.time - s.ripples[0]!.t > 1.4) s.ripples = s.ripples.filter((r) => s.time - r.t <= 1.4)
   if (s.sparks.length) s.sparks = s.sparks.filter((p) => s.time - p.t <= p.life)
   if (s.taps.length && s.time - s.taps[0]!.t > 0.5) s.taps = s.taps.filter((t) => s.time - t.t <= 0.5)
+  if (s.star && s.time - s.star.t0 > STAR_TIME) s.star = null
+  if (s.starBurst && s.time - s.starBurst.t > STAR_BURST_TIME) s.starBurst = null
 
   if (s.phase === 'menu' || s.phase === 'gameover' || s.phase === 'input' || s.phase === 'pick') return s
   if (s.phase === 'catch') return tickCatch(s)
@@ -877,7 +905,129 @@ export function toSnapshot(s: GameState): Snapshot {
   }
 }
 
+/* ---- The shooting star, the easter egg. ---- */
+
+/** How long a shooting star takes to cross, and how long a caught one's sparkles last. */
+export const STAR_TIME = 1.2
+export const STAR_BURST_TIME = 0.9
+/** A tap where the star's head was this long ago still catches it: the eye is always a little behind. */
+const STAR_LAG = 0.15
+
+/** Seconds of a run till the next shooting star, for a roll of the dice: 40 to 90, so one is a treat. */
+function starGap(roll: number) {
+  return 40 + roll * 50
+}
+
+/** How near a tap has to land to a shooting star to catch it, in pixels: a fingertip and then some. */
+function starReach(L: Layout) {
+  return 42 * clamp(L.unit, 0.85, 1.3)
+}
+
+/**
+ * The band of sky a shooting star's head keeps to, in pixels: under the
+ * page's score, over the pines on the far bank (render.ts's treeline stands
+ * up to 64 of its lifts), and so far above the fireflies' patch that no tap
+ * can reach a star and a firefly both, however far they drift.
+ */
+function starSky(L: Layout) {
+  const pines = L.bank - 66 * (L.unit * 0.9 + 0.1)
+  const flies = L.field.y - DRIFT_MOST * L.unit * 0.75 - flyReach(L.unit) - starReach(L) - 6
+  return { top: L.top + 8, bottom: Math.min(pines, flies) }
+}
+
+/** Where a star's head is, `age` seconds after it set off: it crosses at an even speed. */
+export function starHead(star: Star, age: number) {
+  const k = clamp(age / STAR_TIME, 0, 1)
+  return { x: star.x0 + (star.x1 - star.x0) * k, y: star.y0 + (star.y1 - star.y0) * k }
+}
+
+/**
+ * Whether a star may set off now. Never so it would cross while the fireflies
+ * sing a tune, show the gold one or fly to new places, which are all for
+ * watching: so while a tune is tapped back, in a Catch, at a Follow's pick, or
+ * in a pause between rounds with time enough left for it to cross.
+ */
+function skyFree(s: GameState) {
+  switch (s.phase) {
+    case 'input':
+    case 'catch':
+    case 'pick':
+      return true
+    case 'intro':
+    case 'win':
+    case 'lost':
+    case 'chime':
+      return s.timer >= STAR_TIME && !s.flies.some((f) => f.trip)
+    default:
+      return false
+  }
+}
+
+/**
+ * The sky, a frame at a time: once a run is under way a shooting star is due
+ * every so often, and when one is and the sky is free, it sets off across it.
+ * `rand` is the page's dice; the home page's preview never calls this, so its
+ * seeded runs never see these draws. A stage too short to have sky enough
+ * lets a star go by unseen.
+ */
+export function shootStar(state: GameState, rand: () => number): GameState {
+  if (state.phase === 'menu' || state.phase === 'gameover' || state.phase === 'fail') return state
+  if (!state.nextStar) return { ...state, nextStar: state.time + starGap(rand()) }
+  if (state.time < state.nextStar || state.star || !skyFree(state)) return state
+  const s: GameState = { ...state, nextStar: state.time + starGap(rand()) }
+  const L = pondLayout(s.stageW, s.stageH, s.stageTop)
+  const sky = starSky(L)
+  const room = sky.bottom - sky.top
+  if (room < 30) return s
+  // Slanting down, 10 to 27 degrees, a short stretch of sky: longer on a bigger pond, never further than the sky goes.
+  const slope = 0.18 + rand() * 0.3
+  const len = Math.min((190 + rand() * 120) * clamp(L.unit, 0.85, 1.3), L.w * 0.7, room / Math.sin(slope))
+  const dx = len * Math.cos(slope)
+  const dy = len * Math.sin(slope)
+  const x = L.w * 0.1 + rand() * Math.max(0, L.w * 0.8 - dx)
+  const y = sky.top + rand() * (room - dy)
+  const star: Star =
+    rand() < 0.5 ? { x0: x, y0: y, x1: x + dx, y1: y + dy, t0: s.time } : { x0: x + dx, y0: y, x1: x, y1: y + dy, t0: s.time }
+  return { ...s, star }
+}
+
+/**
+ * A tap on the stage, in pixels, that lands on a shooting star, at its head or
+ * just behind it where the eye still sees it: the star is caught, and bursts
+ * into sparkles with a chime. Null when it's no catch, and the tap goes on to
+ * the fireflies. The sky the stars cross is kept out of their reach, but a tap
+ * that could reach a firefly is the firefly's all the same. A catch is worth
+ * nothing to the score.
+ */
+export function catchStar(state: GameState, x: number, y: number): GameState | null {
+  const star = state.star
+  if (!star || state.phase === 'menu' || state.phase === 'gameover' || state.phase === 'fail') return null
+  const age = state.time - star.t0
+  if (age > STAR_TIME) return null
+  const L = pondLayout(state.stageW, state.stageH, state.stageTop)
+  const head = starHead(star, age)
+  if (toSegment(x, y, starHead(star, age - STAR_LAG), head) > starReach(L)) return null
+  for (const f of state.flies) {
+    const spot = flySpot(state, f, L)
+    if (Math.hypot(spot.x - x, spot.y - y) <= spot.r) return null
+  }
+  starChime()
+  return { ...state, star: null, starBurst: { x: head.x, y: head.y, t: state.time } }
+}
+
 /* ---- Helpers. ---- */
+
+function clamp(v: number, a: number, b: number) {
+  return v < a ? a : v > b ? b : v
+}
+
+/** How far a point is from the line between `a` and `b`. */
+function toSegment(x: number, y: number, a: { x: number; y: number }, b: { x: number; y: number }) {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const k = dx || dy ? clamp(((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy), 0, 1) : 0
+  return Math.hypot(a.x + dx * k - x, a.y + dy * k - y)
+}
 
 function easeInOut(t: number) {
   const k = Math.max(0, Math.min(1, t))

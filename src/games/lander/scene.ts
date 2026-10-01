@@ -1,3 +1,4 @@
+import { ALIEN_H, alienMiddle, type Alien } from './alien'
 import type { GhostPose } from './runs'
 import { G, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Cave } from './sim'
 
@@ -6,7 +7,8 @@ import { G, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Cave } from 
  * is a deep violet with a grid every 4 m; the walls are lit edges, violet near the top and magenta deeper
  * down. Gates are dashed amber lines that turn green once passed; the pads are amber, the landing pad's lights
  * running toward its middle. The ship is Asteroids' arrow in white with an amber flame; the ghost is cyan
- * (or amber, your own best) with whose run it is over it.
+ * (or amber, your own best) with whose run it is over it. A little green alien stands in a nook a third of the
+ * way down (alien.ts): two eyes blinking in the dark till your ship comes near enough to light it.
  *
  * It draws only with fills and strokes, never shadowBlur or overlapping circle fills, so a phone's canvas
  * keeps up. The cave is always dark, whatever the site's theme: it's underground.
@@ -27,10 +29,21 @@ const C = {
   ghost: '#46e4ff',
   mine: '#f5b942',
   bad: '#f07a8a',
+  alien: [134, 227, 111],
+  alienShade: [86, 178, 80],
+  alienEye: [234, 255, 216],
+  alienPupil: '#12301a',
 } as const
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
+
+/** The air's own colour, as numbers, for the alien to fade into in the dark. */
+const AIR_RGB = [21, 13, 41] as const
+
+/** A colour `f` of the way from the air's to `rgb`: the alien drawn solid, so its parts never show through each other. */
+const fromAir = (rgb: readonly number[], f: number) =>
+  `rgb(${rgb.map((v, i) => Math.round(lerp(AIR_RGB[i]!, v, f))).join(', ')})`
 
 /** What a frame shows: where the ship is, and the run to beat beside it. */
 export type SceneFrame = {
@@ -47,6 +60,8 @@ export type SceneFrame = {
   ghostMine: boolean
   /** Before a run the camera rides with the run to beat; with less motion asked for, it stays on the start pad. */
   calm: boolean
+  /** The alien is waving: your ship (never the ghost) is flying close to it. */
+  greet: boolean
 }
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; hot: boolean }
@@ -69,6 +84,14 @@ export class CaveScene {
   private shards: Shard[] = []
   private wreckFor = 0
   private time = 0
+  /** The easter egg's alien, once the cave's is known (alien.ts alienOf). */
+  private alien: Alien | null = null
+  /** How far into a wave it is, 0 (arm down) to 1, and its arm's swing. */
+  private wave = 0
+  private swing = 0
+  /** Whether it was waving last frame, and when it blinked at a ship coming. */
+  private greeting = false
+  private blinkAt = -1
 
   constructor(canvas: HTMLCanvasElement, cave: Cave) {
     const ctx = canvas.getContext('2d')
@@ -102,6 +125,11 @@ export class CaveScene {
     this.dpr = dpr
     this.canvas.width = Math.max(1, Math.round(this.W * dpr))
     this.canvas.height = Math.max(1, Math.round(this.H * dpr))
+  }
+
+  /** The cave's alien, to draw from now on: it waits on the blue ship's flight to know where it stands. */
+  meet(alien: Alien | null) {
+    this.alien = alien
   }
 
   /** The camera jumps to the ship at the next frame, rather than gliding there: a new run, or back at a gate. */
@@ -158,6 +186,7 @@ export class CaveScene {
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     this.drawCave(f)
+    this.drawAlien(f, dt)
     // At the start card a ghost that isn't flying (one whose path isn't known yet) would sit on your ship: it waits unseen.
     const ghostShown = f.ghost && !f.ghost.wrecked && !(f.mode === 'menu' && f.ghost.done)
     if (f.ghost && ghostShown) this.drawGhost(f.ghost, f.ghostTag, f.ghostMine, f.mode !== 'done' && !f.ghost.done)
@@ -425,6 +454,136 @@ export class CaveScene {
       ctx.textBaseline = 'alphabetic'
       ctx.fillStyle = pad.end ? C.pad : 'rgba(255, 179, 71, 0.6)'
       ctx.fillText(pad.end ? 'LAND HERE' : 'START', (x0 + x1) / 2, y + Math.max(16, 1.4 * cam.k))
+    }
+  }
+
+  /* ---------- the alien (alien.ts) ---------- */
+
+  /**
+   * The alien, when it's in view. Far from your ship it's all but the dark it stands in: two pale eyes that
+   * blink now and then, the egg's clue. Nearer, your ship's light shows it; close, it waves and says hi. It's
+   * drawn solid, from the air's colour toward its own, in a frame of its own: feet at the origin, metres up
+   * its body, turned to face out of its nook.
+   */
+  private drawAlien(f: SceneFrame, dt: number) {
+    const al = this.alien
+    if (!al) return
+    const { ctx, cam, W, H } = this
+    // The wave eases in and out, the arm swinging while it's up; it blinks as it sees a ship come.
+    if (f.greet && !this.greeting) this.blinkAt = this.time
+    this.greeting = f.greet
+    this.wave += ((f.greet ? 1 : 0) - this.wave) * Math.min(1, dt * 6)
+    if (this.wave > 0.01) this.swing += dt * 9
+    else this.swing = 0
+    const [mx, my] = alienMiddle(al)
+    const edge = 3 * cam.k
+    if (this.sx(mx) < -edge || this.sx(mx) > W + edge || this.sy(my) < -edge || this.sy(my) > H + edge) return
+    // Lit by your ship: unseen past 10 m, all there inside 5.
+    const dx = f.ship.x - mx
+    const dy = f.ship.y - my
+    const lit = clamp((10 - Math.hypot(dx, dy)) / 5, 0, 1)
+    // Two blinks every few seconds.
+    const beat = this.time % 4.6
+    const shut = beat < 0.12 || (beat > 0.26 && beat < 0.36) || this.time - this.blinkAt < 0.14
+    const skin = fromAir(C.alien, lit)
+    const shade = fromAir(C.alienShade, lit)
+
+    ctx.save()
+    ctx.translate(this.sx(al.x), this.sy(al.y))
+    ctx.rotate(al.a)
+    ctx.scale(cam.k * al.facing, -cam.k)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    // Unlit, there's nothing of it to see but its eyes.
+    if (lit > 0) this.drawAlienBody(skin, shade)
+    // Its eyes, slanting up at the outer corners: faint in the dark, and once it can see your ship, looking at it.
+    ctx.fillStyle = fromAir(C.alienEye, 0.45 + 0.55 * lit)
+    for (const side of [-1, 1]) {
+      ctx.beginPath()
+      ctx.ellipse(side * 0.16, 1.13, 0.12, shut ? 0.014 : 0.085, side * 0.32, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    if (lit > 0.3 && !shut) {
+      // Your ship, in its own terms: across (its way of facing) and up its body.
+      const [rx, ry] = toWorld({ x: 0, y: 0, a: al.a }, 1, 0)
+      const across = (dx * rx + dy * ry) * al.facing
+      const up = dx * -ry + dy * rx
+      const l = Math.hypot(across, up) || 1
+      ctx.fillStyle = C.alienPupil
+      ctx.globalAlpha = lit
+      for (const side of [-1, 1]) {
+        ctx.beginPath()
+        ctx.arc(side * 0.16 + (across / l) * 0.04, 1.13 + (up / l) * 0.025, 0.04, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    ctx.restore()
+
+    // "hi", over it while it waves.
+    if (this.wave > 0.05) {
+      const [tx, ty] = toWorld(al, al.facing * 0.55, ALIEN_H + 0.3)
+      ctx.save()
+      ctx.globalAlpha = this.wave
+      ctx.font = `700 ${Math.max(11, 0.6 * cam.k)}px ${this.font}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = fromAir(C.alien, 1)
+      ctx.fillText('hi', this.sx(tx), this.sy(ty))
+      ctx.restore()
+    }
+  }
+
+  /** The alien's legs, body, arms, head and antennae, in its own frame, the arm it waves where the wave has it. */
+  private drawAlienBody(skin: string, shade: string) {
+    const { ctx } = this
+    // Its legs, and the arm at its back.
+    ctx.strokeStyle = shade
+    ctx.lineWidth = 0.12
+    ctx.beginPath()
+    ctx.moveTo(-0.15, 0.03)
+    ctx.lineTo(-0.11, 0.38)
+    ctx.moveTo(0.15, 0.03)
+    ctx.lineTo(0.11, 0.38)
+    ctx.moveTo(-0.2, 0.74)
+    ctx.lineTo(-0.36, 0.44)
+    ctx.stroke()
+    // Its body, and the arm it waves: down at its side, or up and swinging.
+    ctx.fillStyle = skin
+    ctx.beginPath()
+    ctx.ellipse(0, 0.6, 0.26, 0.3, 0, 0, Math.PI * 2)
+    ctx.fill()
+    const arm = 0.35 + this.wave * (2.1 + Math.sin(this.swing) * 0.45)
+    const hx = 0.2 + Math.sin(arm) * 0.46
+    const hy = 0.74 - Math.cos(arm) * 0.46
+    ctx.strokeStyle = skin
+    ctx.lineWidth = 0.1
+    ctx.beginPath()
+    ctx.moveTo(0.2, 0.74)
+    ctx.lineTo(hx, hy)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(hx, hy, 0.075, 0, Math.PI * 2)
+    ctx.fill()
+    // Its head, and its antennae, nodding a little.
+    ctx.beginPath()
+    ctx.ellipse(0, 1.12, 0.4, 0.32, 0, 0, Math.PI * 2)
+    ctx.fill()
+    const nod = Math.sin(this.time * 2.6) * 0.03
+    const tips = [
+      [-0.26, 1.64 + nod],
+      [0.27, 1.64 - nod],
+    ] as const
+    ctx.lineWidth = 0.05
+    ctx.beginPath()
+    for (const [x, y] of tips) {
+      ctx.moveTo(x / 2, 1.38)
+      ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+    for (const [x, y] of tips) {
+      ctx.beginPath()
+      ctx.arc(x, y, 0.065, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
 

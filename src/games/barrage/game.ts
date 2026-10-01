@@ -133,6 +133,35 @@ const PLINK_GAP = 0.065
 const CLEAR_PAUSE = 2.2
 export const BANNER_TIME = 2.4
 
+// --------------------------------------------------------------------- moon
+
+/**
+ * The moon, for the easter egg: a faint disc high in the sky behind the
+ * field, drifting slowly from side to side on the run's clock. Rounds that fly
+ * off the top across its face hit it and it flinches, and a bruise comes up
+ * under one eye; keep at it and it has a black eye. They leave the field just
+ * as before, and nothing scores.
+ */
+export const MOON_R = 0.036
+export const MOON_Y = 0.11
+/**
+ * The bruise a hit adds is one; it heals at MOON_HEAL a second, and at
+ * MOON_OW the eye is black. A ship held still under the moon with the sky
+ * clear puts its middle pair of rounds, 25 a second, through it (more, from
+ * high up once the second pair comes on), so that is three to six seconds of
+ * meaning it. The healing is what keeps it a secret: the guns never stop, and
+ * a ship passing under the moon as it chases the fleet hits it often enough
+ * that every run would end in a black eye if nothing healed. With it, the
+ * cabinet's pilot, over two hours of whole runs, never got a bruise past 86.
+ */
+export const MOON_OW = 100
+const MOON_HEAL = 8
+
+/** How far across the moon is at `time`: out to one side as a run starts, across and back every minute and a half. */
+export function moonX(time: number) {
+  return 0.5 + 0.3 * Math.sin(time * 0.07 + 1.1)
+}
+
 // ------------------------------------------------------------------ bullets
 
 export type BulletKind = 'orb' | 'rice' | 'big' | 'dart'
@@ -409,6 +438,8 @@ export type GameState = {
   grazeRunT: number
   /** Seconds until a hit may make a sound again. */
   plinkIn: number
+  /** The moon (the easter egg): its bruise, 0–1 as it flinches from a hit, and whether it has its black eye this run. */
+  moon: { bruise: number; flinch: number; ow: boolean }
 }
 
 export type Snapshot = {
@@ -1012,6 +1043,7 @@ export function createInitialState(): GameState {
     grazeRun: 0,
     grazeRunT: 0,
     plinkIn: 0,
+    moon: { bruise: 0, flinch: 0, ow: false },
   }
   menuScene(state)
   return state
@@ -1206,6 +1238,8 @@ function tickEffects(state: GameState, dt: number) {
   state.grazeRunT -= dt
   if (state.grazeRunT <= 0) state.grazeRun = 0
   state.plinkIn -= dt
+  state.moon.flinch = Math.max(0, state.moon.flinch - dt * 6)
+  state.moon.bruise = Math.max(0, state.moon.bruise - dt * MOON_HEAL)
   if (state.banner) {
     state.banner.t += dt
     if (state.banner.t > BANNER_TIME) state.banner = null
@@ -1752,8 +1786,20 @@ function advanceBoss(state: GameState, dt: number) {
   if (boss.phaseT > phase.limit) endBossPhase(state, queen, false)
 }
 
+/** A round off the top across the moon's face: it flinches, and at MOON_OW it has a black eye and says so. */
+function hitMoon(state: GameState, x: number) {
+  const moon = state.moon
+  moon.bruise += 1
+  moon.flinch = 1
+  if (moon.ow || moon.bruise < MOON_OW) return
+  moon.ow = true
+  addFloater(state, x + MOON_R * 1.6, MOON_Y + MOON_R * 1.4, 'Ow!', 'warn', 1.6)
+  sfx('boing')
+}
+
 function advanceBolts(state: GameState, dt: number) {
   const kept: Bolt[] = []
+  const moonAt = moonX(state.time)
   for (const b of state.bolts) {
     if (b.needle) {
       // Bend toward the nearest ship ahead.
@@ -1781,7 +1827,11 @@ function advanceBolts(state: GameState, dt: number) {
     }
     b.x += b.vx * dt
     b.y += b.vy * dt
-    if (b.y < -0.05 || b.x < -0.05 || b.x > 1.05 || b.y > FIELD_H + 0.05) continue
+    if (b.y < -0.05 || b.x < -0.05 || b.x > 1.05 || b.y > FIELD_H + 0.05) {
+      // Gone off the top: if it crossed the moon's middle within its face, that was a hit on the moon.
+      if (b.y < -0.05 && Math.abs(b.x + (b.vx * (MOON_Y - b.y)) / b.vy - moonAt) < MOON_R) hitMoon(state, moonAt)
+      continue
+    }
     let hit = false
     for (const e of state.enemies) {
       if (e.gone) continue

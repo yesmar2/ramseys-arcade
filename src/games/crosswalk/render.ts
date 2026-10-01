@@ -1,4 +1,4 @@
-import type { Dir, GameState, Puff, Row, Vehicle } from './game'
+import type { Dir, GameState, KerbButton, Puff, Row, Vehicle } from './game'
 import {
   BACK_LIMIT,
   BUMP,
@@ -7,12 +7,14 @@ import {
   MOMENTUM_SHOW,
   PUFF_LIFE,
   STALL_WARN,
+  WAIT_LIGHT,
   stallLimitAt,
   cellMetrics,
   easeHop,
   getRailCycle,
   getRow,
   isLorry,
+  kerbButton,
   laneSpan,
 } from './game'
 import { drawEyes } from '../eyes'
@@ -813,6 +815,110 @@ function drawCrossingLights(
   }
 }
 
+/** The crossing button's box, in shares of a tile down from the top of its row and across. */
+const BUTTON_BOX = { top: 0.1, h: 0.34, w: 0.3 }
+/** The round button on its face, and how near it a tap has to land to press it. */
+const BUTTON_Y = BUTTON_BOX.top + BUTTON_BOX.h * 0.72
+const BUTTON_REACH = 0.22
+
+/**
+ * The crossing button (the easter egg; see `kerbButton`): a slate box on a
+ * post like the level crossing's, a WAIT light across its top and a round
+ * button under it. `lit` runs from 1 down to 0 after a press. With `glint`,
+ * the clue, the button catches the light for a moment every few seconds.
+ */
+function drawCrossingButton(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  cell: number,
+  dark: boolean,
+  lit: number,
+  glint: boolean,
+  time: number,
+) {
+  // A shadow where it stands, the same one the trees throw.
+  ctx.fillStyle = dark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(30, 40, 60, 0.09)'
+  ctx.beginPath()
+  ctx.ellipse(x, y + cell * 0.86, cell * 0.1, cell * 0.032, 0, 0, TAU)
+  ctx.fill()
+
+  const postW = cell * 0.07
+  ctx.fillStyle = fill(45, 10, dark ? 42 : 32, 1)
+  roundRect(ctx, x - postW / 2, y + cell * 0.38, postW, cell * 0.48, postW * 0.3)
+  ctx.fill()
+
+  const bw = cell * BUTTON_BOX.w
+  const bh = cell * BUTTON_BOX.h
+  const by = y + cell * BUTTON_BOX.top
+  roundRect(ctx, x - bw / 2, by, bw, bh, cell * 0.05)
+  ctx.fillStyle = fill(215, 14, dark ? 34 : 76, 1)
+  ctx.fill()
+  ctx.strokeStyle = fill(215, 16, dark ? 62 : 36, 0.95)
+  ctx.lineWidth = Math.max(1.4, cell * 0.03)
+  strokeOutlined(ctx)
+
+  // The light: dark glass with the word in it, glowing warm while it is on.
+  const on = Math.min(1, lit / 0.15)
+  const pw = bw * 0.8
+  const ph = bh * 0.34
+  const py = by + bh * 0.12
+  if (on > 0) {
+    const halo = ctx.createRadialGradient(x, py + ph / 2, 0, x, py + ph / 2, pw * 0.9)
+    halo.addColorStop(0, fill(14, 100, 60, 0.36 * on))
+    halo.addColorStop(1, fill(14, 100, 60, 0))
+    ctx.fillStyle = halo
+    ctx.beginPath()
+    ctx.arc(x, py + ph / 2, pw * 0.9, 0, TAU)
+    ctx.fill()
+  }
+  roundRect(ctx, x - pw / 2, py, pw, ph, ph * 0.25)
+  ctx.fillStyle = dark ? 'rgba(6, 8, 12, 0.92)' : 'rgba(28, 34, 44, 0.9)'
+  ctx.fill()
+  ctx.font = `800 ${Math.max(5, cell * 0.085)}px ${FONT}`
+  const words = ctx.measureText('WAIT').width
+  const squeeze = Math.min(1, (pw * 0.86) / Math.max(1, words))
+  ctx.save()
+  ctx.translate(x, py + ph * 0.54)
+  ctx.scale(squeeze, 1)
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = on > 0 ? fill(14, 100, 66, 0.25 + 0.75 * on) : 'rgba(255, 120, 90, 0.16)'
+  ctx.fillText('WAIT', 0, 0)
+  ctx.restore()
+
+  // The button, in for a moment when it's pressed.
+  const r = cell * 0.058
+  const bcy = y + cell * BUTTON_Y
+  const pressed = lit > WAIT_LIGHT - 0.14
+  ctx.beginPath()
+  ctx.arc(x, bcy, pressed ? r * 0.88 : r, 0, TAU)
+  ctx.fillStyle = fill(215, 10, dark ? (pressed ? 46 : 58) : pressed ? 70 : 90, 1)
+  ctx.fill()
+  ctx.strokeStyle = fill(215, 16, dark ? 70 : 30, 0.95)
+  ctx.lineWidth = Math.max(1.2, cell * 0.024)
+  strokeOutlined(ctx)
+
+  if (glint) {
+    // Every few seconds, a little star of light across its face.
+    const beat = (time + x * 0.013) % 4.8
+    if (beat < 0.42) {
+      const k = Math.sin((beat / 0.42) * Math.PI)
+      const s = r * (0.5 + k * 0.7)
+      const gx = x - r * 0.3
+      const gy = bcy - r * 0.32
+      ctx.beginPath()
+      ctx.moveTo(gx, gy - s)
+      ctx.quadraticCurveTo(gx, gy, gx + s, gy)
+      ctx.quadraticCurveTo(gx, gy, gx, gy + s)
+      ctx.quadraticCurveTo(gx, gy, gx - s, gy)
+      ctx.quadraticCurveTo(gx, gy, gx, gy - s)
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * k})`
+      ctx.fill()
+    }
+  }
+}
+
 /**
  * An engine and three coaches, coupled. It was one long slab with four panes,
  * which read as a very long car; the nose, its lamp and the gaps between the
@@ -1256,6 +1362,13 @@ function drawRow(
     drawTree(ctx, ox + (treeCol + 0.5) * cell, y + cell * 0.52, cell * 0.88, dark, biome.tree, biome.satMul, biome.lightAdd)
   }
 
+  const button = row.kind === 'grass' ? kerbButton(state, worldRow) : null
+  if (button) {
+    const light = state.waitLight
+    const lit = light && light.row === worldRow && light.edge === button.edge ? light.t : 0
+    drawCrossingButton(ctx, ox + button.edge * cell, y, cell, dark, lit, state.glint, time)
+  }
+
   const bob = Math.sin(time * 4.5 + worldRow) * cell * 0.04
   for (const ticketCol of row.tickets) {
     drawTicket(ctx, ox + (ticketCol + 0.5) * cell, y + cell * 0.52, cell, dark, bob, time * 2.4 + ticketCol + worldRow)
@@ -1634,4 +1747,23 @@ export function renderGame(
   if (state.phase === 'playing' && state.idleTimer > stallLimitAt(state.row) - STALL_WARN) {
     drawStallThreat(ctx, px, py, cell, w, h, state.idleTimer, performance.now() / 1000, state.row)
   }
+}
+
+/**
+ * The crossing button under a point on the canvas, in its CSS pixels, if one
+ * is there: within a little over a fifth of a tile of the round button, so a
+ * tap meant for the board still hops as it always did.
+ */
+export function buttonAt(state: GameState, w: number, h: number, x: number, y: number): KerbButton | null {
+  const { cell, visibleRows, ox, oy } = computeLayout(w, h, state.cols, playerPos(state).c)
+  const reach = Math.max(16, cell * BUTTON_REACH)
+  const top = Math.ceil(state.cameraY + visibleRows + 2)
+  for (let row = Math.floor(state.cameraY) - 4; row <= top; row++) {
+    const button = kerbButton(state, row)
+    if (!button) continue
+    const bx = ox + button.edge * cell
+    const by = rowScreenY(row, state.cameraY, visibleRows, oy, cell) + cell * BUTTON_Y
+    if (Math.hypot(x - bx, y - by) <= reach) return button
+  }
+  return null
 }

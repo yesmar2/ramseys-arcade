@@ -18,6 +18,7 @@ import { useDailyDays } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import { usePastViewer } from '../../lib/dailyPast'
 import { ownerAccount, ownerOf, SIGNED_OUT } from '../../lib/deviceRuns'
+import { reportEgg } from '../../lib/eggs'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
@@ -54,6 +55,12 @@ const FALL_FOR = 1.1
 const STICK_R = 58
 /** A key held tilts the world all the way in about a sixth of a second. */
 const KEY_RATE = 6
+/**
+ * The easter egg: off the edge this many times in a run before its first checkpoint. "Lost your marbles?"
+ * shows for this long, in seconds, and then the secret's pop-up comes.
+ */
+const MARBLES_FALLS = 3
+const MARBLES_FOR = 2.5
 
 type Held = { up: boolean; down: boolean; left: boolean; right: boolean }
 const NONE: Held = { up: false, down: false, left: false, right: false }
@@ -289,6 +296,8 @@ function MarbleRunDay({
   const saveOpenRef = useRef(false)
   const [noGl, setNoGl] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  /** "Lost your marbles?" is up: the easter egg's line. */
+  const [marbles, setMarbles] = useState(false)
   const [touch] = useState(touchScreen)
   const [hint, setHint] = useState(false)
   const holderRef = useRef<HTMLDivElement>(null)
@@ -306,6 +315,8 @@ function MarbleRunDay({
   const startGrace = useRef(0)
   const autopilot = useRef<((b: Ball) => Tilt) | null>(null)
   const toastTimer = useRef(0)
+  /** Till the easter egg's pop-up comes, after its line has had its moment. */
+  const marblesTimer = useRef(0)
   const inRun = IN_RUN.has(ui.phase)
   const pausable = inRun && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
@@ -319,6 +330,23 @@ function MarbleRunDay({
   }
   const sayRef = useRef(say)
   sayRef.current = say
+
+  /**
+   * The easter egg: a third fall before the run's first checkpoint. "Lost your marbles?" a moment in place of
+   * the fall's notice, then the secret. The run goes on as any fall's does, its clock and falls untouched.
+   */
+  const lostMarbles = () => {
+    say(null)
+    setMarbles(true)
+    window.clearTimeout(marblesTimer.current)
+    marblesTimer.current = window.setTimeout(() => {
+      marblesTimer.current = 0
+      setMarbles(false)
+      void reportEgg('marbles')
+    }, MARBLES_FOR * 1000)
+  }
+  const lostMarblesRef = useRef(lostMarbles)
+  lostMarblesRef.current = lostMarbles
 
   const letGoStick = () => {
     stickAt.current = null
@@ -362,6 +390,8 @@ function MarbleRunDay({
     letGoStick()
     setHint(touch)
     say(null)
+    // A run started again over the egg's line clears it; its secret still comes.
+    setMarbles(false)
     setUi(snapshot(g))
   }
 
@@ -639,7 +669,8 @@ function MarbleRunDay({
             g.fallFor = FALL_FOR
             b.lost = false
             b.air = true
-            sayRef.current('Off the edge · back to the checkpoint', 1.4)
+            if (b.falls === MARBLES_FALLS && b.next === 0) lostMarblesRef.current()
+            else sayRef.current('Off the edge · back to the checkpoint', 1.4)
             sfx('whoosh')
             haptic('crash')
           } else if (b.finished) {
@@ -771,6 +802,16 @@ function MarbleRunDay({
   }, [paused])
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), [])
+
+  // Gone from the page while the egg's line was up: it was found all the same.
+  useEffect(
+    () => () => {
+      if (!marblesTimer.current) return
+      window.clearTimeout(marblesTimer.current)
+      void reportEgg('marbles')
+    },
+    [],
+  )
 
   // Mounted again for a new day because a run was lost to midnight: say so.
   useEffect(() => {
@@ -942,9 +983,14 @@ function MarbleRunDay({
               </div>
             ) : null}
 
-            {toast && !paused && !saveOpen ? (
+            {toast && !marbles && !paused && !saveOpen ? (
               <div className="marblerun__toast" role="status">
                 {toast}
+              </div>
+            ) : null}
+            {marbles && !paused && !saveOpen ? (
+              <div className="marblerun__toast marblerun__toast--marbles" role="status">
+                Lost your marbles?
               </div>
             ) : null}
 

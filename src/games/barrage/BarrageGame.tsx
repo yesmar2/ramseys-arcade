@@ -11,6 +11,7 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { reportEgg } from '../../lib/eggs'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -203,8 +204,14 @@ export function BarrageGame() {
 
       if (!pausedRef.current) {
         const before = stateRef.current.lives
+        const bruised = stateRef.current.moon.ow
         stateRef.current = tick(stateRef.current, dt)
         if (stateRef.current.lives < before) haptic(stateRef.current.lives > 0 ? 'hit' : 'crash')
+        // The moon shot till it has a black eye: the easter egg's secret.
+        if (!bruised && stateRef.current.moon.ow) {
+          haptic('hit')
+          void reportEgg('moon')
+        }
       }
 
       const snap = toSnapshot(stateRef.current)

@@ -14,6 +14,8 @@ export type Maze = {
   start: Cell
   crumbs: Cell[]
   power: Cell[]
+  /** The safe spot, an easter egg (see game.ts): a tile a player can stand still on, just under the den. */
+  safe: Cell
 }
 
 /**
@@ -265,6 +267,24 @@ function parseMaze(rows: string[]): Maze {
     }
   }
 
+  /*
+   * The safe spot: under the den, pressed up against its bottom wall, where a
+   * player coming straight up from the start stops. Some boards wall that lane
+   * off, so it is the nearest tile along the row under the den that a player
+   * can be moving up into and stop on, the right-hand one of two.
+   */
+  const under = house.maxY + 2
+  let safe: Cell = { x: houseCenter.x, y: under }
+  let nearest = Infinity
+  for (let x = 0; x < C; x++) {
+    if (!open[under]?.[x] || open[under - 1]?.[x] || !open[under + 1]?.[x]) continue
+    const d = Math.abs(x - houseCenter.x) - (x > houseCenter.x ? 0.1 : 0)
+    if (d < nearest) {
+      nearest = d
+      safe = { x, y: under }
+    }
+  }
+
   return {
     cols: C,
     rows: R,
@@ -276,6 +296,7 @@ function parseMaze(rows: string[]): Maze {
     start,
     crumbs,
     power,
+    safe,
   }
 }
 
@@ -320,6 +341,7 @@ export function rotateMazeCW(maze: Maze): Maze {
     start: rotCell(maze.start, rows),
     crumbs: maze.crumbs.map((c) => rotCell(c, rows)),
     power: maze.power.map((c) => rotCell(c, rows)),
+    safe: rotCell(maze.safe, rows),
   }
 }
 

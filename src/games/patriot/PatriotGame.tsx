@@ -10,6 +10,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { reportEgg } from '../../lib/eggs'
 import { getPersonalBest } from '../../lib/personalBest'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { normalizePlayerName } from '../../lib/leaderboard'
@@ -172,7 +173,10 @@ export function PatriotGame() {
 
       // Freeze while rotated or user-paused
       if (!pausedRef.current && w > 0) {
+        const quiet = stateRef.current.wargamesAt < 0
         stateRef.current = tick(stateRef.current, dt, w)
+        // A whole wave let fall without a shot: the computer has its say, and the secret is found.
+        if (quiet && stateRef.current.wargamesAt >= 0) void reportEgg('wargames')
       }
 
       uiAcc += dt
@@ -247,6 +251,8 @@ export function PatriotGame() {
     if (!intoMenu) beginRun('patriot')
     const { w, h } = sizeRef.current
     stateRef.current = startGame(stateRef.current, w, h)
+    // The easter egg's line, for a wave sat out; the cabinet's preview never turns it on.
+    stateRef.current.wargames = true
     previousBestRef.current = getPersonalBest('patriot')
     // Same reset, stopped at the start card instead of in play.
     if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }

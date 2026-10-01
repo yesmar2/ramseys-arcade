@@ -9,9 +9,13 @@ import {
   PIP_LIFE,
   PIP_R,
   MAX_STOCK,
+  MOON_OW,
+  MOON_R,
+  MOON_Y,
   SHIP_W,
   SPECIES,
   bossReadout,
+  moonX,
   nozzleOf,
   type Bullet,
   type Enemy,
@@ -149,6 +153,108 @@ function drawNebula(g: Gfx, w: number, h: number) {
     ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
   }
   void w
+}
+
+/**
+ * The moon (the easter egg), faint and behind everything, high in the sky: a
+ * pale disc with a few craters and a sleepy face that is hardly there. A round
+ * across its face makes it flinch and screw its eyes shut; a bruise comes up
+ * under one eye as the hits mount, and fades when they stop; once it has had
+ * enough it has a black eye, the other eye wide, and its mouth open in an
+ * "ow", plainer to see now, for the rest of the run.
+ */
+function drawMoon(g: Gfx) {
+  const { ctx, s, dark, t, U, X, Y } = g
+  const m = s.moon
+  const f = m.flinch
+  const r = U(MOON_R)
+  const cx = X(moonX(t)) + Math.sin(t * 90) * U(0.003) * f
+  const cy = Y(MOON_Y) + Math.sin(t * 70) * U(0.0015) * f
+  const hue = dark ? 48 : 215
+  const sat = dark ? 40 : 25
+  const lit = dark ? 84 : 46
+  const line = (a: number) => hsla(hue, sat, lit, a)
+  const show = m.ow ? 1.6 : 1
+
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, TAU)
+  ctx.fillStyle = hsla(hue, sat, dark ? 86 : 70, (dark ? 0.08 : 0.12) * show + 0.08 * f)
+  ctx.fill()
+  ctx.strokeStyle = line(0.2 * show + 0.15 * f)
+  ctx.lineWidth = Math.max(1, U(0.0028))
+  ctx.stroke()
+  // Craters.
+  ctx.strokeStyle = line(0.1 * show)
+  ctx.lineWidth = Math.max(0.8, U(0.002))
+  for (const [x, y, k] of [
+    [-0.42, -0.5, 0.16],
+    [0.5, 0.38, 0.12],
+    [-0.2, 0.62, 0.09],
+  ] as const) {
+    ctx.beginPath()
+    ctx.arc(cx + x * r, cy + y * r, k * r, 0, TAU)
+    ctx.stroke()
+  }
+
+  // The bruise under its right eye, as the hits mount; black once it has had enough.
+  const ex = 0.36 * r
+  const ey = -0.1 * r
+  const bruise = m.ow ? 1 : Math.min(1, m.bruise / MOON_OW) * 0.45
+  if (bruise > 0.02) {
+    ctx.beginPath()
+    ctx.arc(cx + ex, cy + ey, 0.27 * r, 0, TAU)
+    ctx.fillStyle = hsla(275, 45, dark ? 26 : 30, 0.75 * bruise)
+    ctx.fill()
+    ctx.strokeStyle = hsla(275, 55, dark ? 62 : 40, 0.6 * bruise)
+    ctx.lineWidth = Math.max(0.8, U(0.002))
+    ctx.stroke()
+  }
+
+  const face = line(m.ow ? 0.62 : 0.18 + 0.12 * f)
+  ctx.strokeStyle = face
+  ctx.fillStyle = face
+  ctx.lineWidth = Math.max(1, U(0.0026))
+  ctx.beginPath()
+  if (m.ow) {
+    // One eye wide, the black one swollen shut, and its mouth open.
+    ctx.arc(cx - ex, cy + ey, 0.12 * r, 0, TAU)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(cx + ex - 0.13 * r, cy + ey + 0.02 * r)
+    ctx.lineTo(cx + ex + 0.13 * r, cy + ey - 0.02 * r)
+    ctx.strokeStyle = 'rgba(255, 250, 240, 0.75)'
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(cx - ex, cy + ey, 0.045 * r, 0, TAU)
+    ctx.moveTo(cx + 0.14 * r, cy + 0.4 * r)
+    ctx.ellipse(cx + 0.04 * r, cy + 0.4 * r, 0.1 * r, 0.13 * r, 0, 0, TAU)
+    ctx.fill()
+  } else if (f > 0.5) {
+    // Flinching: eyes screwed shut, > <, and its mouth drawn tight.
+    for (const side of [-1, 1]) {
+      const x = cx + side * ex
+      ctx.moveTo(x + side * 0.1 * r, cy + ey - 0.1 * r)
+      ctx.lineTo(x - side * 0.08 * r, cy + ey)
+      ctx.lineTo(x + side * 0.1 * r, cy + ey + 0.1 * r)
+    }
+    ctx.moveTo(cx - 0.14 * r, cy + 0.42 * r)
+    ctx.lineTo(cx + 0.14 * r, cy + 0.42 * r)
+    ctx.stroke()
+  } else {
+    // Asleep, and smiling at something.
+    for (const side of [-1, 1]) {
+      ctx.moveTo(cx + side * ex + 0.12 * r, cy + ey)
+      ctx.arc(cx + side * ex, cy + ey, 0.12 * r, 0, Math.PI)
+    }
+    const smile = Math.PI * 0.15
+    ctx.moveTo(cx + Math.cos(smile) * 0.2 * r, cy + 0.22 * r + Math.sin(smile) * 0.2 * r)
+    ctx.arc(cx, cy + 0.22 * r, 0.2 * r, smile, Math.PI - smile)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 /** Settle what is outside the field back, rather than boxing it in with bars. */
@@ -1052,6 +1158,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   ctx.fillRect(0, 0, w, h)
   drawNebula(g, w, h)
   drawStars(ctx, w, h, dark, t, p.k)
+  drawMoon(g)
 
   ctx.save()
   // The field shakes with a big hit; the sky behind it doesn't.

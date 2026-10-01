@@ -17,6 +17,7 @@ import { useAdminState } from '../../lib/admin'
 import { currentAccountId } from '../../lib/auth'
 import type { PastKind } from '../../lib/dailyWords'
 import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
+import { eggDone, reportEgg } from '../../lib/eggs'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
@@ -31,6 +32,7 @@ import { CarSound } from './audio'
 import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
 import { paceNotes, type PaceCall } from './calls'
 import { dayWords, msUntilNextTrack, trackDay, trackNumber, trackState, untilWords } from './daily'
+import { newDonuts, spinDonuts, type Donuts } from './donuts'
 import { bestLapOf, claimLap, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
 import { TrackMap } from './map'
 import { usePastTrackFigures, type PastTrackFigures } from './pastTrack'
@@ -49,6 +51,8 @@ const LIGHT_GAP = 0.55
 const LIGHTS_OUT = 1.65
 /** Past the line, a moment to see the time before the card comes. */
 const CARD_AFTER = 0.8
+/** How long the donuts egg's word stays up, as long as its rise and fade (hotlap.css). */
+const DONUTS_SHOWN = 1.8
 /**
  * A press of left or right eases the wheel over in about a seventh of a second, and more gently the
  * faster you go (a third of a second at 90 mph), so at speed a tap is a nudge.
@@ -109,6 +113,10 @@ type Game = {
   ghost: Ghost
   /** Whose lap the ghost is. */
   chasing: Chasing
+  /** The easter egg: the car's circles, counted while it races (donuts.ts). */
+  donuts: Donuts
+  /** The egg's clue, old donut marks just past the line, till this device has spun its own. */
+  donutHint: boolean
   /**
    * The lap's result, once it's over: on a past track, the run it was driven in, taken as it ended; and
    * where the car went, for its ghost on the board if it's the fastest there.
@@ -216,6 +224,8 @@ function freshGame(course: Course, chase: Chase, test: boolean, past: boolean): 
     steer: 0,
     ghost: new Ghost(track, chase.lap),
     chasing: chase.chasing,
+    donuts: newDonuts(),
+    donutHint: !eggDone('donuts'),
     lap: null,
   }
 }
@@ -306,6 +316,10 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
  * Under the clock, a co-driver's call names the corner coming: its shape, how sharp, what follows it, and
  * the metres to its turn-in (calls.ts).
  *
+ * The easter egg: spin three donuts in one spot while racing (donuts.ts), and the tyres scream and smoke,
+ * "Donuts!" goes up, and the secret is found. It costs the lap its time and changes nothing else. Its clue
+ * is old donut marks on the road just past the line, till this device has spun its own.
+ *
  * Keys: ↑ or W gas, ↓, S or Space brake, ← → or A D steer, R restart, P or Escape pause. On a touch
  * screen: steer with the left thumb, pedals under the right. A lap is scored as its time: the board
  * keeps a million less the milliseconds (score.ts), so the fastest lap is the highest score.
@@ -362,6 +376,9 @@ function HotLapDay({
   const saveOpenRef = useRef(false)
   const [noGl, setNoGl] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  /** The donuts egg's word, up for a moment as the third donut closes. */
+  const [spun, setSpun] = useState(false)
+  const spunTimer = useRef(0)
   const [touch] = useState(touchScreen)
   const [narrow, setNarrow] = useState(() => typeof matchMedia === 'function' && matchMedia(NARROW).matches)
   const [pads, setPads] = useState<Held>(NONE)
@@ -398,6 +415,17 @@ function HotLapDay({
     fingersRef.current.clear()
     padRef.current = { ...NONE }
     setPads(NONE)
+  }
+
+  /** The easter egg: three donuts in one spot. The tyres scream and smoke, the word goes up, and the secret is found. */
+  const spinOut = () => {
+    soundRef.current?.screech()
+    sceneRef.current?.smoke()
+    haptic('boost')
+    window.clearTimeout(spunTimer.current)
+    setSpun(true)
+    spunTimer.current = window.setTimeout(() => setSpun(false), DONUTS_SHOWN * 1000)
+    void reportEgg('donuts')
   }
 
   /** Midnight has brought a new track: the page mounts the game again for it. */
@@ -635,6 +663,8 @@ function HotLapDay({
           stepRun(run, input, track)
           g.steps += 1
           g.t += STEP
+          // The egg counts your car's circles while it races: never the ghost's, nor once you're past the line.
+          if (racing && spinDonuts(g.donuts, run)) spinOut()
           if (run.bumped > 0 && bumpedBefore === 0) {
             scene.bump()
             haptic('hit')
@@ -673,6 +703,7 @@ function HotLapDay({
             ghost: pose,
             ghostTag: ghostTag(g.chasing),
             cardAside: wide.matches,
+            donutHint: g.donutHint,
           },
           live ? dt : 0,
         )
@@ -785,7 +816,13 @@ function HotLapDay({
     clearThumbs()
   }, [paused])
 
-  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
+  useEffect(
+    () => () => {
+      window.clearTimeout(toastTimer.current)
+      window.clearTimeout(spunTimer.current)
+    },
+    [],
+  )
 
   // Mounted again for a new day because a lap was lost to midnight: say so.
   useEffect(() => {
@@ -1002,6 +1039,12 @@ function HotLapDay({
             {toast && !paused && !saveOpen ? (
               <div className="hotlap__toast" role="status">
                 {toast}
+              </div>
+            ) : null}
+
+            {spun && !paused ? (
+              <div className="hotlap__donuts" aria-hidden="true">
+                Donuts!
               </div>
             ) : null}
 

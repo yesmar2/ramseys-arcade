@@ -9,15 +9,19 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { reportEgg } from '../../lib/eggs'
+import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import { beginRun } from '../../lib/runSession'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  catchStar,
   createInitialState,
   FIRST_TUNE,
   MAX_FLIES,
   pressKey,
   setScale,
+  shootStar,
   startGame,
   tapAt,
   tick,
@@ -83,7 +87,11 @@ export function FirefliesGame() {
         stateRef.current = setScale(stateRef.current, w, h, measureTop(parent))
       }
 
-      if (!pausedRef.current) stateRef.current = tick(stateRef.current, dt)
+      if (!pausedRef.current) {
+        stateRef.current = tick(stateRef.current, dt)
+        // The easter egg's shooting stars, thrown with the page's own dice: the preview never throws one.
+        stateRef.current = shootStar(stateRef.current, Math.random)
+      }
 
       const snap = toSnapshot(stateRef.current)
       // Open the score card the moment the night ends, so a stray tap can't start another first.
@@ -153,7 +161,17 @@ export function FirefliesGame() {
     }
     if (!inRun(s.phase)) return
     const rect = e.currentTarget.getBoundingClientRect()
-    stateRef.current = tapAt(s, e.clientX - rect.left, e.clientY - rect.top)
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    // The easter egg: a tap on a shooting star catches it, and is nothing else. The page's buttons aren't the sky.
+    const caught = e.target === canvasRef.current ? catchStar(s, x, y) : null
+    if (caught) {
+      stateRef.current = caught
+      haptic('hit')
+      void reportEgg('shootingstar')
+      return
+    }
+    stateRef.current = tapAt(s, x, y)
     setUi(toSnapshot(stateRef.current))
   }
 

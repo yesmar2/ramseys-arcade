@@ -18,6 +18,7 @@ import { useDailyDays } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import { usePastViewer } from '../../lib/dailyPast'
 import { ownerAccount, ownerOf, SIGNED_OUT } from '../../lib/deviceRuns'
+import { reportEgg } from '../../lib/eggs'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
@@ -27,6 +28,7 @@ import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
+import { alienMiddle, alienOf, sayHi, WAVE_NEAR, type Alien } from './alien'
 import { EngineSound } from './audio'
 import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
 import { caveDay, caveNumber, msUntilNextCave, untilWords } from './daily'
@@ -130,6 +132,8 @@ type Game = {
   crashes: number
   /** The run's clock at the last bump's knock, so sliding along rock knocks now and then, not every step. */
   bumpAt: number
+  /** The alien has waved at this run's ship: the easter egg's found, and it said hi. */
+  greeted: boolean
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
@@ -218,6 +222,7 @@ function freshGame(lander: LanderDay, chase: Chase): Game {
     splits: [],
     crashes: 0,
     bumpAt: -1,
+    greeted: false,
     ghost: chase.ghost,
     chasing: chase.chasing,
     run: null,
@@ -343,6 +348,8 @@ function LanderDayGame({
   const stickRef = useRef<HTMLDivElement>(null)
   const knobRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<CaveScene | null>(null)
+  /** The cave's alien (alien.ts), once the blue ship has flown and it's known where it stands. */
+  const alienRef = useRef<Alien | null>(null)
   const soundRef = useRef<EngineSound | null>(null)
   const keysRef = useRef<Held>({ ...NONE })
   /** The finger on the stick: where it came down, and where it is now. */
@@ -709,6 +716,20 @@ function LanderDayGame({
         ghost = g.ghost.at(attract)
         if (ghost.done && attract > g.ghost.run.time + 2) attract = 0
       } else ghost = g.ghost.at(g.phase === 'countdown' ? 0 : g.t)
+      // The easter egg: the alien waves at your ship, never the ghost, while it's flying close. The first wave
+      // of a run says hi and finds the secret.
+      const alien = alienRef.current
+      let greet = false
+      if (alien && g.phase === 'flying') {
+        const [ax, ay] = alienMiddle(alien)
+        greet = Math.hypot(s.x - ax, s.y - ay) < WAVE_NEAR
+        if (greet && !g.greeted) {
+          g.greeted = true
+          sayHi()
+          haptic('turn')
+          void reportEgg('alien')
+        }
+      }
       const mode = g.phase === 'menu' ? 'menu' : g.phase === 'wrecked' ? 'wreck' : g.phase === 'landed' || g.phase === 'gameover' ? 'done' : 'play'
       scene.frame(
         {
@@ -720,6 +741,7 @@ function LanderDayGame({
           ghostTag: ghostTag(g.chasing),
           ghostMine: g.chasing.who === 'you',
           calm,
+          greet,
         },
         live ? dt : 0,
       )
@@ -740,9 +762,11 @@ function LanderDayGame({
     }
     raf = requestAnimationFrame(loop)
     // The blue ship's run, flown now while the card is up, so the start doesn't wait on it; the card's camera
-    // then rides along with the run to beat.
+    // then rides along with the run to beat. The alien stands a little way off its line, so it comes then too.
     const warm = window.setTimeout(() => {
-      paceOf(lander.day)
+      const pace = paceOf(lander.day)
+      alienRef.current = alienOf(cave, pace.ghost)
+      scene.meet(alienRef.current)
       rechaseRef.current()
     }, 400)
     return () => {

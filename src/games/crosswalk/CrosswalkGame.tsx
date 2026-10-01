@@ -13,6 +13,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { eggDone, reportEgg } from '../../lib/eggs'
 import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import { normalizePlayerName } from '../../lib/leaderboard'
@@ -40,15 +41,17 @@ import {
   hop,
   jumpToRow,
   pickCols,
+  pressButton,
   startGame,
   tick,
   toSnapshot,
   type DeathCause,
   type Dir,
   type GameState,
+  type KerbButton,
   type Snapshot,
 } from './game'
-import { renderGame } from './render'
+import { buttonAt, renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
 
 const DEATH_COPY: Record<DeathCause, string> = {
@@ -75,6 +78,8 @@ export function CrosswalkGame() {
   const previousBestRef = useRef(getPersonalBest('crosswalk'))
   const swipeRef = useRef<{ x: number; y: number } | null>(null)
   const hoppedThisSwipe = useRef(false)
+  /** The crossing button a touch came down on, which its tap presses instead of hopping. */
+  const buttonRef = useRef<KerbButton | null>(null)
   const startGrace = useRef(0)
   const runStartRef = useRef<number | null>(null)
   const milestonesRef = useRef<Set<number>>(new Set())
@@ -262,6 +267,8 @@ export function CrosswalkGame() {
     callsRecordedRef.current = false
     // Same reset, stopped at the start card instead of in play.
     if (intoMenu) stateRef.current = { ...stateRef.current, phase: 'menu' }
+    // The egg's clue, the glint on a crossing button, till this device has pressed one.
+    stateRef.current = { ...stateRef.current, glint: !eggDone('placebo') }
     setUi(toSnapshot(stateRef.current))
   }
 
@@ -344,11 +351,34 @@ export function CrosswalkGame() {
     return dy > 0 ? 'down' : 'up'
   }
 
+  /**
+   * The crossing button a point on the screen lands on, during a run. Read
+   * where the touch comes down: the board may have moved on by the time it
+   * lifts.
+   */
+  const buttonUnder = (clientX: number, clientY: number) => {
+    const s = stateRef.current!
+    const canvas = canvasRef.current
+    if (s.phase !== 'playing' || !canvas) return null
+    const rect = canvas.getBoundingClientRect()
+    return buttonAt(s, rect.width, rect.height, clientX - rect.left, clientY - rect.top)
+  }
+
+  /** The easter egg: a crossing button pressed. It beeps and says WAIT, and nothing else changes. */
+  const press = (button: KerbButton) => {
+    const next = pressButton(stateRef.current!, button)
+    if (!next) return
+    stateRef.current = next
+    haptic('hit')
+    void reportEgg('placebo')
+  }
+
   const onPointerDown = (e: ReactPointerEvent) => {
     if (saveOpen || pausedRef.current) return
     e.preventDefault()
     swipeRef.current = { x: e.clientX, y: e.clientY }
     hoppedThisSwipe.current = false
+    buttonRef.current = buttonUnder(e.clientX, e.clientY)
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
@@ -372,9 +402,17 @@ export function CrosswalkGame() {
 
   const onPointerUp = (e: ReactPointerEvent) => {
     const start = swipeRef.current
+    const button = buttonRef.current
     swipeRef.current = null
+    buttonRef.current = null
     if (!start || hoppedThisSwipe.current || saveOpen || pausedRef.current) return
     const dir = dirFromDelta(e.clientX - start.x, e.clientY - start.y)
+    // A tap on a crossing button presses it rather than hopping; a swipe that
+    // starts on one is still a swipe.
+    if (!dir && button) {
+      press(button)
+      return
+    }
     tryHop(dir ?? 'up')
   }
 
@@ -388,6 +426,7 @@ export function CrosswalkGame() {
           onPointerUp={onPointerUp}
           onPointerCancel={() => {
             swipeRef.current = null
+            buttonRef.current = null
           }}
         >
           <div className="crosswalk__stage" ref={stageRef}>

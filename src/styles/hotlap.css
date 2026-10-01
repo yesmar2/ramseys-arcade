@@ -196,6 +196,54 @@ html[data-theme='dark'] .hotlap--fullscreen {
 }
 
 /*
+ * The donuts egg (donuts.ts): the word over the car as the third donut closes, lit in the track's orange like
+ * a sharp corner's call, popping up and floating away.
+ */
+.hotlap__donuts {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  padding: 0.3em 0.85em;
+  border: 1.5px solid #ff8b2e;
+  border-radius: 999px;
+  background: rgba(3, 7, 12, 0.84);
+  box-shadow:
+    0 0 22px rgba(255, 139, 46, 0.34),
+    inset 0 0 14px rgba(255, 139, 46, 0.1);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hotlap-donuts 1.8s ease-out forwards;
+}
+
+@keyframes hotlap-donuts {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20%) scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  22% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -160%);
+  }
+}
+
+/*
  * The pace note (calls.ts): the corner coming, under the clock where a notice would go. Its shape, how
  * sharp in words and colour (orange sharp, yellow medium, cyan fast), what follows it, and the metres to its
  * turn-in, with a bar that runs down to it. Lit in the track's own light, whatever the site's theme.
@@ -591,7 +639,8 @@ html[data-theme='dark'] .hotlap--fullscreen {
 
 @media (prefers-reduced-motion: reduce) {
   .hotlap__toast,
-  .hotlap__call {
+  .hotlap__call,
+  .hotlap__donuts {
     animation: none;
   }
 

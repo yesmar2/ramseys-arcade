@@ -2,7 +2,7 @@
  * Secret trophies: odd things a player can do that nothing on the site mentions until they've done them.
  * The API finds them (its secrets.ts, which numbers them the same) when a run is saved, a bug caught or
  * a day's hole sent, and keeps each once an account as a trophy (period 'secret', periodKey its number).
- * Seven are the site's easter eggs, which it reports itself (lib/eggs.ts). A reply that found one carries
+ * Sixteen are the site's easter eggs, which it reports itself (lib/eggs.ts). A reply that found one carries
  * `secrets`; `announceSecrets` puts it on screen. The player's clock goes with what the site posts
  * (leaderboard.ts api), for Night Owl and Early Bird.
  */
@@ -27,6 +27,15 @@ export type SecretKey =
   | 'cheats'
   | 'continue'
   | 'shatter'
+  | 'placebo'
+  | 'jackpot'
+  | 'donuts'
+  | 'marbles'
+  | 'wargames'
+  | 'safespot'
+  | 'alien'
+  | 'shootingstar'
+  | 'moon'
 
 export type Secret = { n: number; key: SecretKey; name: string; says: string }
 
@@ -50,6 +59,15 @@ export const SECRETS: readonly Secret[] = [
   { n: 17, key: 'cheats', name: 'Nice Try', says: 'Tried an old cheat on the arcade.' },
   { n: 18, key: 'continue', name: 'Continue?', says: 'Put a coin in at Game Over.' },
   { n: 19, key: 'shatter', name: 'Smashing', says: 'Broke a balanced plate in Centroid.' },
+  { n: 20, key: 'placebo', name: 'Placebo', says: 'Pressed the button at a crossing. Nothing happened.' },
+  { n: 21, key: 'jackpot', name: 'Jackpot', says: 'Pulled Bop’s lever all the way down to the cherries.' },
+  { n: 22, key: 'donuts', name: 'Donuts', says: 'Spun three donuts on Hot Lap’s track.' },
+  { n: 23, key: 'marbles', name: 'Lost Your Marbles', says: 'Fell off Marble Run three times before the first checkpoint.' },
+  { n: 24, key: 'wargames', name: 'Shall We Play a Game?', says: 'Let a whole wave of Patriot fall without firing a shot.' },
+  { n: 25, key: 'safespot', name: 'Safe Spot', says: 'Hid from the chasers in Pellets’ safe spot.' },
+  { n: 26, key: 'alien', name: 'Little Green Friend', says: 'Got a wave from the alien in Lander’s cave.' },
+  { n: 27, key: 'shootingstar', name: 'Shooting Star', says: 'Caught a shooting star over the Fireflies pond.' },
+  { n: 28, key: 'moon', name: 'Shoot the Moon', says: 'Shot the moon over Barrage until it had a black eye.' },
 ]
 
 export function secretByNumber(n: number): Secret | undefined {

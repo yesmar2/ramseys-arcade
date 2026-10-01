@@ -2,6 +2,7 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { playHeader } from '../playHeader'
 import { haptic } from '../../lib/haptics'
 import { sfx } from '../../lib/sound'
+import { pressBeep } from './beep'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
@@ -62,6 +63,12 @@ export type Puff = {
   r: number
   t: number
   wet: boolean
+}
+
+/** A crossing button: the grass row it stands on, and the line between two columns it stands on. */
+export type KerbButton = {
+  row: number
+  edge: number
 }
 
 export type Snapshot = {
@@ -156,6 +163,16 @@ export type GameState = {
   shake: number
   rows: Map<number, Row>
   runSeed: number
+  /** The first road of the run, with a crossing button at its kerb, or -1 if it has none. */
+  firstRoad: number
+  /** A crossing button's WAIT light, on for `t` more seconds after a press. */
+  waitLight: (KerbButton & { t: number }) | null
+  /**
+   * The egg's clue: a crossing button's face catches the light now and then.
+   * The page turns it on till the device has pressed one; the cabinet's
+   * preview never shows it.
+   */
+  glint: boolean
 }
 
 /**
@@ -1106,6 +1123,52 @@ function collectTicket(state: GameState): GameState {
   }
 }
 
+/*
+ * The crossing button, an easter egg. Plenty of real ones do nothing at all,
+ * and so does this one: a box on a short post at the kerb, on the grass just
+ * before the run's first road and before about one road in ten after that.
+ * Pressed, it beeps and its WAIT light comes on, and the traffic goes on
+ * exactly as it was.
+ *
+ * It stands on the line between two tiles, so it never takes one anyone hops
+ * onto, a little to one side of the middle the hopper starts in, and never
+ * against a tree.
+ */
+
+/** How long a press keeps the WAIT light on. */
+export const WAIT_LIGHT = 1.2
+/** The share of kerbs past the first road that have a button. */
+const BUTTON_SHARE = 0.1
+
+/** The first road a run meets, if it has grass before it: the kerb its button stands on. */
+function firstRoadOf(rows: Map<number, Row>): number {
+  for (let r = 1; rows.has(r); r++) {
+    if (rows.get(r)!.kind === 'road') return rows.get(r - 1)!.kind === 'grass' ? r : -1
+  }
+  return -1
+}
+
+/**
+ * The crossing button on a grass row, if it has one. Where it stands comes
+ * from the row and the run alone, through a generator of its own, so it is
+ * the same every frame and takes nothing from Math.random.
+ */
+export function kerbButton(state: GameState, row: number): KerbButton | null {
+  const here = state.rows.get(row)
+  if (here?.kind !== 'grass' || state.rows.get(row + 1)?.kind !== 'road') return null
+  const rand = mulberry32((row + 11) * 2_246_822_519 ^ state.runSeed)
+  if (row + 1 !== state.firstRoad && (row < state.firstRoad || rand() >= BUTTON_SHARE)) return null
+  // A tile and a half off the middle, on one side or the other, then further out.
+  const mid = Math.floor(state.cols / 2)
+  const [near, far] = rand() < 0.5 ? [mid - 1, mid + 2] : [mid + 2, mid - 1]
+  for (const edge of [near, far, near + Math.sign(near - mid - 0.5), far + Math.sign(far - mid - 0.5)]) {
+    if (edge < 1 || edge > state.cols - 1) continue
+    if (here.trees.includes(edge - 1) || here.trees.includes(edge)) continue
+    return { row, edge }
+  }
+  return null
+}
+
 export function createInitialState(cols = COLS): GameState {
   const runSeed = (Math.random() * 0xffffffff) >>> 0
   const best = loadBest()
@@ -1148,8 +1211,12 @@ export function createInitialState(cols = COLS): GameState {
     shake: 0,
     rows: new Map(),
     runSeed,
+    firstRoad: -1,
+    waitLight: null,
+    glint: false,
   }
   ensureRows(state, 0, ROW_BUFFER)
+  state.firstRoad = firstRoadOf(state.rows)
   return state
 }
 
@@ -1284,12 +1351,28 @@ export function hop(state: GameState, dir: Dir): GameState {
   return collectTicket(next)
 }
 
+/**
+ * The easter egg: a crossing button pressed. It beeps and its WAIT light
+ * comes on, and that is all: not a hop, not a move, nothing on any clock.
+ * Only in a run. Null when there was nothing to press.
+ */
+export function pressButton(state: GameState, button: KerbButton): GameState | null {
+  if (state.phase !== 'playing') return null
+  pressBeep()
+  return { ...state, waitLight: { ...button, t: WAIT_LIGHT }, glint: false }
+}
+
+function fadeWait(light: GameState['waitLight'], dt: number): GameState['waitLight'] {
+  return light && light.t > dt ? { ...light, t: light.t - dt } : null
+}
+
 export function tick(state: GameState, dt: number): GameState {
   if (state.phase === 'menu' || state.phase === 'gameover') {
     return {
       ...state,
       deathFlash: Math.max(0, state.deathFlash - dt),
       hopPulse: Math.max(0, state.hopPulse - dt),
+      waitLight: fadeWait(state.waitLight, dt),
     }
   }
 
@@ -1299,6 +1382,7 @@ export function tick(state: GameState, dt: number): GameState {
       deathAnim: state.deathAnim - dt,
       deathFlash: Math.max(0, state.deathFlash - dt),
       hopPulse: Math.max(0, state.hopPulse - dt),
+      waitLight: fadeWait(state.waitLight, dt),
       shake: Math.max(0, state.shake - dt * 1.4),
       puffs: fadePuffs(state.puffs, dt),
       deathBits: state.deathBits
@@ -1333,6 +1417,7 @@ export function tick(state: GameState, dt: number): GameState {
     nearMissCooldown: Math.max(0, state.nearMissCooldown - dt),
     closeCall: Math.max(0, state.closeCall - dt),
     shake: Math.max(0, state.shake - dt),
+    waitLight: fadeWait(state.waitLight, dt),
     idleTimer: state.idleTimer + dt,
     streakTimer: state.streakTimer + dt,
     // Lapse the chain where the player can see it go, rather than holding a

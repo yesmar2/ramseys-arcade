@@ -128,6 +128,19 @@ export type GameState = {
   /** Chomp phase. It only runs while the player is actually moving. */
   mouth: number
   time: number
+  /** The safe spot, an easter egg: see `isHidden`. */
+  safe: Cell
+  /** Seconds the player has stood still on the safe spot with chasers out. */
+  hide: number
+  /** This maze's hide has been had: the spot works once a maze. */
+  hideSpent: boolean
+  /** Seconds left of the "!" over the hunt when it finds a player who stayed hidden too long. */
+  spotted: number
+  /**
+   * The egg's clue: a worn scuff on the safe spot's floor. The page turns it
+   * on till the device has hidden there; the cabinet's preview never shows it.
+   */
+  scuff: boolean
 }
 
 const OPPOSITE: Record<Dir, Dir> = {
@@ -204,6 +217,24 @@ const FRUIT_LADDER: readonly { kind: FruitKind; value: number }[] = [
   { kind: 'bell', value: 1000 },
   { kind: 'key', value: 1500 },
 ]
+
+/*
+ * The safe spot, an easter egg after Pac-Man's own, where the ghosts never
+ * found you. Stand still on it (just under the den, see maze.ts) for a second
+ * with chasers out, and chasers on the hunt lose you: they make for their
+ * corners, puzzled, and none of them catches you there. Ten seconds hidden
+ * finds the egg. Move off and it is all as it was.
+ *
+ * Kept from being a way to play: it only begins with no chaser blue and no
+ * surge on, nothing scores while you stand there, the first second is in
+ * plain sight, they find you after fourteen seconds hidden, and the spot
+ * works once a maze.
+ */
+export const HIDE_AFTER = 1
+const HIDE_FOUND = 10
+const HIDE_MAX = 14
+/** How long the hunt's "!" shows when it finds you. */
+export const SPOTTED_SHOW = 0.9
 
 /** How far past a junction a late turn still counts — the "forgiving" feel. */
 const LATE_TURN = 0.34
@@ -389,6 +420,8 @@ function applyMaze(state: GameState, maze: Maze) {
   state.crumbsTotal = state.crumbsLeft
   state.fruit = null
   state.fruitsShown = 0
+  state.safe = maze.safe
+  state.hideSpent = false
 }
 
 function resetActors(state: GameState, maze: Maze, ready: number) {
@@ -410,6 +443,7 @@ function resetActors(state: GameState, maze: Maze, ready: number) {
   state.freeze = 0
   state.mode = 'scatter'
   state.modeTimer = scatterTime(state.level)
+  state.hide = 0
 }
 
 function emptyState(maze: Maze): GameState {
@@ -464,6 +498,11 @@ function emptyState(maze: Maze): GameState {
     invuln: 0,
     mouth: 0.6,
     time: 0,
+    safe: maze.safe,
+    hide: 0,
+    hideSpent: false,
+    spotted: 0,
+    scuff: false,
   } as GameState
   applyMaze(state, maze)
   return state
@@ -562,10 +601,22 @@ function distToNextCenter(p: number, delta: number) {
   return 1
 }
 
+/** The player is hidden on the safe spot: the chasers on the hunt have lost them. */
+export function isHidden(state: GameState) {
+  return state.hide >= HIDE_AFTER
+}
+
+/** The egg found between two states: ten seconds hidden on the safe spot. */
+export function foundSafeSpot(before: GameState, after: GameState) {
+  return before.hide < HIDE_AFTER + HIDE_FOUND && after.hide >= HIDE_AFTER + HIDE_FOUND
+}
+
 function targetFor(state: GameState, ghost: Ghost): { cell: Cell; allowDoor: boolean } {
   if (ghost.mode === 'eaten') return { cell: state.houseCenter, allowDoor: true }
   if (ghost.mode === 'leaving') return { cell: state.ghostExit, allowDoor: true }
   if (ghost.mode === 'scatter') return { cell: ghost.corner, allowDoor: false }
+  // Lost on the safe spot, the hunt goes back to its corners.
+  if (isHidden(state)) return { cell: ghost.corner, allowDoor: false }
 
   const px = Math.floor(state.player.x)
   const py = Math.floor(state.player.y)
@@ -876,6 +927,7 @@ function tickEffects(state: GameState, dt: number) {
   state.bites = state.bites.filter((b) => b.life > dt * 4).map((b) => ({ ...b, life: b.life - dt * 4 }))
   state.trail = state.trail.filter((t) => t.life > dt * 2.4).map((t) => ({ ...t, life: t.life - dt * 2.4 }))
   state.shake = Math.max(0, state.shake - dt * 2.6)
+  state.spotted = Math.max(0, state.spotted - dt)
   for (const g of state.ghosts) g.hit = Math.max(0, g.hit - dt * 2.5)
 }
 
@@ -1010,6 +1062,33 @@ function offerFruit(state: GameState) {
   }
 }
 
+/**
+ * The safe spot's clock: running while the player stands still on it with a
+ * chaser out, none of them blue and no surge on, and the spot not yet spent
+ * this maze. Stepping off a hide, or being found at the end of one, spends it.
+ */
+function hideOnSafeSpot(state: GameState, moved: number, surging: boolean, dt: number) {
+  const onSpot = Math.floor(state.player.x) === state.safe.x && Math.floor(state.player.y) === state.safe.y
+  const out = state.ghosts.some((g) => g.mode !== 'den' && g.mode !== 'eaten')
+  if (moved > 0 || !onSpot || !out || state.fright > 0 || surging || state.hideSpent) {
+    if (isHidden(state)) state.hideSpent = true
+    state.hide = 0
+    return
+  }
+  const before = state.hide
+  state.hide += dt
+  if (before < HIDE_AFTER + HIDE_FOUND && state.hide >= HIDE_AFTER + HIDE_FOUND) {
+    addPop(state, state.player.x, state.player.y - 0.9, 'Safe spot', 'streak', 1.6)
+    state.scuff = false
+  }
+  if (state.hide >= HIDE_AFTER + HIDE_MAX) {
+    // Found: the hunt is back on.
+    state.spotted = SPOTTED_SHOW
+    state.hideSpent = true
+    state.hide = 0
+  }
+}
+
 // —— Tick ——————————————————————————————————————————————————————
 
 export function tick(state: GameState, dt: number): GameState {
@@ -1135,6 +1214,8 @@ export function tick(state: GameState, dt: number): GameState {
     return next
   }
 
+  hideOnSafeSpot(next, moved, surging, dt)
+
   const cache: FieldCache = new Map()
   for (const ghost of next.ghosts) {
     if (ghost.mode === 'den') {
@@ -1168,8 +1249,8 @@ export function tick(state: GameState, dt: number): GameState {
     }
   }
 
-  // Collisions.
-  if (next.invuln <= 0 && next.phase === 'playing') {
+  // Collisions. Nobody finds a player hidden on the safe spot.
+  if (next.invuln <= 0 && next.phase === 'playing' && !isHidden(next)) {
     for (const ghost of next.ghosts) {
       if (ghost.mode === 'eaten' || ghost.mode === 'den') continue
       if (dist2(ghost.x, ghost.y, next.player.x, next.player.y) > 0.5) continue
@@ -1219,6 +1300,7 @@ function mazeViewOf(state: GameState): Maze {
     start: state.start,
     crumbs: [],
     power: [],
+    safe: state.safe,
   }
 }
 

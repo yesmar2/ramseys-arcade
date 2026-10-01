@@ -1,6 +1,7 @@
 import type { Swatch } from '../../data/games'
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
+import { clack } from './teletype'
 
 /**
  * `dying` is the last city going down: the sky plays on in slow motion for a
@@ -245,6 +246,19 @@ export type GameState = {
   shieldAge: number
   /** 1 → 0 after an ammo power: the racks glow while they fill. */
   reloadT: number
+  /** Shots fired this wave, the Seeker's among them. */
+  waveShots: number
+  /** Missiles that came down this wave, on the ground or on a dome. */
+  waveLanded: number
+  /**
+   * The easter egg, from WarGames: a whole wave sat out, its missiles coming
+   * down and not one shot fired, and the computer types out what it learned.
+   * The page turns it on; the cabinet's pilot fires at everything anyway, and
+   * never has it on.
+   */
+  wargames: boolean
+  /** When the computer began its line, on `time`, or -1 till it has this run. */
+  wargamesAt: number
 }
 
 export type Pickup = { id: number; kind: PowerKind; x: number; y: number; age: number }
@@ -304,6 +318,13 @@ const SLOW_RATE = 0.32
 const CITY_DRAW = 1.85
 /** How long the fall plays before the card. */
 const DYING_TIME = 1.8
+
+/** The computer's line, for the easter egg, as it came up on the screen in WarGames. */
+export const WARGAMES_LINES = ['A STRANGE GAME.', 'THE ONLY WINNING MOVE IS', 'NOT TO PLAY.'] as const
+/** How fast it types, in letters a second. */
+const WARGAMES_RATE = 22
+/** How long the line stays up; the pause after the wave, or the fall, waits that long. */
+export const WARGAMES_HOLD = 4.5
 
 export function shieldRadius(scale: number) {
   return 38 * CITY_DRAW * scale
@@ -416,6 +437,10 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     pickups: [],
     shieldAge: 99,
     reloadT: 0,
+    waveShots: 0,
+    waveLanded: 0,
+    wargames: false,
+    wargamesAt: -1,
   }
 }
 
@@ -783,6 +808,8 @@ function beginWave(state: GameState, wave: number, w: number): GameState {
     wavePause: 0,
     clearBonus: null,
     citiesAtWaveStart: state.cities.filter((c) => c.alive).length,
+    waveShots: 0,
+    waveLanded: 0,
   }
 }
 
@@ -884,6 +911,7 @@ export function fire(
     burstArmed: false,
     shots: [...state.shots, shot],
     particles,
+    waveShots: state.waveShots + 1,
   }
 }
 
@@ -1310,6 +1338,42 @@ function advanceAlong(
   }
 }
 
+// The egg ---------------------------------------------------------------------------
+
+/** The computer's line as it types, a line break taking a beat as a letter does. */
+const WARGAMES_TEXT = WARGAMES_LINES.join('\n')
+
+/** How many letters of the computer's line are up, `age` seconds after it began. */
+export function wargamesTyped(age: number) {
+  return Math.min(WARGAMES_TEXT.length, Math.max(0, Math.floor(age * WARGAMES_RATE)))
+}
+
+/**
+ * The easter egg, from WarGames: the wave just ended, cleared or with the last
+ * city, and not one shot was fired at it while its missiles came down. The
+ * computer types out what it learned, once a run and only where the page
+ * turned it on. The pause after the wave, or the fall, waits while it does:
+ * time the run loses, never points. The fall's banner steps aside for it.
+ */
+function sitOut(s: GameState): GameState {
+  if (!s.wargames || s.wargamesAt >= 0 || s.waveShots > 0 || s.waveLanded === 0) return s
+  s.wargamesAt = s.time
+  if (s.phase === 'dying') {
+    s.dying = Math.max(s.dying, WARGAMES_HOLD)
+    s.banner = null
+  } else {
+    s.wavePause = Math.max(s.wavePause, WARGAMES_HOLD)
+  }
+  return s
+}
+
+/** A key's clack for a letter the computer typed since the last tick. */
+function typeOn(s: GameState, dt: number) {
+  const age = s.time - s.wargamesAt
+  const typed = wargamesTyped(age)
+  if (typed > wargamesTyped(age - dt) && /\S/.test(WARGAMES_TEXT[typed - 1]!)) clack(typed)
+}
+
 /**
  * The last city is gone. The sky plays on at a crawl — what was falling
  * still falls, what was burning still burns — and nothing scores.
@@ -1373,6 +1437,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   s.particles ??= []
   s.chains ??= {}
   updateEffects(s, s.phase === 'dying' ? dt * 0.5 : dt)
+  if (s.wargamesAt >= 0) typeOn(s, dt)
 
   if (s.phase === 'menu') return s
 
@@ -1564,6 +1629,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   let directStreakBest = s.directStreakBest ?? 0
   const chains: Record<number, number> = { ...(s.chains ?? {}) }
   let chainBest = s.chainBest ?? 0
+  let landed = 0
   const hitPad = 4 * scale
   const directR = DIRECT_HIT_RADIUS * scale
 
@@ -1707,6 +1773,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         shieldRadius(scale),
       )
       if (hit) {
+        landed += 1
         const city = cities.find((c) => c.id === hit.cityId)
         if (city) city.shielded = false
         sfx('hit')
@@ -1736,6 +1803,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     }
 
     if (step.done) {
+      landed += 1
       directStreak = 0
       const impact = applyImpact(
         m.x1,
@@ -1952,6 +2020,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   s.directStreak = directStreak
   s.directStreakBest = directStreakBest
   s.chainBest = chainBest
+  s.waveLanded += landed
   // Forget chains whose blasts have all burnt out.
   const liveChains = new Set(s.blasts.map((b) => b.chain))
   for (const id of Object.keys(chains)) {
@@ -1963,7 +2032,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
   if (citiesLeft === 0) {
     const best = Math.max(s.best, s.score)
     sfx('die')
-    return {
+    return sitOut({
       ...s,
       phase: 'dying',
       dying: DYING_TIME,
@@ -1971,7 +2040,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       flash: 0.7,
       shake: 1,
       banner: { text: 'The last city is down', sub: `Wave ${s.wave}`, tone: 'red', life: DYING_TIME + 0.4, maxLife: DYING_TIME + 0.4 },
-    }
+    })
   }
 
   if (
@@ -2019,7 +2088,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       }))
 
     sfx('wave')
-    return {
+    return sitOut({
       ...s,
       score,
       best,
@@ -2036,7 +2105,7 @@ export function tick(state: GameState, dt: number, w: number): GameState {
         ammoBonus,
         cleanStreak: nextStreak,
       },
-    }
+    })
   }
 
   return s

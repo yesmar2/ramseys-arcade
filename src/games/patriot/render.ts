@@ -1,6 +1,6 @@
 import type { Swatch } from '../../data/games'
 import type { Battery, Blast, City, GameState, Incoming, Shot } from './game'
-import { SLOW_TIME, shieldRadius } from './game'
+import { SLOW_TIME, WARGAMES_HOLD, WARGAMES_LINES, shieldRadius, wargamesTyped } from './game'
 import { PATRIOT_CITY_DRAW } from './cityArt'
 import { drawBomber, drawCarrier, drawPickups, drawPlane } from './craft'
 import {
@@ -918,6 +918,71 @@ function drawSight(ctx: CanvasRenderingContext2D, sk: Skin, s: GameState, ready:
   ctx.restore()
 }
 
+// The egg ---------------------------------------------------------------------------
+
+const MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
+
+/**
+ * The easter egg's line, from WarGames: green type on a dark little screen
+ * high in the sky, clear of the card between waves, typed out a letter at a
+ * time behind a block cursor, held to be read, and gone as the next wave or
+ * the score card comes. Dark in both themes, as a terminal is.
+ */
+function drawWargames(ctx: CanvasRenderingContext2D, s: GameState, w: number, h: number) {
+  if (s.wargamesAt < 0) return
+  const age = s.time - s.wargamesAt
+  if (age >= WARGAMES_HOLD) return
+  const size = Math.round(Math.max(11, Math.min(22, w * 0.02)))
+  const lead = size * 1.4
+  const pad = size * 0.8
+  ctx.save()
+  ctx.font = `600 ${size}px ${MONO}`
+  const cursorW = size * 0.6
+  const longest = Math.max(...WARGAMES_LINES.map((line) => ctx.measureText(line).width))
+  const bw = longest + cursorW + pad * 2
+  const bh = lead * (WARGAMES_LINES.length - 1) + size + pad * 2
+  const x = (w - bw) / 2
+  const y = h * 0.13
+  ctx.globalAlpha = clamp01(Math.min(age / 0.15, (WARGAMES_HOLD - age) / 0.5))
+
+  ctx.beginPath()
+  ctx.roundRect(x, y, bw, bh, size * 0.35)
+  ctx.fillStyle = 'rgba(3, 12, 6, 0.88)'
+  ctx.fill()
+  ctx.save()
+  ctx.clip()
+  // Faint scanlines.
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+  for (let ly = y + 1; ly < y + bh; ly += 3) ctx.fillRect(x, ly, bw, 1)
+  ctx.restore()
+  ctx.strokeStyle = 'rgba(92, 255, 140, 0.32)'
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  ctx.fillStyle = 'rgb(110, 255, 150)'
+  ctx.shadowColor = 'rgba(80, 255, 130, 0.75)'
+  ctx.shadowBlur = size * 0.5
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  const typed = wargamesTyped(age)
+  const done = typed >= WARGAMES_LINES.join('\n').length
+  let left = typed
+  for (const [i, line] of WARGAMES_LINES.entries()) {
+    const shown = line.slice(0, left)
+    const ty = y + pad + i * lead
+    ctx.fillText(shown, x + pad, ty)
+    if (left <= line.length) {
+      // The cursor, solid while it types and blinking once it has had its say.
+      if (!done || Math.floor(age * 2.5) % 2 === 0) {
+        ctx.fillRect(x + pad + ctx.measureText(shown).width + size * 0.08, ty, cursorW * 0.85, size)
+      }
+      break
+    }
+    left -= line.length + 1
+  }
+  ctx.restore()
+}
+
 // Frame -----------------------------------------------------------------------------
 
 export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
@@ -979,4 +1044,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.fillStyle = sk.dark ? `rgba(255,255,255,${s.flash * 0.3})` : `rgba(26,43,60,${s.flash * 0.2})`
     ctx.fillRect(0, 0, w, h)
   }
+
+  // The computer has the last word, over everything.
+  drawWargames(ctx, s, w, h)
 }
