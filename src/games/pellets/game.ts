@@ -88,6 +88,7 @@ export type GameState = {
   house: Maze['house']
   houseCenter: Cell
   ghostExit: Cell
+  denSlots: Cell[]
   start: Cell
   player: { x: number; y: number; dir: Dir; pending: Dir | null; pendingAge: number }
   ghosts: Ghost[]
@@ -358,21 +359,10 @@ function ghostCorners(cols: number, rows: number): Record<GhostKind, Cell> {
   }
 }
 
-function denSlots(maze: Maze) {
-  const { houseCenter, house } = maze
-  const spread = Math.max(1, Math.floor((house.maxX - house.minX) / 2))
-  return [
-    { x: houseCenter.x, y: houseCenter.y },
-    { x: houseCenter.x - spread, y: houseCenter.y },
-    { x: houseCenter.x + spread, y: houseCenter.y },
-    { x: houseCenter.x, y: Math.min(house.maxY, houseCenter.y + 1) },
-  ]
-}
-
 function makeGhosts(maze: Maze, level: number): Ghost[] {
   const kinds: GhostKind[] = ['blink', 'pink', 'inky', 'clyde']
   const corners = ghostCorners(maze.cols, maze.rows)
-  const slots = denSlots(maze)
+  const slots = maze.denSlots
   const stagger = Math.max(0.6, 2.4 - (level - 1) * 0.25)
   return kinds.map((kind, i) => ({
     kind,
@@ -407,6 +397,7 @@ function applyMaze(state: GameState, maze: Maze) {
   state.house = maze.house
   state.houseCenter = maze.houseCenter
   state.ghostExit = maze.ghostExit
+  state.denSlots = maze.denSlots
   state.start = maze.start
   state.crumbs = Array.from({ length: maze.rows }, () =>
     Array.from({ length: maze.cols }, () => false),
@@ -464,6 +455,7 @@ function emptyState(maze: Maze): GameState {
     house: maze.house,
     houseCenter: maze.houseCenter,
     ghostExit: maze.ghostExit,
+    denSlots: maze.denSlots,
     start: maze.start,
     player: {
       x: maze.start.x + 0.5,
@@ -1297,6 +1289,7 @@ function mazeViewOf(state: GameState): Maze {
     house: state.house,
     houseCenter: state.houseCenter,
     ghostExit: state.ghostExit,
+    denSlots: state.denSlots,
     start: state.start,
     crumbs: [],
     power: [],

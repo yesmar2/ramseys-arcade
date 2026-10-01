@@ -11,6 +11,8 @@ export type Maze = {
   houseCenter: Cell
   /** Tile just outside the gate — chasers path here on their way out. */
   ghostExit: Cell
+  /** Where the four chasers wait at the start, Blink's first. */
+  denSlots: Cell[]
   start: Cell
   crumbs: Cell[]
   power: Cell[]
@@ -268,6 +270,21 @@ function parseMaze(rows: string[]): Maze {
   }
 
   /*
+   * The chasers' starting spots: Blink mid-pen, Pink and Inky either side of
+   * him along its floor, Clyde under Blink (on his tile, in a pen one tile
+   * deep, until Blink leaves). Laid out here on the wide board and turned with
+   * the rest of it, since a turned pen runs top to bottom: spread across it,
+   * Pink sat in its wall and Inky on its gate.
+   */
+  const spread = Math.max(1, Math.floor((house.maxX - house.minX) / 2))
+  const denSlots: Cell[] = [
+    { x: houseCenter.x, y: houseCenter.y },
+    { x: houseCenter.x - spread, y: houseCenter.y },
+    { x: houseCenter.x + spread, y: houseCenter.y },
+    { x: houseCenter.x, y: Math.min(house.maxY, houseCenter.y + 1) },
+  ]
+
+  /*
    * The safe spot: under the den, pressed up against its bottom wall, where a
    * player coming straight up from the start stops. Some boards wall that lane
    * off, so it is the nearest tile along the row under the den that a player
@@ -293,6 +310,7 @@ function parseMaze(rows: string[]): Maze {
     house,
     houseCenter,
     ghostExit,
+    denSlots,
     start,
     crumbs,
     power,
@@ -338,6 +356,7 @@ export function rotateMazeCW(maze: Maze): Maze {
     },
     houseCenter: rotCell(maze.houseCenter, rows),
     ghostExit: rotCell(maze.ghostExit, rows),
+    denSlots: maze.denSlots.map((c) => rotCell(c, rows)),
     start: rotCell(maze.start, rows),
     crumbs: maze.crumbs.map((c) => rotCell(c, rows)),
     power: maze.power.map((c) => rotCell(c, rows)),
