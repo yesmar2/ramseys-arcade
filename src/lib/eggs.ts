@@ -14,6 +14,8 @@ import { announceSecrets, SECRETS, type SecretFound } from './secrets'
  *   corner in the end (components/BlipSaver.tsx). It shows itself.
  * - A page that isn't there is a Game Over screen with a coin slot (pages/GameOverPage.tsx). A faint
  *   "Level 256" in the footer leads to one.
+ * - In Centroid, a balanced plate tapped again while it sits on its pin shatters (games/dead-center).
+ *   Till a device has broken one, a balanced plate shows a faint hairline crack round its pin.
  */
 
 const EIGHT_BIT_KEY = 'skermix-eightbit'
@@ -63,7 +65,7 @@ export function setEightBit(on: boolean) {
   window.dispatchEvent(new Event(EIGHT_BIT_EVENT))
 }
 
-export type EggKey = 'konami' | 'blip' | 'barrelroll' | 'corner' | 'cheats' | 'continue'
+export type EggKey = 'konami' | 'blip' | 'barrelroll' | 'corner' | 'cheats' | 'continue' | 'shatter'
 
 /** Where a device remembers it found an egg (the blip's key is older than the rest). */
 function doneKey(key: EggKey) {

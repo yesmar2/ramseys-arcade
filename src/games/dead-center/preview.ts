@@ -21,7 +21,7 @@ import { renderGame } from './render'
  * Its runs start a few plates in, where the plates stop being plain.
  */
 
-/** The plate the pilot's runs start on: the first that can be an L or carry a weight. */
+/** The plate the pilot's runs start on: a few in, where Ls and lopsided plates come often. */
 const FIRST_PLATE = 5
 
 /** How far off the balance point the pilot's pin lands, in plate sizes, for a plate with this margin. */
@@ -74,8 +74,8 @@ export function makeSim(): Sim<GameState> {
     resize: (s) => s,
     // A cabinet's screen is small: closer in on the plate, leaving the clock under it out of the picture.
     zoom: 1.25,
-    // The still: a teal plate with a weight on it, set down dead center on its pin, the gold ring going out.
-    poster: { seed: 52, at: 4.6 },
+    // The still: a lopsided teal plate set down dead center on its pin, the gold ring going out.
+    poster: { seed: 52, at: 5.07 },
     hold: 2,
   }
 }

@@ -3,14 +3,16 @@ import {
   LEAVE_TIME,
   PIN_EVERY,
   PIN_H,
+  SHARD_FADE,
+  SHARD_REST,
   THICK,
-  convexHull,
   poseWorld,
   type GameState,
   type Outcome,
   type Plate,
   type Point,
   type Pose,
+  type Shard,
   type Vec3,
 } from './game'
 
@@ -272,66 +274,6 @@ function drawPlate(g: Gfx, plate: Plate, solid: Solid) {
   ctx.restore()
 }
 
-/** How tall a weight stands on the plate's face, in table units. */
-const WEIGHT_H = 0.02
-
-/**
- * The weights fixed to a plate: squat bronze cylinders, darker than the gold
- * that marks the balance point, each with a bevelled face and a screw in its
- * middle, standing square to the plate's face as it tips. A bigger one is a
- * heavier one.
- */
-function drawWeights(g: Gfx, plate: Plate, pose: Pose, lift = 0, alpha = 1) {
-  if (!plate.weights.length || alpha <= 0.01) return
-  const { ctx, v, dark } = g
-  const tip = Math.sin(pose.tilt)
-  const normal = { x: pose.dir.x * tip, y: pose.dir.y * tip, z: Math.cos(pose.tilt) }
-  const at = (p: Point, h: number) => {
-    const q = onTop(pose, p, lift)
-    return project(v, { x: q.x + normal.x * h, y: q.y + normal.y * h, z: q.z + normal.z * h })
-  }
-  ctx.save()
-  ctx.globalAlpha = alpha
-  ctx.lineJoin = 'round'
-  for (const w of plate.weights) {
-    const ring = (h: number, r = w.r) => {
-      const pts: Point[] = []
-      for (let i = 0; i < 28; i++) {
-        const a = (i / 28) * TAU
-        pts.push(at({ x: w.x + Math.cos(a) * r, y: w.y + Math.sin(a) * r }, h))
-      }
-      return pts
-    }
-    const top = ring(WEIGHT_H)
-    // Its side, in shadowed bronze: everything between its foot and its face.
-    path(ctx, convexHull([...ring(0), ...top]))
-    ctx.fillStyle = hsla(27, 48, dark ? 22 : 30)
-    ctx.fill()
-    // Its face, lit from the top left, with a bevel inside the rim.
-    const c = at({ x: w.x, y: w.y }, WEIGHT_H)
-    const r = w.r * v.k
-    const face = ctx.createRadialGradient(c.x - r * 0.35, c.y - r * 0.4, r * 0.1, c.x, c.y, r)
-    face.addColorStop(0, hsla(38, 72, dark ? 72 : 76))
-    face.addColorStop(0.55, hsla(33, 60, dark ? 50 : 54))
-    face.addColorStop(1, hsla(28, 55, dark ? 36 : 40))
-    path(ctx, top)
-    ctx.fillStyle = face
-    ctx.fill()
-    ctx.strokeStyle = hsla(28, 55, dark ? 60 : 26)
-    ctx.lineWidth = Math.max(0.8, v.k * 0.003)
-    ctx.stroke()
-    path(ctx, ring(WEIGHT_H, w.r * 0.7))
-    ctx.strokeStyle = hsla(34, 60, dark ? 30 : 36, 0.55)
-    ctx.lineWidth = Math.max(0.6, v.k * 0.0022)
-    ctx.stroke()
-    ctx.fillStyle = hsla(28, 40, dark ? 20 : 24, 0.85)
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, Math.max(1, v.k * 0.006), 0, TAU)
-    ctx.fill()
-  }
-  ctx.restore()
-}
-
 // --------------------------------------------------------------------- pin
 
 /**
@@ -489,6 +431,115 @@ function drawBurst(g: Gfx, s: GameState) {
   ctx.lineWidth = Math.max(1.5, v.k * 0.008 * s.flash)
   ctx.beginPath()
   ctx.ellipse(c.x, c.y, v.k * (0.03 + u * 0.3), v.k * (0.03 + u * 0.3) * COS, 0, 0, TAU)
+  ctx.stroke()
+  ctx.restore()
+}
+
+// -------------------------------------------------------------- the egg
+
+/** A shard's corner, `p` about its middle, turned `angle` about its level axis, in the world. */
+function shardCorner(sh: Shard, p: Point): Vec3 {
+  const c = Math.cos(sh.angle)
+  const s = Math.sin(sh.angle)
+  const along = sh.axis.x * p.x + sh.axis.y * p.y
+  return {
+    x: sh.at.x + p.x * c + sh.axis.x * along * (1 - c),
+    y: sh.at.y + p.y * c + sh.axis.y * along * (1 - c),
+    z: sh.at.z + (sh.axis.x * p.y - sh.axis.y * p.x) * s,
+  }
+}
+
+function shardAlpha(sh: Shard) {
+  return sh.rested < 0 ? 1 : 1 - clamp01((sh.rested - SHARD_REST) / SHARD_FADE)
+}
+
+/** The broken plate's pieces' shadows on the table, fainter the higher a piece is. */
+function drawShardShadows(g: Gfx, s: GameState) {
+  const { ctx, v, dark } = g
+  if (!s.shards.length) return
+  ctx.save()
+  for (const sh of s.shards) {
+    const a = (dark ? 0.3 : 0.16) * shardAlpha(sh) * (1 - clamp01(sh.at.z / 0.5) * 0.7)
+    if (a <= 0.005) continue
+    ctx.fillStyle = `rgba(0, 0, 0, ${a})`
+    path(
+      ctx,
+      sh.points.map((p) => {
+        const w = shardCorner(sh, p)
+        return project(v, { x: w.x, y: w.y, z: 0 })
+      }),
+    )
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
+/** The pieces themselves: clear glass in the plate's colour, flashing as they turn to the lamp. */
+function drawShards(g: Gfx, s: GameState) {
+  const { ctx, v, dark } = g
+  if (!s.shards.length) return
+  ctx.save()
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = Math.max(1, v.k * 0.0035)
+  for (const sh of s.shards) {
+    const a = shardAlpha(sh)
+    if (a <= 0.01) continue
+    const corners = sh.points.map((p) => project(v, shardCorner(sh, p)))
+    const sin = Math.sin(sh.angle)
+    // Glass looks the same either way up, so a piece face down is lit as one face up.
+    const lit = Math.abs(dot({ x: sh.axis.y * sin, y: -sh.axis.x * sin, z: Math.cos(sh.angle) }, LIGHT))
+    path(ctx, corners)
+    ctx.globalAlpha = a
+    ctx.fillStyle = hsla(sh.hue, 72, (dark ? 62 : 64) + (lit - LIGHT.z) * 40, 0.35)
+    ctx.fill()
+    const glint = clamp01((lit - 0.75) * 3)
+    if (glint > 0) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${glint * 0.45})`
+      ctx.fill()
+    }
+    ctx.strokeStyle = hsla(sh.hue, 72, lineL(dark))
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+/**
+ * The egg's clue: a balanced plate, sitting on its pin, has a hairline crack
+ * or two running out from the pin, barely there, so the glass looks as if it
+ * could break. Each pin gets its own crack, the same every frame.
+ */
+function drawCrack(g: Gfx, s: GameState) {
+  const o = s.outcome
+  if (!s.crackHint || s.phase !== 'settling' || s.stage !== 'wobble' || !o?.balanced || !o.pin || !s.plate) return
+  const { ctx, v, dark } = g
+  const pin = o.pin
+  let seed = Math.floor(pin.x * 99991 + pin.y * 77933) >>> 0
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+    return seed / 4294967296
+  }
+  const at = (p: Point) => project(v, onTop(s.pose, p))
+  ctx.save()
+  ctx.globalAlpha = clamp01((s.stageT - 0.05) / 0.25)
+  ctx.strokeStyle = dark ? 'rgba(255, 255, 255, 0.38)' : 'rgba(20, 40, 55, 0.3)'
+  ctx.lineWidth = Math.max(0.7, v.k * 0.0017)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  const legs = 3 + Math.floor(rnd() * 2)
+  for (let i = 0; i < legs; i++) {
+    const a = (i / legs) * TAU + rnd() * 1.2
+    const len = 0.02 + rnd() * 0.028
+    const bend = a + (rnd() - 0.5) * 0.9
+    const kink = { x: pin.x + Math.cos(a) * len * 0.45, y: pin.y + Math.sin(a) * len * 0.45 }
+    const tip = { x: kink.x + Math.cos(bend) * len * 0.55, y: kink.y + Math.sin(bend) * len * 0.55 }
+    const from = at(pin)
+    const k = at(kink)
+    const t = at(tip)
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(k.x, k.y)
+    ctx.lineTo(t.x, t.y)
+  }
   ctx.stroke()
   ctx.restore()
 }
@@ -651,7 +702,7 @@ function drawHint(g: Gfx, s: GameState, w: number, h: number) {
   const alpha = clamp01((s.appear - 0.5) / 0.4)
   if (alpha <= 0) return
   const lines = isTouch()
-    ? ['Tap where the plate would balance', 'Its true center, weights and all, before the clock runs out']
+    ? ['Tap where the plate would balance', 'Its true center, before the clock runs out']
     : ['Click where the plate would balance', 'Or the arrow keys, then Space, before the clock runs out']
   const big = Math.round(Math.max(13, Math.min(16, w * 0.036)))
   const small = Math.round(big * 0.84)
@@ -704,8 +755,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     const u = clamp01(leaving.t / LEAVE_TIME)
     const alpha = 1 - u
     const lift = leaving.lift ? u * u * 0.35 : 0
-    leavingSolid = solidOf(leaving.plate, leaving.pose, lift, alpha, leaving.lift ? 0 : 1)
-    drawShadow(g, leavingSolid)
+    // A broken plate is in pieces on the table already: only its pin goes.
+    leavingSolid = leaving.broken ? null : solidOf(leaving.plate, leaving.pose, lift, alpha, leaving.lift ? 0 : 1)
+    if (leavingSolid) drawShadow(g, leavingSolid)
     const pin = leaving.outcome?.pin
     if (pin) {
       const height = leaving.lift ? leaving.pinH * (1 - u) : leaving.pinH
@@ -716,24 +768,26 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   const plate = s.plate
   // A new plate fades in once the last one has mostly gone.
   const appearing = s.phase === 'aiming' ? clamp01((s.appear - 0.25) / 0.55) : 1
-  const solid = plate ? solidOf(plate, s.pose, 0, appearing, fallenOf(s)) : null
+  const broken = s.phase === 'settling' && s.stage === 'shatter'
+  const solid = plate && !broken ? solidOf(plate, s.pose, 0, appearing, fallenOf(s)) : null
   if (solid) drawShadow(g, solid)
+  drawShardShadows(g, s)
   const o = s.outcome
   if (plate && o?.pin && s.phase !== 'aiming') drawPin(g, o.pin, s.pinH, s.pinDown, o.dir, 1)
 
   if (leaving && leavingSolid) {
     drawPlate(g, leaving.plate, leavingSolid)
     const lift = leaving.lift ? clamp01(leaving.t / LEAVE_TIME) ** 2 * 0.35 : 0
-    drawWeights(g, leaving.plate, leaving.pose, lift, leavingSolid.alpha)
     if (leaving.outcome) {
       drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, leaving.margin, 1, lift, leavingSolid.alpha)
     }
   }
   if (plate && solid) {
     drawPlate(g, plate, solid)
-    drawWeights(g, plate, s.pose, 0, solid.alpha)
     if (o) drawMarks(g, plate, s.pose, o, s.margin, revealOf(s))
+    drawCrack(g, s)
   }
+  drawShards(g, s)
 
   drawBurst(g, s)
   drawSparks(g, s)

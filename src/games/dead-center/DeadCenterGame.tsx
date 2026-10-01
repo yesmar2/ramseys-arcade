@@ -8,18 +8,21 @@ import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { eggDone, reportEgg } from '../../lib/eggs'
 import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun } from '../../lib/runSession'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  PIN_H,
   THICK,
   createInitialState,
   jumpToPlate,
   moveCursor,
   pinAtCursor,
   setPin,
+  shatter,
   startGame,
   tick,
   toSnapshot,
@@ -71,6 +74,8 @@ export function DeadCenterGame() {
     if (!intoMenu) beginRun('centroid')
     heldRef.current.clear()
     stateRef.current = intoMenu ? createInitialState() : startGame(stateRef.current)
+    // The egg's clue, the crack round a balanced plate's pin, till this device has broken one.
+    stateRef.current.crackHint = !eggDone('shatter')
     previousBestRef.current = getPersonalBest('centroid')
     startGrace.current = performance.now() + 220
     setUi(toSnapshot(stateRef.current))
@@ -212,9 +217,20 @@ export function DeadCenterGame() {
     }
     // The chrome's buttons sit over the table and are not part of it.
     const canvas = canvasRef.current
-    if (!canvas || e.target !== canvas || s.phase !== 'aiming') return
-    e.preventDefault()
+    if (!canvas || e.target !== canvas) return
     const rect = canvas.getBoundingClientRect()
+    if (s.phase === 'settling') {
+      // The easter egg: a balanced plate, tapped again on its pin, shatters.
+      const on = tablePointAt(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height, PIN_H + THICK)
+      if (shatter(s, on)) {
+        e.preventDefault()
+        haptic('crash')
+        void reportEgg('shatter')
+      }
+      return
+    }
+    if (s.phase !== 'aiming') return
+    e.preventDefault()
     // The tap lands on the plate's face, wherever the plate is hovering.
     const at = tablePointAt(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height, s.pose.at.z + THICK)
     s.cursor = null

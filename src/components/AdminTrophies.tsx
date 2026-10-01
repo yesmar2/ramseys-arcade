@@ -85,6 +85,7 @@ const SECRET_RULES: Record<SecretKey, string> = {
   corner: 'Watching the screen saver hit a corner (see Easter eggs).',
   cheats: 'Trying an old game cheat (see Easter eggs).',
   continue: 'Putting a coin in at Game Over (see Easter eggs).',
+  shatter: 'Breaking a balanced plate in Centroid (see Easter eggs).',
 }
 
 /** What each Dailies streak reward is, beyond the card's words. */
@@ -144,6 +145,14 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
     does: 'An arcade Game Over screen counts CONTINUE? down from 9. Insert coin before it runs out and it says CONTINUE! and goes back to the arcade. /level/256 is Pac-Man’s last level: the right half of the screen is garbage.',
     clue: 'A faint “Level 256” beside the © at the very bottom of every page.',
     secret: 'Continue?',
+  },
+  {
+    key: 'shatter',
+    name: 'Breaking the glass',
+    how: 'In Centroid, balance a plate on its pin, then tap or click the plate again while it’s still sitting there, before it’s lifted away.',
+    does: 'The plate shatters: the pieces fly off the pin, bounce on the table and fade, with a crash and a tinkle. The run goes on as if it had been lifted away, its points and streak kept, and the next plate comes no sooner.',
+    clue: 'A balanced plate shows a faint hairline crack or two running out from its pin while it sits there, till that device has broken one. Players who tap twice by habit find it on their own.',
+    secret: 'Smashing',
   },
 ]
 

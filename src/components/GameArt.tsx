@@ -435,7 +435,7 @@ function Stacker({ id }: { id: Id }) {
   )
 }
 
-/** The glass plate tipped toward you over the table, its brass weight, and the gold ring where it balances. */
+/** The glass plate tipped toward you over the table, pinned at the gold ring where it balances. */
 function Centroid({ id }: { id: Id }) {
   const top = 'M7.5 18.8 L12.8 8.2 L22.2 6.2 L33.6 17.6 L26 22.8 Z'
   return (
@@ -449,35 +449,28 @@ function Centroid({ id }: { id: Id }) {
           <stop offset="0" stopColor={hsl(176, 60, 66, 0.5)} />
           <stop offset="1" stopColor={hsl(182, 55, 48, 0.3)} />
         </linearGradient>
-        <radialGradient id={id('brass')} cx="0.4" cy="0.35">
-          <stop offset="0" stopColor="#f0c07a" />
-          <stop offset="1" stopColor="#9a6532" />
-        </radialGradient>
       </defs>
       <rect x="-1" y="-1" width="42" height="32" fill={`url(#${id('grid')})`} />
       <path d={top} transform="translate(2.4 3.8)" fill="#000" opacity="0.35" />
       <path d="M7.5 18.8 L26 22.8 L33.6 17.6 V19.2 L26 24.4 L7.5 20.4 Z" fill={hsl(180, 45, 34, 0.8)} stroke={hsl(178, 60, 64)} strokeWidth="0.3" strokeLinejoin="round" />
       <path d={top} fill={`url(#${id('glass')})`} stroke={hsl(178, 65, 68)} strokeWidth="0.45" strokeLinejoin="round" />
       <path d="M13.6 9.4 L19.4 8.1" {...line('#fff', 0.35, 0.35)} />
-      <Glow id={id} name="ring" cx={19.4} cy={14.9} r={5.2} colour="#f5c542" strength={0.3} />
-      <ellipse cx="19.4" cy="14.9" rx="4" ry="2.8" fill={hsl(42, 92, 60, 0.12)} stroke="#e8b44c" strokeWidth="0.4" />
+      <Glow id={id} name="ring" cx={20.2} cy={15} r={5.2} colour="#f5c542" strength={0.3} />
+      <ellipse cx="20.2" cy="15" rx="4" ry="2.8" fill={hsl(42, 92, 60, 0.12)} stroke="#e8b44c" strokeWidth="0.4" />
       {[
-        [17.2, 14],
-        [18.4, 13.2],
-        [20.8, 13.4],
-        [21.6, 15.6],
-        [18, 16.2],
-        [20.4, 16.4],
-        [16.8, 15.2],
+        [18, 14.1],
+        [19.2, 13.3],
+        [21.6, 13.5],
+        [22.4, 15.7],
+        [18.8, 16.3],
+        [21.2, 16.5],
+        [17.6, 15.3],
       ].map(([x, y]) => (
         <circle key={`${x}-${y}`} cx={x} cy={y} r="0.22" fill="#f5c542" />
       ))}
-      <path d="M19.4 14.9 V18.5" {...line('#e9eef2', 0.25, 0.9)} />
-      <circle cx="19.4" cy="18.8" r="0.55" fill="#e8564f" />
-      <circle cx="19.4" cy="14.9" r="0.55" fill="#fff4c9" />
-      <ellipse cx="13" cy="14.5" rx="2.2" ry="1.7" fill="#6e4524" />
-      <ellipse cx="13" cy="13.9" rx="2.2" ry="1.7" fill={`url(#${id('brass')})`} stroke="#e0a868" strokeWidth="0.3" />
-      <circle cx="13" cy="13.9" r="0.38" fill="#5a3a1e" />
+      <path d="M20.2 15 V18.6" {...line('#e9eef2', 0.25, 0.9)} />
+      <circle cx="20.2" cy="18.9" r="0.55" fill="#e8564f" />
+      <circle cx="20.2" cy="15" r="0.55" fill="#fff4c9" />
     </>
   )
 }

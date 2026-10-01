@@ -298,6 +298,19 @@ const SECRET_ART: Record<number, ReactNode> = {
       <rect className="trophy-art__fill" x="18" y="31" width="12" height="3.2" rx="1.6" />
     </>
   ),
+  // Smashing: a pin standing where a plate was, the glass flying off it in pieces.
+  19: (
+    <>
+      <path d="M24 22v15" />
+      <circle className="trophy-art__fill" cx="24" cy="39.5" r="2.8" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M13 14.5 20.5 17.5 15.5 21.5Z" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M27.5 16.5 36 11.5 33.5 20Z" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M8.5 25.5 17 24 12.5 30Z" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M31 24 39.5 25.5 34 30.5Z" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M20.5 9.5 25.5 5.5 26.5 13Z" />
+      <path d="M22.5 20.5l-1.5-1.8M25.5 20.5l1.5-1.8M24 19.5v-2.2" />
+    </>
+  ),
 }
 
 /** A secret trophy: its own picture, in the secrets' rose. */

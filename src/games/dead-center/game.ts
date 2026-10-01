@@ -1,5 +1,6 @@
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
+import { breakGlass } from './glass'
 
 /**
  * Centroid — balance the plate on a pin.
@@ -32,17 +33,18 @@ export type Point = { x: number; y: number }
 
 export type Vec3 = { x: number; y: number; z: number }
 
-export type PlateKind = 'plain' | 'lopsided' | 'notched' | 'elbow' | 'weighted'
-
-/** A brass weight fixed to a plate: a squat cylinder `r` in radius, as heavy as `mass` square units of plate; the bigger, the heavier. */
-export type Weight = { x: number; y: number; r: number; mass: number }
+/*
+ * Plates used to carry brass weights from the fifth on, pulling the balance
+ * point toward them. Ramsey didn't like them ("i don't like the weights being
+ * added"), so every plate is plain glass again: its shape alone says where it
+ * balances.
+ */
+export type PlateKind = 'plain' | 'lopsided' | 'notched' | 'elbow'
 
 export type Plate = {
   kind: PlateKind
   points: Point[]
-  /** Weights fixed on it, pulling its balance point toward them. */
-  weights: Weight[]
-  /** Its balance point, weights and all. */
+  /** Its balance point. */
   centroid: Point
   /** The square root of its area: what a miss is measured in. */
   size: number
@@ -60,8 +62,9 @@ export type Pose = { anchor: Point; at: Vec3; dir: Point; tilt: number }
  * What happens once the pin is in: the plate is lowered onto it; balanced, it
  * wobbles; off, it tips until its edge hits the table, leans there a moment,
  * then flops flat and rests. Too slow, and it falls flat with nothing under it.
+ * Tapped again while it wobbles, the balanced plate shatters (an easter egg).
  */
-export type Stage = 'drop' | 'wobble' | 'tip' | 'lean' | 'flop' | 'rest' | 'fall'
+export type Stage = 'drop' | 'wobble' | 'shatter' | 'tip' | 'lean' | 'flop' | 'rest' | 'fall'
 
 export type Outcome = {
   /** Where the pin went in, on the plate, or null when the clock ran out. */
@@ -85,6 +88,8 @@ export type Leaving = {
   pinH: number
   pinDown: number
   lift: boolean
+  /** It was broken: only its pin is left to go. */
+  broken: boolean
   t: number
 }
 
@@ -93,6 +98,24 @@ export type FloaterTone = 'good' | 'gold' | 'bad'
 export type Floater = { at: Vec3; text: string; tone: FloaterTone; life: number; maxLife: number }
 
 export type Spark = { at: Vec3; vx: number; vy: number; vz: number; life: number; maxLife: number; hue: number }
+
+/**
+ * A piece of a broken plate: its corners about its middle as they lay on the
+ * plate, where its middle is now, and how it tumbles, about a level `axis`.
+ * It flies, bounces once on the table, settles flat and fades.
+ */
+export type Shard = {
+  points: Point[]
+  at: Vec3
+  v: Vec3
+  axis: Point
+  angle: number
+  spin: number
+  hue: number
+  bounced: boolean
+  /** Seconds since it came to rest, or -1 while it's still moving. */
+  rested: number
+}
 
 export type GameState = {
   phase: Phase
@@ -141,6 +164,13 @@ export type GameState = {
   palette: number[]
   floaters: Floater[]
   sparks: Spark[]
+  shards: Shard[]
+  /**
+   * The egg's clue: a balanced plate shows a hairline crack round its pin, so
+   * the glass looks like it could break. The page turns it on till the device
+   * has broken one; the cabinet's preview never shows it.
+   */
+  crackHint: boolean
   /** 0–1 gold flash for a dead center, and a shake for a fall. */
   flash: number
   shake: number
@@ -184,6 +214,11 @@ const FLOP_PULL = 16
 const GRAVITY = 2.6
 /** How long a plate takes to leave the table. */
 export const LEAVE_TIME = 0.26
+/** A broken plate's shards fly at least this long before the next plate comes on. */
+const SHATTER_HOLD = 0.7
+/** A shard lies still this long, then fades over this long. */
+export const SHARD_REST = 0.6
+export const SHARD_FADE = 0.5
 
 /** The margin for a balance on the nth plate, in plate sizes: a fair eye's worth at first, tight later. */
 export function marginFor(n: number) {
@@ -448,39 +483,6 @@ function placeOnTable(pts: Point[], target: number): Point[] {
   return pts.map((p) => ({ x: mx + (p.x - cx) * k, y: my + (p.y - cy) * k }))
 }
 
-/** The balance point of a plate with weights on it: the plate's own, pulled toward each weight by how heavy it is. */
-export function balancePoint(points: Point[], weights: Weight[]): Point {
-  const area = polygonArea(points)
-  const c = polygonCentroid(points)
-  let m = area
-  let x = c.x * area
-  let y = c.y * area
-  for (const w of weights) {
-    m += w.mass
-    x += w.x * w.mass
-    y += w.y * w.mass
-  }
-  return { x: x / m, y: y / m }
-}
-
-/** `count` weights somewhere on the plate, well in from its edge and clear of each other, each as heavy as a good share of it: the bigger, the heavier. */
-function weightsFor(points: Point[], count: number): Weight[] | null {
-  const area = polygonArea(points)
-  const b = box(points)
-  const out: Weight[] = []
-  for (let k = 0; k < count; k++) {
-    for (let t = 0; t < 30; t++) {
-      const p = { x: rand(b.x0, b.x1), y: rand(b.y0, b.y1) }
-      const r = rand(0.038, 0.054)
-      if (!onPlate(points, p) || nearestOnEdge(points, p).d < r + 0.015) continue
-      if (out.some((w) => dist(w, p) < w.r + r + 0.04)) continue
-      out.push({ x: p.x, y: p.y, r, mass: area * 0.3 * (r / 0.054) ** 2 })
-      break
-    }
-  }
-  return out.length === count ? out : null
-}
-
 /**
  * How far the balance point is from the middle of the plate's box, in plate
  * sizes: where an eye that doesn't weigh the plate would put the pin.
@@ -494,19 +496,16 @@ export function deception(plate: Plate) {
  * What the nth plate is. The first two are plain and fair, to learn on. From
  * the third, more and more are lopsided, their balance point well away from
  * the middle of their box; from the fourth some are Ls, whose balance point
- * sits toward the inside of the bend; from the fifth some carry brass
- * weights that pull it toward them; from the seventh some have a bite taken
- * out. By the tenth nearly every plate is one to think about.
+ * sits toward the inside of the bend; from the seventh some have a bite
+ * taken out. By the tenth nearly every plate is one to think about.
  */
 function familyFor(n: number): PlateKind {
   if (n <= 2) return 'plain'
-  const weighted = n >= 5 ? Math.min(0.26, 0.1 + (n - 5) * 0.02) : 0
   const elbow = n >= 4 ? Math.min(0.18, 0.08 + (n - 4) * 0.012) : 0
   const notched = n >= 7 ? Math.min(0.2, 0.08 + (n - 7) * 0.015) : 0
   const r = Math.random()
-  if (r < weighted) return 'weighted'
-  if (r < weighted + elbow) return 'elbow'
-  if (r < weighted + elbow + notched) return 'notched'
+  if (r < elbow) return 'elbow'
+  if (r < elbow + notched) return 'notched'
   return Math.random() < clamp((n - 2) / 8, 0, 0.85) ? 'lopsided' : 'plain'
 }
 
@@ -528,22 +527,14 @@ export function makePlate(n: number, hue: number = PLATE_HUES[n % PLATE_HUES.len
     const points = placeOnTable(raw, rand(0.46, 0.64))
     const area = polygonArea(points)
     if (area < 0.11) continue
-    let weights: Weight[] = []
-    if (kind === 'weighted') {
-      const placed = weightsFor(points, n >= 12 && Math.random() < 0.4 ? 2 : 1)
-      if (!placed) continue
-      weights = placed
-    }
-    const centroid = balancePoint(points, weights)
-    // The pin has to be able to go in at the balance point, clear of the edge and of any weight.
+    const centroid = polygonCentroid(points)
+    // The pin has to be able to go in at the balance point, clear of the edge.
     const room = kind === 'elbow' ? 0.05 : 0.07
     if (!onPlate(points, centroid) || nearestOnEdge(points, centroid).d < room) continue
-    if (weights.some((w) => dist(w, centroid) < w.r + 0.035)) continue
-    const plate: Plate = { kind, points, weights, centroid, size: Math.sqrt(area), hue }
-    // A plain plate should be plainly fair; a lopsided one should fool a pin in the middle of its box; a
-    // weighted one should fool a pin that forgets the weights.
-    const fooled = kind === 'weighted' ? dist(centroid, polygonCentroid(points)) / plate.size : deception(plate)
-    const want = kind === 'plain' ? -margin * 0.9 : kind === 'lopsided' || kind === 'weighted' ? margin * 1.15 : 0
+    const plate: Plate = { kind, points, centroid, size: Math.sqrt(area), hue }
+    // A plain plate should be plainly fair; a lopsided one should fool a pin in the middle of its box.
+    const fooled = deception(plate)
+    const want = kind === 'plain' ? -margin * 0.9 : kind === 'lopsided' ? margin * 1.15 : 0
     const score = kind === 'plain' ? -fooled : fooled
     if (score >= want) return plate
     if (score > bestScore) {
@@ -553,7 +544,7 @@ export function makePlate(n: number, hue: number = PLATE_HUES[n % PLATE_HUES.len
   }
   if (best) return best
   const points = placeOnTable(convexPlate(4, 0.1), 0.55)
-  return { kind: 'plain', points, weights: [], centroid: polygonCentroid(points), size: Math.sqrt(polygonArea(points)), hue }
+  return { kind: 'plain', points, centroid: polygonCentroid(points), size: Math.sqrt(polygonArea(points)), hue }
 }
 
 /** The plates' colours in a new order. */
@@ -616,6 +607,8 @@ export function createInitialState(): GameState {
     palette,
     floaters: [],
     sparks: [],
+    shards: [],
+    crackHint: false,
     flash: 0,
     shake: 0,
   }
@@ -641,6 +634,7 @@ function leavingOf(state: GameState, lift: boolean): Leaving | null {
     pinH: state.pinH,
     pinDown: state.pinDown,
     lift,
+    broken: state.stage === 'shatter',
     t: 0,
   }
 }
@@ -759,6 +753,134 @@ export function pinAtCursor(state: GameState): GameState {
   return setPin(state, state.cursor)
 }
 
+// ------------------------------------------------------------------- the egg
+
+/** The part of `poly` on the side of the line through `p` that `n` points to (one pass of Sutherland–Hodgman). */
+function clipHalf(poly: Point[], p: Point, n: Point): Point[] {
+  const side = (q: Point) => (q.x - p.x) * n.x + (q.y - p.y) * n.y
+  const out: Point[] = []
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!
+    const b = poly[(i + 1) % poly.length]!
+    const sa = side(a)
+    const sb = side(b)
+    if (sa >= 0) out.push(a)
+    if (sa >= 0 !== sb >= 0) {
+      const t = sa / (sa - sb)
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })
+    }
+  }
+  return out
+}
+
+/**
+ * A plate broken where it was hit: cracks run out from there in every
+ * direction, and a ring of them round it, so the pieces are small near the
+ * blow and long at the edge, as glass breaks.
+ */
+function fracture(points: Point[], hit: Point): Point[][] {
+  const rays = 9 + Math.floor(Math.random() * 4)
+  const start = Math.random() * Math.PI * 2
+  const angles = Array.from({ length: rays }, (_, i) => start + ((i + rand(-0.3, 0.3)) / rays) * Math.PI * 2)
+  const pieces: Point[][] = []
+  for (let i = 0; i < rays; i++) {
+    const a0 = angles[i]!
+    const a1 = i + 1 < rays ? angles[i + 1]! : angles[0]! + Math.PI * 2
+    // Between two cracks: ahead of the first, behind the second.
+    let wedge = clipHalf(points, hit, { x: -Math.sin(a0), y: Math.cos(a0) })
+    wedge = clipHalf(wedge, hit, { x: Math.sin(a1), y: -Math.cos(a1) })
+    if (wedge.length < 3) continue
+    const mid = (a0 + a1) / 2
+    const out = { x: Math.cos(mid), y: Math.sin(mid) }
+    const r = rand(0.05, 0.12)
+    const ring = { x: hit.x + out.x * r, y: hit.y + out.y * r }
+    for (const piece of [clipHalf(wedge, ring, { x: -out.x, y: -out.y }), clipHalf(wedge, ring, out)]) {
+      if (piece.length >= 3 && polygonArea(piece) > 2e-5) pieces.push(piece)
+    }
+  }
+  return pieces
+}
+
+/**
+ * The easter egg: a balanced plate, tapped again while it sits on its pin,
+ * shatters. `at` is the tap, on the table under the plate's face. The run goes
+ * on as if it had been lifted away, points and streak and all, and the next
+ * plate comes on no sooner than it would have. True if it broke.
+ */
+export function shatter(state: GameState, at: Point): boolean {
+  const o = state.outcome
+  const plate = state.plate
+  if (state.phase !== 'settling' || state.stage !== 'wobble' || !o?.balanced || !o.pin || !plate) return false
+  const edge = nearestOnEdge(plate.points, at)
+  const inside = onPlate(plate.points, at)
+  if (!inside && edge.d > 0.02) return false
+  const hit = inside ? at : edge.at
+  const z = PIN_H + THICK / 2
+  for (const piece of fracture(plate.points, hit)) {
+    const c = polygonCentroid(piece)
+    const away = dist(c, hit) || 1
+    const dir = { x: (c.x - hit.x) / away, y: (c.y - hit.y) / away }
+    // Pieces near the blow fly hardest.
+    const speed = rand(0.1, 0.24) * (1 + 0.7 * Math.max(0, 1 - away / 0.25))
+    state.shards.push({
+      points: piece.map((p) => ({ x: p.x - c.x, y: p.y - c.y })),
+      at: { x: c.x, y: c.y, z },
+      v: { x: dir.x * speed + rand(-0.05, 0.05), y: dir.y * speed + rand(-0.05, 0.05), z: rand(0.25, 0.75) },
+      // Tumbling outward, over its own leading edge.
+      axis: { x: -dir.y, y: dir.x },
+      angle: 0,
+      spin: rand(5, 14) * (Math.random() < 0.8 ? 1 : -1),
+      hue: plate.hue,
+      bounced: false,
+      rested: -1,
+    })
+  }
+  addSparks(state, { x: hit.x, y: hit.y, z: PIN_H + THICK }, 16, plate.hue)
+  state.stage = 'shatter'
+  state.stageT = 0
+  state.tilt = 0
+  state.crackHint = false
+  state.shake = Math.max(state.shake, 0.3)
+  breakGlass()
+  return true
+}
+
+/** The pieces of a broken plate: falling, one bounce, then still and fading. */
+function tickShards(state: GameState, dt: number) {
+  let plinks = 0
+  state.shards = state.shards.filter((sh) => {
+    if (sh.rested >= 0) {
+      sh.rested += dt
+      // It settles flat, face up or face down.
+      const flat = Math.round(sh.angle / Math.PI) * Math.PI
+      sh.angle += (flat - sh.angle) * Math.min(1, dt * 18)
+      return sh.rested < SHARD_REST + SHARD_FADE
+    }
+    sh.v.z -= GRAVITY * dt
+    sh.at = { x: sh.at.x + sh.v.x * dt, y: sh.at.y + sh.v.y * dt, z: sh.at.z + sh.v.z * dt }
+    sh.angle += sh.spin * dt
+    const floor = THICK / 2
+    if (sh.at.z <= floor && sh.v.z < 0) {
+      sh.at.z = floor
+      if (!sh.bounced && sh.v.z < -0.3) {
+        sh.bounced = true
+        sh.v = { x: sh.v.x * 0.4, y: sh.v.y * 0.4, z: -sh.v.z * 0.25 }
+        sh.spin *= 0.35
+        // A few of them tinkle as they land; all of them at once would be a hiss.
+        if (plinks < 2 && Math.random() < 0.35) {
+          plinks += 1
+          sfx('plink', Math.floor(rand(2, 9)))
+        }
+      } else {
+        sh.v = { x: 0, y: 0, z: 0 }
+        sh.spin = 0
+        sh.rested = 0
+      }
+    }
+    return true
+  })
+}
+
 function addFloater(state: GameState, at: Vec3, text: string, tone: FloaterTone, life = 1) {
   state.floaters.push({ at, text, tone, life, maxLife: life })
   if (state.floaters.length > 6) state.floaters.shift()
@@ -849,6 +971,10 @@ function tickSettling(state: GameState, dt: number) {
       if (state.settleT >= BALANCE_SHOW) next(state)
       return
     }
+    case 'shatter': {
+      if (state.settleT >= BALANCE_SHOW && state.stageT >= SHATTER_HOLD) next(state)
+      return
+    }
     case 'tip': {
       state.tiltV += tipPull(o.off) * Math.cos(state.tilt) * dt
       state.tilt = Math.min(state.leanTilt, state.tilt + state.tiltV * dt)
@@ -927,6 +1053,7 @@ export function tick(state: GameState, dt: number): GameState {
     sp.at = { x: sp.at.x + sp.vx * dt, y: sp.at.y + sp.vy * dt, z: Math.max(0, sp.at.z + sp.vz * dt) }
     return sp.life > 0
   })
+  if (state.shards.length) tickShards(state, dt)
   if (state.leaving) {
     state.leaving.t += dt
     if (state.leaving.t >= LEAVE_TIME) state.leaving = null
