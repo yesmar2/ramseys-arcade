@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { getGame, isGameListed } from '../data/games'
+import { dailyNumber as holeNumber } from '../games/acechase/daily'
 import { dayNumber as wantedNumber, dayWanted, wantedNames } from '../games/findbug/daily'
 import { dayTag as pourTag } from '../games/halffull/daily'
 import { dayPlan } from '../games/halffull/plan'
@@ -7,7 +8,7 @@ import { glassNames } from '../games/halffull/planSvg'
 import { dailyTrack, trackNumber } from '../games/hotlap/daily'
 import { dailyCave } from '../games/lander/daily'
 import { dailyCourse } from '../games/marblerun/daily'
-import { dayBoardHref, gamePlayHref } from '../hooks/useHashRoute'
+import { dailyTabHref, dayBoardHref, gamePlayHref } from '../hooks/useHashRoute'
 import { useDailyDays, type ArchiveDay, type DailyDays } from '../lib/archive'
 import { todaysHole } from '../lib/dailyHole'
 import { verbDone } from '../lib/dailyPast'
@@ -34,28 +35,31 @@ import '../styles/pastDay.css'
  * Playing a past course again never changes the day.
  */
 
-/** The day's own course of a daily: its number, its name, and where it's played again. */
-function courseOf(key: TodayKey, day: string): { kicker: string; title: string; play: string } {
+/**
+ * The day's own course of a daily: its number, its name, where it's played again, and its card on the game's
+ * Past tab (`page`, by the anchor the tab gives it: archive/*Archive.tsx).
+ */
+function courseOf(key: TodayKey, day: string): { kicker: string; title: string; play: string; page: string } {
   if (key === 'hole') {
     const hole = todaysHole(day)
-    return { kicker: `Hole #${hole.n}`, title: hole.def.name, play: `${gamePlayHref('acechase')}?hole=day:${day}` }
+    return { kicker: `Hole #${hole.n}`, title: hole.def.name, play: `${gamePlayHref('acechase')}?hole=day:${day}`, page: dailyTabHref('acechase', 'past', holeNumber(day)) }
   }
   if (key === 'track') {
     const track = dailyTrack(day)
-    return { kicker: `Track #${track.n}`, title: track.name, play: `${gamePlayHref('hotlap')}?track=${trackNumber(day)}` }
+    return { kicker: `Track #${track.n}`, title: track.name, play: `${gamePlayHref('hotlap')}?track=${trackNumber(day)}`, page: dailyTabHref('hotlap', 'past', trackNumber(day)) }
   }
   if (key === 'wanted') {
-    return { kicker: `Wanted #${wantedNumber(day)}`, title: wantedNames(dayWanted(day)), play: `${gamePlayHref('findbug')}?day=${day}` }
+    return { kicker: `Wanted #${wantedNumber(day)}`, title: wantedNames(dayWanted(day)), play: `${gamePlayHref('findbug')}?day=${day}`, page: dailyTabHref('findbug', 'past', day) }
   }
   if (key === 'pour') {
-    return { kicker: `Pour ${pourTag(day)}`, title: glassNames(dayPlan(day)), play: `${gamePlayHref('halffull')}?day=${day}` }
+    return { kicker: `Pour ${pourTag(day)}`, title: glassNames(dayPlan(day)), play: `${gamePlayHref('halffull')}?day=${day}`, page: dailyTabHref('halffull', 'past', day) }
   }
   if (key === 'cave') {
     const cave = dailyCave(day)
-    return { kicker: `Cave #${cave.n}`, title: cave.name, play: `${gamePlayHref('lander')}?day=${day}` }
+    return { kicker: `Cave #${cave.n}`, title: cave.name, play: `${gamePlayHref('lander')}?day=${day}`, page: dailyTabHref('lander', 'past', day) }
   }
   const course = dailyCourse(day)
-  return { kicker: `Course #${course.n}`, title: course.name, play: `${gamePlayHref('marblerun')}?day=${day}` }
+  return { kicker: `Course #${course.n}`, title: course.name, play: `${gamePlayHref('marblerun')}?day=${day}`, page: dailyTabHref('marblerun', 'past', day) }
 }
 
 const CrownIcon = () => (
@@ -71,6 +75,8 @@ type Slot = {
   kicker: string
   title: string
   play: string
+  /** The course's card on the game's Past tab. */
+  page: string
   done: boolean
   /** "38th of 65", or the result alone where there were no places; null when not played (or not known yet). */
   you: { place: string | null; result: string } | null
@@ -188,13 +194,16 @@ export function PastDayTicket({
           >
             {slots.map((s) => (
               <li key={s.daily.key} className={`today-slot${s.done ? ' today-slot--done' : ''}`}>
-                <a className="today-slot__art" href={s.play} tabIndex={-1} aria-hidden="true">
+                <a className="today-slot__art" href={s.page} tabIndex={-1} aria-hidden="true">
                   <GameArt slug={s.daily.slug} className="today-slot__scene" />
                   {s.done ? <span className="today-slot__stamp">Punched</span> : null}
                 </a>
                 <div className="today-slot__text">
                   <span className="today-slot__kicker">{s.kicker}</span>
-                  <b className="today-slot__game">{s.game}</b>
+                  <a className="today-slot__game today-game" href={s.page}>
+                    {s.game}
+                    <span aria-hidden="true"> ›</span>
+                  </a>
                   <DailyKindTag slug={s.daily.slug} className="today-slot__kind" />
                   <span className="today-slot__title">{s.title}</span>
                   {s.you ? (
@@ -238,7 +247,10 @@ export function PastDayTicket({
                   ) : null}
                 </span>
                 <span className="pdt-item__text">
-                  <b>{s.game}</b>
+                  <a className="today-game" href={s.page}>
+                    <b>{s.game}</b>
+                    <span aria-hidden="true"> ›</span>
+                  </a>
                   <DailyKindTag slug={s.daily.slug} className="pdt-item__kind" />
                   <span>
                     {s.kicker} · {s.title}

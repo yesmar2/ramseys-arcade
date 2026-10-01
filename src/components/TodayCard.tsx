@@ -200,7 +200,7 @@ function PunchRow({ punches, rival }: { punches: Punch[]; rival: (key: TodayKey)
         const line = rival(p.key)
         return (
           <li key={p.key} className={`today-slot${p.done ? ' today-slot--done' : ''}`}>
-            <a className="today-slot__art" href={href} tabIndex={-1} aria-hidden="true">
+            <a className="today-slot__art" href={gameHref(p.slug)} tabIndex={-1} aria-hidden="true">
               <GameArt slug={p.slug} className="today-slot__scene" />
               {p.done ? <span className="today-slot__stamp">Punched</span> : null}
             </a>
@@ -240,7 +240,7 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
   const href = gamePlayHref(punch.slug)
   return (
     <div className="today-feature" id="today-feature">
-      <a className="today-feature__art" href={href} tabIndex={-1} aria-hidden="true">
+      <a className="today-feature__art" href={gameHref(punch.slug)} tabIndex={-1} aria-hidden="true">
         <GameArt slug={punch.slug} shape="card" className="today-feature__scene" />
       </a>
       <div className="today-feature__text">
