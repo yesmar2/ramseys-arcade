@@ -109,14 +109,16 @@ export function RunTicketsLine({ paid, game }: { paid: RunTickets; game: string 
   )
 }
 
-/** Signed out: a saved run pays tickets too. */
-export function RunTicketsWaiting() {
+/** Signed out: a saved run pays tickets too, and so does each run kept on the device for the sign-in (lib/pendingRuns.ts). */
+export function RunTicketsWaiting({ runs = 1 }: { runs?: number }) {
   return (
     <div className="run-tix run-tix--dim">
       <TicketStub label="?" dim width={78} />
       <div className="run-tix__body">
         <span className="run-tix__n">Tickets waiting</span>
-        <span className="run-tix__why">Sign in and this run pays tickets for the prize counter. They’re kept on your account.</span>
+        <span className="run-tix__why">
+          Sign in and {runs > 1 ? `these ${runs} runs pay` : 'this run pays'} tickets for the prize counter. They’re kept on your account.
+        </span>
       </div>
     </div>
   )

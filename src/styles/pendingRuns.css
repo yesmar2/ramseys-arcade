@@ -1,0 +1,95 @@
+/*
+ * The note that runs played signed out are saved (components/PendingRunsSaver.tsx): low on the screen, over
+ * whatever is up, for a few seconds. On a phone it clears the tab bar.
+ */
+
+.pending-note {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  /* Over the panels (panel.css .panel-layer, 90): it's said over a run's report as often as not. */
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.75rem 0.6rem 0.75rem 0.85rem;
+  border-radius: 1.1rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  color: var(--ink);
+  transform: translateX(-50%);
+  animation: pending-note-in 0.25s ease-out;
+}
+
+@keyframes pending-note-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.6rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending-note {
+    animation: none;
+  }
+}
+
+.pending-note__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.pending-note__mark svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.pending-note__words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.pending-note__words b {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.pending-note__close {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pending-note__close:hover,
+.pending-note__close:focus-visible {
+  background: rgba(var(--ink-rgb), 0.08);
+  color: var(--ink);
+}
+
+@media (max-width: 47.99rem) {
+  .pending-note {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+}

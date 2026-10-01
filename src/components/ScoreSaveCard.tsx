@@ -46,6 +46,7 @@ import {
   type RunFacts,
   type RunReportData,
 } from '../lib/runReport'
+import { dropPendingRun, holdPendingRun, keepPendingRun, pendingCount, releasePendingRun } from '../lib/pendingRuns'
 import { runIdFor } from '../lib/runSession'
 import { periodCopy } from '../lib/scoreboard'
 import { TODAY_DAILIES } from '../lib/today'
@@ -327,6 +328,40 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     }
   }, [gameSlug, score, period, authLoading, canSaveScores, ownerIn])
 
+  // A signed-out run is kept on this device until its player signs in, here or anywhere (lib/pendingRuns.ts).
+  // Signing in here, this card saves it itself, so the saver holds off while the card is up. A daily's runs
+  // are kept their own way (deviceRuns.ts).
+  const pendingRef = useRef<string | null>(null)
+  const [othersPending, setOthersPending] = useState(0)
+  const keepable = !isDailyGame(gameSlug) && score > 0
+  useEffect(() => {
+    if (phase !== 'needAuth' || !keepable || pendingRef.current) return
+    let live = true
+    void (runRef.current ?? runIdFor(gameSlug)).then((runId) => {
+      if (!live || pendingRef.current) return
+      const id = keepPendingRun({ slug: gameSlug, score, runId, pickups: pickupsRef.current })
+      pendingRef.current = id
+      holdPendingRun(id)
+      setOthersPending(pendingCount(id))
+    })
+    return () => {
+      live = false
+    }
+  }, [phase, keepable, gameSlug, score])
+  // Saved here, it's no longer waiting; the card gone, the saver may take it.
+  useEffect(() => {
+    if (phase !== 'saved' || !pendingRef.current) return
+    dropPendingRun(pendingRef.current)
+    releasePendingRun(pendingRef.current)
+    pendingRef.current = null
+  }, [phase])
+  useEffect(
+    () => () => {
+      if (pendingRef.current) releasePendingRun(pendingRef.current)
+    },
+    [],
+  )
+
   // Signed out or tagless: what the run would win, to lead the ask with. A daily just for fun wins no place.
   useEffect(() => {
     if (phase !== 'needAuth' && phase !== 'needName') return
@@ -423,16 +458,23 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   let links: ReportLink[] = []
 
   if (phase === 'needAuth') {
+    // The other runs kept on this device go on with it.
+    const others =
+      othersPending > 0
+        ? ` Your ${othersPending} other ${othersPending === 1 ? 'run' : 'runs'} from the last few hours ${othersPending === 1 ? 'goes' : 'go'} on too.`
+        : null
     block = (
       <ReportSignIn
         lead={
           facing && outcome?.won ? (
             <>
               Sign in and {facing.name} hears you won, and {scoreText(gameSlug, score)} {saveWords}. {winLead}
+              {others}
             </>
           ) : (
             <>
               Sign in and {scoreText(gameSlug, score)} {saveWords}. {winLead}
+              {others}
             </>
           )
         }
@@ -641,7 +683,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
           phase === 'saved' && facts?.tickets ? (
             <RunTicketsLine paid={facts.tickets} game={gameSlug} />
           ) : unsaved && score > 0 ? (
-            <RunTicketsWaiting />
+            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
           ) : null
         }
         primary={primary}

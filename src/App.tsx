@@ -1,5 +1,6 @@
 import { Suspense, useEffect } from 'react'
 import { EasterEggs } from './components/EasterEggs'
+import { PendingRunsSaver } from './components/PendingRunsSaver'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { PageShell } from './components/PageShell'
@@ -217,6 +218,7 @@ function App() {
         <Screen route={route} />
       </Suspense>
       <EasterEggs />
+      <PendingRunsSaver />
     </>
   )
 }
