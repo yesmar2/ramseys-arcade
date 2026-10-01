@@ -55,6 +55,15 @@ export const TODAY_DAILIES: readonly TodayDaily[] = [
 /** Any this many of a day's live dailies keep the streak (the API's TODAY_KEEP). */
 export const TODAY_KEEP = 3
 
+/**
+ * One of the account's days, as the API's TodayDay has it: kept, a Full ticket, and (left out by an older
+ * API) the dailies on that day's card and which of them were done, in the card's order.
+ */
+export type TodayServerDay = { day: string; kept: boolean; full?: boolean; live?: TodayKey[]; done?: TodayKey[] }
+
+/** The first day there were Dailies to keep (the API's TODAY_SINCE), for when the API hasn't said: signed out. */
+export const TODAY_SINCE_FALLBACK = '2026-09-27'
+
 export type TodayServer = {
   /** The boards' day, YYYY-MM-DD. */
   day: string
@@ -70,12 +79,12 @@ export type TodayServer = {
   }
   streak: { current: number; best: number }
   /** The last seven days, oldest first, ending today: kept, and a Full ticket (left out by an older API). */
-  week: { day: string; kept: boolean; full?: boolean }[]
+  week: TodayServerDay[]
   /**
    * The last five weeks (35 days), oldest first, ending today, as `week` has them: the Today page's
    * calendar. An older API leaves them out, and the calendar shows the week's seven.
    */
-  days?: { day: string; kept: boolean; full: boolean }[]
+  days?: TodayServerDay[]
   /**
    * The first day the Today set could be kept, YYYY-MM-DD: the calendar leaves the days before it blank.
    * An older API leaves it out.
@@ -201,6 +210,32 @@ export function subscribeToday(onChange: () => void): () => void {
       window.clearTimeout(nudgeTimer)
     }
   }
+}
+
+/** A month of the account's days (GET /today/days?month=YYYY-MM): from the first day of Dailies to today. */
+export type TodayMonth = { month: string; since: string; days: TodayServerDay[] }
+
+/** Months asked, a little while each: today's month moves on as the day's dailies are played. */
+const MONTH_FRESH_MS = 30_000
+const months = new Map<string, { for: number; at: number; reply: Promise<TodayMonth | null> }>()
+
+/**
+ * A month of the signed-in account's days, for the Dailies page's calendar going back a month at a time.
+ * Null signed out, or when it couldn't be had. Kept for the session it was asked for only.
+ */
+export function fetchTodayMonth(month: string): Promise<TodayMonth | null> {
+  const session = sessionFingerprint()
+  if (session == null) return Promise.resolve(null)
+  const hit = months.get(month)
+  if (hit && hit.for === session && Date.now() - hit.at < MONTH_FRESH_MS) return hit.reply
+  const reply = api<TodayMonth>(`/today/days?month=${encodeURIComponent(month)}`)
+    .then((m) => (sessionFingerprint() === session ? m : null))
+    .catch(() => {
+      months.delete(month)
+      return null
+    })
+  months.set(month, { for: session, at: Date.now(), reply })
+  return reply
 }
 
 /** The milestone a streak is heading for next, or null past the last. */

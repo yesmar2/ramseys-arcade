@@ -72,8 +72,8 @@ export type Route =
   | { name: 'admin'; section?: AdminSection }
   | { name: 'stats' }
   | { name: 'prizes' }
-  /** The Dailies page (the Today set's): today's ticket, your days, the streak's rewards and your friends' day. */
-  | { name: 'today' }
+  /** The Dailies page (the Today set's): today's ticket, your days, the streak's rewards and your friends' day; with `day`, a past day's ticket. */
+  | { name: 'today'; day?: string }
   | { name: 'notificationSettings' }
   | { name: 'privacy' }
   | { name: 'terms' }
@@ -193,15 +193,24 @@ export function focusFromUrl(): string | null {
  */
 const TODAY_PATH = /^(?:dailies|today)(?:\/\d{4}-\d{2}-\d{2})?$/
 
+/** A past day on the Dailies page, /dailies/YYYY-MM-DD: that day's ticket as it finished. */
+const DAILIES_DAY_PATH = /^dailies\/(\d{4}-\d{2}-\d{2})$/
+
+/** Whether a YYYY-MM-DD names a real day: no month 13, no 31st of September. */
+function realDay(day: string): boolean {
+  const t = Date.parse(`${day}T12:00:00Z`)
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === day
+}
+
 /**
  * Where the home page's `?focus=today` pointed when today's ticket was on it: the Today page now. Inbox
  * notes and pushes already sent still link there.
  */
 const TODAY_FOCUS = 'today'
 
-/** The Dailies page: today's ticket, your days, the streak's rewards and your friends' day. */
-export function todayHref() {
-  return '/dailies'
+/** The Dailies page: today's ticket, your days, the streak's rewards and your friends' day; with a day, that past day's ticket. */
+export function todayHref(day?: string) {
+  return day ? `/dailies/${encodeURIComponent(day)}` : '/dailies'
 }
 
 /** The link a daily's Share sends: the day's own, so it unfurls into that day's card. It stays under /today. */
@@ -504,7 +513,7 @@ export function hrefForRoute(
       return groupHref(route.id, route.invite)
     // A day's share link, the old /today and the home page's old ?focus=today all open the Dailies page, and say so.
     case 'today':
-      return todayHref()
+      return todayHref(route.day)
     default:
       return null
   }
@@ -557,7 +566,9 @@ export function parseUrl(pathname: string, search: string): Route {
   const path = pathname.replace(/^\/+/, '').replace(/\/+$/, '')
   const invite = new URLSearchParams(search).get('invite')?.trim().toUpperCase() || undefined
   if (!path) return new URLSearchParams(search).get('focus') === TODAY_FOCUS ? { name: 'today' } : { name: 'home' }
-  // A day's share link is the Dailies page, today's: whatever day it was sent on.
+  // A past day picked on the Dailies page; a day's share link is the page today, whatever day it was sent on.
+  const pastDay = DAILIES_DAY_PATH.exec(path)?.[1]
+  if (pastDay && realDay(pastDay)) return { name: 'today', day: pastDay }
   if (TODAY_PATH.test(path)) return { name: 'today' }
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
