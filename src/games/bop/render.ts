@@ -3,6 +3,7 @@ import {
   CONTROL_HUE,
   CONTROL_LABEL,
   CONTROLS,
+  JACKPOT_HOLD,
   JACKPOT_TIME,
   PRESS_LIFE,
   QUICK_FRACTION,
@@ -320,6 +321,8 @@ function drawPull(
   k: number,
   dark: boolean,
   well: Sockets,
+  /** How long it has been held down at the cherry, or -1. */
+  held = -1,
 ) {
   const { x, y, r } = L.pull
   const p = paint(CONTROL_HUE.pull, dark)
@@ -339,12 +342,13 @@ function drawPull(
   ctx.lineWidth = Math.max(1.5, L.u * 0.55)
   chevron(ctx, x, y + r * 0.2, r * 0.16, 1)
   chevron(ctx, x, y + r * 0.62, r * 0.16, 1)
-  // The jackpot's clue: a cherry worn into the very bottom of the slot, where a full pull ends.
-  cherries(ctx, x, bottom - r * 0.3, r * 0.36, dark, dark ? 0.18 : 0.2)
+  // The jackpot's clue: a cherry worn into the very bottom of the slot, where a full pull ends. Held there, it lights up.
+  const glow = held >= 0 ? Math.min(1, held / JACKPOT_HOLD) : 0
+  cherries(ctx, x, bottom - r * 0.3, r * 0.36, dark, (dark ? 0.18 : 0.2) + glow * 0.75)
 
-  // The handle: a T that comes down the track and springs back.
+  // The handle: a T that comes down the track and springs back, or stays down while it's held at the cherry.
   const rest = top + r * 0.34
-  const hy = rest + (bottom - r * 0.34 - rest) * swing(k)
+  const hy = rest + (bottom - r * 0.34 - rest) * (held >= 0 ? 1 : swing(k))
   ctx.fillStyle = p.line
   ctx.fillRect(x - r * 0.1, hy, r * 0.2, r * 0.4)
   ctx.beginPath()
@@ -362,6 +366,8 @@ function drawPull(
     ctx.lineTo(x + r * gx, hy + r * 0.12)
   }
   ctx.stroke()
+  // Held down at the cherry, it lights up through the handle as the jackpot comes.
+  if (glow > 0) cherries(ctx, x, bottom - r * 0.3, r * 0.36, dark, glow)
 }
 
 function drawFlick(
@@ -838,7 +844,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
   drawBop(ctx, L, pressOf('bop'), dark, well)
   drawTwist(ctx, L, pressOf('twist'), twistAngle, dark, well)
-  drawPull(ctx, L, pressOf('pull'), dark, well)
+  drawPull(ctx, L, pressOf('pull'), dark, well, state.phase === 'call' && state.lever ? state.lever.bottom : -1)
   drawFlick(ctx, L, pressOf('flick'), dark, well)
   drawSpin(ctx, L, pressOf('spin'), spinAngle, dark, well)
 

@@ -14,7 +14,7 @@ import {
   consoleLayout,
   controlAt,
   createInitialState,
-  pullJackpot,
+  holdLever,
   resizeState,
   startGame,
   tick,
@@ -65,7 +65,7 @@ function measureTop(play: HTMLElement): number | undefined {
  * round it, and a thumb turning a knob moves in an arc, which from the knob's
  * side runs up or down first, so it often didn't count and the call ran out.
  */
-type Drag = { control: Control; x: number; y: number; need: number; done: boolean; jackpot?: boolean }
+type Drag = { control: Control; x: number; y: number; need: number; done: boolean }
 
 export function BopGame() {
   const tournament = useTournamentPlay()
@@ -98,7 +98,9 @@ export function BopGame() {
         stateRef.current = resizeState(stateRef.current, w, h, measureTop(parent))
       }
 
+      const jackpotBefore = stateRef.current.jackpotDone
       stateRef.current = tick(stateRef.current, dt)
+      if (!jackpotBefore && stateRef.current.jackpotDone) void reportEgg('jackpot')
 
       uiAcc += dt
       if (uiAcc > 0.08) {
@@ -199,17 +201,15 @@ export function BopGame() {
   /**
    * The easter egg: a pull that started up by the lever's handle and goes on,
    * after it has counted, all the way down to the cherry at the bottom of the
-   * slot. The engine only lets it come up just after a Pull it was answered.
+   * slot, and stays there. The engine only lets it count just after a Pull it
+   * was answered, and brings the jackpot up once it's been held long enough.
    */
-  const reachJackpot = (drag: Drag, y: number) => {
+  const leverAt = (drag: Drag, y: number) => {
     const s = stateRef.current
     const lever = consoleLayout(s.stageW, s.stageH, s.stageTop).pull
-    if (drag.y > lever.y - lever.r * 0.3 || y < lever.y + lever.r) return
-    drag.jackpot = true
-    const { state, done } = pullJackpot(s)
-    if (!done) return
-    stateRef.current = state
-    void reportEgg('jackpot')
+    // Only a pull from up by the handle can go all the way.
+    if (drag.y > lever.y - lever.r * 0.3) return
+    stateRef.current = holdLever(s, y >= lever.y + lever.r ? 'bottom' : 'down')
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
@@ -217,7 +217,7 @@ export function BopGame() {
     if (!drag) return
     const rect = e.currentTarget.getBoundingClientRect()
     if (drag.done) {
-      if (drag.control === 'pull' && !drag.jackpot) reachJackpot(drag, e.clientY - rect.top)
+      if (drag.control === 'pull') leverAt(drag, e.clientY - rect.top)
       return
     }
     const dx = e.clientX - rect.left - drag.x
@@ -234,10 +234,13 @@ export function BopGame() {
     if (!gestured) return
     drag.done = true
     perform(drag.control)
+    // A pull that counted and is still going: the toy waits for the rest of it.
+    if (drag.control === 'pull') leverAt(drag, e.clientY - rect.top)
   }
 
   const onPointerUp = () => {
     dragRef.current = null
+    stateRef.current = holdLever(stateRef.current, 'off')
   }
 
   useEffect(() => {

@@ -166,8 +166,8 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
   {
     key: 'jackpot',
     name: 'Bop’s jackpot',
-    how: 'In Bop, when the toy calls Pull it, drag the lever from its handle at the top of the slot all the way down to the bottom (on a phone or with a mouse; the ↓ key can’t do it).',
-    does: 'The pull counts as usual, then the call screen spins like a fruit machine (7, BAR, bell, star) and lands on three cherries, one reel after another, with “Jackpot!” over the lever. The next call waits the 1.2 seconds it takes, once a run, so it’s a moment’s show and no way to rest.',
+    how: 'In Bop, when the toy calls Pull it, drag the lever from its handle at the top of the slot all the way down to the bottom, and hold it there for about two thirds of a second (on a phone or with a mouse; the ↓ key can’t do it). A full pull let go at once does nothing: that was too easy, as plenty of people pull all the way.',
+    does: 'The pull counts as usual, and the toy waits while the lever is still held (a second and a half at most). Held at the bottom, the cherry lights up through the handle, then the call screen spins like a fruit machine (7, BAR, bell, star) and lands on three cherries, one reel after another, with “Jackpot!” over the lever. The next call waits the 1.2 seconds it takes. Once a run; after it, the toy never waits for the lever, so it’s a moment’s show and no way to rest.',
     clue: 'A faint pair of cherries worn into the bottom of the lever’s slot, where a full pull ends.',
     secret: 'Jackpot',
   },

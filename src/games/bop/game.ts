@@ -59,6 +59,9 @@ export type Snapshot = {
 
 export type PopTone = 'quick' | 'plain' | 'streak'
 
+/** The lever, still held after a Pull it was answered: how long, and how long at the cherry (-1 if it isn't there). */
+export type Lever = { held: number; bottom: number }
+
 /** A word that rises off a control: what an answer paid, or a streak landmark. */
 export type Pop = {
   control: Control
@@ -100,6 +103,8 @@ export type GameState = {
   /** The jackpot's reels on the screen: seconds left, 0 when there are none; and whether this run has had one. */
   reels: number
   jackpotDone: boolean
+  /** The lever, if it's still held after a Pull it was answered; the toy waits for it. */
+  lever: Lever | null
   scale: number
   stageW: number
   stageH: number
@@ -143,11 +148,22 @@ export const STREAK_STEP = 10
 const POP_LIFE = 0.7
 /**
  * The easter egg: the lever pulled all the way down to the cherry at the
- * bottom of its slot, on a Pull it, spins the screen like a fruit machine and
- * lands on three cherries. The next call waits for it, once a run, so it is
- * a moment's show and no way to rest.
+ * bottom of its slot, on a Pull it, and held there, spins the screen like a
+ * fruit machine and lands on three cherries. The next call waits for it, once
+ * a run, so it is a moment's show and no way to rest.
+ *
+ * Pulling it all the way was enough at first, and Ramsey found the jackpot
+ * came up nearly every run ("seems too easy"): a full pull is how plenty of
+ * people pull. Holding it down there is something nobody does by accident.
  */
+export const JACKPOT_HOLD = 0.7
 export const JACKPOT_TIME = 1.2
+/**
+ * The pause after a right answer is a third of a second, and a slow, careful
+ * pull reaches the bottom of the slot after the next call. So the toy waits
+ * while the lever is still held, for this long at most, till a run's jackpot.
+ */
+const LEVER_WAIT = 1.5
 /** How long the reels spin before they land. */
 export const REELS_SPIN = 0.75
 /** Room kept for the score and the page's buttons when nothing has been measured yet. */
@@ -180,6 +196,7 @@ export function createInitialState(w = 540, h = 540): GameState {
     twistAngle: 0,
     reels: 0,
     jackpotDone: false,
+    lever: null,
     scale: 1,
     stageW: w,
     stageH: h,
@@ -412,21 +429,33 @@ export function act(state: GameState, control: Control): GameState {
 }
 
 /**
- * The lever pulled all the way to the cherry, just after a Pull it was
- * answered: the jackpot, once a run. True in `done` if it came up.
+ * Where the lever is, just after a Pull it was answered: let go (`off`),
+ * still held on its way down (`down`), or down at the cherry (`bottom`).
+ * While it's held the toy waits, and held at the cherry for JACKPOT_HOLD the
+ * jackpot comes up (in `tick`), once a run. Let go sooner, and the next call
+ * comes as it would have.
  */
-export function pullJackpot(state: GameState): { state: GameState; done: boolean } {
-  if (state.phase !== 'call' || state.call !== 'pull' || state.gap <= 0 || state.jackpotDone) {
-    return { state, done: false }
-  }
-  return {
-    state: { ...state, reels: JACKPOT_TIME, jackpotDone: true, gap: Math.max(state.gap, JACKPOT_TIME) },
-    done: true,
-  }
+export function holdLever(state: GameState, at: 'off' | 'down' | 'bottom'): GameState {
+  if (at === 'off') return state.lever ? { ...state, lever: null } : state
+  const lever = state.lever
+  if (!lever && (state.phase !== 'call' || state.call !== 'pull' || state.gap <= 0 || state.jackpotDone)) return state
+  const bottom = at === 'bottom' ? Math.max(0, lever?.bottom ?? 0) : -1
+  if (lever && lever.bottom === bottom) return state
+  return { ...state, lever: { held: lever?.held ?? 0, bottom } }
 }
 
 export function tick(state: GameState, dt: number): GameState {
   const s = { ...state }
+  if (s.lever && s.phase === 'call') {
+    const lever = { held: s.lever.held + dt, bottom: s.lever.bottom < 0 ? -1 : s.lever.bottom + dt }
+    s.lever = lever.held >= LEVER_WAIT ? null : lever
+    if (lever.bottom >= JACKPOT_HOLD) {
+      s.lever = null
+      s.reels = JACKPOT_TIME
+      s.jackpotDone = true
+      s.gap = Math.max(s.gap, JACKPOT_TIME)
+    }
+  }
   if (s.reels > 0) {
     const before = s.reels
     s.reels = Math.max(0, s.reels - dt)
@@ -450,7 +479,8 @@ export function tick(state: GameState, dt: number): GameState {
   if (s.phase !== 'call') return s
 
   if (s.gap > 0) {
-    s.gap -= dt
+    // The toy waits while the lever is still held.
+    if (!s.lever) s.gap -= dt
     if (s.gap <= 0) return makeCall(s)
     return s
   }
