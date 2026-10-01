@@ -10,11 +10,16 @@
   /* A Full ticket's gold: the week's mark and the chip's star, and its word, dark enough to read on the light theme. */
   --today-full: #b8860b;
   --today-full-text: #7a5500;
+  /* A streak freeze's ice: the freezes held by the streak, and a missed day one covered. */
+  --today-freeze: #2f8fc4;
+  --today-freeze-text: #1d6a96;
 }
 
 html[data-theme='dark'] {
   --today-full: #ffd27a;
   --today-full-text: #ffd27a;
+  --today-freeze: #7cc8f2;
+  --today-freeze-text: #9ad6f7;
 }
 
 /* ---------- the header's chip ---------- */
@@ -283,7 +288,8 @@ html[data-theme='dark'] {
 }
 
 .today-week__key-kept::before,
-.today-week__key-full::before {
+.today-week__key-full::before,
+.today-week__key-frozen::before {
   content: '';
   display: inline-block;
   width: 0.8rem;
@@ -292,6 +298,11 @@ html[data-theme='dark'] {
   border-radius: 50%;
   vertical-align: -1px;
   background: var(--ticket, #ff8552);
+}
+
+.today-week__key-frozen::before {
+  background: color-mix(in srgb, var(--today-freeze) 24%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--today-freeze) 60%, transparent);
 }
 
 .today-week__key-full::before {

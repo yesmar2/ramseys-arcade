@@ -1,7 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { PlayIcon } from './chromeIcons'
 import { DailyKindTag } from './DailyKindTag'
+import type { TodayFreezes } from '../lib/today'
 import { GameArt } from './GameArt'
+import { StreakFreezes } from './StreakFreezes'
 import { FlameIcon, StarIcon } from './TodayChip'
 import '../styles/today.css'
 
@@ -108,6 +110,8 @@ type DayTicketProps = {
   /** A Full ticket: the streak's flame a gold star, the pips gold. */
   full: boolean
   line: string | null
+  /** Today's streak freezes held, under the streak (StreakFreezes); left out for a past day, or signed out. */
+  freezes?: TodayFreezes | null
   /** The day's punches, as pips; null for none (a past day, signed out). */
   punched: { done: number; total: number } | null
   tiles: TicketTile[]
@@ -115,7 +119,7 @@ type DayTicketProps = {
   children?: ReactNode
 }
 
-export function DayTicket({ labelId, title, count, action, kicker, streak, full, line, punched, tiles, children }: DayTicketProps) {
+export function DayTicket({ labelId, title, count, action, kicker, streak, full, line, freezes, punched, tiles, children }: DayTicketProps) {
   return (
     <section className="today" aria-labelledby={labelId}>
       <div className="today-card">
@@ -135,6 +139,7 @@ export function DayTicket({ labelId, title, count, action, kicker, streak, full,
           ) : line ? (
             <p className="today-streak__line">{line}</p>
           ) : null}
+          {streak != null && freezes ? <StreakFreezes freezes={freezes} className="sfz--stub" /> : null}
           {/* The day's punches, done first. The head says the count aloud. */}
           {punched ? (
             <span className={`today-pips${full ? ' today-pips--full' : ''}`} aria-hidden="true">

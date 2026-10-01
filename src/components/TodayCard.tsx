@@ -151,6 +151,7 @@ export function TodayCard({ ticket, signedIn }: { ticket: Ticket; signedIn: bool
       streak={known ? current : null}
       full={marks.full}
       line={known ? `${streakLine(ticket)}.` : signedIn ? null : `Sign in to keep a streak: ${more ? 'any three' : `all ${numberWord(total)}`} a day.`}
+      freezes={known ? server?.freezes : null}
       punched={{ done, total }}
       tiles={punches.map(tileOf)}
     >

@@ -86,6 +86,7 @@ function markLine(mark: DayMark, done: number, total: number): string {
   if (mark === 'full') return `Full ticket: all ${numberWord(total)} punched.`
   if (mark === 'kept') return `Kept: ${numberWord(done)} of ${numberWord(total)} punched.`
   if (mark === 'played') return `Not kept: ${numberWord(done)} of ${numberWord(total)} punched.`
+  if (mark === 'frozen') return 'Missed, and a streak freeze covered it.'
   return 'Missed.'
 }
 

@@ -33,9 +33,10 @@ export type NotificationMeta = {
   playHref?: string
   /** A bracket match's deadline; a streak reminder's, the end of the boards' day. */
   endsAt?: number
-  /** A streak reminder: the streak's days, and how many of today's dailies still keep it. */
+  /** A streak reminder: the streak's days, how many of today's dailies still keep it, and whether a freeze would cover today. */
   streak?: number
   left?: number
+  covered?: boolean
   eventId?: string
   matchId?: string
   /** `n`: a secret's number (lib/secrets.ts). */
@@ -152,13 +153,15 @@ export function timeLeftWords(ms: number): string {
 
 /** A match alert's or a streak reminder's title as of now: the time left moves, the words filed with it don't. */
 export function liveTitle(n: AppNotification, now = Date.now()): string {
-  const { endsAt, actor, streak } = n.meta
+  const { endsAt, actor, streak, covered } = n.meta
   if (isMatch(n) && endsAt != null && actor && endsAt > now && (n.kind === 'match-closing' || isClosing(n, now))) {
     return `${timeLeftWords(endsAt - now)} left against ${actor}`
   }
   if (n.kind === 'streak-risk' && endsAt != null && endsAt > now) {
+    // As the API words it (its push.ts streakRiskTitle): holding a freeze, missing today won't end the streak.
     const left = timeLeftWords(endsAt - now)
-    return streak && streak > 1 ? `Your ${streak}-day Dailies streak ends in ${left}` : `Your Dailies streak ends in ${left}`
+    const which = streak && streak > 1 ? `${streak}-day Dailies streak` : 'Dailies streak'
+    return covered ? `${left} left to keep your ${which}` : `Your ${which} ends in ${left}`
   }
   return n.title
 }

@@ -1,5 +1,6 @@
 import { useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
+import { NextDailyView } from '../components/NextDaily'
 import { PushAsk } from '../components/PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from '../components/prizes/RunTickets'
 import type { RunTickets } from '../lib/tickets'
@@ -256,6 +257,16 @@ function reportSample(key: string, note: string, f: RunFacts, title: string, sub
   }
 }
 
+/** A day's punches, for the next daily's samples: the hole done, the lap just driven, four to go. */
+const SAMPLE_PUNCHES = [
+  { key: 'hole', slug: 'acechase', game: 'Ace Chase', kicker: 'Today’s Hole #7', title: 'Meadow Flipper', done: true },
+  { key: 'track', slug: 'hotlap', game: 'Hot Lap', kicker: 'Today’s Track #6', title: 'Juniper Circuit', done: false },
+  { key: 'wanted', slug: 'findbug', game: 'Find the Bug', kicker: 'Today’s Wanted #5', title: 'Ziggy, Pickle, Rosie, Tiger and Buzz', done: false },
+  { key: 'pour', slug: 'halffull', game: 'Half Full', kicker: 'Today’s Pour #4', title: 'Party cup and three more', done: false },
+  { key: 'course', slug: 'marblerun', game: 'Marble Run', kicker: 'Today’s Course #3', title: 'Nova Line', done: false },
+  { key: 'cave', slug: 'lander', game: 'Lander', kicker: 'Today’s Cave #2', title: 'Nova Drift', done: false },
+] as const
+
 /** An ordinary saved run with the arcade's ask for alerts under it (components/PushAsk.tsx). */
 function askSample(key: string, note: string, ask: ReactNode, secondary?: string): Sample {
   const base = reportSample('quiet', note, facts(318, {}), 'Run over', 'Flattened by traffic')
@@ -364,6 +375,12 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
       'ask-iphone',
       'An iPhone in Safari: alerts need the Home Screen first, so the ask says how.',
       <PushAsk reason="streak" streak={1} preview="home-screen" />,
+    ),
+    askSample(
+      'next',
+      'A daily done: the way on to the next one (components/NextDaily.tsx).',
+      <NextDailyView slug="hotlap" punches={SAMPLE_PUNCHES} done={1} total={6} />,
+      'Challenge a friend',
     ),
   ]
 }

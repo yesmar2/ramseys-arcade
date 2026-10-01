@@ -1,0 +1,120 @@
+/*
+ * The streak freezes a player holds (components/StreakFreezes.tsx), beside the streak on the Dailies page,
+ * in the freeze's ice (today.css --today-freeze): a snowflake for each that can be held, lit for each held
+ * (Ramsey picked it, 2026-10-01). Its tip floats over the page (InfoTip.tsx), so it carries
+ * its colours too.
+ */
+
+.sfz {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 1.75rem;
+  padding: 0 0.15rem;
+  margin: 0 -0.15rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.sfz svg {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.sfz--held {
+  color: var(--today-freeze-text, #1d6a96);
+}
+
+.sfz__word {
+  text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.sfz:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--today-freeze, #2f8fc4) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* ---------- a snowflake for each that can be held, lit for each held ---------- */
+
+.sfz__flakes {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.sfz__flake {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(var(--ink-rgb), 0.22);
+  color: rgba(var(--ink-rgb), 0.3);
+}
+
+.sfz__flake svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.sfz__flake--on {
+  border: 1.5px solid color-mix(in srgb, var(--today-freeze, #2f8fc4) 60%, transparent);
+  background: color-mix(in srgb, var(--today-freeze, #2f8fc4) 18%, transparent);
+  color: var(--today-freeze-text, #1d6a96);
+}
+
+/* ---------- the tip ---------- */
+
+.sfz-tip__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.90625rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+html[data-theme='dark'] .sfz-tip__head {
+  color: #fff;
+}
+
+.sfz-tip__head svg {
+  flex: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  color: var(--today-freeze, #2f8fc4);
+}
+
+.sfz-tip__lead {
+  display: block;
+  font-weight: 700;
+}
+
+.sfz-tip__more {
+  display: block;
+  margin-top: 0.375rem;
+  font-size: 0.84375rem;
+  line-height: 1.1875rem;
+  color: var(--muted);
+}
+
+/* On the ticket's stub, under the streak's line; in the page's head, under its words. */
+.sfz--stub {
+  margin-top: 0.55rem;
+}
+
+.sfz--head {
+  margin-top: 0.3rem;
+}

@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -20,6 +22,9 @@ import { RunLabel } from '../../components/RunLabel'
 import { ScoreGuide } from '../../components/ScoreGuide'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { copyText } from '../../components/ShareBoardButton'
+
+/** The way on to the next of today's dailies, with the day's ticket it brings. */
+const NextDaily = lazy(() => import('../../components/NextDaily'))
 import { SoundPackSelect } from '../../components/SoundPackSelect'
 import { SoundToggle } from '../../components/SoundToggle'
 import { isGameListed } from '../../data/games'
@@ -1276,6 +1281,12 @@ function DayCard({
         <p className="halffull-card__note">
           {kept ? `Your pour today stands at ${kept.scoreText}.` : 'Your first pour today is the one that counts.'}
         </p>
+      ) : null}
+      {/* Today's pour done: the way on to the next of today's dailies. */}
+      {!practice ? (
+        <Suspense fallback={null}>
+          <NextDaily slug={SLUG} className="next-daily--in-card" />
+        </Suspense>
       ) : null}
       <div className="game-card__actions">
         {!practice ? <ShareButton plan={plan} results={results} allow={allow} autoFocus /> : null}

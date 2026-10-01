@@ -8,11 +8,13 @@ import { fetchTodayMonth, subscribeToday, todayServer, type TodayServerDay } fro
  */
 
 /** A day as the strip and the calendar mark it: a Full ticket, kept, played but not kept, or nothing done. */
-export type DayMark = 'full' | 'kept' | 'played' | 'none'
+/** A day as it finished: a Full ticket, kept, missed and covered by a streak freeze, played short of kept, or nothing. */
+export type DayMark = 'full' | 'kept' | 'frozen' | 'played' | 'none'
 
 export function markOf(d: TodayServerDay): DayMark {
   if (d.full) return 'full'
   if (d.kept) return 'kept'
+  if (d.frozen) return 'frozen'
   return d.done && d.done.length > 0 ? 'played' : 'none'
 }
 
@@ -69,9 +71,16 @@ export function useAccountDays(signedIn: boolean, months: readonly string[]): Ma
   return known
 }
 
-/** The streak as it stood at the end of `day`: the kept days in a row up to it, as far as the page knows them. */
+/**
+ * The streak as it stood at the end of `day`: the kept days in a row up to it, as far as the page knows them.
+ * A day a freeze covered doesn't break the run and doesn't count in it.
+ */
 export function streakThrough(day: string, known: ReadonlyMap<string, TodayServerDay>, dayBefore: (d: string) => string): number {
   let n = 0
-  for (let d = day; known.get(d)?.kept; d = dayBefore(d)) n++
+  for (let d = day; ; d = dayBefore(d)) {
+    const said = known.get(d)
+    if (said?.kept) n++
+    else if (!said?.frozen) break
+  }
   return n
 }

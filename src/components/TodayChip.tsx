@@ -17,6 +17,14 @@ export const FlameIcon = () => (
   </svg>
 )
 
+/** A streak freeze: a snowflake, on the Dailies page's streak and on a day one covered. */
+export const FreezeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 2.5v19M3.8 7.25l16.4 9.5M3.8 16.75l16.4-9.5" />
+    <path d="M9.4 4.2 12 6.6l2.6-2.4M9.4 19.8l2.6-2.4 2.6 2.4M4.5 10.6l3.4 1-.9-3.4M19.5 13.4l-3.4-1 .9 3.4M4.5 13.4l3.4-1-.9 3.4M19.5 10.6l-3.4 1 .9-3.4" />
+  </svg>
+)
+
 /** A Full ticket's star, on the chip and in the week. */
 export const StarIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

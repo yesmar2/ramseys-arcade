@@ -121,6 +121,13 @@
   color: var(--today-full);
 }
 
+/* A past day a streak freeze covered. */
+.today-head__flame--frozen {
+  border-color: color-mix(in srgb, var(--today-freeze) 55%, transparent);
+  background: color-mix(in srgb, var(--today-freeze) 16%, transparent);
+  color: var(--today-freeze-text);
+}
+
 .today-head__streak-text {
   display: flex;
   flex-direction: column;
@@ -329,6 +336,13 @@
 .today-days__day--kept .today-days__mark {
   background: var(--ticket, #ff8552);
   color: var(--ticket-ink, #3a1406);
+}
+
+/* Missed, and a streak freeze covered it: ice, with the snowflake. */
+.today-days__day--frozen .today-days__mark {
+  background: color-mix(in srgb, var(--today-freeze) 20%, transparent);
+  border: 2px solid color-mix(in srgb, var(--today-freeze) 55%, transparent);
+  color: var(--today-freeze-text);
 }
 
 .today-days__day--full .today-days__mark {

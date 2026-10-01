@@ -125,6 +125,18 @@ a.pds__day:focus-visible {
   border: 2px solid rgba(var(--ink-rgb), 0.22);
 }
 
+/* Missed, and a streak freeze covered it. */
+.pds__day--frozen .pds__mark {
+  background: color-mix(in srgb, var(--today-freeze, #2f8fc4) 20%, transparent);
+  border: 2px solid color-mix(in srgb, var(--today-freeze, #2f8fc4) 55%, transparent);
+  color: var(--today-freeze-text, #1d6a96);
+}
+
+.pds__day--frozen .pds__mark svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 .pds__day--today {
   border-color: rgba(255, 133, 82, 0.55);
 }
@@ -392,6 +404,13 @@ a.dpk__d--full:hover {
   box-shadow: inset 0 0 0 2px rgba(var(--ink-rgb), 0.22);
 }
 
+.dpk__d--frozen {
+  background: color-mix(in srgb, var(--today-freeze, #2f8fc4) 20%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--today-freeze, #2f8fc4) 55%, transparent);
+  color: var(--today-freeze-text, #1d6a96);
+  font-weight: 800;
+}
+
 .dpk__d--today:not(.dpk__d--kept):not(.dpk__d--full) {
   box-shadow: inset 0 0 0 2px var(--ticket, #ff8552);
   color: var(--ticket-text, #c2461d);
@@ -444,6 +463,11 @@ a.dpk__d--full:hover {
 
 .dpk__key-played::before {
   box-shadow: inset 0 0 0 2px rgba(var(--ink-rgb), 0.22);
+}
+
+.dpk__key-frozen::before {
+  background: color-mix(in srgb, var(--today-freeze, #2f8fc4) 20%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--today-freeze, #2f8fc4) 55%, transparent);
 }
 
 .dpk__today {

@@ -1,7 +1,10 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { GoogleSignInButton } from '../../components/GoogleSignInButton'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { StreakPushAsk } from '../../components/PushAsk'
+
+/** The way on to the next of today's dailies, with the day's ticket it brings. */
+const NextDaily = lazy(() => import('../../components/NextDaily'))
 import { RunLabel } from '../../components/RunLabel'
 import { TagSlots } from '../../components/RunReport'
 import { copyText } from '../../components/ShareBoardButton'
@@ -450,6 +453,12 @@ export function DailyResultCard({
       ) : null}
       {/* Today kept by this hole: the moment to offer a nudge before a day ends unkept. */}
       <StreakPushAsk active={!practice && mine && signedIn} className="push-ask--in-card" />
+      {/* The way on to the next of today's dailies. */}
+      {!practice ? (
+        <Suspense fallback={null}>
+          <NextDaily slug="acechase" className="next-daily--in-card" />
+        </Suspense>
+      ) : null}
       <div className="game-card__actions">
         {shown?.pattern ? <ShareButton hole={hole} tries={shown.tries} pattern={shown.pattern} /> : null}
         <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice}>

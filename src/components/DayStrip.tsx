@@ -4,7 +4,7 @@ import { doneOf, markOf, type DayMark } from '../lib/pastDays'
 import type { TodayServerDay } from '../lib/today'
 import { DayPicker } from './DayPicker'
 import { CheckIcon } from './TodayCard'
-import { StarIcon } from './TodayChip'
+import { FreezeIcon, StarIcon } from './TodayChip'
 import { addDays, dayParts, fullDate } from './todayPunches'
 import '../styles/pastDay.css'
 
@@ -18,7 +18,7 @@ import '../styles/pastDay.css'
 /** The strip's days: a week, ending today. */
 const STRIP_DAYS = 7
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MARK_WORDS: Record<DayMark, string> = { full: 'Full', kept: 'Kept', played: '', none: 'Not played' }
+const MARK_WORDS: Record<DayMark, string> = { full: 'Full', kept: 'Kept', frozen: 'Frozen', played: '', none: 'Not played' }
 
 const CalendarIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -104,7 +104,7 @@ export function DayStrip({
                 <span className="pds__name">{name}</span>
                 <b className="pds__n">{n}</b>
                 <span className="pds__mark" aria-hidden="true">
-                  {mark === 'full' ? <StarIcon /> : mark === 'kept' ? <CheckIcon /> : isToday && count?.of ? count.done : null}
+                  {mark === 'full' ? <StarIcon /> : mark === 'kept' ? <CheckIcon /> : mark === 'frozen' ? <FreezeIcon /> : isToday && count?.of ? count.done : null}
                 </span>
                 {sub ? <span className="pds__sub">{sub}</span> : null}
               </a>

@@ -61,7 +61,21 @@ export const TODAY_KEEP = 3
  * One of the account's days, as the API's TodayDay has it: kept, a Full ticket, and (left out by an older
  * API) the dailies on that day's card and which of them were done, in the card's order.
  */
-export type TodayServerDay = { day: string; kept: boolean; full?: boolean; live?: TodayKey[]; done?: TodayKey[] }
+export type TodayServerDay = {
+  day: string
+  kept: boolean
+  full?: boolean
+  /** A missed day a streak freeze covered: the streak went on through it without counting it. */
+  frozen?: boolean
+  live?: TodayKey[]
+  done?: TodayKey[]
+}
+
+/**
+ * Streak freezes, as the API works them out (its today.ts walkStreak): one for every `every` days kept in a
+ * row, `max` held at most, and a missed day spends one. `next`: days kept until the next is earned.
+ */
+export type TodayFreezes = { held: number; max: number; every: number; next: number }
 
 /** The first day there were Dailies to keep (the API's TODAY_SINCE), for when the API hasn't said: signed out. */
 export const TODAY_SINCE_FALLBACK = '2026-09-27'
@@ -81,6 +95,8 @@ export type TodayServer = {
     cave?: { score: number } | null
   }
   streak: { current: number; best: number }
+  /** Streak freezes held, and the next one's way off; an older API leaves them out. */
+  freezes?: TodayFreezes
   /** The last seven days, oldest first, ending today: kept, and a Full ticket (left out by an older API). */
   week: TodayServerDay[]
   /**

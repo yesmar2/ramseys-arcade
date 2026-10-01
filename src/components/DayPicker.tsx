@@ -29,7 +29,13 @@ const CaretIcon = () => (
 )
 
 const WEEK_HEAD = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-const MARK_WORDS: Record<DayMark, string> = { full: 'a Full ticket', kept: 'kept', played: 'played, not kept', none: 'not played' }
+const MARK_WORDS: Record<DayMark, string> = {
+  full: 'a Full ticket',
+  kept: 'kept',
+  frozen: 'missed, a streak freeze covered it',
+  played: 'played, not kept',
+  none: 'not played',
+}
 
 /** The Monday on or before a day. */
 const mondayOf = (day: string) => addDays(day, -((dayParts(day).weekday + 6) % 7))
@@ -120,6 +126,8 @@ export function DayPicker({
   const cells: string[] = []
   for (let d = start; d <= end; d = addDays(d, 1)) cells.push(d)
   const marked = cells.some((d) => known.has(d))
+  // The key says Frozen only for a month with a day a streak freeze covered.
+  const frozen = cells.some((d) => known.get(d)?.frozen)
   return (
     <Panel labelledBy={titleId} onClose={onClose} className="dpk">
       <div className="dpk__head">
@@ -194,6 +202,7 @@ export function DayPicker({
             <span className="dpk__key-kept">Kept</span>
             <span className="dpk__key-full">Full</span>
             <span className="dpk__key-played">Played</span>
+            {frozen ? <span className="dpk__key-frozen">Frozen</span> : null}
           </span>
         ) : null}
         <a className="dpk__today" href={todayHref()} onClick={onClose}>

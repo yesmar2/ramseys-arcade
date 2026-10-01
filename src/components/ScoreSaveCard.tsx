@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { getGame, isDailyGame, isRankedGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
@@ -56,6 +56,9 @@ import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { copyText } from './ShareBoardButton'
 import { WinTakeover } from './WinTakeover'
+
+/** The way on to the next daily: only a daily's report shows it, and it brings the day's ticket with it. */
+const NextDaily = lazy(() => import('./NextDaily'))
 
 type ScoreSaveProps = {
   gameSlug: string
@@ -549,6 +552,25 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const onTicket = TODAY_DAILIES.some((d) => d.slug === gameSlug)
   if (phase === 'saved' && signedIn && !impersonation && onTicket && !block) {
     block = <StreakPushAsk active />
+  }
+  // And the way on to the next of today's dailies: first, or after the sign-in for a run that isn't saved yet.
+  if (onTicket && (phase === 'saved' || phase === 'needAuth')) {
+    const next = (
+      <Suspense fallback={null}>
+        <NextDaily slug={gameSlug} />
+      </Suspense>
+    )
+    block = phase === 'needAuth' ? (
+      <>
+        {block}
+        {next}
+      </>
+    ) : (
+      <>
+        {next}
+        {block}
+      </>
+    )
   }
 
   // A daily just for fun has no board and no records to go to.

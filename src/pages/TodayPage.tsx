@@ -2,9 +2,10 @@ import { useEffect, useReducer, useState } from 'react'
 import { DayStrip } from '../components/DayStrip'
 import { PageShell } from '../components/PageShell'
 import { PastDayTicket } from '../components/PastDayTicket'
+import { StreakFreezes } from '../components/StreakFreezes'
 import { openSiteMenu } from '../components/siteNav'
 import { CheckIcon, ShareDay, TodayCard } from '../components/TodayCard'
-import { FlameIcon, StarIcon } from '../components/TodayChip'
+import { FlameIcon, FreezeIcon, StarIcon } from '../components/TodayChip'
 import {
   addDays,
   capital,
@@ -142,6 +143,7 @@ function TodayHead({ ticket, signedIn, loading }: { ticket: Ticket; signedIn: bo
               <span className="today-head__streak-text">
                 <b>{current > 0 ? `Day ${current}` : 'No streak yet'}</b>
                 <span>{streakLine(ticket)}</span>
+                {server.freezes ? <StreakFreezes freezes={server.freezes} className="sfz--head" /> : null}
               </span>
             </div>
           ) : null
@@ -185,10 +187,18 @@ function PastHead({ day, said, streak, signedIn }: { day: string; said: TodaySer
       <div className="today-head__side">
         {signedIn && mark ? (
           <div className="today-head__streak">
-            <span className={`today-head__flame${mark === 'full' ? ' today-head__flame--full' : ''}`}>{mark === 'full' ? <StarIcon /> : mark === 'kept' ? <CheckIcon /> : <FlameIcon />}</span>
+            <span className={`today-head__flame${mark === 'full' ? ' today-head__flame--full' : mark === 'frozen' ? ' today-head__flame--frozen' : ''}`}>
+              {mark === 'full' ? <StarIcon /> : mark === 'kept' ? <CheckIcon /> : mark === 'frozen' ? <FreezeIcon /> : <FlameIcon />}
+            </span>
             <span className="today-head__streak-text">
-              <b>{mark === 'full' ? 'Full ticket' : mark === 'kept' ? 'Kept' : mark === 'played' ? 'Not kept' : 'Missed'}</b>
-              <span>{(mark === 'kept' || mark === 'full') && streak > 0 ? `Day ${streak} of your streak` : 'It didn’t keep the streak'}</span>
+              <b>{mark === 'full' ? 'Full ticket' : mark === 'kept' ? 'Kept' : mark === 'frozen' ? 'Frozen' : mark === 'played' ? 'Not kept' : 'Missed'}</b>
+              <span>
+                {(mark === 'kept' || mark === 'full') && streak > 0
+                  ? `Day ${streak} of your streak`
+                  : mark === 'frozen'
+                    ? `A streak freeze covered it${streak > 0 ? `: your streak stayed at ${streak}` : ''}`
+                    : 'It didn’t keep the streak'}
+              </span>
             </span>
           </div>
         ) : null}
@@ -215,7 +225,7 @@ const CALENDAR_HEAD = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
  * A day on the calendar: a Full ticket, kept, today and still open, missed, or blank: before the Today set
  * began, after today, or a day an older API didn't say.
  */
-type CalendarState = 'full' | 'kept' | 'open' | 'missed' | 'before' | 'after' | 'unknown'
+type CalendarState = 'full' | 'kept' | 'open' | 'frozen' | 'missed' | 'before' | 'after' | 'unknown'
 
 function calendarDays({ day: today, server, marks }: Ticket): { day: string; state: CalendarState }[] {
   // The API's last five weeks, or an older API's last seven days. Today's punches count at once, as on the ticket.
@@ -233,7 +243,7 @@ function calendarDays({ day: today, server, marks }: Ticket): { day: string; sta
       return { day, state: said?.kept || marks.kept ? 'kept' : 'open' }
     }
     if (!said) return { day, state: 'unknown' }
-    return { day, state: said.full ? 'full' : said.kept ? 'kept' : 'missed' }
+    return { day, state: said.full ? 'full' : said.kept ? 'kept' : said.frozen ? 'frozen' : 'missed' }
   })
 }
 
@@ -249,6 +259,7 @@ function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
     full: 'Full ticket',
     kept: 'kept',
     open: `today, ${ticket.left} to go`,
+    frozen: 'missed, a streak freeze covered it',
     missed: 'missed',
     before: 'before the Dailies began',
     after: 'still to come',
@@ -273,7 +284,15 @@ function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
           const inner = (
             <>
               <span className="today-days__mark" aria-hidden="true">
-                {state === 'full' ? <StarIcon /> : state === 'kept' ? <CheckIcon /> : state === 'open' ? ticket.left : null}
+                {state === 'full' ? (
+                  <StarIcon />
+                ) : state === 'kept' ? (
+                  <CheckIcon />
+                ) : state === 'frozen' ? (
+                  <FreezeIcon />
+                ) : state === 'open' ? (
+                  ticket.left
+                ) : null}
               </span>
               {/* The first of a month says which. */}
               <span className="today-days__n" aria-hidden="true">
@@ -299,6 +318,7 @@ function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
       <p className="today-week__key today-days__key" aria-hidden="true">
         <span className="today-week__key-kept">Kept</span>
         {more ? <span className="today-week__key-full">Full ticket</span> : null}
+        {days.some((d) => d.state === 'frozen') ? <span className="today-week__key-frozen">Frozen</span> : null}
       </p>
     </section>
   )
@@ -359,7 +379,7 @@ function KeepAStreak() {
         <h2 id="today-invite-title">Keep a streak</h2>
         <p>
           Sign in, and every day you keep adds to a streak, with tickets and looks for your badge at {andList(TODAY_MILESTONES.map((m) => m.day))} days.
-          Your last five weeks and your friends’ day are here too.
+          Every week in a row earns a freeze too, for a day you miss. Your last five weeks and your friends’ day are here too.
         </p>
       </div>
       <button type="button" className="today-invite__go" onClick={openSiteMenu}>

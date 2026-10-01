@@ -1,0 +1,112 @@
+/*
+ * The way on from a daily's result to the next one (components/NextDaily.tsx), in the ticket's orange: a
+ * row with the next daily's picture, name and day, and its own verb.
+ */
+
+.next-daily {
+  --nd-tone: var(--ticket, #ff8552);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.75rem 0.7rem 0.7rem;
+  border-radius: 1.05rem;
+  background: color-mix(in srgb, var(--nd-tone) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nd-tone) 36%, transparent);
+  text-align: left;
+  color: var(--ink);
+}
+
+.next-daily__pic {
+  width: 3.1rem;
+  height: 3.1rem;
+  overflow: hidden;
+  border-radius: 0.8rem;
+  box-shadow: 0 0 0 1px rgba(var(--ink-rgb), 0.12);
+}
+
+.next-daily__art,
+.next-daily__art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.next-daily__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.next-daily__kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ticket-text, #c2461d);
+}
+
+html[data-theme='dark'] .next-daily__kicker {
+  color: var(--ticket, #ff8552);
+}
+
+.next-daily__title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.next-daily__sub {
+  overflow: hidden;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Small beside the report's own buttons; a phone's report otherwise stretches every button across. */
+.next-daily .next-daily__go {
+  flex: none;
+  width: auto;
+  min-height: 2.4rem;
+  padding: 0 1rem;
+  font-size: 0.92rem;
+  background: var(--nd-tone);
+  color: var(--ticket-ink, #3a1406);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--nd-tone) 28%, transparent);
+}
+
+/* ---------- all done ---------- */
+
+.next-daily--all {
+  grid-template-columns: 1fr auto;
+  row-gap: 0.15rem;
+}
+
+.next-daily--all .next-daily__kicker {
+  grid-column: 1 / -1;
+}
+
+.next-daily__more {
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--ticket-text, #c2461d);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+html[data-theme='dark'] .next-daily__more {
+  color: var(--ticket, #ff8552);
+}
+
+/* In Ace Chase's or Half Full's result card: room above and below. */
+.next-daily--in-card {
+  margin: 0.35rem 0 0.5rem;
+}
+
+/* Last in a run's report, clear of the line over its buttons. */
+.report__block > .next-daily:last-child {
+  margin-bottom: 0.35rem;
+}
