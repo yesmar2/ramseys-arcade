@@ -316,9 +316,10 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
  * Under the clock, a co-driver's call names the corner coming: its shape, how sharp, what follows it, and
  * the metres to its turn-in (calls.ts).
  *
- * The easter egg: spin three donuts in one spot while racing (donuts.ts), and the tyres scream and smoke,
- * "Donuts!" goes up, and the secret is found. It costs the lap its time and changes nothing else. Its clue
- * is old donut marks on the road just past the line, till this device has spun its own.
+ * The easter egg: spin three donuts while racing (sim.ts donutStep, donuts.ts): slow or stopped, the wheel
+ * hard over, a tap of the brake and then the gas. The tyres scream and smoke the whole time it spins, and
+ * on the third "Donuts!" goes up and the secret is found. It costs the lap its time and changes nothing
+ * else. Its clue is old donut marks on the road just past the line, till this device has spun its own.
  *
  * Keys: ↑ or W gas, ↓, S or Space brake, ← → or A D steer, R restart, P or Escape pause. On a touch
  * screen: steer with the left thumb, pedals under the right. A lap is scored as its time: the board
@@ -663,7 +664,7 @@ function HotLapDay({
           stepRun(run, input, track)
           g.steps += 1
           g.t += STEP
-          // The egg counts your car's circles while it races: never the ghost's, nor once you're past the line.
+          // The egg counts your car's donuts while it races: never the ghost's, nor once you're past the line.
           if (racing && spinDonuts(g.donuts, run)) spinOut()
           if (run.bumped > 0 && bumpedBefore === 0) {
             scene.bump()

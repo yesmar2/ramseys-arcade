@@ -849,9 +849,9 @@ export class HotLapScene {
 
   /**
    * The egg's clue (donuts.ts): old rubber from three donuts on the road a little past the line, as if
-   * someone had spun there before. Each is the two rear tyres' tracks round the circle the car's own donuts
-   * make (8 m across), a little off the last and a little out of round, as a donut wanders. Fainter than the
-   * skid marks, and shown only while the page asks, till the device has spun its own.
+   * someone had spun there before. Each is the two rear tyres' tracks round the circles the car's own
+   * donuts make (about 5 m across), a little off the last and a little out of round, as a donut wanders.
+   * Fainter than the skid marks, and shown only while the page asks, till the device has spun its own.
    */
   private buildDonutMarks() {
     const track = this.track
@@ -866,10 +866,10 @@ export class HotLapScene {
     const segments = 96
     for (let loop = 0; loop < 3; loop++) {
       // Each loop well off the last, so they cross one another as a wandering donut's do, not ripples.
-      const ox = cx + Math.cos(h + loop * 2.1) * 1.5
-      const oy = cy + Math.sin(h + loop * 2.1) * 1.5
-      // The inner and outer rear tyre, 3.1 and 4.65 m from the middle as the sim measures them.
-      for (const radius of [3.1, 4.65]) {
+      const ox = cx + Math.cos(h + loop * 2.1) * 1.1
+      const oy = cy + Math.sin(h + loop * 2.1) * 1.1
+      // The inner and outer rear tyre, 2.3 and 2.85 m from where a donut turns about (sim.ts donutStep).
+      for (const radius of [2.3, 2.85]) {
         const first = pos.length / 3
         for (let s = 0; s <= segments; s++) {
           const a = (s / segments) * Math.PI * 2
@@ -1001,6 +1001,8 @@ export class HotLapScene {
   frame(f: SceneFrame, dt: number) {
     this.poseCar(f.run, dt)
     if (f.driving) this.layRubber(f.run)
+    // A donut smokes the whole time it spins, and a moment after.
+    if (f.driving && f.run.donut !== 0) this.smoke()
     if (this.puffs.length) this.tickSmoke(f.run, dt)
     if (this.donutMarks) this.donutMarks.visible = f.donutHint === true
     this.tagGhost(f.ghostTag ?? null)
@@ -1139,11 +1141,13 @@ export class HotLapScene {
       return
     }
     const travel = run.h + (run.u > 3 ? Math.atan2(run.vy, run.u) * 0.35 : 0)
+    // In a donut the camera holds where it was looking, and the car spins in front of it; after, it swings
+    // back round behind.
     if (this.snap) {
       this.camHeading = travel
       this.camNear = -1
       this.lookNear = -1
-    } else {
+    } else if (run.donut === 0) {
       const d = Math.atan2(Math.sin(travel - this.camHeading), Math.cos(travel - this.camHeading))
       this.camHeading += d * (1 - Math.exp(-dt * 5))
     }

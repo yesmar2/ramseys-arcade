@@ -108,6 +108,11 @@ export class CarSound {
         : 0
       : Math.min(0.22, Math.max(0, run.work - 0.85) * 0.35) + (run.abs && v > 6 ? 0.06 : 0)
     let pitch = run.onGrass ? 380 : 1300 + Math.min(600, run.work * 300)
+    // A donut: the back tyres sliding round the whole time, sung high.
+    if (run.donut !== 0) {
+      skid = Math.max(skid, 0.22)
+      pitch = 2100
+    }
     const screaming = this.screechTill - t
     if (screaming > 0) {
       // The donuts egg: higher and louder than any slide in a lap, then dying away.

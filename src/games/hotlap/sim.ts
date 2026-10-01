@@ -361,6 +361,16 @@ export type Run = {
   lapTime: number | null
   /** Seconds since the fence, counting down. */
   bumped: number
+  /** Spinning a donut: 1 round to the left, −1 to the right, 0 not (see `donutStep`); and for how long. */
+  donut: number
+  donutT: number
+  /** The brake was down last step, so a press now isn't a fresh one. */
+  braked: boolean
+  /** Seconds in a donut with neither pedal down. */
+  coasted: number
+  /** m/s the car is still sliding across the ground in a donut, east and north, wearing off. */
+  driftX: number
+  driftY: number
 }
 
 /** `steer` is −1 (right) to 1 (left); throttle and brake 0 to 1. */
@@ -393,6 +403,12 @@ export function newRun(track: Track): Run {
     finished: false,
     lapTime: null,
     bumped: 0,
+    donut: 0,
+    donutT: 0,
+    braked: false,
+    coasted: 0,
+    driftX: 0,
+    driftY: 0,
   }
 }
 
@@ -402,6 +418,96 @@ function withinGrip(fx: number, fy: number, cap: number): [number, number, numbe
   if (total <= cap) return [fx, fy, 0]
   const k = cap / total
   return [fx * k, fy * k, 1 - k]
+}
+
+/* ---------- donuts ---------- */
+
+/*
+ * Donuts, as Ramsey asked ("it'd be nice to actually do donuts in hot lap"). The grip help won't let the
+ * car spin on its nose in the racing step, so a donut is a step of its own. Slow or stopped, with the
+ * wheel hard over, a fresh press of the brake lets the back end go and swings it round; the gas keeps it
+ * going round on the spot, the back tyres sliding; let the wheel off the lock, or both pedals up, and it
+ * grips again. It starts only on a brake press made after the wheel is over and below 15 mph, which
+ * racing never does: no planned lap, and no test driver, brakes below 28 mph. So a lap that doesn't do
+ * donuts runs exactly the steps it always did.
+ */
+const DONUT_SPEED = 6.7 // m/s, 15 mph: the most it can start at
+const DONUT_LOCK = 0.9 // share of full lock the wheel must be over
+const DONUT_KICK = 3 // rad/s the brake swings the tail round at
+const KICK_TIME = 0.6 // s the brake's swing lasts; held on, the car then stops turning
+const DONUT_SPIN = 5.2 // rad/s the gas keeps it going round at: a turn every 1.2 s
+const DONUT_COAST = 0.25 // s with neither pedal down before it lets go: time for a thumb to slide from brake to gas
+const DONUT_SCRUB = 6 // m/s² the car's slide across the ground wears off at
+/** Where the car turns about, from its middle: this far ahead, and this far to the inside of the turn. */
+const PIVOT_AHEAD = 0.9
+const PIVOT_IN = 0.9
+
+function startsDonut(run: Run, input: Controls) {
+  return (
+    !run.finished &&
+    input.brake > 0 &&
+    !run.braked &&
+    Math.abs(input.steer) >= DONUT_LOCK &&
+    run.v < DONUT_SPEED
+  )
+}
+
+function endDonut(run: Run) {
+  run.donut = 0
+  run.donutT = 0
+  run.coasted = 0
+  run.driftX = 0
+  run.driftY = 0
+  run.u = Math.max(0, run.u)
+}
+
+/**
+ * A step of a donut: the car turns about a point ahead of its middle and to the inside, so the front
+ * wheels hardly move and the back swings round in a circle about the car's own length across, while
+ * whatever slide it came in with wears off.
+ */
+function donutStep(run: Run, input: Controls) {
+  const dir = run.donut
+  run.donutT += STEP
+  run.coasted = input.brake > 0 || input.throttle > 0 ? 0 : run.coasted + STEP
+  if (Math.sign(input.steer) !== dir || Math.abs(input.steer) < DONUT_LOCK || run.coasted > DONUT_COAST) {
+    endDonut(run)
+    return
+  }
+  const want = input.throttle > 0 ? DONUT_SPIN * input.throttle : input.brake > 0 && run.donutT < KICK_TIME ? DONUT_KICK : 0
+  run.r += (dir * want - run.r) * Math.min(1, STEP * 3)
+  // On the brake alone, once the swing is spent, it comes to a stop.
+  if (want === 0 && input.brake > 0 && Math.abs(run.r) < 0.3) {
+    endDonut(run)
+    return
+  }
+
+  const slide = Math.hypot(run.driftX, run.driftY)
+  if (slide > 0) {
+    const k = Math.max(0, slide - DONUT_SCRUB * STEP) / slide
+    run.driftX *= k
+    run.driftY *= k
+  }
+  // The middle's way across the ground: turning about the pivot, plus the slide, in the car's own terms.
+  const c = Math.cos(run.h)
+  const s = Math.sin(run.h)
+  const turnU = run.r * PIVOT_IN * dir
+  const turnV = -run.r * PIVOT_AHEAD
+  const wx = run.driftX + turnU * c - turnV * s
+  const wy = run.driftY + turnU * s + turnV * c
+  run.x += wx * STEP
+  run.y += wy * STEP
+  run.h += run.r * STEP
+  run.u = wx * c + wy * s
+  run.vy = -wx * s + wy * c
+  run.v = Math.hypot(run.u, run.vy)
+  run.ax = 0
+  run.ay = 0
+  run.steer += Math.max(-CAR.steerRate * STEP, Math.min(CAR.steerRate * STEP, dir * CAR.steerMax - run.steer))
+  // The back tyres are sliding the whole time: they squeal and leave rubber.
+  run.over = 1
+  run.work = 2
+  run.abs = false
 }
 
 /**
@@ -430,7 +536,16 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
     slopeY = down * Math.sin(across)
     weight = Math.max(0.25 * G, G * flat + run.u * run.u * track.crest[i]!)
   }
-  for (let sub = 0; sub < SUBSTEPS; sub++) {
+  if (run.donut === 0 && startsDonut(run, input)) {
+    run.donut = Math.sign(input.steer)
+    run.donutT = 0
+    run.coasted = 0
+    // The slide it comes in with, across the ground, to wear off.
+    run.driftX = run.u * Math.cos(run.h) - run.vy * Math.sin(run.h)
+    run.driftY = run.u * Math.sin(run.h) + run.vy * Math.cos(run.h)
+  }
+  const donut = run.donut !== 0
+  for (let sub = 0; !donut && sub < SUBSTEPS; sub++) {
     let { u, vy, r } = run
     const beta = u > 2 ? Math.atan2(vy, u) : 0
     // Steering the other way from how the car is turning is catching a slide.
@@ -512,10 +627,15 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
     run.x += (u * c - vy * s) * dt
     run.y += (u * s + vy * c) * dt
   }
-  run.v = Math.hypot(run.u, run.vy)
-  run.over = Math.max(0, over)
-  run.work = run.v > 3 ? work : 0
-  run.abs = abs
+  if (donut) {
+    donutStep(run, input)
+  } else {
+    run.v = Math.hypot(run.u, run.vy)
+    run.over = Math.max(0, over)
+    run.work = run.v > 3 ? work : 0
+    run.abs = abs
+  }
+  run.braked = input.brake > 0
 
   // Where on the track.
   const near = nearest(track, run.x, run.y, run.index)
