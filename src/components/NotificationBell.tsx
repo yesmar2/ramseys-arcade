@@ -20,7 +20,7 @@ import { coursePlayHref, dailyRecordHref, isCourseRecord, recordShut } from '../
 import type { AvatarWear } from './AvatarStudio'
 import { GameThumbGlyph } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
-import { SlidersIcon } from './chromeIcons'
+import { FlameIcon, SlidersIcon } from './chromeIcons'
 import { PushToggle } from './PushToggle'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/inbox.css'
@@ -127,6 +127,15 @@ function Face({ n, now }: { n: AppNotification; now: number }) {
     return (
       <span className="inbox-face" aria-hidden="true">
         <TrophyTile trophy={trophy} />
+      </span>
+    )
+  }
+  if (n.kind === 'streak-risk') {
+    return (
+      <span className="inbox-face" aria-hidden="true">
+        <span className="inbox-face__tile inbox-face__tile--streak">
+          <FlameIcon />
+        </span>
       </span>
     )
   }
@@ -315,6 +324,11 @@ function Actions({
       break
     case 'challenge-beaten':
       out = link(n.href, 'Take it back', true)
+      break
+    case 'streak-risk':
+      // Once its day is over there's nothing to keep: the row just says what it said.
+      if (!needsYou(n, now)) break
+      out = link(n.href ?? '/dailies', 'Play the Dailies', true, true)
       break
     case 'today-beaten':
       // A lap can be driven again today; the hole and the bugs count once, so there's only today's ticket to see.

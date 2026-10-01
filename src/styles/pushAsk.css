@@ -1,0 +1,108 @@
+/*
+ * The arcade's own ask for alerts (components/PushAsk.tsx), in a run's report, a daily's result card or an
+ * event's banner: a quiet row like the tickets', picked over a louder callout and a one-line switch
+ * (2026-10-01). The streak's is in the ticket's orange; a challenge's and a match's in the brand teal.
+ */
+
+.push-ask {
+  --ask-tone: var(--accent);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.35rem 0.75rem;
+  padding: 0.8rem 0.9rem 0.85rem;
+  border-radius: 1.05rem;
+  background: color-mix(in srgb, var(--ask-tone) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ask-tone) 34%, transparent);
+  text-align: left;
+  color: var(--ink);
+}
+
+.push-ask--for-streak {
+  --ask-tone: var(--ticket-deep, #e0602e);
+}
+
+.push-ask__mark {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--ask-tone) 16%, transparent);
+  color: var(--ask-tone);
+}
+
+.push-ask__mark svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.push-ask__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.push-ask__kicker {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ask-tone);
+}
+
+.push-ask__title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.push-ask__hint {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.push-ask__error {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--panel-danger, #d84a4a);
+}
+
+.push-ask__acts {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+/* Small beside the card's own buttons; a phone's report otherwise stretches every button across. */
+.push-ask .push-ask__btn {
+  flex: none;
+  width: auto;
+  min-height: 2.35rem;
+  padding: 0 1rem;
+  font-size: 0.9rem;
+}
+
+.push-ask .push-ask__btn:not(.panel__btn--ghost) {
+  --panel-accent: var(--ask-tone);
+  background: var(--ask-tone);
+  color: #fff;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--ask-tone) 26%, transparent);
+}
+
+/* In a daily's result card and an event's banner: room above, and no wider than what's around it. */
+.push-ask--in-card {
+  margin: 0.25rem 0 0.4rem;
+}
+
+.push-ask--in-banner {
+  margin-top: 0.9rem;
+  max-width: 34rem;
+}

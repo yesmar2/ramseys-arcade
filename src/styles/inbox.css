@@ -452,6 +452,18 @@ html[data-theme='light'] .inbox {
   color: var(--muted);
 }
 
+/* A Dailies streak about to end: the streak's flame, in the ticket's orange. */
+.inbox-face__tile--streak {
+  background: color-mix(in srgb, var(--ticket-deep, #e0602e) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--ticket-deep, #e0602e) 34%, transparent);
+  color: var(--ticket-deep, #e0602e);
+}
+
+.inbox-face__tile--streak svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
 /* ---------- alerts on this device ---------- */
 
 .inbox-alerts {

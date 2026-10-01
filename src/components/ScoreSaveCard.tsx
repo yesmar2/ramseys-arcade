@@ -48,8 +48,10 @@ import {
 } from '../lib/runReport'
 import { runIdFor } from '../lib/runSession'
 import { periodCopy } from '../lib/scoreboard'
+import { TODAY_DAILIES } from '../lib/today'
 import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
+import { PushAsk, StreakPushAsk } from './PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { copyText } from './ShareBoardButton'
@@ -153,6 +155,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   const [wouldPlace, setWouldPlace] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
+  /** A challenge went out from this card: the moment to offer an alert for when it's beaten. */
+  const [challenged, setChallenged] = useState(false)
   const [copied, setCopied] = useState(false)
   const recordRef = useRef(previousBest ?? 0)
   /** Which pass of the save is the live one; an older pass bows out. */
@@ -507,7 +511,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       secondary = {
         label: 'Send it back',
         icon: 'flag',
-        onClick: () =>
+        onClick: () => {
           share({
             game: gameSlug,
             id: replyId,
@@ -515,7 +519,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
             name: savedAs,
             message: replyMessage(gameSlug, facing.score, score),
             title: `Send it back to ${facing.name}`,
-          }),
+          })
+          setChallenged(true)
+        },
       }
     } else {
       secondary = {
@@ -527,15 +533,22 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
           setSending(true)
           setSendError(null)
           createChallenge({ game: gameSlug, scoreId: runId, name: savedAs })
-            .then((made) =>
-              share({ game: gameSlug, id: made.id, score, name: savedAs, message: challengeMessage(gameSlug, score) }),
-            )
+            .then((made) => {
+              share({ game: gameSlug, id: made.id, score, name: savedAs, message: challengeMessage(gameSlug, score) })
+              setChallenged(true)
+            })
             .catch(() => setSendError('Couldn’t make the challenge link. Try again in a moment.'))
             .finally(() => setSending(false))
         },
       }
     }
     if (sendError) block = <p className="panel__error">{sendError}</p>
+    else if (challenged) block = <PushAsk reason="challenge" />
+  }
+  // A daily of the Dailies just saved: once today is kept, the moment to offer a nudge before a day ends unkept.
+  const onTicket = TODAY_DAILIES.some((d) => d.slug === gameSlug)
+  if (phase === 'saved' && signedIn && !impersonation && onTicket && !block) {
+    block = <StreakPushAsk active />
   }
 
   // A daily just for fun has no board and no records to go to.

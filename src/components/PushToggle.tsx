@@ -10,6 +10,7 @@ import {
   pushSupported,
   type PushStatus,
 } from '../lib/push'
+import { noteAlertsTurnedOff, noteAlertsTurnedOn } from '../lib/pushAsk'
 
 const REASONS: Record<string, string> = {
   'home-screen': `On iPhone, add ${APP_NAME} to your home screen first. Safari only allows alerts there.`,
@@ -82,10 +83,14 @@ export function PushToggle({
     try {
       if (on) {
         update(await disablePush())
+        // Turned off by hand: the arcade's cards stop asking on this device (lib/pushAsk.ts).
+        noteAlertsTurnedOff()
       } else {
         const result = await enablePush()
-        if (result.ok) update(result.status)
-        else setError(REASONS[result.reason] ?? REASONS.failed!)
+        if (result.ok) {
+          update(result.status)
+          noteAlertsTurnedOn()
+        } else setError(REASONS[result.reason] ?? REASONS.failed!)
       }
     } catch {
       setError(REASONS.failed!)

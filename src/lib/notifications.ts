@@ -19,6 +19,8 @@ export type NotificationKind =
   | 'challenge-taken'
   /** A friend beat your result on one of today's dailies (the API's todayBeaten.ts). */
   | 'today-beaten'
+  /** Today's Dailies aren't kept yet and the day is nearly over (the API's streakReminders.ts). */
+  | 'streak-risk'
 
 /** Who and what a notification is about, for drawing its row. Every field is optional. */
 export type NotificationMeta = {
@@ -29,8 +31,11 @@ export type NotificationMeta = {
   game?: string
   /** Where its main button goes, when that isn't its own link. */
   playHref?: string
-  /** A bracket match's deadline. */
+  /** A bracket match's deadline; a streak reminder's, the end of the boards' day. */
   endsAt?: number
+  /** A streak reminder: the streak's days, and how many of today's dailies still keep it. */
+  streak?: number
+  left?: number
   eventId?: string
   matchId?: string
   /** `n`: a secret's number (lib/secrets.ts). */
@@ -123,11 +128,11 @@ export function isMatch(n: AppNotification): boolean {
   return MATCH_KINDS.has(n.kind)
 }
 
-/** Waiting on you: a match on the clock, or a request to answer. It stays on top until it's done. */
+/** Waiting on you: a match on the clock, a request to answer, a streak to keep. It stays on top until it's done. */
 export function needsYou(n: AppNotification, now = Date.now()): boolean {
   if (n.resolvedAt) return false
   if (n.kind === 'friend-request') return Boolean(n.meta.requestId)
-  if (isMatch(n)) return (n.meta.endsAt ?? 0) > now
+  if (isMatch(n) || n.kind === 'streak-risk') return (n.meta.endsAt ?? 0) > now
   return false
 }
 
@@ -145,11 +150,15 @@ export function timeLeftWords(ms: number): string {
   return hours === 1 ? '1 hour' : `${hours} hours`
 }
 
-/** A match alert's title as of now: the time left moves, the words filed with it don't. */
+/** A match alert's or a streak reminder's title as of now: the time left moves, the words filed with it don't. */
 export function liveTitle(n: AppNotification, now = Date.now()): string {
-  const { endsAt, actor } = n.meta
+  const { endsAt, actor, streak } = n.meta
   if (isMatch(n) && endsAt != null && actor && endsAt > now && (n.kind === 'match-closing' || isClosing(n, now))) {
     return `${timeLeftWords(endsAt - now)} left against ${actor}`
+  }
+  if (n.kind === 'streak-risk' && endsAt != null && endsAt > now) {
+    const left = timeLeftWords(endsAt - now)
+    return streak && streak > 1 ? `Your ${streak}-day Dailies streak ends in ${left}` : `Your Dailies streak ends in ${left}`
   }
   return n.title
 }

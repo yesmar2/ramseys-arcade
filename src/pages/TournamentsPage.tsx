@@ -29,6 +29,7 @@ import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
+import { PushAsk } from '../components/PushAsk'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TodaysHoleCard } from '../components/TodaysHoleCard'
 import { TodaysTrackCard } from '../components/TodaysTrackCard'
@@ -474,6 +475,7 @@ function EventBanner({
   busy,
   joinNote,
   onJoin,
+  justJoined,
   shareUrl,
   copyInvite,
   copiedInvite,
@@ -486,6 +488,8 @@ function EventBanner({
   busy: boolean
   joinNote: string | null
   onJoin: () => void
+  /** Joined with the button just now: a bracket's matches run on a clock, so alerts are offered. */
+  justJoined: boolean
   /** Null where a shared link would let nobody in. */
   shareUrl: string | null
   copyInvite: (() => void) | null
@@ -575,6 +579,7 @@ function EventBanner({
         {needsTag ? (
           <p className="evp-banner__hint">Sign in and pick a tag: it’s how the standings know your runs.</p>
         ) : null}
+        {bracket && joined && justJoined && open ? <PushAsk reason="match" className="push-ask--in-banner" /> : null}
       </div>
       <BannerSide detail={detail} displayName={displayName} />
     </section>
@@ -957,6 +962,8 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const [inviteDraft, setInviteDraft] = useState(invite ?? '')
   const [busy, setBusy] = useState(false)
   const [joined, setJoined] = useState(false)
+  /** Joined with the button just now: the moment to offer alerts for a bracket's matches. */
+  const [justJoined, setJustJoined] = useState(false)
   const [joinNote, setJoinNote] = useState<string | null>(null)
   const [copiedInvite, setCopiedInvite] = useState(false)
   const [previous, setPrevious] = useState<TournamentDetail | null>(null)
@@ -1101,6 +1108,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
       })
       setDetail(data)
       setJoined(true)
+      setJustJoined(true)
       setJoinNote(null)
     } catch (err) {
       setJoinNote(err instanceof Error ? err.message : 'Could not join')
@@ -1222,6 +1230,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           busy={busy}
           joinNote={joinNote}
           onJoin={() => void onJoin()}
+          justJoined={justJoined}
           shareUrl={shareUrl}
           copyInvite={canInvite ? () => void copyInviteLink() : null}
           copiedInvite={copiedInvite}

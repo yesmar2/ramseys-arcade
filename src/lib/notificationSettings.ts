@@ -26,6 +26,7 @@ export type NotificationTopic =
   | 'challenge-taken'
   | 'today-lap'
   | 'today-beaten'
+  | 'streak-risk'
   | 'record-lost'
   | 'trophy'
 
@@ -50,6 +51,12 @@ export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[
   {
     title: 'Dailies',
     topics: [
+      {
+        topic: 'streak-risk',
+        label: 'Your streak is about to end',
+        hint: 'Once, before the day ends, on a day you haven’t kept yet. Never at night.',
+        offWarning: 'A day you miss ends your streak, so keep an eye on the Dailies.',
+      },
       COURSE_ON_TICKET || CAVE_ON_TICKET
         ? {
             topic: 'today-lap',

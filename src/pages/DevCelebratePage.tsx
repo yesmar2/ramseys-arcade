@@ -1,5 +1,6 @@
 import { useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
+import { PushAsk } from '../components/PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from '../components/prizes/RunTickets'
 import type { RunTickets } from '../lib/tickets'
 import {
@@ -255,6 +256,12 @@ function reportSample(key: string, note: string, f: RunFacts, title: string, sub
   }
 }
 
+/** An ordinary saved run with the arcade's ask for alerts under it (components/PushAsk.tsx). */
+function askSample(key: string, note: string, ask: ReactNode, secondary?: string): Sample {
+  const base = reportSample('quiet', note, facts(318, {}), 'Run over', 'Flattened by traffic')
+  return { key, note, body: { ...base.body, children: ask, ...(secondary ? { secondary: { label: secondary, icon: 'flag' } } : {}) } }
+}
+
 function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
   return [
     reportSample('quiet', 'An ordinary run: nothing new, so nothing lights.', facts(318, {}), 'Run over', 'Flattened by traffic'),
@@ -342,6 +349,22 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
         who: <ReportWho name="VERA" text="Saving…" />,
       },
     },
+    askSample(
+      'ask-streak',
+      'A daily that keeps the day: the ask for a nudge before a day ends unkept.',
+      <PushAsk reason="streak" streak={3} preview="ask" />,
+    ),
+    askSample(
+      'ask-challenge',
+      'A challenge just sent: the ask for an alert when it’s beaten.',
+      <PushAsk reason="challenge" preview="ask" />,
+      'Challenge a friend',
+    ),
+    askSample(
+      'ask-iphone',
+      'An iPhone in Safari: alerts need the Home Screen first, so the ask says how.',
+      <PushAsk reason="streak" streak={1} preview="home-screen" />,
+    ),
   ]
 }
 
