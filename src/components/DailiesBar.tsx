@@ -1,6 +1,7 @@
 import { gameHref, todayHref } from '../hooks/useHashRoute'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
+import { DailyKindTag } from './DailyKindTag'
 import { GameArt } from './GameArt'
 import { CheckIcon } from './TodayCard'
 import { FlameIcon } from './TodayChip'
@@ -11,7 +12,8 @@ import '../styles/dailiesBar.css'
  * The Dailies bar, over each daily's own page (pages/GameHubPage.tsx): the way to the Dailies page, with
  * how today stands ("Dailies 2/5"), and to each of the day's dailies, the ones done checked and this one
  * marked. Ramsey picked it from the "Dailies and game pages" mock (B). The Dailies page's ticket links back
- * by each game's name. A phone scrolls it, each daily by its short name.
+ * by each game's name. A phone scrolls it, each daily by its short name. Each daily's picture carries its
+ * ranked or just-for-fun mark (DailyKindTag), whose tip says what that means.
  */
 export function DailiesBar({ slug }: { slug: string }) {
   const { signedIn } = useAuth()
@@ -53,6 +55,8 @@ export function DailiesBar({ slug }: { slug: string }) {
                 <span className="dbar__name">{p.game}</span>
                 <span className="dbar__short">{p.label}</span>
               </a>
+              {/* Ranked or just for fun, on its picture's corner: a button of its own, so it sits beside the link. */}
+              <DailyKindTag slug={p.slug} look="badge" className="dbar__kind" />
             </li>
           )
         })}

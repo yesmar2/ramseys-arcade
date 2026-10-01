@@ -708,6 +708,18 @@ a.dpk__d--full:hover {
   text-overflow: ellipsis;
 }
 
+/* Ranked or just for fun (DailyKindTag), under the game's name: its word keeps the tag's own colour and size. */
+.pdt-item__kind {
+  align-self: flex-start;
+  margin: -0.05rem -0.35rem 0.05rem;
+}
+
+.pdt-item__text .pdt-item__kind .dkind__word {
+  overflow: visible;
+  font-size: inherit;
+  color: inherit;
+}
+
 .pdt-item__you {
   display: flex;
   flex-direction: column;

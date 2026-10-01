@@ -175,8 +175,24 @@ html[data-theme='dark'] .home-day {
 }
 
 .home-day__cards > li {
+  position: relative;
+  /* The card's width, for the ranked or just-for-fun pill on its picture (below). */
+  container-type: inline-size;
   display: flex;
   min-width: 0;
+}
+
+/*
+ * Ranked or just for fun (DailyKindTag), on the foot of the card's picture. It's the card's sibling, a
+ * button of its own rather than one inside the card's link, so it's placed from the card's width: the
+ * picture is 4:3 at the card's top.
+ */
+.home-day__kind {
+  position: absolute;
+  left: 0.6rem;
+  top: calc(75cqw - 0.55rem);
+  z-index: 2;
+  transform: translateY(-100%);
 }
 
 .home-day__card {

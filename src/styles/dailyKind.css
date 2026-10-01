@@ -1,0 +1,177 @@
+/*
+ * "Ranked" or "Just for fun" on a daily (components/DailyKindTag.tsx), in RunLabel's colours: its green tick
+ * and its violet sparkle. A chip in a line of text, dotted under like the past cards' board labels; a pill on
+ * a picture, dark in either theme; or a badge, the mark alone on a small picture. Where each sits is its
+ * page's own stylesheet's to say. The tip floats over the page (InfoTip.tsx), so it carries its colours too.
+ */
+
+.dkind,
+.dkind-tip {
+  --dkind: #11704f;
+}
+
+.dkind--fun,
+.dkind-tip--fun {
+  --dkind: #7046b3;
+}
+
+html[data-theme='dark'] .dkind,
+html[data-theme='dark'] .dkind-tip {
+  --dkind: #38d39f;
+}
+
+html[data-theme='dark'] .dkind--fun,
+html[data-theme='dark'] .dkind-tip--fun {
+  --dkind: #c3a3f7;
+}
+
+.dkind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  color: var(--dkind);
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dkind svg {
+  flex: none;
+}
+
+.dkind:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--dkind) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* ---------- a chip in a line of text ---------- */
+
+.dkind--chip {
+  min-height: 1.6rem;
+  padding: 0 0.45rem 0 0.35rem;
+  margin: 0 -0.35rem;
+  border-radius: 0.4rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+}
+
+.dkind--chip svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.dkind--chip .dkind__word {
+  text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.dkind--chip:hover,
+.dkind--chip[data-open] {
+  background: color-mix(in srgb, var(--dkind) 11%, transparent);
+}
+
+/* ---------- a pill on a picture: dark under it whatever the theme, so the bright colours stay ---------- */
+
+.dkind--pill {
+  --dkind: #38d39f;
+  height: 1.35rem;
+  box-sizing: border-box;
+  padding: 0 0.55rem 0 0.4rem;
+  border-radius: 999px;
+  background: rgba(12, 18, 24, 0.74);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dkind) 45%, transparent);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+}
+
+.dkind--pill.dkind--fun {
+  --dkind: #c3a3f7;
+}
+
+.dkind--pill svg {
+  width: 0.78rem;
+  height: 0.78rem;
+}
+
+.dkind--pill:hover,
+.dkind--pill[data-open] {
+  background: rgba(12, 18, 24, 0.9);
+  box-shadow: inset 0 0 0 1px var(--dkind);
+}
+
+/* ---------- a badge: the mark alone, in a ring of the surface it sits on ---------- */
+
+.dkind--badge {
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 2px var(--surface),
+    inset 0 0 0 1px color-mix(in srgb, var(--dkind) 55%, transparent);
+}
+
+.dkind--badge svg {
+  width: 0.68rem;
+  height: 0.68rem;
+}
+
+.dkind--badge:hover,
+.dkind--badge[data-open] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    inset 0 0 0 1.5px var(--dkind);
+}
+
+/* ---------- the mark alone, before a word ---------- */
+
+.dkind--mark {
+  vertical-align: -0.1em;
+  margin-right: 0.2em;
+}
+
+.dkind--mark svg {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+/* ---------- the tip ---------- */
+
+.dkind-tip__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.90625rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+html[data-theme='dark'] .dkind-tip__head {
+  color: #fff;
+}
+
+.dkind-tip__head svg {
+  flex: none;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  color: var(--dkind);
+}
+
+.dkind-tip__lead {
+  display: block;
+  font-weight: 700;
+}
+
+.dkind-tip__more {
+  display: block;
+  margin-top: 0.375rem;
+  font-size: 0.84375rem;
+  line-height: 1.1875rem;
+  color: var(--muted);
+}

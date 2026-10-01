@@ -527,6 +527,15 @@ html[data-theme='dark'] {
   font-size: 1.02rem;
 }
 
+/* Ranked or just for fun (DailyKindTag), under the game's name. */
+.today-slot__kind {
+  margin-block: -0.15rem 0.05rem;
+}
+
+.today-feature__kind {
+  margin-block: -0.1rem 0.05rem;
+}
+
 .today-slot__title {
   max-width: 100%;
   font-size: 0.85rem;
@@ -683,6 +692,19 @@ html[data-theme='dark'] {
 /* A phone has the short name. */
 .today-punch__label {
   display: none;
+}
+
+/* The picture and, outside its round crop, its ranked or just-for-fun mark (DailyKindMark) on the corner. */
+.today-punch__pic {
+  position: relative;
+  display: block;
+}
+
+.today-punch__kind {
+  position: absolute;
+  top: -0.15rem;
+  left: -0.15rem;
+  z-index: 3;
 }
 
 .today-punch__state {

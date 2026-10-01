@@ -19,6 +19,7 @@ import {
 import type { TournamentSummary } from '../lib/tournaments'
 import { resolveGameAccent } from '../lib/theme'
 import { BugPortrait } from './BugHunt'
+import { DailyKindMark, DailyKindTag } from './DailyKindTag'
 import { GameArt } from './GameArt'
 import { GameThumbArt } from './GameThumbArt'
 import { FlameIcon, StarIcon } from './TodayChip'
@@ -213,6 +214,7 @@ function PunchRow({ punches, rival }: { punches: Punch[]; rival: (key: TodayKey)
                 {p.game}
                 <span aria-hidden="true"> ›</span>
               </a>
+              <DailyKindTag slug={p.slug} className="today-slot__kind" />
               <span className="today-slot__title">{p.title}</span>
               {p.done && p.mine ? <span className="today-slot__mine">You: {p.mine}</span> : null}
               {!p.done && p.carry ? <span className="today-slot__mine">{p.carry}</span> : null}
@@ -250,6 +252,7 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
           {punch.game}
           <span aria-hidden="true"> ›</span>
         </a>
+        <DailyKindTag slug={punch.slug} className="today-feature__kind" />
         <span className="today-feature__title">{punch.title}</span>
         {punch.done && punch.mine ? <span className="today-feature__mine">You: {punch.mine}</span> : null}
         {!punch.done && punch.carry ? <span className="today-feature__mine">{punch.carry}</span> : null}
@@ -399,13 +402,17 @@ export function TodayCard({ ticket, rivals, signedIn }: { ticket: Ticket; rivals
                     setSaid(`${p.game}, ${p.done ? 'punched' : 'up next'}`)
                   }}
                 >
-                  <span className="today-punch__art" aria-hidden="true">
-                    <GameArt slug={p.slug} className="today-punch__scene" />
-                    {p.done ? (
-                      <span className="today-punch__check">
-                        <CheckIcon />
-                      </span>
-                    ) : null}
+                  <span className="today-punch__pic">
+                    <span className="today-punch__art" aria-hidden="true">
+                      <GameArt slug={p.slug} className="today-punch__scene" />
+                      {p.done ? (
+                        <span className="today-punch__check">
+                          <CheckIcon />
+                        </span>
+                      ) : null}
+                    </span>
+                    {/* Ranked or just for fun, on the picture's corner; pressed, the punch shows its tag and tip big. */}
+                    <DailyKindMark slug={p.slug} look="badge" className="today-punch__kind" />
                   </span>
                   <span className="today-punch__game">{p.game}</span>
                   <span className="today-punch__label">{p.label}</span>

@@ -19,6 +19,7 @@ import { doneOf, markOf } from '../lib/pastDays'
 import { liveDailies, TODAY_DAILIES, TODAY_KEEP, type TodayDaily, type TodayKey, type TodayServerDay } from '../lib/today'
 import { PlayIcon } from './chromeIcons'
 import { GameArt } from './GameArt'
+import { DailyKindTag } from './DailyKindTag'
 import { CheckIcon } from './TodayCard'
 import { StarIcon } from './TodayChip'
 import { capital, dayParts, shortDate, WEEKDAY_NAMES } from './todayPunches'
@@ -194,6 +195,7 @@ export function PastDayTicket({
                 <div className="today-slot__text">
                   <span className="today-slot__kicker">{s.kicker}</span>
                   <b className="today-slot__game">{s.game}</b>
+                  <DailyKindTag slug={s.daily.slug} className="today-slot__kind" />
                   <span className="today-slot__title">{s.title}</span>
                   {s.you ? (
                     <span className="today-slot__mine">You: {s.you.place ?? s.you.result}</span>
@@ -237,6 +239,7 @@ export function PastDayTicket({
                 </span>
                 <span className="pdt-item__text">
                   <b>{s.game}</b>
+                  <DailyKindTag slug={s.daily.slug} className="pdt-item__kind" />
                   <span>
                     {s.kicker} · {s.title}
                   </span>

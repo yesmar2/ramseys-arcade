@@ -145,6 +145,18 @@
   display: none;
 }
 
+/* Ranked or just for fun (DailyKindTag): its mark on the picture's top corner, the done check having the bottom one. */
+.dbar__games > li {
+  position: relative;
+}
+
+.dbar__kind {
+  position: absolute;
+  top: 0.12rem;
+  left: 0.08rem;
+  z-index: 1;
+}
+
 .dbar__line {
   margin-left: auto;
   padding: 0 0.6rem 0 1rem;
@@ -191,5 +203,10 @@
   .dbar__art {
     width: 1.75rem;
     height: 1.75rem;
+  }
+
+  .dbar__kind {
+    top: 0.24rem;
+    left: -0.02rem;
   }
 }

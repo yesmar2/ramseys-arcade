@@ -16,6 +16,15 @@ export function RankedIcon({ className }: IconProps) {
   )
 }
 
+/** Just for fun: a daily that places nobody (data/games.ts Game.ranked). RunLabel's "fun" sparkle. */
+export function FunIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
+    </svg>
+  )
+}
+
 /** All time: the course's own board. RunLabel's "board" flag. */
 export function AllTimeIcon({ className }: IconProps) {
   return (

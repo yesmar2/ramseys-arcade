@@ -13,6 +13,7 @@ import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
 import type { TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
+import { DailyKindTag } from './DailyKindTag'
 import { GameArt } from './GameArt'
 import { FlameIcon, StarIcon } from './TodayChip'
 import { capital, shortDate, useTicket, type Punch, type Ticket } from './todayPunches'
@@ -234,6 +235,8 @@ export function HomeToday() {
         {punches.map((p) => (
           <li key={p.key}>
             <DayCard p={p} day={day} standing={standings ? standings.get(p.slug) : undefined} />
+            {/* Ranked or just for fun, on the picture: a button of its own, so it sits over the card's link, not in it. */}
+            <DailyKindTag slug={p.slug} look="pill" className="home-day__kind" />
           </li>
         ))}
       </ul>
