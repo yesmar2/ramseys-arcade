@@ -1551,3 +1551,27 @@ html[data-theme='dark'] {
     transition: none;
   }
 }
+
+/* A game's name on the ticket opens its page: the way back from the Dailies page to a daily's own. */
+.today-game {
+  color: inherit;
+  text-decoration: none;
+}
+
+.today-game span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.today-game:hover,
+.today-game:focus-visible {
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--ink-rgb), 0.35);
+  text-underline-offset: 0.2em;
+}
+
+.today-game:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
+  border-radius: 0.3rem;
+}

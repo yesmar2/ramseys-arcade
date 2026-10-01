@@ -208,7 +208,11 @@ function PunchRow({ punches, rival }: { punches: Punch[]; rival: (key: TodayKey)
                 {p.kicker}
                 {p.fresh && !p.done ? <span className="today-feature__new">New</span> : null}
               </span>
-              <b className="today-slot__game">{p.game}</b>
+              {/* The game's name opens its page: the way back to a daily's own from here. */}
+              <a className="today-slot__game today-game" href={gameHref(p.slug)}>
+                {p.game}
+                <span aria-hidden="true"> ›</span>
+              </a>
               <span className="today-slot__title">{p.title}</span>
               {p.done && p.mine ? <span className="today-slot__mine">You: {p.mine}</span> : null}
               {!p.done && p.carry ? <span className="today-slot__mine">{p.carry}</span> : null}
@@ -242,7 +246,10 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
           {punch.done ? 'Punched' : 'Up next'} · {punch.kicker}
           {punch.fresh && !punch.done ? <span className="today-feature__new">New</span> : null}
         </span>
-        <b className="today-feature__game">{punch.game}</b>
+        <a className="today-feature__game today-game" href={gameHref(punch.slug)}>
+          {punch.game}
+          <span aria-hidden="true"> ›</span>
+        </a>
         <span className="today-feature__title">{punch.title}</span>
         {punch.done && punch.mine ? <span className="today-feature__mine">You: {punch.mine}</span> : null}
         {!punch.done && punch.carry ? <span className="today-feature__mine">{punch.carry}</span> : null}

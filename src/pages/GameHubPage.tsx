@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ChevronRightIcon } from '../components/chromeIcons'
+import { DailiesBar } from '../components/DailiesBar'
 import { DailyTabs } from '../components/DailyTabs'
 import { GameHubBoard } from '../components/GameHubBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
@@ -252,6 +253,8 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     return (
       <PageShell innerClassName="gh-rail">
         <div className="gh gh--daily" style={style}>
+          {/* The day's dailies over its page: the Dailies page, and each daily, this one marked. */}
+          <DailiesBar slug={game.slug} />
           {hero}
           <DailyTabs slug={game.slug} gameName={game.name} tab={tab} ref={tabsRef} />
 
