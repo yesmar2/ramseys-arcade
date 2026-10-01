@@ -1,0 +1,269 @@
+/*
+ * The admin page's Players card (components/AdminPlayers.tsx): tiles of counts, two return rates, a bar a
+ * day, and a line on runs and accounts. The bars' teal is a step of the brand's that passes the chart checks
+ * (lightness, chroma, contrast) on each theme's surface.
+ */
+
+.adp {
+  --adp-bar: #12917a;
+}
+
+html[data-theme='dark'] .adp {
+  --adp-bar: #28a993;
+}
+
+.adp-head__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.adp-seeded {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* ---------- tiles ---------- */
+
+.adp-grid {
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+
+.adp-row-label {
+  align-self: center;
+  padding-right: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adp-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.9rem;
+  background: var(--panel-fill);
+}
+
+.adp-tile__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.adp-tile__value {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.adp-tile__note {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.adp-returns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+/* ---------- a bar a day ---------- */
+
+.adp-chart {
+  margin: 1.3rem 0 0;
+}
+
+.adp-chart__title {
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.adp-chart__title span {
+  margin-left: 0.4rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.adp-chart__plot {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.adp-chart__max {
+  position: absolute;
+  top: -0.45rem;
+  left: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.adp-chart__bars,
+.adp-chart__days {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adp-chart__bars {
+  height: 7.5rem;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.25);
+  background: linear-gradient(rgba(var(--ink-rgb), 0.08), rgba(var(--ink-rgb), 0.08)) top / 100% 1px no-repeat;
+}
+
+.adp-bar {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  outline: none;
+  cursor: default;
+}
+
+.adp-bar__fill {
+  width: min(100%, 1.6rem);
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--adp-bar);
+}
+
+.adp-bar--today .adp-bar__fill {
+  opacity: 0.55;
+}
+
+.adp-bar:hover .adp-bar__fill,
+.adp-bar:focus-visible .adp-bar__fill {
+  filter: brightness(1.12);
+}
+
+.adp-bar:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--adp-bar) 60%, transparent);
+  border-radius: 4px;
+}
+
+.adp-bar__tip {
+  position: absolute;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  z-index: 2;
+  display: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.6rem;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.adp-bar:first-child .adp-bar__tip,
+.adp-bar:nth-child(2) .adp-bar__tip {
+  left: 0;
+  transform: none;
+}
+
+.adp-bar:last-child .adp-bar__tip,
+.adp-bar:nth-last-child(2) .adp-bar__tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.adp-bar:hover .adp-bar__tip,
+.adp-bar:focus-visible .adp-bar__tip {
+  display: block;
+}
+
+.adp-chart__days {
+  margin-top: 0.35rem;
+  padding-left: 2rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.adp-table {
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.adp-table summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.adp-table table {
+  margin-top: 0.5rem;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.adp-table th,
+.adp-table td {
+  padding: 0.25rem 1.1rem 0.25rem 0;
+  text-align: left;
+}
+
+.adp-table thead th {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.adp-foot {
+  margin: 1.1rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.adp-foot b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 40rem) {
+  .adp-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .adp-row-label {
+    grid-column: 1 / -1;
+  }
+
+  .adp-returns {
+    grid-template-columns: 1fr;
+  }
+
+  .adp-head__tools {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+  }
+}

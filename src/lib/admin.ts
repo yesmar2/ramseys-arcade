@@ -171,6 +171,26 @@ export function notAdminWords(code: string | undefined, email: string | undefine
   }
 }
 
+/**
+ * Who's playing (the API's playerStats.ts): players who played today, this week and this month; accounts
+ * made; how many came back the next day and within a week of signing up; each of the last 14 days; and runs
+ * begun in the last day, the only trace of signed-out play. Active means saved a run, which needs an account.
+ */
+export type PlayerStats = {
+  day: string
+  includeSeeded: boolean
+  accounts: { total: number; saved: number }
+  active: { day: number; week: number; month: number }
+  joined: { day: number; week: number; month: number }
+  returned: { nextDay: { players: number; back: number }; week: { players: number; back: number } }
+  days: { day: string; active: number; joined: number }[]
+  runs24h: { total: number; signedOut: number }
+}
+
+export function fetchPlayerStats(includeSeeded: boolean) {
+  return api<PlayerStats>(`/admin/players${includeSeeded ? '?seeded=1' : ''}`)
+}
+
 export async function fetchClientErrors() {
   return (await api<{ errors: AdminClientError[] }>('/admin/client-errors?limit=100')).errors
 }
