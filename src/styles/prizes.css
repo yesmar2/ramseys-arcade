@@ -225,6 +225,7 @@ html[data-theme='dark'] .pname--ember {
 /* ---------- what a run paid, on its report ---------- */
 
 .run-tix {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.7rem;
@@ -317,6 +318,89 @@ html[data-theme='dark'] .pname--ember {
   inset: 0 auto 0 0;
   border-radius: 999px;
   background: linear-gradient(90deg, #ff7440, #ffab85);
+}
+
+/*
+ * The payout (RunTickets.tsx): a slot at the box's left, the strip it feeds out to the right, seen only
+ * once it's out of the slot's mouth, and the count at the top right. The run's ticket and its words wait
+ * hidden until the strip is torn off; a tap meanwhile skips to them.
+ */
+.run-tix--feeding {
+  cursor: pointer;
+}
+
+.run-tix--feeding > svg,
+.run-tix--feeding > .run-tix__body {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.run-tix__feed {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.run-tix__mouth {
+  position: absolute;
+  inset: 0 0 0 1.05rem;
+  overflow: hidden;
+  border-radius: 0 1.05rem 1.05rem 0;
+}
+
+.run-tix__strip {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  background-repeat: repeat-x;
+  transform: translateY(-50%);
+}
+
+.run-tix__slot {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  width: 0.7rem;
+  height: 3.4rem;
+  margin-top: -1.7rem;
+  border-radius: 0.4rem;
+  background: #070b0f;
+  box-shadow:
+    inset 0 0 0 2px #1f2a33,
+    0 0 0 1px color-mix(in srgb, var(--ticket) 65%, transparent),
+    0 0 14px color-mix(in srgb, var(--ticket) 35%, transparent);
+}
+
+.run-tix__count {
+  position: absolute;
+  right: 0.85rem;
+  top: 0.35rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--ticket-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Torn off: the run's ticket pops in where the strip went, and its words come up. A name of its own, so the pop plays again. */
+.run-tix.run-tix--out:not(.run-tix--dim) > svg {
+  animation: run-tix-reveal 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.3) both;
+}
+
+.run-tix--out > .run-tix__body {
+  animation: run-tix-words 0.3s ease-out both;
+}
+
+@keyframes run-tix-reveal {
+  from {
+    transform: translateY(0.4rem) rotate(-6deg) scale(0.8);
+  }
+}
+
+@keyframes run-tix-words {
+  from {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
