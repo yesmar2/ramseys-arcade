@@ -257,15 +257,6 @@ export function playersNote(slug: string, period: LeaderboardPeriod): string {
 }
 
 /**
- * Said on a first-result daily's punch once today's is in: playing today's again changes nothing, as the
- * first result stands. Null for a daily whose best run counts (Hot Lap, Marble Run), where it still can.
- */
-export function replayIsPractice(slug: string): string | null {
-  if (!FIRST_RUN_DAILIES.has(slug)) return null
-  return `Playing it again is practice: your first ${firstResultWord(slug)} stands.`
-}
-
-/**
  * Where a run of `best` would land on this board if played now: behind everyone at or above it, as a tie
  * goes to whoever got there first and a new run is the latest. (placeBeating is a run just better than it.)
  */

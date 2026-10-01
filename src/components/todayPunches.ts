@@ -24,11 +24,9 @@ import { formatRun as formatCaveRun } from '../games/lander/score'
 import { courseDay, dailyCourse } from '../games/marblerun/daily'
 import { keptRun } from '../games/marblerun/runStore'
 import { formatRun } from '../games/marblerun/score'
-import { dailyTabHref, todayShareHref } from '../hooks/useHashRoute'
+import { todayShareHref } from '../hooks/useHashRoute'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
-import { dailyWords } from '../lib/dailyWords'
 import type { Viewer } from '../lib/deviceRuns'
-import { replayIsPractice } from '../lib/gameBoard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import {
@@ -69,21 +67,12 @@ export type Punch = {
   carry: string | null
   /** The day's line for the share. */
   share: string | null
-  go: string
   /** In its first week on the ticket. */
   fresh: boolean
-  /** Its game's past courses, a tab of the game's page, and the tab's name: Past holes, Past tracks, Past days… */
-  pastHref: string
-  pastTab: string
-  /**
-   * Once it's punched, on a daily whose first result counts (Ace Chase, Find the Bug, Half Full): playing
-   * today's again is practice. Null where it isn't, or where a better run still counts (Hot Lap, Marble Run, Lander).
-   */
-  again: string | null
 }
 
 /** A daily's punch, apart from what every punch has from TODAY_DAILIES (its key, game and label, and whether it's new). */
-type PunchDay = Omit<Punch, 'key' | 'slug' | 'label' | 'game' | 'fresh' | 'pastHref' | 'pastTab' | 'again'>
+type PunchDay = Omit<Punch, 'key' | 'slug' | 'label' | 'game' | 'fresh'>
 
 export const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 /** How long a daily is new on the ticket, in days. */
@@ -133,7 +122,8 @@ export function streakLine({ before, done, rule }: Pick<Ticket, 'before' | 'done
   const n = before + 1
   if (done < rule.need) {
     const left = rule.need - done
-    return left === 1 ? `One more to make it ${n}` : `${capital(numberWord(left))} to go to make it ${n}`
+    const goal = before === 0 ? 'to start your streak' : `to make it ${n}`
+    return left === 1 ? `One more ${goal}` : `${capital(numberWord(left))} to go ${goal}`
   }
   if (rule.count > TODAY_KEEP && done < rule.count) return `Kept. ${capital(numberWord(rule.count - done))} more for a Full ticket`
   return `Back tomorrow for Day ${n + 1}`
@@ -162,7 +152,6 @@ function holePunch(day: string, server: TodayServer | null, viewer: Viewer): Pun
     short: tries != null ? triesWords(tries) : null,
     carry: tried > 0 ? `Carry on, ${triesWords(tried)} in` : null,
     share: tries != null ? `${hole.def.name} in ${tries}` : null,
-    go: 'Play the hole',
   }
 }
 
@@ -182,7 +171,6 @@ function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: lapWords,
     carry: null,
     share: lapWords ? `${track.name} ${lapWords}` : null,
-    go: 'Race the track',
   }
 }
 
@@ -209,7 +197,6 @@ function wantedPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: runTime,
     carry: started ? (at ? `Carry on, scene ${Math.min(DAY_SCENES, at.index + 1)} of ${DAY_SCENES}` : 'Carry on') : null,
     share: runTime ? `${marks}${runTime}` : null,
-    go: 'Find them',
   }
 }
 
@@ -234,7 +221,6 @@ function pourPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: score != null ? formatBoard(score) : null,
     carry: !done && levels.length > 0 ? `Carry on, glass ${Math.min(ROUNDS, levels.length + 1)} of ${ROUNDS}` : null,
     share: score != null ? `${same ? `${same.scores.map(markFor).join('')} ` : ''}${formatBoard(score)}` : null,
-    go: 'Pour',
   }
 }
 
@@ -254,7 +240,6 @@ function coursePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: runWords,
     carry: null,
     share: runWords ? `${course.name} ${runWords}` : null,
-    go: 'Roll the course',
   }
 }
 
@@ -274,7 +259,6 @@ function cavePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: runWords,
     carry: null,
     share: runWords ? `${cave.name} ${runWords}` : null,
-    go: 'Fly the cave',
   }
 }
 
@@ -346,9 +330,6 @@ export function useTicket(viewer: Viewer): Ticket {
       label: d.label,
       game: getGame(d.slug)?.name ?? d.label,
       fresh: d.from ? daysBetween(d.from, day) < FRESH_DAYS : false,
-      pastHref: dailyTabHref(d.slug, 'past'),
-      pastTab: dailyWords(d.slug).pastTab,
-      again: own.done ? replayIsPractice(d.slug) : null,
       ...own,
     }
   })

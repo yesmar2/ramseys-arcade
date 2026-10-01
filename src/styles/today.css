@@ -1,9 +1,10 @@
 /*
  * The Today set (lib/today.ts): the header's chip (TodayChip), today's ticket on the Today page
- * (TodayCard): a stub with the streak and the week, the day's punches (all across on a desktop; a strip
- * with one shown big on a phone) and the bonus punches; the rivals and the streak's rewards beside it
- * (the rest of the page is todayPage.css). The home page's Today row has its own (homeToday.css). Ticket
- * orange is the prize counter's (prizes.css); a Full ticket is gold.
+ * (TodayCard): a stub with the streak, the day's dailies as tiles (all across on a desktop, three a row on
+ * a phone) and the bonus punches; a past day's ticket (PastDayTicket), in the same frame with a row of
+ * slots; the rivals and the streak's rewards beside it (the rest of the page is todayPage.css). The home
+ * page's Today row has its own (homeToday.css). Ticket orange is the prize counter's (prizes.css); a Full
+ * ticket is gold.
  */
 
 :root {
@@ -162,7 +163,7 @@ html[data-theme='dark'] {
   color: var(--ticket-text, #c2461d);
 }
 
-/* The stub: the streak, and the week under it. */
+/* The stub: the streak (today's ticket), or how the day went (a past day's). */
 .today-card__stub {
   position: relative;
   flex: none;
@@ -202,43 +203,6 @@ html[data-theme='dark'] {
   gap: 0.5rem;
 }
 
-.today-card__date-short {
-  display: none;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.today-card__streak {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  column-gap: 0.55rem;
-  row-gap: 0.5rem;
-}
-
-.today-card__streak-n {
-  font-family: var(--font-display);
-  font-size: 4.6rem;
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.today-card__streak > svg {
-  width: 2.1rem;
-  height: 2.1rem;
-  margin-bottom: 0.35rem;
-  color: var(--ticket, #ff8552);
-}
-
-.today-card__streak-line {
-  flex-basis: 100%;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
 .today-card__signin {
   margin: 0;
   font-size: 0.95rem;
@@ -252,75 +216,7 @@ html[data-theme='dark'] {
   color: var(--muted);
 }
 
-/* The week: seven days, today last. */
-.today-week {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  gap: 0.4rem;
-}
-
-.today-week__day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.today-week__mark {
-  display: grid;
-  place-items: center;
-  width: 1.7rem;
-  height: 1.7rem;
-  box-sizing: border-box;
-  border-radius: 50%;
-  border: 2px solid rgba(var(--ink-rgb), 0.12);
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: var(--ticket-text, #c2461d);
-}
-
-.today-week__mark svg {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
-.today-week__day--kept .today-week__mark {
-  border-color: var(--ticket, #ff8552);
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
-}
-
-.today-week__day--full .today-week__mark {
-  border-color: var(--today-full);
-  background: var(--today-full);
-  color: var(--ticket-ink, #3a1406);
-  box-shadow:
-    0 0 0 2px var(--surface),
-    0 0 0 3.5px var(--today-full);
-}
-
-.today-week__day--full .today-week__mark svg {
-  width: 0.8rem;
-  height: 0.8rem;
-}
-
-.today-week__day--before .today-week__mark {
-  border-color: transparent;
-}
-
-.today-week__day--today .today-week__mark {
-  border: 2px dashed var(--ticket, #ff8552);
-}
-
-.today-week__name {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-/* What the week's marks mean, once a day can be a Full ticket. */
+/* What the calendar's marks mean (the Today page's), once a day can be a Full ticket. */
 .today-week__key {
   margin: 0;
   display: flex;
@@ -411,8 +307,284 @@ html[data-theme='dark'] {
 }
 
 /*
- * The ticket on a desktop: every daily across, each with its picture, the day's own and its way in. Four or
- * more go two by two until there's room for them all in a row; past four the pictures are smaller.
+ * Today's ticket (TodayCard): a slim stub, the streak and its line over the day's punches as pips, then the
+ * dailies as tiles, all across while there's room and three a row once there isn't: each its picture, its
+ * name, and how it went or the way in.
+ */
+.today-card--tiles .today-card__stub {
+  width: 12.5rem;
+  padding: 1.4rem 1.25rem;
+  gap: 0.7rem;
+}
+
+.today-streak {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.45rem;
+  row-gap: 0.6rem;
+}
+
+.today-streak__n {
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-streak > svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  color: var(--ticket, #ff8552);
+}
+
+.today-streak__line {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: rgba(var(--ink-rgb), 0.78);
+  text-wrap: pretty;
+}
+
+/* Under the number, on a row of its own. */
+.today-streak > .today-streak__line {
+  flex-basis: 100%;
+}
+
+/* The day's punches, done first: ticket orange, and gold once every one is (a Full ticket). */
+.today-pips {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.today-pips__pip {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--ink-rgb), 0.2);
+}
+
+.today-pips__pip--on {
+  border-color: var(--ticket, #ff8552);
+  background: var(--ticket, #ff8552);
+}
+
+.today-pips--full .today-pips__pip--on {
+  border-color: var(--today-full);
+  background: var(--today-full);
+}
+
+.today-pips__count {
+  margin-left: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The body's room says how many tiles go a row (below). */
+.today-card--tiles .today-card__body {
+  container-type: inline-size;
+  padding: 1.35rem 1.5rem 1.4rem;
+  gap: 1.25rem;
+}
+
+.today-card--tiles .today-card__head {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.8rem;
+}
+
+.today-card__count {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-card--tiles .today-card__share {
+  margin-left: auto;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+}
+
+.today-tiles {
+  --cols: var(--n, 6);
+  --gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.3rem var(--gap);
+}
+
+/* Five or more go three a row, the last row centred, until there's room for them all across. */
+@container (max-width: 43rem) {
+  .today-tiles--many {
+    --cols: 3;
+  }
+}
+
+.today-tile {
+  flex: 0 0 calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+/* The picture, and on its corners, outside its round crop, whether it's ranked or just for fun, and the punch. */
+.today-tile__pic {
+  position: relative;
+  flex: none;
+  width: min(6.25rem, 100%);
+  aspect-ratio: 1;
+}
+
+.today-tile__art {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.today-tile__art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(var(--ink-rgb), 0.1);
+  transition: box-shadow 0.15s ease;
+}
+
+.today-tile__art:hover::after {
+  box-shadow: inset 0 0 0 3px var(--ticket, #ff8552);
+}
+
+.today-tile__scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.today-tile--done .today-tile__scene {
+  opacity: 0.5;
+}
+
+/* Ranked or just for fun (DailyKindTag), its tip its own: the picture's sibling, over its top corner. */
+.today-tile__kind {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.today-tile__kind.dkind--badge {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.today-tile__kind.dkind--badge svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.today-tile__check {
+  position: absolute;
+  right: -0.1rem;
+  bottom: -0.1rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  box-shadow: 0 0 0 3px var(--surface);
+}
+
+.today-tile__check svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.today-tile__game {
+  max-width: 100%;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+/* How it went, or the way in, at the tile's foot, so a row's line up under names of one line or two. */
+.today-tile__go,
+.today-tile__result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: auto;
+  white-space: nowrap;
+}
+
+.today-tile__go {
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.today-tile__go:hover,
+.today-tile__go:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+}
+
+.today-tile__go:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
+}
+
+.today-tile__go svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.today-tile__result {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ticket-text, #c2461d);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-tile__result svg {
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/*
+ * A past day's ticket on a desktop (PastDayTicket): every daily across, each with its picture, the day's own
+ * and its way in. Four or more go two by two until there's room for them all in a row; past four the
+ * pictures are smaller.
  */
 .today-row {
   list-style: none;
@@ -532,10 +704,6 @@ html[data-theme='dark'] {
   margin-block: -0.15rem 0.05rem;
 }
 
-.today-feature__kind {
-  margin-block: -0.1rem 0.05rem;
-}
-
 .today-slot__title {
   max-width: 100%;
   font-size: 0.85rem;
@@ -590,303 +758,7 @@ html[data-theme='dark'] {
 }
 
 
-/*
- * The strip, on a phone: a punch for each live daily, in a row that narrows rather than wraps. The one shown
- * big below it is marked; a tap picks another.
- */
-.today-card__punches {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(var(--n, 3), minmax(0, 8rem));
-  gap: 1rem;
-}
-
-.today-punch {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.7rem 0.3rem 0.75rem;
-  border-radius: 1.1rem;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  text-align: center;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-
-.today-punch:hover {
-  border-color: rgba(var(--ink-rgb), 0.16);
-}
-
-.today-punch:focus-visible {
-  outline: 2px solid var(--ticket, #ff8552);
-  outline-offset: 2px;
-}
-
-.today-punch[aria-pressed='true'] {
-  background: rgba(var(--ink-rgb), 0.05);
-  border-color: color-mix(in srgb, var(--ticket, #ff8552) 65%, transparent);
-}
-
-.today-punch__art {
-  position: relative;
-  display: block;
-  width: 4.75rem;
-  max-width: 100%;
-  aspect-ratio: 1;
-  flex: none;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid rgba(var(--ink-rgb), 0.14);
-  box-sizing: border-box;
-}
-
-.today-punch__scene {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.today-punch--done .today-punch__art::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: rgba(12, 18, 24, 0.55);
-}
-
-/* Punched: a ring and a check over the dimmed picture. */
-.today-punch__check {
-  position: absolute;
-  inset: 18%;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 2px solid var(--ticket, #ff8552);
-  color: var(--ticket, #ff8552);
-}
-
-.today-punch__check svg {
-  width: 55%;
-  height: 55%;
-}
-
-.today-punch__game,
-.today-punch__label {
-  max-width: 100%;
-  font-size: 0.92rem;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-/* A phone has the short name. */
-.today-punch__label {
-  display: none;
-}
-
-/* The picture and, outside its round crop, its ranked or just-for-fun mark (DailyKindMark) on the corner. */
-.today-punch__pic {
-  position: relative;
-  display: block;
-}
-
-.today-punch__kind {
-  position: absolute;
-  top: -0.15rem;
-  left: -0.15rem;
-  z-index: 3;
-}
-
-.today-punch__state {
-  max-width: 100%;
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.today-punch--done .today-punch__state {
-  color: var(--ticket-text, #c2461d);
-}
-
-/* The punch shown big: the game's whole picture beside the day's own and the way in. The picture gives way first. */
-.today-feature {
-  display: grid;
-  grid-template-columns: minmax(0, 17rem) minmax(12rem, 1fr);
-  gap: 1.5rem;
-  align-items: center;
-  box-sizing: border-box;
-  padding: 1rem;
-  border-radius: 1.3rem;
-  background: rgba(var(--ink-rgb), 0.04);
-  border: 1px solid rgba(var(--ink-rgb), 0.07);
-}
-
-.today-feature__art {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 1rem;
-  overflow: hidden;
-}
-
-.today-feature__scene {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.today-feature__text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-  min-width: 0;
-}
-
-.today-feature__kicker {
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ticket-text, #c2461d);
-}
-
-/* A daily in its first week on the ticket. */
-.today-feature__new {
-  display: inline-block;
-  margin-left: 0.4rem;
-  padding: 0 0.45rem;
-  border-radius: 999px;
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  line-height: 1.5;
-  vertical-align: 1px;
-}
-
-.today-feature__game {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-.today-feature__title {
-  max-width: 100%;
-  font-size: 0.95rem;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.today-feature__mine {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--ticket-text, #c2461d);
-}
-
-.today-feature__row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 0.6rem;
-}
-
-.today-feature__go {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 3rem;
-  box-sizing: border-box;
-  padding: 0 1.5rem;
-  border-radius: 999px;
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
-  font-size: 1rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.today-feature__go:hover,
-.today-feature__go:focus-visible {
-  background: var(--ticket-deep, #e0602e);
-  outline: none;
-}
-
-.today-feature__go svg {
-  width: 0.9rem;
-  height: 0.9rem;
-}
-
-/* A punched one's way on: its board, today. */
-.today-feature__board {
-  display: inline-flex;
-  align-items: center;
-  min-height: 3rem;
-  box-sizing: border-box;
-  padding: 0 1.3rem;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--ink-rgb), 0.2);
-  color: var(--ink);
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.today-feature__board:hover,
-.today-feature__board:focus-visible {
-  border-color: var(--ticket, #ff8552);
-  outline: none;
-}
-
-.today-feature__then {
-  font-size: 0.86rem;
-  color: var(--muted);
-}
-
-/*
- * A punched daily whose first result counts: playing today's again is practice. In the practice label's
- * colour (runLabel.css's --run-label, from the run-label--practice class beside this one), with its loop.
- */
-.today-again {
-  display: block;
-  max-width: 100%;
-  margin-top: 0.15rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.4;
-  color: var(--run-label, var(--muted));
-}
-
-.today-again svg {
-  display: inline-block;
-  width: 0.95em;
-  height: 0.95em;
-  margin-right: 0.3rem;
-  vertical-align: -0.15em;
-}
-
-/* A punch's way to its game's past courses: small, under its way in, with room round it for a thumb. */
+/* A past day's way to its board: small, under its way in, with room round it for a thumb. */
 .today-past {
   display: inline-block;
   padding: 0.3rem 0;
@@ -908,16 +780,12 @@ html[data-theme='dark'] {
   margin-top: -0.55rem;
 }
 
-.today-feature__past {
-  margin-top: 0.1rem;
-}
-
-/* The bonus punches: the day's other things, which don't count. */
+/* The bonus punches: the day's other things, which don't count. A chip each, wrapping whole. */
 .today-card__bonus {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.5rem 0.75rem;
 }
 
 .today-card__bonus .today-card__label {
@@ -930,71 +798,54 @@ html[data-theme='dark'] {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .today-bonus {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  min-height: 2.6rem;
+  gap: 0.35rem;
+  min-height: 2.15rem;
   box-sizing: border-box;
-  padding: 0.3rem 0.9rem 0.3rem 0.35rem;
+  padding: 0 0.85rem;
   border-radius: 999px;
   border: 1px dashed rgba(var(--ink-rgb), 0.24);
   background: transparent;
-  color: var(--ink);
+  color: rgba(var(--ink-rgb), 0.82);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 700;
+  white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
+  transition: border-color 0.15s ease;
 }
 
 .today-bonus:hover,
 .today-bonus:focus-visible {
   border-color: var(--ticket, #ff8552);
-  outline: none;
+  color: var(--ink);
 }
 
-.today-bonus__art {
-  --inline-thumb-size: 1.9rem;
-  border-radius: 50%;
+.today-bonus:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
 }
 
-.today-bonus__bug {
-  flex: none;
-  width: 1.9rem;
-  height: 1.9rem;
-}
-
+/* The hunt's bug caught: its chip solid, with the punch's check. */
 .today-bonus--done {
   border-style: solid;
   border-color: color-mix(in srgb, var(--ticket, #ff8552) 55%, transparent);
 }
 
-.today-bonus__check {
-  display: grid;
-  place-items: center;
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
-}
-
-.today-bonus__check svg {
-  width: 0.75rem;
-  height: 0.75rem;
+.today-bonus svg {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--ticket, #ff8552);
 }
 
 /* ---------- rivals: friends, or a group, on today's dailies (TodayRivals) ---------- */
-
-.today-feature__rival {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--muted);
-}
 
 .today-rivals {
   box-sizing: border-box;
@@ -1147,8 +998,7 @@ html[data-theme='dark'] {
   vertical-align: -0.15rem;
 }
 
-.today-rivals__sr,
-.today-card__said {
+.today-rivals__sr {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1369,7 +1219,7 @@ html[data-theme='dark'] {
   color: var(--ticket-text, #c2461d);
 }
 
-/* ---------- narrower: the stub on top, the punches across in columns ---------- */
+/* ---------- narrower: the stub on top; today's is one line, and its tiles go three a row ---------- */
 
 @media (max-width: 48rem) {
   .today-card {
@@ -1403,35 +1253,6 @@ html[data-theme='dark'] {
     right: -0.95rem;
   }
 
-  .today-card__date-short {
-    display: block;
-  }
-
-  .today-card__streak {
-    align-items: center;
-    flex-wrap: nowrap;
-  }
-
-  .today-card__streak-n {
-    font-size: 3.4rem;
-    line-height: 1;
-  }
-
-  .today-card__streak > svg {
-    width: 1.8rem;
-    height: 1.8rem;
-    margin: 0;
-  }
-
-  .today-card__streak-line {
-    flex-basis: auto;
-    font-size: 0.9rem;
-  }
-
-  .today-week {
-    gap: 0.7rem;
-  }
-
   .today-card__rule {
     display: none;
   }
@@ -1453,73 +1274,96 @@ html[data-theme='dark'] {
     display: none;
   }
 
-  .today-card__head .today-card__share {
+  /* Today's stub: the streak and its line, then the pips, in a line. The head says the count. */
+  .today-card--tiles .today-card__stub {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem 0.8rem;
+  }
+
+  .today-card__kicker,
+  .today-pips__count,
+  .today-card__count-word {
     display: none;
   }
 
-  /* The strip: the punches in equal columns across, smaller past four. */
-  .today-card__punches {
-    display: grid;
-    grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  .today-streak {
+    flex-wrap: nowrap;
+    column-gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .today-streak__n {
+    font-size: 2rem;
+  }
+
+  .today-streak > svg {
+    flex: none;
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .today-streak__line {
+    font-size: 0.82rem;
+    line-height: 1.3;
+  }
+
+  .today-streak > .today-streak__line {
+    flex-basis: auto;
+  }
+
+  .today-pips {
+    flex: none;
     gap: 0.25rem;
   }
 
-  .today-punch {
-    padding: 0.45rem 0.1rem 0.5rem;
-    gap: 0.3rem;
-    border-radius: 0.9rem;
+  .today-pips__pip {
+    width: 0.75rem;
+    height: 0.75rem;
   }
 
-  .today-punch__art {
-    width: 3.4rem;
-    height: 3.4rem;
-    border-width: 2px;
+  .today-card--tiles .today-card__body {
+    padding: 1rem 0.9rem 1.1rem;
+    gap: 1.1rem;
   }
 
-  .today-card__punches--many .today-punch__art {
-    width: 2.9rem;
-    height: 2.9rem;
+  .today-card--tiles .today-card__head {
+    align-items: center;
   }
 
-  .today-punch__game {
-    display: none;
+  .today-card--tiles .today-card__share {
+    min-height: 2.4rem;
+    padding: 0 0.9rem;
   }
 
-  .today-punch__label {
-    display: block;
-    font-size: 0.74rem;
+  .today-tiles {
+    --gap: 0.5rem;
+    row-gap: 1.1rem;
   }
 
-  .today-punch__state {
-    font-size: 0.68rem;
+  .today-tile__pic {
+    width: min(5.25rem, 100%);
   }
 
-  /* The punch shown big stacks: the picture across the top, the Play button full width. */
-  .today-feature {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.8rem;
-    padding: 0.7rem;
+  .today-tile__game {
+    font-size: 0.94rem;
   }
 
-  .today-feature__art {
-    aspect-ratio: auto;
-    height: 8.5rem;
-    border-radius: 0.8rem;
+  .today-tile__go,
+  .today-tile__result {
+    min-height: 2.4rem;
   }
 
-  .today-feature__game {
-    font-size: 1.35rem;
+  .today-tile__go {
+    padding: 0 0.95rem;
+    font-size: 0.9rem;
   }
 
-  .today-feature__row {
-    align-self: stretch;
-    margin-top: 0.4rem;
-    gap: 0.6rem;
-  }
-
-  .today-feature__go {
-    width: 100%;
-    justify-content: center;
+  .today-tile__result {
+    font-size: 0.94rem;
   }
 
   .today-card__bonus {
@@ -1531,45 +1375,16 @@ html[data-theme='dark'] {
   }
 }
 
-/* On a phone the count sits by the title, and the share goes under the punch shown big. */
-.today-card__progress,
-.today-card__share--foot {
-  display: none;
-}
-
-@media (max-width: 48rem) {
-  .today-card__progress {
-    display: block;
-    flex: none;
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: var(--muted);
-  }
-
-  .today-card__share--foot {
-    display: inline-flex;
-    width: 100%;
-  }
-}
-
-/* A desktop has the row; a phone has the strip and the punch shown big. Last, so it wins over both. */
-@media (min-width: 48.0625rem) {
-  .today-card__punches,
-  .today-feature {
-    display: none;
-  }
-}
-
-@media (max-width: 48rem) {
-  .today-row {
-    display: none;
+@media (max-width: 22.5rem) {
+  .today-tile__go {
+    padding: 0 0.7rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .today-chip,
   .today-bonus,
-  .today-punch {
+  .today-tile__art::after {
     transition: none;
   }
 }

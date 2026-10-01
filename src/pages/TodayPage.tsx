@@ -409,7 +409,7 @@ export function TodayPage() {
           {day ? (
             <PastDayTicket day={day} said={said} streak={streak} name={name} signedIn={signedIn} />
           ) : (
-            <TodayCard ticket={ticket} rivals={rivals.data} signedIn={signedIn} />
+            <TodayCard ticket={ticket} signedIn={signedIn} />
           )}
           {signedIn ? (
             day ? null : (
