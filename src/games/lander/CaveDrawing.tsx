@@ -44,7 +44,8 @@ export function CaveDrawing({ cave, className, aspect = 16 / 10 }: { cave: Cave;
       ))}
     </>
   )
-  const stroke = Math.max(w, h) / 160
+  // The walls' light, thicker than true scale where the drawing is small, so a thumbnail's cave isn't a thread.
+  const stroke = Math.max(w, h) / 110
   return (
     <svg className={className} viewBox={`0 0 ${w.toFixed(1)} ${h.toFixed(1)}`} role="img" aria-label={`${cave.name}, from the side`}>
       <defs>

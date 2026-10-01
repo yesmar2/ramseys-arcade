@@ -5,6 +5,7 @@ import { dayTag as pourTag } from '../games/halffull/daily'
 import { dayPlan } from '../games/halffull/plan'
 import { glassNames } from '../games/halffull/planSvg'
 import { dailyTrack, trackNumber } from '../games/hotlap/daily'
+import { dailyCave } from '../games/lander/daily'
 import { dailyCourse } from '../games/marblerun/daily'
 import { dayBoardHref, gamePlayHref } from '../hooks/useHashRoute'
 import { useDailyDays, type ArchiveDay, type DailyDays } from '../lib/archive'
@@ -47,6 +48,10 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
   }
   if (key === 'pour') {
     return { kicker: `Pour ${pourTag(day)}`, title: glassNames(dayPlan(day)), play: `${gamePlayHref('halffull')}?day=${day}` }
+  }
+  if (key === 'cave') {
+    const cave = dailyCave(day)
+    return { kicker: `Cave #${cave.n}`, title: cave.name, play: `${gamePlayHref('lander')}?day=${day}` }
   }
   const course = dailyCourse(day)
   return { kicker: `Course #${course.n}`, title: course.name, play: `${gamePlayHref('marblerun')}?day=${day}` }
@@ -122,6 +127,7 @@ export function PastDayTicket({
     wanted: useDailyDays('findbug', name),
     pour: useDailyDays('halffull', name),
     course: useDailyDays('marblerun', name),
+    cave: useDailyDays('lander', name),
   }
   const card = said?.live ? TODAY_DAILIES.filter((d) => said.live!.includes(d.key) && isGameListed(d.slug)) : liveDailies(day)
   const slots = card.map((d) => slotOf(d, day, asked[d.key], said, signedIn))

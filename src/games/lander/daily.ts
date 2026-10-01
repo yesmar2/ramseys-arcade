@@ -11,9 +11,10 @@ export const FIRST_DAY = '2026-09-30'
 
 /**
  * The first day Today's Cave is on the Dailies card (lib/today.ts), as the API's today.ts LANDER_TODAY_FROM
- * has it; null while it isn't.
+ * has it: the day after the game came, since a day's card is judged as it began and its first day's began
+ * with five.
  */
-export const TODAY_FROM: string | null = null
+export const TODAY_FROM: string | null = '2026-10-01'
 const TZ = 'America/New_York'
 
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })

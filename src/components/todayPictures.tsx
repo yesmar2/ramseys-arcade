@@ -5,6 +5,8 @@ import { BugPortrait } from '../games/findbug/Portrait'
 import { dayPlan } from '../games/halffull/plan'
 import { pourPlanSvg } from '../games/halffull/planSvg'
 import { dailyTrack } from '../games/hotlap/daily'
+import { CaveDrawing } from '../games/lander/CaveDrawing'
+import { landerDay } from '../games/lander/runs'
 import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
 import { marbleDay } from '../games/marblerun/runs'
@@ -15,8 +17,8 @@ import type { TodayKey } from '../lib/today'
 /*
  * Each daily's own picture of the day, for the home page's Today row (HomeToday.tsx), drawn as the day's
  * share card draws them (scripts/today-cards.mjs): the hole from above, the track in its neon, who's
- * wanted, the glasses on the shelf (empty: nothing gives half away) and the course in its light. Each fills
- * a 4:3 box. They come in a chunk of their own, with the plans and sims they're drawn from, after the row.
+ * wanted, the glasses on the shelf (empty: nothing gives half away), the course in its light and the cave
+ * from the side. Each fills a 4:3 box. They come in a chunk of their own, with the plans and sims they're drawn from, after the row.
  */
 
 const W = 480
@@ -146,11 +148,18 @@ function CoursePicture({ day }: { day: string }) {
   )
 }
 
+/** The cave from the side, as Lander's own cards draw it (CaveDrawing.tsx): it runs tall in the middle of the dark. */
+function CavePicture({ day }: { day: string }) {
+  const cave = useMemo(() => landerDay(day).cave, [day])
+  return <CaveDrawing cave={cave} aspect={W / H} />
+}
+
 /** A daily's picture of the day. */
 export function DayPicture({ daily, day }: { daily: TodayKey; day: string }) {
   if (daily === 'hole') return <HolePicture day={day} />
   if (daily === 'track') return <TrackPicture day={day} />
   if (daily === 'wanted') return <WantedPicture day={day} />
   if (daily === 'pour') return <PourPicture day={day} />
+  if (daily === 'cave') return <CavePicture day={day} />
   return <CoursePicture day={day} />
 }

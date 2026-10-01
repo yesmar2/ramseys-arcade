@@ -68,7 +68,7 @@ export function TodaysCaveCard() {
   const me = normalizePlayerName(usePlayerName())
   const board = useTodaysBoard(SLUG, day, me)
   const href = gamePlayHref(SLUG)
-  const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#f5b942')
+  const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#8a6ad4')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
   return (
     <section className="evp-card evp-daily tcv" style={style} aria-labelledby="tcv-title">

@@ -111,7 +111,7 @@ function andList(items: readonly (string | number)[]): string {
 /** The day, in the words the page opens with: how many dailies, how long, and what keeps the streak. */
 function dayLine({ total, rule }: Ticket): string | null {
   if (!total) return null
-  const dailies = `${capital(numberWord(total))} ${total === 1 ? 'daily' : 'dailies'}, about five minutes.`
+  const dailies = total === 1 ? 'One daily, about a minute.' : `${capital(numberWord(total))} dailies, about a minute each.`
   return rule.count > TODAY_KEEP
     ? `${dailies} Any ${numberWord(rule.need)} keep your streak; all ${numberWord(total)} is a Full ticket.`
     : `${dailies} Finish all ${numberWord(total)} to keep your streak going.`

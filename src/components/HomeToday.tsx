@@ -20,7 +20,7 @@ import '../styles/homeToday.css'
 
 /*
  * Today on the home page (lib/today.ts): the day's dailies as cards, each with its own picture of the day
- * (the hole, the track, who's wanted, the glasses, the course: todayPictures.tsx), what it is today, and
+ * (the hole, the track, who's wanted, the glasses, the course, the cave: todayPictures.tsx), what it is today, and
  * either your result and your place on its board or the way in and who leads. Over them, where the day
  * stands: a pip for each daily, the one that keeps the streak marked, what the streak needs next, the time
  * to the next dailies, and the way to the Today page. It's drawn from the same punches as the Today page's
@@ -38,6 +38,7 @@ const ACCENT: Record<TodayKey, string> = {
   wanted: '#5fd3c4',
   pour: '#f5b942',
   course: '#d774f0',
+  cave: '#a48af0',
 }
 
 /** The way in, short enough for a card. */
@@ -47,6 +48,7 @@ const GO: Record<TodayKey, string> = {
   wanted: 'Find them',
   pour: 'Pour',
   course: 'Roll it',
+  cave: 'Fly it',
 }
 
 const CheckIcon = () => (

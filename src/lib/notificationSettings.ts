@@ -1,4 +1,5 @@
 import { isGameListed } from '../data/games'
+import { TODAY_FROM as CAVE_FROM } from '../games/lander/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
 import { API_BASE, authHeaders } from './auth'
 
@@ -12,8 +13,8 @@ import { API_BASE, authHeaders } from './auth'
 export type NotificationLevel = 'push' | 'inbox' | 'off'
 
 /**
- * A kind of note, except that a friend beating your lap on Today's Track, or your run on Today's Course, is
- * apart from the hole, the Wanted and the pour: those two you can still take back.
+ * A kind of note, except that a friend beating your lap on Today's Track, or your run on Today's Course or
+ * Today's Cave, is apart from the hole, the Wanted and the pour: those you can still take back.
  */
 export type NotificationTopic =
   | 'match-open'
@@ -38,18 +39,22 @@ export type TopicInfo = {
   offWarning?: string
 }
 
-/** Today's Course is on the ticket, so its "beat you" notes come with the lap's: a run can be rolled again too. */
+/** Today's Course and Today's Cave are on the ticket, so their "beat you" notes come with the lap's: a run can be had again too. */
 const COURSE_ON_TICKET = COURSE_FROM != null && isGameListed('marblerun')
+const CAVE_ON_TICKET = CAVE_FROM != null && isGameListed('lander')
+/** Where a lap or a run can be beaten and taken back: "Today’s Track or Today’s Course", and so on. */
+const RUN_DAILIES = ['Today’s Track', ...(COURSE_ON_TICKET ? ['Today’s Course'] : []), ...(CAVE_ON_TICKET ? ['Today’s Cave'] : [])]
+const runDailies = RUN_DAILIES.length > 2 ? `${RUN_DAILIES.slice(0, -1).join(', ')} or ${RUN_DAILIES.at(-1)}` : RUN_DAILIES.join(' or ')
 
 export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[] }[] = [
   {
     title: 'Dailies',
     topics: [
-      COURSE_ON_TICKET
+      COURSE_ON_TICKET || CAVE_ON_TICKET
         ? {
             topic: 'today-lap',
             label: 'A friend beats your lap or your run',
-            hint: 'On Today’s Track or Today’s Course, while there’s still time to take it back.',
+            hint: `On ${runDailies}, while there’s still time to take it back.`,
           }
         : {
             topic: 'today-lap',
