@@ -10,6 +10,7 @@ import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   act,
+  consoleLayout,
   controlAt,
   createInitialState,
   resizeState,
@@ -23,7 +24,11 @@ import {
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
 
-/** How far a drag has to travel, in stage units, before it counts as the gesture. */
+/**
+ * How far a drag has to travel, in the toy's units, before it counts as the
+ * gesture. It was a twentieth of the whole play area, which on a big screen,
+ * where the toy stops growing, came to more than the knob's own radius.
+ */
 const DRAG_UNITS = 5
 
 /**
@@ -50,10 +55,14 @@ function measureTop(play: HTMLElement): number | undefined {
 
 /**
  * Each control has its own gesture, so the wrong gesture on the right control
- * does nothing rather than failing you: a tap bops, a sideways drag twists, a
- * drag down pulls, a drag up flicks, and a drag any which way spins.
+ * does nothing rather than failing you: a tap bops, a drag down pulls, a drag
+ * up flicks, and a drag any which way twists or spins.
+ *
+ * Twist used to want a sideways drag. But the knob is drawn with arrows turning
+ * round it, and a thumb turning a knob moves in an arc, which from the knob's
+ * side runs up or down first, so it often didn't count and the call ran out.
  */
-type Drag = { control: Control; x: number; y: number; done: boolean }
+type Drag = { control: Control; x: number; y: number; need: number; done: boolean }
 
 export function BopGame() {
   const tournament = useTournamentPlay()
@@ -174,7 +183,8 @@ export function BopGame() {
       perform('bop')
       return
     }
-    dragRef.current = { control, x, y, done: false }
+    const need = DRAG_UNITS * consoleLayout(s.stageW, s.stageH, s.stageTop).u
+    dragRef.current = { control, x, y, need, done: false }
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
 
@@ -184,14 +194,14 @@ export function BopGame() {
     const rect = e.currentTarget.getBoundingClientRect()
     const dx = e.clientX - rect.left - drag.x
     const dy = e.clientY - rect.top - drag.y
-    const need = DRAG_UNITS * (Math.min(rect.width, rect.height) / 100)
+    const { need } = drag
     const gestured =
-      drag.control === 'twist'
-        ? Math.abs(dx) >= need && Math.abs(dx) > Math.abs(dy)
-        : drag.control === 'pull'
-          ? dy >= need && dy > Math.abs(dx)
-          : drag.control === 'flick'
-            ? -dy >= need && -dy > Math.abs(dx)
+      drag.control === 'pull'
+        ? dy >= need && dy > Math.abs(dx)
+        : drag.control === 'flick'
+          ? -dy >= need && -dy > Math.abs(dx)
+          : drag.control === 'twist'
+            ? Math.hypot(dx, dy) >= need
             : Math.hypot(dx, dy) >= need * 1.4
     if (!gestured) return
     drag.done = true

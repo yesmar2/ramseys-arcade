@@ -110,9 +110,17 @@ export type GameState = {
  * however well it played. Measured on a model of a phone player, this moves
  * the usual run from 36 to about 49 and the best from 44 to about 70, and the
  * floor still ends every run in the end.
+ *
+ * It was still too hard (Ramsey, 2026-10-01). That model's phone player was
+ * quick; a slower one, closer to a grown-up or a child playing for fun (0.45 to
+ * 0.85 s to read a call, 0.15 to 0.35 s more to drag), met the 0.75 s floor
+ * at about 24 calls, its best about 29. A floor of 1.1 s, reached more slowly,
+ * puts its usual run at about 43 and its best near 60, so a good run shows,
+ * and the slips and slow moments that come late in a run still end it. A
+ * keyboard's usual run goes from about 37 to about 90.
  */
-const FIRST_WINDOW = 2.4
-const MIN_WINDOW = 0.75
+const FIRST_WINDOW = 2.8
+const MIN_WINDOW = 1.1
 /*
  * The very first call of a run waits longer: a first-timer is still finding
  * the five controls, and at 2.4 s the first call ran out before they'd found
@@ -120,7 +128,7 @@ const MIN_WINDOW = 0.75
  * the windows run exactly as before.
  */
 const OPENING_WINDOW = 5
-const SHRINK = 0.965
+const SHRINK = 0.978
 const GAP = 0.32
 export const PRESS_LIFE = 0.34
 /** Answering in this fraction of the window earns the quick point. */
