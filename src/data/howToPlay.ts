@@ -40,7 +40,7 @@ export type HowToScore = {
 export type HowToCount = {
   /** Today’s track, A past track. */
   what: string
-  kind: 'counts' | 'board' | 'practice'
+  kind: 'counts' | 'fun' | 'board' | 'practice'
   /** What becomes of the result, in a line. */
   sub: string
 }
@@ -179,7 +179,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { does: 'Zoom and look around', touch: 'Pinch · drag', keys: '+ −' },
     ],
     scores: [
-      { what: 'Your score', pts: 'total time', sub: 'fastest wins' },
+      { what: 'Your score', pts: 'total time', sub: 'the faster the better' },
       { what: 'Wrong tap', pts: '1.5s dazed' },
       { what: 'Not found', pts: 'the whole minute' },
     ],
@@ -188,10 +188,10 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     counts: [
       {
         what: 'Today’s Wanted',
-        kind: 'counts',
-        sub: 'Your first run today goes on today’s board, your week and your rank. Runs after it are practice.',
+        kind: 'fun',
+        sub: 'Your first run today is your result: it punches today’s Dailies and keeps your days in a row. Just for fun: nobody is ranked on it. Runs after it are practice.',
       },
-      { what: 'A past day', kind: 'practice', sub: 'Play any past day. Nothing is saved: no board, no tickets, no rank.' },
+      { what: 'A past day', kind: 'practice', sub: 'Play any past day. Nothing is saved.' },
     ],
   },
   barrage: {
@@ -291,28 +291,19 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { does: 'Read the green', touch: 'Double-tap a spot · Slopes', keys: 'Double-click a spot · Slopes' },
     ],
     scores: [
-      { what: 'Your score', pts: 'the tries your first bullseye took', sub: 'fewest wins the day' },
+      { what: 'Your score', pts: 'the tries your first bullseye took', sub: 'the fewer the better' },
       { what: 'Every try', pts: 'counts', sub: 'even if you leave and come back' },
     ],
     ends: 'At your first bullseye. After that, play it again for practice; that doesn’t count.',
     tip: 'Each miss says how far off it was. Double-tap the green, or turn on Slopes, to see which way it runs.',
-    // A past hole's first bullseye goes on its board only while you have none there, from its day or after.
+    // Ace Chase is just for fun (data/games.ts Game.ranked): a past hole keeps no board, so it's practice.
     counts: [
       {
         what: 'Today’s hole',
-        kind: 'counts',
-        sub: 'Your first bullseye today goes on today’s board, your week and your rank.',
+        kind: 'fun',
+        sub: 'Your first bullseye today is your result: it punches today’s Dailies and keeps your days in a row. Just for fun: nobody is ranked on it.',
       },
-      {
-        what: 'A past hole you have no bullseye on',
-        kind: 'board',
-        sub: `Your first bullseye goes on that hole’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
-      },
-      {
-        what: 'A past hole you have a bullseye on',
-        kind: 'practice',
-        sub: 'Your first bullseye there stands, from its day or after. Play it again as often as you like.',
-      },
+      { what: 'A past hole', kind: 'practice', sub: 'Play any past hole as often as you like. Nothing is saved.' },
     ],
   },
   hotlap: {
@@ -359,10 +350,10 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     counts: [
       {
         what: 'Today’s Pour',
-        kind: 'counts',
-        sub: 'Your first pour today goes on today’s board, your week and your rank. Pours after it are practice.',
+        kind: 'fun',
+        sub: 'Your first pour today is your result: it punches today’s Dailies and keeps your days in a row. Just for fun: nobody is ranked on it. Pours after it are practice.',
       },
-      { what: 'A past day', kind: 'practice', sub: 'Pour any past day. Nothing is saved: no board, no tickets, no rank.' },
+      { what: 'A past day', kind: 'practice', sub: 'Pour any past day. Nothing is saved.' },
     ],
   },
   marblerun: {

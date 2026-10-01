@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { isRankedGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { dayBefore } from './archive'
@@ -173,11 +174,12 @@ export function usePastViewer(): PastViewer {
 export const PRACTICE_TIP = 'Practice: nothing is saved.'
 
 /** A line of "How past tracks work", with its mark: start one, where it goes, what counts. */
-export type PastHowLine = { mark: 'play' | 'allTime' | 'practice' | 'ranked'; text: string }
+export type PastHowLine = { mark: 'play' | 'allTime' | 'practice' | 'ranked' | 'fun'; text: string }
 
 /**
  * "How past tracks work", in three short lines: any past course can be played; where a run on one goes
- * (a board game's All time board, or nowhere, as practice); and that only today's counts toward rank.
+ * (a board game's All time board, or nowhere, as practice); and that only today's counts toward rank, or,
+ * on a daily just for fun (data/games.ts Game.ranked), that today's is your result and ranks nobody.
  */
 export function pastHowLines(slug: string): PastHowLine[] {
   const words = dailyWords(slug)
@@ -188,7 +190,9 @@ export function pastHowLines(slug: string): PastHowLine[] {
   return [
     { mark: 'play', text: `${words.verb} any past ${words.course}.` },
     goes,
-    { mark: 'ranked', text: `Only ${lowerWord(words.today)} counts toward your rank.` },
+    isRankedGame(slug)
+      ? { mark: 'ranked', text: `Only ${lowerWord(words.today)} counts toward your rank.` }
+      : { mark: 'fun', text: `${words.today} is your result. It’s just for fun: nobody is ranked.` },
   ]
 }
 

@@ -9,7 +9,7 @@ import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
 import {
   PERIOD_LABELS,
-  VISIBLE_LEADERBOARD_GAMES,
+  RANKED_LEADERBOARD_GAMES,
   VISIBLE_LEADERBOARD_PERIODS,
   type GlobalRankResult,
   type LeaderboardPeriod,
@@ -444,7 +444,7 @@ export function PlayerCard({
             <Skel w="12ch" />
           ) : (
             <>
-              Played <b>{placed}</b> of {VISIBLE_LEADERBOARD_GAMES.length} games<span className="pcard__fact-when"> {word}</span>
+              Played <b>{placed}</b> of {RANKED_LEADERBOARD_GAMES.length} games<span className="pcard__fact-when"> {word}</span>
             </>
           )}
         </span>

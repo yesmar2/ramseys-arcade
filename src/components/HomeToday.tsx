@@ -1,4 +1,5 @@
 import { Suspense, type CSSProperties } from 'react'
+import { isRankedGame } from '../data/games'
 import { untilWords } from '../games/marblerun/daily'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
@@ -113,9 +114,11 @@ function leadOf(p: Punch, standing: DayStanding | null | undefined): { who: stri
 }
 
 function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DayStanding | null | undefined }) {
+  // A daily just for fun places nobody (data/games.ts Game.ranked): no place for you and no leader.
+  const ranked = isRankedGame(p.slug)
   // Your place, once you're on the day's board: never a place for a result the board doesn't have yet.
-  const place = p.done && standing?.you ? `${ordinal(standing.you.place)} of ${standing.players} today` : null
-  const lead = p.done ? null : leadOf(p, standing)
+  const place = ranked && p.done && standing?.you ? `${ordinal(standing.you.place)} of ${standing.players} today` : null
+  const lead = p.done || !ranked ? null : leadOf(p, standing)
   // Halfway through: where you left it, instead of who leads.
   const carry = !p.done && p.carry ? p.carry.replace(/^Carry on,?\s*/, '') : null
   return (
@@ -181,8 +184,9 @@ export function HomeToday() {
   const ticket = useTicket(viewer)
   const { day, punches, done, total, rule, marks } = ticket
   const me = normalizePlayerName(usePlayerName())
+  // Only the ranked dailies have a day's standing to ask for.
   const standings = useDayStandings(
-    punches.map((p) => p.slug),
+    punches.map((p) => p.slug).filter((slug) => isRankedGame(slug)),
     day,
     signedIn ? me : '',
     done,

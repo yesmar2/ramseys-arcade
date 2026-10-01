@@ -99,10 +99,10 @@ export function PastStartCard({
   const { signedIn } = useAuth()
   const viewer = useAccountId()
   const tries = kind === 'board' ? (progress?.tries ?? 0) : 0
-  const labelSub = !signedIn
-    ? `Signed out, nothing here is kept: no board, no tickets, no rank. Sign in and your first bullseye here goes on its ${ALL_TIME} board.`
-    : kind === 'practice'
-      ? 'Your first bullseye here stands. Play it as often as you like: nothing more is saved.'
+  // Ace Chase is just for fun (data/games.ts Game.ranked): a past hole keeps no board, so a run here is practice.
+  const labelSub =
+    kind === 'practice'
+      ? 'Play it as often as you like: it’s practice, and nothing is saved.'
       : `Your first bullseye here goes on this hole’s ${ALL_TIME} board, and every try counts, even if you leave and come back. Today’s board, your week and your rank stay as they are.`
   return (
     <PastCourseStart
@@ -122,7 +122,7 @@ export function PastStartCard({
       today={todayCourse()}
       walk={walkFrom(hole)}
     >
-      {!signedIn ? (
+      {!signedIn && kind === 'board' ? (
         <div className="acechase-daily__signin">
           <GoogleSignInButton />
         </div>
@@ -312,7 +312,6 @@ export function PastResultCard({
         ? `Your first bullseye here stands: ${triesWords(stands.tries)}, ${ordinal(stands.place)} of ${players} on its ${ALL_TIME} board.`
         : `Your first bullseye here stands: ${triesWords(stands.tries)}.`
     }
-    if (!signedIn) status = <SignIn>Sign in and your first bullseye here goes on its {ALL_TIME} board.</SignIn>
   } else if (answer && !answer.kept) {
     headline = 'Your first bullseye here stands'
     line = you

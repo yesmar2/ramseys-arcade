@@ -27,7 +27,7 @@ import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import {
   ApiError,
-  VISIBLE_LEADERBOARD_GAMES,
+  RANKED_LEADERBOARD_GAMES,
   normalizePlayerName,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
@@ -180,7 +180,7 @@ export function RankPage({
   const allTime = ranks.all ?? null
   const everPlayed = allTime ? new Set(Object.keys(allTime.byGame)) : null
   const bestSlugs = allTime
-    ? Object.keys(allTime.byGame).filter((slug) => (VISIBLE_LEADERBOARD_GAMES as readonly string[]).includes(slug))
+    ? Object.keys(allTime.byGame).filter((slug) => (RANKED_LEADERBOARD_GAMES as readonly string[]).includes(slug))
     : []
   const loadedBests = useGameBests(viewedName, bestSlugs, groupId)
   const bests = allTime ? loadedBests : null
@@ -214,7 +214,7 @@ export function RankPage({
   const accent = AVATARS_ENABLED && viewedName ? avatarWashColor(resolveAvatar(avatarId, viewedName)) : undefined
   const editable = isSelf && canEditAvatar && AVATARS_ENABLED
 
-  const unplayed = everPlayed ? VISIBLE_LEADERBOARD_GAMES.some((slug) => !everPlayed.has(slug) && !data.byGame[slug]) : false
+  const unplayed = everPlayed ? RANKED_LEADERBOARD_GAMES.some((slug) => !everPlayed.has(slug) && !data.byGame[slug]) : false
   let primary: { label: string; target: string } | null = null
   if (isSelf && !loading) {
     if (rank == null) {

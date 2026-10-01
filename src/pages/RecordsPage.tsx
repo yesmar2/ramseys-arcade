@@ -2,8 +2,8 @@ import { useLayoutEffect } from 'react'
 import { PageShell } from '../components/PageShell'
 import { RecordBookView } from '../components/RecordBookView'
 import { RecordView } from '../components/RecordView'
-import { getGame } from '../data/games'
-import { dayBoardHref, navigate } from '../hooks/useHashRoute'
+import { getGame, isRankedGame } from '../data/games'
+import { dailyTabHref, dayBoardHref, navigate } from '../hooks/useHashRoute'
 import { coerceVisiblePeriod, type LeaderboardPeriod } from '../lib/leaderboard'
 import { courseKey, courseNumber, courseToday, dailyRecordHref } from '../lib/recordBook'
 
@@ -33,7 +33,12 @@ function dayRecordBoardHref(game: string, recordId: string | undefined, now = Da
  * them goes there, in place of this address.
  */
 export function RecordsPage({ game, recordId, period = 'all' }: RecordsPageProps) {
-  const moved = getGame(game) ? (dayRecordBoardHref(game, recordId) ?? dailyRecordHref(game, recordId)) : null
+  // A daily just for fun keeps no records (data/games.ts Game.ranked): an old link to one goes to its page.
+  const moved = !getGame(game)
+    ? null
+    : !isRankedGame(game)
+      ? dailyTabHref(game, 'today')
+      : (dayRecordBoardHref(game, recordId) ?? dailyRecordHref(game, recordId))
 
   // Before the first paint, so the book never shows on its way to the tab; in place of the old address, so
   // Back doesn't bounce here again. A course's row keeps its #course- part.

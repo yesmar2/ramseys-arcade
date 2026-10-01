@@ -4,7 +4,7 @@ import { inkOn } from './color'
 import {
   api,
   normalizePlayerName,
-  VISIBLE_LEADERBOARD_GAMES,
+  RANKED_LEADERBOARD_GAMES,
   type GlobalBoardEntry,
   type LeaderboardEntry,
   type LeaderboardPeriod,
@@ -76,7 +76,7 @@ export async function fetchGroupRecords(groupId: string): Promise<GroupRecord[]>
   const qs = scoped(groupId, { period: 'all', limit: '1' })
   const data = await api<{ games?: { slug: string; entries?: LeaderboardEntry[] }[] }>(`/leaderboards/summary?${qs}`)
   const bySlug = new Map((data.games ?? []).map((g) => [g.slug, g.entries?.[0] ?? null]))
-  return VISIBLE_LEADERBOARD_GAMES.map((slug) => ({ slug, best: bySlug.get(slug) ?? null }))
+  return RANKED_LEADERBOARD_GAMES.map((slug) => ({ slug, best: bySlug.get(slug) ?? null }))
 }
 
 /* ---------- what the numbers say ---------- */

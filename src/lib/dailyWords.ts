@@ -1,11 +1,14 @@
+import { isRankedGame } from '../data/games'
+
 /**
  * The words each daily game uses for its days, in one place, so every page says them the same way:
  * the game's page and its tabs, the past days, the start and result cards, and the labels that say what
  * a run counts toward (components/RunLabel.tsx).
  *
- * Only today's course counts toward your rank. A past course is one of two things: a board of its own
- * that isn't ranked (Hot Lap's tracks; Ace Chase's holes, for a hole you didn't play on its day), or
- * practice that saves nothing (Find the Bug, Half Full, Marble Run).
+ * Only today's course counts toward your rank, on a daily that's ranked (Hot Lap, Marble Run); on one just
+ * for fun (Ace Chase, Find the Bug, Half Full: data/games.ts Game.ranked) it's only yours. A past course is
+ * one of two things: a board of its own that isn't ranked (Hot Lap's tracks), or practice that saves
+ * nothing (everyone else's).
  */
 
 /** What a run on a past course does. `board`: it goes on that course's own board, never your rank. */
@@ -38,16 +41,15 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     past: 'board',
     hudPast: 'Past track · not ranked',
   },
-  // A past hole's first bullseye goes on its board only if you didn't play the hole on its day; after
-  // that, playing it again is practice. RunLabel takes that from its `kind`, not from here.
+  // A past hole is practice: Ace Chase is just for fun, so its holes keep no boards (data/games.ts Game.ranked).
   acechase: {
     course: 'hole',
     today: 'Today’s hole',
     pastTab: 'Past holes',
     verb: 'Play',
     playToday: 'Play today’s hole',
-    past: 'board',
-    hudPast: 'Past hole · not ranked',
+    past: 'practice',
+    hudPast: 'Past hole · practice',
   },
   findbug: {
     course: 'day',
@@ -92,13 +94,19 @@ export function dailyWords(slug: string): DailyWords {
   return DAILY_WORDS[slug] ?? FALLBACK
 }
 
+/** What today's run is on a daily (components/RunLabel.tsx): it counts toward your rank, or, on one just for fun, it's yours. */
+export function todayKind(slug: string): 'counts' | 'fun' {
+  return isRankedGame(slug) ? 'counts' : 'fun'
+}
+
 /** The tabs of a daily game's page. `today` is the page itself, /games/<slug>. */
 export type DailyTab = 'today' | 'past' | 'records'
 
 /**
  * A past course's two boards, named the same on every page (Ramsey picked the names, 2026-09-30):
  * Ranked, the board the day it was the daily, which counted toward rank; and All time, every result on
- * the course since, which doesn't. Only Hot Lap and Ace Chase keep an All time board.
+ * the course since, which doesn't. Only Hot Lap keeps an All time board, and only the ranked dailies have a
+ * Ranked one.
  */
 export type PastBoard = 'ranked' | 'allTime'
 

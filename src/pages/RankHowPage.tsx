@@ -3,7 +3,7 @@ import { GameThumbArt } from '../components/GameThumbArt'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { openSiteMenu } from '../components/siteNav'
-import { isDailyGame, PALETTE } from '../data/games'
+import { isDailyGame, isRankedGame, PALETTE } from '../data/games'
 import { gamePlayHref, rankHowHref, rankHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -16,6 +16,7 @@ import {
   coerceVisiblePeriod,
   normalizePlayerName,
   PERIOD_LABELS,
+  RANKED_LEADERBOARD_GAMES,
   VISIBLE_LEADERBOARD_GAMES,
   VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardPeriod,
@@ -87,7 +88,10 @@ function youOf(who: Who): string {
   return who.self ? 'you' : who.name
 }
 
-const ALL_DAILIES = VISIBLE_LEADERBOARD_GAMES.filter((slug) => isDailyGame(slug))
+/** The dailies that rank: the ones just for fun (data/games.ts Game.ranked) give no points. */
+const ALL_DAILIES = RANKED_LEADERBOARD_GAMES.filter((slug) => isDailyGame(slug))
+/** The dailies just for fun, for the line that says they give no points. */
+const FUN_DAILIES = VISIBLE_LEADERBOARD_GAMES.filter((slug) => isDailyGame(slug) && !isRankedGame(slug))
 
 const STEP_IDS = { games: 'rh-games', pays: 'rh-pays', adds: 'rh-adds', dailies: 'rh-dailies', up: 'rh-up' } as const
 
@@ -846,6 +850,12 @@ function DailiesStep({
         So a daily still pays at most 100 toward {whose(who)} rank, however many days {youOf(who)}{' '}
         {who.self ? 'play' : 'plays'}. Playing more days is how {youOf(who)} {who.self ? 'climb' : 'climbs'} {climb}.
       </p>
+      {FUN_DAILIES.length ? (
+        <p className="rh-step__p">
+          {andList(FUN_DAILIES.map(gameName))} are dailies just for fun: their answer is the same for everyone, so they
+          give no points and have no boards.
+        </p>
+      ) : null}
     </Step>
   )
 }

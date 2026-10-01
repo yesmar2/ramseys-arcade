@@ -6,7 +6,7 @@ import {
   fetchPlayerBests,
   getLeaderboard,
   normalizePlayerName,
-  VISIBLE_LEADERBOARD_GAMES,
+  RANKED_LEADERBOARD_GAMES,
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
@@ -117,7 +117,7 @@ export function useScoreboard(
         const runsBySlug = new Map(summary.map((g) => [g.slug, g.entries]))
 
         const boards = await Promise.all(
-          VISIBLE_LEADERBOARD_GAMES.map(async (slug): Promise<BoardLine> => {
+          RANKED_LEADERBOARD_GAMES.map(async (slug): Promise<BoardLine> => {
             let runs: LeaderboardEntry[] = runsBySlug.get(slug) ?? []
             let asked = SUMMARY_RUNS
             let top = distinctTop(runs)

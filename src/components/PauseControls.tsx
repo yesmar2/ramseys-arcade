@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isRankedGame } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { dailyTabHref, gameBoardHref, recordsHref } from '../hooks/useHashRoute'
@@ -138,17 +138,19 @@ export function GamePanelBody({
   const game = getGame(slug)
   // A daily's board is the day's: its best and its leader are today's.
   const daily = game?.daily === true
+  // A daily just for fun places nobody (data/games.ts Game.ranked): no 1st, no board, no records.
+  const ranked = isRankedGame(slug)
   // A daily's records are on its page's Records tab, not in the record books.
-  const hasRecords = daily || gameHasRecords(slug)
+  const hasRecords = ranked && (daily || gameHasRecords(slug))
   const recordsLink = daily ? dailyTabHref(slug, 'records') : recordsHref(slug)
   const recordsLabel = daily ? 'Records' : 'Record books'
   // In an event with a set number of tries: how many are left, and when one counts.
   const tournament = useTournamentPlay()
   const tries = tournament && tournament.maxAttempts != null ? tournament : null
   const showBest = !hideBest && !past
-  const showRecord = !hideRecord && !past
+  const showRecord = !hideRecord && !past && ranked
   // A past course's board link: its row, which holds its board (or its day, where it has none).
-  const boardLink = past ? past.href : board ? gameBoardHref(slug) : null
+  const boardLink = past ? past.href : board && ranked ? gameBoardHref(slug) : null
   const boardLabel = past
     ? pastKind(slug, past.kind) === 'board'
       ? `This ${dailyWords(slug).course}’s ${BOARD_NAMES.allTime} board`

@@ -1,4 +1,4 @@
-import { games, getGame, isDailyGame, isListedGame, type Game } from '../data/games'
+import { games, getGame, isDailyGame, isListedGame, isRankedGame, type Game } from '../data/games'
 import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
@@ -163,9 +163,12 @@ function dailyTabMeta(slug: string, tab: 'past' | 'records'): PageMeta {
     return {
       ...meta,
       title: titled(`${name} · ${pastTab}`),
-      description: board
-        ? `Every ${name} ${course} since the first, with its ${BOARD_NAMES.ranked} and ${BOARD_NAMES.allTime} boards and a way to ${verb.toLowerCase()} it again. Only today’s ${course} counts toward your rank.`
-        : `Every ${name} ${course} since the first, and who was 1st on its ${BOARD_NAMES.ranked} board. ${verb} any of them again as practice: only today’s counts toward your rank.`,
+      description: !isRankedGame(slug)
+        ? // A daily just for fun (data/games.ts Game.ranked): no boards, only your own results.
+          `Every ${name} ${course} since the first, with your own result on each. ${verb} any of them again as practice.`
+        : board
+          ? `Every ${name} ${course} since the first, with its ${BOARD_NAMES.ranked} and ${BOARD_NAMES.allTime} boards and a way to ${verb.toLowerCase()} it again. Only today’s ${course} counts toward your rank.`
+          : `Every ${name} ${course} since the first, and who was 1st on its ${BOARD_NAMES.ranked} board. ${verb} any of them again as practice: only today’s counts toward your rank.`,
     }
   }
   return {
@@ -216,11 +219,14 @@ export function publicRoutes(): Route[] {
   for (const game of visibleGames()) {
     routes.push({ name: 'game', slug: game.slug })
     if (game.playable) routes.push({ name: 'gamePlay', slug: game.slug })
-    // A daily's past courses and records are tabs of its page; its record book isn't a page of its own.
+    // A daily's past courses and records are tabs of its page; its record book isn't a page of its own. A
+    // daily just for fun has no records and no board (data/games.ts Game.ranked).
+    const ranked = isRankedGame(game.slug)
     if (game.daily) {
-      routes.push({ name: 'game', slug: game.slug, tab: 'past' }, { name: 'game', slug: game.slug, tab: 'records' })
+      routes.push({ name: 'game', slug: game.slug, tab: 'past' })
+      if (ranked) routes.push({ name: 'game', slug: game.slug, tab: 'records' })
     }
-    if (isBoardGame(game.slug)) routes.push({ name: 'gameLeaderboard', game: game.slug })
+    if (isBoardGame(game.slug) && ranked) routes.push({ name: 'gameLeaderboard', game: game.slug })
     if (gameHasRecords(game.slug) && !game.daily) routes.push({ name: 'records', game: game.slug })
   }
   return routes
@@ -250,15 +256,17 @@ function siteLinks(): PageLink[] {
 
 function gameContentLinks(game: Game): PageLink[] {
   const links: PageLink[] = [{ href: gamePlayHref(game.slug), label: `Play ${game.name}` }]
-  if (isBoardGame(game.slug)) {
+  // A daily just for fun has no board and no records (data/games.ts Game.ranked).
+  const ranked = isRankedGame(game.slug)
+  if (isBoardGame(game.slug) && ranked) {
     links.push({ href: gameBoardPath(game.slug), label: `${game.name} leaderboard` })
   }
   if (game.daily) {
     links.push(
       { href: gameHref(game.slug), label: `${game.name} today` },
       { href: dailyTabHref(game.slug, 'past'), label: `${game.name} · ${dailyWords(game.slug).pastTab}` },
-      { href: dailyTabHref(game.slug, 'records'), label: `${game.name} records` },
     )
+    if (ranked) links.push({ href: dailyTabHref(game.slug, 'records'), label: `${game.name} records` })
   } else if (gameHasRecords(game.slug)) {
     links.push({ href: gameRecordsPath(game.slug), label: `${game.name} record books` })
   }

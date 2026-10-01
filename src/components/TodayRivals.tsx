@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isRankedGame } from '../data/games'
 import { rankHref } from '../hooks/useHashRoute'
 import { groupsIndexHref } from '../lib/groups'
 import { resolveGameAccent } from '../lib/theme'
@@ -22,10 +22,14 @@ const CrownIcon = () => (
   </svg>
 )
 
-/** The best result on each daily among these players, once two or more have one. */
+/**
+ * The best result on each daily among these players, once two or more have one. Not on a daily just for fun
+ * (data/games.ts Game.ranked): its results are only shown, never crowned.
+ */
 function bests(rivals: readonly TodayRival[], dailies: readonly TodayDaily[]): Partial<Record<TodayKey, number>> {
   const out: Partial<Record<TodayKey, number>> = {}
-  for (const { key } of dailies) {
+  for (const { key, slug } of dailies) {
+    if (!isRankedGame(slug)) continue
     const values = rivals.map((r) => rivalResult(r, key)).filter((v): v is number => v != null)
     if (values.length < 2) continue
     const top = [...values].sort(betterFirst(key))[0]

@@ -1,4 +1,4 @@
-import { games, isListedGame } from '../data/games'
+import { games, isListedGame, isRankedGame } from '../data/games'
 import { announceSecrets, type SecretFound } from './secrets'
 import { noteTicketsPaid } from './tickets'
 import {
@@ -105,6 +105,12 @@ const BOARD_LESSON = 'Every game has a board of its own: each player’s best ru
 const BOOK_LESSON = 'Record books keep feats inside a game, like the fastest wave cleared or the longest chain.'
 const DAILY_RECORDS_LESSON =
   'A daily’s Records tab keeps the records made over many days, like the most days played in a row and the most days won.'
+// A daily just for fun (data/games.ts Game.ranked): its page's own cards, where a ranked daily has its boards.
+const FUN_DAYS_LESSON = 'A daily that’s just for fun keeps your own days on its page: how many, how many in a row, and your best.'
+const FUN_TODAY_LESSON = 'Once you’ve played, its page shows how today went for you, part by part.'
+const FUN_CARD_LESSON = 'Today’s card says what today’s is, how long it has left, and how you did.'
+const FUN_TABS_LESSON = 'A daily’s page has its days in tabs: today’s, and the past ones to play again as practice.'
+const FUN_PAST_LESSON = 'Every past day of a daily can be played again, as practice: nothing is saved.'
 const ABOUT_LESSON = 'Original games, no ads, no install: About is the whole idea in one page.'
 const GROUPS_LESSON = 'Make a group, share its link, and everyone in it gets boards of their own.'
 
@@ -204,7 +210,16 @@ function gameAnchors(): HuntAnchor[] {
         lesson: 'The screen on a game’s page plays a little of the game. Tap it to play the real thing.',
       },
     )
-    if (boards.includes(slug)) {
+    if (boards.includes(slug) && !isRankedGame(slug)) {
+      // A daily just for fun has no board: its ids keep their places in the list (so the days' shuffled
+      // order stays as it was) and hide on its page's own cards instead.
+      out.push(
+        { id: `g-board-${slug}`, href, page, thing: 'the card of your days', lesson: FUN_DAYS_LESSON },
+        { id: `g-stand-${slug}`, href, page, thing: 'the card about how today went', lesson: FUN_TODAY_LESSON },
+        { id: `b-head-${slug}`, href, page, thing: 'today’s card', lesson: FUN_CARD_LESSON },
+        { id: `b-board-${slug}`, href, page, thing: 'the tabs', lesson: FUN_TABS_LESSON },
+      )
+    } else if (boards.includes(slug)) {
       const board = `on ${possessive(game.name)} board`
       const boardHref = gameBoardHref(slug as LeaderboardGame, 'weekly')
       out.push(
@@ -230,7 +245,16 @@ function gameAnchors(): HuntAnchor[] {
     // the list, so the days' shuffled order stays as it was.
     if (books.includes(slug)) {
       out.push(
-        game.daily
+        game.daily && !isRankedGame(slug)
+          ? {
+              // A daily just for fun keeps no records: the same id hides at the top of its past days.
+              id: `r-head-${slug}`,
+              href: dailyTabHref(slug, 'past'),
+              page: `on ${possessive(game.name)} past days`,
+              thing: 'the top of the list',
+              lesson: FUN_PAST_LESSON,
+            }
+          : game.daily
           ? {
               id: `r-head-${slug}`,
               href: dailyTabHref(slug, 'records'),

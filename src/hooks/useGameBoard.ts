@@ -5,7 +5,7 @@ import {
   fetchLeaderboardsSummary,
   getLeaderboard,
   normalizePlayerName,
-  VISIBLE_LEADERBOARD_GAMES,
+  RANKED_LEADERBOARD_GAMES,
   type LeaderboardEntry,
   type LeaderboardGame,
   type LeaderboardPeriod,
@@ -116,7 +116,7 @@ export function useGameBoard(
         const leaders = new Map(summary.map((g) => [g.slug, distinctTop(g.entries, 1)[0] ?? null]))
         const places = mine?.byGame ?? {}
         // Only a daily has a board for today, so today's way onward is the other dailies.
-        const others = VISIBLE_LEADERBOARD_GAMES.filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g))).map((g) => ({
+        const others = RANKED_LEADERBOARD_GAMES.filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g))).map((g) => ({
           slug: g,
           leader: leaders.get(g) ?? null,
           place: places[g]?.place ?? null,

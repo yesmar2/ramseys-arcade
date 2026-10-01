@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { isRankedGame } from '../../data/games'
 import { useMyAvatarId } from '../../hooks/useMyAvatarId'
 import { ROUTE_EVENT } from '../../hooks/useHashRoute'
 import { archiveDayWords, useDailyDays, type ArchiveDay } from '../../lib/archive'
@@ -211,13 +212,16 @@ function PastCard({
   const showYou = viewer.state === 'in'
   const kind = kindOf(source, day, entry, board, daysState, viewer)
 
-  // Ranked: your place that day, or who was 1st.
+  // Ranked: your place that day, or who was 1st. On a daily just for fun (data/games.ts Game.ranked), there's
+  // no place and no 1st: only your own result, and the card opens no boards.
+  const rankedGame = isRankedGame(slug)
   const you = showYou ? (entry?.you ?? null) : null
   let ranked: ReactNode
   if (daysState === 'wait') ranked = <Waiting />
   else if (daysState === 'failed') ranked = <Unknown />
-  else if (!entry) ranked = <span className="pc-val pc-val--none">Nobody {verbDone(slug)} it</span>
-  else if (you) ranked = <Yours name={viewer.name} avatarId={avatarId} place={you.place} of={entry.players} figure={fmt(you.score)} />
+  else if (you) ranked = <Yours name={viewer.name} avatarId={avatarId} place={rankedGame ? you.place : null} of={entry?.players ?? 0} figure={fmt(you.score)} />
+  else if (!rankedGame) ranked = <span className="pc-val pc-val--none">{showYou ? 'Not played' : 'Sign in for yours'}</span>
+  else if (!entry?.top) ranked = <span className="pc-val pc-val--none">Nobody {verbDone(slug)} it</span>
   else ranked = <Crowned who={entry.top} what="1st" figure={fmt(entry.top.score)} />
 
   // All time: your place on the course's own board, or who holds its record.
@@ -231,22 +235,29 @@ function PastCard({
   }
 
   // Each card says once how many played its day: in the Ranked line as your place of them, or else under its name.
-  const played = daysState === 'ok' && entry && !(you && you.place != null) ? ` · ${entry.players.toLocaleString()} ${verbDone(slug)}` : ''
+  const played =
+    daysState === 'ok' && entry && !(rankedGame && you && you.place != null) ? ` · ${entry.players.toLocaleString()} ${verbDone(slug)}` : ''
 
   return (
     <li ref={ref} id={`course-${source.anchor(day)}`} tabIndex={-1} className={`pc${here ? ' pc--here' : ''}`}>
       <div className="pc-stage" aria-hidden="true">
         <span className="dp-art pc-art">{art}</span>
-        <span className="pc-boards">
-          <BoardsIcon />
-        </span>
+        {rankedGame ? (
+          <span className="pc-boards">
+            <BoardsIcon />
+          </span>
+        ) : null}
       </div>
       <div className="pc-name">
         {/* The card's own button: its picture, its name, anywhere on it but its controls, opens its boards. */}
         <h3 className="pc-title">
-          <button type="button" className="pc-open" aria-haspopup="dialog" aria-label={`${title}: boards`} onClick={() => onOpen(day)}>
-            {title}
-          </button>
+          {rankedGame ? (
+            <button type="button" className="pc-open" aria-haspopup="dialog" aria-label={`${title}: boards`} onClick={() => onOpen(day)}>
+              {title}
+            </button>
+          ) : (
+            title
+          )}
         </h3>
         <p className="pc-date">
           {archiveDayWords(day)}
@@ -255,9 +266,7 @@ function PastCard({
       </div>
       <dl className="pc-stats">
         <div className="pc-stat">
-          <dt>
-            <BoardLabel board="ranked" slug={slug} />
-          </dt>
+          <dt>{rankedGame ? <BoardLabel board="ranked" slug={slug} /> : <span className="pc-label">You</span>}</dt>
           <dd>{ranked}</dd>
         </div>
         {boards ? (
@@ -358,7 +367,8 @@ export function PastCourses({ source }: { source: PastSource }) {
   const openKind = opened ? kindOf(source, opened, openEntry, boards?.rows?.get(opened), daysState, viewer) : null
   return (
     <div className="dp">
-      <div ref={headRef} className="dp-head">
+      {/* On a daily just for fun, a bug hunt hiding place, where a ranked one's Records tab was (lib/bugHunt.ts). */}
+      <div ref={headRef} className="dp-head" data-hunt={isRankedGame(slug) ? undefined : `r-head-${slug}`}>
         <h2 className="dp-head__title">{words.pastTab}</h2>
         {count ? (
           <span className="dp-head__count">

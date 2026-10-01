@@ -3,7 +3,7 @@ import { announceSecrets, type SecretFound } from './secrets'
 import type { RunTickets } from './tickets'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
-import { isDailyGame, isGameListed } from '../data/games'
+import { isDailyGame, isGameListed, isRankedGame } from '../data/games'
 import type { ChallengeRunResult } from './challenges'
 import { detectDeviceType, DEVICE_LABELS, isDeviceType } from './device'
 
@@ -48,6 +48,9 @@ export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 
 /** Leaderboard games shown in boards UI (not hidden or on deck; their boards still take scores). */
 export const VISIBLE_LEADERBOARD_GAMES = LEADERBOARD_GAMES.filter((slug) => isGameListed(slug))
+
+/** The boards that place players: every listed game but the dailies just for fun (data/games.ts isRankedGame). */
+export const RANKED_LEADERBOARD_GAMES = VISIBLE_LEADERBOARD_GAMES.filter((slug) => isRankedGame(slug))
 
 export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'monthly', 'all'] as const
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number]

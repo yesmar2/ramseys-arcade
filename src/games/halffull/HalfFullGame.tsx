@@ -32,7 +32,6 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import { fitCardToSpace } from '../../lib/cardFit'
-import { BOARD_NAMES } from '../../lib/dailyWords'
 import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { noteRunBegun } from '../../lib/engagement'
@@ -40,7 +39,6 @@ import { haptic } from '../../lib/haptics'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import { onItsDayFact, useItsDay, type ItsDay } from '../../lib/onItsDay'
 import type { PastPlay } from '../../lib/pastPlay'
-import { ordinal } from '../../lib/profileMath'
 import { beginRun, resumeRun, runIdFor } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import {
@@ -1042,14 +1040,6 @@ function Marks({ results, label = 'Your five pours' }: { results: readonly PourR
   )
 }
 
-/** Where today stands: your place once you're on it, and who's 1st until then. */
-function todayWords(board: TodayBoard | null): string | null {
-  if (!board) return null
-  if (board.you) return `You’re ${ordinal(board.you.place)} of ${board.count} today`
-  if (!board.leader) return 'Nobody’s poured yet today'
-  return `1st today: ${board.leader.name}, with ${formatBoard(board.leader.score)}`
-}
-
 /** Today's start card: the day's glasses, Start, Carry on, or how the day went. A past day's is PastPourStart. */
 function StartCard({
   plan,
@@ -1098,7 +1088,6 @@ function StartCard({
   const claimDone = dayDone(claim)
   const claimSum = claimDone && claimableKept.length >= ROUNDS ? summarize(claimableKept) : null
   const claimOffBoard = saves && claimSum != null && board != null && !board.you
-  const standing = todayWords(board)
   return (
     <Card label="Half Full">
       <div className="game-card__head">
@@ -1114,12 +1103,12 @@ function StartCard({
               ? `Your pour today is waiting at glass ${kept.length + 1} of ${ROUNDS}. The ones you locked are kept.`
               : claim
                 ? claimDone
-                  ? 'Today’s glasses were poured on this device while signed out. If that was you, put it on today’s board as yours; if not, pour your own.'
+                  ? 'Today’s glasses were poured on this device while signed out. If that was you, save it as today’s pour; if not, pour your own.'
                   : `A pour begun on this device while signed out is waiting at glass ${claimableKept.length + 1} of ${ROUNDS}. Carry it on if it’s yours, or pour your own.`
                 : 'Fill four glasses half full: by what they hold, not how tall they are. Then share one jug fairly between two friends. Your first pour of the day is your result.'}
         </p>
-        {/* What a pour from here does: the day's first counts; once it's done, the rest are practice. */}
-        {saves && !claim ? <RunLabel kind={done ? 'practice' : 'counts'} slug={SLUG} /> : null}
+        {/* What a pour from here does: the day's first is your result (just for fun); once it's done, the rest are practice. */}
+        {saves && !claim ? <RunLabel kind={done ? 'practice' : 'fun'} slug={SLUG} /> : null}
       </div>
       {sum ? (
         <div className="halffull-card__result">
@@ -1138,14 +1127,13 @@ function StartCard({
         </div>
       ) : null}
       {sum ? <Marks results={kept} /> : claimSum ? <Marks results={claimableKept} label="The five pours made here signed out" /> : null}
-      {standing ? <p className="halffull-card__standing">{standing}</p> : null}
       <SoundRow />
       <div className="game-card__actions">
         {done ? (
           <>
             {offBoard ? (
               <button type="button" className="panel__btn" onClick={onSave}>
-                Put it on today’s board
+                Save it as today’s pour
               </button>
             ) : null}
             {sum ? <ShareButton plan={plan} results={kept} autoFocus={!offBoard} ghost={offBoard} /> : null}
@@ -1163,7 +1151,7 @@ function StartCard({
               </button>
             ) : claimOffBoard ? (
               <button type="button" className="panel__btn" onClick={onSaveClaimable}>
-                Put it on today’s board
+                Save it as today’s pour
               </button>
             ) : null}
             <button
@@ -1325,7 +1313,7 @@ function dayGlassesWords(day: string, today: string): string {
   let within = false
   for (let d = dayBefore(today), i = 0; i < 6 && !within; i += 1, d = dayBefore(d)) within = d === day
   const whose = within ? `${weekdayFormat.format(new Date(`${day}T12:00:00Z`))}’s` : 'That day’s'
-  return `${whose} five glasses, as often as you like. No board, no tickets, and your rank stays as it is.`
+  return `${whose} five glasses, as often as you like. It’s practice: nothing is saved.`
 }
 
 /** The day after a day, both as YYYY-MM-DD. */
@@ -1393,26 +1381,15 @@ function pointsGap(mine: number, other: number): { tie: boolean; higher: boolean
 }
 
 /**
- * The pour against its Ranked board: your own result that day, and the day's 1st. "That's 2.3 points
- * closer than your 94.1% on the Ranked board. ODCHKA's 1st, 99.9%, is 3.5 points above this."
+ * The pour against your own that day: "That's 2.3 points closer than your 94.1% that day." Half Full is
+ * just for fun (data/games.ts Game.ranked), so no one else's pour is measured against it.
  */
 function againstItsDay(board: number, itsDay: ItsDay): string | null {
-  const entry = itsDay.entry
-  if (!entry) return null
-  const out: string[] = []
-  const you = itsDay.signedIn ? entry.you : null
-  const ranked = `on the ${BOARD_NAMES.ranked} board`
-  if (you) {
-    const g = pointsGap(board, you.score)
-    const at = formatBoard(you.score)
-    out.push(g.tie ? `That ties your ${at} ${ranked}.` : `That’s ${g.gap} ${g.higher ? 'closer' : 'further off'} than your ${at} ${ranked}.`)
-    // You were the day's 1st: that's the line already said.
-    if (you.place === 1) return out.join(' ')
-  }
-  const g = pointsGap(board, entry.top.score)
-  const whose = `${entry.top.name}’s 1st${you ? '' : ` ${ranked}`}, ${formatBoard(entry.top.score)}`
-  out.push(g.tie ? `That ties ${whose}.` : g.higher ? `That beats ${whose}, by ${g.gap}.` : `${whose}, is ${g.gap} above this.`)
-  return out.join(' ')
+  const you = itsDay.signedIn ? (itsDay.entry?.you ?? null) : null
+  if (!you) return null
+  const g = pointsGap(board, you.score)
+  const at = formatBoard(you.score)
+  return g.tie ? `That ties your ${at} that day.` : `That’s ${g.gap} ${g.higher ? 'closer' : 'further off'} than your ${at} that day.`
 }
 
 /**

@@ -13,26 +13,28 @@ import {
 } from '../games/halffull/daily'
 import { dayPlan, ROUNDS, type DayPlan } from '../games/halffull/plan'
 import { glassesWords, glassNames, pourPlan } from '../games/halffull/planSvg'
-import { formatBoard, judgeLevels, markFor, tierFor, type JudgedDay } from '../games/halffull/score'
+import { formatBoard, formatOff, judgeLevels, markFor, offHalf, tierFor, type JudgedDay, type Mark } from '../games/halffull/score'
 import { useTodayBoard, type TodayBoard } from '../games/halffull/todayBoard'
 import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
-import { ordinal } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
 import { copyText } from './ShareBoardButton'
 import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { YourCard, YourRow } from './YourDays'
 import '../styles/evp.css'
 import '../styles/todaysPour.css'
 
 /*
- * Today's Pour, off the counter: Half Full's five glasses of the day standing empty, how the day's board
- * stands, and the way in. The card sits with the daily events on the Events page and on Half Full's own
- * page, in a chunk of its own, since it builds the day's glasses.
+ * Today's Pour, off the counter: Half Full's five glasses of the day standing empty, your pour today, and the
+ * way in. The card sits with the daily events on the Events page and on Half Full's own page, in a chunk of
+ * its own, since it builds the day's glasses; with it, for Half Full's page, your pour glass by glass
+ * (TodaysPourByGlass). Half Full is just for fun (data/games.ts Game.ranked): nobody's pour is weighed
+ * against anyone else's.
  */
 
 const SLUG = 'halffull'
@@ -80,21 +82,15 @@ function useTodaysPour(): { day: string; plan: DayPlan; run: DayRun | null; judg
   return { day, plan, run, judged, board }
 }
 
-/** Where the day stands, and where you are in it. */
+/** Your pour today, as far as it's gone. */
 function standingWords(judged: JudgedDay | null, run: DayRun | null, board: TodayBoard | null): string {
-  const place = board?.you ? `, ${ordinal(board.you.place)} of ${board.count}` : ''
-  if (judged) return `Your pour today: ${formatBoard(judged.board)}, ${tierFor(judged.day)}${place}.`
+  if (judged) return `Your pour today: ${formatBoard(judged.board)}, ${tierFor(judged.day)}.`
   // One the board has from another device: only its figure is known here.
-  if (board?.you) return `Your pour today: ${formatBoard(board.you.score)}${place}.`
+  if (board?.you) return `Your pour today: ${formatBoard(board.you.score)}.`
   if (run?.board != null) return `Your pour today: ${formatBoard(run.board)}.`
   const locked = run?.levels.length ?? 0
   if (locked > 0) return `Your pour today is waiting at glass ${locked + 1} of ${ROUNDS}.`
-  if (!board) return ''
-  const { count, leader } = board
-  if (!leader) return 'Nobody has poured yet: the first pour sets the bar.'
-  return count > 1
-    ? `${count} have poured today, and ${leader.name} leads with ${formatBoard(leader.score)}.`
-    : `${leader.name} is the first to pour today, with ${formatBoard(leader.score)}.`
+  return ''
 }
 
 /** The day's glasses on the shelf and the counter, empty (planSvg.ts): nothing in them gives half away. */
@@ -166,7 +162,7 @@ export function TodaysPourCard() {
         <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
           Half Full, with five new glasses every day, the same for everyone: easy on a Monday, brutal by Sunday. Your first
-          pour is your result, and the closest to half tops the day. {standingWords(judged, run, board)}
+          pour is your result. {standingWords(judged, run, board)}
         </p>
         {/* The five squares the pour's share sends; the sentence above says the same in words. */}
         {judged ? (
@@ -192,5 +188,72 @@ export function TodaysPourCard() {
         </span>
       </div>
     </section>
+  )
+}
+
+/** A pour's square, in the colours Half Full draws it (render.ts). */
+const MARK_COLOUR: Record<Mark, string> = {
+  '🎯': '#1fa463',
+  '🟩': '#3cb54a',
+  '🟨': '#e9b21a',
+  '🟧': '#ee7d22',
+  '🟥': '#dd3b36',
+}
+
+/**
+ * Your pour today glass by glass, for Half Full's Today tab beside your days (YourDays.tsx): each glass's
+ * square, how close it came, and the one you got closest. Only your own, and only from this device, which
+ * keeps the levels; one poured on another device shows its figure.
+ */
+export function TodaysPourByGlass() {
+  const { plan, run, judged, board } = useTodaysPour()
+  const href = gamePlayHref(SLUG)
+  const results = useMemo(() => (judged && run ? keptResults(plan, run) : []), [judged, plan, run])
+  const names = [...plan.pours.map((g) => g.name), 'the split']
+  const cap = (name: string) => name.charAt(0).toUpperCase() + name.slice(1)
+  let body
+  if (results.length === ROUNDS) {
+    const closest = results.reduce((best, r, i) => (offHalf(r.percent) < offHalf(results[best]!.percent) ? i : best), 0)
+    body = (
+      <>
+        <ul className="yd-rows">
+          {results.map((r, i) => (
+            <YourRow
+              key={i}
+              name={cap(names[i]!)}
+              color={MARK_COLOUR[markFor(r.score)]}
+              fill={r.score}
+              value={`${formatOff(r.percent)} off half`}
+            />
+          ))}
+        </ul>
+        <p className="yd__foot">
+          Your closest today: {names[closest]}, {formatOff(results[closest]!.percent)} off half. New glasses come at midnight.
+        </p>
+      </>
+    )
+  } else if (board?.you || run?.board != null) {
+    // Poured on another device: its figure is all that's known here.
+    const figure = board?.you?.score ?? run?.board ?? 0
+    body = <p className="yd__note">Your pour today: {formatBoard(figure)}, poured on another device. Its glasses are there.</p>
+  } else {
+    const locked = run?.levels.length ?? 0
+    body = (
+      <>
+        <p className="yd__note">
+          {locked > 0
+            ? `Your pour is waiting at glass ${locked + 1} of ${ROUNDS}.`
+            : 'Nothing poured yet today. Five glasses are waiting: get each one exactly half full.'}
+        </p>
+        <a className="evp-btn evp-btn--small yd__go" href={href}>
+          {locked > 0 ? 'Carry on' : 'Pour'}
+        </a>
+      </>
+    )
+  }
+  return (
+    <YourCard title="Today, glass by glass" labelledBy="yd-today-halffull" hunt={`g-stand-${SLUG}`}>
+      {body}
+    </YourCard>
   )
 }

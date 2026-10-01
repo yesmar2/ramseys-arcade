@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { getGame, isDailyGame } from '../data/games'
+import { getGame, isDailyGame, isRankedGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
@@ -136,6 +136,9 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   // A daily's board is the day's (the API keeps it so, whatever the period): its places are today's,
   // in the report as on the card.
   const period: LeaderboardPeriod = isDailyGame(gameSlug) ? 'daily' : defaultPeriod
+  // A daily just for fun places nobody (data/games.ts Game.ranked): its save is today's result, on no board.
+  const ranked = isRankedGame(gameSlug)
+  const saveWords = ranked ? 'goes on the boards' : 'is saved as today’s result'
   // The Standings line keeps the header's period, so it never says "today" beside the header's weekly rank.
   // Read as the save goes out, as the run's other extras are.
   const standingsPeriodRef = useRef(defaultPeriod)
@@ -317,9 +320,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     }
   }, [gameSlug, score, period, authLoading, canSaveScores, ownerIn])
 
-  // Signed out or tagless: what the run would win, to lead the ask with.
+  // Signed out or tagless: what the run would win, to lead the ask with. A daily just for fun wins no place.
   useEffect(() => {
     if (phase !== 'needAuth' && phase !== 'needName') return
+    if (!ranked) return
     let cancelled = false
     void wouldPlaceOnBoard(gameSlug, period, score).then((place) => {
       if (!cancelled) setWouldPlace(place)
@@ -327,7 +331,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     return () => {
       cancelled = true
     }
-  }, [phase, gameSlug, period, score])
+  }, [phase, gameSlug, period, score, ranked])
 
   const submitName = async () => {
     const name = normalizePlayerName(nameDraft)
@@ -417,11 +421,11 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         lead={
           facing && outcome?.won ? (
             <>
-              Sign in and {facing.name} hears you won, and {scoreText(gameSlug, score)} goes on the boards. {winLead}
+              Sign in and {facing.name} hears you won, and {scoreText(gameSlug, score)} {saveWords}. {winLead}
             </>
           ) : (
             <>
-              Sign in and {scoreText(gameSlug, score)} goes on the boards. {winLead}
+              Sign in and {scoreText(gameSlug, score)} {saveWords}. {winLead}
             </>
           )
         }
@@ -435,7 +439,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     who = <ReportWho text="Not saved yet" />
   } else if (phase === 'needName') {
     primary = {
-      label: 'Save to the board',
+      label: ranked ? 'Save to the board' : 'Save it',
       onClick: () => void submitName(),
       disabled: !normalizePlayerName(nameDraft),
     }
@@ -457,8 +461,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
               </strong>
               . Put your name on it.
             </>
-          ) : (
+          ) : ranked ? (
             'Put your name on the boards.'
+          ) : (
+            'Put your tag on it to save it as today’s result.'
           )
         }
       />
@@ -470,8 +476,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     block = (
       <p className="report__note">
         {tag
-          ? `Played as ${tag}. Sign in as ${tag} to put it on the board.`
-          : 'Played as another account. Sign in as that account to put it on the board.'}
+          ? `Played as ${tag}. Sign in as ${tag} to ${ranked ? 'put it on the board' : 'save it'}.`
+          : `Played as another account. Sign in as that account to ${ranked ? 'put it on the board' : 'save it'}.`}
       </p>
     )
     who = <ReportWho text="Not saved yet" />
@@ -532,7 +538,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     if (sendError) block = <p className="panel__error">{sendError}</p>
   }
 
-  if (phase === 'saved' || phase === 'assisted' || phase === 'error') {
+  // A daily just for fun has no board and no records to go to.
+  if (ranked && (phase === 'saved' || phase === 'assisted' || phase === 'error')) {
     links = [{ label: `${game} board`, onClick: () => leavePlayTo(boardsHref(gameSlug, period)) }]
     // A daily's records are on its page's Records tab, not in the record books.
     if (isDailyGame(gameSlug)) {

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
+import { isRankedGame } from '../data/games'
 import { dailyTabHref } from '../hooks/useHashRoute'
 import { dailyWords, type DailyTab } from '../lib/dailyWords'
 import '../styles/dailyTabs.css'
@@ -71,10 +72,12 @@ export function DailyTabs({
   const tabs: { key: DailyTab; label: string; icon: ReactNode }[] = [
     { key: 'today', label: 'Today', icon: <TodayIcon /> },
     { key: 'past', label: words.pastTab, icon: <PastIcon /> },
-    { key: 'records', label: 'Records', icon: <RecordsIcon /> },
+    // A daily just for fun keeps no records (data/games.ts Game.ranked).
+    ...(isRankedGame(slug) ? [{ key: 'records' as const, label: 'Records', icon: <RecordsIcon /> }] : []),
   ]
   return (
-    <div className="dtabs" ref={ref}>
+    // On a daily just for fun the tabs are a bug hunt hiding place, where a ranked one's board table was (lib/bugHunt.ts).
+    <div className={`dtabs${tabs.length === 2 ? ' dtabs--two' : ''}`} ref={ref} data-hunt={isRankedGame(slug) ? undefined : `b-board-${slug}`}>
       <nav className="dtabs__list" aria-label={`${gameName} pages`}>
         {tabs.map((t) => (
           <a

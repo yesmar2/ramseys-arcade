@@ -1,4 +1,4 @@
-import { isDailyGame } from '../data/games'
+import { isDailyGame, isRankedGame } from '../data/games'
 import { formatAcechaseBoardScore } from '../games/acechase/score'
 import { formatFindbugBoardScore } from '../games/findbug/score'
 import { formatBoard } from '../games/halffull/boardFigure'
@@ -62,7 +62,7 @@ export function formatPercentGap(a: number, b: number): string {
  * (the API's store.ts dayPointsBoard), since one day's track, hole or scenes can't be weighed against another's.
  */
 export function isDayPointsBoard(slug: string, period: string): boolean {
-  return period !== 'daily' && isDailyGame(slug)
+  return period !== 'daily' && isDailyGame(slug) && isRankedGame(slug)
 }
 
 /** "285 pts": a player's day points on a daily's board for longer than a day. */

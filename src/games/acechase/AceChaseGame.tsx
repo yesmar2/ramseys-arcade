@@ -16,7 +16,7 @@ import type { PastKind } from '../../lib/dailyWords'
 import { ownerAccount, ownerOf } from '../../lib/deviceRuns'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
-import { markPastSolved, pastProgress, savePastProgress, solvedHere, subscribePastHoles, syncPastHoles } from '../../lib/pastHoles'
+import { markPastSolved, pastProgress, savePastProgress, solvedHere, subscribePastHoles } from '../../lib/pastHoles'
 import type { PastPlay } from '../../lib/pastPlay'
 import {
   claimableDay,
@@ -266,7 +266,6 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
   // What this device and the API have is read as it's drawn: this asks for a fresh look when either changes.
   const [, refreshDevice] = useReducer((n: number) => n + 1, 0)
   /** A past hole's board, asked again once a result goes on it. */
-  const refreshBoard = figures?.refresh
   const stateRef = useRef<GameState | null>(null)
   // A past hole is played as its day had it, the day's one target; a trial picks a fresh one each go.
   const fresh = () =>
@@ -399,16 +398,14 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     return off
   }, [today])
 
-  // A past hole: what this device has done at it, sent up if it's waiting on a sign-in.
+  // A past hole: what this device has done at it. Nothing goes up: Ace Chase is just for fun, so a past
+  // hole keeps no board (data/games.ts Game.ranked).
   useEffect(() => {
     if (!past) return
     const off = subscribePastHoles(refreshDevice)
-    void syncPastHoles().then(() => {
-      refreshDevice()
-      refreshBoard?.()
-    })
+    refreshDevice()
     return off
-  }, [past, refreshBoard])
+  }, [past])
 
   // Once, the first time the camera is handed over: how to look round.
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { getGame, isDailyGame } from '../data/games'
+import { getGame, isDailyGame, isRankedGame } from '../data/games'
 import { dailyTabHref, gameHubHref, homeHref, recordsIndexHref } from '../hooks/useHashRoute'
 import { PERIOD_LABELS, type LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -385,7 +385,8 @@ function GameRow({
           <span>played {last}</span>
         </span>
         <span className={`sv-place${medal}`}>
-          {stat.rank != null ? (
+          {/* A daily just for fun places nobody (data/games.ts Game.ranked). */}
+          {stat.rank != null && isRankedGame(stat.slug) ? (
             <>
               <b>{ordinal(stat.rank)}</b> of {stat.totalPlayers.toLocaleString()}
             </>

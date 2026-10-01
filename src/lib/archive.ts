@@ -12,7 +12,8 @@ export type ArchiveDay = {
   day: string
   runs: number
   players: number
-  top: { name: string; score: number; avatarId?: string }
+  /** Null on a daily just for fun (data/games.ts Game.ranked): the API names no 1st, and no place for you. */
+  top: { name: string; score: number; avatarId?: string } | null
   /**
    * `place` is null on a day before the game's days counted (the API's DAILY_SINCE: Ace Chase's holes #1
    * and #2): the result is there, with no place to go with it.

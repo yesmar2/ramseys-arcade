@@ -1,4 +1,4 @@
-import { getGame } from '../data/games'
+import { getGame, isRankedGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
 import { gapBetween, gapFigure, playersFromRuns, wouldPlace, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
@@ -326,16 +326,21 @@ export const CHALLENGE_WON: ReportRibbon = { icon: 'flag', text: 'Challenge won'
 export function composeReport(f: RunFacts): RunReportData {
   const copy = periodCopy(f.period)
   const me = normalizePlayerName(f.name)
-  const board = boardLine(f, copy)
-  const overall = overallLine(f, periodCopy(f.standingsPeriod ?? f.period))
-  const books = [...f.books]
-    .sort((a, b) => (a.hit.rank ?? 99) - (b.hit.rank ?? 99))
-    .slice(0, MAX_BOOKS)
-    .map((book, i) => bookLine(f, book, i))
+  // A daily just for fun places nobody (data/games.ts Game.ranked): no board, standings or record lines.
+  const ranked = isRankedGame(f.slug)
+  const board = ranked ? boardLine(f, copy) : null
+  const overall = ranked ? overallLine(f, periodCopy(f.standingsPeriod ?? f.period)) : null
+  const books = ranked
+    ? [...f.books]
+        .sort((a, b) => (a.hit.rank ?? 99) - (b.hit.rank ?? 99))
+        .slice(0, MAX_BOOKS)
+        .map((book, i) => bookLine(f, book, i))
+    : []
 
   const isBest = f.priorBest > 0 && f.score > f.priorBest
   // The best run anyone has played: first of every run, over somebody else's.
   const highScore =
+    ranked &&
     f.allTimeRank === 1 &&
     (f.priorAllTimeRank != null ? f.priorAllTimeRank > 1 : (f.board?.after.length ?? 0) >= 2)
   const bookTop = books.some((line) => line.tone === 'gold')
@@ -519,7 +524,9 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
 
 async function saveAndRead({ slug, name, score, period, standingsPeriod = period, priorBest, challengeId, run, pickups, pace, pours }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
-  const priorOverall = await fetchGlobalRank(me, standingsPeriod).catch(() => null)
+  // A daily just for fun places nobody (data/games.ts Game.ranked): no standings or board to read around it.
+  const ranked = isRankedGame(slug)
+  const priorOverall = ranked ? await fetchGlobalRank(me, standingsPeriod).catch(() => null) : null
   const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours })
   noteTicketsPaid(saved.tickets)
   for (const hit of saved.streakRecords ?? []) {
@@ -542,13 +549,15 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   await whenRunAchievementsSettled()
   const hits = takeRunAchievements()
 
-  const [runs, overall, books] = await Promise.all([
-    readBoardRuns(slug, period)
-      .then((b) => b.entries)
-      .catch(() => null),
-    fetchGlobalRank(me, standingsPeriod).catch(() => null),
-    readBookFacts(slug, me, hits),
-  ])
+  const [runs, overall, books] = ranked
+    ? await Promise.all([
+        readBoardRuns(slug, period)
+          .then((b) => b.entries)
+          .catch(() => null),
+        fetchGlobalRank(me, standingsPeriod).catch(() => null),
+        readBookFacts(slug, me, hits),
+      ])
+    : [null, null, []]
 
   let board: RunFacts['board'] = null
   if (runs) {

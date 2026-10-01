@@ -3,12 +3,13 @@ import '../styles/runLabel.css'
 
 /*
  * What a run on a daily counts toward, said the same way everywhere a run can start or end: today's
- * course counts toward your rank; a past course either goes on its All time board, which isn't ranked, or
- * is practice that saves nothing. The same words, colour and icon on the game's page, its past days, the
- * start and result cards and the pause card, so "does this count?" never needs asking.
+ * course counts toward your rank, or, on a daily just for fun (data/games.ts Game.ranked), is yours alone;
+ * a past course either goes on its All time board, which isn't ranked, or is practice that saves nothing.
+ * The same words, colour and icon on the game's page, its past days, the start and result cards and the
+ * pause card, so "does this count?" never needs asking.
  */
 
-export type RunLabelKind = 'counts' | 'board' | 'practice'
+export type RunLabelKind = 'counts' | 'fun' | 'board' | 'practice'
 
 /** The label's words for a game: `full` on a card, `short` on a chip or a row. */
 export function runLabelWords(kind: RunLabelKind, slug: string): { full: string; short: string; sub: string } {
@@ -18,6 +19,13 @@ export function runLabelWords(kind: RunLabelKind, slug: string): { full: string;
       full: 'Counts toward your rank',
       short: 'Counts',
       sub: `${words.today} goes on today’s board, your week and your rank.`,
+    }
+  }
+  if (kind === 'fun') {
+    return {
+      full: 'Just for fun',
+      short: 'For fun',
+      sub: `${words.today} is yours: it punches today’s Dailies and keeps your days in a row. Nobody is ranked on it.`,
     }
   }
   if (kind === 'board') {
@@ -39,6 +47,13 @@ const Icon = ({ kind }: { kind: RunLabelKind }) => {
     return (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M5 12.5l4.5 4.5L19 7.5" />
+      </svg>
+    )
+  }
+  if (kind === 'fun') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
       </svg>
     )
   }

@@ -1,6 +1,7 @@
+import { isRankedGame } from '../data/games'
 import { useDailyDays, type ArchiveDay } from './archive'
 import { usePastViewer, verbDone } from './dailyPast'
-import { BOARD_NAMES } from './dailyWords'
+import { BOARD_NAMES, dailyWords } from './dailyWords'
 import { formatLeaderboardScore } from './leaderboardFormat'
 import type { PastFact } from './pastPlay'
 import { ordinal } from './scoreboard'
@@ -32,12 +33,23 @@ function firstWords(slug: string, score: number): string {
   return `1st ${slug === 'halffull' ? 'with' : 'in'} ${formatLeaderboardScore(slug, score)}`
 }
 
-/** "Ranked: ODCHKA 1st in 40.0s · You 4th of 17 (49.1s)", for the start and pause cards. */
+/**
+ * "Ranked: ODCHKA 1st in 40.0s · You 4th of 17 (49.1s)", for the start and pause cards. On a daily just for
+ * fun (data/games.ts Game.ranked), only yours: "Your result: 49.1s".
+ */
 export function onItsDayFact(slug: string, itsDay: ItsDay): PastFact {
-  const label = BOARD_NAMES.ranked
   const { entry } = itsDay
+  if (!isRankedGame(slug)) {
+    const label = 'Your result'
+    if (entry === undefined) return { label, what: itsDay.failed ? 'Couldn’t load it' : '…' }
+    const you = itsDay.signedIn ? (entry?.you ?? null) : null
+    if (you) return { label, what: formatLeaderboardScore(slug, you.score) }
+    if (itsDay.signedIn) return { label, what: `You didn’t ${dailyWords(slug).verb.toLowerCase()} it` }
+    return { label: 'That day', what: `${(entry?.players ?? 0).toLocaleString()} ${verbDone(slug)} it` }
+  }
+  const label = BOARD_NAMES.ranked
   if (entry === undefined) return { label, what: itsDay.failed ? 'Couldn’t load it' : '…' }
-  if (entry === null) return { label, what: `Nobody ${verbDone(slug)} it` }
+  if (entry === null || !entry.top) return { label, what: `Nobody ${verbDone(slug)} it` }
   const players = entry.players.toLocaleString()
   const you = itsDay.signedIn ? entry.you : null
   return {

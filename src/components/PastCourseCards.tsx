@@ -1,5 +1,5 @@
 import type { MouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
-import { getGame } from '../data/games'
+import { getGame, isRankedGame } from '../data/games'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { dailyTabHref, gamePlayHref, rankHowHref } from '../hooks/useHashRoute'
 import { useRankFor } from '../hooks/useProfileBoards'
@@ -78,14 +78,20 @@ export function PastLabelBox({ slug, kind, sub }: { slug: string; kind: PastKind
     <div className={`past-label run-label--${kind}`}>
       <RunLabel kind={kind} slug={slug} />
       <p className="past-label__sub">{sub ?? runLabelWords(kind, slug).sub}</p>
-      <a className="past-label__how" href={href} onPointerDown={holdPress} onClick={leaveLink(href)}>
-        How your rank works ›
-      </a>
+      {/* A daily just for fun has no rank to explain (data/games.ts Game.ranked). */}
+      {isRankedGame(slug) ? (
+        <a className="past-label__how" href={href} onPointerDown={holdPress} onClick={leaveLink(href)}>
+          How your rank works ›
+        </a>
+      ) : null}
     </div>
   )
 }
 
-/** "Today's track is the one that counts: Willow Speedway ›", on both cards. */
+/**
+ * "Today's track is the one that counts: Willow Speedway ›", on both cards; on a daily just for fun
+ * (data/games.ts Game.ranked), "Today's Wanted is the one that's your result: Wanted #3 ›".
+ */
 function TodayCounts({ slug, today, boxed }: { slug: string; today: TodayCourse; boxed: boolean }) {
   const words = dailyWords(slug)
   const href = today.href ?? gamePlayHref(slug)
@@ -100,7 +106,8 @@ function TodayCounts({ slug, today, boxed }: { slug: string; today: TodayCourse;
         <Check />
       </span>
       <span>
-        {words.today} is the one that counts{today.name ? ': ' : ''}
+        {words.today} is the one that {isRankedGame(slug) ? 'counts' : 'is your result'}
+        {today.name ? ': ' : ''}
         <b>{today.name ? `${today.name} ›` : ' ›'}</b>
       </span>
     </a>
@@ -403,7 +410,8 @@ export function PastCourseResult({
       ) : null}
       {note ? <p className="past-card__note">{note}</p> : null}
       {children}
-      <PastRankNote slug={slug} />
+      {/* A daily just for fun has no week or rank for a past run to leave alone (data/games.ts Game.ranked). */}
+      {isRankedGame(slug) ? <PastRankNote slug={slug} /> : null}
       {today ? <TodayCounts slug={slug} today={today} boxed /> : null}
       <div className="game-card__actions">
         <button

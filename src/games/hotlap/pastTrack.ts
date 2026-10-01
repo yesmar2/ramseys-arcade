@@ -44,7 +44,7 @@ export function usePastTrackFigures(day: string, board: TrackBoard | null, viewe
     const ranked = BOARD_NAMES.ranked
     let onItsDay: PastFact
     if (!days) onItsDay = { label: ranked, what: failed ? 'Couldn’t load it' : '…' }
-    else if (!entry) onItsDay = { label: ranked, what: 'Nobody raced it' }
+    else if (!entry?.top) onItsDay = { label: ranked, what: 'Nobody raced it' }
     else {
       onItsDay = {
         label: ranked,

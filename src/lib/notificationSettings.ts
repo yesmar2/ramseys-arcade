@@ -1,5 +1,4 @@
 import { isGameListed } from '../data/games'
-import { TODAY_FROM } from '../games/halffull/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
 import { API_BASE, authHeaders } from './auth'
 
@@ -39,8 +38,6 @@ export type TopicInfo = {
   offWarning?: string
 }
 
-/** Today's Pour is on the ticket (lib/today.ts), so its "beat you" notes come under the same topic. */
-const POUR_ON_TICKET = TODAY_FROM != null && isGameListed('halffull')
 /** Today's Course is on the ticket, so its "beat you" notes come with the lap's: a run can be rolled again too. */
 const COURSE_ON_TICKET = COURSE_FROM != null && isGameListed('marblerun')
 
@@ -59,17 +56,8 @@ export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[
             label: 'A friend beats your lap',
             hint: 'On Today’s Track, while there’s still time to take it back.',
           },
-      POUR_ON_TICKET
-        ? {
-            topic: 'today-beaten',
-            label: 'A friend beats you on the hole, the Wanted or the pour',
-            hint: 'Today’s Hole, Today’s Wanted and Today’s Pour count once a day, so this is just to know.',
-          }
-        : {
-            topic: 'today-beaten',
-            label: 'A friend beats you on the hole or the Wanted',
-            hint: 'Today’s Hole and Today’s Wanted count once a day, so this is just to know.',
-          },
+      // No row for the hole, the Wanted or the pour: those dailies are just for fun (data/games.ts Game.ranked),
+      // so nobody is told they were beaten on them. The 'today-beaten' topic stays for notes already sent.
     ],
   },
   {

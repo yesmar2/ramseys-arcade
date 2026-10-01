@@ -693,7 +693,7 @@ function OtherDays({
                   <span className="db-days__lead">
                     {!days
                       ? '…'
-                      : entry
+                      : entry?.top
                         ? `${entry.top.name} 1st${isToday ? ' today' : ''} · ${fmt(entry.top.score)}`
                         : isToday
                           ? 'Nobody yet'

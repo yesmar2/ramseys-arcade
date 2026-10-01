@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { gameHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { neighboursOf, rivalOf } from '../hooks/useProfileBoards'
-import { VISIBLE_LEADERBOARD_GAMES, type GlobalRankResult, type LeaderboardPeriod } from '../lib/leaderboard'
+import { RANKED_LEADERBOARD_GAMES, type GlobalRankResult, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   andList,
   cheapestClimb,
@@ -34,7 +34,7 @@ const gameName = (slug: string) => getGame(slug)?.name ?? slug
 /** A player's places on the games shown on the wall. */
 function onWall(byGame: ByGame): ByGame {
   return Object.fromEntries(
-    Object.entries(byGame).filter(([slug]) => (VISIBLE_LEADERBOARD_GAMES as readonly string[]).includes(slug)),
+    Object.entries(byGame).filter(([slug]) => (RANKED_LEADERBOARD_GAMES as readonly string[]).includes(slug)),
   )
 }
 
@@ -112,7 +112,7 @@ export function ProfileRival({
   let climbSlug: string | null = null
   if (!visiting && gap >= 0) {
     const climb = cheapestClimb(you.byGame, gap)
-    const unplayed = VISIBLE_LEADERBOARD_GAMES.some((slug) => !you.byGame[slug])
+    const unplayed = RANKED_LEADERBOARD_GAMES.some((slug) => !you.byGame[slug])
     const middling = unplayed && gap < MIDDLING
     const passWord = second ? 'pass' : 'passes'
     if (climb) {

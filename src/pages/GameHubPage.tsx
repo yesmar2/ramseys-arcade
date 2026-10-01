@@ -8,11 +8,11 @@ import { GameHubRecords } from '../components/GameHubRecords'
 import { GameHubStanding } from '../components/GameHubStanding'
 import { WallTile } from '../components/GameWall'
 import { PageShell } from '../components/PageShell'
-import { gamePlayableOn, getGame, wallGames } from '../data/games'
+import { gamePlayableOn, getGame, isRankedGame, wallGames } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
 import { useDailyBeyond, useHubBoard, useHubEvents, useHubHighScore, useHubRecords } from '../hooks/useGameHub'
-import { currentHref, homeHref, navigate, periodFromRoute, recordsHref, useRoute } from '../hooks/useHashRoute'
+import { currentHref, dailyTabHref, homeHref, navigate, periodFromRoute, recordsHref, useRoute } from '../hooks/useHashRoute'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -47,6 +47,18 @@ const TODAY_CARDS: Partial<Record<string, typeof TodaysHoleCard>> = {
   marblerun: TodaysCourseCard,
 }
 
+/**
+ * A daily just for fun's own cards under its Today card (data/games.ts Game.ranked): your days on it, and
+ * today part by part, the second in its Today card's chunk.
+ */
+const YourDaysCard = lazyPage(() => import('../components/YourDays').then((m) => m.YourDaysCard))
+const TodaysHoleByTry = lazyPage(() => import('../components/TodaysHoleCard').then((m) => m.TodaysHoleByTry))
+const TODAY_PARTS: Partial<Record<string, typeof TodaysHoleByTry>> = {
+  acechase: TodaysHoleByTry,
+  findbug: lazyPage(() => import('../components/TodaysWantedCard').then((m) => m.TodaysWantedByScene)),
+  halffull: lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourByGlass)),
+}
+
 /** A daily's other two tabs, each in a chunk of its own with the plans it reads. */
 const DailyPastTab = lazyPage(() => import('../components/DailyPastTab').then((m) => m.DailyPastTab))
 const DailyRecordsTab = lazyPage(() => import('../components/DailyRecordsTab').then((m) => m.DailyRecordsTab))
@@ -74,14 +86,18 @@ type GameHubPageProps = {
  *
  * A daily's page is today's, with tabs under its hero: Today (today's card
  * across the page, then where you stand and its board), its past courses,
- * and its records.
+ * and its records. One just for fun (data/games.ts Game.ranked) places
+ * nobody: under its Today card are your days and today part by part, and it
+ * has no records tab.
  */
 export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: GameHubPageProps) {
   const route = useRoute()
   const storedPeriod = useDefaultPeriod()
   const game = getGame(slug)
   const daily = Boolean(game?.daily)
-  const tab: DailyTab = daily ? (tabFromRoute ?? 'today') : 'today'
+  const ranked = isRankedGame(slug)
+  // A daily just for fun has no records tab: an old link to it is its Today tab.
+  const tab: DailyTab = daily ? (tabFromRoute === 'records' && !ranked ? 'today' : (tabFromRoute ?? 'today')) : 'today'
   // A daily's board is the day's whatever period is picked (the API keeps it so): its page says today.
   const period: LeaderboardPeriod = daily ? 'daily' : (periodFromRoute(route) ?? storedPeriod)
   const device = useDeviceType()
@@ -89,10 +105,11 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const boardSlug = isBoardGame(slug) ? slug : null
-  const board = useHubBoard(boardSlug, period, playerName, groupId)
+  // A daily just for fun has no board to ask for.
+  const board = useHubBoard(ranked ? boardSlug : null, period, playerName, groupId)
   // A daily's board is today's; where you stand beyond it follows the header's period.
-  const beyond = useDailyBeyond(daily ? boardSlug : null, playerName, groupId, storedPeriod)
-  const highScore = useHubHighScore(boardSlug, groupId)
+  const beyond = useDailyBeyond(daily && ranked ? boardSlug : null, playerName, groupId, storedPeriod)
+  const highScore = useHubHighScore(ranked ? boardSlug : null, groupId)
   // A daily's records are its Records tab, not a card of the book.
   const records = useHubRecords(daily ? '' : slug, playerName, groupId)
   const events = useHubEvents(slug)
@@ -122,8 +139,18 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   useEffect(() => {
     if (!daily) return
     void DailyPastTab.preload()
-    void DailyRecordsTab.preload()
-  }, [daily])
+    if (ranked) void DailyRecordsTab.preload()
+    else {
+      void YourDaysCard.preload()
+      void TODAY_PARTS[slug]?.preload()
+    }
+  }, [daily, ranked, slug])
+
+  // An old link to the records tab of a daily just for fun lands on its Today tab.
+  useEffect(() => {
+    if (!daily || ranked || tabFromRoute !== 'records') return
+    navigate(dailyTabHref(slug, 'today'), { replace: true })
+  }, [daily, ranked, tabFromRoute, slug])
 
   // An old link to the game's records tab goes to its record book.
   useEffect(() => {
@@ -219,6 +246,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
 
   if (daily) {
     const TodayCard = TODAY_CARDS[game.slug]
+    const TodayParts = ranked ? null : TODAY_PARTS[game.slug]
     return (
       <PageShell innerClassName="gh-rail">
         <div className="gh gh--daily" style={style}>
@@ -237,7 +265,8 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
             <>
               {/* Today's card across the page, then where you stand and the board side by side under it (hub.css). */}
               <div className="gh-today">
-                <div className="gh-today__main">
+                {/* A daily just for fun's card is a bug hunt hiding place, where a ranked one's board panel was (lib/bugHunt.ts). */}
+                <div className="gh-today__main" data-hunt={ranked ? undefined : `b-head-${game.slug}`}>
                   {TodayCard ? (
                     <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
                       {/* Its board reads the picked group when it loads: a new group is a new card. */}
@@ -246,8 +275,18 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                   ) : null}
                 </div>
                 <div className="gh-today__below">
-                  {standing}
-                  {boardCard}
+                  {ranked ? (
+                    <>
+                      {standing}
+                      {boardCard}
+                    </>
+                  ) : (
+                    // Just for fun: your days, then today part by part (YourDays.tsx).
+                    <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
+                      <YourDaysCard slug={game.slug as 'acechase' | 'findbug' | 'halffull'} />
+                      {TodayParts ? <TodayParts /> : null}
+                    </Suspense>
+                  )}
                   {eventsCard}
                 </div>
               </div>

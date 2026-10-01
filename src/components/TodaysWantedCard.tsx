@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import { bugDay, DAY_SCENES, dayNumber, dayRun, dayWanted, nextDayAt, subscribeBugDay, wantedNames, type DayRun } from '../games/findbug/daily'
+import { bugDay, DAY_SCENES, dayNumber, dayRun, dayWanted, nextDayAt, sceneMark, subscribeBugDay, wantedNames, type DayRun } from '../games/findbug/daily'
 import { ShareDay } from '../games/findbug/DailyCards'
 import { BugPortrait } from '../games/findbug/Portrait'
 import { formatFindbugBoardScore, formatFindbugMs } from '../games/findbug/score'
@@ -11,19 +11,19 @@ import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
-import { ordinal } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
-import { GameThumbArt } from './GameThumbArt'
 import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { YourCard, YourRow } from './YourDays'
 import '../styles/evp.css'
 import '../styles/todaysWanted.css'
 
 /*
- * Today's Wanted, off the scenes: Find the Bug's five bugs wanted today, how the day's board stands, and
- * the way in. The card sits with the daily events on the Events page and on Find the Bug's own page; its
- * slimmer twin is on the home page's On now. Both come in a chunk of their own.
+ * Today's Wanted, off the scenes: Find the Bug's five bugs wanted today, your run today, and the way in. The
+ * card sits with the daily events on the Events page and on Find the Bug's own page, in a chunk of its own;
+ * with it, for Find the Bug's page, your run scene by scene (TodaysWantedByScene). Find the Bug is just for
+ * fun (data/games.ts Game.ranked): nobody's run is weighed against anyone else's.
  */
 
 const SLUG = 'findbug'
@@ -60,24 +60,18 @@ function useTodaysWanted(): { day: string; wanted: WantedBug[]; run: DayRun | nu
   return { day, wanted, run, board }
 }
 
-const time = (score: number) => formatFindbugBoardScore(score)
-
-/** Where the day stands, and where you are in it. */
+/** Your run today, as far as it's gone. */
 function standingWords(run: DayRun | null, board: TodayBoard | null): string {
   const result = run?.result
   if (result) {
-    const place = board?.you ? `, ${ordinal(board.you.place)} of ${board.count} today` : ''
     // One the board had from another device knows only its time.
-    if (result.found == null) return `Your run today: ${formatFindbugMs(result.ms)}${place}.`
+    if (result.found == null) return `Your run today: ${formatFindbugMs(result.ms)}.`
     const found = result.found < DAY_SCENES ? `You found ${result.found} of ${DAY_SCENES}` : 'You found all five'
-    return `${found} in ${formatFindbugMs(result.ms)}${place}.`
+    return `${found} in ${formatFindbugMs(result.ms)}.`
   }
   if (run?.at) return `Your run is waiting on scene ${Math.min(DAY_SCENES, run.at.index + 1)} of ${DAY_SCENES}.`
-  if (!board) return ''
-  if (board.leader) {
-    return `${board.leader.name} leads with ${time(board.leader.score)}${board.count > 1 ? `, of ${board.count} so far` : ''}.`
-  }
-  return 'Nobody has played yet: the first run sets the bar.'
+  if (board?.you) return `Your run today: ${formatFindbugBoardScore(board.you.score)}, on another device.`
+  return ''
 }
 
 /** Who's wanted today, their faces side by side. */
@@ -121,8 +115,8 @@ export function TodaysWantedCard() {
         </h2>
         <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
-          Find the Bug, with five new scenes every day and the same bugs wanted for everyone. Your first run is your result,
-          and the quickest tops the day. {standingWords(run, board)}
+          Find the Bug, with five new scenes every day and the same bugs wanted for everyone. Your first run is your result.{' '}
+          {standingWords(run, board)}
         </p>
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
@@ -145,29 +139,77 @@ export function TodaysWantedCard() {
   )
 }
 
-/** Today's Wanted in the home page's On now: the day's number and bugs, the clock, how the day stands. */
-export function TodaysWantedOnNow() {
-  const { day, wanted, run, board } = useTodaysWanted()
-  const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#34aeb4')
+/** A scene's square, in the colours of a day's marks. */
+const MARK_COLOUR: Record<ReturnType<typeof sceneMark>, string> = {
+  '🟩': '#3cb54a',
+  '🟨': '#e9b21a',
+  '🟧': '#ee7d22',
+  '🟥': '#dd3b36',
+}
+/** A scene ends at a minute: one run out of is a bug not found. */
+const SCENE_LIMIT_MS = 60_000
+
+/**
+ * Your run today scene by scene, for Find the Bug's Today tab beside your days (YourDays.tsx): each wanted
+ * bug, its square, and how long it took to find. Only your own, from this device, which keeps the times; a
+ * run from another device shows its time.
+ */
+export function TodaysWantedByScene() {
+  const { wanted, run, board } = useTodaysWanted()
+  const href = gamePlayHref(SLUG)
   const result = run?.result
+  const times = result?.times
+  let body
+  if (times && times.length >= DAY_SCENES) {
+    const quickest = times.reduce((best, ms, i) => (ms < times[best]! ? i : best), 0)
+    body = (
+      <>
+        <ul className="yd-rows">
+          {wanted.slice(0, DAY_SCENES).map((bug, i) => {
+            const ms = times[i]!
+            return (
+              <YourRow
+                key={`${bug.id}-${i}`}
+                name={bug.name}
+                color={MARK_COLOUR[sceneMark(ms)]}
+                fill={100 * (1 - Math.min(ms, SCENE_LIMIT_MS) / SCENE_LIMIT_MS)}
+                value={ms >= SCENE_LIMIT_MS ? 'not found' : formatFindbugMs(ms)}
+              />
+            )
+          })}
+        </ul>
+        <p className="yd__foot">
+          Your quickest find today: {wanted[quickest]?.name}, in {formatFindbugMs(times[quickest]!)}. New bugs are wanted at
+          midnight.
+        </p>
+      </>
+    )
+  } else if (result || board?.you) {
+    // A run from another device: its time is all that's known here.
+    const ms = result?.ms
+    body = (
+      <p className="yd__note">
+        Your run today: {ms != null ? formatFindbugMs(ms) : formatFindbugBoardScore(board!.you!.score)}, played on another
+        device. Its scenes are there.
+      </p>
+    )
+  } else {
+    body = (
+      <>
+        <p className="yd__note">
+          {run?.at
+            ? `Your run is waiting on scene ${Math.min(DAY_SCENES, run.at.index + 1)} of ${DAY_SCENES}.`
+            : 'Not hunted yet today. Five bugs are wanted: find each one in its scene, fast.'}
+        </p>
+        <a className="evp-btn evp-btn--small yd__go" href={href}>
+          {run?.at ? 'Carry on' : 'Find them'}
+        </a>
+      </>
+    )
+  }
   return (
-    <a className="onnow-card" href={gamePlayHref(SLUG)} style={{ '--ev-accent': accent } as CSSProperties}>
-      <span className="onnow-card__head">
-        <span className="onnow-card__art" aria-hidden="true">
-          <GameThumbArt slug={SLUG} accent={accent} />
-        </span>
-        <span className="onnow-card__titles">
-          <span className="onnow-card__title">Today&rsquo;s Wanted #{dayNumber(day)}</span>
-          <span className="onnow-card__sub">Find the Bug · {wantedNames(wanted)}</span>
-        </span>
-        <EventCountdown endsAt={nextDayAt()} className="onnow-card__clock" />
-      </span>
-      <span className={`onnow-card__line${result ? ' onnow-card__line--you' : ''}`}>
-        {standingWords(run, board) || 'Five new scenes every day, the same for everyone. Your first run is your result.'}
-      </span>
-      <span className="onnow-card__foot">
-        <span className="onnow-card__go">{result ? 'Play again' : run ? 'Carry on' : 'Play'}</span>
-      </span>
-    </a>
+    <YourCard title="Today, scene by scene" labelledBy="yd-today-findbug" hunt={`g-stand-${SLUG}`}>
+      {body}
+    </YourCard>
   )
 }

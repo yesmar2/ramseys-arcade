@@ -1,11 +1,12 @@
 import { dailyTabHref } from '../hooks/useHashRoute'
-import { dailyWords } from '../lib/dailyWords'
+import { dailyWords, todayKind } from '../lib/dailyWords'
 import { RunLabel } from './RunLabel'
 
 /*
  * What every daily's Today card (Today's Track, Hole, Wanted, Pour and Course) says the same way: that
- * today's run counts toward your rank, and a real button to the game's past courses, named as its page's
- * tab is, where a past one is played again without counting.
+ * today's run counts toward your rank (or is just for fun, on Ace Chase, Find the Bug and Half Full), and a
+ * real button to the game's past courses, named as its page's tab is, where a past one is played again
+ * without counting.
  */
 
 const PastIcon = () => (
@@ -15,9 +16,9 @@ const PastIcon = () => (
   </svg>
 )
 
-/** Today's run counts toward your rank: the label every Today card wears under its name. */
+/** What today's run counts toward: the label every Today card wears under its name. */
 export function TodayCounts({ slug }: { slug: string }) {
-  return <RunLabel kind="counts" slug={slug} className="evp-daily__label" />
+  return <RunLabel kind={todayKind(slug)} slug={slug} className="evp-daily__label" />
 }
 
 /** The way to a daily's past courses: its page's Past tab, "Past tracks", "Past days"… */

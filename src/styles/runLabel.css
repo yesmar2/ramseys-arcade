@@ -1,4 +1,4 @@
-/* What a daily run counts toward (components/RunLabel.tsx): one look for each of the three answers. */
+/* What a daily run counts toward (components/RunLabel.tsx): one look for each of the four answers. */
 
 .run-label {
   --run-label: #11704f;
@@ -28,6 +28,10 @@
   --run-label: #11704f;
 }
 
+.run-label--fun {
+  --run-label: #7046b3;
+}
+
 .run-label--board {
   --run-label: #8f5a04;
 }
@@ -38,6 +42,10 @@
 
 html[data-theme='dark'] .run-label--counts {
   --run-label: #38d39f;
+}
+
+html[data-theme='dark'] .run-label--fun {
+  --run-label: #c3a3f7;
 }
 
 html[data-theme='dark'] .run-label--board {
@@ -60,6 +68,10 @@ html[data-theme='dark'] .run-label--practice {
 /* The pill is dark in both themes, so it keeps the bright colours the light theme's darker ones would dim. */
 .run-label--hud.run-label--counts {
   --run-label: #38d39f;
+}
+
+.run-label--hud.run-label--fun {
+  --run-label: #c3a3f7;
 }
 
 .run-label--hud.run-label--board {

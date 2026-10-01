@@ -1043,6 +1043,11 @@ html[data-theme='dark'] .phm-line {
   --phm-tone: var(--dp-practice);
 }
 
+/* A daily just for fun's own line: the violet of its "Just for fun" label (runLabel.css). */
+.phm-mark--fun {
+  --phm-tone: #7046b3;
+}
+
 .phm-signin {
   margin: 1rem 0 0;
   font-size: 0.9375rem;

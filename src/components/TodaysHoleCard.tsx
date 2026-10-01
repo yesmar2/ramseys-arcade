@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } 
 import { getGame } from '../data/games'
 import { ShareButton } from '../games/acechase/DailyCards'
 import { drawHolePlan } from '../games/acechase/holePlan'
+import { formatTries } from '../games/acechase/score'
 import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
@@ -12,6 +13,7 @@ import {
   dayProgress,
   dayResult,
   msUntilNextHole,
+  patternOf,
   subscribeDaily,
   syncDaily,
   todaysHole,
@@ -19,19 +21,18 @@ import {
   type DayProgress,
   type TodaysHole,
 } from '../lib/dailyHole'
-import { ordinal } from '../lib/profileMath'
-import { EventCountdown } from './EventCountdown'
-import { GameThumbArt } from './GameThumbArt'
 import { resolveGameAccent } from '../lib/theme'
 import { formatEventCountdown } from '../lib/tournaments'
 import { PlayIcon } from './chromeIcons'
 import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { YourCard, YourRow } from './YourDays'
 import '../styles/evp.css'
 
 /*
- * Today's Hole, off the course: the day's Ace Chase hole drawn from above, how everyone's doing at it,
- * and the way in. It sits with the daily events on the Events page, and on Ace Chase's own page; a slim
- * one is in the home page's On now, beside Today's Track.
+ * Today's Hole, off the course: the day's Ace Chase hole drawn from above, how you and everyone are doing at
+ * it (a count and an average, never a name), and the way in. It sits with the daily events on the Events page,
+ * and on Ace Chase's own page; with it, for Ace Chase's page, your tries today (TodaysHoleByTry). Ace Chase is
+ * just for fun (data/games.ts Game.ranked): nobody's tries are weighed against anyone else's.
  */
 
 const SLUG = 'acechase'
@@ -92,24 +93,24 @@ export function HolePlan({ hole }: { hole: TodaysHole }) {
   return <canvas ref={ref} className="thc-plan" aria-hidden="true" />
 }
 
-function standing(progress: DayProgress | null, server: DailyServer | null): string {
-  const result = dayResult(progress, server?.you)
-  if (result) {
-    const place = server?.you?.place
-    const streak = server?.you?.streak ?? 0
-    return `You got it in ${result.tries}${place != null && server ? `, ${ordinal(place)} of ${server.solved}` : ''}.${
-      streak > 1 ? ` That’s ${streak} days in a row.` : ''
-    }`
-  }
-  const tries = progress?.tries ?? 0
-  const leader = server?.top[0]
-  const leads = leader ? ` ${leader.name} leads, in ${leader.tries} ${leader.tries === 1 ? 'try' : 'tries'}.` : ''
-  if (tries > 0) return `You’re ${tries} ${tries === 1 ? 'try' : 'tries'} in.${leads}`
+/** How everyone's doing today, in a count and an average: no names. */
+function everyoneWords(server: DailyServer | null): string {
   if (!server) return ''
   if (server.solved === 0) return 'Nobody has got it yet.'
   return `${server.solved} ${server.solved === 1 ? 'player has' : 'have'} got it so far${
     server.average != null ? `, in ${server.average} ${server.average === 1 ? 'try' : 'tries'} on average` : ''
-  }.${leads}`
+  }.`
+}
+
+function standing(progress: DayProgress | null, server: DailyServer | null): string {
+  const result = dayResult(progress, server?.you)
+  if (result) {
+    const streak = server?.you?.streak ?? 0
+    return `You got it in ${result.tries}.${streak > 1 ? ` That’s ${streak} days in a row.` : ''}`
+  }
+  const tries = progress?.tries ?? 0
+  if (tries > 0) return `You’re ${tries} ${tries === 1 ? 'try' : 'tries'} in.`
+  return everyoneWords(server)
 }
 
 /** Today's Hole as a card: the hole, that it counts, how it's going, the clock to the next, Past holes, and Play or Share. */
@@ -142,8 +143,8 @@ export function TodaysHoleCard() {
         </h2>
         <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
-          Ace Chase, on {PLACE_NAME[hole.pick.style]}. One hole for everyone today, every try counts, and the fewest to a
-          bullseye top the list. {standing(progress, server)}
+          Ace Chase, on {PLACE_NAME[hole.pick.style]}. One hole for everyone today, and every try counts.{' '}
+          {standing(progress, server)}
         </p>
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
@@ -166,35 +167,78 @@ export function TodaysHoleCard() {
   )
 }
 
-/** When the next hole comes, to the second: the same all day, for a countdown to hold on to. */
-function nextHoleAt(now = Date.now()) {
-  return Math.round((now + msUntilNextHole(now)) / 1000) * 1000
+/** Where a try ended, in words and in the colour its mark has (yourDays.css .yd-try). */
+const ENDS: { code: string; name: string; colour: string }[] = [
+  { code: 'b', name: 'Bullseye', colour: 'var(--gh-accent, #2eb8a0)' },
+  { code: 'i', name: 'Inner ring', colour: '#3ecf8e' },
+  { code: 'o', name: 'Outer ring', colour: '#4aa8e8' },
+  { code: 'x', name: 'Off the rings', colour: 'rgba(var(--ink-rgb), 0.35)' },
+  { code: 'l', name: 'Lost', colour: '#1f5577' },
+]
+
+/** A day's tries as dots, one a try, where each ended. */
+function TryMarks({ pattern }: { pattern: string }) {
+  const marks = [...pattern]
+  const shown = marks.length > 40 ? [...marks.slice(0, 39), '…', marks[marks.length - 1]!] : marks
+  return (
+    <div className="yd-tries" aria-label={marks.map((c) => ENDS.find((e) => e.code === c)?.name ?? '').join(', ')}>
+      {shown.map((c, i) => (
+        <span key={i} className={`yd-try yd-try--${c === '…' ? 'more' : c}`} aria-hidden="true">
+          {c === '…' ? '…' : null}
+        </span>
+      ))}
+    </div>
+  )
 }
 
-/** Today's Hole in the home page's On now: the hole's number and name, the clock, how the day stands. */
-export function TodaysHoleOnNow() {
-  const { hole, progress, server } = useTodaysHole()
-  const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#2eb8a0')
-  const solved = dayResult(progress, server?.you)
-  const tries = progress?.tries ?? 0
+/**
+ * Your tries at today's hole, for Ace Chase's Today tab beside your days (YourDays.tsx): a dot a try, where
+ * each ended, and how many ended where; under them, how everyone's doing, in a count and an average. Only
+ * your own: a result from another device shows its tries.
+ */
+export function TodaysHoleByTry() {
+  const { progress, server } = useTodaysHole()
+  const href = gamePlayHref(SLUG)
+  const result = dayResult(progress, server?.you)
+  const inPlay = !result && progress && progress.tries > 0 ? patternOf(progress.shots) : null
+  const pattern = result?.pattern ?? inPlay
+  let body
+  if (pattern) {
+    const counts = ENDS.map((end) => ({ ...end, n: [...pattern].filter((c) => c === end.code).length })).filter((e) => e.n > 0)
+    body = (
+      <>
+        <p className="yd-headline">{result ? `Bullseye in ${formatTries(result.tries)}` : `${formatTries(pattern.length)} so far`}</p>
+        <TryMarks pattern={pattern} />
+        <ul className="yd-rows">
+          {counts.map((e) => (
+            <YourRow key={e.code} name={e.name} color={e.colour} fill={(100 * e.n) / pattern.length} value={String(e.n)} />
+          ))}
+        </ul>
+        {result ? null : (
+          <a className="evp-btn evp-btn--small yd__go" href={href}>
+            Carry on
+          </a>
+        )}
+        <p className="yd__foot">{everyoneWords(server) || 'A new hole comes at midnight.'}</p>
+      </>
+    )
+  } else if (result) {
+    // A result from another device: its tries are all that's known here.
+    body = <p className="yd__note">You got it in {formatTries(result.tries)} today, on another device. Its tries are there.</p>
+  } else {
+    body = (
+      <>
+        <p className="yd__note">Not played yet today. One hole, and every try counts: stop the ball dead on the bullseye.</p>
+        <a className="evp-btn evp-btn--small yd__go" href={href}>
+          Play the hole
+        </a>
+        {server ? <p className="yd__foot">{everyoneWords(server)}</p> : null}
+      </>
+    )
+  }
   return (
-    <a className="onnow-card" href={gamePlayHref(SLUG)} style={{ '--ev-accent': accent } as CSSProperties}>
-      <span className="onnow-card__head">
-        <span className="onnow-card__art" aria-hidden="true">
-          <GameThumbArt slug={SLUG} accent={accent} />
-        </span>
-        <span className="onnow-card__titles">
-          <span className="onnow-card__title">Today&rsquo;s Hole #{hole.n}</span>
-          <span className="onnow-card__sub">Ace Chase · {hole.def.name}</span>
-        </span>
-        <EventCountdown endsAt={nextHoleAt()} className="onnow-card__clock" />
-      </span>
-      <span className={`onnow-card__line${solved ? ' onnow-card__line--you' : ''}`}>
-        {standing(progress, server) || 'A new hole every day, the same for everyone. The fewest tries tops the day.'}
-      </span>
-      <span className="onnow-card__foot">
-        <span className="onnow-card__go">{solved ? 'Play again' : tries > 0 ? 'Carry on' : 'Play'}</span>
-      </span>
-    </a>
+    <YourCard title="Today, try by try" labelledBy="yd-today-acechase" hunt={`g-stand-${SLUG}`}>
+      {body}
+    </YourCard>
   )
 }

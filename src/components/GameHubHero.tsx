@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { deviceRequirementLabel, TAG_LABELS, type Game } from '../data/games'
+import { deviceRequirementLabel, isRankedGame, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, gamePlayHref, homeHref, recordsHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
@@ -63,6 +63,7 @@ export function GameHubHero({
   const where = `${deviceRequirementLabel(game) ?? 'Phone or desk'} · Free to play`
   const kicker = game.comingSoon ? 'Coming soon' : game.inDevelopment ? 'New' : null
   const daily = Boolean(game.daily)
+  const ranked = isRankedGame(game.slug)
   const playLabel = daily ? dailyPlayLabel(game.slug) : `Play ${game.name}`
 
   return (
@@ -107,7 +108,9 @@ export function GameHubHero({
             <GameHubHowTo game={game} className="gh-ghost" />
             <ShareBoardButton
               className="gh-share"
-              label={`Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.`}
+              label={
+                ranked ? `Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.` : `Try today’s ${game.name} on ${APP_NAME}.`
+              }
               url={gameHref(game.slug)}
             />
           </div>
@@ -139,13 +142,16 @@ export function GameHubHero({
           <GameThumbArt slug={game.slug} accent={accent} />
         </span>
         {hasGamePreview(game.slug) ? <GamePreview slug={game.slug} className="gh-screen__game" autoplay /> : null}
-        <span className="gh-screen__top">
-          <span className="gh-screen__hi">
-            {daily ? '1st today' : 'Hi score'}
-            <b>{highScore ? formatLeaderboardScore(game.slug, highScore.score) : 'Open'}</b>
+        {/* A daily just for fun has no 1st: nobody is placed (data/games.ts Game.ranked). */}
+        {ranked ? (
+          <span className="gh-screen__top">
+            <span className="gh-screen__hi">
+              {daily ? '1st today' : 'Hi score'}
+              <b>{highScore ? formatLeaderboardScore(game.slug, highScore.score) : 'Open'}</b>
+            </span>
+            {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}
           </span>
-          {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}
-        </span>
+        ) : null}
         {canPlay ? <span className="gh-screen__start">Press start</span> : null}
       </a>
 

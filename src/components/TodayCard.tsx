@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState, type CSSProperties } from 'react'
-import { getGame } from '../data/games'
-import { gameBoardHref, gamePlayHref, tournamentHref } from '../hooks/useHashRoute'
+import { getGame, isRankedGame } from '../data/games'
+import { gameBoardHref, gameHref, gamePlayHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { capitalName, huntDay, huntPick, huntStats, openBugHunt, subscribeHunt } from '../lib/bugHunt'
@@ -11,6 +11,7 @@ import {
   rivalResult,
   rivalStanding,
   rivalWords,
+  TODAY_DAILIES,
   TODAY_KEEP,
   type TodayKey,
   type TodayRivals as Rivals,
@@ -88,9 +89,14 @@ function useHuntPunch(): { name: string; bugId: string; found: boolean } {
   return { name: capitalName(pick.bug), bugId: pick.bug.id, found: huntStats().foundToday }
 }
 
-/** A punch's line on the rivals: where you stand among them, or who leads while you haven't. */
+/**
+ * A punch's line on the rivals: where you stand among them, or who leads while you haven't. None on a daily
+ * just for fun (data/games.ts Game.ranked): nobody leads it.
+ */
 function rivalLine(data: Rivals | null, key: TodayKey): string | null {
   if (!data) return null
+  const slug = TODAY_DAILIES.find((d) => d.key === key)?.slug
+  if (slug && !isRankedGame(slug)) return null
   const standing = rivalStanding(data.rivals, key)
   if (!standing) return null
   if ('leader' in standing) return `${standing.leader.name} leads, ${rivalWords(key, rivalResult(standing.leader, key)!)}`
@@ -244,9 +250,16 @@ function Featured({ punch, then, rival }: { punch: Punch; then: Punch | null; ri
         <Again punch={punch} />
         <div className="today-feature__row">
           {punch.done ? (
-            <a className="today-feature__board" href={gameBoardHref(punch.slug, 'daily')}>
-              Today’s board
-            </a>
+            // A daily just for fun has no board: its page keeps your days instead.
+            isRankedGame(punch.slug) ? (
+              <a className="today-feature__board" href={gameBoardHref(punch.slug, 'daily')}>
+                Today’s board
+              </a>
+            ) : (
+              <a className="today-feature__board" href={gameHref(punch.slug)}>
+                Your days
+              </a>
+            )
           ) : (
             <a className="today-feature__go" href={href}>
               <PlayIcon />

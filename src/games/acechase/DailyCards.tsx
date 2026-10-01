@@ -50,11 +50,6 @@ function NextHole() {
   return <p className="game-card__hint acechase-daily__next">Next hole in {untilNext(ms)}</p>
 }
 
-const ORDINAL = (n: number) => {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`
-}
 
 const END_NAME: Record<string, string> = { b: 'bullseye', i: 'inner ring', o: 'outer ring', x: 'off the rings', l: 'lost' }
 
@@ -177,8 +172,9 @@ function HoleTickets({ tickets }: { tickets: number }) {
 }
 
 /**
- * Signed in without a tag, the day's result is kept but isn't on the board: a tag puts it there. The API
- * catches it up the next time it's asked, which syncDaily does straight after.
+ * Signed in without a tag, the day's result is kept but isn't saved under a name yet: a tag does that (it's
+ * what the Dailies and your days read). The API catches it up the next time it's asked, which syncDaily
+ * does straight after.
  */
 function BoardTag() {
   const id = useId()
@@ -201,9 +197,9 @@ function BoardTag() {
   }
   return (
     <div className="acechase-daily__tag">
-      <TagSlots id={id} value={draft} onChange={setDraft} onSubmit={() => void submit()} lead="Put your tag on it and it goes on today’s board." error={error} />
+      <TagSlots id={id} value={draft} onChange={setDraft} onSubmit={() => void submit()} lead="Put your tag on it to save it as today’s result." error={error} />
       <button type="button" className="panel__btn" disabled={!name || busy} onClick={() => void submit()}>
-        {busy ? 'Saving…' : 'Put it on the board'}
+        {busy ? 'Saving…' : 'Save it'}
       </button>
     </div>
   )
@@ -281,7 +277,7 @@ export function DailyStartCard({
       </p>
       {/* What a run from here does: the day's tries count until the first bullseye; after it, they're practice.
           Left off while a run from signed out is on offer, as Find the Bug's and Half Full's cards do. */}
-      {open ? null : <RunLabel kind={result ? 'practice' : 'counts'} slug={SLUG} className="acechase-daily__label" />}
+      {open ? null : <RunLabel kind={result ? 'practice' : 'fun'} slug={SLUG} className="acechase-daily__label" />}
       <div className="game-pause-meta">
         <div className="game-pause-meta__row">
           <span>You</span>
@@ -301,7 +297,7 @@ export function DailyStartCard({
       {open ? (
         <p className="game-card__hint">
           {open.solved
-            ? 'Someone got it here signed out. Put it on today’s board as yours, or play your own.'
+            ? 'Someone got it here signed out. Save it as yours, or play your own.'
             : 'Someone played it here signed out. Carry it on as yours, or start your own.'}
         </p>
       ) : null}
@@ -318,7 +314,7 @@ export function DailyStartCard({
           <>
             {open.solved ? (
               <button type="button" className="panel__btn" disabled={putting} onClick={() => void putOnBoard()}>
-                {putting ? 'Saving…' : 'Put it on today’s board'}
+                {putting ? 'Saving…' : 'Save it as yours'}
               </button>
             ) : (
               <button type="button" className="panel__btn" onClick={onTakeUp}>
@@ -425,16 +421,8 @@ export function DailyResultCard({
       {practice ? <RunLabel kind="practice" slug={SLUG} className="acechase-daily__label" /> : null}
       {shown?.pattern ? <Pattern pattern={shown.pattern} /> : null}
       <div className="game-pause-meta">
-        {mine && you?.place != null && server ? (
-          <div className="game-pause-meta__row">
-            <span>Today</span>
-            <strong>
-              {ORDINAL(you.place)} of {server.solved}
-            </strong>
-          </div>
-        ) : (
-          <Everyone server={server} />
-        )}
+        {/* Ace Chase is just for fun (data/games.ts Game.ranked): how everyone did, and no place for anyone. */}
+        <Everyone server={server} />
         {mine && you && you.streak > 1 ? (
           <div className="game-pause-meta__row">
             <span>Streak</span>
@@ -446,16 +434,16 @@ export function DailyResultCard({
       {!practice && mine && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
       {mine && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
       {theirs ? <PlayedAs owner={owner} signedIn={signedIn} /> : null}
-      {takeUp && taking === 'sending' ? <p className="game-card__hint">Putting it on today&rsquo;s board…</p> : null}
+      {takeUp && taking === 'sending' ? <p className="game-card__hint">Saving it as today&rsquo;s result…</p> : null}
       {takeUp && taking === 'refused' ? (
         <p className="game-card__hint">
-          {you?.tries != null ? `Your result today stands: bullseye in ${you.tries}. This one, played signed out, stays off the board.` : 'This one, played signed out, stays off the board.'}
+          {you?.tries != null ? `Your result today stands: bullseye in ${you.tries}. This one, played signed out, isn’t saved.` : 'This one, played signed out, isn’t saved.'}
         </p>
       ) : null}
-      {takeUp && taking === 'failed' ? <p className="panel__error">That result didn&rsquo;t go on the board. Put it on from the start card.</p> : null}
+      {takeUp && taking === 'failed' ? <p className="panel__error">That result didn&rsquo;t save. Save it from the start card.</p> : null}
       {mine && !signedIn ? (
         <div className="acechase-daily__signin">
-          <p>Sign in to put today&rsquo;s result on the board, earn its tickets, and keep a streak going.</p>
+          <p>Sign in to save today&rsquo;s result, earn its tickets, and keep a streak going.</p>
           <GoogleSignInButton />
         </div>
       ) : null}

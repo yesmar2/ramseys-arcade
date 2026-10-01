@@ -5,10 +5,8 @@ import { copyText } from '../../components/ShareBoardButton'
 import { gameArchiveHref, gamePlayHref, todayShareHref } from '../../hooks/useHashRoute'
 import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { fitCardToSpace } from '../../lib/cardFit'
-import { BOARD_NAMES } from '../../lib/dailyWords'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { onItsDayFact, type ItsDay } from '../../lib/onItsDay'
-import { ordinal } from '../../lib/profileMath'
 import {
   dayNumber,
   DAY_SCENES,
@@ -22,7 +20,7 @@ import {
   type RunHold,
 } from './daily'
 import { BugPortrait } from './Portrait'
-import { findbugMsFromBoardScore, formatFindbugBoardScore, formatFindbugMs } from './score'
+import { findbugMsFromBoardScore, formatFindbugMs } from './score'
 import type { TodayBoard } from './todayBoard'
 import type { WantedBug } from './wanted'
 
@@ -141,19 +139,6 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-/** Where today stands: your place once you're on it, and who's 1st until then. */
-function TodayRow({ board }: { board: TodayBoard | null }) {
-  if (!board) return null
-  if (board.you) {
-    return (
-      <Row label="Your place today">
-        {ordinal(board.you.place)} of {board.count}
-      </Row>
-    )
-  }
-  return <Row label="1st today">{board.leader ? `${board.leader.name} · ${formatFindbugBoardScore(board.leader.score)}` : 'Nobody yet'}</Row>
-}
-
 function resultWords(result: DayResult): string {
   const found = result.found != null ? ` · found ${result.found} of ${DAY_SCENES}` : ''
   return `${formatFindbugMs(result.ms)}${found}`
@@ -226,19 +211,18 @@ export function TodayCard({
         <WantedLineup wanted={wanted} />
         <p className="findbug-daily__rules">
           {result
-            ? 'Today’s first run was played on this device while signed out. If it was you, put it on today’s board. If not, your own first run is still to play.'
+            ? 'Today’s first run was played on this device while signed out. If it was you, save it as today’s result. If not, your own first run is still to play.'
             : 'A first run was begun on this device while signed out and left halfway. If it was you, carry it on. If not, your own first run is still to play.'}
         </p>
         <div className="game-pause-meta">
           <Row label="Signed out">{result ? resultWords(result) : at ? soFarWords(at) : 'Started'}</Row>
-          <TodayRow board={board} />
         </div>
         {result?.times ? <SceneSquares times={result.times} /> : null}
         <div className="game-card__actions">
           {result ? (
             offBoard ? (
               <button type="button" className="panel__btn" onClick={onSave}>
-                Put it on today&rsquo;s board
+                Save it as today&rsquo;s result
               </button>
             ) : null
           ) : (
@@ -266,13 +250,12 @@ export function TodayCard({
             ? 'That’s your result for today. Play the day again as much as you like: it’s practice, and your result stands.'
             : 'Five scenes and a bug wanted in each, the same for everyone today. Your first run is your result, and the clock waits if you leave.'}
       </p>
-      {/* What a run from here does: the day's first counts; once it's done, the rest are practice. */}
-      <RunLabel kind={result ? 'practice' : 'counts'} slug={SLUG} className="findbug-daily__label" />
+      {/* What a run from here does: the day's first is your result (just for fun); once it's done, the rest are practice. */}
+      <RunLabel kind={result ? 'practice' : 'fun'} slug={SLUG} className="findbug-daily__label" />
       <div className="game-pause-meta">
         <Row label="You">
           {waiting ? 'Checking who’s signed in…' : result ? resultWords(result) : at ? soFarWords(at) : started ? 'Started' : 'Not played yet'}
         </Row>
-        <TodayRow board={board} />
       </div>
       {result?.times ? <SceneSquares times={result.times} /> : null}
       <div className="game-card__actions">
@@ -280,7 +263,7 @@ export function TodayCard({
           <>
             {offBoard ? (
               <button type="button" className="panel__btn" onClick={onSave}>
-                Put it on today&rsquo;s board
+                Save it as today&rsquo;s result
               </button>
             ) : null}
             <ShareDay day={day} result={result} className={offBoard ? 'panel__btn panel__btn--ghost' : 'panel__btn'} />
@@ -360,7 +343,7 @@ function dayScenesWords(day: string, today: string): string {
   let within = false
   for (let d = dayBefore(today), i = 0; i < 6 && !within; i += 1, d = dayBefore(d)) within = d === day
   const whose = within ? `${weekdayFormat.format(new Date(`${day}T12:00:00Z`))}’s` : 'That day’s'
-  return `${whose} five scenes, as often as you like. No board, no tickets, and your rank stays as it is.`
+  return `${whose} five scenes, as often as you like. It’s practice: nothing is saved.`
 }
 
 /** A past day's page on the play screen. */
@@ -427,28 +410,16 @@ function gapWords(ms: number, other: number): { tie: boolean; quicker: boolean; 
 }
 
 /**
- * The run against its Ranked board: your own result that day, and the day's 1st. "That's 3.9s quicker
- * than your 49.1s on the Ranked board. ODCHKA's 1st, 40.0s, is 5.2s away."
+ * The run against your own that day: "That's 3.9s quicker than your 49.1s that day." Find the Bug is just
+ * for fun (data/games.ts Game.ranked), so no one else's run is measured against it.
  */
 function againstItsDay(ms: number, itsDay: ItsDay): string | null {
-  const entry = itsDay.entry
-  if (!entry) return null
-  const out: string[] = []
-  const you = itsDay.signedIn ? entry.you : null
-  const ranked = `on the ${BOARD_NAMES.ranked} board`
-  if (you) {
-    const yours = findbugMsFromBoardScore(you.score)
-    const g = gapWords(ms, yours)
-    const at = formatFindbugMs(yours)
-    out.push(g.tie ? `That ties your ${at} ${ranked}.` : `That’s ${g.gap} ${g.quicker ? 'quicker' : 'slower'} than your ${at} ${ranked}.`)
-    // You were the day's 1st: that's the line already said.
-    if (you.place === 1) return out.join(' ')
-  }
-  const first = findbugMsFromBoardScore(entry.top.score)
-  const g = gapWords(ms, first)
-  const whose = `${entry.top.name}’s 1st${you ? '' : ` ${ranked}`}, ${formatFindbugMs(first)}`
-  out.push(g.tie ? `That ties ${whose}.` : g.quicker ? `That beats ${whose}, by ${g.gap}.` : `${whose}, is ${g.gap} away.`)
-  return out.join(' ')
+  const you = itsDay.signedIn ? (itsDay.entry?.you ?? null) : null
+  if (!you) return null
+  const yours = findbugMsFromBoardScore(you.score)
+  const g = gapWords(ms, yours)
+  const at = formatFindbugMs(yours)
+  return g.tie ? `That ties your ${at} that day.` : `That’s ${g.gap} ${g.quicker ? 'quicker' : 'slower'} than your ${at} that day.`
 }
 
 /**

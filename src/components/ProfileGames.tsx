@@ -5,7 +5,7 @@ import type { GameBest } from '../hooks/useProfileBoards'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import {
-  VISIBLE_LEADERBOARD_GAMES,
+  RANKED_LEADERBOARD_GAMES,
   type GlobalGamePlace,
   type LeaderboardGame,
   type LeaderboardPeriod,
@@ -179,7 +179,7 @@ export function ProfileGames({
 }) {
   const device = useDeviceType()
   const word = periodWord(period)
-  const games = VISIBLE_LEADERBOARD_GAMES.map((slug) => getGame(slug)).filter((g): g is Game => Boolean(g))
+  const games = RANKED_LEADERBOARD_GAMES.map((slug) => getGame(slug)).filter((g): g is Game => Boolean(g))
   const placed = games
     .filter((g) => byGame[g.slug])
     .sort((a, b) => (byGame[b.slug]?.points ?? 0) - (byGame[a.slug]?.points ?? 0) || (byGame[a.slug]?.place ?? 0) - (byGame[b.slug]?.place ?? 0))

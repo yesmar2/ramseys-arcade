@@ -1,19 +1,16 @@
-import { useCallback, useState } from 'react'
 import { useDailyDays, type ArchiveDay } from '../../lib/archive'
 import type { DailySolved, TodaysHole } from '../../lib/dailyHole'
 import { pastKindFor } from '../../lib/dailyPast'
-import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
-import { useHoleBoard, useHoleRecordsAsked, type HoleBoard, type HoleRecordRow, type PastProgress } from '../../lib/pastHoles'
+import type { PastKind } from '../../lib/dailyWords'
+import type { HoleBoard, HoleRecordRow, PastProgress } from '../../lib/pastHoles'
 import type { PastFact } from '../../lib/pastPlay'
-import { ordinal } from '../../lib/scoreboard'
 import { acechaseTriesFromBoardScore } from './score'
 
 /*
- * A past hole's figures, as its start card, the pause card and its result card show them: its Ranked board
- * (the days' list, GET /leaderboards/acechase/days) and its All time board (lib/pastHoles.ts). Asked by
- * the tag the past tab asks by, so what a row there has just shown is here at once. A hole's board takes
- * only a player's first result on it, so the same figures say what a run here does: goes on its board, or
- * practice.
+ * A past hole's figures, as its start card, the pause card and its result card show them: how its day went
+ * for you (the days' list, GET /leaderboards/acechase/days), asked by the tag the past tab asks by, so what a
+ * row there has just shown is here at once. Ace Chase is just for fun (data/games.ts Game.ranked), so a past
+ * hole keeps no board and a run on it is practice: its board and its row are always none.
  */
 
 const SLUG = 'acechase'
@@ -21,41 +18,32 @@ const SLUG = 'acechase'
 export const triesWords = (n: number) => `${n} ${n === 1 ? 'try' : 'tries'}`
 export const playersWords = (n: number) => `${n} ${n === 1 ? 'player' : 'players'}`
 
-/** What the API says about a past hole: how its day went, and its board. */
+/** What the API says about a past hole: how its day went. */
 export type PastHoleFigures = {
   /** Its day from the days' list: undefined while it's asked, null if nobody got it on its day. */
   onItsDay: ArchiveDay | null | undefined
   /** The days' list couldn't be had: its day's line is left out. */
   dayUnknown: boolean
-  /** Its board, with the player's place on it; null until it comes. */
+  /** Its board, which a past hole no longer keeps: always null. */
   board: HoleBoard | null
-  /** Its row in the list of every hole's board: there at once when the past tab has just asked for it. */
+  /** Its row in the list of every hole's board, which there no longer is: always null. */
   row: HoleRecordRow | null | undefined
-  /** Ask for the board again: after a result has gone on it. */
+  /** Ask again: nothing to ask, since a past hole keeps no board. */
   refresh: () => void
 }
 
+const NOTHING = () => {}
+
 /** A past hole's figures, with `name`'s results (none for no name). */
 export function usePastHoleFigures(hole: TodaysHole, name: string): PastHoleFigures {
-  const [version, setVersion] = useState(0)
-  const board = useHoleBoard(hole.day, name, version)
-  const { rows } = useHoleRecordsAsked(name)
   const { days, failed } = useDailyDays(SLUG, name)
-  const refresh = useCallback(() => setVersion((v) => v + 1), [])
   return {
     onItsDay: days ? (days.find((d) => d.day === hole.day) ?? null) : failed ? null : undefined,
     dayUnknown: !days && failed,
-    board,
-    row: rows ? (rows.find((r) => r.day === hole.day) ?? null) : undefined,
-    refresh,
+    board: null,
+    row: null,
+    refresh: NOTHING,
   }
-}
-
-/** The board as far as it's known: the hole's own, or else its row from the list. */
-function boardSoFar(figures: PastHoleFigures): { players: number; record: { name: string; tries: number } | null; you: HoleBoard['you'] } | null {
-  if (figures.board) return { players: figures.board.players, record: figures.board.entries[0] ?? null, you: figures.board.you }
-  if (figures.row) return { players: figures.row.players, record: figures.row.record, you: figures.row.you }
-  return null
 }
 
 /**
@@ -72,62 +60,31 @@ export function nextHoleKind(signedIn: boolean, hadResult: boolean): PastKind {
 }
 
 /**
- * The hole's figures a line each, for its start card and the pause card: its Ranked board, and its All
- * time board. "Ranked: ODCHKA 1st in 2 tries · You 13th of 42 (3 tries)", "All time: SECRETCHK 1 try · You
- * 11th of 40 (3 tries)".
+ * The hole's figures a line each, for its start card and the pause card: your result on its day ("Your
+ * result: 3 tries on its day"), and your bullseye here since, if this device has one.
  */
 export function pastHoleFacts({
   figures,
   signedIn,
   solved,
-  progress,
 }: {
   figures: PastHoleFigures
   signedIn: boolean
   /** The player's own bullseye on it, kept on this device. */
   solved: DailySolved | null
-  /** The player's tries at it so far, when the next run carries them on. */
-  progress: PastProgress | null
+  /** The player's tries at it so far: unused, a past hole being practice. */
+  progress?: PastProgress | null
 }): PastFact[] {
   const facts: PastFact[] = []
   const day = figures.onItsDay
-  const ranked = BOARD_NAMES.ranked
-  if (day === undefined && !figures.dayUnknown) facts.push({ label: ranked, what: '…' })
-  else if (day === null && !figures.dayUnknown) facts.push({ label: ranked, what: 'Nobody got it' })
-  else if (day) {
-    const you = day.you
-    facts.push({
-      label: ranked,
-      who: day.top.name,
-      what: `1st in ${triesWords(acechaseTriesFromBoardScore(day.top.score))}`,
-      // Holes #1 and #2 came before the days counted: a result there has no place.
-      you: you
-        ? `${you.place != null ? `You ${ordinal(you.place)} of ${day.players}` : 'You played it'} (${triesWords(acechaseTriesFromBoardScore(you.score))})`
-        : null,
-      // Signed out there's no "you" to speak of: how many played it says what the 1st was of.
-      note: signedIn ? 'You’re not on it' : playersWords(day.players),
-    })
+  const label = 'Your result'
+  if (day === undefined && !figures.dayUnknown) facts.push({ label, what: '…' })
+  else if (!figures.dayUnknown) {
+    const you = signedIn ? (day?.you ?? null) : null
+    if (you) facts.push({ label, what: `${triesWords(acechaseTriesFromBoardScore(you.score))} on its day` })
+    else if (signedIn) facts.push({ label, what: 'You didn’t play it on its day' })
+    else facts.push({ label: 'That day', what: day ? `${playersWords(day.players)} got it` : 'Nobody got it' })
   }
-  const board = boardSoFar(figures)
-  const allTime = BOARD_NAMES.allTime
-  if (!board) facts.push({ label: allTime, what: '…' })
-  else if (!board.record) facts.push({ label: allTime, what: 'Nobody has got it yet' })
-  else {
-    const you = board.you
-    const tries = progress?.tries ?? 0
-    facts.push({
-      label: allTime,
-      who: board.record.name,
-      what: triesWords(board.record.tries),
-      you: you ? `You ${ordinal(you.place)} of ${board.players} (${triesWords(you.tries)})` : null,
-      note: !signedIn
-        ? playersWords(board.players)
-        : solved
-          ? `Your bullseye in ${solved.tries} isn’t on it yet`
-          : tries > 0
-            ? `You’re ${triesWords(tries)} in`
-            : `${playersWords(board.players)}, not you yet`,
-    })
-  }
+  if (solved) facts.push({ label: 'Here since', what: `Your bullseye in ${triesWords(solved.tries)}` })
   return facts
 }

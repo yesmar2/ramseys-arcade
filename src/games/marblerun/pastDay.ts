@@ -27,7 +27,7 @@ export function onItsDayFact(day: string, itsDay: ItsDay, top: DayTop): PastFact
   const label = BOARD_NAMES.ranked
   if (itsDay.days) {
     const entry = itsDay.days.find((d) => d.day === day)
-    if (!entry) return { label, what: `Nobody ${verbDone(SLUG)} it` }
+    if (!entry?.top) return { label, what: `Nobody ${verbDone(SLUG)} it` }
     const you = itsDay.me ? entry.you : null
     return {
       label,
@@ -48,6 +48,6 @@ export function onItsDayFact(day: string, itsDay: ItsDay, top: DayTop): PastFact
 /** Who was 1st on the course's day and in what time, and whether it was you. */
 export function dayFirst(day: string, itsDay: ItsDay, top: DayTop): { name: string; time: number; mine: boolean } | null {
   const entry = itsDay.days?.find((d) => d.day === day)
-  const first = entry ? { name: entry.top.name, time: marblerunMsFromBoardScore(entry.top.score) / 1000 } : itsDay.days ? null : top
+  const first = entry?.top ? { name: entry.top.name, time: marblerunMsFromBoardScore(entry.top.score) / 1000 } : itsDay.days ? null : top
   return first ? { ...first, mine: first.name === itsDay.me } : null
 }

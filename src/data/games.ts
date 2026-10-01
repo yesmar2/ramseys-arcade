@@ -63,6 +63,14 @@ export type Game = {
    * points (leaderboardFormat isDayPointsBoard). Anything that wants a daily's best run reads today's board.
    */
   daily?: boolean
+  /**
+   * False for a daily that's just for fun (Ace Chase, Find the Bug and Half Full, since 2026-09-30): its
+   * answer is the same for everyone and a friend can hand it over, so it places nobody. It has no boards, no
+   * points in the standings and no record book; a player keeps their own result, their days, the Dailies
+   * punch and the share. Hot Lap and Marble Run, where hands decide, are ranked. The API's UNRANKED_GAMES
+   * says the same.
+   */
+  ranked?: false
 }
 
 export const games: Game[] = [
@@ -158,6 +166,7 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
     daily: true,
+    ranked: false,
   },
   {
     name: 'Barrage',
@@ -218,6 +227,7 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
     daily: true,
+    ranked: false,
   },
   {
     name: 'Hot Lap',
@@ -238,6 +248,7 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
     daily: true,
+    ranked: false,
   },
   {
     name: 'Marble Run',
@@ -258,6 +269,11 @@ export function getGame(slug: string) {
 /** Whether a game's board is the day's: see Game.daily. */
 export function isDailyGame(slug: string) {
   return getGame(slug)?.daily === true
+}
+
+/** Whether a game's results place its players: every game but the dailies just for fun (see Game.ranked). */
+export function isRankedGame(slug: string) {
+  return getGame(slug)?.ranked !== false
 }
 
 export function isGameHidden(slug: string) {

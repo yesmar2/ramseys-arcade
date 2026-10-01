@@ -1,4 +1,4 @@
-import { games, getGame, isDailyGame, isGameListed } from '../data/games'
+import { games, getGame, isDailyGame, isGameListed, isRankedGame } from '../data/games'
 import { formatBoard } from '../games/halffull/boardFigure'
 import { dailyTabHref, gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
 import { FIRST_RUN_DAILIES } from './gameBoard'
@@ -168,13 +168,14 @@ export function bookRecordHref(game: string, recordId: string, period: Leaderboa
 }
 
 /**
- * The books on show: every game with records, less the hidden and on-deck ones. Every daily keeps one of its
- * own, Days played in a row (the API gives each one), even one that has no book of course records.
+ * The books on show: every game with records, less the hidden and on-deck ones and the dailies just for fun
+ * (data/games.ts Game.ranked), which keep none. Every ranked daily keeps one of its own, Days played in a row
+ * (the API gives each one), even one that has no book of course records.
  */
 export const VISIBLE_RECORD_GAMES: readonly string[] = [
   ...GAMES_WITH_RECORDS,
   ...games.filter((g) => g.daily && !(GAMES_WITH_RECORDS as readonly string[]).includes(g.slug)).map((g) => g.slug),
-].filter((g) => isGameListed(g))
+].filter((g) => isGameListed(g) && isRankedGame(g))
 
 function gameName(slug: string): string {
   return getGame(slug)?.name ?? slug

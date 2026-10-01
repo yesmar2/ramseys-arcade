@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { isDailyGame } from '../data/games'
+import { isDailyGame, isRankedGame } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
 import { scoreText } from '../lib/gameBoard'
 import { useTicketLadder } from '../lib/tickets'
@@ -52,7 +52,9 @@ function TicketsPart({ slug }: { slug: string }) {
       </ul>
       <p className="htp__note">
         {isDailyGame(slug)
-          ? 'Your best of the day pays once. Finish in the day’s top three for bonus tickets after midnight.'
+          ? isRankedGame(slug)
+            ? 'Your best of the day pays once. Finish in the day’s top three for bonus tickets after midnight.'
+            : 'Your result of the day pays once, by how it went.'
           : 'Every saved run pays, up to 200 tickets a day. A new best pays 5 more.'}
       </p>
     </section>
