@@ -128,18 +128,6 @@ html[data-theme='dark'] .dkind-tip--fun {
     inset 0 0 0 1.5px var(--dkind);
 }
 
-/* ---------- the mark alone, before a word ---------- */
-
-.dkind--mark {
-  vertical-align: -0.1em;
-  margin-right: 0.2em;
-}
-
-.dkind--mark svg {
-  width: 0.85em;
-  height: 0.85em;
-}
-
 /* ---------- the tip ---------- */
 
 .dkind-tip__head {

@@ -57,18 +57,3 @@ export function DailyKindTag({ slug, look = 'chip', className }: { slug: string;
     </InfoTip>
   )
 }
-
-/**
- * The mark alone, with no tip of its own, for inside something pressable (a phone's punch on the Dailies
- * ticket, which shows its daily's tag big when pressed): before a word (`mark`), or a badge on a picture's
- * corner (`badge`). Its word is there for a screen reader.
- */
-export function DailyKindMark({ slug, look = 'mark', className }: { slug: string; look?: 'mark' | 'badge'; className?: string }) {
-  const kind = isRankedGame(slug) ? 'ranked' : 'fun'
-  return (
-    <span className={`dkind dkind--${kind} dkind--${look}${className ? ` ${className}` : ''}`}>
-      {kind === 'ranked' ? <RankedIcon /> : <FunIcon />}
-      <span className="visually-hidden">{WORDS[kind].word}, </span>
-    </span>
-  )
-}
