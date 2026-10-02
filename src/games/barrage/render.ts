@@ -1,4 +1,5 @@
 import { withAlpha } from '../../lib/color'
+import { drawSkinArt, NOVA_FIGHTER } from '../../lib/skinArt'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import {
   BANNER_TIME,
@@ -690,8 +691,7 @@ function drawShip(g: Gfx) {
   const cx = X(sh.x)
   const cy = Y(sh.y)
   const w = U(SHIP_W)
-  // The Nova fighter (Season 1's skin): the same ship, so the same size and the same heart, in star white
-  // and violet with a teal canopy and an orange flame.
+  // The Nova fighter (Season 1's skin) keeps the same size and the same heart; its flame burns orange.
   const nova = g.skin === 'barrage-nova'
   const line = nova ? (dark ? '#b49cec' : '#6a4fb8') : hsla(SHIP_HUE, 58, lineL(dark), 0.98)
   const fill = nova ? (dark ? 'rgba(244, 240, 255, 0.92)' : '#f4f0ff') : hsla(SHIP_HUE, 62, 58, dark ? 0.3 : 0.36)
@@ -717,37 +717,46 @@ function drawShip(g: Gfx) {
   ctx.closePath()
   ctx.fill()
 
-  // Wings.
-  ctx.strokeStyle = line
-  ctx.lineWidth = lw
-  ctx.fillStyle = fill
-  for (const side of [-1, 1]) {
+  if (nova) {
+    // The Nova fighter, drawn from the pass's own picture (lib/skinArt.ts), nose to tail as long as the usual
+    // ship. Only its heart is ever hit, and that's drawn on top as always.
+    const k = (w * 0.9) / 70
+    ctx.scale(bank * k, k)
+    ctx.translate(-50, -10 - (w * 0.56) / k)
+    drawSkinArt(ctx, NOVA_FIGHTER.body, lw / k)
+  } else {
+    // Wings.
+    ctx.strokeStyle = line
+    ctx.lineWidth = lw
+    ctx.fillStyle = fill
+    for (const side of [-1, 1]) {
+      ctx.beginPath()
+      ctx.moveTo(side * w * 0.1, -w * 0.05)
+      ctx.lineTo(side * w * 0.5 * bank, w * 0.2)
+      ctx.quadraticCurveTo(side * w * 0.52 * bank, w * 0.32, side * w * 0.36 * bank, w * 0.3)
+      ctx.lineTo(side * w * 0.1, w * 0.24)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+    }
+    // Hull: a rounded dart.
     ctx.beginPath()
-    ctx.moveTo(side * w * 0.1, -w * 0.05)
-    ctx.lineTo(side * w * 0.5 * bank, w * 0.2)
-    ctx.quadraticCurveTo(side * w * 0.52 * bank, w * 0.32, side * w * 0.36 * bank, w * 0.3)
-    ctx.lineTo(side * w * 0.1, w * 0.24)
+    ctx.moveTo(0, -w * 0.56)
+    ctx.bezierCurveTo(w * 0.14, -w * 0.46, w * 0.19, -w * 0.1, w * 0.17, w * 0.18)
+    ctx.quadraticCurveTo(w * 0.15, w * 0.34, 0, w * 0.34)
+    ctx.quadraticCurveTo(-w * 0.15, w * 0.34, -w * 0.17, w * 0.18)
+    ctx.bezierCurveTo(-w * 0.19, -w * 0.1, -w * 0.14, -w * 0.46, 0, -w * 0.56)
     ctx.closePath()
     ctx.fill()
     ctx.stroke()
+    // Canopy.
+    ctx.beginPath()
+    ctx.ellipse(0, -w * 0.2, w * 0.075, w * 0.14, 0, 0, TAU)
+    ctx.fillStyle = dark ? 'rgba(234, 241, 246, 0.35)' : 'rgba(255, 255, 255, 0.7)'
+    ctx.fill()
+    ctx.lineWidth = lw * 0.8
+    ctx.stroke()
   }
-  // Hull: a rounded dart.
-  ctx.beginPath()
-  ctx.moveTo(0, -w * 0.56)
-  ctx.bezierCurveTo(w * 0.14, -w * 0.46, w * 0.19, -w * 0.1, w * 0.17, w * 0.18)
-  ctx.quadraticCurveTo(w * 0.15, w * 0.34, 0, w * 0.34)
-  ctx.quadraticCurveTo(-w * 0.15, w * 0.34, -w * 0.17, w * 0.18)
-  ctx.bezierCurveTo(-w * 0.19, -w * 0.1, -w * 0.14, -w * 0.46, 0, -w * 0.56)
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
-  // Canopy.
-  ctx.beginPath()
-  ctx.ellipse(0, -w * 0.2, w * 0.075, w * 0.14, 0, 0, TAU)
-  ctx.fillStyle = nova ? '#2eb8a0' : dark ? 'rgba(234, 241, 246, 0.35)' : 'rgba(255, 255, 255, 0.7)'
-  ctx.fill()
-  ctx.lineWidth = lw * 0.8
-  ctx.stroke()
   ctx.restore()
 
   // Wing guns, from the third power level: two small orbs either side.

@@ -1,6 +1,7 @@
 import { ALIEN_H, alienMiddle, type Alien } from './alien'
 import type { GhostPose } from './runs'
-import { G, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Cave } from './sim'
+import { drawSkinArt, MOONHOPPER } from '../../lib/skinArt'
+import { FOOT, G, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Cave } from './sim'
 
 /*
  * Lander on a 2D canvas: the cave from the side, following the ship. Rock is near-black with flecks; the air
@@ -68,6 +69,9 @@ export type SceneFrame = {
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; hot: boolean }
 type Shard = { x: number; y: number; vx: number; vy: number; a: number; spin: number; half: number }
+
+/** The Moonhopper's board to the ship: its feet, 52 apart on the board, on the hull's feet. */
+const HOPPER_SCALE = FOOT / 26
 
 /** The hull's outline as Asteroids drew it: nose, wing, notch, wing. */
 const OUTLINE = [SHIP.nose, SHIP.wing, SHIP.notch, [-SHIP.wing[0], SHIP.wing[1]]] as const
@@ -631,9 +635,10 @@ export class CaveScene {
 
   private drawShip(x: number, y: number, a: number, level: number, skin: string | null) {
     const { ctx, cam } = this
-    // The Moonhopper (Season 1's skin, lib/skins.ts): the same hull, so the same size and the same landing,
-    // in white with red trim and a dark visor with a teal light.
-    const hopper = skin === 'lander-moonhopper'
+    if (skin === 'lander-moonhopper') {
+      this.drawMoonhopper(x, y, a, level)
+      return
+    }
     this.drawFlame(x, y, a, level, ['rgba(255, 140, 50, 0.92)', 'rgba(255, 236, 170, 0.95)'])
     ctx.save()
     this.traceShip(x, y, a)
@@ -642,36 +647,37 @@ export class CaveScene {
     ctx.lineWidth = Math.max(6, 0.7 * cam.k)
     ctx.strokeStyle = 'rgba(255, 159, 69, 0.16)'
     ctx.stroke()
-    ctx.fillStyle = hopper ? 'rgba(244, 240, 255, 0.94)' : 'rgba(255, 159, 69, 0.22)'
+    ctx.fillStyle = 'rgba(255, 159, 69, 0.22)'
     ctx.fill()
     ctx.lineWidth = Math.max(2, 0.17 * cam.k)
-    ctx.strokeStyle = hopper ? '#e8564f' : C.ship
+    ctx.strokeStyle = C.ship
     ctx.stroke()
-    if (hopper) {
-      // The red band across the hull.
-      const [ax, ay] = toWorld({ x, y, a }, -0.42, 0.1)
-      const [bx, by] = toWorld({ x, y, a }, 0.42, 0.1)
-      ctx.beginPath()
-      ctx.moveTo(this.sx(ax), this.sy(ay))
-      ctx.lineTo(this.sx(bx), this.sy(by))
-      ctx.lineCap = 'round'
-      ctx.lineWidth = Math.max(2, 0.16 * cam.k)
-      ctx.stroke()
-    }
     ctx.restore()
     // The cockpit.
     const [cx, cy] = toWorld({ x, y, a }, 0, 0.35)
     ctx.beginPath()
-    ctx.arc(this.sx(cx), this.sy(cy), Math.max(2, (hopper ? 0.24 : 0.17) * cam.k), 0, Math.PI * 2)
-    ctx.fillStyle = hopper ? '#0b0f1a' : C.ship
+    ctx.arc(this.sx(cx), this.sy(cy), Math.max(2, 0.17 * cam.k), 0, Math.PI * 2)
+    ctx.fillStyle = C.ship
     ctx.fill()
-    if (hopper) {
-      const [gx, gy] = toWorld({ x, y, a }, 0.07, 0.42)
-      ctx.beginPath()
-      ctx.arc(this.sx(gx), this.sy(gy), Math.max(1, 0.08 * cam.k), 0, Math.PI * 2)
-      ctx.fillStyle = '#5fe0c8'
-      ctx.fill()
-    }
+  }
+
+  /**
+   * The Moonhopper (Season 1's skin, lib/skins.ts), drawn from the pass's own picture (lib/skinArt.ts): its
+   * feet on the hull's feet, its dome over the nose. The hull is still what meets the rock, and every point
+   * of it is on the drawing, so it lands and crashes as the usual ship does.
+   */
+  private drawMoonhopper(x: number, y: number, a: number, level: number) {
+    const { ctx, cam } = this
+    this.drawFlame(x, y, a, level, ['rgba(242, 129, 58, 0.92)', 'rgba(245, 185, 66, 0.95)'])
+    const k = cam.k * HOPPER_SCALE
+    ctx.save()
+    ctx.translate(this.sx(x), this.sy(y))
+    ctx.rotate(a)
+    ctx.scale(k, k)
+    // The board's feet (y 86) on the hull's feet, its middle on the ship's.
+    ctx.translate(-50, -86 + FOOT / HOPPER_SCALE)
+    drawSkinArt(ctx, MOONHOPPER.body, 1.2 / k)
+    ctx.restore()
   }
 
   private drawGhost(g: GhostPose, name: string, mine: boolean, flying: boolean) {

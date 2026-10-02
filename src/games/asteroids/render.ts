@@ -13,6 +13,7 @@ import {
   type Saucer,
 } from './game'
 import { getGame } from '../../data/games'
+import { COMET_SHIP, drawSkinArt } from '../../lib/skinArt'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 
 /*
@@ -290,24 +291,26 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
     }
   }
 
+  if (comet) {
+    // The Comet, drawn from the pass's own picture (lib/skinArt.ts): its nose on the hull's nose and as long
+    // as the hull, which is still what's measured.
+    const k = (r * 1.82) / 72
+    ctx.rotate(Math.PI / 2)
+    ctx.scale(k, k)
+    ctx.translate(-50, -12 - (r * 1.08) / k)
+    drawSkinArt(ctx, COMET_SHIP.body, Math.max(2.2, 2.8 * scale) / k)
+    ctx.restore()
+    if (shielded) drawShield(ctx, state, r, scale, dark, t)
+    return
+  }
+
   traceShip(ctx, r)
-  ctx.fillStyle = comet ? '#f5b942' : hsla(SHIP_HUE, 72, 66, dark ? 0.26 : 0.3)
+  ctx.fillStyle = hsla(SHIP_HUE, 72, 66, dark ? 0.26 : 0.3)
   ctx.fill()
-  ctx.strokeStyle = comet ? '#7a4e00' : ACCENT
+  ctx.strokeStyle = ACCENT
   ctx.lineWidth = Math.max(2.2, 2.8 * scale)
   ctx.lineJoin = 'round'
   ctx.stroke()
-  if (comet) {
-    // The Comet's dark notch down its middle.
-    ctx.beginPath()
-    ctx.moveTo(r * 0.62, 0)
-    ctx.lineTo(-r * 0.12, r * 0.24)
-    ctx.lineTo(-r * 0.02, 0)
-    ctx.lineTo(-r * 0.12, -r * 0.24)
-    ctx.closePath()
-    ctx.fillStyle = '#101634'
-    ctx.fill()
-  }
 
   // Cockpit.
   ctx.beginPath()

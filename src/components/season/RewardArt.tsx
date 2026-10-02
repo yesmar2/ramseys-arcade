@@ -3,7 +3,9 @@ import type { Avatar, AvatarBadge } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
 import { SPACE, sparklePath } from '../../lib/seasonArt'
-import { MissionPatch, Moonhopper, Rocket } from './SeasonArt'
+import rocketCarPicture from '../../assets/season/rocket-car.webp'
+import { COMET_SHIP, COMET_TAIL, NOVA_FIGHTER } from '../../lib/skinArt'
+import { ArtShapes, MissionPatch, Moonhopper, Rocket } from './SeasonArt'
 
 /*
  * A picture for each of Season 1's pass rewards, on a 100-wide board, for the
@@ -74,10 +76,8 @@ function Lander() {
 export function CometShip() {
   return (
     <>
-      <path d="M42 76 L50 96 L58 76z" fill={SPACE.orange} />
-      <path d="M46 76 L50 88 L54 76z" fill={SPACE.amber} />
-      <path d="M50 12 L74 84 L50 72 L26 84 Z" fill={SPACE.amber} stroke="#7a4e00" strokeWidth="2.5" strokeLinejoin="round" />
-      <path d="M50 30 L58 58 L50 54 L42 58z" fill={SPACE.night} />
+      <ArtShapes shapes={COMET_SHIP.flame} />
+      <ArtShapes shapes={COMET_SHIP.body} />
     </>
   )
 }
@@ -85,45 +85,34 @@ export function CometShip() {
 export function NovaFighter() {
   return (
     <>
-      <path d="M44 80 L50 94 L56 80z" fill={SPACE.orange} />
-      <path d="M50 10 L62 50 L82 68 L62 68 L58 80 L42 80 L38 68 L18 68 L38 50 Z" fill={SPACE.star} stroke={SPACE.violet} strokeWidth="2.5" strokeLinejoin="round" />
-      <ellipse cx="50" cy="46" rx="5" ry="10" fill="#2eb8a0" />
-      <circle cx="28" cy="64" r="3" fill={SPACE.violet} />
-      <circle cx="72" cy="64" r="3" fill={SPACE.violet} />
+      <ArtShapes shapes={NOVA_FIGHTER.flame} />
+      <ArtShapes shapes={NOVA_FIGHTER.body} />
     </>
   )
 }
 
+/**
+ * The Rocket car: a picture of Hot Lap's own 3D model (car.ts buildRocketCar), from behind and above as the
+ * game's camera sees it, rendered once in a browser (WebGL) and kept as a file. Re-render it if the car
+ * changes, so the pass never shows another car than the one you drive.
+ */
 export function RocketCar() {
-  return (
-    <>
-      <path d="M40 88 L50 100 L60 88z" fill={SPACE.orange} />
-      <path d="M44 88 L50 96 L56 88z" fill={SPACE.amber} />
-      <rect x="26" y="80" width="48" height="8" rx="2" fill={SPACE.night} />
-      <rect x="20" y="60" width="13" height="20" rx="3" fill="#1a2233" />
-      <rect x="67" y="60" width="13" height="20" rx="3" fill="#1a2233" />
-      <rect x="23" y="22" width="11" height="16" rx="3" fill="#1a2233" />
-      <rect x="66" y="22" width="11" height="16" rx="3" fill="#1a2233" />
-      <path d="M45 12 Q50 4 55 12 L57 40 Q65 47 64 62 L62 80 L38 80 L36 62 Q35 47 43 40 Z" fill={SPACE.star} />
-      <rect x="27" y="14" width="46" height="6" rx="2" fill={SPACE.night} />
-      <rect x="48" y="10" width="4" height="70" fill={SPACE.red} />
-      <ellipse cx="50" cy="54" rx="6" ry="9" fill="#0b0f1a" />
-      <path d="M43 47 Q50 40 57 47" fill="none" stroke={SPACE.night} strokeWidth="2.5" />
-    </>
-  )
+  return <image href={rocketCarPicture} x="0" y="0" width="100" height="100" />
 }
 
+// The Comet tail's path on the board, head last: one bead every 12, as Snake lays one every spacing.
 const SNAKE: [number, number][] = [[18, 78], [30, 78], [42, 78], [54, 78], [66, 78], [66, 66], [66, 54], [54, 54], [42, 54], [30, 54], [30, 42], [30, 30], [42, 30], [54, 30], [66, 30]]
 
 export function CometTail() {
+  const step = 12
   return (
     <>
       {SNAKE.map(([x, y], i) => {
-        const k = i / (SNAKE.length - 1)
-        return <circle key={i} cx={x} cy={y} r={(3.4 + k * 3.4).toFixed(1)} fill={k < 0.5 ? SPACE.violet : SPACE.amber} opacity={(0.35 + k * 0.65).toFixed(2)} />
+        const bead = COMET_TAIL.bead((SNAKE.length - 1 - i) / (SNAKE.length - 1))
+        return <circle key={i} cx={x} cy={y} r={(bead.r * step).toFixed(1)} fill={`rgb(${bead.rgb.join(',')})`} opacity={bead.alpha.toFixed(2)} />
       })}
-      <circle cx="80" cy="30" r="15" fill={SPACE.amber} opacity="0.3" />
-      <circle cx="80" cy="30" r="9" fill="#ffffff" stroke={SPACE.amber} strokeWidth="2" />
+      <circle cx="80" cy="30" r={COMET_TAIL.glow * step} fill={SPACE.amber} opacity="0.3" />
+      <circle cx="80" cy="30" r={COMET_TAIL.head * step} fill="#ffffff" stroke={SPACE.amber} strokeWidth="2" />
       <circle cx="83" cy="26" r="1.8" fill={SPACE.night} />
       <circle cx="83" cy="34" r="1.8" fill={SPACE.night} />
       <Spark x={20} y={30} s={5} c={SPACE.orange} />

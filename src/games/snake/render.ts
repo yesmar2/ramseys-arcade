@@ -1,4 +1,5 @@
 import { PALETTE, type Swatch } from '../../data/games'
+import { COMET_TAIL } from '../../lib/skinArt'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 import { playHeader } from '../playHeader'
 import {
@@ -642,11 +643,90 @@ function drawEyes(
 }
 
 /*
- * The Comet tail (Season 1's skin, lib/skins.ts): the same snake, so the same size and the same body, in
- * amber at the head fading to violet down the tail, with pale scales like sparks.
+ * The Comet tail (Season 1's skin, lib/skins.ts), drawn as the pass's picture is (lib/skinArt.ts): a white
+ * head in an amber glow, then beads down the body that shrink and fade from amber to violet. The snake is
+ * the same underneath, so it's measured cell by cell as ever; the beads only follow its path.
  */
-const COMET_HEAD: RGB = [245, 185, 66]
-const COMET_TAIL: RGB = [138, 106, 212]
+function drawCometTail(
+  ctx: CanvasRenderingContext2D,
+  sk: Skin,
+  v: View,
+  s: GameState,
+  pts: BodyPt[],
+  length: number,
+  angle: number,
+  how: { dying: boolean; drainOf: (at: number) => number; q: (d: number) => number; hot: boolean; boosting: boolean },
+) {
+  const c = v.cell
+  const head = c * 0.43
+  const step = head / COMET_TAIL.head
+  const spacing = step / c
+  const HX = px(v, pts[0]!.x)
+  const HY = py(v, pts[0]!.y)
+  const beads: { at: number; k: number }[] = []
+  for (let at = spacing, k = 0; at <= length; at += spacing, k++) beads.push({ at, k })
+  // The tail's tip first, so each bead lies over the one behind it.
+  for (let n = beads.length - 1; n >= 0; n--) {
+    const { at, k } = beads[n]!
+    const p = along(pts, at, { i: 1 })
+    const bead = COMET_TAIL.bead(at / Math.max(spacing, length))
+    // A fruit going down the body swells the bead it's in.
+    const swell = bodyWidth(at, length, s.bulges) / bodyWidth(at, length, [])
+    const d = how.q(how.drainOf(at))
+    ctx.beginPath()
+    ctx.arc(px(v, p.x), py(v, p.y), bead.r * step * swell, 0, Math.PI * 2)
+    ctx.fillStyle = how.hot
+      ? hsla(hueOf(WHEEL[(k + Math.floor(s.time * 9)) % WHEEL.length]!), 72, sk.dark ? 62 : 52, bead.alpha)
+      : how.boosting && !how.dying
+        ? hsla(hueOf('amber'), 90, sk.dark ? 64 : 52, bead.alpha)
+        : css(mixRgb(bead.rgb, sk.deadFill, d), bead.alpha)
+    ctx.fill()
+  }
+
+  const d = how.q(how.drainOf(0))
+  const amber: RGB = [245, 185, 66]
+  ctx.save()
+  ctx.translate(HX, HY)
+  ctx.rotate(angle)
+  ctx.beginPath()
+  ctx.arc(0, 0, COMET_TAIL.glow * step, 0, Math.PI * 2)
+  ctx.fillStyle = css(mixRgb(amber, sk.deadFill, d), 0.3 * (1 - d))
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(0, 0, head, 0, Math.PI * 2)
+  ctx.fillStyle = css(mixRgb([255, 255, 255], sk.deadFill, d))
+  ctx.fill()
+  ctx.lineWidth = Math.max(1.2, head * 0.22)
+  ctx.strokeStyle = css(mixRgb(amber, sk.deadLine, d))
+  ctx.stroke()
+  // Its eyes, ahead and apart as the picture has them: shut for a blink, crossed out in a crash.
+  const ink = '#101634'
+  const er = Math.max(1, head * 0.2)
+  ctx.fillStyle = ink
+  ctx.strokeStyle = ink
+  ctx.lineCap = 'round'
+  ctx.lineWidth = Math.max(1, head * 0.12)
+  for (const side of [-1, 1]) {
+    const ex = head * 0.33
+    const ey = side * head * 0.44
+    ctx.beginPath()
+    if (how.dying) {
+      ctx.moveTo(ex - er, ey - er)
+      ctx.lineTo(ex + er, ey + er)
+      ctx.moveTo(ex + er, ey - er)
+      ctx.lineTo(ex - er, ey + er)
+      ctx.stroke()
+    } else if (blinking(s.time)) {
+      ctx.moveTo(ex - er * 0.2, ey - er)
+      ctx.lineTo(ex - er * 0.2, ey + er)
+      ctx.stroke()
+    } else {
+      ctx.arc(ex, ey, er, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  ctx.restore()
+}
 
 function drawSnake(ctx: CanvasRenderingContext2D, palette: Skin, v: View, s: GameState, playerSkin: string | null) {
   const c = v.cell
@@ -656,21 +736,15 @@ function drawSnake(ctx: CanvasRenderingContext2D, palette: Skin, v: View, s: Gam
   const P = pts.map((p) => ({ X: px(v, p.x), Y: py(v, p.y), s: p.s }))
 
   const comet = playerSkin === 'snake-comet-tail'
-  const headLine: RGB = palette.dark ? [255, 214, 140] : [176, 116, 18]
-  const tailLine: RGB = palette.dark ? [190, 172, 242] : [96, 70, 170]
-  const sk: Skin = comet ? { ...palette, bodyFill: COMET_HEAD, bodyLine: headLine, scale: [255, 243, 214] } : palette
-  // How far down the body a point is, in six steps, for the Comet's fade.
-  const down = (at: number) => Math.round(clamp01(at / Math.max(1, length)) * 6) / 6
-  const fillOf = (at: number) => (comet ? mixRgb(COMET_HEAD, COMET_TAIL, down(at)) : sk.bodyFill)
-  const lineOf = (at: number) => (comet ? mixRgb(headLine, tailLine, down(at)) : sk.bodyLine)
+  const sk = palette
 
   const dying = s.phase === 'dying' || s.phase === 'gameover'
   // The colour drains from head to tail over the crash.
   const drainT = s.phase === 'gameover' ? 1 : s.phase === 'dying' ? clamp01((1 - s.dying / DYING_TIME - 0.12) / 0.7) : 0
   const drainAt = drainT * (length + 1.2)
   const drainOf = (at: number) => (dying ? clamp01((drainAt - at) / 1.2) : 0)
-  const bodyLineAt = (d: number, at = 0) => css(mixRgb(lineOf(at), sk.deadLine, d), 0.95)
-  const bodyFillAt = (d: number, at = 0) => css(mixRgb(fillOf(at), sk.deadFill, d))
+  const bodyLineAt = (d: number) => css(mixRgb(sk.bodyLine, sk.deadLine, d), 0.95)
+  const bodyFillAt = (d: number) => css(mixRgb(sk.bodyFill, sk.deadFill, d))
   const q = (d: number) => Math.round(d * 6) / 6
 
   const lw = Math.min(3, Math.max(1.3, c * 0.075))
@@ -734,6 +808,11 @@ function drawSnake(ctx: CanvasRenderingContext2D, palette: Skin, v: View, s: Gam
       }
     }
     ctx.restore()
+  }
+
+  if (comet) {
+    drawCometTail(ctx, sk, v, s, pts, length, angle, { dying, drainOf, q, hot, boosting })
+    return
   }
 
   const near =

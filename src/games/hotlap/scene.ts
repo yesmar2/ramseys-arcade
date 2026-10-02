@@ -6,7 +6,7 @@
  * The look is a dark world drawn in light (NEON, below), as Ramsey picked it from three on 2026-09-28.
  */
 import * as THREE from 'three'
-import { buildCar, paintCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
+import { buildCar, buildRocketCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
 import { bounds } from './courses'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
@@ -104,7 +104,9 @@ export class HotLapScene {
   private readonly lettered: [THREE.CanvasTexture, Paint][] = []
   private readonly car: CarModel
   private readonly ghostCar: CarModel
-  /** The skin your car is painted in now (lib/skins.ts); null, its own paint. */
+  /** The Rocket car (Season 1's skin), made the first time you drive in it. */
+  private rocket: CarModel | null = null
+  /** The skin your car is in now (lib/skins.ts); null, the Indy car. */
   private skinShown: string | null = null
   private readonly skidPos = new Float32Array(SKIDS * 18)
   private readonly skidGeo = new THREE.BufferGeometry()
@@ -1005,7 +1007,13 @@ export class HotLapScene {
   frame(f: SceneFrame, dt: number) {
     if ((f.skin ?? null) !== this.skinShown) {
       this.skinShown = f.skin ?? null
-      paintCar(this.car, this.skinShown)
+      const rocket = this.skinShown === 'hotlap-rocket'
+      if (rocket && !this.rocket) {
+        this.rocket = buildRocketCar(this.paint.bind(this))
+        this.scene.add(this.rocket.group)
+      }
+      this.car.group.visible = !rocket
+      if (this.rocket) this.rocket.group.visible = rocket
     }
     this.poseCar(f.run, dt)
     if (f.driving) this.layRubber(f.run)
@@ -1021,7 +1029,7 @@ export class HotLapScene {
 
   /** The body leans out of corners and dips its nose under braking, as the weight moves: a racer's stiff springs, so not much. */
   private poseCar(run: Run, dt: number) {
-    const car = this.car
+    const car = this.rocket?.group.visible ? this.rocket : this.car
     car.group.position.set(run.x, this.surfaceZ(run.x, run.y, run.index, run.side), -run.y)
     // Standing on the hill: nose up a climb, leaning with the slope across it.
     const hill = this.tilt(run.x, run.y, run.index, run.h)
@@ -1033,6 +1041,12 @@ export class HotLapScene {
     car.body.rotation.z += (pitch - car.body.rotation.z) * Math.min(1, dt * 8)
     for (const w of car.wheels) w.rotation.z -= (run.u * dt) / WHEEL_RADIUS
     for (const p of car.steer) p.rotation.y = run.steer * 1.6
+    if (car.flame) {
+      // A rocket's flame: a flicker at rest, longer as the car pulls.
+      const pull = Math.max(0, Math.min(1, run.ax / 8))
+      const flicker = 0.85 + Math.random() * 0.3
+      car.flame.scale.set((0.35 + 1.25 * pull) * flicker, 0.8 + 0.4 * pull, 0.8 + 0.4 * pull)
+    }
   }
 
   /**

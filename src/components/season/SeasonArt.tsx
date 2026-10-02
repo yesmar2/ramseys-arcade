@@ -1,4 +1,5 @@
 import { SPACE, sparklePath } from '../../lib/seasonArt'
+import { MOONHOPPER, type ArtShape } from '../../lib/skinArt'
 
 /*
  * Season 1's pictures (Space Race): the mission patch every level is shown on,
@@ -86,25 +87,32 @@ export function SeasonRing({
   )
 }
 
+/** A skin's shapes (lib/skinArt.ts) as SVG, on its 100-wide board: the same shapes its game draws. */
+export function ArtShapes({ shapes }: { shapes: readonly ArtShape[] }) {
+  return (
+    <>
+      {shapes.map((s, i) => (
+        <path
+          key={i}
+          d={s.d}
+          fill={s.fill ?? 'none'}
+          stroke={s.stroke}
+          strokeWidth={s.width}
+          strokeLinecap={s.cap}
+          strokeLinejoin={s.join}
+          opacity={s.alpha}
+        />
+      ))}
+    </>
+  )
+}
+
 /** The Moonhopper, the season's first skin, on a 100-wide board. */
 export function Moonhopper({ flame = false }: { flame?: boolean }) {
   return (
     <>
-      {flame ? (
-        <>
-          <path d="M42 68 L50 92 L58 68z" fill={SPACE.orange} />
-          <path d="M45 68 L50 82 L55 68z" fill={SPACE.amber} />
-        </>
-      ) : null}
-      <path d="M50 20 V8" stroke={SPACE.muted} strokeWidth="2" />
-      <circle cx="50" cy="7" r="3" fill={SPACE.red} />
-      <path d="M36 66 L24 84 M64 66 L76 84" stroke={SPACE.red} strokeWidth="4" strokeLinecap="round" />
-      <path d="M18 86 h12 M70 86 h12" stroke={SPACE.red} strokeWidth="4" strokeLinecap="round" />
-      <rect x="28" y="54" width="44" height="14" rx="4" fill={SPACE.red} />
-      <circle cx="50" cy="40" r="20" fill={SPACE.star} />
-      <path d="M31 46 A20 20 0 0 0 69 46" fill="#d9d4f0" />
-      <rect x="39" y="30" width="22" height="12" rx="6" fill="#0b0f1a" />
-      <rect x="43" y="32.5" width="6" height="3" rx="1.5" fill="#5fe0c8" />
+      {flame ? <ArtShapes shapes={MOONHOPPER.flame} /> : null}
+      <ArtShapes shapes={MOONHOPPER.body} />
     </>
   )
 }

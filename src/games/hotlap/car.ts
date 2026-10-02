@@ -24,30 +24,8 @@ export type CarModel = {
   see: THREE.Material[]
   /** The ghost's outlines, whose opacity the scene sets too. */
   lines: THREE.Material[]
-  /** Your car's paint (never the ghost's), for a skin to change (paintCar). */
-  paint?: { skin: THREE.MeshPhysicalMaterial; dark: THREE.MeshStandardMaterial; arms: THREE.MeshStandardMaterial }
-}
-
-/**
- * Your car in a skin (lib/skins.ts), or back in its own paint: the Rocket car, Season 1's, is white with
- * navy trim and red arms. The same car under it, so the same size and the same grip.
- */
-export function paintCar(model: CarModel, skin: string | null) {
-  const p = model.paint
-  if (!p) return
-  if (skin === 'hotlap-rocket') {
-    p.skin.color.set('#e9e6f5')
-    p.skin.metalness = 0.15
-    p.skin.roughness = 0.3
-    p.dark.color.set('#101634')
-    p.arms.color.set('#e8564f')
-  } else {
-    p.skin.color.set('#262d36')
-    p.skin.metalness = 0.5
-    p.skin.roughness = 0.32
-    p.dark.color.set('#0b0e12')
-    p.arms.color.set('#1b2129')
-  }
+  /** A rocket's flame out of its tail, which the scene stretches as the car pulls (the Rocket car's). */
+  flame?: THREE.Object3D
 }
 
 /** Each wheel as [forward, left] of the car's middle, front pair first. */
@@ -562,11 +540,19 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
     body.add(plate)
   }
 
-  // The wheels: dark tyres, their faces ringed in orange light.
-  const tyre = std({ color: ghost ? ghostColor : '#14171b', roughness: 0.85, metalness: 0 })
-  const well = std({ color: ghost ? ghostColor : '#0c1014', roughness: 0.5, metalness: 0.3 })
-  const rimRing = std({ color: ghost ? ghostColor : '#2a1004', emissive: glow, emissiveIntensity: ghost ? 0.8 : 1.4, roughness: 0.3 })
-  const hub = std({ color: ghost ? ghostColor : '#1b2129', roughness: 0.25, metalness: 0.45 })
+  const { wheels, steer } = addWheels(group, shapes, design, std, ghost ? ghostColor : null, glow, outline)
+  if (!ghost) addUnderGlow(group, paint)
+  return { group, body, wheels, steer, see, lines }
+}
+
+type Std = (params: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial
+
+/** The wheels: dark tyres, their faces ringed in light. A ghost's are all in its colour. */
+function addWheels(group: THREE.Group, shapes: Shapes, design: CarDesign, std: Std, ghostColor: string | null, glow: string, outline: THREE.LineBasicMaterial | null) {
+  const tyre = std({ color: ghostColor ?? '#14171b', roughness: 0.85, metalness: 0 })
+  const well = std({ color: ghostColor ?? '#0c1014', roughness: 0.5, metalness: 0.3 })
+  const rimRing = std({ color: ghostColor ?? '#2a1004', emissive: glow, emissiveIntensity: ghostColor ? 0.8 : 1.4, roughness: 0.3 })
+  const hub = std({ color: ghostColor ?? '#1b2129', roughness: 0.25, metalness: 0.45 })
   const wheels: THREE.Object3D[] = []
   const steer: THREE.Group[] = []
   WHEELS.forEach(([x, z], k) => {
@@ -586,35 +572,272 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
     wheels.push(wheel)
     if (k < 2) steer.push(pivot)
   })
+  return { wheels, steer }
+}
 
-  if (!ghost) {
-    // Orange light on the road under the car, and a soft shadow.
-    const under = paint(128, 64, (g, w, h) => {
-      const grad = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2)
-      grad.addColorStop(0, 'rgba(255,110,20,0.5)')
-      grad.addColorStop(1, 'rgba(255,110,20,0)')
-      g.fillStyle = grad
-      g.fillRect(0, 0, w, h)
-    })
-    const light = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.4, 2.9),
-      new THREE.MeshBasicMaterial({ map: under, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
-    )
-    light.rotation.x = -Math.PI / 2
-    light.position.y = 0.06
-    group.add(light)
-    const shade = paint(128, 64, (g, w, h) => {
-      const grad = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2)
-      grad.addColorStop(0, 'rgba(0,0,0,0.55)')
-      grad.addColorStop(1, 'rgba(0,0,0,0)')
-      g.fillStyle = grad
-      g.fillRect(0, 0, w, h)
-    })
-    const blob = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3), new THREE.MeshBasicMaterial({ map: shade, transparent: true, depthWrite: false }))
-    blob.rotation.x = -Math.PI / 2
-    blob.position.y = 0.05
-    group.add(blob)
+/** Orange light on the road under the car, and a soft shadow. */
+function addUnderGlow(group: THREE.Group, paint: Paint) {
+  const under = paint(128, 64, (g, w, h) => {
+    const grad = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2)
+    grad.addColorStop(0, 'rgba(255,110,20,0.5)')
+    grad.addColorStop(1, 'rgba(255,110,20,0)')
+    g.fillStyle = grad
+    g.fillRect(0, 0, w, h)
+  })
+  const light = new THREE.Mesh(
+    new THREE.PlaneGeometry(5.4, 2.9),
+    new THREE.MeshBasicMaterial({ map: under, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+  )
+  light.rotation.x = -Math.PI / 2
+  light.position.y = 0.06
+  group.add(light)
+  const shade = paint(128, 64, (g, w, h) => {
+    const grad = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2)
+    grad.addColorStop(0, 'rgba(0,0,0,0.55)')
+    grad.addColorStop(1, 'rgba(0,0,0,0)')
+    g.fillStyle = grad
+    g.fillRect(0, 0, w, h)
+  })
+  const blob = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3), new THREE.MeshBasicMaterial({ map: shade, transparent: true, depthWrite: false }))
+  blob.rotation.x = -Math.PI / 2
+  blob.position.y = 0.05
+  group.add(blob)
+}
+
+/* ---------- the Rocket car ---------- */
+
+/** Catmull-Rom through [x, value] keys in order of x, for a smooth profile. */
+function through(keys: readonly (readonly [number, number])[], x: number) {
+  if (x <= keys[0]![0]) return keys[0]![1]
+  const last = keys[keys.length - 1]!
+  if (x >= last[0]) return last[1]
+  let i = 0
+  while (keys[i + 1]![0] < x) i++
+  const p0 = keys[Math.max(0, i - 1)]!
+  const p1 = keys[i]!
+  const p2 = keys[i + 1]!
+  const p3 = keys[Math.min(keys.length - 1, i + 2)]!
+  const t = (x - p1[0]) / (p2[0] - p1[0])
+  const m1 = ((p2[1] - p0[1]) / (p2[0] - p0[0] || 1)) * (p2[0] - p1[0])
+  const m2 = ((p3[1] - p1[1]) / (p3[0] - p1[0] || 1)) * (p2[0] - p1[0])
+  const t2 = t * t
+  const t3 = t2 * t
+  return (2 * t3 - 3 * t2 + 1) * p1[1] + (t3 - 2 * t2 + t) * m1 + (-2 * t3 + 3 * t2) * p2[1] + (t3 - t2) * m2
+}
+
+/** The Rocket car's body, tail to nose, as half its width: the fat of the rocket behind the driver, then a needle of a nose between the front wheels. */
+const ROCKET_WIDTH: readonly (readonly [number, number])[] = [
+  [-2.36, 0.34],
+  [-2.2, 0.42],
+  [-1.8, 0.5],
+  [-1.2, 0.53],
+  [-0.5, 0.51],
+  [0, 0.45],
+  [0.5, 0.35],
+  [1.0, 0.26],
+  [1.6, 0.22],
+  [2.2, 0.19],
+  [2.6, 0.14],
+  [2.85, 0.08],
+  [3.0, 0.0],
+]
+/** Its ends, how flat its section is (height over width), and how high its middle sits behind and at the nose. */
+const ROCKET = { tail: -2.36, nose: 3.0, flat: 0.74, low: 0.56, nosed: 0.42 }
+
+/** Half the body's width, its half height and the height of its middle, at x along it. */
+function rocketAt(x: number) {
+  const w = Math.max(0, through(ROCKET_WIDTH, x))
+  const n = clamp01((x - 0.4) / 1.9)
+  const cy = lerp(ROCKET.low, ROCKET.nosed, n * n * (3 - 2 * n))
+  return { w, h: w * ROCKET.flat, cy }
+}
+
+/** A smooth skin over rings of points, each ring the same count round: shared corners, so it shades round. */
+function smoothRings(rings: Point[][], closed: boolean) {
+  const count = rings[0]!.length
+  const pos: number[] = []
+  const idx: number[] = []
+  for (const ring of rings) for (const p of ring) pos.push(...p)
+  const around = closed ? count : count - 1
+  for (let i = 0; i < rings.length - 1; i++) {
+    for (let k = 0; k < around; k++) {
+      const a = i * count + k
+      const b = i * count + ((k + 1) % count)
+      idx.push(a, a + count, b, b, a + count, b + count)
+    }
   }
-  const own = !ghost && skin instanceof THREE.MeshPhysicalMaterial && dark && arms ? { skin, dark, arms } : undefined
-  return { group, body, wheels, steer, see, lines, ...(own ? { paint: own } : {}) }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  geo.setIndex(idx)
+  geo.computeVertexNormals()
+  return geo
+}
+
+/** A flat fin in the x-y plane: a trapezoid from its root chord (y 0) out to its tip chord (y `span`), `thick` through. */
+function fin(root: [number, number], tip: [number, number], span: number, thick: number) {
+  const shape = new THREE.Shape()
+  shape.moveTo(root[0], 0)
+  shape.lineTo(root[1], 0)
+  shape.lineTo(tip[1], span)
+  shape.lineTo(tip[0], span)
+  shape.closePath()
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false })
+  geo.translate(0, 0, -thick / 2)
+  return geo
+}
+
+/**
+ * The Rocket car, Season 1's Hot Lap skin (lib/skins.ts), as the pass draws it: a white rocket on four open
+ * wheels, a red stripe nose to tail, navy wings, a dark bubble over the driver, fins at the tail and a flame
+ * out of it. Ramsey asked for a car of its own (2026-10-02: "a totally redesigned car would be fine"). Your
+ * car only, never the ghost; it stands on the Indy car's wheels and drives the same (sim.ts), so a lap in it
+ * counts the same.
+ */
+export function buildRocketCar(paint: Paint): CarModel {
+  const group = new THREE.Group()
+  const body = new THREE.Group()
+  group.add(body)
+  const std: Std = (params) => new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, ...params })
+  const white = new THREE.MeshPhysicalMaterial({ color: '#ece9f7', roughness: 0.28, metalness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide })
+  const navy = std({ color: '#101634', roughness: 0.45, metalness: 0.35 })
+  const red = std({ color: '#e8564f', roughness: 0.4, metalness: 0.1 })
+
+  // The body: rings round it, tail to nose.
+  const around = 40
+  const stations = 140
+  const xAt = (i: number) => ROCKET.tail + ((ROCKET.nose - ROCKET.tail) * i) / stations
+  const rings: Point[][] = []
+  for (let i = 0; i <= stations; i++) {
+    const x = xAt(i)
+    const { w, h, cy } = rocketAt(x)
+    const ring: Point[] = []
+    for (let k = 0; k < around; k++) {
+      const a = (k / around) * Math.PI * 2
+      ring.push([x, cy + Math.sin(a) * h, Math.cos(a) * w])
+    }
+    rings.push(ring)
+  }
+  body.add(new THREE.Mesh(smoothRings(rings, true), white))
+
+  // The red stripe along the top, a hair over the white.
+  const stripe: Point[][] = []
+  for (let i = 2; i < stations; i++) {
+    const x = xAt(i)
+    const { w, h, cy } = rocketAt(x)
+    const half = Math.min(0.085, w * 0.42)
+    const row: Point[] = []
+    for (let k = 0; k <= 6; k++) {
+      const z = -half + (2 * half * k) / 6
+      row.push([x, cy + h * Math.sqrt(clamp01(1 - (z / w) ** 2)) + 0.006, z])
+    }
+    stripe.push(row)
+  }
+  body.add(new THREE.Mesh(smoothRings(stripe, false), red))
+
+  // The tail: a navy face, a nozzle, its glowing throat, and the flame out of it.
+  const tail = rocketAt(ROCKET.tail)
+  const face = new THREE.CircleGeometry(1, 40)
+  face.scale(tail.w, tail.h, 1)
+  face.rotateY(-Math.PI / 2)
+  face.translate(ROCKET.tail, tail.cy, 0)
+  body.add(new THREE.Mesh(face, navy))
+  const nozzle = new THREE.CylinderGeometry(0.2, 0.27, 0.22, 32, 1, true)
+  nozzle.rotateZ(-Math.PI / 2)
+  nozzle.translate(ROCKET.tail - 0.1, tail.cy, 0)
+  body.add(new THREE.Mesh(nozzle, navy))
+  const throat = new THREE.CircleGeometry(0.2, 32)
+  throat.rotateY(-Math.PI / 2)
+  throat.translate(ROCKET.tail - 0.02, tail.cy, 0)
+  body.add(new THREE.Mesh(throat, std({ color: '#2a1004', emissive: '#ff7a1a', emissiveIntensity: 1.6 })))
+
+  const flame = new THREE.Group()
+  flame.position.set(ROCKET.tail - 0.18, tail.cy, 0)
+  for (const [r, len, color, opacity] of [
+    [0.22, 1, '#f2813a', 0.7],
+    [0.12, 0.62, '#ffe7a3', 0.9],
+  ] as const) {
+    const cone = new THREE.ConeGeometry(r, len, 24, 1, true)
+    // Its base at the nozzle and its point out behind, along -x, so stretching the group stretches it back.
+    cone.translate(0, len / 2, 0)
+    cone.rotateZ(Math.PI / 2)
+    flame.add(
+      new THREE.Mesh(
+        cone,
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+      ),
+    )
+  }
+  body.add(flame)
+
+  // Fins at the tail: one up, white, tipped red; and one out each side, navy, behind the rear wheels.
+  const top = rocketAt(-1.9)
+  const finBase = top.cy + top.h - 0.04
+  const upFin = fin([-1.45, -2.3], [-2.05, -2.42], 0.42, 0.035)
+  upFin.translate(0, finBase, 0)
+  body.add(new THREE.Mesh(upFin, white))
+  const tipCap = new THREE.BoxGeometry(0.38, 0.05, 0.045)
+  tipCap.translate(-2.235, finBase + 0.42, 0)
+  body.add(new THREE.Mesh(tipCap, red))
+  for (const side of [1, -1]) {
+    const tailFin = fin([-1.86, -2.34], [-2.18, -2.5], 0.62, 0.04)
+    // Laid out flat to this side from the body's flank, dipping a little toward its tip.
+    tailFin.rotateX(side * (Math.PI / 2 + 0.12))
+    tailFin.translate(0, tail.cy - 0.06, side * 0.36)
+    body.add(new THREE.Mesh(tailFin, navy))
+  }
+
+  // The front wing low across the nose, a plate at each end, and a red lip along its front.
+  const wing = new THREE.BoxGeometry(0.34, 0.035, 1.92)
+  wing.translate(2.55, 0.2, 0)
+  body.add(new THREE.Mesh(wing, navy))
+  for (const side of [1, -1]) {
+    const plate = new THREE.BoxGeometry(0.38, 0.18, 0.03)
+    plate.translate(2.55, 0.26, side * 0.96)
+    body.add(new THREE.Mesh(plate, navy))
+  }
+  const lip = new THREE.BoxGeometry(0.03, 0.04, 1.86)
+  lip.translate(2.73, 0.2, 0)
+  body.add(new THREE.Mesh(lip, red))
+
+  // The arms out to the wheels, navy.
+  const arms: THREE.BufferGeometry[] = []
+  for (const [wx, wz] of WHEELS) {
+    const at = rocketAt(wx)
+    for (const dy of [-0.06, 0.08]) {
+      const from = new THREE.Vector3(wx + (wx > 0 ? -0.1 : 0.1), FORMULA.wheel.r + dy, Math.sign(wz) * Math.max(0.12, at.w - 0.04))
+      const to = new THREE.Vector3(wx, FORMULA.wheel.r + dy * 0.5, wz * 0.82)
+      const arm = new THREE.CylinderGeometry(0.02, 0.02, from.distanceTo(to), 8)
+      arm.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize()))
+      arm.translate((from.x + to.x) / 2, (from.y + to.y) / 2, (from.z + to.z) / 2)
+      arms.push(arm)
+    }
+  }
+  body.add(new THREE.Mesh(merge(arms), navy))
+
+  // The bubble over the driver, dark glass, on the fat of the rocket.
+  const glass = new THREE.MeshPhysicalMaterial({
+    color: '#0b1219',
+    roughness: 0.05,
+    metalness: 0.6,
+    clearcoat: 1,
+    clearcoatRoughness: 0.02,
+    envMapIntensity: 1.6,
+    side: THREE.DoubleSide,
+  })
+  const canopy = new THREE.Mesh(
+    strips(
+      canopyRings({ from: -1.15, to: 0.3, width: 0.27, rise: 0.25, peak: -0.35, back: 1.6, sink: 0.05 }, (x) => {
+        const p = rocketAt(x)
+        return p.cy + p.h
+      }),
+      false,
+    ),
+    glass,
+  )
+  canopy.renderOrder = 1
+  body.add(canopy)
+
+  const { wheels, steer } = addWheels(group, shapesOf(FORMULA), FORMULA, std, null, '#ff5a0a', null)
+  addUnderGlow(group, paint)
+  return { group, body, wheels, steer, see: [], lines: [], flame }
 }
