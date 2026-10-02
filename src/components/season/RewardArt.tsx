@@ -1,4 +1,7 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
+import type { Avatar, AvatarBadge } from '../../lib/avatars'
+import { AvatarArt } from '../PlayerAvatar'
+import { ThemeDrawing } from '../prizes/CardThemes'
 import { SPACE, sparklePath } from '../../lib/seasonArt'
 import { MissionPatch, Moonhopper, Rocket } from './SeasonArt'
 
@@ -19,20 +22,6 @@ function Board({ size, children }: { size: number; children: ReactNode }) {
 
 function Spark({ x, y, s, c }: { x: number; y: number; s: number; c: string }) {
   return <path d={sparklePath(x, y, s)} fill={c} />
-}
-
-/** The player's own badge, D on teal as a stand-in, inside a finish. */
-function Badge({ children, over }: { children?: ReactNode; over?: ReactNode }) {
-  return (
-    <>
-      {children}
-      <circle cx="50" cy="50" r="32" fill="#2eb8a0" />
-      <text x="50" y="62" textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={700} fontSize="34" fill="#0f2a26">
-        A
-      </text>
-      {over}
-    </>
-  )
 }
 
 function Ticket({ x, y, fill }: { x: number; y: number; fill: string }) {
@@ -142,18 +131,37 @@ export function CometTail() {
   )
 }
 
-function Card({ fill, children }: { fill: string; children?: ReactNode }) {
+function FinishArt({ badge, size }: { badge: AvatarBadge; size: number }) {
+  const avatar: Avatar = { kind: 'mono', letters: 1, pattern: 'plain', body: 4, detail: 0, badge, ring: null, pin: null }
   return (
-    <>
-      <rect x="10" y="18" width="80" height="64" rx="9" fill={fill} />
-      {children}
-    </>
+    <svg width={size} height={size} viewBox="-2 0 68 68" aria-hidden="true">
+      <AvatarArt avatar={avatar} name="ACE" />
+    </svg>
+  )
+}
+
+function CardArt({ theme, size }: { theme: string; size: number }) {
+  const id = `ra${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  return (
+    <Board size={size}>
+      <defs>
+        <clipPath id={`${id}c`}>
+          <rect x="8" y="20" width="84" height="60" rx="9" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${id}c)`}>
+        <g transform="translate(8 20)">
+          <ThemeDrawing theme={theme} w={84} h={60} s={0.45} id={`${id}t`} />
+        </g>
+      </g>
+      <rect x="8" y="20" width="84" height="60" rx="9" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+    </Board>
   )
 }
 
 const DRAW: Record<string, (size: number) => ReactNode> = {
-  's1-patch': (size) => <MissionPatch label="S1" size={size} />,
-  's1-starlight': (size) => (
+  's1': (size) => <MissionPatch label="S1" size={size} />,
+  'nm-starlight': (size) => (
     <Board size={size}>
       <NamePlate fill={SPACE.night}>
         <text x="50" y="61" textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize="24" fill="#ffffff">
@@ -165,7 +173,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       </NamePlate>
     </Board>
   ),
-  's1-countdown': (size) => (
+  'nm-countdown': (size) => (
     <Board size={size}>
       <NamePlate fill="#0b0f1a">
         <text x="50" y="60" textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={700} fontSize="22" letterSpacing="2" fill={SPACE.orange}>
@@ -175,7 +183,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       </NamePlate>
     </Board>
   ),
-  's1-nebula': (size) => (
+  'nm-nebula': (size) => (
     <Board size={size}>
       <NamePlate fill="#1a1240">
         <text x="50" y="61" textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize="24" fill="#e85d9a" stroke={SPACE.violet} strokeWidth="3" paintOrder="stroke">
@@ -184,82 +192,22 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       </NamePlate>
     </Board>
   ),
-  's1-orbit': (size) => (
-    <Board size={size}>
-      <Badge over={<circle cx="81" cy="19" r="7" fill={SPACE.star} stroke={SPACE.muted} strokeWidth="1.5" />}>
-        <circle cx="50" cy="50" r="44" fill="none" stroke={SPACE.indigo} strokeWidth="2.5" />
-        <circle cx="50" cy="50" r="38" fill="none" stroke={SPACE.night} strokeWidth="5" />
-      </Badge>
-    </Board>
-  ),
-  's1-ringed': (size) => (
-    <Board size={size}>
-      <Badge over={<path d="M2 52 A48 14 0 0 0 98 52" fill="none" stroke={SPACE.amber} strokeWidth="6" transform="rotate(-18 50 52)" />}>
-        <ellipse cx="50" cy="52" rx="48" ry="14" fill="none" stroke={SPACE.brass} strokeWidth="6" transform="rotate(-18 50 52)" />
-      </Badge>
-    </Board>
-  ),
-  's1-patch-ring': (size) => (
-    <Board size={size}>
-      <Badge>
-        <circle cx="50" cy="50" r="42" fill="none" stroke={SPACE.orange} strokeWidth="9" />
-        <circle cx="50" cy="50" r="42" fill="none" stroke="#fff0e6" strokeWidth="1.4" strokeDasharray="2 3" />
-        <circle cx="50" cy="50" r="47" fill="none" stroke={SPACE.night} strokeWidth="1.5" />
-      </Badge>
-    </Board>
-  ),
-  's1-shine': (size) => (
-    <Board size={size}>
-      <Badge over={<Spark x={82} y={16} s={8} c={SPACE.amber} />}>
-        <circle cx="50" cy="50" r="42" fill="none" stroke={SPACE.violet} strokeWidth="9" strokeDasharray="33 33" />
-        <circle cx="50" cy="50" r="42" fill="none" stroke={SPACE.orange} strokeWidth="9" strokeDasharray="33 33" strokeDashoffset="33" />
-        <circle cx="50" cy="50" r="42" fill="none" stroke={SPACE.amber} strokeWidth="9" strokeDasharray="12 120" strokeDashoffset="8" />
-        <circle cx="50" cy="50" r="42" fill="none" stroke={SPACE.indigo} strokeWidth="9" strokeDasharray="12 120" strokeDashoffset="74" />
-      </Badge>
-    </Board>
-  ),
-  's1-deep-field': (size) => (
-    <Board size={size}>
-      <Card fill={SPACE.night}>
-        {[[20, 28], [34, 44], [56, 26], [74, 40], [26, 64], [48, 58], [80, 70], [62, 72], [16, 46]].map(([x, y]) => (
-          <circle key={`${x}-${y}`} cx={x} cy={y} r="1.4" fill={SPACE.star} />
-        ))}
-        <circle cx="70" cy="58" r="10" fill={SPACE.violet} />
-        <ellipse cx="70" cy="58" rx="17" ry="4" fill="none" stroke={SPACE.amber} strokeWidth="1.8" transform="rotate(-15 70 58)" />
-        <Spark x={30} y={32} s={4} c={SPACE.amber} />
-      </Card>
-    </Board>
-  ),
-  's1-launch-pad': (size) => (
-    <Board size={size}>
-      <Card fill={SPACE.panel}>
-        <rect x="10" y="70" width="80" height="12" fill={SPACE.line} />
-        <path d="M24 70 h52" stroke={SPACE.orange} strokeWidth="2" />
-        <Rocket x={50} y={46} />
-        <circle cx="38" cy="70" r="6" fill={SPACE.star} opacity="0.8" />
-        <circle cx="62" cy="70" r="7" fill={SPACE.star} opacity="0.8" />
-        <circle cx="50" cy="73" r="6" fill={SPACE.star} opacity="0.9" />
-      </Card>
-    </Board>
-  ),
-  's1-nebula-card': (size) => (
-    <Board size={size}>
-      <Card fill="#2a1650">
-        <circle cx="36" cy="44" r="18" fill="#e85d9a" opacity="0.35" />
-        <circle cx="58" cy="56" r="20" fill={SPACE.violet} opacity="0.45" />
-        <circle cx="66" cy="36" r="12" fill={SPACE.indigo} opacity="0.4" />
-        <Spark x={44} y={50} s={5} c={SPACE.star} />
-      </Card>
-    </Board>
-  ),
-  's1-stardust': (size) => (
+  // The finishes and card themes are drawn as they are worn (PlayerAvatar, CardThemes).
+  orbit: (size) => <FinishArt badge="orbit" size={size} />,
+  ringed: (size) => <FinishArt badge="ringed" size={size} />,
+  mission: (size) => <FinishArt badge="mission" size={size} />,
+  supernova: (size) => <FinishArt badge="supernova" size={size} />,
+  'cd-deepfield': (size) => <CardArt theme="cd-deepfield" size={size} />,
+  'cd-launchpad': (size) => <CardArt theme="cd-launchpad" size={size} />,
+  'cd-nebula': (size) => <CardArt theme="cd-nebula" size={size} />,
+  'cf-stardust': (size) => (
     <Board size={size}>
       {([[20, 22, 6, SPACE.amber], [56, 16, 4, SPACE.violet], [80, 30, 7, SPACE.orange], [34, 48, 5, SPACE.indigo], [66, 54, 6, SPACE.amber], [16, 76, 5, SPACE.violet], [48, 80, 7, SPACE.orange], [84, 80, 4, SPACE.indigo]] as const).map(([x, y, s, c]) => (
         <Spark key={`${x}-${y}`} x={x} y={y} s={s} c={c} />
       ))}
     </Board>
   ),
-  's1-shooting-stars': (size) => (
+  'cf-shooting': (size) => (
     <Board size={size}>
       {([[16, 30, SPACE.amber], [44, 18, SPACE.orange], [30, 62, SPACE.violet], [60, 50, SPACE.amber], [56, 82, SPACE.indigo]] as const).map(([x, y, c]) => (
         <g key={`${x}-${y}`}>
@@ -269,7 +217,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       ))}
     </Board>
   ),
-  's1-liftoff-sign': (size) => (
+  'sign-liftoff': (size) => (
     <Board size={size}>
       <rect x="5" y="22" width="90" height="56" rx="8" fill={SPACE.night} stroke={SPACE.orange} strokeWidth="2.5" />
       <Rocket x={26} y={52} scale={0.95} turn={30} />

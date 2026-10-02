@@ -2,7 +2,7 @@ import { useId, type ReactNode } from 'react'
 import { plateTier, prizeById, type Prize } from '../../data/prizes'
 import { wearPrize, type Avatar } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
-import { askForPixelFont } from '../../lib/nameStyle'
+import { askForOrbitronFont, askForPixelFont } from '../../lib/nameStyle'
 import { SHELF_SCALE, SIGN_W, signHeight, ticketPath } from '../../lib/prizeArt'
 import { ThemeDrawing } from './CardThemes'
 import { SignDrawing } from './SignArt'
@@ -155,6 +155,49 @@ function Shadow({ rx }: { rx: number }) {
 function StyledTag({ style, name, x, y, size, id }: { style: string; name: string; x: number; y: number; size: number; id: string }) {
   const at = { x, y, fontSize: size, letterSpacing: 1 }
   switch (style) {
+    // Season 1's (Space Race, its pass).
+    case 'nm-starlight':
+      return (
+        <>
+          <defs>
+            <filter id={`${id}s`} x="-30%" y="-60%" width="160%" height="220%">
+              <feGaussianBlur stdDeviation="2" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill="#ffffff" filter={`url(#${id}s)`}>
+            {name}
+            <tspan fill="#f5b942" fontSize={size * 0.7} dx="3">
+              ✦
+            </tspan>
+          </text>
+        </>
+      )
+    case 'nm-countdown':
+      askForOrbitronFont()
+      return (
+        <text {...at} fontSize={size - 4} letterSpacing={2} fontFamily="Orbitron, Outfit, sans-serif" fontWeight={700} fill="#ff9a52">
+          {name}
+        </text>
+      )
+    case 'nm-nebula':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${id}n`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#ff7ac1" />
+              <stop offset="0.6" stopColor="#b49cec" />
+              <stop offset="1" stopColor="#8f96ff" />
+            </linearGradient>
+          </defs>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill={`url(#${id}n)`}>
+            {name}
+          </text>
+        </>
+      )
     case 'nm-neon':
       return (
         <>
@@ -433,7 +476,13 @@ function Fireworks() {
   )
 }
 
-const POPPER_SEEDS: Record<string, number> = { 'cf-tickets': 3, 'cf-stars': 9, 'cf-hearts': 14, 'cf-pixels': 5 }
+const POPPER_SEEDS: Record<string, number> = { 'cf-tickets': 3, 'cf-stars': 9, 'cf-hearts': 14, 'cf-pixels': 5, 'cf-stardust': 31, 'cf-shooting': 17 }
+
+/** A four-point sparkle, for Stardust and the shooting stars. */
+function sparkle4(x: number, y: number, s: number) {
+  const k = s * 0.18
+  return `M${x.toFixed(1)} ${(y - s).toFixed(1)}Q${(x + k).toFixed(1)} ${(y - k).toFixed(1)} ${(x + s).toFixed(1)} ${y.toFixed(1)}Q${(x + k).toFixed(1)} ${(y + k).toFixed(1)} ${x.toFixed(1)} ${(y + s).toFixed(1)}Q${(x - k).toFixed(1)} ${(y + k).toFixed(1)} ${(x - s).toFixed(1)} ${y.toFixed(1)}Q${(x - k).toFixed(1)} ${(y - k).toFixed(1)} ${x.toFixed(1)} ${(y - s).toFixed(1)}Z`
+}
 const PIXEL_COLOURS = ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b']
 
 /** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own. */
@@ -465,6 +514,19 @@ function Popper({ kind, id }: { kind: string; id: string }) {
       const c = PIXEL_COLOURS[Math.floor(rnd() * PIXEL_COLOURS.length)]!
       const size = 4 + Math.floor(rnd() * 3) * 1.5
       bits.push(<rect key={i} x={Math.round(x)} y={Math.round(y)} width={size} height={size} fill={c} />)
+    } else if (kind === 'cf-stardust') {
+      const c = ['#f5b942', '#ffe7a3', '#b9a6f0', '#f2813a'][Math.floor(rnd() * 4)]!
+      bits.push(<path key={i} d={sparkle4(x, y, 3.5 + rnd() * 3.5)} fill={c} />)
+    } else if (kind === 'cf-shooting') {
+      if (i % 3 === 0) {
+        const c = ['#ffffff', '#ffe7a3', '#b9a6f0'][Math.floor(rnd() * 3)]!
+        bits.push(
+          <g key={i}>
+            <path d={`M${(x - 22).toFixed(1)} ${(y + 9).toFixed(1)}L${x.toFixed(1)} ${y.toFixed(1)}`} stroke={c} strokeWidth="1.8" strokeLinecap="round" opacity="0.55" />
+            <path d={sparkle4(x, y, 4.5)} fill="#ffffff" />
+          </g>,
+        )
+      }
     } else {
       const c = ['#7fc8ff', '#2fe3cf', '#b3d7ff'][Math.floor(rnd() * 3)]!
       const r = 3.5 + rnd() * 5

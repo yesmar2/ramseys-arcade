@@ -416,6 +416,43 @@ const KIND_COLOURS: Record<string, string[]> = {
   'cf-hearts': ['#ff5f7a', '#ff7ac1', '#e24139', '#ffb3c7'],
   'cf-pixels': ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b'],
   'cf-fireworks': ['#ff5fa2', '#2fe3cf', '#ffd36e', '#7fc8ff', '#ff8552', '#b86bff'],
+  // Season 1's (Space Race, its pass).
+  'cf-stardust': ['#f5b942', '#ffe7a3', '#8a6ad4', '#f2813a', '#b9a6f0', '#ffffff'],
+  'cf-shooting': ['#ffffff', '#ffe7a3', '#b9a6f0', '#f5b942'],
+}
+
+/** A four-point sparkle around (0, 0), for Stardust and a shooting star's head. */
+function sparkleShape(ctx: CanvasRenderingContext2D, r: number) {
+  const k = r * 0.18
+  ctx.beginPath()
+  ctx.moveTo(0, -r)
+  ctx.quadraticCurveTo(k, -k, r, 0)
+  ctx.quadraticCurveTo(k, k, 0, r)
+  ctx.quadraticCurveTo(-k, k, -r, 0)
+  ctx.quadraticCurveTo(-k, -k, 0, -r)
+  ctx.closePath()
+}
+
+/** Shooting stars: streaks across the top of the screen from the left, one after another. */
+function shootingStars(w: number, h: number, colors: string[]): Piece[] {
+  const pieces: Piece[] = []
+  const count = w < 640 ? 9 : 14
+  for (let i = 0; i < count; i++) {
+    const speed = (w < 640 ? 8 : 11) + Math.random() * 4
+    pieces.push({
+      x: -w * 0.1 + Math.random() * w * 0.75,
+      y: h * (0.02 + Math.random() * 0.36),
+      vx: speed,
+      vy: speed * (0.28 + Math.random() * 0.14),
+      spin: 0,
+      angle: 0,
+      w: 4 + Math.random() * 3,
+      h: 0,
+      color: colors[i % colors.length]!,
+      delay: i * 150 + Math.random() * 120,
+    })
+  }
+  return pieces
 }
 
 /** Fireworks: bursts of sparks here and there over the top of the screen, one after another. */
@@ -465,8 +502,9 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     const fireworks = style === 'cf-fireworks'
-    const pieces: Piece[] = fireworks ? fireworkSparks(w, h, colors) : []
-    const count = fireworks ? 0 : w < 640 ? 70 : 110
+    const shooting = style === 'cf-shooting'
+    const pieces: Piece[] = fireworks ? fireworkSparks(w, h, colors) : shooting ? shootingStars(w, h, colors) : []
+    const count = fireworks || shooting ? 0 : w < 640 ? 70 : 110
     for (let i = 0; i < count; i++) {
       const side = i % 2 ? 1 : -1
       const x = w / 2 + side * (w * 0.12 + Math.random() * w * 0.2)
@@ -519,6 +557,29 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
           ctx.globalAlpha = 1
           continue
         }
+        if (shooting) {
+          // A star crosses on a straight line, a fading tail behind it, its head a sparkle.
+          p.x += p.vx * dt
+          p.y += p.vy * dt
+          const age = Math.min(1, (t - p.delay) / 1400)
+          ctx.globalAlpha = fade * (1 - age * 0.5) * 0.6
+          ctx.strokeStyle = p.color
+          ctx.lineWidth = 2.2
+          ctx.lineCap = 'round'
+          ctx.beginPath()
+          ctx.moveTo(p.x - p.vx * 7, p.y - p.vy * 7)
+          ctx.lineTo(p.x, p.y)
+          ctx.stroke()
+          ctx.globalAlpha = fade * (1 - age * 0.5)
+          ctx.save()
+          ctx.translate(p.x, p.y)
+          ctx.fillStyle = '#fff'
+          sparkleShape(ctx, p.w)
+          ctx.fill()
+          ctx.restore()
+          ctx.globalAlpha = 1
+          continue
+        }
         p.vy += 0.22 * dt
         p.vx *= 0.985
         p.vy *= 0.99
@@ -528,6 +589,15 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
         ctx.save()
         ctx.globalAlpha = fade
         ctx.translate(p.x, p.y)
+        if (style === 'cf-stardust') {
+          // Stardust twinkles as it falls, square to the screen.
+          ctx.globalAlpha = fade * (0.55 + 0.45 * Math.sin((t + p.delay * 7) / 80))
+          ctx.fillStyle = p.color
+          sparkleShape(ctx, p.h * 0.6)
+          ctx.fill()
+          ctx.restore()
+          continue
+        }
         if (style === 'cf-pixels') {
           // Pixels stay square to the screen, like the old games drew them.
           ctx.fillStyle = p.color

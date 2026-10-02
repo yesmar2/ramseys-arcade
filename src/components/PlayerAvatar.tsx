@@ -53,6 +53,14 @@ function finishRim(badge: AvatarBadge): string {
       return 'rgba(126,240,196,0.3)'
     case 'gilded':
       return 'rgba(255,244,200,0.5)'
+    case 'orbit':
+      return 'rgba(138,144,216,0.35)'
+    case 'ringed':
+      return 'rgba(245,185,66,0.4)'
+    case 'mission':
+      return 'rgba(242,129,58,0.45)'
+    case 'supernova':
+      return 'rgba(255,240,200,0.5)'
     case 'pixels':
       return 'rgba(10,16,24,0.35)'
     case 'paper':
@@ -118,6 +126,14 @@ function monoInks(avatar: Avatar): { pattern: string; letter: string; line: stri
       return { pattern: '', letter: '#eafff6', line: '#3ee08f' }
     case 'gilded':
       return { pattern: '', letter: '#3a2604', line: '#fff1c2' }
+    case 'orbit':
+      return { pattern: '', letter: '#f4f0ff', line: '#8a90d8' }
+    case 'ringed':
+      return { pattern: '', letter: '#ffffff', line: '#f5b942' }
+    case 'mission':
+      return { pattern: '', letter: '#ffffff', line: '#f2813a' }
+    case 'supernova':
+      return { pattern: '', letter: '#1a1240', line: '#ffffff' }
     case 'glitter':
     case 'pixels':
       return { pattern: '', letter: inkOn(body, INK), line }
@@ -219,10 +235,120 @@ const AURORA_STARS: [number, number, number][] = [
   [26, 9, 0.45],
 ]
 
+/*
+ * Season 1's finishes (Space Race, its pass): a night sky with a moon going round, a ringed planet, a
+ * mission patch, and a supernova at the top of the pass. Each stays inside the badge's edge.
+ */
+const SEASON_STARS: [number, number, number][] = [
+  [14, 24, 0.7],
+  [22, 13, 0.55],
+  [40, 12, 0.6],
+  [48, 50, 0.6],
+  [17, 49, 0.55],
+  [30, 58, 0.5],
+  [10, 37, 0.5],
+]
+
+function SeasonSurface({ badge, uid }: { badge: AvatarBadge; uid: string }) {
+  const clip = (
+    <clipPath id={`${uid}disc`}>
+      <path d={BADGE_ART.disc} />
+    </clipPath>
+  )
+  switch (badge) {
+    case 'orbit':
+      return (
+        <>
+          <defs>
+            <radialGradient id={`${uid}orbit`} cx="0.4" cy="0.3" r="0.85">
+              <stop offset="0" stopColor="#26306e" />
+              <stop offset="0.6" stopColor="#141a40" />
+              <stop offset="1" stopColor="#0a0d22" />
+            </radialGradient>
+            {clip}
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}orbit)`} />
+          {SEASON_STARS.map(([x, y, r]) => (
+            <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#fff" opacity="0.8" />
+          ))}
+          <g clipPath={`url(#${uid}disc)`}>
+            <ellipse cx="32" cy="36" rx="26" ry="8.5" fill="none" stroke="#8a90d8" strokeWidth="1" opacity="0.75" transform="rotate(-18 32 36)" />
+          </g>
+          <circle cx="53" cy="27.5" r="3.4" fill="#f4f0ff" />
+          <circle cx="52.1" cy="26.6" r="0.9" fill="#c9c4e6" />
+        </>
+      )
+    case 'ringed':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${uid}planet`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#b49cec" />
+              <stop offset="0.55" stopColor="#8a6ad4" />
+              <stop offset="1" stopColor="#4e3596" />
+            </linearGradient>
+            {clip}
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}planet)`} />
+          <g clipPath={`url(#${uid}disc)`} fill="none">
+            <path d="M2 24Q32 17 62 24" stroke="#d6c8fa" strokeWidth="3" opacity="0.35" />
+            <path d="M2 46Q32 39 62 46" stroke="#3d2780" strokeWidth="4" opacity="0.35" />
+            <ellipse cx="32" cy="37" rx="31" ry="6.5" stroke="#c98a1c" strokeWidth="3.2" transform="rotate(-14 32 37)" />
+            <ellipse cx="32" cy="37" rx="31" ry="6.5" stroke="#f5b942" strokeWidth="1.8" transform="rotate(-14 32 37)" />
+          </g>
+        </>
+      )
+    case 'mission':
+      return (
+        <>
+          <defs>{clip}</defs>
+          <path d={BADGE_ART.disc} fill="#101634" />
+          <g clipPath={`url(#${uid}disc)`}>
+            <path d="M4 50Q32 39 60 50V64H4Z" fill="#8a6ad4" />
+          </g>
+          <circle cx="32" cy="34" r="24.4" fill="none" stroke="#f2813a" strokeWidth="3.2" />
+          <circle cx="32" cy="34" r="24.4" fill="none" stroke="#fff0e6" strokeWidth="0.7" strokeDasharray="1.4 1.6" />
+          <path d={sparkle(18, 20, 2)} fill="#f5b942" />
+          <path d={sparkle(47, 18, 1.5)} fill="#f4f0ff" />
+        </>
+      )
+    default:
+      // Supernova: the badge in the bright heart of a nebula, a comet going by.
+      return (
+        <>
+          <defs>
+            <radialGradient id={`${uid}nova`} cx="0.5" cy="0.47" r="0.62">
+              <stop offset="0" stopColor="#fff6e0" />
+              <stop offset="0.2" stopColor="#ffd27a" />
+              <stop offset="0.45" stopColor="#e85d9a" />
+              <stop offset="0.75" stopColor="#5b3fb0" />
+              <stop offset="1" stopColor="#101634" />
+            </radialGradient>
+            {clip}
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}nova)`} />
+          <g clipPath={`url(#${uid}disc)`}>
+            <ellipse cx="18" cy="48" rx="14" ry="6" fill="#6b74e8" opacity="0.35" transform="rotate(-20 18 48)" />
+            <ellipse cx="48" cy="20" rx="12" ry="5" fill="#e85d9a" opacity="0.3" transform="rotate(25 48 20)" />
+            <path d="M8 14L22 22" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" opacity="0.6" />
+          </g>
+          <circle cx="22.5" cy="22.3" r="1.4" fill="#ffffff" />
+          <path d={sparkle(50, 46, 2.2)} fill="#ffffff" />
+          <path d={sparkle(14, 36, 1.4)} fill="#ffe7a3" />
+        </>
+      )
+  }
+}
+
 /** A finish's surface: the disc in it, and what lies over the disc before the face. */
 function FinishSurface({ avatar, uid }: { avatar: Avatar; uid: string }) {
   const body = avatarColor(avatar.body)
   switch (avatar.badge) {
+    case 'orbit':
+    case 'ringed':
+    case 'mission':
+    case 'supernova':
+      return <SeasonSurface badge={avatar.badge} uid={uid} />
     case 'pixels': {
       const steps = [mixColor(body, '#ffffff', 0.42), mixColor(body, '#ffffff', 0.16), body, mixColor(body, NAVY, 0.32)]
       return (

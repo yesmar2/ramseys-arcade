@@ -114,19 +114,32 @@ export const PRIZES: readonly Prize[] = [
   // Season 1, Space Race: its pass gives these at their levels (the API's seasons.ts).
   ...(
     [
-      ['t-space-race', 'Space Race', 5],
-      ['t-liftoff', 'Liftoff', 10],
-      ['t-space-cadet', 'Space Cadet', 16],
-      ['t-zero-g', 'Zero G', 21],
-      ['t-moonwalker', 'Moonwalker', 26],
+      ['t-space-race', 'title', 'Space Race', 5, LIT],
+      ['t-liftoff', 'title', 'Liftoff', 10, LIT],
+      ['t-space-cadet', 'title', 'Space Cadet', 16, LIT],
+      ['t-zero-g', 'title', 'Zero G', 21, LIT],
+      ['t-moonwalker', 'title', 'Moonwalker', 26, LIT],
+      ['nm-starlight', 'name', 'Starlight', 2, 'Your tag lit like a star, with one beside it.'],
+      ['nm-countdown', 'name', 'Countdown', 11, 'Your tag in mission control’s orange, letters spaced like a countdown clock.'],
+      ['nm-nebula', 'name', 'Nebula', 24, 'Your tag in a nebula’s pink and violet.'],
+      ['orbit', 'finish', 'Orbit', 4, 'Your badge on a night sky, a moon going round it.'],
+      ['ringed', 'finish', 'Ringed planet', 14, 'Your badge as a violet planet with a ring of gold across it.'],
+      ['mission', 'finish', 'Mission patch', 22, 'Your badge stitched like a mission patch, a hill of the moon along the bottom.'],
+      ['supernova', 'finish', 'Supernova', 30, 'Your badge in the heart of a nebula, a comet going by. The top of the pass.'],
+      ['cd-deepfield', 'card', 'Deep field', 6, 'Your card on a night of stars, a ringed planet at its edge.'],
+      ['cd-launchpad', 'card', 'Launch pad', 17, 'Your card at the launch pad: the gantry, the rocket and the smoke.'],
+      ['cd-nebula', 'card', 'Nebula', 29, 'Your card in a nebula’s clouds of pink and violet, stars being born in them.'],
+      ['cf-stardust', 'confetti', 'Stardust', 7, `Twinkling stars ${CONFETTI}`],
+      ['cf-shooting', 'confetti', 'Shooting stars', 20, `Shooting stars across the screen ${CONFETTI}`],
+      ['sign-liftoff', 'sign', 'Liftoff', 28, 'Your tag in lights beside a rocket lifting off.'],
     ] as const
   ).map(
-    ([id, name, level]): Prize => ({
+    ([id, kind, name, level, blurb]): Prize => ({
       id,
-      kind: 'title',
+      kind,
       name,
       price: 0,
-      blurb: LIT,
+      blurb,
       earned: { by: `Season 1’s pass, level ${level}`, short: 'Season 1' },
     }),
   ),
@@ -151,7 +164,7 @@ export function isWornPrizeId(id: string): boolean {
 }
 
 /** The signs on the wall above the counter, cheapest first. */
-export const SIGNS: readonly Prize[] = PRIZES.filter((p) => p.kind === 'sign').sort((a, b) => a.price - b.price)
+export const SIGNS: readonly Prize[] = PRIZES.filter((p) => p.kind === 'sign' && !p.earned).sort((a, b) => a.price - b.price)
 
 /** How a title's plate is made: plain, enamel from 300 tickets, in lights from 900. */
 export type PlateTier = 'plain' | 'enamel' | 'lit'

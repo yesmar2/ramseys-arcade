@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { DeepField, LaunchPad, NebulaCard } from './SeasonCardThemes'
 
 /*
  * The card themes from the prize counter, drawn to fill any box: the whole
@@ -429,6 +430,12 @@ export function ThemeDrawing({ theme, w, h, s, id }: ThemeProps & { theme: strin
       return <AsteroidBelt w={w} h={h} s={s} id={id} />
     case 'cd-fireflies':
       return <FireflyLake w={w} h={h} s={s} id={id} />
+    case 'cd-deepfield':
+      return <DeepField w={w} h={h} s={s} id={id} />
+    case 'cd-launchpad':
+      return <LaunchPad w={w} h={h} s={s} id={id} />
+    case 'cd-nebula':
+      return <NebulaCard w={w} h={h} s={s} id={id} />
     default:
       return <Carpet w={w} h={h} s={s} id={id} />
   }

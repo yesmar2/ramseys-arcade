@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { askForOrbitronFont } from '../../lib/nameStyle'
 import { liveSeason, useSeason } from '../../lib/season'
 import { starTile } from '../../lib/seasonArt'
 import '../../styles/season.css'
@@ -15,24 +16,13 @@ function planet(fill: string, ring: string): string {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
-let fontAsked = false
-
-/** The season's lettering (Orbitron) comes from Google Fonts like Outfit, but only while a season is live. */
-function askForSeasonFont() {
-  if (fontAsked || typeof document === 'undefined') return
-  fontAsked = true
-  const link = document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = 'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&display=swap'
-  document.head.appendChild(link)
-}
-
 export function SeasonDressing() {
   const season = liveSeason(useSeason())
   const slug = season?.slug ?? null
   useEffect(() => {
     if (!slug) return
-    askForSeasonFont()
+    // The season's lettering comes from Google Fonts like Outfit, but only while a season is live.
+    askForOrbitronFont()
     const root = document.documentElement
     const vars: Record<string, string> = {
       '--season-stars-dark': starTile('#f4f0ff', 7),

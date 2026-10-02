@@ -81,6 +81,24 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
     case 'cf-stars':
     case 'cf-fireworks':
       return 'rgba(245,185,66,0.18)'
+    // Season 1's (Space Race, its pass).
+    case 'orbit':
+    case 'cd-deepfield':
+    case 'cf-shooting':
+    case 'nm-starlight':
+      return 'rgba(107,116,232,0.24)'
+    case 'ringed':
+    case 'cd-nebula':
+    case 'nm-nebula':
+      return 'rgba(138,106,212,0.24)'
+    case 'mission':
+    case 'cd-launchpad':
+    case 'nm-countdown':
+    case 'sign-liftoff':
+      return 'rgba(242,129,58,0.22)'
+    case 'supernova':
+    case 'cf-stardust':
+      return 'rgba(245,185,66,0.22)'
     default:
       if (prize.kind === 'title' && plateTier(prize) === 'lit') return 'rgba(255,95,162,0.18)'
       if (prize.kind === 'title' && plateTier(prize) === 'enamel') return 'rgba(58,134,200,0.18)'

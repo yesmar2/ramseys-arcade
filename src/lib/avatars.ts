@@ -95,6 +95,11 @@ export const AVATAR_BADGES = [
   'aurora',
   // Earned by a 30-day Today streak (lib/today.ts), never traded for.
   'gilded',
+  // Season 1's pass (lib/season.ts).
+  'orbit',
+  'ringed',
+  'mission',
+  'supernova',
 ] as const
 export type AvatarBadge = (typeof AVATAR_BADGES)[number]
 
@@ -111,6 +116,10 @@ export const BADGE_LABELS: Record<AvatarBadge, string> = {
   holo: 'Holo',
   aurora: 'Aurora',
   gilded: 'Gold',
+  orbit: 'Orbit',
+  ringed: 'Ringed planet',
+  mission: 'Mission patch',
+  supernova: 'Supernova',
 }
 
 /** The badges anyone can wear; the rest are finishes from the prize counter. */
@@ -151,8 +160,8 @@ export const AVATAR_GAME_PINS = [
   'fireflies',
 ] as const
 
-/** Worn on the badge's edge, for what you've done. */
-export const AVATAR_PINS = ['welcome', 'games', 'streak', 'today', 'crown', 'bugnet', ...AVATAR_GAME_PINS] as const
+/** Worn on the badge's edge, for what you've done. s1: Season 1's patch, for playing in it. */
+export const AVATAR_PINS = ['welcome', 'games', 'streak', 'today', 'crown', 'bugnet', 's1', ...AVATAR_GAME_PINS] as const
 export type AvatarPin = (typeof AVATAR_PINS)[number]
 
 export function isGamePin(pin: string): boolean {
@@ -173,6 +182,8 @@ export function pinInfo(pin: AvatarPin): { label: string; rule: string } {
       return { label: 'Crown', rule: 'Win a month in the arcade' }
     case 'bugnet':
       return { label: 'Bug net', rule: 'Catch all ten bugs of a month’s bug hunt' }
+    case 's1':
+      return { label: 'Season 1', rule: 'Win a ticket in Season 1, Space Race' }
     default: {
       const name = getGame(pin)?.name ?? pin
       return { label: name, rule: `Reach the all-time top ten on ${name}` }

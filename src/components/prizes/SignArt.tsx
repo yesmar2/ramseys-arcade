@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react'
+import { askForOrbitronFont } from '../../lib/nameStyle'
 import { SIGN_W, signHeight, sparkle } from '../../lib/prizeArt'
 
 /*
@@ -232,6 +233,67 @@ function Marquee({ tag, id, top }: { tag: string; id: string; top: number }) {
   )
 }
 
+/* ---------- Liftoff, from Season 1's pass ---------- */
+
+const LIFTOFF_STARS: [number, number, number][] = [
+  [52, 22, 1.4],
+  [140, 30, 1],
+  [200, 18, 1.3],
+  [300, 26, 1],
+  [380, 20, 1.5],
+  [350, 140, 1.1],
+  [160, 150, 1],
+  [400, 96, 1.2],
+  [128, 92, 0.9],
+]
+
+/** The tag in lights beside a rocket lifting off its pad, on a board of night sky. */
+function Liftoff({ tag, id, top }: { tag: string; id: string; top: number }) {
+  askForOrbitronFont()
+  const size = fitSize(tag, 230, 64)
+  const y = top + 74 + size * 0.36
+  return (
+    <>
+      <defs>
+        <Glow id={`${id}g`} blur={5} />
+        <linearGradient id={`${id}b`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1a2252" />
+          <stop offset="1" stopColor="#101634" />
+        </linearGradient>
+      </defs>
+      <rect x="24" y={top - 4} width="392" height="170" rx="22" fill={`url(#${id}b)`} stroke="#f2813a" strokeWidth="3" />
+      {LIFTOFF_STARS.map(([x, sy, r]) => (
+        <circle key={`${x}-${sy}`} cx={x} cy={top + sy} r={r} fill="#f4f0ff" opacity="0.8" />
+      ))}
+      {[
+        [68, 152, 12],
+        [86, 156, 14],
+        [106, 152, 11],
+        [78, 146, 9],
+      ].map(([x, sy, r]) => (
+        <circle key={`p${x}-${sy}`} cx={x} cy={top + sy - 4} r={r} fill="#e9e4f7" opacity="0.75" />
+      ))}
+      <g transform={`translate(88 ${top + 70}) scale(2.4)`}>
+        <path d="M-4 12 L0 30 L4 12z" fill="#f2813a" />
+        <path d="M-2.5 12 L0 22 L2.5 12z" fill="#f5b942" />
+        <path d="M0 -22 C8 -14 8 2 6 12 H-6 C-8 2 -8 -14 0 -22z" fill="#f4f0ff" />
+        <circle cx="0" cy="-6" r="3.4" fill="#6b74e8" />
+        <path d="M-6 4 L-12 16 L-6 13z M6 4 L12 16 L6 13z" fill="#e8564f" />
+      </g>
+      <text x="268" y={y} textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize={size} letterSpacing={size * 0.06} fill="#f2813a" opacity="0.7" filter={`url(#${id}g)`}>
+        {tag}
+      </text>
+      <text x="268" y={y} textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize={size} letterSpacing={size * 0.06} fill="#ffffff">
+        {tag}
+      </text>
+      <path d={`M164 ${top + 116} H372`} stroke="#f2813a" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+      <text x="268" y={top + 140} textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={700} fontSize="12" letterSpacing="5" fill="#a5abd6">
+        LIFTOFF
+      </text>
+    </>
+  )
+}
+
 /* ---------- the rooftop ---------- */
 
 /** Windows lit here and there in a block, the same every time it's drawn. */
@@ -341,7 +403,15 @@ export function SignDrawing({ sign, name, id, wires }: { sign: string; name: str
   return (
     <>
       {wires ? <Wires /> : null}
-      {sign === 'sign-led' ? <Led tag={tag} id={id} top={top} /> : sign === 'sign-marquee' ? <Marquee tag={tag} id={id} top={top} /> : <Neon tag={tag} id={id} top={top} />}
+      {sign === 'sign-led' ? (
+        <Led tag={tag} id={id} top={top} />
+      ) : sign === 'sign-marquee' ? (
+        <Marquee tag={tag} id={id} top={top} />
+      ) : sign === 'sign-liftoff' ? (
+        <Liftoff tag={tag} id={id} top={top} />
+      ) : (
+        <Neon tag={tag} id={id} top={top} />
+      )}
     </>
   )
 }
@@ -351,6 +421,7 @@ const WORDS: Record<string, string> = {
   'sign-led': 'on an LED board',
   'sign-marquee': 'in marquee lights',
   'sign-rooftop': 'in neon on a rooftop',
+  'sign-liftoff': 'in lights beside a rocket lifting off',
 }
 
 /** A sign from the wall with a tag on it: `sign` is its prize id. */
