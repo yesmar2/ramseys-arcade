@@ -6,7 +6,7 @@
  * The look is a dark world drawn in light (NEON, below), as Ramsey picked it from three on 2026-09-28.
  */
 import * as THREE from 'three'
-import { buildCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
+import { buildCar, paintCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
 import { bounds } from './courses'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
@@ -27,6 +27,8 @@ export type SceneFrame = {
   cardAside: boolean
   /** The donuts egg's clue (donuts.ts): old donut marks on the road just past the line. */
   donutHint?: boolean
+  /** The player's chosen skin (lib/skins.ts), on their own car only, never the ghost's. */
+  skin?: string | null
 }
 
 const W = (x: number, y: number, h = 0) => new THREE.Vector3(x, h, -y)
@@ -102,6 +104,8 @@ export class HotLapScene {
   private readonly lettered: [THREE.CanvasTexture, Paint][] = []
   private readonly car: CarModel
   private readonly ghostCar: CarModel
+  /** The skin your car is painted in now (lib/skins.ts); null, its own paint. */
+  private skinShown: string | null = null
   private readonly skidPos = new Float32Array(SKIDS * 18)
   private readonly skidGeo = new THREE.BufferGeometry()
   private skidNext = 0
@@ -999,6 +1003,10 @@ export class HotLapScene {
   }
 
   frame(f: SceneFrame, dt: number) {
+    if ((f.skin ?? null) !== this.skinShown) {
+      this.skinShown = f.skin ?? null
+      paintCar(this.car, this.skinShown)
+    }
     this.poseCar(f.run, dt)
     if (f.driving) this.layRubber(f.run)
     // A donut smokes the whole time it spins, and a moment after.

@@ -1,5 +1,9 @@
-/** `hunt`: a month of the bug hunt caught in full (periodKey YYYYMM). `secret`: a secret trophy (lib/secrets.ts; periodKey its number). */
-export type TrophyPeriod = 'weekly' | 'monthly' | 'event' | 'hunt' | 'secret'
+/**
+ * `hunt`: a month of the bug hunt caught in full (periodKey YYYYMM). `secret`: a secret trophy (lib/secrets.ts;
+ * periodKey its number). `season`: a place in a season's standings when it ended (lib/season.ts; periodKey
+ * the season's number): its cup for the top three, a ribbon for the rest of the top ten.
+ */
+export type TrophyPeriod = 'weekly' | 'monthly' | 'event' | 'hunt' | 'secret' | 'season'
 
 export type TrophySummary = {
   total: number
@@ -29,7 +33,7 @@ export function trophyTone(period: TrophyPeriod, rank: number): TrophyTone {
   if (period === 'hunt') return 'hunt'
   if (period === 'secret') return 'secret'
   if (period === 'event' || rank <= 3) return metalTone(rank)
-  return period === 'monthly' ? 'month' : 'week'
+  return period === 'monthly' || period === 'season' ? 'month' : 'week'
 }
 
 export type TrophyAward = {
@@ -75,6 +79,7 @@ export function invalidateTrophySummaryCache(name?: string) {
 export function formatTrophyPeriod(period: TrophyPeriod, periodKey: number) {
   // A secret's key is its number, not a date.
   if (period === 'secret') return 'A secret'
+  if (period === 'season') return `Season ${periodKey}`
   if (period === 'event') {
     const y = Math.floor(periodKey / 10_000)
     const m = Math.floor((periodKey % 10_000) / 100)
@@ -99,6 +104,7 @@ export function trophyRankLabel(rank: number, period: TrophyPeriod = 'weekly') {
   if (period === 'event') return 'Won'
   if (period === 'hunt') return 'Full set'
   if (period === 'secret') return 'Secret'
+  if (period === 'season') return rank <= 3 ? `#${rank} of the season` : `Season top 10 · #${rank}`
   if (rank === 1) return '#1 global'
   if (rank <= 3) return `#${rank} global`
   return `Top 10 · #${rank}`
@@ -139,6 +145,8 @@ export type TrophyCaseKind = {
 function caseOrder(period: TrophyPeriod, rank: number, periodKey: number): { key: string; order: number } {
   if (period === 'event') return { key: 'event', order: 0 }
   if (period === 'hunt') return { key: 'hunt', order: 7 }
+  // A season's places, the proudest of the board's: they're over nine weeks of every game.
+  if (period === 'season') return rank <= 3 ? { key: `season-${rank}`, order: 0.5 + rank * 0.1 } : { key: 'season-top', order: 6.5 }
   if (period === 'secret') return { key: `secret-${periodKey}`, order: 7 + periodKey / 100 }
   if (period === 'monthly') return rank <= 3 ? { key: `month-${rank}`, order: rank } : { key: 'month-top', order: 8 }
   return rank <= 3 ? { key: `week-${rank}`, order: 3 + rank } : { key: 'week-top', order: 9 }

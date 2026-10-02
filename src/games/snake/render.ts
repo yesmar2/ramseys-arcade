@@ -641,20 +641,36 @@ function drawEyes(
   }
 }
 
-function drawSnake(ctx: CanvasRenderingContext2D, sk: Skin, v: View, s: GameState) {
+/*
+ * The Comet tail (Season 1's skin, lib/skins.ts): the same snake, so the same size and the same body, in
+ * amber at the head fading to violet down the tail, with pale scales like sparks.
+ */
+const COMET_HEAD: RGB = [245, 185, 66]
+const COMET_TAIL: RGB = [138, 106, 212]
+
+function drawSnake(ctx: CanvasRenderingContext2D, palette: Skin, v: View, s: GameState, playerSkin: string | null) {
   const c = v.cell
   const length = bodyLength(s.segments)
   const pts = bodyPoints(s.trail, length)
   if (pts.length < 2) return
   const P = pts.map((p) => ({ X: px(v, p.x), Y: py(v, p.y), s: p.s }))
 
+  const comet = playerSkin === 'snake-comet-tail'
+  const headLine: RGB = palette.dark ? [255, 214, 140] : [176, 116, 18]
+  const tailLine: RGB = palette.dark ? [190, 172, 242] : [96, 70, 170]
+  const sk: Skin = comet ? { ...palette, bodyFill: COMET_HEAD, bodyLine: headLine, scale: [255, 243, 214] } : palette
+  // How far down the body a point is, in six steps, for the Comet's fade.
+  const down = (at: number) => Math.round(clamp01(at / Math.max(1, length)) * 6) / 6
+  const fillOf = (at: number) => (comet ? mixRgb(COMET_HEAD, COMET_TAIL, down(at)) : sk.bodyFill)
+  const lineOf = (at: number) => (comet ? mixRgb(headLine, tailLine, down(at)) : sk.bodyLine)
+
   const dying = s.phase === 'dying' || s.phase === 'gameover'
   // The colour drains from head to tail over the crash.
   const drainT = s.phase === 'gameover' ? 1 : s.phase === 'dying' ? clamp01((1 - s.dying / DYING_TIME - 0.12) / 0.7) : 0
   const drainAt = drainT * (length + 1.2)
   const drainOf = (at: number) => (dying ? clamp01((drainAt - at) / 1.2) : 0)
-  const bodyLineAt = (d: number) => css(mixRgb(sk.bodyLine, sk.deadLine, d), 0.95)
-  const bodyFillAt = (d: number) => css(mixRgb(sk.bodyFill, sk.deadFill, d))
+  const bodyLineAt = (d: number, at = 0) => css(mixRgb(lineOf(at), sk.deadLine, d), 0.95)
+  const bodyFillAt = (d: number, at = 0) => css(mixRgb(fillOf(at), sk.deadFill, d))
   const q = (d: number) => Math.round(d * 6) / 6
 
   const lw = Math.min(3, Math.max(1.3, c * 0.075))
@@ -674,14 +690,14 @@ function drawSnake(ctx: CanvasRenderingContext2D, sk: Skin, v: View, s: GameStat
   const boosting = isBoosting(s)
   const hot = s.chain >= CHAIN_TOP && !dying
 
-  const strokeRuns = (extra: number, colorAt: (d: number) => string) => {
+  const strokeRuns = (extra: number, colorAt: (d: number, at: number) => string) => {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     let runW = -1
     let runC = ''
     for (let i = 1; i < P.length; i++) {
       const w = widths[i]! + extra
-      const col = colorAt(q(drainOf(P[i]!.s)))
+      const col = colorAt(q(drainOf(P[i]!.s)), P[i]!.s)
       if (w !== runW || col !== runC) {
         if (runW > 0) ctx.stroke()
         ctx.beginPath()
@@ -1053,7 +1069,8 @@ function drawTank(ctx: CanvasRenderingContext2D, sk: Skin, v: View, s: GameState
 
 // Frame -------------------------------------------------------------------------
 
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
+/** Draw a frame. `playerSkin`: the player's chosen skin (lib/skins.ts), drawn on their own snake only; previews pass none. */
+export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number, playerSkin: string | null = null) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   if (ctx.canvas.width !== Math.floor(w * dpr) || ctx.canvas.height !== Math.floor(h * dpr)) {
     ctx.canvas.width = Math.floor(w * dpr)
@@ -1133,7 +1150,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   drawFruitAndRing(ctx, sk, v, s)
   drawGolden(ctx, sk, v, s)
   if (s.mouse) drawMouse(ctx, sk, s.mouse, px(v, s.mouse.x), py(v, s.mouse.y), cell * 1.2, s.time)
-  drawSnake(ctx, sk, v, s)
+  drawSnake(ctx, sk, v, s, playerSkin)
   drawParticles(ctx, sk, v, s)
   drawFloaters(ctx, sk, v, s)
   drawBanner(ctx, sk, v, s)

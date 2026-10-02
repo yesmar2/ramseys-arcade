@@ -104,6 +104,23 @@ export function refreshTickets(force = false): Promise<void> {
   return inFlight
 }
 
+let ownedFrom: string[] | null = null
+let ownedSet: ReadonlySet<string> = new Set()
+
+/** What the player owns now, prizes and skins, for code outside React (a game's skin, lib/skins.ts). */
+export function ownedNow(): ReadonlySet<string> {
+  if (ownedFrom !== snapshot.owned) {
+    ownedFrom = snapshot.owned
+    ownedSet = new Set(snapshot.owned)
+  }
+  return ownedSet
+}
+
+/** Hear when the player's tickets, and so what they own, change. */
+export function subscribeTickets(onChange: () => void): () => void {
+  return subscribe(onChange)
+}
+
 /** Forget them: on sign-out, they belong to nobody. */
 export function resetTickets() {
   fetchedAt = 0

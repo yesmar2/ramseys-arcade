@@ -31,6 +31,7 @@ import {
   type Snapshot,
 } from './game'
 import { fieldPointAt, renderGame } from './render'
+import { useSkinInto } from '../../lib/skins'
 import { beginRun } from '../../lib/runSession'
 
 type HoldKey = 'left' | 'right' | 'up' | 'down' | 'slow'
@@ -105,6 +106,9 @@ export function BarrageGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('barrage')
   const stateRef = useRef<GameState>(createInitialState())
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto('barrage', skinRef)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
@@ -241,7 +245,7 @@ export function BarrageGame() {
         const ctx = canvas.getContext('2d')
         if (ctx) {
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-          renderGame(ctx, stateRef.current, w, h)
+          renderGame(ctx, stateRef.current, w, h, skinRef.current)
         }
       }
 

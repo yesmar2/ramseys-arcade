@@ -38,6 +38,7 @@ import { TrackMap } from './map'
 import { usePastTrackFigures, type PastTrackFigures } from './pastTrack'
 import { PastTrackResult, PastTrackStart } from './PastTrackCards'
 import { HotLapScene } from './scene'
+import { useSkinInto } from '../../lib/skins'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
 import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type GhostPath, type Run, type Track } from './sim'
 import { TestResultCard, TestStartCard } from './TestCards'
@@ -351,6 +352,9 @@ function HotLapDay({
   // Today's track and a past one have boards, and so a #1 whose ghost to race; a track still to come has neither.
   const onBoard = !test || past
   const topRef = useRef<BoardGhost | null>(null)
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto(SLUG, skinRef)
   const nameRef = useRef(playerName)
   nameRef.current = playerName
 
@@ -705,6 +709,7 @@ function HotLapDay({
             ghostTag: ghostTag(g.chasing),
             cardAside: wide.matches,
             donutHint: g.donutHint,
+            skin: skinRef.current,
           },
           live ? dt : 0,
         )

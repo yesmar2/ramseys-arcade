@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } fr
 import { SignInButton } from '../../components/SignInWays'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { StreakPushAsk } from '../../components/PushAsk'
+import { SeasonRunLine } from '../../components/season/SeasonRun'
 
 /** The way on to the next of today's dailies, with the day's ticket it brings. */
 const NextDaily = lazy(() => import('../../components/NextDaily'))
@@ -436,6 +437,7 @@ export function DailyResultCard({
       </div>
       {server && server.solved > 0 ? <Spread spread={server.spread} mine={shown?.tries ?? null} /> : null}
       {!practice && mine && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
+      {!practice && mine && server?.season ? <SeasonRunLine run={server.season} /> : null}
       {mine && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
       {theirs ? <PlayedAs owner={owner} signedIn={signedIn} /> : null}
       {takeUp && taking === 'sending' ? <p className="game-card__hint">Saving it as today&rsquo;s result…</p> : null}

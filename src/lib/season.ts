@@ -62,7 +62,34 @@ export type SeasonRun = {
   levelUp: SeasonReward[]
 }
 
-type SeasonAnswer = { season: SeasonInfo | null; rewards: SeasonReward[]; you: SeasonYou | null }
+/** The season's standings: points across all games over its days, shown by place and name. */
+export type SeasonStandings = {
+  total: number
+  top: { rank: number; name: string; avatarId: string }[]
+  you: { rank: number; name: string } | null
+  /** Places that win when it ends: the cup, then a trophy. */
+  cupPlaces: number
+  trophyPlaces: number
+}
+
+/** Something to do in the season besides the pass, with its own reward. */
+export type SeasonGoal = {
+  id: string
+  title: string
+  need: number
+  have: number
+  done: boolean
+  reward: { kind: 'prize' | 'tickets'; id?: string; amount?: number; name: string }
+}
+
+type SeasonAnswer = {
+  season: SeasonInfo | null
+  rewards: SeasonReward[]
+  you: SeasonYou | null
+  /** Only on the Season page's asking (catchup): they take more reading than the header wants. */
+  standings?: SeasonStandings
+  goals?: SeasonGoal[]
+}
 
 type Store = SeasonAnswer & { loaded: boolean; loading: boolean }
 
@@ -75,6 +102,7 @@ let snapshot: Store = empty
 let fetchedAt = 0
 let fetchedSignedIn: boolean | null = null
 let inFlight: Promise<void> | null = null
+let inFlightCatchUp = false
 
 function emit(next: Store) {
   snapshot = next
@@ -95,15 +123,26 @@ function getSnapshot() {
  * also asks the API to give any reward up to the player's level that a later release brought.
  */
 export function refreshSeason({ force = false, signedIn = fetchedSignedIn ?? false, catchUp = false } = {}): Promise<void> {
+  // The page's asking (with the standings and goals) never rides on the header's plain one: it goes after it.
+  if (inFlight && catchUp && !inFlightCatchUp) return inFlight.then(() => refreshSeason({ force, signedIn, catchUp }))
   if (inFlight) return inFlight
   const fresh = snapshot.loaded && Date.now() - fetchedAt < STALE_MS && fetchedSignedIn === signedIn
   if (!force && !catchUp && fresh) return Promise.resolve()
   emit({ ...snapshot, loading: true })
+  inFlightCatchUp = catchUp
   inFlight = api<SeasonAnswer>(`/season${catchUp ? '?catchup=1' : ''}`)
     .then((answer) => {
       fetchedAt = Date.now()
+      // The header's asking has no standings or goals: keep the page's from before, the same season's.
+      const same = snapshot.season?.id === answer.season?.id && fetchedSignedIn === signedIn
       fetchedSignedIn = signedIn
-      emit({ ...answer, loaded: true, loading: false })
+      emit({
+        ...answer,
+        standings: answer.standings ?? (same ? snapshot.standings : undefined),
+        goals: answer.goals ?? (same ? snapshot.goals : undefined),
+        loaded: true,
+        loading: false,
+      })
     })
     .catch(() => {
       emit({ ...snapshot, loaded: true, loading: false })

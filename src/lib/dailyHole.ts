@@ -8,6 +8,7 @@ import { claimableRun, ownRun, SIGNED_OUT, subscribeViewer, type OwnedRuns, type
 import { detectDeviceType } from './device'
 import { api } from './leaderboard'
 import { noteTicketsPaid } from './tickets'
+import { noteSeasonRun, type SeasonRun } from './season'
 
 /*
  * Ace Chase's Today's Hole, for the site: which hole it is, what this device has done at it, and what the
@@ -263,6 +264,8 @@ export type DailyServer = {
   }
   /** What today's result paid as it went on the board, said once, by the reply that put it there. */
   tickets?: { earned: number; balance: number }
+  /** What it did on the season's pass, said with the tickets (lib/season.ts). */
+  season?: SeasonRun
 }
 
 let server: DailyServer | null = null
@@ -272,7 +275,7 @@ let serverFor: number | null = null
 /** What the API says about today: how everyone did, and how you did only when it was asked as you. */
 export function dailyServer(): DailyServer | null {
   if (!server || serverFor === sessionFingerprint()) return server
-  return { ...server, you: undefined, tickets: undefined }
+  return { ...server, you: undefined, tickets: undefined, season: undefined }
 }
 
 /** The API's word on today, asked as `session` and, as far as this device knew then, as `account`. */
@@ -286,6 +289,7 @@ function apply(reply: DailyServer, session: number | null, account: Viewer) {
   }
   // The tickets are said once: the header's count, and the day's cards (on the run of the account they
   // were paid to), keep them.
+  if (mine && reply.season) noteSeasonRun(reply.season)
   if (mine && reply.tickets?.earned) {
     noteTicketsPaid(reply.tickets)
     const p = typeof account === 'string' ? keptRun(reply.day, account) : null

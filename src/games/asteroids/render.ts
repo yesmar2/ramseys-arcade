@@ -243,16 +243,34 @@ function drawShield(ctx: CanvasRenderingContext2D, state: GameState, r: number, 
   ctx.restore()
 }
 
-function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number, dark: boolean, t: number) {
+/**
+ * The Comet (Season 1's skin, lib/skins.ts): the same arrowhead, so the same size and hitbox, in amber
+ * with a dark notch, and a tail of fading sparks behind it, longer under thrust.
+ */
+function drawCometTail(ctx: CanvasRenderingContext2D, r: number, thrusting: boolean, t: number) {
+  const count = thrusting ? 7 : 4
+  for (let i = 1; i <= count; i++) {
+    const k = i / count
+    const wobble = Math.sin(t * 9 + i * 1.7) * r * 0.08
+    ctx.beginPath()
+    ctx.arc(-r * (0.55 + i * (thrusting ? 0.36 : 0.26)), wobble, Math.max(0.8, r * (0.2 - k * 0.14)), 0, TAU)
+    ctx.fillStyle = k < 0.5 ? `rgba(245, 185, 66, ${0.75 - k * 0.6})` : `rgba(138, 106, 212, ${0.6 - k * 0.45})`
+    ctx.fill()
+  }
+}
+
+function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number, dark: boolean, t: number, skin: string | null) {
   const { ship } = state
   const shielded = (state.buffShield ?? 0) > 0
   // Blink only after a respawn: under a shield the hull stays solid.
   if (!shielded && ship.invuln > 0 && Math.floor(ship.invuln * 12) % 2 === 0) return
 
   const r = shipRadius(scale)
+  const comet = skin === 'asteroids-comet'
   ctx.save()
   ctx.translate(ship.x, ship.y)
   ctx.rotate(ship.angle)
+  if (comet) drawCometTail(ctx, r, ship.thrusting, t)
 
   if (ship.thrusting) {
     // Flame from the notch: an outer tongue and a hotter core, flickering.
@@ -273,12 +291,23 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
   }
 
   traceShip(ctx, r)
-  ctx.fillStyle = hsla(SHIP_HUE, 72, 66, dark ? 0.26 : 0.3)
+  ctx.fillStyle = comet ? '#f5b942' : hsla(SHIP_HUE, 72, 66, dark ? 0.26 : 0.3)
   ctx.fill()
-  ctx.strokeStyle = ACCENT
+  ctx.strokeStyle = comet ? '#7a4e00' : ACCENT
   ctx.lineWidth = Math.max(2.2, 2.8 * scale)
   ctx.lineJoin = 'round'
   ctx.stroke()
+  if (comet) {
+    // The Comet's dark notch down its middle.
+    ctx.beginPath()
+    ctx.moveTo(r * 0.62, 0)
+    ctx.lineTo(-r * 0.12, r * 0.24)
+    ctx.lineTo(-r * 0.02, 0)
+    ctx.lineTo(-r * 0.12, -r * 0.24)
+    ctx.closePath()
+    ctx.fillStyle = '#101634'
+    ctx.fill()
+  }
 
   // Cockpit.
   ctx.beginPath()
@@ -516,7 +545,8 @@ function drawWaveIntro(ctx: CanvasRenderingContext2D, state: GameState, w: numbe
   ctx.restore()
 }
 
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
+/** Draw a frame. `skin`: the player's chosen skin (lib/skins.ts), drawn on their own ship only; previews pass none. */
+export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number, skin: string | null = null) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   if (ctx.canvas.width !== Math.floor(w * dpr) || ctx.canvas.height !== Math.floor(h * dpr)) {
     ctx.canvas.width = Math.floor(w * dpr)
@@ -550,7 +580,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   }
   for (const g of state.rings ?? []) drawRing(ctx, g, scale, dark)
   for (const p of state.particles) drawParticle(ctx, p, scale, dark)
-  if (state.phase === 'playing' || state.phase === 'waveClear') drawShip(ctx, state, scale, dark, t)
+  if (state.phase === 'playing' || state.phase === 'waveClear') drawShip(ctx, state, scale, dark, t, skin)
   drawFloaters(ctx, state, scale, dark)
   ctx.restore()
 

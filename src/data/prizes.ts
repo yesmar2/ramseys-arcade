@@ -143,6 +143,14 @@ export const PRIZES: readonly Prize[] = [
       earned: { by: `Season 1’s pass, level ${level}`, short: 'Season 1' },
     }),
   ),
+  {
+    id: 't-regular',
+    kind: 'title',
+    name: 'Regular',
+    price: 0,
+    blurb: LIT,
+    earned: { by: 'Keeping the Dailies on 30 days of Season 1', short: 'Season 1' },
+  },
 ]
 
 const byId = new Map(PRIZES.map((p) => [p.id, p]))

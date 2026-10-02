@@ -24,6 +24,30 @@ export type CarModel = {
   see: THREE.Material[]
   /** The ghost's outlines, whose opacity the scene sets too. */
   lines: THREE.Material[]
+  /** Your car's paint (never the ghost's), for a skin to change (paintCar). */
+  paint?: { skin: THREE.MeshPhysicalMaterial; dark: THREE.MeshStandardMaterial; arms: THREE.MeshStandardMaterial }
+}
+
+/**
+ * Your car in a skin (lib/skins.ts), or back in its own paint: the Rocket car, Season 1's, is white with
+ * navy trim and red arms. The same car under it, so the same size and the same grip.
+ */
+export function paintCar(model: CarModel, skin: string | null) {
+  const p = model.paint
+  if (!p) return
+  if (skin === 'hotlap-rocket') {
+    p.skin.color.set('#e9e6f5')
+    p.skin.metalness = 0.15
+    p.skin.roughness = 0.3
+    p.dark.color.set('#101634')
+    p.arms.color.set('#e8564f')
+  } else {
+    p.skin.color.set('#262d36')
+    p.skin.metalness = 0.5
+    p.skin.roughness = 0.32
+    p.dark.color.set('#0b0e12')
+    p.arms.color.set('#1b2129')
+  }
 }
 
 /** Each wheel as [forward, left] of the car's middle, front pair first. */
@@ -464,8 +488,10 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
     ? std({ color: ghostColor, roughness: 0.3, metalness: 0.2 })
     : new THREE.MeshPhysicalMaterial({ color: '#262d36', roughness: 0.32, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.06, side: THREE.DoubleSide })
   body.add(new THREE.Mesh(shapes.skin, skin))
-  body.add(new THREE.Mesh(shapes.dark, ghost ? skin : std({ color: '#0b0e12', roughness: 0.6, metalness: 0.3 })))
-  body.add(new THREE.Mesh(shapes.arms, ghost ? skin : std({ color: '#1b2129', roughness: 0.4, metalness: 0.5 })))
+  const dark = ghost ? null : std({ color: '#0b0e12', roughness: 0.6, metalness: 0.3 })
+  const arms = ghost ? null : std({ color: '#1b2129', roughness: 0.4, metalness: 0.5 })
+  body.add(new THREE.Mesh(shapes.dark, dark ?? skin))
+  body.add(new THREE.Mesh(shapes.arms, arms ?? skin))
   // The ghost's outline: lines of light where its shape turns, over its faint body.
   const lines: THREE.Material[] = []
   const outline = ghost ? new THREE.LineBasicMaterial({ color: '#8ff8ff', transparent: true, opacity: 0.9, depthWrite: false }) : null
@@ -589,5 +615,6 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
     blob.position.y = 0.05
     group.add(blob)
   }
-  return { group, body, wheels, steer, see, lines }
+  const own = !ghost && skin instanceof THREE.MeshPhysicalMaterial && dark && arms ? { skin, dark, arms } : undefined
+  return { group, body, wheels, steer, see, lines, ...(own ? { paint: own } : {}) }
 }

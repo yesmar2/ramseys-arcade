@@ -62,6 +62,8 @@ export type SceneFrame = {
   calm: boolean
   /** The alien is waving: your ship (never the ghost) is flying close to it. */
   greet: boolean
+  /** The player's chosen skin (lib/skins.ts), drawn on their own ship only, never the ghost. */
+  skin?: string | null
 }
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; hot: boolean }
@@ -191,8 +193,8 @@ export class CaveScene {
     const ghostShown = f.ghost && !f.ghost.wrecked && !(f.mode === 'menu' && f.ghost.done)
     if (f.ghost && ghostShown) this.drawGhost(f.ghost, f.ghostTag, f.ghostMine, f.mode !== 'done' && !f.ghost.done)
     if (f.mode === 'wreck') this.drawShards(dt)
-    else if (f.mode === 'menu') this.drawShip(this.cave.spawn.x, this.cave.spawn.y, 0, 0)
-    else this.drawShip(f.ship.x, f.ship.y, f.ship.a, f.mode === 'play' ? f.engine : 0)
+    else if (f.mode === 'menu') this.drawShip(this.cave.spawn.x, this.cave.spawn.y, 0, 0, f.skin ?? null)
+    else this.drawShip(f.ship.x, f.ship.y, f.ship.a, f.mode === 'play' ? f.engine : 0, f.skin ?? null)
     this.drawSparks(dt)
     if (f.mode === 'play') this.drawLandingGuide(f.ship)
   }
@@ -627,8 +629,11 @@ export class CaveScene {
     }
   }
 
-  private drawShip(x: number, y: number, a: number, level: number) {
+  private drawShip(x: number, y: number, a: number, level: number, skin: string | null) {
     const { ctx, cam } = this
+    // The Moonhopper (Season 1's skin, lib/skins.ts): the same hull, so the same size and the same landing,
+    // in white with red trim and a dark visor with a teal light.
+    const hopper = skin === 'lander-moonhopper'
     this.drawFlame(x, y, a, level, ['rgba(255, 140, 50, 0.92)', 'rgba(255, 236, 170, 0.95)'])
     ctx.save()
     this.traceShip(x, y, a)
@@ -637,18 +642,36 @@ export class CaveScene {
     ctx.lineWidth = Math.max(6, 0.7 * cam.k)
     ctx.strokeStyle = 'rgba(255, 159, 69, 0.16)'
     ctx.stroke()
-    ctx.fillStyle = 'rgba(255, 159, 69, 0.22)'
+    ctx.fillStyle = hopper ? 'rgba(244, 240, 255, 0.94)' : 'rgba(255, 159, 69, 0.22)'
     ctx.fill()
     ctx.lineWidth = Math.max(2, 0.17 * cam.k)
-    ctx.strokeStyle = C.ship
+    ctx.strokeStyle = hopper ? '#e8564f' : C.ship
     ctx.stroke()
+    if (hopper) {
+      // The red band across the hull.
+      const [ax, ay] = toWorld({ x, y, a }, -0.42, 0.1)
+      const [bx, by] = toWorld({ x, y, a }, 0.42, 0.1)
+      ctx.beginPath()
+      ctx.moveTo(this.sx(ax), this.sy(ay))
+      ctx.lineTo(this.sx(bx), this.sy(by))
+      ctx.lineCap = 'round'
+      ctx.lineWidth = Math.max(2, 0.16 * cam.k)
+      ctx.stroke()
+    }
     ctx.restore()
     // The cockpit.
     const [cx, cy] = toWorld({ x, y, a }, 0, 0.35)
     ctx.beginPath()
-    ctx.arc(this.sx(cx), this.sy(cy), Math.max(2, 0.17 * cam.k), 0, Math.PI * 2)
-    ctx.fillStyle = C.ship
+    ctx.arc(this.sx(cx), this.sy(cy), Math.max(2, (hopper ? 0.24 : 0.17) * cam.k), 0, Math.PI * 2)
+    ctx.fillStyle = hopper ? '#0b0f1a' : C.ship
     ctx.fill()
+    if (hopper) {
+      const [gx, gy] = toWorld({ x, y, a }, 0.07, 0.42)
+      ctx.beginPath()
+      ctx.arc(this.sx(gx), this.sy(gy), Math.max(1, 0.08 * cam.k), 0, Math.PI * 2)
+      ctx.fillStyle = '#5fe0c8'
+      ctx.fill()
+    }
   }
 
   private drawGhost(g: GhostPose, name: string, mine: boolean, flying: boolean) {

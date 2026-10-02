@@ -2,12 +2,26 @@ import { useEffect, useRef, type CSSProperties } from 'react'
 import { PageShell } from '../components/PageShell'
 import { RewardArt } from '../components/season/RewardArt'
 import { MissionPatch } from '../components/season/SeasonArt'
+import { UseSkin } from '../components/season/SkinPicker'
 import { openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { gameHref } from '../hooks/useHashRoute'
-import { daysLeftLabel, refreshSeason, seasonDates, seasonProgress, useSeason, type SeasonInfo, type SeasonReward } from '../lib/season'
+import { PlayerAvatar } from '../components/PlayerAvatar'
+import { ordinal } from '../lib/profileMath'
+import {
+  daysLeftLabel,
+  refreshSeason,
+  seasonDates,
+  seasonProgress,
+  useSeason,
+  type SeasonGoal,
+  type SeasonInfo,
+  type SeasonReward,
+  type SeasonStandings,
+} from '../lib/season'
 import { SPACE, starTile } from '../lib/seasonArt'
+import { useTickets } from '../lib/tickets'
 import '../styles/season.css'
 
 /*
@@ -157,8 +171,74 @@ function Hero({ season, level, fraction, toNext, earned, signedIn, authLoading }
   )
 }
 
+/** The season's standings: the top five by place and name, and you; the points stay on the full Standings. */
+function StandingsCard({ season, standings }: { season: SeasonInfo; standings: SeasonStandings }) {
+  const youIn = standings.you && standings.top.some((row) => row.rank === standings.you!.rank)
+  return (
+    <section className="season-card" aria-labelledby="season-standings-title">
+      <h2 id="season-standings-title">Season standings</h2>
+      <p className="season-card__sub">Points across all games, this season only</p>
+      {standings.top.length ? (
+        <ol className="season-standings">
+          {standings.top.map((row) => (
+            <li key={row.rank} className={standings.you?.rank === row.rank ? 'season-standings__you' : undefined}>
+              <span className="season-standings__place">{ordinal(row.rank)}</span>
+              <PlayerAvatar avatarId={row.avatarId} name={row.name} size="sm" />
+              <span className="season-standings__name">{row.name}</span>
+              {standings.you?.rank === row.rank ? <span className="season-standings__tag">You</span> : null}
+            </li>
+          ))}
+          {standings.you && !youIn ? (
+            <>
+              <li className="season-standings__gap" aria-hidden="true">
+                ···
+              </li>
+              <li className="season-standings__you">
+                <span className="season-standings__place">{ordinal(standings.you.rank)}</span>
+                <span className="season-standings__name">{standings.you.name}</span>
+                <span className="season-standings__tag">You</span>
+              </li>
+            </>
+          ) : null}
+        </ol>
+      ) : (
+        <p className="season-card__sub">Nobody on them yet. Any run puts you there.</p>
+      )}
+      <p className="season-card__foot">
+        {season.status === 'over'
+          ? `${season.name} is over: its cups and trophies are on their shelves.`
+          : `When the season ends, the top ${standings.cupPlaces} take the Season ${season.id} cup and the top ${standings.trophyPlaces} a trophy.`}
+      </p>
+    </section>
+  )
+}
+
+function GoalsCard({ goals }: { goals: SeasonGoal[] }) {
+  return (
+    <section className="season-card" aria-labelledby="season-goals-title">
+      <h2 id="season-goals-title">Season goals</h2>
+      <p className="season-card__sub">Extra, on top of the pass</p>
+      <ul className="season-goals">
+        {goals.map((goal) => (
+          <li key={goal.id} className={goal.done ? 'season-goal season-goal--done' : 'season-goal'}>
+            <span className="season-goal__top">
+              <b>{goal.title}</b>
+              <span>{goal.done ? 'Done' : `${goal.have} of ${goal.need}`}</span>
+            </span>
+            <span className="season-goal__meter" aria-hidden="true">
+              <i style={{ width: `${Math.round((100 * goal.have) / goal.need)}%` }} />
+            </span>
+            <span className="season-goal__reward">{goal.done ? `${goal.reward.name} · yours` : goal.reward.name}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export function SeasonPage() {
   const store = useSeason()
+  const { owned } = useTickets()
   const { signedIn, loading: authLoading } = useAuth()
   const trackRef = useRef<HTMLOListElement>(null)
   const season = store.season
@@ -246,6 +326,8 @@ export function SeasonPage() {
       </section>
 
       <div className="season-cards">
+        {store.standings ? <StandingsCard season={season} standings={store.standings} /> : null}
+        {store.goals?.length ? <GoalsCard goals={store.goals} /> : null}
         <section className="season-card" aria-labelledby="season-how-title">
           <h2 id="season-how-title">How the pass works</h2>
           <ul className="season-how">
@@ -279,7 +361,7 @@ export function SeasonPage() {
             <ul className="season-skins">
               {skins.map((skin) => {
                 const game = skin.game ? getGame(skin.game) : null
-                const yours = level >= skin.level
+                const yours = level >= skin.level || owned.includes(skin.id)
                 return (
                   <li key={skin.id} className={yours ? 'season-skin season-skin--yours' : 'season-skin'}>
                     <span className="season-skin__art">
@@ -289,6 +371,7 @@ export function SeasonPage() {
                     <span className="season-skin__what">
                       {game?.name ?? skin.what} · {yours ? 'yours' : `Lv ${skin.level}`}
                     </span>
+                    {yours && skin.game ? <UseSkin game={skin.game} id={skin.id} /> : null}
                   </li>
                 )
               })}

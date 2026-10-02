@@ -40,7 +40,7 @@ export type NotificationMeta = {
   eventId?: string
   matchId?: string
   /** `n`: a secret's number (lib/secrets.ts). */
-  trophy?: { period: 'weekly' | 'monthly' | 'event' | 'hunt' | 'secret'; rank: number; n?: number }
+  trophy?: { period: 'weekly' | 'monthly' | 'event' | 'hunt' | 'secret' | 'season'; rank: number; n?: number }
   /** Flair the trophy unlocked. */
   ring?: string
   pin?: string

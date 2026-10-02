@@ -13,6 +13,7 @@ import { GameHubHowTo } from './GameHubHowTo'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { useSpotlight } from '../lib/season'
+import { SkinPicker } from './season/SkinPicker'
 import { SpotlightCard } from './season/SeasonSpotlight'
 import { ShareBoardButton } from './ShareBoardButton'
 
@@ -118,6 +119,7 @@ export function GameHubHero({
               url={gameHref(game.slug)}
             />
           </div>
+          <SkinPicker game={game.slug} />
           {spotlight ? <SpotlightCard slug={game.slug} name={game.name} /> : null}
           {!canPlay ? (
             <p className="gh-hero__hint">

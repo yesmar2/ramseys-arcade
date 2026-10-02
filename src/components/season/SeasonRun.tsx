@@ -2,6 +2,7 @@ import { seasonHref } from '../../hooks/useHashRoute'
 import { rewardPhrase, useSeason, type SeasonRun } from '../../lib/season'
 import { RewardArt } from './RewardArt'
 import { MissionPatch } from './SeasonArt'
+import { UseSkin } from './SkinPicker'
 import '../../styles/season.css'
 
 /*
@@ -60,6 +61,7 @@ export function SeasonLevelUp({ run }: { run: SeasonRun }) {
             <span className="run-levelup__what">
               <b>{reward.kind === 'tickets' ? `+${reward.amount ?? 0} tickets` : reward.name}</b>
               <small>{reward.ready ? (reward.kind === 'tickets' ? 'Added to your tickets' : `${reward.what} · it’s yours`) : `${reward.what} · on its way`}</small>
+              {reward.kind === 'skin' && reward.game && reward.ready ? <UseSkin game={reward.game} id={reward.id} /> : null}
             </span>
           </li>
         ))}

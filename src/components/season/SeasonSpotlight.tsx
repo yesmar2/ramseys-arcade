@@ -1,5 +1,6 @@
 import { seasonHref } from '../../hooks/useHashRoute'
 import { isSpotlight, liveSeason, useSeason } from '../../lib/season'
+import { useTickets } from '../../lib/tickets'
 import { RewardArt } from './RewardArt'
 import { MissionPatch } from './SeasonArt'
 import '../../styles/season.css'
@@ -11,10 +12,11 @@ import '../../styles/season.css'
 
 export function SpotlightCard({ slug, name }: { slug: string; name: string }) {
   const store = useSeason()
+  const { owned } = useTickets()
   const season = liveSeason(store)
   if (!season || !isSpotlight(season, slug)) return null
   const skin = store.rewards.find((r) => r.kind === 'skin' && r.game === slug) ?? null
-  const yours = skin != null && (store.you?.level ?? 0) >= skin.level
+  const yours = skin != null && (owned.includes(skin.id) || (store.you?.level ?? 0) >= skin.level)
   return (
     <a className="season-spotcard" href={seasonHref()}>
       <span className="season-spotcard__art" aria-hidden="true">

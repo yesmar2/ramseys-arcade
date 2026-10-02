@@ -57,6 +57,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { useSkinInto } from '../../lib/skins'
 import { beginRun } from '../../lib/runSession'
 
 function currentLayout() {
@@ -98,6 +99,9 @@ export function SnakeGame() {
   const playerName = normalizePlayerName(usePlayerName())
   const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState(layout0.cols, layout0.rows, layout0.dir))
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto('snake', skinRef)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [aspect, setAspect] = useState({ w: layout0.aspectW, h: layout0.aspectH })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
@@ -147,7 +151,7 @@ export function SnakeGame() {
         const h = parent?.clientHeight || 0
         if (w > 0 && h > 0) {
           const ctx = canvas.getContext('2d')
-          if (ctx) renderGame(ctx, stateRef.current, w, h)
+          if (ctx) renderGame(ctx, stateRef.current, w, h, skinRef.current)
         }
       }
 

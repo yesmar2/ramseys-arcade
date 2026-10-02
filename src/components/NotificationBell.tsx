@@ -106,17 +106,19 @@ function TrophyTile({ trophy }: { trophy: NonNullable<AppNotification['meta']['t
     )
   }
   const tone = period === 'event' ? 'gold' : rank <= 3 ? (['gold', 'silver', 'bronze'] as const)[rank - 1] : period === 'weekly' ? 'week' : 'month'
+  // A season's is drawn as a month's: its cup, or its ribbon.
+  const drawn = period === 'season' || period === 'monthly' ? 'monthly' : 'weekly'
   const art =
     period === 'event' ? (
       <EventCup size="sm" />
     ) : rank <= 3 ? (
-      period === 'monthly' ? (
+      drawn === 'monthly' ? (
         <MonthlyTrophyCup tone={(['gold', 'silver', 'bronze'] as const)[rank - 1]!} size="sm" />
       ) : (
         <WeeklyMedal rank={rank} size="sm" />
       )
     ) : (
-      <TopTenRibbon tone={period} rank={rank} size="sm" />
+      <TopTenRibbon tone={drawn} rank={rank} size="sm" />
     )
   return <span className={`inbox-face__tile inbox-face__tile--trophy trophy-tone--${tone}`}>{art}</span>
 }

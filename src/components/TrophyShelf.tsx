@@ -17,7 +17,7 @@ function TrophyIcon({ trophy, size = 'md' }: { trophy: TrophyAward; size?: Troph
   if (trophy.period === 'event') return <EventCup size={size} />
   if (trophy.period === 'hunt') return <HuntSetJar size={size} />
   if (trophy.period === 'secret') return <SecretArt n={trophy.periodKey} size={size} />
-  if (trophy.period === 'monthly') return kind ? <MonthlyTrophyCup tone={kind} size={size} /> : <TopTenRibbon tone="monthly" rank={trophy.rank} size={size} />
+  if (trophy.period === 'monthly' || trophy.period === 'season') return kind ? <MonthlyTrophyCup tone={kind} size={size} /> : <TopTenRibbon tone="monthly" rank={trophy.rank} size={size} />
   return kind ? <WeeklyMedal rank={trophy.rank} size={size} /> : <TopTenRibbon tone="weekly" rank={trophy.rank} size={size} />
 }
 
@@ -32,6 +32,7 @@ function setMonthOf(periodKey: number): string {
 function trophyWhen(t: TrophyAward): string {
   try {
     if (t.period === 'secret') return new Date(t.awardedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (t.period === 'season') return `Season ${t.periodKey}`
     if (t.period === 'monthly' || t.period === 'hunt') {
       const y = Math.floor(t.periodKey / 100)
       const m = t.periodKey % 100
@@ -74,7 +75,7 @@ function Item({ trophy, isSelf }: { trophy: TrophyAward; isSelf: boolean }) {
       ? `${setMonthOf(trophy.periodKey)}’s full set`
       : isSecret
         ? (secretByNumber(trophy.periodKey)?.name ?? 'A secret')
-        : `${ordinal(trophy.rank)} of the ${trophy.period === 'monthly' ? 'month' : 'week'}`
+        : `${ordinal(trophy.rank)} of the ${trophy.period === 'season' ? 'season' : trophy.period === 'monthly' ? 'month' : 'week'}`
   const when = trophyWhen(trophy)
   const whenLine = isSecret ? `Found ${when}` : when
   const haul = trophyHaul(trophy, isSelf)

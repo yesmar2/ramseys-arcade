@@ -105,9 +105,9 @@ function CaseArt({ kind }: { kind: TrophyCaseKind }) {
   if (kind.period === 'secret') return <SecretArt n={kind.secret ?? 0} size="md" />
   if (kind.period === 'event') return <EventCup size="md" />
   if (kind.period === 'hunt') return <HuntSetJar size="md" />
-  const tone = kind.period === 'monthly' ? 'monthly' : 'weekly'
+  const tone = kind.period === 'monthly' || kind.period === 'season' ? 'monthly' : 'weekly'
   if (kind.rank > 3) return <TopTenRibbon tone={tone} rank={kind.rank} size="md" />
-  return kind.period === 'monthly' ? <MonthlyTrophyCup tone={metalTone(kind.rank)} size="md" /> : <WeeklyMedal rank={kind.rank} size="md" />
+  return kind.period === 'monthly' || kind.period === 'season' ? <MonthlyTrophyCup tone={metalTone(kind.rank)} size="md" /> : <WeeklyMedal rank={kind.rank} size="md" />
 }
 
 /**
@@ -124,7 +124,7 @@ function caseWords(kind: TrophyCaseKind, isSelf: boolean): string {
   }
   if (kind.period === 'event') return n === 1 ? 'An event won' : `${n} events won`
   if (kind.period === 'hunt') return n === 1 ? 'A full month of the bug hunt' : `${n} full months of the bug hunt`
-  const span = kind.period === 'monthly' ? 'a month' : 'a week'
+  const span = kind.period === 'season' ? 'a season' : kind.period === 'monthly' ? 'a month' : 'a week'
   if (kind.rank > 3) return `Top ten of ${span}${times}, best ${ordinal(kind.rank)}`
   return `${ordinal(kind.rank)} of ${span}${times}`
 }

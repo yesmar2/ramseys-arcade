@@ -95,6 +95,8 @@ type Gfx = {
   U: (v: number) => number
   /** Device pixels per CSS pixel: sprites are drawn at the screen's own density. */
   dpr: number
+  /** The player's chosen skin (lib/skins.ts), drawn on their own ship only; previews have none. */
+  skin: string | null
 }
 
 // ------------------------------------------------------------------- ground
@@ -688,8 +690,11 @@ function drawShip(g: Gfx) {
   const cx = X(sh.x)
   const cy = Y(sh.y)
   const w = U(SHIP_W)
-  const line = hsla(SHIP_HUE, 58, lineL(dark), 0.98)
-  const fill = hsla(SHIP_HUE, 62, 58, dark ? 0.3 : 0.36)
+  // The Nova fighter (Season 1's skin): the same ship, so the same size and the same heart, in star white
+  // and violet with a teal canopy and an orange flame.
+  const nova = g.skin === 'barrage-nova'
+  const line = nova ? (dark ? '#b49cec' : '#6a4fb8') : hsla(SHIP_HUE, 58, lineL(dark), 0.98)
+  const fill = nova ? (dark ? 'rgba(244, 240, 255, 0.92)' : '#f4f0ff') : hsla(SHIP_HUE, 62, 58, dark ? 0.3 : 0.36)
   const lw = Math.max(1.3, w * 0.045)
   ctx.save()
   ctx.translate(cx, cy)
@@ -702,9 +707,9 @@ function drawShip(g: Gfx) {
   const flick = 0.75 + 0.25 * Math.sin(t * 43) + 0.1 * Math.sin(t * 71)
   const flame = w * (0.42 + 0.14 * flick)
   const grad = ctx.createLinearGradient(0, w * 0.3, 0, w * 0.3 + flame)
-  grad.addColorStop(0, hsla(SHIP_HUE, 95, 70, 0.9))
-  grad.addColorStop(0.5, hsla(180, 95, 65, 0.5))
-  grad.addColorStop(1, hsla(200, 95, 65, 0))
+  grad.addColorStop(0, nova ? 'rgba(255, 231, 163, 0.95)' : hsla(SHIP_HUE, 95, 70, 0.9))
+  grad.addColorStop(0.5, nova ? 'rgba(242, 129, 58, 0.6)' : hsla(180, 95, 65, 0.5))
+  grad.addColorStop(1, nova ? 'rgba(242, 129, 58, 0)' : hsla(200, 95, 65, 0))
   ctx.fillStyle = grad
   ctx.beginPath()
   ctx.moveTo(-w * 0.1, w * 0.28)
@@ -739,7 +744,7 @@ function drawShip(g: Gfx) {
   // Canopy.
   ctx.beginPath()
   ctx.ellipse(0, -w * 0.2, w * 0.075, w * 0.14, 0, 0, TAU)
-  ctx.fillStyle = dark ? 'rgba(234, 241, 246, 0.35)' : 'rgba(255, 255, 255, 0.7)'
+  ctx.fillStyle = nova ? '#2eb8a0' : dark ? 'rgba(234, 241, 246, 0.35)' : 'rgba(255, 255, 255, 0.7)'
   ctx.fill()
   ctx.lineWidth = lw * 0.8
   ctx.stroke()
@@ -1138,7 +1143,8 @@ function drawBanner(g: Gfx) {
 
 // ------------------------------------------------------------------- render
 
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
+/** Draw a frame. `skin`: the player's chosen skin (lib/skins.ts), drawn on their own ship only; previews pass none. */
+export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number, skin: string | null = null) {
   const p = fieldPlace(w, h)
   const dark = isDarkTheme()
   const t = state.time
@@ -1152,6 +1158,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     Y: (v) => p.oy + v * p.k,
     U: (v) => v * p.k,
     dpr: Math.max(1, Math.abs(ctx.getTransform().a) || 1),
+    skin,
   }
 
   ctx.fillStyle = playfieldColor()

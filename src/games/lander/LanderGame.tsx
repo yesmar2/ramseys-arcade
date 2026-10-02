@@ -53,6 +53,7 @@ import {
   type LanderDay,
 } from './runs'
 import { CaveScene } from './scene'
+import { useSkinInto } from '../../lib/skins'
 import { crashWords, formatLanderBoardScore, formatRun, landerBoardScore, landerMsFromBoardScore } from './score'
 import { TestResultCard, TestStartCard } from './TestCards'
 import {
@@ -354,6 +355,9 @@ function LanderDayGame({
   const board = pastBoard?.board ?? null
   /** The board's #1 as last told (boardGhost.ts), and the tag you play under, for whose the ghost is. */
   const topRef = useRef<BoardGhost | null>(null)
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto(SLUG, skinRef)
   const nameRef = useRef(playerName)
   nameRef.current = playerName
 
@@ -776,6 +780,7 @@ function LanderDayGame({
           ghostTag: ghostTag(g.chasing),
           ghostMine: g.chasing.who === 'you',
           calm,
+          skin: skinRef.current,
           greet,
         },
         live ? dt : 0,

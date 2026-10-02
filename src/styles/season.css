@@ -309,6 +309,76 @@ html[data-theme] .gh-tag.season-tag {
   }
 }
 
+/* ---------- choosing a skin, on its game's page ---------- */
+
+.skin-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+}
+
+.skin-pick__label {
+  margin-right: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.skin-pick__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(var(--ink-rgb), 0.16);
+  background: rgba(var(--ink-rgb), 0.03);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.skin-pick__opt--on {
+  border-color: var(--space-orange);
+  background: color-mix(in srgb, var(--space-orange) 14%, transparent);
+}
+
+.skin-pick__art {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-left: -0.35rem;
+  border-radius: 50%;
+  background: var(--space-night);
+}
+
+.skin-use {
+  align-self: flex-start;
+  min-height: 2.2rem;
+  margin-top: 0.3rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--space-orange);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.skin-use--on {
+  background: var(--space-orange);
+  color: #1a0e05;
+}
+
 /* ---------- a run's report: what it added to the pass, and a level reached ---------- */
 
 .run-season {
@@ -914,6 +984,115 @@ html[data-theme='dark'] .season-tile__got {
   font-weight: 700;
   color: color-mix(in srgb, var(--space-orange) 55%, var(--ink));
   text-decoration: underline;
+}
+
+.season-card__foot {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.season-standings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.season-standings li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.5rem;
+  padding: 0 0.6rem;
+  border-radius: 0.6rem;
+}
+
+.season-standings__place {
+  width: 2.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.season-standings__name {
+  font-weight: 700;
+}
+
+.season-standings__you {
+  background: var(--season-soft);
+}
+
+.season-standings__tag {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--space-violet) 70%, var(--ink));
+}
+
+.season-standings li.season-standings__gap {
+  min-height: 1rem;
+  justify-content: center;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+}
+
+.season-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.season-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.season-goal__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  font-size: 0.95rem;
+}
+
+.season-goal__top span {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.season-goal__meter {
+  position: relative;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--season-rail-off);
+  overflow: hidden;
+}
+
+.season-goal__meter > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--space-violet);
+}
+
+.season-goal--done .season-goal__meter > i {
+  background: var(--space-orange);
+}
+
+.season-goal__reward {
+  align-self: flex-start;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--space-orange) 14%, transparent);
+  color: color-mix(in srgb, var(--space-orange) 50%, var(--ink));
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .season-skins {

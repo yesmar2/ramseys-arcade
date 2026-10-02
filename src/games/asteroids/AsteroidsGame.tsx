@@ -53,6 +53,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { useSkinInto } from '../../lib/skins'
 import { beginRun } from '../../lib/runSession'
 
 type HoldKey = 'turnLeft' | 'turnRight' | 'thrust' | 'reverse'
@@ -226,6 +227,9 @@ export function AsteroidsGame() {
   const accent = getGame('asteroids')?.accent ?? '#2eb87a'
   const layout0 = currentLayout()
   const stateRef = useRef<GameState>(createInitialState())
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto('asteroids', skinRef)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 960, h: 540 })
   const [aspect, setAspect] = useState({ w: layout0.aspectW, h: layout0.aspectH })
@@ -387,7 +391,7 @@ export function AsteroidsGame() {
 
       if (canvas && w > 0 && h > 0) {
         const ctx = canvas.getContext('2d')
-        if (ctx) renderGame(ctx, stateRef.current, w, h)
+        if (ctx) renderGame(ctx, stateRef.current, w, h, skinRef.current)
       }
 
       raf = requestAnimationFrame(loop)
