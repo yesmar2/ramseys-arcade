@@ -20,7 +20,7 @@ import {
 } from '../lib/leaderboard'
 import { currentTheme, THEME_EVENT, toggleTheme, themeLabel, type Theme } from '../lib/theme'
 import { DevImpersonateControl } from './DevImpersonateControl'
-import { GoogleSignInButton } from './GoogleSignInButton'
+import { SignInList } from './SignInWays'
 import { PlayerAvatar } from './PlayerAvatar'
 import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
@@ -395,10 +395,8 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
             </p>
           </>
         ) : null}
-        <GoogleSignInButton
-          disabled={authBusy}
+        <SignInList
           onBusy={setAuthBusy}
-          onError={(message) => setError(message)}
           onSignedIn={() => {
             setError(null)
             if (!embedded) setEditing(false)

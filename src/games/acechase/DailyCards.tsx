@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { GoogleSignInButton } from '../../components/GoogleSignInButton'
+import { SignInButton } from '../../components/SignInWays'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { StreakPushAsk } from '../../components/PushAsk'
 
@@ -215,7 +215,7 @@ export function PlayedAs({ owner, signedIn }: { owner: string | null; signedIn: 
   return (
     <div className="acechase-daily__signin">
       <p>{tag ? `Played as ${tag}. Sign in as ${tag} to put it on the board.` : 'Played as another account. Sign in as that account to put it on the board.'}</p>
-      {signedIn ? null : <GoogleSignInButton />}
+      {signedIn ? null : <SignInButton />}
     </div>
   )
 }
@@ -448,7 +448,7 @@ export function DailyResultCard({
       {mine && !signedIn ? (
         <div className="acechase-daily__signin">
           <p>Sign in to save today&rsquo;s result, earn its tickets, and keep a streak going.</p>
-          <GoogleSignInButton />
+          <SignInButton />
         </div>
       ) : null}
       {/* Today kept by this hole: the moment to offer a nudge before a day ends unkept. */}

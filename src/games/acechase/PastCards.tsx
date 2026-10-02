@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { GoogleSignInButton } from '../../components/GoogleSignInButton'
+import { SignInButton } from '../../components/SignInWays'
 import { PastCourseResult, PastCourseStart, type PastBoard, type PastBoardRow } from '../../components/PastCourseCards'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { TagSlots } from '../../components/RunReport'
@@ -72,7 +72,7 @@ function SignIn({ children }: { children: ReactNode }) {
   return (
     <div className="acechase-daily__signin">
       <p>{children}</p>
-      <GoogleSignInButton />
+      <SignInButton />
     </div>
   )
 }
@@ -124,7 +124,7 @@ export function PastStartCard({
     >
       {!signedIn && kind === 'board' ? (
         <div className="acechase-daily__signin">
-          <GoogleSignInButton />
+          <SignInButton />
         </div>
       ) : null}
       {tries > 0 ? <p className="past-card__note">You&rsquo;re {triesWords(tries)} in. Every try counts, so they carry on.</p> : null}

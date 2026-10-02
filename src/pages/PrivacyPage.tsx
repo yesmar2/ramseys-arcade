@@ -25,10 +25,11 @@ export function PrivacyPage() {
           your device.
         </li>
         <li>
-          <strong>Account information.</strong> If you sign in with Google or request an
-          email link, we receive the information needed to authenticate you (such as your
-          email address and a provider identifier). We use this to link your account to your
-          player name.
+          <strong>Account information.</strong> If you sign in with Google or Discord, or with
+          a code we email you, we receive the information needed to authenticate you (your
+          email address, and an identifier from Google or Discord). We use this to link your
+          account to your player name. The same email address, whichever way you sign in, is
+          the same account.
         </li>
         <li>
           <strong>Technical data.</strong> Our hosting providers may log standard request
@@ -77,7 +78,7 @@ export function PrivacyPage() {
       <p>
         The Service uses browser local storage (and similar technologies) to remember your
         preferences and session. We do not use third-party advertising cookies. If you sign in
-        with Google, Google’s own policies apply to that sign-in flow.
+        with Google or Discord, that service’s own policies apply to its sign-in flow.
       </p>
 
       <h2>Third-party services</h2>
@@ -85,6 +86,15 @@ export function PrivacyPage() {
         <li>
           <strong>Google Sign-In</strong> — optional authentication; governed by Google’s
           privacy policy when you use it.
+        </li>
+        <li>
+          <strong>Discord sign-in</strong> — optional authentication; governed by Discord’s
+          privacy policy when you use it. We ask Discord only for your account’s identifier and
+          email address.
+        </li>
+        <li>
+          <strong>Email delivery</strong> — if you sign in with a code, it is sent through an
+          email delivery service (Resend), which receives your email address to deliver it.
         </li>
         <li>
           <strong>Hosting</strong> — the site and API are hosted on third-party infrastructure

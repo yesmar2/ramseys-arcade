@@ -25,7 +25,8 @@ export function TermsPage() {
         <li>You may play without an account.</li>
         <li>
           Saving scores, picking a player name (gamer tag) and joining events need an account.
-          You sign in with Google.
+          You sign in with Google, Discord or a code sent to your email, whichever the sign-in
+          screen offers.
         </li>
         <li>
           You are responsible for the player name you display. Do not impersonate others or

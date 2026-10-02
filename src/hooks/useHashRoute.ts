@@ -66,6 +66,8 @@ export type Route =
    */
   | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string }
   | { name: 'authVerify'; token: string }
+  /** Where Discord sends a player back after signing in (pages/DiscordReturnPage). */
+  | { name: 'authDiscord' }
   | { name: 'about' }
   | { name: 'plus' }
   /** `section`: one of the admin's tabs past the overview: a daily game's book, or the trophies. */
@@ -700,6 +702,8 @@ export function parseUrl(pathname: string, search: string): Route {
 
   if (path === 'tournaments') return { name: 'tournaments' }
   if (path === 'tournaments/create') return { name: 'tournamentCreate' }
+
+  if (path === 'auth/discord') return { name: 'authDiscord' }
 
   const authVerifyMatch = /^auth\/verify\/([^/]+)$/.exec(path)
   if (authVerifyMatch) {

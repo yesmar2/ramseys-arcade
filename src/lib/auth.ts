@@ -492,10 +492,27 @@ export async function completeSignIn(verifyToken: string) {
   return verifyMagicToken(verifyToken)
 }
 
-export async function fetchAuthConfig(): Promise<{
+/** The ways to sign in the API can do (lib/signInWays.ts keeps them). Older APIs say only Google's. */
+export type AuthConfig = {
   googleClientId: string | null
   googleEnabled: boolean
-}> {
+  discordClientId?: string | null
+  discordEnabled?: boolean
+  emailEnabled?: boolean
+}
+
+/** The API's answer, or a throw: for a caller that keeps the last good answer rather than guess. */
+export async function fetchAuthConfigStrict(timeoutMs: number): Promise<AuthConfig> {
+  const stop = new AbortController()
+  const timer = setTimeout(() => stop.abort(), timeoutMs)
+  try {
+    return await authApi<AuthConfig>('/auth/config', { signal: stop.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+export async function fetchAuthConfig(): Promise<AuthConfig> {
   try {
     return await authApi('/auth/config')
   } catch {
@@ -507,22 +524,58 @@ export async function fetchAuthConfig(): Promise<{
   }
 }
 
-export async function signInWithGoogleIdToken(idToken: string): Promise<{
-  account: Account
-  names: OwnedName[]
-}> {
-  const data = await authApi<{
-    sessionToken: string
-    account: Account
-    names: OwnedName[]
-  }>('/auth/google', {
-    method: 'POST',
-    body: JSON.stringify({ idToken }),
-  })
+type SignedIn = { sessionToken: string; account: Account; names: OwnedName[] }
+
+/** Whichever way they came in by: the session is this browser's now, and the account's tag with it. */
+async function adoptSession(data: SignedIn): Promise<{ account: Account; names: OwnedName[] }> {
   setSessionToken(data.sessionToken, { emit: false })
   resetDeviceIdentityForAccountSwitch()
   setLastAccountId(data.account.id)
   const names = await adoptNamesAfterSignIn(data.account.id, data.names ?? [])
   emitAuth()
   return { account: data.account, names }
+}
+
+export async function signInWithGoogleIdToken(idToken: string): Promise<{
+  account: Account
+  names: OwnedName[]
+}> {
+  return adoptSession(
+    await authApi<SignedIn>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    }),
+  )
+}
+
+/** Email a six-digit code to the address. Off production the API hands it back as `devCode`. */
+export async function requestEmailCode(email: string): Promise<{
+  email: string
+  expiresAt: number
+  resendAt: number
+  devCode?: string
+}> {
+  return authApi('/auth/email-code', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function signInWithEmailCode(email: string, code: string) {
+  return adoptSession(
+    await authApi<SignedIn>('/auth/email-code/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    }),
+  )
+}
+
+/** The code Discord sent the player back with, and the address it sent them to (they must match). */
+export async function signInWithDiscordCode(code: string, redirectUri: string) {
+  return adoptSession(
+    await authApi<SignedIn>('/auth/discord', {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri }),
+    }),
+  )
 }

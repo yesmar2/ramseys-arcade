@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { fetchAuthConfig, signInWithGoogleIdToken } from '../lib/auth'
+import { rememberSignInWay } from '../lib/signInWays'
 
 type GoogleCredentialResponse = {
   credential?: string
@@ -96,6 +97,8 @@ type LoadState = 'loading' | 'ready' | 'failed' | 'missing'
 
 type GoogleSignInButtonProps = {
   disabled?: boolean
+  /** "Sign in with Google" alone; "Continue with Google" in a list of ways, like the others there. */
+  text?: 'signin_with' | 'continue_with'
   onBusy?: (busy: boolean) => void
   onError?: (message: string) => void
   onSignedIn?: () => void
@@ -109,6 +112,7 @@ type GoogleSignInButtonProps = {
  */
 export function GoogleSignInButton({
   disabled,
+  text = 'signin_with',
   onBusy,
   onError,
   onSignedIn,
@@ -155,6 +159,7 @@ export function GoogleSignInButton({
             handlersRef.current.onBusy?.(true)
             try {
               await signInWithGoogleIdToken(idToken)
+              rememberSignInWay('google')
               handlersRef.current.onSignedIn?.()
             } catch (err) {
               handlersRef.current.onError?.(
@@ -180,7 +185,7 @@ export function GoogleSignInButton({
         window.google.accounts.id.renderButton(hostRef.current, {
           theme: 'outline',
           size: 'large',
-          text: 'signin_with',
+          text,
           shape: 'pill',
           width,
           logo_alignment: 'center',
@@ -198,7 +203,7 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true
     }
-  }, [attempt])
+  }, [attempt, text])
 
   if (state === 'missing') return null
 

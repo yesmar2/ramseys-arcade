@@ -43,6 +43,7 @@ const SiteRecordsPage = lazyPage(() =>
   import('./pages/SiteRecordsPage').then((m) => m.SiteRecordsPage),
 )
 const AuthVerifyPage = lazyPage(() => import('./pages/AuthVerifyPage').then((m) => m.AuthVerifyPage))
+const DiscordReturnPage = lazyPage(() => import('./pages/DiscordReturnPage').then((m) => m.DiscordReturnPage))
 const CreateTournamentPage = lazyPage(() =>
   import('./pages/CreateTournamentPage').then((m) => m.CreateTournamentPage),
 )
@@ -302,6 +303,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'privacy') return <PrivacyPage />
   if (route.name === 'terms') return <TermsPage />
   if (route.name === 'authVerify') return <AuthVerifyPage token={route.token} />
+  if (route.name === 'authDiscord') return <DiscordReturnPage />
   if (route.name === 'rank') {
     return <RankPage player={route.player} period={route.period ?? defaultPeriod()} />
   }

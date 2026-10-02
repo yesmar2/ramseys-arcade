@@ -18,7 +18,7 @@ import type {
   ReportTier,
   ReportTone,
 } from '../lib/runReport'
-import { GoogleSignInButton } from './GoogleSignInButton'
+import { SignInButton } from './SignInWays'
 import { Panel } from './Panel'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PlayerName } from './PlayerName'
@@ -629,22 +629,11 @@ export function ReportSignIn({
   error?: string | null
   onSignedIn: () => void
 }) {
-  const [busy, setBusy] = useState(false)
-  const [localError, setLocalError] = useState<string | null>(null)
-  const shown = localError || error
   return (
     <div className="report__ask">
       <p className="report__ask-text">{lead}</p>
-      <GoogleSignInButton
-        disabled={busy}
-        onBusy={setBusy}
-        onError={(message) => setLocalError(message)}
-        onSignedIn={() => {
-          setLocalError(null)
-          onSignedIn()
-        }}
-      />
-      {shown ? <p className="panel__error">{shown}</p> : null}
+      <SignInButton onSignedIn={onSignedIn} />
+      {error ? <p className="panel__error">{error}</p> : null}
     </div>
   )
 }

@@ -493,6 +493,7 @@ export function pageMeta(route: Route): PageMeta {
       }
       return dailyMeta(route.slug) ?? gameMeta(route.slug, gamePlayHref(route.slug), 'Play')
     case 'authVerify':
+    case 'authDiscord':
       return { ...site, title: titled('Signing in'), path: homeHref(), noindex: true }
     case 'devCelebrate':
       return { ...site, title: titled('Celebrate (dev)'), path: homeHref(), noindex: true }
