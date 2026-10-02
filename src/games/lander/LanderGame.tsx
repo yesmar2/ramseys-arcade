@@ -33,7 +33,7 @@ import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { alienMiddle, alienOf, sayHi, WAVE_NEAR, type Alien } from './alien'
 import { EngineSound } from './audio'
-import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
+import { fetchBoardGhost, fitsCave, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
 import { caveDay, caveNumber, msUntilNextCave, untilWords } from './daily'
 import { CaveMap } from './map'
 import { onItsDayFact, type ItsDay } from './pastDay'
@@ -475,7 +475,8 @@ function LanderDayGame({
 
   /** The board's fastest run, as it's known: at the start card, the ghost to race changes to it at once. */
   const takeTop = (next: BoardGhost | null) => {
-    topRef.current = next
+    // A path flown down this cave before it was dug again flies through rock: their time on the blue ship's line instead.
+    topRef.current = next?.run && !fitsCave(lander.cave, next.run) ? { ...next, run: null } : next
     rechase()
   }
   const takeTopRef = useRef(takeTop)

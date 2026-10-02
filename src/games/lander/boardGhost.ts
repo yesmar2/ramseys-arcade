@@ -1,6 +1,6 @@
 import { api } from '../../lib/leaderboard'
 import type { GhostRun } from './runStore'
-import { GHOST_RATE, GHOST_STRIDE, WRECKED, wrap } from './sim'
+import { GHOST_RATE, GHOST_STRIDE, inAir, nearestNode, WRECKED, wrap, type Cave } from './sim'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's and Marble Run's are), for everyone to race: in today's
@@ -74,6 +74,28 @@ export async function fetchBoardGhost(cave: number, fresh = false): Promise<Boar
   } catch {
     return null
   }
+}
+
+/** Of a path's samples, more than this share in rock and it isn't a flight down this cave. */
+const MOST_IN_ROCK = 0.02
+
+/**
+ * Whether a ghost's path was flown down this cave: next to none of it in rock. A cave dug again after a run
+ * was flown in it (the plan changed before launch, as #1–#3's did on Oct 1) leaves a path that cuts through
+ * its walls, and the ghost flies the blue ship's line at the #1's time instead (standIn).
+ */
+export function fitsCave(cave: Cave, run: GhostRun): boolean {
+  const g = run.ghost
+  const samples = g.length / S
+  let hint = 0
+  let rock = 0
+  for (let k = 0; k < samples; k++) {
+    const x = g[k * S]!
+    const y = g[k * S + 1]!
+    hint = nearestNode(cave, x, y, hint)
+    if (!inAir(cave, x, y, hint)) rock++
+  }
+  return rock <= samples * MOST_IN_ROCK
 }
 
 /**
