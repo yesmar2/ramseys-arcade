@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { isRankedGame } from '../data/games'
 import { PlayIcon } from './chromeIcons'
 import { DailyKindTag } from './DailyKindTag'
 import type { TodayFreezes } from '../lib/today'
@@ -85,6 +86,16 @@ function Tile({ tile: t }: { tile: TicketTile }) {
   )
 }
 
+/** A day's tiles in their groups, in order: just for fun, then ranked; a group with none is left out. */
+function groupsOf(tiles: TicketTile[]): { kind: 'fun' | 'ranked'; tiles: TicketTile[] }[] {
+  const fun = tiles.filter((t) => !isRankedGame(t.slug))
+  const ranked = tiles.filter((t) => isRankedGame(t.slug))
+  return [
+    { kind: 'fun' as const, tiles: fun },
+    { kind: 'ranked' as const, tiles: ranked },
+  ].filter((g) => g.tiles.length > 0)
+}
+
 /** How many are done, beside the title: "2 of 6 done", the "done" left off on a phone. */
 export function DoneCount({ done, total }: { done: number; total: number }) {
   return (
@@ -161,11 +172,25 @@ export function DayTicket({ labelId, title, count, action, kicker, streak, full,
             <p className="today-card__count">{count}</p>
             {action}
           </div>
-          <ul className={`today-tiles${tiles.length > 4 ? ' today-tiles--many' : ''}`} style={{ '--n': tiles.length } as CSSProperties}>
-            {tiles.map((t) => (
-              <Tile key={t.key} tile={t} />
+          {/*
+           * The just-for-fun dailies, then the ranked ones (lib/today.ts TODAY_DAILIES has them so), each group
+           * under its tag, so which count toward your rank is plain at a glance. Side by side while there's
+           * room, the narrower ticket stacks them, three a row.
+           */}
+          <div className="today-groups">
+            {groupsOf(tiles).map((group) => (
+              <div key={group.kind} className={`today-group today-group--${group.kind}`} style={{ '--n': group.tiles.length } as CSSProperties}>
+                <div className="today-group__label">
+                  <DailyKindTag slug={group.tiles[0]!.slug} look="chip" />
+                </div>
+                <ul className="today-tiles" style={{ '--n': group.tiles.length } as CSSProperties}>
+                  {group.tiles.map((t) => (
+                    <Tile key={t.key} tile={t} />
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
           {children}
         </div>
       </div>
