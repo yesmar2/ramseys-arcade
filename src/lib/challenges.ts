@@ -22,6 +22,8 @@ export type Challenge = {
   createdAt: number
   avatarId?: string
   replyTo?: string | null
+  /** The season skin the run was played in (lib/skins.ts). */
+  skin?: string
 }
 
 /** What the API made of a run saved against a challenge. */

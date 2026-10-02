@@ -1,3 +1,4 @@
+import { SkinMark } from './season/SkinMark'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
@@ -53,7 +54,7 @@ type DayMeta = { counted: boolean; final: boolean; you: { score: number; place: 
 type CourseMeta = { you: { score: number; place: number } | null }
 
 /** One row of either board: the day's, or the course's own. */
-type Row = { place: number; name: string; score: number; at?: number; avatarId?: string; device?: DayBoardEntry['device'] }
+type Row = { place: number; name: string; score: number; at?: number; avatarId?: string; device?: DayBoardEntry['device']; skin?: string }
 
 function ChevronIcon({ back = false }: { back?: boolean }) {
   return (
@@ -482,6 +483,7 @@ function DayRow({
         <span className="gb-row__who">
           <span className="gb-row__name">
             <PlayerName name={row.name} avatarId={row.avatarId} />
+            <SkinMark skin={row.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
           {sub ? <span className="gb-row__runs">{sub}</span> : null}

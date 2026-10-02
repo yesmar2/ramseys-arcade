@@ -1,3 +1,4 @@
+import { chosenSkin } from './skins'
 import { getGame, isRankedGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
 import { noteSeasonRun, type SeasonRun } from './season'
@@ -530,7 +531,8 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   // A daily just for fun places nobody (data/games.ts Game.ranked): no standings or board to read around it.
   const ranked = isRankedGame(slug)
   const priorOverall = ranked ? await fetchGlobalRank(me, standingsPeriod).catch(() => null) : null
-  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours })
+  // The skin the game drew the player in: the one chosen for it, if they own it (lib/skins.ts).
+  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours, skin: chosenSkin(slug) })
   noteTicketsPaid(saved.tickets)
   noteSeasonRun(saved.season)
   for (const hit of saved.streakRecords ?? []) {

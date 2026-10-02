@@ -1,3 +1,4 @@
+import { chosenSkin } from './skins'
 import { useCallback, useEffect, useState } from 'react'
 import { detectDeviceType } from './device'
 import { api, getClaimToken, normalizePlayerName } from './leaderboard'
@@ -16,7 +17,7 @@ import { noteTicketsPaid } from './tickets'
 /** The dailies whose past courses keep All time boards. */
 export type TrackGame = 'hotlap' | 'marblerun' | 'lander'
 
-export type TrackLapFigure = { name: string; score: number; avatarId?: string }
+export type TrackLapFigure = { name: string; score: number; avatarId?: string; skin?: string }
 
 /** A track that has had its day: its record, how many have driven it, and your best and place on it. */
 export type TrackRecordRow = {
@@ -154,6 +155,12 @@ export function useTrackRecordsAsked(game: TrackGame, name: string): TrackRecord
   return { rows: held.get(who)?.rows ?? null, failed: false, retry }
 }
 
+/** The skin the game drew the player in (lib/skins.ts), for the API to keep with the lap. */
+function skinOf(game: string): { skin?: string } {
+  const skin = chosenSkin(game)
+  return skin ? { skin } : {}
+}
+
 /**
  * Save a run on a past course, under the tag this device plays as. `run` is the run it was played in,
  * asked for as it ended (runSession runIdFor): a run on a course's board has to be one the server timed.
@@ -171,7 +178,7 @@ export async function saveTrackLap(
   const token = getClaimToken(cleaned)
   const result = await api<TrackLapResult>(`/tracks/${game}/${track}/laps`, {
     method: 'POST',
-    body: JSON.stringify({ name: cleaned, score, device: detectDeviceType(), runId, ...(token ? { token } : {}) }),
+    body: JSON.stringify({ name: cleaned, score, device: detectDeviceType(), runId, ...(token ? { token } : {}), ...skinOf(game) }),
   })
   // The tracks' records are stale now, and taking a record pays: the header's count goes up with it.
   held.clear()

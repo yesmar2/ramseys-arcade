@@ -686,21 +686,53 @@ function fin(root: [number, number], tip: [number, number], span: number, thick:
   return geo
 }
 
+/** A Rocket car's colours: its body, its stripe and fin tip, its wings and fins, and its nozzle's light. */
+export type RocketColors = { body: string; stripe: string; trim: string; glow: string; flame: readonly [string, string] }
+
+/** The Rocket car's own, as the pass draws it: white, a red stripe, navy wings, an orange flame. */
+export const ROCKET_COLORS: RocketColors = { body: '#ece9f7', stripe: '#e8564f', trim: '#101634', glow: '#ff7a1a', flame: ['#f2813a', '#ffe7a3'] }
+
+/** Hot Lap's skins (lib/skins.ts): each a Rocket car in its colours. */
+export const ROCKET_SKINS: Record<string, RocketColors> = { 'hotlap-rocket': ROCKET_COLORS }
+
 /**
  * The Rocket car, Season 1's Hot Lap skin (lib/skins.ts), as the pass draws it: a white rocket on four open
  * wheels, a red stripe nose to tail, navy wings, a dark bubble over the driver, fins at the tail and a flame
- * out of it. Ramsey asked for a car of its own (2026-10-02: "a totally redesigned car would be fine"). Your
- * car only, never the ghost; it stands on the Indy car's wheels and drives the same (sim.ts), so a lap in it
- * counts the same.
+ * out of it. Ramsey asked for a car of its own (2026-10-02: "a totally redesigned car would be fine"). It
+ * stands on the Indy car's wheels and drives the same (sim.ts), so a lap in it counts the same.
+ *
+ * With `ghost`, the same car seen through in `ghostColor` with lines of light where its shape turns: the
+ * #1's ghost, when their lap was driven in it. `colors` paints it otherwise (a Pass+ skin's).
  */
-export function buildRocketCar(paint: Paint): CarModel {
+export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor?: string; colors?: RocketColors } = {}): CarModel {
+  const ghost = opts.ghost === true
+  const ghostColor = opts.ghostColor ?? '#46e4ff'
+  const c = opts.colors ?? ROCKET_COLORS
   const group = new THREE.Group()
   const body = new THREE.Group()
   group.add(body)
-  const std: Std = (params) => new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, ...params })
-  const white = new THREE.MeshPhysicalMaterial({ color: '#ece9f7', roughness: 0.28, metalness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide })
-  const navy = std({ color: '#101634', roughness: 0.45, metalness: 0.35 })
-  const red = std({ color: '#e8564f', roughness: 0.4, metalness: 0.1 })
+  const see: THREE.Material[] = []
+  const lines: THREE.Material[] = []
+  // Seen through, and a hair behind your car where the two meet, as the Indy car's ghost is.
+  const through = ghost ? { transparent: true, opacity: 0.36, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 } : {}
+  const std: Std = (params) => {
+    const m = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, ...params, ...through })
+    if (ghost) see.push(m)
+    return m
+  }
+  const outline = ghost ? new THREE.LineBasicMaterial({ color: '#8ff8ff', transparent: true, opacity: 0.9, depthWrite: false }) : null
+  if (outline) lines.push(outline)
+  const seeThrough = ghost ? std({ color: ghostColor, roughness: 0.3, metalness: 0.2 }) : null
+  const white =
+    seeThrough ??
+    new THREE.MeshPhysicalMaterial({ color: c.body, roughness: 0.28, metalness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide })
+  const navy = seeThrough ?? std({ color: c.trim, roughness: 0.45, metalness: 0.35 })
+  const red = seeThrough ?? std({ color: c.stripe, roughness: 0.4, metalness: 0.1 })
+  /** A part of the car, and on the ghost its edges in light. */
+  const add = (geo: THREE.BufferGeometry, material: THREE.Material, edges = true) => {
+    body.add(new THREE.Mesh(geo, material))
+    if (outline && edges) body.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 28), outline))
+  }
 
   // The body: rings round it, tail to nose.
   const around = 40
@@ -717,44 +749,53 @@ export function buildRocketCar(paint: Paint): CarModel {
     }
     rings.push(ring)
   }
-  body.add(new THREE.Mesh(smoothRings(rings, true), white))
-
-  // The red stripe along the top, a hair over the white.
-  const stripe: Point[][] = []
-  for (let i = 2; i < stations; i++) {
-    const x = xAt(i)
-    const { w, h, cy } = rocketAt(x)
-    const half = Math.min(0.085, w * 0.42)
-    const row: Point[] = []
-    for (let k = 0; k <= 6; k++) {
-      const z = -half + (2 * half * k) / 6
-      row.push([x, cy + h * Math.sqrt(clamp01(1 - (z / w) ** 2)) + 0.006, z])
+  add(smoothRings(rings, true), white, false)
+  if (outline) {
+    // The body is smooth all over, so its outline is drawn: along its top and down each side.
+    for (const k of [Math.round(around / 4), 0, Math.round(around / 2)]) {
+      const points = rings.filter((_, i) => i % 4 === 0).map((ring) => new THREE.Vector3(...ring[k]!))
+      body.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), outline))
     }
-    stripe.push(row)
   }
-  body.add(new THREE.Mesh(smoothRings(stripe, false), red))
 
-  // The tail: a navy face, a nozzle, its glowing throat, and the flame out of it.
+  // The stripe along the top, a hair over the body.
+  if (!ghost) {
+    const stripe: Point[][] = []
+    for (let i = 2; i < stations; i++) {
+      const x = xAt(i)
+      const { w, h, cy } = rocketAt(x)
+      const half = Math.min(0.085, w * 0.42)
+      const row: Point[] = []
+      for (let k = 0; k <= 6; k++) {
+        const z = -half + (2 * half * k) / 6
+        row.push([x, cy + h * Math.sqrt(clamp01(1 - (z / w) ** 2)) + 0.006, z])
+      }
+      stripe.push(row)
+    }
+    add(smoothRings(stripe, false), red, false)
+  }
+
+  // The tail: a face, a nozzle, its glowing throat, and the flame out of it.
   const tail = rocketAt(ROCKET.tail)
   const face = new THREE.CircleGeometry(1, 40)
   face.scale(tail.w, tail.h, 1)
   face.rotateY(-Math.PI / 2)
   face.translate(ROCKET.tail, tail.cy, 0)
-  body.add(new THREE.Mesh(face, navy))
+  add(face, navy, false)
   const nozzle = new THREE.CylinderGeometry(0.2, 0.27, 0.22, 32, 1, true)
   nozzle.rotateZ(-Math.PI / 2)
   nozzle.translate(ROCKET.tail - 0.1, tail.cy, 0)
-  body.add(new THREE.Mesh(nozzle, navy))
+  add(nozzle, navy)
   const throat = new THREE.CircleGeometry(0.2, 32)
   throat.rotateY(-Math.PI / 2)
   throat.translate(ROCKET.tail - 0.02, tail.cy, 0)
-  body.add(new THREE.Mesh(throat, std({ color: '#2a1004', emissive: '#ff7a1a', emissiveIntensity: 1.6 })))
+  add(throat, std({ color: ghost ? ghostColor : '#2a1004', emissive: ghost ? '#aaf6ff' : c.glow, emissiveIntensity: ghost ? 0.9 : 1.6 }), false)
 
   const flame = new THREE.Group()
   flame.position.set(ROCKET.tail - 0.18, tail.cy, 0)
   for (const [r, len, color, opacity] of [
-    [0.22, 1, '#f2813a', 0.7],
-    [0.12, 0.62, '#ffe7a3', 0.9],
+    [0.22, 1, ghost ? '#46e4ff' : c.flame[0], ghost ? 0.25 : 0.7],
+    [0.12, 0.62, ghost ? '#c8f8ff' : c.flame[1], ghost ? 0.35 : 0.9],
   ] as const) {
     const cone = new THREE.ConeGeometry(r, len, 24, 1, true)
     // Its base at the nozzle and its point out behind, along -x, so stretching the group stretches it back.
@@ -767,39 +808,43 @@ export function buildRocketCar(paint: Paint): CarModel {
       ),
     )
   }
+  // A ghost's burns steady and short; your own car's stretches as it pulls (the scene's poseCar).
+  if (ghost) flame.scale.set(0.6, 0.9, 0.9)
   body.add(flame)
 
-  // Fins at the tail: one up, white, tipped red; and one out each side, navy, behind the rear wheels.
+  // Fins at the tail: one up, tipped in the stripe's colour; and one out each side, behind the rear wheels.
   const top = rocketAt(-1.9)
   const finBase = top.cy + top.h - 0.04
   const upFin = fin([-1.45, -2.3], [-2.05, -2.42], 0.42, 0.035)
   upFin.translate(0, finBase, 0)
-  body.add(new THREE.Mesh(upFin, white))
+  add(upFin, white)
   const tipCap = new THREE.BoxGeometry(0.38, 0.05, 0.045)
   tipCap.translate(-2.235, finBase + 0.42, 0)
-  body.add(new THREE.Mesh(tipCap, red))
+  add(tipCap, red)
   for (const side of [1, -1]) {
     const tailFin = fin([-1.86, -2.34], [-2.18, -2.5], 0.62, 0.04)
     // Laid out flat to this side from the body's flank, dipping a little toward its tip.
     tailFin.rotateX(side * (Math.PI / 2 + 0.12))
     tailFin.translate(0, tail.cy - 0.06, side * 0.36)
-    body.add(new THREE.Mesh(tailFin, navy))
+    add(tailFin, navy)
   }
 
-  // The front wing low across the nose, a plate at each end, and a red lip along its front.
+  // The front wing low across the nose, a plate at each end, and a lip in the stripe's colour along its front.
   const wing = new THREE.BoxGeometry(0.34, 0.035, 1.92)
   wing.translate(2.55, 0.2, 0)
-  body.add(new THREE.Mesh(wing, navy))
+  add(wing, navy)
   for (const side of [1, -1]) {
     const plate = new THREE.BoxGeometry(0.38, 0.18, 0.03)
     plate.translate(2.55, 0.26, side * 0.96)
-    body.add(new THREE.Mesh(plate, navy))
+    add(plate, navy)
   }
-  const lip = new THREE.BoxGeometry(0.03, 0.04, 1.86)
-  lip.translate(2.73, 0.2, 0)
-  body.add(new THREE.Mesh(lip, red))
+  if (!ghost) {
+    const lip = new THREE.BoxGeometry(0.03, 0.04, 1.86)
+    lip.translate(2.73, 0.2, 0)
+    add(lip, red)
+  }
 
-  // The arms out to the wheels, navy.
+  // The arms out to the wheels.
   const arms: THREE.BufferGeometry[] = []
   for (const [wx, wz] of WHEELS) {
     const at = rocketAt(wx)
@@ -812,32 +857,33 @@ export function buildRocketCar(paint: Paint): CarModel {
       arms.push(arm)
     }
   }
-  body.add(new THREE.Mesh(merge(arms), navy))
+  add(merge(arms), navy, false)
 
   // The bubble over the driver, dark glass, on the fat of the rocket.
-  const glass = new THREE.MeshPhysicalMaterial({
-    color: '#0b1219',
-    roughness: 0.05,
-    metalness: 0.6,
-    clearcoat: 1,
-    clearcoatRoughness: 0.02,
-    envMapIntensity: 1.6,
-    side: THREE.DoubleSide,
-  })
-  const canopy = new THREE.Mesh(
-    strips(
-      canopyRings({ from: -1.15, to: 0.3, width: 0.27, rise: 0.25, peak: -0.35, back: 1.6, sink: 0.05 }, (x) => {
-        const p = rocketAt(x)
-        return p.cy + p.h
-      }),
-      false,
-    ),
-    glass,
+  const glass = ghost
+    ? std({ color: ghostColor, roughness: 0.1, metalness: 0.4 })
+    : new THREE.MeshPhysicalMaterial({
+        color: '#0b1219',
+        roughness: 0.05,
+        metalness: 0.6,
+        clearcoat: 1,
+        clearcoatRoughness: 0.02,
+        envMapIntensity: 1.6,
+        side: THREE.DoubleSide,
+      })
+  const bubble = strips(
+    canopyRings({ from: -1.15, to: 0.3, width: 0.27, rise: 0.25, peak: -0.35, back: 1.6, sink: 0.05 }, (x) => {
+      const p = rocketAt(x)
+      return p.cy + p.h
+    }),
+    false,
   )
+  const canopy = new THREE.Mesh(bubble, glass)
   canopy.renderOrder = 1
   body.add(canopy)
+  if (outline) body.add(new THREE.LineSegments(new THREE.EdgesGeometry(bubble, 28), outline))
 
-  const { wheels, steer } = addWheels(group, shapesOf(FORMULA), FORMULA, std, null, '#ff5a0a', null)
-  addUnderGlow(group, paint)
-  return { group, body, wheels, steer, see: [], lines: [], flame }
+  const { wheels, steer } = addWheels(group, shapesOf(FORMULA), FORMULA, std, ghost ? ghostColor : null, ghost ? '#aaf6ff' : '#ff5a0a', outline)
+  if (!ghost) addUnderGlow(group, paint)
+  return { group, body, wheels, steer, see, lines, ...(ghost ? {} : { flame }) }
 }

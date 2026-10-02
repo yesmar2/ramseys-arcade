@@ -3,6 +3,7 @@ import { scoreUnit } from '../lib/gameBoard'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore, isInvertedBoard } from '../lib/leaderboardFormat'
 import { PlayerAvatar } from './PlayerAvatar'
+import { SkinMark } from './season/SkinMark'
 
 /*
  * A friend's challenge, where a run meets it: on the start card before the
@@ -38,6 +39,7 @@ export function ChallengeTarget({ slug }: { slug: string }) {
       <span className="game-card__challenger">
         <PlayerAvatar avatarId={challenge.avatarId} name={challenge.name} size="sm" />
         {own ? 'Your challenge' : `${challenge.name} challenges you`}
+        <SkinMark skin={challenge.skin} />
       </span>
       <span className="game-card__target">
         <strong>{figure}</strong>

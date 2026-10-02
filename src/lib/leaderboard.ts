@@ -20,6 +20,8 @@ export type LeaderboardEntry = {
   avatarId?: string
   /** On a daily's board for longer than a day, where the score is day points: the days they came from. */
   days?: number
+  /** The season skin the run was played in (lib/skins.ts), shown beside the name. */
+  skin?: string
 }
 
 export const LEADERBOARD_GAMES = [
@@ -708,6 +710,8 @@ export async function addLeaderboardScore(
     pace?: number
     /** Half Full: the day and its five locked levels, which the API scores the day from. */
     pours?: SavedPours
+    /** The season skin the run was played in, which the API keeps if the player owns it. */
+    skin?: string | null
   } = {},
 ): Promise<{
   entries: LeaderboardEntry[]
@@ -769,6 +773,7 @@ export async function addLeaderboardScore(
       ...(opts.pickups ? { pickups: Math.floor(opts.pickups) } : {}),
       ...(opts.pace ? { pace: Math.round(opts.pace) } : {}),
       ...(opts.pours ? { pours: opts.pours } : {}),
+      ...(opts.skin ? { skin: opts.skin } : {}),
     }),
   })
 

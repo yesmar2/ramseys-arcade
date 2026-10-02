@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { FriendsCard } from '../components/FriendsPanel'
+import { PlayerHangar } from '../components/Hangar'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
@@ -327,6 +328,8 @@ export function RankPage({
                 />
               ) : null}
             </div>
+
+            <PlayerHangar name={viewedName} isSelf={isSelf} />
 
             {isSelf && signedIn ? <FriendsCard /> : null}
           </>

@@ -1,0 +1,156 @@
+/* ---------- a player's hangar of skins, on their player card (components/Hangar.tsx) ---------- */
+
+.hangar {
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
+}
+
+.hangar__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+}
+
+.hangar__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hangar__note {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.hangar__link {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: inherit;
+  text-decoration: none;
+}
+
+.hangar__link:hover,
+.hangar__link:focus-visible {
+  text-decoration: underline;
+}
+
+/* Deep space, whichever theme the page is in, as the trophy cabinet is always dark. */
+.hangar__deck {
+  padding: 1rem 1rem 1.1rem;
+  border-radius: 1.1rem;
+  background-color: #0d1230;
+  background-size: 320px 320px;
+  box-shadow:
+    inset 0 0 0 1px rgba(244, 240, 255, 0.07),
+    inset 0 1px 0 rgba(244, 240, 255, 0.05);
+  color: #eceaf7;
+}
+
+.hangar__bays {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.4rem, 1fr));
+  gap: 0.9rem 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hangar__bay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  text-align: center;
+}
+
+/* A bay: lit from above in the season's violet, a pad of orange light under the ship. */
+.hangar__nook {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 6.6rem;
+  margin-bottom: 0.35rem;
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(138, 106, 212, 0.32), transparent 72%),
+    radial-gradient(ellipse 46% 14% at 50% 90%, rgba(242, 129, 58, 0.35), transparent 75%),
+    linear-gradient(180deg, rgba(5, 8, 24, 0.72), rgba(20, 26, 62, 0.72));
+  box-shadow:
+    inset 0 9px 18px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(138, 106, 212, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.hangar__nook:hover,
+.hangar__nook:focus-visible {
+  transform: translateY(-2px);
+  outline: none;
+  box-shadow:
+    inset 0 9px 18px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1.5px rgba(245, 185, 66, 0.7);
+}
+
+.hangar__tag {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #f2813a;
+  color: #1a0e05;
+  font-size: 0.64rem;
+  font-weight: 850;
+}
+
+.hangar__name {
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.hangar__what {
+  font-size: 0.74rem;
+  color: #a5abd6;
+}
+
+/* One the live pass still has for you: dark, its level on it. */
+.hangar__bay--waiting .hangar__nook {
+  background: linear-gradient(180deg, rgba(5, 8, 24, 0.8), rgba(14, 18, 44, 0.8));
+  box-shadow:
+    inset 0 9px 18px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(244, 240, 255, 0.1);
+}
+
+.hangar__ghost {
+  line-height: 0;
+  opacity: 0.32;
+  filter: grayscale(1) brightness(1.4);
+}
+
+.hangar__lv {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  padding: 0.12rem 0.42rem;
+  border-radius: 0.4rem;
+  background: rgba(244, 240, 255, 0.12);
+  color: #d9d4f0;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.hangar__bay--waiting .hangar__name {
+  color: #c9c6e2;
+}
+
+.hangar__foot {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

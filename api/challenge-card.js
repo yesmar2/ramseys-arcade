@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       readGames(origin).catch(() => /** @type {Record<string, never>} */ ({})),
     ])
     const game = challenge?.game ?? (SLUG.test(hint) ? hint : '')
-    const card = new ImageResponse(challengeCard(challenge ?? null, games[game]), { width: 1200, height: 630, fonts })
+    const card = new ImageResponse(challengeCard(challenge ?? null, games[game], origin), { width: 1200, height: 630, fonts })
     const png = Buffer.from(await card.arrayBuffer())
     res.statusCode = 200
     res.setHeader('Content-Type', 'image/png')

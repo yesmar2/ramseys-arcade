@@ -133,7 +133,7 @@ type Game = {
 }
 
 /** Whose lap the ghost drives: the board's fastest, under their tag; your own best; or the blue car's. */
-type Chasing = { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
+type Chasing = { who: 'rival'; name: string; skin?: string } | { who: 'you'; skin?: string } | { who: 'pace' }
 
 /** The lap to chase, and whose it is. */
 type Chase = { lap: GhostLap; chasing: Chasing }
@@ -369,7 +369,8 @@ function HotLapDay({
     const top = topRef.current
     if (top && (!mine || top.time < mine.time - 0.0005)) {
       const lap = top.lap ?? standIn(pace, top.time)
-      return { lap, chasing: top.name === nameRef.current ? { who: 'you' } : { who: 'rival', name: top.name } }
+      // In the skin the lap was driven in, when it's the board's.
+      return { lap, chasing: top.name === nameRef.current ? { who: 'you', skin: top.skin } : { who: 'rival', name: top.name, skin: top.skin } }
     }
     return mine ? { lap: mine, chasing: { who: 'you' } } : { lap: pace, chasing: { who: 'pace' } }
   }
@@ -710,6 +711,7 @@ function HotLapDay({
             cardAside: wide.matches,
             donutHint: g.donutHint,
             skin: skinRef.current,
+            ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
           },
           live ? dt : 0,
         )

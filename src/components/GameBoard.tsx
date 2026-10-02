@@ -1,3 +1,4 @@
+import { SkinMark } from './season/SkinMark'
 import { Suspense, useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame, isDailyGame } from '../data/games'
 import { useDayCourse } from '../hooks/useDayBoard'
@@ -527,6 +528,7 @@ function PlayerRow({ slug, player, you, period }: { slug: string; player: BoardP
         <span className="gb-row__who">
           <span className="gb-row__name">
             <PlayerName name={player.name} avatarId={player.best.avatarId} />
+            <SkinMark skin={player.best.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
           <span className="gb-row__runs">
@@ -720,6 +722,7 @@ function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; 
         <span className="gb-row__who">
           <span className="gb-row__name">
             <PlayerName name={player.name} avatarId={player.best.avatarId} />
+            <SkinMark skin={player.best.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
           <span className="gb-row__runs">{daysWords(player.best)}</span>

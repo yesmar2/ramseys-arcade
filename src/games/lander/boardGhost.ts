@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { api } from '../../lib/leaderboard'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE, GHOST_STRIDE, inAir, nearestNode, WRECKED, wrap, type Cave } from './sim'
@@ -11,13 +12,13 @@ import { GHOST_RATE, GHOST_STRIDE, inAir, nearestNode, WRECKED, wrap, type Cave 
  */
 
 /** A cave's #1: whose run, its time in seconds, and the run itself when its path is known. */
-export type BoardGhost = { name: string; avatarId?: string; time: number; run: GhostRun | null }
+export type BoardGhost = { name: string; avatarId?: string; time: number; run: GhostRun | null; skin?: string }
 
 /** Of a run's samples (20 a second), every other goes, and the landing's moment: ten a second is plenty to fly it again from. */
 const SEND_EVERY = 2
 const S = GHOST_STRIDE
 
-type GhostReply = { name: string; avatarId?: string; time: number; splits?: number[]; rate?: number; path: number[] | null }
+type GhostReply = { name: string; avatarId?: string; time: number; splits?: number[]; rate?: number; path: number[] | null; skin?: string }
 
 /** One sample between two: x and y along the way, the angle the short way round, the engine as it was. */
 function between(path: number[], k: number, f: number, out: number[]) {
@@ -70,7 +71,7 @@ export async function fetchBoardGhost(cave: number, fresh = false): Promise<Boar
     const time = reply.time / 1000
     const { path, splits, rate } = reply
     const run = knownPath(path, splits, rate) ? { time, splits: splits!, ghost: fillIn(path, rate!, time) } : null
-    return { name: reply.name, avatarId: reply.avatarId, time, run }
+    return { name: reply.name, avatarId: reply.avatarId, time, run, ...(reply.skin ? { skin: reply.skin } : {}) }
   } catch {
     return null
   }
@@ -132,7 +133,8 @@ export async function sendBoardGhost(cave: number, name: string, run: { score: n
   try {
     const reply = await api<{ kept?: boolean }>(`/tracks/lander/${cave}/ghost`, {
       method: 'POST',
-      body: JSON.stringify({ name, score: run.score, splits: run.splits, path }),
+      // The skin it was played in, so whoever races the ghost sees it in that (lib/skins.ts).
+      body: JSON.stringify({ name, score: run.score, splits: run.splits, path, ...(chosenSkin('lander') ? { skin: chosenSkin('lander') } : {}) }),
     })
     return reply.kept === true
   } catch {

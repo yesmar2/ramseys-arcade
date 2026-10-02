@@ -71,6 +71,7 @@ export function LeaderboardList({
         mine={isYou}
         pinned={pinned}
         period={period}
+        skin={entry.skin}
       />
     )
   }

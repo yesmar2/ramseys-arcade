@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { api } from '../../lib/leaderboard'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE } from './sim'
@@ -89,7 +90,8 @@ export async function sendBoardGhost(course: number, name: string, run: { score:
   try {
     const reply = await api<{ kept?: boolean }>(`/tracks/marblerun/${course}/ghost`, {
       method: 'POST',
-      body: JSON.stringify({ name, score: run.score, splits: run.splits, path }),
+      // The skin it was played in, so whoever races the ghost sees it in that (lib/skins.ts).
+      body: JSON.stringify({ name, score: run.score, splits: run.splits, path, ...(chosenSkin('marblerun') ? { skin: chosenSkin('marblerun') } : {}) }),
     })
     return reply.kept === true
   } catch {

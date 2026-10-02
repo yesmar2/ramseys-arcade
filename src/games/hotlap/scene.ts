@@ -6,7 +6,7 @@
  * The look is a dark world drawn in light (NEON, below), as Ramsey picked it from three on 2026-09-28.
  */
 import * as THREE from 'three'
-import { buildCar, buildRocketCar, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
+import { buildCar, buildRocketCar, ROCKET_SKINS, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
 import { bounds } from './courses'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
@@ -27,8 +27,10 @@ export type SceneFrame = {
   cardAside: boolean
   /** The donuts egg's clue (donuts.ts): old donut marks on the road just past the line. */
   donutHint?: boolean
-  /** The player's chosen skin (lib/skins.ts), on their own car only, never the ghost's. */
+  /** The player's chosen skin (lib/skins.ts), on their own car. */
   skin?: string | null
+  /** The skin the ghost's lap was driven in: whoever races it sees it in that. */
+  ghostSkin?: string | null
 }
 
 const W = (x: number, y: number, h = 0) => new THREE.Vector3(x, h, -y)
@@ -103,9 +105,16 @@ export class HotLapScene {
   private readonly textures: THREE.Texture[] = []
   private readonly lettered: [THREE.CanvasTexture, Paint][] = []
   private readonly car: CarModel
-  private readonly ghostCar: CarModel
+  /** The ghost as it's drawn now: the Indy car's, or a skin's when the #1 drove in one. */
+  private ghostCar: CarModel
+  private readonly ghostIndy: CarModel
+  /** The Rocket car's ghost, made the first time a ghost drives one. */
+  private ghostRocket: CarModel | null = null
+  private ghostSkinShown: string | null = null
   /** The Rocket car (Season 1's skin), made the first time you drive in it. */
-  private rocket: CarModel | null = null
+  private readonly skinned = new Map<string, CarModel>()
+  /** The car you drive now: the Indy car, or the one in your skin. */
+  private driven: CarModel
   /** The skin your car is in now (lib/skins.ts); null, the Indy car. */
   private skinShown: string | null = null
   private readonly skidPos = new Float32Array(SKIDS * 18)
@@ -160,7 +169,9 @@ export class HotLapScene {
     this.buildReflections()
     const paint = this.paint.bind(this)
     this.car = buildCar(paint, false)
-    this.ghostCar = buildCar(paint, true)
+    this.ghostIndy = buildCar(paint, true)
+    this.ghostCar = this.ghostIndy
+    this.driven = this.car
     this.scene.add(this.car.group, this.ghostCar.group)
     this.buildSkids()
     this.buildDonutMarks()
@@ -1007,13 +1018,20 @@ export class HotLapScene {
   frame(f: SceneFrame, dt: number) {
     if ((f.skin ?? null) !== this.skinShown) {
       this.skinShown = f.skin ?? null
-      const rocket = this.skinShown === 'hotlap-rocket'
-      if (rocket && !this.rocket) {
-        this.rocket = buildRocketCar(this.paint.bind(this))
-        this.scene.add(this.rocket.group)
+      // Your car in your skin, made the first time you drive in it.
+      const skin = this.skinShown
+      const colors = skin ? ROCKET_SKINS[skin] : undefined
+      let car = this.car
+      if (skin && colors) {
+        car = this.skinned.get(skin) ?? buildRocketCar(this.paint.bind(this), { colors })
+        if (!this.skinned.has(skin)) {
+          this.skinned.set(skin, car)
+          this.scene.add(car.group)
+        }
       }
-      this.car.group.visible = !rocket
-      if (this.rocket) this.rocket.group.visible = rocket
+      this.car.group.visible = car === this.car
+      for (const model of this.skinned.values()) model.group.visible = model === car
+      this.driven = car
     }
     this.poseCar(f.run, dt)
     if (f.driving) this.layRubber(f.run)
@@ -1021,6 +1039,7 @@ export class HotLapScene {
     if (f.driving && f.run.donut !== 0) this.smoke()
     if (this.puffs.length) this.tickSmoke(f.run, dt)
     if (this.donutMarks) this.donutMarks.visible = f.donutHint === true
+    this.dressGhost(f.ghostSkin ?? null)
     this.tagGhost(f.ghostTag ?? null)
     this.poseGhost(f.ghost, f.run, dt)
     this.frameCamera(f, dt)
@@ -1029,7 +1048,7 @@ export class HotLapScene {
 
   /** The body leans out of corners and dips its nose under braking, as the weight moves: a racer's stiff springs, so not much. */
   private poseCar(run: Run, dt: number) {
-    const car = this.rocket?.group.visible ? this.rocket : this.car
+    const car = this.driven
     car.group.position.set(run.x, this.surfaceZ(run.x, run.y, run.index, run.side), -run.y)
     // Standing on the hill: nose up a climb, leaning with the slope across it.
     const hill = this.tilt(run.x, run.y, run.index, run.h)
@@ -1077,6 +1096,29 @@ export class HotLapScene {
     for (const m of ghost.lines) m.opacity = Math.min(1, opacity * 2.6)
     // Its name fades as it comes alongside, so it never sits in front of your own car.
     if (this.ghostTag) (this.ghostTag.material as THREE.SpriteMaterial).opacity = 0.95 * Math.min(1, Math.max(0, (apart - 4) / 6))
+  }
+
+  /** The ghost in the skin its lap was driven in: a Rocket car's, seen through, or the Indy car's. */
+  private dressGhost(skin: string | null) {
+    if (skin === this.ghostSkinShown) return
+    this.ghostSkinShown = skin
+    let next = this.ghostIndy
+    if (skin && ROCKET_SKINS[skin]) {
+      if (!this.ghostRocket) {
+        this.ghostRocket = buildRocketCar(this.paint.bind(this), { ghost: true })
+        this.scene.add(this.ghostRocket.group)
+      }
+      next = this.ghostRocket
+    }
+    if (next === this.ghostCar) return
+    const was = this.ghostCar
+    was.group.visible = false
+    // The name rides with whichever car is the ghost.
+    if (this.ghostTag) {
+      was.group.remove(this.ghostTag)
+      next.group.add(this.ghostTag)
+    }
+    this.ghostCar = next
   }
 
   /** The name over the ghost car, painted again only when it changes. */

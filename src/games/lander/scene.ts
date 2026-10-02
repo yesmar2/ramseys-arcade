@@ -1,6 +1,6 @@
 import { ALIEN_H, alienMiddle, type Alien } from './alien'
 import type { GhostPose } from './runs'
-import { drawSkinArt, MOONHOPPER } from '../../lib/skinArt'
+import { drawSkinArt, MOONHOPPER, type SkinArt } from '../../lib/skinArt'
 import { FOOT, G, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Cave } from './sim'
 
 /*
@@ -63,15 +63,20 @@ export type SceneFrame = {
   calm: boolean
   /** The alien is waving: your ship (never the ghost) is flying close to it. */
   greet: boolean
-  /** The player's chosen skin (lib/skins.ts), drawn on their own ship only, never the ghost. */
+  /** The player's chosen skin (lib/skins.ts), drawn on their own ship. */
   skin?: string | null
+  /** The skin the ghost's run was flown in: everyone who races it sees it in that. */
+  ghostSkin?: string | null
 }
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; hot: boolean }
 type Shard = { x: number; y: number; vx: number; vy: number; a: number; spin: number; half: number }
 
-/** The Moonhopper's board to the ship: its feet, 52 apart on the board, on the hull's feet. */
+/** A Lander skin's board to the ship: its feet, 52 apart on the board, on the hull's feet. */
 const HOPPER_SCALE = FOOT / 26
+
+/** Lander's skins (lib/skins.ts), each drawn from the pass's own picture (lib/skinArt.ts). */
+const LANDER_ART: Record<string, SkinArt> = { 'lander-moonhopper': MOONHOPPER }
 
 /** The hull's outline as Asteroids drew it: nose, wing, notch, wing. */
 const OUTLINE = [SHIP.nose, SHIP.wing, SHIP.notch, [-SHIP.wing[0], SHIP.wing[1]]] as const
@@ -195,7 +200,7 @@ export class CaveScene {
     this.drawAlien(f, dt)
     // At the start card a ghost that isn't flying (one whose path isn't known yet) would sit on your ship: it waits unseen.
     const ghostShown = f.ghost && !f.ghost.wrecked && !(f.mode === 'menu' && f.ghost.done)
-    if (f.ghost && ghostShown) this.drawGhost(f.ghost, f.ghostTag, f.ghostMine, f.mode !== 'done' && !f.ghost.done)
+    if (f.ghost && ghostShown) this.drawGhost(f.ghost, f.ghostTag, f.ghostMine, f.mode !== 'done' && !f.ghost.done, f.ghostSkin ?? null)
     if (f.mode === 'wreck') this.drawShards(dt)
     else if (f.mode === 'menu') this.drawShip(this.cave.spawn.x, this.cave.spawn.y, 0, 0, f.skin ?? null)
     else this.drawShip(f.ship.x, f.ship.y, f.ship.a, f.mode === 'play' ? f.engine : 0, f.skin ?? null)
@@ -635,8 +640,10 @@ export class CaveScene {
 
   private drawShip(x: number, y: number, a: number, level: number, skin: string | null) {
     const { ctx, cam } = this
-    if (skin === 'lander-moonhopper') {
-      this.drawMoonhopper(x, y, a, level)
+    const art = skin ? LANDER_ART[skin] : undefined
+    if (art) {
+      this.drawFlame(x, y, a, level, ['rgba(242, 129, 58, 0.92)', 'rgba(245, 185, 66, 0.95)'])
+      this.drawSkinShip(x, y, a, art)
       return
     }
     this.drawFlame(x, y, a, level, ['rgba(255, 140, 50, 0.92)', 'rgba(255, 236, 170, 0.95)'])
@@ -662,38 +669,44 @@ export class CaveScene {
   }
 
   /**
-   * The Moonhopper (Season 1's skin, lib/skins.ts), drawn from the pass's own picture (lib/skinArt.ts): its
-   * feet on the hull's feet, its dome over the nose. The hull is still what meets the rock, and every point
-   * of it is on the drawing, so it lands and crashes as the usual ship does.
+   * A skin's ship (Season 1's Moonhopper and the rest, lib/skins.ts), drawn from the pass's own picture
+   * (lib/skinArt.ts): its feet on the hull's feet, its dome over the nose. The hull is still what meets the
+   * rock, and every point of it is on the drawing, so it lands and crashes as the usual ship does.
    */
-  private drawMoonhopper(x: number, y: number, a: number, level: number) {
+  private drawSkinShip(x: number, y: number, a: number, art: SkinArt, alpha = 1) {
     const { ctx, cam } = this
-    this.drawFlame(x, y, a, level, ['rgba(242, 129, 58, 0.92)', 'rgba(245, 185, 66, 0.95)'])
     const k = cam.k * HOPPER_SCALE
     ctx.save()
+    ctx.globalAlpha = alpha
     ctx.translate(this.sx(x), this.sy(y))
     ctx.rotate(a)
     ctx.scale(k, k)
     // The board's feet (y 86) on the hull's feet, its middle on the ship's.
     ctx.translate(-50, -86 + FOOT / HOPPER_SCALE)
-    drawSkinArt(ctx, MOONHOPPER.body, 1.2 / k)
+    drawSkinArt(ctx, art.body, 1.2 / k)
     ctx.restore()
   }
 
-  private drawGhost(g: GhostPose, name: string, mine: boolean, flying: boolean) {
+  private drawGhost(g: GhostPose, name: string, mine: boolean, flying: boolean, skin: string | null) {
     const { ctx, cam } = this
     const color = mine ? C.mine : C.ghost
     if (flying && g.engine) this.drawFlame(g.x, g.y, g.a, 0.8, ['rgba(70, 228, 255, 0.35)', 'rgba(200, 248, 255, 0.45)'])
     ctx.save()
-    this.traceShip(g.x, g.y, g.a)
-    ctx.fillStyle = mine ? 'rgba(245, 185, 66, 0.12)' : 'rgba(70, 228, 255, 0.12)'
-    ctx.fill()
-    ctx.lineJoin = 'round'
-    ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
-    ctx.strokeStyle = color
-    ctx.globalAlpha = 0.9
-    ctx.stroke()
-    ctx.globalAlpha = 1
+    const art = skin ? LANDER_ART[skin] : undefined
+    if (art) {
+      // In the skin it was flown in, faded as a ghost is, so it never reads as a second ship of yours.
+      this.drawSkinShip(g.x, g.y, g.a, art, 0.5)
+    } else {
+      this.traceShip(g.x, g.y, g.a)
+      ctx.fillStyle = mine ? 'rgba(245, 185, 66, 0.12)' : 'rgba(70, 228, 255, 0.12)'
+      ctx.fill()
+      ctx.lineJoin = 'round'
+      ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
+      ctx.strokeStyle = color
+      ctx.globalAlpha = 0.9
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
     // Whose run it is, on a dark pill over it.
     ctx.font = `700 ${Math.max(11, 0.62 * cam.k)}px ${this.font}`
     ctx.textAlign = 'center'

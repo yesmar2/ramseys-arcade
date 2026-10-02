@@ -10,7 +10,7 @@
 import { WORDMARK } from './wordmark.js'
 
 /**
- * @typedef {{ id: string, game: string, name: string, score: number, createdAt: number, replyTo: string | null }} Challenge
+ * @typedef {{ id: string, game: string, name: string, score: number, createdAt: number, replyTo: string | null, skin?: string }} Challenge
  * @typedef {{ name: string, accent: string, unit: [string, string] | null, clock: 'tenths' | 'hundredths' | 'seconds' | null, base: number, percent?: boolean }} GameInfo
  * @typedef {{ headers: Record<string, string | string[] | undefined>, url?: string }} Req
  */
@@ -232,11 +232,13 @@ export function wordmark(size) {
  * game's own "Can you beat it?" card.
  * @param {Challenge | null} challenge
  * @param {GameInfo | undefined} info
+ * @param {string} [origin] The site's own address, for the picture of a skin the run was played in.
  */
-export function challengeCard(challenge, info) {
+export function challengeCard(challenge, info, origin) {
   const accent = info?.accent && /^#[0-9a-f]{6}$/i.test(info.accent) ? info.accent : TEAL
   const text = (/** @type {Record<string, unknown>} */ style, /** @type {string} */ words) => h('div', { style: { display: 'flex', ...style } }, words)
   const mark = wordmark(40)
+  const skin = origin && challenge?.skin && /^[a-z0-9-]{1,40}$/.test(challenge.skin) ? `${origin}/og/skins/${challenge.skin}.png` : null
 
   let column
   if (challenge) {
@@ -276,15 +278,37 @@ export function challengeCard(challenge, info) {
         color: TEXT,
       },
     },
-    h(
-      'div',
-      { style: { position: 'absolute', left: 96, top: 165, width: 300, height: 300, display: 'flex', borderRadius: 56, backgroundColor: accent } },
-      h(
-        'svg',
-        { width: 300, height: 300, viewBox: '96 165 300 300' },
-        h('path', { d: FLAG, fill: 'none', stroke: TEXT, strokeWidth: 20, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.96 }),
-      ),
-    ),
+    skin
+      ? // The run was played in a season skin: the tile shows it, in deep space (scripts/gen-skin-images.mjs).
+        h(
+          'div',
+          {
+            style: {
+              position: 'absolute',
+              left: 96,
+              top: 165,
+              width: 300,
+              height: 300,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 56,
+              backgroundColor: '#0d1230',
+              backgroundImage: `radial-gradient(ellipse 80% 70% at 50% 20%, ${rgba(accent, 0.45)}, ${rgba(accent, 0)})`,
+              border: `6px solid ${accent}`,
+            },
+          },
+          h('img', { src: skin, width: 232, height: 232 }),
+        )
+      : h(
+          'div',
+          { style: { position: 'absolute', left: 96, top: 165, width: 300, height: 300, display: 'flex', borderRadius: 56, backgroundColor: accent } },
+          h(
+            'svg',
+            { width: 300, height: 300, viewBox: '96 165 300 300' },
+            h('path', { d: FLAG, fill: 'none', stroke: TEXT, strokeWidth: 20, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.96 }),
+          ),
+        ),
     h('div', { style: { position: 'absolute', left: 454, top: 170, width: COLUMN, display: 'flex', flexDirection: 'column' } }, ...column),
     h(
       'div',

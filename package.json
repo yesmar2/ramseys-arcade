@@ -10,7 +10,8 @@
     "preview": "vite preview --host",
     "brand:wordmark": "node scripts/gen-wordmark.mjs",
     "icons:pwa": "node scripts/gen-pwa-icons.mjs",
-    "icons:og": "node scripts/gen-og-images.mjs"
+    "icons:og": "node scripts/gen-og-images.mjs",
+    "icons:skins": "node scripts/gen-skin-images.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

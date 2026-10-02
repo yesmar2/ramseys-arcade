@@ -1,3 +1,4 @@
+import { SkinMark } from './season/SkinMark'
 import { isDailyGame } from '../data/games'
 import { applySitePeriod, gameBoardHref, gameHubHref, rankHref, useRoute } from '../hooks/useHashRoute'
 import type { HubBoard } from '../hooks/useGameHub'
@@ -191,6 +192,7 @@ function BoardRow({ slug, player, me }: { slug: LeaderboardGame; player: BoardPl
       <PlayerAvatar avatarId={player.best.avatarId} name={player.name} size="md" className="gh-row__avatar" />
       <a className="gh-row__name" href={rankHref(player.name)}>
         <PlayerName name={player.name} avatarId={player.best.avatarId} />
+        <SkinMark skin={player.best.skin} />
         {you ? <span className="gh-row__you">You</span> : null}
         {firstToday ? <span className="gh-row__first">1st today</span> : null}
       </a>

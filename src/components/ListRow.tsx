@@ -3,6 +3,7 @@ import type { LeaderboardPeriod } from '../lib/leaderboard'
 import { PlayerMark } from './PlayerMark'
 import { PodiumMedal, medalKind } from './PodiumMedal'
 import { PlayerName } from './PlayerName'
+import { SkinMark } from './season/SkinMark'
 
 export type ListRowProps = {
   rank: number
@@ -21,6 +22,8 @@ export type ListRowProps = {
   /** Expands under the row: an event's per-game breakdown. */
   breakdown?: ReactNode
   id?: string
+  /** The season skin the run was played in, shown beside the name. */
+  skin?: string | null
 }
 
 /**
@@ -41,6 +44,7 @@ export function ListRow({
   period,
   breakdown,
   id,
+  skin,
 }: ListRowProps) {
   const medal = medalKind(rank)
   const cls = [
@@ -70,11 +74,13 @@ export function ListRow({
         {href ? (
           <a className="lst__name" href={href} title={name}>
             <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
+            <SkinMark skin={skin} />
             {mine ? <span className="lst__you">You</span> : null}
           </a>
         ) : (
           <span className="lst__name" title={name}>
             <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
+            <SkinMark skin={skin} />
             {mine ? <span className="lst__you">You</span> : null}
           </span>
         )}

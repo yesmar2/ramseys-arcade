@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { api } from '../../lib/leaderboard'
 import type { GhostLap } from './lap'
 import { GHOST_RATE, type GhostPath } from './sim'
@@ -11,12 +12,12 @@ import { GHOST_RATE, type GhostPath } from './sim'
  */
 
 /** A board's #1: whose lap, its time in seconds, and the lap itself when its path is known. */
-export type BoardGhost = { name: string; avatarId?: string; time: number; lap: GhostLap | null }
+export type BoardGhost = { name: string; avatarId?: string; time: number; lap: GhostLap | null; skin?: string }
 
 /** Of a lap's samples (30 a second), every third goes: ten a second is plenty to drive it again from. */
 const SEND_EVERY = 3
 
-type GhostReply = { name: string; avatarId?: string; time: number; splits?: number[]; rate?: number; path: number[] | null }
+type GhostReply = { name: string; avatarId?: string; time: number; splits?: number[]; rate?: number; path: number[] | null; skin?: string }
 
 /** A path sent at `rate` samples a second, filled back in to the ghost's own rate. */
 function fillIn(path: number[], rate: number): GhostPath {
@@ -46,7 +47,13 @@ export async function fetchBoardGhost(track: number, fresh = false): Promise<Boa
     const { path, splits, rate } = reply
     const known =
       Array.isArray(path) && path.length >= 30 && path.length % 3 === 0 && Array.isArray(splits) && splits.length === 3 && rate != null && rate > 0
-    return { name: reply.name, avatarId: reply.avatarId, time, lap: known ? { time, splits: splits!, ghost: fillIn(path!, rate!) } : null }
+    return {
+      name: reply.name,
+      avatarId: reply.avatarId,
+      time,
+      lap: known ? { time, splits: splits!, ghost: fillIn(path!, rate!) } : null,
+      ...(reply.skin ? { skin: reply.skin } : {}),
+    }
   } catch {
     return null
   }
@@ -84,7 +91,8 @@ export async function sendBoardGhost(track: number, name: string, lap: { score: 
   try {
     const reply = await api<{ kept?: boolean }>(`/tracks/hotlap/${track}/ghost`, {
       method: 'POST',
-      body: JSON.stringify({ name, score: lap.score, splits: lap.splits, path }),
+      // The skin it was played in, so whoever races the ghost sees it in that (lib/skins.ts).
+      body: JSON.stringify({ name, score: lap.score, splits: lap.splits, path, ...(chosenSkin('hotlap') ? { skin: chosenSkin('hotlap') } : {}) }),
     })
     return reply.kept === true
   } catch {

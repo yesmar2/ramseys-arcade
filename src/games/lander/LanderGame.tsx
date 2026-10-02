@@ -99,7 +99,8 @@ const KEYS: Record<string, keyof Held> = {
 }
 
 /** Whose run the ghost flies: the board's #1, under their tag; your own best; or the blue ship's. */
-type Chasing = { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
+/** Whose run the ghost flies, and the skin it was flown in when that's the board's (the #1's). */
+type Chasing = { who: 'rival'; name: string; skin?: string } | { who: 'you'; skin?: string } | { who: 'pace' }
 
 /** The name over the ghost: whose run it flies. */
 function ghostTag(chasing: Chasing): string {
@@ -189,7 +190,8 @@ function bestOf(day: string, practice: boolean, viewer: string | null | undefine
 type Chase = { ghost: Ghost; chasing: Chasing }
 
 /** Whose the #1's run is: yours, when it's your tag at the top. */
-const topChasing = (top: BoardGhost, me: string): Chasing => (top.name === me ? { who: 'you' } : { who: 'rival', name: top.name })
+const topChasing = (top: BoardGhost, me: string): Chasing =>
+  top.name === me ? { who: 'you', skin: top.skin } : { who: 'rival', name: top.name, skin: top.skin }
 
 /**
  * The run to beat: the board's #1, on their own line, or on the blue ship's at their time when theirs isn't
@@ -781,6 +783,7 @@ function LanderDayGame({
           ghostMine: g.chasing.who === 'you',
           calm,
           skin: skinRef.current,
+          ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
           greet,
         },
         live ? dt : 0,
