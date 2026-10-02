@@ -129,6 +129,10 @@ export class MarbleScene {
   /** The pool's grid as made: a 1 m square, flat, round the origin. */
   private readonly poolAt: Float32Array
   private readonly ghost = new THREE.Group()
+  /** The ghost's ball of wire, which rolls; its tag stays upright over it. */
+  private readonly ghostBall = new THREE.Group()
+  /** Whether the ghost was shown last frame, so its roll is the way it went since. */
+  private ghostShown = false
   private readonly ghostWire: THREE.LineBasicMaterial
   private readonly ghostTag: THREE.Sprite
   private readonly ghostTagTex: THREE.CanvasTexture
@@ -141,6 +145,13 @@ export class MarbleScene {
   private snapNext = true
   private yaw = -Math.PI / 2
   private followY = 0
+  /**
+   * The marble's spin: its axis, at its length in radians a second. On the track it's the roll; in the air
+   * nothing turns the marble, so it keeps the spin it left the ground with.
+   */
+  private readonly omega = new THREE.Vector3()
+  /** Seconds since the marble last came down on the track, while its spin catches up with its roll. */
+  private landedFor = 0
   private readonly shownTilt = new THREE.Vector2()
   private readonly wantTilt = new THREE.Vector2()
   private disposed = false
@@ -152,6 +163,7 @@ export class MarbleScene {
   private readonly look = new THREE.Vector3()
   private readonly camUp = new THREE.Vector3()
   private readonly axis = new THREE.Vector3()
+  private readonly roll = new THREE.Vector3()
 
   constructor(canvas: HTMLCanvasElement, course: Course) {
     this.course = course
@@ -227,7 +239,8 @@ export class MarbleScene {
     const shell = new THREE.IcosahedronGeometry(BALL_R, 1)
     this.ghostWire = new THREE.LineBasicMaterial({ color: NEON.ghost, transparent: true, opacity: 0.9 })
     const fill = new THREE.Mesh(shell, new THREE.MeshBasicMaterial({ color: NEON.ghost, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false }))
-    this.ghost.add(new THREE.LineSegments(new THREE.EdgesGeometry(shell), this.ghostWire), fill)
+    this.ghostBall.add(new THREE.LineSegments(new THREE.EdgesGeometry(shell), this.ghostWire), fill)
+    this.ghost.add(this.ghostBall)
     const tagDraw: Paint = (g, w, h) => {
       g.clearRect(0, 0, w, h)
       g.fillStyle = 'rgba(7,5,15,0.78)'
@@ -606,6 +619,7 @@ export class MarbleScene {
   /** The next frame puts the camera straight behind the ball: a run begins, or starts again at a checkpoint. */
   snap() {
     this.snapNext = true
+    this.omega.set(0, 0, 0)
   }
 
   /** The way the camera looks, across the ground: a tilt forward on the keys or the stick leans the world that way. */
@@ -617,14 +631,28 @@ export class MarbleScene {
     const b = f.ball
     this.placeCamera(f, dt)
 
-    // The marble, rolling: it turns about the line across the way it's going.
+    // The marble, rolling: on the track it turns about the line across the way it's going, as fast as it goes.
+    // In the air it keeps the spin it left the ground with, through a jump or a bounce (Ramsey: "it's just
+    // stationary" in the air); back down, its spin catches up with its roll over a moment, as a ball skids,
+    // rather than all at once.
     this.ball.position.set(b.x, b.y, b.z)
     this.glow.position.copy(this.ball.position)
-    const sp = Math.hypot(b.vx, b.vy, b.vz)
-    if (!b.air && sp > 1e-3 && dt > 0) {
-      this.axis.set(b.vz, 0, -b.vx).normalize()
-      this.spin.setFromAxisAngle(this.axis, (sp * dt) / BALL_R)
-      this.ball.quaternion.premultiply(this.spin)
+    if (dt > 0) {
+      if (!b.air) {
+        const sp = Math.hypot(b.vx, b.vy, b.vz)
+        const across = Math.hypot(b.vx, b.vz)
+        if (across > 1e-4) this.roll.set(b.vz / across, 0, -b.vx / across).multiplyScalar(sp / BALL_R)
+        else this.roll.set(0, 0, 0)
+        this.landedFor += dt
+        if (this.landedFor < 0.2) this.omega.lerp(this.roll, 1 - Math.exp(-dt * 25))
+        else this.omega.copy(this.roll)
+      } else this.landedFor = 0
+      const rate = this.omega.length()
+      if (rate > 1e-4) {
+        this.axis.copy(this.omega).divideScalar(rate)
+        this.spin.setFromAxisAngle(this.axis, rate * dt)
+        this.ball.quaternion.premultiply(this.spin)
+      }
     }
     // The pool of light on the track below it, laid on the track's own shape, wider and fainter the higher it flies.
     const under = f.mode === 'menu' ? null : surfaceAt(this.course, b.x, b.z, b.y)
@@ -645,14 +673,29 @@ export class MarbleScene {
       ;(this.pool.material as THREE.MeshBasicMaterial).opacity = 0.65 / (1 + high * 0.6)
     } else this.pool.visible = false
 
-    // The ghost, where the run to beat was at this moment; fainter while it's on top of you.
+    // The ghost, where the run to beat was at this moment, rolling by how far it went across the ground since
+    // the last frame, as a ball would (it used to only turn on the spot); a jump to a new run or a checkpoint
+    // doesn't turn it, nor does a rise or a drop on its own. Its tag stays upright over it. Fainter while it's
+    // on top of you.
     if (f.ghost) {
+      const at = this.ghost.position
+      const dx = f.ghost.x - at.x
+      const dz = f.ghost.z - at.z
+      const across = Math.hypot(dx, dz)
+      if (this.ghostShown && across > 1e-4 && across < 3) {
+        this.axis.set(dz / across, 0, -dx / across)
+        this.spin.setFromAxisAngle(this.axis, across / BALL_R)
+        this.ghostBall.quaternion.premultiply(this.spin)
+      }
+      at.set(f.ghost.x, f.ghost.y, f.ghost.z)
+      this.ghostShown = true
       this.ghost.visible = true
-      this.ghost.position.set(f.ghost.x, f.ghost.y, f.ghost.z)
-      this.ghost.rotation.y += dt * 1.5
       this.ghostWire.opacity = Math.min(0.9, 0.2 + this.ghost.position.distanceTo(this.ball.position) * 0.18)
       this.setGhostTag(f.ghostTag)
-    } else this.ghost.visible = false
+    } else {
+      this.ghost.visible = false
+      this.ghostShown = false
+    }
 
     // Gates crossed turn green.
     if (f.passed !== this.passedShown) {
