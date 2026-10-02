@@ -187,6 +187,15 @@ export type PlayerStats = {
   runs24h: { total: number; signedOut: number }
 }
 
+/** Whether the arcade's own events run (the daily event, the One Shot, the Weekly Triple): the API's siteEvents.ts. */
+export async function fetchSiteEvents() {
+  return (await api<{ on: boolean }>('/admin/site-events')).on
+}
+
+export async function setSiteEvents(on: boolean) {
+  return (await api<{ on: boolean }>('/admin/site-events', { method: 'POST', body: JSON.stringify({ on }) })).on
+}
+
 export function fetchPlayerStats(includeSeeded: boolean) {
   return api<PlayerStats>(`/admin/players${includeSeeded ? '?seeded=1' : ''}`)
 }

@@ -441,22 +441,38 @@ function ownStatus(t: TournamentSummary): string {
   return `${t.playerCount} in · ${formatEventCountdown(t.endsAt)}`
 }
 
-const HOW: [() => ReactNode, string, string][] = [
+/*
+ * The arcade's own events, while they run (the API's siteEvents.ts), then your own, and what a win takes:
+ * a trophy needs a field to beat (the API's TROPHY_FIELD_OFFICIAL and TROPHY_FIELD_HOSTED).
+ */
+const HOW_SITE: [() => ReactNode, string, string][] = [
   [SunIcon, 'Today’s event', 'One game, all day. The best score by midnight takes it.'],
   [OneIcon, 'The One Shot', 'Another game, one try each, all day. It counts the moment you start.'],
   [ThreeIcon, 'The Weekly Triple', 'Three games, Monday to Sunday. Do well on all three to win.'],
+]
+const HOW_OWN: [() => ReactNode, string, string][] = [
   [LockIcon, 'Your own', 'Invite only. Top scores or a bracket, for an hour or a week.'],
-  [MedalIcon, 'Trophies', 'Win any event and its trophy goes on your player card.'],
 ]
 
-export function HowEventsWork() {
+export function HowEventsWork({ siteEvents = true }: { siteEvents?: boolean } = {}) {
+  const how: [() => ReactNode, string, string][] = [
+    ...(siteEvents ? HOW_SITE : []),
+    ...HOW_OWN,
+    [
+      MedalIcon,
+      'Trophies',
+      siteEvents
+        ? 'Win an event and its trophy goes on your player card: against two or more in your own, four or more in the arcade’s.'
+        : 'Win an event against two or more players and its trophy goes on your player card.',
+    ],
+  ]
   return (
     <section className="evp-card evp-how-all" aria-labelledby="evp-how-all-title" data-hunt="events-how">
       <h2 id="evp-how-all-title" className="evp-card__title">
         How events work
       </h2>
       <ul className="evp-how-all__list">
-        {HOW.map(([IconFor, title, text]) => (
+        {how.map(([IconFor, title, text]) => (
           <li key={title}>
             <span className="evp-how-all__mark" aria-hidden="true">
               <IconFor />

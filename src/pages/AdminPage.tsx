@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { AdminPlayers } from '../components/AdminPlayers'
+import { AdminSiteEvents } from '../components/AdminSiteEvents'
 import { AdminTrophies } from '../components/AdminTrophies'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
@@ -192,6 +193,7 @@ export function AdminPage({ section }: { section?: AdminSection }) {
             ) : (
               <>
                 <AdminPlayers />
+                <AdminSiteEvents />
                 <DailyGamesCard />
                 <FeedbackCard />
                 <ErrorsCard />

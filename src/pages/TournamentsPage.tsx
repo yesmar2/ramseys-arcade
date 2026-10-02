@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { BracketWinCelebration } from '../components/BracketWinCelebration'
 import { EventBracket } from '../components/EventBracket'
 import { EventArt, EventKicker, EventLiveCard, eventAccent, eventPhase } from '../components/EventCard'
@@ -31,10 +31,8 @@ import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PushAsk } from '../components/PushAsk'
 import { ShareBoardButton } from '../components/ShareBoardButton'
-import { TodaysHoleCard } from '../components/TodaysHoleCard'
-import { TodaysTrackCard } from '../components/TodaysTrackCard'
 import { openSiteMenu } from '../components/siteNav'
-import { getGame, isGameListed } from '../data/games'
+import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -59,7 +57,6 @@ import {
   standingsTable,
 } from '../lib/eventPages'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
-import { lazyPage } from '../lib/lazyPage'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import {
   attemptsPerGameMax,
@@ -89,13 +86,6 @@ import {
   type TournamentSummary,
 } from '../lib/tournaments'
 import '../styles/evp.css'
-
-// Today's Wanted draws its bugs, so it comes in a chunk of its own rather than with the Events page.
-const TodaysWantedCard = lazyPage(() => import('../components/TodaysWantedCard').then((m) => m.TodaysWantedCard))
-// Today's Pour builds the day's glasses, so it comes in one too.
-const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourCard))
-const TodaysCourseCard = lazyPage(() => import('../components/TodaysCourseCard').then((m) => m.TodaysCourseCard))
-const TodaysCaveCard = lazyPage(() => import('../components/TodaysCaveCard').then((m) => m.TodaysCaveCard))
 
 async function fetchTournamentDetail(
   id: string,
@@ -770,6 +760,12 @@ function SingleStandings({ detail, displayName }: { detail: TournamentDetail; di
  * own events; how events work; and the results, with the ones nobody played
  * gathered into a line.
  */
+/** The banner's picture: the games of the events listed, or, with none to show, a few that make good events. */
+function bannerGames(items: TournamentSummary[]): string[] {
+  const games = [...new Set(items.flatMap((t) => t.games))].slice(0, 4)
+  return games.length ? games : ['snake', 'pop', 'putt', 'crosswalk']
+}
+
 export function TournamentsPage() {
   const { account, limits } = useAuth()
   const playerName = usePlayerName()
@@ -809,6 +805,8 @@ export function TournamentsPage() {
 
   const lineup = useMemo(() => eventsLineup(items), [items])
   const lastId = lineup.lastWeekly?.id ?? null
+  // The arcade's own events are listed only while they run (the API's siteEvents.ts): none listed, they're paused.
+  const siteEvents = items.some((t) => t.official)
 
   // Last week's standings, for the podium's faces and the lesson the week left.
   useEffect(() => {
@@ -854,7 +852,7 @@ export function TournamentsPage() {
           </div>
         ) : error ? (
           <>
-            <PageBanner ariaLabel="Events" title="Events" blurb="Today’s event, the Weekly Triple and your own." />
+            <PageBanner ariaLabel="Events" title="Events" blurb="Events you run for your friends, and the ones you’re invited to." />
             <p className="lb-empty">Couldn’t load events. Check your connection and try again.</p>
           </>
         ) : (
@@ -865,7 +863,11 @@ export function TournamentsPage() {
               <PageBanner
                 ariaLabel="Events"
                 title="Events"
-                blurb="Today’s event, a One Shot, a Weekly Triple, and events you make for your friends. Join one, post a score, and see where you land."
+                blurb={
+                  siteEvents
+                    ? 'Today’s event, a One Shot, a Weekly Triple, and events you make for your friends. Join one, post a score, and see where you land.'
+                    : 'Run an event for your friends, your family or the group chat: top scores over an hour or a week, or a bracket. Only the people you invite can see it. The day’s games are on the Dailies.'
+                }
                 actions={
                   account ? (
                     <a className="home-banner__cta" href={tournamentCreateHref()}>
@@ -873,37 +875,19 @@ export function TournamentsPage() {
                     </a>
                   ) : undefined
                 }
-                art={<EventArt games={[...new Set(items.flatMap((t) => t.games))].slice(0, 4)} />}
+                art={<EventArt games={bannerGames(items)} />}
               />
             )}
 
             <PendingInvitesStrip kind="tournament" />
 
+            {/*
+             * The arcade's own events, while they run (the API's siteEvents.ts), then your own. The day's dailies
+             * aren't repeated here: they have the Dailies page, and they made this page seven screens long on a phone.
+             */}
             <div className="evp-trio">
               {lineup.daily ? <DailyCard t={lineup.daily} /> : null}
               {lineup.oneShot ? <OneShotCard t={lineup.oneShot} /> : null}
-              <TodaysHoleCard />
-              {isGameListed('hotlap') ? <TodaysTrackCard /> : null}
-              {isGameListed('findbug') ? (
-                <Suspense fallback={null}>
-                  <TodaysWantedCard />
-                </Suspense>
-              ) : null}
-              {isGameListed('halffull') ? (
-                <Suspense fallback={null}>
-                  <TodaysPourCard />
-                </Suspense>
-              ) : null}
-              {isGameListed('marblerun') ? (
-                <Suspense fallback={null}>
-                  <TodaysCourseCard />
-                </Suspense>
-              ) : null}
-              {isGameListed('lander') ? (
-                <Suspense fallback={null}>
-                  <TodaysCaveCard />
-                </Suspense>
-              ) : null}
               {lineup.lastWeekly ? (
                 <LastWeekCard t={lineup.lastWeekly} detail={lastDetail} lesson={lesson} me={me} />
               ) : null}
@@ -925,7 +909,7 @@ export function TournamentsPage() {
               </section>
             ) : null}
 
-            <HowEventsWork />
+            <HowEventsWork siteEvents={siteEvents} />
 
             {results.length > 0 ? <ResultsList lines={results} me={me} linkFor={linkFor} /> : null}
           </>
