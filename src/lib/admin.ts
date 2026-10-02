@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { api } from './leaderboard'
+import type { SeasonInfo } from './season'
 
 /*
  * Who's an admin is the API's call: the emails in its ADMIN_EMAILS (Render).
@@ -194,6 +195,17 @@ export async function fetchSiteEvents() {
 
 export async function setSiteEvents(on: boolean) {
   return (await api<{ on: boolean }>('/admin/site-events', { method: 'POST', body: JSON.stringify({ on }) })).on
+}
+
+/** The season, and whether it's previewed early, live before its first day (the API's seasons.ts). */
+export type SeasonPreviewState = { season: SeasonInfo | null; previewFrom: number | null }
+
+export function fetchSeasonPreview() {
+  return api<SeasonPreviewState>('/admin/season-preview')
+}
+
+export function setSeasonPreview(on: boolean) {
+  return api<SeasonPreviewState>('/admin/season-preview', { method: 'POST', body: JSON.stringify({ on }) })
 }
 
 export function fetchPlayerStats(includeSeeded: boolean) {

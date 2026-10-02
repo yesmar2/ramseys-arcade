@@ -74,6 +74,8 @@ export type Route =
   | { name: 'admin'; section?: AdminSection }
   | { name: 'stats' }
   | { name: 'prizes' }
+  /** The season's page: its pass, levels and rewards (lib/season.ts). */
+  | { name: 'season' }
   /** The Dailies page (the Today set's): today's ticket, your days, the streak's rewards and your friends' day; with `day`, a past day's ticket. */
   | { name: 'today'; day?: string }
   | { name: 'notificationSettings' }
@@ -313,6 +315,11 @@ export function statsHref() {
 /** The prize counter, where tickets trade for looks. */
 export function prizesHref() {
   return '/prizes'
+}
+
+/** The season's page: its pass and what's on it. */
+export function seasonHref() {
+  return '/season'
 }
 
 /** What tells you, and how: each kind of notification in the inbox, pushed to your devices, or off. */
@@ -584,6 +591,7 @@ export function parseUrl(pathname: string, search: string): Route {
   }
   if (path === 'stats') return { name: 'stats' }
   if (path === 'prizes') return { name: 'prizes' }
+  if (path === 'season') return { name: 'season' }
   // Notifications are all the settings there are so far, so /settings is them too.
   if (path === 'settings' || path === 'settings/notifications') return { name: 'notificationSettings' }
   if (path === 'privacy') return { name: 'privacy' }
@@ -788,6 +796,7 @@ const SITE_SECTIONS: ReadonlySet<string> = new Set([
   'prizes',
   'privacy',
   'rank',
+  'season',
   'records',
   'settings',
   'stats',

@@ -54,6 +54,7 @@ import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
 import { PushAsk, StreakPushAsk } from './PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
+import { SeasonRunLine } from './season/SeasonRun'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { copyText } from './ShareBoardButton'
 import { WinTakeover } from './WinTakeover'
@@ -681,7 +682,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         race={data?.race ?? null}
         tickets={
           phase === 'saved' && facts?.tickets ? (
-            <RunTicketsLine paid={facts.tickets} game={gameSlug} />
+            <>
+              <RunTicketsLine paid={facts.tickets} game={gameSlug} />
+              {facts.season ? <SeasonRunLine run={facts.season} /> : null}
+            </>
           ) : unsaved && score > 0 ? (
             <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
           ) : null

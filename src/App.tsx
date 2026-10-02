@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from 'react'
 import { EasterEggs } from './components/EasterEggs'
 import { PendingRunsSaver } from './components/PendingRunsSaver'
+import { SeasonDressing } from './components/season/SeasonDressing'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { Footer } from './components/Footer'
 import { PageShell } from './components/PageShell'
@@ -61,6 +62,7 @@ const RankPage = lazyPage(() => import('./pages/RankPage').then((m) => m.RankPag
 const RankHowPage = lazyPage(() => import('./pages/RankHowPage').then((m) => m.RankHowPage))
 const StatsPage = lazyPage(() => import('./pages/StatsPage').then((m) => m.StatsPage))
 const PrizeCounterPage = lazyPage(() => import('./pages/PrizeCounterPage').then((m) => m.PrizeCounterPage))
+const SeasonPage = lazyPage(() => import('./pages/SeasonPage').then((m) => m.SeasonPage))
 /** The Today page, in a chunk of its own with the dailies' plans. */
 const TodayPage = lazyPage(() => import('./pages/TodayPage').then((m) => m.TodayPage))
 const NotificationSettingsPage = lazyPage(() =>
@@ -220,6 +222,7 @@ function App() {
       </Suspense>
       <EasterEggs />
       <PendingRunsSaver />
+      <SeasonDressing />
     </>
   )
 }
@@ -261,6 +264,7 @@ const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] 
   { test: /^\/how-ranks-work(?:[/?#]|$)/, page: RankHowPage },
   { test: /^\/stats(?:[/?#]|$)/, page: StatsPage },
   { test: /^\/prizes(?:[/?#]|$)/, page: PrizeCounterPage },
+  { test: /^\/season(?:[/?#]|$)/, page: SeasonPage },
   // The Dailies page, and its old address that inbox notes and day shares still use.
   { test: /^\/(?:dailies|today)(?:[/?#]|$)/, page: TodayPage },
   { test: /^\/settings(?:[/?#]|$)/, page: NotificationSettingsPage },
@@ -296,6 +300,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'admin') return <AdminPage section={route.section} />
   if (route.name === 'stats') return <StatsPage />
   if (route.name === 'prizes') return <PrizeCounterPage />
+  if (route.name === 'season') return <SeasonPage />
   if (route.name === 'today') return <TodayPage />
   if (route.name === 'notificationSettings') return <NotificationSettingsPage />
   if (route.name === 'devCelebrate') return <DevCelebratePage />

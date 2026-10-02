@@ -1,5 +1,6 @@
 import { getGame, isRankedGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
+import { noteSeasonRun, type SeasonRun } from './season'
 import { gapBetween, gapFigure, playersFromRuns, wouldPlace, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
 import {
@@ -109,6 +110,8 @@ export type RunFacts = {
   challenge?: { name: string; score: number; won: boolean; replyId: string | null } | null
   /** What the run paid in tickets; null when it paid none, undefined before it was saved. */
   tickets?: RunTickets | null
+  /** What the run did on the season's pass, while a season is live. */
+  season?: SeasonRun | null
 }
 
 /** Runs read to count places: one page covers every run above all but the lowest scores. */
@@ -529,6 +532,7 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   const priorOverall = ranked ? await fetchGlobalRank(me, standingsPeriod).catch(() => null) : null
   const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours })
   noteTicketsPaid(saved.tickets)
+  noteSeasonRun(saved.season)
   for (const hit of saved.streakRecords ?? []) {
     if (
       shouldCelebrateRecordSubmit({ improved: hit.improved, rank: hit.rank, totalEntries: hit.totalEntries })
@@ -582,6 +586,7 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
     books,
     runId: saved.entry?.id ?? null,
     tickets: saved.tickets ?? null,
+    season: saved.season ?? null,
     // Your own challenge played back is just a run.
     challenge:
       saved.challenge && saved.challenge.outcome !== 'own'

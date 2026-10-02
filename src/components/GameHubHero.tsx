@@ -12,6 +12,8 @@ import { DevicesIcon, PlayIcon } from './chromeIcons'
 import { GameHubHowTo } from './GameHubHowTo'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
+import { useSpotlight } from '../lib/season'
+import { SpotlightCard } from './season/SeasonSpotlight'
 import { ShareBoardButton } from './ShareBoardButton'
 
 /** "Race today’s track": a daily's Play says which run it starts, the one that counts. */
@@ -65,6 +67,7 @@ export function GameHubHero({
   const daily = Boolean(game.daily)
   const ranked = isRankedGame(game.slug)
   const playLabel = daily ? dailyPlayLabel(game.slug) : `Play ${game.name}`
+  const spotlight = useSpotlight(game.slug)
 
   return (
     <section
@@ -79,7 +82,7 @@ export function GameHubHero({
           <span aria-current="page">{game.name}</span>
         </nav>
         <div className="gh-hero__main">
-          {tags.length > 0 || kicker ? (
+          {tags.length > 0 || kicker || spotlight ? (
             <p className="gh-tags">
               {kicker ? <span className="gh-tag gh-tag--note">{kicker}</span> : null}
               {tags.map((tag, i) => (
@@ -87,6 +90,7 @@ export function GameHubHero({
                   {tag}
                 </span>
               ))}
+              {spotlight ? <span className="gh-tag season-tag">Season spotlight</span> : null}
             </p>
           ) : null}
           <h1 id="gh-title" className="gh-hero__name">
@@ -114,6 +118,7 @@ export function GameHubHero({
               url={gameHref(game.slug)}
             />
           </div>
+          {spotlight ? <SpotlightCard slug={game.slug} name={game.name} /> : null}
           {!canPlay ? (
             <p className="gh-hero__hint">
               {game.comingSoon

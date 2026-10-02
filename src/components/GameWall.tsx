@@ -12,6 +12,7 @@ import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace } from '../lib/leaderboard'
 import { formatBoardScore, formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
+import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import { resolveGameAccent } from '../lib/theme'
 import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
@@ -289,6 +290,7 @@ export function WallTile({
   const you = normalizePlayerName(usePlayerName())
   const accent = resolveGameAccent(game.slug, game.accent)
   const live = preview && hasGamePreview(game.slug)
+  const spotlight = isSpotlight(liveSeason(useSeason()), game.slug)
   const style = {
     '--tile-accent': accent,
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
@@ -301,7 +303,9 @@ export function WallTile({
         ? { label: 'Weekly', kind: 'weekly' }
         : newFlag && game.inDevelopment
           ? { label: 'New', kind: 'new' }
-          : null
+          : spotlight
+            ? { label: 'Spotlight', kind: 'spotlight' }
+            : null
   const fmt = (score: number) => formatLeaderboardScore(game.slug, score)
   // Your best and place are the period's: on a daily, that's its day points (leaderboardFormat isDayPointsBoard).
   const fmtBest = (score: number) => formatBoardScore(game.slug, score, period)

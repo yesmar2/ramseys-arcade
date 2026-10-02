@@ -1,6 +1,8 @@
 import { useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { useTickets } from '../lib/tickets'
+import { daysLeftLabel, liveSeason, useSeason } from '../lib/season'
 import { TicketGlyph } from './prizes/Ticket'
+import { MissionPatch } from './season/SeasonArt'
 import { createPortal } from 'react-dom'
 import {
   aboutHref,
@@ -10,6 +12,7 @@ import {
   rankHref,
   prizesHref,
   rankHowHref,
+  seasonHref,
   statsHref,
   termsHref,
 } from '../hooks/useHashRoute'
@@ -121,6 +124,8 @@ export function SiteMenu({
   const isFresh = useInboxLook(notes, view === 'inbox')
   const isAdmin = useIsAdmin()
   const tickets = useTickets()
+  const seasonStore = useSeason()
+  const season = liveSeason(seasonStore)
   if (typeof document === 'undefined') return null
 
   const tagged = signedIn && Boolean(name)
@@ -311,6 +316,15 @@ export function SiteMenu({
                 </button>
               </li>
               {tagged ? row(<StatsIcon />, 'Your stats', 'Streaks and near records', statsHref()) : null}
+              {season
+                ? row(
+                    <MissionPatch size={22} />,
+                    `Season ${season.id} · ${season.name}`,
+                    daysLeftLabel(season),
+                    seasonHref(),
+                    seasonStore.you && seasonStore.you.level > 0 ? `Lv ${seasonStore.you.level}` : null,
+                  )
+                : null}
               {tagged
                 ? row(
                     <TicketGlyph size={20} />,

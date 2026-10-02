@@ -11,6 +11,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
+import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import type { TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
 import { DailyKindTag } from './DailyKindTag'
@@ -117,6 +118,7 @@ function leadOf(p: Punch, standing: DayStanding | null | undefined): { who: stri
 }
 
 function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DayStanding | null | undefined }) {
+  const spotlight = isSpotlight(liveSeason(useSeason()), p.slug)
   // A daily just for fun places nobody (data/games.ts Game.ranked): no place for you and no leader.
   const ranked = isRankedGame(p.slug)
   // Your place, once you're on the day's board: never a place for a result the board doesn't have yet.
@@ -142,6 +144,8 @@ function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DaySta
         ) : p.fresh ? (
           <span className="home-day__new">New</span>
         ) : null}
+        {/* Top left, where New would be: a card showing New keeps it. */}
+        {spotlight && (p.done || !p.fresh) ? <span className="season-spot season-spot--day">Spotlight</span> : null}
       </span>
       <span className="home-day__body">
         <span className="home-day__kicker">{kickerOf(p)}</span>

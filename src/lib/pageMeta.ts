@@ -17,6 +17,7 @@ import {
   statsHref,
   notificationSettingsHref,
   prizesHref,
+  seasonHref,
   termsHref,
   todayHref,
   tournamentCreateHref,
@@ -374,6 +375,16 @@ export function pageMeta(route: Route): PageMeta {
         description:
           'Every run pays tickets. Trade them at the prize counter for looks that show on the boards: badge finishes, name styles, card themes, confetti and titles. Earned by playing, never bought.',
         path: prizesHref(),
+      }
+    case 'season':
+      return {
+        ...site,
+        title: titled('Season 1: Space Race'),
+        description:
+          'A free season pass of 30 levels. Every ticket you win in any game moves you up, with ships, badges and titles to win on the way. Looks only, never score.',
+        path: seasonHref(),
+        // Not on the sitemap until the season starts with the launch.
+        noindex: true,
       }
     case 'today':
       return {

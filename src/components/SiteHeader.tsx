@@ -31,6 +31,7 @@ import { navActive, OPEN_MENU_EVENT, SITE_NAV_LINKS } from './siteNav'
 import { BugHuntHost } from './BugHunt'
 import { FeedbackHost } from './FeedbackPanel'
 import { TicketChip } from './prizes/TicketChip'
+import { SeasonChip } from './season/SeasonChip'
 import { TodayChip } from './TodayChip'
 import { PlayerName } from './PlayerName'
 
@@ -224,6 +225,7 @@ export function SiteHeader() {
           <SiteSearch />
           {/* On every page, as Ramsey asked: one whose boards are its own keeps the choice for the rest (SiteScopeControl). */}
           <SiteScopeControl />
+          {tagged ? <SeasonChip here={route.name === 'season'} /> : null}
           {tagged ? <TicketChip here={route.name === 'prizes'} /> : null}
 
           <div className="site-bar__you">

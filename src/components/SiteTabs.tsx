@@ -3,6 +3,7 @@ import { currentPath } from '../hooks/useHashRoute'
 import { AVATARS_ENABLED } from '../lib/avatars'
 import { BoardsIcon, EventsIcon, GamesIcon, RecordsIcon, UserIcon } from './chromeIcons'
 import { PlayerAvatar } from './PlayerAvatar'
+import { SeasonTabRing } from './season/SeasonChip'
 import { navActive, SITE_TABS, type SiteNavItem } from './siteNav'
 
 const TAB_ICON: Partial<Record<SiteNavItem['match'], typeof GamesIcon>> = {
@@ -76,6 +77,7 @@ export function SiteTabs({
           ) : (
             <UserIcon />
           )}
+          {name ? <SeasonTabRing /> : null}
           {alert ? <span className="site-tabs__dot" aria-hidden="true" /> : null}
         </span>
         <span className="site-tabs__label">You</span>

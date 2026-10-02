@@ -1,6 +1,7 @@
 import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
 import { announceSecrets, type SecretFound } from './secrets'
 import type { RunTickets } from './tickets'
+import type { SeasonRun } from './season'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
 import { isDailyGame, isGameListed, isRankedGame } from '../data/games'
@@ -712,6 +713,8 @@ export async function addLeaderboardScore(
   entries: LeaderboardEntry[]
   /** What the run paid in tickets, when it was a timed run; null when it paid none. */
   tickets?: RunTickets | null
+  /** What the run did on the season's pass, while a season is live (lib/season.ts). */
+  season?: SeasonRun | null
   /** The run just saved, as it now stands on the boards. */
   entry?: LeaderboardEntry
   /** What came of the challenge, when the run was played against one. */
@@ -752,6 +755,7 @@ export async function addLeaderboardScore(
     name?: string
     token?: string
     tickets?: RunTickets | null
+    season?: SeasonRun | null
     secrets?: SecretFound[]
   }>(`/leaderboards/${slug}`, {
     method: 'POST',
@@ -776,6 +780,7 @@ export async function addLeaderboardScore(
   return {
     entries: data.entries,
     tickets: data.tickets ?? null,
+    season: data.season ?? null,
     entry: data.entry,
     challenge: data.challenge ?? null,
     rank: data.rank,

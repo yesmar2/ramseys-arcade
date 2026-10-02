@@ -11,8 +11,8 @@ import { api } from './leaderboard'
  */
 
 /** Why tickets came in or went out, as the API names it: a record is a past Hot Lap track's or Ace Chase hole's, taken. */
-/** Why tickets came or went (the API's tickets.ts). 'today': a Today streak's milestone (lib/today.ts). */
-export type TicketReason = 'run' | 'best' | 'pickup' | 'first' | 'streak' | 'daily' | 'hunt' | 'top' | 'record' | 'grant' | 'trade' | 'today'
+/** Why tickets came or went (the API's tickets.ts). 'today': a Today streak's milestone (lib/today.ts); 'season': a pass level's (lib/season.ts). */
+export type TicketReason = 'run' | 'best' | 'pickup' | 'first' | 'streak' | 'daily' | 'hunt' | 'top' | 'record' | 'grant' | 'trade' | 'today' | 'season'
 
 /** A step on a game's ticket ladder: the board score that reaches it, what it pays, and how a daily says it. */
 export type LadderStep = { at: number; tickets: number; label?: string }

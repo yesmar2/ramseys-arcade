@@ -111,6 +111,25 @@ export const PRIZES: readonly Prize[] = [
     blurb: LIT,
     earned: { by: 'A 100-day Dailies streak', short: '100 days' },
   },
+  // Season 1, Space Race: its pass gives these at their levels (the API's seasons.ts).
+  ...(
+    [
+      ['t-space-race', 'Space Race', 5],
+      ['t-liftoff', 'Liftoff', 10],
+      ['t-space-cadet', 'Space Cadet', 16],
+      ['t-zero-g', 'Zero G', 21],
+      ['t-moonwalker', 'Moonwalker', 26],
+    ] as const
+  ).map(
+    ([id, name, level]): Prize => ({
+      id,
+      kind: 'title',
+      name,
+      price: 0,
+      blurb: LIT,
+      earned: { by: `Season 1’s pass, level ${level}`, short: 'Season 1' },
+    }),
+  ),
 ]
 
 const byId = new Map(PRIZES.map((p) => [p.id, p]))
