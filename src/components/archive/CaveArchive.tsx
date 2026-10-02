@@ -3,7 +3,8 @@ import { CaveDrawing } from '../../games/lander/CaveDrawing'
 import { caveDay, caveNumber, dailyCave, FIRST_DAY } from '../../games/lander/daily'
 import { landerDay } from '../../games/lander/runs'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import type { PastSource } from '../../lib/dailyPast'
+import { usePastViewer, type PastSource } from '../../lib/dailyPast'
+import { usePastBoards } from './pastBoards'
 import { PastCourses } from './PastCourses'
 
 const SLUG = 'lander'
@@ -22,9 +23,14 @@ const art = (day: string) => (
   </span>
 )
 
-/** Lander's past caves: every day's cave before today's, newest first, each to fly again as practice. */
+/**
+ * Lander's past caves: every day's cave before today's, newest first. Each keeps an All time board of its own
+ * for good (lib/trackBoards.ts): any flight down it, on its day or since, each pilot's best.
+ */
 export function CaveArchive() {
   const today = caveDay()
-  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art }), [today])
+  const viewer = usePastViewer()
+  const boards = usePastBoards(SLUG, viewer.name, today, caveNumber)
+  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards }), [today, boards])
   return <PastCourses source={source} />
 }

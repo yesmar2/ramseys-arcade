@@ -1170,7 +1170,7 @@ function PastTrackDay({ day }: { day: string }) {
   const playerName = normalizePlayerName(usePlayerName())
   const name = viewer === null ? '' : playerName
   const [version, setVersion] = useState(0)
-  const board = useTrackBoard(trackNumber(day), name, version)
+  const board = useTrackBoard(SLUG, trackNumber(day), name, version)
   const figures = usePastTrackFigures(day, board, viewer, name)
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
   return <HotLapDay day={day} test pastTrack={{ board, figures, refresh }} onNewDay={() => {}} />

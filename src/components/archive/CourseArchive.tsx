@@ -3,7 +3,8 @@ import { CourseDrawing } from '../../games/marblerun/CourseDrawing'
 import { courseDay, courseNumber, dailyCourse, FIRST_DAY } from '../../games/marblerun/daily'
 import { marbleDay } from '../../games/marblerun/runs'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import type { PastSource } from '../../lib/dailyPast'
+import { usePastViewer, type PastSource } from '../../lib/dailyPast'
+import { usePastBoards } from './pastBoards'
 import { PastCourses } from './PastCourses'
 
 const SLUG = 'marblerun'
@@ -22,9 +23,14 @@ const art = (day: string) => (
   </span>
 )
 
-/** Marble Run's past courses: every day's course before today's, newest first, each to roll again as practice. */
+/**
+ * Marble Run's past courses: every day's course before today's, newest first. Each keeps an All time board of
+ * its own for good (lib/trackBoards.ts): any run down it, on its day or since, each player's best.
+ */
 export function CourseArchive() {
   const today = courseDay()
-  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art }), [today])
+  const viewer = usePastViewer()
+  const boards = usePastBoards(SLUG, viewer.name, today, courseNumber)
+  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards }), [today, boards])
   return <PastCourses source={source} />
 }

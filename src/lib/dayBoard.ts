@@ -1,5 +1,6 @@
 import { gamePlayHref } from '../hooks/useHashRoute'
 import type { Viewer } from './deviceRuns'
+import type { TrackGame } from './trackBoards'
 
 /*
  * A daily's board on one past day (/leaderboards/<game>/day/<YYYY-MM-DD>, components/DayBoard.tsx): how the
@@ -31,34 +32,37 @@ export type DayCourse = {
   anchor: (day: string) => string
   /** Where it's played again. */
   playHref: (day: string) => string
-  /** A page of the course's own board, for a game whose courses keep one (Hot Lap's tracks, Ace Chase's holes). */
+  /** A page of the course's own board, for a game whose courses keep one (the ranked dailies'; Ace Chase's holes once did). */
   board?: (day: string, name: string, page: { offset: number; limit: number }) => Promise<CourseBoardPage>
   /** Ace Chase: this device holds the viewer's result on the hole, which the API may not have yet. */
   resultHere?: (day: string, viewer: Viewer) => boolean
 }
 
+/** A ranked daily's course board, a page of it (lib/trackBoards.ts): `numberOf` is a day's course number. */
+function trackBoardOf(game: TrackGame, numberOf: (day: string) => number): NonNullable<DayCourse['board']> {
+  return async (day, name, page) => {
+    const { fetchTrackBoard } = await import('./trackBoards')
+    const b = await fetchTrackBoard(game, numberOf(day), name, page)
+    const from = b.offset ?? page.offset
+    return {
+      // An API from before boards were paged sends its top ten whatever's asked: that's all there is to page.
+      total: b.total ?? b.entries.length,
+      entries: b.entries.map((e, i) => ({ ...e, place: e.place ?? from + i + 1 })),
+      you: b.you,
+    }
+  }
+}
+
 const LOADERS: Record<string, () => Promise<DayCourse>> = {
   async hotlap() {
-    const [{ FIRST_DAY, dailyTrack, trackDay, trackNumber }, { fetchTrackBoard }] = await Promise.all([
-      import('../games/hotlap/daily'),
-      import('./trackBoards'),
-    ])
+    const { FIRST_DAY, dailyTrack, trackDay, trackNumber } = await import('../games/hotlap/daily')
     return {
       first: FIRST_DAY,
       today: () => trackDay(),
       title: (day) => `#${trackNumber(day)} ${dailyTrack(day).name}`,
       anchor: (day) => String(trackNumber(day)),
       playHref: (day) => `${gamePlayHref('hotlap')}?track=${trackNumber(day)}`,
-      async board(day, name, page) {
-        const b = await fetchTrackBoard(trackNumber(day), name, page)
-        const from = b.offset ?? page.offset
-        return {
-          // An API from before boards were paged sends its top ten whatever's asked: that's all there is to page.
-          total: b.total ?? b.entries.length,
-          entries: b.entries.map((e, i) => ({ ...e, place: e.place ?? from + i + 1 })),
-          you: b.you,
-        }
-      },
+      board: trackBoardOf('hotlap', trackNumber),
     }
   },
   async acechase() {
@@ -124,6 +128,7 @@ const LOADERS: Record<string, () => Promise<DayCourse>> = {
       title: (day) => `#${courseNumber(day)} ${dailyCourse(day).name}`,
       anchor: (day) => day,
       playHref: (day) => `${gamePlayHref('marblerun')}?day=${day}`,
+      board: trackBoardOf('marblerun', courseNumber),
     }
   },
   async lander() {
@@ -134,6 +139,7 @@ const LOADERS: Record<string, () => Promise<DayCourse>> = {
       title: (day) => `#${caveNumber(day)} ${dailyCave(day).name}`,
       anchor: (day) => day,
       playHref: (day) => `${gamePlayHref('lander')}?day=${day}`,
+      board: trackBoardOf('lander', caveNumber),
     }
   },
 }

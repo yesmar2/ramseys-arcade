@@ -4,12 +4,17 @@ import { api, getClaimToken, normalizePlayerName } from './leaderboard'
 import { noteTicketsPaid } from './tickets'
 
 /*
- * Track records (the API's trackLaps.ts). Every Hot Lap track keeps a board of its own for good. On its
- * day a track is the Daily, and its laps are the day's board, which closes at midnight with the day's
- * places, points and tickets. After that a lap on it goes on the track's own board: its day's laps and
- * every lap since, each driver's best. Hot Lap's past tracks tab and Records tab show each track's record;
- * a past track's cards show its board and where you stand.
+ * Course records (the API's trackLaps.ts). Every course of a ranked daily keeps a board of its own for good,
+ * its All time board: Hot Lap's tracks, Marble Run's courses and Lander's caves (`game`; a course's number is
+ * a track's, or a course's or cave's day number). On its day a course is the Daily, and its runs are the
+ * day's board, which closes at midnight with the day's places, points and tickets. After that a run on it
+ * goes on the course's own board: its day's runs and every run since, each player's best. The past tabs
+ * show each course's record; a past course's cards show its board and where you stand. The names here
+ * still say "track", from when Hot Lap's were the only ones.
  */
+
+/** The dailies whose past courses keep All time boards. */
+export type TrackGame = 'hotlap' | 'marblerun' | 'lander'
 
 export type TrackLapFigure = { name: string; score: number; avatarId?: string }
 
@@ -77,22 +82,22 @@ const cleanName = (name: string) => normalizePlayerName(name)
 /** The API lets a browser keep these a few seconds; asked again after a lap is saved, they have to be fresh. */
 const FRESH: RequestInit = { cache: 'no-cache' }
 
-/** A track's board, with `name`'s place on it: its top ten, or the page asked for. */
-export function fetchTrackBoard(track: number, name: string, page?: BoardPage): Promise<TrackBoard> {
+/** A course's board, with `name`'s place on it: its top ten, or the page asked for. */
+export function fetchTrackBoard(game: TrackGame, track: number, name: string, page?: BoardPage): Promise<TrackBoard> {
   const who = cleanName(name)
   const params = pageParams(new URLSearchParams(who ? { name: who } : {}), page)
   const query = params.toString()
-  return api<TrackBoard>(`/tracks/hotlap/${track}/board${query ? `?${query}` : ''}`, FRESH)
+  return api<TrackBoard>(`/tracks/${game}/${track}/board${query ? `?${query}` : ''}`, FRESH)
 }
 
-/** A track's board, fetched again when `version` changes (after a lap is saved). Null while it's asked, or for no track. */
-export function useTrackBoard(track: number | null, name: string, version = 0): TrackBoard | null {
+/** A course's board, fetched again when `version` changes (after a run is saved). Null while it's asked, or for no course. */
+export function useTrackBoard(game: TrackGame, track: number | null, name: string, version = 0): TrackBoard | null {
   const [board, setBoard] = useState<{ key: string; board: TrackBoard | null } | null>(null)
-  const key = `${track}|${cleanName(name)}|${version}`
+  const key = `${game}|${track}|${cleanName(name)}|${version}`
   useEffect(() => {
     if (track == null) return
     let live = true
-    fetchTrackBoard(track, name)
+    fetchTrackBoard(game, track, name)
       .then((b) => {
         if (live) setBoard({ key, board: b })
       })
@@ -102,7 +107,7 @@ export function useTrackBoard(track: number | null, name: string, version = 0): 
     return () => {
       live = false
     }
-  }, [key, track, name])
+  }, [key, game, track, name])
   if (track == null) return null
   // Keep showing the last board while the next is asked, rather than blinking.
   return board?.board ?? null
@@ -112,11 +117,11 @@ const HOLD_MS = 60_000
 const held = new Map<string, { at: number; rows: TrackRecordRow[] }>()
 
 /**
- * Every track that has had its day, the latest first, with `name`'s results: kept a minute. `rows` is null
- * while it's asked; `failed` when the ask failed and nothing is kept, so a page can say so rather than "no tracks".
+ * Every course of `game` that has had its day, the latest first, with `name`'s results: kept a minute. `rows`
+ * is null while it's asked; `failed` when the ask failed and nothing is kept, so a page can say so rather than "no tracks".
  */
-export function useTrackRecordsAsked(name: string): TrackRecords {
-  const who = cleanName(name)
+export function useTrackRecordsAsked(game: TrackGame, name: string): TrackRecords {
+  const who = `${game}|${cleanName(name)}`
   const [asks, setAsks] = useState(0)
   const [answer, setAnswer] = useState<{ who: string; rows: TrackRecordRow[] | null; failed: boolean } | null>(() => {
     const hit = held.get(who)
@@ -126,7 +131,8 @@ export function useTrackRecordsAsked(name: string): TrackRecords {
     const hit = held.get(who)
     if (hit && Date.now() - hit.at < HOLD_MS) return
     let live = true
-    api<{ tracks: TrackRecordRow[] }>(`/tracks/hotlap/records${who ? `?name=${encodeURIComponent(who)}` : ''}`, FRESH)
+    const tag = cleanName(name)
+    api<{ tracks: TrackRecordRow[] }>(`/tracks/${game}/records${tag ? `?name=${encodeURIComponent(tag)}` : ''}`, FRESH)
       .then((reply) => {
         held.set(who, { at: Date.now(), rows: reply.tracks })
         if (live) setAnswer({ who, rows: reply.tracks, failed: false })
@@ -139,7 +145,7 @@ export function useTrackRecordsAsked(name: string): TrackRecords {
     return () => {
       live = false
     }
-  }, [who, asks])
+  }, [who, game, name, asks])
   const retry = useCallback(() => {
     setAnswer(null)
     setAsks((n) => n + 1)
@@ -149,15 +155,21 @@ export function useTrackRecordsAsked(name: string): TrackRecords {
 }
 
 /**
- * Save a lap on a past track, under the tag this device plays as. `run` is the run the lap was driven in,
- * asked for as it ended (runSession runIdFor): a lap on a track's board has to be one the server timed.
+ * Save a run on a past course, under the tag this device plays as. `run` is the run it was played in,
+ * asked for as it ended (runSession runIdFor): a run on a course's board has to be one the server timed.
  */
-export async function saveTrackLap(track: number, name: string, score: number, run: Promise<string | undefined>): Promise<TrackLapResult> {
+export async function saveTrackLap(
+  game: TrackGame,
+  track: number,
+  name: string,
+  score: number,
+  run: Promise<string | undefined>,
+): Promise<TrackLapResult> {
   const cleaned = cleanName(name) || 'PLAYER'
   const runId = await run
   if (!runId) throw Object.assign(new Error('That lap’s run never reached the server, so it can’t be saved.'), { code: 'RUN_REQUIRED' })
   const token = getClaimToken(cleaned)
-  const result = await api<TrackLapResult>(`/tracks/hotlap/${track}/laps`, {
+  const result = await api<TrackLapResult>(`/tracks/${game}/${track}/laps`, {
     method: 'POST',
     body: JSON.stringify({ name: cleaned, score, device: detectDeviceType(), runId, ...(token ? { token } : {}) }),
   })

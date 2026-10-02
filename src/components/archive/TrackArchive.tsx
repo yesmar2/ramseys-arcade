@@ -3,9 +3,8 @@ import { dailyTrack, FIRST_DAY, trackDay, trackNumber } from '../../games/hotlap
 import { buildTrack, type Piece, type TrackShape } from '../../games/hotlap/sim'
 import { trackPlan } from '../../games/hotlap/trackPlan'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import type { CourseBoard, CourseTop, PastSource } from '../../lib/dailyPast'
-import { BOARD_TOP, usePastViewer } from '../../lib/dailyPast'
-import { fetchTrackBoard, useTrackRecordsAsked } from '../../lib/trackBoards'
+import { usePastViewer, type PastSource } from '../../lib/dailyPast'
+import { usePastBoards } from './pastBoards'
 import { PastCourses } from './PastCourses'
 import '../../styles/todaysTrack.css'
 
@@ -38,11 +37,6 @@ function art(day: string) {
   return <TrackThumb pieces={track.pieces} shape={track.shape} />
 }
 
-async function fetchTop(day: string, name: string): Promise<CourseTop> {
-  const board = await fetchTrackBoard(trackNumber(day), name, { limit: BOARD_TOP })
-  return { top: board.entries, players: board.drivers, you: board.you }
-}
-
 /**
  * Hot Lap's past tracks: every track before today's, newest first. Each keeps an All time board of its own
  * for good (lib/trackBoards.ts): any lap on it, on its day or since, each driver's best.
@@ -50,15 +44,7 @@ async function fetchTop(day: string, name: string): Promise<CourseTop> {
 export function TrackArchive() {
   const today = trackDay()
   const viewer = usePastViewer()
-  const { rows: records, failed, retry } = useTrackRecordsAsked(viewer.name)
-  const rows = useMemo(() => {
-    if (!records) return null
-    const out = new Map<string, CourseBoard>()
-    for (const r of records) {
-      if (r.day < today) out.set(r.day, { record: r.record, players: r.drivers, you: r.you })
-    }
-    return out
-  }, [records, today])
+  const boards = usePastBoards(SLUG, viewer.name, today, trackNumber)
   const source = useMemo<PastSource>(
     () => ({
       slug: SLUG,
@@ -68,9 +54,9 @@ export function TrackArchive() {
       playHref,
       title,
       art,
-      boards: { rows, failed, retry, fetchTop },
+      boards,
     }),
-    [today, rows, failed, retry],
+    [today, boards],
   )
   return <PastCourses source={source} />
 }

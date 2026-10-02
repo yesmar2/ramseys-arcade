@@ -3,13 +3,13 @@ import { isRankedGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { dayBefore } from './archive'
-import { dailyWords, type PastKind } from './dailyWords'
+import { bestWord, dailyWords, type PastKind } from './dailyWords'
 import { api, normalizePlayerName } from './leaderboard'
 
 /*
  * The past tab of a daily's page (components/DailyPastTab.tsx): every course before today's, newest
  * first, each a card with how it went on its day (its Ranked board, the day's final one) and, for a game
- * whose past courses keep boards of their own (Hot Lap's tracks, Ace Chase's holes), its All time board.
+ * whose past courses keep boards of their own (the ranked dailies'), its All time board.
  * A card's boards open in a panel, the top five and you; the way of it all is in "How past tracks work".
  * Each game says what its courses are in a source (components/archive/*Archive.tsx); what's the same for
  * every game is here.
@@ -187,7 +187,7 @@ export function pastHowLines(slug: string): PastHowLine[] {
   let goes: PastHowLine
   if (words.past === 'practice') goes = { mark: 'practice', text: `${words.pastTab} are practice: nothing is saved.` }
   else if (slug === 'acechase') goes = { mark: 'allTime', text: 'Your first bullseye goes on its All time board, then it’s practice.' }
-  else goes = { mark: 'allTime', text: `Your best ${slug === 'hotlap' ? 'lap' : 'result'} goes on its All time board.` }
+  else goes = { mark: 'allTime', text: `Your best ${bestWord(slug)} goes on its All time board.` }
   return [
     { mark: 'play', text: `${words.verb} any past ${words.course}.` },
     goes,
@@ -211,13 +211,16 @@ export function pastPlayNote(slug: string, kind: PastKind, signedIn: boolean): {
   // The board's name keeps to one line.
   const allTime = 'All time'
   if (kind === 'board') {
-    const result = slug === 'acechase' ? 'first bullseye' : slug === 'hotlap' ? 'best lap' : 'best result'
+    const result = slug === 'acechase' ? 'first bullseye' : `best ${bestWord(slug)}`
     return { mark: 'allTime', text: `${words.verb} it now: your ${result} goes on ${allTime}, not your rank.` }
   }
   if (words.past === 'board') {
     return {
       mark: 'practice',
-      text: signedIn ? `${words.verb} it again as practice: your first bullseye stands.` : `${words.verb} it now as practice: sign in to go on ${allTime}.`,
+      text:
+        signedIn && slug === 'acechase'
+          ? `${words.verb} it again as practice: your first bullseye stands.`
+          : `${words.verb} it now as practice: sign in to go on ${allTime}.`,
     }
   }
   return { mark: 'practice', text: `${words.verb} it now as practice: nothing is saved.` }

@@ -4,7 +4,7 @@ import { GHOST_RATE } from './sim'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's is), for everyone to race: on today's course, today's
- * #1; on a past one, the #1 its day closed with. A run saved on the board sends where the marble went after
+ * #1; on a past one, its All time #1. A run saved on the board sends where the marble went after
  * it, ten times a second, and the API keeps it when it's the tag's run on the board and the course's fastest
  * yet. The #1 is always told, path or not: a run saved before runs sent their paths, or from an old copy of
  * the site, has none, and then the ghost rolls the blue ball's line at the #1's time (standIn).

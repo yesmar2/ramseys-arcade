@@ -375,7 +375,11 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
         kind: 'counts',
         sub: 'Your best run today goes on today’s board, your week and your rank.',
       },
-      { what: 'A past course', kind: 'practice', sub: 'Roll any past course. Nothing is saved: no board, no tickets, no rank.' },
+      {
+        what: 'A past course',
+        kind: 'board',
+        sub: `Your best run goes on that course’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
+      },
     ],
   },
   lander: {
@@ -398,7 +402,11 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
         kind: 'counts',
         sub: 'Your best run today goes on today’s board, your week and your rank.',
       },
-      { what: 'A past cave', kind: 'practice', sub: 'Fly any past cave. Nothing is saved: no board, no tickets, no rank.' },
+      {
+        what: 'A past cave',
+        kind: 'board',
+        sub: `Your best flight goes on that cave’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
+      },
     ],
   },
 }

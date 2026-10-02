@@ -3,6 +3,7 @@ import { gamePlayHref } from '../../hooks/useHashRoute'
 import { useDailyDays } from '../../lib/archive'
 import { BOARD_NAMES } from '../../lib/dailyWords'
 import type { Viewer } from '../../lib/deviceRuns'
+import { allTimeFact } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
 import { ordinal } from '../../lib/scoreboard'
 import type { TrackBoard } from '../../lib/trackBoards'
@@ -60,20 +61,7 @@ export function usePastTrackFigures(day: string, board: TrackBoard | null, viewe
         note: mine ? 'You’re not on it' : `${entry.players.toLocaleString()} raced it`,
       }
     }
-    const record = board?.entries[0]
-    const allTime = BOARD_NAMES.allTime
-    let onBoard: PastFact
-    if (!board) onBoard = { label: allTime, what: '…' }
-    else if (!record) onBoard = { label: allTime, what: 'Nobody on it yet' }
-    else {
-      onBoard = {
-        label: allTime,
-        who: record.name,
-        what: lap(record.score),
-        you: mine && board.you ? `You ${ordinal(board.you.place)} of ${board.drivers.toLocaleString()}` : null,
-        note: mine ? 'You’re not on it yet' : driversWords(board.drivers),
-      }
-    }
+    const onBoard = allTimeFact(SLUG, board, mine, lap)
     return { facts: [onItsDay, onBoard], played: mine && Boolean(entry?.you || board?.you) }
   }, [days, failed, day, board, mine])
 }

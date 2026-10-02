@@ -447,7 +447,7 @@ function RecordsBody({
 
 function HotLapRecords({ viewer }: { viewer: Viewer }) {
   const today = trackDay()
-  const { rows, failed } = useTrackRecordsAsked(viewer.name)
+  const { rows, failed } = useTrackRecordsAsked('hotlap', viewer.name)
   const courses = useMemo(() => (rows ? trackRecordRows(rows, today) : null), [rows, today])
   return <RecordsBody slug="hotlap" viewer={viewer} courses={courses} coursesFailed={failed} />
 }

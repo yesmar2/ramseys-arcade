@@ -524,20 +524,6 @@ html[data-theme='dark'] .hotlap--fullscreen {
   grid-column: 1 / -1;
 }
 
-/*
- * A past track's cards (PastTrackCards.tsx) are every daily's (pastCourse.css). What becomes of the lap, or
- * what signing in would do, stays on the card when it tightens on a short screen: its small print doesn't.
- */
-.hotlap-past__line {
-  margin: -0.35rem 0 0;
-  padding: 0 0.25rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  line-height: 1.4;
-  text-align: center;
-  color: var(--muted);
-}
-
 /* The overlay lets presses through to the track; the card after a past track's lap takes them itself. Its start card is tapped through. */
 .hotlap__overlay .past-card:not(.game-card--start) {
   pointer-events: auto;
@@ -580,46 +566,6 @@ html[data-theme='dark'] .hotlap--fullscreen {
 /* Two figures a line. */
 .game-card.hotlap-test .game-pause-meta {
   grid-template-columns: 1fr 1fr;
-}
-
-/* What taking a past track's record paid, as Today's Hole says a day's tickets. */
-.hotlap-test__tix {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0;
-  padding: 0.55rem 0.8rem;
-  border-radius: 0.85rem;
-  border: 1px dashed color-mix(in srgb, var(--ticket, #ff8552) 50%, transparent);
-  background: color-mix(in srgb, var(--ticket, #ff8552) 8%, transparent);
-  font-size: 0.88rem;
-  line-height: 1.4;
-}
-
-.hotlap-test__tix svg {
-  flex: none;
-}
-
-.hotlap-test__tix b,
-.hotlap-test__tix a {
-  color: var(--ticket-text, #c2461d);
-}
-
-.hotlap-test__tix a {
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-/* Signed in with no tag yet: a tag puts the lap on the track's board. */
-.hotlap-test__tag {
-  display: grid;
-  justify-items: center;
-  gap: 0.6rem;
-}
-
-.hotlap-test__tag .report__ask {
-  width: 100%;
 }
 
 /* ---------- a phone ---------- */

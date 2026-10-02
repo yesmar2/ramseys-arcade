@@ -7,8 +7,8 @@ import { isRankedGame } from '../data/games'
  *
  * Only today's course counts toward your rank, on a daily that's ranked (Hot Lap, Marble Run, Lander); on one just
  * for fun (Ace Chase, Find the Bug, Half Full: data/games.ts Game.ranked) it's only yours. A past course is
- * one of two things: a board of its own that isn't ranked (Hot Lap's tracks), or practice that saves
- * nothing (everyone else's).
+ * one of two things: a board of its own that isn't ranked (the ranked dailies' tracks, courses and caves),
+ * or practice that saves nothing (the just-for-fun dailies').
  */
 
 /** What a run on a past course does. `board`: it goes on that course's own board, never your rank. */
@@ -75,8 +75,8 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     pastTab: 'Past courses',
     verb: 'Roll',
     playToday: 'Roll today’s course',
-    past: 'practice',
-    hudPast: 'Past course · practice',
+    past: 'board',
+    hudPast: 'Past course · not ranked',
   },
   lander: {
     course: 'cave',
@@ -84,8 +84,8 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     pastTab: 'Past caves',
     verb: 'Fly',
     playToday: 'Fly today’s cave',
-    past: 'practice',
-    hudPast: 'Past cave · practice',
+    past: 'board',
+    hudPast: 'Past cave · not ranked',
   },
 }
 
@@ -114,8 +114,7 @@ export type DailyTab = 'today' | 'past' | 'records'
 /**
  * A past course's two boards, named the same on every page (Ramsey picked the names, 2026-09-30):
  * Ranked, the board the day it was the daily, which counted toward rank; and All time, every result on
- * the course since, which doesn't. Only Hot Lap keeps an All time board, and only the ranked dailies have a
- * Ranked one.
+ * the course since, which doesn't. Only the ranked dailies (Hot Lap, Marble Run, Lander) have either.
  */
 export type PastBoard = 'ranked' | 'allTime'
 
@@ -133,6 +132,11 @@ export function boardTip(board: PastBoard, slug: string): string {
       ? 'Each driver’s best lap'
       : slug === 'acechase'
         ? 'Each player’s first bullseye'
-        : 'Each player’s best'
+        : `Each player’s best ${bestWord(slug)}`
   return `${what} on this ${words.course}, any day. Just for fun: it doesn’t count toward your rank.`
+}
+
+/** What a past course's board keeps each player's best of: Hot Lap's laps, Lander's flights, everyone else's runs. */
+export function bestWord(slug: string): string {
+  return slug === 'hotlap' ? 'lap' : slug === 'lander' ? 'flight' : slug === 'acechase' ? 'bullseye' : 'run'
 }

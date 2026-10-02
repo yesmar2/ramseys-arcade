@@ -4,7 +4,7 @@ import { GHOST_RATE, GHOST_STRIDE, WRECKED, wrap } from './sim'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's and Marble Run's are), for everyone to race: in today's
- * cave, today's #1; in a past one, the #1 its day closed with. A run saved on the board sends where the ship
+ * cave, today's #1; in a past one, its All time #1. A run saved on the board sends where the ship
  * went after it, ten times a second, and the API keeps it when it's the tag's run on the board and the cave's
  * fastest yet. The #1 is always told, path or not: a run saved from an old copy of the site, or on a card
  * closed too soon, has none, and then the ghost flies the blue ship's line at the #1's time (standIn).

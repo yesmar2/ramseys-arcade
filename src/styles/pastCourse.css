@@ -428,3 +428,57 @@
 .past-board li.is-you .past-board__t {
   color: var(--panel-accent-ink);
 }
+
+/*
+ * A past course's save (PastBoardResult.tsx): what becomes of the run, or
+ * what signing in would do, stays on the card when it tightens on a short screen: its small print doesn't.
+ */
+.past-save__line {
+  margin: -0.35rem 0 0;
+  padding: 0 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* What taking a past course's record paid, as Today's Hole says a day's tickets. */
+.past-save__tix {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.85rem;
+  border: 1px dashed color-mix(in srgb, var(--ticket, #ff8552) 50%, transparent);
+  background: color-mix(in srgb, var(--ticket, #ff8552) 8%, transparent);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.past-save__tix svg {
+  flex: none;
+}
+
+.past-save__tix b,
+.past-save__tix a {
+  color: var(--ticket-text, #c2461d);
+}
+
+.past-save__tix a {
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Signed in with no tag yet: a tag puts the run on the course's board. */
+.past-save__tag {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+}
+
+.past-save__tag .report__ask {
+  width: 100%;
+}

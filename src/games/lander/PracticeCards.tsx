@@ -1,19 +1,22 @@
 import type { ReactNode } from 'react'
-import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
+import { PastBoardResult } from '../../components/PastBoardResult'
+import { PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
 import { gamePlayHref } from '../../hooks/useHashRoute'
 import { archiveDayWords } from '../../lib/archive'
-import { BOARD_NAMES } from '../../lib/dailyWords'
+import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
+import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
+import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { caveDay, caveNumber, dailyCave, FIRST_DAY } from './daily'
-import { dayFirst, type DayTop, type ItsDay } from './pastDay'
 import type { LanderDay } from './runs'
-import { crashWords, formatRun } from './score'
+import { crashWords, formatLanderBoardScore, formatRun } from './score'
 
 /*
  * The cards of a past day's cave flown again from the past tab (/games/lander/play?day=YYYY-MM-DD), on the
  * cards every daily's past course shares (components/PastCourseCards.tsx): the one it opens on, and the one
- * after a run. It's practice: its runs go on no board and pay nothing, and your best here lasts only while
- * the tab is open.
+ * after a run. A past cave keeps its All time board for good (lib/trackBoards.ts): signed in, your best
+ * flight goes on it, and never on today's board, your week or your rank. Signed out, a flight is practice:
+ * nothing is kept, even if you sign in after it.
  */
 
 const SLUG = 'lander'
@@ -36,34 +39,54 @@ function walkFor(day: string): { prev: PastWalkLink | null; next: PastWalkLink |
 /** Today's cave, which counts: "Today's cave is the one that counts: Amber Well ›". */
 const todayCave = (): TodayCourse => ({ name: dailyCave(caveDay()).name })
 
+/** How far apart two board scores are, in seconds: "1.20s". */
+const gapWords = (diff: number) => `${(diff / 1000).toFixed(2)}s`
+
 /**
- * A past cave's start card: which cave it was and when, that it's practice, how its Ranked board went, the
- * blue ship's run and your best here (`tiles`, as the pause card has them). A tap anywhere starts, as on
- * today's card.
+ * A past cave's start card: which cave it was and when, that a flight here goes on its All time board (or,
+ * signed out, is practice), its Ranked and All time boards, the blue ship's run and your best here (`tiles`,
+ * as the pause card has them). A tap anywhere starts, as on today's card.
  */
-export function PracticeStartCard({ lander, facts, tiles }: { lander: LanderDay; facts: readonly PastFact[]; tiles: ReactNode }) {
+export function PracticeStartCard({
+  lander,
+  kind,
+  facts,
+  tiles,
+  board,
+}: {
+  lander: LanderDay
+  kind: PastKind
+  facts: readonly PastFact[]
+  tiles: ReactNode
+  board: TrackBoard | null
+}) {
+  const note =
+    kind === 'practice'
+      ? `Sign in and your flights here go on its ${BOARD_NAMES.allTime} board.`
+      : board?.you?.place === 1
+        ? 'You hold its record.'
+        : `Taking its record pays ${RECORD_TICKETS} tickets, once.`
   return (
     <PastCourseStart
       slug={SLUG}
       course={lander.day}
       day={lander.day}
-      kind="practice"
+      kind={kind}
       title={lander.name}
       kicker={`Past cave #${lander.n} · ${archiveDayWords(lander.day)}`}
+      labelSub={
+        kind === 'board'
+          ? `Your best flight goes on ${allTimeBoardName(lander.name)}. Today’s board, your week and your rank stay as they are.`
+          : undefined
+      }
       facts={facts}
       extraMeta={tiles}
-      note="Your best here lasts while this tab is open."
+      note={note}
+      startLabel={board?.you ? 'Fly it again' : 'Fly it'}
       today={todayCave()}
       walk={walkFor(lander.day)}
     />
   )
-}
-
-/** "1.20s quicker than your old best here, 50.12s.": the run against your best here before it. */
-function bestWords(time: number, best: number, before: number | null, improved: boolean): string {
-  if (improved) return before == null ? 'That’s your best here.' : `${(before - time).toFixed(2)}s quicker than your old best here, ${formatRun(before)}.`
-  const gap = time - best
-  return gap < 0.005 ? `Tied with your best here, ${formatRun(best)}.` : `${gap.toFixed(2)}s off your best here, ${formatRun(best)}.`
 }
 
 /** "You beat the blue ship by 1.20s, with no crashes." */
@@ -73,58 +96,53 @@ function shipWords(time: number, pace: number, crashes: number): string {
   return `${against}, with ${crashWords(crashes)}.`
 }
 
-/** "MAYA's 1st on the Ranked board, 48.37s, is 1.20s away.": the run against the day's 1st. */
-function firstWords(time: number, first: { name: string; time: number; mine: boolean }): string {
-  const whose = first.mine ? 'your' : `${first.name}’s`
-  const at = formatRun(first.time)
-  const gap = time - first.time
-  const ranked = `on the ${BOARD_NAMES.ranked} board`
-  if (Math.abs(gap) < 0.005) return `That ties ${whose} 1st ${ranked}, ${at}.`
-  if (gap < 0) return `That beats ${whose} 1st ${ranked}, ${at}, by ${(-gap).toFixed(2)}s.`
-  return `${first.mine ? 'Your' : whose} 1st ${ranked}, ${at}, is ${gap.toFixed(2)}s away.`
-}
-
 /**
- * After a practice run: its time, that nothing was saved, against your best here and the blue ship's, and
- * against the day's 1st; then again, back to its row on the past tab, or today's cave.
+ * After a flight down a past cave: its time, and where it went: on the cave's All time board when it beats
+ * your best there (components/PastBoardResult.tsx), or practice, flown signed out.
  */
-export function PracticeResultCard({
+export function PastCaveResult({
   lander,
   time,
+  score,
   crashes,
-  best,
-  before,
-  improved,
   pace,
-  itsDay,
-  top,
+  run,
+  board,
+  owner,
+  onSaved,
   onAgain,
 }: {
   lander: LanderDay
   time: number
+  /** The flight as the board keeps it. */
+  score: number
   crashes: number
-  /** Your best here, this run's included. */
-  best: number
-  /** Your best here before this run, if you had one. */
-  before: number | null
-  improved: boolean
   pace: number
-  itsDay: ItsDay
-  top: DayTop
+  /** The run it was flown in. */
+  run: Promise<string | undefined> | null
+  board: TrackBoard | null
+  /** Whose the flight is: an account's id; null flown signed out, practice and never saved. */
+  owner?: string | null
+  onSaved: (result: TrackLapResult) => void
   onAgain: () => void
 }) {
-  const first = dayFirst(lander.day, itsDay, top)
   return (
-    <PastCourseResult
+    <PastBoardResult
       slug={SLUG}
-      course={lander.day}
+      n={lander.n}
       day={lander.day}
-      kind="practice"
+      name={lander.name}
       kicker={`Past cave #${lander.n} · ${lander.name}`}
       figure={formatRun(time)}
-      line={`${bestWords(time, best, before, improved)} ${shipWords(time, pace, crashes)}`}
-      note={first ? firstWords(time, first) : null}
+      score={score}
+      pace={shipWords(time, pace, crashes)}
+      fmt={formatLanderBoardScore}
+      gap={gapWords}
+      run={run}
+      board={board}
+      owner={owner}
       today={todayCave()}
+      onSaved={onSaved}
       onAgain={onAgain}
     />
   )
