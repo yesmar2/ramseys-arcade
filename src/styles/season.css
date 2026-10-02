@@ -905,6 +905,19 @@ html[data-theme='dark'] .season-tile__got {
   color: color-mix(in srgb, var(--space-orange) 55%, var(--ink));
 }
 
+/* A won look's Wear it, or a skin's Use it, kept to the tile's foot so a row's buttons line up. */
+.season-tile__act {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: 0.25rem;
+}
+
+.season-tile__act .skin-use {
+  align-self: auto;
+  margin-top: 0;
+}
+
 .season-rail {
   display: flex;
   flex-direction: column;
@@ -1134,6 +1147,51 @@ html[data-theme='dark'] .season-tile__got {
 .season-skin--yours .season-skin__what {
   font-weight: 700;
   color: color-mix(in srgb, var(--space-violet) 70%, var(--ink));
+}
+
+a.season-skin__art {
+  transition: transform 0.15s ease;
+}
+
+a.season-skin__art:hover {
+  transform: translateY(-2px);
+}
+
+.season-skin__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.season-skin__acts .skin-use {
+  margin-top: 0;
+}
+
+.season-skin__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  min-height: 2.2rem;
+  padding: 0 0.5rem 0 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(var(--ink-rgb), 0.18);
+  color: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.season-skin__go svg {
+  width: 15px;
+  height: 15px;
+}
+
+.season-skin__go:hover,
+.season-skin__go:focus-visible {
+  background: rgba(var(--ink-rgb), 0.06);
 }
 
 .season-empty {

@@ -8,6 +8,7 @@ import {
   tournamentsHref,
 } from '../hooks/useHashRoute'
 import { groupsIndexHref } from '../lib/groups'
+import type { AvatarWear } from './AvatarStudio'
 
 export type SiteNavItem = {
   href: string
@@ -41,6 +42,13 @@ export const OPEN_MENU_EVENT = 'skermix:open-menu'
 
 export function openSiteMenu() {
   window.dispatchEvent(new Event(OPEN_MENU_EVENT))
+}
+
+/** Fired on window to open the header's avatar studio with something already on: a look a page just showed you won. */
+export const OPEN_STUDIO_EVENT = 'skermix:open-studio'
+
+export function openAvatarStudio(wear: AvatarWear) {
+  window.dispatchEvent(new CustomEvent<AvatarWear>(OPEN_STUDIO_EVENT, { detail: wear }))
 }
 
 function under(path: string, section: string) {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { fetchFlair, flairNote, type Flair } from '../lib/avatarFlair'
 import { FINISH_IDS, plateTier, PRIZE_KINDS, PRIZES, prizeById, type PrizeKind } from '../data/prizes'
 import { prizesHref } from '../hooks/useHashRoute'
@@ -39,8 +39,26 @@ import { PlayerName } from './PlayerName'
 import { CardBackdrop, PrizeArt } from './prizes/PrizeArt'
 import { SignArt } from './prizes/SignArt'
 
-/** Flair to put on as the studio opens: what a trophy just unlocked. */
-export type AvatarWear = { ring?: AvatarRing; pin?: AvatarPin }
+/** Flair to put on as the studio opens: what a trophy just unlocked, or a look the season's pass gave. */
+export type AvatarWear = { ring?: AvatarRing; pin?: AvatarPin; prize?: string }
+
+/** The avatar with what it was opened to wear already on. */
+function withWear(avatar: Avatar, wear: AvatarWear): Avatar {
+  let next: Avatar = { ...avatar, ...(wear.ring ? { ring: wear.ring } : {}), ...(wear.pin ? { pin: wear.pin } : {}) }
+  const prize = wear.prize ? prizeById(wear.prize) : null
+  if (prize) next = wearPrize(next, prize.kind, prize.id)
+  return next
+}
+
+/** The tab that shows it: a finish is a badge, on Colours; the rest of the counter's looks on Prizes. */
+function wearTab(wear: AvatarWear): Tab {
+  const prize = wear.prize ? prizeById(wear.prize) : null
+  return prize ? (prize.kind === 'finish' ? 'colour' : 'prizes') : 'flair'
+}
+
+function isWearTarget(wear: AvatarWear | null | undefined, id: string | null): boolean {
+  return id != null && wear != null && (wear.ring === id || wear.pin === id || wear.prize === id)
+}
 
 type AvatarStudioProps = {
   name: string
@@ -143,11 +161,10 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
  */
 export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarStudioProps) {
   const saved = useMemo(() => resolveAvatar(current, name), [current, name])
-  const [draft, setDraft] = useState<Avatar>(() =>
-    wear ? { ...saved, ...(wear.ring ? { ring: wear.ring } : {}), ...(wear.pin ? { pin: wear.pin } : {}) } : saved,
-  )
+  const [draft, setDraft] = useState<Avatar>(() => (wear ? withWear(saved, wear) : saved))
   const [history, setHistory] = useState<Avatar[]>(() => (wear ? [saved] : []))
-  const [tab, setTab] = useState<Tab>(wear ? 'flair' : 'mark')
+  const [tab, setTab] = useState<Tab>(wear ? wearTab(wear) : 'mark')
+  const paneRef = useRef<HTMLDivElement>(null)
   const [flair, setFlair] = useState<Flair | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -166,6 +183,12 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
       live = false
     }
   }, [name, wear])
+
+  // Opened to wear something: its item, which can sit below the fold of its tab, comes into view.
+  useEffect(() => {
+    if (!wear) return
+    paneRef.current?.querySelector<HTMLElement>('[data-wear-target]')?.scrollIntoView({ block: 'nearest' })
+  }, [wear, flair])
 
   const go = (next: Avatar) => {
     if (encodeAvatar(next) === encodeAvatar(draft)) return
@@ -254,6 +277,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         type="button"
         className={`studio__item${locked ? ' studio__item--locked' : ''}`}
         aria-pressed={on}
+        data-wear-target={isWearTarget(wear, id) || undefined}
         onClick={() => go(kind === 'ring' ? { ...draft, ring: id as AvatarRing | null } : { ...draft, pin: id as AvatarPin | null })}
       >
         <Mark className="studio__item-art" avatar={avatar} name={name} size={52} />
@@ -281,6 +305,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         type="button"
         className={`studio__tile${mine ? '' : ' studio__tile--locked'}`}
         aria-pressed={draft.badge === b}
+        data-wear-target={isWearTarget(wear, b) || undefined}
         aria-label={
           mine
             ? BADGE_LABELS[b]
@@ -307,7 +332,14 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
     const on = wornPrize(draft, kind) === id
     const preview = wearPrize({ ...base }, kind, id)
     return (
-      <button key={`${kind}-${id ?? 'none'}`} type="button" className="studio__item" aria-pressed={on} onClick={() => go(wearPrize(draft, kind, id))}>
+      <button
+        key={`${kind}-${id ?? 'none'}`}
+        type="button"
+        className="studio__item"
+        aria-pressed={on}
+        data-wear-target={isWearTarget(wear, id) || undefined}
+        onClick={() => go(wearPrize(draft, kind, id))}
+      >
         {prize ? (
           <PrizeArt className="studio__item-art" prize={prize} avatar={preview} name={name} width={64} />
         ) : (
@@ -391,7 +423,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
             ))}
           </div>
 
-          <div className="studio__pane" role="tabpanel">
+          <div className="studio__pane" role="tabpanel" ref={paneRef}>
             {tab === 'mark' ? (
               <>
                 <Section
@@ -537,7 +569,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         ) : tab === 'prizes' ? (
           <p className="studio__note">
             <SparkleIcon />
-            <span>What you’ve traded tickets for at the prize counter, to put on. It shows on your player card and the boards.</span>
+            <span>What you’ve won or traded tickets for, to put on. It shows on your player card and the boards.</span>
           </p>
         ) : (
           <p className="studio__note">

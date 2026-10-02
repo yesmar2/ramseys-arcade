@@ -573,14 +573,17 @@ html[data-theme='dark'] .pname--nebula {
 }
 
 /*
- * A themed card is always dark under its shade, and the prize counter's stage always dark, so a name
+ * A themed card is always dark under its shade, and the prize counter's stage and the avatar studio's card
+ * preview always dark, so a name
  * style reads there as it does on the dark theme, whichever theme the page is in.
  */
+.studio__card .pname--outline,
 .pcard--themed .pname--outline,
 .prize-stage .pname--outline {
   -webkit-text-stroke-color: #e7eef3;
 }
 
+.studio__card .pname--neon,
 .pcard--themed .pname--neon {
   color: #fff4fa;
   text-shadow:
@@ -589,10 +592,12 @@ html[data-theme='dark'] .pname--nebula {
     0 0 16px rgba(255, 95, 162, 0.7);
 }
 
+.studio__card .pname--candy,
 .pcard--themed .pname--candy {
   background-image: linear-gradient(90deg, #ff7ac1, #ffd36e 50%, #7fc8ff);
 }
 
+.studio__card .pname--retro,
 .pcard--themed .pname--retro {
   color: #ffe07a;
   text-shadow:
@@ -600,6 +605,7 @@ html[data-theme='dark'] .pname--nebula {
     2px 2px 0 #ff5fa2;
 }
 
+.studio__card .pname--glitch,
 .pcard--themed .pname--glitch {
   color: #f4f7fb;
   text-shadow:
@@ -607,11 +613,13 @@ html[data-theme='dark'] .pname--nebula {
     1.5px 0 rgba(47, 216, 255, 0.9);
 }
 
+.studio__card .pname--ember,
 .pcard--themed .pname--ember {
   background-image: linear-gradient(180deg, #ffe08a, #ff8a3d 55%, #ff3d1f);
   filter: drop-shadow(0 0 4px rgba(255, 90, 31, 0.55));
 }
 
+.studio__card .pname--starlight,
 .pcard--themed .pname--starlight,
 .prize-stage .pname--starlight {
   color: #ffffff;
@@ -620,17 +628,20 @@ html[data-theme='dark'] .pname--nebula {
     0 0 12px rgba(138, 106, 212, 0.8);
 }
 
+.studio__card .pname--starlight::after,
 .pcard--themed .pname--starlight::after,
 .prize-stage .pname--starlight::after {
   color: #f5b942;
 }
 
+.studio__card .pname--countdown,
 .pcard--themed .pname--countdown,
 .prize-stage .pname--countdown {
   color: #ff9a52;
   text-shadow: 0 0 8px rgba(242, 129, 58, 0.55);
 }
 
+.studio__card .pname--nebula,
 .pcard--themed .pname--nebula,
 .prize-stage .pname--nebula {
   background-image: linear-gradient(90deg, #ff7ac1, #b49cec 60%, #8f96ff);

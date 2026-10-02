@@ -27,7 +27,7 @@ import { SiteMenu } from './SiteMenu'
 import { SiteScopeControl } from './SiteScopeControl'
 import { SiteSearch } from './SiteSearch'
 import { SiteTabs } from './SiteTabs'
-import { navActive, OPEN_MENU_EVENT, SITE_NAV_LINKS } from './siteNav'
+import { navActive, OPEN_MENU_EVENT, OPEN_STUDIO_EVENT, SITE_NAV_LINKS } from './siteNav'
 import { BugHuntHost } from './BugHunt'
 import { FeedbackHost } from './FeedbackPanel'
 import { TicketChip } from './prizes/TicketChip'
@@ -108,6 +108,21 @@ export function SiteHeader() {
     window.addEventListener(OPEN_MENU_EVENT, open)
     return () => window.removeEventListener(OPEN_MENU_EVENT, open)
   }, [])
+
+  // And for the studio, with a look it just showed you won already on (the Season page's pass).
+  useEffect(() => {
+    const open = (e: Event) => {
+      if (!canEditAvatar) {
+        setMenuOpen(true)
+        return
+      }
+      setMenuOpen(false)
+      setStudioWear((e as CustomEvent<AvatarWear>).detail ?? null)
+      setStudioOpen(true)
+    }
+    window.addEventListener(OPEN_STUDIO_EVENT, open)
+    return () => window.removeEventListener(OPEN_STUDIO_EVENT, open)
+  }, [canEditAvatar])
 
   useEffect(() => {
     if (!invitesOpen) return

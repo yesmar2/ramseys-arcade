@@ -1,13 +1,17 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
 import { RewardArt } from '../components/season/RewardArt'
 import { MissionPatch } from '../components/season/SeasonArt'
 import { UseSkin } from '../components/season/SkinPicker'
-import { openSiteMenu } from '../components/siteNav'
+import { openAvatarStudio, openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { gameHref } from '../hooks/useHashRoute'
+import { usePlayerName } from '../hooks/usePlayerName'
 import { PlayerAvatar } from '../components/PlayerAvatar'
+import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
+import { useGlobalRank } from '../lib/globalRank'
+import { normalizePlayerName } from '../lib/leaderboard'
 import { ordinal } from '../lib/profileMath'
 import {
   daysLeftLabel,
@@ -66,7 +70,44 @@ function rewardTitle(reward: SeasonReward): string {
   return reward.kind === 'tickets' ? `+${reward.amount ?? 0} tickets` : reward.name
 }
 
-function Tile({ reward, state, perLevel, toNext }: { reward: SeasonReward; state: TileState; perLevel: number; toNext: number | null }) {
+/** Your avatar as the header shows it: what this device saved last, else what the API has. */
+function useOwnAvatar(): Avatar | null {
+  const name = normalizePlayerName(usePlayerName())
+  const { avatarId: rankAvatarId } = useGlobalRank()
+  const [local, setLocal] = useState<string | null>(() => getLocalAvatarId(name))
+  useEffect(() => {
+    setLocal(getLocalAvatarId(name))
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ name?: string; avatarId?: string }>).detail
+      if (detail?.name === name && detail.avatarId) setLocal(detail.avatarId)
+    }
+    window.addEventListener(AVATAR_EVENT, onChange)
+    return () => window.removeEventListener(AVATAR_EVENT, onChange)
+  }, [name])
+  return useMemo(() => (name ? resolveAvatar(local ?? rankAvatarId, name) : null), [name, local, rankAvatarId])
+}
+
+function isPin(id: string): id is AvatarPin {
+  return (AVATAR_PINS as readonly string[]).includes(id)
+}
+
+/** A won look on the pass: opens the avatar studio with it on, ready to save. */
+function WearLook({ reward, avatar }: { reward: SeasonReward; avatar: Avatar }) {
+  const pin = reward.kind === 'pin' && isPin(reward.id) ? reward.id : null
+  const on = pin ? avatar.pin === pin : isWearing(avatar, reward.id)
+  return (
+    <button
+      type="button"
+      className={`skin-use${on ? ' skin-use--on' : ''}`}
+      aria-label={on ? `Wearing ${reward.name}: change what you wear` : `Wear ${reward.name}`}
+      onClick={() => openAvatarStudio(pin ? { pin } : { prize: reward.id })}
+    >
+      {on ? 'Wearing' : 'Wear it'}
+    </button>
+  )
+}
+
+function Tile({ reward, state, perLevel, toNext, action }: { reward: SeasonReward; state: TileState; perLevel: number; toNext: number | null; action?: ReactNode }) {
   // A locked level's season tickets would read as a price at the counter: the rail says how far they are.
   const foot = state === 'next' && toNext != null ? `${toNext.toLocaleString()} to go` : state === 'got' && !reward.ready ? `${reward.what} · on its way` : reward.what
   const at = ((reward.level - 1) * perLevel).toLocaleString()
@@ -91,6 +132,7 @@ function Tile({ reward, state, perLevel, toNext }: { reward: SeasonReward; state
       </span>
       <span className="season-tile__name">{rewardTitle(reward)}</span>
       <span className="season-tile__what">{foot}</span>
+      {action ? <span className="season-tile__act">{action}</span> : null}
     </li>
   )
 }
@@ -240,6 +282,7 @@ export function SeasonPage() {
   const store = useSeason()
   const { owned } = useTickets()
   const { signedIn, loading: authLoading } = useAuth()
+  const avatar = useOwnAvatar()
   const trackRef = useRef<HTMLOListElement>(null)
   const season = store.season
   const p = season ? seasonProgress(season, season.status === 'live' ? store.you : null) : null
@@ -283,6 +326,16 @@ export function SeasonPage() {
   const skins = store.rewards.filter((r) => r.kind === 'skin')
   const spotlight = season.spotlight.map((slug) => getGame(slug)).filter((g): g is NonNullable<typeof g> => g != null)
 
+  // What a won level's tile lets you do with it: put a look on (in the studio), or play a game in its skin.
+  const actionFor = (reward: SeasonReward): ReactNode => {
+    if (!signedIn || reward.level > level || !reward.ready) return null
+    if (reward.kind === 'skin') return reward.game && owned.includes(reward.id) ? <UseSkin game={reward.game} id={reward.id} /> : null
+    if (!avatar || !AVATARS_ENABLED) return null
+    if (reward.kind === 'pin') return isPin(reward.id) ? <WearLook reward={reward} avatar={avatar} /> : null
+    if (reward.kind === 'prize') return owned.includes(reward.id) ? <WearLook reward={reward} avatar={avatar} /> : null
+    return null
+  }
+
   return (
     <PageShell innerClassName="lb-page__inner season-page">
       <Hero season={season} level={level} fraction={p.fraction} toNext={p.toNext} earned={p.earned} signedIn={signedIn} authLoading={authLoading} />
@@ -304,7 +357,14 @@ export function SeasonPage() {
         </div>
         <ol className="season-track" ref={trackRef}>
           {store.rewards.map((reward) => (
-            <Tile key={`${reward.level}-${reward.id}`} reward={reward} state={stateOf(reward, level)} perLevel={season.perLevel} toNext={p.toNext} />
+            <Tile
+              key={`${reward.level}-${reward.id}`}
+              reward={reward}
+              state={stateOf(reward, level)}
+              perLevel={season.perLevel}
+              toNext={p.toNext}
+              action={actionFor(reward)}
+            />
           ))}
         </ol>
         <div className="season-rail" aria-hidden="true">
@@ -364,14 +424,28 @@ export function SeasonPage() {
                 const yours = level >= skin.level || owned.includes(skin.id)
                 return (
                   <li key={skin.id} className={yours ? 'season-skin season-skin--yours' : 'season-skin'}>
-                    <span className="season-skin__art">
-                      <RewardArt reward={skin} size={72} />
-                    </span>
+                    {game ? (
+                      <a className="season-skin__art" href={gameHref(game.slug)} tabIndex={-1} aria-hidden="true">
+                        <RewardArt reward={skin} size={72} />
+                      </a>
+                    ) : (
+                      <span className="season-skin__art">
+                        <RewardArt reward={skin} size={72} />
+                      </span>
+                    )}
                     <span className="season-skin__name">{skin.name}</span>
                     <span className="season-skin__what">
                       {game?.name ?? skin.what} · {yours ? 'yours' : `Lv ${skin.level}`}
                     </span>
-                    {yours && skin.game ? <UseSkin game={skin.game} id={skin.id} /> : null}
+                    <span className="season-skin__acts">
+                      {yours && skin.game ? <UseSkin game={skin.game} id={skin.id} /> : null}
+                      {game ? (
+                        <a className="season-skin__go" href={gameHref(game.slug)}>
+                          Play {game.name}
+                          <Chevron />
+                        </a>
+                      ) : null}
+                    </span>
                   </li>
                 )
               })}
