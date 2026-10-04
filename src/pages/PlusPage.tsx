@@ -31,6 +31,12 @@ type Row = {
 
 const PLAY: Row[] = [
   { label: 'Every game', free: true, plus: true },
+  {
+    label: 'Brand-new games',
+    free: 'From launch day',
+    plus: 'Before launch too',
+    note: 'Plus members can try a new game early, as practice. Its boards open to everyone on launch day.',
+  },
   { label: 'Weekly, monthly and all-time boards', free: true, plus: true },
   { label: 'Record books', free: true, plus: true },
   { label: 'Standings and trophies', free: true, plus: true },
@@ -51,18 +57,12 @@ const PLAY: Row[] = [
 ]
 
 const DAILIES: Row[] = [
-  { label: 'Today’s dailies', free: true, plus: true },
+  { label: 'Today’s dailies', free: true, plus: true, note: 'The only daily runs that count toward your rank.' },
   {
     label: 'Past days',
     free: `The last ${OPEN_DAYS} days`,
     plus: 'Every day, back to the first',
-    note: 'A day older than a week is practice for everyone: a course’s board closes a week after its day.',
-  },
-  {
-    label: 'New games',
-    free: 'On their day',
-    plus: 'First, as practice',
-    note: 'Their boards open to everyone at once.',
+    note: 'Past days never count toward your rank. Older than a week, they’re practice: nothing is saved.',
   },
 ]
 
@@ -213,7 +213,7 @@ export function PlusPage() {
         crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'Plus' }]}
         kicker={`${APP_NAME} Plus`}
         title="Every past daily, and every season’s Pass+."
-        blurb={`Playing stays free for everyone: every game, every board, every daily and its last ${OPEN_DAYS} days, and joining any event however big. Plus opens every past day of every daily, gives you each season’s Pass+ and a members’ look every month, lets you play new games first, and makes room to host bigger events.`}
+        blurb={`Playing stays free for everyone: every game, every board, today’s dailies and the last ${OPEN_DAYS} days of each, and joining any event however big. Plus opens every older day of every daily, gives you each season’s Pass+ and a members’ look every month, lets you try brand-new games before launch, and makes room to host bigger events.`}
         actions={
           member ? (
             <>
@@ -326,7 +326,7 @@ export function PlusPage() {
       ) : null}
 
       <Table title="Playing" blurb="Free for everyone. Playing needs no account; sign in to save your scores and join in." rows={PLAY} />
-      <Table title="Dailies" blurb="A new course, hole or day of each daily, the same for everyone." rows={DAILIES} />
+      <Table title="Dailies" blurb="Games with a new challenge every day, the same for everyone." rows={DAILIES} />
       <Table
         title="Seasons"
         blurb="A new theme every season, with a pass to climb by winning tickets."

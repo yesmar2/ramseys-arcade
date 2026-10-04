@@ -24,7 +24,7 @@ export function EarlyGate({ slug, children }: { slug: string; children: ReactNod
       <div className="archive-gate" style={gameAccentStyle(slug)}>
         <div className="game-card past-card archive-gate__card" role="dialog" aria-labelledby="early-gate-title">
           <div className="game-card__head">
-            <span className="game-card__kicker">New · open to all {archiveDayWords(day)}</span>
+            <span className="game-card__kicker">Launches {archiveDayWords(day)}</span>
             <h2 id="early-gate-title" className="game-card__title game-card__title--big">
               <span className="archive-gate__lock" aria-hidden="true">
                 <LockIcon />
@@ -33,7 +33,8 @@ export function EarlyGate({ slug, children }: { slug: string; children: ReactNod
             </h2>
           </div>
           <p className="archive-gate__lead">
-            Plus members play {name} first. Everyone plays it from {archiveDayWords(day)}, when its boards open for all at once.
+            {name} launches for everyone on {archiveDayWords(day)}. Until then, Plus members can try it early, as practice: its
+            boards open on launch day.
           </p>
           <p className="archive-gate__also">Plus is {PLUS_PRICE}, with every season’s Pass+ and every past daily too.</p>
           <div className="game-card__actions">

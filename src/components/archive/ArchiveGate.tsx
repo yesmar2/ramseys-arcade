@@ -45,8 +45,8 @@ export function ArchiveGate({
           </h2>
         </div>
         <p className="archive-gate__lead">
-          Every daily’s last {OPEN_DAYS} days are free to play. Plus opens every day back to each game’s first, as
-          practice{words.past === 'board' ? ': an archive day keeps no board' : ''}.
+          Anyone can play a daily’s last {OPEN_DAYS} days. Older days are for Plus members, as practice: nothing is saved,
+          and they never count toward your rank.
         </p>
         <p className="archive-gate__also">Plus is {PLUS_PRICE}, with every season’s Pass+ too.</p>
         <div className="game-card__actions">

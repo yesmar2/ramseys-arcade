@@ -548,7 +548,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     const opens = plusFirstDay(gameSlug)
     block = (
       <p className="report__note">
-        Early access: runs are practice{opens ? ` until ${archiveDayWords(opens)}` : ''}, when its boards open for everyone at once.
+        Early access: this run is practice. {game}’s boards open for everyone on launch day{opens ? `, ${archiveDayWords(opens)}` : ''}.
       </p>
     )
     who = <ReportWho text="Practice" />

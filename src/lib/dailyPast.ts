@@ -3,7 +3,7 @@ import { isRankedGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { dayBefore, OPEN_DAYS } from './archive'
-import { bestWord, BOARD_NAMES, dailyWords, type PastKind } from './dailyWords'
+import { bestWord, dailyWords, type PastKind } from './dailyWords'
 import { api, normalizePlayerName } from './leaderboard'
 
 /*
@@ -164,14 +164,14 @@ export function pastKindFor(slug: string, signedIn: boolean, firstResultOnly: bo
   return firstResultOnly && hadResult ? 'practice' : 'board'
 }
 
-/** Why a course in the archive is practice, for a game whose past courses keep boards: "A track’s All time board closes a week after its day." */
+/** Why a course in the archive is practice, for a game whose past courses keep boards: "Older than a week, this track is practice: nothing is saved." */
 export function archivedWhy(slug: string): string {
-  return `A ${dailyWords(slug).course}’s ${BOARD_NAMES.allTime} board closes a week after its day: this is practice.`
+  return `Older than a week, this ${dailyWords(slug).course} is practice: nothing is saved.`
 }
 
 /** What the archive is, in a line: the Plus mark's tip on a card, and the gate's. */
 export function archiveTip(slug: string): string {
-  return `The last ${OPEN_DAYS} days are free. Plus opens every ${dailyWords(slug).course} back to the first, as practice.`
+  return `Anyone can play the last ${OPEN_DAYS} days. Older ${dailyWords(slug).course}s are for Plus members, as practice.`
 }
 
 /** Who's looking at the past tab, and the tag their results are asked by: none signed out. */
@@ -198,17 +198,17 @@ export function pastHowLines(slug: string): PastHowLine[] {
   let goes: PastHowLine
   if (words.past === 'practice') goes = { mark: 'practice', text: `${words.pastTab} are practice: nothing is saved.` }
   else if (slug === 'acechase') goes = { mark: 'allTime', text: 'Your first bullseye goes on its All time board, then it’s practice.' }
-  else goes = { mark: 'allTime', text: `Your best ${bestWord(slug)} goes on its All time board.` }
+  else goes = { mark: 'allTime', text: `Your best ${bestWord(slug)} on one goes on that ${words.course}’s All time board.` }
   return [
     { mark: 'play', text: `${words.verb} any ${words.course} from the last ${OPEN_DAYS} days.` },
+    goes,
     {
       mark: 'plus',
       text:
         words.past === 'board'
-          ? `Older ones are Plus’s, as practice: a board closes a week after its day.`
-          : `Older ones are Plus’s, every ${words.course} back to the first.`,
+          ? `Older ${words.course}s are for Plus members, as practice: nothing is saved.`
+          : `Older ${words.course}s are for Plus members.`,
     },
-    goes,
     isRankedGame(slug)
       ? { mark: 'ranked', text: `Only ${lowerWord(words.today)} counts toward your rank.` }
       : { mark: 'fun', text: `${words.today} is your result. It’s just for fun: nobody is ranked.` },
@@ -232,11 +232,8 @@ export function pastPlayNote(
   archive?: { open: boolean },
 ): { mark: 'allTime' | 'practice' | 'plus'; text: string } {
   const words = dailyWords(slug)
-  if (archive && !archive.open) return { mark: 'plus', text: `Plus opens ${words.pastTab.toLowerCase()} older than a week, as practice.` }
-  if (archive) {
-    const shut = words.past === 'board' ? ` Its ${BOARD_NAMES.allTime} board closed a week after its day.` : ''
-    return { mark: 'practice', text: `${words.verb} it now as practice.${shut}` }
-  }
+  if (archive && !archive.open) return { mark: 'plus', text: `${capitalWord(words.course)}s older than a week are for Plus members, as practice.` }
+  if (archive) return { mark: 'practice', text: `${words.verb} it now as practice: older than a week, nothing is saved.` }
   // The board's name keeps to one line.
   const allTime = 'All time'
   if (kind === 'board') {
