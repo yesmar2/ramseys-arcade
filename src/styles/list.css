@@ -613,6 +613,16 @@ a.lst__name:focus-visible .lst__name-text {
   vertical-align: middle;
 }
 
+/* A button's own size while what it does is still loading: its words hidden, a plain shape, no presses. */
+.skel-btn,
+.skel-btn:hover {
+  color: transparent !important;
+  background: rgba(var(--ink-rgb), 0.1) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
 .lb-list--skeleton {
   list-style: none;
   margin: 0;

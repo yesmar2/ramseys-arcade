@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame } from '../data/games'
 import { useScoreboard } from '../hooks/useScoreboard'
 import {
@@ -247,15 +248,24 @@ function Standings({
   const standing = data.you
   const below = standing && standing.rank != null && standing.rank > rows.length ? standing : null
   const lastTop = last?.[0]?.score ?? 0
+  const hasFoot = left > 0 || (!opened && rows.length > 5)
+  const lastRows = last && copy.last ? Math.min(5, last.length) : 0
+  // While they load, the room they took last time on this device (lib/heldShape.ts): the rows, the gap and
+  // you below them, Show more, and last time's top five.
+  const heldRows = useHeldShape(`standings-rows-${period}`, loading ? undefined : Math.max(3, rows.length) + (below ? 2 : 0), 10)
+  const heldFoot = useHeldShape(`standings-foot-${period}`, loading ? undefined : hasFoot ? 1 : 0, 1)
+  const heldLast = useHeldShape(`standings-last-${period}`, loading ? undefined : lastRows, copy.last ? 5 : 0)
   return (
     <div ref={ref} id="standings" className="sb-card sb-standings" data-hunt="boards-standings">
       <div className="sb-standings__head">
         <h2 className="sb-card__title">Standings</h2>
-        {!loading ? (
-          <span className="sb-standings__count">
-            {totalPlayers.toLocaleString()} {totalPlayers === 1 ? 'player' : 'players'}
-          </span>
-        ) : null}
+        <span className="sb-standings__count">
+          {loading ? (
+            <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
+          ) : (
+            `${totalPlayers.toLocaleString()} ${totalPlayers === 1 ? 'player' : 'players'}`
+          )}
+        </span>
         {/* The points beside each name are the one figure this page keeps; what makes them is there. */}
         <a className="sb-standings__how" href={rankHowHref(undefined, period)}>
           How your rank works ›
@@ -263,8 +273,9 @@ function Standings({
       </div>
       {loading ? (
         <ol className="sb-rows" aria-busy="true">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <li key={i} className="sb-row sb-row--skel">
+          {Array.from({ length: heldRows }, (_, i) => (
+            // Past the fifth, a phone hides them till asked, as it hides the rows themselves.
+            <li key={i} className={`sb-row sb-row--skel${!opened && i >= 5 ? ' sb-row--deep' : ''}`}>
               <span className="sb-row__link">
                 <span className="skel-line" style={{ '--skel-w': '2rem' } as CSSProperties} />
                 <span className="sb-row__mark sb-row__mark--open" />
@@ -311,7 +322,34 @@ function Standings({
           ) : null}
         </ol>
       )}
-      {!loading && (left > 0 || (!opened && rows.length > 5)) ? (
+      {loading && heldFoot ? (
+        <div className="sb-standings__foot" aria-hidden="true">
+          <span className="sb-ghost sb-standings__more skel-btn">Show more</span>
+        </div>
+      ) : null}
+      {loading && heldLast ? (
+        <div className="sb-last" aria-hidden="true">
+          <div className="sb-last__head">
+            <h3 className="sb-last__title">
+              <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
+            </h3>
+          </div>
+          <ol className="sb-rows sb-rows--last">
+            {Array.from({ length: heldLast }, (_, i) => (
+              <li key={i} className="sb-row sb-row--skel">
+                <span className="sb-row__link">
+                  <span className="skel-line" style={{ '--skel-w': '2rem' } as CSSProperties} />
+                  <span className="sb-row__mark sb-row__mark--open" />
+                  <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
+                  <span className="sb-row__bar" />
+                  <span className="skel-line" style={{ '--skel-w': '2.5rem' } as CSSProperties} />
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+      {!loading && hasFoot ? (
         <div className="sb-standings__foot">
           {/* With nobody left to fetch, it is only a phone's hidden sixth to tenth still to show. */}
           <button
@@ -446,6 +484,7 @@ function EveryBoard({
 }) {
   const played = data.boards.filter((b) => b.top.length > 0)
   const withYou = Boolean(data.you)
+  const heldBoards = useHeldShape(`boards-played-${period}`, data.loading ? undefined : played.length, 12)
   const when = copy.noun ? ` ${copy.phrase}` : ''
   return (
     <section className="sb-section" aria-labelledby="sb-boards-title">
@@ -474,7 +513,7 @@ function EveryBoard({
         </div>
         {data.loading ? (
           <ul className="sb-table__rows" aria-busy="true">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
+            {Array.from({ length: Math.max(1, heldBoards) }, (_, i) => (
               <li key={i} className="sb-board sb-board--skel">
                 <span className="sb-board__link">
                   <span className="sb-board__thumb sb-board__thumb--skel" />
@@ -509,8 +548,40 @@ function EveryBoard({
 
 /* ---------- up for grabs ---------- */
 
-function UpForGrabs({ copy, boards }: { copy: PeriodCopy; boards: BoardLine[] }) {
+function UpForGrabs({ period, copy, boards, loading }: { period: LeaderboardPeriod; copy: PeriodCopy; boards: BoardLine[]; loading: boolean }) {
   const empty = boards.filter((b) => b.top.length === 0)
+  const held = useHeldShape(`boards-empty-${period}`, loading ? undefined : empty.length, 0)
+  if (loading) {
+    if (!held) return null
+    return (
+      <section className="sb-section" aria-hidden="true">
+        <div className="sb-head">
+          <div>
+            <h2 className="sb-h2">Up for grabs</h2>
+            <p className="sb-sub">
+              <span className="skel-line" style={{ '--skel-w': '16rem' } as CSSProperties} />
+            </p>
+          </div>
+        </div>
+        <ul className="sb-grabs">
+          {Array.from({ length: held }, (_, i) => (
+            <li key={i} className="sb-grab sb-grab--skel">
+              <div className="sb-grab__top">
+                <span className="sb-grab__thumb sb-board__thumb--skel" />
+              </div>
+              <h3 className="sb-grab__name">
+                <span className="skel-line" style={{ '--skel-w': '5rem' } as CSSProperties} />
+              </h3>
+              <p className="sb-grab__line">
+                <span className="skel-line" style={{ '--skel-w': '4rem' } as CSSProperties} />
+              </p>
+              <span className="sb-grab__play skel-btn">Play</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
   if (!empty.length) return null
   const nobody = copy.noun ? `Nobody’s played these ${copy.phrase}.` : 'Nobody’s played these yet.'
   const line = copy.noun ? `No runs ${copy.phrase}` : 'No runs yet'
@@ -563,6 +634,9 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
   const head = headline(copy, data.standings, data.totalPlayers)
+  // The headline and its line wrap as the names in them do: held at last time's height while they load.
+  const title = useHeldHeight<HTMLHeadingElement>(`boards-title-${period}`, data.loading)
+  const ledeHeld = useHeldHeight<HTMLParagraphElement>(`boards-lede-${period}`, data.loading)
 
   if (data.error) {
     return (
@@ -581,7 +655,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
             {copy.kicker}
             {group ? ` · ${group}` : ''}
           </p>
-          <h1 id="sb-title" className="sb-title">
+          <h1 id="sb-title" className="sb-title" ref={title.ref} style={title.style}>
             {data.loading ? (
               <span className="skel-line sb-title__skel" style={{ '--skel-w': '14ch' } as CSSProperties} />
             ) : (
@@ -591,7 +665,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
               </>
             )}
           </h1>
-          <p className="sb-lede">
+          <p className="sb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
             {data.loading ? (
               <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} />
             ) : (
@@ -610,7 +684,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
       </section>
 
       <EveryBoard period={period} copy={copy} data={data} you={you} />
-      {!data.loading ? <UpForGrabs copy={copy} boards={data.boards} /> : null}
+      <UpForGrabs period={period} copy={copy} boards={data.boards} loading={data.loading} />
     </div>
   )
 }
