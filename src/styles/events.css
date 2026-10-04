@@ -2167,8 +2167,14 @@
   color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
 }
 
+/* Each table on its own card, the page's full width, so the season's sky behind never runs under the words. */
 .plus-table {
   margin-top: 1.5rem;
+  padding: 1.1rem 1.25rem 0.6rem;
+  border-radius: 1.2rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
 }
 
 .plus-table__head {
@@ -2227,12 +2233,22 @@
 }
 
 .plus-grid td {
-  width: 6.5rem;
+  width: 9rem;
   text-align: center;
 }
 
 .plus-grid thead th:not(:first-child) {
   text-align: center;
+}
+
+@media (max-width: 40rem) {
+  .plus-table {
+    padding: 0.9rem 0.8rem 0.4rem;
+  }
+
+  .plus-grid td {
+    width: 5.4rem;
+  }
 }
 
 /* The paid column gets a tint so the two are distinguishable at a glance. */
@@ -2297,8 +2313,7 @@
   }
 }
 
-/* Plus is a pitch and a table: it keeps a measure inside the wide frame. */
-.plus-table,
+/* The Plus wall (a limit reached) keeps a measure inside the wide frame. */
 .plus-wall {
   max-width: 64rem;
   margin-inline: auto;

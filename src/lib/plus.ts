@@ -29,6 +29,29 @@ export async function managePlusMembership(): Promise<string> {
   return (await api<{ url: string }>('/plus/manage', { method: 'POST', body: '{}' })).url
 }
 
+const DAY_MS = 86_400_000
+
+/** A season's own days, first to last (not a preview's early start): 66 for Oct 31 to Jan 4. */
+function seasonDays(season: { firstDay: string; lastDay: string }): number {
+  const day = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
+  return Math.round((day(season.lastDay) - day(season.firstDay)) / DAY_MS) + 1
+}
+
+/** How many weeks a season runs: about 9. */
+export function seasonWeeks(season: { firstDay: string; lastDay: string }): number {
+  return Math.round(seasonDays(season) / 7)
+}
+
+/**
+ * What a monthly price comes to over a season, to the dollar: "$9". A season is about two months, so Plus
+ * by the month costs more over one than Pass+ for it does; said plainly, $3.99 beside $4.99 can't read as
+ * the cheaper of the two.
+ */
+export function perSeason(cents: number, season: { firstDay: string; lastDay: string }, currency = 'usd'): string {
+  const months = seasonDays(season) / 30.44
+  return money(Math.round((cents * months) / 100) * 100, currency).replace(/\.00$/, '')
+}
+
 /** A price as money: $3.99. */
 export function money(cents: number, currency = 'usd'): string {
   try {

@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 import { AUTH_EVENT } from '../lib/auth'
 import { APP_NAME } from '../lib/brand'
 import { homeHref, seasonHref, tournamentsHref } from '../hooks/useHashRoute'
-import { confirmPlusMembership, fetchPlus, managePlusMembership, money, startPlusMembership, type PlusInfo } from '../lib/plus'
+import { confirmPlusMembership, fetchPlus, managePlusMembership, money, perSeason, seasonWeeks, startPlusMembership, type PlusInfo } from '../lib/plus'
 import { liveSeason, plusPrice, useSeason } from '../lib/season'
 
 /**
@@ -226,7 +226,10 @@ export function PlusPage() {
                   On sale soon
                 </button>
               )}
-              <span className="home-banner__hint">Cancel any time. What you&rsquo;ve won stays yours.</span>
+              <span className="home-banner__hint">
+                {season && info ? `About ${perSeason(info.price, season, info.currency)} a season, with every season’s Pass+ in it. ` : ''}Cancel any
+                time. What you&rsquo;ve won stays yours.
+              </span>
             </>
           )
         }
@@ -264,7 +267,8 @@ export function PlusPage() {
           </ul>
           {!member ? (
             <p className="plus-table__blurb">
-              Just want this season&rsquo;s? Pass+ is {plusPrice(pass)} once on the <a href={seasonHref()}>Season page</a>, no membership.
+              Just want this season&rsquo;s? Pass+ is {plusPrice(pass)} once for the whole season ({seasonWeeks(season)} weeks) on the{' '}
+              <a href={seasonHref()}>Season page</a>, no membership.
             </p>
           ) : null}
         </section>
@@ -276,7 +280,7 @@ export function PlusPage() {
         blurb="A new theme every season, with a pass to climb by winning tickets."
         rows={[
           { label: 'The season pass’s free row', free: true, plus: true },
-          { label: 'The season’s Pass+ row', free: pass ? `${plusPrice(pass)} a season` : 'A season at a time', plus: 'Every season' },
+          { label: 'The season’s Pass+ row', free: pass ? `${plusPrice(pass)} once a season` : 'A season at a time', plus: 'Every season, included' },
         ]}
       />
       <Table title="Hosting" blurb="Running events and groups for other people." rows={HOST} />

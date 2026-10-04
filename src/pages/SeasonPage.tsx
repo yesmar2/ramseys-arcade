@@ -12,7 +12,7 @@ import { PlayerAvatar } from '../components/PlayerAvatar'
 import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
-import { fetchPlus, money, type PlusInfo } from '../lib/plus'
+import { fetchPlus, money, perSeason, seasonWeeks, type PlusInfo } from '../lib/plus'
 import { ordinal } from '../lib/profileMath'
 import {
   confirmPlusCheckout,
@@ -350,14 +350,17 @@ function PassPlus({
               {plus.buyable ? (
                 <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || authLoading}>
                   <b>{busy ? 'Opening…' : signedIn ? `Get Pass+ · ${price}` : `Sign in to get Pass+`}</b>
-                  <small>This season, once. Yours to keep.</small>
+                  <small>Once, for the whole season ({seasonWeeks(season)} weeks). Yours to keep.</small>
                 </button>
               ) : (
-                <span className="season-plus__soon">On sale soon · {price}</span>
+                <span className="season-plus__soon">On sale soon · {price} for the season</span>
               )}
               <a className="season-plus__member" href={plusHref()}>
                 <b>Or join Plus{plusInfo ? ` · ${money(plusInfo.price, plusInfo.currency)}/month` : ''}</b>
-                <small>Every season’s Pass+, and more to host.</small>
+                <small>
+                  {plusInfo ? `About ${perSeason(plusInfo.price, season, plusInfo.currency)} a season, with` : 'With'} every season’s Pass+, and
+                  more to host.
+                </small>
               </a>
             </div>
           )}
