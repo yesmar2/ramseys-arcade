@@ -180,7 +180,7 @@ export function PlusPage() {
     }
   }
 
-  const price = info ? money(info.price, info.currency) : '$3.99'
+  const price = info ? money(info.price, info.currency) : '$2.99'
   const you = info?.you ?? null
   const member = isPlus || you?.plan === 'plus'
 

@@ -35,7 +35,7 @@ export const FREE_LIMITS: PlanLimits = {
   multiGameRounds: false,
 }
 
-export const PLUS_PRICE = '$3.99/mo'
+export const PLUS_PRICE = '$2.99/mo'
 
 /** A 402 from any write that a plan does not cover. */
 export type PlanLimitError = {

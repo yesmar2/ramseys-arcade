@@ -298,7 +298,7 @@ export function daysLeftLabel(season: SeasonInfo): string {
   return n <= 1 ? 'Last day' : `${n} days left`
 }
 
-/** Pass+'s price as money: $4.99. */
+/** Pass+'s price as money: $2.99. */
 export function plusPrice(plus: Pick<SeasonPlus, 'price' | 'currency'>): string {
   try {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: plus.currency.toUpperCase() }).format(plus.price / 100)

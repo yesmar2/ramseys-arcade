@@ -43,16 +43,16 @@ export function seasonWeeks(season: { firstDay: string; lastDay: string }): numb
 }
 
 /**
- * What a monthly price comes to over a season, to the dollar: "$9". A season is about two months, so Plus
- * by the month costs more over one than Pass+ for it does; said plainly, $3.99 beside $4.99 can't read as
- * the cheaper of the two.
+ * What a monthly price comes to over a season, to the dollar: "$6". A season is about two months, so Plus
+ * by the month costs more over one than Pass+ for it does; said plainly, the same $2.99 beside each can't
+ * read as the two costing the same.
  */
 export function perSeason(cents: number, season: { firstDay: string; lastDay: string }, currency = 'usd'): string {
   const months = seasonDays(season) / 30.44
   return money(Math.round((cents * months) / 100) * 100, currency).replace(/\.00$/, '')
 }
 
-/** A price as money: $3.99. */
+/** A price as money: $2.99. */
 export function money(cents: number, currency = 'usd'): string {
   try {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
