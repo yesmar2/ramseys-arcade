@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { GAME_PREVIEWS, type GamePreviewRun } from '../lib/gamePreviews'
+import { DAY_PREVIEWS, GAME_PREVIEWS, type GamePreviewRun } from '../lib/gamePreviews'
 import { THEME_EVENT } from '../lib/theme'
 
 /** Frames a second for a preview: plenty for a tile, and half the work of a full game. */
@@ -74,15 +74,19 @@ function nextTurn() {
  * runs its demo. A cabinet's (`hoverOnly`) is for a pointer that can hover:
  * it plays under one or with keyboard focus, and a touch screen never loads
  * it, so the cabinet keeps its picture. None plays off screen, in a hidden
- * tab, or with reduced motion.
+ * tab, or with reduced motion. Given a `day`, a daily plays that day's
+ * course or cave (DAY_PREVIEWS) rather than the game's own preview.
  */
 export function GamePreview({
   slug,
+  day,
   className,
   autoplay = false,
   hoverOnly = false,
 }: {
   slug: string
+  /** A daily's day to play, for a daily in DAY_PREVIEWS. */
+  day?: string
   className?: string
   /** Play whenever it is on screen, rather than only when asked. */
   autoplay?: boolean
@@ -94,13 +98,16 @@ export function GamePreview({
 
   useEffect(() => {
     const canvas = ref.current
-    const load = GAME_PREVIEWS[slug]
+    const daily = day ? DAY_PREVIEWS[slug] : undefined
+    const load = day ? daily && (() => daily().then((m) => ({ createPreview: () => m.createDayPreview(day) }))) : GAME_PREVIEWS[slug]
     const ctx = canvas?.getContext('2d')
     if (!canvas || !load || !ctx) return
     // The tile's link is what a pointer rests on and what takes focus.
     const host = canvas.closest<HTMLElement>('a, button') ?? canvas
 
     let cancelled = false
+    // The run once it's made, still warming or not, so it can be let go of with the tile.
+    let made: GamePreviewRun | null = null
     let preview: GamePreviewRun | null = null
     let loading = false
     let near = false
@@ -129,6 +136,9 @@ export function GamePreview({
         playing(false)
         return
       }
+      // Marked again each frame: the ready re-render rewrites the canvas's classes, and can land just after a
+      // pointer that came before the preview was ready started it.
+      playing(true)
       owed += last ? Math.min(0.25, (now - last) / 1000) : 0
       last = now
       if (owed >= 1 / FPS) {
@@ -158,7 +168,9 @@ export function GamePreview({
           loading = true
           load()
             .then((mod) => {
+              if (cancelled) return
               const run = mod.createPreview()
+              made = run
               // The opening seconds are played a slice per turn, so no one turn runs long.
               const job = () => {
                 if (cancelled) return
@@ -254,8 +266,9 @@ export function GamePreview({
       window.removeEventListener(THEME_EVENT, redraw)
       document.fonts.removeEventListener('loadingdone', redraw)
       if (raf) cancelAnimationFrame(raf)
+      made?.dispose?.()
     }
-  }, [slug, autoplay, hoverOnly])
+  }, [slug, day, autoplay, hoverOnly])
 
   return (
     <canvas

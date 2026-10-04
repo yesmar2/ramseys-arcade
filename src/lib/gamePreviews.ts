@@ -7,6 +7,8 @@ export type GamePreviewRun = {
    * it, or if it is never called, the first `paint` plays them in one go.
    */
   warm?(w: number, h: number, budgetMs: number): boolean
+  /** Let go of whatever it holds (a WebGL renderer, say) once its tile is gone. */
+  dispose?(): void
 }
 
 /**
@@ -35,4 +37,18 @@ export const GAME_PREVIEWS: Record<string, () => Promise<{ createPreview(): Game
 
 export function hasGamePreview(slug: string) {
   return slug in GAME_PREVIEWS
+}
+
+/**
+ * Dailies that can play a given day in a tile, for the home page's Dailies row: the day's course rolled, the
+ * day's cave flown. Kept apart from the games' previews above, which play the same game any day, so a page
+ * that shows another day (a past day's board) never plays today's in its place.
+ */
+export const DAY_PREVIEWS: Record<string, () => Promise<{ createDayPreview(day: string): GamePreviewRun }>> = {
+  lander: () => import('../games/lander/preview'),
+  marblerun: () => import('../games/marblerun/preview'),
+}
+
+export function hasDayPreview(slug: string) {
+  return slug in DAY_PREVIEWS
 }

@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { gameHref, todayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { msUntilNextHole } from '../lib/dailyHole'
+import { hasDayPreview } from '../lib/gamePreviews'
 import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -15,6 +16,7 @@ import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import type { TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
 import { DailyKindTag } from './DailyKindTag'
+import { GamePreview } from './GamePreview'
 import { FlameIcon, StarIcon } from './TodayChip'
 import { capital, shortDate, useTicket, type Punch, type Ticket } from './todayPunches'
 import '../styles/homeToday.css'
@@ -153,6 +155,8 @@ function DayCard({
         <Suspense fallback={<span className="home-day__pic-wait" />}>
           <DayPicture daily={p.key} day={day} />
         </Suspense>
+        {/* Under a pointer, the day played over its picture: the course rolled, the cave flown (Ramsey, 2026-10-04). */}
+        {hasDayPreview(p.slug) ? <GamePreview slug={p.slug} day={day} className="home-day__preview" hoverOnly /> : null}
         {p.done ? (
           <span className="home-day__stamp">
             <CheckIcon />

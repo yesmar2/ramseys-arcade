@@ -282,6 +282,26 @@ html[data-theme='dark'] .home-day__card {
     0 6px 14px rgba(8, 30, 30, 0.28);
 }
 
+/*
+ * The day played over its picture (GamePreview, hoverOnly): Marble Run's course rolled, Lander's cave flown,
+ * while a pointer is over the card or it has focus. It fades in over the picture as it starts and out as it
+ * stops, so the picture is what the card shows at rest, and all a touch screen ever shows.
+ */
+.home-day__preview {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.home-day__preview.game-preview--playing {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-day__preview {
+    transition: none;
+  }
+}
+
 /* Punched: the picture dimmed under the ticket's ring and check. */
 .home-day__card--done .home-day__pic::after {
   content: '';
