@@ -150,6 +150,20 @@ html[data-theme='dark'] .pname--nebula {
   filter: drop-shadow(0 0 4px rgba(180, 156, 236, 0.5));
 }
 
+/* Season 1's Pass+. Aurora: an aurora's ribbon, green through teal and violet to pink, softly lit. */
+.pname--aurora {
+  background: linear-gradient(100deg, #0e9a7e, #1588a8 34%, #6a48c8 68%, #c8358a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 3px rgba(95, 224, 200, 0.35));
+}
+
+html[data-theme='dark'] .pname--aurora {
+  background-image: linear-gradient(100deg, #5fe0c8, #5cc8ec 34%, #a68cf2 68%, #ff8fcf);
+  filter: drop-shadow(0 0 4px rgba(95, 224, 200, 0.45)) drop-shadow(0 0 8px rgba(138, 106, 212, 0.35));
+}
+
 /* ---------- a title, on its plate ---------- */
 
 .prize-plate {
@@ -646,6 +660,13 @@ html[data-theme='dark'] .pname--nebula {
 .prize-stage .pname--nebula {
   background-image: linear-gradient(90deg, #ff7ac1, #b49cec 60%, #8f96ff);
   filter: drop-shadow(0 0 4px rgba(180, 156, 236, 0.5));
+}
+
+.studio__card .pname--aurora,
+.pcard--themed .pname--aurora,
+.prize-stage .pname--aurora {
+  background-image: linear-gradient(100deg, #5fe0c8, #5cc8ec 34%, #a68cf2 68%, #ff8fcf);
+  filter: drop-shadow(0 0 4px rgba(95, 224, 200, 0.45)) drop-shadow(0 0 8px rgba(138, 106, 212, 0.35));
 }
 
 .pcard__name--sign {

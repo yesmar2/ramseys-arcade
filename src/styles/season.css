@@ -931,6 +931,196 @@ html[data-theme='dark'] .season-tile__got {
   margin-top: 0;
 }
 
+/* ---------- Pass+: the paid second row of the pass ---------- */
+
+/* A Pass+ reward in a run's level-up. */
+.run-levelup__plus {
+  margin-left: 0.4rem;
+  padding: 0.06rem 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f5b942, var(--space-orange));
+  color: #1a0e05;
+  font-size: 0.66rem;
+  font-weight: 850;
+  vertical-align: middle;
+}
+
+.season-plus {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.4rem 1.6rem 1.5rem;
+  border-radius: 1.3rem;
+  background:
+    radial-gradient(ellipse 60% 120% at 100% 0%, color-mix(in srgb, var(--space-orange) 12%, transparent), transparent 70%),
+    var(--surface);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--space-orange) 38%, transparent);
+}
+
+.season-plus__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.2rem;
+}
+
+.season-plus__words {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.season-plus__words h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.season-plus__season {
+  padding: 0.18rem 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--space-night);
+  color: var(--space-star);
+  font-family: var(--space-font);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.season-plus__words p {
+  margin: 0.15rem 0 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.season-plus__get {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.season-plus__buy {
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f5b942, var(--space-orange));
+  color: #1a0e05;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--space-orange) 35%, transparent);
+}
+
+.season-plus__buy:hover:not(:disabled),
+.season-plus__buy:focus-visible {
+  filter: brightness(1.06);
+  outline: none;
+}
+
+.season-plus__buy:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.season-plus__owned,
+.season-plus__soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.4rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.season-plus__owned {
+  background: color-mix(in srgb, var(--space-violet) 16%, var(--surface));
+  color: color-mix(in srgb, var(--space-violet) 70%, var(--ink));
+}
+
+.season-plus__owned svg {
+  width: 18px;
+  height: 18px;
+}
+
+.season-plus__soon {
+  border: 1.5px dashed color-mix(in srgb, var(--space-orange) 55%, transparent);
+  color: color-mix(in srgb, var(--space-orange) 60%, var(--ink));
+}
+
+.season-plus__now {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.season-plus__note {
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+  border-radius: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.season-plus__note--good {
+  background: color-mix(in srgb, var(--space-violet) 14%, var(--surface));
+}
+
+.season-plus__note--bad {
+  background: color-mix(in srgb, #e8564f 14%, var(--surface));
+}
+
+/* A Pass+ tile: warm edges where the free row's are violet. */
+.season-tile--plus.season-tile--got {
+  background: color-mix(in srgb, var(--space-orange) 9%, var(--surface));
+  border-color: color-mix(in srgb, var(--space-orange) 45%, transparent);
+}
+
+/* Reached, without Pass+: shown whole, waiting for it. */
+.season-tile--waiting {
+  background: color-mix(in srgb, var(--space-orange) 6%, var(--surface));
+  border: 2px dashed color-mix(in srgb, var(--space-orange) 50%, transparent);
+}
+
+.season-tile__plusmark {
+  padding: 0.12rem 0.42rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f5b942, var(--space-orange));
+  color: #1a0e05;
+  font-size: 0.66rem;
+  font-weight: 850;
+}
+
+.season-tile__with {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--space-orange) 60%, var(--ink));
+}
+
+@media (max-width: 640px) {
+  .season-plus {
+    padding: 1.1rem 1rem 1.2rem;
+  }
+
+  .season-plus__get {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .season-plus__buy {
+    width: 100%;
+  }
+}
+
 .season-rail {
   display: flex;
   flex-direction: column;

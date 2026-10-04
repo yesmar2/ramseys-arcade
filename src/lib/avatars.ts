@@ -100,6 +100,8 @@ export const AVATAR_BADGES = [
   'ringed',
   'mission',
   'supernova',
+  // Season 1's Pass+ (lib/season.ts).
+  'eclipse',
 ] as const
 export type AvatarBadge = (typeof AVATAR_BADGES)[number]
 
@@ -120,6 +122,7 @@ export const BADGE_LABELS: Record<AvatarBadge, string> = {
   ringed: 'Ringed planet',
   mission: 'Mission patch',
   supernova: 'Supernova',
+  eclipse: 'Eclipse',
 }
 
 /** The badges anyone can wear; the rest are finishes from the prize counter. */

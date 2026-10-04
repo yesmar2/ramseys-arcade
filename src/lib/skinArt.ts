@@ -77,31 +77,160 @@ export const NOVA_FIGHTER: SkinArt = {
   ],
 }
 
-/**
- * The Comet tail, Snake's: a white head in an amber glow, then a trail of beads that shrink and fade from
- * amber to violet. `t` is how far down the body a bead is, 0 at the head to 1 at the tip of the tail.
- */
-export const COMET_TAIL = {
-  /** The head's radius, and its glow's, as parts of a bead's spacing. */
-  head: 0.75,
-  glow: 1.25,
-  /** A bead's radius, as a part of the spacing, how see-through it is, and its colour. */
-  bead(t: number): { r: number; alpha: number; rgb: [number, number, number] } {
-    const k = Math.min(1, Math.max(0, t))
-    // Amber to violet by way of a warm pink: straight across, the middle of the tail goes a muddy grey.
-    const stops = [
-      [245, 185, 66],
-      [240, 112, 132],
-      [138, 106, 212],
-    ]
-    const [from, to, u] = k < 0.5 ? [stops[0]!, stops[1]!, k * 2] : [stops[1]!, stops[2]!, k * 2 - 1]
-    return {
-      r: 0.57 - 0.29 * k,
-      alpha: 1 - 0.55 * k,
-      rgb: [0, 1, 2].map((i) => Math.round(from[i]! + (to[i]! - from[i]!) * u)) as [number, number, number],
-    }
-  },
+/** The Shuttle, Asteroids' (Season 1's Pass+): an orbiter seen from above, black nose and wing edges. */
+export const SHUTTLE: SkinArt = {
+  flame: [
+    { d: 'M43 86L46 98L49 86z', fill: SPACE.orange },
+    { d: 'M51 86L54 98L57 86z', fill: SPACE.orange },
+    { d: 'M47 86L50 100L53 86z', fill: SPACE.amber },
+  ],
+  body: [
+    {
+      d: 'M50 9C55 12 57 20 57 28L58 50L81 74L81 82L58 82L56 86L44 86L42 82L19 82L19 74L42 50L43 28C43 20 45 12 50 9Z',
+      fill: SPACE.star,
+      stroke: '#2a3352',
+      width: 2,
+      join: 'round',
+    },
+    { d: 'M42.5 50L19 74L19 77.5L43.5 53.5Z', fill: '#1a2233' },
+    { d: 'M57.5 50L81 74L81 77.5L56.5 53.5Z', fill: '#1a2233' },
+    { d: 'M50 9C53.5 11 55.5 15 56.3 20L43.7 20C44.5 15 46.5 11 50 9Z', fill: '#1a2233' },
+    { d: 'M45 23L55 23L54 27L46 27Z', fill: '#1a2233' },
+    { d: 'M46.5 32V70M53.5 32V70', stroke: '#b9b6d4', width: 1.5 },
+    { d: 'M28 79.5h13M59 79.5h13', stroke: SPACE.orange, width: 2, cap: 'round' },
+    { d: 'M50 66V84', stroke: '#2a3352', width: 2, cap: 'round' },
+    { d: circle(45.5, 87, 2.2), fill: '#3a4160' },
+    { d: circle(54.5, 87, 2.2), fill: '#3a4160' },
+    { d: circle(50, 88, 2.2), fill: '#3a4160' },
+  ],
 }
+
+/**
+ * The Eagle, Lander's (Season 1's Pass+): a moon lander of the old kind, its descent stage in foil, a cabin
+ * with triangle windows on top, legs splayed to round pads. On Lander's hull as the Moonhopper is: its feet on
+ * the hull's feet, so every point of the hull the cave can touch is on the drawing.
+ */
+export const EAGLE: SkinArt = {
+  flame: [
+    { d: 'M44 74L50 94L56 74z', fill: SPACE.orange },
+    { d: 'M46.5 74L50 86L53.5 74z', fill: SPACE.amber },
+  ],
+  body: [
+    { d: 'M32 64L23 84M68 64L77 84', stroke: '#8f96b8', width: 3, cap: 'round' },
+    { d: 'M37 70L25 84M63 70L75 84', stroke: '#8f96b8', width: 2, cap: 'round' },
+    { d: 'M18 86a6 2.2 0 1 0 12 0a6 2.2 0 1 0 -12 0zM70 86a6 2.2 0 1 0 12 0a6 2.2 0 1 0 -12 0z', fill: '#c9cde0' },
+    { d: 'M30 56L34 52H66L70 56V68L66 72H34L30 68Z', fill: SPACE.amber, stroke: SPACE.brass, width: 2, join: 'round' },
+    { d: 'M38 56L36 70M48 54L49 71M60 55L62 70', stroke: SPACE.brass, width: 1, alpha: 0.7 },
+    { d: 'M45 72H55L57 76H43Z', fill: '#3a4160' },
+    { d: 'M36 52L37 38L42 28H58L63 38L64 52Z', fill: '#e3e1ef', stroke: '#8f96b8', width: 2, join: 'round' },
+    { d: 'M42.5 32.5H48.5V39.5ZM57.5 32.5H51.5V39.5Z', fill: SPACE.night },
+    { d: roundRect(46, 23, 8, 5, 1), fill: '#c9cde0', stroke: '#8f96b8', width: 1 },
+    { d: 'M62 32L69 26.5', stroke: '#8f96b8', width: 1.5 },
+    { d: circle(71, 25, 3.5), fill: '#e3e1ef', stroke: '#8f96b8', width: 1 },
+    { d: 'M33 39h4v4h-4zM63 39h4v4h-4z', fill: SPACE.red },
+  ],
+}
+
+/** The Ringship, Barrage's (Season 1's Pass+): a round ship in a ring of light, a teal canopy and a nose gun. */
+export const RINGSHIP: SkinArt = {
+  flame: [{ d: 'M45 70L50 88L55 70z', fill: SPACE.orange }],
+  body: [
+    // The far side of the ring, behind the hull, then the hull, then the near side over it.
+    { d: 'M18 56A32 9 0 0 1 82 56', stroke: SPACE.amber, width: 3.5, alpha: 0.8 },
+    { d: circle(24, 60, 5), fill: SPACE.violet, stroke: '#5a3fa6', width: 1.5 },
+    { d: circle(76, 60, 5), fill: SPACE.violet, stroke: '#5a3fa6', width: 1.5 },
+    { d: 'M47 37L50 22L53 37Z', fill: SPACE.violet, stroke: '#5a3fa6', width: 1, join: 'round' },
+    { d: circle(50, 52, 16), fill: SPACE.star, stroke: SPACE.violet, width: 2.5 },
+    { d: circle(50, 50, 7), fill: '#2eb8a0' },
+    { d: circle(47.8, 47.8, 2), fill: '#ffffff', alpha: 0.75 },
+    { d: 'M18 56A32 9 0 0 0 82 56', stroke: SPACE.orange, width: 3.5 },
+    { d: circle(18, 56, 2.4), fill: SPACE.amber },
+    { d: circle(82, 56, 2.4), fill: SPACE.amber },
+  ],
+}
+
+export type RGB = [number, number, number]
+
+/**
+ * A Snake skin drawn as beads (Snake draws its body this way for one): a head in a glow, then a trail of
+ * beads that shrink and fade through its colours. `bead(t)`: `t` is how far down the body a bead is, 0 at
+ * the head to 1 at the tip of the tail.
+ */
+export type SnakeTail = {
+  /** The head's radius, and its glow's, as parts of a bead's spacing. */
+  head: number
+  glow: number
+  headFill: RGB
+  headRing: RGB
+  glowColor: RGB
+  eyes: string
+  bead(t: number): { r: number; alpha: number; rgb: RGB }
+}
+
+function snakeTail(look: { headFill: RGB; headRing: RGB; glowColor: RGB; eyes: string; stops: readonly [RGB, RGB, RGB] }): SnakeTail {
+  return {
+    head: 0.75,
+    glow: 1.25,
+    headFill: look.headFill,
+    headRing: look.headRing,
+    glowColor: look.glowColor,
+    eyes: look.eyes,
+    bead(t) {
+      const k = Math.min(1, Math.max(0, t))
+      const [a, b, c] = look.stops
+      const [from, to, u] = k < 0.5 ? [a, b, k * 2] : [b, c, k * 2 - 1]
+      return {
+        r: 0.57 - 0.29 * k,
+        alpha: 1 - 0.55 * k,
+        rgb: [0, 1, 2].map((i) => Math.round(from[i]! + (to[i]! - from[i]!) * u)) as RGB,
+      }
+    },
+  }
+}
+
+/**
+ * The Comet tail, Snake's: a white head in an amber glow, then beads fading from amber to violet, by way of
+ * a warm pink (straight across, the middle of the tail goes a muddy grey).
+ */
+export const COMET_TAIL = snakeTail({
+  headFill: [255, 255, 255],
+  headRing: [245, 185, 66],
+  glowColor: [245, 185, 66],
+  eyes: SPACE.night,
+  stops: [
+    [245, 185, 66],
+    [240, 112, 132],
+    [138, 106, 212],
+  ],
+})
+
+/** The Nebula tail, Snake's (Season 1's Pass+): a night-violet head in a pink glow, beads from pink to violet to teal. */
+export const NEBULA_TAIL = snakeTail({
+  headFill: [42, 31, 92],
+  headRing: [255, 122, 193],
+  glowColor: [196, 110, 230],
+  eyes: SPACE.star,
+  stops: [
+    [255, 122, 193],
+    [150, 112, 230],
+    [95, 224, 200],
+  ],
+})
+
+/** Snake's skins, by id. */
+export const SNAKE_TAILS: Record<string, SnakeTail> = { 'snake-comet-tail': COMET_TAIL, 'snake-nebula-tail': NEBULA_TAIL }
+
+/** Asteroids' skins: the drawing, and where its nose and tail are on the board, to lay it along the hull. */
+export const ASTEROIDS_ART: Record<string, { art: SkinArt; nose: number; tail: number }> = {
+  'asteroids-comet': { art: COMET_SHIP, nose: 12, tail: 84 },
+  'asteroids-shuttle': { art: SHUTTLE, nose: 9, tail: 86 },
+}
+
+/** Lander's skins: feet 52 apart on the board's y 86, as the hull's are. */
+export const LANDER_ART: Record<string, SkinArt> = { 'lander-moonhopper': MOONHOPPER, 'lander-eagle': EAGLE }
+
+/** Barrage's skins: nose at the board's y 10, tail at 80, as the usual ship is long. */
+export const BARRAGE_ART: Record<string, SkinArt> = { 'barrage-nova': NOVA_FIGHTER, 'barrage-ringship': RINGSHIP }
 
 const paths = new Map<string, Path2D>()
 

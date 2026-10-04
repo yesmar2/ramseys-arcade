@@ -14,13 +14,17 @@ import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { ordinal } from '../lib/profileMath'
 import {
+  confirmPlusCheckout,
   daysLeftLabel,
+  plusPrice,
   refreshSeason,
+  startPlusCheckout,
   seasonDates,
   seasonProgress,
   useSeason,
   type SeasonGoal,
   type SeasonInfo,
+  type SeasonPlus,
   type SeasonReward,
   type SeasonStandings,
 } from '../lib/season'
@@ -34,7 +38,8 @@ import '../styles/season.css'
  * won ticked and the next one lit; a rail of every level; and how it works, with the season's skins.
  */
 
-type TileState = 'got' | 'next' | 'locked'
+/** A tile: won; next to win; still to come; or (on the Pass+ row, without Pass+) reached, and yours with it. */
+type TileState = 'got' | 'next' | 'locked' | 'waiting'
 
 function stateOf(reward: SeasonReward, level: number): TileState {
   return reward.level <= level ? 'got' : reward.level === level + 1 ? 'next' : 'locked'
@@ -107,12 +112,29 @@ function WearLook({ reward, avatar }: { reward: SeasonReward; avatar: Avatar }) 
   )
 }
 
-function Tile({ reward, state, perLevel, toNext, action }: { reward: SeasonReward; state: TileState; perLevel: number; toNext: number | null; action?: ReactNode }) {
+function Tile({
+  reward,
+  state,
+  perLevel,
+  toNext,
+  action,
+}: {
+  reward: SeasonReward
+  state: TileState
+  perLevel: number
+  toNext: number | null
+  action?: ReactNode
+}) {
   // A locked level's season tickets would read as a price at the counter: the rail says how far they are.
-  const foot = state === 'next' && toNext != null ? `${toNext.toLocaleString()} to go` : state === 'got' && !reward.ready ? `${reward.what} · on its way` : reward.what
+  const foot =
+    state === 'next' && toNext != null ? `${toNext.toLocaleString()} to go` : state === 'got' && !reward.ready ? `${reward.what} · on its way` : reward.what
   const at = ((reward.level - 1) * perLevel).toLocaleString()
   return (
-    <li className={`season-tile season-tile--${state}`} data-level={reward.level} title={state === 'locked' ? `Level ${reward.level}, at ${at} season tickets` : undefined}>
+    <li
+      className={`season-tile season-tile--${state}${reward.plus ? ' season-tile--plus' : ''}`}
+      data-level={reward.level}
+      title={state === 'locked' ? `Level ${reward.level}, at ${at} season tickets${reward.plus ? ', with Pass+' : ''}` : undefined}
+    >
       <span className="season-tile__top">
         <span className="season-tile__lv">LV {reward.level}</span>
         {state === 'got' ? (
@@ -123,6 +145,8 @@ function Tile({ reward, state, perLevel, toNext, action }: { reward: SeasonRewar
           <span className="season-tile__lock">
             <LockGlyph />
           </span>
+        ) : state === 'waiting' ? (
+          <span className="season-tile__plusmark">Pass+</span>
         ) : (
           <span className="season-tile__next">Next</span>
         )}
@@ -132,6 +156,7 @@ function Tile({ reward, state, perLevel, toNext, action }: { reward: SeasonRewar
       </span>
       <span className="season-tile__name">{rewardTitle(reward)}</span>
       <span className="season-tile__what">{foot}</span>
+      {state === 'waiting' ? <span className="season-tile__with">Yours with Pass+</span> : null}
       {action ? <span className="season-tile__act">{action}</span> : null}
     </li>
   )
@@ -209,6 +234,135 @@ function Hero({ season, level, fraction, toNext, earned, signedIn, authLoading }
           )}
         </div>
       </div>
+    </section>
+  )
+}
+
+/**
+ * Pass+: the paid second row of the pass, on the same levels, and the way to get it (Stripe's checkout, from
+ * the API). Without it, its rewards show what they are, and the ones your level has reached say they're
+ * yours the moment you get it. Looks only, never score; what it gives is kept for good.
+ */
+function PassPlus({
+  season,
+  plus,
+  level,
+  toNext,
+  signedIn,
+  authLoading,
+  actionFor,
+}: {
+  season: SeasonInfo
+  plus: SeasonPlus
+  level: number
+  toNext: number | null
+  signedIn: boolean
+  authLoading: boolean
+  actionFor: (reward: SeasonReward) => ReactNode
+}) {
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<{ tone: 'good' | 'plain' | 'bad'; text: string } | null>(null)
+  const price = plusPrice(plus)
+  const skinGames = plus.rewards.filter((r) => r.kind === 'skin').map((r) => (r.game ? (getGame(r.game)?.name ?? r.game) : r.name))
+  const looks = plus.rewards.length - skinGames.length
+  const gameList = skinGames.length > 1 ? `${skinGames.slice(0, -1).join(', ')} and ${skinGames[skinGames.length - 1]}` : (skinGames[0] ?? '')
+
+  // Back from Stripe's page: a paid checkout gives Pass+ now (its webhook may be a moment behind).
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search)
+    const back = query.get('plus')
+    if (!back) return
+    const session = query.get('session')
+    window.history.replaceState(window.history.state, '', window.location.pathname)
+    if (back === 'cancelled') {
+      setNote({ tone: 'plain', text: `No charge. Pass+ is here all season, whenever you want it.` })
+      return
+    }
+    if (back !== 'done' || !session) return
+    setNote({ tone: 'plain', text: 'Checking the payment…' })
+    void confirmPlusCheckout(session)
+      .then(async (paid) => {
+        await refreshSeason({ force: true, signedIn: true, catchUp: true })
+        setNote(
+          paid
+            ? { tone: 'good', text: 'Pass+ is yours. What your level has reached is in your hangar and your avatar’s Prizes now.' }
+            : { tone: 'plain', text: 'The payment is still going through. Pass+ arrives as soon as it does.' },
+        )
+      })
+      .catch(() => setNote({ tone: 'bad', text: 'Couldn’t check the payment just now. If it went through, Pass+ arrives shortly.' }))
+  }, [])
+
+  const buy = async () => {
+    if (!signedIn) {
+      openSiteMenu()
+      return
+    }
+    setBusy(true)
+    setNote(null)
+    try {
+      window.location.assign(await startPlusCheckout())
+    } catch (err) {
+      setBusy(false)
+      setNote({ tone: 'bad', text: err instanceof Error ? err.message : 'Couldn’t open the payment page' })
+    }
+  }
+
+  const stateOfPlus = (reward: SeasonReward): TileState =>
+    plus.owned ? stateOf(reward, level) : signedIn && reward.level <= level ? 'waiting' : 'locked'
+
+  return (
+    <section className={`season-plus${plus.owned ? ' season-plus--owned' : ''}`} aria-labelledby="season-plus-title">
+      <div className="season-plus__head">
+        <div className="season-plus__words">
+          <h2 id="season-plus-title">
+            Pass+ <span className="season-plus__season">Season {season.id}</span>
+          </h2>
+          <p>
+            {plus.rewards.length} more on the same levels: a second skin, a new ship or car to play in, for {gameList}, and {looks} looks for your
+            card and name. Yours to keep. Looks only, never score.
+          </p>
+        </div>
+        <div className="season-plus__get">
+          {plus.owned ? (
+            <span className="season-plus__owned">
+              <CheckBadge /> Yours this season
+            </span>
+          ) : plus.buyable ? (
+            <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || authLoading}>
+              {busy ? 'Opening…' : signedIn ? `Get Pass+ · ${price}` : `Sign in to get Pass+`}
+            </button>
+          ) : (
+            <span className="season-plus__soon">On sale soon · {price}</span>
+          )}
+          {!plus.owned && signedIn && level > 0 ? (
+            <span className="season-plus__now">
+              {plus.rewards.filter((r) => r.level <= level).length
+                ? `${plus.rewards.filter((r) => r.level <= level).length} of them yours at once`
+                : 'The first comes at once'}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <ol className="season-track season-track--plus">
+        {plus.rewards.map((reward) => {
+          const state = stateOfPlus(reward)
+          return (
+            <Tile
+              key={reward.id}
+              reward={reward}
+              state={state}
+              perLevel={season.perLevel}
+              toNext={toNext}
+              action={plus.owned ? actionFor(reward) : null}
+            />
+          )
+        })}
+      </ol>
+      {note ? (
+        <p className={`season-plus__note season-plus__note--${note.tone}`} role="status">
+          {note.text}
+        </p>
+      ) : null}
     </section>
   )
 }
@@ -384,6 +538,18 @@ export function SeasonPage() {
           </div>
         </div>
       </section>
+
+      {store.plus ? (
+        <PassPlus
+          season={season}
+          plus={store.plus}
+          level={level}
+          toNext={p.toNext}
+          signedIn={signedIn}
+          authLoading={authLoading}
+          actionFor={actionFor}
+        />
+      ) : null}
 
       <div className="season-cards">
         {store.standings ? <StandingsCard season={season} standings={store.standings} /> : null}

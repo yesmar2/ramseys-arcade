@@ -9,7 +9,7 @@ import { ownedNow, subscribeTickets, useTickets } from './tickets'
  * look. Ghosts and replays of other players keep the usual look too.
  */
 
-export type Skin = { id: string; game: string; name: string; season: number; what: string }
+export type Skin = { id: string; game: string; name: string; season: number; what: string; plus?: boolean }
 
 export const SKINS: readonly Skin[] = [
   { id: 'lander-moonhopper', game: 'lander', name: 'Moonhopper', season: 1, what: 'Lander ship' },
@@ -17,6 +17,12 @@ export const SKINS: readonly Skin[] = [
   { id: 'barrage-nova', game: 'barrage', name: 'Nova fighter', season: 1, what: 'Barrage ship' },
   { id: 'hotlap-rocket', game: 'hotlap', name: 'Rocket car', season: 1, what: 'Hot Lap car' },
   { id: 'snake-comet-tail', game: 'snake', name: 'Comet tail', season: 1, what: 'Snake skin' },
+  // Season 1's Pass+ row.
+  { id: 'asteroids-shuttle', game: 'asteroids', name: 'Shuttle', season: 1, what: 'Asteroids ship', plus: true },
+  { id: 'lander-eagle', game: 'lander', name: 'Eagle', season: 1, what: 'Lander ship', plus: true },
+  { id: 'barrage-ringship', game: 'barrage', name: 'Ringship', season: 1, what: 'Barrage ship', plus: true },
+  { id: 'snake-nebula-tail', game: 'snake', name: 'Nebula tail', season: 1, what: 'Snake skin', plus: true },
+  { id: 'hotlap-midnight', game: 'hotlap', name: 'Midnight rocket', season: 1, what: 'Hot Lap car', plus: true },
 ]
 
 const KEY = 'skermix-skins'

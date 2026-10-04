@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
-import { fetchSeasonPreview, setSeasonPreview, type SeasonPreviewState } from '../lib/admin'
+import { useEffect, useState, type FormEvent } from 'react'
+import { fetchSeasonPreview, setSeasonPlus, setSeasonPreview, type SeasonPreviewState } from '../lib/admin'
+import { ApiError } from '../lib/leaderboard'
 import { refreshSeason } from '../lib/season'
+import { refreshTickets } from '../lib/tickets'
 
 /*
  * The admin page's switch for previewing the season before its first day (the API's seasons.ts): on, the
@@ -19,6 +21,36 @@ export function AdminSeasonPreview() {
   const [state, setState] = useState<SeasonPreviewState | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tag, setTag] = useState('')
+  const [plusBusy, setPlusBusy] = useState(false)
+  const [plusNote, setPlusNote] = useState<{ ok: boolean; text: string } | null>(null)
+
+  // Pass+ for a tag, given or taken back: to try the Pass+ row without paying. What it gave stays given.
+  const plus = async (on: boolean, event?: FormEvent) => {
+    event?.preventDefault()
+    const name = tag.trim().toUpperCase()
+    if (!name || plusBusy) return
+    setPlusBusy(true)
+    setPlusNote(null)
+    try {
+      const done = await setSeasonPlus(name, on)
+      setPlusNote({ ok: true, text: done.plus ? `${done.name} has Season ${done.season}’s Pass+ now.` : `${done.name}’s Pass+ is taken back. What it gave stays theirs.` })
+      void refreshSeason({ force: true })
+      void refreshTickets(true)
+    } catch (err) {
+      setPlusNote({
+        ok: false,
+        text:
+          err instanceof ApiError && err.code === 'NO_ACCOUNT'
+            ? `${name} has no account behind it.`
+            : err instanceof ApiError && err.code === 'NO_PLUS'
+              ? 'No season with a Pass+ right now.'
+              : 'That didn’t go through. Try again.',
+      })
+    } finally {
+      setPlusBusy(false)
+    }
+  }
 
   useEffect(() => {
     fetchSeasonPreview()
@@ -73,6 +105,28 @@ export function AdminSeasonPreview() {
           : 'Preview it to try the pass, the banner and the ring before its first day: it goes live on this server, counting tickets since the 1st of this month.'}
       </p>
       {error ? <p className="adm-fail">{error}</p> : null}
+      {season?.status === 'live' ? (
+        <>
+          <p className="adm-card__sub">Pass+: give it to a tag to try the Pass+ row without paying, or take it back.</p>
+          <form className="adm-form" onSubmit={(event) => void plus(true, event)}>
+            <input
+              className="panel__input adm-input adm-input--tag"
+              value={tag}
+              maxLength={12}
+              placeholder="TAG"
+              aria-label="Tag to give Pass+ to"
+              onChange={(event) => setTag(event.target.value.toUpperCase())}
+            />
+            <button type="submit" className="panel__btn adm-small" disabled={plusBusy || !tag.trim()}>
+              {plusBusy ? 'Saving…' : 'Give Pass+'}
+            </button>
+            <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={plusBusy || !tag.trim()} onClick={() => void plus(false)}>
+              Take it back
+            </button>
+          </form>
+          {plusNote ? <p className={plusNote.ok ? 'adm-note' : 'adm-fail'}>{plusNote.text}</p> : null}
+        </>
+      ) : null}
     </section>
   )
 }

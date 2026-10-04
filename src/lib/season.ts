@@ -24,6 +24,8 @@ export type SeasonReward = {
   game?: string
   /** Whether this release can give it yet. */
   ready: boolean
+  /** On the Pass+ row: given only with the season's Pass+. */
+  plus?: boolean
 }
 
 export type SeasonInfo = {
@@ -82,9 +84,16 @@ export type SeasonGoal = {
   reward: { kind: 'prize' | 'tickets'; id?: string; amount?: number; name: string }
 }
 
+/**
+ * A season's Pass+: a second row of looks on the same levels, bought once for the season (the API's
+ * payments.ts, through Stripe). `buyable` once payments are set up and the season is live.
+ */
+export type SeasonPlus = { price: number; currency: string; rewards: SeasonReward[]; owned: boolean; buyable: boolean }
+
 type SeasonAnswer = {
   season: SeasonInfo | null
   rewards: SeasonReward[]
+  plus?: SeasonPlus | null
   you: SeasonYou | null
   /** Only on the Season page's asking (catchup): they take more reading than the header wants. */
   standings?: SeasonStandings
@@ -235,4 +244,25 @@ export function seasonDates(season: SeasonInfo): string {
 export function daysLeftLabel(season: SeasonInfo): string {
   const n = season.daysLeft
   return n <= 1 ? 'Last day' : `${n} days left`
+}
+
+/** Pass+'s price as money: $4.99. */
+export function plusPrice(plus: Pick<SeasonPlus, 'price' | 'currency'>): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: plus.currency.toUpperCase() }).format(plus.price / 100)
+  } catch {
+    return `$${(plus.price / 100).toFixed(2)}`
+  }
+}
+
+/** Stripe's checkout for the live season's Pass+: its page's address, to go to. */
+export async function startPlusCheckout(): Promise<string> {
+  const { url } = await api<{ url: string }>('/season/plus/checkout', { method: 'POST', body: '{}' })
+  return url
+}
+
+/** Back from Stripe: the checkout, if it's paid, gives Pass+ now. Whether it was paid. */
+export async function confirmPlusCheckout(session: string): Promise<boolean> {
+  const { paid } = await api<{ paid: boolean }>('/season/plus/confirm', { method: 'POST', body: JSON.stringify({ session }) })
+  return paid
 }

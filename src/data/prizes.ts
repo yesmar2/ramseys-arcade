@@ -143,6 +143,25 @@ export const PRIZES: readonly Prize[] = [
       earned: { by: `Season 1’s pass, level ${level}`, short: 'Season 1' },
     }),
   ),
+  // Season 1's Pass+: its second row gives these at their levels (the API's seasons.ts).
+  ...(
+    [
+      ['nm-aurora', 'name', 'Aurora', 4, 'Your tag in an aurora’s ribbon of green, teal and violet.'],
+      ['cd-mission', 'card', 'Mission control', 10, 'Your card in mission control: a wall of screens with orbits, the moon’s map and the countdown.'],
+      ['cf-meteors', 'confetti', 'Meteor shower', 16, `Fiery meteors streaking across the screen ${CONFETTI}`],
+      ['t-commander', 'title', 'Commander', 25, LIT],
+      ['eclipse', 'finish', 'Eclipse', 30, 'Your badge as a total eclipse: a black moon, the sun’s corona round it, a diamond of light at its edge.'],
+    ] as const
+  ).map(
+    ([id, kind, name, level, blurb]): Prize => ({
+      id,
+      kind,
+      name,
+      price: 0,
+      blurb,
+      earned: { by: `Season 1’s Pass+, level ${level}`, short: 'Pass+' },
+    }),
+  ),
   {
     id: 't-regular',
     kind: 'title',

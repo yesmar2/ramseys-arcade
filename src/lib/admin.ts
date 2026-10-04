@@ -208,6 +208,11 @@ export function setSeasonPreview(on: boolean) {
   return api<SeasonPreviewState>('/admin/season-preview', { method: 'POST', body: JSON.stringify({ on }) })
 }
 
+/** A season's Pass+ for a tag's account, given or taken back, to try it without paying (the API's seasons.ts). */
+export function setSeasonPlus(name: string, on: boolean) {
+  return api<{ name: string; season: number; plus: boolean }>('/admin/season-plus', { method: 'POST', body: JSON.stringify({ name, on }) })
+}
+
 export function fetchPlayerStats(includeSeeded: boolean) {
   return api<PlayerStats>(`/admin/players${includeSeeded ? '?seeded=1' : ''}`)
 }

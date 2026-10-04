@@ -419,6 +419,8 @@ const KIND_COLOURS: Record<string, string[]> = {
   // Season 1's (Space Race, its pass).
   'cf-stardust': ['#f5b942', '#ffe7a3', '#8a6ad4', '#f2813a', '#b9a6f0', '#ffffff'],
   'cf-shooting': ['#ffffff', '#ffe7a3', '#b9a6f0', '#f5b942'],
+  // Season 1's Pass+.
+  'cf-meteors': ['#f2813a', '#f5b942', '#ff9a52', '#e8564f'],
 }
 
 /** A four-point sparkle around (0, 0), for Stardust and a shooting star's head. */
@@ -451,6 +453,46 @@ function shootingStars(w: number, h: number, colors: string[]): Piece[] {
       color: colors[i % colors.length]!,
       delay: i * 150 + Math.random() * 120,
     })
+  }
+  return pieces
+}
+
+/**
+ * A meteor shower: fireballs falling across the screen down to the right, three or four at once in waves,
+ * each shedding sparks behind it. On a phone they fall steeper and slower, so they cross its height and
+ * not just its top. A meteor's `h` is its tail, in frames of its travel; a spark has none, and drifts off
+ * its meteor's line as it fades.
+ */
+function meteorShower(w: number, h: number, colors: string[]): Piece[] {
+  const pieces: Piece[] = []
+  const phone = w < 640
+  const count = phone ? 12 : 16
+  for (let i = 0; i < count; i++) {
+    const speed = (phone ? 4.6 : 9) + Math.random() * 3
+    const vx = speed
+    const vy = speed * (phone ? 1.05 + Math.random() * 0.3 : 0.62 + Math.random() * 0.22)
+    const x = -w * 0.3 + Math.random() * w * 0.85
+    const y = -h * 0.15 + Math.random() * h * (phone ? 0.5 : 0.3)
+    const delay = Math.floor(i / 4) * 420 + Math.random() * 180
+    const color = colors[i % colors.length]!
+    pieces.push({ x, y, vx, vy, spin: 0, angle: 0, w: (phone ? 3.6 : 4.6) + Math.random() * 2.8, h: (phone ? 13 : 9) + Math.random() * 4, color, delay })
+    for (let j = 0; j < 4; j++) {
+      // Shed where the meteor will be by then: frames are a sixtieth of a second.
+      const after = 140 + j * 200 + Math.random() * 120
+      const f = after / (1000 / 60)
+      pieces.push({
+        x: x + vx * f,
+        y: y + vy * f,
+        vx: vx * 0.16 + (Math.random() - 0.5) * 1.8,
+        vy: vy * 0.16 + (Math.random() - 0.5) * 1.8,
+        spin: 0,
+        angle: 0,
+        w: 1.3 + Math.random() * 1.2,
+        h: 0,
+        color: j % 2 ? '#f5b942' : '#ffe7a3',
+        delay: delay + after,
+      })
+    }
   }
   return pieces
 }
@@ -503,8 +545,9 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
 
     const fireworks = style === 'cf-fireworks'
     const shooting = style === 'cf-shooting'
-    const pieces: Piece[] = fireworks ? fireworkSparks(w, h, colors) : shooting ? shootingStars(w, h, colors) : []
-    const count = fireworks || shooting ? 0 : w < 640 ? 70 : 110
+    const meteors = style === 'cf-meteors'
+    const pieces: Piece[] = fireworks ? fireworkSparks(w, h, colors) : shooting ? shootingStars(w, h, colors) : meteors ? meteorShower(w, h, colors) : []
+    const count = fireworks || shooting || meteors ? 0 : w < 640 ? 70 : 110
     for (let i = 0; i < count; i++) {
       const side = i % 2 ? 1 : -1
       const x = w / 2 + side * (w * 0.12 + Math.random() * w * 0.2)
@@ -577,6 +620,64 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
           sparkleShape(ctx, p.w)
           ctx.fill()
           ctx.restore()
+          ctx.globalAlpha = 1
+          continue
+        }
+        if (meteors) {
+          p.x += p.vx * dt
+          p.y += p.vy * dt
+          if (!p.h) {
+            // A spark: a hot dot that slows, droops and goes out.
+            const age = (t - p.delay) / 800
+            if (age >= 1) continue
+            p.vy += 0.03 * dt
+            p.vx *= 0.97
+            p.vy *= 0.97
+            ctx.globalAlpha = fade * (1 - age)
+            ctx.fillStyle = p.color
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, p.w, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.globalAlpha = 1
+            continue
+          }
+          // A meteor: a burning tail tapering back along its line, cooling from amber to red, and a white-hot head.
+          const tx = p.x - p.vx * p.h
+          const ty = p.y - p.vy * p.h
+          const len = Math.hypot(p.vx, p.vy)
+          const nx = (-p.vy / len) * p.w
+          const ny = (p.vx / len) * p.w
+          const tail = ctx.createLinearGradient(tx, ty, p.x, p.y)
+          tail.addColorStop(0, 'rgba(232,86,79,0)')
+          tail.addColorStop(0.45, `${p.color}aa`)
+          tail.addColorStop(0.85, '#ffd27a')
+          tail.addColorStop(1, '#fff6e0')
+          ctx.globalAlpha = fade
+          ctx.fillStyle = tail
+          ctx.beginPath()
+          ctx.moveTo(tx, ty)
+          ctx.lineTo(p.x + nx, p.y + ny)
+          ctx.lineTo(p.x - nx, p.y - ny)
+          ctx.closePath()
+          ctx.fill()
+          // The head flickers as it burns.
+          const r = p.w * (1 + 0.12 * Math.sin((t + p.delay * 5) / 45))
+          const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3.2)
+          glow.addColorStop(0, 'rgba(255,214,140,0.75)')
+          glow.addColorStop(0.4, 'rgba(242,129,58,0.35)')
+          glow.addColorStop(1, 'rgba(242,129,58,0)')
+          ctx.fillStyle = glow
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, r * 3.2, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillStyle = '#fff6e0'
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillStyle = '#ffffff'
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, r * 0.55, 0, Math.PI * 2)
+          ctx.fill()
           ctx.globalAlpha = 1
           continue
         }

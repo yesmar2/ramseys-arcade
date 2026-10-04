@@ -61,6 +61,8 @@ function finishRim(badge: AvatarBadge): string {
       return 'rgba(242,129,58,0.45)'
     case 'supernova':
       return 'rgba(255,240,200,0.5)'
+    case 'eclipse':
+      return 'rgba(255,231,163,0.22)'
     case 'pixels':
       return 'rgba(10,16,24,0.35)'
     case 'paper':
@@ -134,6 +136,8 @@ function monoInks(avatar: Avatar): { pattern: string; letter: string; line: stri
       return { pattern: '', letter: '#ffffff', line: '#f2813a' }
     case 'supernova':
       return { pattern: '', letter: '#1a1240', line: '#ffffff' }
+    case 'eclipse':
+      return { pattern: '', letter: '#f4f0ff', line: '#f5b942' }
     case 'glitter':
     case 'pixels':
       return { pattern: '', letter: inkOn(body, INK), line }
@@ -249,6 +253,49 @@ const SEASON_STARS: [number, number, number][] = [
   [10, 37, 0.5],
 ]
 
+/*
+ * Season 1's Pass+ finish, Eclipse: a black moon over the sun, the corona round it with soft streamers,
+ * and the diamond of light where the sun last shows. The moon sits a little low so the line under a
+ * monogram stays on it.
+ */
+const ECLIPSE_MOON = { cx: 32, cy: 35, r: 20 }
+const ECLIPSE_RAYS: string = (() => {
+  const { cx, cy, r } = ECLIPSE_MOON
+  const rays: [number, number][] = [
+    [-110, 7],
+    [-78, 5],
+    [-22, 7.5],
+    [14, 5],
+    [50, 6.5],
+    [94, 5],
+    [134, 7.5],
+    [172, 5.5],
+    [210, 7],
+    [244, 5],
+  ]
+  const f = (v: number) => v.toFixed(2)
+  let d = ''
+  for (const [deg, len] of rays) {
+    const a = (deg * Math.PI) / 180
+    const ux = Math.cos(a)
+    const uy = Math.sin(a)
+    const bx = cx + ux * (r - 0.5)
+    const by = cy + uy * (r - 0.5)
+    d += `M${f(bx - uy * 1.8)} ${f(by + ux * 1.8)}L${f(cx + ux * (r + len))} ${f(cy + uy * (r + len))}L${f(bx + uy * 1.8)} ${f(by - ux * 1.8)}Z`
+  }
+  return d
+})()
+const ECLIPSE_DIAMOND = (() => {
+  const a = (-50 * Math.PI) / 180
+  return [Number((ECLIPSE_MOON.cx + Math.cos(a) * ECLIPSE_MOON.r).toFixed(2)), Number((ECLIPSE_MOON.cy + Math.sin(a) * ECLIPSE_MOON.r).toFixed(2))] as const
+})()
+const ECLIPSE_STARS: [number, number, number][] = [
+  [12, 20, 0.6],
+  [24, 10.5, 0.5],
+  [11, 46, 0.55],
+  [55, 26, 0.5],
+]
+
 function SeasonSurface({ badge, uid }: { badge: AvatarBadge; uid: string }) {
   const clip = (
     <clipPath id={`${uid}disc`}>
@@ -312,6 +359,46 @@ function SeasonSurface({ badge, uid }: { badge: AvatarBadge; uid: string }) {
           <path d={sparkle(47, 18, 1.5)} fill="#f4f0ff" />
         </>
       )
+    case 'eclipse': {
+      const { cx, cy, r } = ECLIPSE_MOON
+      const [dx, dy] = ECLIPSE_DIAMOND
+      return (
+        <>
+          <defs>
+            <radialGradient id={`${uid}sky`} cx="0.5" cy="0.5" r="0.6">
+              <stop offset="0" stopColor="#1a2252" />
+              <stop offset="1" stopColor="#060818" />
+            </radialGradient>
+            <radialGradient id={`${uid}corona`} gradientUnits="userSpaceOnUse" cx={cx} cy={cy} r="28">
+              <stop offset="0.7" stopColor="#ffffff" />
+              <stop offset="0.75" stopColor="#fff2cf" stopOpacity="0.9" />
+              <stop offset="0.83" stopColor="#ffe7a3" stopOpacity="0.4" />
+              <stop offset="0.93" stopColor="#f5b942" stopOpacity="0.08" />
+              <stop offset="1" stopColor="#f5b942" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id={`${uid}flare`}>
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="0.35" stopColor="#fff2cf" stopOpacity="0.8" />
+              <stop offset="1" stopColor="#f5b942" stopOpacity="0" />
+            </radialGradient>
+            {clip}
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}sky)`} />
+          {ECLIPSE_STARS.map(([x, y, s]) => (
+            <circle key={`${x}-${y}`} cx={x} cy={y} r={s} fill="#fff" opacity="0.75" />
+          ))}
+          <g clipPath={`url(#${uid}disc)`}>
+            <path d={ECLIPSE_RAYS} fill="#ffe7a3" opacity="0.5" />
+            <circle cx={cx} cy={cy} r="28" fill={`url(#${uid}corona)`} />
+          </g>
+          <circle cx={cx} cy={cy} r={r} fill="#05060f" />
+          <circle cx={cx} cy={cy} r={r - 0.35} fill="none" stroke="#fff6e0" strokeWidth="0.7" opacity="0.85" />
+          <circle cx={dx} cy={dy} r="6" fill={`url(#${uid}flare)`} />
+          <path d={sparkle(dx, dy, 5.2)} fill="#ffffff" />
+          <circle cx={dx} cy={dy} r="1.4" fill="#ffffff" />
+        </>
+      )
+    }
     default:
       // Supernova: the badge in the bright heart of a nebula, a comet going by.
       return (
@@ -348,6 +435,7 @@ function FinishSurface({ avatar, uid }: { avatar: Avatar; uid: string }) {
     case 'ringed':
     case 'mission':
     case 'supernova':
+    case 'eclipse':
       return <SeasonSurface badge={avatar.badge} uid={uid} />
     case 'pixels': {
       const steps = [mixColor(body, '#ffffff', 0.42), mixColor(body, '#ffffff', 0.16), body, mixColor(body, NAVY, 0.32)]

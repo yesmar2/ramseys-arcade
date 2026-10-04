@@ -198,6 +198,29 @@ function StyledTag({ style, name, x, y, size, id }: { style: string; name: strin
           </text>
         </>
       )
+    // Season 1's Pass+: an aurora's ribbon, softly lit.
+    case 'nm-aurora':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${id}a`} x1="0" y1="0.3" x2="1" y2="0.7">
+              <stop offset="0" stopColor="#5fe0c8" />
+              <stop offset="0.34" stopColor="#5cc8ec" />
+              <stop offset="0.68" stopColor="#a68cf2" />
+              <stop offset="1" stopColor="#ff8fcf" />
+            </linearGradient>
+            <filter id={`${id}g`} x="-30%" y="-60%" width="160%" height="220%">
+              <feGaussianBlur stdDeviation="2.4" />
+            </filter>
+          </defs>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill={`url(#${id}a)`} opacity="0.7" filter={`url(#${id}g)`}>
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill={`url(#${id}a)`}>
+            {name}
+          </text>
+        </>
+      )
     case 'nm-neon':
       return (
         <>
@@ -476,6 +499,56 @@ function Fireworks() {
   )
 }
 
+/** Meteors falling over the shelf, down to the right: where each head is, how long its tail, how thick. */
+const METEORS: [number, number, number, number][] = [
+  [116, 60, 62, 4.2],
+  [70, 38, 44, 3.2],
+  [142, 100, 46, 3.4],
+  [58, 98, 34, 2.6],
+  [104, 20, 24, 2.2],
+]
+const METEOR_SPARKS: [number, number, number][] = [
+  [92, 36, 1.3],
+  [99, 48, 0.9],
+  [52, 24, 1.1],
+  [124, 82, 1.2],
+  [42, 84, 0.9],
+  [86, 8, 0.8],
+]
+
+/** A meteor shower over the shelf: fireballs with burning tails, white-hot at the head, sparks shed behind. */
+function Meteors({ id }: { id: string }) {
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${id}m`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#e8564f" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#f2813a" stopOpacity="0.6" />
+          <stop offset="0.88" stopColor="#ffd27a" />
+          <stop offset="1" stopColor="#fff6e0" />
+        </linearGradient>
+        <radialGradient id={`${id}h`}>
+          <stop offset="0" stopColor="#ffd68c" stopOpacity="0.8" />
+          <stop offset="0.4" stopColor="#f2813a" stopOpacity="0.35" />
+          <stop offset="1" stopColor="#f2813a" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <Shadow rx={22} />
+      {METEOR_SPARKS.map(([x, y, r], i) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill={i % 2 ? '#f5b942' : '#ffe7a3'} />
+      ))}
+      {METEORS.map(([x, y, len, r]) => (
+        <g key={`${x}-${y}`} transform={`translate(${x} ${y}) rotate(36)`}>
+          <path d={`M${-len} 0L0 ${-r}L0 ${r}Z`} fill={`url(#${id}m)`} />
+          <circle r={r * 3} fill={`url(#${id}h)`} />
+          <circle r={r} fill="#fff6e0" />
+          <circle r={r * 0.55} fill="#ffffff" />
+        </g>
+      ))}
+    </>
+  )
+}
+
 const POPPER_SEEDS: Record<string, number> = { 'cf-tickets': 3, 'cf-stars': 9, 'cf-hearts': 14, 'cf-pixels': 5, 'cf-stardust': 31, 'cf-shooting': 17 }
 
 /** A four-point sparkle, for Stardust and the shooting stars. */
@@ -485,9 +558,10 @@ function sparkle4(x: number, y: number, s: number) {
 }
 const PIXEL_COLOURS = ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b']
 
-/** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own. */
+/** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own, and meteors fall. */
 function Popper({ kind, id }: { kind: string; id: string }) {
   if (kind === 'cf-fireworks') return <Fireworks />
+  if (kind === 'cf-meteors') return <Meteors id={id} />
   const rnd = seeded(POPPER_SEEDS[kind] ?? 21)
   const bits: ReactNode[] = []
   for (let i = 0; i < 15; i++) {

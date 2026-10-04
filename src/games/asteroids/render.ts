@@ -13,7 +13,7 @@ import {
   type Saucer,
 } from './game'
 import { getGame } from '../../data/games'
-import { COMET_SHIP, drawSkinArt } from '../../lib/skinArt'
+import { ASTEROIDS_ART, drawSkinArt } from '../../lib/skinArt'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 
 /*
@@ -291,14 +291,15 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
     }
   }
 
-  if (comet) {
-    // The Comet, drawn from the pass's own picture (lib/skinArt.ts): its nose on the hull's nose and as long
+  const drawn = skin ? ASTEROIDS_ART[skin] : undefined
+  if (drawn) {
+    // A skin, drawn from the pass's own picture (lib/skinArt.ts): its nose on the hull's nose and as long
     // as the hull, which is still what's measured.
-    const k = (r * 1.82) / 72
+    const k = (r * 1.82) / (drawn.tail - drawn.nose)
     ctx.rotate(Math.PI / 2)
     ctx.scale(k, k)
-    ctx.translate(-50, -12 - (r * 1.08) / k)
-    drawSkinArt(ctx, COMET_SHIP.body, Math.max(2.2, 2.8 * scale) / k)
+    ctx.translate(-50, -drawn.nose - (r * 1.08) / k)
+    drawSkinArt(ctx, drawn.art.body, Math.max(2.2, 2.8 * scale) / k)
     ctx.restore()
     if (shielded) drawShield(ctx, state, r, scale, dark, t)
     return

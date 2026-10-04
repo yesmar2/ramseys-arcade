@@ -99,6 +99,14 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
     case 'supernova':
     case 'cf-stardust':
       return 'rgba(245,185,66,0.22)'
+    // Season 1's Pass+.
+    case 'nm-aurora':
+      return 'rgba(95,224,200,0.22)'
+    case 'cd-mission':
+    case 'cf-meteors':
+      return 'rgba(242,129,58,0.22)'
+    case 'eclipse':
+      return 'rgba(255,231,163,0.22)'
     default:
       if (prize.kind === 'title' && plateTier(prize) === 'lit') return 'rgba(255,95,162,0.18)'
       if (prize.kind === 'title' && plateTier(prize) === 'enamel') return 'rgba(58,134,200,0.18)'

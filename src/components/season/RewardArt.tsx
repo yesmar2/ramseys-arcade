@@ -1,10 +1,12 @@
 import { useId, type ReactNode } from 'react'
+import { prizeById } from '../../data/prizes'
 import type { Avatar, AvatarBadge } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
 import { SPACE, sparklePath } from '../../lib/seasonArt'
+import midnightRocketPicture from '../../assets/season/midnight-rocket.webp'
 import rocketCarPicture from '../../assets/season/rocket-car.webp'
-import { COMET_SHIP, COMET_TAIL, NOVA_FIGHTER } from '../../lib/skinArt'
+import { COMET_SHIP, COMET_TAIL, EAGLE, NEBULA_TAIL, NOVA_FIGHTER, RINGSHIP, SHUTTLE, type SkinArt, type SnakeTail } from '../../lib/skinArt'
 import { ArtShapes, MissionPatch, Moonhopper, Rocket } from './SeasonArt'
 
 /*
@@ -96,28 +98,44 @@ export function NovaFighter() {
  * game's camera sees it, rendered once in a browser (WebGL) and kept as a file. Re-render it if the car
  * changes, so the pass never shows another car than the one you drive.
  */
-export function RocketCar() {
-  return <image href={rocketCarPicture} x="0" y="0" width="100" height="100" />
+export function RocketCar({ picture = rocketCarPicture }: { picture?: string }) {
+  return <image href={picture} x="0" y="0" width="100" height="100" />
+}
+
+/** A ship skin's picture from its game's own drawing (lib/skinArt.ts), with its flame or without. */
+function ShipArt({ art, flame = true }: { art: SkinArt; flame?: boolean }) {
+  return (
+    <>
+      {flame ? <ArtShapes shapes={art.flame} /> : null}
+      <ArtShapes shapes={art.body} />
+    </>
+  )
 }
 
 // The Comet tail's path on the board, head last: one bead every 12, as Snake lays one every spacing.
 const SNAKE: [number, number][] = [[18, 78], [30, 78], [42, 78], [54, 78], [66, 78], [66, 66], [66, 54], [54, 54], [42, 54], [30, 54], [30, 42], [30, 30], [42, 30], [54, 30], [66, 30]]
 
-export function CometTail() {
+/** A bead tail's picture (Snake's skins), drawn as Snake draws it. */
+function BeadTail({ tail, spark }: { tail: SnakeTail; spark: string }) {
   const step = 12
+  const rgb = (c: readonly number[]) => `rgb(${c.join(',')})`
   return (
     <>
       {SNAKE.map(([x, y], i) => {
-        const bead = COMET_TAIL.bead((SNAKE.length - 1 - i) / (SNAKE.length - 1))
-        return <circle key={i} cx={x} cy={y} r={(bead.r * step).toFixed(1)} fill={`rgb(${bead.rgb.join(',')})`} opacity={bead.alpha.toFixed(2)} />
+        const bead = tail.bead((SNAKE.length - 1 - i) / (SNAKE.length - 1))
+        return <circle key={i} cx={x} cy={y} r={(bead.r * step).toFixed(1)} fill={rgb(bead.rgb)} opacity={bead.alpha.toFixed(2)} />
       })}
-      <circle cx="80" cy="30" r={COMET_TAIL.glow * step} fill={SPACE.amber} opacity="0.3" />
-      <circle cx="80" cy="30" r={COMET_TAIL.head * step} fill="#ffffff" stroke={SPACE.amber} strokeWidth="2" />
-      <circle cx="83" cy="26" r="1.8" fill={SPACE.night} />
-      <circle cx="83" cy="34" r="1.8" fill={SPACE.night} />
-      <Spark x={20} y={30} s={5} c={SPACE.orange} />
+      <circle cx="80" cy="30" r={tail.glow * step} fill={rgb(tail.glowColor)} opacity="0.3" />
+      <circle cx="80" cy="30" r={tail.head * step} fill={rgb(tail.headFill)} stroke={rgb(tail.headRing)} strokeWidth="2" />
+      <circle cx="83" cy="26" r="1.8" fill={tail.eyes} />
+      <circle cx="83" cy="34" r="1.8" fill={tail.eyes} />
+      <Spark x={20} y={30} s={5} c={spark} />
     </>
   )
+}
+
+export function CometTail() {
+  return <BeadTail tail={COMET_TAIL} spark={SPACE.orange} />
 }
 
 function FinishArt({ badge, size }: { badge: AvatarBadge; size: number }) {
@@ -218,6 +236,37 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       </text>
     </Board>
   ),
+  // Its Pass+ row's looks.
+  'nm-aurora': (size) => (
+    <Board size={size}>
+      <NamePlate fill="#0b1030">
+        <path d="M4 48C24 36 40 54 60 42S86 30 96 38" fill="none" stroke="#5fe0c8" strokeWidth="9" opacity="0.18" />
+        <path d="M4 60C22 50 44 66 64 54S88 46 96 52" fill="none" stroke={SPACE.violet} strokeWidth="8" opacity="0.22" />
+        <text x="50" y="61" textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize="24">
+          <tspan fill="#5fe0c8">A</tspan>
+          <tspan fill="#a68cf2">C</tspan>
+          <tspan fill="#ff8fcf">E</tspan>
+        </text>
+      </NamePlate>
+    </Board>
+  ),
+  eclipse: (size) => <FinishArt badge="eclipse" size={size} />,
+  'cd-mission': (size) => <CardArt theme="cd-mission" size={size} />,
+  'cf-meteors': (size) => (
+    <Board size={size}>
+      {([[10, 12, 40, 5, SPACE.orange], [52, 20, 30, 3.8, SPACE.amber], [24, 50, 36, 4.4, SPACE.red], [62, 60, 26, 3.2, SPACE.orange]] as const).map(([x, y, len, r, c]) => (
+        <g key={`${x}-${y}`} transform={`translate(${x + len * 0.81} ${y + len * 0.59}) rotate(36)`}>
+          <path d={`M${-len} 0L0 ${-r}L0 ${r}Z`} fill={c} opacity="0.6" />
+          <path d={`M${-len * 0.45} 0L0 ${-r * 0.6}L0 ${r * 0.6}Z`} fill={SPACE.amber} />
+          <circle r={r * 2.2} fill={SPACE.amber} opacity="0.3" />
+          <circle r={r} fill="#fff6e0" />
+        </g>
+      ))}
+      <circle cx="40" cy="26" r="1.4" fill={SPACE.amber} />
+      <circle cx="74" cy="44" r="1.2" fill="#ffe7a3" />
+      <circle cx="46" cy="70" r="1.3" fill={SPACE.amber} />
+    </Board>
+  ),
   'lander-moonhopper': (size) => (
     <Board size={size}>
       <Lander />
@@ -243,6 +292,32 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       <CometTail />
     </Board>
   ),
+  // Season 1's Pass+ skins.
+  'asteroids-shuttle': (size) => (
+    <Board size={size}>
+      <ShipArt art={SHUTTLE} />
+    </Board>
+  ),
+  'lander-eagle': (size) => (
+    <Board size={size}>
+      <ShipArt art={EAGLE} flame={false} />
+    </Board>
+  ),
+  'barrage-ringship': (size) => (
+    <Board size={size}>
+      <ShipArt art={RINGSHIP} />
+    </Board>
+  ),
+  'snake-nebula-tail': (size) => (
+    <Board size={size}>
+      <BeadTail tail={NEBULA_TAIL} spark="#5fe0c8" />
+    </Board>
+  ),
+  'hotlap-midnight': (size) => (
+    <Board size={size}>
+      <RocketCar picture={midnightRocketPicture} />
+    </Board>
+  ),
 }
 
 export type RewardLike = { kind: string; id?: string; name: string; amount?: number }
@@ -255,7 +330,8 @@ export function RewardArt({ reward, size }: { reward: RewardLike; size: number }
       </Board>
     )
   }
-  if (reward.kind === 'title') {
+  // A title: its plate. The pass sends titles as prizes, so the catalogue says which they are.
+  if (reward.kind === 'title' || (reward.kind === 'prize' && reward.id && prizeById(reward.id)?.kind === 'title')) {
     return (
       <Board size={size}>
         <Title text={reward.name} />

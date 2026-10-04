@@ -1,6 +1,6 @@
 import { ALIEN_H, alienMiddle, type Alien } from './alien'
 import type { GhostPose } from './runs'
-import { drawSkinArt, MOONHOPPER, type SkinArt } from '../../lib/skinArt'
+import { drawSkinArt, LANDER_ART, type SkinArt } from '../../lib/skinArt'
 import { FOOT, G, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Cave } from './sim'
 
 /*
@@ -75,8 +75,6 @@ type Shard = { x: number; y: number; vx: number; vy: number; a: number; spin: nu
 /** A Lander skin's board to the ship: its feet, 52 apart on the board, on the hull's feet. */
 const HOPPER_SCALE = FOOT / 26
 
-/** Lander's skins (lib/skins.ts), each drawn from the pass's own picture (lib/skinArt.ts). */
-const LANDER_ART: Record<string, SkinArt> = { 'lander-moonhopper': MOONHOPPER }
 
 /** The hull's outline as Asteroids drew it: nose, wing, notch, wing. */
 const OUTLINE = [SHIP.nose, SHIP.wing, SHIP.notch, [-SHIP.wing[0], SHIP.wing[1]]] as const

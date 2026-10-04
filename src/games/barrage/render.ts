@@ -1,5 +1,5 @@
 import { withAlpha } from '../../lib/color'
-import { drawSkinArt, NOVA_FIGHTER } from '../../lib/skinArt'
+import { BARRAGE_ART, drawSkinArt } from '../../lib/skinArt'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import {
   BANNER_TIME,
@@ -691,8 +691,9 @@ function drawShip(g: Gfx) {
   const cx = X(sh.x)
   const cy = Y(sh.y)
   const w = U(SHIP_W)
-  // The Nova fighter (Season 1's skin) keeps the same size and the same heart; its flame burns orange.
-  const nova = g.skin === 'barrage-nova'
+  // A skin (Season 1's Nova fighter, Ringship) keeps the same size and the same heart; its flame burns orange.
+  const drawn = g.skin ? BARRAGE_ART[g.skin] : undefined
+  const nova = drawn != null
   const line = nova ? (dark ? '#b49cec' : '#6a4fb8') : hsla(SHIP_HUE, 58, lineL(dark), 0.98)
   const fill = nova ? (dark ? 'rgba(244, 240, 255, 0.92)' : '#f4f0ff') : hsla(SHIP_HUE, 62, 58, dark ? 0.3 : 0.36)
   const lw = Math.max(1.3, w * 0.045)
@@ -717,13 +718,13 @@ function drawShip(g: Gfx) {
   ctx.closePath()
   ctx.fill()
 
-  if (nova) {
-    // The Nova fighter, drawn from the pass's own picture (lib/skinArt.ts), nose to tail as long as the usual
-    // ship. Only its heart is ever hit, and that's drawn on top as always.
+  if (drawn) {
+    // The skin, drawn from the pass's own picture (lib/skinArt.ts), nose to tail as long as the usual ship.
+    // Only its heart is ever hit, and that's drawn on top as always.
     const k = (w * 0.9) / 70
     ctx.scale(bank * k, k)
     ctx.translate(-50, -10 - (w * 0.56) / k)
-    drawSkinArt(ctx, NOVA_FIGHTER.body, lw / k)
+    drawSkinArt(ctx, drawn.body, lw / k)
   } else {
     // Wings.
     ctx.strokeStyle = line

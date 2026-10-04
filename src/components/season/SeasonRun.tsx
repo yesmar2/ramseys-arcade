@@ -59,7 +59,10 @@ export function SeasonLevelUp({ run }: { run: SeasonRun }) {
               <RewardArt reward={reward} size={56} />
             </span>
             <span className="run-levelup__what">
-              <b>{reward.kind === 'tickets' ? `+${reward.amount ?? 0} tickets` : reward.name}</b>
+              <b>
+                {reward.kind === 'tickets' ? `+${reward.amount ?? 0} tickets` : reward.name}
+                {reward.plus ? <span className="run-levelup__plus">Pass+</span> : null}
+              </b>
               <small>{reward.ready ? (reward.kind === 'tickets' ? 'Added to your tickets' : `${reward.what} · it’s yours`) : `${reward.what} · on its way`}</small>
               {reward.kind === 'skin' && reward.game && reward.ready ? <UseSkin game={reward.game} id={reward.id} /> : null}
             </span>
