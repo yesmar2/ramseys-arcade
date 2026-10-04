@@ -1,0 +1,92 @@
+/*
+ * A Plus member's mark beside their tag (components/PlusMark.tsx). It sits inside the name's own span, so it
+ * undoes whatever a name style puts on its letters: gradient fills, outlines, glows, animations.
+ */
+.plus-mark {
+  display: inline-grid;
+  place-items: center;
+  /* Sized by the name, but never big beside a big one. */
+  width: min(0.95em, 1.15rem);
+  height: min(0.95em, 1.15rem);
+  margin-left: min(0.32em, 0.4rem);
+  vertical-align: middle;
+  border-radius: 0.28em;
+  background: linear-gradient(140deg, #f5b942, #f2813a);
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  filter: none;
+  animation: none;
+  transform: none;
+  flex: none;
+}
+
+.plus-mark svg {
+  display: block;
+  width: 72%;
+  height: 72%;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+/* A player card's big name goes without it: the card says "Plus member" under it instead. */
+.pcard__name .plus-mark {
+  display: none;
+}
+
+/* On a member's player card, under the name: who's on Plus, and the way to it (components/PlayerCard.tsx). */
+.pcard-plus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.7rem 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #8a4b05;
+  background: rgba(245, 185, 66, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(242, 129, 58, 0.35);
+  text-decoration: none;
+}
+
+.pcard-plus .plus-mark {
+  margin-left: 0;
+}
+
+.pcard-plus:hover,
+.pcard-plus:focus-visible {
+  background: rgba(245, 185, 66, 0.32);
+}
+
+/* Dark pages, and a card in a theme from the prize counter, which is dark whatever the page. */
+html[data-theme='dark'] .pcard-plus,
+.pcard--themed .pcard-plus {
+  color: #ffd27a;
+}
+
+/* As an icon: the menu's Plus row (components/SiteMenu.tsx). */
+.plus-mark--icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  font-size: 1rem;
+  border-radius: 0.38rem;
+}
+
+/* The menu's "Free week": Plus's own colours, not the red of something waiting on you. */
+.site-menu__badge--plus {
+  background: rgba(245, 185, 66, 0.22);
+  color: #8a4b05;
+}
+
+html[data-theme='dark'] .site-menu__badge--plus {
+  color: #ffd27a;
+}

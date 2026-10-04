@@ -1,5 +1,9 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { seasonHref } from '../../hooks/useHashRoute'
-import { rewardPhrase, useSeason, type SeasonRun } from '../../lib/season'
+import { boardDay } from '../../lib/rankHow'
+import { rewardPhrase, useSeason, type SeasonReward, type SeasonRun } from '../../lib/season'
+import { LockIcon } from '../chromeIcons'
 import { RewardArt } from './RewardArt'
 import { MissionPatch } from './SeasonArt'
 import { UseSkin } from './SkinPicker'
@@ -44,9 +48,48 @@ export function SeasonRunLine({ run }: { run: SeasonRun }) {
   )
 }
 
+/** The day a player last heard what Pass+ had at a level they reached: once a day is plenty. */
+const MISSED_KEY = 'skermix-passplus-missed'
+
+/**
+ * For a player without Pass+ (or Plus), the Pass+ rewards at the levels this run reached, and how many are
+ * waiting all told: the moment Pass+ is worth the most, since what it had there is theirs at once. Said on
+ * a level up only, once a day at most, and never on Plus's free week, which gives them with its first payment.
+ */
+function useMissedPlus(run: SeasonRun): { missed: SeasonReward[]; waiting: number } | null {
+  const { season, plus } = useSeason()
+  const { isPlus } = useAuth()
+  const [today] = useState(boardDay)
+  const [heardToday] = useState(() => {
+    try {
+      return localStorage.getItem(MISSED_KEY) === today
+    } catch {
+      return false
+    }
+  })
+  const found = useMemo(() => {
+    if (!plus || plus.owned || isPlus || !season || season.id !== run.id || !run.levelUp.length) return null
+    const before = run.earned - run.added
+    const from = before <= 0 ? 0 : Math.min(run.levels, 1 + Math.floor(before / season.perLevel))
+    const missed = plus.rewards.filter((r) => r.level > from && r.level <= run.level)
+    if (!missed.length) return null
+    return { missed, waiting: plus.rewards.filter((r) => r.level <= run.level).length }
+  }, [plus, isPlus, season, run])
+  useEffect(() => {
+    if (!found || heardToday) return
+    try {
+      localStorage.setItem(MISSED_KEY, today)
+    } catch {
+      // Said again next time, then.
+    }
+  }, [found, heardToday, today])
+  return heardToday ? null : found
+}
+
 /** A level reached on this run: its number on the season's patch, and what it gave. */
 export function SeasonLevelUp({ run }: { run: SeasonRun }) {
   const shown = run.levelUp.slice(-3)
+  const plus = useMissedPlus(run)
   return (
     <div className="run-levelup" role="status">
       <span className="run-levelup__kick">Level up</span>
@@ -69,8 +112,25 @@ export function SeasonLevelUp({ run }: { run: SeasonRun }) {
           </li>
         ))}
       </ul>
+      {plus ? (
+        <p className="run-levelup__missed">
+          <span className="run-levelup__missed-lock" aria-hidden="true">
+            <LockIcon />
+          </span>
+          <span>
+            <b>
+              Pass+ had {rewardPhrase(plus.missed[0]!)} here
+              {plus.missed.length > 1 ? ` and ${plus.missed.length - 1} more` : ''}.
+            </b>
+            <small>
+              {plus.waiting === 1 ? '1 Pass+ reward is' : `${plus.waiting} Pass+ rewards are`} waiting for you: Pass+ or Plus gives{' '}
+              {plus.waiting === 1 ? 'it' : 'them all'} at once.
+            </small>
+          </span>
+        </p>
+      ) : null}
       <a className="run-levelup__go" href={seasonHref()}>
-        See the pass
+        {plus ? 'See Pass+' : 'See the pass'}
       </a>
     </div>
   )

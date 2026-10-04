@@ -2,9 +2,11 @@ import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 import { plateTier, prizeById } from '../data/prizes'
 import { parseAvatar, wornPrize } from '../lib/avatars'
 import { PlayerName } from './PlayerName'
+import { PlusMark } from './PlusMark'
 import { CardBackdrop } from './prizes/PrizeArt'
 import { SignArt } from './prizes/SignArt'
-import { navigate, rankHref } from '../hooks/useHashRoute'
+import { navigate, plusHref, rankHref } from '../hooks/useHashRoute'
+import { usePlusMember } from '../lib/plus'
 import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
 import {
@@ -324,6 +326,7 @@ export function PlayerCard({
   const theme = wornPrize(look, 'card')
   const title = prizeById(wornPrize(look, 'title'))
   const sign = wornPrize(look, 'sign')
+  const member = usePlusMember(name)
   const word = periodWord(period)
   const said = loading ? null : standing({ name, isSelf, period, ranks, data, where })
   const rank = data.rank
@@ -401,6 +404,13 @@ export function PlayerCard({
             </h1>
           )}
           {title ? <span className={`prize-plate prize-plate--${plateTier(title)} pcard__title`}>{title.name}</span> : null}
+          {member ? (
+            // A member's card says so, and where Plus is: the way someone hears of it from a player they look up.
+            <a className="pcard-plus" href={plusHref()}>
+              <PlusMark name={name} />
+              {isSelf ? 'You’re on Plus' : 'Plus member'}
+            </a>
+          ) : null}
           <p className="pcard__head">{said ? said.head : <Skel w="16ch" />}</p>
           <p className="pcard__sub">{said ? said.sub : <Skel w="24ch" />}</p>
           {/* Past the top ten there is no line: the whole-board bar is on How your rank works. */}

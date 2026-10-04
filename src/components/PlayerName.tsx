@@ -1,11 +1,12 @@
 import { wornPrizeOf } from '../lib/avatars'
 import { nameStyleClass } from '../lib/nameStyle'
+import { PlusMark } from './PlusMark'
 
 /*
  * A tag as it shows on a board, in the name style its owner wears from the
  * prize counter (Outline, Retro, Pixel, Glitch, Candy, Neon or Ember), read
  * off the avatar string every row already carries. Styles are in
- * styles/prizes.css.
+ * styles/prizes.css. A Plus member's tag has its mark after it (PlusMark).
  */
 
 export function PlayerName({
@@ -23,5 +24,10 @@ export function PlayerName({
 }) {
   const worn = style !== undefined ? style : wornPrizeOf(avatarId, 'name')
   const cls = [className, nameStyleClass(worn)].filter(Boolean).join(' ')
-  return <span className={cls || undefined}>{name}</span>
+  return (
+    <span className={cls || undefined}>
+      {name}
+      <PlusMark name={name} />
+    </span>
+  )
 }

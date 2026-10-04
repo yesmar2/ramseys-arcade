@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode, type Ref } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { useTickets } from '../lib/tickets'
 import { daysLeftLabel, liveSeason, useSeason } from '../lib/season'
 import { TicketGlyph } from './prizes/Ticket'
@@ -8,6 +8,7 @@ import {
   aboutHref,
   adminHref,
   notificationSettingsHref,
+  plusHref,
   privacyHref,
   rankHref,
   prizesHref,
@@ -48,6 +49,9 @@ import { useInboxLook } from '../hooks/useNotifications'
 import { inboxSummary } from '../lib/notifications'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { PlayerAvatar } from './PlayerAvatar'
+import { PlusGlyph } from './PlusMark'
+import { useAuth } from '../hooks/useAuth'
+import { fetchPlus, freeWeekFor, heldPlus, type PlusInfo } from '../lib/plus'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
@@ -126,6 +130,21 @@ export function SiteMenu({
   const tickets = useTickets()
   const seasonStore = useSeason()
   const season = liveSeason(seasonStore)
+  const { isPlus } = useAuth()
+  // Plus as last asked (a minute), to say whether joining starts with the free week.
+  const [plusInfo, setPlusInfo] = useState<PlusInfo | null>(() => heldPlus(signedIn))
+  useEffect(() => {
+    if (plusInfo || isPlus) return
+    let live = true
+    fetchPlus()
+      .then((info) => {
+        if (live) setPlusInfo(info)
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [plusInfo, isPlus])
   if (typeof document === 'undefined') return null
 
   const tagged = signedIn && Boolean(name)
@@ -334,6 +353,24 @@ export function SiteMenu({
                     tickets.loaded ? tickets.balance.toLocaleString() : null,
                   )
                 : null}
+              {/* Plus, quietly, beside what it adds to: the free week said where it's still to be had. */}
+              <li>
+                <a className="site-menu__row" href={plusHref()} onClick={onClose}>
+                  <span className="site-menu__row-mark">
+                    <PlusGlyph />
+                  </span>
+                  <span className="site-menu__row-text">
+                    <span className="site-menu__row-label">Plus</span>
+                    <span className="site-menu__row-sub">
+                      {isPlus ? (plusInfo?.you?.status === 'trialing' ? 'Your free week' : 'Your membership') : 'Every past daily and every season’s Pass+'}
+                    </span>
+                  </span>
+                  {!isPlus && freeWeekFor(plusInfo) ? <span className="site-menu__badge site-menu__badge--plus">Free week</span> : null}
+                  <span className="site-menu__row-go">
+                    <ChevronRightIcon />
+                  </span>
+                </a>
+              </li>
               {row(
                 <FriendIcon />,
                 'Friends',

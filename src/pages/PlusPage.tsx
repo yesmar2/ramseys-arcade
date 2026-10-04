@@ -5,10 +5,22 @@ import { RewardArt } from '../components/season/RewardArt'
 import { openSiteMenu } from '../components/siteNav'
 import { useAuth } from '../hooks/useAuth'
 import { AUTH_EVENT } from '../lib/auth'
-import { OPEN_DAYS } from '../lib/archive'
+import { dayBefore, OPEN_DAYS } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
 import { homeHref, prizesHref, seasonHref, tournamentsHref } from '../hooks/useHashRoute'
-import { confirmPlusMembership, fetchPlus, managePlusMembership, money, perSeason, seasonWeeks, startPlusMembership, type PlusInfo } from '../lib/plus'
+import {
+  confirmPlusMembership,
+  fetchPlus,
+  FOUNDER_UNTIL,
+  freeWeekFor,
+  managePlusMembership,
+  money,
+  perSeason,
+  seasonWeeks,
+  startPlusMembership,
+  type PlusInfo,
+  type PlusInterval,
+} from '../lib/plus'
 import { boardDay } from '../lib/rankHow'
 import { liveSeason, plusPrice, useSeason } from '../lib/season'
 
@@ -141,6 +153,18 @@ function day(ms: number): string {
   return new Date(ms).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 }
 
+/** "December 24": a YYYY-MM-DD day in words. */
+function dayWords(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+}
+
+/** A day so many days before another, both YYYY-MM-DD. */
+function daysBefore(iso: string, n: number): string {
+  let out = iso
+  for (let i = 0; i < n; i++) out = dayBefore(out)
+  return out
+}
+
 export function PlusPage() {
   const { isPlus, signedIn, loading } = useAuth()
   const seasonStore = useSeason()
@@ -149,6 +173,8 @@ export function PlusPage() {
   const [info, setInfo] = useState<PlusInfo | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
+  /** By the month or the year: the month unless asked. */
+  const [every, setEvery] = useState<PlusInterval>('month')
 
   useEffect(() => {
     if (loading) return
@@ -177,12 +203,17 @@ export function PlusPage() {
     if (back !== 'done' || !session) return
     setNote({ ok: true, text: 'Checking the payment…' })
     void confirmPlusMembership(session)
-      .then(({ member }) => {
+      .then(({ member, you }) => {
         window.dispatchEvent(new Event(AUTH_EVENT))
         setNote(
-          member
-            ? { ok: true, text: 'Welcome to Plus. Every past daily is open, and this season’s Pass+ is yours: what your level has reached is in your hangar and Prizes now.' }
-            : { ok: true, text: 'The payment is still going through. Plus starts as soon as it does.' },
+          !member
+            ? { ok: true, text: 'The payment is still going through. Plus starts as soon as it does.' }
+            : you.status === 'trialing'
+              ? {
+                  ok: true,
+                  text: 'Welcome to Plus. Your free week has started: every past daily is open now. This season’s Pass+ and the month’s look come with your first payment.',
+                }
+              : { ok: true, text: 'Welcome to Plus. Every past daily is open, and this season’s Pass+ is yours: what your level has reached is in your hangar and Prizes now.' },
         )
       })
       .catch(() => setNote({ ok: false, text: 'Couldn’t check the payment just now. If it went through, Plus starts shortly.' }))
@@ -199,9 +230,22 @@ export function PlusPage() {
     }
   }
 
-  const price = info ? money(info.price, info.currency) : '$2.99'
   const you = info?.you ?? null
   const member = isPlus || you?.plan === 'plus'
+  const currency = info?.currency ?? 'usd'
+  const monthly = info?.prices?.month ?? info?.price ?? 299
+  const yearly = info?.prices?.year ?? null
+  const byYear = every === 'year' && yearly != null
+  const price = money(byYear ? yearly : monthly, currency)
+  const unit = byYear ? 'year' : 'month'
+  // What a year saves on twelve months, to the whole percent: "save 30%".
+  const saves = yearly != null ? Math.round((1 - yearly / (monthly * 12)) * 100) : 0
+  const freeWeek = freeWeekFor(info)
+  const trialDays = info?.trialDays ?? 7
+  const onFreeWeek = member && you?.status === 'trialing'
+  // Founding Member, while the months that give it last: a free week has to start a week sooner, as looks come with the first payment.
+  const founder = (info?.looks ?? []).some((l) => l.id === 't-founder') && boardDay() <= FOUNDER_UNTIL
+  const founderBy = freeWeek ? daysBefore(FOUNDER_UNTIL, trialDays) : FOUNDER_UNTIL
   const looks = info?.looks ?? []
   // The boards' month (New York), which the API gives the looks by.
   const month = new Date(`${boardDay()}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
@@ -217,10 +261,16 @@ export function PlusPage() {
         actions={
           member ? (
             <>
-              <span className="plus-hero__have">You&rsquo;re on Plus</span>
+              <span className="plus-hero__have">{onFreeWeek ? 'Your free week of Plus' : 'You’re on Plus'}</span>
               {you?.renewsAt ? (
                 <span className="home-banner__hint">
-                  {you.cancelsAtEnd ? `Ends on ${day(you.renewsAt)}: what you’ve won stays yours.` : `Renews on ${day(you.renewsAt)}.`}
+                  {onFreeWeek
+                    ? you.cancelsAtEnd
+                      ? `Your free week ends on ${day(you.renewsAt)}, and Plus with it. Nothing is charged.`
+                      : `Your free week ends on ${day(you.renewsAt)}, with your first payment. This season’s Pass+ and the month’s look come with it.`
+                    : you.cancelsAtEnd
+                      ? `Ends on ${day(you.renewsAt)}: what you’ve won stays yours.`
+                      : `Renews on ${day(you.renewsAt)}.`}
                 </span>
               ) : null}
               {you?.source === 'stripe' ? (
@@ -231,17 +281,27 @@ export function PlusPage() {
             </>
           ) : (
             <>
+              {yearly != null ? (
+                <div className="plus-every" role="group" aria-label="How to pay">
+                  <button type="button" aria-pressed={!byYear} onClick={() => setEvery('month')}>
+                    Monthly
+                  </button>
+                  <button type="button" aria-pressed={byYear} onClick={() => setEvery('year')}>
+                    Yearly{saves > 0 ? <span className="plus-every__save">Save {saves}%</span> : null}
+                  </button>
+                </div>
+              ) : null}
               <span className="plus-hero__price">
                 <strong>{price}</strong>
-                <span>/month</span>
+                <span>/{unit}</span>
               </span>
               {!signedIn ? (
                 <button type="button" className="plus-hero__btn plus-hero__btn--go" onClick={openSiteMenu} disabled={loading}>
-                  Sign in to join
+                  {freeWeek ? 'Sign in to start a free week' : 'Sign in to join'}
                 </button>
               ) : info?.buyable ? (
-                <button type="button" className="plus-hero__btn plus-hero__btn--go" disabled={busy} onClick={() => void go(startPlusMembership)}>
-                  {busy ? 'Opening…' : 'Join Plus'}
+                <button type="button" className="plus-hero__btn plus-hero__btn--go" disabled={busy} onClick={() => void go(() => startPlusMembership(every))}>
+                  {busy ? 'Opening…' : freeWeek ? 'Start your free week' : 'Join Plus'}
                 </button>
               ) : (
                 <button type="button" className="plus-hero__btn" disabled>
@@ -249,9 +309,17 @@ export function PlusPage() {
                 </button>
               )}
               <span className="home-banner__hint">
-                {season && info ? `About ${perSeason(info.price, season, info.currency)} a season, with every season’s Pass+ in it. ` : ''}Cancel any
-                time. What you&rsquo;ve won stays yours.
+                {freeWeek
+                  ? `Free for ${trialDays} days, then ${price} a ${unit}. Cancel before the week ends and you pay nothing.`
+                  : byYear
+                    ? `About ${money(Math.round(yearly / 12), currency)} a month. Cancel any time; what you’ve won stays yours.`
+                    : `${season ? `About ${perSeason(monthly, season, currency)} a season, with every season’s Pass+ in it. ` : ''}Cancel any time. What you’ve won stays yours.`}
               </span>
+              {founder ? (
+                <span className="home-banner__hint plus-hero__founder">
+                  Join by {dayWords(founderBy)} and the Founding Member title is yours for good.
+                </span>
+              ) : null}
             </>
           )
         }
@@ -267,9 +335,9 @@ export function PlusPage() {
         <section className="plus-pass plus-look" aria-labelledby="plus-look-title">
           <div className="plus-pass__head">
             <h2 className="plus-table__title" id="plus-look-title">
-              {member ? `${month}’s members’ look is yours` : `${month}’s members’ look`}
+              {onFreeWeek ? `${month}’s members’ look comes with your first payment` : member ? `${month}’s members’ look is yours` : `${month}’s members’ look`}
             </h2>
-            {member ? (
+            {member && !onFreeWeek ? (
               <a className="plus-pass__link" href={prizesHref()}>
                 Wear it in Prizes ›
               </a>
@@ -277,6 +345,7 @@ export function PlusPage() {
           </div>
           <p className="plus-table__blurb">
             Every month, every member gets that month&rsquo;s look, and keeps it for good. It&rsquo;s never sold on its own.
+            {founder ? ` Founding Member is given only until ${dayWords(FOUNDER_UNTIL)}.` : ''}
           </p>
           <ul className="plus-pass__row">
             {looks.map((look) => (

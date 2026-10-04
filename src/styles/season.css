@@ -542,6 +542,48 @@ html[data-theme] .gh-tag.season-tag {
   color: var(--space-muted);
 }
 
+/* What Pass+ had at the level just reached, for a player without it (SeasonRun.tsx useMissedPlus). */
+.run-levelup__missed {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  max-width: 24rem;
+  margin: 0.35rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.9rem;
+  background: rgba(244, 240, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(242, 129, 58, 0.35);
+  text-align: left;
+}
+
+.run-levelup__missed b {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.run-levelup__missed small {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.76rem;
+  color: var(--space-muted);
+}
+
+.run-levelup__missed-lock {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.5rem;
+  color: var(--space-orange);
+  background: rgba(242, 129, 58, 0.16);
+}
+
+.run-levelup__missed-lock svg {
+  width: 1rem;
+  height: 1rem;
+}
+
 .run-levelup__go {
   margin-top: 0.3rem;
   display: inline-flex;

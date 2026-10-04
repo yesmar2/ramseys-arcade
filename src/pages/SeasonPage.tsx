@@ -12,7 +12,7 @@ import { PlayerAvatar } from '../components/PlayerAvatar'
 import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
-import { fetchPlus, money, perSeason, seasonWeeks, type PlusInfo } from '../lib/plus'
+import { fetchPlus, freeWeekFor, money, perSeason, seasonWeeks, type PlusInfo } from '../lib/plus'
 import { ordinal } from '../lib/profileMath'
 import {
   confirmPlusCheckout,
@@ -252,6 +252,7 @@ function PassPlus({
   toNext,
   signedIn,
   authLoading,
+  onPlus,
   actionFor,
 }: {
   season: SeasonInfo
@@ -260,6 +261,8 @@ function PassPlus({
   toNext: number | null
   signedIn: boolean
   authLoading: boolean
+  /** On Plus without Pass+ yet: the free week, whose first payment brings it. */
+  onPlus: boolean
   actionFor: (reward: SeasonReward) => ReactNode
 }) {
   const [busy, setBusy] = useState(false)
@@ -345,6 +348,9 @@ function PassPlus({
             <span className="season-plus__owned">
               <CheckBadge /> {plus.via === 'plus' ? 'Included with your Plus' : 'Yours this season'}
             </span>
+          ) : onPlus ? (
+            // Plus's free week gives nothing kept for good: Pass+ comes with its first payment.
+            <span className="season-plus__soon">Yours with your first Plus payment, when the free week ends</span>
           ) : (
             <div className="season-plus__ways">
               {plus.buyable ? (
@@ -356,15 +362,27 @@ function PassPlus({
                 <span className="season-plus__soon">On sale soon · {price} for the season</span>
               )}
               <a className="season-plus__member" href={plusHref()}>
-                <b>Or join Plus{plusInfo ? ` · ${money(plusInfo.price, plusInfo.currency)}/month` : ''}</b>
-                <small>
-                  {plusInfo ? `About ${perSeason(plusInfo.price, season, plusInfo.currency)} a season, with` : 'With'} every season’s Pass+, and
-                  more to host.
-                </small>
+                {freeWeekFor(plusInfo) && plusInfo ? (
+                  <>
+                    <b>Or try Plus free for a week</b>
+                    <small>
+                      Then {money(plusInfo.price, plusInfo.currency)}/month, with every season’s Pass+ and every past daily. Pass+ comes with
+                      the first payment.
+                    </small>
+                  </>
+                ) : (
+                  <>
+                    <b>Or join Plus{plusInfo ? ` · ${money(plusInfo.price, plusInfo.currency)}/month` : ''}</b>
+                    <small>
+                      {plusInfo ? `About ${perSeason(plusInfo.price, season, plusInfo.currency)} a season, with` : 'With'} every season’s Pass+, and
+                      every past daily.
+                    </small>
+                  </>
+                )}
               </a>
             </div>
           )}
-          {!plus.owned && signedIn && level > 0 ? (
+          {!plus.owned && !onPlus && signedIn && level > 0 ? (
             <span className="season-plus__now">
               {plus.rewards.filter((r) => r.level <= level).length
                 ? `${plus.rewards.filter((r) => r.level <= level).length} of them yours at once`
@@ -465,7 +483,7 @@ function GoalsCard({ goals }: { goals: SeasonGoal[] }) {
 export function SeasonPage() {
   const store = useSeason()
   const { owned } = useTickets()
-  const { signedIn, loading: authLoading } = useAuth()
+  const { signedIn, isPlus, loading: authLoading } = useAuth()
   const avatar = useOwnAvatar()
   const trackRef = useRef<HTMLOListElement>(null)
   const season = store.season
@@ -578,6 +596,7 @@ export function SeasonPage() {
           toNext={p.toNext}
           signedIn={signedIn}
           authLoading={authLoading}
+          onPlus={isPlus}
           actionFor={actionFor}
         />
       ) : null}
