@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame, isDailyGame } from '../data/games'
 import { useRecordBooks } from '../hooks/useRecordBooks'
 import { rankHref, siteRecordsHref } from '../hooks/useHashRoute'
@@ -120,6 +121,16 @@ export function RecordBooksIndex() {
   const knowsYou = all.some((r) => r.you !== undefined)
   const close = knowsYou ? closestToInk(books) : []
   const latest = latestInk(books)
+  // While the books load, each part holds the room it took last time on this device (lib/heldShape.ts), so
+  // nothing below it moves when they come.
+  const loading = data.loading
+  const title = useHeldHeight<HTMLHeadingElement>('records-title', loading)
+  const lede = useHeldHeight<HTMLParagraphElement>('records-lede', loading)
+  const heldHolders = useHeldShape('records-holders', loading ? undefined : Math.min(6, holders.length), 6)
+  const yours = useHeldHeight<HTMLElement>('records-yours', loading)
+  const heldBooks = useHeldShape('records-books', loading ? undefined : books.length, 20)
+  const shelf = useHeldHeight<HTMLUListElement>('records-shelf', loading)
+  const pair = useHeldHeight<HTMLElement>('records-pair', loading || !data.site)
 
   if (data.error) {
     return (
@@ -137,9 +148,9 @@ export function RecordBooksIndex() {
             <QuillIcon />
             Hall of fame · all time
           </p>
-          <h1 id="rbk-title" className="sb-title">
+          <h1 id="rbk-title" className="sb-title" ref={title.ref} style={title.style}>
             {data.loading ? (
-              <span className="skel-line" style={{ '--skel-w': '14ch' } as CSSProperties} />
+              <span className="skel-line sb-title__skel" style={{ '--skel-w': '14ch' } as CSSProperties} />
             ) : (
               <>
                 {head.name ? <span className="sb-title__lead">{head.name}</span> : null}
@@ -147,9 +158,15 @@ export function RecordBooksIndex() {
               </>
             )}
           </h1>
-          <p className="sb-lede">
+          <p className="sb-lede" ref={lede.ref} style={lede.style}>
             {data.loading ? (
-              <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} />
+              // The same words as below, its numbers shimmering: it wraps as it will once they come.
+              <>
+                <span className="skel-line" style={{ '--skel-w': '1.4em' } as CSSProperties} /> of them have a name in ink,
+                across <span className="skel-line" style={{ '--skel-w': '1em' } as CSSProperties} /> games. The books keep the
+                best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each
+                until someone beats it.
+              </>
             ) : (
               `${held} of them have a name in ink, across ${books.length} games. The books keep the best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each until someone beats it.`
             )}
@@ -171,12 +188,19 @@ export function RecordBooksIndex() {
           </div>
           {data.loading ? (
             <ol className="sb-rows" aria-busy="true">
-              {[0, 1, 2, 3, 4].map((i) => (
+              {Array.from({ length: Math.max(1, heldHolders) }, (_, i) => (
                 <li key={i} className="sb-row sb-row--skel">
                   <span className="sb-row__link">
                     <span className="skel-line" style={{ '--skel-w': '2rem' } as CSSProperties} />
                     <span className="sb-row__mark sb-row__mark--open" />
-                    <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
+                    <span className="sb-row__who">
+                      <span className="sb-row__name">
+                        <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
+                      </span>
+                      <span className="sb-row__boards">
+                        <span className="skel-line" style={{ '--skel-w': '3.5rem' } as CSSProperties} />
+                      </span>
+                    </span>
                     <span className="sb-row__bar" />
                     <span className="skel-line" style={{ '--skel-w': '2rem' } as CSSProperties} />
                   </span>
@@ -217,8 +241,18 @@ export function RecordBooksIndex() {
         </div>
       </section>
 
+      {me && data.loading ? (
+        // Your records' room, as they were last time: the cards come in it.
+        <section className="sb-you" aria-hidden="true" ref={yours.ref} style={yours.style}>
+          <div className="sb-card rbk-card">
+            <h2 className="sb-card__title">
+              <span className="skel-line" style={{ '--skel-w': '12rem' } as CSSProperties} />
+            </h2>
+          </div>
+        </section>
+      ) : null}
       {me && !data.loading ? (
-        <section className="sb-you" aria-label="Your records">
+        <section className="sb-you" aria-label="Your records" ref={yours.ref}>
           <div className="sb-card rbk-card">
             <div className="rbk-card__head">
               <PlayerMark name={me} className="rbk-card__mark" />
@@ -276,7 +310,34 @@ export function RecordBooksIndex() {
             <p className="sb-sub">One for each game, with its best record on the cover.</p>
           </div>
         </div>
-        <ul className="rbk-books">
+        <ul className="rbk-books" ref={shelf.ref} style={shelf.style}>
+          {loading
+            ? Array.from({ length: heldBooks }, (_, i) => (
+                <li key={i} aria-hidden="true">
+                  <span className="rbk-book rbk-book--skel">
+                    <span className="rbk-book__top">
+                      <span className="rbk-book__thumb sb-board__thumb--skel" />
+                    </span>
+                    <span className="rbk-book__name">
+                      <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
+                    </span>
+                    <span className="rbk-book__meta">
+                      <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} />
+                    </span>
+                    <span className="rbk-book__cover">
+                      <span className="rbk-book__label">
+                        <span className="skel-line" style={{ '--skel-w': '5rem' } as CSSProperties} />
+                      </span>
+                      <span className="rbk-book__value">
+                        <b>
+                          <span className="skel-line" style={{ '--skel-w': '3rem' } as CSSProperties} />
+                        </b>
+                      </span>
+                    </span>
+                  </span>
+                </li>
+              ))
+            : null}
           {books.map(({ game, records }, i) => {
             const accent = accentOf(game)
             const cover = coverRecord(records)
@@ -315,7 +376,7 @@ export function RecordBooksIndex() {
         </ul>
       </section>
 
-      <section className="rbk-pair" aria-label="Latest records and the house book">
+      <section className="rbk-pair" aria-label="Latest records and the house book" ref={pair.ref} style={pair.style}>
         <div className="sb-card rbk-card" data-hunt="records-latest">
           <h2 className="rbk-card__big">Latest in ink</h2>
           <p className="rbk-card__sub">The newest names in the books.</p>

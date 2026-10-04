@@ -33,12 +33,8 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Outfit is the site's own (public/fonts, @font-face in styles.css), asked for first so it's in before the page draws. -->
+    <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin />
     <title>Blipka · Simple games, no ads, just play</title>
     <!-- Prerendered page content is for readers without scripts; the app draws the rest. -->
     <style>
