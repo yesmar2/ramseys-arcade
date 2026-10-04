@@ -1,12 +1,15 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { currentAccountId } from './auth'
 import { api } from './leaderboard'
 
 /*
  * The season: a stretch of about nine weeks with a theme (Season 1 is Space Race, from Oct 31), a free
  * pass of 30 levels moved by every ticket won in it, and looks to win on the way. The API's seasons.ts
  * decides it all; this is one shared copy, for the header's ring, the home banner, the Season page and the
- * run report, fetched once and nudged along by what a save answers.
+ * run report, fetched once and nudged along by what a save answers. The last answer is kept on the device
+ * (KEPT_KEY), so a page opens with the season it had last time, the home banner included, rather than
+ * drawing the arcade without it and then switching once the API answers.
  */
 
 export type SeasonRewardKind = 'pin' | 'prize' | 'tickets' | 'skin'
@@ -107,7 +110,38 @@ const empty: Store = { season: null, rewards: [], you: null, loaded: false, load
 const EVENT = 'arcade-season'
 const STALE_MS = 60_000
 
-let snapshot: Store = empty
+/** The last answer, kept on this device: the season and its rewards, and whose `you` it was. */
+const KEPT_KEY = 'skermix-season'
+
+type Kept = { answer: Pick<SeasonAnswer, 'season' | 'rewards' | 'plus' | 'you'>; account: string | null }
+
+function keep(answer: SeasonAnswer) {
+  try {
+    const kept: Kept = { answer: { season: answer.season, rewards: answer.rewards, plus: answer.plus, you: answer.you }, account: currentAccountId() ?? null }
+    localStorage.setItem(KEPT_KEY, JSON.stringify(kept))
+  } catch {
+    /* a private window keeps nothing: the page waits for the API */
+  }
+}
+
+/**
+ * The season this device saw last, to open with: none once it's over, and `you` only for the account it was
+ * said for. The API's answer replaces it as soon as it comes.
+ */
+function kept(): Store {
+  try {
+    const raw = localStorage.getItem(KEPT_KEY)
+    if (!raw) return empty
+    const { answer, account } = JSON.parse(raw) as Kept
+    if (!answer?.season || !Array.isArray(answer.rewards) || answer.season.endsAt <= Date.now()) return empty
+    const mine = account != null && account === currentAccountId()
+    return { ...empty, season: answer.season, rewards: answer.rewards, plus: answer.plus, you: mine ? answer.you : null }
+  } catch {
+    return empty
+  }
+}
+
+let snapshot: Store = typeof window === 'undefined' ? empty : kept()
 let fetchedAt = 0
 let fetchedSignedIn: boolean | null = null
 let inFlight: Promise<void> | null = null
@@ -145,6 +179,7 @@ export function refreshSeason({ force = false, signedIn = fetchedSignedIn ?? fal
       // The header's asking has no standings or goals: keep the page's from before, the same season's.
       const same = snapshot.season?.id === answer.season?.id && fetchedSignedIn === signedIn
       fetchedSignedIn = signedIn
+      keep(answer)
       emit({
         ...answer,
         standings: answer.standings ?? (same ? snapshot.standings : undefined),
