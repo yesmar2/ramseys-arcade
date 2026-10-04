@@ -12,7 +12,7 @@ import { announceSecrets, SECRETS, type SecretFound } from './secrets'
  * - "do a barrel roll" in the search spins the page (lib/eggWords.ts). A search that finds nothing says so.
  * - Old game cheats, typed or searched, answer back (lib/eggWords.ts). The code on the wall hints at them,
  *   and so does a search that finds nothing, once the barrel roll is done.
- * - Left alone for a minute, the site's screen saver bounces the blip round the screen, and it hits a
+ * - Left alone for three minutes, the site's screen saver bounces the blip round the screen, and it hits a
  *   corner in the end (components/BlipSaver.tsx). It shows itself.
  * - A page that isn't there is a Game Over screen with a coin slot (pages/GameOverPage.tsx). A faint
  *   "Level 256" in the footer leads to one.

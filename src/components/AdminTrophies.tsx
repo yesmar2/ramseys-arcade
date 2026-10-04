@@ -134,8 +134,8 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
   {
     key: 'corner',
     name: 'The screen saver',
-    how: 'Leave any page with the site’s header alone for a minute: no taps, keys, scrolling or mouse. Not on a game’s screen, over an open dialog, while typing, or with less motion asked for. To see it now, add ?saver=now to any address, or ?saver=corner for a corner within seconds.',
-    does: 'The screen dims and the blip bounces round it like an old DVD player’s logo, a new colour at every wall. Its path is aimed to land exactly in a corner 16 to 36 seconds in (then every 40 to 75): a burst, “Perfect corner!”, and a chime. Anything touched brings the page back.',
+    how: 'Leave any page with the site’s header alone for three minutes: no taps, keys, scrolling or mouse. Not on a game’s screen, over an open dialog, while typing, or with less motion asked for. To see it now, add ?saver=now to any address, or ?saver=corner for a corner within seconds.',
+    does: 'The screen dims and the blip bounces round it like an old DVD player’s logo, a new colour at every wall. Its path is aimed to land exactly in a corner one to two minutes in (then every two to four minutes): a burst, “Perfect corner!”, and a chime. Anything touched brings the page back.',
     clue: 'None needed: it shows itself to anyone who leaves the site open.',
     secret: 'Perfect Corner',
   },

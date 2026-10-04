@@ -19,7 +19,7 @@ import '../styles/eggs.css'
  *   sends out two rings now and then, as if it wants a tap.
  * - Words (lib/eggWords.ts), searched or typed anywhere: a barrel roll spins the page, and old game cheats
  *   answer back, iddqd with ten seconds of gold.
- * - The screen saver, after a minute left alone (BlipSaver.tsx).
+ * - The screen saver, after three minutes left alone (BlipSaver.tsx).
  */
 
 /** The same word again this soon is a double press, not a second go. */

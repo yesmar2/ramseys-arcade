@@ -5,21 +5,25 @@ import { sfx } from '../lib/sound'
 import { BrandMark } from './BrandMark'
 
 /*
- * The screen saver, an easter egg (lib/eggs.ts): leave the site alone for a minute and the screen dims, and
- * the blip bounces round it like an old DVD player's logo, a new colour at every wall. Its path is aimed
- * (lib/blipSaver.ts) to land exactly in a corner half a minute or so in, and a corner finds the Perfect
- * Corner secret. Not on a game's screen, over an open dialog, while someone types, or for anyone who asks
- * their device for less motion. Anything touched brings the page back. ?saver=now starts it at once, and
- * ?saver=corner has its first corner come in seconds.
+ * The screen saver, an easter egg (lib/eggs.ts): leave the site alone for three minutes and the screen dims,
+ * and the blip bounces round it like an old DVD player's logo, a new colour at every wall. Its path is aimed
+ * (lib/blipSaver.ts) to land exactly in a corner a minute or two in, and a corner finds the Perfect Corner
+ * secret. Not on a game's screen, over an open dialog, while someone types, or for anyone who asks their
+ * device for less motion. Anything touched brings the page back. ?saver=now starts it at once, and
+ * ?saver=corner has its first corner come in seconds. Ramsey asked for both to take longer (2026-10-04):
+ * it came on after a minute and found its corner within half a minute more.
  */
 
-/** A minute with nothing touched, and the saver comes on. */
-const IDLE_MS = 60_000
+/** Three minutes with nothing touched, and the saver comes on. */
+const IDLE_MS = 3 * 60_000
 /** Seconds to the first corner, and to each one after. */
-const FIRST_CORNER: readonly [number, number] = [16, 36]
-const NEXT_CORNER: readonly [number, number] = [40, 75]
-/** Near enough to a corner, as it meets a wall, to be one. */
-const CORNER_SLACK_PX = 3
+const FIRST_CORNER: readonly [number, number] = [60, 120]
+const NEXT_CORNER: readonly [number, number] = [120, 240]
+/**
+ * Near enough to a corner, as it meets a wall, to be one: a pixel, so a lucky pass before the corner it's
+ * aimed at stays rare (about 3 waits in 100 on a phone, 1 in 100 on a desktop).
+ */
+const CORNER_SLACK_PX = 1
 /** A pointer that moves this far is someone back. */
 const WAKE_MOVE_PX = 14
 const COLOURS = ['#3ee0b0', '#ff6b9d', '#ffd166', '#7aa2ff', '#c792ea', '#ff9f43', '#5ce1e6']
