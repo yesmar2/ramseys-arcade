@@ -14,6 +14,7 @@ import { dailyTabHref, gamePlayHref, navigate, todayShareHref } from '../../hook
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useAdminState } from '../../lib/admin'
+import { inArchive } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import type { PastKind } from '../../lib/dailyWords'
 import { ownerAccount, ownerOf, SIGNED_OUT, type Viewer } from '../../lib/deviceRuns'
@@ -946,8 +947,11 @@ function HotLapDay({
   const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} chasing={g.chasing} test={test} past={past} />
   // A past track, signed in: a lap goes on its board. Signed out it's practice, and so is a lap driven
   // signed out, for good: signing in on its card is for the laps after it.
+  // One in the archive, older than a week (lib/archive.ts), is practice for everyone: its board is closed.
   const pastKind: PastKind =
-    (viewer === null && (g.owner === undefined || g.owner === SIGNED_OUT)) || (ui.phase === 'gameover' && g.owner === SIGNED_OUT)
+    (viewer === null && (g.owner === undefined || g.owner === SIGNED_OUT)) ||
+    (ui.phase === 'gameover' && g.owner === SIGNED_OUT) ||
+    (pastTrack != null && inArchive(course.day))
       ? 'practice'
       : 'board'
   // The same one to the chrome and the pause card: the chip, the tab's title, Leave and the pause card's figures.

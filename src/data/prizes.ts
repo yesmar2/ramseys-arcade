@@ -181,6 +181,39 @@ export const PRIZES: readonly Prize[] = [
     blurb: LIT,
     earned: { by: 'Keeping the Dailies on 30 days of Season 1', short: 'Season 1' },
   },
+  // Plus: each month's look goes to every member that month, kept for good (the API's plus.ts).
+  {
+    id: 't-founder',
+    kind: 'title',
+    name: 'Founding Member',
+    price: 0,
+    blurb: LIT,
+    earned: { by: 'Plus, while the arcade opened (Oct–Dec 2026)', short: 'Plus' },
+  },
+  {
+    id: 'nm-prism',
+    kind: 'name',
+    name: 'Prism',
+    price: 0,
+    blurb: 'Your tag split into a rainbow, red through to violet, as light is by a prism.',
+    earned: { by: 'Plus, November 2026', short: 'Plus' },
+  },
+  {
+    id: 'cd-snowglobe',
+    kind: 'card',
+    name: 'Snow globe',
+    price: 0,
+    blurb: 'Your card in a snow globe: a little arcade cabinet in the snow, lit warm, the snow coming down.',
+    earned: { by: 'Plus, December 2026', short: 'Plus' },
+  },
+  {
+    id: 'cf-streamers',
+    kind: 'confetti',
+    name: 'Streamers',
+    price: 0,
+    blurb: `Paper streamers curl out across the screen ${CONFETTI}`,
+    earned: { by: 'Plus, January 2027', short: 'Plus' },
+  },
 ]
 
 const byId = new Map(PRIZES.map((p) => [p.id, p]))

@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import { PastBoardResult } from '../../components/PastBoardResult'
 import { PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
 import { gamePlayHref } from '../../hooks/useHashRoute'
-import { archiveDayWords } from '../../lib/archive'
+import { archiveDayWords, inArchive } from '../../lib/archive'
+import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
@@ -62,7 +63,9 @@ export function PracticeStartCard({
 }) {
   const note =
     kind === 'practice'
-      ? `Sign in and your flights here go on its ${BOARD_NAMES.allTime} board.`
+      ? inArchive(lander.day)
+        ? archivedWhy(SLUG)
+        : `Sign in and your flights here go on its ${BOARD_NAMES.allTime} board.`
       : board?.you?.place === 1
         ? 'You hold its record.'
         : `Taking its record pays ${RECORD_TICKETS} tickets, once.`

@@ -1,14 +1,26 @@
 import { api } from './leaderboard'
 
 /*
- * Plus, the membership (the API's plus.ts): every season's Pass+ while you're a member, and more events and
- * groups to host. Monthly, through Stripe's checkout; Stripe's own portal is where a member changes the card
- * or cancels.
+ * Plus, the membership (the API's plus.ts): the Dailies + Seasons membership since Ramsey's pick on
+ * 2026-10-04. Every past day of every daily (lib/archive.ts), every season's Pass+, a members' look each
+ * month, new games first (lib/earlyAccess.ts), and more events and groups to host. Monthly, through Stripe's
+ * checkout; Stripe's own portal is where a member changes the card or cancels.
  */
 
 export type PlusYou = { plan: 'free' | 'plus'; status: string | null; renewsAt: number | null; cancelsAtEnd: boolean; source: string | null }
 
-export type PlusInfo = { price: number; currency: string; interval: 'month'; buyable: boolean; you: PlusYou | null }
+/** A month's members' look: every member has it, kept for good. */
+export type MembersLook = { id: string; name: string; what: string }
+
+export type PlusInfo = {
+  price: number
+  currency: string
+  interval: 'month'
+  buyable: boolean
+  /** This month's members' looks; none from an API before them. */
+  looks?: MembersLook[]
+  you: PlusYou | null
+}
 
 export function fetchPlus(): Promise<PlusInfo> {
   return api<PlusInfo>('/plus')

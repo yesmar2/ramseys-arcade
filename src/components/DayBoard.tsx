@@ -3,13 +3,13 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useDayCourse, usePagedBoard, type PagedBoard } from '../hooks/useDayBoard'
-import { dailyTabHref, dayBoardHref, gameBoardHref, leaderboardHref, navigate, rankHref } from '../hooks/useHashRoute'
+import { dailyTabHref, dayBoardHref, gameBoardHref, leaderboardHref, navigate, plusHref, rankHref } from '../hooks/useHashRoute'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { archiveDayWords, dayBefore, useDailyDays } from '../lib/archive'
+import { archiveDayWords, dayBefore, inArchive, useArchiveOpen, useDailyDays } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
-import { capitalWord, COURSE_BOARD_ANCHOR, pastKindFor, stripDayWords, usePastViewer, verbDone } from '../lib/dailyPast'
+import { archivedWhy, archiveTip, capitalWord, COURSE_BOARD_ANCHOR, pastKindFor, stripDayWords, usePastViewer, verbDone } from '../lib/dailyPast'
 import { BOARD_NAMES, boardTip, dailyWords } from '../lib/dailyWords'
 import { dateOf, dayAfter, timeOfDay, type DayCourse } from '../lib/dayBoard'
 import { useDeviceType } from '../lib/device'
@@ -68,6 +68,16 @@ function PlayIcon() {
   return (
     <svg className="sb-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M7 4.5v15l12.5-7.5z" />
+    </svg>
+  )
+}
+
+/** A day in the archive: Plus's to play (lib/archive.ts). */
+function LockIcon() {
+  return (
+    <svg className="sb-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
     </svg>
   )
 }
@@ -378,13 +388,19 @@ function PlayAgain({
     course != null &&
     (viewer.state === 'out' || (viewer.state === 'in' && !dayBoard.loading && (!keepsBoard || !courseBoard.loading)))
   const firstOnly = FIRST_RUN_DAILIES.has(slug)
-  const kind = pastKindFor(slug, signedIn, firstOnly, hadResult)
-  // A course that keeps a board is practice for two reasons, and the line under the label says which.
+  // A day older than a week is in the archive (lib/archive.ts): practice for everyone, and Plus's to play.
+  const archived = inArchive(day)
+  const archiveOpen = useArchiveOpen()
+  const locked = archived && archiveOpen === false
+  const kind = pastKindFor(slug, signedIn, firstOnly, hadResult, archived)
+  // A course that keeps a board is practice for three reasons, and the line under the label says which.
   const run = firstRunWord(slug)
   const practiceWhy =
     kind !== 'practice' || words.past !== 'board'
       ? null
-      : signedIn
+      : archived
+        ? archivedWhy(slug)
+        : signedIn
         ? `Your first ${run} here stands.`
         : `Signed out, nothing is kept. Sign in and ${firstOnly ? `your first ${run} here goes` : `your ${run}s here go`} on its ${BOARD_NAMES.allTime} board.`
   const record = courseBoard.rows[0]
@@ -440,7 +456,12 @@ function PlayAgain({
         )}
       </div>
       <div className="sb-you__foot sb-you__foot--acts">
-        {course && gamePlayableOn(game, device) ? (
+        {course && locked ? (
+          <a className="gb-cta db-play__go" href={plusHref()} title={archiveTip(slug)}>
+            <LockIcon />
+            See Plus
+          </a>
+        ) : course && gamePlayableOn(game, device) ? (
           <a className="gb-cta db-play__go" href={course.playHref(day)}>
             <PlayIcon />
             {words.verb} it{hadResult ? ' again' : ''}

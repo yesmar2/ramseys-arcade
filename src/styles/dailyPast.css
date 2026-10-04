@@ -1223,3 +1223,62 @@ html[data-theme='dark'] .phm-line {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* A past day in the archive, asked for without Plus (components/archive/ArchiveGate.tsx): its card in the game's place. */
+.archive-gate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.archive-gate__card {
+  max-height: none;
+}
+
+.archive-gate__card .game-card__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.archive-gate__lock {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  color: var(--panel-accent-ink);
+  background: color-mix(in srgb, var(--panel-accent) 16%, transparent);
+}
+
+.archive-gate__lock svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.archive-gate__lead {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.archive-gate__also {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* A card's way into an archived day without Plus: a lock and "Plus" where Play is. */
+.pc-play--plus {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.18);
+  color: var(--muted);
+}
+
+.pc-play--plus svg {
+  color: var(--muted);
+}

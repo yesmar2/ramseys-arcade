@@ -118,6 +118,13 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
       return 'rgba(214,92,214,0.22)'
     case 'black-hole':
       return 'rgba(242,129,58,0.24)'
+    // Plus's monthly looks.
+    case 'nm-prism':
+      return 'rgba(255,255,255,0.14)'
+    case 'cd-snowglobe':
+      return 'rgba(255,179,71,0.2)'
+    case 'cf-streamers':
+      return 'rgba(255,79,168,0.18)'
     default:
       if (prize.kind === 'title' && plateTier(prize) === 'lit') return 'rgba(255,95,162,0.18)'
       if (prize.kind === 'title' && plateTier(prize) === 'enamel') return 'rgba(58,134,200,0.18)'

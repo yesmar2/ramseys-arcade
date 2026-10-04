@@ -3,6 +3,7 @@ import { EasterEggs } from './components/EasterEggs'
 import { PendingRunsSaver } from './components/PendingRunsSaver'
 import { SeasonDressing } from './components/season/SeasonDressing'
 import { defaultPeriod } from './lib/defaultPeriod'
+import { EarlyGate } from './components/EarlyGate'
 import { Footer } from './components/Footer'
 import { PageShell } from './components/PageShell'
 import { SiteHeader } from './components/SiteHeader'
@@ -360,7 +361,13 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   }
   if (route.name === 'gamePlay') {
     const GamePage = GAME_PAGES[route.slug]
-    return GamePage ? <GamePage /> : <ComingSoonPage slug={route.slug} />
+    return GamePage ? (
+      <EarlyGate slug={route.slug}>
+        <GamePage />
+      </EarlyGate>
+    ) : (
+      <ComingSoonPage slug={route.slug} />
+    )
   }
   return <HomePage />
 }

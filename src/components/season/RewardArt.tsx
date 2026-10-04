@@ -76,8 +76,8 @@ function NamePlate({ fill, children }: { fill: string; children: ReactNode }) {
 }
 
 function Title({ text }: { text: string }) {
-  // A title too long for one line of the plate (Space Race Legend) goes on two, split at its last space.
-  const cut = text.length > 15 ? text.lastIndexOf(' ') : -1
+  // A title too long for one line of the plate (Space Race Legend, Founding Member) goes on two, split at its last space.
+  const cut = text.length > 14 ? text.lastIndexOf(' ') : -1
   return (
     <>
       <polygon points="11,34 89,34 96,41 96,59 89,66 11,66 4,59 4,41" fill={SPACE.night} stroke={SPACE.orange} strokeWidth="2" />
@@ -344,6 +344,35 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       <path d="M44 85Q46 72 49 82Q52 66 55 82Q58 72 60 85Z" fill="#cfeaff" />
       {([[38, 72, 2.2], [44, 64, 1.8], [62, 62, 2], [68, 72, 2.2], [52, 58, 1.6], [32, 80, 1.6], [74, 80, 1.6]] as const).map(([x, y, r]) => (
         <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill={x % 3 ? '#ffffff' : '#7fc8ff'} />
+      ))}
+    </Board>
+  ),
+  // Plus's monthly looks: the arcade's own colours, not the season's.
+  'nm-prism': (size) => (
+    <Board size={size}>
+      <NamePlate fill="#14101e">
+        {(['#ff5a6a', '#ff9a3d', '#ffe14d', '#4fe07a', '#4fa8ff', '#b678ff'] as const).map((c, i) => (
+          <rect key={c} x={14 + i * 12} y="66" width="12" height="3" fill={c} />
+        ))}
+        <text x="50" y="59" textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={800} fontSize="26" stroke="#ffffff" strokeWidth="0.6" strokeOpacity="0.5">
+          <tspan fill="#ff7a5a">A</tspan>
+          <tspan fill="#ffe14d">C</tspan>
+          <tspan fill="#4fa8ff">E</tspan>
+        </text>
+      </NamePlate>
+    </Board>
+  ),
+  'cd-snowglobe': (size) => <CardArt theme="cd-snowglobe" size={size} />,
+  'cf-streamers': (size) => (
+    <Board size={size}>
+      {([['M8 30C24 18 30 42 46 30S66 16 82 26S94 36 96 32', '#ff4fa8'], ['M6 58C22 48 34 70 52 58S72 44 92 56', '#2fe3cf'], ['M30 8C26 24 46 28 42 44S30 62 40 76S58 86 54 96', '#ffd23f'], ['M60 6C66 20 80 18 78 34S66 50 76 62', '#6c8cff']] as const).map(([d, c]) => (
+        <g key={c}>
+          <path d={d} fill="none" stroke={c} strokeWidth="4.5" />
+          <path d={d} fill="none" stroke="#000000" strokeWidth="4.5" strokeDasharray="6 10" opacity="0.22" />
+        </g>
+      ))}
+      {([[20, 80, 20, '#b86bff'], [70, 82, -25, '#ff8552'], [86, 12, 40, '#ffd23f'], [14, 16, -10, '#2fe3cf']] as const).map(([x, y, rot, c]) => (
+        <rect key={`${x}-${y}`} x={x - 3} y={y - 3} width="6" height="6" fill={c} transform={`rotate(${rot} ${x} ${y})`} />
       ))}
     </Board>
   ),

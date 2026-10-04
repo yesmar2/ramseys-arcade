@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
-import { dayBoardHref } from '../hooks/useHashRoute'
+import { dayBoardHref, plusHref } from '../hooks/useHashRoute'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { archiveDayWords } from '../lib/archive'
 import {
@@ -16,7 +16,7 @@ import { BOARD_NAMES, dailyWords, type PastBoard, type PastKind } from '../lib/d
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { ordinal } from '../lib/profileMath'
-import { ChevronRightIcon, PlayIcon } from './chromeIcons'
+import { ChevronRightIcon, LockIcon, PlayIcon } from './chromeIcons'
 import { CloseIcon, Panel } from './Panel'
 import { AllTimeIcon, PracticeIcon, RankedIcon } from './pastIcons'
 import { PlayerAvatar } from './PlayerAvatar'
@@ -43,6 +43,7 @@ export function PastBoardsModal({
   day,
   players,
   kind,
+  archive,
   name,
   signedIn,
   onClose,
@@ -53,6 +54,8 @@ export function PastBoardsModal({
   players: number | null
   /** What a run on it does now. */
   kind: PastKind
+  /** A day in the archive, older than a week (lib/archive.ts): whether the viewer may play it, on Plus. */
+  archive?: { open: boolean }
   /** The tag whose row the boards show under their top five: none signed out. */
   name: string
   signedIn: boolean
@@ -89,7 +92,8 @@ export function PastBoardsModal({
   }, [slug, day, name, fetchTop, asks])
 
   const title = source.title(day)
-  const note = pastPlayNote(slug, kind, signedIn)
+  const note = pastPlayNote(slug, kind, signedIn, archive)
+  const locked = archive?.open === false
   const board: PastBoard = boards ? side : 'ranked'
   const fullHref = board === 'allTime' ? `${dayBoardHref(slug, day)}#${COURSE_BOARD_ANCHOR}` : dayBoardHref(slug, day)
   return (
@@ -108,7 +112,7 @@ export function PastBoardsModal({
           </p>
         </div>
         <p className={`pbm-note pbm-note--${note.mark}`}>
-          {note.mark === 'allTime' ? <AllTimeIcon /> : <PracticeIcon />}
+          {note.mark === 'allTime' ? <AllTimeIcon /> : note.mark === 'plus' ? <LockIcon /> : <PracticeIcon />}
           <span>{note.text}</span>
         </p>
         <button type="button" className="panel__close pbm-close" aria-label="Close" onClick={onClose}>
@@ -148,10 +152,17 @@ export function PastBoardsModal({
           Full board
           <ChevronRightIcon />
         </a>
-        <a className="panel__btn" href={source.playHref(day)}>
-          <PlayIcon />
-          {words.verb} it
-        </a>
+        {locked ? (
+          <a className="panel__btn" href={plusHref()}>
+            <LockIcon />
+            See Plus
+          </a>
+        ) : (
+          <a className="panel__btn" href={source.playHref(day)}>
+            <PlayIcon />
+            {words.verb} it
+          </a>
+        )}
       </div>
     </Panel>
   )

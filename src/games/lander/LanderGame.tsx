@@ -14,7 +14,7 @@ import { dailyTabHref, gamePlayHref, navigate } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useAdminState } from '../../lib/admin'
-import { useDailyDays } from '../../lib/archive'
+import { inArchive, useDailyDays } from '../../lib/archive'
 import { currentAccountId } from '../../lib/auth'
 import { usePastViewer } from '../../lib/dailyPast'
 import type { PastKind } from '../../lib/dailyWords'
@@ -976,8 +976,11 @@ function LanderDayGame({
   const went: ItsDay = itsDay ?? { days: null, failed: false, me: null }
   // Signed in, a flight goes on the cave's All time board. Signed out it's practice, and so is a flight flown
   // signed out, for good: signing in on its card is for the flights after it.
+  // One in the archive, older than a week (lib/archive.ts), is practice for everyone: its board is closed.
   const pastKind: PastKind =
-    (viewer === null && (g.owner === undefined || g.owner === SIGNED_OUT)) || (ui.phase === 'gameover' && g.owner === SIGNED_OUT)
+    (viewer === null && (g.owner === undefined || g.owner === SIGNED_OUT)) ||
+    (ui.phase === 'gameover' && g.owner === SIGNED_OUT) ||
+    (past && inArchive(day))
       ? 'practice'
       : 'board'
   const pastPlay: PastPlay | null = past

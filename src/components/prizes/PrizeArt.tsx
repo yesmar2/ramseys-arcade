@@ -245,6 +245,25 @@ function StyledTag({ style, name, x, y, size, id }: { style: string; name: strin
           </text>
         </>
       )
+    // Plus's: a rainbow, crisp, a faint white edge.
+    case 'nm-prism':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${id}p`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#ff5a6a" />
+              <stop offset="0.2" stopColor="#ff9a3d" />
+              <stop offset="0.4" stopColor="#ffe14d" />
+              <stop offset="0.6" stopColor="#4fe07a" />
+              <stop offset="0.8" stopColor="#4fa8ff" />
+              <stop offset="1" stopColor="#b678ff" />
+            </linearGradient>
+          </defs>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill={`url(#${id}p)`} stroke="#ffffff" strokeWidth="0.6" strokeOpacity="0.5">
+            {name}
+          </text>
+        </>
+      )
     // Magenta into cyan, round a dark glow.
     case 'nm-wormhole':
       return (
@@ -665,11 +684,59 @@ function sparkle4(x: number, y: number, s: number) {
 }
 const PIXEL_COLOURS = ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b']
 
-/** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own, meteors fall, and parachutes come down. */
+/** The party popper itself: its cone, striped, and its open mouth. */
+function PopperCone() {
+  return (
+    <>
+      <Shadow rx={26} />
+      <path d="M42 124 L58 84 L86 104 Z" fill="#e85d9a" />
+      <path d="M48.5 108 L54 94.4 L62.4 100.5 Z M45.2 116.4 L47 112 L52 115.6 Z" fill="#ffd36e" opacity="0.9" />
+      <ellipse cx="72" cy="94" rx="17" ry="6" transform="rotate(36 72 94)" fill="#ffb8d6" />
+    </>
+  )
+}
+
+/** Where each streamer curls out of the popper's mouth, and its colour; then the squares of confetti among them. */
+const STREAMERS: [string, string][] = [
+  ['M74 90C70 72 90 72 86 56S70 40 84 28S108 24 104 10', '#ff4fa8'],
+  ['M78 92C92 80 104 90 112 76S112 56 128 54S146 60 150 42', '#2fe3cf'],
+  ['M75 88C72 74 58 70 56 56S64 38 52 26', '#ffd23f'],
+  ['M80 95C98 98 108 108 124 100S140 86 154 92', '#6c8cff'],
+  ['M77 89C86 74 100 72 100 58S94 44 110 34S124 30 128 18', '#b86bff'],
+]
+const STREAMER_BITS: [number, number, number, string][] = [
+  [42, 40, 20, '#2fe3cf'],
+  [120, 30, -15, '#ff4fa8'],
+  [140, 74, 35, '#ffd23f'],
+  [96, 42, 50, '#ff8552'],
+  [64, 18, -30, '#6c8cff'],
+  [134, 112, 10, '#b86bff'],
+]
+
+/** Paper streamers curling out of the popper, each twisting as it goes, and a few squares of confetti. */
+function Streamers() {
+  return (
+    <>
+      {STREAMERS.map(([d, c]) => (
+        <g key={c}>
+          <path d={d} fill="none" stroke={c} strokeWidth="3.6" />
+          <path d={d} fill="none" stroke="#000000" strokeWidth="3.6" strokeDasharray="5 9" opacity="0.2" />
+        </g>
+      ))}
+      <PopperCone />
+      {STREAMER_BITS.map(([x, y, rot, c]) => (
+        <rect key={`${x}-${y}`} x={x - 2.5} y={y - 2.5} width="5" height="5" fill={c} transform={`rotate(${rot} ${x} ${y})`} />
+      ))}
+    </>
+  )
+}
+
+/** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own, meteors fall, parachutes come down, and streamers curl out of it. */
 function Popper({ kind, id }: { kind: string; id: string }) {
   if (kind === 'cf-fireworks') return <Fireworks />
   if (kind === 'cf-meteors') return <Meteors id={id} />
   if (kind === 'cf-splashdown') return <Splashdown />
+  if (kind === 'cf-streamers') return <Streamers />
   const rnd = seeded(POPPER_SEEDS[kind] ?? 21)
   const bits: ReactNode[] = []
   for (let i = 0; i < 15; i++) {
@@ -728,10 +795,7 @@ function Popper({ kind, id }: { kind: string; id: string }) {
           <stop offset="1" stopColor="#ff7a45" />
         </linearGradient>
       </defs>
-      <Shadow rx={26} />
-      <path d="M42 124 L58 84 L86 104 Z" fill="#e85d9a" />
-      <path d="M48.5 108 L54 94.4 L62.4 100.5 Z M45.2 116.4 L47 112 L52 115.6 Z" fill="#ffd36e" opacity="0.9" />
-      <ellipse cx="72" cy="94" rx="17" ry="6" transform="rotate(36 72 94)" fill="#ffb8d6" />
+      <PopperCone />
       <path d="M74 88 C 80 70, 70 62, 84 50" fill="none" stroke="#2fe3cf" strokeWidth="2" strokeLinecap="round" />
       <path d="M80 92 C 100 86, 96 70, 116 66" fill="none" stroke="#ff7ac1" strokeWidth="2" strokeLinecap="round" />
       {bits}

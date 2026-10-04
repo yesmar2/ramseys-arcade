@@ -422,6 +422,8 @@ const KIND_COLOURS: Record<string, string[]> = {
   // Season 1's Pass+.
   'cf-meteors': ['#f2813a', '#f5b942', '#ff9a52', '#e8564f'],
   'cf-splashdown': ['#f2813a', '#e8564f', '#f2813a', '#f5b942'],
+  // Plus's monthly looks.
+  'cf-streamers': ['#ff4fa8', '#2fe3cf', '#ffd23f', '#6c8cff', '#b86bff', '#ff8552'],
 }
 
 /** A four-point sparkle around (0, 0), for Stardust and a shooting star's head. */
@@ -494,6 +496,53 @@ function meteorShower(w: number, h: number, colors: string[]): Piece[] {
         delay: delay + after,
       })
     }
+  }
+  return pieces
+}
+
+/**
+ * Streamers: paper streamers unrolling across the screen from its edges, curling and twisting as they
+ * go, and a few squares of confetti fluttering down among them. A streamer's `h` is how long it unrolls
+ * to; `vx` and `vy` are the way it goes, `spin` how tight it curls, `angle` where in its curl it starts.
+ * A square's `h` is 0.
+ */
+function streamers(w: number, h: number, colors: string[]): Piece[] {
+  const pieces: Piece[] = []
+  const phone = w < 640
+  const count = phone ? 7 : 10
+  const reach = Math.max(w, h * 0.7)
+  for (let i = 0; i < count; i++) {
+    const from = i % 3
+    // Two from the sides, one from the top, in turn.
+    const side = i % 2 ? 1 : -1
+    const a = from === 2 ? Math.PI / 2 + (Math.random() - 0.5) * 0.9 : side < 0 ? (-10 + Math.random() * 45) * (Math.PI / 180) : Math.PI - (-10 + Math.random() * 45) * (Math.PI / 180)
+    pieces.push({
+      x: from === 2 ? w * (0.15 + Math.random() * 0.7) : side < 0 ? -12 : w + 12,
+      y: from === 2 ? -12 : h * (0.04 + Math.random() * 0.45),
+      vx: Math.cos(a),
+      vy: Math.sin(a),
+      spin: (Math.PI * 2) / (120 + Math.random() * 90),
+      angle: Math.random() * Math.PI * 2,
+      w: phone ? 6 + Math.random() * 2.5 : 8 + Math.random() * 3,
+      h: reach * (0.6 + Math.random() * 0.4),
+      color: colors[i % colors.length]!,
+      delay: i * 110 + Math.random() * 120,
+    })
+  }
+  const squares = phone ? 18 : 30
+  for (let i = 0; i < squares; i++) {
+    pieces.push({
+      x: Math.random() * w,
+      y: -20 - Math.random() * h * 0.3,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: 1.5 + Math.random() * 2,
+      spin: (Math.random() - 0.5) * 0.2,
+      angle: Math.random() * Math.PI,
+      w: phone ? 6 + Math.random() * 3 : 7 + Math.random() * 4,
+      h: 0,
+      color: colors[(i + 2) % colors.length]!,
+      delay: 200 + Math.random() * 900,
+    })
   }
   return pieces
 }
@@ -636,6 +685,9 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
     const shooting = style === 'cf-shooting'
     const meteors = style === 'cf-meteors'
     const splash = style === 'cf-splashdown'
+    const streaming = style === 'cf-streamers'
+    // How fast a streamer unrolls, in pixels a millisecond: across the screen in about a second.
+    const unroll = Math.max(w, h * 0.7) / 1100
     const pieces: Piece[] = fireworks
       ? fireworkSparks(w, h, colors)
       : shooting
@@ -644,8 +696,10 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
           ? meteorShower(w, h, colors)
           : splash
             ? splashdown(w, h, colors)
-            : []
-    const count = fireworks || shooting || meteors || splash ? 0 : w < 640 ? 70 : 110
+            : streaming
+              ? streamers(w, h, colors)
+              : []
+    const count = fireworks || shooting || meteors || splash || streaming ? 0 : w < 640 ? 70 : 110
     for (let i = 0; i < count; i++) {
       const side = i % 2 ? 1 : -1
       const x = w / 2 + side * (w * 0.12 + Math.random() * w * 0.2)
@@ -809,6 +863,91 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
           ctx.rotate(Math.cos(p.angle) * 0.12)
           parachuteShape(ctx, p.w, p.color)
           ctx.restore()
+          continue
+        }
+        if (streaming) {
+          if (!p.h) {
+            // A square of confetti flutters down, turning over.
+            p.vy += 0.05 * dt
+            p.vx *= 0.99
+            p.vy *= 0.985
+            p.x += p.vx * dt
+            p.y += p.vy * dt
+            p.angle += p.spin * dt
+            ctx.save()
+            ctx.globalAlpha = fade
+            ctx.translate(p.x, p.y)
+            ctx.rotate(p.angle)
+            ctx.scale(Math.cos(p.angle * 1.7), 1)
+            ctx.fillStyle = p.color
+            ctx.fillRect(-p.w / 2, -p.w / 2, p.w, p.w)
+            ctx.restore()
+            continue
+          }
+          // A streamer unrolls along its way in loose loops, drooping as it goes. Its paper twists: narrow
+          // where it turns edge on, darker where its back shows. It's drawn as one band, edge to edge.
+          const len = Math.min(p.h, (t - p.delay) * unroll)
+          const curl = p.w * 3
+          const loop = 0.45 + ((p.angle * 7) % 1) * 0.55
+          const at = (d: number): [number, number] => {
+            const phi = d * p.spin + p.angle
+            const across = Math.sin(phi) * curl
+            const along = d + Math.cos(phi) * curl * loop
+            const droop = (d / p.h) * (d / p.h) * h * 0.12
+            return [p.x + p.vx * along - p.vy * across, p.y + p.vy * along + p.vx * across + droop]
+          }
+          const mid: [number, number][] = []
+          for (let d = 0; d <= len; d += 4) mid.push(at(d))
+          if (mid.length < 2) continue
+          const left: [number, number][] = []
+          const right: [number, number][] = []
+          const backs: boolean[] = []
+          for (let i = 0; i < mid.length; i++) {
+            const [x0, y0] = mid[Math.max(0, i - 1)]!
+            const [x1, y1] = mid[Math.min(mid.length - 1, i + 1)]!
+            const tl = Math.hypot(x1 - x0, y1 - y0) || 1
+            const twist = Math.cos(i * 4 * p.spin * 1.4 + p.angle)
+            const half = (p.w / 2) * (0.2 + 0.8 * Math.abs(twist))
+            const nx = (-(y1 - y0) / tl) * half
+            const ny = ((x1 - x0) / tl) * half
+            const [mx, my] = mid[i]!
+            left.push([mx + nx, my + ny])
+            right.push([mx - nx, my - ny])
+            backs.push(twist < 0)
+          }
+          const band = (from: number, to: number) => {
+            const path = new Path2D()
+            path.moveTo(left[from]![0], left[from]![1])
+            for (let i = from + 1; i <= to; i++) path.lineTo(left[i]![0], left[i]![1])
+            for (let i = to; i >= from; i--) path.lineTo(right[i]![0], right[i]![1])
+            path.closePath()
+            return path
+          }
+          ctx.globalAlpha = fade
+          ctx.fillStyle = p.color
+          ctx.fill(band(0, mid.length - 1))
+          ctx.fillStyle = 'rgba(0,0,0,0.24)'
+          for (let i = 0, run = -1; i <= backs.length; i++) {
+            if (i < backs.length && backs[i]) {
+              if (run < 0) run = Math.max(0, i - 1)
+            } else if (run >= 0) {
+              ctx.fill(band(run, Math.min(i, backs.length - 1)))
+              run = -1
+            }
+          }
+          if (len < p.h) {
+            // The roll still to unwind, at the streamer's end.
+            const [ex, ey] = mid[mid.length - 1]!
+            ctx.fillStyle = p.color
+            ctx.beginPath()
+            ctx.arc(ex, ey, p.w * 0.6, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.fillStyle = 'rgba(255,255,255,0.55)'
+            ctx.beginPath()
+            ctx.arc(ex, ey, p.w * 0.22, 0, Math.PI * 2)
+            ctx.fill()
+          }
+          ctx.globalAlpha = 1
           continue
         }
         p.vy += 0.22 * dt

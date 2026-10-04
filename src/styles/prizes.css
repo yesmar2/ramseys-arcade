@@ -210,6 +210,21 @@ html[data-theme='dark'] .pname--wormhole {
   filter: drop-shadow(0 0 1.5px #12002a) drop-shadow(0 0 2px #12002a) drop-shadow(0 0 8px rgba(214, 92, 214, 0.6));
 }
 
+/* Plus's monthly looks. Prism: the tag split into a rainbow, crisp, with a faint white edge. */
+.pname--prism {
+  background: linear-gradient(90deg, #d42a3a, #e0640f 20%, #b88a00 40%, #1f9a46 60%, #1f6fd0 80%, #7a3fd0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.9));
+}
+
+html[data-theme='dark'] .pname--prism {
+  background-image: linear-gradient(90deg, #ff5a6a, #ff9a3d 20%, #ffe14d 40%, #4fe07a 60%, #4fa8ff 80%, #b678ff);
+  -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.45);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.35));
+}
+
 /* ---------- a title, on its plate ---------- */
 
 .prize-plate {
@@ -733,6 +748,14 @@ html[data-theme='dark'] .pname--wormhole {
 .prize-stage .pname--wormhole {
   background-image: conic-gradient(from 0deg at 50% 50%, #c58bff, #4fe3ff 90deg, #7a5cff 180deg, #ff5fd8 270deg, #c58bff);
   filter: drop-shadow(0 0 1.5px #12002a) drop-shadow(0 0 2px #12002a) drop-shadow(0 0 8px rgba(214, 92, 214, 0.6));
+}
+
+.studio__card .pname--prism,
+.pcard--themed .pname--prism,
+.prize-stage .pname--prism {
+  background-image: linear-gradient(90deg, #ff5a6a, #ff9a3d 20%, #ffe14d 40%, #4fe07a 60%, #4fa8ff 80%, #b678ff);
+  -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.45);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.35));
 }
 
 .pcard__name--sign {

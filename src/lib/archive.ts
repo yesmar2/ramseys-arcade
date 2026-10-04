@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
 import { api } from './leaderboard'
+import { boardDay } from './rankHow'
 
 /*
  * A daily game's days as the API has them (GET /leaderboards/:game/days): each day's runs and players,
@@ -72,4 +74,28 @@ export function archiveDayWords(day: string): string {
 export function dayBefore(day: string): string {
   const [y, m, d] = day.split('-').map(Number)
   return new Date(Date.UTC(y!, m! - 1, d! - 1)).toISOString().slice(0, 10)
+}
+
+/*
+ * The dailies' archive (Ramsey's pick, 2026-10-04: Plus as the Dailies + Seasons membership). A daily's past
+ * days from the last week are everyone's, as they always were: played again, and a run onto a course's All
+ * time board. Older days are the archive: Plus opens them, every day back to a game's first, as practice.
+ * An archived day keeps no board for anyone (the API refuses those runs too), so Plus never buys a place on one.
+ */
+
+/** How many past days are open to everyone: the week before today. */
+export const OPEN_DAYS = 7
+
+/** Whether a past day, YYYY-MM-DD, is in the archive: older than the week of past days open to everyone. */
+export function inArchive(day: string, today = boardDay()): boolean {
+  let since = today
+  for (let i = 0; i < OPEN_DAYS; i++) since = dayBefore(since)
+  return day < since
+}
+
+/** Whether this viewer may play archived days: true on Plus; undefined while who's signed in isn't known yet. */
+export function useArchiveOpen(): boolean | undefined {
+  const { isPlus, loading } = useAuth()
+  if (isPlus) return true
+  return loading ? undefined : false
 }

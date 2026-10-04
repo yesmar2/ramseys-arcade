@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { PastBoardResult } from '../../components/PastBoardResult'
 import { PastCourseStart } from '../../components/PastCourseCards'
 import { useIsAdmin } from '../../lib/admin'
+import { inArchive } from '../../lib/archive'
+import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
@@ -103,7 +105,11 @@ export function PastTrackStart({
       today={{ name: today }}
       walk={walk}
     >
-      {kind === 'practice' ? <p className="hotlap-past__line">Sign in and your laps here go on its {BOARD_NAMES.allTime} board.</p> : null}
+      {kind === 'practice' ? (
+        <p className="hotlap-past__line">
+          {inArchive(course.day) ? archivedWhy(SLUG) : `Sign in and your laps here go on its ${BOARD_NAMES.allTime} board.`}
+        </p>
+      ) : null}
     </PastCourseStart>
   )
 }

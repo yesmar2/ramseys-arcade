@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { ArchiveGate } from '../components/archive/ArchiveGate'
 import { AceChaseGame, AceChasePastGame } from '../games/acechase/AceChaseGame'
 import { useAuth } from '../hooks/useAuth'
 import { gamePlayHref, navigate, useRoute } from '../hooks/useHashRoute'
@@ -11,7 +12,7 @@ import { dailyDay, todaysHole } from '../lib/dailyHole'
  * on it (lib/pastHoles.ts), or, for an admin, one ahead of its day, on trial, where nothing is kept (the
  * admin's Hole Book links to those). Anyone else asking for a hole ahead of its day gets Today's Hole, and
  * so does today's own day. (/games/acechase/daily, where Today's Hole was before it was all of Ace Chase,
- * is this page too.)
+ * is this page too.) A past hole older than a week is Plus's (components/archive/ArchiveGate.tsx).
  */
 export function AceChasePage() {
   const route = useRoute()
@@ -34,7 +35,9 @@ export function AceChasePage() {
   return (
     <main className="game-page game-page--fullscreen">
       {past ? (
-        <AceChasePastGame key={`past-${past.day}`} hole={past} />
+        <ArchiveGate slug="acechase" day={past.day} course={past.n}>
+          <AceChasePastGame key={`past-${past.day}`} hole={past} />
+        </ArchiveGate>
       ) : later && !ahead && !turnedAway ? null : (
         <AceChaseGame key={ahead ? `ahead-${ahead.day}` : 'today'} ahead={ahead} />
       )}

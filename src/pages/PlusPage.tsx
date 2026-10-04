@@ -5,18 +5,21 @@ import { RewardArt } from '../components/season/RewardArt'
 import { openSiteMenu } from '../components/siteNav'
 import { useAuth } from '../hooks/useAuth'
 import { AUTH_EVENT } from '../lib/auth'
+import { OPEN_DAYS } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
-import { homeHref, seasonHref, tournamentsHref } from '../hooks/useHashRoute'
+import { homeHref, prizesHref, seasonHref, tournamentsHref } from '../hooks/useHashRoute'
 import { confirmPlusMembership, fetchPlus, managePlusMembership, money, perSeason, seasonWeeks, startPlusMembership, type PlusInfo } from '../lib/plus'
+import { boardDay } from '../lib/rankHow'
 import { liveSeason, plusPrice, useSeason } from '../lib/season'
 
 /**
  * What the two plans get you.
  *
- * Plus leads with what most players want from it: every season's Pass+ while you're a member (Ramsey's
- * pick, 2026-10-03), then the room to host it always had. Everything about playing stays free, and the page
- * says so before it asks for anything: a pricing page that reads as though the games are being sold would be
- * wrong, because they aren't.
+ * Plus is the Dailies + Seasons membership (Ramsey's pick, 2026-10-04): every past day of every daily, every
+ * season's Pass+, a members' look each month and new games first, then the room to host it always had.
+ * Everything about playing stays free, and the page says so before it asks for anything: a pricing page that
+ * reads as though the games are being sold would be wrong, because they aren't. Nor are places: archive days
+ * and early games are practice, on no board.
  */
 
 type Row = {
@@ -44,6 +47,22 @@ const PLAY: Row[] = [
     free: 'Any size',
     plus: 'Any size',
     note: 'Joining is never paid, whoever is hosting.',
+  },
+]
+
+const DAILIES: Row[] = [
+  { label: 'Today’s dailies', free: true, plus: true },
+  {
+    label: 'Past days',
+    free: `The last ${OPEN_DAYS} days`,
+    plus: 'Every day, back to the first',
+    note: 'A day older than a week is practice for everyone: a course’s board closes a week after its day.',
+  },
+  {
+    label: 'New games',
+    free: 'On their day',
+    plus: 'First, as practice',
+    note: 'Their boards open to everyone at once.',
   },
 ]
 
@@ -162,7 +181,7 @@ export function PlusPage() {
         window.dispatchEvent(new Event(AUTH_EVENT))
         setNote(
           member
-            ? { ok: true, text: 'Welcome to Plus. This season’s Pass+ is yours: what your level has reached is in your hangar and Prizes now.' }
+            ? { ok: true, text: 'Welcome to Plus. Every past daily is open, and this season’s Pass+ is yours: what your level has reached is in your hangar and Prizes now.' }
             : { ok: true, text: 'The payment is still going through. Plus starts as soon as it does.' },
         )
       })
@@ -183,6 +202,9 @@ export function PlusPage() {
   const price = info ? money(info.price, info.currency) : '$2.99'
   const you = info?.you ?? null
   const member = isPlus || you?.plan === 'plus'
+  const looks = info?.looks ?? []
+  // The boards' month (New York), which the API gives the looks by.
+  const month = new Date(`${boardDay()}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
 
   return (
     <PageShell innerClassName="lb-page__inner">
@@ -190,8 +212,8 @@ export function PlusPage() {
         size="compact"
         crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'Plus' }]}
         kicker={`${APP_NAME} Plus`}
-        title="Every season’s Pass+, and room to host."
-        blurb="Playing stays free for everyone: every game, every board and every record book, and joining any event however big. Plus is for players who want each season’s Pass+, its skins and looks, and to run bigger events for their friends."
+        title="Every past daily, and every season’s Pass+."
+        blurb={`Playing stays free for everyone: every game, every board, every daily and its last ${OPEN_DAYS} days, and joining any event however big. Plus opens every past day of every daily, gives you each season’s Pass+ and a members’ look every month, lets you play new games first, and makes room to host bigger events.`}
         actions={
           member ? (
             <>
@@ -241,6 +263,35 @@ export function PlusPage() {
         </p>
       ) : null}
 
+      {looks.length ? (
+        <section className="plus-pass plus-look" aria-labelledby="plus-look-title">
+          <div className="plus-pass__head">
+            <h2 className="plus-table__title" id="plus-look-title">
+              {member ? `${month}’s members’ look is yours` : `${month}’s members’ look`}
+            </h2>
+            {member ? (
+              <a className="plus-pass__link" href={prizesHref()}>
+                Wear it in Prizes ›
+              </a>
+            ) : null}
+          </div>
+          <p className="plus-table__blurb">
+            Every month, every member gets that month&rsquo;s look, and keeps it for good. It&rsquo;s never sold on its own.
+          </p>
+          <ul className="plus-pass__row">
+            {looks.map((look) => (
+              <li key={look.id} className="plus-pass__item">
+                <span className="plus-pass__art">
+                  <RewardArt reward={{ kind: 'prize', id: look.id, name: look.name }} size={60} />
+                </span>
+                <span className="plus-pass__name">{look.name}</span>
+                <span className="plus-look__what">{look.what}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {season && pass ? (
         <section className="plus-pass" aria-labelledby="plus-pass-title">
           <div className="plus-pass__head">
@@ -275,12 +326,14 @@ export function PlusPage() {
       ) : null}
 
       <Table title="Playing" blurb="Free for everyone. Playing needs no account; sign in to save your scores and join in." rows={PLAY} />
+      <Table title="Dailies" blurb="A new course, hole or day of each daily, the same for everyone." rows={DAILIES} />
       <Table
         title="Seasons"
         blurb="A new theme every season, with a pass to climb by winning tickets."
         rows={[
           { label: 'The season pass’s free row', free: true, plus: true },
           { label: 'The season’s Pass+ row', free: pass ? `${plusPrice(pass)} once a season` : 'A season at a time', plus: 'Every season, included' },
+          { label: 'A members’ look each month', free: false, plus: true, note: 'A title, name style, card theme or confetti, yours to keep.' },
         ]}
       />
       <Table title="Hosting" blurb="Running events and groups for other people." rows={HOST} />

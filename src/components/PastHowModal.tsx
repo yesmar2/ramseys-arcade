@@ -4,7 +4,7 @@ import { pastHowLines, pastHowTitle, type PastHowLine } from '../lib/dailyPast'
 import { dailyWords } from '../lib/dailyWords'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { isRankedGame } from '../data/games'
-import { ChevronRightIcon, PlayIcon } from './chromeIcons'
+import { ChevronRightIcon, LockIcon, PlayIcon } from './chromeIcons'
 import { Panel, PanelHead } from './Panel'
 import { AllTimeIcon, CalendarIcon, PracticeIcon, RankedIcon } from './pastIcons'
 import { openSiteMenu } from './siteNav'
@@ -28,6 +28,7 @@ const MARKS: Record<PastHowLine['mark'], ReactNode> = {
   practice: <PracticeIcon />,
   ranked: <RankedIcon />,
   fun: <SparkleIcon />,
+  plus: <LockIcon />,
 }
 
 export function PastHowModal({ slug, signedIn, onClose }: { slug: string; signedIn: boolean; onClose: () => void }) {

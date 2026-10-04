@@ -5,7 +5,8 @@ import { prizesHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useSaveWait } from '../hooks/useSaveWait'
 import { linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
-import { capitalWord, verbDone } from '../lib/dailyPast'
+import { inArchive } from '../lib/archive'
+import { archivedWhy, capitalWord, verbDone } from '../lib/dailyPast'
 import { bestWord, BOARD_NAMES, dailyWords, type PastKind } from '../lib/dailyWords'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { allTimeBoardName, playersWords, RECORD_TICKETS } from '../lib/pastBoards'
@@ -23,7 +24,8 @@ import '../styles/pastCourse.css'
  * board, your week or your rank. The save goes on under the card, and Again waits on it a moment
  * (useSaveWait). The run goes out under its own run id, taken as it ended, and it's its player's alone: a
  * run played as one account waits for that account (lib/deviceRuns.ts). Played signed out it was practice and
- * stays so; signing in on the card is for the runs after it. Each game fills in its own words and figures.
+ * stays so; signing in on the card is for the runs after it. A course in the archive, older than a week
+ * (lib/archive.ts), has its board closed: every run there is practice. Each game fills in its own words and figures.
  */
 
 /** What became of a past course's run: saved to its board, or why not. */
@@ -175,7 +177,8 @@ export function PastBoardResult({
   const otherAccount = typeof owner === 'string' && accountId !== owner
   const name = normalizePlayerName(usePlayerName())
   const known = signedIn ? (board?.you?.score ?? null) : null
-  const [save, setSave] = useState<RunSave>(() => (owner === null ? { phase: 'practice' } : { phase: 'waiting' }))
+  const archived = inArchive(day)
+  const [save, setSave] = useState<RunSave>(() => (owner === null || archived ? { phase: 'practice' } : { phase: 'waiting' }))
   const sent = useRef(false)
   const shown = useRef(true)
   const savedRef = useRef(onSaved)
@@ -194,8 +197,8 @@ export function PastBoardResult({
 
   useEffect(() => {
     if (sent.current || loading) return
-    // Played signed out: practice, kept nowhere, even once its card signs in.
-    if (owner === null) {
+    // Played signed out, or on a course whose board is closed: practice, kept nowhere, even once its card signs in.
+    if (owner === null || archived) {
       setSave({ phase: 'practice' })
       return
     }
@@ -239,7 +242,7 @@ export function PastBoardResult({
         if (shown.current) setSave(next)
       },
     )
-  }, [loading, otherAccount, owner, accountId, signedIn, name, known, score, run, slug, n, board])
+  }, [loading, archived, otherAccount, owner, accountId, signedIn, name, known, score, run, slug, n, board])
 
   const pending = save.phase === 'waiting' || save.phase === 'saving'
   const waited = useSaveWait(pending)
@@ -283,8 +286,9 @@ export function PastBoardResult({
     headline = `Still ${placed(board.you.place)}`
     line = `Your best here, ${fmt(board.you.score)}, stands: this ${runWord} was ${gap(board.you.score - score)} slower.`
   } else if (save.phase === 'practice') {
-    // Its own headline says nothing was saved; signing in is for the runs to come.
-    status = signedIn ? null : <ReportSignIn lead={`Sign in and your next ${runWord}s here go on ${boardName}.`} onSignedIn={() => undefined} />
+    // Its own headline says nothing was saved; signing in is for the runs to come, where the board is open.
+    if (archived) status = <p className="past-save__line">{archivedWhy(slug)}</p>
+    else status = signedIn ? null : <ReportSignIn lead={`Sign in and your next ${runWord}s here go on ${boardName}.`} onSignedIn={() => undefined} />
   } else {
     headline = `Not on its ${BOARD_NAMES.allTime} board yet`
     if (save.phase === 'signedOut') {

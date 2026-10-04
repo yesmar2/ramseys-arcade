@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { useSaveWait } from '../hooks/useSaveWait'
 import { dailyTabHref, gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
+import { archiveDayWords } from '../lib/archive'
 import { currentAccountId, linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
 import {
   challengeMessage,
@@ -15,6 +16,7 @@ import {
   useActiveChallenge,
 } from '../lib/challenges'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { inEarlyAccess, plusFirstDay } from '../lib/earlyAccess'
 import { exitFullscreen } from '../lib/fullscreen'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { scoreText, scoreUnit } from '../lib/gameBoard'
@@ -91,7 +93,7 @@ type ScoreSaveProps = {
   onSaved?: () => void
 }
 
-type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'error' | 'otherAccount'
+type Phase = 'checking' | 'needAuth' | 'needName' | 'saving' | 'saved' | 'assisted' | 'early' | 'error' | 'otherAccount'
 
 /** Where a failed save leaves the card, and what it says. */
 function afterFailure(err: unknown): { phase: Phase; error: string | null } {
@@ -251,6 +253,14 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         if (closed) return
         takeRunAchievements()
         setPhase('assisted')
+        return
+      }
+
+      // In early access, Plus plays it first as practice: its boards open to everyone on its day (lib/earlyAccess.ts).
+      if (inEarlyAccess(gameSlug)) {
+        if (closed) return
+        takeRunAchievements()
+        setPhase('early')
         return
       }
 
@@ -534,6 +544,14 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   } else if (phase === 'assisted') {
     block = <p className="report__note">Stage skip used, so this run wasn’t saved to the boards or the record books.</p>
     who = <ReportWho text="Not saved" />
+  } else if (phase === 'early') {
+    const opens = plusFirstDay(gameSlug)
+    block = (
+      <p className="report__note">
+        Early access: runs are practice{opens ? ` until ${archiveDayWords(opens)}` : ''}, when its boards open for everyone at once.
+      </p>
+    )
+    who = <ReportWho text="Practice" />
   } else if (phase === 'error') {
     block = <p className="panel__error">{error}</p>
     who = <ReportWho text="Not saved" />
@@ -675,7 +693,7 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
             ? facing
               ? [challengeReportLine(gameSlug, score, facing)]
               : []
-            : phase === 'assisted' || phase === 'error'
+            : phase === 'assisted' || phase === 'early' || phase === 'error'
               ? []
               : lines
         }

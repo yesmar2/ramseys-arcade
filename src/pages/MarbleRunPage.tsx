@@ -1,3 +1,4 @@
+import { ArchiveGate } from '../components/archive/ArchiveGate'
 import { courseDay, FIRST_DAY, testRunDay } from '../games/marblerun/daily'
 import { MarbleRunGame } from '../games/marblerun/MarbleRunGame'
 import { useRoute } from '../hooks/useHashRoute'
@@ -7,7 +8,8 @@ const isDay = (day: string | undefined): day is string => typeof day === 'string
 /**
  * Marble Run's page: today's course. With ?day=YYYY-MM-DD, a past day's from the Past tab, rolled again as
  * practice, where nothing is kept; or today's or one still to come, from the admin's Course Book, as an
- * admin's test run (MarbleRunGame sends anyone else to today's). A day before the first isn't shown.
+ * admin's test run (MarbleRunGame sends anyone else to today's). A day before the first isn't shown, and
+ * one older than a week is Plus's (components/archive/ArchiveGate.tsx).
  */
 export function MarbleRunPage() {
   const route = useRoute()
@@ -16,7 +18,9 @@ export function MarbleRunPage() {
   const test = testRunDay(asked)
   return (
     <main className="game-page game-page--fullscreen">
-      <MarbleRunGame key={day ?? 'today'} practiceDay={day} testDay={test} />
+      <ArchiveGate slug="marblerun" day={day}>
+        <MarbleRunGame key={day ?? 'today'} practiceDay={day} testDay={test} />
+      </ArchiveGate>
     </main>
   )
 }

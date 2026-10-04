@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } 
 import { isRankedGame } from '../../data/games'
 import { useMyAvatarId } from '../../hooks/useMyAvatarId'
 import { ROUTE_EVENT } from '../../hooks/useHashRoute'
-import { archiveDayWords, useDailyDays, type ArchiveDay } from '../../lib/archive'
+import { archiveDayWords, inArchive, useArchiveOpen, useDailyDays, type ArchiveDay } from '../../lib/archive'
 import {
+  archiveTip,
   coursesWord,
   PAST_PAGE,
   PRACTICE_TIP,
@@ -21,7 +22,7 @@ import { BOARD_NAMES, boardTip, dailyWords, type PastBoard, type PastKind } from
 import { formatLeaderboardScore } from '../../lib/leaderboardFormat'
 import { ordinal } from '../../lib/profileMath'
 import { BoardEmpty } from '../BoardChrome'
-import { BoardsIcon, PlayIcon } from '../chromeIcons'
+import { BoardsIcon, LockIcon, PlayIcon } from '../chromeIcons'
 import { InfoTip } from '../InfoTip'
 import { PastBoardsModal } from '../PastBoardsModal'
 import { PastHowModal } from '../PastHowModal'
@@ -37,7 +38,8 @@ import '../../styles/dailyPast.css'
  * place on the course's own board, or its record), and the way to play it. Words are kept off the page:
  * each label's tip says what its board is, the ⓘ beside the title opens "How past tracks work", and a card
  * opens its boards in a panel (PastBoardsModal), the top five and you. A card's picture is drawn only as
- * it comes near the screen, so a long list costs no more to open than a short one.
+ * it comes near the screen, so a long list costs no more to open than a short one. A day older than a week is
+ * in the archive (lib/archive.ts): practice for everyone, and without Plus its card's way in says Plus.
  */
 
 /** How the days' results stand: still asked, in, or not to be had. */
@@ -97,7 +99,7 @@ function kindOf(
     if (!results) return null
   }
   const had = Boolean(entry?.you || board?.you || source.resultHere?.(day))
-  return pastKindFor(slug, signedIn, firstResultOnly, had)
+  return pastKindFor(slug, signedIn, firstResultOnly, had, inArchive(day, source.today))
 }
 
 /**
@@ -190,6 +192,7 @@ function PastCard({
   viewer,
   avatarId,
   here,
+  archiveOpen,
   onOpen,
 }: {
   source: PastSource
@@ -199,6 +202,8 @@ function PastCard({
   viewer: PastViewer
   avatarId: string | null
   here: boolean
+  /** Whether the viewer may play archived days: Plus. Undefined while who's signed in isn't known. */
+  archiveOpen: boolean | undefined
   onOpen: (day: string) => void
 }) {
   const { slug, boards, art: drawArt } = source
@@ -211,6 +216,7 @@ function PastCard({
   // Yours only once it's known whose they are: not signed out, nor while a session's account isn't known yet.
   const showYou = viewer.state === 'in'
   const kind = kindOf(source, day, entry, board, daysState, viewer)
+  const locked = archiveOpen === false && inArchive(day, source.today)
 
   // Ranked: your place that day, or who was 1st. On a daily just for fun (data/games.ts Game.ranked), there's
   // no place and no 1st: only your own result, and the card opens no boards.
@@ -279,11 +285,19 @@ function PastCard({
         ) : null}
       </dl>
       <div className="pc-go">
-        <a className="pc-play" href={source.playHref(day)} aria-label={`${words.verb} ${title}`}>
-          <PlayIcon />
-          {words.verb}
-        </a>
-        {kind === 'practice' ? (
+        {locked ? (
+          // Its play page says what the archive is, with the way to Plus.
+          <a className="pc-play pc-play--plus" href={source.playHref(day)} aria-label={`${title}: in the archive, with Plus`} title={archiveTip(slug)}>
+            <LockIcon />
+            Plus
+          </a>
+        ) : (
+          <a className="pc-play" href={source.playHref(day)} aria-label={`${words.verb} ${title}`}>
+            <PlayIcon />
+            {words.verb}
+          </a>
+        )}
+        {kind === 'practice' && !locked ? (
           <InfoTip className="pc-prac" tipClassName="dp-tip" label="Practice" trigger={<PracticeIcon />}>
             {PRACTICE_TIP}
           </InfoTip>
@@ -300,6 +314,7 @@ export function PastCourses({ source }: { source: PastSource }) {
   const viewer = usePastViewer()
   const avatarId = useMyAvatarId(viewer.state === 'in' ? viewer.name : '')
   const { days, failed, retry } = useDailyDays(slug, viewer.name)
+  const archiveOpen = useArchiveOpen()
   const daysState: DaysState = days ? 'ok' : failed ? 'failed' : 'wait'
   const byDay = useMemo(() => new Map((days ?? []).map((d) => [d.day, d])), [days])
   const courses = useMemo(() => pastDays(today, first), [today, first])
@@ -412,6 +427,7 @@ export function PastCourses({ source }: { source: PastSource }) {
                 viewer={viewer}
                 avatarId={avatarId}
                 here={here === day}
+                archiveOpen={archiveOpen}
                 onOpen={setOpened}
               />
             ))}
@@ -442,6 +458,7 @@ export function PastCourses({ source }: { source: PastSource }) {
           day={opened}
           players={openEntry?.players ?? null}
           kind={openKind ?? (signedIn ? 'board' : 'practice')}
+          archive={inArchive(opened, today) && archiveOpen !== undefined ? { open: archiveOpen } : undefined}
           name={viewer.state === 'in' ? viewer.name : ''}
           signedIn={signedIn}
           onClose={() => setOpened(null)}

@@ -8,7 +8,8 @@ import { dailyTrack, trackNumber } from '../games/hotlap/daily'
 import { dailyCave } from '../games/lander/daily'
 import { dailyCourse } from '../games/marblerun/daily'
 import { dailyTabHref, gamePlayHref } from '../hooks/useHashRoute'
-import { useDailyDays, type ArchiveDay, type DailyDays } from '../lib/archive'
+import { inArchive, useArchiveOpen, useDailyDays, type ArchiveDay, type DailyDays } from '../lib/archive'
+import { archiveTip } from '../lib/dailyPast'
 import { todaysHole } from '../lib/dailyHole'
 import { dailyWords } from '../lib/dailyWords'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -55,7 +56,7 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
 }
 
 /** A daily on the day's ticket, as its tile shows it. */
-function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServerDay | undefined): TicketTile {
+function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServerDay | undefined, locked: boolean): TicketTile {
   const slug = daily.slug
   const game = getGame(slug)?.name ?? daily.label
   const { kicker, title, play, page } = courseOf(daily.key, day)
@@ -75,9 +76,10 @@ function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServ
     // "38th of 65", where the game had places that day.
     note: you?.place != null && entry ? `${ordinal(you.place)} of ${entry.players}` : null,
     play,
-    go: verb,
-    goLabel: `${verb} ${game}, ${kicker}`,
-    goTip: null,
+    // A day in the archive, without Plus: its play page says what the archive is.
+    go: locked ? 'Plus' : verb,
+    goLabel: locked ? `${game}, ${kicker}: in the archive, with Plus` : `${verb} ${game}, ${kicker}`,
+    goTip: locked ? archiveTip(slug) : null,
   }
 }
 
@@ -116,7 +118,9 @@ export function PastDayTicket({
     cave: useDailyDays('lander', name),
   }
   const card = said?.live ? TODAY_DAILIES.filter((d) => said.live!.includes(d.key) && isGameListed(d.slug)) : liveDailies(day)
-  const tiles = card.map((d) => tileOf(d, day, asked[d.key], said))
+  const archiveOpen = useArchiveOpen()
+  const locked = inArchive(day) && archiveOpen === false
+  const tiles = card.map((d) => tileOf(d, day, asked[d.key], said, locked))
   const count = said ? doneOf(said) : null
   const done = count?.done ?? tiles.filter((t) => t.done).length
   const total = count?.of ?? tiles.length

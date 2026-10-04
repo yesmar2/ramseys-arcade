@@ -2318,3 +2318,9 @@
   max-width: 64rem;
   margin-inline: auto;
 }
+
+/* This month's members' look on the Plus page: what kind of look each is, under its name. */
+.plus-look__what {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
