@@ -1368,17 +1368,126 @@ function HalfFull({ id }: { id: Id }) {
   )
 }
 
+type Pt = [number, number]
+
+/** A smooth (Catmull-Rom) curve through `points`, `steps` samples to each span between them. */
+function smoothCurve(points: Pt[], steps: number): Pt[] {
+  const out: Pt[] = []
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[Math.min(points.length - 1, i + 2)]
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps
+      const at = (k: 0 | 1) =>
+        0.5 * (2 * p1[k] + (p2[k] - p0[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t * t + (3 * p1[k] - p0[k] - 3 * p2[k] + p3[k]) * t * t * t)
+      out.push([at(0), at(1)])
+    }
+  }
+  out.push(points[points.length - 1])
+  return out
+}
+
 /**
- * Marble Run's course hanging in the dark: a ribbon of violet glass edged in magenta light, curving away
- * right over a floor of light far below, an amber checkpoint gate across it, the swirled marble rolling
- * down with its glow on the glass, and the blue ball's wire ghost a little ahead.
+ * The two edges of a ribbon laid along `centre`, `half(point)` out either side of it. `squash` flattens how
+ * far an edge moves up or down the picture, for a ribbon lying on a floor seen at a slant.
+ */
+function ribbonEdges(centre: Pt[], half: (p: Pt) => number, squash: number): [Pt[], Pt[]] {
+  const left: Pt[] = []
+  const right: Pt[] = []
+  centre.forEach((p, i) => {
+    const a = centre[Math.max(0, i - 1)]
+    const b = centre[Math.min(centre.length - 1, i + 1)]
+    const nx = a[1] - b[1]
+    const ny = (b[0] - a[0]) * squash
+    const n = Math.hypot(nx, ny) || 1
+    const h = half(p)
+    left.push([p[0] + (nx / n) * h, p[1] + (ny / n) * h])
+    right.push([p[0] - (nx / n) * h, p[1] - (ny / n) * h])
+  })
+  return [left, right]
+}
+
+const num = (n: number) => String(Math.round(n * 100) / 100)
+const through = (points: Pt[]) => points.map(([x, y], i) => `${i ? 'L' : 'M'}${num(x)} ${num(y)}`).join(' ')
+
+/**
+ * Marble Run's course for its picture, worked out once: a day's course seen from up high, as its start card
+ * shows it, winding toward us from the horizon and widening as it comes. Its glass, its edges, the light
+ * hanging under them, a stripe of grid now and then, and where its gates, its kicker's lights, the marble and
+ * the blue ball sit on it.
+ */
+const MARBLE_COURSE = (() => {
+  const centre = smoothCurve(
+    [
+      [35.5, 7.3],
+      [26, 7.9],
+      [13.5, 9.1],
+      [8.2, 11.2],
+      [11.5, 13.6],
+      [24.5, 15.2],
+      [31.6, 17.6],
+      [30.4, 21],
+      [19.5, 23.6],
+      [11, 26.4],
+      [8.4, 31.6],
+    ],
+    12,
+  )
+  const half = (p: Pt) => 0.22 + Math.max(0, p[1] - 7) * 0.105
+  const [left, right] = ribbonEdges(centre, half, 0.42)
+  const at = (t: number) => Math.round(t * (centre.length - 1))
+  const hang = (edge: Pt[]) => `${through(edge)} L${through(edge.map(([x, y], i): Pt => [x, y + 0.4 + half(centre[i]) * 0.55]).reverse()).slice(1)} Z`
+  const gate = (t: number) => {
+    const i = at(t)
+    const h = 0.6 + half(centre[i]) * 0.9
+    const [[ax, ay], [bx, by]] = [left[i], right[i]]
+    return `M${num(ax)} ${num(ay)} V${num(ay - h)} L${num(bx)} ${num(by - h)} V${num(by)}`
+  }
+  const stripes = centre.flatMap((_, i) => (i % 3 === 2 ? [`M${num(left[i][0])} ${num(left[i][1])} L${num(right[i][0])} ${num(right[i][1])}`] : []))
+  const lights: string[] = []
+  for (let i = at(0.38); i <= at(0.47); i++) {
+    const r = 0.12 + half(centre[i]) * 0.06
+    for (const edge of [left, right]) {
+      const x = centre[i][0] * 0.3 + edge[i][0] * 0.7
+      const y = centre[i][1] * 0.3 + edge[i][1] * 0.7
+      lights.push(`M${num(x - r)} ${num(y)} a${num(r)} ${num(r)} 0 1 0 ${num(2 * r)} 0 a${num(r)} ${num(r)} 0 1 0 ${num(-2 * r)} 0`)
+    }
+  }
+  const [mx, my] = centre[at(0.755)]
+  const [gx, gy] = centre[at(0.85)]
+  return {
+    glass: `${through(left)} L${through([...right].reverse()).slice(1)} Z`,
+    left: through(left),
+    right: through(right),
+    hanging: `${hang(left)} ${hang(right)}`,
+    stripes: stripes.join(' '),
+    lights: lights.join(' '),
+    passed: gate(0.27),
+    next: gate(0.68),
+    marble: [mx, my - 1.7] as Pt,
+    ghost: [gx, gy - 1.3] as Pt,
+  }
+})()
+
+/** The floor of light below the horizon, ruled across and toward it. */
+const MARBLE_FLOOR = [
+  ...[6.8, 7.5, 8.6, 10.3, 12.8, 16.4, 21.6, 28.8].map((y) => `M-1 ${y} H41`),
+  ...[-40, -22, -10, -1, 7, 14, 20, 26, 33, 41, 50, 62, 80].map((x) => `M20 6.4 L${x} 31`),
+].join(' ')
+
+/**
+ * Marble Run: the day's course from up high, as its start card shows it. Violet glass edged in magenta light
+ * winds toward us over the floor of light, past a gate already passed (green), down the kicker's lights, to
+ * the next (amber); the swirled marble rolls down it with its glow on the glass, the blue ball's ghost ahead.
  */
 function MarbleRun({ id }: { id: Id }) {
-  // The track's two edges, from under the marble out to where it bends away right.
-  const left = 'M3 31 C6.8 25.6 12.6 21 17.4 17.8 C20.6 15.6 24.4 14.2 28.4 13.4'
-  const right = 'M37 31 C33.8 26.4 30 22.8 27 20.2 C25.8 19 26.4 17.2 29.4 15.8 C30.6 15.2 31.6 14.8 32.2 14.6'
+  const course = MARBLE_COURSE
   const edge = '#ff5ce1'
-  const grid = '#8a5cff'
+  const [mx, my] = course.marble
+  const [gx, gy] = course.ghost
+  const r = 2.15
   return (
     <>
       <defs>
@@ -1386,79 +1495,109 @@ function MarbleRun({ id }: { id: Id }) {
           <stop offset="0" stopColor="#050311" />
           <stop offset="1" stopColor="#2a0e45" />
         </linearGradient>
-        <linearGradient id={id('skirt')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#a33ad6" />
-          <stop offset="1" stopColor="#07040f" />
-        </linearGradient>
         <radialGradient id={id('ball')} cx="0.38" cy="0.34" r="0.75">
           <stop offset="0" stopColor="#ffffff" />
-          <stop offset="0.5" stopColor="#d9d0ee" />
-          <stop offset="0.88" stopColor="#6a4a9e" />
-          <stop offset="1" stopColor="#3a1f66" />
+          <stop offset="0.45" stopColor="#d9d0ee" />
+          <stop offset="0.85" stopColor="#5b3f8c" />
+          <stop offset="1" stopColor="#2a1650" />
         </radialGradient>
         <clipPath id={id('marble')}>
-          <circle cx="16.4" cy="24.2" r="3.4" />
+          <circle cx={num(mx)} cy={num(my)} r={r} />
         </clipPath>
       </defs>
-      <rect x="-1" y="-1" width="42" height="14" fill={`url(#${id('sky')})`} />
+      <rect x="-1" y="-1" width="42" height="7.4" fill={`url(#${id('sky')})`} />
       <Stars
         points={[
-          [3, 3, 0.16],
-          [9, 6.5, 0.13, 0.55],
-          [15, 2.4, 0.15],
-          [22, 5.2, 0.13, 0.55],
-          [30, 2.8, 0.16],
-          [36.5, 6, 0.13, 0.55],
-          [38.5, 1.8, 0.14],
+          [3, 1.6, 0.14],
+          [9.5, 3.8, 0.12, 0.5],
+          [16, 1.2, 0.13],
+          [23, 3, 0.12, 0.5],
+          [29.5, 1.4, 0.14],
+          [36, 3.6, 0.12, 0.5],
         ]}
         colour="#d9ccff"
       />
-      {/* Peaks of wire on the floor far off, and the floor of light itself, ruled toward the horizon. */}
-      <path d="M1.6 12.8 L5.2 6.6 L8.8 12.8 M6.8 12.8 L9.6 8.8 L12.4 12.8 M30 12.8 L33.8 5.8 L37.6 12.8" {...line('#4b2585', 0.26, 0.9)} />
-      <rect x="-1" y="12.8" width="42" height="19" fill="#07040f" />
-      {[13.2, 13.8, 14.8, 16.4, 18.8, 22.6, 28.6].map((y) => (
-        <path key={y} d={`M-1 ${y} H41`} {...line('#3a2270', 0.16, 0.8)} />
-      ))}
-      {[-30, -16, -4, 6, 14, 22, 30, 40, 52, 66].map((x) => (
-        <path key={x} d={`M20 12.8 L${x} 31`} {...line('#3a2270', 0.16, 0.8)} />
-      ))}
-      <path d="M-1 12.8 H41" {...line('#c65bd9', 0.22, 0.55)} />
-      {/* The track: its skirt hanging below the left edge, its glass, its grid, its edges of light. */}
-      <path d={`${left} L28.4 15.1 C24.6 15.9 20.8 17.4 17.6 19.6 C12.8 22.8 7 27.2 3.2 32.4 Z`} fill={`url(#${id('skirt')})`} opacity="0.9" />
-      <path d={`${left} L32.2 14.6 C31.6 14.8 30.6 15.2 29.4 15.8 C26.4 17.2 25.8 19 27 20.2 C30 22.8 33.8 26.4 37 31 Z`} fill="#191233" />
-      <path d="M20 31 C21.4 26.4 22.8 22 24.2 19.4 M9.4 29 C18 27.6 27 27.4 34.6 28.4 M13.8 24.2 C19 23.2 25 23 29.6 23.6 M17.8 20.2 C21.2 19.4 24.4 19.2 26.6 19.6 M22 16.8 C24.8 15.9 27.4 15.4 29.8 15.2" {...line(grid, 0.16, 0.65)} />
-      <path d={left} {...line(edge, 1.4, 0.25)} />
-      <path d={right} {...line(edge, 1.4, 0.25)} />
-      <path d={left} {...line(edge, 0.45)} />
-      <path d={right} {...line(edge, 0.45)} />
-      {/* The checkpoint gate, amber, across the track where it bends. */}
-      <path d="M20.2 18.6 V14.2 M27.2 19.6 V15.1" {...line('#f5b942', 0.3)} />
-      <path d="M20 14.2 L27.4 15.1" {...line('#f5b942', 0.34)} />
-      {/* The blue ball's ghost, a little ahead. */}
-      <circle cx="24.4" cy="18.9" r="1.15" {...line('#46e4ff', 0.2)} fill="#46e4ff" fillOpacity="0.14" strokeDasharray="0.55 0.35" />
-      {/* The marble, its glow on the glass under it, and its swirl. */}
-      <Glow id={id} name="pool" cx={16.8} cy={27.2} r={5.4} colour="#ff8cf0" strength={0.5} />
-      <Glow id={id} name="halo" cx={16.4} cy={24.2} r={6} colour="#ff5ce1" strength={0.3} />
-      <circle cx="16.4" cy="24.2" r="3.4" fill={`url(#${id('ball')})`} />
+      {/* Peaks of wire on the horizon, and the floor of light below it. */}
+      <path d="M0.5 6.4 L3.4 2.6 L6.3 6.4 M5 6.4 L7.4 3.9 L9.8 6.4 M31.5 6.4 L34.6 2.2 L37.7 6.4" {...line('#4b2585', 0.24, 0.9)} />
+      <rect x="-1" y="6.4" width="42" height="25.6" fill="#07040f" />
+      <path d={MARBLE_FLOOR} {...line('#3a2270', 0.16, 0.8)} />
+      <path d="M-1 6.4 H41" {...line('#c65bd9', 0.22, 0.55)} />
+      {/* The course: the light hanging under its edges, its glass, a stripe of grid now and then, its edges of light. */}
+      <path d={course.hanging} fill="#a33ad6" opacity="0.3" />
+      <path d={course.glass} fill="#191233" />
+      <path d={course.stripes} {...line('#8a5cff', 0.1, 0.55)} />
+      <path d={course.left} {...line(edge, 1.1, 0.22)} />
+      <path d={course.right} {...line(edge, 1.1, 0.22)} />
+      <path d={course.left} {...line(edge, 0.36)} />
+      <path d={course.right} {...line(edge, 0.36)} />
+      {/* The kicker's lights down the long straight, the gate behind (green) and the one ahead (amber). */}
+      <path d={course.lights} fill="#ffb347" />
+      <path d={course.passed} {...line('#3ecf8e', 0.26)} />
+      <path d={course.next} {...line('#f5b942', 0.26)} />
+      {/* The blue ball's ghost, ahead. */}
+      <circle cx={num(gx)} cy={num(gy)} r="1.45" {...line('#46e4ff', 0.2)} fill="#46e4ff" fillOpacity="0.14" strokeDasharray="0.55 0.35" />
+      {/* The marble, its glow on the glass under it, its swirls and its shine. */}
+      <Glow id={id} name="pool" cx={mx} cy={my + 2.3} r={4.8} colour="#ff8cf0" strength={0.5} />
+      <Glow id={id} name="halo" cx={mx} cy={my + 0.1} r={5.4} colour="#ff5ce1" strength={0.28} />
+      <circle cx={num(mx)} cy={num(my)} r={r} fill={`url(#${id('ball')})`} />
       <g clipPath={`url(#${id('marble')})`}>
-        <path d="M12.6 23.6 C14.2 22 16 25.4 17.6 23.4 C18.6 22.2 19.4 22.4 20.4 21.6" {...line('#ff4fd8', 1)} />
-        <path d="M12.8 26 C14.8 25.2 16.8 27.4 19 25.8 C19.6 25.4 20 25.2 20.4 25" {...line('#46e4ff', 0.6)} />
+        <g transform={`translate(${num(mx)} ${num(my)}) rotate(-20) scale(${num(r / 3.4)})`}>
+          <path d="M-3.8 -0.6 C-2.2 -2.2 -0.4 1.2 1.2 -0.8 C2.2 -2 3 -1.8 4 -2.6" {...line('#ff4fd8', 1)} />
+          <path d="M-3.6 1.8 C-1.6 1 0.4 3.2 2.6 1.6 C3.2 1.2 3.6 1 4 0.8" {...line('#46e4ff', 0.6)} />
+          <path d="M-3.2 -2.6 C-1.8 -3.2 -0.6 -2.4 0.6 -3.2" {...line('#8a5cff', 0.4)} />
+        </g>
       </g>
-      <circle cx="16.4" cy="24.2" r="3.4" {...line('#ff5ce1', 0.28, 0.8)} />
-      <ellipse cx="15.1" cy="22.7" rx="0.8" ry="0.5" transform="rotate(-30 15.1 22.7)" fill="#fff" opacity="0.9" />
+      <circle cx={num(mx)} cy={num(my)} r={r} {...line('#ff5ce1', r * 0.08, 0.8)} />
+      <ellipse
+        cx={num(mx - r * 0.38)}
+        cy={num(my - r * 0.44)}
+        rx={num(r * 0.24)}
+        ry={num(r * 0.15)}
+        transform={`rotate(-30 ${num(mx - r * 0.38)} ${num(my - r * 0.44)})`}
+        fill="#fff"
+        opacity="0.9"
+      />
     </>
   )
 }
 
+/** The landing room's grid of air, a line every 2 m. */
+const LANDER_GRID = [
+  ...Array.from({ length: 21 }, (_, i) => `M${i * 2} -1 V31`),
+  ...Array.from({ length: 15 }, (_, i) => `M-1 ${1 + i * 2} H41`),
+].join(' ')
+
+/** Sparks thrown off the pad either side of the flame: x, y, size, opacity. */
+const LANDER_SPARKS: Array<[number, number, number, number]> = [
+  [16.21, 25.27, 0.31, 0.74],
+  [23.05, 25.64, 0.29, 0.68],
+  [13.04, 25.13, 0.2, 0.51],
+  [21.2, 24.27, 0.35, 0.81],
+  [17.12, 25.3, 0.35, 0.8],
+  [26.06, 25.63, 0.18, 0.48],
+  [15.41, 25.23, 0.29, 0.68],
+  [24.2, 25.02, 0.25, 0.61],
+  [15.19, 25.08, 0.28, 0.67],
+  [25.24, 25.44, 0.21, 0.53],
+  [16.97, 24.3, 0.34, 0.79],
+  [25.96, 25.78, 0.19, 0.48],
+  [15.78, 25.55, 0.3, 0.71],
+  [24.6, 25.73, 0.23, 0.58],
+  [15.4, 24.38, 0.28, 0.68],
+  [26.2, 25.37, 0.18, 0.47],
+  [11.35, 25.82, 0.14, 0.39],
+  [23.12, 24.61, 0.28, 0.68],
+]
+
 /**
- * Lander's cave: a shaft bending down out of the dark rock into the landing room, its walls lit violet near the
- * top and magenta deeper down, an amber gate across it, the blue ship's cyan ghost on the way down, and your
- * ship over the landing pad on a column of amber flame, the pad's lights running toward its middle.
+ * Lander touching down, close up in the landing room: your ship big over the pad on its column of amber
+ * flame, sparks thrown off the pad, the room's walls (a bump in each, as the caves have) at the picture's
+ * edges, so the icon is all ship and pad. The shaft comes in through the ceiling at the right, its gate passed
+ * (green), the blue ship's cyan ghost just through it.
  */
 function Lander({ id }: { id: Id }) {
-  // The air: the shaft from the top, bending right into the landing room's ceiling, and the room.
   const air =
-    'M8 -1 H18 V3 C18 6 20 8 23 9.5 C25.5 10.7 26 12 26 15 H36.5 V31 H4.5 V15 H16 C16 13 15 12 13 11 C10 9.5 8 7 8 3 Z'
+    'M22 -1 H30.6 V2.4 C30.6 4 31.6 4.8 33.4 5.2 C35.4 5.6 36.6 6.6 36.6 8.6 V13.6 C36.6 14.8 35.4 15.2 35.4 16.6 C35.4 18 36.8 18.4 36.8 19.8 V31 H3.2 V21.6 C3.2 20.2 4.6 19.8 4.6 18.4 C4.6 17 3.2 16.6 3.2 15.4 V8.6 C3.2 6.4 4.6 5.4 7 5.2 C11 4.8 17.6 5.4 20 4.8 C21.4 4.4 22 3.4 22 2.2 Z'
   const ship = 'M0 -1.35 L0.925 0.925 L0 0.375 L-0.925 0.925 Z'
   return (
     <>
@@ -1471,20 +1610,24 @@ function Lander({ id }: { id: Id }) {
           <path d={air} />
         </clipPath>
         <linearGradient id={id('wash')} x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="#ffb347" stopOpacity="0.42" />
+          <stop offset="0" stopColor="#ffb347" stopOpacity="0.45" />
           <stop offset="1" stopColor="#ffb347" stopOpacity="0" />
         </linearGradient>
       </defs>
       <rect x="-1" y="-1" width="42" height="32" fill="#0b0716" />
       <Stars
         points={[
-          [2.4, 4, 0.18, 0.3],
-          [5.2, 10.5, 0.14, 0.25],
-          [23.5, 2.6, 0.16, 0.3],
-          [30.5, 6.4, 0.18, 0.3],
-          [36.8, 2.2, 0.14, 0.25],
-          [34, 11, 0.16, 0.3],
-          [1.6, 19, 0.15, 0.25],
+          [2.2, 1.8, 0.16, 0.3],
+          [6.6, 3.4, 0.14, 0.25],
+          [11.4, 1.2, 0.17, 0.3],
+          [16.2, 3.2, 0.14, 0.25],
+          [20.2, 1, 0.15, 0.3],
+          [34.6, 2, 0.16, 0.3],
+          [38.6, 4.2, 0.14, 0.25],
+          [38.4, 11.6, 0.16, 0.3],
+          [39, 25.2, 0.15, 0.25],
+          [1.4, 12.4, 0.16, 0.3],
+          [1.8, 24.6, 0.14, 0.25],
         ]}
         colour="#7a5ac8"
       />
@@ -1492,44 +1635,32 @@ function Lander({ id }: { id: Id }) {
       <path d={air} fill="none" stroke={`url(#${id('wall')})`} strokeWidth="2.6" strokeLinejoin="round" opacity="0.16" />
       <path d={air} fill="none" stroke={`url(#${id('wall')})`} strokeWidth="1.3" strokeLinejoin="round" opacity="0.3" />
       <path d={air} fill="#150d29" stroke={`url(#${id('wall')})`} strokeWidth="0.42" strokeLinejoin="round" />
-      <g clipPath={`url(#${id('air')})`}>
-        {[6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36].map((x) => (
-          <path key={`x${x}`} d={`M${x} -1 V31`} {...line('#8a5cff', 0.1, 0.22)} />
-        ))}
-        {[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29].map((y) => (
-          <path key={`y${y}`} d={`M4 ${y} H37`} {...line('#8a5cff', 0.1, 0.22)} />
-        ))}
+      <path d={LANDER_GRID} clipPath={`url(#${id('air')})`} {...line('#8a5cff', 0.1, 0.22)} />
+      {/* The gate up the shaft, passed: green. */}
+      <path d="M22.2 1.2 L30.4 1.2" {...line('#3ecf8e', 0.32)} strokeDasharray="0.9 0.7" />
+      <circle cx="22.2" cy="1.2" r="0.42" fill="#3ecf8e" />
+      <circle cx="30.4" cy="1.2" r="0.42" fill="#3ecf8e" />
+      {/* The blue ship's ghost, just through it. */}
+      <g transform="translate(27.6 7.4) rotate(18) scale(1.6)">
+        <path d={ship} fill="#46e4ff" fillOpacity="0.14" stroke="#46e4ff" strokeWidth="0.19" strokeLinejoin="round" />
       </g>
-      {/* The gate across the shaft, dashed, with a post at each wall. */}
-      <path d="M8.3 4.6 L18.1 4.2" {...line('#f5b942', 0.32)} strokeDasharray="0.9 0.7" />
-      <circle cx="8.3" cy="4.6" r="0.42" fill="#f5b942" />
-      <circle cx="18.1" cy="4.2" r="0.42" fill="#f5b942" />
-      {/* The landing pad, its light rising, and its lights. */}
-      <rect x="21" y="23.6" width="11" height="3.6" fill={`url(#${id('wash')})`} />
-      <rect x="21" y="27.2" width="11" height="0.6" rx="0.2" fill="#ffb347" />
-      {[22, 24.2, 26.5, 28.8, 31].map((x, i) => (
-        <circle key={x} cx={x} cy="26.75" r="0.24" fill={i === 2 ? '#fff4d6' : '#ffb347'} opacity={i === 2 ? 1 : 0.55} />
+      {/* The landing pad, its light rising, its lights running toward its middle. */}
+      <rect x="12.4" y="22.2" width="14" height="4.2" fill={`url(#${id('wash')})`} />
+      <rect x="12.4" y="26.4" width="14" height="0.65" rx="0.2" fill="#ffb347" />
+      {[13.3, 16.35, 19.4, 22.45, 25.5].map((x, i) => (
+        <circle key={x} cx={x} cy="25.9" r="0.24" fill={i === 2 ? '#fff4d6' : '#ffb347'} opacity={i === 2 ? 1 : 0.55} />
       ))}
-      {/* The blue ship's ghost, on its way down the shaft. */}
-      <g transform="translate(16.6 9.2) rotate(28) scale(1.5)">
-        <path d={ship} fill="#46e4ff" fillOpacity="0.14" stroke="#46e4ff" strokeWidth="0.13" strokeLinejoin="round" />
-      </g>
-      {/* Your ship, coming down on the pad on its flame, sparks falling away under it. */}
-      <Glow id={id} name="burn" cx={26.4} cy={23.4} r={4.2} colour="#ff9f45" strength={0.45} />
-      <g transform="translate(26.6 18.8) rotate(-9) scale(1.9)">
-        <path d="M-0.42 0.375 L0 2.7 L0.42 0.375 Z" fill="#ff8c32" opacity="0.92" />
-        <path d="M-0.22 0.375 L0 1.6 L0.22 0.375 Z" fill="#ffecaa" />
-        <path d={ship} fill="#ff9f45" fillOpacity="0.22" stroke="#ff9f45" strokeOpacity="0.25" strokeWidth="0.42" strokeLinejoin="round" />
-        <path d={ship} fill="none" stroke="#fff3e4" strokeWidth="0.17" strokeLinejoin="round" />
+      {/* Your ship, coming down onto the pad on its flame. */}
+      <Glow id={id} name="burn" cx={19.4} cy={24.8} r={7.4} colour="#ff9f45" strength={0.5} />
+      <g transform="translate(19.4 14.4) rotate(-5) scale(4.5)">
+        <path d="M-0.46 0.42 L0 2.25 L0.46 0.42 Z" fill="#ff8c32" opacity="0.92" />
+        <path d="M-0.24 0.42 L0 1.43 L0.24 0.42 Z" fill="#ffecaa" />
+        <path d={ship} fill="#ff9f45" fillOpacity="0.2" stroke="#ff9f45" strokeOpacity="0.28" strokeWidth="0.18" strokeLinejoin="round" />
+        <path d={ship} fill="#1a1030" fillOpacity="0.55" stroke="#fff3e4" strokeWidth="0.071" strokeLinejoin="round" />
         <circle cx="0" cy="-0.35" r="0.17" fill="#fff3e4" />
       </g>
-      {[
-        [25.2, 25.4, 0.32],
-        [27.9, 25.9, 0.26],
-        [26.1, 26.4, 0.22],
-        [24.4, 26.2, 0.18],
-      ].map(([x, y, r]) => (
-        <rect key={`${x}-${y}`} x={x! - r!} y={y! - r!} width={r! * 2} height={r! * 2} fill="#ffc46a" opacity="0.85" />
+      {LANDER_SPARKS.map(([x, y, size, opacity]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width={size} height={size} fill="#ffc46a" opacity={opacity} />
       ))}
     </>
   )
