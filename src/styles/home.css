@@ -3260,3 +3260,34 @@ html[data-theme="dark"] .home-banner__hint--error {
     font-size: 0.88rem;
   }
 }
+
+/* The banner while it's not yet known whether a season is on (HomeHero.tsx): its shape, shimmering, no game in it. */
+.home-banner.home-banner--skel,
+html[data-theme="dark"] .home-banner.home-banner--skel {
+  background: rgba(var(--surface-rgb), 0.6);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  box-shadow: none;
+}
+
+.home-banner--skel .home-banner__text {
+  padding: 2rem;
+}
+
+.home-banner__skel-title {
+  height: 1.8rem;
+}
+
+.home-banner__skel-btn {
+  height: 2.8rem;
+  margin-top: 0.4rem;
+}
+
+.home-banner__skel-art {
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.04), rgba(var(--ink-rgb), 0.09), rgba(var(--ink-rgb), 0.04));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+.home-banner__skel-art::before {
+  content: none;
+}

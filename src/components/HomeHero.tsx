@@ -361,6 +361,9 @@ function DailyCard({ t }: { t: TournamentSummary }) {
  * the game's own line about itself, Play, and the board's top and their best.
  * Tinted from the game's colour, like every hero on the site.
  */
+/** How long the banner waits on the API to say whether a season is on, before showing the game's banner. */
+const SEASON_WAIT_MS = 4000
+
 export function HomeHero() {
   const device = useDeviceType()
   const recent = useRecentGames()
@@ -380,6 +383,16 @@ export function HomeHero() {
   const season = liveSeason(seasonStore)
   const lastPlayed = slug != null && recent.includes(slug)
   const firstVisit = !name && recent.length === 0
+  // Whether a season is on isn't known until the API says (a device that saw one keeps it: lib/season.ts). Until
+  // then the banner waits as a skeleton, so it never shows the game's banner and then swaps to the season's. An
+  // API that's slow to wake gets a few seconds, then the game's banner.
+  const [gaveUp, setGaveUp] = useState(false)
+  const seasonUnknown = !firstVisit && !seasonStore.loaded && !seasonStore.season && !gaveUp
+  useEffect(() => {
+    if (!seasonUnknown) return
+    const timer = window.setTimeout(() => setGaveUp(true), SEASON_WAIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [seasonUnknown])
 
   const rungKey = name && slug ? `${groupId ?? ''}|${name}|${slug}` : ''
   const [fetched, setFetched] = useState<{ key: string; rung: Rung | null } | null>(null)
@@ -468,6 +481,21 @@ export function HomeHero() {
       ) : null}
     </a>
   )
+
+  if (seasonUnknown) {
+    return (
+      <section className="home-banner home-banner--skel" aria-busy="true" aria-label="Loading">
+        <div className="home-banner__text">
+          <span className="skel-line" style={{ '--skel-w': '8rem' } as CSSProperties} />
+          <span className="skel-line home-banner__skel-title" style={{ '--skel-w': '16rem' } as CSSProperties} />
+          <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
+          <span className="skel-line" style={{ '--skel-w': '14rem' } as CSSProperties} />
+          <span className="skel-line home-banner__skel-btn" style={{ '--skel-w': '10rem' } as CSSProperties} />
+        </div>
+        <span className="home-banner__art home-banner__skel-art" aria-hidden="true" />
+      </section>
+    )
+  }
 
   // A live season takes the banner for everyone but a first visit, which still gets what the arcade is. The
   // game the banner would have offered becomes its second button.
