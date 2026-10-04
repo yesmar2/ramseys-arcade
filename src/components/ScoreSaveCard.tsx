@@ -16,7 +16,7 @@ import {
   useActiveChallenge,
 } from '../lib/challenges'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { inEarlyAccess, plusFirstDay } from '../lib/earlyAccess'
+import { beforeLaunch, launchDayOf } from '../lib/earlyAccess'
 import { exitFullscreen } from '../lib/fullscreen'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { scoreText, scoreUnit } from '../lib/gameBoard'
@@ -256,8 +256,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         return
       }
 
-      // In early access, Plus plays it first as practice: its boards open to everyone on its day (lib/earlyAccess.ts).
-      if (inEarlyAccess(gameSlug)) {
+      // Before launch, a new game is practice: its boards open to everyone on launch day (lib/earlyAccess.ts).
+      if (beforeLaunch(gameSlug)) {
         if (closed) return
         takeRunAchievements()
         setPhase('early')
@@ -545,10 +545,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
     block = <p className="report__note">Stage skip used, so this run wasn’t saved to the boards or the record books.</p>
     who = <ReportWho text="Not saved" />
   } else if (phase === 'early') {
-    const opens = plusFirstDay(gameSlug)
+    const opens = launchDayOf(gameSlug)
     block = (
       <p className="report__note">
-        Early access: this run is practice. {game}’s boards open for everyone on launch day{opens ? `, ${archiveDayWords(opens)}` : ''}.
+        Played before launch, so this run is practice. {game}’s boards open for everyone on launch day{opens ? `, ${archiveDayWords(opens)}` : ''}.
       </p>
     )
     who = <ReportWho text="Practice" />

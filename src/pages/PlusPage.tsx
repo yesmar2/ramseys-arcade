@@ -32,10 +32,10 @@ type Row = {
 const PLAY: Row[] = [
   { label: 'Every game', free: true, plus: true },
   {
-    label: 'Brand-new games',
+    label: 'New games',
     free: 'From launch day',
-    plus: 'Before launch too',
-    note: 'Plus members can try a new game early, as practice. Its boards open to everyone on launch day.',
+    plus: 'A week before launch',
+    note: 'Playing early is practice. Boards open for everyone on launch day.',
   },
   { label: 'Weekly, monthly and all-time boards', free: true, plus: true },
   { label: 'Record books', free: true, plus: true },
@@ -213,7 +213,7 @@ export function PlusPage() {
         crumbs={[{ href: homeHref(), label: 'Home' }, { label: 'Plus' }]}
         kicker={`${APP_NAME} Plus`}
         title="Every past daily, and every season’s Pass+."
-        blurb={`Playing stays free for everyone: every game, every board, today’s dailies and the last ${OPEN_DAYS} days of each, and joining any event however big. Plus opens every older day of every daily, gives you each season’s Pass+ and a members’ look every month, lets you try brand-new games before launch, and makes room to host bigger events.`}
+        blurb={`Playing stays free for everyone: every game, every board, today’s dailies and the last ${OPEN_DAYS} days of each, and joining any event however big. Plus opens every older day of every daily, gives you each season’s Pass+ and a members’ look every month, lets you play new games a week before they launch, and makes room to host bigger events.`}
         actions={
           member ? (
             <>

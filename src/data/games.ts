@@ -55,12 +55,12 @@ export type Game = {
    */
   onDeck?: boolean
   /**
-   * Early access: YYYY-MM-DD, the day the game opens to everyone. Until then Plus members (and admins) play
-   * it first, as practice, and everyone else finds a card saying when (components/EarlyGate.tsx). Its boards
-   * open to all on its day, so Plus buys no head start on them (lib/earlyAccess.ts). The API's PLUS_FIRST
-   * (earlyAccess.ts) says the same. For a game whose runs end on the run report (ScoreSaveCard).
+   * A new game's launch day, YYYY-MM-DD: everyone's from then. Plus members play it the week before, as
+   * practice; admins any time; anyone else finds a card saying when (components/EarlyGate.tsx). Its boards
+   * open to all on launch day, so Plus buys no head start on them (lib/earlyAccess.ts). The API's
+   * LAUNCH_DAYS (earlyAccess.ts) says the same. For a game whose runs end on the run report (ScoreSaveCard).
    */
-  plusFirst?: string
+  launchDay?: string
   /** If set, the game is only offered on these devices. */
   devices?: DeviceType[]
   /**
