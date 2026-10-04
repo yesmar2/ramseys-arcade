@@ -264,6 +264,9 @@ export function RankPage({
   // button and its shelf line): it's held until both are in.
   const cardSettling = loading || trophies === null || !allTime
   const cardHeld = useHeldHeight<HTMLDivElement>(`pf-card-${who}`, cardSettling)
+  // A first look at a card has no height kept for it, and what it grows by is the player's own (the race line of
+  // a top-ten player, a trophy case): what's under it waits until it's in, and comes in its place.
+  const below = !cardSettling || cardHeld.known
   const gamesHeld = useHeldHeight<HTMLDivElement>(`pf-games-${who}`, loading || !allTime)
   const pairHeld = useHeldHeight<HTMLDivElement>(`pf-pair-${who}`, loading || trophies === null)
 
@@ -311,6 +314,8 @@ export function RankPage({
             />
             </div>
 
+            {below ? (
+              <>
             <ProfileBestBoard
               name={viewedName}
               isSelf={isSelf}
@@ -353,6 +358,8 @@ export function RankPage({
             <PlayerHangar name={viewedName} isSelf={isSelf} />
 
             {isSelf && signedIn ? <FriendsCard /> : null}
+              </>
+            ) : null}
           </>
         ) : (
           <PageBanner

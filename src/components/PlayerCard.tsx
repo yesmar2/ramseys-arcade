@@ -19,6 +19,7 @@ import {
 import { ordinal, periodWord, talksInPlaces } from '../lib/profileMath'
 import { metalTone, summarizeTrophies, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { BackChevronIcon } from './PageBackLink'
+import { useHeldHeight } from '../lib/heldShape'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import { secretByNumber, SECRETS } from '../lib/secrets'
 
@@ -333,6 +334,10 @@ export function PlayerCard({
   const placed = Object.keys(data.byGame).length
   const inPlaces = rank != null && talksInPlaces(rank, data.totalPlayers)
   const summary = trophies ? summarizeTrophies(trophies) : null
+  // The race line (a top-ten player's) and the trophy case come with their asks, each the player's own: their
+  // room is held while those load when this device saw them on this card before (lib/heldShape.ts).
+  const raceHeld = useHeldHeight<HTMLDivElement>(`pcard-race-${name}`, loading)
+  const caseHeld = useHeldHeight<HTMLDivElement>(`pcard-case-${name}`, trophies === null)
 
   const hrefFor = (p: LeaderboardPeriod) => rankHref(isSelf ? undefined : name, p)
   const go = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -414,7 +419,9 @@ export function PlayerCard({
           <p className="pcard__head">{said ? said.head : <Skel w="16ch" />}</p>
           <p className="pcard__sub">{said ? said.sub : <Skel w="24ch" />}</p>
           {/* Past the top ten there is no line: the whole-board bar is on How your rank works. */}
-          {!loading && inPlaces ? <PlacesLine name={name} isSelf={isSelf} data={data} /> : null}
+          <div className="pcard__slot" ref={raceHeld.ref} style={raceHeld.style}>
+            {!loading && inPlaces ? <PlacesLine name={name} isSelf={isSelf} data={data} /> : null}
+          </div>
           {actions ? <div className="home-banner__acts pcard__acts">{actions}</div> : null}
         </div>
         <nav className="pcard__ladder" aria-label={isSelf ? 'Your rank by period' : `${name}'s rank by period`}>
@@ -445,9 +452,11 @@ export function PlayerCard({
           })}
         </nav>
       </div>
-      {trophies && (trophies.length || isSelf) ? (
-        <TrophyCase trophies={trophies} isSelf={isSelf} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
-      ) : null}
+      <div className="pcard__slot" ref={caseHeld.ref} style={caseHeld.style}>
+        {trophies && (trophies.length || isSelf) ? (
+          <TrophyCase trophies={trophies} isSelf={isSelf} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
+        ) : null}
+      </div>
       <div className="home-banner__strip pcard__strip">
         <span className="pcard__fact">
           {loading ? (

@@ -2071,3 +2071,16 @@ html[data-theme='dark'] .pbest__flag--ten {
   min-height: inherit;
   box-sizing: border-box;
 }
+
+/* Where the race line or the trophy case goes on the card (PlayerCard.tsx): no room of its own when empty, but
+   the room held for it (an inline min-height) while what fills it loads. */
+.pcard__slot {
+  align-self: stretch;
+  /* Full width, where the card's words are a grid (a phone): as the race line itself is (.pcard__race). */
+  grid-column: 1 / -1;
+}
+
+.pcard__slot:empty:not([style]) {
+  display: none;
+}
+

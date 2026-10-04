@@ -42,7 +42,10 @@ const widthKey = (key: string) => `${key}@${typeof window === 'undefined' ? 0 : 
  * A block whose height comes with what loads (a headline that may wrap to two lines): while it loads it's
  * held at the height it had last time at this width, and once loaded its height is kept for next time.
  */
-export function useHeldHeight<T extends HTMLElement>(key: string, loading: boolean): { ref: RefObject<T | null>; style: CSSProperties | undefined } {
+export function useHeldHeight<T extends HTMLElement>(
+  key: string,
+  loading: boolean,
+): { ref: RefObject<T | null>; style: CSSProperties | undefined; known: boolean } {
   const ref = useRef<T | null>(null)
   const [held] = useState(() => read(widthKey(key)))
   useLayoutEffect(() => {
@@ -62,5 +65,7 @@ export function useHeldHeight<T extends HTMLElement>(key: string, loading: boole
     watch.observe(el)
     return () => watch.disconnect()
   }, [key, loading])
-  return { ref, style: loading && held ? { minHeight: `${held}px` } : undefined }
+  // `known`: this device has its height from before. A first look hasn't, and a page may wait to draw what's
+  // under it until it's in (RankPage.tsx), so it grows into empty room rather than pushing anything.
+  return { ref, style: loading && held ? { minHeight: `${held}px` } : undefined, known: held != null }
 }
