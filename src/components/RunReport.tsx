@@ -421,6 +421,7 @@ const KIND_COLOURS: Record<string, string[]> = {
   'cf-shooting': ['#ffffff', '#ffe7a3', '#b9a6f0', '#f5b942'],
   // Season 1's Pass+.
   'cf-meteors': ['#f2813a', '#f5b942', '#ff9a52', '#e8564f'],
+  'cf-splashdown': ['#f2813a', '#e8564f', '#f2813a', '#f5b942'],
 }
 
 /** A four-point sparkle around (0, 0), for Stardust and a shooting star's head. */
@@ -497,6 +498,94 @@ function meteorShower(w: number, h: number, colors: string[]): Piece[] {
   return pieces
 }
 
+const SPLASH_DROPS = ['#ffffff', '#cfeaff', '#7fc8ff', '#4aa8e8']
+
+/**
+ * Splashdown: parachutes drifting down from the top, swaying, each with its capsule under it, while
+ * splashes of water go up from the bottom of the screen one after another. A parachute's `h` is 1 and a
+ * drop's 0; a parachute's `vx` is how far it sways and `spin` how fast.
+ */
+function splashdown(w: number, h: number, colors: string[]): Piece[] {
+  const pieces: Piece[] = []
+  const phone = w < 640
+  const chutes = phone ? 5 : 8
+  for (let i = 0; i < chutes; i++) {
+    const r = (phone ? 22 : 28) + Math.random() * (phone ? 8 : 12)
+    pieces.push({
+      x: w * ((i + 0.5) / chutes) + (Math.random() - 0.5) * (w / chutes) * 0.6,
+      y: -r * 2.4 + Math.random() * h * 0.5,
+      vx: 6 + Math.random() * 8,
+      vy: (phone ? 1.6 : 2) + Math.random() * 0.8,
+      spin: 0.04 + Math.random() * 0.025,
+      angle: Math.random() * Math.PI * 2,
+      w: r,
+      h: 1,
+      color: colors[i % colors.length]!,
+      delay: Math.random() * 700,
+    })
+  }
+  const splashes = phone ? 3 : 5
+  for (let s = 0; s < splashes; s++) {
+    const sx = w * (0.12 + ((s * 0.37 + Math.random() * 0.2) % 1) * 0.76)
+    const delay = 300 + s * 420 + Math.random() * 150
+    const drops = phone ? 18 : 26
+    for (let i = 0; i < drops; i++) {
+      const a = (-125 + (i / (drops - 1)) * 70 + (Math.random() - 0.5) * 10) * (Math.PI / 180)
+      // The middle of a splash goes up highest.
+      const speed = 8 + Math.random() * 4 + (1 - Math.abs(i / (drops - 1) - 0.5) * 2) * 4
+      pieces.push({ x: sx + (Math.random() - 0.5) * 20, y: h + 4, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, spin: 0, angle: 0, w: 3.2 + Math.random() * 3.2, h: 0, color: SPLASH_DROPS[i % SPLASH_DROPS.length]!, delay })
+    }
+  }
+  return pieces
+}
+
+/** A parachute around (0, 0), the canopy `r` across half of it in `colour` with two white gores, its capsule hanging under it. */
+function parachuteShape(ctx: CanvasRenderingContext2D, r: number, colour: string) {
+  const top = 1.25 * r
+  const foot = top + 0.45 * r
+  ctx.strokeStyle = 'rgba(217,221,232,0.8)'
+  ctx.lineWidth = Math.max(1, r * 0.04)
+  ctx.beginPath()
+  ctx.moveTo(-r, 0)
+  ctx.lineTo(0, top)
+  ctx.lineTo(r, 0)
+  ctx.moveTo(-0.3 * r, 0)
+  ctx.lineTo(0, top)
+  ctx.lineTo(0.3 * r, 0)
+  ctx.stroke()
+  ctx.fillStyle = colour
+  ctx.beginPath()
+  ctx.ellipse(0, 0, r, 0.75 * r, 0, Math.PI, 0)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = 'rgba(255,255,255,0.92)'
+  for (const [a, b] of [
+    [-0.6, -0.2],
+    [0.2, 0.6],
+  ] as const) {
+    ctx.beginPath()
+    ctx.moveTo(0, -0.75 * r)
+    ctx.quadraticCurveTo(a * 0.85 * r, -0.62 * r, a * r, 0)
+    ctx.lineTo(b * r, 0)
+    ctx.quadraticCurveTo(b * 0.85 * r, -0.62 * r, 0, -0.75 * r)
+    ctx.fill()
+  }
+  ctx.fillStyle = '#e8ecf4'
+  ctx.beginPath()
+  ctx.moveTo(-0.13 * r, top)
+  ctx.lineTo(0.13 * r, top)
+  ctx.lineTo(0.36 * r, foot)
+  ctx.lineTo(-0.36 * r, foot)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = '#6a4a36'
+  ctx.beginPath()
+  ctx.moveTo(-0.36 * r, foot)
+  ctx.quadraticCurveTo(0, foot + 0.18 * r, 0.36 * r, foot)
+  ctx.closePath()
+  ctx.fill()
+}
+
 /** Fireworks: bursts of sparks here and there over the top of the screen, one after another. */
 function fireworkSparks(w: number, h: number, colors: string[]): Piece[] {
   const pieces: Piece[] = []
@@ -546,8 +635,17 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
     const fireworks = style === 'cf-fireworks'
     const shooting = style === 'cf-shooting'
     const meteors = style === 'cf-meteors'
-    const pieces: Piece[] = fireworks ? fireworkSparks(w, h, colors) : shooting ? shootingStars(w, h, colors) : meteors ? meteorShower(w, h, colors) : []
-    const count = fireworks || shooting || meteors ? 0 : w < 640 ? 70 : 110
+    const splash = style === 'cf-splashdown'
+    const pieces: Piece[] = fireworks
+      ? fireworkSparks(w, h, colors)
+      : shooting
+        ? shootingStars(w, h, colors)
+        : meteors
+          ? meteorShower(w, h, colors)
+          : splash
+            ? splashdown(w, h, colors)
+            : []
+    const count = fireworks || shooting || meteors || splash ? 0 : w < 640 ? 70 : 110
     for (let i = 0; i < count; i++) {
       const side = i % 2 ? 1 : -1
       const x = w / 2 + side * (w * 0.12 + Math.random() * w * 0.2)
@@ -679,6 +777,38 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
           ctx.arc(p.x, p.y, r * 0.55, 0, Math.PI * 2)
           ctx.fill()
           ctx.globalAlpha = 1
+          continue
+        }
+        if (splash) {
+          if (!p.h) {
+            // A drop of the splash: thrown up and falling back, its point trailing behind it.
+            const age = (t - p.delay) / 1300
+            if (age >= 1) continue
+            p.vy += 0.34 * dt
+            p.x += p.vx * dt
+            p.y += p.vy * dt
+            ctx.save()
+            ctx.globalAlpha = fade * (1 - age * 0.6)
+            ctx.translate(p.x, p.y)
+            ctx.rotate(Math.atan2(p.vy, p.vx) - Math.PI / 2)
+            ctx.fillStyle = p.color
+            ctx.beginPath()
+            ctx.moveTo(0, -p.w * 1.6)
+            ctx.bezierCurveTo(p.w * 0.9, -p.w * 0.3, p.w * 0.9, p.w, 0, p.w)
+            ctx.bezierCurveTo(-p.w * 0.9, p.w, -p.w * 0.9, -p.w * 0.3, 0, -p.w * 1.6)
+            ctx.fill()
+            ctx.restore()
+            continue
+          }
+          // A parachute comes down slowly, swaying under its canopy.
+          p.y += p.vy * dt
+          p.angle += p.spin * dt
+          ctx.save()
+          ctx.globalAlpha = fade
+          ctx.translate(p.x + Math.sin(p.angle) * p.vx, p.y)
+          ctx.rotate(Math.cos(p.angle) * 0.12)
+          parachuteShape(ctx, p.w, p.color)
+          ctx.restore()
           continue
         }
         p.vy += 0.22 * dt

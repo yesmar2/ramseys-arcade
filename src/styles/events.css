@@ -2068,6 +2068,95 @@
   cursor: not-allowed;
 }
 
+.plus-hero__btn--go {
+  border: none;
+  background: linear-gradient(135deg, #f5b942, #f2813a);
+  color: #1a0e05;
+  cursor: pointer;
+}
+
+.plus-hero__btn--go:hover:not(:disabled),
+.plus-hero__btn--go:focus-visible {
+  filter: brightness(1.06);
+  outline: none;
+}
+
+.plus-hero__btn--go:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.plus-note {
+  margin: 1rem 0 0;
+  padding: 0.7rem 1rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, #8a6ad4 14%, var(--surface));
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.plus-note--bad {
+  background: color-mix(in srgb, #e8564f 14%, var(--surface));
+}
+
+/* This season's Pass+, which Plus includes: its rewards in a row. */
+.plus-pass {
+  margin-top: 1.5rem;
+  padding: 1.1rem 1.25rem 1.2rem;
+  border-radius: 1.2rem;
+  background:
+    radial-gradient(ellipse 60% 120% at 100% 0%, color-mix(in srgb, #f2813a 12%, transparent), transparent 70%),
+    var(--surface);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, #f2813a 38%, transparent);
+}
+
+.plus-pass__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.plus-pass__link {
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: inherit;
+}
+
+.plus-pass__row {
+  display: flex;
+  gap: 0.7rem;
+  margin: 0.9rem 0 0.6rem;
+  padding: 0 0 0.3rem;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.plus-pass__item {
+  flex: 0 0 5.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+}
+
+.plus-pass__art {
+  display: grid;
+  place-items: center;
+  width: 4.6rem;
+  height: 4.6rem;
+  border-radius: 0.9rem;
+  background: #1a2252;
+}
+
+.plus-pass__name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .plus-hero__have {
   padding: 0.4rem 0.9rem;
   border-radius: 999px;

@@ -1004,18 +1004,85 @@ html[data-theme='dark'] .season-tile__got {
   gap: 0.3rem;
 }
 
+/* Two ways to it: Pass+ for the season, once, or Plus, which includes every season's. */
+.season-plus__ways {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.season-plus__buy,
+.season-plus__member {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 13rem;
+  min-height: 3.4rem;
+  padding: 0.5rem 1.1rem;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .season-plus__buy {
-  min-height: 2.9rem;
-  padding: 0 1.4rem;
   border: none;
-  border-radius: 999px;
   background: linear-gradient(135deg, #f5b942, var(--space-orange));
   color: #1a0e05;
-  font: inherit;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--space-orange) 35%, transparent);
+}
+
+.season-plus__member {
+  border: 1.5px solid color-mix(in srgb, var(--space-violet) 45%, transparent);
+  background: color-mix(in srgb, var(--space-violet) 10%, var(--surface));
+  color: var(--ink);
+}
+
+.season-plus__member:hover,
+.season-plus__member:focus-visible {
+  border-color: var(--space-violet);
+  outline: none;
+}
+
+.season-plus__buy b,
+.season-plus__member b {
   font-size: 0.98rem;
   font-weight: 850;
-  cursor: pointer;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--space-orange) 35%, transparent);
+}
+
+.season-plus__buy small,
+.season-plus__member small {
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.season-plus__member small {
+  color: var(--muted);
+}
+
+/* Where the bonus levels begin on the Pass+ row: past the free row's last, Pass+ only. */
+.season-track__bonus {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  border-radius: 0.8rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--space-orange) 18%, transparent), transparent);
+}
+
+.season-track__bonus span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--space-orange) 65%, var(--ink));
 }
 
 .season-plus__buy:hover:not(:disabled),
@@ -1116,7 +1183,8 @@ html[data-theme='dark'] .season-tile__got {
     width: 100%;
   }
 
-  .season-plus__buy {
+  .season-plus__buy,
+  .season-plus__member {
     width: 100%;
   }
 }

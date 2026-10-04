@@ -164,6 +164,52 @@ html[data-theme='dark'] .pname--aurora {
   filter: drop-shadow(0 0 4px rgba(95, 224, 200, 0.45)) drop-shadow(0 0 8px rgba(138, 106, 212, 0.35));
 }
 
+/* Telemetry: a green readout in a terminal's letters, fine scanlines through them and a cursor after. */
+.pname--telemetry {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+  font-weight: 700;
+  font-size: 0.92em;
+  letter-spacing: 0.02em;
+  background: repeating-linear-gradient(180deg, #0f7a45 0 2px, #0a5e35 2px 3px);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pname--telemetry::after {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.9em;
+  margin-left: 0.14em;
+  vertical-align: -0.1em;
+  background: #0f7a45;
+  opacity: 0.8;
+}
+
+html[data-theme='dark'] .pname--telemetry {
+  background-image: repeating-linear-gradient(180deg, #7dffaf 0 2px, #45d36b 2px 3px);
+  filter: drop-shadow(0 0 4px rgba(69, 211, 107, 0.55));
+}
+
+html[data-theme='dark'] .pname--telemetry::after {
+  background: #7dffaf;
+}
+
+/* Wormhole: magenta swirling round into cyan, violet twisting through its middle, round a dark glow on the dark boards. */
+.pname--wormhole {
+  background: conic-gradient(from 0deg at 50% 50%, #8a3fd8, #0f8fb8 90deg, #5a3fc0 180deg, #c81f9e 270deg, #8a3fd8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 3px rgba(200, 31, 158, 0.3));
+}
+
+html[data-theme='dark'] .pname--wormhole {
+  background-image: conic-gradient(from 0deg at 50% 50%, #c58bff, #4fe3ff 90deg, #7a5cff 180deg, #ff5fd8 270deg, #c58bff);
+  filter: drop-shadow(0 0 1.5px #12002a) drop-shadow(0 0 2px #12002a) drop-shadow(0 0 8px rgba(214, 92, 214, 0.6));
+}
+
 /* ---------- a title, on its plate ---------- */
 
 .prize-plate {
@@ -667,6 +713,26 @@ html[data-theme='dark'] .pname--aurora {
 .prize-stage .pname--aurora {
   background-image: linear-gradient(100deg, #5fe0c8, #5cc8ec 34%, #a68cf2 68%, #ff8fcf);
   filter: drop-shadow(0 0 4px rgba(95, 224, 200, 0.45)) drop-shadow(0 0 8px rgba(138, 106, 212, 0.35));
+}
+
+.studio__card .pname--telemetry,
+.pcard--themed .pname--telemetry,
+.prize-stage .pname--telemetry {
+  background-image: repeating-linear-gradient(180deg, #7dffaf 0 2px, #45d36b 2px 3px);
+  filter: drop-shadow(0 0 4px rgba(69, 211, 107, 0.55));
+}
+
+.studio__card .pname--telemetry::after,
+.pcard--themed .pname--telemetry::after,
+.prize-stage .pname--telemetry::after {
+  background: #7dffaf;
+}
+
+.studio__card .pname--wormhole,
+.pcard--themed .pname--wormhole,
+.prize-stage .pname--wormhole {
+  background-image: conic-gradient(from 0deg at 50% 50%, #c58bff, #4fe3ff 90deg, #7a5cff 180deg, #ff5fd8 270deg, #c58bff);
+  filter: drop-shadow(0 0 1.5px #12002a) drop-shadow(0 0 2px #12002a) drop-shadow(0 0 8px rgba(214, 92, 214, 0.6));
 }
 
 .pcard__name--sign {

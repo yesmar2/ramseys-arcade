@@ -700,6 +700,14 @@ function drawBeadTail(
   ctx.lineWidth = Math.max(1.2, head * 0.22)
   ctx.strokeStyle = css(mixRgb(tail.headRing, sk.deadLine, d))
   ctx.stroke()
+  if (tail.planetRing) {
+    // A planet's ring, tilted across the head (the Saturn tail's).
+    ctx.beginPath()
+    ctx.ellipse(0, 0, head * 1.6, head * 0.42, -0.35, 0, Math.PI * 2)
+    ctx.lineWidth = Math.max(1.4, head * 0.2)
+    ctx.strokeStyle = css(mixRgb(tail.planetRing, sk.deadLine, d))
+    ctx.stroke()
+  }
   // Its eyes, ahead and apart as the picture has them: shut for a blink, crossed out in a crash.
   const ink = tail.eyes
   const er = Math.max(1, head * 0.2)

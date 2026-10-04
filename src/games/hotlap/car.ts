@@ -695,8 +695,15 @@ export const ROCKET_COLORS: RocketColors = { body: '#ece9f7', stripe: '#e8564f',
 /** The Midnight rocket (Season 1's Pass+): navy, an amber stripe, orange wings and a violet flame. */
 export const MIDNIGHT_COLORS: RocketColors = { body: '#141a4a', stripe: '#f5b942', trim: '#f2813a', glow: '#9a7bff', flame: ['#8a6ad4', '#e2d9ff'] }
 
+/** The Sunracer (Season 1's Pass+): sun-orange, a cream stripe, navy wings and a white-hot flame. */
+export const SUNRACER_COLORS: RocketColors = { body: '#f07c16', stripe: '#fff3d6', trim: '#101634', glow: '#ffd27a', flame: ['#ffcf5a', '#fff3c4'] }
+
 /** Hot Lap's skins (lib/skins.ts): each a Rocket car in its colours. */
-export const ROCKET_SKINS: Record<string, RocketColors> = { 'hotlap-rocket': ROCKET_COLORS, 'hotlap-midnight': MIDNIGHT_COLORS }
+export const ROCKET_SKINS: Record<string, RocketColors> = {
+  'hotlap-rocket': ROCKET_COLORS,
+  'hotlap-midnight': MIDNIGHT_COLORS,
+  'hotlap-sunracer': SUNRACER_COLORS,
+}
 
 /**
  * The Rocket car, Season 1's Hot Lap skin (lib/skins.ts), as the pass draws it: a white rocket on four open

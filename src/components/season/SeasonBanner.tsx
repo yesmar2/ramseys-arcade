@@ -17,13 +17,16 @@ export function SeasonBanner({
   you,
   rewards,
   pick,
+  top = season.levels,
 }: {
   season: SeasonInfo
   you: SeasonYou | null
   rewards: SeasonReward[]
   pick: { slug: string; name: string; kicker: string }
+  /** The highest level their pass reaches: the season's last, or with Pass+ its bonus levels' (lib/season.ts seasonTop). */
+  top?: number
 }) {
-  const p = seasonProgress(season, you)
+  const p = seasonProgress(season, you, top)
   const next = p.level < season.levels ? rewardAt(rewards, p.level + 1) : null
   const blurb = !you
     ? `Win tickets in any game to climb a free pass of ${season.levels} levels, with looks and ships to win on the way.`
@@ -31,7 +34,7 @@ export function SeasonBanner({
       ? 'Win a ticket in any game to start the pass. Every ticket you win this season moves you up.'
       : next && p.toNext != null
         ? `You’re Level ${p.level}. Level ${next.level} is ${p.toNext.toLocaleString()} ${p.toNext === 1 ? 'ticket' : 'tickets'} away, with ${rewardPhrase(next)}.`
-        : p.level >= season.levels
+        : p.level >= top
           ? 'You’ve reached the top of the pass. Every level is yours.'
           : `You’re Level ${p.level}. Every ticket you win moves you up.`
   return (
@@ -58,7 +61,7 @@ export function SeasonBanner({
               <dt>Your level</dt>
               <dd>
                 {p.level}
-                <small> of {season.levels}</small>
+                <small> of {top}</small>
               </dd>
             </div>
             {next && p.toNext != null ? (

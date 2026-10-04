@@ -23,6 +23,11 @@ export const SKINS: readonly Skin[] = [
   { id: 'barrage-ringship', game: 'barrage', name: 'Ringship', season: 1, what: 'Barrage ship', plus: true },
   { id: 'snake-nebula-tail', game: 'snake', name: 'Nebula tail', season: 1, what: 'Snake skin', plus: true },
   { id: 'hotlap-midnight', game: 'hotlap', name: 'Midnight rocket', season: 1, what: 'Hot Lap car', plus: true },
+  { id: 'hotlap-sunracer', game: 'hotlap', name: 'Sunracer', season: 1, what: 'Hot Lap car', plus: true },
+  { id: 'barrage-stingray', game: 'barrage', name: 'Stingray', season: 1, what: 'Barrage ship', plus: true },
+  { id: 'snake-saturn-tail', game: 'snake', name: 'Saturn tail', season: 1, what: 'Snake skin', plus: true },
+  { id: 'asteroids-orbiter', game: 'asteroids', name: 'Orbiter', season: 1, what: 'Asteroids ship', plus: true },
+  { id: 'lander-starhopper', game: 'lander', name: 'Starhopper', season: 1, what: 'Lander ship', plus: true },
 ]
 
 const KEY = 'skermix-skins'

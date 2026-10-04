@@ -221,6 +221,56 @@ function StyledTag({ style, name, x, y, size, id }: { style: string; name: strin
           </text>
         </>
       )
+    // A green readout, scanlines through it and a cursor after.
+    case 'nm-telemetry':
+      return (
+        <>
+          <defs>
+            <pattern id={`${id}l`} width="4" height="3" patternUnits="userSpaceOnUse">
+              <rect width="4" height="2" fill="#7dffaf" />
+              <rect y="2" width="4" height="1" fill="#45d36b" />
+            </pattern>
+            <filter id={`${id}g`} x="-30%" y="-60%" width="160%" height="220%">
+              <feGaussianBlur stdDeviation="2" />
+            </filter>
+          </defs>
+          <text {...at} fontSize={size - 2} letterSpacing={0.5} fontFamily="ui-monospace, Consolas, monospace" fontWeight={700} fill="#45d36b" opacity="0.6" filter={`url(#${id}g)`}>
+            {name}▌
+          </text>
+          <text {...at} fontSize={size - 2} letterSpacing={0.5} fontFamily="ui-monospace, Consolas, monospace" fontWeight={700} fill={`url(#${id}l)`}>
+            {name}
+            <tspan fill="#7dffaf" opacity="0.8">
+              ▌
+            </tspan>
+          </text>
+        </>
+      )
+    // Magenta into cyan, round a dark glow.
+    case 'nm-wormhole':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${id}w`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#ff5fd8" />
+              <stop offset="0.35" stopColor="#b678ff" />
+              <stop offset="0.65" stopColor="#4fe3ff" />
+              <stop offset="1" stopColor="#ff5fd8" />
+            </linearGradient>
+            <filter id={`${id}g`} x="-30%" y="-60%" width="160%" height="220%">
+              <feGaussianBlur stdDeviation="3" />
+            </filter>
+          </defs>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill="#d65cd6" stroke="#d65cd6" strokeWidth="2" opacity="0.8" filter={`url(#${id}g)`}>
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill="none" stroke="#12002a" strokeWidth="3.5" strokeLinejoin="round">
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill={`url(#${id}w)`}>
+            {name}
+          </text>
+        </>
+      )
     case 'nm-neon':
       return (
         <>
@@ -549,6 +599,63 @@ function Meteors({ id }: { id: string }) {
   )
 }
 
+/** A drop of water around (0, 0), its point up, `s` across. */
+function dropPath(s: number) {
+  return `M0 ${(-s * 1.6).toFixed(2)}C${(s * 0.9).toFixed(2)} ${(-s * 0.3).toFixed(2)} ${(s * 0.9).toFixed(2)} ${s.toFixed(2)} 0 ${s.toFixed(2)}C${(-s * 0.9).toFixed(2)} ${s.toFixed(2)} ${(-s * 0.9).toFixed(2)} ${(-s * 0.3).toFixed(2)} 0 ${(-s * 1.6).toFixed(2)}Z`
+}
+
+/** A parachute with its capsule hanging under it, the canopy's middle at (0, 0) and `r` across half of it. */
+function Parachute({ r, colour }: { r: number; colour: string }) {
+  const gore = (a: number, b: number) =>
+    `M0 ${-0.75 * r}Q${a * 0.85 * r} ${-0.62 * r} ${a * r} 0L${b * r} 0Q${b * 0.85 * r} ${-0.62 * r} 0 ${-0.75 * r}Z`
+  const top = 1.25 * r
+  const foot = top + 0.45 * r
+  return (
+    <>
+      <path d={`M${-r} 0L0 ${top}L${r} 0M${-0.3 * r} 0L0 ${top}L${0.3 * r} 0`} stroke="#d9dde8" strokeWidth={Math.max(0.5, r * 0.04)} fill="none" opacity="0.8" />
+      <path d={`M${-r} 0A${r} ${0.75 * r} 0 0 1 ${r} 0Z`} fill={colour} />
+      <path d={`${gore(-0.6, -0.2)}${gore(0.2, 0.6)}`} fill="#ffffff" opacity="0.92" />
+      <path d={`M${-0.13 * r} ${top}H${0.13 * r}L${0.36 * r} ${foot}H${-0.36 * r}Z`} fill="#e8ecf4" />
+      <path d={`M${-0.36 * r} ${foot}Q0 ${foot + 0.18 * r} ${0.36 * r} ${foot}Z`} fill="#6a4a36" />
+      <circle cx={0.06 * r} cy={top + 0.22 * r} r={0.06 * r} fill="#2a3a5a" />
+    </>
+  )
+}
+
+const SPLASH_CHUTES: [number, number, number, string][] = [
+  [50, 30, 17, '#f2813a'],
+  [110, 20, 12, '#e8564f'],
+  [128, 64, 10, '#f2813a'],
+]
+
+/** Splashdown on the shelf: parachutes coming down with their capsules, and one landed in a splash. */
+function Splashdown() {
+  const rnd = seeded(44)
+  const drops: ReactNode[] = []
+  for (let i = 0; i < 14; i++) {
+    const a = ((-155 + (i / 13) * 130 + (rnd() - 0.5) * 10) * Math.PI) / 180
+    const d = 10 + rnd() * 16
+    const x = 70 + Math.cos(a) * d * 1.3
+    const y = 110 + Math.sin(a) * d
+    const c = ['#ffffff', '#cfeaff', '#7fc8ff'][i % 3]!
+    drops.push(<path key={i} d={dropPath(1.3 + rnd() * 1.3)} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${((a * 180) / Math.PI - 90).toFixed(0)})`} fill={c} />)
+  }
+  return (
+    <>
+      <ellipse cx="72" cy="119" rx="56" ry="8" fill="#2a6fd0" opacity="0.55" />
+      <ellipse cx="70" cy="117" rx="20" ry="3.6" fill="none" stroke="#bfe6ff" strokeWidth="1.2" opacity="0.8" />
+      <ellipse cx="70" cy="117" rx="32" ry="5.6" fill="none" stroke="#bfe6ff" strokeWidth="0.9" opacity="0.45" />
+      <path d="M62 116Q64 104 66 113Q70 98 74 113Q76 104 78 116Z" fill="#cfeaff" opacity="0.85" />
+      {drops}
+      {SPLASH_CHUTES.map(([x, y, r, c]) => (
+        <g key={x} transform={`translate(${x} ${y}) rotate(${x > 100 ? 6 : -5})`}>
+          <Parachute r={r} colour={c} />
+        </g>
+      ))}
+    </>
+  )
+}
+
 const POPPER_SEEDS: Record<string, number> = { 'cf-tickets': 3, 'cf-stars': 9, 'cf-hearts': 14, 'cf-pixels': 5, 'cf-stardust': 31, 'cf-shooting': 17 }
 
 /** A four-point sparkle, for Stardust and the shooting stars. */
@@ -558,10 +665,11 @@ function sparkle4(x: number, y: number, s: number) {
 }
 const PIXEL_COLOURS = ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b']
 
-/** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own, and meteors fall. */
+/** A party popper going off in its confetti: stars, bubbles, hearts, pixels or tickets. Fireworks go up on their own, meteors fall, and parachutes come down. */
 function Popper({ kind, id }: { kind: string; id: string }) {
   if (kind === 'cf-fireworks') return <Fireworks />
   if (kind === 'cf-meteors') return <Meteors id={id} />
+  if (kind === 'cf-splashdown') return <Splashdown />
   const rnd = seeded(POPPER_SEEDS[kind] ?? 21)
   const bits: ReactNode[] = []
   for (let i = 0; i < 15; i++) {

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 /*
  * Season 1's card themes (Space Race, its pass), drawn to fill any box as the counter's themes are
  * (CardThemes.tsx): a deep field of stars with a ringed planet, the launch pad at dusk, and a nebula.
- * Its Pass+ adds mission control.
+ * Its Pass+ adds mission control, a porthole looking down on the Earth, and a space station over it.
  */
 
 type ThemeProps = { w: number; h: number; s: number; id: string }
@@ -375,6 +375,215 @@ export function MissionControl({ w, h, id }: ThemeProps) {
       <path d={`M0 ${f1(desk + sh * 0.18)}H${w}`} stroke="#f2813a" strokeWidth={1.4 * k} opacity="0.5" />
       {lights}
       {people}
+    </>
+  )
+}
+
+/* ---------- the Earth from orbit, for the porthole and the station ---------- */
+
+/** Where the land is on the Earth's visible edge: across the span, down from the edge, how long, how deep, what colour. */
+const EARTH_LAND: [number, number, number, number, string][] = [
+  [0.1, 0.42, 0.55, 0.16, '#4f9a4a'],
+  [0.2, 0.62, 0.3, 0.12, '#a8834a'],
+  [0.46, 0.3, 0.42, 0.13, '#4f9a4a'],
+  [0.58, 0.66, 0.36, 0.17, '#a8834a'],
+  [0.68, 0.58, 0.3, 0.1, '#4f9a4a'],
+  [0.86, 0.36, 0.4, 0.14, '#4f9a4a'],
+]
+/** Its cloud: bands along the edge from one point of the span to another, down from the edge; and swirls. */
+const EARTH_CLOUD: [number, number, number][] = [
+  [0.02, 0.3, 0.22],
+  [0.36, 0.62, 0.5],
+  [0.7, 0.98, 0.26],
+  [0.14, 0.4, 0.8],
+]
+const EARTH_SWIRLS: [number, number, number][] = [
+  [0.3, 0.38, 0.12],
+  [0.8, 0.7, 0.1],
+]
+
+/**
+ * The top of the Earth from orbit: a great disc centred at (ex, ey), radius R, of which the band `depth`
+ * deep under its edge shows between x0 and x1. Ocean, land and cloud in it, the night coming on to the
+ * right, and the air's thin blue line along the edge.
+ */
+function EarthLimb({ ex, ey, R, depth, x0, x1, k, id }: { ex: number; ey: number; R: number; depth: number; x0: number; x1: number; k: number; id: string }) {
+  const edge = (x: number) => ey - Math.sqrt(Math.max(0, R * R - (x - ex) * (x - ex)))
+  const tilt = (x: number) => (Math.atan2(x - ex, Math.sqrt(Math.max(1, R * R - (x - ex) * (x - ex)))) * 180) / Math.PI
+  const at = (u: number) => x0 + u * (x1 - x0)
+  const along = (u0: number, u1: number, v: number) => {
+    let d = ''
+    for (let i = 0; i <= 12; i++) {
+      const x = at(u0 + ((u1 - u0) * i) / 12)
+      d += `${i ? 'L' : 'M'}${f1(x)} ${f1(edge(x) + v * depth)}`
+    }
+    return d
+  }
+  return (
+    <>
+      <defs>
+        <radialGradient id={`${id}sea`} gradientUnits="userSpaceOnUse" cx={ex} cy={ey - R} r={R * 0.5 + depth * 2}>
+          <stop offset="0" stopColor="#3f8fe0" />
+          <stop offset="0.6" stopColor="#1f5fb0" />
+          <stop offset="1" stopColor="#123d80" />
+        </radialGradient>
+        <linearGradient id={`${id}dusk`} gradientUnits="userSpaceOnUse" x1={x0} y1="0" x2={x1} y2="0">
+          <stop offset="0.55" stopColor="#040a1e" stopOpacity="0" />
+          <stop offset="1" stopColor="#040a1e" stopOpacity="0.55" />
+        </linearGradient>
+      </defs>
+      <circle cx={ex} cy={ey} r={R + depth * 0.18} fill="#4aa8e8" opacity="0.18" />
+      <circle cx={ex} cy={ey} r={R + depth * 0.07} fill="#8fd0ff" opacity="0.25" />
+      <circle cx={ex} cy={ey} r={R} fill={`url(#${id}sea)`} />
+      {EARTH_LAND.map(([u, v, len, deep, fill]) => {
+        const x = at(u)
+        const y = edge(x) + v * depth
+        return <ellipse key={u} cx={x} cy={y} rx={len * depth} ry={deep * depth} fill={fill} opacity="0.9" transform={`rotate(${tilt(x).toFixed(1)} ${f1(x)} ${f1(y)})`} />
+      })}
+      {EARTH_CLOUD.map(([u0, u1, v]) => (
+        <path key={u0} d={along(u0, u1, v)} fill="none" stroke="#ffffff" strokeWidth={depth * 0.07} strokeLinecap="round" opacity="0.75" />
+      ))}
+      {EARTH_SWIRLS.map(([u, v, r]) => {
+        const x = at(u)
+        const y = edge(x) + v * depth
+        const rr = r * depth
+        return (
+          <path
+            key={u}
+            d={`M${f1(x - rr)} ${f1(y)}A${f1(rr)} ${f1(rr * 0.5)} 0 1 1 ${f1(x + rr * 0.4)} ${f1(y + rr * 0.3)}A${f1(rr * 0.5)} ${f1(rr * 0.25)} 0 1 1 ${f1(x)} ${f1(y - rr * 0.05)}`}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth={depth * 0.05}
+            strokeLinecap="round"
+            opacity="0.8"
+            transform={`rotate(${tilt(x).toFixed(1)} ${f1(x)} ${f1(y)})`}
+          />
+        )
+      })}
+      <circle cx={ex} cy={ey} r={R} fill={`url(#${id}dusk)`} />
+      <circle cx={ex} cy={ey} r={R - 0.6 * k} fill="none" stroke="#bfe6ff" strokeWidth={1.4 * k} opacity="0.85" />
+    </>
+  )
+}
+
+/** Porthole: the card seen through a spacecraft's round window, its riveted ring, the stars, and the Earth turning below. */
+export function Porthole({ w, h, s, id }: ThemeProps) {
+  const k = h / 120
+  const rw = h * 0.36
+  const ring = h * 0.085
+  const cx = Math.min(w * 0.7, w - rw - ring - h * 0.05)
+  const cy = h * 0.5
+  const R = rw * 2.4
+  const ex = cx - rw * 0.4
+  const ey = cy + rw * 0.3 + R
+  const dot = (x: number, y: number, r: number) => `M${f1(x - r)} ${f1(y)}a${f1(r)} ${f1(r)} 0 1 0 ${f1(2 * r)} 0a${f1(r)} ${f1(r)} 0 1 0 ${f1(-2 * r)} 0Z`
+  let seams = ''
+  let rivets = ''
+  for (const y of [h * 0.2, h * 0.82]) {
+    seams += `M0 ${f1(y)}H${w}`
+    for (let x = h * 0.05; x < w; x += h * 0.07) rivets += dot(x, y - h * 0.035, 1.3 * k)
+  }
+  for (let x = h * 0.5; x < w; x += h * 0.75) seams += `M${f1(x)} 0V${h}`
+  const bolts = Array.from({ length: 18 }, (_, i) => {
+    const a = (i / 18) * Math.PI * 2
+    return dot(cx + Math.cos(a) * (rw + ring / 2), cy + Math.sin(a) * (rw + ring / 2), ring * 0.11)
+  }).join('')
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${id}wall`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#262c42" />
+          <stop offset="1" stopColor="#141827" />
+        </linearGradient>
+        <linearGradient id={`${id}steel`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#d8dee8" />
+          <stop offset="0.45" stopColor="#7a8496" />
+          <stop offset="1" stopColor="#3a4256" />
+        </linearGradient>
+        <clipPath id={`${id}glass`}>
+          <circle cx={cx} cy={cy} r={rw} />
+        </clipPath>
+      </defs>
+      <rect width={w} height={h} fill={`url(#${id}wall)`} />
+      <path d={seams} stroke="#0b0e18" strokeWidth={2.4 * k} />
+      <path d={seams} stroke="#3a4258" strokeWidth={0.8 * k} transform={`translate(${f1(1.4 * k)} ${f1(1.4 * k)})`} />
+      <path d={rivets} fill="#4a5470" />
+      <g clipPath={`url(#${id}glass)`}>
+        <rect x={cx - rw} y={cy - rw} width={rw * 2} height={rw * 2} fill="#03051a" />
+        <path d={stars(w, h, Math.round((w * h) / (700 * s * s)), 1 * s, 43)} fill="#f4f0ff" opacity="0.8" />
+        <path d={sparkle(cx + rw * 0.45, cy - rw * 0.5, rw * 0.07)} fill="#ffe7a3" />
+        <EarthLimb ex={ex} ey={ey} R={R} depth={rw * 0.75} x0={cx - rw} x1={cx + rw} k={k} id={`${id}e`} />
+        <path d={`M${f1(cx - rw)} ${f1(cy - rw * 0.2)}L${f1(cx - rw * 0.2)} ${f1(cy - rw)}H${f1(cx + rw * 0.15)}L${f1(cx - rw)} ${f1(cy + rw * 0.15)}Z`} fill="#ffffff" opacity="0.06" />
+        <circle cx={cx} cy={cy} r={rw} fill="none" stroke="#000000" strokeWidth={rw * 0.12} opacity="0.45" />
+      </g>
+      <circle cx={cx} cy={cy} r={rw + ring / 2} fill="none" stroke={`url(#${id}steel)`} strokeWidth={ring} />
+      <circle cx={cx} cy={cy} r={rw + 0.5 * k} fill="none" stroke="#0b0e18" strokeWidth={1.6 * k} />
+      <circle cx={cx} cy={cy} r={rw + ring} fill="none" stroke="#0b0e18" strokeWidth={1.6 * k} />
+      <path d={bolts} fill="#2a3042" transform={`translate(${f1(0.6 * k)} ${f1(0.6 * k)})`} />
+      <path d={bolts} fill="#e3e9f0" />
+      <rect x={cx - rw - ring - h * 0.2} y={cy + rw * 0.55} width={h * 0.12} height={h * 0.05} rx={k} fill="#f2813a" opacity="0.85" />
+      <path d={`M${f1(cx - rw - ring - h * 0.185)} ${f1(cy + rw * 0.55 + h * 0.025)}h${f1(h * 0.09)}`} stroke="#141827" strokeWidth={1.2 * k} />
+    </>
+  )
+}
+
+/** Space station: the station over the Earth's edge, its long solar wings out either side, the stars above. */
+export function SpaceStation({ w, h, s, id }: ThemeProps) {
+  const k = h / 120
+  const R = Math.max(w * 1.6, h * 2.2)
+  const ex = w * 0.42
+  const top = h * 0.76
+  const S = Math.min(h * 0.9, w * 0.6)
+  const u = S / 100
+  const panel = (x: number, y: number, pw: number, ph: number) => {
+    let grid = ''
+    for (let gy = y + 3; gy < y + ph; gy += 3) grid += `M${x} ${gy}h${pw}`
+    return (
+      <g key={`${x}-${y}`}>
+        <rect x={x} y={y} width={pw} height={ph} fill={`url(#${id}cell)`} stroke="#c98a1c" strokeWidth="0.5" />
+        <path d={grid} stroke="#8ea4f2" strokeWidth="0.25" opacity="0.45" />
+        <path d={`M${x + pw / 2} ${y}v${ph}`} stroke="#c98a1c" strokeWidth="0.45" />
+      </g>
+    )
+  }
+  const wings: ReactNode[] = []
+  for (const x of [-52, -32, 18, 38]) wings.push(panel(x, -31, 14, 28), panel(x, 3, 14, 28))
+  let lattice = ''
+  for (let x = -56; x < 56; x += 3) lattice += `M${x} -1.6L${x + 1.5} 1.6L${x + 3} -1.6`
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${id}space`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#02030c" />
+          <stop offset="0.75" stopColor="#0a1030" />
+          <stop offset="1" stopColor="#14245a" />
+        </linearGradient>
+        <linearGradient id={`${id}cell`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#3b5bc4" />
+          <stop offset="1" stopColor="#1c2a6a" />
+        </linearGradient>
+        <linearGradient id={`${id}hull`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f4f6fa" />
+          <stop offset="1" stopColor="#a9b2c2" />
+        </linearGradient>
+      </defs>
+      <rect width={w} height={h} fill={`url(#${id}space)`} />
+      <path d={stars(w, h * 0.75, Math.round((w * h) / (1300 * s * s)), 1 * s, 51)} fill="#f4f0ff" opacity="0.75" />
+      <EarthLimb ex={ex} ey={top + R} R={R} depth={h * 0.3} x0={0} x1={w} k={k} id={`${id}e`} />
+      <g transform={`translate(${f1(w * 0.62)} ${f1(h * 0.4)}) rotate(-8) scale(${u.toFixed(3)})`}>
+        <rect x="-57" y="-1.6" width="114" height="3.2" fill="#aab3c2" />
+        <path d={lattice} fill="none" stroke="#6b7486" strokeWidth="0.45" />
+        {wings}
+        <rect x="9" y="5" width="3" height="10" fill="#f4f6fa" opacity="0.9" transform="rotate(20 10.5 10)" />
+        <rect x="-12" y="-15" width="3" height="10" fill="#f4f6fa" opacity="0.9" transform="rotate(20 -10.5 -10)" />
+        <rect x="-3.5" y="-17" width="7" height="34" rx="3" fill={`url(#${id}hull)`} />
+        <rect x="-15" y="-4.5" width="30" height="9" rx="4" fill={`url(#${id}hull)`} />
+        <path d="M-8 -4.5v9M8 -4.5v9M-3.5 -10h7M-3.5 10h7" stroke="#8d97aa" strokeWidth="0.5" />
+        <circle r="5" fill="#e8ecf4" stroke="#8d97aa" strokeWidth="0.5" />
+        <path d="M-2.4 17L2.4 17L3.6 22L-3.6 22Z" fill="#e8ecf4" />
+        <path d="M-3.6 22Q0 23.6 3.6 22Z" fill="#6a4a36" />
+        <path d={sparkle(-38, -31, 3)} fill="#ffffff" />
+      </g>
     </>
   )
 }

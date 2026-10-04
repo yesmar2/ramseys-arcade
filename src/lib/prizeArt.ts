@@ -107,6 +107,17 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
       return 'rgba(242,129,58,0.22)'
     case 'eclipse':
       return 'rgba(255,231,163,0.22)'
+    case 'nm-telemetry':
+      return 'rgba(69,211,107,0.2)'
+    case 'cd-porthole':
+    case 'cf-splashdown':
+    case 'blue-marble':
+    case 'cd-station':
+      return 'rgba(74,168,232,0.22)'
+    case 'nm-wormhole':
+      return 'rgba(214,92,214,0.22)'
+    case 'black-hole':
+      return 'rgba(242,129,58,0.24)'
     default:
       if (prize.kind === 'title' && plateTier(prize) === 'lit') return 'rgba(255,95,162,0.18)'
       if (prize.kind === 'title' && plateTier(prize) === 'enamel') return 'rgba(58,134,200,0.18)'

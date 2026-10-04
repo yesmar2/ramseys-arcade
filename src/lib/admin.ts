@@ -213,6 +213,11 @@ export function setSeasonPlus(name: string, on: boolean) {
   return api<{ name: string; season: number; plus: boolean }>('/admin/season-plus', { method: 'POST', body: JSON.stringify({ name, on }) })
 }
 
+/** A Plus membership for a tag's account, given or taken back, to try it without paying (the API's plus.ts). */
+export function setPlusMembership(name: string, on: boolean) {
+  return api<{ name: string; plan: 'free' | 'plus' }>('/admin/plus', { method: 'POST', body: JSON.stringify({ name, on }) })
+}
+
 export function fetchPlayerStats(includeSeeded: boolean) {
   return api<PlayerStats>(`/admin/players${includeSeeded ? '?seeded=1' : ''}`)
 }

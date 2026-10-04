@@ -149,6 +149,60 @@ export const RINGSHIP: SkinArt = {
   ],
 }
 
+/** The Orbiter, Asteroids' (Season 1's Pass+, bonus level): a silver starfighter, swept wings, a teal canopy. */
+export const ORBITER: SkinArt = {
+  flame: [{ d: 'M42 86L45 98L48 86zM52 86L55 98L58 86z', fill: '#7fc8ff' }],
+  body: [
+    { d: 'M50 8L57 34L60 56L84 70L84 80L60 76L56 86L44 86L40 76L16 80L16 70L40 56L43 34Z', fill: '#c9d3ea', stroke: '#2a3352', width: 2, join: 'round' },
+    { d: 'M50 18L54 34L50 38L46 34Z', fill: '#2eb8a0' },
+    { d: 'M44 46H56M43 52H57', stroke: SPACE.indigo, width: 2.5 },
+    { d: 'M17 73h7M76 73h7', stroke: SPACE.orange, width: 2.5, cap: 'round' },
+    { d: circle(45, 86, 2.5), fill: '#7fc8ff' },
+    { d: circle(55, 86, 2.5), fill: '#7fc8ff' },
+  ],
+}
+
+/**
+ * The Starhopper, Lander's (Season 1's Pass+, bonus level): a tall steel rocket standing on its legs, red fins.
+ * Its feet on the hull's feet as every Lander skin's are, its nose over the hull's.
+ */
+export const STARHOPPER: SkinArt = {
+  flame: [
+    { d: 'M44 74L50 94L56 74z', fill: SPACE.orange },
+    { d: 'M46.5 74L50 86L53.5 74z', fill: SPACE.amber },
+  ],
+  body: [
+    { d: 'M41 64L25 85M59 64L75 85', stroke: '#8f96b8', width: 3, cap: 'round' },
+    { d: 'M19 86a5 2 0 1 0 10 0a5 2 0 1 0 -10 0zM71 86a5 2 0 1 0 10 0a5 2 0 1 0 -10 0z', fill: '#c9cde0' },
+    { d: 'M38 50L29 70H38ZM62 50L71 70H62Z', fill: SPACE.red },
+    { d: 'M38 70V30C38 20 43 13 50 9C57 13 62 20 62 30V70Z', fill: '#d9dde8', stroke: '#8f96b8', width: 2, join: 'round' },
+    { d: 'M38 40H62M38 55H62', stroke: '#aab0c8', width: 1 },
+    { d: circle(50, 26, 3.5), fill: SPACE.night },
+    { d: 'M44 70H56L58 74H42Z', fill: '#3a4160' },
+  ],
+}
+
+/** The Stingray, Barrage's (Season 1's Pass+): a dark manta-winged fighter edged in teal. */
+export const STINGRAY: SkinArt = {
+  flame: [
+    { d: 'M46 76L50 92L54 76z', fill: SPACE.orange },
+    { d: 'M48 76L50 86L52 76z', fill: SPACE.amber },
+  ],
+  body: [
+    {
+      d: 'M50 12C56 22 60 34 64 44C74 48 86 54 90 62C80 64 70 64 62 66L56 72L50 80L44 72L38 66C30 64 20 64 10 62C14 54 26 48 36 44C40 34 44 22 50 12Z',
+      fill: '#1f2a66',
+      stroke: '#5fe0c8',
+      width: 2.5,
+      join: 'round',
+    },
+    { d: 'M36 50L22 60M64 50L78 60', stroke: '#5fe0c8', width: 1.5, alpha: 0.6 },
+    { d: 'M46 40a4 9 0 1 0 8 0a4 9 0 1 0 -8 0z', fill: '#5fe0c8' },
+    { d: circle(12, 62, 2.5), fill: SPACE.orange },
+    { d: circle(88, 62, 2.5), fill: SPACE.orange },
+  ],
+}
+
 export type RGB = [number, number, number]
 
 /**
@@ -164,10 +218,12 @@ export type SnakeTail = {
   headRing: RGB
   glowColor: RGB
   eyes: string
+  /** A planet's ring across the head, tilted, when it has one. */
+  planetRing?: RGB
   bead(t: number): { r: number; alpha: number; rgb: RGB }
 }
 
-function snakeTail(look: { headFill: RGB; headRing: RGB; glowColor: RGB; eyes: string; stops: readonly [RGB, RGB, RGB] }): SnakeTail {
+function snakeTail(look: { headFill: RGB; headRing: RGB; glowColor: RGB; eyes: string; planetRing?: RGB; stops: readonly [RGB, RGB, RGB] }): SnakeTail {
   return {
     head: 0.75,
     glow: 1.25,
@@ -175,6 +231,7 @@ function snakeTail(look: { headFill: RGB; headRing: RGB; glowColor: RGB; eyes: s
     headRing: look.headRing,
     glowColor: look.glowColor,
     eyes: look.eyes,
+    ...(look.planetRing ? { planetRing: look.planetRing } : {}),
     bead(t) {
       const k = Math.min(1, Math.max(0, t))
       const [a, b, c] = look.stops
@@ -217,20 +274,39 @@ export const NEBULA_TAIL = snakeTail({
   ],
 })
 
+/** The Saturn tail, Snake's (Season 1's Pass+): a pale gold planet of a head in its ring, beads to rust and dusk violet. */
+export const SATURN_TAIL = snakeTail({
+  headFill: [240, 217, 160],
+  headRing: [214, 160, 90],
+  glowColor: [245, 200, 120],
+  eyes: SPACE.night,
+  planetRing: [245, 185, 66],
+  stops: [
+    [248, 214, 140],
+    [240, 150, 80],
+    [184, 128, 214],
+  ],
+})
+
 /** Snake's skins, by id. */
-export const SNAKE_TAILS: Record<string, SnakeTail> = { 'snake-comet-tail': COMET_TAIL, 'snake-nebula-tail': NEBULA_TAIL }
+export const SNAKE_TAILS: Record<string, SnakeTail> = {
+  'snake-comet-tail': COMET_TAIL,
+  'snake-nebula-tail': NEBULA_TAIL,
+  'snake-saturn-tail': SATURN_TAIL,
+}
 
 /** Asteroids' skins: the drawing, and where its nose and tail are on the board, to lay it along the hull. */
 export const ASTEROIDS_ART: Record<string, { art: SkinArt; nose: number; tail: number }> = {
   'asteroids-comet': { art: COMET_SHIP, nose: 12, tail: 84 },
   'asteroids-shuttle': { art: SHUTTLE, nose: 9, tail: 86 },
+  'asteroids-orbiter': { art: ORBITER, nose: 8, tail: 86 },
 }
 
 /** Lander's skins: feet 52 apart on the board's y 86, as the hull's are. */
-export const LANDER_ART: Record<string, SkinArt> = { 'lander-moonhopper': MOONHOPPER, 'lander-eagle': EAGLE }
+export const LANDER_ART: Record<string, SkinArt> = { 'lander-moonhopper': MOONHOPPER, 'lander-eagle': EAGLE, 'lander-starhopper': STARHOPPER }
 
 /** Barrage's skins: nose at the board's y 10, tail at 80, as the usual ship is long. */
-export const BARRAGE_ART: Record<string, SkinArt> = { 'barrage-nova': NOVA_FIGHTER, 'barrage-ringship': RINGSHIP }
+export const BARRAGE_ART: Record<string, SkinArt> = { 'barrage-nova': NOVA_FIGHTER, 'barrage-ringship': RINGSHIP, 'barrage-stingray': STINGRAY }
 
 const paths = new Map<string, Path2D>()
 

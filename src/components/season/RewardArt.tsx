@@ -6,7 +6,22 @@ import { ThemeDrawing } from '../prizes/CardThemes'
 import { SPACE, sparklePath } from '../../lib/seasonArt'
 import midnightRocketPicture from '../../assets/season/midnight-rocket.webp'
 import rocketCarPicture from '../../assets/season/rocket-car.webp'
-import { COMET_SHIP, COMET_TAIL, EAGLE, NEBULA_TAIL, NOVA_FIGHTER, RINGSHIP, SHUTTLE, type SkinArt, type SnakeTail } from '../../lib/skinArt'
+import sunracerPicture from '../../assets/season/sunracer.webp'
+import {
+  COMET_SHIP,
+  COMET_TAIL,
+  EAGLE,
+  NEBULA_TAIL,
+  NOVA_FIGHTER,
+  ORBITER,
+  RINGSHIP,
+  SATURN_TAIL,
+  SHUTTLE,
+  STARHOPPER,
+  STINGRAY,
+  type SkinArt,
+  type SnakeTail,
+} from '../../lib/skinArt'
 import { ArtShapes, MissionPatch, Moonhopper, Rocket } from './SeasonArt'
 
 /*
@@ -61,12 +76,25 @@ function NamePlate({ fill, children }: { fill: string; children: ReactNode }) {
 }
 
 function Title({ text }: { text: string }) {
+  // A title too long for one line of the plate (Space Race Legend) goes on two, split at its last space.
+  const cut = text.length > 15 ? text.lastIndexOf(' ') : -1
   return (
     <>
       <polygon points="11,34 89,34 96,41 96,59 89,66 11,66 4,59 4,41" fill={SPACE.night} stroke={SPACE.orange} strokeWidth="2" />
-      <text x="50" y="55" textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={600} fontSize={text.length > 10 ? 12 : 14} fill={SPACE.star}>
-        {text}
-      </text>
+      {cut > 0 ? (
+        <text textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={600} fontSize="12" fill={SPACE.star}>
+          <tspan x="50" y="48">
+            {text.slice(0, cut)}
+          </tspan>
+          <tspan x="50" y="61">
+            {text.slice(cut + 1)}
+          </tspan>
+        </text>
+      ) : (
+        <text x="50" y="55" textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={600} fontSize={text.length > 10 ? 12 : 14} fill={SPACE.star}>
+          {text}
+        </text>
+      )}
     </>
   )
 }
@@ -127,6 +155,9 @@ function BeadTail({ tail, spark }: { tail: SnakeTail; spark: string }) {
       })}
       <circle cx="80" cy="30" r={tail.glow * step} fill={rgb(tail.glowColor)} opacity="0.3" />
       <circle cx="80" cy="30" r={tail.head * step} fill={rgb(tail.headFill)} stroke={rgb(tail.headRing)} strokeWidth="2" />
+      {tail.planetRing ? (
+        <ellipse cx="80" cy="30" rx={tail.head * step * 1.6} ry={tail.head * step * 0.42} transform="rotate(-20 80 30)" fill="none" stroke={rgb(tail.planetRing)} strokeWidth="1.8" />
+      ) : null}
       <circle cx="83" cy="26" r="1.8" fill={tail.eyes} />
       <circle cx="83" cy="34" r="1.8" fill={tail.eyes} />
       <Spark x={20} y={30} s={5} c={spark} />
@@ -240,9 +271,9 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   'nm-aurora': (size) => (
     <Board size={size}>
       <NamePlate fill="#0b1030">
-        <path d="M4 48C24 36 40 54 60 42S86 30 96 38" fill="none" stroke="#5fe0c8" strokeWidth="9" opacity="0.18" />
-        <path d="M4 60C22 50 44 66 64 54S88 46 96 52" fill="none" stroke={SPACE.violet} strokeWidth="8" opacity="0.22" />
-        <text x="50" y="61" textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize="24">
+        <path d="M6 36C24 28 40 40 60 32S86 26 94 32" fill="none" stroke="#5fe0c8" strokeWidth="5" strokeLinecap="round" opacity="0.3" />
+        <path d="M6 68C22 62 44 72 64 66S88 62 94 66" fill="none" stroke={SPACE.violet} strokeWidth="5" strokeLinecap="round" opacity="0.35" />
+        <text x="50" y="61" textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize="24" stroke="#0b1030" strokeWidth="3" paintOrder="stroke">
           <tspan fill="#5fe0c8">A</tspan>
           <tspan fill="#a68cf2">C</tspan>
           <tspan fill="#ff8fcf">E</tspan>
@@ -265,6 +296,55 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       <circle cx="40" cy="26" r="1.4" fill={SPACE.amber} />
       <circle cx="74" cy="44" r="1.2" fill="#ffe7a3" />
       <circle cx="46" cy="70" r="1.3" fill={SPACE.amber} />
+    </Board>
+  ),
+  'nm-telemetry': (size) => (
+    <Board size={size}>
+      <NamePlate fill="#04140c">
+        <text x="14" y="60" fontFamily="ui-monospace, Consolas, monospace" fontWeight={700} fontSize="20" fill="#45d36b" opacity="0.6">
+          &gt;
+        </text>
+        <text x="48" y="61" textAnchor="middle" fontFamily="ui-monospace, Consolas, monospace" fontWeight={700} fontSize="24" fill="#7dffaf">
+          ACE
+        </text>
+        <rect x="72" y="44" width="9" height="19" fill="#7dffaf" opacity="0.8" />
+        <path d="M4 30h92M4 33h92M4 36h92M4 39h92M4 42h92M4 45h92M4 48h92M4 51h92M4 54h92M4 57h92M4 60h92M4 63h92M4 66h92M4 69h92" stroke="#000000" strokeWidth="1" opacity="0.25" />
+      </NamePlate>
+    </Board>
+  ),
+  'nm-wormhole': (size) => (
+    <Board size={size}>
+      <NamePlate fill="#0d0618">
+        <ellipse cx="50" cy="50" rx="40" ry="18" fill="none" stroke="#ff5fd8" strokeWidth="2" opacity="0.4" transform="rotate(-12 50 50)" />
+        <ellipse cx="50" cy="50" rx="28" ry="12" fill="none" stroke="#b678ff" strokeWidth="2" opacity="0.45" transform="rotate(10 50 50)" />
+        <ellipse cx="50" cy="50" rx="16" ry="7" fill="none" stroke="#4fe3ff" strokeWidth="2" opacity="0.5" transform="rotate(-20 50 50)" />
+        <text x="50" y="61" textAnchor="middle" fontFamily="Orbitron, Outfit, sans-serif" fontWeight={800} fontSize="24" stroke="#12002a" strokeWidth="4" paintOrder="stroke">
+          <tspan fill="#ff5fd8">A</tspan>
+          <tspan fill="#b678ff">C</tspan>
+          <tspan fill="#4fe3ff">E</tspan>
+        </text>
+      </NamePlate>
+    </Board>
+  ),
+  'cd-porthole': (size) => <CardArt theme="cd-porthole" size={size} />,
+  'cd-station': (size) => <CardArt theme="cd-station" size={size} />,
+  'blue-marble': (size) => <FinishArt badge="blue-marble" size={size} />,
+  'black-hole': (size) => <FinishArt badge="black-hole" size={size} />,
+  'cf-splashdown': (size) => (
+    <Board size={size}>
+      {([[34, 24, 16, SPACE.orange], [70, 38, 12, SPACE.red]] as const).map(([x, y, r, c]) => (
+        <g key={x}>
+          <path d={`M${x - r} ${y}L${x} ${y + r * 1.25}L${x + r} ${y}`} fill="none" stroke="#d9dde8" strokeWidth="0.8" />
+          <path d={`M${x - r} ${y}A${r} ${r * 0.75} 0 0 1 ${x + r} ${y}Z`} fill={c} />
+          <path d={`M${x - r * 0.35} ${y}A${r * 0.35} ${r * 0.75} 0 0 1 ${x + r * 0.35} ${y}Z`} fill="#ffffff" />
+          <path d={`M${x - r * 0.13} ${y + r * 1.25}H${x + r * 0.13}L${x + r * 0.36} ${y + r * 1.7}H${x - r * 0.36}Z`} fill="#e8ecf4" />
+        </g>
+      ))}
+      <ellipse cx="52" cy="86" rx="40" ry="6" fill="#4aa8e8" opacity="0.6" />
+      <path d="M44 85Q46 72 49 82Q52 66 55 82Q58 72 60 85Z" fill="#cfeaff" />
+      {([[38, 72, 2.2], [44, 64, 1.8], [62, 62, 2], [68, 72, 2.2], [52, 58, 1.6], [32, 80, 1.6], [74, 80, 1.6]] as const).map(([x, y, r]) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill={x % 3 ? '#ffffff' : '#7fc8ff'} />
+      ))}
     </Board>
   ),
   'lander-moonhopper': (size) => (
@@ -316,6 +396,31 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   'hotlap-midnight': (size) => (
     <Board size={size}>
       <RocketCar picture={midnightRocketPicture} />
+    </Board>
+  ),
+  'hotlap-sunracer': (size) => (
+    <Board size={size}>
+      <RocketCar picture={sunracerPicture} />
+    </Board>
+  ),
+  'barrage-stingray': (size) => (
+    <Board size={size}>
+      <ShipArt art={STINGRAY} />
+    </Board>
+  ),
+  'snake-saturn-tail': (size) => (
+    <Board size={size}>
+      <BeadTail tail={SATURN_TAIL} spark={SPACE.amber} />
+    </Board>
+  ),
+  'asteroids-orbiter': (size) => (
+    <Board size={size}>
+      <ShipArt art={ORBITER} />
+    </Board>
+  ),
+  'lander-starhopper': (size) => (
+    <Board size={size}>
+      <ShipArt art={STARHOPPER} flame={false} />
     </Board>
   ),
 }

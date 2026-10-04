@@ -1,5 +1,5 @@
 import { seasonHref } from '../../hooks/useHashRoute'
-import { liveSeason, seasonProgress, useSeason } from '../../lib/season'
+import { liveSeason, seasonProgress, seasonTop, useSeason } from '../../lib/season'
 import { SeasonRing } from './SeasonArt'
 import '../../styles/season.css'
 
@@ -13,10 +13,10 @@ export function SeasonChip({ here }: { here: boolean }) {
   const store = useSeason()
   const season = liveSeason(store)
   if (!season) return null
-  const p = seasonProgress(season, store.you)
+  const p = seasonProgress(season, store.you, seasonTop(store))
   const label =
     p.level > 0
-      ? `Season ${season.id}, ${season.name}: level ${p.level} of ${season.levels}`
+      ? `Season ${season.id}, ${season.name}: level ${p.level} of ${seasonTop(store)}`
       : `Season ${season.id}, ${season.name}: win a ticket to start the pass`
   return (
     <a className={`season-chip${here ? ' season-chip--here' : ''}`} href={seasonHref()} aria-label={label} title={label}>
@@ -30,7 +30,7 @@ export function SeasonTabRing() {
   const store = useSeason()
   const season = liveSeason(store)
   if (!season) return null
-  const p = seasonProgress(season, store.you)
+  const p = seasonProgress(season, store.you, seasonTop(store))
   return (
     <>
       <span className="season-tabring" aria-hidden="true">

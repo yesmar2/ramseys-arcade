@@ -91,7 +91,17 @@ export type SeasonGoal = {
  * A season's Pass+: a second row of looks on the same levels, bought once for the season (the API's
  * payments.ts, through Stripe). `buyable` once payments are set up and the season is live.
  */
-export type SeasonPlus = { price: number; currency: string; rewards: SeasonReward[]; owned: boolean; buyable: boolean }
+export type SeasonPlus = {
+  price: number
+  currency: string
+  rewards: SeasonReward[]
+  /** Levels past the last that only Pass+ climbs. */
+  bonus: number
+  owned: boolean
+  /** How it's had: bought for the season, or with a Plus membership. */
+  via?: 'pass' | 'plus' | null
+  buyable: boolean
+}
 
 type SeasonAnswer = {
   season: SeasonInfo | null
@@ -229,10 +239,15 @@ export type SeasonProgress = {
   earned: number
 }
 
-export function seasonProgress(season: SeasonInfo, you: Pick<SeasonYou, 'earned' | 'level'> | null): SeasonProgress {
+/** The highest level your pass reaches: the season's last, and with Pass+ its bonus levels too. */
+export function seasonTop(store: Pick<SeasonAnswer, 'season' | 'plus'>): number {
+  return (store.season?.levels ?? 0) + (store.plus?.owned ? store.plus.bonus : 0)
+}
+
+export function seasonProgress(season: SeasonInfo, you: Pick<SeasonYou, 'earned' | 'level'> | null, top = season.levels): SeasonProgress {
   const earned = you?.earned ?? 0
   const level = you?.level ?? 0
-  if (level >= season.levels) return { level, fraction: 1, toNext: null, earned }
+  if (level >= top) return { level, fraction: 1, toNext: null, earned }
   if (level <= 0) return { level: 0, fraction: 0, toNext: null, earned }
   const from = (level - 1) * season.perLevel
   return { level, fraction: Math.min(1, (earned - from) / season.perLevel), toNext: Math.max(0, level * season.perLevel - earned), earned }

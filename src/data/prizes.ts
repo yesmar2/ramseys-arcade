@@ -151,6 +151,16 @@ export const PRIZES: readonly Prize[] = [
       ['cf-meteors', 'confetti', 'Meteor shower', 16, `Fiery meteors streaking across the screen ${CONFETTI}`],
       ['t-commander', 'title', 'Commander', 25, LIT],
       ['eclipse', 'finish', 'Eclipse', 30, 'Your badge as a total eclipse: a black moon, the sun’s corona round it, a diamond of light at its edge.'],
+      ['t-flight-director', 'title', 'Flight Director', 2, LIT],
+      ['nm-telemetry', 'name', 'Telemetry', 5, 'Your tag as a green readout on mission control’s screens, a cursor after it.'],
+      ['cd-porthole', 'card', 'Porthole', 8, 'Your card through a spacecraft’s porthole: a riveted ring, the stars, and the Earth turning below.'],
+      ['cf-splashdown', 'confetti', 'Splashdown', 14, `Parachutes drifting down with their capsules, and the splash ${CONFETTI}`],
+      ['blue-marble', 'finish', 'Blue marble', 20, 'Your badge as the Earth from space: blue seas, green and brown land, white swirls of cloud.'],
+      ['t-ace-pilot', 'title', 'Ace Pilot', 26, LIT],
+      ['cd-station', 'card', 'Space station', 29, 'Your card at a space station, its long solar wings over the edge of the Earth.'],
+      ['nm-wormhole', 'name', 'Wormhole', 33, 'Your tag swirling from magenta into cyan, a dark glow at its heart.'],
+      ['black-hole', 'finish', 'Black hole', 34, 'Your badge as a black hole, a burning ring of light round it bent by its pull.'],
+      ['t-legend', 'title', 'Space Race Legend', 35, LIT],
     ] as const
   ).map(
     ([id, kind, name, level, blurb]): Prize => ({
@@ -159,7 +169,8 @@ export const PRIZES: readonly Prize[] = [
       name,
       price: 0,
       blurb,
-      earned: { by: `Season 1’s Pass+, level ${level}`, short: 'Pass+' },
+      // Past the pass's 30 levels are Pass+'s bonus levels.
+      earned: { by: `Season 1’s Pass+, ${level > 30 ? 'bonus ' : ''}level ${level}`, short: 'Pass+' },
     }),
   ),
   {

@@ -26,7 +26,7 @@ import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { preloadGamePage } from '../pages/gamePages'
-import { liveSeason, useSeason } from '../lib/season'
+import { liveSeason, useSeason, seasonTop } from '../lib/season'
 import { EventCountdown } from './EventCountdown'
 import { SeasonBanner } from './season/SeasonBanner'
 import { GamePreview } from './GamePreview'
@@ -501,7 +501,7 @@ export function HomeHero() {
   // game the banner would have offered becomes its second button.
   if (season && !firstVisit) {
     const kicker = lastPlayed ? 'Jump back in' : slug === newest ? 'New' : 'Today’s pick'
-    return <SeasonBanner season={season} you={seasonStore.you} rewards={seasonStore.rewards} pick={{ slug, name: game.name, kicker }} />
+    return <SeasonBanner season={season} you={seasonStore.you} rewards={seasonStore.rewards} pick={{ slug, name: game.name, kicker }} top={seasonTop(seasonStore)} />
   }
 
   if (rung) {

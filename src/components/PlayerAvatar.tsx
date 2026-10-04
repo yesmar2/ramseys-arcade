@@ -63,6 +63,10 @@ function finishRim(badge: AvatarBadge): string {
       return 'rgba(255,240,200,0.5)'
     case 'eclipse':
       return 'rgba(255,231,163,0.22)'
+    case 'blue-marble':
+      return 'rgba(159,214,255,0.4)'
+    case 'black-hole':
+      return 'rgba(255,179,71,0.28)'
     case 'pixels':
       return 'rgba(10,16,24,0.35)'
     case 'paper':
@@ -138,6 +142,10 @@ function monoInks(avatar: Avatar): { pattern: string; letter: string; line: stri
       return { pattern: '', letter: '#1a1240', line: '#ffffff' }
     case 'eclipse':
       return { pattern: '', letter: '#f4f0ff', line: '#f5b942' }
+    case 'blue-marble':
+      return { pattern: '', letter: '#ffffff', line: '#ffffff' }
+    case 'black-hole':
+      return { pattern: '', letter: '#fff6e0', line: '#ffe7a3' }
     case 'glitter':
     case 'pixels':
       return { pattern: '', letter: inkOn(body, INK), line }
@@ -289,6 +297,28 @@ const ECLIPSE_DIAMOND = (() => {
   const a = (-50 * Math.PI) / 180
   return [Number((ECLIPSE_MOON.cx + Math.cos(a) * ECLIPSE_MOON.r).toFixed(2)), Number((ECLIPSE_MOON.cy + Math.sin(a) * ECLIPSE_MOON.r).toFixed(2))] as const
 })()
+/*
+ * Blue marble: the Earth from space, lit from the top left. Its land and cloud keep to the edges, so the
+ * monogram sits on open sea.
+ */
+const MARBLE_LAND: { d: string; fill: string }[] = [
+  { d: 'M5 24C9 15 17 9 25 9C22 13 17 14 16 19C15 24 11 27 6 31Z', fill: '#4f9a4a' },
+  { d: 'M11 19C13 16 16 15 17 17C15 19 13 21 11 19Z', fill: '#a8834a' },
+  { d: 'M45 49C49 44 55 42 59 44C59 51 54 57 47 59C45 56 42 54 45 49Z', fill: '#4f9a4a' },
+  { d: 'M51 47C54 46 57 47 57 49C55 51 52 51 51 47Z', fill: '#a8834a' },
+  { d: 'M53 17C57 20 60 26 59 31C56 29 53 25 53 17Z', fill: '#a8834a' },
+  { d: 'M6 42C10 44 13 50 11 55C8 52 6 48 6 42Z', fill: '#4f9a4a' },
+]
+const MARBLE_CLOUDS =
+  'M13 13C21 8 33 7 44 11M8 47C11 44 15 46 14 50C13 53 9 53 9 50M51 24C56 27 58 33 55 37M22 59C29 61 37 61 43 58M44 16C49 17 51 20 49 22'
+
+/*
+ * Black hole: its shadow on the dark, the disc of burning gas across the front of it, and the far side of
+ * the disc bent up over the top by its pull. The shadow sits high and the disc low, so a monogram keeps to
+ * the black between them.
+ */
+const HOLE = { cx: 32, cy: 31, r: 17 }
+
 const ECLIPSE_STARS: [number, number, number][] = [
   [12, 20, 0.6],
   [24, 10.5, 0.5],
@@ -399,6 +429,75 @@ function SeasonSurface({ badge, uid }: { badge: AvatarBadge; uid: string }) {
         </>
       )
     }
+    case 'blue-marble':
+      return (
+        <>
+          <defs>
+            <radialGradient id={`${uid}sea`} cx="0.3" cy="0.25" r="0.85">
+              <stop offset="0" stopColor="#5fb4f0" />
+              <stop offset="0.4" stopColor="#2466b8" />
+              <stop offset="0.8" stopColor="#164a96" />
+              <stop offset="1" stopColor="#0b2557" />
+            </radialGradient>
+            <linearGradient id={`${uid}night`} x1="0.2" y1="0.15" x2="0.9" y2="0.95">
+              <stop offset="0.45" stopColor="#040a1e" stopOpacity="0" />
+              <stop offset="1" stopColor="#040a1e" stopOpacity="0.5" />
+            </linearGradient>
+            {clip}
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}sea)`} />
+          <g clipPath={`url(#${uid}disc)`}>
+            {MARBLE_LAND.map((l) => (
+              <path key={l.d} d={l.d} fill={l.fill} />
+            ))}
+            <path d={MARBLE_CLOUDS} fill="none" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" opacity="0.85" />
+            <ellipse cx="50" cy="31" rx="3" ry="1.6" fill="#ffffff" opacity="0.8" />
+            <ellipse cx="9" cy="38" rx="2.2" ry="1.2" fill="#ffffff" opacity="0.75" />
+            <path d={BADGE_ART.disc} fill={`url(#${uid}night)`} />
+          </g>
+          <circle cx="32" cy="34" r="26.8" fill="none" stroke="#9fd6ff" strokeWidth="1.4" opacity="0.55" />
+        </>
+      )
+    case 'black-hole': {
+      const { cx, cy, r } = HOLE
+      return (
+        <>
+          <defs>
+            <radialGradient id={`${uid}space`} cx="0.5" cy="0.45" r="0.6">
+              <stop offset="0" stopColor="#1a1030" />
+              <stop offset="1" stopColor="#05040c" />
+            </radialGradient>
+            <radialGradient id={`${uid}lens`} gradientUnits="userSpaceOnUse" cx={cx} cy={cy} r="27">
+              <stop offset="0.6" stopColor="#ffb347" stopOpacity="0.55" />
+              <stop offset="0.8" stopColor="#f2813a" stopOpacity="0.2" />
+              <stop offset="1" stopColor="#e8564f" stopOpacity="0" />
+            </radialGradient>
+            <linearGradient id={`${uid}disk`} gradientUnits="userSpaceOnUse" x1="4" y1="0" x2="60" y2="0">
+              <stop offset="0" stopColor="#fff6e0" />
+              <stop offset="0.45" stopColor="#ffb347" />
+              <stop offset="1" stopColor="#c8402a" />
+            </linearGradient>
+            {clip}
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}space)`} />
+          <circle cx="12" cy="16" r="0.55" fill="#fff" opacity="0.7" />
+          <circle cx="53" cy="15" r="0.5" fill="#fff" opacity="0.6" />
+          <circle cx="10" cy="52" r="0.5" fill="#fff" opacity="0.6" />
+          <g clipPath={`url(#${uid}disc)`} fill="none">
+            <circle cx={cx} cy={cy} r="27" fill={`url(#${uid}lens)`} />
+            <path d="M3 40A29 6.5 0 0 1 61 40" stroke={`url(#${uid}disk)`} strokeWidth="2.6" opacity="0.85" />
+            <path d={`M${cx - r - 2} ${cy}A${r + 2} ${r + 2} 0 0 1 ${cx + r + 2} ${cy}`} stroke={`url(#${uid}disk)`} strokeWidth="3.4" strokeLinecap="round" />
+          </g>
+          <circle cx={cx} cy={cy} r={r} fill="#000000" />
+          <circle cx={cx} cy={cy} r={r + 0.4} fill="none" stroke="#fff6e0" strokeWidth="0.7" opacity="0.9" />
+          <g clipPath={`url(#${uid}disc)`} fill="none">
+            <path d="M3 40A29 6.5 0 0 0 61 40" stroke={`url(#${uid}disk)`} strokeWidth="5.5" opacity="0.35" />
+            <path d="M3 40A29 6.5 0 0 0 61 40" stroke={`url(#${uid}disk)`} strokeWidth="2.8" />
+            <path d="M8 43.65A29 6.5 0 0 0 40 46.25" stroke="#ffffff" strokeWidth="0.8" strokeLinecap="round" opacity="0.8" />
+          </g>
+        </>
+      )
+    }
     default:
       // Supernova: the badge in the bright heart of a nebula, a comet going by.
       return (
@@ -436,6 +535,8 @@ function FinishSurface({ avatar, uid }: { avatar: Avatar; uid: string }) {
     case 'mission':
     case 'supernova':
     case 'eclipse':
+    case 'blue-marble':
+    case 'black-hole':
       return <SeasonSurface badge={avatar.badge} uid={uid} />
     case 'pixels': {
       const steps = [mixColor(body, '#ffffff', 0.42), mixColor(body, '#ffffff', 0.16), body, mixColor(body, NAVY, 0.32)]

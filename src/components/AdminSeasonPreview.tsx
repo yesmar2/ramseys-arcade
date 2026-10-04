@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { fetchSeasonPreview, setSeasonPlus, setSeasonPreview, type SeasonPreviewState } from '../lib/admin'
+import { fetchSeasonPreview, setPlusMembership, setSeasonPlus, setSeasonPreview, type SeasonPreviewState } from '../lib/admin'
 import { ApiError } from '../lib/leaderboard'
 import { refreshSeason } from '../lib/season'
 import { refreshTickets } from '../lib/tickets'
@@ -25,16 +25,22 @@ export function AdminSeasonPreview() {
   const [plusBusy, setPlusBusy] = useState(false)
   const [plusNote, setPlusNote] = useState<{ ok: boolean; text: string } | null>(null)
 
-  // Pass+ for a tag, given or taken back: to try the Pass+ row without paying. What it gave stays given.
-  const plus = async (on: boolean, event?: FormEvent) => {
+  // Pass+ for a tag (or a whole Plus membership, which includes it), given or taken back: to try them
+  // without paying. What they gave stays given.
+  const plus = async (on: boolean, event?: FormEvent, membership = false) => {
     event?.preventDefault()
     const name = tag.trim().toUpperCase()
     if (!name || plusBusy) return
     setPlusBusy(true)
     setPlusNote(null)
     try {
-      const done = await setSeasonPlus(name, on)
-      setPlusNote({ ok: true, text: done.plus ? `${done.name} has Season ${done.season}’s Pass+ now.` : `${done.name}’s Pass+ is taken back. What it gave stays theirs.` })
+      if (membership) {
+        const done = await setPlusMembership(name, on)
+        setPlusNote({ ok: true, text: done.plan === 'plus' ? `${done.name} is on Plus now, with every season’s Pass+.` : `${done.name} is off Plus. What it gave stays theirs.` })
+      } else {
+        const done = await setSeasonPlus(name, on)
+        setPlusNote({ ok: true, text: done.plus ? `${done.name} has Season ${done.season}’s Pass+ now.` : `${done.name}’s Pass+ is taken back. What it gave stays theirs.` })
+      }
       void refreshSeason({ force: true })
       void refreshTickets(true)
     } catch (err) {
@@ -43,6 +49,8 @@ export function AdminSeasonPreview() {
         text:
           err instanceof ApiError && err.code === 'NO_ACCOUNT'
             ? `${name} has no account behind it.`
+            : err instanceof ApiError && err.code === 'PAID_MEMBER'
+              ? `${name} pays for Plus: only they can cancel it.`
             : err instanceof ApiError && err.code === 'NO_PLUS'
               ? 'No season with a Pass+ right now.'
               : 'That didn’t go through. Try again.',
@@ -107,7 +115,7 @@ export function AdminSeasonPreview() {
       {error ? <p className="adm-fail">{error}</p> : null}
       {season?.status === 'live' ? (
         <>
-          <p className="adm-card__sub">Pass+: give it to a tag to try the Pass+ row without paying, or take it back.</p>
+          <p className="adm-card__sub">Pass+, or Plus (which includes every season’s Pass+): give it to a tag to try it without paying, or take it back.</p>
           <form className="adm-form" onSubmit={(event) => void plus(true, event)}>
             <input
               className="panel__input adm-input adm-input--tag"
@@ -122,6 +130,12 @@ export function AdminSeasonPreview() {
             </button>
             <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={plusBusy || !tag.trim()} onClick={() => void plus(false)}>
               Take it back
+            </button>
+            <button type="button" className="panel__btn adm-small" disabled={plusBusy || !tag.trim()} onClick={() => void plus(true, undefined, true)}>
+              Give Plus
+            </button>
+            <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={plusBusy || !tag.trim()} onClick={() => void plus(false, undefined, true)}>
+              Take Plus back
             </button>
           </form>
           {plusNote ? <p className={plusNote.ok ? 'adm-note' : 'adm-fail'}>{plusNote.text}</p> : null}

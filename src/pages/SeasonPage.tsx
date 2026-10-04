@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
 import { RewardArt } from '../components/season/RewardArt'
 import { MissionPatch } from '../components/season/SeasonArt'
@@ -6,12 +6,13 @@ import { UseSkin } from '../components/season/SkinPicker'
 import { openAvatarStudio, openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
-import { gameHref } from '../hooks/useHashRoute'
+import { gameHref, plusHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { fetchPlus, money, type PlusInfo } from '../lib/plus'
 import { ordinal } from '../lib/profileMath'
 import {
   confirmPlusCheckout,
@@ -21,6 +22,7 @@ import {
   startPlusCheckout,
   seasonDates,
   seasonProgress,
+  seasonTop,
   useSeason,
   type SeasonGoal,
   type SeasonInfo,
@@ -162,7 +164,7 @@ function Tile({
   )
 }
 
-function Hero({ season, level, fraction, toNext, earned, signedIn, authLoading }: { season: SeasonInfo; level: number; fraction: number; toNext: number | null; earned: number; signedIn: boolean; authLoading: boolean }) {
+function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoading }: { season: SeasonInfo; level: number; top: number; fraction: number; toNext: number | null; earned: number; signedIn: boolean; authLoading: boolean }) {
   const sky = { backgroundImage: starTile('#f4f0ff', 13, { size: 360, stars: 44 }) } as CSSProperties
   const live = season.status === 'live'
   const when =
@@ -209,7 +211,7 @@ function Hero({ season, level, fraction, toNext, earned, signedIn, authLoading }
           ) : (
             <>
               <span className="season-level__n">
-                {level > 0 ? `Level ${level}` : 'Level 0'} <small>of {season.levels}</small>
+                {level > 0 ? `Level ${level}` : 'Level 0'} <small>of {top}</small>
               </span>
               <span className="season-level__meter" aria-hidden="true">
                 <i style={{ width: `${Math.round(fraction * 100)}%` }} />
@@ -263,9 +265,24 @@ function PassPlus({
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ tone: 'good' | 'plain' | 'bad'; text: string } | null>(null)
   const price = plusPrice(plus)
-  const skinGames = plus.rewards.filter((r) => r.kind === 'skin').map((r) => (r.game ? (getGame(r.game)?.name ?? r.game) : r.name))
-  const looks = plus.rewards.length - skinGames.length
+  const skins = plus.rewards.filter((r) => r.kind === 'skin')
+  const skinGames = [...new Set(skins.map((r) => (r.game ? (getGame(r.game)?.name ?? r.game) : r.name)))]
+  const looks = plus.rewards.length - skins.length
   const gameList = skinGames.length > 1 ? `${skinGames.slice(0, -1).join(', ')} and ${skinGames[skinGames.length - 1]}` : (skinGames[0] ?? '')
+  const [plusInfo, setPlusInfo] = useState<PlusInfo | null>(null)
+  useEffect(() => {
+    if (plus.owned) return
+    let live = true
+    fetchPlus()
+      .then((info) => {
+        if (live) setPlusInfo(info)
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [plus.owned])
+  const firstBonus = plus.rewards.find((r) => r.level > season.levels)?.id
 
   // Back from Stripe's page: a paid checkout gives Pass+ now (its webhook may be a moment behind).
   useEffect(() => {
@@ -318,21 +335,31 @@ function PassPlus({
             Pass+ <span className="season-plus__season">Season {season.id}</span>
           </h2>
           <p>
-            {plus.rewards.length} more on the same levels: a second skin, a new ship or car to play in, for {gameList}, and {looks} looks for your
-            card and name. Yours to keep. Looks only, never score.
+            {plus.rewards.length} more: {skins.length} skins, new ships and cars to play in for {gameList}, and {looks} looks for your card and
+            name{plus.bonus ? `, with ${plus.bonus} bonus levels past ${season.levels} that only Pass+ climbs` : ''}. Yours to keep. Looks only,
+            never score.
           </p>
         </div>
         <div className="season-plus__get">
           {plus.owned ? (
             <span className="season-plus__owned">
-              <CheckBadge /> Yours this season
+              <CheckBadge /> {plus.via === 'plus' ? 'Included with your Plus' : 'Yours this season'}
             </span>
-          ) : plus.buyable ? (
-            <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || authLoading}>
-              {busy ? 'Opening…' : signedIn ? `Get Pass+ · ${price}` : `Sign in to get Pass+`}
-            </button>
           ) : (
-            <span className="season-plus__soon">On sale soon · {price}</span>
+            <div className="season-plus__ways">
+              {plus.buyable ? (
+                <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || authLoading}>
+                  <b>{busy ? 'Opening…' : signedIn ? `Get Pass+ · ${price}` : `Sign in to get Pass+`}</b>
+                  <small>This season, once. Yours to keep.</small>
+                </button>
+              ) : (
+                <span className="season-plus__soon">On sale soon · {price}</span>
+              )}
+              <a className="season-plus__member" href={plusHref()}>
+                <b>Or join Plus{plusInfo ? ` · ${money(plusInfo.price, plusInfo.currency)}/month` : ''}</b>
+                <small>Every season’s Pass+, and more to host.</small>
+              </a>
+            </div>
           )}
           {!plus.owned && signedIn && level > 0 ? (
             <span className="season-plus__now">
@@ -347,14 +374,14 @@ function PassPlus({
         {plus.rewards.map((reward) => {
           const state = stateOfPlus(reward)
           return (
-            <Tile
-              key={reward.id}
-              reward={reward}
-              state={state}
-              perLevel={season.perLevel}
-              toNext={toNext}
-              action={plus.owned ? actionFor(reward) : null}
-            />
+            <Fragment key={reward.id}>
+              {reward.id === firstBonus ? (
+                <li className="season-track__bonus" aria-label={`Bonus levels, ${season.levels + 1} on: Pass+ only`}>
+                  <span>Bonus levels</span>
+                </li>
+              ) : null}
+              <Tile reward={reward} state={state} perLevel={season.perLevel} toNext={toNext} action={plus.owned ? actionFor(reward) : null} />
+            </Fragment>
           )
         })}
       </ol>
@@ -439,7 +466,8 @@ export function SeasonPage() {
   const avatar = useOwnAvatar()
   const trackRef = useRef<HTMLOListElement>(null)
   const season = store.season
-  const p = season ? seasonProgress(season, season.status === 'live' ? store.you : null) : null
+  const top = seasonTop(store)
+  const p = season ? seasonProgress(season, season.status === 'live' ? store.you : null, top || undefined) : null
   const level = p?.level ?? 0
 
   // The page asks for any reward a later release brought up to your level, and reads the pass fresh.
@@ -492,7 +520,7 @@ export function SeasonPage() {
 
   return (
     <PageShell innerClassName="lb-page__inner season-page">
-      <Hero season={season} level={level} fraction={p.fraction} toNext={p.toNext} earned={p.earned} signedIn={signedIn} authLoading={authLoading} />
+      <Hero season={season} level={level} top={top || season.levels} fraction={p.fraction} toNext={p.toNext} earned={p.earned} signedIn={signedIn} authLoading={authLoading} />
 
       <section className="season-pass" aria-labelledby="season-pass-title">
         <div className="season-pass__head">
