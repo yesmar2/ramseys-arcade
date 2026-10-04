@@ -2064,3 +2064,10 @@ html[data-theme='dark'] .pbest__flag--ten {
     transition: none;
   }
 }
+
+/* A block of the player card's page held at last time's height while it loads (RankPage.tsx): the card itself
+   takes that height, so what sits along its bottom stays put as its figures come. */
+.pf-hold > .home-banner {
+  min-height: inherit;
+  box-sizing: border-box;
+}

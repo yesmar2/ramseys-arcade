@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useHeldHeight } from '../lib/heldShape'
 import { FriendsCard } from '../components/FriendsPanel'
 import { PlayerHangar } from '../components/Hangar'
 import { PageBanner } from '../components/PageBanner'
@@ -232,6 +233,12 @@ export function RankPage({
 
   const actions = isSelf ? (
     <>
+      {/* Its place while the figures that choose it load: a button's shape, so the row is as it will be. */}
+      {!primary && (loading || !allTime) ? (
+        <span className="home-banner__cta skel-btn" aria-hidden="true">
+          Close the gap
+        </span>
+      ) : null}
       {primary ? (
         <a className="home-banner__cta" href={`#${primary.target}`} onClick={jumpTo(primary.target)}>
           {primary.label}
@@ -250,6 +257,16 @@ export function RankPage({
     </>
   )
 
+  // While the card's figures, your games, the trophies and the rival load, each holds the height it had last
+  // time on this device (lib/heldShape.ts), so nothing below it moves when they come.
+  const who = isSelf ? 'self' : 'other'
+  // The card's figures come in two asks (this period's rank, then all time's and the trophies, which set its
+  // button and its shelf line): it's held until both are in.
+  const cardSettling = loading || trophies === null || !allTime
+  const cardHeld = useHeldHeight<HTMLDivElement>(`pf-card-${who}`, cardSettling)
+  const gamesHeld = useHeldHeight<HTMLDivElement>(`pf-games-${who}`, loading || !allTime)
+  const pairHeld = useHeldHeight<HTMLDivElement>(`pf-pair-${who}`, loading || trophies === null)
+
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       <div className="ev pf" style={accent ? ({ '--pf-accent': accent } as CSSProperties) : undefined}>
@@ -267,6 +284,7 @@ export function RankPage({
         {viewedName ? (
           <>
             {isSelf ? <ProfileViews on="card" /> : null}
+            <div className="pf-hold" ref={cardHeld.ref} style={cardHeld.style}>
             <PlayerCard
               name={viewedName}
               isSelf={isSelf}
@@ -291,6 +309,7 @@ export function RankPage({
               extra={statsLink}
               avatarId={avatarId}
             />
+            </div>
 
             <ProfileBestBoard
               name={viewedName}
@@ -301,6 +320,7 @@ export function RankPage({
               groupId={groupId}
             />
 
+            <div className="pf-hold" ref={gamesHeld.ref} style={gamesHeld.style}>
             {!loading ? (
               <ProfileGames
                 name={viewedName}
@@ -314,8 +334,9 @@ export function RankPage({
                 progressHref={isSelf && signedIn ? `${statsHref()}#stats-games` : undefined}
               />
             ) : null}
+            </div>
 
-            <div className="pf-pair">
+            <div className="pf-pair" ref={pairHeld.ref} style={pairHeld.style}>
               <TrophyShelf trophies={trophies} isSelf={isSelf} name={viewedName} />
               {!loading ? (
                 <ProfileRival

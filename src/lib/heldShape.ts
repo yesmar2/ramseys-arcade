@@ -46,12 +46,21 @@ export function useHeldHeight<T extends HTMLElement>(key: string, loading: boole
   const ref = useRef<T | null>(null)
   const [held] = useState(() => read(widthKey(key)))
   useLayoutEffect(() => {
-    if (loading || !ref.current) return
-    try {
-      localStorage.setItem(PREFIX + widthKey(key), String(Math.round(ref.current.getBoundingClientRect().height)))
-    } catch {
-      /* nothing kept: next time it isn't held */
+    const el = ref.current
+    if (loading || !el) return
+    // Its height as it settles, not only the moment it loaded: more of it can come after (a second ask).
+    const keep = () => {
+      try {
+        localStorage.setItem(PREFIX + widthKey(key), String(Math.round(el.getBoundingClientRect().height)))
+      } catch {
+        /* nothing kept: next time it isn't held */
+      }
     }
+    keep()
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(keep)
+    watch.observe(el)
+    return () => watch.disconnect()
   }, [key, loading])
   return { ref, style: loading && held ? { minHeight: `${held}px` } : undefined }
 }
