@@ -595,3 +595,34 @@ html[data-theme='dark'] .home-day__card {
     transition: none;
   }
 }
+
+/* ---------- while it comes (HomeTodaySkeleton.tsx), and a picture still being drawn ---------- */
+
+.home-day--skel .home-day__card {
+  pointer-events: none;
+}
+
+.home-day__go.home-day__go--skel {
+  color: transparent;
+  background: rgba(var(--ink-rgb), 0.1);
+  box-shadow: none;
+}
+
+.home-day__pic--skel,
+.home-day__pic-wait {
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.04), rgba(var(--ink-rgb), 0.09), rgba(var(--ink-rgb), 0.04)) #0c1218;
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+.home-day__pic-wait {
+  position: absolute;
+  inset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-day__pic--skel,
+  .home-day__pic-wait {
+    animation: none;
+  }
+}

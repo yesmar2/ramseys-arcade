@@ -659,7 +659,8 @@ export function BugHuntStrip() {
           <>
             <p className="hunt-strip__title">{name} got loose on the site</p>
             <p className="hunt-strip__clue">It could be on any page, with just its head poking out from behind something.</p>
-            {count ? <p className="hunt-strip__count">{count}</p> : null}
+            {/* Its place held while the API is asked, so the strip doesn't grow when it answers. */}
+            <p className="hunt-strip__count">{count ?? '\u00a0'}</p>
           </>
         )}
       </div>

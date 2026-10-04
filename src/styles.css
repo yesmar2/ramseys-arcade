@@ -89,6 +89,8 @@ html[data-theme="dark"] {
 }
 
 html {
+  /* Room for the scrollbar always, so a page growing past the screen's height doesn't shift sideways. */
+  scrollbar-gutter: stable;
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
@@ -709,7 +711,9 @@ img {
 
 .home-ambient {
   position: absolute;
-  inset: -10% -5% 20%;
+  /* The screen's height, not the page's: the page grows as its parts come, and the glow mustn't move with it. */
+  inset: -10vh -5% auto;
+  height: 120vh;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;

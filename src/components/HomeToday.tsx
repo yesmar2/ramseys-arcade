@@ -15,7 +15,6 @@ import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import type { TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
 import { DailyKindTag } from './DailyKindTag'
-import { GameArt } from './GameArt'
 import { FlameIcon, StarIcon } from './TodayChip'
 import { capital, shortDate, useTicket, type Punch, type Ticket } from './todayPunches'
 import '../styles/homeToday.css'
@@ -117,7 +116,23 @@ function leadOf(p: Punch, standing: DayStanding | null | undefined): { who: stri
   return { who: `${standing.top.name} leads`, what: formatLeaderboardScore(p.slug, standing.top.score) }
 }
 
-function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DayStanding | null | undefined }) {
+/** A line of the card's foot not known yet: shimmering while the day's standings are asked, else just its height. */
+function SideWaiting({ asking }: { asking: boolean }) {
+  return <span className="home-day__side">{asking ? <span className="skel-line" style={{ '--skel-w': '5.5rem' } as CSSProperties} /> : '\u00a0'}</span>
+}
+
+function DayCard({
+  p,
+  day,
+  standing,
+  asking,
+}: {
+  p: Punch
+  day: string
+  standing: DayStanding | null | undefined
+  /** The day's standings are still being asked for: a ranked card's last line holds its place till they come. */
+  asking: boolean
+}) {
   const spotlight = isSpotlight(liveSeason(useSeason()), p.slug)
   // A daily just for fun places nobody (data/games.ts Game.ranked): no place for you and no leader.
   const ranked = isRankedGame(p.slug)
@@ -134,7 +149,8 @@ function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DaySta
       style={{ '--day': ACCENT[p.key] } as CSSProperties}
     >
       <span className="home-day__pic">
-        <Suspense fallback={<GameArt slug={p.slug} shape="card" className="home-day__art" />}>
+        {/* The day's own picture, on the tile's plain dark until it's drawn: never the game's other picture first. */}
+        <Suspense fallback={<span className="home-day__pic-wait" />}>
           <DayPicture daily={p.key} day={day} />
         </Suspense>
         {p.done ? (
@@ -158,7 +174,7 @@ function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DaySta
                 <span className="visually-hidden">Punched: </span>
                 {p.short ?? 'Done'}
               </span>
-              {place ? <span className="home-day__side">{place}</span> : null}
+              {place ? <span className="home-day__side">{place}</span> : ranked && standing === undefined ? <SideWaiting asking={asking} /> : null}
             </>
           ) : (
             <>
@@ -175,6 +191,8 @@ function DayCard({ p, day, standing }: { p: Punch; day: string; standing: DaySta
                   <br />
                   {lead.what}
                 </span>
+              ) : ranked ? (
+                <SideWaiting asking={asking} />
               ) : null}
             </>
           )}
@@ -238,7 +256,7 @@ export function HomeToday() {
       <ul className="home-day__cards" style={{ '--n': total } as CSSProperties}>
         {punches.map((p) => (
           <li key={p.key}>
-            <DayCard p={p} day={day} standing={standings ? standings.get(p.slug) : undefined} />
+            <DayCard p={p} day={day} standing={standings ? standings.get(p.slug) : undefined} asking={standings === null} />
             {/* Ranked or just for fun, on the picture: a button of its own, so it sits over the card's link, not in it. */}
             <DailyKindTag slug={p.slug} look="pill" className="home-day__kind" />
           </li>

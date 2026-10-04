@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
@@ -14,6 +14,23 @@ import { medalKind } from './PodiumMedal'
 const PLACES = ['1st', '2nd', '3rd']
 
 /** The row's layout for how many cards are in it: three across, four, or the day's three over the week's two. */
+/**
+ * How many cards On now had last time on this device: its skeleton holds that many while the events load, and
+ * none when it had nothing (the arcade's own events paused, a quiet week), so it never shows cards and then
+ * goes. Not known yet (a first look), it waits unseen rather than guessing.
+ */
+const SHOWN_KEY = 'skermix-onnow-cards'
+
+function shownLastTime(): number | null {
+  try {
+    const raw = localStorage.getItem(SHOWN_KEY)
+    const n = raw == null ? NaN : Number(raw)
+    return Number.isInteger(n) && n >= 0 && n <= 3 ? n : null
+  } catch {
+    return null
+  }
+}
+
 function gridClass(count: number) {
   return `onnow__grid${count === 4 ? ' onnow__grid--four' : count === 5 ? ' onnow__grid--five' : ''}`
 }
@@ -155,7 +172,7 @@ function SkeletonCard() {
  * always a day's event and a weekly running, and
  * last week's podium stays up until the next one ends, so the row reads full
  * on a quiet day as on a busy one. While the events load, cards of the same
- * shape hold the space.
+ * shape hold the space, as many as it had last time (SHOWN_KEY).
  */
 export function HomeOnNow() {
   const name = normalizePlayerName(usePlayerName())
@@ -163,8 +180,19 @@ export function HomeOnNow() {
   const daily = official.find((t) => t.cadence === 'daily') ?? null
   const weekly = official.find((t) => t.cadence === 'weekly') ?? null
   const mineById = (id: string) => mine.find((t) => t.id === id) ?? null
+  const [lastTime] = useState(shownLastTime)
+  const count = [daily, weekly, lastWeekly].filter(Boolean).length
+  useEffect(() => {
+    if (loading) return
+    try {
+      localStorage.setItem(SHOWN_KEY, String(count))
+    } catch {
+      /* a private window keeps nothing: next time it waits unseen */
+    }
+  }, [loading, count])
 
   if (loading) {
+    if (!lastTime) return null
     return (
       <section className="onnow" aria-labelledby="onnow-title" aria-busy="true">
         <div className="home-section__bar">
@@ -172,8 +200,8 @@ export function HomeOnNow() {
             On now
           </h2>
         </div>
-        <ul className={gridClass(3)} aria-hidden="true">
-          {Array.from({ length: 3 }, (_, i) => i).map((i) => (
+        <ul className={gridClass(lastTime)} aria-hidden="true">
+          {Array.from({ length: lastTime }, (_, i) => i).map((i) => (
             <li key={i}>
               <SkeletonCard />
             </li>
@@ -183,8 +211,7 @@ export function HomeOnNow() {
     )
   }
 
-  if (!daily && !weekly && !lastWeekly) return null
-  const count = [daily, weekly, lastWeekly].filter(Boolean).length
+  if (!count) return null
 
   return (
     <section className="onnow" aria-labelledby="onnow-title">

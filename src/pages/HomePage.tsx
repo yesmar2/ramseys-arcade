@@ -5,6 +5,7 @@ import { HomeGroupsBand } from '../components/HomeGroupsBand'
 import { HomeHero } from '../components/HomeHero'
 import { HomeOnNow } from '../components/HomeOnNow'
 import { HomeSpotterStrip } from '../components/HomeSpotterStrip'
+import { HomeTodaySkeleton } from '../components/HomeTodaySkeleton'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
@@ -13,9 +14,16 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useRecentGames } from '../lib/lastPlayed'
 import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
+import '../styles/homeToday.css'
 
-/** Today's row (lib/today.ts), the day's dailies as cards and the way to the Today page, in a chunk of its own with the dailies' plans. */
+/**
+ * Today's row (lib/today.ts), the day's dailies as cards and the way to the Today page, in a chunk of its own
+ * with the dailies' plans. It's asked for as soon as the home page's own code is, not once the page has
+ * drawn, and until it comes the row holds its place as a skeleton of itself (its styles are here, not in
+ * its chunk, so the skeleton has them).
+ */
 const HomeToday = lazyPage(() => import('../components/HomeToday').then((m) => m.HomeToday))
+void HomeToday.preload()
 
 /** A phone, where the home page runs lighter (the rules in home.css under the same width). */
 const PHONE = '(max-width: 36rem)'
@@ -71,7 +79,7 @@ export function HomePage() {
   const parts: Record<Part, ReactElement> = {
     hero: <HomeHero key="hero" />,
     today: (
-      <Suspense key="today" fallback={null}>
+      <Suspense key="today" fallback={<HomeTodaySkeleton />}>
         <HomeToday />
       </Suspense>
     ),
