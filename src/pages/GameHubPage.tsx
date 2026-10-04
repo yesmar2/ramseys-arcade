@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useHeldHeight } from '../lib/heldShape'
 import { ChevronRightIcon } from '../components/chromeIcons'
 import { DailiesBar } from '../components/DailiesBar'
 import { DailyTabs } from '../components/DailyTabs'
@@ -115,6 +116,11 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const highScore = useHubHighScore(ranked ? boardSlug : null, groupId)
   // A daily's records are its Records tab, not a card of the book.
   const records = useHubRecords(daily ? '' : slug, playerName, groupId)
+  // While the board and the records load, the top (the game and its board) and the band under it (where you
+  // stand, its records) hold the height they had last time this device was here (lib/heldShape.ts).
+  const settling = board.loading || (gameHasRecords(slug) && !daily && records === null)
+  const topHeld = useHeldHeight<HTMLDivElement>(`gh-top-${slug}`, settling)
+  const bandHeld = useHeldHeight<HTMLDivElement>(`gh-band-${slug}`, settling)
   const events = useHubEvents(slug)
   // For the games below: your best on each, your place on its board, and who leads it, as the wall shows them.
   const bests = usePlayerBests(playerName, period)
@@ -306,12 +312,12 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   return (
     <PageShell innerClassName="gh-rail">
       <div className="gh" style={style}>
-        <div className={`gh-top${boardSlug ? '' : ' gh-top--solo'}`}>
+        <div className={`gh-top${boardSlug ? '' : ' gh-top--solo'}`} ref={topHeld.ref} style={topHeld.style}>
           {hero}
           {boardCard}
         </div>
 
-        <div className="gh-band">
+        <div className="gh-band" ref={bandHeld.ref} style={bandHeld.style}>
           {standing}
           {hasRecords ? <GameHubRecords slug={game.slug} gameName={game.name} records={records} me={playerName} /> : null}
           {eventsCard}
