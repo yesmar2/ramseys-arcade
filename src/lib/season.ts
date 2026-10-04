@@ -135,7 +135,9 @@ function kept(): Store {
     const { answer, account } = JSON.parse(raw) as Kept
     if (!answer?.season || !Array.isArray(answer.rewards) || answer.season.endsAt <= Date.now()) return empty
     const mine = account != null && account === currentAccountId()
-    return { ...empty, season: answer.season, rewards: answer.rewards, plus: answer.plus, you: mine ? answer.you : null }
+    // Whether Pass+ is owned is the account's too: another player on this device hasn't bought it.
+    const plus = answer.plus ? { ...answer.plus, owned: mine && answer.plus.owned } : answer.plus
+    return { ...empty, season: answer.season, rewards: answer.rewards, plus, you: mine ? answer.you : null }
   } catch {
     return empty
   }
