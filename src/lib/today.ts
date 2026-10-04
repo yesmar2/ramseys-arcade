@@ -42,18 +42,20 @@ export type TodayDaily = {
 }
 
 /**
- * The dailies, in the ticket's order, as the API's TODAY_DAILIES has them: the three just for fun first, quick
- * ways to keep the streak, then the three ranked, which count toward your rank (Ramsey, 2026-10-02: "maybe we
- * reorder them?", grouped as offered). The hole, the track and the Wanted have been on every day, so every day
- * before Today's Pour joins is judged as it always was: all three needed.
+ * The dailies, in the ticket's order, as the API's TODAY_DAILIES has them: the three ranked first, which count
+ * toward your rank, then the three just for fun (Ramsey, 2026-10-04: "can we put the ranked games first, then
+ * the just for fun second"; they were the other way round from 2026-10-02). Everywhere the dailies are listed
+ * reads this order: the Dailies ticket, the home row, the Dailies bar, the header chip and "Up next". The hole,
+ * the track and the Wanted have been on every day, so every day before Today's Pour joins is judged as it
+ * always was: all three needed.
  */
 export const TODAY_DAILIES: readonly TodayDaily[] = [
-  { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '' },
-  { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '' },
-  { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM },
   { key: 'track', slug: 'hotlap', label: 'Track', emoji: '🏎️', better: 'higher', from: '' },
   { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
   { key: 'cave', slug: 'lander', label: 'Cave', emoji: '🚀', better: 'higher', from: CAVE_FROM },
+  { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '' },
+  { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '' },
+  { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM },
 ]
 
 /** Any this many of a day's live dailies keep the streak (the API's TODAY_KEEP). */

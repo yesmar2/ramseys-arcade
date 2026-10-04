@@ -86,13 +86,13 @@ function Tile({ tile: t }: { tile: TicketTile }) {
   )
 }
 
-/** A day's tiles in their groups, in order: just for fun, then ranked; a group with none is left out. */
+/** A day's tiles in their groups, in order: ranked, then just for fun; a group with none is left out. */
 function groupsOf(tiles: TicketTile[]): { kind: 'fun' | 'ranked'; tiles: TicketTile[] }[] {
-  const fun = tiles.filter((t) => !isRankedGame(t.slug))
   const ranked = tiles.filter((t) => isRankedGame(t.slug))
+  const fun = tiles.filter((t) => !isRankedGame(t.slug))
   return [
-    { kind: 'fun' as const, tiles: fun },
     { kind: 'ranked' as const, tiles: ranked },
+    { kind: 'fun' as const, tiles: fun },
   ].filter((g) => g.tiles.length > 0)
 }
 
@@ -173,7 +173,7 @@ export function DayTicket({ labelId, title, count, action, kicker, streak, full,
             {action}
           </div>
           {/*
-           * The just-for-fun dailies, then the ranked ones (lib/today.ts TODAY_DAILIES has them so), each group
+           * The ranked dailies, then the just-for-fun ones (lib/today.ts TODAY_DAILIES has them so), each group
            * under its tag, so which count toward your rank is plain at a glance. Side by side while there's
            * room, the narrower ticket stacks them, three a row.
            */}
