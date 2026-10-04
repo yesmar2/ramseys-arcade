@@ -3932,6 +3932,10 @@ html[data-theme='dark'] .patriot__power {
   align-items: center;
   gap: 1.15rem;
   padding: 1rem 0 3rem;
+  /* At least the screen, header and all: the footer starts below it, so a page that's still loading (and
+     short) never shows the footer and then shoves it away as its content comes. */
+  min-height: 100dvh;
+  box-sizing: border-box;
 }
 
 .lb-page__inner {

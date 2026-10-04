@@ -1,4 +1,5 @@
 import { SkinMark } from './season/SkinMark'
+import { useHeldHeight } from '../lib/heldShape'
 import { Suspense, useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame, isDailyGame } from '../data/games'
 import { useDayCourse } from '../hooks/useDayBoard'
@@ -199,6 +200,9 @@ function Banner({
   const yesterday = course && period === 'daily' ? dayBefore(course.today()) : null
   const stepBack = course && yesterday && yesterday >= course.first ? yesterday : null
   const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
+  // They wrap with the names and numbers in them: held at last time's height while those load (lib/heldShape.ts).
+  const titleHeld = useHeldHeight<HTMLHeadingElement>(`gb-title-${period}`, loading)
+  const ledeHeld = useHeldHeight<HTMLParagraphElement>(`gb-lede-${period}`, loading)
   return (
     <section className="home-banner gb-banner" style={style} aria-labelledby="gb-title" data-hunt={`b-head-${slug}`}>
       <div className="home-banner__text gb-banner__text">
@@ -214,9 +218,16 @@ function Banner({
           {copy.kicker}
           {group ? ` · ${group}` : ''}
         </p>
-        <h1 id="gb-title" className="gb-title">
-          {loading ? (
+        <h1 id="gb-title" className="gb-title" ref={titleHeld.ref} style={titleHeld.style}>
+          {loading && points ? (
             <span className="skel-line" style={{ '--skel-w': '12ch' } as CSSProperties} />
+          ) : loading ? (
+            // The sentence it nearly always is (lib/gameBoard.ts boardHeadline), the leader and the gap shimmering,
+            // so it wraps where the real one will, even the first time.
+            <>
+              <span className="skel-line" style={{ '--skel-w': '3.6em' } as CSSProperties} /> leads {game.name} by{' '}
+              <span className="skel-line" style={{ '--skel-w': '3.4em' } as CSSProperties} />.
+            </>
           ) : (
             <>
               {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
@@ -224,7 +235,7 @@ function Banner({
             </>
           )}
         </h1>
-        <p className="home-banner__blurb gb-lede">
+        <p className="home-banner__blurb gb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
           {loading ? (
             <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
           ) : points ? (
@@ -834,6 +845,27 @@ export function GameBoard({ slug, period, day }: { slug: LeaderboardGame; period
   return <PeriodBoard slug={slug} period={period} />
 }
 
+/**
+ * Your place on a board while it loads: its two cards' shapes, held at the height they had last time, so the
+ * board under them doesn't move when they come.
+ */
+function YouWaiting({ held }: { held: ReturnType<typeof useHeldHeight<HTMLElement>> }) {
+  const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
+  return (
+    <section className="sb-you gb-you" aria-hidden="true" ref={held.ref} style={held.style}>
+      {[0, 1].map((i) => (
+        <div key={i} className="sb-card sb-you__card">
+          <div className="sb-you__top">
+            <span className="sb-you__kicker">{line('7rem')}</span>
+          </div>
+          <p className="sb-you__big">{line('5rem')}</p>
+          <p className="sb-you__line">{line('14rem')}</p>
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
@@ -844,6 +876,8 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   const standing = youOnBoard(players, data.runs, you)
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
+  const youHeld = useHeldHeight<HTMLElement>(`gb-you-${period}`, data.loading)
+  const mainHeld = useHeldHeight<HTMLDivElement>(`gb-main-${period}`, data.loading)
 
   if (data.error) {
     return (
@@ -859,12 +893,13 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
     return (
       <div className="sb gb" style={style}>
         <Banner slug={slug} period={period} copy={copy} players={players} runs={data.total} loading={data.loading} group={group} />
+        {data.loading ? <YouWaiting held={youHeld} /> : null}
         {!data.loading ? (
-          <section className="sb-you gb-you" aria-label="Your place on this board">
+          <section className="sb-you gb-you" aria-label="Your place on this board" ref={youHeld.ref}>
             <PointsYou slug={slug} copy={copy} players={players} you={you} />
           </section>
         ) : null}
-        <div className="gb-main">
+        <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
           <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} players={players} you={you} />
           {!data.loading ? (
             <aside className="gb-side" aria-label="More about this board">
@@ -888,8 +923,9 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
         group={group}
       />
 
+      {data.loading ? <YouWaiting held={youHeld} /> : null}
       {!data.loading ? (
-        <section className="sb-you gb-you" aria-label="Your place on this board">
+        <section className="sb-you gb-you" aria-label="Your place on this board" ref={youHeld.ref}>
           {standing ? (
             <>
               <YouOnBoard slug={slug} period={period} copy={copy} you={standing} avatarId={data.youRun?.avatarId} />
@@ -908,7 +944,7 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
         </section>
       ) : null}
 
-      <div className="gb-main">
+      <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
         <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} players={players} you={you} />
         {!data.loading ? (
           <aside className="gb-side" aria-label="More about this board">
