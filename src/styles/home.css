@@ -184,7 +184,7 @@ html[data-theme="dark"] .home-banner {
 
 .home-banner__blurb {
   margin: 0;
-  max-width: 40ch;
+  max-width: 26.2em; /* 40ch in Outfit: em, so it doesn't change width as the font comes in */
   font-size: 1.05rem;
   font-weight: 550;
   line-height: 1.45;
@@ -459,7 +459,7 @@ html[data-theme="dark"] .home-banner {
 
 .home-banner__goal {
   margin: 0;
-  max-width: 17ch;
+  max-width: 11.2em; /* 17ch in Outfit: em, so it doesn't change width as the font comes in */
   font-family: var(--font-display);
   font-size: clamp(2rem, 3.7vw, 3.05rem);
   font-weight: 800;
@@ -475,7 +475,7 @@ html[data-theme="dark"] .home-banner {
 }
 
 .home-banner--rung .home-banner__blurb {
-  max-width: 46ch;
+  max-width: 30.2em; /* 46ch in Outfit: em, so it doesn't change width as the font comes in */
 }
 
 /* The race line: their names over the track, yours and the gap under it. */
@@ -778,7 +778,7 @@ html[data-theme="dark"] .home-banner {
   }
 
   /* On a phone the screen sits on top, sixteen by nine, and fades into the words under it. */
-  .home-banner .home-banner__art:has(.home-banner__screen) {
+  .home-banner .home-banner__art--screen {
     min-height: 0;
     aspect-ratio: 16 / 9;
     max-height: 15rem;
@@ -2398,7 +2398,7 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
 }
 
 .page-banner .home-banner__blurb {
-  max-width: 52ch;
+  max-width: 34.1em; /* 52ch in Outfit: em, so it doesn't change width as the font comes in */
 }
 
 /* The kicker keeps the events vocabulary inside the pill: bits with dots between. */
@@ -2838,7 +2838,7 @@ html[data-theme="dark"] .home-banner__hint--error {
 }
 
 .page-banner--compact .home-banner__blurb {
-  max-width: 46ch;
+  max-width: 30.2em; /* 46ch in Outfit: em, so it doesn't change width as the font comes in */
   font-size: 0.94rem;
 }
 
@@ -2895,7 +2895,7 @@ html[data-theme="dark"] .home-banner__hint--error {
 }
 
 .page-banner--bare .home-banner__blurb {
-  max-width: 60ch;
+  max-width: 39.4em; /* 60ch in Outfit: em, so it doesn't change width as the font comes in */
 }
 
 @media (max-width: 56rem) {
@@ -2971,7 +2971,7 @@ html[data-theme="dark"] .home-banner__hint--error {
   }
 
   /* The banner: a shorter screen, the name, the scores on a line, one button. */
-  .home-rail .home-banner .home-banner__art:has(.home-banner__screen) {
+  .home-rail .home-banner .home-banner__art--screen {
     aspect-ratio: 12 / 5;
   }
 
@@ -3269,17 +3269,24 @@ html[data-theme="dark"] .home-banner.home-banner--skel {
   box-shadow: none;
 }
 
-.home-banner--skel .home-banner__text {
-  padding: 2rem;
+/* The season's title is the one it holds the place of: its size and line, as season.css has them. */
+.home-banner--skel .home-banner__name {
+  font-family: var(--space-font);
+  font-size: clamp(2.2rem, 4.2vw, 3.3rem);
+  letter-spacing: 0.01em;
 }
 
 .home-banner__skel-title {
-  height: 1.8rem;
+  height: 0.75em;
 }
 
-.home-banner__skel-btn {
-  height: 2.8rem;
-  margin-top: 0.4rem;
+/* A button's own size, its words hidden: the shape of what's coming, no colour of its own. */
+.home-banner .home-banner__skel-btn {
+  color: transparent;
+  background: rgba(var(--ink-rgb), 0.1);
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
 }
 
 .home-banner__skel-art {

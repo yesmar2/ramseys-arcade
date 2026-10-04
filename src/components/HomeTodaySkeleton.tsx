@@ -20,10 +20,25 @@ export function HomeTodaySkeleton() {
           <h2 id="home-day-skel-title" className="home-day__title">
             Dailies
           </h2>
-          <span className="skel-line" style={skel('4.5rem')} />
+          <span className="home-day__date">
+            <span className="skel-line" style={skel('4.5rem')} />
+          </span>
         </div>
+        {/* Each in the row's own text styles, so each is a line of text tall, and they wrap where the row's do. */}
         <div className="home-day__stand">
-          <span className="skel-line" style={skel('14rem')} />
+          <span className="home-day__pips" aria-hidden="true">
+            {Array.from({ length: n }, (_, i) => (
+              <span key={i} className="home-day__pip" />
+            ))}
+          </span>
+          <span className="home-day__count">
+            <span className="skel-line" style={skel('2.5rem')} />
+          </span>
+          <span className="home-day__streak">
+            <span>
+              <span className="skel-line" style={skel('16rem')} />
+            </span>
+          </span>
         </div>
         <span className="home-day__next">
           <span className="skel-line" style={skel('9rem')} />
@@ -55,6 +70,12 @@ export function HomeTodaySkeleton() {
           </li>
         ))}
       </ul>
+      {/* On a phone the time to the next dailies comes under the cards (homeToday.css), as on the row. */}
+      <p className="home-day__next home-day__next--under">
+        <span>
+          <span className="skel-line" style={skel('9rem')} />
+        </span>
+      </p>
     </section>
   )
 }

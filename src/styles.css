@@ -1,4 +1,31 @@
 /*
+ * Outfit comes from Google Fonts with display=swap: until it's in, text is drawn in this, Arial made
+ * Outfit's size (measured 2026-10-04: Outfit is 97.7% of Arial's width at 400-500, 93.5% of Arial Bold's at
+ * 600, with an ascent of 1.00 and a descent of 0.26 em). So when Outfit arrives the letters change and
+ * nothing moves: no line wraps differently and no block grows. Where there's no Arial (Android), it's
+ * skipped and system-ui stands in, as before.
+ */
+@font-face {
+  font-family: "Outfit Fallback";
+  src: local("Arial"), local("ArialMT"), local("Helvetica");
+  font-weight: 100 549;
+  size-adjust: 97.7%;
+  ascent-override: 102.4%;
+  descent-override: 26.6%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Outfit Fallback";
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  font-weight: 550 1000;
+  size-adjust: 93.5%;
+  ascent-override: 107%;
+  descent-override: 27.8%;
+  line-gap-override: 0%;
+}
+
+/*
  * One line for everything across the top of a stage.
  *
  * The score, a game's figures and the chrome either side of them all hang off
@@ -42,8 +69,8 @@
   --header-h: 4rem;
   --shadow-soft: 0 8px 24px rgba(var(--shade-rgb), 0.08);
   --shadow-lift: 0 14px 32px rgba(var(--shade-rgb), 0.14);
-  --font-display: "Outfit", system-ui, sans-serif;
-  --font-body: "Outfit", system-ui, sans-serif;
+  --font-display: "Outfit", "Outfit Fallback", system-ui, sans-serif;
+  --font-body: "Outfit", "Outfit Fallback", system-ui, sans-serif;
   --content-width: 60rem;
   --max-width: 100rem;
   --shell: #d5e8f2;

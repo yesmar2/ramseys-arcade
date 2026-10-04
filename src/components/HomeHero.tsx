@@ -361,6 +361,20 @@ function DailyCard({ t }: { t: TournamentSummary }) {
  * the game's own line about itself, Play, and the board's top and their best.
  * Tinted from the game's colour, like every hero on the site.
  */
+/**
+ * Whether the welcome banner had today's event last time on this device: its slot is held while the events
+ * load only then, so it never shows an empty box that goes (the arcade's own events paused, as at launch).
+ */
+const WELCOME_EVENT_KEY = 'skermix-welcome-event'
+
+function hadEventLastTime(): boolean {
+  try {
+    return localStorage.getItem(WELCOME_EVENT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** How long the banner waits on the API to say whether a season is on, before showing the game's banner. */
 const SEASON_WAIT_MS = 4000
 
@@ -380,13 +394,24 @@ export function HomeHero() {
   const standing = useGlobalRank()
   const { official, loading: eventsLoading } = useLiveEvents(name)
   const seasonStore = useSeason()
-  const season = liveSeason(seasonStore)
-  const lastPlayed = slug != null && recent.includes(slug)
-  const firstVisit = !name && recent.length === 0
   // Whether a season is on isn't known until the API says (a device that saw one keeps it: lib/season.ts). Until
   // then the banner waits as a skeleton, so it never shows the game's banner and then swaps to the season's. An
-  // API that's slow to wake gets a few seconds, then the game's banner.
+  // API that's slow to wake gets a few seconds, then the game's banner, which then stays for this visit: a
+  // season answering after that waits for the next (when the device has it kept), never swapping in late.
   const [gaveUp, setGaveUp] = useState(false)
+  const season = gaveUp ? null : liveSeason(seasonStore)
+  const lastPlayed = slug != null && recent.includes(slug)
+  const firstVisit = !name && recent.length === 0
+  const [eventLastTime] = useState(hadEventLastTime)
+  const hasEvent = official.some((t) => t.cadence === 'daily')
+  useEffect(() => {
+    if (eventsLoading) return
+    try {
+      localStorage.setItem(WELCOME_EVENT_KEY, hasEvent ? '1' : '0')
+    } catch {
+      /* a private window keeps nothing: the slot isn't held */
+    }
+  }, [eventsLoading, hasEvent])
   const seasonUnknown = !firstVisit && !seasonStore.loaded && !seasonStore.season && !gaveUp
   useEffect(() => {
     if (!seasonUnknown) return
@@ -420,7 +445,8 @@ export function HomeHero() {
         })
       })
       .catch(() => {
-        if (!cancelled) setScores(null)
+        // Nothing to show, rather than null, which is still asking: the figures' place isn't held for good.
+        if (!cancelled) setScores({ best: 0, place: 0, top: 0, topName: '' })
       })
     return () => {
       cancelled = true
@@ -470,7 +496,8 @@ export function HomeHero() {
   )
   // The game on its screen, playing itself the way a cabinet by the door runs its demo; its thumb until it's ready.
   const art = (
-    <a className="home-banner__art" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
+    // Shaped for its screen from the start (home.css), not once the screen has come, so the banner doesn't change shape.
+    <a className={`home-banner__art${hasGamePreview(slug) ? ' home-banner__art--screen' : ''}`} href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
       <GameThumbArt slug={slug} accent={accent} />
       {hasGamePreview(slug) ? (
         <>
@@ -484,15 +511,29 @@ export function HomeHero() {
 
   if (seasonUnknown) {
     return (
+      // The season banner's own parts (season/SeasonBanner.tsx), shimmering: the same shape at every width, so
+      // it comes in place. The game's banner is laid out the same way.
       <section className="home-banner home-banner--skel" aria-busy="true" aria-label="Loading">
-        <div className="home-banner__text">
-          <span className="skel-line" style={{ '--skel-w': '8rem' } as CSSProperties} />
-          <span className="skel-line home-banner__skel-title" style={{ '--skel-w': '16rem' } as CSSProperties} />
-          <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
-          <span className="skel-line" style={{ '--skel-w': '14rem' } as CSSProperties} />
-          <span className="skel-line home-banner__skel-btn" style={{ '--skel-w': '10rem' } as CSSProperties} />
+        <div className="home-banner__text" aria-hidden="true">
+          <p className="home-banner__kicker">
+            <span>
+              <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} />
+            </span>
+          </p>
+          <h2 className="home-banner__name">
+            <span className="skel-line home-banner__skel-title" style={{ '--skel-w': '13rem' } as CSSProperties} />
+          </h2>
+          <p className="home-banner__blurb">
+            <span className="skel-line" style={{ '--skel-w': '24rem' } as CSSProperties} />
+            <br />
+            <span className="skel-line" style={{ '--skel-w': '17rem' } as CSSProperties} />
+          </p>
+          <div className="home-banner__acts">
+            <span className="home-banner__cta home-banner__skel-btn">See the pass</span>
+            <span className="home-banner__ghost home-banner__skel-btn">Today’s pick: Pellets</span>
+          </div>
         </div>
-        <span className="home-banner__art home-banner__skel-art" aria-hidden="true" />
+        <span className="home-banner__art home-banner__art--season home-banner__skel-art" aria-hidden="true" />
       </section>
     )
   }
@@ -631,7 +672,7 @@ export function HomeHero() {
           </p>
           {daily ? (
             <DailyCard t={daily} />
-          ) : eventsLoading ? (
+          ) : eventsLoading && eventLastTime ? (
             <span className="home-banner__daily home-banner__daily--wait" aria-hidden="true" />
           ) : null}
           <div className="home-banner__acts">
@@ -672,7 +713,19 @@ export function HomeHero() {
         </h2>
         <p className="home-banner__blurb">{game.description}</p>
         {acts}
-        {scores && scores.top > 0 ? (
+        {scores === null ? (
+          // Still asking: the figures hold their place, so the banner doesn't grow when they come.
+          <dl className="home-banner__figures" aria-hidden="true">
+            {[isDailyGame(slug) ? '1st today' : `Top ${boardWord}`, isDailyGame(slug) ? 'You today' : 'Your best'].map((label) => (
+              <div key={label} className="home-banner__figure">
+                <dt>{label}</dt>
+                <dd>
+                  <span className="skel-line" style={{ '--skel-w': '5rem' } as CSSProperties} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : scores.top > 0 ? (
           <dl className="home-banner__figures" aria-label={`${game.name} scores`}>
             <div className="home-banner__figure">
               {/* A daily's figures are today's board: its top is 1st today, and yours is today's too. */}

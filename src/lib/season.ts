@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { currentAccountId } from './auth'
+import { currentAccountId, getSessionToken } from './auth'
 import { api } from './leaderboard'
 
 /*
@@ -220,8 +220,10 @@ export function useSeason(): Store {
   const { signedIn, loading } = useAuth()
   const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   useEffect(() => {
-    if (loading) return
-    void refreshSeason({ signedIn })
+    // The season is everyone's: it's asked for at once, under the session this device has, rather than after
+    // sign-in has been checked (a second round trip before the home banner knows what to show). Once that's
+    // known, it's asked again only if it changed who's asking.
+    void refreshSeason({ signedIn: loading ? Boolean(getSessionToken()) : signedIn })
   }, [signedIn, loading])
   return snap
 }
