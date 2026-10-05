@@ -343,6 +343,18 @@ function Actions({
         link(n.href, 'See today ›')
       )
       break
+    case 'podium-lost':
+      // Won back today or not at all: once the day is over there's only its board to see.
+      out =
+        playHref && (n.meta.endsAt ?? 0) > now ? (
+          <>
+            {link(playHref, 'Win it back', true)}
+            {link(n.href, 'See the board ›')}
+          </>
+        ) : (
+          link(n.href, 'See the board ›')
+        )
+      break
     case 'record-lost': {
       // A daily's course is won back on that course or not at all, and seen on its row of the past tab.
       const daily = dailyRecordNote(n)

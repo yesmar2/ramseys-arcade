@@ -21,6 +21,8 @@ export type NotificationKind =
   | 'today-beaten'
   /** Today's Dailies aren't kept yet and the day is nearly over (the API's streakReminders.ts). */
   | 'streak-risk'
+  /** A run pushed you out of today's top three on a racing daily, while there's time to win it back (the API's podiumLost.ts). */
+  | 'podium-lost'
 
 /** Who and what a notification is about, for drawing its row. Every field is optional. */
 export type NotificationMeta = {

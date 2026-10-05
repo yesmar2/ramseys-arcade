@@ -27,6 +27,7 @@ export type NotificationTopic =
   | 'today-lap'
   | 'today-beaten'
   | 'streak-risk'
+  | 'podium-lost'
   | 'record-lost'
   | 'trophy'
 
@@ -68,6 +69,11 @@ export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[
             label: 'A friend beats your lap',
             hint: 'On Today’s Track, while there’s still time to take it back.',
           },
+      {
+        topic: 'podium-lost',
+        label: 'You’re knocked off the podium',
+        hint: `Out of the top three on ${runDailies}, while there’s still time to win it back, and its tickets.`,
+      },
       // No row for the hole, the Wanted or the pour: those dailies are just for fun (data/games.ts Game.ranked),
       // so nobody is told they were beaten on them. The 'today-beaten' topic stays for notes already sent.
     ],
