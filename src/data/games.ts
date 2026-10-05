@@ -284,8 +284,6 @@ export const games: Game[] = [
     description: 'Fill a row to clear it. Shake the gaps out.',
     accent: PALETTE.pink,
     playable: true,
-    // New, and held back until it's released: listed nowhere yet, played at its own address.
-    onDeck: true,
   },
 ]
 
@@ -356,6 +354,7 @@ const HOME_ORDER: readonly string[] = [
    * the reshuffle does not care which games were meant to lead.
    */
   'frenzy',
+  'pileup',
   'pellets',
   'crumbtrail',
   'stacker',

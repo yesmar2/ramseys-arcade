@@ -513,22 +513,30 @@ function drawTopOut(v: View, shiftX: number) {
 
 function drawTrails(v: View, shiftX: number) {
   const { ctx, s, c, ox, oy } = v
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineWidth = Math.max(1, c * 0.07)
   for (const trail of s.trails) {
-    const tone = v.tones[trail.kind]!
+    ctx.strokeStyle = v.tones[trail.kind]!.line
     for (const col of trail.cells) {
-      const x = ox + shiftX + col.x * c + c * 0.18
+      // Two speed lines down each column it fell, brightest just over where it landed, gone towards the top.
       const top = oy + col.top * c
-      const bottom = oy + col.bottom * c
+      const bottom = oy + col.bottom * c - c * 0.15
       const span = bottom - top
-      // Strongest just over where it landed, fading up the column, in steps.
-      for (let i = 0; i < 6; i++) {
-        ctx.fillStyle = tone.line
-        ctx.globalAlpha = trail.life * 0.05 * (i + 1)
-        ctx.fillRect(x, top + (span * i) / 6, c * 0.64, span / 6 + 1)
+      if (span <= 0) continue
+      for (const across of [0.32, 0.68]) {
+        const x = ox + shiftX + (col.x + across) * c
+        for (let i = 0; i < 4; i++) {
+          ctx.globalAlpha = trail.life * (0.08 + i * 0.12)
+          ctx.beginPath()
+          ctx.moveTo(x, top + (span * i) / 4)
+          ctx.lineTo(x, top + (span * (i + 1)) / 4)
+          ctx.stroke()
+        }
       }
     }
   }
-  ctx.globalAlpha = 1
+  ctx.restore()
 }
 
 /** The piece a Shake sent back up, hovering where it came in while the pile settles under it. */
