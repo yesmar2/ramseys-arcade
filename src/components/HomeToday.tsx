@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { gameHref, todayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { msUntilNextHole } from '../lib/dailyHole'
-import { hasDayPreview } from '../lib/gamePreviews'
+import { hasDayPreview, hasGamePreview } from '../lib/gamePreviews'
 import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -155,8 +155,13 @@ function DayCard({
         <Suspense fallback={<span className="home-day__pic-wait" />}>
           <DayPicture daily={p.key} day={day} />
         </Suspense>
-        {/* Under a pointer, the day played over its picture: the course rolled, the cave flown (Ramsey, 2026-10-04). */}
-        {hasDayPreview(p.slug) ? <GamePreview slug={p.slug} day={day} className="home-day__preview" hoverOnly /> : null}
+        {/* Under a pointer, the game played over its picture (Ramsey, 2026-10-04 and 05): the day's own for the
+            hole, the track, the course and the cave; Find the Bug's and Half Full's own previews, which never show a day's answer. */}
+        {hasDayPreview(p.slug) ? (
+          <GamePreview slug={p.slug} day={day} className="home-day__preview" hoverOnly />
+        ) : hasGamePreview(p.slug) ? (
+          <GamePreview slug={p.slug} className="home-day__preview" hoverOnly />
+        ) : null}
         {p.done ? (
           <span className="home-day__stamp">
             <CheckIcon />
