@@ -48,9 +48,6 @@ let sfxBus: GainNode | null = null
 let classicIn: GainNode | null = null
 let musicBus: GainNode | null = null
 let fx: Fx | null = null
-/** The music's own ways into the room and the echo, so its tails follow its volume. */
-let musicVerb: GainNode | null = null
-let musicEcho: GainNode | null = null
 
 let muted = readMuted()
 let musicOn = readMusicOn()
@@ -175,20 +172,12 @@ function getCtx() {
     const music = audio.createGain()
     music.gain.value = musicLevel()
     music.connect(mute)
-    const toVerb = audio.createGain()
-    toVerb.gain.value = musicLevel()
-    toVerb.connect(verb)
-    const toEcho = audio.createGain()
-    toEcho.gain.value = musicLevel()
-    toEcho.connect(echo)
 
     ctx = audio
     master = mute
     sfxBus = effects
     classicIn = classic
     musicBus = music
-    musicVerb = toVerb
-    musicEcho = toEcho
     fx = { verb, echo }
   }
   return ctx
@@ -230,7 +219,7 @@ function musicLevel() {
 function applyMusicGain() {
   if (!ctx) return
   const level = musicLevel()
-  for (const node of [musicBus, musicVerb, musicEcho]) node?.gain.setTargetAtTime(level, ctx.currentTime, 0.08)
+  musicBus?.gain.setTargetAtTime(level, ctx.currentTime, 0.08)
 }
 
 /**
@@ -245,9 +234,9 @@ function syncMusic() {
     return
   }
   if (playing?.track === track) return
-  if (!ctx || ctx.state !== 'running' || !musicBus || !musicVerb || !musicEcho) return
+  if (!ctx || ctx.state !== 'running' || !musicBus) return
   playing?.stop()
-  playing = startTrack(ctx, track, musicBus, { verb: musicVerb, echo: musicEcho })
+  playing = startTrack(ctx, track, musicBus)
 }
 
 export function unlockSound() {
