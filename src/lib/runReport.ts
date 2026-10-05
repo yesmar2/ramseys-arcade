@@ -24,6 +24,7 @@ import {
   whenRunAchievementsSettled,
   type RunAchievement,
 } from './runAchievements'
+import { isRaceGame, raceGapWords } from './raceMedals'
 import { ordinal, periodCopy, type PeriodCopy } from './scoreboard'
 import { submitScoreToJoinedTournaments } from './tournaments'
 
@@ -245,9 +246,15 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
   const place = mine.place
   const { before, above, below } = b
   const climbed = before == null || place < before
+  // A racing daily's gaps read as its clock does (0.31s), and the one above is the place to take, as its
+  // start card's ghost says ("Beat PILOT for 3rd"). Its boards keep a million less the ms, so a gap in
+  // score is one in ms.
+  const race = isRaceGame(slug)
+  const gapOf = (higher: number, lower: number) => (race ? raceGapWords(higher - lower) : gapBetween(slug, higher, lower))
   const behind = (other: BoardPlayer) => {
     const gap = other.best.score - mine.best.score
-    return gap > 0 ? `${gapBetween(slug, other.best.score, mine.best.score)} behind ${other.name}` : `tied with ${other.name}`
+    if (gap <= 0) return `tied with ${other.name}`
+    return `${gapOf(other.best.score, mine.best.score)} behind ${other.name}${race ? ` for ${ordinal(other.place)}` : ''}`
   }
   const read = (detail: string | null, tone: ReportTone, icon: ReportIcon = 'board', newTop = false): BoardRead => ({
     line: { id: 'board', icon, label, detail, value: `#${place}`, tone },
@@ -259,10 +266,14 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
 
   if (place === 1) {
     if (!below) return read(before == null ? 'The first run on the board' : 'Nobody else on it yet', 'plain')
-    const lead = gapBetween(slug, mine.best.score, below.best.score)
+    const lead = gapOf(mine.best.score, below.best.score)
     // First from somebody: the one now second held it before this run.
     if (before !== 1) return read(`passed ${below.name} by ${lead}`, 'gold', 'crown', true)
     return read(`${lead} ahead of ${below.name}`, 'plain')
+  }
+  // A racing daily's climb says where it came from and who's next above, not who it passed.
+  if (race && before != null && place < before) {
+    return read([`up from ${ordinal(before)}`, above ? behind(above) : null].filter(Boolean).join(' · '), 'accent', 'up')
   }
   if (before != null && place < before) {
     const passed = b.passed

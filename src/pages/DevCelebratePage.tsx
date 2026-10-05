@@ -3,8 +3,7 @@ import { PageShell } from '../components/PageShell'
 import { NextDailyView } from '../components/NextDaily'
 import { PushAsk } from '../components/PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from '../components/prizes/RunTickets'
-import { RunMedalLine } from '../components/RaceMedal'
-import { SeasonRunLine } from '../components/season/SeasonRun'
+import { RaceReport, raceSubWords } from '../components/RaceReport'
 import { caveDay } from '../games/lander/daily'
 import { formatRun } from '../games/lander/score'
 import { TomorrowCave } from '../games/lander/TomorrowCave'
@@ -22,7 +21,7 @@ import { WinTakeover } from '../components/WinTakeover'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { playersFromRuns } from '../lib/gameBoard'
 import type { GlobalRankResult, LeaderboardEntry } from '../lib/leaderboard'
-import { boardFacts, composeReport, type RunFacts } from '../lib/runReport'
+import { boardFacts, composeReport, type ReportLine, type RunFacts } from '../lib/runReport'
 import type { TournamentDetail } from '../lib/tournaments'
 import { eventWinTakeover, standingsTakeover, type WinTakeoverData } from '../lib/winTakeover'
 
@@ -286,8 +285,8 @@ const SAMPLE_PUNCHES = [
 ] as const
 
 /*
- * A racing daily's runs, as ScoreSaveCard puts them together: Lander on a day whose blue ship lands in a
- * minute, so its ladder (the API's ticketLadders.ts) and its medals (lib/raceMedals.ts) go by 60s.
+ * A racing daily's runs, as ScoreSaveCard puts them together (RaceReport): Lander on a day whose blue ship
+ * lands in a minute, so its ladder (the API's ticketLadders.ts) and its medals (lib/raceMedals.ts) go by 60s.
  */
 const PACE_MS = 60_000
 const shipAt = (ms: number) => 1_000_000 - ms
@@ -295,30 +294,63 @@ const LANDER_STEPS = {
   within: { at: shipAt(61_200), tickets: 5, label: 'within 2% of the blue ship' },
   beat: { at: shipAt(PACE_MS) + 1, tickets: 8, label: 'beating the blue ship' },
   by3: { at: shipAt(58_200), tickets: 11, label: 'beating the blue ship by 3%' },
+  by6: { at: shipAt(56_400), tickets: 15, label: 'beating the blue ship by 6%' },
 }
 
 const LANDER_SEASON: SeasonRun = { id: 1, name: 'Space Race', earned: 290, added: 3, level: 2, levels: 30, nextAt: 300, next: null, levelUp: [] }
 
-const landerMedal = (ms: number, previousMs: number | null) => (
-  <RunMedalLine paceMs={PACE_MS} ms={ms} previousMs={previousMs} format={formatRun} embedded />
-)
+/** The run's place on today's board, as runReport.ts's board line says it. */
+const landerPlace = (value: string, detail: string, tone: ReportLine['tone']): ReportLine => ({
+  id: 'board',
+  icon: tone === 'plain' ? 'board' : 'up',
+  label: 'Lander today',
+  detail,
+  value,
+  tone,
+})
 
-function landerSample(key: string, note: string, ms: number, tickets: ReactNode, children?: ReactNode): Sample {
+function landerSample(
+  key: string,
+  note: string,
+  ms: number,
+  previousMs: number | null,
+  {
+    tickets = null,
+    place = null,
+    children,
+    pending = false,
+    signedOut = false,
+  }: { tickets?: ReactNode; place?: ReportLine | null; children?: ReactNode; pending?: boolean; signedOut?: boolean },
+): Sample {
+  const best = previousMs != null && ms < previousMs
+  const ribbon = best ? ({ icon: 'up', text: 'New personal best', tone: 'accent' } as const) : null
   return {
     key,
     note,
     body: {
-      tier: 'quiet',
-      ribbon: null,
+      tier: best ? 'lit' : 'quiet',
+      ribbon,
       eyebrow: 'Today’s Cave #2',
       score: formatRun(ms / 1000),
       unit: '',
-      sub: 'Landed',
-      scoreTone: 'plain',
+      sub: raceSubWords(ribbon ? 'Today’s Cave #2' : 'Landed', ms, previousMs, formatRun),
+      scoreTone: best ? 'accent' : 'plain',
       lines: [],
-      tickets,
+      tickets: (
+        <RaceReport
+          game="lander"
+          paceMs={PACE_MS}
+          format={formatRun}
+          ms={ms}
+          previousMs={previousMs}
+          pending={pending}
+          tickets={tickets}
+          place={place}
+          onBoard={() => {}}
+        />
+      ),
       children,
-      who: <ReportWho name="VERA" text="Saved as VERA" />,
+      who: signedOut ? <ReportWho text="Not saved yet" /> : pending ? <ReportWho name="VERA" text="Saving…" /> : <ReportWho name="VERA" text="Saved as VERA" />,
     },
   }
 }
@@ -440,70 +472,135 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     ),
     landerSample(
       'medal',
-      'A racing daily’s run that paid: its medal in the ticket box, saying what’s next once; the season pass it moved.',
+      'A racing daily’s run that paid: the medal ladder lights Silver, new, and dashes Gold; the tickets and the season in one row; the place.',
       59_000,
-      <>
-        <RunTicketsLine
-          paid={{
-            earned: 3,
-            lines: [{ reason: 'run', amount: 3 }],
-            balance: 1290,
-            reached: LANDER_STEPS.beat,
-            next: LANDER_STEPS.by3,
-            base: 3,
-            baseLabel: 'a run today',
-            step: 8,
-            paidBefore: 5,
-            capped: 0,
-            todayLeft: 170,
-          }}
-          game="lander"
-          medal={landerMedal(59_000, 61_000)}
-        />
-        <SeasonRunLine run={LANDER_SEASON} />
-      </>,
+      61_000,
+      {
+        tickets: (
+          <RunTicketsLine
+            paid={{
+              earned: 3,
+              lines: [{ reason: 'run', amount: 3 }],
+              balance: 1290,
+              reached: LANDER_STEPS.beat,
+              next: LANDER_STEPS.by3,
+              base: 3,
+              baseLabel: 'a run today',
+              step: 8,
+              paidBefore: 5,
+              capped: 0,
+              todayLeft: 170,
+            }}
+            game="lander"
+            race={{ medal: 'silver', season: LANDER_SEASON }}
+          />
+        ),
+        place: landerPlace('#4', 'up from 7th · 0.31s behind PILOT for 3rd', 'accent'),
+      },
     ),
     landerSample(
       'medal-none',
-      'A racing daily’s run that paid nothing: one quiet line under the day’s medal, and no season pass.',
+      'A racing daily’s slower run: the day’s best keeps Silver, one quiet line for the tickets.',
       60_500,
-      <RunTicketsLine
-        paid={{
-          earned: 0,
-          lines: [],
-          balance: 1290,
-          reached: LANDER_STEPS.within,
-          next: LANDER_STEPS.beat,
-          base: 3,
-          baseLabel: 'a run today',
-          step: 5,
-          paidBefore: 8,
-          capped: 0,
-          todayLeft: 170,
-        }}
-        game="lander"
-        medal={landerMedal(60_500, 59_000)}
-      />,
-    ),
-    landerSample(
-      'medal-signin',
-      'A racing daily’s run, signed out: the medal in the waiting box.',
       59_000,
-      <RunTicketsWaiting medal={landerMedal(59_000, null)} />,
+      {
+        tickets: (
+          <RunTicketsLine
+            paid={{
+              earned: 0,
+              lines: [],
+              balance: 1290,
+              reached: LANDER_STEPS.within,
+              next: LANDER_STEPS.beat,
+              base: 3,
+              baseLabel: 'a run today',
+              step: 5,
+              paidBefore: 8,
+              capped: 0,
+              todayLeft: 170,
+            }}
+            game="lander"
+            race={{ medal: 'silver', season: null }}
+          />
+        ),
+        place: landerPlace('#4', '0.31s behind PILOT for 3rd', 'plain'),
+      },
     ),
     landerSample(
-      'tomorrow',
-      'The last of today’s dailies: all done, and tomorrow’s cave under it.',
-      60_500,
-      null,
-      <NextDailyView
-        slug="lander"
-        punches={SAMPLE_PUNCHES.map((p) => ({ ...p, done: true }))}
-        done={6}
-        total={6}
-        tomorrow={<TomorrowCave day={caveDay()} />}
-      />,
+      'medal-top',
+      'A racing daily’s run to the top medal: Platinum, and nothing past it.',
+      56_000,
+      57_000,
+      {
+        tickets: (
+          <RunTicketsLine
+            paid={{
+              earned: 4,
+              lines: [{ reason: 'run', amount: 4 }],
+              balance: 1301,
+              reached: LANDER_STEPS.by6,
+              next: null,
+              base: 3,
+              baseLabel: 'a run today',
+              step: 15,
+              paidBefore: 11,
+              capped: 0,
+              todayLeft: 166,
+            }}
+            game="lander"
+            race={{ medal: 'platinum', season: null }}
+          />
+        ),
+        place: landerPlace('#1', 'passed DAD by 0.42s', 'gold'),
+      },
     ),
+    landerSample(
+      'medal-first',
+      'A racing daily’s first run, short of Bronze: no medal yet, the 3 for a run today.',
+      62_000,
+      null,
+      {
+        tickets: (
+          <RunTicketsLine
+            paid={{
+              earned: 3,
+              lines: [{ reason: 'run', amount: 3 }],
+              balance: 1290,
+              reached: null,
+              next: LANDER_STEPS.within,
+              base: 3,
+              baseLabel: 'a run today',
+              step: 3,
+              paidBefore: 0,
+              capped: 0,
+              todayLeft: 170,
+            }}
+            game="lander"
+            race={{ medal: null, season: null }}
+          />
+        ),
+        place: landerPlace('#9', '0.40s behind NOVA for 8th', 'plain'),
+      },
+    ),
+    landerSample('medal-signin', 'A racing daily’s run, signed out: the ladder, and the tickets a sign-in pays.', 59_000, null, {
+      tickets: <RunTicketsWaiting />,
+      signedOut: true,
+    }),
+    landerSample('medal-saving', 'A racing daily’s run while the save answers: the ladder at once, the rows’ room held.', 59_000, 61_000, {
+      pending: true,
+    }),
+    landerSample('tomorrow', 'The last of today’s dailies: all done, and tomorrow’s cave under it.', 60_500, 59_000, {
+      place: landerPlace('#4', '0.31s behind PILOT for 3rd', 'plain'),
+      children: (
+        <NextDailyView
+          slug="lander"
+          punches={SAMPLE_PUNCHES.map((p) => ({ ...p, done: true }))}
+          done={6}
+          total={6}
+          tomorrow={<TomorrowCave day={caveDay()} />}
+        />
+      ),
+    }),
     reportSample('capped', 'A run past the day’s cap: the quiet line, no box.', facts(318, {}), 'Run over', 'Flattened by traffic'),
   ]
 }

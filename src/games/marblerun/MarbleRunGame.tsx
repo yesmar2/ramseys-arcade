@@ -1165,6 +1165,7 @@ function MarbleRunDay({
                     shareLine={runShareLine(marble, run.time, pace, run.falls)}
                     medalPace={paceMsOf(marble.pace)}
                     medalFormat={formatRun}
+                    kicker={`Today’s Course #${marble.n}`}
                     tomorrow={<TomorrowCourse day={marble.day} />}
                     owner={runOwner}
                     onSettled={() => sendGhost(run, playerName)}

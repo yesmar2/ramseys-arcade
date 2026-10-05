@@ -387,7 +387,7 @@ html[data-theme='dark'] .pname--prism {
   color: var(--muted);
 }
 
-/* As wide as the medal over it (raceMedals.css .run-medal--in), so the two lines' words start together. */
+/* A medal's width (raceMedals.css), the ticket in the middle of it. */
 .run-tix-quiet__icon {
   flex: none;
   display: inline-flex;
@@ -446,6 +446,66 @@ html[data-theme='dark'] .pname--prism {
   font-size: 0.8rem;
   line-height: 1.4;
   color: var(--muted);
+}
+
+/*
+ * A racing daily's tickets (RunTicketsLine `race`): one slim row under its medal ladder, a smaller ticket,
+ * the count and what it was for on one line with the total, and the season's pass (or the prize being saved
+ * for) under it. The payout feeds out of the same slot.
+ */
+.run-tix--slim {
+  gap: 0.75rem;
+  padding: 0.45rem 0.85rem 0.45rem 0.4rem;
+}
+
+.run-tix--slim .run-tix__body {
+  gap: 0.15rem;
+}
+
+.run-tix--slim .run-tix__top {
+  align-items: center;
+}
+
+.run-tix__said {
+  min-width: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.run-tix--slim .run-tix__n {
+  font-size: 0.95rem;
+  white-space: normal;
+}
+
+a.run-tix__total {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.run-tix__sub {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.run-tix__sub:hover {
+  color: var(--ink);
+}
+
+.run-tix--slim .run-tix__slot {
+  height: 2.6rem;
+  margin-top: -1.3rem;
+}
+
+/* Centred down the row by its top alone: the count's own pop (RunTickets.tsx) animates its transform. */
+.run-tix--slim .run-tix__count {
+  top: calc(50% - 0.72rem);
+  font-size: 1.2rem;
 }
 
 .run-tix__goal {

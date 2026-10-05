@@ -8,6 +8,10 @@
  * anyone can have one. They're worked out here from a day's blue time, which each game's plan holds (and the
  * API's paces are made from), so no medal waits on a request: the caller hands in the pace, and a page that
  * shows one game never loads another's plan.
+ *
+ * Each is one game's, on one day. Ramsey couldn't tell what "all four" meant (2026-10-05: "are we talking
+ * about other games?"), so a run's report shows the four as a ladder, with their times and tickets
+ * (RaceMedal MedalLadder), and nothing says "all four": platinum is "the top medal".
  */
 
 export type RaceGame = 'hotlap' | 'marblerun' | 'lander'
@@ -19,8 +23,33 @@ export const MEDAL_NAMES: Record<Medal, string> = { bronze: 'Bronze', silver: 'S
 
 const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ball', lander: 'blue ship' }
 
+/**
+ * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in
+ * all three games (a run short of bronze pays its 3 for a run today). Shown on a run's medal ladder.
+ */
+export const MEDAL_TICKETS: Record<Medal, number> = { bronze: 5, silver: 8, gold: 11, platinum: 15 }
+
 export function isRaceGame(slug: string): slug is RaceGame {
   return slug === 'hotlap' || slug === 'marblerun' || slug === 'lander'
+}
+
+/** The day's blue, as a run's report names it: "blue ship". */
+export function blueOf(game: RaceGame): string {
+  return BLUE[game]
+}
+
+/**
+ * A gap between two times, in ms, as the racing dailies say it beside a medal or a place: 0.78s, as their
+ * clocks read; 0.004s when hundredths would round it to nothing; 1:02.40 past a minute.
+ */
+export function raceGapWords(ms: number): string {
+  const gap = Math.abs(ms)
+  if (gap >= 60_000) {
+    const seconds = Math.round(gap / 10) / 100
+    const m = Math.floor(seconds / 60)
+    return `${m}:${(seconds - m * 60).toFixed(2).padStart(5, '0')}`
+  }
+  return `${(gap / 1000).toFixed(gap > 0 && gap < 5 ? 3 : 2)}s`
 }
 
 /** A day's blue time in ms, from its plan's pace in seconds. */

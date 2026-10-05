@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getGame } from '../../data/games'
 import { prizeById } from '../../data/prizes'
-import { prizesHref } from '../../hooks/useHashRoute'
+import { prizesHref, seasonHref } from '../../hooks/useHashRoute'
 import { scoreText } from '../../lib/gameBoard'
 import { formatLeaderboardScore, isPercentBoard, isTimeBoard } from '../../lib/leaderboardFormat'
 import { sparkle, ticketPath } from '../../lib/prizeArt'
+import { MEDAL_NAMES, type Medal } from '../../lib/raceMedals'
+import type { SeasonRun } from '../../lib/season'
 import { sfx } from '../../lib/sound'
 import { useTickets, type LadderStep, type RunTickets } from '../../lib/tickets'
 import { TicketGlyph, TicketStub } from './Ticket'
@@ -47,44 +49,70 @@ function nextWords(next: LadderStep, game: string): string {
   return `${next.tickets} for ${next.label}${figure ? ` (${formatLeaderboardScore(game, next.at)})` : ''}`
 }
 
-/** What the tickets were for; `withNext`, and the next step's, unless the run's medal already says it. */
-function why(paid: RunTickets, game: string, withNext = true): string {
-  const parts: string[] = []
-  for (const line of paid.lines) {
-    switch (line.reason) {
-      case 'run': {
-        const what = paid.reached ? stepWords(paid.reached, game) : (paid.baseLabel ?? 'the run')
-        // A daily pays its best step of the day once, a climb only the difference: said as what it reached.
-        parts.push(`${line.amount} for ${what}`)
-        break
-      }
-      case 'best':
-        parts.push(`${line.amount} for a new best`)
-        break
-      case 'pickup':
-        parts.push(`${line.amount} picked up`)
-        break
-      case 'first':
-        parts.push(`${line.amount} for your first go at ${getGame(game)?.name ?? 'this game'}`)
-        break
-      case 'streak':
-        parts.push(`${line.amount} for another day on your streak`)
-        break
-      default:
-        parts.push(`${line.amount} more`)
+/** One of the save's ticket lines in words: "3 for beating the blue car", "2 for another day on your streak". */
+function lineWords(paid: RunTickets, line: RunTickets['lines'][number], game: string): string {
+  switch (line.reason) {
+    case 'run': {
+      const what = paid.reached ? stepWords(paid.reached, game) : (paid.baseLabel ?? 'the run')
+      // A daily pays its best step of the day once, a climb only the difference: said as what it reached.
+      return `${line.amount} for ${what}`
     }
+    case 'best':
+      return `${line.amount} for a new best`
+    case 'pickup':
+      return `${line.amount} picked up`
+    case 'first':
+      return `${line.amount} for your first go at ${getGame(game)?.name ?? 'this game'}`
+    case 'streak':
+      return `${line.amount} for another day on your streak`
+    default:
+      return `${line.amount} more`
   }
+}
+
+/** What the tickets were for, and the next step's. */
+function why(paid: RunTickets, game: string): string {
+  const parts = paid.lines.map((line) => lineWords(paid, line, game))
   if (paid.capped > 0) parts.push('today’s run tickets are all in')
-  else if (paid.next && withNext) parts.push(`next: ${nextWords(paid.next, game)}`)
+  else if (paid.next) parts.push(`next: ${nextWords(paid.next, game)}`)
   return parts.join(' · ')
 }
 
 /**
- * The run's tickets, once the save has answered. A racing daily's `medal` (RaceMedal RunMedalLine) goes in the
- * same box and says what's next, from the day's best; the tickets then don't say it again, so the two never
- * disagree. A run that paid nothing is a quiet line, not a box (Ramsey, 2026-10-05: the report was "a lot").
+ * A racing daily's tickets, said by its medal: "Silver brings today's to 8", a climb paying the difference;
+ * "8 for Silver" for the day's first. The medal ladder over it says what's next, with each medal's tickets.
  */
-export function RunTicketsLine({ paid, game, medal = null }: { paid: RunTickets; game: string; medal?: ReactNode }) {
+function raceWhy(paid: RunTickets, game: string, medal: Medal | null): string {
+  const parts = paid.lines.map((line) =>
+    line.reason === 'run' && medal && paid.reached
+      ? paid.paidBefore > 0
+        ? `${MEDAL_NAMES[medal]} brings today’s to ${paid.step}`
+        : `${line.amount} for ${MEDAL_NAMES[medal]}`
+      : lineWords(paid, line, game),
+  )
+  if (paid.capped > 0) parts.push('today’s run tickets are all in')
+  return parts.join(' · ')
+}
+
+/**
+ * A racing daily's run (components/RaceReport.tsx): the medal its day's best now holds, which the tickets are
+ * said by, and the season's pass when the run moved it, said in the same row rather than a card of its own.
+ */
+export type RaceTickets = { medal: Medal | null; season: SeasonRun | null }
+
+/** The season's pass in a racing daily's ticket row: "Season pass +3 · 10 more for Level 3". */
+function seasonWords(run: SeasonRun): string {
+  const added = run.added > 0 ? `Season pass +${run.added}` : 'Season pass'
+  if (run.nextAt == null) return `${added} · every level is yours`
+  return `${added} · ${Math.max(0, run.nextAt - run.earned).toLocaleString()} more for Level ${run.level + 1}`
+}
+
+/**
+ * The run's tickets, once the save has answered. A run that paid nothing is a quiet line, not a box (Ramsey,
+ * 2026-10-05: the report was "a lot"). A racing daily's (`race`) is one slim row under its medal ladder,
+ * the season's line in it ("B · Medal ladder", his pick that day).
+ */
+export function RunTicketsLine({ paid, game, race = null }: { paid: RunTickets; game: string; race?: RaceTickets | null }) {
   const { goal: goalId, balance } = useTickets()
   const goal = prizeById(goalId)
   // The store may not have caught up with this save yet; the save's own answer is the newer.
@@ -96,14 +124,15 @@ export function RunTicketsLine({ paid, game, medal = null }: { paid: RunTickets;
     const said =
       paid.capped > 0 || paid.paidBefore <= 0
         ? 'Today’s run tickets are all in. Tomorrow’s runs pay again.'
-        : medal
-          ? 'Today’s best already got them.'
+        : race
+          ? race.medal
+            ? `Today’s best already got ${MEDAL_NAMES[race.medal]}’s ${paid.paidBefore}.`
+            : 'Today’s best already got them.'
           : paid.next
             ? `Today’s best already got them. Next: ${nextWords(paid.next, game)}.`
             : 'You’ve got every ticket today’s best can pay.'
     return (
       <div className="run-tix-quiet">
-        {medal}
         <p className="run-tix-quiet__line">
           <span className="run-tix-quiet__icon">
             <TicketGlyph size={16} dim />
@@ -116,35 +145,62 @@ export function RunTicketsLine({ paid, game, medal = null }: { paid: RunTickets;
     )
   }
   const { stage } = payout
+  const count = paid.earned === 1 ? '1 ticket' : `${paid.earned} tickets`
+  const goalLink = goal ? (
+    <a className={race ? 'run-tix__sub' : 'run-tix__goal'} href={prizesHref()}>
+      <span className="tix-meter" aria-hidden="true">
+        <i ref={payout.meterRef} style={{ width: `${Math.min(100, (100 * total) / goal.price)}%` }} />
+      </span>
+      {toGo > 0 ? `${toGo.toLocaleString()} to ${goal.name}` : `${goal.name} is yours to trade for`}
+    </a>
+  ) : null
+  const sum = (
+    <span ref={payout.sumRef}>{total.toLocaleString()}</span>
+  )
   return (
     <div
-      className={`run-tix${stage === 'feeding' ? ' run-tix--feeding' : stage === 'out' ? ' run-tix--out' : ''}`}
+      className={`run-tix${race ? ' run-tix--slim' : ''}${stage === 'feeding' ? ' run-tix--feeding' : stage === 'out' ? ' run-tix--out' : ''}`}
       onClick={stage === 'feeding' ? payout.skip : undefined}
     >
-      <TicketStub amount={paid.earned} fan={paid.earned >= 15 ? 2 : paid.earned >= 8 ? 1 : 0} width={84} />
-      <div className="run-tix__body">
-        <div className="run-tix__top">
-          <span className="run-tix__n">{paid.earned === 1 ? '1 ticket' : `${paid.earned} tickets`}</span>
-          <span className="run-tix__total" aria-label={`${total.toLocaleString()} tickets in all`}>
-            <TicketGlyph size={16} />
-            <span ref={payout.sumRef}>{total.toLocaleString()}</span>
-          </span>
-        </div>
-        <span className="run-tix__why">{why(paid, game, !medal)}</span>
-        {medal}
-        {goal ? (
-          <a className="run-tix__goal" href={prizesHref()}>
-            <span className="tix-meter" aria-hidden="true">
-              <i ref={payout.meterRef} style={{ width: `${Math.min(100, (100 * total) / goal.price)}%` }} />
+      <TicketStub amount={paid.earned} fan={race ? 0 : paid.earned >= 15 ? 2 : paid.earned >= 8 ? 1 : 0} width={race ? 60 : 84} />
+      {race ? (
+        <div className="run-tix__body">
+          <div className="run-tix__top">
+            <span className="run-tix__said">
+              <b className="run-tix__n">{count}</b>
+              {paid.lines.length ? ` · ${raceWhy(paid, game, race.medal)}` : null}
             </span>
-            {toGo > 0 ? `${toGo.toLocaleString()} to ${goal.name}` : `${goal.name} is yours to trade for`}
-          </a>
-        ) : (
-          <a className="run-tix__goal" href={prizesHref()}>
-            Spend them at the prize counter ›
-          </a>
-        )}
-      </div>
+            <a className="run-tix__total" href={prizesHref()} aria-label={`${total.toLocaleString()} tickets in all: the prize counter`}>
+              <TicketGlyph size={16} />
+              {sum}
+            </a>
+          </div>
+          {/* The season's pass when the run moved it, or else the prize being saved for. */}
+          {race.season ? (
+            <a className="run-tix__sub" href={seasonHref()}>
+              {seasonWords(race.season)}
+            </a>
+          ) : (
+            goalLink
+          )}
+        </div>
+      ) : (
+        <div className="run-tix__body">
+          <div className="run-tix__top">
+            <span className="run-tix__n">{count}</span>
+            <span className="run-tix__total" aria-label={`${total.toLocaleString()} tickets in all`}>
+              <TicketGlyph size={16} />
+              {sum}
+            </span>
+          </div>
+          <span className="run-tix__why">{why(paid, game)}</span>
+          {goalLink ?? (
+            <a className="run-tix__goal" href={prizesHref()}>
+              Spend them at the prize counter ›
+            </a>
+          )}
+        </div>
+      )}
       {stage === 'feeding' ? (
         <div className="run-tix__feed" aria-hidden="true">
           <span className="run-tix__mouth">
@@ -265,11 +321,8 @@ function usePayout(earned: number, total: number, price: number | null) {
   return { stage, stripRef, slotRef, countRef, sumRef, meterRef, skip: () => skipRef.current() }
 }
 
-/**
- * Signed out: a saved run pays tickets too, and so does each run kept on the device for the sign-in
- * (lib/pendingRuns.ts). A racing daily's `medal` goes in the same box.
- */
-export function RunTicketsWaiting({ runs = 1, medal = null }: { runs?: number; medal?: ReactNode }) {
+/** Signed out: a saved run pays tickets too, and so does each run kept on the device for the sign-in (lib/pendingRuns.ts). */
+export function RunTicketsWaiting({ runs = 1 }: { runs?: number }) {
   return (
     <div className="run-tix run-tix--dim">
       <TicketStub label="?" dim width={78} />
@@ -278,7 +331,6 @@ export function RunTicketsWaiting({ runs = 1, medal = null }: { runs?: number; m
         <span className="run-tix__why">
           Sign in and {runs > 1 ? `these ${runs} runs pay` : 'this run pays'} tickets for the prize counter. They’re kept on your account.
         </span>
-        {medal}
       </div>
     </div>
   )

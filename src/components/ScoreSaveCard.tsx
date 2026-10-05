@@ -55,9 +55,10 @@ import { periodCopy } from '../lib/scoreboard'
 import { TODAY_DAILIES } from '../lib/today'
 import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
+import { isRaceGame, medalFor } from '../lib/raceMedals'
 import { PushAsk, StreakPushAsk } from './PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
-import { RunMedalLine } from './RaceMedal'
+import { RaceReport, raceSubWords } from './RaceReport'
 import { SeasonRunLine } from './season/SeasonRun'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { copyText } from './ShareBoardButton'
@@ -84,10 +85,12 @@ type ScoreSaveProps = {
   shareLine?: string
   /**
    * A racing daily's day: its blue's time in ms from the day's plan, and how the game says a time, for the
-   * run's medal (lib/raceMedals.ts) on the report.
+   * run's medals (lib/raceMedals.ts) on the report (RaceReport).
    */
   medalPace?: number
   medalFormat?: (seconds: number) => string
+  /** A racing daily's course, "Today's Cave #6": over the score when the run won nothing, else under it. */
+  kicker?: string
   /** A racing daily's tease of tomorrow's course (TomorrowTease), under the way on to the next daily. */
   tomorrow?: ReactNode
   /**
@@ -156,6 +159,7 @@ export function ScoreSaveCard({
   shareLine,
   medalPace,
   medalFormat,
+  kicker,
   tomorrow,
   owner,
   onDone,
@@ -698,22 +702,19 @@ export function ScoreSaveCard({
 
   const lines = pending ? null : (data?.lines ?? [])
   const heading = ribbon?.text ?? title
-  // A racing daily's medal for the run, saved or not: it's worked out from the run and the day's blue. The
-  // racing dailies keep a million less the ms (their score.ts). It goes in the run's ticket box (one box for
-  // both, saying what's next once), or on a line of its own for a run that gets no box.
-  const runMedal = (embedded: boolean) =>
-    medalPace && medalFormat && score > 0 ? (
-      <RunMedalLine
-        paceMs={medalPace}
-        ms={1_000_000 - score}
-        previousMs={previousBest && previousBest > 0 ? 1_000_000 - previousBest : null}
-        format={medalFormat}
-        embedded={embedded}
-      />
-    ) : null
   const paidTickets = phase === 'saved' ? (facts?.tickets ?? null) : null
   // The season's pass card only when the run moved it: what it added, or a level it reached.
   const seasonMoved = facts?.season && (facts.season.added > 0 || facts.season.levelUp.length > 0) ? facts.season : null
+  // A racing daily's run (RaceReport): its medals as a ladder, its tickets and season in one row, its place in
+  // another. Its best goes under the score, and its Standings line is left to the header. The racing dailies
+  // keep a million less the ms (their score.ts), and `previousBest` is today's best before this run.
+  const race =
+    isRaceGame(gameSlug) && medalPace && medalFormat && score > 0
+      ? { game: gameSlug, paceMs: medalPace, format: medalFormat, ms: 1_000_000 - score, previousMs: previousBest && previousBest > 0 ? 1_000_000 - previousBest : null }
+      : null
+  const raceSub = race ? raceSubWords(ribbon ? (kicker ?? title) : title, race.ms, race.previousMs, race.format) : null
+  const racePlace = race ? (data?.lines.find((line) => line.id === 'board') ?? null) : null
+  const raceLines = (all: typeof lines) => all?.filter((line) => line.id !== 'best' && line.id !== 'board' && line.id !== 'overall') ?? []
   // First in the standings takes the whole screen, once, with the report under it, in the standings' own period.
   const standingsPeriod = facts?.standingsPeriod ?? period
   const takeover =
@@ -732,10 +733,11 @@ export function ScoreSaveCard({
         onEscape={phase === 'needName' ? undefined : onDone}
         tier={tier}
         ribbon={ribbon}
-        eyebrow={title}
-        score={figure}
+        eyebrow={race && kicker ? kicker : title}
+        // A racing daily's time as its clock and its medals say it (59.00s); its boards keep the thousandths.
+        score={race ? race.format(race.ms / 1000) : figure}
         unit={unit}
-        sub={ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
+        sub={race ? raceSub : ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
         scoreTone={data?.scoreTone ?? (unsavedWin ? 'gold' : 'plain')}
         lines={
           unsaved
@@ -744,23 +746,39 @@ export function ScoreSaveCard({
               : []
             : phase === 'assisted' || phase === 'early' || phase === 'error'
               ? []
-              : lines
+              : race
+                ? raceLines(lines)
+                : lines
         }
         race={data?.race ?? null}
         tickets={
-          paidTickets ? (
+          race ? (
+            <RaceReport
+              {...race}
+              pending={pending}
+              tickets={
+                paidTickets ? (
+                  <RunTicketsLine
+                    paid={paidTickets}
+                    game={gameSlug}
+                    race={{ medal: medalFor(race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms)), season: seasonMoved }}
+                  />
+                ) : unsaved ? (
+                  <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
+                ) : null
+              }
+              levelUp={seasonMoved}
+              place={racePlace}
+              onBoard={() => leavePlayTo(boardsHref(gameSlug, period))}
+            />
+          ) : paidTickets ? (
             <>
-              <RunTicketsLine paid={paidTickets} game={gameSlug} medal={runMedal(true)} />
+              <RunTicketsLine paid={paidTickets} game={gameSlug} />
               {seasonMoved ? <SeasonRunLine run={seasonMoved} /> : null}
             </>
           ) : unsaved && score > 0 ? (
-            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} medal={runMedal(true)} />
-          ) : phase === 'checking' || phase === 'saving' ? (
-            // While the save answers, nothing: the medal comes with the box, rather than moving into it.
-            null
-          ) : (
-            runMedal(false)
-          )
+            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
+          ) : null
         }
         primary={primary}
         secondary={secondary}

@@ -34,27 +34,247 @@
   height: 1.15rem;
 }
 
-/* A racing daily's run on its report (ScoreSaveCard): the medal it won, or the day's, and the next one. */
-.run-medal {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  /* In from the report's sides, as its ticket box is (prizes.css .run-tix). */
-  margin: 0.4rem var(--report-pad-x, 1.75rem) 0.1rem;
-  font-size: 0.92rem;
-  font-weight: 650;
-  line-height: 1.35;
+/*
+ * A racing daily's run on its report (RaceReport.tsx, Ramsey's "B · Medal ladder"): the day's four medals in
+ * a row, each with its time and its tickets, those the day's best holds lit in their metal, a new one tagged,
+ * the next one dashed in the game's colour; then how far the next one is. In from the report's sides, as its
+ * other blocks are.
+ */
+.medal-ladder {
+  margin: 0.6rem var(--report-pad-x, 1.75rem) 0.2rem;
   text-align: left;
 }
 
-.run-medal--new span {
-  font-weight: 800;
+.medal-ladder__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
-/* In the run's ticket box, or above its quiet "no new tickets" line: the box's own room around it. */
-.run-medal--in {
-  margin: 0.3rem 0 0.1rem;
+.medal-ladder__title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.medal-ladder__blue {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.medal-ladder__steps {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.medal-ladder__step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.7rem 0.2rem 0.55rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.04);
+}
+
+.medal-ladder__step--won.medal-ladder__step--bronze {
+  border-color: rgba(208, 138, 76, 0.5);
+  background: rgba(208, 138, 76, 0.14);
+}
+
+.medal-ladder__step--won.medal-ladder__step--silver {
+  border-color: rgba(135, 148, 160, 0.6);
+  background: rgba(211, 219, 226, 0.14);
+}
+
+.medal-ladder__step--won.medal-ladder__step--gold {
+  border-color: rgba(168, 124, 12, 0.6);
+  background: rgba(244, 197, 62, 0.14);
+}
+
+.medal-ladder__step--won.medal-ladder__step--platinum {
+  border-color: rgba(62, 159, 179, 0.6);
+  background: rgba(185, 241, 251, 0.14);
+}
+
+.medal-ladder__step--next {
+  border: 1.5px dashed color-mix(in srgb, var(--panel-accent-ink) 70%, transparent);
+  background: color-mix(in srgb, var(--panel-accent) 8%, transparent);
+}
+
+.medal-ladder__step--next .race-medal--dim {
+  color: color-mix(in srgb, var(--panel-accent-ink) 90%, transparent);
+}
+
+.medal-ladder__name {
+  font-size: 0.8rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.medal-ladder__step--next .medal-ladder__name {
+  color: var(--panel-accent-ink);
+}
+
+.medal-ladder__time {
   font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.medal-ladder__step--later .medal-ladder__name,
+.medal-ladder__step--later .medal-ladder__time {
+  color: var(--muted);
+}
+
+.medal-ladder__tix {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.1rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: var(--ticket-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.medal-ladder__step--later .medal-ladder__tix {
+  opacity: 0.65;
+}
+
+.medal-ladder__tag {
+  position: absolute;
+  top: -0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.medal-ladder__tag--new {
+  background: var(--panel-accent);
+  color: var(--panel-on-accent);
+}
+
+.medal-ladder__tag--next {
+  border: 1px solid color-mix(in srgb, var(--panel-accent-ink) 70%, transparent);
+  background: color-mix(in srgb, var(--panel-accent) 18%, var(--surface));
+  color: var(--panel-accent-ink);
+}
+
+.medal-ladder__said {
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.medal-ladder__gap {
+  color: var(--panel-accent-ink);
+}
+
+/* The run's place on today's board, in one row under its tickets, the board a press away. */
+.race-place {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.55rem var(--report-pad-x, 1.75rem) 0.35rem;
+  text-align: left;
+}
+
+.race-place__at {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel-fill);
+  font-size: 1.02rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.race-place--accent .race-place__at {
+  background: var(--report-accent-soft);
+  color: var(--panel-accent-ink);
+}
+
+.race-place--gold .race-place__at {
+  background: var(--report-gold-soft);
+  color: var(--report-gold-ink);
+}
+
+.race-place__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.race-place__label {
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.race-place__detail {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.race-place__go {
+  flex: none;
+  padding: 0.5rem 0 0.5rem 0.4rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.race-place__go:hover,
+.race-place__go:focus-visible {
+  color: var(--ink);
+}
+
+/* While the save answers: the ticket row's and the place row's room, shimmering (report.css .report__ghost). */
+.race-rows-loading__tix {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 3.6rem;
+  box-sizing: border-box;
+  margin: 0.5rem var(--report-pad-x, 1.75rem) 0.4rem;
+  padding: 0 1rem 0 5rem;
+  border-radius: 1.05rem;
+  border: 1px dashed rgba(var(--ink-rgb), 0.14);
+}
+
+.race-place--ghost .race-place__at {
+  animation: report-shimmer 1.3s ease-in-out infinite;
 }
 
 /* Today's ticket: the racing dailies' medals and the day's goal, gold on all of them (TodayCard MedalGoal). */

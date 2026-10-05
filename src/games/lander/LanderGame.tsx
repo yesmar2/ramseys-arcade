@@ -1210,6 +1210,7 @@ function LanderDayGame({
                     shareLine={runShareLine(lander, run.time, pace, run.crashes)}
                     medalPace={paceMsOf(lander.pace)}
                     medalFormat={formatRun}
+                    kicker={`Today’s Cave #${lander.n}`}
                     tomorrow={<TomorrowCave day={lander.day} />}
                     owner={runOwner}
                     onSettled={() => sendGhost(run, playerName)}

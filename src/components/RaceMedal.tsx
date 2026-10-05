@@ -1,4 +1,5 @@
-import { MEDAL_NAMES, MEDALS, medalBeats, medalFor, medalTimes, nextMedal, type Medal } from '../lib/raceMedals'
+import { blueOf, MEDAL_NAMES, MEDAL_TICKETS, MEDALS, medalBeats, medalFor, medalTimes, nextMedal, raceGapWords, type Medal, type RaceGame } from '../lib/raceMedals'
+import { TicketGlyph } from './prizes/Ticket'
 import '../styles/raceMedals.css'
 
 /*
@@ -43,12 +44,12 @@ export function MedalRow({ paceMs, bestMs, format }: { paceMs: number; bestMs: n
   const held = medalFor(paceMs, bestMs)
   const next = nextMedal(paceMs, held)
   const won = held ? MEDALS.indexOf(held) : -1
-  const said = `${held ? `${MEDAL_NAMES[held]} won today. ` : ''}${next ? `Next, ${MEDAL_NAMES[next.medal]}: ${format(next.ms / 1000)}` : 'All four won today'}`
+  const said = `${held ? `${MEDAL_NAMES[held]} won today. ` : ''}${next ? `Next, ${MEDAL_NAMES[next.medal]}: ${format(next.ms / 1000)}` : 'That’s the top medal'}`
   // A tile on the start card: what's next in its label, the time it takes as its figure, the four under it.
   return (
     <div className="game-pause-meta__row race-medals-row" title={medalTitle(paceMs, format)}>
-      <span aria-hidden="true">{next ? `Next medal · ${MEDAL_NAMES[next.medal]}` : 'Medals'}</span>
-      <strong aria-label={said}>{next ? format(next.ms / 1000) : 'All four'}</strong>
+      <span aria-hidden="true">{next ? `Next medal · ${MEDAL_NAMES[next.medal]}` : 'Top medal won'}</span>
+      <strong aria-label={said}>{next ? format(next.ms / 1000) : 'Platinum'}</strong>
       <div className="race-medals__icons" aria-hidden="true">
         {MEDALS.map((m, i) => (
           <MedalIcon key={m} medal={m} dim={i > won} size={17} />
@@ -59,38 +60,74 @@ export function MedalRow({ paceMs, bestMs, format }: { paceMs: number; bestMs: n
 }
 
 /**
- * A racing daily's run on its report: the medal it won, and whether that's new today, or the day's medal so far,
- * and the time the next one takes. `previousMs` is the day's best before this run.
+ * A racing daily's run on its report: the day's four medals as a ladder, each with the time it takes and the
+ * tickets it pays, those the day's best holds lit, a new one marked, the next one waiting; and a line on how
+ * far the next one is. Ramsey picked it (2026-10-05, "B · Medal ladder") once the report's one medal line
+ * left him asking what the medals were. `previousMs` is the day's best before this run.
  */
-export function RunMedalLine({
+export function MedalLadder({
+  game,
   paceMs,
   ms,
   previousMs,
   format,
-  embedded = false,
 }: {
+  game: RaceGame
   paceMs: number
   ms: number
   previousMs: number | null
   format: (seconds: number) => string
-  /** Inside the run's ticket box or its quiet line (prizes/RunTickets.tsx), rather than a line of the report's own. */
-  embedded?: boolean
 }) {
-  const now = medalFor(paceMs, ms)
   const before = medalFor(paceMs, previousMs)
-  const fresh = now != null && medalBeats(now, before)
-  const best = fresh ? now : before
-  const next = nextMedal(paceMs, best)
-  const then = next ? `${MEDAL_NAMES[next.medal]} at ${format(next.ms / 1000)}` : null
-  let said: string
-  if (!best) said = `No medal yet. ${then}.`
-  else if (fresh) said = then ? `${MEDAL_NAMES[best]} medal! Next: ${then}.` : `${MEDAL_NAMES[best]} medal! That’s all four today.`
-  else said = then ? `${MEDAL_NAMES[best]} medal today. Next: ${then}.` : `${MEDAL_NAMES[best]} medal today: all four.`
+  const bestMs = previousMs != null && previousMs > 0 ? Math.min(ms, previousMs) : ms
+  const held = medalFor(paceMs, bestMs)
+  const fresh = held != null && medalBeats(held, before)
+  const next = nextMedal(paceMs, held)
+  const times = medalTimes(paceMs)
+  const won = held ? MEDALS.indexOf(held) : -1
+  const blue = blueOf(game)
+  const then = next ? `${MEDAL_NAMES[next.medal]} is ` : ''
+  const gap = next ? raceGapWords(bestMs - next.ms) : ''
+  const at = next ? format(next.ms / 1000) : ''
   return (
-    <p className={`run-medal${fresh ? ' run-medal--new' : ''}${embedded ? ' run-medal--in' : ''}`}>
-      <MedalIcon medal={best ?? 'bronze'} dim={!best} size={embedded ? 22 : 26} />
-      <span>{said}</span>
-    </p>
+    <section className="medal-ladder" aria-label="Today’s medals">
+      <div className="medal-ladder__head">
+        <span className="medal-ladder__title">Today’s medals</span>
+        <span className="medal-ladder__blue">
+          {blue.charAt(0).toUpperCase() + blue.slice(1)} {format(paceMs / 1000)}
+        </span>
+      </div>
+      <ol className="medal-ladder__steps">
+        {MEDALS.map((medal, i) => {
+          const state = i <= won ? 'won' : next?.medal === medal ? 'next' : 'later'
+          const tag = fresh && medal === held ? 'New' : state === 'next' ? 'Next' : null
+          return (
+            <li key={medal} className={`medal-ladder__step medal-ladder__step--${state} medal-ladder__step--${medal}`}>
+              {tag ? <span className={`medal-ladder__tag medal-ladder__tag--${tag.toLowerCase()}`}>{tag}</span> : null}
+              <MedalIcon medal={medal} dim={state !== 'won'} size={30} />
+              <span className="medal-ladder__name">{MEDAL_NAMES[medal]}</span>
+              <span className="medal-ladder__time">{format(times[medal] / 1000)}</span>
+              <span className="medal-ladder__tix">
+                <TicketGlyph size={16} dim={state === 'later'} />
+                {MEDAL_TICKETS[medal]}
+                <span className="visually-hidden"> tickets{state === 'won' ? ', won today' : state === 'next' ? ', next' : ''}</span>
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+      <p className="medal-ladder__said">
+        {!held ? 'No medal yet. ' : fresh ? `${MEDAL_NAMES[held]}! ` : `Your best has ${MEDAL_NAMES[held]}. `}
+        {next ? (
+          <>
+            {then}
+            <span className="medal-ladder__gap">{gap}</span> faster, at {at}.
+          </>
+        ) : (
+          'That’s the top medal.'
+        )}
+      </p>
+    </section>
   )
 }
 

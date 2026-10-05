@@ -1221,6 +1221,7 @@ function HotLapDay({
                     shareLine={lapShareLine(course, lap.time, pace.time)}
                     medalPace={paceMsOf(course.pace)}
                     medalFormat={formatLap}
+                    kicker={`Today’s Track #${course.n}`}
                     tomorrow={<TomorrowTrack day={course.day} />}
                     owner={lapOwner}
                     onSettled={() => sendGhost(lap, playerName)}
