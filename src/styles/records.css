@@ -573,13 +573,6 @@ html[data-theme="dark"] .rbk-book__value b {
   color: var(--muted);
 }
 
-/* A record's page with only your card in the row (you're on it, not holding it): the card takes the row. */
-@media (min-width: 56rem) {
-  .sb-you.sb-you--solo {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* Too narrow for the columns: what and how much on a line, then who holds it and where you stand. */
 @media (max-width: 56rem) {
   .rbk-group__cols {

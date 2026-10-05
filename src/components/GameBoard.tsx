@@ -605,14 +605,19 @@ function daysWords(entry: LeaderboardEntry): string {
 function PointsYou({ slug, copy, players, you }: { slug: LeaderboardGame; copy: PeriodCopy; players: BoardPlayer[]; you: string }) {
   const mine = you ? players.find((p) => p.name === you) : undefined
   if (!mine) {
+    // Across its row, the words and the button side by side (a past day's card wears the same parts).
     return (
-      <div className="sb-card sb-first">
-        <p className="sb-kicker">Get on it</p>
-        <h2 className="sb-first__title">Play today and you’re on it.</h2>
-        <p className="sb-first__text">
-          Every day you play adds to your {copy.noun ? `total ${copy.phrase}` : 'all-time total'}.
-        </p>
-        <PlayLink slug={slug} />
+      <div className="sb-card sb-you__card sb-first gb-first">
+        <div>
+          <p className="sb-kicker">Get on it</p>
+          <h2 className="sb-first__title">Play today and you’re on it.</h2>
+          <p className="sb-first__text">
+            Every day you play adds to your {copy.noun ? `total ${copy.phrase}` : 'all-time total'}.
+          </p>
+        </div>
+        <div className="sb-you__foot sb-you__foot--acts">
+          <PlayLink slug={slug} />
+        </div>
       </div>
     )
   }
@@ -772,13 +777,13 @@ export function GameBoard({ slug, period, day }: { slug: LeaderboardGame; period
  * Your place on a board while it loads: its two cards' shapes, held at the height they had last time, so the
  * board under them doesn't move when they come.
  */
-function YouWaiting({ held }: { held: ReturnType<typeof useHeldHeight<HTMLElement>> }) {
+function YouWaiting({ held, solo = false }: { held: ReturnType<typeof useHeldHeight<HTMLElement>>; solo?: boolean }) {
   // Last time this board had no row for you (you weren't on it): hold no room for one now.
   if (held.known && !held.style) return null
   const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
   return (
-    <section className="sb-you gb-you" aria-hidden="true" ref={held.ref} style={held.style}>
-      {[0, 1].map((i) => (
+    <section className={`sb-you gb-you${solo ? ' sb-you--solo' : ''}`} aria-hidden="true" ref={held.ref} style={held.style}>
+      {(solo ? [0] : [0, 1]).map((i) => (
         <div key={i} className="sb-card sb-you__card">
           <div className="sb-you__top">
             <span className="sb-you__kicker">{line('7rem')}</span>
@@ -815,13 +820,20 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
 
   // A daily's week, month or all time: its day points, one row a player.
   if (isDayPointsBoard(slug, period)) {
+    // One card across the row: your place, or the way onto a board that has players. An empty board says
+    // "Play today to be first" itself, so the row stays (empty) only to tell the next wait to hold no room.
+    const pointsCard = players.length > 0
     return (
       <div className="sb gb" style={style}>
         <Banner slug={slug} period={period} copy={copy} players={players} runs={data.total} loading={data.loading} group={group} />
-        {data.loading ? <YouWaiting held={youHeld} /> : null}
+        {data.loading ? <YouWaiting held={youHeld} solo /> : null}
         {!data.loading ? (
-          <section className="sb-you gb-you" aria-label="Your place on this board" ref={youHeld.ref}>
-            <PointsYou slug={slug} copy={copy} players={players} you={you} />
+          <section
+            className={`sb-you gb-you sb-you--solo${pointsCard ? '' : ' gb-you--none'}`}
+            aria-label={pointsCard ? 'Your place on this board' : undefined}
+            ref={youHeld.ref}
+          >
+            {pointsCard ? <PointsYou slug={slug} copy={copy} players={players} you={you} /> : null}
           </section>
         ) : null}
         <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>

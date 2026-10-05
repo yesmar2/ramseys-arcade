@@ -548,6 +548,12 @@ a.sb-row__link:focus-visible {
     gap: 1.25rem;
     align-items: stretch;
   }
+
+  /* One card in the row takes all of it: a record's page when you're on it but don't hold it, and a
+     daily's week, month or all time (day points have no second card). */
+  .sb-you.sb-you--solo {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sb-you__card {
@@ -660,6 +666,27 @@ a.sb-row__link:focus-visible {
   font-weight: 550;
   line-height: 1.55;
   color: var(--muted);
+}
+
+/* A daily's week, month or all time when you're not on it: one card across the row, the button at its end
+   (under the words, on a phone). No button where the game can't be played: no room left for one. */
+.gb-first .sb-you__foot:empty {
+  display: none;
+}
+
+@media (min-width: 56rem) {
+  .gb-first {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .gb-first .sb-you__foot {
+    flex: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
 }
 
 .sb-cta,
