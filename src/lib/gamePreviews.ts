@@ -40,11 +40,12 @@ export function hasGamePreview(slug: string) {
 }
 
 /**
- * Dailies that can play a given day in a tile, for the home page's Dailies row: the day's course rolled, the
- * day's cave flown. Kept apart from the games' previews above, which play the same game any day, so a page
- * that shows another day (a past day's board) never plays today's in its place.
+ * Dailies that can play a given day in a tile, for the home page's Dailies row: the day's track driven, the
+ * day's course rolled, the day's cave flown. Kept apart from the games' previews above, which play the same
+ * game any day, so a page that shows another day (a past day's board) never plays today's in its place.
  */
 export const DAY_PREVIEWS: Record<string, () => Promise<{ createDayPreview(day: string): GamePreviewRun }>> = {
+  hotlap: () => import('../games/hotlap/preview'),
   lander: () => import('../games/lander/preview'),
   marblerun: () => import('../games/marblerun/preview'),
 }
