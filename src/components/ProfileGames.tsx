@@ -4,12 +4,8 @@ import { gameBoardHref, gameHref, gamePlayHref, leaderboardHref } from '../hooks
 import type { GameBest } from '../hooks/useProfileBoards'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
-import {
-  RANKED_LEADERBOARD_GAMES,
-  type GlobalGamePlace,
-  type LeaderboardGame,
-  type LeaderboardPeriod,
-} from '../lib/leaderboard'
+import { standingsGames } from '../lib/allTime'
+import { type GlobalGamePlace, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { ordinal, periodWord } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
@@ -25,12 +21,15 @@ const PERIOD_SHORT: Record<LeaderboardPeriod, string> = {
   all: 'all time',
 }
 
+/** A daily's other period, beside the one shown: the month under the week, the week under the month. */
+type DailyOther = { period: 'weekly' | 'monthly'; place: GlobalGamePlace | null; loading: boolean }
+
 function Cabinet({
   game,
   period,
   place,
   allTime,
-  allTimeLoading,
+  other,
   best,
   bestsLoading,
 }: {
@@ -40,17 +39,17 @@ function Cabinet({
   place: GlobalGamePlace | null
   /** Where the player is on the game's all-time board, among players. */
   allTime: GlobalGamePlace | null
-  allTimeLoading: boolean
+  other: DailyOther
   best: GameBest | null
   bestsLoading: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
   const style = { '--tile-accent': accent } as CSSProperties
   const word = periodWord(period)
-  // A daily's all-time board is its day points, a row per player, so it says only the place (leaderboardFormat isDayPointsBoard).
+  // A daily has no all-time board (lib/allTime.ts): its line is its place in its other period instead.
   const daily = isDailyGame(game.slug)
-  // The player's place among players. A best run's rank counts every run, other players' second-bests too, so it reads lower.
-  const allPlace = allTime?.place ?? (daily ? (best?.rank ?? null) : null)
+  // The player's place among players.
+  const allPlace = daily ? null : (allTime?.place ?? null)
   const flag =
     allPlace == null
       ? null
@@ -65,8 +64,8 @@ function Cabinet({
     game.name,
     place ? `${ordinal(place.place)} ${word}` : `no run ${word}`,
     daily
-      ? allTimeShown != null
-        ? `${ordinal(allTimeShown)} all time`
+      ? other.place
+        ? `${ordinal(other.place.place)} ${periodWord(other.period)}`
         : null
       : best
         ? `best run ${formatLeaderboardScore(game.slug, best.score)}${allTimeShown != null ? `, ${ordinal(allTimeShown)} all time` : ''}`
@@ -110,19 +109,16 @@ function Cabinet({
             )}
           </span>
           {daily ? (
-            // All time is the place beside the name already.
-            period === 'all' ? null : (
-              <span className="pgame__line">
-                <span className="pgame__tag">ALL TIME</span>
-                {allPlace != null ? (
-                  <span className="pgame__figure">{ordinal(allPlace)}</span>
-                ) : allTimeLoading ? (
-                  <span className="skel-line pgame__skel" />
-                ) : (
-                  <span className="pgame__none">—</span>
-                )}
-              </span>
-            )
+            <span className="pgame__line">
+              <span className="pgame__tag">{other.period === 'monthly' ? 'MONTH' : 'WEEK'}</span>
+              {other.place ? (
+                <span className="pgame__figure">{ordinal(other.place.place)}</span>
+              ) : other.loading ? (
+                <span className="skel-line pgame__skel" />
+              ) : (
+                <span className="pgame__none">—</span>
+              )}
+            </span>
           ) : (
             <span className="pgame__line">
               <span className="pgame__tag">BEST</span>
@@ -147,9 +143,11 @@ function Cabinet({
 /**
  * The player's games as cabinets, like the home wall's: each one's screen,
  * their place on it this period, and their best run on it ever, with their
- * place all time. Games played before but not this period stand after them,
- * quieter. Every game never played goes in a panel underneath, as the next
- * ones to try.
+ * place all time. A daily has no board for all time (lib/allTime.ts): its
+ * cabinet has its place in its other period instead, and all time's games
+ * leave the dailies out. Games played before but not this period stand after
+ * them, quieter. Every game never played goes in a panel underneath, as the
+ * next ones to try.
  */
 export function ProfileGames({
   name,
@@ -157,6 +155,8 @@ export function ProfileGames({
   period,
   byGame,
   allTimeByGame,
+  weekByGame,
+  monthByGame,
   everPlayed,
   bests,
   quickest,
@@ -169,6 +169,9 @@ export function ProfileGames({
   byGame: Partial<Record<string, GlobalGamePlace>>
   /** All-time places, among players; null while they load. */
   allTimeByGame: Partial<Record<string, GlobalGamePlace>> | null
+  /** The week's and the month's places, for a daily's other period; null while they load. */
+  weekByGame: Partial<Record<string, GlobalGamePlace>> | null
+  monthByGame: Partial<Record<string, GlobalGamePlace>> | null
   /** Every game the player has ever placed on, from the all-time rank; null while it loads. */
   everPlayed: Set<string> | null
   bests: Record<string, GameBest> | null
@@ -179,7 +182,9 @@ export function ProfileGames({
 }) {
   const device = useDeviceType()
   const word = periodWord(period)
-  const games = RANKED_LEADERBOARD_GAMES.map((slug) => getGame(slug)).filter((g): g is Game => Boolean(g))
+  const games = standingsGames(period).map((slug) => getGame(slug)).filter((g): g is Game => Boolean(g))
+  const otherPeriod = period === 'monthly' ? 'weekly' : 'monthly'
+  const otherByGame = otherPeriod === 'monthly' ? monthByGame : weekByGame
   const placed = games
     .filter((g) => byGame[g.slug])
     .sort((a, b) => (byGame[b.slug]?.points ?? 0) - (byGame[a.slug]?.points ?? 0) || (byGame[a.slug]?.place ?? 0) - (byGame[b.slug]?.place ?? 0))
@@ -216,7 +221,7 @@ export function ProfileGames({
               period={period}
               place={byGame[g.slug] ?? null}
               allTime={allTimeByGame?.[g.slug] ?? null}
-              allTimeLoading={allTimeByGame === null}
+              other={{ period: otherPeriod, place: otherByGame?.[g.slug] ?? null, loading: otherByGame === null }}
               best={bests?.[g.slug] ?? null}
               bestsLoading={bestsLoading}
             />

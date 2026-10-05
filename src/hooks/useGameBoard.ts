@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isDailyGame } from '../data/games'
+import { standingsGames } from '../lib/allTime'
 import { bandLine, boardPlayer, youFromBoard, type BoardPlayer, type BoardYou } from '../lib/gameBoard'
 import {
   fetchGlobalRank,
@@ -7,7 +8,6 @@ import {
   getLeaderboard,
   getPlayerBoard,
   normalizePlayerName,
-  RANKED_LEADERBOARD_GAMES,
   type LeaderboardEntry,
   type LeaderboardGame,
   type LeaderboardPeriod,
@@ -128,8 +128,8 @@ export function useGameBoard(
         if (cancelled) return
         const leaders = new Map(summary.map((g) => [g.slug, distinctTop(g.entries, 1)[0] ?? null]))
         const places = mine?.byGame ?? {}
-        // Only a daily has a board for today, so today's way onward is the other dailies.
-        const others = RANKED_LEADERBOARD_GAMES.filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g))).map((g) => ({
+        // Only a daily has a board for today, so today's way onward is the other dailies; a daily has none for all time.
+        const others = standingsGames(period).filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g))).map((g) => ({
           slug: g,
           leader: leaders.get(g) ?? null,
           place: places[g]?.place ?? null,

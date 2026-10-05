@@ -17,6 +17,7 @@ import { useDailyBeyond, useHubBoard, useHubEvents, useHubHighScore, useHubRecor
 import { currentHref, dailyTabHref, homeHref, navigate, periodFromRoute, recordsHref, useRoute } from '../hooks/useHashRoute'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { boardPeriodFor } from '../lib/allTime'
 import { inkOn } from '../lib/color'
 import type { DailyTab } from '../lib/dailyWords'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -111,8 +112,9 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const boardSlug = isBoardGame(slug) ? slug : null
   // A daily just for fun has no board to ask for.
   const board = useHubBoard(ranked ? boardSlug : null, period, playerName, groupId)
-  // A daily's board is today's; where you stand beyond it follows the header's period.
-  const beyond = useDailyBeyond(daily && ranked ? boardSlug : null, playerName, groupId, storedPeriod)
+  // A daily's board is today's; where you stand beyond it follows the header's period, with its month for all
+  // time, which leaves the dailies out (lib/allTime.ts).
+  const beyond = useDailyBeyond(daily && ranked ? boardSlug : null, playerName, groupId, boardPeriodFor(slug, storedPeriod))
   const highScore = useHubHighScore(ranked ? boardSlug : null, groupId)
   // A daily's records are its Records tab, not a card of the book.
   const records = useHubRecords(daily ? '' : slug, playerName, groupId)

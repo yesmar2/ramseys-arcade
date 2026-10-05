@@ -6,10 +6,10 @@ import {
   fetchPlayerBests,
   getLeaderboard,
   normalizePlayerName,
-  RANKED_LEADERBOARD_GAMES,
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+import { standingsGames } from '../lib/allTime'
 import {
   distinctTop,
   fieldSizes,
@@ -116,8 +116,9 @@ export function useScoreboard(
         const sizes = fieldSizes([...standings.map((s) => s.byGame), you?.byGame])
         const runsBySlug = new Map(summary.map((g) => [g.slug, g.entries]))
 
+        // The boards the period's standings add up: all time's leave the dailies out (lib/allTime.ts).
         const boards = await Promise.all(
-          RANKED_LEADERBOARD_GAMES.map(async (slug): Promise<BoardLine> => {
+          standingsGames(period).map(async (slug): Promise<BoardLine> => {
             let runs: LeaderboardEntry[] = runsBySlug.get(slug) ?? []
             let asked = SUMMARY_RUNS
             let top = distinctTop(runs)

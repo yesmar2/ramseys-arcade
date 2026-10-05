@@ -42,7 +42,7 @@ type Hit =
 
 const CACHE_TTL = 60_000
 let eventsCache: { at: number; promise: Promise<TournamentSummary[]> } | null = null
-let playersCache: { at: number; promise: Promise<GlobalBoardEntry[]> } | null = null
+let playersCache: { at: number; promise: Promise<FoundPlayer[]> } | null = null
 
 function loadEvents(): Promise<TournamentSummary[]> {
   const now = Date.now()
@@ -52,13 +52,27 @@ function loadEvents(): Promise<TournamentSummary[]> {
   return promise
 }
 
-/** Everyone on the all-time board, which for now is everyone who has ever scored. */
-function loadPlayers(): Promise<GlobalBoardEntry[]> {
+/** A player search finds: their place, and in which standings. */
+type FoundPlayer = GlobalBoardEntry & { when: 'all time' | 'this month' }
+
+/**
+ * Everyone on the all-time standings, which for now is nearly everyone who has scored, and this month's for
+ * those who play only the dailies, which all time leaves out (lib/allTime.ts).
+ */
+function loadPlayers(): Promise<FoundPlayer[]> {
   const now = Date.now()
   if (playersCache && now - playersCache.at < CACHE_TTL) return playersCache.promise
-  const promise = fetchGlobalBoard(500, 'all')
-    .then((board) => board.entries)
-    .catch(() => [] as GlobalBoardEntry[])
+  const standings = (period: 'all' | 'monthly') =>
+    fetchGlobalBoard(500, period)
+      .then((board) => board.entries)
+      .catch(() => [] as GlobalBoardEntry[])
+  const promise = Promise.all([standings('all'), standings('monthly')]).then(([all, month]) => {
+    const seen = new Set(all.map((p) => p.name))
+    return [
+      ...all.map((p): FoundPlayer => ({ ...p, when: 'all time' })),
+      ...month.filter((p) => !seen.has(p.name)).map((p): FoundPlayer => ({ ...p, when: 'this month' })),
+    ]
+  })
   playersCache = { at: now, promise }
   return promise
 }
@@ -78,7 +92,7 @@ export function SiteSearch() {
   const [focused, setFocused] = useState(false)
   const [active, setActive] = useState(0)
   const [events, setEvents] = useState<TournamentSummary[] | null>(null)
-  const [players, setPlayers] = useState<GlobalBoardEntry[] | null>(null)
+  const [players, setPlayers] = useState<FoundPlayer[] | null>(null)
   const [player, setPlayer] = useState<string | null>(null)
   const ownTag = normalizePlayerName(usePlayerName())
   const rootRef = useRef<HTMLDivElement>(null)
@@ -188,7 +202,7 @@ export function SiteSearch() {
           key: `player:${p.name}`,
           href: rankHref(p.name),
           label: p.name,
-          hint: `Player · #${p.rank} all time`,
+          hint: `Player · #${p.rank} ${p.when}`,
         })
       }
     }

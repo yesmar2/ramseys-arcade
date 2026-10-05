@@ -9,9 +9,9 @@ import { navigate, plusHref, rankHref } from '../hooks/useHashRoute'
 import { usePlusMember } from '../lib/plus'
 import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
+import { standingsGames } from '../lib/allTime'
 import {
   PERIOD_LABELS,
-  RANKED_LEADERBOARD_GAMES,
   VISIBLE_LEADERBOARD_PERIODS,
   type GlobalRankResult,
   type LeaderboardPeriod,
@@ -221,13 +221,15 @@ function standing({
   if (rank == null) {
     const other = VISIBLE_LEADERBOARD_PERIODS.find((p) => p !== period && ranks[p]?.rank != null)
     const otherRank = other ? ranks[other]?.rank : null
-    // All time is the widest board: nothing there means nothing anywhere.
-    const never = period === 'all' || (ranks.all != null && ranks.all.rank == null)
+    // Nowhere in any period. All time isn't the widest: a daily counts toward the week and the month only (lib/allTime.ts).
+    const never = VISIBLE_LEADERBOARD_PERIODS.every((p) => p === period || (ranks[p] != null && ranks[p]?.rank == null))
     return {
       head: never ? 'Not on the boards yet' : `Not on the board ${word} yet`,
       sub:
         other && otherRank != null
-          ? `#${otherRank} ${periodWord(other)}. One run ${word} puts ${you} on this one.`
+          ? period === 'all'
+            ? `#${otherRank} ${periodWord(other)}. Dailies don’t count all time: one run on another game puts ${you} on it.`
+            : `#${otherRank} ${periodWord(other)}. One run ${word} puts ${you} on this one.`
           : `One run on any ranked game puts ${you} on the boards.`,
     }
   }
@@ -463,7 +465,7 @@ export function PlayerCard({
             <Skel w="12ch" />
           ) : (
             <>
-              Played <b>{placed}</b> of {RANKED_LEADERBOARD_GAMES.length} games<span className="pcard__fact-when"> {word}</span>
+              Played <b>{placed}</b> of {standingsGames(period).length} games<span className="pcard__fact-when"> {word}</span>
             </>
           )}
         </span>

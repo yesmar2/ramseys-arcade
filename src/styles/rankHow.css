@@ -704,16 +704,11 @@
   animation: lb-skel-shine 1.15s ease-in-out infinite;
 }
 
-.rh-daily__count,
 .rh-daily__note {
   margin: 0;
   font-size: 1rem;
   line-height: 1.5;
   color: var(--rh-soft);
-}
-
-.rh-daily__count b {
-  color: var(--ink);
 }
 
 .rh-down {
@@ -802,8 +797,7 @@
   color: var(--muted);
 }
 
-.rh-fold,
-.rh-more {
+.rh-fold {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -821,9 +815,7 @@
 }
 
 .rh-fold:hover,
-.rh-fold:focus-visible,
-.rh-more:hover,
-.rh-more:focus-visible {
+.rh-fold:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 

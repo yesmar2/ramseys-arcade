@@ -15,6 +15,7 @@ import {
   replyMessage,
   useActiveChallenge,
 } from '../lib/challenges'
+import { boardPeriodFor } from '../lib/allTime'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { beforeLaunch, launchDayOf } from '../lib/earlyAccess'
 import { exitFullscreen } from '../lib/fullscreen'
@@ -179,10 +180,12 @@ export function ScoreSaveCard({
   // A daily just for fun places nobody (data/games.ts Game.ranked): its save is today's result, on no board.
   const ranked = isRankedGame(gameSlug)
   const saveWords = ranked ? 'goes on the boards' : 'is saved as today’s result'
-  // The Standings line keeps the header's period, so it never says "today" beside the header's weekly rank.
+  // The Standings line keeps the header's period, so it never says "today" beside the header's weekly rank, but a
+  // daily's run can't move all time, which leaves the dailies out: its month instead (lib/allTime.ts).
   // Read as the save goes out, as the run's other extras are.
-  const standingsPeriodRef = useRef(defaultPeriod)
-  standingsPeriodRef.current = defaultPeriod
+  const movesStandings = boardPeriodFor(gameSlug, defaultPeriod)
+  const standingsPeriodRef = useRef(movesStandings)
+  standingsPeriodRef.current = movesStandings
   const [phase, setPhase] = useState<Phase>('checking')
   const [error, setError] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState('')

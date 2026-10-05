@@ -105,6 +105,20 @@ function FunDailiesLine() {
   ) : null
 }
 
+/**
+ * Why the dailies that rank aren't in all time (lib/allTime.ts): said wherever all time's games are counted, or the
+ * dailies are explained.
+ */
+function AllTimeDailiesLine() {
+  return ALL_DAILIES.length ? (
+    <p className="rh-step__p">
+      {andList(ALL_DAILIES.map(gameName))} {ALL_DAILIES.length === 1 ? 'counts' : 'count'} toward the week and the month,
+      not all time: added up since {ALL_DAILIES.length === 1 ? 'it' : 'they'} began, {ALL_DAILIES.length === 1 ? 'its' : 'their'}{' '}
+      days would mostly count how long someone has been playing.
+    </p>
+  ) : null
+}
+
 const STEP_IDS = { games: 'rh-games', pays: 'rh-pays', adds: 'rh-adds', dailies: 'rh-dailies', up: 'rh-up' } as const
 
 function stepTitles(who: Who) {
@@ -279,7 +293,7 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
       <p className="rh-step__p">
         Only {whose(who)} best run on each game counts. {on}{' '}
         <b>
-          {n.toLocaleString()} of the {boards.toLocaleString()} ranked games
+          {n.toLocaleString()} of the {boards.toLocaleString()} {words.noun ? 'ranked games' : 'games that rank all time'}
         </b>
         .
         {retired.length
@@ -293,6 +307,7 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
             ? `The other one doesn’t count against ${youOf(who)}. It just hasn’t added anything yet.`
             : `The other ${rest.toLocaleString()} don’t count against ${youOf(who)}. They just haven’t added anything yet.`}
       </p>
+      {words.noun ? null : <AllTimeDailiesLine />}
       <FunDailiesLine />
     </Step>
   )
@@ -600,9 +615,6 @@ function DayFlow({ work, who, words }: { work: DailyWork; who: Who; words: Perio
   )
 }
 
-/** Past this many days, all time's table shows the newest and a Show all. */
-const DAYS_SHOWN = 10
-
 /** One daily's days as a table: each day's result, place, players and points, and what they add up to. */
 function DayTable({
   work,
@@ -617,25 +629,22 @@ function DayTable({
   who: Who
   words: PeriodWords
 }) {
-  const [everyDay, setEveryDay] = useState(false)
   const played = work.played ?? []
   const name = gameName(work.slug)
-  // The week's every day; the month's played days and today; all time's played days, newest first.
+  // The week's every day; the month's played days and today. A daily has no all time (lib/allTime.ts).
   let rows: DayMark[]
   if (period === 'weekly') {
     rows = dayMarks(work.slug, played, period, today)
-  } else if (period === 'monthly') {
+  } else {
     rows = played.map((d): DayMark => ({ day: d.day, state: 'played', played: d }))
     if (!played.some((d) => d.day === today)) rows.push({ day: today, state: 'today' })
-  } else {
-    rows = played.map((d): DayMark => ({ day: d.day, state: 'played', played: d })).reverse()
   }
-  const capped = period === 'all' && !everyDay && rows.length > DAYS_SHOWN
-  const shown = capped ? rows.slice(0, DAYS_SHOWN) : rows
   const when =
-    period === 'weekly' ? `week of ${monthDay(weekStart(today))}` : period === 'monthly' ? new Date(`${today}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' }) : 'all time'
+    period === 'weekly'
+      ? `week of ${monthDay(weekStart(today))}`
+      : new Date(`${today}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
   const dayLabel = (day: string) => (period === 'weekly' ? weekdayWord(day) : `${weekdayWord(day)}, ${monthDay(day)}`)
-  const board = words.noun ? `${name}’s ${words.noun}` : `${name}’s all-time board`
+  const board = `${name}’s ${words.noun ?? 'month'}`
   const id = `rh-dt-${work.slug}`
   return (
     <section className="rh-daytable" aria-labelledby={id} style={{ '--g': gameAccent(work.slug) } as CSSProperties}>
@@ -660,7 +669,7 @@ function DayTable({
             </tr>
           </thead>
           <tbody>
-            {shown.map((m) => {
+            {rows.map((m) => {
               const you = m.played?.you
               return (
                 <tr key={m.day} className={`rh-row--${m.state}`}>
@@ -710,11 +719,6 @@ function DayTable({
           </tfoot>
         </table>
       </div>
-      {capped ? (
-        <button type="button" className="rh-more" onClick={() => setEveryDay(true)}>
-          Show all {rows.length.toLocaleString()} days
-        </button>
-      ) : null}
       {work.total != null ? (
         <p className="rh-sumline">
           <b>
@@ -766,14 +770,6 @@ function Dailies({
         <span className="rh-daily__skel" aria-hidden="true" />
       ) : work.failed ? (
         <p className="rh-daily__note">{name}’s days didn’t load. Its total is still right below.</p>
-      ) : period === 'all' ? (
-        <p className="rh-daily__count">
-          {who.self ? 'You’ve' : `${who.name} has`} played {name} on{' '}
-          <b>
-            {(work.played?.length ?? 0).toLocaleString()} {work.played?.length === 1 ? 'day' : 'days'}
-          </b>
-          {work.played?.[0] ? `, the first on ${monthDay(work.played[0].day)}` : ''}.
-        </p>
       ) : (
         <DayCircles work={work} period={period} today={today} who={who} />
       )}
@@ -828,9 +824,28 @@ function DailiesStep({
   /** The header's group, when there is one: each day's place is still out of everyone who played it. */
   group: string | null
 }) {
-  const up = words.noun ? `${whose(who)} ${words.noun}` : 'a total'
-  const ranked = words.noun ? `the ${words.noun}` : 'the total'
-  const climb = words.noun ? `its ${words.noun}` : 'its all-time board'
+  const funLine = FUN_DAILIES.length ? (
+    <p className="rh-step__p">
+      {andList(FUN_DAILIES.map(gameName))} go day by day too, but their answer is the same for everyone, so they
+      give no points and have no boards.
+    </p>
+  ) : null
+  // All time leaves the dailies out (lib/allTime.ts): none of their days to work out, only why.
+  if (!words.noun) {
+    return (
+      <Step id={STEP_IDS.dailies} n="4" title={stepTitles(who).dailies}>
+        <p className="rh-step__p">
+          Each day’s board pays its players the same way, and the days add up to {whose(who)} week and month, each
+          ranked like any other game. Only each day’s own run counts: playing a past day again never does.
+        </p>
+        <AllTimeDailiesLine />
+        {funLine}
+      </Step>
+    )
+  }
+  const up = `${whose(who)} ${words.noun}`
+  const ranked = `the ${words.noun}`
+  const climb = `its ${words.noun}`
   return (
     <Step
       id={STEP_IDS.dailies}
@@ -863,12 +878,7 @@ function DailiesStep({
         So a daily still pays at most 100 toward {whose(who)} rank, however many days {youOf(who)}{' '}
         {who.self ? 'play' : 'plays'}. Playing more days is how {youOf(who)} {who.self ? 'climb' : 'climbs'} {climb}.
       </p>
-      {FUN_DAILIES.length ? (
-        <p className="rh-step__p">
-          {andList(FUN_DAILIES.map(gameName))} go day by day too, but their answer is the same for everyone, so they
-          give no points and have no boards.
-        </p>
-      ) : null}
+      {funLine}
     </Step>
   )
 }
@@ -990,8 +1000,9 @@ function waysUp({
     }
   }
 
+  // A daily counts toward the week and the month, never all time (lib/allTime.ts): all time has no daily way up.
   const dailies = Object.keys(byGame).filter((slug) => isDailyGame(slug) && onWall(slug))
-  if (dailies.length) {
+  if (words.noun && dailies.length) {
     const names = andList(dailies.map(gameName))
     const open = playedToday ? dailies.filter((slug) => !playedToday[slug]) : []
     const openLine = !playedToday
@@ -1006,7 +1017,7 @@ function waysUp({
       .filter((slug) => byGame[slug]!.place > 1 && byGame[slug]!.total)
       .sort((a, b) => byGame[a]!.total! - byGame[b]!.total!)[0]
     const worthLine = climbing
-      ? ` Each place on ${gameName(climbing)}’s ${words.noun ?? 'all-time board'} is worth about ${placeWorth(byGame[climbing]!.total!)}.`
+      ? ` Each place on ${gameName(climbing)}’s ${words.noun} is worth about ${placeWorth(byGame[climbing]!.total!)}.`
       : ''
     ways.daily = {
       key: 'daily',
@@ -1014,10 +1025,10 @@ function waysUp({
       big: '+1 day',
       small: 'every day',
       title: 'Keep up the dailies',
-      text: `Every day of ${names} adds to ${whose(who)} ${words.noun ?? 'total'}.${openLine}${worthLine}`,
+      text: `Every day of ${names} adds to ${whose(who)} ${words.noun}.${openLine}${worthLine}`,
       href: who.self && open[0] ? gamePlayHref(open[0]) : undefined,
     }
-  } else {
+  } else if (words.noun) {
     const listed = ALL_DAILIES
     if (listed[0]) {
       ways.daily = {
@@ -1027,7 +1038,7 @@ function waysUp({
         small: 'new every day',
         title: 'Play a daily',
         text: me
-          ? `${andList(listed.map(gameName))} are new every day, and each day ${you} ${who.self ? 'play' : 'plays'} adds to ${whose(who)} ${words.noun ?? 'total'}.`
+          ? `${andList(listed.map(gameName))} are new every day, and each day ${you} ${who.self ? 'play' : 'plays'} adds to ${whose(who)} ${words.noun}.`
           : `${andList(listed.map(gameName))} are new every day. One day on any of them puts ${you} on the boards.`,
         href: href(listed[0]),
       }
@@ -1270,9 +1281,9 @@ function FinePrint({ words, tie }: { words: PeriodWords; tie?: string | null }) 
         </div>
         <p>
           <b>100 × (players − your place + 1) ÷ players</b>, rounded, never below 1. Your rank is the sum over every ranked
-          game {words.noun ? words.phrase : 'you’ve played'}.
+          game {words.noun ? words.phrase : 'you’ve played, but the dailies'}.
         </p>
-        <p>The dailies score each day this way, then add the days up.</p>
+        <p>The dailies score each day this way, then add up the week’s days and the month’s. They don’t count all time.</p>
         <p>Events work the same way on a small scale: 1st on a game pays 10, last pays 1.</p>
       </section>
       <section className="rh-card rh-note" aria-labelledby="rh-ties-h">
@@ -1284,7 +1295,7 @@ function FinePrint({ words, tie }: { words: PeriodWords; tie?: string | null }) 
           <b>Your rank:</b> more games played, then the tag first in the alphabet.{tie ? ` ${tie}` : ''}
         </p>
         <p>
-          <b>A game’s board, a daily’s {words.noun ?? 'days added up'}, records:</b> whoever got there first.
+          <b>A game’s board{words.noun ? `, a daily’s ${words.noun}` : ''}, records:</b> whoever got there first.
         </p>
       </section>
     </div>
@@ -1301,7 +1312,7 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
       <Step id={STEP_IDS.games} n="1" title={stepTitles(who).games}>
         <p className="rh-step__p">
           Only your best run on each game counts, and each ranked game has its own board for the week, the month and all
-          time.
+          time. A daily’s are for the week and the month only.
         </p>
         <p className="rh-step__p">A game you haven’t played doesn’t count against you. It just hasn’t added anything yet.</p>
         <FunDailiesLine />
@@ -1324,12 +1335,14 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
       </Step>
       <Step id={STEP_IDS.dailies} n="4" title={stepTitles(who).dailies}>
         <p className="rh-step__p">
-          Each day’s board pays its players the same way. The days add up to your {words.noun ?? 'total'}, and then{' '}
-          <b>that is ranked like any other game</b>. Only each day’s own run counts: playing a past day again never does.
+          Each day’s board pays its players the same way. The days add up to your {words.noun ?? 'week and your month'}, and
+          then <b>{words.noun ? 'that is' : 'each is'} ranked like any other game</b>. Only each day’s own run counts:
+          playing a past day again never does.
         </p>
         <p className="rh-step__p">
           So a daily still pays at most 100 toward your rank, however many days you play. Playing more days is how you climb.
         </p>
+        <AllTimeDailiesLine />
       </Step>
     </>
   )
@@ -1439,7 +1452,7 @@ function PlayerHow({
         <Hero
           kicker={kicker}
           title={self ? `Not on the boards${when} yet` : `${name} isn’t on the boards${when} yet`}
-          lede={`A rank adds up the places on every ranked game played${when}. One run on any of them puts ${youOf(who)} on the boards${groupName ? ` ${where}` : ''}.`}
+          lede={`A rank adds up the places on every ranked game played${when}${words.noun ? '' : ', but the dailies'}. One run on any of them puts ${youOf(who)} on the boards${groupName ? ` ${where}` : ''}.`}
           tabs={tabs}
           words
         />

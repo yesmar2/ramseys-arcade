@@ -436,7 +436,8 @@ export function pageMeta(route: Route): PageMeta {
       return {
         ...meta,
         title: titled(`${gameName(route.game)} leaderboard`),
-        description: `Top ${gameName(route.game)} scores on ${APP_NAME}. Daily, weekly, monthly and all-time.`,
+        // A daily's boards are the day's, the week's and the month's (lib/allTime.ts); the others', the week's on.
+        description: `Top ${gameName(route.game)} scores on ${APP_NAME}. ${isDailyGame(route.game) ? 'Daily, weekly and monthly' : 'Weekly, monthly and all-time'}.`,
       }
     }
     case 'recordsIndex':

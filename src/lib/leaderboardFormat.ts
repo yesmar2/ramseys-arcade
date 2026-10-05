@@ -59,9 +59,10 @@ export function formatPercentGap(a: number, b: number): string {
 }
 
 /**
- * Whether a board is a daily's day points. A daily game's board for a day is that day's runs; for longer
- * (the week, the month, all time) it ranks its players by the points each day's board paid them by place
- * (the API's store.ts dayPointsBoard), since one day's track, hole or scenes can't be weighed against another's.
+ * Whether a board is a daily's day points. A daily game's board for a day is that day's runs; for the week
+ * or the month it ranks its players by the points each day's board paid them by place (the API's store.ts
+ * dayPointsBoard), since one day's track, hole or scenes can't be weighed against another's. It has no board
+ * for all time (lib/allTime.ts).
  */
 export function isDayPointsBoard(slug: string, period: string): boolean {
   return period !== 'daily' && isDailyGame(slug) && isRankedGame(slug)

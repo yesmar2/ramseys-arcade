@@ -21,8 +21,8 @@ export type BoardLeader = {
 
 function topOf(games: GameBoardPreview[], period: LeaderboardPeriod, into: Record<string, BoardLeader>) {
   for (const game of games) {
-    // A daily's table is today's runs: its week, month and all time are day points, not runs. A daily just
-    // for fun has no table: it names nobody (data/games.ts Game.ranked).
+    // A daily's table is today's runs: its week and month are day points, not runs, and it has no all time. A
+    // daily just for fun has no table: it names nobody (data/games.ts Game.ranked).
     if (isDailyGame(game.slug) !== (period === 'daily') || !isRankedGame(game.slug)) continue
     const entry = game.entries[0]
     if (entry && !into[game.slug]) into[game.slug] = { entry, entries: game.entries.slice(0, TABLE), period }

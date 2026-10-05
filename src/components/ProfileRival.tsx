@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { gameHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { neighboursOf, rivalOf } from '../hooks/useProfileBoards'
+import { standingsGames } from '../lib/allTime'
 import { RANKED_LEADERBOARD_GAMES, type GlobalRankResult, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   andList,
@@ -112,7 +113,8 @@ export function ProfileRival({
   let climbSlug: string | null = null
   if (!visiting && gap >= 0) {
     const climb = cheapestClimb(you.byGame, gap)
-    const unplayed = RANKED_LEADERBOARD_GAMES.some((slug) => !you.byGame[slug])
+    // A game not played yet that would count: all time's leave the dailies out (lib/allTime.ts).
+    const unplayed = standingsGames(period).some((slug) => !you.byGame[slug])
     const middling = unplayed && gap < MIDDLING
     const passWord = second ? 'pass' : 'passes'
     if (climb) {

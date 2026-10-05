@@ -117,7 +117,10 @@ function Standings({
         </div>
       ) : (
         <p className="hb-note">
-          {you ? 'Post a score in any game and you’re on this list.' : 'Sign in and your scores count here.'}
+          {/* All time leaves the dailies out (lib/allTime.ts). */}
+          {you
+            ? `Post a score in any ranked game${period === 'all' ? ' but the dailies' : ''} and you’re on this list.`
+            : 'Sign in and your scores count here.'}
         </p>
       )}
     </article>

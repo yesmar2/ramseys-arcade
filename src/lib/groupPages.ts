@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react'
 import { getGame, isGameListed } from '../data/games'
+import { ALL_TIME_GAMES } from './allTime'
 import { inkOn } from './color'
 import {
   api,
   normalizePlayerName,
-  RANKED_LEADERBOARD_GAMES,
   type GlobalBoardEntry,
   type LeaderboardEntry,
   type LeaderboardPeriod,
@@ -71,12 +71,12 @@ export async function fetchGroupTable(groupId: string, period: GroupPeriod): Pro
 
 export type GroupRecord = { slug: string; best: LeaderboardEntry | null }
 
-/** The best run anyone in the group has on each game the boards show, all time. */
+/** The best run anyone in the group has on each game the boards show, all time: a daily has no all-time board (lib/allTime.ts). */
 export async function fetchGroupRecords(groupId: string): Promise<GroupRecord[]> {
   const qs = scoped(groupId, { period: 'all', limit: '1' })
   const data = await api<{ games?: { slug: string; entries?: LeaderboardEntry[] }[] }>(`/leaderboards/summary?${qs}`)
   const bySlug = new Map((data.games ?? []).map((g) => [g.slug, g.entries?.[0] ?? null]))
-  return RANKED_LEADERBOARD_GAMES.map((slug) => ({ slug, best: bySlug.get(slug) ?? null }))
+  return ALL_TIME_GAMES.map((slug) => ({ slug, best: bySlug.get(slug) ?? null }))
 }
 
 /* ---------- what the numbers say ---------- */
@@ -117,7 +117,8 @@ export function youLine(entries: GlobalBoardEntry[], me: string, period: GroupPe
   if (!name) return null
   const i = entries.findIndex((e) => normalizePlayerName(e.name) === name)
   if (i < 0) {
-    return period === 'all' ? 'One run on any ranked game puts you on the table.' : `You’re not on the table ${periodWords(period) === 'this week' ? 'this week' : `for ${periodWords(period)}`} yet: one run puts you on it.`
+    // All time leaves the dailies out (lib/allTime.ts).
+    return period === 'all' ? 'One run on any ranked game but the dailies puts you on the table.' : `You’re not on the table ${periodWords(period) === 'this week' ? 'this week' : `for ${periodWords(period)}`} yet: one run puts you on it.`
   }
   if (afterLead && i <= 1) return null
   const mine = entries[i]!

@@ -102,6 +102,8 @@ function possessive(name: string): string {
 
 const GAME_PAGE_LESSON = 'Every game has a page of its own: its board, its record book, the events it’s in and how to play.'
 const BOARD_LESSON = 'Every game has a board of its own: each player’s best run this week, this month and all time.'
+const DAILY_BOARD_LESSON =
+  'A daily’s board has today’s runs, and each player’s days added up for the week and the month: the better each day, the more it adds.'
 const BOOK_LESSON = 'Record books keep feats inside a game, like the fastest wave cleared or the longest chain.'
 const DAILY_RECORDS_LESSON =
   'A daily’s Records tab keeps the records made over many days, like the most days played in a row and the most days won.'
@@ -222,13 +224,17 @@ function gameAnchors(): HuntAnchor[] {
     } else if (boards.includes(slug)) {
       const board = `on ${possessive(game.name)} board`
       const boardHref = gameBoardHref(slug as LeaderboardGame, 'weekly')
+      // A daily's boards are the day's, the week's and the month's: none for all time (lib/allTime.ts).
+      const boardLesson = game.daily ? DAILY_BOARD_LESSON : BOARD_LESSON
       out.push(
         {
           id: `g-board-${slug}`,
           href,
           page,
           thing: 'its board',
-          lesson: 'Every game’s page has its board on it: the best runs this week, this month or all time.',
+          lesson: game.daily
+            ? 'A daily’s page has today’s board on it: everyone’s best run of the day.'
+            : 'Every game’s page has its board on it: the best runs this week, this month or all time.',
         },
         {
           id: `g-stand-${slug}`,
@@ -237,8 +243,8 @@ function gameAnchors(): HuntAnchor[] {
           thing: 'the card about where you stand',
           lesson: 'Every game’s page says where you stand on its board, or where a first run would land.',
         },
-        { id: `b-head-${slug}`, href: boardHref, page: board, thing: 'the panel at the top', lesson: BOARD_LESSON },
-        { id: `b-board-${slug}`, href: boardHref, page: board, thing: 'the table', lesson: BOARD_LESSON },
+        { id: `b-head-${slug}`, href: boardHref, page: board, thing: 'the panel at the top', lesson: boardLesson },
+        { id: `b-board-${slug}`, href: boardHref, page: board, thing: 'the table', lesson: boardLesson },
       )
     }
     // A daily has no book of its own: its records are its page's Records tab. Same id, same place in

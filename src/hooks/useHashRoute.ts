@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isDailyGame } from '../data/games'
+import { boardPeriodFor } from '../lib/allTime'
 import {
   DEFAULT_PERIOD_EVENT,
   defaultPeriod,
@@ -140,12 +141,12 @@ export function leaderboardHref(period: LeaderboardPeriod = defaultPeriod()) {
   return `/leaderboards/${period}`
 }
 
-/** Full board for one game. */
+/** Full board for one game. A daily has no board for all time: asked for it, its month's (lib/allTime.ts). */
 export function gameBoardHref(
   game: LeaderboardGame,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  return `/leaderboards/${encodeURIComponent(game)}/${period}`
+  return `/leaderboards/${encodeURIComponent(game)}/${boardPeriodFor(game, period)}`
 }
 
 /**
@@ -542,9 +543,10 @@ export function hrefForRoute(
 export function periodFromRoute(route: Route): LeaderboardPeriod | undefined {
   switch (route.name) {
     case 'gameLeaderboard':
-      // A daily's board has a day of its own, today's, beside its day points (leaderboardFormat isDayPointsBoard).
+      // A daily's board has a day of its own, today's, beside its day points (leaderboardFormat isDayPointsBoard),
+      // and none for all time: an old link to that is its month's (lib/allTime.ts).
       if (route.period === 'daily' && isDailyGame(route.game)) return 'daily'
-      return route.period ? coerceVisiblePeriod(route.period) : undefined
+      return route.period ? boardPeriodFor(route.game, coerceVisiblePeriod(route.period)) : undefined
     case 'game':
     case 'leaderboards':
     case 'rank':
@@ -836,6 +838,17 @@ function dailyPage(route: Route) {
   return route.name === 'game' && isDailyGame(route.slug)
 }
 
+/**
+ * Whether landing on a route leaves the site's period as it is. Record books default to `all`, a period of
+ * their own; a daily's board for today has a period only a daily's board has; a daily's page has no period
+ * at all (its address has none); and a daily's month, shown for the site's all time (lib/allTime.ts), is that
+ * period still, so all time stays the site's.
+ */
+function keepsSitePeriod(route: Route, period: LeaderboardPeriod) {
+  if (period === 'daily' || route.name === 'records' || dailyPage(route)) return true
+  return route.name === 'gameLeaderboard' && !route.day && boardPeriodFor(route.game, defaultPeriod()) === period
+}
+
 /* ------------------------------------------------------------------ */
 /* Hook                                                                */
 /* ------------------------------------------------------------------ */
@@ -846,11 +859,8 @@ export function useRoute(): Route {
   useEffect(() => {
     const start = currentRoute()
     const p = periodFromRoute(start)
-    // Record books default to `all`, a period of their own — landing on one
-    // must not overwrite the sticky period the rest of the site shares. Nor
-    // does a daily's board for today, a period only a daily's board has, nor
-    // a daily's page, which has no period at all (its address has none).
-    if (p && p !== 'daily' && start.name !== 'records' && !dailyPage(start)) setDefaultPeriod(p)
+    // Some pages' periods are their own, not the sticky period the rest of the site shares (keepsSitePeriod).
+    if (p && !keepsSitePeriod(start, p)) setDefaultPeriod(p)
   }, [])
 
   useEffect(() => {
@@ -858,7 +868,7 @@ export function useRoute(): Route {
       let next = currentRoute()
       const p = periodFromRoute(next)
       // A daily's page setting the period would push /games/<daily> over an old /games/<daily>/weekly entry, and Back would land there again.
-      if (p && p !== 'daily' && next.name !== 'records' && !dailyPage(next)) setDefaultPeriod(p)
+      if (p && !keepsSitePeriod(next, p)) setDefaultPeriod(p)
       const groupParams = new URLSearchParams(window.location.search)
       if (groupParams.has('group')) {
         setActiveGroup(parseGroupQuery(window.location.search))

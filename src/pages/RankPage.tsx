@@ -27,6 +27,7 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { sendFriendRequest } from '../lib/friends'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
+import { dailiesPlayed, standingsGames } from '../lib/allTime'
 import {
   ApiError,
   RANKED_LEADERBOARD_GAMES,
@@ -170,9 +171,17 @@ export function RankPage({
   const field = data.totalPlayers
   const outsideTopTen = !loading && rank != null && !talksInPlaces(rank, field)
 
-  // Every game ever placed on comes from the all-time rank; the best run on each, from its board.
+  // Every game ever placed on comes from the all-time rank, with the dailies it leaves out (lib/allTime.ts), which
+  // the week's and the month's places have too; the best run on each, from its board.
   const allTime = ranks.all ?? null
-  const everPlayed = allTime ? new Set(Object.keys(allTime.byGame)) : null
+  const everPlayed = allTime
+    ? new Set([
+        ...Object.keys(allTime.byGame),
+        ...dailiesPlayed(allTime),
+        ...Object.keys(ranks.monthly?.byGame ?? {}),
+        ...Object.keys(ranks.weekly?.byGame ?? {}),
+      ])
+    : null
   const bestSlugs = allTime
     ? Object.keys(allTime.byGame).filter((slug) => (RANKED_LEADERBOARD_GAMES as readonly string[]).includes(slug))
     : []
@@ -208,7 +217,8 @@ export function RankPage({
   const accent = AVATARS_ENABLED && viewedName ? avatarWashColor(resolveAvatar(avatarId, viewedName)) : undefined
   const editable = isSelf && canEditAvatar && AVATARS_ENABLED
 
-  const unplayed = everPlayed ? RANKED_LEADERBOARD_GAMES.some((slug) => !everPlayed.has(slug) && !data.byGame[slug]) : false
+  // A game never played that moves this period's rank: all time's leave the dailies out.
+  const unplayed = everPlayed ? standingsGames(period).some((slug) => !everPlayed.has(slug) && !data.byGame[slug]) : false
   let primary: { label: string; target: string } | null = null
   if (isSelf && !loading) {
     if (rank == null) {
@@ -325,6 +335,8 @@ export function RankPage({
                 period={period}
                 byGame={data.byGame}
                 allTimeByGame={allTime?.byGame ?? null}
+                weekByGame={ranks.weekly?.byGame ?? null}
+                monthByGame={ranks.monthly?.byGame ?? null}
                 everPlayed={everPlayed}
                 bests={bests}
                 quickest={isSelf && (rank == null || !talksInPlaces(rank, field))}

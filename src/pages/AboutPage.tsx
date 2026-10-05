@@ -21,7 +21,7 @@ const HIGHLIGHTS = [
   },
   {
     title: 'Leaderboards',
-    body: 'Daily, weekly, monthly and all-time boards for every game, an overall rank, and record books.',
+    body: 'Weekly, monthly and all-time boards, a fresh board every day for the dailies, an overall rank, and record books.',
   },
   {
     title: 'Play anywhere',

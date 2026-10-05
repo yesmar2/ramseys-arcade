@@ -11,6 +11,7 @@ import { dayBefore } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { BOARD_NAMES } from '../lib/dailyWords'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import {
   boardCallout,
@@ -57,9 +58,10 @@ import { PlayerName } from './PlayerName'
  * Beside it, the way on to the other boards. What a place pays toward the standings is
  * left to How your rank works.
  *
- * A daily's board opens on today's. Its week, month and all time are its day points (leaderboardFormat
+ * A daily's board opens on today's. Its week and month are its day points (leaderboardFormat
  * isDayPointsBoard): the points each day's board paid its players by place, added up, drawn as a plain
- * table of players, their days and their points.
+ * table of players, their days and their points. It has none for all time (lib/allTime.ts): with the
+ * site on all time, it shows its month and says why.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -131,8 +133,8 @@ function Stats({ stats }: { stats: Stat[] }) {
 
 /* ---------- the banner ---------- */
 
-/** A daily's boards: today's runs, then its day points for the week, the month and all time. */
-const DAILY_PERIODS: readonly LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'all']
+/** A daily's boards: today's runs, then its day points for the week and the month. It has none for all time (lib/allTime.ts). */
+const DAILY_PERIODS: readonly LeaderboardPeriod[] = ['daily', 'weekly', 'monthly']
 
 /**
  * The board's periods, as links. With no `period` none is on, and they're plain links, not tabs: a daily's
@@ -189,6 +191,9 @@ function Banner({
   const accent = resolveGameAccent(slug, game.accent)
   const canPlay = gamePlayableOn(game, device)
   const points = isDayPointsBoard(slug, period)
+  // With the site on all time, a daily shows its month (lib/allTime.ts), and says why.
+  const sitePeriod = useDefaultPeriod()
+  const monthForAllTime = points && period === 'monthly' && sitePeriod === 'all'
   const head = points ? pointsHeadline(copy, players) : boardHeadline(slug, copy, players)
   const leader = players[0]
   // When it closes, without the trophies: those go to the standings across every board, not one game's.
@@ -237,7 +242,7 @@ function Banner({
           {loading ? (
             <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
           ) : points ? (
-            POINTS_LEDE
+            monthForAllTime ? MONTH_FOR_ALL_TIME : POINTS_LEDE
           ) : (
             boardLede(slug, copy, players, field, runs)
           )}
@@ -429,7 +434,7 @@ function OtherBoards({ others, period }: { others: ReturnType<typeof useGameBoar
                 <span className="gb-more__text">
                   <span className="gb-more__name">{game.name}</span>
                   <span className="gb-more__lead">
-                    {/* A daily's week, month or all time leads on day points, which aren't a score: just the name. */}
+                    {/* A daily's week or month leads on day points, which aren't a score: just the name. */}
                     {o.leader
                       ? isDayPointsBoard(o.slug, period)
                         ? o.leader.name
@@ -572,6 +577,8 @@ function Board({
 /* ---------- a daily's day points ---------- */
 
 const POINTS_LEDE = 'Play every day to climb: the better you finish each day, the more you add.'
+/** A daily's month, shown for the site's all time: a daily has no all-time board (lib/allTime.ts). */
+const MONTH_FOR_ALL_TIME = 'Dailies have no all-time board, so this is this month’s. All time ranks the other games.'
 
 /** Who leads a daily's day points, with the name apart so it can wear the gold. */
 function pointsHeadline(copy: PeriodCopy, players: BoardPlayer[]): { name: string; rest: string } {
@@ -600,9 +607,7 @@ function PointsYou({ slug, copy, you }: { slug: LeaderboardGame; copy: PeriodCop
         <div>
           <p className="sb-kicker">Get on it</p>
           <h2 className="sb-first__title">Play today and you’re on it.</h2>
-          <p className="sb-first__text">
-            Every day you play adds to your {copy.noun ? `total ${copy.phrase}` : 'all-time total'}.
-          </p>
+          <p className="sb-first__text">Every day you play adds to your total {copy.phrase}.</p>
         </div>
         <div className="sb-you__foot sb-you__foot--acts">
           <PlayLink slug={slug} />
@@ -664,7 +669,7 @@ function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; 
   )
 }
 
-/** A daily's day points for the week, the month or all time: a row a player, their days and their points. */
+/** A daily's day points for the week or the month: a row a player, their days and their points. */
 function PointsBoard({
   slug,
   period,
@@ -814,7 +819,7 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
     )
   }
 
-  // A daily's week, month or all time: its day points, one row a player.
+  // A daily's week or month: its day points, one row a player.
   if (isDayPointsBoard(slug, period)) {
     // One card across the row: your place, or the way onto a board that has players. An empty board says
     // "Play today to be first" itself, so the row stays (empty) only to tell the next wait to hold no room.

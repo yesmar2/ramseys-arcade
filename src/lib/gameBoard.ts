@@ -242,7 +242,7 @@ export function whatPutsYouOn(slug: string): string {
 
 /**
  * Whether a board takes one run a player, so once theirs is on it no run moves them: today's, on a
- * first-run daily. Its week, month and all time are day points, which the next day's run adds to.
+ * first-run daily. Its week and month are day points, which the next day's run adds to.
  */
 export function oneRunBoard(slug: string, period: LeaderboardPeriod): boolean {
   return period === 'daily' && FIRST_RUN_DAILIES.has(slug)
