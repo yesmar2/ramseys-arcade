@@ -161,41 +161,6 @@ const SECRET_ART: Record<number, ReactNode> = {
       <path d="M24 10c-4.6 3.6-7 8.4-7 14s2.4 10.4 7 14c4.6-3.6 7-8.4 7-14s-2.4-10.4-7-14ZM10 24h28M12.4 17h23.2M12.4 31h23.2" />
     </>
   ),
-  // Palindrome: the same both ways.
-  4: (
-    <>
-      <path d="M11 17h24M30 12l5 5-5 5M37 31H13M18 26l-5 5 5 5" />
-      <circle className="trophy-art__fill" cx="24" cy="24" r="2.4" />
-    </>
-  ),
-  // Lucky Sevens: three of them in a row, and the handle.
-  5: (
-    <>
-      <rect className="trophy-art__fill trophy-art__fill--soft" x="6" y="13" width="31" height="22" rx="4" />
-      <Numeral n={7} x={13.5} y={29} size={11} />
-      <Numeral n={7} x={21.5} y={29} size={11} />
-      <Numeral n={7} x={29.5} y={29} size={11} />
-      <path d="M41 17v12M37 27h4" />
-      <circle className="trophy-art__fill" cx="41" cy="14.5" r="2.6" />
-    </>
-  ),
-  // Photo Finish: the chequered flag.
-  6: (
-    <>
-      <path d="M13 42V7" />
-      <path className="trophy-art__fill trophy-art__fill--soft" d="M13 8h24v17H13Z" />
-      <path className="trophy-art__fill" d="M13 8h6v5.7h-6ZM25 8h6v5.7h-6ZM19 13.7h6v5.6h-6ZM31 13.7h6v5.6h-6ZM13 19.3h6V25h-6ZM25 19.3h6V25h-6Z" />
-    </>
-  ),
-  // So Close: an arrow just off the middle.
-  7: (
-    <>
-      <circle className="trophy-art__fill trophy-art__fill--soft" cx="21" cy="27" r="14" />
-      <circle cx="21" cy="27" r="8.5" />
-      <circle className="trophy-art__fill" cx="21" cy="27" r="3" />
-      <path d="M25.5 23.5 40 9M34.5 9H40v5.5" />
-    </>
-  ),
   // Hole in One: the flag, and the ball in the cup.
   8: (
     <>
@@ -218,31 +183,6 @@ const SECRET_ART: Record<number, ReactNode> = {
       <circle className="trophy-art__fill" cx="24" cy="24" r="4.5" />
       <circle cx="24" cy="24" r="10.5" />
       <circle cx="24" cy="24" r="17" strokeDasharray="3.5 3.5" />
-    </>
-  ),
-  // Make a Wish: a shooting star, and a twinkle.
-  11: (
-    <>
-      <path className="trophy-art__fill" d="M31 8l2.35 5.76 6.21.46-4.76 4.02 1.49 6.04L31 21l-5.29 3.28 1.49-6.04-4.76-4.02 6.21-.46Z" />
-      <path d="M23.5 24.5 10 38M20 20l-7.5 7.5M28 28.5 20.5 36M11 8.5v4M9 10.5h4" />
-    </>
-  ),
-  // Déjà Vu: the same card, twice.
-  12: (
-    <>
-      <rect className="trophy-art__fill trophy-art__fill--soft" x="7" y="9" width="24" height="18" rx="3.5" />
-      <rect className="trophy-art__fill" x="17" y="21" width="24" height="18" rx="3.5" />
-      <path d="M12 15.5h9M12 20.5h8M22 27.5h9M22 32.5h8" />
-    </>
-  ),
-  // Round Number: a thousand, on the scoreboard.
-  13: (
-    <>
-      <rect className="trophy-art__fill trophy-art__fill--soft" x="3" y="12" width="42" height="24" rx="5" />
-      <path d="M9 19.5l2.6-2.2v13.2" />
-      <ellipse cx="19.5" cy="24" rx="2.9" ry="6.6" />
-      <ellipse cx="28.5" cy="24" rx="2.9" ry="6.6" />
-      <ellipse cx="37.5" cy="24" rx="2.9" ry="6.6" />
     </>
   ),
   // Marathon: a race number, pinned on.

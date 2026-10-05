@@ -1,3 +1,5 @@
+import { secretByNumber } from './secrets'
+
 /**
  * `hunt`: a month of the bug hunt caught in full (periodKey YYYYMM). `secret`: a secret trophy (lib/secrets.ts;
  * periodKey its number). `season`: a place in a season's standings when it ended (lib/season.ts; periodKey
@@ -181,7 +183,8 @@ export async function fetchTrophies(name: string): Promise<TrophyAward[]> {
   const res = await fetch(`${API_BASE}/trophies?${params}`)
   if (!res.ok) return []
   const body = (await res.json()) as { trophies?: TrophyAward[] }
-  return Array.isArray(body.trophies) ? body.trophies : []
+  // A find of a retired secret (lib/secrets.ts) is shown nowhere, even from an API that still sends it.
+  return Array.isArray(body.trophies) ? body.trophies.filter((t) => t.period !== 'secret' || secretByNumber(t.periodKey)) : []
 }
 
 export async function fetchTrophySummary(name: string): Promise<TrophySummary> {

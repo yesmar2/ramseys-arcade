@@ -67,18 +67,9 @@ const SECRET_RULES: Record<SecretKey, string> = {
   earlybird: 'The day’s bug caught before 8 in the morning on the player’s own clock.',
   grandtour:
     'A saved run on every one of the 18 games the site lists (all but Simon and Spotter) in one day on the boards’ clock, New York time. Ace Chase counts when the day’s hole is solved, and solving it can finish the tour.',
-  palindrome:
-    'A saved score of 1,001 or more that reads the same backwards, like 1,221 or 34,543. Games scored in points only: not Ace Chase, Spotter, Find the Bug, Hot Lap or Half Full.',
-  sevens: 'A saved score made only of sevens: 777, 7,777, 77,777 and so on. Games scored in points only.',
-  photofinish: 'A saved score that ties first place on that game’s board this week, where another player already has the same score.',
-  soclose: 'A saved score exactly one point below the game’s all-time record as it stood before the run. Games scored in points only.',
   holeinone: 'Today’s Hole solved with a bullseye on the first try.',
   konami: 'Doing the cheat code (see Easter eggs).',
   blip: 'Doing the logo blip (see Easter eggs).',
-  wish: 'A run saved at 11:11 on the player’s own clock, morning or night.',
-  dejavu:
-    'A saved score of 100 or more that’s the same as the player’s run just before it on the same game. Games scored in points only.',
-  round: 'A saved score of exactly 1,000, 10,000 or 100,000. Games scored in points only.',
   marathon:
     'Fifty saved runs in one day on the boards’ clock, New York time, any games. A solved Today’s Hole counts as one. Saves are capped at 40 in ten minutes, so it takes at least a quarter of an hour.',
   barrelroll: 'Doing a barrel roll (see Easter eggs).',
