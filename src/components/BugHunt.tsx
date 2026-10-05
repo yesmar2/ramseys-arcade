@@ -201,12 +201,21 @@ function huntLayer(): HTMLDivElement {
 /** The hiding place, in the layer's coordinates, and which way the bug pokes out of it. */
 type Placed = { x: number; y: number; w: number; h: number; round: number; pose: HuntPose }
 
-/** A side with no room before the screen's edge, as on a phone, gives way to the top or the bottom. */
-function fitPose(pose: HuntPose, r: DOMRect): HuntPose {
+/**
+ * Which way the bug peeks out here. A side with no room before the screen's edge, as on a phone, gives way to
+ * the top or the bottom. The header is drawn over the bug, so over a panel just under it, where the bug's head
+ * would be under the header, it peeks out from under the panel instead.
+ */
+function fitPose(pose: HuntPose, r: DOMRect, round: number, at: number, header: DOMRect | null): HuntPose {
   const room = BUG_SIZE * SHOWN
   const narrow = (pose.includes('left') && r.left < room) || (pose.includes('right') && window.innerWidth - r.right < room)
-  if (!narrow) return pose
-  return pose.startsWith('bottom') ? 'bottom' : 'top'
+  const fits: HuntPose = !narrow ? pose : pose.startsWith('bottom') ? 'bottom' : 'top'
+  if (!header || fits.startsWith('bottom')) return fits
+  const box = peekBox({ x: r.left, y: r.top, w: r.width, h: r.height, round, pose: fits }, at)
+  const under =
+    box.top < header.bottom && box.top + box.height > header.top && box.left < header.right && box.left + box.width > header.left
+  if (!under) return fits
+  return fits === 'top-left' ? 'bottom-left' : fits === 'top-right' ? 'bottom-right' : 'bottom'
 }
 
 /**
@@ -216,29 +225,32 @@ function fitPose(pose: HuntPose, r: DOMRect): HuntPose {
  */
 function useHidingPlace(pick: HuntPick, active: boolean): Placed | null {
   const [placed, setPlaced] = useState<Placed | null>(null)
-  const { anchor, pose } = pick
+  const { anchor, pose, at } = pick
   useEffect(() => {
     if (!active) return
     let frame = 0
     let ticks = 0
     let el: Element | null = null
+    let header: Element | null = null
     let round = 0
     let last = ''
     const tick = () => {
-      // Pages come and go, and so do their parts: look for the mark again now and then.
-      if (ticks++ % 12 === 0 || (el && !el.isConnected)) {
+      // Pages come and go, and so do their parts: look for the mark, and the page's header, again now and then.
+      if (ticks++ % 12 === 0 || (el && !el.isConnected) || (header && !header.isConnected)) {
         const found = document.querySelector(`[data-hunt="${anchor.id}"]`)
         if (found !== el) {
           el = found
           round = el ? parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 : 0
         }
+        header = document.querySelector('.site-chrome')
       }
       let next: Placed | null = null
       if (el) {
         const r = el.getBoundingClientRect()
         if (r.width > 0 && r.height > 0) {
           const o = huntLayer().getBoundingClientRect()
-          next = { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height, round, pose: fitPose(pose, r) }
+          const fits = fitPose(pose, r, round, at, header ? header.getBoundingClientRect() : null)
+          next = { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height, round, pose: fits }
         }
       }
       const key = next ? `${[next.x, next.y, next.w, next.h].map((v) => Math.round(v * 2)).join()}${next.pose}` : ''
@@ -250,7 +262,7 @@ function useHidingPlace(pick: HuntPick, active: boolean): Placed | null {
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [anchor.id, pose, active])
+  }, [anchor.id, pose, at, active])
   return active ? placed : null
 }
 
@@ -420,6 +432,16 @@ function placeLine(anchor: HuntAnchor): string {
   return `${capitalized(anchor.page.replace(/^(on|in) /, ''))} · ${anchor.thing}`
 }
 
+/** Why the stand-in peeks out another way than the test asks, for the test bar's note, or nothing when it doesn't. */
+function givenWay(asked: HuntPose, drawn: HuntPose | null): string {
+  if (!drawn || drawn === asked) return ''
+  // Only the header turns it from over a panel to under it (fitPose).
+  if (drawn.startsWith('bottom') && !asked.startsWith('bottom')) {
+    return ' The header would cover it that way here, so it peeks out from under instead.'
+  }
+  return ' No room that way here, so it peeks out the nearest way that fits.'
+}
+
 /**
  * Test mode's bar, there only with `?hunt=` in the address: which hiding
  * place the stand-in bug is behind, a list of all of them, which way it
@@ -443,7 +465,7 @@ function HuntTestBar({ test }: { test: HuntTest }) {
     const id = window.setTimeout(() => setNote(null), 2400)
     return () => window.clearTimeout(id)
   }, [note])
-  // Its page may still be loading, and a side with no room gives way to the top or the bottom.
+  // Its page may still be loading, a side with no room gives way to the top or the bottom, and a top under the header to the bottom.
   useEffect(() => {
     const look = () => {
       const pose = document.querySelector('.hunt-peek')?.getAttribute('data-pose')
@@ -576,10 +598,7 @@ function HuntTestBar({ test }: { test: HuntTest }) {
             </div>
           </div>
           <p className="hunt-test__note" aria-live="polite">
-            {note ??
-              `${capitalized(huntWhere(test.anchor, drawn ?? test.pose))}.${
-                drawn && drawn !== test.pose ? ' No room that way here, so it peeks out the nearest way that fits.' : ''
-              }`}
+            {note ?? `${capitalized(huntWhere(test.anchor, drawn ?? test.pose))}.${givenWay(test.pose, drawn)}`}
           </p>
         </>
       ) : null}

@@ -357,9 +357,10 @@ function BugHuntCard() {
         </h2>
       </div>
       <p className="adm-card__sub">
-        Where today’s bug hides, and the week after it. Go there is the real hunt: a catch counts for you. Test shows it
-        in the same spot in test mode, where a catch doesn’t count. The next bug gets loose at midnight on the boards’
-        clock, in {untilWords(msUntilNextBug())}.
+        Where today’s bug hides, and the week after it. Where the header or the screen’s edge is in its way, it peeks
+        out another way than the one listed. Go there is the real hunt: a catch counts for you. Test shows it in the
+        same spot in test mode, where a catch doesn’t count. The next bug gets loose at midnight on the boards’ clock,
+        in {untilWords(msUntilNextBug())}.
       </p>
       <ul className="adm-list">
         {days.map((pick, i) => (
