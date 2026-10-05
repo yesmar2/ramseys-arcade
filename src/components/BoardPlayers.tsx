@@ -44,6 +44,8 @@ export function BoardPlayers({
   bandLine,
   cols,
   row,
+  load,
+  search,
 }: {
   slug: string
   period: LeaderboardPeriod
@@ -60,7 +62,17 @@ export function BoardPlayers({
   cols?: ReactNode
   /** One player's row: an `li`. */
   row: (player: BoardPlayer) => ReactNode
+  /** Where more rows come from: a game board's players (getPlayerBoard), unless a page has its own (a record's). */
+  load?: (offset: number, limit: number) => Promise<BoardPlayer[]>
+  /** Finding a player by tag: a game board's, unless given; null where the API can't (a record's board). */
+  search?: ((q: string) => Promise<BoardPlayer[]>) | null
 }) {
+  const loadRows =
+    load ?? ((offset: number, limit: number) => getPlayerBoard(slug, period, undefined, { offset, limit }).then((b) => b.entries.map(boardPlayer)))
+  const findRows =
+    search === undefined
+      ? (q: string) => getPlayerBoard(slug, period, undefined, { limit: 1, find: q }).then((b) => b.found.map(boardPlayer))
+      : search
   const [rows, setRows] = useState(() => new Map<number, BoardPlayer>())
   const [busy, setBusy] = useState<number | null>(null)
   const [find, setFind] = useState('')
@@ -79,15 +91,15 @@ export function BoardPlayers({
   // Players whose tag holds what's typed, asked once typing stops.
   useEffect(() => {
     const q = find.trim()
-    if (!q) {
+    if (!q || !findRows) {
       setFound(null)
       return
     }
     let cancelled = false
     const timer = window.setTimeout(() => {
-      getPlayerBoard(slug, period, undefined, { limit: 1, find: q })
-        .then((b) => {
-          if (!cancelled) setFound(b.found.map(boardPlayer))
+      findRows(q)
+        .then((rows) => {
+          if (!cancelled) setFound(rows)
         })
         .catch(() => {
           if (!cancelled) setFound([])
@@ -97,6 +109,8 @@ export function BoardPlayers({
       cancelled = true
       window.clearTimeout(timer)
     }
+    // The finder is made fresh each render; the board it finds on is what's named here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [find, slug, period])
 
   const segments = useMemo(() => segmentsOf(rows), [rows])
@@ -107,10 +121,10 @@ export function BoardPlayers({
     if (busy != null) return
     setBusy(place)
     try {
-      const page = await getPlayerBoard(slug, period, undefined, { offset: place, limit: MORE })
+      const page = await loadRows(place, MORE)
       setRows((prev) => {
         const next = new Map(prev)
-        for (const r of page.entries) next.set(r.place, boardPlayer(r))
+        for (const r of page) next.set(r.place, r)
         return next
       })
     } catch {
@@ -127,8 +141,9 @@ export function BoardPlayers({
 
   return (
     <div ref={listRef} className="gb-list">
-      {field > top.length ? (
+      {field > top.length && (findRows || showJump) ? (
         <div className="gb-find">
+          {findRows ? (
           <label className="gb-find__box" htmlFor={`gb-find-${slug}`}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
@@ -146,6 +161,7 @@ export function BoardPlayers({
               onChange={(e) => setFind(e.target.value)}
             />
           </label>
+          ) : null}
           {showJump ? (
             <button type="button" className="gb-find__me" onClick={jump}>
               Jump to me <span>{placeWords(mine!.place)}</span>

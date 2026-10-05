@@ -22,7 +22,7 @@ import { WinTakeover } from '../components/WinTakeover'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { playersFromRuns } from '../lib/gameBoard'
 import type { GlobalRankResult, LeaderboardEntry } from '../lib/leaderboard'
-import { composeReport, type RunFacts } from '../lib/runReport'
+import { boardFacts, composeReport, type RunFacts } from '../lib/runReport'
 import type { TournamentDetail } from '../lib/tournaments'
 import { eventWinTakeover, standingsTakeover, type WinTakeoverData } from '../lib/winTakeover'
 
@@ -63,7 +63,7 @@ const BOARD = runs([
 /** The board before, and after a new run by VERA. */
 function withRun(score: number) {
   const after = runs([...BOARD.map((r) => [r.name, r.score] as [string, number]), ['VERA', score, 'new']])
-  return { after: playersFromRuns(after), before: playersFromRuns(after.filter((r) => r.id !== 'new')) }
+  return boardFacts(playersFromRuns(after), playersFromRuns(after.filter((r) => r.id !== 'new')), 'VERA')
 }
 
 function facts(score: number, extra: Partial<RunFacts>): RunFacts {

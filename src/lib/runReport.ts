@@ -2,12 +2,11 @@ import { chosenSkin } from './skins'
 import { getGame, isRankedGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
 import { noteSeasonRun, type SeasonRun } from './season'
-import { gapBetween, gapFigure, playersFromRuns, type BoardPlayer } from './gameBoard'
+import { boardPlayer, gapBetween, gapFigure, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
 import {
   addLeaderboardScore,
   fetchGlobalRank,
-  getLeaderboard,
   getPlayerBoard,
   normalizePlayerName,
   type GlobalRankResult,
@@ -101,8 +100,8 @@ export type RunFacts = {
   /** This run's place among every run ever, and the player's best's place before it. */
   allTimeRank: number | null
   priorAllTimeRank: number | null
-  /** The period's board as players, after the save and as it stood without this run. */
-  board: { after: BoardPlayer[]; before: BoardPlayer[] } | null
+  /** The period's board around the player, after the save, and where they stood on it before (boardFacts). */
+  board: BoardFacts | null
   /** The player's Standings before and after the save; before is null when the read before the save failed. */
   overall: { before: GlobalRankResult | null; after: GlobalRankResult | null }
   books: BookFact[]
@@ -116,8 +115,41 @@ export type RunFacts = {
   season?: SeasonRun | null
 }
 
-/** Runs read to count places: one page covers every run above all but the lowest scores. */
-const BOARD_READ = 500
+/**
+ * What a run report reads of the period's board, as players: how many, the first three, the player with
+ * those either side after the save, the place they held before it (null: not on it), and who they went
+ * past, named as far as the line names them (namesText: the first, then a count).
+ */
+export type BoardFacts = {
+  field: number
+  top: BoardPlayer[]
+  you: BoardPlayer | null
+  above: BoardPlayer | null
+  below: BoardPlayer | null
+  before: number | null
+  /** The players passed, best first: the first two by name, the rest counted. */
+  passed: string[]
+}
+
+/** BoardFacts from whole boards before and after (the dev celebrate page's made-up ones). */
+export function boardFacts(after: BoardPlayer[], before: BoardPlayer[], me: string): BoardFacts {
+  const at = after.findIndex((p) => p.name === me)
+  const was = before.findIndex((p) => p.name === me)
+  const you = after[at] ?? null
+  const prior = was < 0 ? null : was + 1
+  return {
+    field: after.length,
+    top: after.slice(0, 3),
+    you,
+    above: at > 0 ? after[at - 1]! : null,
+    below: at >= 0 ? (after[at + 1] ?? null) : null,
+    before: prior,
+    passed: you && prior != null && you.place < prior ? after.slice(at + 1, prior).map((p) => p.name) : [],
+  }
+}
+
+/** Players the report names among those passed; past them it counts (namesText). */
+const PASSED_NAMED = 2
 /** Record-book lines on one report, at most. */
 const MAX_BOOKS = 3
 const MAX_LINES = 5
@@ -186,15 +218,14 @@ type BoardRead = {
 
 function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
   const { slug } = f
-  const me = normalizePlayerName(f.name)
-  const after = f.board?.after ?? []
+  const b = f.board
   const label = boardLabel(slug, copy)
-  const index = after.findIndex((p) => p.name === me)
-  if (index < 0) {
-    // Below the runs read: the standings still know the place, when they cover the board's period.
+  const mine = b?.you
+  if (!b || !mine) {
+    // The board didn't read: the standings still know the place, when they cover the board's period.
     const place = (f.standingsPeriod ?? f.period) === f.period ? f.overall.after?.byGame[slug]?.place : undefined
     if (!place) return null
-    const leader = after[0]
+    const leader = b?.top[0]
     return {
       line: {
         id: 'board',
@@ -211,12 +242,8 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
     }
   }
 
-  const place = index + 1
-  const mine = after[index]
-  const beforeIndex = (f.board?.before ?? []).findIndex((p) => p.name === me)
-  const before = beforeIndex < 0 ? null : beforeIndex + 1
-  const above = after[index - 1] ?? null
-  const below = after[index + 1] ?? null
+  const place = mine.place
+  const { before, above, below } = b
   const climbed = before == null || place < before
   const behind = (other: BoardPlayer) => {
     const gap = other.best.score - mine.best.score
@@ -238,7 +265,7 @@ function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
     return read(`${lead} ahead of ${below.name}`, 'plain')
   }
   if (before != null && place < before) {
-    const passed = after.slice(index + 1, before).map((p) => p.name)
+    const passed = b.passed
     const detail = passed.length ? `up from ${ordinal(before)}, passed ${namesText(passed)}` : `up from ${ordinal(before)}`
     return read(detail, 'accent', 'up')
   }
@@ -347,7 +374,7 @@ export function composeReport(f: RunFacts): RunReportData {
   const highScore =
     ranked &&
     f.allTimeRank === 1 &&
-    (f.priorAllTimeRank != null ? f.priorAllTimeRank > 1 : (f.board?.after.length ?? 0) >= 2)
+    (f.priorAllTimeRank != null ? f.priorAllTimeRank > 1 : (f.board?.field ?? 0) >= 2)
   const bookTop = books.some((line) => line.tone === 'gold')
 
   const challenge = f.challenge ?? null
@@ -407,7 +434,7 @@ export function composeReport(f: RunFacts): RunReportData {
     board?.newTop && f.board
       ? {
           title: `${gameName(f.slug)} · ${copy.phrase}`,
-          rows: f.board.after.slice(0, 3).map((p) => ({
+          rows: f.board.top.map((p) => ({
             place: p.place,
             name: p.name,
             score: figure(f.slug, p.best.score),
@@ -460,8 +487,32 @@ export async function readBookFacts(slug: string, name: string, hits: RunAchieve
 }
 
 /** The runs this period, best first, as far as one read goes. */
-async function readBoardRuns(slug: string, period: LeaderboardPeriod) {
-  return getLeaderboard(slug, period, undefined, { limit: BOARD_READ })
+/**
+ * The period's board around the player after the save, with where they stood before it (`before`, read
+ * just ahead of the save), as the API counts places: a few small asks, however deep they are.
+ */
+async function readBoardFacts(slug: string, period: LeaderboardPeriod, me: string, before: number | null): Promise<BoardFacts> {
+  const b = await getPlayerBoard(slug, period, me, { limit: 3, around: 1 })
+  const you = b.you ? boardPlayer(b.you) : null
+  const near = b.around.map(boardPlayer)
+  let passed: string[] = []
+  if (you && before != null && you.place < before) {
+    // Now just behind you, best first: the first two by name, the rest only counted.
+    const count = before - you.place
+    const named = await getPlayerBoard(slug, period, undefined, { offset: you.place, limit: Math.min(PASSED_NAMED, count) })
+      .then((p) => p.entries.map((e) => normalizePlayerName(e.name)))
+      .catch(() => [] as string[])
+    passed = [...named, ...Array.from({ length: Math.max(0, count - named.length) }, () => '')]
+  }
+  return {
+    field: b.total,
+    top: b.entries.map(boardPlayer),
+    you,
+    above: you ? (near.find((p) => p.place === you.place - 1) ?? null) : null,
+    below: you ? (near.find((p) => p.place === you.place + 1) ?? null) : null,
+    before,
+    passed,
+  }
 }
 
 /**
@@ -528,7 +579,15 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   const me = normalizePlayerName(name)
   // A daily just for fun places nobody (data/games.ts Game.ranked): no standings or board to read around it.
   const ranked = isRankedGame(slug)
-  const priorOverall = ranked ? await fetchGlobalRank(me, standingsPeriod).catch(() => null) : null
+  // Where they stood before this run, on the Standings and on the game's board.
+  const [priorOverall, priorPlace] = ranked
+    ? await Promise.all([
+        fetchGlobalRank(me, standingsPeriod).catch(() => null),
+        getPlayerBoard(slug, period, me, { limit: 1, around: 0 })
+          .then((b) => b.you?.place ?? null)
+          .catch(() => null),
+      ])
+    : [null, null]
   // The skin the game drew the player in: the one chosen for it, if they own it (lib/skins.ts).
   const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours, skin: chosenSkin(slug) })
   noteTicketsPaid(saved.tickets)
@@ -553,24 +612,13 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   await whenRunAchievementsSettled()
   const hits = takeRunAchievements()
 
-  const [runs, overall, books] = ranked
+  const [board, overall, books] = ranked
     ? await Promise.all([
-        readBoardRuns(slug, period)
-          .then((b) => b.entries)
-          .catch(() => null),
+        readBoardFacts(slug, period, me, priorPlace).catch(() => null),
         fetchGlobalRank(me, standingsPeriod).catch(() => null),
         readBookFacts(slug, me, hits),
       ])
     : [null, null, []]
-
-  let board: RunFacts['board'] = null
-  if (runs) {
-    const newest = saved.entry?.id ?? newestRunId(runs, me, score)
-    board = {
-      after: playersFromRuns(runs),
-      before: playersFromRuns(newest ? runs.filter((r) => r.id !== newest) : runs),
-    }
-  }
 
   return {
     slug,
@@ -600,12 +648,3 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   }
 }
 
-/** This run on a board read back without its id: the player's latest run at that score. */
-function newestRunId(runs: LeaderboardEntry[], me: string, score: number): string | null {
-  let newest: LeaderboardEntry | null = null
-  for (const run of runs) {
-    if (normalizePlayerName(run.name) !== me || run.score !== score) continue
-    if (!newest || run.at > newest.at) newest = run
-  }
-  return newest?.id ?? null
-}

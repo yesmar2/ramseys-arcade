@@ -1,6 +1,9 @@
 import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
-import { useRecordPage } from '../hooks/useRecordPage'
+import { useRecordPage, type RecordPageData } from '../hooks/useRecordPage'
+import type { BoardPlayer } from '../lib/gameBoard'
+import { fetchRecordBoard } from '../lib/records'
+import { BoardPlayers } from './BoardPlayers'
 import { gamePlayHref, rankHref, recordHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
@@ -51,9 +54,8 @@ import { PlayerName } from './PlayerName'
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
 
-/** Rows before "show more", and how many more each press shows. */
+/** Rows a loading board holds room for: the players it opens on (useRecordPage FIRST_PLAYERS). */
 const FIRST_ROWS = 10
-const MORE_ROWS = 25
 
 function Svg({ size = 16, children }: { size?: number; children: ReactNode }) {
   return (
@@ -449,26 +451,32 @@ function StoryCard({ story }: { story: RecordStory }) {
 
 /* ---------- everyone's best ---------- */
 
+/** A record's row as a board's player: its place, and the run that set it. */
+function recordPlayer(place: number, e: LeaderboardEntry): BoardPlayer {
+  return { place, name: normalizePlayerName(e.name), best: e, runs: 0 }
+}
+
 function Board({
   game,
+  recordId,
   period,
   record,
-  entries,
-  total,
+  data,
   loading,
   you,
 }: {
   game: string
+  recordId: string
   period: LeaderboardPeriod
   record: RecordDef | null
-  entries: LeaderboardEntry[]
-  total: number
+  data: RecordPageData
   loading: boolean
   you: string
 }) {
-  const [shown, setShown] = useState(FIRST_ROWS)
-  const left = entries.length - shown
+  const { entries, total } = data
   const top = entries[0]
+  const first = entries.map((e, i) => recordPlayer(i + 1, e))
+  const around = data.around.map((a) => recordPlayer(a.place, a.entry))
   return (
     <section className="sb-card gb-board rcd-board" aria-labelledby="rcd-board-title">
       <div className="gb-board__head">
@@ -493,58 +501,62 @@ function Board({
           <PlayLink game={game} record={record} />
         </div>
       ) : (
-        <>
-          <div className="gb-board__cols rcd-board__cols" aria-hidden="true">
-            <span>Place</span>
-            <span />
-            <span>Player</span>
-            <span className="gb-board__num">Best</span>
-            <span className="gb-board__num">Off the record</span>
-            <span className="gb-board__num">Set</span>
-          </div>
-          <ol className="gb-rows">
-            {entries.slice(0, shown).map((e, i) => {
-              const mine = Boolean(you) && normalizePlayerName(e.name) === you
-              const medal = MEDALS[i]
-              const off =
-                i === 0
-                  ? 'Record'
-                  : e.score === top.score
-                    ? 'Tied'
-                    : `${lowerIsBetter(record) ? '+' : '−'}${recordGap(record, e.score, top.score)}`
-              return (
-                <li key={e.id} className={`gb-row rcd-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
-                  <a className="gb-row__link" href={rankHref(e.name, period)}>
-                    <span className="gb-row__ord">{ordinal(i + 1).toUpperCase()}</span>
-                    <PlayerMark name={e.name} avatarId={e.avatarId} className="gb-row__mark" />
-                    <span className="gb-row__who">
-                      <span className="gb-row__name">
-                        <PlayerName name={e.name} avatarId={e.avatarId} />
-                        {mine ? <span className="sb-row__you">You</span> : null}
-                      </span>
-                      <span className="gb-row__runs rcd-row__when">set {recordDay(e.at)}</span>
+        <BoardPlayers
+          slug={`${game}-${recordId}`}
+          period={period}
+          top={first}
+          around={around}
+          field={total}
+          you={data.you ? you : ''}
+          bandLine={null}
+          // The records API pages its board but can't search it.
+          search={null}
+          load={(offset, limit) =>
+            fetchRecordBoard(game, recordId, period, undefined, { offset, limit }).then((b) => b.entries.map((e, k) => recordPlayer(offset + k + 1, e)))
+          }
+          cols={
+            <div className="gb-board__cols rcd-board__cols" aria-hidden="true">
+              <span>Place</span>
+              <span />
+              <span>Player</span>
+              <span className="gb-board__num">Best</span>
+              <span className="gb-board__num">Off the record</span>
+              <span className="gb-board__num">Set</span>
+            </div>
+          }
+          row={(p) => {
+            const e = p.best
+            const mine = Boolean(you) && p.name === you
+            const medal = MEDALS[p.place - 1]
+            const off =
+              p.place === 1
+                ? 'Record'
+                : e.score === top.score
+                  ? 'Tied'
+                  : `${lowerIsBetter(record) ? '+' : '−'}${recordGap(record, e.score, top.score)}`
+            return (
+              <li key={`${p.place}-${e.id}`} className={`gb-row rcd-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
+                <a className="gb-row__link" href={rankHref(e.name, period)}>
+                  <span className="gb-row__ord">{ordinal(p.place).toUpperCase()}</span>
+                  <PlayerMark name={e.name} avatarId={e.avatarId} className="gb-row__mark" />
+                  <span className="gb-row__who">
+                    <span className="gb-row__name">
+                      <PlayerName name={e.name} avatarId={e.avatarId} />
+                      {mine ? <span className="sb-row__you">You</span> : null}
                     </span>
-                    <span className="gb-row__best">{recordValue(record, e.score)}</span>
-                    <span className={`rcd-row__off${i === 0 ? ' rcd-row__off--record' : ''}`}>{off}</span>
-                    <span className="gb-row__set rcd-row__set">
-                      <DeviceIcon device={e.device} />
-                      {recordDay(e.at)}
-                    </span>
-                  </a>
-                </li>
-              )
-            })}
-          </ol>
-          {left > 0 ? (
-            <button type="button" className="gb-board__more" onClick={() => setShown((n) => n + MORE_ROWS)}>
-              Show {Math.min(left, MORE_ROWS).toLocaleString()} more {left === 1 ? 'player' : 'players'}
-              {left > MORE_ROWS ? <span> · {left.toLocaleString()} to go</span> : null}
-            </button>
-          ) : null}
-          {total > entries.length ? (
-            <p className="gb-board__note">The first {entries.length.toLocaleString()} players are shown.</p>
-          ) : null}
-        </>
+                    <span className="gb-row__runs rcd-row__when">set {recordDay(e.at)}</span>
+                  </span>
+                  <span className="gb-row__best">{recordValue(record, e.score)}</span>
+                  <span className={`rcd-row__off${p.place === 1 ? ' rcd-row__off--record' : ''}`}>{off}</span>
+                  <span className="gb-row__set rcd-row__set">
+                    <DeviceIcon device={e.device} />
+                    {recordDay(e.at)}
+                  </span>
+                </a>
+              </li>
+            )
+          }}
+        />
       )}
     </section>
   )
@@ -645,9 +657,12 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
 
   // A day's record that no run can move for you now: its day over, or your one result on it in.
   const shut = record ? recordShut(game, record, Boolean(data.you || data.allTimeYou)) : null
+  // The first rows and the viewer's neighbours, each at its place (index place − 1): all recordStanding reads.
+  const known: LeaderboardEntry[] = [...entries]
+  for (const a of data.around) known[a.place - 1] = a.entry
   const standing =
     record && you
-      ? recordStanding(game, record, period, { entries, total, you: data.you, progression: data.progression }, you, data.allTimeYou, shut)
+      ? recordStanding(game, record, period, { entries: known, total, you: data.you, progression: data.progression }, you, data.allTimeYou, shut)
       : null
   const story = record ? recordStory(record, data.progression, data.youProgression, period, you) : null
 
@@ -674,10 +689,10 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         <Board
           key={`${recordId}-${period}`}
           game={game}
+          recordId={recordId}
           period={period}
           record={record}
-          entries={entries}
-          total={total}
+          data={data}
           loading={data.loading}
           you={you}
         />
