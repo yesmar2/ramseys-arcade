@@ -19,11 +19,8 @@ import {
   boardYouStats,
   firstResultWord,
   oneRunBoard,
-  placeBeating,
-  playersFromRuns,
   playersNote,
   runsChart,
-  youOnBoard,
   type BoardPlayer,
   type BoardYou,
 } from '../lib/gameBoard'
@@ -47,7 +44,7 @@ import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { DeviceIcon } from './DeviceIcon'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
-import { LeaderboardList } from './LeaderboardList'
+import { BoardPlayers, BoardRuns } from './BoardPlayers'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
 import { PlayerName } from './PlayerName'
@@ -67,9 +64,8 @@ import { PlayerName } from './PlayerName'
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
 
-/** Rows before "show more", and how many more each press shows. */
+/** Rows a loading board holds room for: the players it opens on (useGameBoard FIRST_PLAYERS). */
 const FIRST_ROWS = 10
-const MORE_ROWS = 25
 
 function dayOf(at: number) {
   try {
@@ -172,6 +168,7 @@ function Banner({
   period,
   copy,
   players,
+  field,
   runs,
   loading,
   group,
@@ -179,7 +176,10 @@ function Banner({
   slug: LeaderboardGame
   period: LeaderboardPeriod
   copy: PeriodCopy
+  /** The board's first players: its leaders. */
   players: BoardPlayer[]
+  /** How many players are on it. */
+  field: number
   runs: number
   loading: boolean
   group?: string
@@ -239,7 +239,7 @@ function Banner({
           ) : points ? (
             POINTS_LEDE
           ) : (
-            boardLede(slug, copy, players, runs)
+            boardLede(slug, copy, players, field, runs)
           )}
         </p>
         <PeriodTabs slug={slug} period={period} />
@@ -359,8 +359,8 @@ function PlayLink({ slug }: { slug: LeaderboardGame }) {
   )
 }
 
-function RunsCard({ slug, copy, you, players }: { slug: string; copy: PeriodCopy; you: BoardYou; players: BoardPlayer[] }) {
-  const chart = runsChart(slug, you, players)
+function RunsCard({ slug, copy, you, leader }: { slug: string; copy: PeriodCopy; you: BoardYou; leader: BoardPlayer | undefined }) {
+  const chart = runsChart(slug, you, leader)
   const best = you.player.best
   const runs = numberWord(chart.count)
   const sub =
@@ -485,21 +485,16 @@ function Board({
   period,
   copy,
   data,
-  players,
   you,
 }: {
   slug: LeaderboardGame
   period: LeaderboardPeriod
   copy: PeriodCopy
   data: ReturnType<typeof useGameBoard>
-  players: BoardPlayer[]
   you: string
 }) {
   const [view, setView] = useState<'players' | 'runs'>('players')
-  const [shown, setShown] = useState(FIRST_ROWS)
   const byPlayer = view === 'players'
-  const length = byPlayer ? players.length : data.runs.length
-  const left = length - shown
   const game = getGame(slug)!
   return (
     <section className="sb-card gb-board gb-board--five" aria-labelledby="gb-board-title" data-hunt={`b-board-${slug}`}>
@@ -507,10 +502,10 @@ function Board({
         <h2 id="gb-board-title" className="gb-board__title">
           The board
         </h2>
-        {!data.loading && players.length ? (
+        {!data.loading && data.field ? (
           <span className="gb-board__count">
-            {players.length.toLocaleString()} {players.length === 1 ? 'player' : 'players'} ·{' '}
-            {data.total.toLocaleString()} {data.total === 1 ? 'run' : 'runs'}
+            {data.field.toLocaleString()} {data.field === 1 ? 'player' : 'players'} ·{' '}
+            {data.runCount.toLocaleString()} {data.runCount === 1 ? 'run' : 'runs'}
           </span>
         ) : null}
         <div className="gb-tog" role="group" aria-label="Show">
@@ -520,10 +515,7 @@ function Board({
               type="button"
               aria-pressed={view === v}
               className={`gb-tog__b${view === v ? ' gb-tog__b--on' : ''}`}
-              onClick={() => {
-                setView(v)
-                setShown(FIRST_ROWS)
-              }}
+              onClick={() => setView(v)}
             >
               {v === 'players' ? 'Players' : 'Every run'}
             </button>
@@ -535,7 +527,7 @@ function Board({
       </p>
       {data.loading ? (
         <BoardSkeleton rows={FIRST_ROWS} />
-      ) : !players.length ? (
+      ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">{groupBoardEmptyTitle(`Nobody’s on this board ${copy.noun ? copy.phrase : 'yet'}.`)}</p>
           <p className="gb-board__empty-text">Any run takes first.</p>
@@ -543,40 +535,36 @@ function Board({
         </div>
       ) : byPlayer ? (
         <>
-          <div className="gb-board__cols" aria-hidden="true">
-            <span>Place</span>
-            <span />
-            <span>Player</span>
-            {/* A first-result daily's today board keeps each player's first result, which needn't be their best. */}
-            <span className="gb-board__num">{oneRunBoard(slug, period) ? 'Result' : 'Best'}</span>
-            <span className="gb-board__set">Set</span>
-          </div>
-          <ol className="gb-rows">
-            {players.slice(0, shown).map((p) => (
-              <PlayerRow key={p.name} slug={slug} player={p} you={you} period={period} />
-            ))}
-          </ol>
+          <BoardPlayers
+            cols={
+              <div className="gb-board__cols" aria-hidden="true">
+                <span>Place</span>
+                <span />
+                <span>Player</span>
+                {/* A first-result daily's today board keeps each player's first result, which needn't be their best. */}
+                <span className="gb-board__num">{oneRunBoard(slug, period) ? 'Result' : 'Best'}</span>
+                <span className="gb-board__set">Set</span>
+              </div>
+            }
+            slug={slug}
+            period={period}
+            top={data.top}
+            around={data.around}
+            field={data.field}
+            you={data.you ? you : ''}
+            bandLine={data.bandLine}
+            row={(p) => <PlayerRow key={p.name} slug={slug} player={p} you={you} period={period} />}
+          />
         </>
       ) : (
-        <LeaderboardList
-          entries={data.runs}
-          you={data.youRun}
-          playerName={you}
-          accent={resolveGameAccent(slug, game.accent)}
-          shown={shown}
+        <BoardRuns
+          slug={slug}
           period={period}
+          you={you}
+          accent={resolveGameAccent(slug, game.accent)}
           formatScore={(score) => formatLeaderboardScore(slug, score)}
         />
       )}
-      {!data.loading && left > 0 ? (
-        <button type="button" className="gb-board__more" onClick={() => setShown((n) => n + MORE_ROWS)}>
-          Show {Math.min(left, MORE_ROWS).toLocaleString()} more {byPlayer ? 'players' : 'runs'}
-          <span> · {left.toLocaleString()} to go</span>
-        </button>
-      ) : null}
-      {!data.loading && data.total > data.runs.length ? (
-        <p className="gb-board__note">The first {data.runs.length.toLocaleString()} runs are shown.</p>
-      ) : null}
     </section>
   )
 }
@@ -603,9 +591,9 @@ function daysWords(entry: LeaderboardEntry): string {
   return `${n} ${n === 1 ? 'day' : 'days'}`
 }
 
-function PointsYou({ slug, copy, players, you }: { slug: LeaderboardGame; copy: PeriodCopy; players: BoardPlayer[]; you: string }) {
-  const mine = you ? players.find((p) => p.name === you) : undefined
-  if (!mine) {
+function PointsYou({ slug, copy, you }: { slug: LeaderboardGame; copy: PeriodCopy; you: BoardYou | null }) {
+  const mine = you?.player
+  if (!you || !mine) {
     // Across its row, the words and the button side by side (a past day's card wears the same parts).
     return (
       <div className="sb-card sb-you__card sb-first gb-first">
@@ -622,8 +610,7 @@ function PointsYou({ slug, copy, players, you }: { slug: LeaderboardGame; copy: 
       </div>
     )
   }
-  const above = players[mine.place - 2]
-  const below = players[mine.place]
+  const { above, below } = you
   return (
     <div className="sb-card sb-you__card">
       <div className="sb-you__top">
@@ -634,7 +621,7 @@ function PointsYou({ slug, copy, players, you }: { slug: LeaderboardGame; copy: 
       </div>
       <p className="sb-you__big">
         <b>#{mine.place}</b>
-        <span>of {players.length.toLocaleString()}</span>
+        <span>of {you.field.toLocaleString()}</span>
       </p>
       <p className="sb-you__line">
         {formatDayPoints(mine.best.score)} from {daysWords(mine.best)}
@@ -645,7 +632,7 @@ function PointsYou({ slug, copy, players, you }: { slug: LeaderboardGame; copy: 
             : ' · you lead it'
           : above.best.score === mine.best.score
             ? ` · tied with ${above.name}`
-            : ` · ${formatDayPoints(above.best.score - mine.best.score)} off ${ordinal(placeBeating(players, above.best.score, mine.name))}`}
+            : ` · ${formatDayPoints(above.best.score - mine.best.score)} off ${ordinal(you.nextPlace)}`}
       </p>
     </div>
   )
@@ -683,34 +670,30 @@ function PointsBoard({
   period,
   copy,
   data,
-  players,
   you,
 }: {
   slug: LeaderboardGame
   period: LeaderboardPeriod
   copy: PeriodCopy
   data: ReturnType<typeof useGameBoard>
-  players: BoardPlayer[]
   you: string
 }) {
-  const [shown, setShown] = useState(FIRST_ROWS)
-  const left = players.length - shown
   return (
     <section className="sb-card gb-board gb-board--five" aria-labelledby="gb-board-title" data-hunt={`b-board-${slug}`}>
       <div className="gb-board__head">
         <h2 id="gb-board-title" className="gb-board__title">
           The board
         </h2>
-        {!data.loading && players.length ? (
+        {!data.loading && data.field ? (
           <span className="gb-board__count">
-            {players.length.toLocaleString()} {players.length === 1 ? 'player' : 'players'}
+            {data.field.toLocaleString()} {data.field === 1 ? 'player' : 'players'}
           </span>
         ) : null}
       </div>
       <p className="gb-board__note">Points from every day played.</p>
       {data.loading ? (
         <BoardSkeleton rows={FIRST_ROWS} />
-      ) : !players.length ? (
+      ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">{groupBoardEmptyTitle(`Nobody’s played ${copy.noun ? `${copy.phrase} ` : ''}yet.`)}</p>
           <p className="gb-board__empty-text">Play today to be first.</p>
@@ -718,26 +701,27 @@ function PointsBoard({
         </div>
       ) : (
         <>
-          <div className="gb-board__cols" aria-hidden="true">
-            <span>Place</span>
-            <span />
-            <span>Player</span>
-            <span className="gb-board__num">Points</span>
-            <span className="gb-board__set">Last day</span>
-          </div>
-          <ol className="gb-rows">
-            {players.slice(0, shown).map((p) => (
-              <PointsRow key={p.name} player={p} you={you} period={period} />
-            ))}
-          </ol>
+          <BoardPlayers
+            cols={
+              <div className="gb-board__cols" aria-hidden="true">
+                <span>Place</span>
+                <span />
+                <span>Player</span>
+                <span className="gb-board__num">Points</span>
+                <span className="gb-board__set">Last day</span>
+              </div>
+            }
+            slug={slug}
+            period={period}
+            top={data.top}
+            around={data.around}
+            field={data.field}
+            you={data.you ? you : ''}
+            bandLine={null}
+            row={(p) => <PointsRow key={p.name} player={p} you={you} period={period} />}
+          />
         </>
       )}
-      {!data.loading && left > 0 ? (
-        <button type="button" className="gb-board__more" onClick={() => setShown((n) => n + MORE_ROWS)}>
-          Show {Math.min(left, MORE_ROWS).toLocaleString()} more players
-          <span> · {left.toLocaleString()} to go</span>
-        </button>
-      ) : null}
     </section>
   )
 }
@@ -814,8 +798,8 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   const data = useGameBoard(slug, period, you, groupId)
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
-  const players = playersFromRuns(data.runs)
-  const standing = youOnBoard(players, data.runs, you)
+  const players = data.top
+  const standing = data.you
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
   const youHeld = useHeldHeight<HTMLElement>(`gb-you-${slug}-${period}`, data.loading)
@@ -824,7 +808,7 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   if (data.error) {
     return (
       <div className="sb gb" style={style}>
-        <Banner slug={slug} period={period} copy={copy} players={[]} runs={0} loading={false} group={group} />
+        <Banner slug={slug} period={period} copy={copy} players={[]} field={0} runs={0} loading={false} group={group} />
         <BoardEmpty title="Couldn’t load scores" detail="Check your connection and try again." />
       </div>
     )
@@ -834,10 +818,10 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   if (isDayPointsBoard(slug, period)) {
     // One card across the row: your place, or the way onto a board that has players. An empty board says
     // "Play today to be first" itself, so the row stays (empty) only to tell the next wait to hold no room.
-    const pointsCard = players.length > 0
+    const pointsCard = data.field > 0
     return (
       <div className="sb gb" style={style}>
-        <Banner slug={slug} period={period} copy={copy} players={players} runs={data.total} loading={data.loading} group={group} />
+        <Banner slug={slug} period={period} copy={copy} players={players} field={data.field} runs={data.runCount} loading={data.loading} group={group} />
         {data.loading ? <YouWaiting held={youHeld} solo /> : null}
         {!data.loading ? (
           <section
@@ -845,11 +829,11 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
             aria-label={pointsCard ? 'Your place on this board' : undefined}
             ref={youHeld.ref}
           >
-            {pointsCard ? <PointsYou slug={slug} copy={copy} players={players} you={you} /> : null}
+            {pointsCard ? <PointsYou slug={slug} copy={copy} you={standing} /> : null}
           </section>
         ) : null}
         <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
-          <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} players={players} you={you} />
+          <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
           {!data.loading ? (
             <aside className="gb-side" aria-label="More about this board">
               <OtherBoards others={data.others} period={period} />
@@ -867,7 +851,8 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
         period={period}
         copy={copy}
         players={players}
-        runs={data.total}
+        field={data.field}
+        runs={data.runCount}
         loading={data.loading}
         group={group}
       />
@@ -884,14 +869,14 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
           {standing ? (
             <>
               <YouOnBoard slug={slug} period={period} copy={copy} you={standing} avatarId={data.youRun?.avatarId} />
-              <RunsCard slug={slug} copy={copy} you={standing} players={players} />
+              <RunsCard slug={slug} copy={copy} you={standing} leader={players[0]} />
             </>
           ) : null}
         </section>
       ) : null}
 
       <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
-        <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} players={players} you={you} />
+        <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
         {!data.loading ? (
           <aside className="gb-side" aria-label="More about this board">
             <OtherBoards others={data.others} period={period} />

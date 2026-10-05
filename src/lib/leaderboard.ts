@@ -524,6 +524,59 @@ export async function getLeaderboard(
   })
 }
 
+/** One player on a board, as the API counts them: their best run, its place among the players, and their runs on it. */
+export type PlayerBoardRow = LeaderboardEntry & { place: number; runs: number }
+
+/**
+ * A board as players, a page at a time (GET /leaderboards/:game?players=1): the API works out every
+ * place, so a page shows any part of a board of any size. With `name`: their row, the players either side
+ * (`around`), the place a run just better than the one above takes (`nextPlace`), the next band up (the
+ * top 10, 100, 1,000 or half) with the score that gets in, and their runs on it. With `find`: up to ten
+ * players whose tag holds it.
+ */
+export type PlayerBoard = {
+  /** Players on the board. */
+  total: number
+  /** Runs on the board. */
+  runs: number
+  entries: PlayerBoardRow[]
+  you: PlayerBoardRow | null
+  around: PlayerBoardRow[]
+  nextPlace: number | null
+  band: { place: number; half: boolean; score: number } | null
+  yourRuns: LeaderboardEntry[]
+  found: PlayerBoardRow[]
+}
+
+export async function getPlayerBoard(
+  slug: string,
+  period: LeaderboardPeriod,
+  name?: string,
+  page?: { offset?: number; limit?: number; find?: string; around?: number },
+): Promise<PlayerBoard> {
+  return withGroupFallback(async () => {
+    const params = applyBoardScope(new URLSearchParams({ period, players: '1' }))
+    const cleaned = normalizePlayerName(name ?? '')
+    if (cleaned) params.set('name', cleaned)
+    if (page?.offset) params.set('offset', String(Math.max(0, Math.floor(page.offset))))
+    if (page?.limit) params.set('limit', String(Math.max(1, Math.floor(page.limit))))
+    if (page?.find) params.set('find', page.find.trim().slice(0, 12))
+    if (page?.around != null) params.set('around', String(page.around))
+    const data = await api<Partial<PlayerBoard> & { entries?: PlayerBoardRow[] }>(`/leaderboards/${slug}?${params.toString()}`)
+    return {
+      total: data.total ?? 0,
+      runs: data.runs ?? 0,
+      entries: data.entries ?? [],
+      you: data.you ?? null,
+      around: data.around ?? [],
+      nextPlace: data.nextPlace ?? null,
+      band: data.band ?? null,
+      yourRuns: data.yourRuns ?? [],
+      found: data.found ?? [],
+    }
+  })
+}
+
 /** A player on a daily's board on one day: their run that counted, and their place among that day's players. */
 export type DayBoardEntry = LeaderboardEntry & { place: number }
 

@@ -1847,6 +1847,106 @@ a.sb-board__link:hover .sb-board__go {
   color: var(--muted);
 }
 
+.gb-board__more:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* A break in the list: the players it skips, opened 25 at a time (components/BoardPlayers.tsx). */
+.gb-board__more--gap {
+  margin: 0.5rem 0;
+  color: var(--muted);
+}
+
+.gb-board__more--gap b {
+  letter-spacing: 0.2em;
+}
+
+.gb-board__more--gap span {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+/* Find a player, and Jump to me: over the board's players. */
+.gb-find {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.gb-find__box {
+  flex: 1 1 14rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--sb-line-2);
+  background: rgba(var(--ink-rgb), 0.03);
+  color: var(--muted);
+}
+
+.gb-find__box:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.gb-find__box svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.gb-find__box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  outline: none;
+}
+
+.gb-find__me {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 0.9rem;
+  background: var(--gb-accent, var(--accent));
+  color: var(--gb-accent-ink, #fff);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.gb-find__me span {
+  font-weight: 650;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.gb-find__none {
+  margin-top: 1rem;
+}
+
+/* Under your place: the next band up and what gets into it. */
+.gb-band {
+  margin: 0.5rem 0 0;
+  padding: 0 0.9rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--sb-brand-ink);
+}
+
 .gb-board__more:hover,
 .gb-board__more:focus-visible {
   background: rgba(var(--ink-rgb), 0.04);

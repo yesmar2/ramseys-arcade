@@ -1,5 +1,5 @@
 import { getGame } from '../data/games'
-import { normalizePlayerName, type LeaderboardEntry, type LeaderboardPeriod } from './leaderboard'
+import { normalizePlayerName, type LeaderboardEntry, type LeaderboardPeriod, type PlayerBoard, type PlayerBoardRow } from './leaderboard'
 import {
   formatLeaderboardScore,
   formatPercentGap,
@@ -12,10 +12,9 @@ import { numberWord } from './numberWord'
 import { ordinal, type PeriodCopy, type Stat } from './scoreboard'
 
 /*
- * One game's board as players rather than runs. The API lists runs, best
- * first, so one player can hold several places in a row; a player's place is
- * their best run's. Everything the game board page says about places and
- * gaps is worked out here from the runs.
+ * One game's board as players rather than runs: a player's place is their best run's. The API counts the
+ * places (getPlayerBoard), a page at a time, so a board of any size reads in one small ask; what's left to
+ * work out from a few runs here (playersFromRuns) is for the small reads: a day's few, a run's report.
  */
 
 /** One player on a board: their best run and how many runs they have. */
@@ -24,6 +23,12 @@ export type BoardPlayer = {
   name: string
   best: LeaderboardEntry
   runs: number
+}
+
+/** A row of the API's players board as a player here. */
+export function boardPlayer(row: PlayerBoardRow): BoardPlayer {
+  const { place, runs, ...best } = row
+  return { place, name: normalizePlayerName(row.name), best, runs }
 }
 
 /** A board's runs, best first, as players: each at their best run, with a count of their runs. */
@@ -135,14 +140,14 @@ export function boardHeadline(
   return { name: '', rest: `Nobody’s played ${game} ${copy.noun ? copy.phrase : 'yet'}.` }
 }
 
-/** The line under the headline: how busy the board is. */
-export function boardLede(slug: string, copy: PeriodCopy, players: BoardPlayer[], runs: number): string {
-  if (players.length >= 2) {
+/** The line under the headline: how busy the board is, from its first players and how many there are. */
+export function boardLede(slug: string, copy: PeriodCopy, top: BoardPlayer[], field: number, runs: number): string {
+  if (field >= 2) {
     const when = copy.noun ? ` ${copy.phrase}` : ', all time'
-    return `${count(players.length, 'player')} and ${count(runs, 'run')}${when}.`
+    return `${count(field, 'player')} and ${count(runs, 'run')}${when}.`
   }
-  if (players.length === 1) {
-    const only = players[0]
+  if (field === 1 && top[0]) {
+    const only = top[0]
     const soFar = only.runs === 1 ? 'One run so far' : `${capital(numberWord(only.runs))} runs so far`
     // With several runs, "it" could be any of them: name the best.
     const beat = only.runs === 1 ? 'it' : formatLeaderboardScore(slug, only.best.score)
@@ -166,6 +171,32 @@ export type BoardYou = {
   /** The place a run just better than the player above takes (placeBeating); for the player in first, 1. */
   nextPlace: number
   runs: LeaderboardEntry[]
+}
+
+/** Where the viewer stands, as the API's players board told it: their row, the ones either side and their runs. */
+export function youFromBoard(board: PlayerBoard): BoardYou | null {
+  if (!board.you) return null
+  const player = boardPlayer(board.you)
+  const near = board.around.map(boardPlayer)
+  return {
+    player,
+    field: board.total,
+    above: near.find((p) => p.place === player.place - 1) ?? null,
+    below: near.find((p) => p.place === player.place + 1) ?? null,
+    nextPlace: board.nextPlace ?? 1,
+    runs: board.yourRuns,
+  }
+}
+
+/**
+ * The next band up from where you stand, and what gets you in: "Beat 4,890 to reach the top half". The
+ * API picks the band (the top 10, 100, 1,000 or half) and the score at its edge; a tie there goes to whoever
+ * got there first, so it's beaten, not matched.
+ */
+export function bandLine(slug: string, band: PlayerBoard['band']): string | null {
+  if (!band) return null
+  const into = band.half ? 'the top half' : `the top ${band.place.toLocaleString()}`
+  return `Beat ${formatLeaderboardScore(slug, band.score)} to reach ${into}.`
 }
 
 export function youOnBoard(players: BoardPlayer[], runs: LeaderboardEntry[], me: string): BoardYou | null {
@@ -275,12 +306,12 @@ const CHART_RUNS = 12
  * floor under the slowest run, so their differences show; points count up
  * from nothing.
  */
-export function runsChart(slug: string, you: BoardYou, players: BoardPlayer[]) {
+export function runsChart(slug: string, you: BoardYou, leader: BoardPlayer | undefined) {
   const runs = [...you.runs].sort((a, b) => a.at - b.at).slice(-CHART_RUNS)
   const lines: { label: string; score: number }[] = []
   if (you.above) lines.push({ label: `${ordinal(you.nextPlace)} · ${formatLeaderboardScore(slug, you.above.best.score)}`, score: you.above.best.score })
   // First as well, when it is in reach and the next place isn't it already.
-  const lead = players[0]
+  const lead = leader
   const inReach = (score: number) => isInvertedBoard(slug) || score <= you.player.best.score * 1.6
   if (lead && you.nextPlace > 1 && inReach(lead.best.score)) {
     lines.push({ label: `1st · ${formatLeaderboardScore(slug, lead.best.score)}`, score: lead.best.score })

@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
 import { isDailyGame } from '../data/games'
+import { bandLine, boardPlayer, youFromBoard, type BoardPlayer, type BoardYou } from '../lib/gameBoard'
 import {
   fetchGlobalRank,
   fetchLeaderboardsSummary,
   getLeaderboard,
+  getPlayerBoard,
   normalizePlayerName,
   RANKED_LEADERBOARD_GAMES,
   type LeaderboardEntry,
   type LeaderboardGame,
   type LeaderboardPeriod,
-  type YouEntry,
+  type PlayerBoard,
 } from '../lib/leaderboard'
 import { distinctTop, type BoardTop } from '../lib/scoreboard'
 
@@ -23,12 +25,20 @@ export type OtherBoard = {
 export type GameBoardData = {
   loading: boolean
   error: boolean
-  /** Every run on the board this period, best first (up to RUN_CAP). */
-  runs: LeaderboardEntry[]
-  /** Runs on the board, loaded or not. */
-  total: number
-  /** The viewer's best run and its place among runs, when they have one. */
-  youRun: YouEntry | null
+  /** The board's first players, best first (FIRST_PLAYERS of them): the rest are asked a page at a time. */
+  top: BoardPlayer[]
+  /** Players on the board. */
+  field: number
+  /** Runs on the board. */
+  runCount: number
+  /** Where the viewer stands, when they're on it: their row, the ones either side, their runs. */
+  you: BoardYou | null
+  /** The viewer and the players either side of them, by place. */
+  around: BoardPlayer[]
+  /** "Beat 4,890 to reach the top half", for a viewer below the top ten. */
+  bandLine: string | null
+  /** The viewer's best run, with their avatar, when they have one. */
+  youRun: LeaderboardEntry | null
   /** The viewer's best on this game over all time, for a period they have not played. */
   allTimeBest: number | null
   /** The other boards, the viewer's first; arrives after the rest. */
@@ -38,27 +48,38 @@ export type GameBoardData = {
 const LOADING: GameBoardData = {
   loading: true,
   error: false,
-  runs: [],
-  total: 0,
+  top: [],
+  field: 0,
+  runCount: 0,
+  you: null,
+  around: [],
+  bandLine: null,
   youRun: null,
   allTimeBest: null,
   others: [],
 }
 
-/** Runs per request: the most the API sends at once. */
-const PAGE = 500
+/** Players a board opens on. */
+export const FIRST_PLAYERS = 10
+
+/** The board as it opens, from the API's players board. */
+export function openingBoard(board: PlayerBoard, slug: string) {
+  return {
+    top: board.entries.map(boardPlayer),
+    field: board.total,
+    runCount: board.runs,
+    you: youFromBoard(board),
+    around: board.around.map(boardPlayer),
+    bandLine: bandLine(slug, board.band),
+    youRun: board.you,
+  }
+}
 
 /**
- * How many runs to read at most. Places are counted from every run, so the
- * whole board is read; this only guards the page against a board that has
- * grown past anything it was built for.
- */
-const RUN_CAP = 2000
-
-/**
- * One game's board for a period, whole: every run (so places can be counted
- * by player), the viewer's best, and their best over all time when they have
- * not played this period. The other boards' leaders follow separately.
+ * One game's board for a period, as it opens: its first players, the viewer's place with the players either
+ * side, and their best over all time when they have not played this period, all counted by the API (one
+ * small ask, however big the board). The rest are asked a page at a time as they're opened. The other
+ * boards' leaders follow separately.
  */
 export function useGameBoard(
   slug: LeaderboardGame,
@@ -75,13 +96,7 @@ export function useGameBoard(
 
     void (async () => {
       try {
-        const first = await getLeaderboard(slug, period, me || undefined, { limit: PAGE })
-        const runs = [...first.entries]
-        while (runs.length < first.total && runs.length < RUN_CAP) {
-          const next = await getLeaderboard(slug, period, undefined, { offset: runs.length, limit: PAGE })
-          if (!next.entries.length) break
-          runs.push(...next.entries)
-        }
+        const first = await getPlayerBoard(slug, period, me || undefined, { limit: FIRST_PLAYERS, around: 2 })
         let allTimeBest: number | null = null
         // A daily's run on another day was on another track, hole or scenes: nothing to measure today's board by.
         if (me && !first.you && period !== 'all' && !isDailyGame(slug)) {
@@ -95,9 +110,7 @@ export function useGameBoard(
         setData({
           loading: false,
           error: false,
-          runs,
-          total: first.total,
-          youRun: first.you,
+          ...openingBoard(first, slug),
           allTimeBest,
           others: [],
         })
