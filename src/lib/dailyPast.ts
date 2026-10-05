@@ -110,6 +110,8 @@ export type PastSource = {
   firstResultOnly?: boolean
   /** Whether this device knows of a result of the viewer's on a course that the API may not have yet. */
   resultHere?: (day: string) => boolean
+  /** A racing daily's blue time that day, in seconds: its card shows your medal against it (lib/raceMedals.ts). */
+  pace?: (day: string) => number
 }
 
 /** Cards are paged in this many at a time: three rows of four. */

@@ -15,6 +15,7 @@ import { dailyWords } from '../lib/dailyWords'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { andList, ordinal } from '../lib/profileMath'
+import { medalFor, paceMsOf, type Medal } from '../lib/raceMedals'
 import { doneOf, markOf, type DayMark } from '../lib/pastDays'
 import { liveDailies, TODAY_DAILIES, type TodayDaily, type TodayKey, type TodayServerDay } from '../lib/today'
 import { DayTicket, DoneCount, type TicketTile } from './DayTicket'
@@ -55,6 +56,13 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
   return { kicker: `Course #${course.n}`, title: course.name, play: `${gamePlayHref('marblerun')}?day=${day}`, page: dailyTabHref('marblerun', 'past', day) }
 }
 
+/** A racing daily's medal that day (lib/raceMedals.ts): your best then, against the day's blue. */
+function medalOf(key: TodayKey, day: string, score: number): Medal | null {
+  const pace = key === 'track' ? dailyTrack(day).pace : key === 'course' ? dailyCourse(day).pace : key === 'cave' ? dailyCave(day).pace : null
+  // The racing dailies keep a million less the ms (their score.ts).
+  return pace == null ? null : medalFor(paceMsOf(pace), 1_000_000 - score)
+}
+
 /** A daily on the day's ticket, as its tile shows it. */
 function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServerDay | undefined, locked: boolean): TicketTile {
   const slug = daily.slug
@@ -75,6 +83,7 @@ function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServ
     result: you ? formatLeaderboardScore(slug, you.score) : done ? 'Done' : null,
     // "38th of 65", where the game had places that day.
     note: you?.place != null && entry ? `${ordinal(you.place)} of ${entry.players}` : null,
+    medal: you ? medalOf(daily.key, day, you.score) : null,
     play,
     // A day in the archive, without Plus: its play page says what the archive is.
     go: locked ? 'Plus' : verb,

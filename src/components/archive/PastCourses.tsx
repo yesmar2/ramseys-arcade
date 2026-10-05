@@ -21,7 +21,9 @@ import {
 import { BOARD_NAMES, boardTip, dailyWords, type PastBoard, type PastKind } from '../../lib/dailyWords'
 import { formatLeaderboardScore } from '../../lib/leaderboardFormat'
 import { ordinal } from '../../lib/profileMath'
+import { MEDAL_NAMES, medalFor, paceMsOf, type Medal } from '../../lib/raceMedals'
 import { BoardEmpty } from '../BoardChrome'
+import { MedalIcon } from '../RaceMedal'
 import { BoardsIcon, LockIcon, PlayIcon } from '../chromeIcons'
 import { InfoTip } from '../InfoTip'
 import { PastBoardsModal } from '../PastBoardsModal'
@@ -154,8 +156,25 @@ function Unknown() {
   )
 }
 
-/** You on a board: your mark and your place of how many, "14th of 65"; or your result, on a day that kept no places. */
-function Yours({ name, avatarId, place, of, figure }: { name: string; avatarId: string | null; place: number | null; of: number; figure: string }) {
+/**
+ * You on a board: your mark and your place of how many, "14th of 65"; or your result, on a day that kept no
+ * places. On a racing daily's day, your medal against its blue after it (lib/raceMedals.ts).
+ */
+function Yours({
+  name,
+  avatarId,
+  place,
+  of,
+  figure,
+  medal = null,
+}: {
+  name: string
+  avatarId: string | null
+  place: number | null
+  of: number
+  figure: string
+  medal?: Medal | null
+}) {
   return (
     <span className="pc-val">
       <PlayerAvatar avatarId={avatarId} name={name} size="sm" title="You" className="pc-val__me" />
@@ -167,6 +186,12 @@ function Yours({ name, avatarId, place, of, figure }: { name: string; avatarId: 
       ) : (
         <b>{figure}</b>
       )}
+      {medal ? (
+        <span className="pc-val__medal" title={`${MEDAL_NAMES[medal]} medal`}>
+          <MedalIcon medal={medal} size={18} />
+          <span className="visually-hidden">, {MEDAL_NAMES[medal]} medal</span>
+        </span>
+      ) : null}
     </span>
   )
 }
@@ -225,10 +250,12 @@ function PastCard({
   // no place and no 1st: only your own result, and the card opens no boards.
   const rankedGame = isRankedGame(slug)
   const you = showYou ? (entry?.you ?? null) : null
+  // A racing daily's medal that day: your best then against the day's blue (they keep a million less the ms).
+  const medal = you && source.pace ? medalFor(paceMsOf(source.pace(day)), 1_000_000 - you.score) : null
   let ranked: ReactNode
   if (daysState === 'wait') ranked = <Waiting />
   else if (daysState === 'failed') ranked = <Unknown />
-  else if (you) ranked = <Yours name={viewer.name} avatarId={avatarId} place={rankedGame ? you.place : null} of={entry?.players ?? 0} figure={fmt(you.score)} />
+  else if (you) ranked = <Yours name={viewer.name} avatarId={avatarId} place={rankedGame ? you.place : null} of={entry?.players ?? 0} figure={fmt(you.score)} medal={medal} />
   else if (!rankedGame) ranked = <span className="pc-val pc-val--none">{showYou ? 'Not played' : 'Sign in for yours'}</span>
   else if (!entry?.top) ranked = <span className="pc-val pc-val--none">Nobody {verbDone(slug)} it</span>
   else ranked = <Crowned who={entry.top} what="1st" figure={fmt(entry.top.score)} />

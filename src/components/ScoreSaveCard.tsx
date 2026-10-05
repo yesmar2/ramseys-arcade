@@ -57,6 +57,7 @@ import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
 import { PushAsk, StreakPushAsk } from './PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
+import { RunMedalLine } from './RaceMedal'
 import { SeasonRunLine } from './season/SeasonRun'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { copyText } from './ShareBoardButton'
@@ -81,6 +82,14 @@ type ScoreSaveProps = {
   pours?: SavedPours
   /** A daily's run to send on, its day's link included (Hot Lap's lap): a Share link under the report. */
   shareLine?: string
+  /**
+   * A racing daily's day: its blue's time in ms from the day's plan, and how the game says a time, for the
+   * run's medal (lib/raceMedals.ts) on the report.
+   */
+  medalPace?: number
+  medalFormat?: (seconds: number) => string
+  /** A racing daily's tease of tomorrow's course (TomorrowTease), under the way on to the next daily. */
+  tomorrow?: ReactNode
   /**
    * A daily's run kept on this device: whose it is (lib/deviceRuns.ts). Left out, the run is saved under
    * whoever is signed in, as every other game's. null, it was played signed out, and whoever signs in
@@ -135,7 +144,24 @@ function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
  * in without a tag, it takes one in slots. A run that used the admin stage
  * jump is not saved at all. Leave, top left, goes to the game's page.
  */
-export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, pickups, pace, pours, shareLine, owner, onDone, onSettled, onSaved }: ScoreSaveProps) {
+export function ScoreSaveCard({
+  gameSlug,
+  score,
+  title,
+  subtitle,
+  previousBest,
+  pickups,
+  pace,
+  pours,
+  shareLine,
+  medalPace,
+  medalFormat,
+  tomorrow,
+  owner,
+  onDone,
+  onSettled,
+  onSaved,
+}: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const canSaveScores = signedIn || Boolean(impersonation)
@@ -622,10 +648,14 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
   }
   // And the way on to the next of today's dailies: first, or after the sign-in for a run that isn't saved yet.
   if (onTicket && (phase === 'saved' || phase === 'needAuth')) {
+    // And under it, a racing daily's tomorrow: what comes next, and when.
     const next = (
-      <Suspense fallback={null}>
-        <NextDaily slug={gameSlug} />
-      </Suspense>
+      <>
+        <Suspense fallback={null}>
+          <NextDaily slug={gameSlug} />
+        </Suspense>
+        {tomorrow ?? null}
+      </>
     )
     block = phase === 'needAuth' ? (
       <>
@@ -671,6 +701,17 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
 
   const lines = pending ? null : (data?.lines ?? [])
   const heading = ribbon?.text ?? title
+  // A racing daily's medal for the run, saved or not: it's worked out from the run and the day's blue. The
+  // racing dailies keep a million less the ms (their score.ts).
+  const medalLine =
+    medalPace && medalFormat && score > 0 ? (
+      <RunMedalLine
+        paceMs={medalPace}
+        ms={1_000_000 - score}
+        previousMs={previousBest && previousBest > 0 ? 1_000_000 - previousBest : null}
+        format={medalFormat}
+      />
+    ) : null
   // First in the standings takes the whole screen, once, with the report under it, in the standings' own period.
   const standingsPeriod = facts?.standingsPeriod ?? period
   const takeover =
@@ -705,13 +746,18 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         }
         race={data?.race ?? null}
         tickets={
-          phase === 'saved' && facts?.tickets ? (
+          medalLine || (phase === 'saved' && facts?.tickets) || (unsaved && score > 0) ? (
             <>
-              <RunTicketsLine paid={facts.tickets} game={gameSlug} />
-              {facts.season ? <SeasonRunLine run={facts.season} /> : null}
+              {medalLine}
+              {phase === 'saved' && facts?.tickets ? (
+                <>
+                  <RunTicketsLine paid={facts.tickets} game={gameSlug} />
+                  {facts.season ? <SeasonRunLine run={facts.season} /> : null}
+                </>
+              ) : unsaved && score > 0 ? (
+                <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
+              ) : null}
             </>
-          ) : unsaved && score > 0 ? (
-            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
           ) : null
         }
         primary={primary}

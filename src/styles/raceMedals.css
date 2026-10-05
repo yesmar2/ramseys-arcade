@@ -1,0 +1,66 @@
+/* A racing daily's medals (components/RaceMedal.tsx): bronze, silver, gold and platinum against the day's blue. */
+
+.race-medal {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.race-medal--dim {
+  color: rgba(var(--ink-rgb), 0.32);
+}
+
+.race-medals {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.race-medals__icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+/* Beside a racing daily's result on the Dailies ticket (DayTicket), a little bigger than the tick before it. */
+.today-tile__medal {
+  display: inline-flex;
+  align-items: center;
+}
+
+.today-tile__score .today-tile__medal svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* A racing daily's run on its report (ScoreSaveCard): the medal it won, or the day's, and the next one. */
+.run-medal {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.run-medal--new span {
+  font-weight: 800;
+}
+
+/* Today's ticket: the racing dailies' medals and the day's goal, gold on all of them (TodayCard MedalGoal). */
+.today-medals__goal {
+  align-self: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* After your place on a racing daily's past-course card (archive/PastCourses.tsx). */
+.pc-val__medal {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.15rem;
+}

@@ -40,6 +40,9 @@ import { PastCourseRunResult, PracticeStartCard } from './PracticeCards'
 import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, marbleDay, paceOf, practiceBest, type GhostRun, type MarbleDay } from './runs'
 import { MarbleScene } from './scene'
 import { formatMarblerunBoardScore, formatRun, marblerunBoardScore, marblerunMsFromBoardScore } from './score'
+import { MedalRow } from '../../components/RaceMedal'
+import { paceMsOf } from '../../lib/raceMedals'
+import { TomorrowCourse } from './TomorrowCourse'
 import { TestResultCard, TestStartCard } from './TestCards'
 import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, racingPlan, respawn, step, type Ball, type Tilt } from './sim'
 
@@ -226,7 +229,7 @@ function runShareLine(marble: MarbleDay, time: number, pace: number, falls: numb
 }
 
 /** Today's course and its number, the run its ghost rolls (the #1's, your best, or the blue ball's), and when the next course comes. */
-function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: number; chasing: Chasing }) {
+function CourseTiles({ marble, ghost, chasing, bestMs }: { marble: MarbleDay; ghost: number; chasing: Chasing; bestMs: number | null }) {
   const [left, setLeft] = useState(() => msUntilNextCourse())
   useEffect(() => {
     const timer = window.setInterval(() => setLeft(msUntilNextCourse()), 20_000)
@@ -242,6 +245,7 @@ function CourseTiles({ marble, ghost, chasing }: { marble: MarbleDay; ghost: num
         <span>{chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue ball'}</span>
         <strong>{formatRun(ghost)}</strong>
       </div>
+      <MedalRow paceMs={paceMsOf(marble.pace)} bestMs={bestMs} format={formatRun} />
       <div className="game-pause-meta__row">
         <span>Next course</span>
         <strong>{untilWords(left)}</strong>
@@ -968,7 +972,7 @@ function MarbleRunDay({
       </div>
     </>
   ) : (
-    <CourseTiles marble={marble} ghost={g.ghost.run.time} chasing={g.chasing} />
+    <CourseTiles marble={marble} ghost={g.ghost.run.time} chasing={g.chasing} bestMs={apiBest > 0 ? marblerunMsFromBoardScore(apiBest) : null} />
   )
   const splitsText = (r: NonNullable<Game['run']>) =>
     [
@@ -1112,6 +1116,9 @@ function MarbleRunDay({
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace * 1000)}
                     shareLine={runShareLine(marble, run.time, pace, run.falls)}
+                    medalPace={paceMsOf(marble.pace)}
+                    medalFormat={formatRun}
+                    tomorrow={<TomorrowCourse day={marble.day} />}
                     owner={runOwner}
                     onSettled={() => sendGhost(run, playerName)}
                     onSaved={() => claimSaved(g)}

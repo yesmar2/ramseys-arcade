@@ -32,6 +32,9 @@ const playHref = (day: string) => `${gamePlayHref(SLUG)}?track=${trackNumber(day
 
 const title = (day: string) => `#${trackNumber(day)} ${dailyTrack(day).name}`
 
+/** The day's blue car, for your medal that day. */
+const pace = (day: string) => dailyTrack(day).pace
+
 function art(day: string) {
   const track = dailyTrack(day)
   return <TrackThumb pieces={track.pieces} shape={track.shape} />
@@ -55,6 +58,7 @@ export function TrackArchive() {
       title,
       art,
       boards,
+      pace,
     }),
     [today, boards],
   )

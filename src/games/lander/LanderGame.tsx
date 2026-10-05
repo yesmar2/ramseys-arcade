@@ -55,6 +55,9 @@ import {
 import { CaveScene } from './scene'
 import { useSkinInto } from '../../lib/skins'
 import { crashWords, formatLanderBoardScore, formatRun, landerBoardScore, landerMsFromBoardScore } from './score'
+import { MedalRow } from '../../components/RaceMedal'
+import { paceMsOf } from '../../lib/raceMedals'
+import { TomorrowCave } from './TomorrowCave'
 import { TestResultCard, TestStartCard } from './TestCards'
 import {
   CRASH_FOR,
@@ -283,7 +286,7 @@ function runShareLine(lander: LanderDay, time: number, pace: number, crashes: nu
 }
 
 /** Today's cave and its number, the run its ghost flies (the #1's, your best, or the blue ship's), and when the next cave comes. */
-function CaveTiles({ lander, ghost, chasing }: { lander: LanderDay; ghost: number; chasing: Chasing }) {
+function CaveTiles({ lander, ghost, chasing, bestMs }: { lander: LanderDay; ghost: number; chasing: Chasing; bestMs: number | null }) {
   const [left, setLeft] = useState(() => msUntilNextCave())
   useEffect(() => {
     const timer = window.setInterval(() => setLeft(msUntilNextCave()), 20_000)
@@ -299,6 +302,7 @@ function CaveTiles({ lander, ghost, chasing }: { lander: LanderDay; ghost: numbe
         <span>{chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue ship'}</span>
         <strong>{formatRun(ghost)}</strong>
       </div>
+      <MedalRow paceMs={paceMsOf(lander.pace)} bestMs={bestMs} format={formatRun} />
       <div className="game-pause-meta__row">
         <span>Next cave</span>
         <strong>{untilWords(left)}</strong>
@@ -1014,7 +1018,7 @@ function LanderDayGame({
       </div>
     </>
   ) : (
-    <CaveTiles lander={lander} ghost={g.ghost.run.time} chasing={g.chasing} />
+    <CaveTiles lander={lander} ghost={g.ghost.run.time} chasing={g.chasing} bestMs={apiBest > 0 ? landerMsFromBoardScore(apiBest) : null} />
   )
   const splitsText = (r: NonNullable<Game['run']>) =>
     [lander.name, ...r.splits.slice(0, -1).map((at, k) => `${k === lander.cave.gates.length - 1 ? 'Room' : `G${k + 1}`} ${formatRun(at)}`), crashWords(r.crashes)].join(' · ')
@@ -1153,6 +1157,9 @@ function LanderDayGame({
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace * 1000)}
                     shareLine={runShareLine(lander, run.time, pace, run.crashes)}
+                    medalPace={paceMsOf(lander.pace)}
+                    medalFormat={formatRun}
+                    tomorrow={<TomorrowCave day={lander.day} />}
                     owner={runOwner}
                     onSettled={() => sendGhost(run, playerName)}
                     onSaved={() => claimSaved(g)}

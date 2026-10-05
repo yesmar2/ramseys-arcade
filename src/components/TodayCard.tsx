@@ -10,6 +10,8 @@ import { numberWord } from '../lib/numberWord'
 import { TODAY_KEEP } from '../lib/today'
 import type { TournamentSummary } from '../lib/tournaments'
 import { CheckIcon, DayTicket, DoneCount, type TicketTile } from './DayTicket'
+import { MedalIcon } from './RaceMedal'
+import { MEDAL_NAMES } from '../lib/raceMedals'
 import { streakLine, todayShareUrl, type Punch, type Ticket } from './todayPunches'
 
 /*
@@ -45,6 +47,36 @@ function eventGame(t: TournamentSummary): string {
 }
 
 /** The day's other things, which don't count: a chip each. */
+/**
+ * Today's medals on the racing dailies (lib/raceMedals.ts), and the day's goal: gold or better on all of them.
+ * Ramsey picked medals to give every visit a goal (2026-10-05). Each opens its game, to go after the next one.
+ */
+function MedalGoal({ punches }: { punches: Punch[] }) {
+  const racing = punches.filter((p) => p.key === 'track' || p.key === 'course' || p.key === 'cave')
+  if (!racing.length) return null
+  const golds = racing.filter((p) => p.medal === 'gold' || p.medal === 'platinum').length
+  const all = numberWord(racing.length)
+  return (
+    <div className="today-card__bonus today-card__medals">
+      <span className="today-card__label" id="today-medals-label">
+        Medals
+      </span>
+      <ul aria-labelledby="today-medals-label">
+        {racing.map((p) => (
+          <li key={p.key}>
+            <a className="today-bonus" href={gamePlayHref(p.slug)} title={p.medal ? `${MEDAL_NAMES[p.medal]} medal` : 'No medal yet'}>
+              <MedalIcon medal={p.medal ?? 'bronze'} dim={!p.medal} size={18} />
+              {p.game}
+              <span className="visually-hidden">: {p.medal ? `${MEDAL_NAMES[p.medal]} medal` : 'no medal yet'}</span>
+            </a>
+          </li>
+        ))}
+        <li className="today-medals__goal">{golds >= racing.length ? `Gold on all ${all} today!` : `Gold on all ${all}: ${golds} of ${racing.length}`}</li>
+      </ul>
+    </div>
+  )
+}
+
 function BonusPunches() {
   const name = normalizePlayerName(usePlayerName())
   const { official } = useLiveEvents(name)
@@ -127,6 +159,7 @@ function tileOf(p: Punch): TicketTile {
     done: p.done,
     result: p.done ? (p.short ?? 'Done') : null,
     note: null,
+    medal: p.done ? (p.medal ?? null) : null,
     play: gamePlayHref(p.slug),
     go: p.carry ? 'Carry on' : verb,
     goLabel: p.carry ? `Carry on ${p.game}${carried ? `, ${carried}` : ''}` : `${verb} ${p.game}`,
@@ -155,6 +188,7 @@ export function TodayCard({ ticket, signedIn }: { ticket: Ticket; signedIn: bool
       punched={{ done, total }}
       tiles={punches.map(tileOf)}
     >
+      <MedalGoal punches={punches} />
       <BonusPunches />
     </DayTicket>
   )

@@ -25,6 +25,7 @@ import { courseDay, dailyCourse } from '../games/marblerun/daily'
 import { keptRun } from '../games/marblerun/runStore'
 import { formatRun } from '../games/marblerun/score'
 import { todayShareHref } from '../hooks/useHashRoute'
+import { medalFor, paceMsOf, type Medal } from '../lib/raceMedals'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
 import type { Viewer } from '../lib/deviceRuns'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -69,7 +70,12 @@ export type Punch = {
   share: string | null
   /** In its first week on the ticket. */
   fresh: boolean
+  /** A racing daily's medal for the day's best against its blue (lib/raceMedals.ts), once it has one. */
+  medal?: Medal | null
 }
+
+/** A board score's time in ms: the racing dailies keep a million less the ms (their score.ts). */
+const msOfScore = (score: number) => 1_000_000 - score
 
 /** A daily's punch, apart from what every punch has from TODAY_DAILIES (its key, game and label, and whether it's new). */
 type PunchDay = Omit<Punch, 'key' | 'slug' | 'label' | 'game' | 'fresh'>
@@ -171,6 +177,7 @@ function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: lapWords,
     carry: null,
     share: lapWords ? `${track.name} ${lapWords}` : null,
+    medal: medalFor(paceMsOf(track.pace), serverLap != null ? msOfScore(serverLap) : lapTime != null ? Math.round(lapTime * 1000) : null),
   }
 }
 
@@ -240,6 +247,7 @@ function coursePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: runWords,
     carry: null,
     share: runWords ? `${course.name} ${runWords}` : null,
+    medal: medalFor(paceMsOf(course.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
   }
 }
 
@@ -259,6 +267,7 @@ function cavePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: runWords,
     carry: null,
     share: runWords ? `${cave.name} ${runWords}` : null,
+    medal: medalFor(paceMsOf(cave.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
   }
 }
 

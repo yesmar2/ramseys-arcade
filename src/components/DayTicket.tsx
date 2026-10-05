@@ -4,6 +4,8 @@ import { PlayIcon } from './chromeIcons'
 import { DailyKindTag } from './DailyKindTag'
 import type { TodayFreezes } from '../lib/today'
 import { GameArt } from './GameArt'
+import { MedalIcon } from './RaceMedal'
+import { MEDAL_NAMES, type Medal } from '../lib/raceMedals'
 import { StreakFreezes } from './StreakFreezes'
 import { FlameIcon, StarIcon } from './TodayChip'
 import '../styles/today.css'
@@ -38,6 +40,8 @@ export type TicketTile = {
   result: string | null
   /** Under the result, smaller: a past day's place, "38th of 65". */
   note: string | null
+  /** A racing daily's medal against the day's blue (lib/raceMedals.ts), beside the result. */
+  medal?: Medal | null
   /** The way in while it's still to play: where, its word ("Race", "Carry on"), its name read aloud, and its tip. */
   play: string
   go: string
@@ -73,6 +77,12 @@ function Tile({ tile: t }: { tile: TicketTile }) {
             <CheckIcon />
             <span className="visually-hidden">Punched: </span>
             {t.result ?? 'Done'}
+            {t.medal ? (
+              <span className="today-tile__medal" title={`${MEDAL_NAMES[t.medal]} medal`}>
+                <MedalIcon medal={t.medal} size={16} />
+                <span className="visually-hidden">, {MEDAL_NAMES[t.medal]} medal</span>
+              </span>
+            ) : null}
           </span>
           {t.note ? <span className="today-tile__note">{t.note}</span> : null}
         </span>

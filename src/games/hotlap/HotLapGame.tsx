@@ -40,6 +40,9 @@ import { usePastTrackFigures, type PastTrackFigures } from './pastTrack'
 import { PastTrackResult, PastTrackStart } from './PastTrackCards'
 import { HotLapScene } from './scene'
 import { useSkinInto } from '../../lib/skins'
+import { MedalRow } from '../../components/RaceMedal'
+import { paceMsOf } from '../../lib/raceMedals'
+import { TomorrowTrack } from './TomorrowTrack'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
 import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type GhostPath, type Run, type Track } from './sim'
 import { TestResultCard, TestStartCard } from './TestCards'
@@ -255,7 +258,22 @@ function lapShareLine(course: Course, time: number, pace: number): string {
  * and when the next track comes (a test drive: its day). A past track's card says what it is and its
  * figures itself (PastPlay), so its tiles are only the lap to beat.
  */
-function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; ghost: number; chasing: Chasing; test: boolean; past: boolean }) {
+function TrackTiles({
+  course,
+  ghost,
+  chasing,
+  test,
+  past,
+  bestMs,
+}: {
+  course: Course
+  ghost: number
+  chasing: Chasing
+  test: boolean
+  past: boolean
+  /** Your best lap of the day, for its medals. */
+  bestMs: number | null
+}) {
   const [left, setLeft] = useState(() => msUntilNextTrack())
   useEffect(() => {
     const timer = window.setInterval(() => setLeft(msUntilNextTrack()), 20_000)
@@ -277,6 +295,7 @@ function TrackTiles({ course, ghost, chasing, test, past }: { course: Course; gh
         <strong>{course.name}</strong>
       </div>
       {chase}
+      <MedalRow paceMs={paceMsOf(course.pace)} bestMs={bestMs} format={formatLap} />
       {test ? (
         <div className="game-pause-meta__row">
           <span>Its day</span>
@@ -949,7 +968,8 @@ function HotLapDay({
   const lap = g.lap
   // Whose the lap is, for its card: an account's lap waits for that account; one driven signed out goes to whoever signs in.
   const lapOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
-  const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} chasing={g.chasing} test={test} past={past} />
+  const bestMs = test ? (testBest < Infinity ? Math.round(testBest * 1000) : null) : best > 0 ? hotlapMsFromBoardScore(best) : null
+  const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} chasing={g.chasing} test={test} past={past} bestMs={bestMs} />
   // A past track, signed in: a lap goes on its board. Signed out it's practice, and so is a lap driven
   // signed out, for good: signing in on its card is for the laps after it.
   // One in the archive, older than a week (lib/archive.ts), is practice for everyone: its board is closed.
@@ -1150,6 +1170,9 @@ function HotLapDay({
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace.time * 1000)}
                     shareLine={lapShareLine(course, lap.time, pace.time)}
+                    medalPace={paceMsOf(course.pace)}
+                    medalFormat={formatLap}
+                    tomorrow={<TomorrowTrack day={course.day} />}
                     owner={lapOwner}
                     onSettled={() => sendGhost(lap, playerName)}
                     onSaved={() => claimSaved(g)}
