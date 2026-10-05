@@ -155,12 +155,13 @@ function DayCard({
         <Suspense fallback={<span className="home-day__pic-wait" />}>
           <DayPicture daily={p.key} day={day} />
         </Suspense>
-        {/* Under a pointer, the game played over its picture (Ramsey, 2026-10-04 and 05): the day's own for the
-            hole, the track, the course and the cave; Find the Bug's and Half Full's own previews, which never show a day's answer. */}
+        {/* The game played over its picture, under a pointer or, on a phone, when the row rests on the card
+            (Ramsey, 2026-10-04 and 05): the day's own for the hole, the track, the course and the cave; Find the
+            Bug's and Half Full's own previews, which never show a day's answer. */}
         {hasDayPreview(p.slug) ? (
-          <GamePreview slug={p.slug} day={day} className="home-day__preview" hoverOnly />
+          <GamePreview slug={p.slug} day={day} className="home-day__preview" rail />
         ) : hasGamePreview(p.slug) ? (
-          <GamePreview slug={p.slug} className="home-day__preview" hoverOnly />
+          <GamePreview slug={p.slug} className="home-day__preview" rail />
         ) : null}
         {p.done ? (
           <span className="home-day__stamp">

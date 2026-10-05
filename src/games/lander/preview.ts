@@ -65,8 +65,10 @@ export function createDayPreview(day: string): GamePreviewRun {
         dt,
       )
     },
+    // Let go of the scene; if the card plays again, it's made afresh.
     dispose() {
       scene?.dispose()
+      scene = null
     },
   }
 }

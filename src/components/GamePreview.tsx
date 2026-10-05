@@ -33,6 +33,101 @@ function pickCentred() {
 }
 
 /*
+ * In a row that scrolls sideways on a touch screen (the home page's Dailies), the tile the row has come to
+ * rest on plays, as you'd swipe through an app store's previews: the tile most in view, and of tiles wholly
+ * in view the one nearest the row's middle, so the last tile has its turn too. Nothing in the row plays while
+ * it moves, nor while the row is mostly off the screen. A tile that loses its turn to another lets go of
+ * what it holds (its 3D scene), so a row keeps one at a time.
+ */
+type RailTile = { el: HTMLElement; play(on: boolean): void; release(): void }
+type Rail = { tiles: Set<RailTile>; timer: number; shown: boolean; onScroll: () => void; seen: IntersectionObserver }
+const rails = new Map<HTMLElement, Rail>()
+
+/** How long a row has to be still before its tile plays, in ms. */
+const SETTLE_MS = 220
+
+function pickRail(row: HTMLElement) {
+  const rail = rails.get(row)
+  if (!rail) return
+  let best: RailTile | null = null
+  if (rail.shown) {
+    const box = row.getBoundingClientRect()
+    const mid = (box.left + box.right) / 2
+    let most = 0
+    let gap = Infinity
+    for (const t of rail.tiles) {
+      const r = t.el.getBoundingClientRect()
+      const seen = Math.max(0, Math.min(r.right, box.right) - Math.max(r.left, box.left)) / (r.width || 1)
+      const off = Math.abs((r.left + r.right) / 2 - mid)
+      if (seen > most + 0.01 || (seen >= most - 0.01 && off < gap)) {
+        best = t
+        most = Math.max(most, seen)
+        gap = off
+      }
+    }
+    if (most < 0.5) best = null
+  }
+  for (const t of rail.tiles) {
+    t.play(t === best)
+    if (best && t !== best) t.release()
+  }
+}
+
+function joinRail(row: HTMLElement, tile: RailTile) {
+  let rail = rails.get(row)
+  if (!rail) {
+    const made: Rail = {
+      tiles: new Set(),
+      timer: 0,
+      shown: false,
+      // Moving: everything in the row waits until it comes to rest.
+      onScroll: () => {
+        for (const t of made.tiles) t.play(false)
+        window.clearTimeout(made.timer)
+        made.timer = window.setTimeout(() => pickRail(row), SETTLE_MS)
+      },
+      seen: new IntersectionObserver(
+        (entries) => {
+          made.shown = entries.some((e) => e.intersectionRatio >= 0.6)
+          pickRail(row)
+        },
+        { threshold: [0, 0.6, 1] },
+      ),
+    }
+    row.addEventListener('scroll', made.onScroll, { passive: true })
+    made.seen.observe(row)
+    rails.set(row, made)
+    rail = made
+  }
+  rail.tiles.add(tile)
+  window.clearTimeout(rail.timer)
+  rail.timer = window.setTimeout(() => pickRail(row), SETTLE_MS)
+}
+
+function leaveRail(row: HTMLElement, tile: RailTile) {
+  const rail = rails.get(row)
+  if (!rail) return
+  rail.tiles.delete(tile)
+  if (rail.tiles.size) {
+    pickRail(row)
+    return
+  }
+  window.clearTimeout(rail.timer)
+  row.removeEventListener('scroll', rail.onScroll)
+  rail.seen.disconnect()
+  rails.delete(row)
+}
+
+/** The nearest box round `el` that scrolls sideways, if any does. */
+function sidewaysRow(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const x = getComputedStyle(p).overflowX
+    if ((x === 'auto' || x === 'scroll') && p.scrollWidth > p.clientWidth + 1) return p
+  }
+  return null
+}
+
+/*
  * A wall of previews comes into view together, and each one's first frame
  * means loading its game and playing a few seconds of it. They take turns in
  * the browser's idle time, one at a time, so scrolling onto the wall never
@@ -73,9 +168,12 @@ function nextTurn() {
  * (`autoplay`) plays on its own, the way the one cabinet by an arcade's door
  * runs its demo. A cabinet's (`hoverOnly`) is for a pointer that can hover:
  * it plays under one or with keyboard focus, and a touch screen never loads
- * it, so the cabinet keeps its picture. None plays off screen, in a hidden
- * tab, or with reduced motion. Given a `day`, a daily plays that day's
- * course or cave (DAY_PREVIEWS) rather than the game's own preview.
+ * it, so the cabinet keeps its picture. A tile in a row that scrolls sideways
+ * (`rail`) plays as a cabinet does under a pointer; on a touch screen, when
+ * it's the tile the row has come to rest on (above), and only then does it
+ * load. None plays off screen, in a hidden tab, or with reduced motion. Given
+ * a `day`, a daily plays that day (DAY_PREVIEWS) rather than the game's own
+ * preview.
  */
 export function GamePreview({
   slug,
@@ -83,6 +181,7 @@ export function GamePreview({
   className,
   autoplay = false,
   hoverOnly = false,
+  rail = false,
 }: {
   slug: string
   /** A daily's day to play, for a daily in DAY_PREVIEWS. */
@@ -92,6 +191,8 @@ export function GamePreview({
   autoplay?: boolean
   /** Play only under a pointer or with focus, and not at all on a touch screen. */
   hoverOnly?: boolean
+  /** In a row that scrolls sideways: under a pointer, or on a touch screen when the row rests on it. */
+  rail?: boolean
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
@@ -120,6 +221,10 @@ export function GamePreview({
     const still = window.matchMedia('(prefers-reduced-motion: reduce)')
     const hoverable = window.matchMedia('(hover: hover) and (pointer: fine)')
     if (hoverOnly && !hoverable.matches) return
+    // On a touch screen a rail's tile plays when its row rests on it; a row that doesn't scroll has no turns to give.
+    const touchRail = rail && !hoverable.matches
+    const row = touchRail ? sidewaysRow(host) : null
+    if (touchRail && !row) return
 
     const draw = (dt: number) => {
       const w = canvas.clientWidth
@@ -160,39 +265,41 @@ export function GamePreview({
       if (!raf) draw(0)
     }
 
-    // Load the game and put its still frame up once the tile comes near the screen.
+    // Load the game and put its still frame up.
+    const startLoad = () => {
+      loading = true
+      load()
+        .then((mod) => {
+          if (cancelled) return
+          const run = mod.createPreview()
+          made = run
+          // The opening seconds are played a slice per turn, so no one turn runs long.
+          const job = () => {
+            if (cancelled) return
+            const w = canvas.clientWidth
+            const h = canvas.clientHeight
+            if (run.warm && w > 0 && h > 0 && !run.warm(w, h, WARM_SLICE_MS)) {
+              inTurn(job)
+              return
+            }
+            preview = run
+            draw(0)
+            setReady(true)
+            resume()
+          }
+          inTurn(job)
+        })
+        .catch(() => {
+          /* no preview; the thumb underneath stays */
+        })
+    }
+    // Once the tile comes near the screen; a touch screen's rail tile waits for its turn, so a phone only
+    // fetches the games it plays.
     const nearby = new IntersectionObserver(
       (entries) => {
         near = entries.some((e) => e.isIntersecting)
-        if (near && !preview && !loading) {
-          loading = true
-          load()
-            .then((mod) => {
-              if (cancelled) return
-              const run = mod.createPreview()
-              made = run
-              // The opening seconds are played a slice per turn, so no one turn runs long.
-              const job = () => {
-                if (cancelled) return
-                const w = canvas.clientWidth
-                const h = canvas.clientHeight
-                if (run.warm && w > 0 && h > 0 && !run.warm(w, h, WARM_SLICE_MS)) {
-                  inTurn(job)
-                  return
-                }
-                preview = run
-                draw(0)
-                setReady(true)
-                resume()
-              }
-              inTurn(job)
-            })
-            .catch(() => {
-              /* no preview; the thumb underneath stays */
-            })
-        } else {
-          resume()
-        }
+        if (near && !preview && !loading && (!touchRail || centred)) startLoad()
+        else resume()
       },
       { rootMargin: '200px' },
     )
@@ -240,8 +347,24 @@ export function GamePreview({
       },
       { rootMargin: '-35% 0px -35% 0px' },
     )
-    // One that plays on its own has no need to take a turn in the middle of the screen, nor to hold a tile's back.
-    if (!autoplay && !hoverOnly) band.observe(host)
+    // One that plays on its own has no need to take a turn in the middle of the screen, nor to hold a tile's back;
+    // a rail's tile takes its turn in its row.
+    if (!autoplay && !hoverOnly && !rail) band.observe(host)
+
+    // On a touch screen, a turn in its row: it loads when it first gets one, and lets go of its scene when it
+    // loses its turn to another tile.
+    const tile: RailTile = {
+      el: host,
+      play(on) {
+        centred = on
+        if (on && near && !preview && !loading) startLoad()
+        resume()
+      },
+      release() {
+        if (!centred) preview?.dispose?.()
+      },
+    }
+    if (row) joinRail(row, tile)
 
     const ro = new ResizeObserver(redraw)
     ro.observe(canvas)
@@ -256,6 +379,7 @@ export function GamePreview({
       band.disconnect()
       inBand.delete(me)
       pickCentred()
+      if (row) leaveRail(row, tile)
       ro.disconnect()
       host.removeEventListener('pointerenter', onEnter)
       host.removeEventListener('pointerleave', onLeave)
@@ -268,7 +392,7 @@ export function GamePreview({
       if (raf) cancelAnimationFrame(raf)
       made?.dispose?.()
     }
-  }, [slug, day, autoplay, hoverOnly])
+  }, [slug, day, autoplay, hoverOnly, rail])
 
   return (
     <canvas
