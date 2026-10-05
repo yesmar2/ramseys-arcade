@@ -50,7 +50,17 @@ export type SeasonInfo = {
   spotlight: string[]
 }
 
-export type SeasonYou = { earned: number; level: number; nextAt: number | null }
+/**
+ * Where you are on the pass. `announced` is the last level you were told of (a run's report, or the site's
+ * level-up); past it, `pending` are the rewards of the levels reached since (season/LevelUpMoment.tsx).
+ */
+export type SeasonYou = {
+  earned: number
+  level: number
+  nextAt: number | null
+  announced?: number
+  pending?: SeasonReward[]
+}
 
 /** What a saved run did on the pass, from the save's answer. */
 export type SeasonRun = {
@@ -212,7 +222,20 @@ export function refreshSeason({ force = false, signedIn = fetchedSignedIn ?? fal
 /** A save answered with the pass: show the player's new place now. */
 export function noteSeasonRun(run: SeasonRun | null | undefined) {
   if (!run || !snapshot.season || snapshot.season.id !== run.id) return
-  emit({ ...snapshot, you: { earned: run.earned, level: run.level, nextAt: run.nextAt } })
+  // The run's report announces its levels, and its save told the API so: nothing is left to tell.
+  emit({ ...snapshot, you: { earned: run.earned, level: run.level, nextAt: run.nextAt, announced: run.level, pending: [] } })
+}
+
+/**
+ * You've been told of the levels you reached (the site's level-up): nothing waits to be told now, here or on
+ * another device (POST /season/seen moves the level the API last announced).
+ */
+export function noteLevelsSeen() {
+  const you = snapshot.you
+  if (you) emit({ ...snapshot, you: { ...you, announced: you.level, pending: [] } })
+  void api('/season/seen', { method: 'POST', body: '{}' }).catch(() => {
+    // Told again next time the season is asked for, then: better twice than never.
+  })
 }
 
 /** The season, fetched once and shared; `you` is the signed-in player's place on its pass. */

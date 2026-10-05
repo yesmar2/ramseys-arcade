@@ -1575,3 +1575,95 @@ a.season-skin__art:hover {
   background-size: 200% 100%;
   animation: lb-skel-shine 1.15s ease-in-out infinite;
 }
+
+/* ---------- a level reached off a run's report (LevelUpMoment.tsx) ---------- */
+
+.levelup-panel .run-levelup {
+  margin: 0;
+}
+
+.levelup-panel__acts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.levelup-panel__acts .panel__btn {
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* While a game is played: a small note in the corner, never over the play, opened when you like. */
+.levelup-note {
+  position: fixed;
+  left: max(0.75rem, env(safe-area-inset-left));
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  align-items: stretch;
+  border-radius: 1rem;
+  background-color: var(--space-night);
+  background-image: var(--season-stars-dark);
+  background-size: 300px 300px;
+  border: 1px solid rgba(138, 106, 212, 0.55);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  color: var(--space-text);
+  animation: levelup-note-in 0.35s ease-out;
+}
+
+.levelup-note__open {
+  display: grid;
+  gap: 0.05rem;
+  padding: 0.55rem 0.4rem 0.6rem 0.9rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.levelup-note__kick {
+  font-family: var(--space-font);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--space-orange);
+}
+
+.levelup-note__open b {
+  font-size: 1.05rem;
+  color: #ffffff;
+}
+
+.levelup-note__see {
+  font-size: 0.78rem;
+  color: var(--space-muted);
+}
+
+.levelup-note__close {
+  align-self: flex-start;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  background: none;
+  color: var(--space-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@keyframes levelup-note-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .levelup-note {
+    animation: none;
+  }
+}

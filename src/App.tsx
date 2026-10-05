@@ -2,6 +2,7 @@ import { Suspense, useEffect } from 'react'
 import { EasterEggs } from './components/EasterEggs'
 import { PendingRunsSaver } from './components/PendingRunsSaver'
 import { SeasonDressing } from './components/season/SeasonDressing'
+import { LevelUpMoment } from './components/season/LevelUpMoment'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { EarlyGate } from './components/EarlyGate'
 import { Footer } from './components/Footer'
@@ -217,6 +218,7 @@ function App() {
       <EasterEggs />
       <PendingRunsSaver />
       <SeasonDressing />
+      <LevelUpMoment />
     </>
   )
 }
