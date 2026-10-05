@@ -3,6 +3,7 @@ import { getGame, isRankedGame } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { dailyTabHref, gameBoardHref, recordsHref } from '../hooks/useHashRoute'
+import { useAuth } from '../hooks/useAuth'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { fitCardToSpace } from '../lib/cardFit'
 import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
@@ -134,6 +135,7 @@ export function GamePanelBody({
   tools?: ReactNode
 }) {
   const allTime = useBoardRecord(slug)
+  const { signedIn, loading: authLoading } = useAuth()
   const board = isBoardGame(slug)
   const game = getGame(slug)
   // A daily's board is the day's: its best and its leader are today's.
@@ -186,6 +188,8 @@ export function GamePanelBody({
         </div>
       ) : null}
       {tries?.triesAtStart ? <p className="game-card__hint">A try counts the moment you start it.</p> : null}
+      {/* Signed out, Your best is this device's (lib/personalBest.ts): saved nowhere until you sign in. */}
+      {showBest && personalBest > 0 && !signedIn && !authLoading ? <p className="game-card__hint">Your best on this device. Sign in to save it.</p> : null}
       {tools}
       <div className="game-pause-actions">
         <div className="game-sound-row">

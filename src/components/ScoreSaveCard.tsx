@@ -49,6 +49,7 @@ import {
   type RunReportData,
 } from '../lib/runReport'
 import { dropPendingRun, holdPendingRun, keepPendingRun, pendingCount, releasePendingRun } from '../lib/pendingRuns'
+import { rememberDeviceBest } from '../lib/personalBest'
 import { runIdFor } from '../lib/runSession'
 import { periodCopy } from '../lib/scoreboard'
 import { TODAY_DAILIES } from '../lib/today'
@@ -359,6 +360,10 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
       live = false
     }
   }, [phase, keepable, gameSlug, score])
+  // Signed out, the run still counts toward this device's best (lib/personalBest.ts), so Your best moves as you play.
+  useEffect(() => {
+    if (phase === 'needAuth' && score > 0) rememberDeviceBest(gameSlug, score)
+  }, [phase, gameSlug, score])
   // Saved here, it's no longer waiting; the card gone, the saver may take it.
   useEffect(() => {
     if (phase !== 'saved' || !pendingRef.current) return
@@ -496,7 +501,8 @@ export function ScoreSaveCard({ gameSlug, score, title, subtitle, previousBest, 
         }}
       />
     )
-    who = <ReportWho text="Not saved yet" />
+    // Beating the best kept on this device says so: the moment a signed-in run's report calls a new best.
+    who = <ReportWho text={recordRef.current > 0 && score > recordRef.current ? 'New best on this device · not saved yet' : 'Not saved yet'} />
   } else if (phase === 'needName') {
     primary = {
       label: ranked ? 'Save to the board' : 'Save it',
