@@ -39,7 +39,8 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin: 0;
+  /* In from the report's sides, as its ticket box is (prizes.css .run-tix). */
+  margin: 0.4rem var(--report-pad-x, 1.75rem) 0.1rem;
   font-size: 0.92rem;
   font-weight: 650;
   line-height: 1.35;
