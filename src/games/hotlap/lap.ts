@@ -68,6 +68,8 @@ const toKeep = (lap: GhostLap): KeptLap => ({
   time: lap.time,
   splits: lap.splits,
   ghost: lap.ghost.map((v) => Math.round(v * 100) / 100),
+  // The skin it was driven in, so your own ghost wears it (b96691c read it back, but it was never written).
+  ...(lap.skin ? { skin: lap.skin } : {}),
   at: Date.now(),
 })
 

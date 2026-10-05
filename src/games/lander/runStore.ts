@@ -70,6 +70,8 @@ const toKeep = (run: GhostRun): KeptRun => ({
   time: run.time,
   splits: run.splits,
   ghost: run.ghost.map((v) => Math.round(v * 100) / 100),
+  // The skin it was flown in, so your own ghost wears it (b96691c read it back, but it was never written).
+  ...(run.skin ? { skin: run.skin } : {}),
   at: Date.now(),
 })
 

@@ -30,7 +30,8 @@ import { sfx } from '../../lib/sound'
 import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
-import { fetchBoardGhost, sendBoardGhost, standIn, type BoardGhost } from './boardGhost'
+import { fetchBoardGhost, fetchNextGhost, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
+import { ordinal } from '../../lib/scoreboard'
 import { paceNotes, type PaceCall } from './calls'
 import { dayWords, msUntilNextTrack, trackDay, trackNumber, trackState, untilWords } from './daily'
 import { newDonuts, spinDonuts, type Donuts } from './donuts'
@@ -136,8 +137,21 @@ type Game = {
   } | null
 }
 
-/** Whose lap the ghost drives: the board's fastest, under their tag; your own best; or the blue car's. */
-type Chasing = { who: 'rival'; name: string; skin?: string } | { who: 'you'; skin?: string } | { who: 'pace' }
+/**
+ * Whose lap the ghost drives: the player one place above you today (`next`, for their place); the board's
+ * fastest, under their tag; your own best; or the blue car's.
+ */
+type Chasing =
+  | { who: 'next'; name: string; place: number; skin?: string }
+  | { who: 'rival'; name: string; skin?: string }
+  | { who: 'you'; skin?: string }
+  | { who: 'pace' }
+
+/** The ghost's tile on the start card: "Beat PILOT for 13th", "Ghost · DAD", "Ghost · Your best", "Blue car". */
+function chasingLabel(chasing: Chasing): string {
+  if (chasing.who === 'next') return `Beat ${chasing.name} for ${ordinal(chasing.place)}`
+  return chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue car'
+}
 
 /** The lap to chase, and whose it is. */
 type Chase = { lap: GhostLap; chasing: Chasing }
@@ -147,7 +161,7 @@ type PastTrack = { board: TrackBoard | null; figures: PastTrackFigures; refresh:
 
 /** The name over the ghost car: whose lap it drives. */
 function ghostTag(chasing: Chasing): string {
-  return chasing.who === 'rival' ? chasing.name : chasing.who === 'you' ? 'You' : 'Blue car'
+  return chasing.who === 'rival' || chasing.who === 'next' ? chasing.name : chasing.who === 'you' ? 'You' : 'Blue car'
 }
 
 type Ui = {
@@ -281,7 +295,7 @@ function TrackTiles({
   }, [])
   const chase = (
     <div className="game-pause-meta__row">
-      <span>{chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue car'}</span>
+      <span>{chasingLabel(chasing)}</span>
       <strong>{formatLap(ghost)}</strong>
     </div>
   )
@@ -372,6 +386,8 @@ function HotLapDay({
   // Today's track and a past one have boards, and so a #1 whose ghost to race; a track still to come has neither.
   const onBoard = !test || past
   const topRef = useRef<BoardGhost | null>(null)
+  // On today's track, the player one place above you, once you've a lap on the board (boardGhost.ts fetchNextGhost).
+  const nextRef = useRef<NextGhost | null>(null)
   // The player's own skin, if they chose one (lib/skins.ts): looks only.
   const skinRef = useRef<string | null>(null)
   useSkinInto(SLUG, skinRef)
@@ -379,13 +395,19 @@ function HotLapDay({
   nameRef.current = playerName
 
   /**
-   * The lap to beat: the board's #1, on their own line, or on the blue car's at their time when theirs isn't
-   * known (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board, your best,
-   * or the blue car's. Your own is the one of whoever is signed in now: another player's lap on this device
-   * isn't yours.
+   * The lap to beat. On today's track, once you've a lap on the board, the player's one place above you, for
+   * their place: pass them and the next one lines up (Ramsey, 2026-10-05: a ghost in reach every lap). Else
+   * the board's #1, on their own line, or on the blue car's at their time when theirs isn't known
+   * (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board, your best, or
+   * the blue car's. Your own is the one of whoever is signed in now: another player's lap on this device isn't
+   * yours.
    */
   const chase = (): Chase => {
     const mine = bestLapOf(day, test, currentAccountId())
+    const next = nextRef.current
+    if (next && !test && !past && (!mine || next.time < mine.time - 0.0005)) {
+      return { lap: next.lap ?? standIn(pace, next.time), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
+    }
     const top = topRef.current
     if (top && (!mine || top.time < mine.time - 0.0005)) {
       const lap = top.lap ?? standIn(pace, top.time)
@@ -542,23 +564,50 @@ function HotLapDay({
   }, [viewer])
 
   /**
-   * A lap saved on the board sends where the car went, unless the board's #1 is faster or their line is
-   * already known: the API keeps it if it's the tag's lap on the board and the fastest there, and then it's
-   * everyone's ghost, yours included from your next lap.
+   * A lap saved on the board sends where the car went: the API keeps it if it's the tag's lap on the board and
+   * the fastest there, and then it's everyone's ghost, yours included from your next lap. On today's track
+   * every lap goes, as the API keeps each player's best for whoever is one place below them to race; then the
+   * player above you is asked for again, as you may have passed them. On a past track only one that could be
+   * its fastest goes: the #1 is faster, or their line is known and at least as fast, and it stays home.
    */
   const sendGhost = (lap: { time: number; score: number; splits: number[]; path: GhostPath }, name: string) => {
     if (!onBoard || !signedIn || !name) return
     const top = topRef.current
-    // The #1 is faster, or their line is known already and at least as fast.
-    if (top && (top.time < lap.time - 0.0005 || (top.lap && top.lap.time <= lap.time + 0.0005))) return
+    const today = !test && !past
+    if (!today && top && (top.time < lap.time - 0.0005 || (top.lap && top.lap.time <= lap.time + 0.0005))) return
     void sendBoardGhost(course.n, name, { score: lap.score, splits: lap.splits, path: lap.path }).then(async (kept) => {
-      if (!kept) return
-      const fresh = await fetchBoardGhost(course.n, true)
-      if (fresh) takeTopRef.current(fresh)
+      if (kept) {
+        const fresh = await fetchBoardGhost(course.n, true)
+        if (fresh) takeTopRef.current(fresh)
+      }
+      if (today) askNextRef.current()
     })
   }
   const sendGhostRef = useRef(sendGhost)
   sendGhostRef.current = sendGhost
+
+  /** The player one place above you on today's track: asked for as it opens, and again after each lap you save. */
+  const askNext = () => {
+    const tag = nameRef.current
+    if (test || past || !signedIn || !tag) {
+      if (nextRef.current) {
+        nextRef.current = null
+        rechaseRef.current()
+      }
+      return
+    }
+    void fetchNextGhost(course.n, tag).then((next) => {
+      // Signed in as someone else meanwhile: theirs is asked for in turn.
+      if (tag !== nameRef.current) return
+      nextRef.current = next
+      rechaseRef.current()
+    })
+  }
+  const askNextRef = useRef(askNext)
+  askNextRef.current = askNext
+  useEffect(() => {
+    askNextRef.current()
+  }, [signedIn, playerName, course.n, test, past])
 
   /**
    * A lap driven signed out, put on the board by whoever signed in on its card: it's theirs from now on,

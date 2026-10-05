@@ -38,22 +38,43 @@ function fillIn(path: number[], rate: number): GhostPath {
   return out
 }
 
+/** A ghost as the API tells it: whose lap, its time, and the lap itself when its path is known. */
+function toGhost(reply: GhostReply): BoardGhost | null {
+  if (typeof reply.name !== 'string' || !(reply.time > 0)) return null
+  const time = reply.time / 1000
+  const { path, splits, rate } = reply
+  const known = Array.isArray(path) && path.length >= 30 && path.length % 3 === 0 && Array.isArray(splits) && splits.length === 3 && rate != null && rate > 0
+  return {
+    name: reply.name,
+    avatarId: reply.avatarId,
+    time,
+    lap: known ? { time, splits: splits!, ghost: fillIn(path!, rate!) } : null,
+    ...(reply.skin ? { skin: reply.skin } : {}),
+  }
+}
+
 /** A track's #1, with their lap when its path is known; null while nobody has a lap on it. `fresh` asks past the browser's copy. */
 export async function fetchBoardGhost(track: number, fresh = false): Promise<BoardGhost | null> {
   try {
-    const reply = await api<GhostReply>(`/tracks/hotlap/${track}/ghost`, fresh ? { cache: 'no-cache' } : undefined)
-    if (typeof reply.name !== 'string' || !(reply.time > 0)) return null
-    const time = reply.time / 1000
-    const { path, splits, rate } = reply
-    const known =
-      Array.isArray(path) && path.length >= 30 && path.length % 3 === 0 && Array.isArray(splits) && splits.length === 3 && rate != null && rate > 0
-    return {
-      name: reply.name,
-      avatarId: reply.avatarId,
-      time,
-      lap: known ? { time, splits: splits!, ghost: fillIn(path!, rate!) } : null,
-      ...(reply.skin ? { skin: reply.skin } : {}),
-    }
+    return toGhost(await api<GhostReply>(`/tracks/hotlap/${track}/ghost`, fresh ? { cache: 'no-cache' } : undefined))
+  } catch {
+    return null
+  }
+}
+
+/** The player one place above you on today's board, and the place their lap holds. */
+export type NextGhost = BoardGhost & { place: number }
+
+/**
+ * Next place up (the API's day ghosts): the player one place above `tag` on today's track, with their lap when
+ * its path is known. Null while `tag` has no lap on the board, or is its #1. Ramsey picked it (2026-10-05) so
+ * every lap has a ghost in reach.
+ */
+export async function fetchNextGhost(track: number, tag: string): Promise<NextGhost | null> {
+  try {
+    const reply = await api<GhostReply & { place?: number }>(`/tracks/hotlap/${track}/ghost?above=${encodeURIComponent(tag)}`, { cache: 'no-cache' })
+    const ghost = toGhost(reply)
+    return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
   } catch {
     return null
   }

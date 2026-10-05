@@ -64,14 +64,35 @@ function knownPath(path: unknown, splits: unknown, rate: unknown): path is numbe
 }
 
 /** A cave's #1, with their run when its path is known; null while nobody has a run in it. `fresh` asks past the browser's copy. */
+/** A ghost as the API tells it: whose run, its time, and the run itself when its path is known. */
+function toGhost(reply: GhostReply): BoardGhost | null {
+  if (typeof reply.name !== 'string' || !(reply.time > 0)) return null
+  const time = reply.time / 1000
+  const { path, splits, rate } = reply
+  const run = knownPath(path, splits, rate) ? { time, splits: splits!, ghost: fillIn(path, rate!, time) } : null
+  return { name: reply.name, avatarId: reply.avatarId, time, run, ...(reply.skin ? { skin: reply.skin } : {}) }
+}
+
 export async function fetchBoardGhost(cave: number, fresh = false): Promise<BoardGhost | null> {
   try {
-    const reply = await api<GhostReply>(`/tracks/lander/${cave}/ghost`, fresh ? { cache: 'no-cache' } : undefined)
-    if (typeof reply.name !== 'string' || !(reply.time > 0)) return null
-    const time = reply.time / 1000
-    const { path, splits, rate } = reply
-    const run = knownPath(path, splits, rate) ? { time, splits: splits!, ghost: fillIn(path, rate!, time) } : null
-    return { name: reply.name, avatarId: reply.avatarId, time, run, ...(reply.skin ? { skin: reply.skin } : {}) }
+    return toGhost(await api<GhostReply>(`/tracks/lander/${cave}/ghost`, fresh ? { cache: 'no-cache' } : undefined))
+  } catch {
+    return null
+  }
+}
+
+/** The player one place above you on today's board, and the place their run holds. */
+export type NextGhost = BoardGhost & { place: number }
+
+/**
+ * Next place up (the API's day ghosts): the player one place above `tag` in today's cave, with their run when
+ * its path is known. Null while `tag` has no run on the board, or is its #1.
+ */
+export async function fetchNextGhost(cave: number, tag: string): Promise<NextGhost | null> {
+  try {
+    const reply = await api<GhostReply & { place?: number }>(`/tracks/lander/${cave}/ghost?above=${encodeURIComponent(tag)}`, { cache: 'no-cache' })
+    const ghost = toGhost(reply)
+    return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
   } catch {
     return null
   }
