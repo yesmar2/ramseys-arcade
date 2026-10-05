@@ -122,6 +122,8 @@ function useHunt(): {
   /** The finds on show are known: signed out, or the account's heard from. */
   ready: boolean
   test: HuntTest | null
+  /** How today's bug was peeking out when it was caught here; null when it wasn't, or was caught on another device. */
+  caught: HuntPose | null
 } {
   const snap = useSyncExternalStore(subscribeHunt, huntSnapshot, huntSnapshot)
   const [now, setNow] = useState(() => Date.now())
@@ -137,6 +139,7 @@ function useHunt(): {
   }, [])
   const day = huntDay(now)
   const server = snap.server.day === day ? snap.server : null
+  const pose = snap.log.found[day]?.pose
   // The set is the month's, so the API's word on it holds past midnight until it next says.
   return {
     pick: huntPick(day),
@@ -146,6 +149,7 @@ function useHunt(): {
     now,
     ready: snap.ready,
     test: snap.test,
+    caught: isHuntPose(pose) ? pose : null,
   }
 }
 
@@ -368,8 +372,9 @@ function HuntLayer() {
           window.setTimeout(() => setPhase('hiding'), 1200)
           return
         }
-        recordFind(pick)
-        window.dispatchEvent(new CustomEvent(HUNT_CAUGHT_EVENT, { detail: { pose: placed.pose } }))
+        // Kept with the find: the way it was peeking out here, which the panels say, may not be the day's.
+        recordFind(pick, placed.pose)
+        window.dispatchEvent(new Event(HUNT_CAUGHT_EVENT))
       },
       still ? 0 : 500,
     )
@@ -743,7 +748,7 @@ export function BugHuntMenuRow({ onOpen }: { onOpen: () => void }) {
 /* ------------------------------------------------------------ panels --- */
 
 function HuntPanel({ onClose }: { onClose: () => void }) {
-  const { pick, stats, server, msLeft } = useHunt()
+  const { pick, stats, server, msLeft, caught } = useHunt()
   const count = countWords(server, pick.bug.name, stats)
   const titleId = useId()
   const name = capitalName(pick.bug)
@@ -762,7 +767,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
             {stats.foundToday ? (
               <>
                 <p className="hunt-wanted__line">
-                  {name} was hiding {huntWhere(pick.anchor, pick.pose)}.
+                  {name} was hiding {huntWhere(pick.anchor, caught)}.
                 </p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
                 {stats.repeat ? (
@@ -878,8 +883,8 @@ function HuntTickets({ tickets, onGo }: { tickets: { earned: number; balance: nu
   )
 }
 
-function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | null }) {
-  const { pick, stats, server, msLeft } = useHunt()
+function FoundPanel({ onClose, onWear }: FoundProps) {
+  const { pick, stats, server, msLeft, caught } = useHunt()
   const signedIn = Boolean(getSessionToken())
   const titleId = useId()
   const name = capitalName(pick.bug)
@@ -896,7 +901,7 @@ function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | n
           <BugPortrait bugId={pick.bug.id} size={112} pose="cheer" mood="open" className="hunt-wanted__art" />
           <div className="hunt-wanted__text">
             <p className="hunt-wanted__line">
-              {name} was hiding {huntWhere(pick.anchor, pose ?? pick.pose)}.
+              {name} was hiding {huntWhere(pick.anchor, caught)}.
             </p>
             <p className="hunt-wanted__lesson">{pick.anchor.lesson}</p>
           </div>
@@ -955,14 +960,9 @@ function FoundPanel({ onClose, onWear, pose }: FoundProps & { pose: HuntPose | n
 export function BugHuntHost({ onWear }: { onWear?: (wear: AvatarWear) => void }) {
   const { test } = useSyncExternalStore(subscribeHunt, huntSnapshot, huntSnapshot)
   const [open, setOpen] = useState<'hunt' | 'found' | null>(null)
-  const [pose, setPose] = useState<HuntPose | null>(null)
   useEffect(() => {
     const onOpen = () => setOpen('hunt')
-    const onCaught = (e: Event) => {
-      const caught = (e as CustomEvent<{ pose?: string }>).detail?.pose
-      setPose(isHuntPose(caught) ? caught : null)
-      setOpen('found')
-    }
+    const onCaught = () => setOpen('found')
     window.addEventListener(HUNT_OPEN_EVENT, onOpen)
     window.addEventListener(HUNT_CAUGHT_EVENT, onCaught)
     return () => {
@@ -976,7 +976,7 @@ export function BugHuntHost({ onWear }: { onWear?: (wear: AvatarWear) => void })
       <HuntLayer />
       {test ? <HuntTestBar test={test} /> : null}
       {open === 'found' ? (
-        <FoundPanel onClose={close} onWear={onWear} pose={pose} />
+        <FoundPanel onClose={close} onWear={onWear} />
       ) : open === 'hunt' ? (
         <HuntPanel onClose={close} />
       ) : null}

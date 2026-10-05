@@ -55,7 +55,7 @@ const STORE_KEY = 'skermix-bug-hunt'
 export const HUNT_EVENT = 'skermix-bug-hunt'
 /** Open the hunt's panel from anywhere: the home strip, the menu. */
 export const HUNT_OPEN_EVENT = 'skermix-bug-hunt-open'
-/** A bug was caught: the header shows the find. Its detail says how it was poking out. */
+/** A bug was caught: the header shows the find. How it was poking out is kept with the find (HuntFind.pose). */
 export const HUNT_CAUGHT_EVENT = 'skermix-bug-hunt-caught'
 
 export function openBugHunt() {
@@ -281,16 +281,21 @@ function gameAnchors(): HuntAnchor[] {
  */
 export const HUNT_ANCHORS: readonly HuntAnchor[] = [...SITE_ANCHORS, ...gameAnchors()]
 
-/** Where the bug was, in words: "on Snake’s page, peeking over How to play". */
-export function huntWhere(anchor: HuntAnchor, pose: HuntPose): string {
+/**
+ * Where the bug was, in words: "on Snake’s page, peeking over How to play". Without the way it was seen
+ * peeking out (a find made on another device), just what it hid behind: "on Snake’s page, behind its board".
+ */
+export function huntWhere(anchor: HuntAnchor, pose: HuntPose | null): string {
   const how =
-    pose === 'top'
-      ? `peeking over ${anchor.thing}`
-      : pose === 'bottom'
-        ? `peeking out from under ${anchor.thing}`
-        : pose === 'left' || pose === 'right'
-          ? `peeking out from behind ${anchor.thing}`
-          : `peeking round a corner of ${anchor.thing}`
+    pose === null
+      ? `behind ${anchor.thing}`
+      : pose === 'top'
+        ? `peeking over ${anchor.thing}`
+        : pose === 'bottom'
+          ? `peeking out from under ${anchor.thing}`
+          : pose === 'left' || pose === 'right'
+            ? `peeking out from behind ${anchor.thing}`
+            : `peeking round a corner of ${anchor.thing}`
   return `${anchor.page}, ${how}`
 }
 
@@ -358,8 +363,12 @@ export function huntPick(day = huntDay()): HuntPick {
  * in on the same device never sees them, and never sends them up as theirs.
  */
 
-/** `counted`: what the API said of an account's find, whether it counts toward its month's set. */
-export type HuntFind = { bug: string; spot: string; at: number; counted?: boolean }
+/**
+ * `counted`: what the API said of an account's find, whether it counts toward its month's set. `pose`: how it
+ * was peeking out when it was caught, which can differ from the day's pose (fitPose in BugHunt.tsx). Only the
+ * device that caught it knows: the API never hears it.
+ */
+export type HuntFind = { bug: string; spot: string; at: number; counted?: boolean; pose?: HuntPose }
 
 /** A find this device made signed out. `legacy`: kept from before finds were kept apart, so it's never sent up. */
 type DeviceFind = HuntFind & { legacy?: boolean }
@@ -553,8 +562,15 @@ function apply(reply: ServerHunt, token: string | null) {
   }
   if (you && token) {
     const mine = accountLog(token)
+    // How a find was peeking out isn't the API's to say: it's kept from this device's own copy of the same find,
+    // the account's, or one made here signed out and handed to it.
+    const handed = deviceLog().found
+    const seen = (f: ServerFind) =>
+      [mine.found[f.day], mine.pending[f.day], handed[f.day]?.legacy ? undefined : handed[f.day]].find(
+        (here) => here?.spot === f.spot && here.pose,
+      )?.pose
     const found: Record<string, HuntFind> = {}
-    for (const f of you.finds) found[f.day] = { bug: f.bug, spot: f.spot, at: f.at, counted: f.counted }
+    for (const f of you.finds) found[f.day] = { bug: f.bug, spot: f.spot, at: f.at, counted: f.counted, pose: seen(f) }
     const pending = Object.fromEntries(Object.entries(mine.pending).filter(([day]) => !found[day]))
     saveAccount({ owner: mine.owner, found, pending, heard: true })
   }
@@ -607,10 +623,13 @@ export function syncHunt(force = false): Promise<void> {
   return syncing
 }
 
-/** Record today's find, for whoever is here: the account signed in, or this device. False when it was already caught today. */
-export function recordFind(pick: HuntPick, now = Date.now()): boolean {
+/**
+ * Record today's find, for whoever is here: the account signed in, or this device, with how it was peeking out
+ * when it was caught. False when it was already caught today.
+ */
+export function recordFind(pick: HuntPick, pose: HuntPose, now = Date.now()): boolean {
   if (huntLog().found[pick.day]) return false
-  const find: HuntFind = { bug: pick.bug.id, spot: pick.anchor.id, at: now }
+  const find: HuntFind = { bug: pick.bug.id, spot: pick.anchor.id, at: now, pose }
   const token = getSessionToken()
   if (token) {
     const mine = accountLog(token)
