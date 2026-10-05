@@ -2,7 +2,7 @@
  * Secret trophies: odd things a player can do that nothing on the site mentions until they've done them.
  * The API finds them (its secrets.ts, which numbers them the same) when a run is saved, a bug caught or
  * a day's hole sent, and keeps each once an account as a trophy (period 'secret', periodKey its number).
- * Sixteen are the site's easter eggs, which it reports itself (lib/eggs.ts). A reply that found one carries
+ * Seventeen are the site's easter eggs, which it reports itself (lib/eggs.ts). A reply that found one carries
  * `secrets`; `announceSecrets` puts it on screen. The player's clock goes with what the site posts
  * (leaderboard.ts api), for Night Owl and Early Bird.
  *
@@ -34,6 +34,7 @@ export type SecretKey =
   | 'alien'
   | 'shootingstar'
   | 'moon'
+  | 'staffonly'
 
 export type Secret = { n: number; key: SecretKey; name: string; says: string }
 
@@ -59,6 +60,7 @@ export const SECRETS: readonly Secret[] = [
   { n: 26, key: 'alien', name: 'Little Green Friend', says: 'Got a wave from the alien in Lander’s cave.' },
   { n: 27, key: 'shootingstar', name: 'Shooting Star', says: 'Caught a shooting star over the Fireflies pond.' },
   { n: 28, key: 'moon', name: 'Shoot the Moon', says: 'Shot the moon over Barrage until it had a black eye.' },
+  { n: 29, key: 'staffonly', name: 'Staff Only', says: 'Tried the door marked Staff Only.' },
 ]
 
 export function secretByNumber(n: number): Secret | undefined {

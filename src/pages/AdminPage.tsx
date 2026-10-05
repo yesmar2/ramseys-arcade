@@ -5,6 +5,7 @@ import { AdminSeasonPreview } from '../components/AdminSeasonPreview'
 import { AdminTrophies } from '../components/AdminTrophies'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
+import { StaffOnlyDoor } from '../components/StaffOnlyDoor'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { adminHref, gamePlayHref, homeHref, type AdminSection } from '../hooks/useHashRoute'
@@ -90,7 +91,7 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
  * /admin/courses, /admin/caves, /admin/pours) and every trophy, secret, easter egg and bit of flair there is
  * (/admin/trophies). It opens for the emails in the API's ADMIN_EMAILS
  * (Render): the API is asked, and it's the API that answers every card.
- * Anyone else sees only that the page is restricted, not how to get in.
+ * Anyone else finds the Staff Only door (StaffOnlyDoor.tsx), an easter egg, and nothing of what's behind it.
  */
 
 type Gate = 'checking' | 'signedOut' | 'notAdmin' | 'failed' | 'ready'
@@ -138,6 +139,19 @@ export function AdminPage({ section }: { section?: AdminSection }) {
     }
   }, [account, loading])
 
+  if (gate === 'signedOut' || gate === 'notAdmin') {
+    return (
+      <PageShell innerClassName="lb-page__inner">
+        <StaffOnlyDoor />
+      </PageShell>
+    )
+  }
+
+  // Asking the API: nothing yet, so neither the admin page nor the door shows and then swaps for the other.
+  if (gate === 'checking') {
+    return <PageShell innerClassName="lb-page__inner">{null}</PageShell>
+  }
+
   return (
     <PageShell innerClassName="lb-page__inner">
       <PageBanner
@@ -148,7 +162,7 @@ export function AdminPage({ section }: { section?: AdminSection }) {
             : [{ href: homeHref(), label: 'Home' }, { label: 'Admin' }]
         }
         kicker={gate === 'ready' ? 'Admins only' : undefined}
-        title={gate === 'ready' ? here.title : gate === 'checking' ? 'Admin' : 'Restricted'}
+        title={gate === 'ready' ? here.title : 'Admin'}
         blurb={gate === 'ready' ? here.blurb : undefined}
       />
       <div className="adm">
@@ -206,11 +220,7 @@ export function AdminPage({ section }: { section?: AdminSection }) {
         ) : (
           <section className="adm-card">
             <p className="adm-note">
-              {gate === 'checking'
-                ? 'Checking…'
-                : gate === 'failed'
-                  ? 'Couldn’t reach the API. Try again in a moment.'
-                  : 'This page is restricted.'}
+              Couldn’t reach the API. Try again in a moment.
             </p>
           </section>
         )}

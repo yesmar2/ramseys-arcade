@@ -326,6 +326,16 @@ const SECRET_ART: Record<number, ReactNode> = {
       <path d="M8 12v3M6.5 13.5h3M40 33v3M38.5 34.5h3" />
     </>
   ),
+  // Staff Only: the back-room door, its sign over it and its keypad beside it.
+  29: (
+    <>
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M15 15h16v27H15Z" />
+      <path d="M15 42V15h16v27M11 42h28" />
+      <rect x="13" y="6" width="20" height="6" rx="1.5" />
+      <circle className="trophy-art__fill" cx="27.5" cy="29" r="1.6" />
+      <rect className="trophy-art__fill" x="35" y="24" width="5" height="8" rx="1" />
+    </>
+  ),
   // Shoot the Moon: a full moon with a black eye.
   28: (
     <>

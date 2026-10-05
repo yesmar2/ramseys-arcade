@@ -74,6 +74,8 @@ function robotsTxt() {
     'Disallow: /groups',
     'Disallow: /stats',
     'Disallow: /admin',
+    // The clue to the Staff Only door (/admin to anyone not an admin), an easter egg.
+    '# Staff only. Nice try.',
     'Disallow: /auth/',
     'Disallow: /dev/',
     'Disallow: /tournaments/',

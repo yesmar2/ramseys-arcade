@@ -89,6 +89,7 @@ export type EggKey =
   | 'alien'
   | 'shootingstar'
   | 'moon'
+  | 'staffonly'
 
 /*
  * Whether an egg is found is the account's, while one is signed in, and the device's while signed out. Two

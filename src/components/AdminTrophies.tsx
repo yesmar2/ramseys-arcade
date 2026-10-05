@@ -86,6 +86,7 @@ const SECRET_RULES: Record<SecretKey, string> = {
   alien: 'Flying close to the alien in Lander’s cave (see Easter eggs).',
   shootingstar: 'Tapping a shooting star in Fireflies (see Easter eggs).',
   moon: 'Shooting Barrage’s moon until it has a black eye (see Easter eggs).',
+  staffonly: 'Opening /admin without being an admin (see Easter eggs).',
 }
 
 /** What each Dailies streak reward is, beyond the card's words. */
@@ -225,6 +226,14 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
     does: 'A real donut: the brake swings the back end out and the gas keeps the car spinning round on the spot, about a turn every 1.2 seconds, the back tyres drawing circles about 5 m across. The tyres scream and smoke pours off them the whole time it spins, the camera holds still while the car spins in front of it, and on the third “Donuts!” goes up and a phone buzzes. Let the wheel off, or both pedals up, and it grips and drives on; the brake alone just swings it a quarter turn. It only starts on a brake press made after the wheel is over, below 15 mph, which no planned lap and no test driver ever does, so laps time exactly as before (all 905 test laps on every planned track, checked step by step). Once a lap for the secret; the donuts cost time.',
     clue: 'Three faint crossing loops of old rubber on the road 14 m past the start line, each the size of the car’s own donuts, seen during the countdown lights and as the lap starts, till the device has done it.',
     secret: 'Donuts',
+  },
+  {
+    key: 'staffonly',
+    name: 'The Staff Only door',
+    how: 'Open /admin without being an admin: signed out, or signed in with any other account.',
+    does: 'Instead of this page, a back-room door under a flickering STAFF ONLY sign, its keypad blinking red, and a way back to the games. Admins never see it, so finding it yourself takes a second account.',
+    clue: 'robots.txt, where the curious look first: under “Disallow: /admin” a comment says “# Staff only. Nice try.”',
+    secret: 'Staff Only',
   },
 ]
 
