@@ -509,8 +509,7 @@ function Board({
           field={total}
           you={data.you ? you : ''}
           bandLine={null}
-          // The records API pages its board but can't search it.
-          search={null}
+          search={(q) => fetchRecordBoard(game, recordId, period, undefined, { limit: 1, find: q }).then((b) => (b.found ?? []).map((f) => recordPlayer(f.rank, f)))}
           load={(offset, limit) =>
             fetchRecordBoard(game, recordId, period, undefined, { offset, limit }).then((b) => b.entries.map((e, k) => recordPlayer(offset + k + 1, e)))
           }

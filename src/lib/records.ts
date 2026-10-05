@@ -52,6 +52,8 @@ export type RecordBoardResult = {
   you: YouEntry | null
   /** Players on this board, loaded or not. Absent on older API builds. */
   total?: number
+  /** Asked with `find`: up to ten players whose tag holds it, each with its place (`rank`). */
+  found?: YouEntry[]
   /**
    * Every run that broke the record, oldest first: the newest hundred. Sent
    * with the first page only; absent from older API builds.
@@ -446,7 +448,7 @@ export async function fetchRecordBoard(
   recordId: string,
   period: LeaderboardPeriod = 'all',
   name?: string,
-  page?: { offset?: number; limit?: number },
+  page?: { offset?: number; limit?: number; find?: string },
 ): Promise<RecordBoardResult> {
   const data = await withGroupFallback(async () => {
     const params = applyBoardScope(new URLSearchParams({ period }))
@@ -454,6 +456,7 @@ export async function fetchRecordBoard(
     if (cleaned) params.set('name', cleaned)
     if (page?.offset) params.set('offset', String(Math.max(0, Math.floor(page.offset))))
     if (page?.limit) params.set('limit', String(Math.max(1, Math.floor(page.limit))))
+    if (page?.find) params.set('find', page.find.trim().slice(0, 12))
     return api<RecordBoardResult>(
       `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}?${params.toString()}`,
     )
@@ -468,6 +471,7 @@ export async function fetchRecordBoard(
     you: data.you ?? null,
     // An API that predates paging sends no total: what came back is all of it.
     total: data.total ?? (page?.offset ?? 0) + (data.entries?.length ?? 0),
+    found: data.found ?? [],
     progression: data.progression,
     progressionTotal: data.progressionTotal,
     youProgression: data.youProgression,
