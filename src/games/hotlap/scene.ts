@@ -108,8 +108,8 @@ export class HotLapScene {
   /** The ghost as it's drawn now: the Indy car's, or a skin's when the #1 drove in one. */
   private ghostCar: CarModel
   private readonly ghostIndy: CarModel
-  /** The Rocket car's ghost, made the first time a ghost drives one. */
-  private ghostRocket: CarModel | null = null
+  /** A ghost in each skin, in that skin's own colours, made the first time a ghost drives in it. */
+  private readonly ghostSkinned = new Map<string, CarModel>()
   private ghostSkinShown: string | null = null
   /** The Rocket car (Season 1's skin), made the first time you drive in it. */
   private readonly skinned = new Map<string, CarModel>()
@@ -1093,24 +1093,34 @@ export class HotLapScene {
     if (!pose.done) for (const w of ghost.wheels) w.rotation.z -= dt * 12
     const apart = Math.hypot(pose.x - run.x, pose.y - run.y)
     const opacity = GHOST_OVERLAP + (GHOST_SEE - GHOST_OVERLAP) * Math.min(1, Math.max(0, (apart - 0.5) / 2.5))
-    for (const m of ghost.see) m.opacity = opacity
+    // A ghost in a skin's colours shows a little more, so they read (car.ts SKIN_GHOST_MORE).
+    for (const m of ghost.see) m.opacity = Math.min(1, opacity * (ghost.seeMore ?? 1))
     // Its lines of light stay crisp, fading with it as it comes alongside.
     for (const m of ghost.lines) m.opacity = Math.min(1, opacity * 2.6)
     // Its name fades as it comes alongside, so it never sits in front of your own car.
     if (this.ghostTag) (this.ghostTag.material as THREE.SpriteMaterial).opacity = 0.95 * Math.min(1, Math.max(0, (apart - 4) / 6))
   }
 
-  /** The ghost in the skin its lap was driven in: a Rocket car's, seen through, or the Indy car's. */
+  /**
+   * The ghost in the skin its lap was driven in, seen through in that skin's own colours: a Rocket car's, or the
+   * Indy car in a Hangar livery. Without one, the Indy car in cyan. Ramsey (2026-10-05): with every skin in the
+   * same cyan "it doesn't really show it's colors so most of them look the same anyway"; he picked B of three.
+   */
   private dressGhost(skin: string | null) {
     if (skin === this.ghostSkinShown) return
     this.ghostSkinShown = skin
     let next = this.ghostIndy
-    if (skin && ROCKET_SKINS[skin]) {
-      if (!this.ghostRocket) {
-        this.ghostRocket = buildRocketCar(this.paint.bind(this), { ghost: true })
-        this.scene.add(this.ghostRocket.group)
+    const colors = skin ? ROCKET_SKINS[skin] : undefined
+    const livery = skin ? INDY_LIVERIES[skin] : undefined
+    if (skin && (colors || livery)) {
+      let car = this.ghostSkinned.get(skin)
+      if (!car) {
+        car = livery ? buildCar(this.paint.bind(this), true, undefined, FORMULA, livery) : buildRocketCar(this.paint.bind(this), { ghost: true, colors })
+        car.group.visible = false
+        this.ghostSkinned.set(skin, car)
+        this.scene.add(car.group)
       }
-      next = this.ghostRocket
+      next = car
     }
     if (next === this.ghostCar) return
     const was = this.ghostCar

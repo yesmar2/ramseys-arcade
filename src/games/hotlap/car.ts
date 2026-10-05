@@ -9,7 +9,8 @@
  * Built hard-edged from flat panels: the body is a loft of a few-sided section along the car, and each panel
  * is its own strip, so an edge stays sharp across and smooth along. Everything that shares a material is
  * merged into one mesh, so the whole car draws in a few calls. x forward, y up, z across, as the scene poses
- * it. The ghost is the same car seen through, in cyan, with lines of light along its edges.
+ * it. The ghost is the same car seen through, in cyan, with lines of light along its edges; a ghost driven in a
+ * skin is seen through in that skin's own colours, its lines in the skin's own glow.
  */
 import * as THREE from 'three'
 
@@ -24,6 +25,8 @@ export type CarModel = {
   see: THREE.Material[]
   /** The ghost's outlines, whose opacity the scene sets too. */
   lines: THREE.Material[]
+  /** How much more a ghost in a skin's colours shows than the cyan one: the scene's fade is multiplied by it. */
+  seeMore?: number
   /** A rocket's flame out of its tail, which the scene stretches as the car pulls (the Rocket car's). */
   flame?: THREE.Object3D
 }
@@ -442,10 +445,6 @@ function shapesOf(d: CarDesign): Shapes {
 
 type Paint = (w: number, h: number, draw: (g: CanvasRenderingContext2D, w: number, h: number) => void, hasText?: boolean) => THREE.Texture
 
-/**
- * The car, or with `ghost` its ghost: the same shape seen through in `ghostColor`. `paint` makes the
- * scene's canvas textures (the glows, the shadow, the name), so the scene can let them go with it.
- */
 /** A livery on the Indy car (a Hangar skin): its body's colour and its lights'. */
 export type Livery = { body: string; glow: string }
 
@@ -455,6 +454,17 @@ export const INDY_LIVERIES: Record<string, Livery> = {
   'hotlap-green-flash': { body: '#1d5a3a', glow: '#ffc94d' },
 }
 
+/**
+ * A ghost driven in a skin shows a little more than the cyan one, so its colours read. Ramsey picked it (2026-10-05,
+ * "B" of three): the cyan ghost made every skin look the same ("it doesn't really show it's colors").
+ */
+const SKIN_GHOST_MORE = 1.25
+
+/**
+ * The car, or with `ghost` its ghost: the same shape seen through in `ghostColor`, or with a `livery` in the
+ * livery's own colours, its lines of light in its glow. `paint` makes the scene's canvas textures (the glows,
+ * the shadow, the name), so the scene can let them go with it.
+ */
 export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', design: CarDesign = FORMULA, livery?: Livery): CarModel {
   const shapes = shapesOf(design)
   const group = new THREE.Group()
@@ -468,20 +478,22 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
     if (ghost) see.push(m)
     return m
   }
-  const glow = ghost ? '#aaf6ff' : (livery?.glow ?? '#ff5a0a')
+  // A ghost in a livery: seen through in its colours, not the cyan.
+  const tint = ghost ? (livery ?? null) : null
+  const glow = ghost ? (tint?.glow ?? '#aaf6ff') : (livery?.glow ?? '#ff5a0a')
 
   // Dark gunmetal under a clear coat, so the night's glow runs along its panels.
   const skin = ghost
-    ? std({ color: ghostColor, roughness: 0.3, metalness: 0.2 })
+    ? std({ color: tint?.body ?? ghostColor, roughness: 0.3, metalness: 0.2 })
     : new THREE.MeshPhysicalMaterial({ color: livery?.body ?? '#262d36', roughness: 0.32, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.06, side: THREE.DoubleSide })
   body.add(new THREE.Mesh(shapes.skin, skin))
-  const dark = ghost ? null : std({ color: '#0b0e12', roughness: 0.6, metalness: 0.3 })
-  const arms = ghost ? null : std({ color: '#1b2129', roughness: 0.4, metalness: 0.5 })
+  const dark = ghost && !tint ? null : std({ color: '#0b0e12', roughness: 0.6, metalness: 0.3 })
+  const arms = ghost && !tint ? null : std({ color: '#1b2129', roughness: 0.4, metalness: 0.5 })
   body.add(new THREE.Mesh(shapes.dark, dark ?? skin))
   body.add(new THREE.Mesh(shapes.arms, arms ?? skin))
   // The ghost's outline: lines of light where its shape turns, over its faint body.
   const lines: THREE.Material[] = []
-  const outline = ghost ? new THREE.LineBasicMaterial({ color: '#8ff8ff', transparent: true, opacity: 0.9, depthWrite: false }) : null
+  const outline = ghost ? new THREE.LineBasicMaterial({ color: tint?.glow ?? '#8ff8ff', transparent: true, opacity: 0.9, depthWrite: false }) : null
   if (outline) {
     lines.push(outline)
     body.add(new THREE.LineSegments(new THREE.EdgesGeometry(shapes.skin, 28), outline))
@@ -490,7 +502,7 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
 
   // Smoked glass, reflecting the sky.
   const glass = ghost
-    ? std({ color: ghostColor, roughness: 0.1, metalness: 0.4 })
+    ? std({ color: tint ? '#0b1219' : ghostColor, roughness: 0.1, metalness: 0.4 })
     : new THREE.MeshPhysicalMaterial({
         color: '#0b1219',
         roughness: 0.05,
@@ -508,13 +520,14 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
   if (!ghost) body.add(new THREE.Mesh(shapes.seat, std({ color: '#1d242c', roughness: 0.6 })))
 
   // The lines of light: a core lit from within (dark under the light, so the orange stays deep) and a soft halo.
-  const core = std({ color: ghost ? ghostColor : '#2a1004', emissive: glow, emissiveIntensity: ghost ? 0.9 : 1.25, roughness: 0.4 })
+  const cyan = ghost && !tint
+  const core = std({ color: cyan ? ghostColor : '#2a1004', emissive: glow, emissiveIntensity: cyan ? 0.9 : 1.25, roughness: 0.4 })
   body.add(new THREE.Mesh(shapes.core, core))
   body.add(
     new THREE.Mesh(
       shapes.halo,
       new THREE.MeshBasicMaterial({
-        color: ghost ? '#6fe9ff' : '#ff5a0a',
+        color: ghost ? (tint?.glow ?? '#6fe9ff') : '#ff5a0a',
         transparent: true,
         opacity: ghost ? 0.12 : 0.32,
         blending: THREE.AdditiveBlending,
@@ -549,9 +562,9 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
     body.add(plate)
   }
 
-  const { wheels, steer } = addWheels(group, shapes, design, std, ghost ? ghostColor : null, glow, outline)
+  const { wheels, steer } = addWheels(group, shapes, design, std, cyan ? ghostColor : null, glow, outline)
   if (!ghost) addUnderGlow(group, paint)
-  return { group, body, wheels, steer, see, lines }
+  return { group, body, wheels, steer, see, lines, ...(tint ? { seeMore: SKIN_GHOST_MORE } : {}) }
 }
 
 type Std = (params: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial
@@ -720,13 +733,17 @@ export const ROCKET_SKINS: Record<string, RocketColors> = {
  * out of it. Ramsey asked for a car of its own (2026-10-02: "a totally redesigned car would be fine"). It
  * stands on the Indy car's wheels and drives the same (sim.ts), so a lap in it counts the same.
  *
- * With `ghost`, the same car seen through in `ghostColor` with lines of light where its shape turns: the
- * #1's ghost, when their lap was driven in it. `colors` paints it otherwise (a Pass+ skin's).
+ * With `ghost`, the same car seen through with lines of light where its shape turns: the ghost of a lap driven in
+ * it. Given `colors` (a skin's), it's seen through in them, its lines in the skin's glow; else in `ghostColor`.
+ * `colors` paints the car itself otherwise (a Pass+ skin's).
  */
 export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor?: string; colors?: RocketColors } = {}): CarModel {
   const ghost = opts.ghost === true
   const ghostColor = opts.ghostColor ?? '#46e4ff'
   const c = opts.colors ?? ROCKET_COLORS
+  // A ghost in a skin's colours, not the cyan.
+  const tint = ghost && opts.colors !== undefined
+  const cyan = ghost && !tint
   const group = new THREE.Group()
   const body = new THREE.Group()
   group.add(body)
@@ -739,12 +756,14 @@ export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor
     if (ghost) see.push(m)
     return m
   }
-  const outline = ghost ? new THREE.LineBasicMaterial({ color: '#8ff8ff', transparent: true, opacity: 0.9, depthWrite: false }) : null
+  const outline = ghost ? new THREE.LineBasicMaterial({ color: tint ? c.glow : '#8ff8ff', transparent: true, opacity: 0.9, depthWrite: false }) : null
   if (outline) lines.push(outline)
-  const seeThrough = ghost ? std({ color: ghostColor, roughness: 0.3, metalness: 0.2 }) : null
+  const seeThrough = cyan ? std({ color: ghostColor, roughness: 0.3, metalness: 0.2 }) : null
   const white =
     seeThrough ??
-    new THREE.MeshPhysicalMaterial({ color: c.body, roughness: 0.28, metalness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide })
+    (tint
+      ? std({ color: c.body, roughness: 0.3, metalness: 0.1 })
+      : new THREE.MeshPhysicalMaterial({ color: c.body, roughness: 0.28, metalness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide }))
   const navy = seeThrough ?? std({ color: c.trim, roughness: 0.45, metalness: 0.35 })
   const red = seeThrough ?? std({ color: c.stripe, roughness: 0.4, metalness: 0.1 })
   /** A part of the car, and on the ghost its edges in light. */
@@ -777,8 +796,8 @@ export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor
     }
   }
 
-  // The stripe along the top, a hair over the body.
-  if (!ghost) {
+  // The stripe along the top, a hair over the body: on a ghost in the skin's colours too.
+  if (!cyan) {
     const stripe: Point[][] = []
     for (let i = 2; i < stations; i++) {
       const x = xAt(i)
@@ -808,13 +827,13 @@ export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor
   const throat = new THREE.CircleGeometry(0.2, 32)
   throat.rotateY(-Math.PI / 2)
   throat.translate(ROCKET.tail - 0.02, tail.cy, 0)
-  add(throat, std({ color: ghost ? ghostColor : '#2a1004', emissive: ghost ? '#aaf6ff' : c.glow, emissiveIntensity: ghost ? 0.9 : 1.6 }), false)
+  add(throat, std({ color: cyan ? ghostColor : '#2a1004', emissive: cyan ? '#aaf6ff' : c.glow, emissiveIntensity: cyan ? 0.9 : 1.6 }), false)
 
   const flame = new THREE.Group()
   flame.position.set(ROCKET.tail - 0.18, tail.cy, 0)
   for (const [r, len, color, opacity] of [
-    [0.22, 1, ghost ? '#46e4ff' : c.flame[0], ghost ? 0.25 : 0.7],
-    [0.12, 0.62, ghost ? '#c8f8ff' : c.flame[1], ghost ? 0.35 : 0.9],
+    [0.22, 1, cyan ? '#46e4ff' : c.flame[0], ghost ? 0.25 : 0.7],
+    [0.12, 0.62, cyan ? '#c8f8ff' : c.flame[1], ghost ? 0.35 : 0.9],
   ] as const) {
     const cone = new THREE.ConeGeometry(r, len, 24, 1, true)
     // Its base at the nozzle and its point out behind, along -x, so stretching the group stretches it back.
@@ -857,7 +876,7 @@ export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor
     plate.translate(2.55, 0.26, side * 0.96)
     add(plate, navy)
   }
-  if (!ghost) {
+  if (!cyan) {
     const lip = new THREE.BoxGeometry(0.03, 0.04, 1.86)
     lip.translate(2.73, 0.2, 0)
     add(lip, red)
@@ -880,7 +899,7 @@ export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor
 
   // The bubble over the driver, dark glass, on the fat of the rocket.
   const glass = ghost
-    ? std({ color: ghostColor, roughness: 0.1, metalness: 0.4 })
+    ? std({ color: tint ? '#0b1219' : ghostColor, roughness: 0.1, metalness: 0.4 })
     : new THREE.MeshPhysicalMaterial({
         color: '#0b1219',
         roughness: 0.05,
@@ -902,7 +921,7 @@ export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor
   body.add(canopy)
   if (outline) body.add(new THREE.LineSegments(new THREE.EdgesGeometry(bubble, 28), outline))
 
-  const { wheels, steer } = addWheels(group, shapesOf(FORMULA), FORMULA, std, ghost ? ghostColor : null, ghost ? '#aaf6ff' : '#ff5a0a', outline)
+  const { wheels, steer } = addWheels(group, shapesOf(FORMULA), FORMULA, std, cyan ? ghostColor : null, cyan ? '#aaf6ff' : tint ? c.glow : '#ff5a0a', outline)
   if (!ghost) addUnderGlow(group, paint)
-  return { group, body, wheels, steer, see, lines, ...(ghost ? {} : { flame }) }
+  return { group, body, wheels, steer, see, lines, ...(ghost ? {} : { flame }), ...(tint ? { seeMore: SKIN_GHOST_MORE } : {}) }
 }
