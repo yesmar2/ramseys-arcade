@@ -176,6 +176,11 @@
   color: var(--muted);
 }
 
+/* A past course's All time link lands here (#course-board), as clear of the top as the site's other sections. */
+.db-board {
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
+}
+
 /* ---------- the days around it ---------- */
 
 .db-days__rows {

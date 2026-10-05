@@ -23,6 +23,7 @@ import { refreshPersonalBests } from './lib/personalBest'
 import { playMusicFor, silenceMusic, unlockSound } from './lib/sound'
 import { isImpersonating } from './lib/impersonate'
 import { pruneOrphanTournamentIds } from './lib/tournaments'
+import { scrollToPlace } from './lib/scrollToPlace'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
 import { HomePage } from './pages/HomePage'
@@ -135,15 +136,21 @@ function ComingSoonPage({ slug }: { slug: string }) {
   )
 }
 
-/** The element the address's `#anchor` names, when it's on the page already. */
-function anchorTarget(): HTMLElement | null {
+/** The id the address's `#anchor` names, if it names one: a `#/…` is an old-style route, not a place. */
+function anchorId(): string | null {
   const anchor = window.location.hash.slice(1)
   if (!anchor || anchor.startsWith('/')) return null
   try {
-    return document.getElementById(decodeURIComponent(anchor))
+    return decodeURIComponent(anchor)
   } catch {
     return null
   }
+}
+
+/** The element the address's `#anchor` names, when it's on the page. */
+function anchorTarget(): HTMLElement | null {
+  const id = anchorId()
+  return id ? document.getElementById(id) : null
 }
 
 function isGameScreen(route: ReturnType<typeof useRoute>) {
@@ -168,11 +175,14 @@ function App() {
   const scrollKey = routeScrollKey(route)
   usePageMeta(route)
 
-  // A new page starts at its top, or at the place its link names (a past course's row, the home page's games).
+  // A new page starts at its top, or at the place its link names (a past course's row, the home page's games, a
+  // day board's All time board). A lazy page draws that place once its data comes, so it's waited for, and kept in
+  // view while the page fills in above it (lib/scrollToPlace.ts).
+  // The jump to the top is instant: the site's smooth scrolling made it a glide, still running when a page's own
+  // place (a board's section, a profile's trophies) was drawn, and it carried the page past it.
   useEffect(() => {
-    const place = anchorTarget()
-    if (place) place.scrollIntoView({ block: 'start' })
-    else window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    if (!anchorTarget()) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    return anchorId() ? scrollToPlace(anchorTarget) : undefined
   }, [scrollKey])
 
   useEffect(() => {

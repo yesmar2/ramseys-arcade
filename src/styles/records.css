@@ -1319,6 +1319,11 @@ html[data-theme="dark"] .rbk-book__value b {
   border-color: color-mix(in srgb, var(--gb-accent) 55%, transparent);
 }
 
+/* "Open a book" jumps to the books, with the same room above as the house book's rows. */
+.rbk-books-section {
+  scroll-margin-top: 1rem;
+}
+
 .hbk-top__title {
   margin: 0;
   font-family: var(--font-display);

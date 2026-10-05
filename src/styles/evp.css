@@ -1503,6 +1503,11 @@ a.evp-result:focus-visible {
   padding: 1.4rem;
 }
 
+/* The events page's "How it works" lands here (#evp-how), as clear of the top as the site's other sections. */
+.evp-scores {
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
+}
+
 .evp-steps {
   list-style: none;
   margin: 0;

@@ -429,6 +429,8 @@ function placeLine(anchor: HuntAnchor): string {
 function HuntTestBar({ test }: { test: HuntTest }) {
   const [note, setNote] = useState<string | null>(null)
   const [open, setOpen] = useState(true)
+  // Docked at the foot of the screen, out of the way of a bug that shows in its top half.
+  const [low, setLow] = useState(false)
   // The stand-in as drawn: whether it's on the page yet, and which way it really peeks out.
   const [drawn, setDrawn] = useState<HuntPose | null>(null)
   useEffect(() => {
@@ -464,6 +466,18 @@ function HuntTestBar({ test }: { test: HuntTest }) {
     setHuntTest(next)
   }
   const step = (by: number) => go({ ...test, anchor: HUNT_ANCHORS[(index + by + count) % count]! })
+  // The bug to the middle of the screen. One near the top or the end of its page can't get there and lands nearer
+  // that edge, so the bar goes to the other end and never covers it (it did at every place near a page's top).
+  const showMe = () => {
+    const peek = document.querySelector('.hunt-peek')
+    if (!peek) return
+    const rect = peek.getBoundingClientRect()
+    const mid = rect.top + window.scrollY + rect.height / 2
+    const room = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+    const landsAt = mid - Math.min(Math.max(mid - window.innerHeight / 2, 0), room)
+    setLow(landsAt < window.innerHeight / 2)
+    peek.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }
   const random = () => {
     const poses = POSE_PAD.filter((p): p is HuntPose => p !== null)
     go({
@@ -473,7 +487,7 @@ function HuntTestBar({ test }: { test: HuntTest }) {
     })
   }
   return (
-    <div className="hunt-test" role="region" aria-label="Bug hunt test">
+    <div className={`hunt-test${low ? ' hunt-test--low' : ''}`} role="region" aria-label="Bug hunt test">
       <div className="hunt-test__head">
         <span className="hunt-test__kicker">Bug hunt test</span>
         <span className="hunt-test__count">
@@ -554,7 +568,7 @@ function HuntTestBar({ test }: { test: HuntTest }) {
                   type="button"
                   className="hunt-test__btn hunt-test__btn--go"
                   disabled={!drawn}
-                  onClick={() => document.querySelector('.hunt-peek')?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                  onClick={showMe}
                 >
                   {drawn ? 'Show me' : 'Looking…'}
                 </button>

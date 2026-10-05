@@ -34,6 +34,7 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { talksInPlaces } from '../lib/profileMath'
+import { scrollToPlace } from '../lib/scrollToPlace'
 import { fetchTrophies, type TrophyAward } from '../lib/trophies'
 
 function AddFriendButton({ name }: { name: string }) {
@@ -118,23 +119,14 @@ export function RankPage({
 
   /*
    * Arriving from the drawer's Friends row or a trophy in the inbox, which ask
-   * for a section rather than the top of a long page. It waits for the section
-   * to exist — the profile fills in over a few requests.
+   * for a section rather than the top of a long page. The profile fills in over
+   * a few requests, so it waits for the section to exist and keeps it in view
+   * while the boards above it fill in (on a phone they pushed it 400 px down).
    */
   const focus = focusFromUrl()
   useEffect(() => {
     if (focus !== 'friends' && focus !== 'trophies') return
-    let tries = 0
-    const id = window.setInterval(() => {
-      const card = document.getElementById(focus)
-      if (card) {
-        window.clearInterval(id)
-        card.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      } else if (++tries > 40) {
-        window.clearInterval(id)
-      }
-    }, 80)
-    return () => window.clearInterval(id)
+    return scrollToPlace(() => document.getElementById(focus))
   }, [focus, viewedName])
 
   // A freshly saved avatar paints at once; the API's copy catches up on the next load.

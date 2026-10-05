@@ -556,6 +556,18 @@
   color: var(--ink);
 }
 
+/* Docked at the foot while it shows a bug in the screen's top half; above the tab bar on a phone. */
+.hunt-test--low {
+  top: auto;
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 900px) {
+  .hunt-test--low {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+}
+
 .hunt-test__head {
   display: flex;
   align-items: center;
