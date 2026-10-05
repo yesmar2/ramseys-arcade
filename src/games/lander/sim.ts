@@ -245,6 +245,11 @@ export type Ship = {
   hint: number
   /** The last gate passed, −1 before the first. */
   gate: number
+  /**
+   * On a landing, how far through its step the foot met the pad, 0…1: the run's time is taken from that
+   * moment, not the step's end, so landings a few milliseconds apart don't all count as the same tick.
+   */
+  landFrac?: number
 }
 
 /** The hands on the ship: turn −1…1 (right is +), and the engine 0…1. */
@@ -322,6 +327,9 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT): StepEvent {
         continue
       }
       if (Math.hypot(s.vx, s.vy) > LAND_SPEED || Math.abs(s.a) > LAND_ANGLE) return 'crash'
+      // Where the foot was as the step began (a step's turn is too small to count), so where it met the pad.
+      const was = fy - (s.y - py)
+      s.landFrac = was > fy ? clamp((was - pad.y) / (was - fy), 0, 1) : 1
       Object.assign(s, { y: pad.y + FOOT, vx: 0, vy: 0, a: 0 })
       if (pad.end) return 'landed'
       s.rest = true

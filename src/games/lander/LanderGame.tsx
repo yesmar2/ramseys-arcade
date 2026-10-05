@@ -725,6 +725,8 @@ function LanderDayGame({
             }
             g.bumpAt = g.t
           } else if (ev === 'landed') {
+            // Timed to the moment the foot met the pad, inside the step, as a lap is to the line.
+            g.t -= DT * (1 - (s.landFrac ?? 1))
             g.phase = 'landed'
             g.clock = 0
             g.throttle = 0

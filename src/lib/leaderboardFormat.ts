@@ -42,9 +42,9 @@ export function formatLeaderboardScore(slug: string, score: number): string {
   return score.toLocaleString()
 }
 
-/** The gap between two times on a time board: in tenths, or hundredths for a lap or a run, which are won by them. */
+/** The gap between two times on a time board: in tenths, or thousandths for a lap or a run, as their boards show them. */
 export function formatTimeGap(slug: string, ms: number): string {
-  return `${(ms / 1000).toFixed(slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' ? 2 : 1)}s`
+  return `${(ms / 1000).toFixed(slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' ? 3 : 1)}s`
 }
 
 /**

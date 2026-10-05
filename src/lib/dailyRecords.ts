@@ -251,9 +251,9 @@ export function holeRecordRows(rows: HoleRecordRow[], today: string, now = Date.
     .sort((a, b) => b.day.localeCompare(a.day))
 }
 
-/** A course result as its board prints it: a lap, 1:14.41; a hole, 2 tries. */
+/** A course result as its board prints it: a lap, 1:14.412; a hole, 2 tries. */
 export function courseResult(slug: string, value: number): string {
-  return slug === 'hotlap' ? formatLapMs(value) : formatTries(value)
+  return slug === 'hotlap' ? formatLapMs(value, 3) : formatTries(value)
 }
 
 /* ---------- words ---------- */

@@ -1,7 +1,7 @@
 /**
  * Inverted-time scoring, as Hot Lap and Find the Bug keep it: the board stores a million less the run in
  * milliseconds, so higher is better and the shared leaderboard plumbing needs nothing new. A run is shown to
- * the hundredth, as a lap is.
+ * the hundredth while it runs, and to the thousandth on a board, as a lap is.
  */
 export const MARBLERUN_SCORE_BASE = 1_000_000
 
@@ -13,19 +13,25 @@ export function marblerunMsFromBoardScore(score: number): number {
   return MARBLERUN_SCORE_BASE - score
 }
 
-/** 48.37s, or 1:02.45 past a minute. */
-export function formatRunMs(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 10)) / 100
+/** 48.37s, or 1:02.45 past a minute; to the thousandth with `digits` 3. */
+export function formatRunMs(ms: number, digits = 2): string {
+  const unit = 10 ** (3 - digits)
+  const total = Math.max(0, Math.round(ms / unit)) / 10 ** digits
   const m = Math.floor(total / 60)
   const s = total - m * 60
-  if (m > 0) return `${m}:${s.toFixed(2).padStart(5, '0')}`
-  return `${s.toFixed(2)}s`
+  if (m > 0) return `${m}:${s.toFixed(digits).padStart(digits + 3, '0')}`
+  return `${s.toFixed(digits)}s`
 }
 
 export function formatRun(seconds: number): string {
   return formatRunMs(seconds * 1000)
 }
 
+/**
+ * A board's time is shown to the thousandth (48.372s): with thousands on a course the top runs come within
+ * hundredths, and two places shown as the same time look like a mistake. The clock while playing stays at
+ * hundredths, easier to read on the move.
+ */
 export function formatMarblerunBoardScore(score: number): string {
-  return formatRunMs(marblerunMsFromBoardScore(score))
+  return formatRunMs(marblerunMsFromBoardScore(score), 3)
 }
