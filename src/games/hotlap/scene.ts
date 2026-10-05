@@ -6,7 +6,7 @@
  * The look is a dark world drawn in light (NEON, below), as Ramsey picked it from three on 2026-09-28.
  */
 import * as THREE from 'three'
-import { buildCar, buildRocketCar, ROCKET_SKINS, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
+import { buildCar, buildRocketCar, FORMULA, INDY_LIVERIES, ROCKET_SKINS, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
 import { bounds } from './courses'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
@@ -1021,9 +1021,11 @@ export class HotLapScene {
       // Your car in your skin, made the first time you drive in it.
       const skin = this.skinShown
       const colors = skin ? ROCKET_SKINS[skin] : undefined
+      const livery = skin ? INDY_LIVERIES[skin] : undefined
       let car = this.car
-      if (skin && colors) {
-        car = this.skinned.get(skin) ?? buildRocketCar(this.paint.bind(this), { colors })
+      if (skin && (colors || livery)) {
+        // A Rocket car in its colours, or the everyday car in a Hangar livery.
+        car = this.skinned.get(skin) ?? (livery ? buildCar(this.paint.bind(this), false, undefined, FORMULA, livery) : buildRocketCar(this.paint.bind(this), { colors }))
         if (!this.skinned.has(skin)) {
           this.skinned.set(skin, car)
           this.scene.add(car.group)

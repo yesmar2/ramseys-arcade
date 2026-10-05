@@ -1,11 +1,13 @@
+import { prizesHref } from '../../hooks/useHashRoute'
 import { chooseSkin, skinsFor, useChosenSkin } from '../../lib/skins'
 import { useTickets } from '../../lib/tickets'
 import { RewardArt } from './RewardArt'
 import '../../styles/season.css'
 
 /*
- * On a game's page, once the player owns a skin for it: the usual look or theirs, chosen here and kept on
- * this device (lib/skins.ts). Nothing shows to a player with no skin for the game.
+ * On a game's page: the usual look or a skin the player owns, chosen here and kept on this device
+ * (lib/skins.ts); and the game's Hangar skins they don't own yet, with their price, a way to their bay at the
+ * prize counter. Nothing shows for a game with no skins of either.
  */
 
 /** "Use it" for one skin the player owns: on the Season page's skins and a level-up that gave it. */
@@ -25,7 +27,9 @@ export function SkinPicker({ game }: { game: string }) {
   const { owned } = useTickets()
   const chosen = useChosenSkin(game)
   const mine = skinsFor(game).filter((s) => owned.includes(s.id))
-  if (!mine.length) return null
+  // The Hangar's for this game, still to trade for: a season's skins not won stay on its pass, unsaid here.
+  const forSale = skinsFor(game).filter((s) => s.price != null && !owned.includes(s.id))
+  if (!mine.length && !forSale.length) return null
   return (
     <div className="skin-pick" role="radiogroup" aria-label="Your look in this game">
       <span className="skin-pick__label">Skin</span>
@@ -43,6 +47,15 @@ export function SkinPicker({ game }: { game: string }) {
           </button>
         )
       })}
+      {forSale.map((skin) => (
+        <a key={skin.id} className="skin-pick__opt skin-pick__opt--shop" href={`${prizesHref()}#hangar-${skin.id}`}>
+          <span className="skin-pick__art" aria-hidden="true">
+            <RewardArt reward={{ kind: 'skin', id: skin.id, name: skin.name }} size={24} />
+          </span>
+          {skin.name}
+          <span className="skin-pick__price">{(skin.price ?? 0).toLocaleString()} tickets</span>
+        </a>
+      ))}
     </div>
   )
 }

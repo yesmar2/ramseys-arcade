@@ -446,7 +446,16 @@ type Paint = (w: number, h: number, draw: (g: CanvasRenderingContext2D, w: numbe
  * The car, or with `ghost` its ghost: the same shape seen through in `ghostColor`. `paint` makes the
  * scene's canvas textures (the glows, the shadow, the name), so the scene can let them go with it.
  */
-export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', design: CarDesign = FORMULA): CarModel {
+/** A livery on the Indy car (a Hangar skin): its body's colour and its lights'. */
+export type Livery = { body: string; glow: string }
+
+/** Hot Lap's Hangar skins: the everyday car in a livery of its own (lib/skins.ts). */
+export const INDY_LIVERIES: Record<string, Livery> = {
+  // British racing green, with gold lights.
+  'hotlap-green-flash': { body: '#1d5a3a', glow: '#ffc94d' },
+}
+
+export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', design: CarDesign = FORMULA, livery?: Livery): CarModel {
   const shapes = shapesOf(design)
   const group = new THREE.Group()
   const body = new THREE.Group()
@@ -459,12 +468,12 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
     if (ghost) see.push(m)
     return m
   }
-  const glow = ghost ? '#aaf6ff' : '#ff5a0a'
+  const glow = ghost ? '#aaf6ff' : (livery?.glow ?? '#ff5a0a')
 
   // Dark gunmetal under a clear coat, so the night's glow runs along its panels.
   const skin = ghost
     ? std({ color: ghostColor, roughness: 0.3, metalness: 0.2 })
-    : new THREE.MeshPhysicalMaterial({ color: '#262d36', roughness: 0.32, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.06, side: THREE.DoubleSide })
+    : new THREE.MeshPhysicalMaterial({ color: livery?.body ?? '#262d36', roughness: 0.32, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.06, side: THREE.DoubleSide })
   body.add(new THREE.Mesh(shapes.skin, skin))
   const dark = ghost ? null : std({ color: '#0b0e12', roughness: 0.6, metalness: 0.3 })
   const arms = ghost ? null : std({ color: '#1b2129', roughness: 0.4, metalness: 0.5 })

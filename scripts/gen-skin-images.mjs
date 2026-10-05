@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs'
 import { createServer } from 'vite'
 
 /**
- * Each season skin's picture as a PNG (public/og/skins/<id>.png), for what can't draw the site's SVG: a
+ * Each skin's picture (a season's or the Hangar's) as a PNG (public/og/skins/<id>.png), for what can't draw the site's SVG: a
  * challenge link's card (api/_og/challenge.js) shows the skin its run was played in. Drawn from the pass's
  * own pictures (components/season/RewardArt.tsx), so they're the same; Hot Lap's cars' are their renders.
  * Output is committed: `npm run icons:skins` after a skin is added or redrawn.
@@ -26,7 +26,7 @@ try {
   mkdirSync('public/og/skins', { recursive: true })
   for (const skin of SKINS) {
     const file = `public/og/skins/${skin.id}.png`
-    const render = { 'hotlap-rocket': 'rocket-car', 'hotlap-midnight': 'midnight-rocket', 'hotlap-sunracer': 'sunracer' }[skin.id]
+    const render = { 'hotlap-rocket': 'rocket-car', 'hotlap-midnight': 'midnight-rocket', 'hotlap-sunracer': 'sunracer', 'hotlap-green-flash': 'green-flash' }[skin.id]
     if (render) {
       // A render of Hot Lap's own 3D car, as the pass shows it.
       await sharp(`src/assets/season/${render}.webp`).resize(SIZE, SIZE, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(file)

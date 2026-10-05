@@ -4,13 +4,18 @@ import type { Avatar, AvatarBadge } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
 import { SPACE, sparklePath } from '../../lib/seasonArt'
+import greenFlashPicture from '../../assets/season/green-flash.webp'
 import midnightRocketPicture from '../../assets/season/midnight-rocket.webp'
 import rocketCarPicture from '../../assets/season/rocket-car.webp'
 import sunracerPicture from '../../assets/season/sunracer.webp'
 import {
+  CANDY_TAIL,
   COMET_SHIP,
   COMET_TAIL,
   EAGLE,
+  GOLD_LANDER,
+  PAPER_PLANE,
+  RETRO_WEDGE,
   NEBULA_TAIL,
   NOVA_FIGHTER,
   ORBITER,
@@ -450,6 +455,32 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   'lander-starhopper': (size) => (
     <Board size={size}>
       <ShipArt art={STARHOPPER} flame={false} />
+    </Board>
+  ),
+  // The Hangar's: for good, traded for tickets.
+  'hotlap-green-flash': (size) => (
+    <Board size={size}>
+      <RocketCar picture={greenFlashPicture} />
+    </Board>
+  ),
+  'lander-gold': (size) => (
+    <Board size={size}>
+      <ShipArt art={GOLD_LANDER} flame={false} />
+    </Board>
+  ),
+  'asteroids-retro': (size) => (
+    <Board size={size}>
+      <ShipArt art={RETRO_WEDGE} />
+    </Board>
+  ),
+  'barrage-paper-plane': (size) => (
+    <Board size={size}>
+      <ShipArt art={PAPER_PLANE} flame={false} />
+    </Board>
+  ),
+  'snake-candy-stripe': (size) => (
+    <Board size={size}>
+      <BeadTail tail={CANDY_TAIL} spark="#e84054" />
     </Board>
   ),
 }

@@ -1667,3 +1667,20 @@ a.season-skin__art:hover {
     animation: none;
   }
 }
+
+/* A Hangar skin still to trade for, in a game's skin picker (SkinPicker.tsx): to its bay at the prize counter. */
+.skin-pick__opt--shop {
+  text-decoration: none;
+  border-style: dashed;
+}
+
+.skin-pick__price {
+  margin-left: 0.15rem;
+  font-weight: 700;
+  color: var(--ticket-text, #c2461d);
+}
+
+html[data-theme='dark'] .skin-pick__price {
+  color: #ffab85;
+}
+

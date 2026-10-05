@@ -27,7 +27,7 @@ function Bay({ skin, mine }: { skin: Skin; mine: boolean }) {
       </a>
       <span className="hangar__name">{skin.name}</span>
       <span className="hangar__what">
-        {game?.name ?? skin.what} · Season {skin.season}
+        {game?.name ?? skin.what} · {skin.season ? `Season ${skin.season}` : 'Hangar'}
         {skin.plus ? ' Pass+' : ''}
       </span>
     </li>

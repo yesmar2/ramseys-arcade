@@ -15,6 +15,7 @@ import { prizeGlow } from '../lib/prizeArt'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { useTickets } from '../lib/tickets'
 import '../styles/counter.css'
+import { HangarBays } from '../components/prizes/HangarBays'
 
 /**
  * The prize counter: where tickets trade for looks. Every prize stands in the
@@ -262,6 +263,8 @@ export function PrizeCounterPage() {
           </li>
         </ul>
       </section>
+
+      <HangarBays />
 
       <div className="counter-head">
         <h2 className="counter-head__title">In the case</h2>

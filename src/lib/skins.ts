@@ -3,13 +3,15 @@ import { ownedNow, subscribeTickets, useTickets } from './tickets'
 
 /*
  * Skins: a different look for the player's own ship, car or snake in a game, won on a season's pass (the
- * API's seasons.ts gives them; they're owned like prizes, in the tickets' `owned`). Looks only: a skin
+ * API's seasons.ts gives them) or traded for tickets in the Hangar at the prize counter (the API's prizes.ts,
+ * `price`); either way owned like prizes, in the tickets' `owned`. Looks only: a skin
  * never changes speed, size, hitbox or score. Chosen per game on its page and kept on this device; a
  * choice the signed-in player doesn't own is ignored, so another account on the device plays in the usual
  * look. Ghosts and replays of other players keep the usual look too.
  */
 
-export type Skin = { id: string; game: string; name: string; season: number; what: string; plus?: boolean }
+/** A skin: a season's (`season`, its pass gives it) or the Hangar's (`price` in tickets, for good). */
+export type Skin = { id: string; game: string; name: string; season?: number; price?: number; what: string; plus?: boolean }
 
 export const SKINS: readonly Skin[] = [
   { id: 'lander-moonhopper', game: 'lander', name: 'Moonhopper', season: 1, what: 'Lander ship' },
@@ -28,7 +30,16 @@ export const SKINS: readonly Skin[] = [
   { id: 'snake-saturn-tail', game: 'snake', name: 'Saturn tail', season: 1, what: 'Snake skin', plus: true },
   { id: 'asteroids-orbiter', game: 'asteroids', name: 'Orbiter', season: 1, what: 'Asteroids ship', plus: true },
   { id: 'lander-starhopper', game: 'lander', name: 'Starhopper', season: 1, what: 'Lander ship', plus: true },
+  // The Hangar's: for good, traded for tickets (the API's prizes.ts has the prices too). Never a season's.
+  { id: 'hotlap-green-flash', game: 'hotlap', name: 'Green Flash', price: 1000, what: 'Hot Lap car' },
+  { id: 'lander-gold', game: 'lander', name: 'Gold Lander', price: 1500, what: 'Lander ship' },
+  { id: 'asteroids-retro', game: 'asteroids', name: 'Retro Wedge', price: 800, what: 'Asteroids ship' },
+  { id: 'barrage-paper-plane', game: 'barrage', name: 'Paper Plane', price: 1200, what: 'Barrage ship' },
+  { id: 'snake-candy-stripe', game: 'snake', name: 'Candy Stripe', price: 800, what: 'Snake skin' },
 ]
+
+/** The Hangar's skins, cheapest first. */
+export const HANGAR_SKINS: readonly Skin[] = SKINS.filter((s) => s.price != null).sort((a, b) => a.price! - b.price!)
 
 const KEY = 'skermix-skins'
 const EVENT = 'arcade-skins'

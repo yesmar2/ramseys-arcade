@@ -1,0 +1,230 @@
+/* The Hangar at the prize counter (components/prizes/HangarBays.tsx): skins for good, each in a lit bay. */
+
+.hangar-bays {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.4rem;
+  border-radius: 1.75rem;
+  background: #0d141b;
+  border: 1px solid #1f2b37;
+  color: #eef4f8;
+  box-shadow: var(--shadow-soft);
+}
+
+.hangar-bays__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.hangar-bays__title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.hangar-bays__sub {
+  margin: 0;
+  color: #a9b8c5;
+  max-width: 40em;
+}
+
+.hangar-bays__note {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.8rem;
+  background: rgba(232, 86, 79, 0.14);
+  color: #ffb3ad;
+  font-weight: 600;
+}
+
+.hangar-bays__note--ok {
+  background: rgba(46, 184, 160, 0.14);
+  color: #7fe3cd;
+}
+
+.hangar-bays__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.hbay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1.4rem 1rem 1.1rem;
+  border-radius: 1.2rem;
+  background: #111a23;
+  border: 1px solid #243341;
+  overflow: hidden;
+  text-align: center;
+}
+
+.hbay--mine {
+  border: 2px solid #2eb8a0;
+}
+
+/* The bay's light, in the game's colour, falling on the skin. */
+.hbay__light {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 70%;
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--hbay) 34%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.hbay__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 112px;
+}
+
+.hbay__floor {
+  width: 62%;
+  height: 7px;
+  margin-top: -0.2rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hbay) 30%, transparent);
+}
+
+.hbay__name {
+  position: relative;
+  font-size: 1.15rem;
+}
+
+.hbay__what {
+  position: relative;
+  font-size: 0.88rem;
+  color: #a9b8c5;
+}
+
+.hbay__tag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 133, 82, 0.14);
+  color: #ffab85;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.hbay__tag--mine {
+  background: rgba(46, 184, 160, 0.14);
+  color: #7fe3cd;
+}
+
+.hbay__acts {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.3rem;
+}
+
+.hbay__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ticket, #ff8552);
+  color: #1d0e05;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.hbay__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.hbay__acts .hbay__btn {
+  margin-top: 0;
+}
+
+.hbay__btn--ghost {
+  background: transparent;
+  border: 1px solid #2eb8a0;
+  color: #7fe3cd;
+}
+
+.hbay__btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.hbay__progress {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.3rem;
+}
+
+.hbay__bar {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #1f2b37;
+  overflow: hidden;
+}
+
+.hbay__bar i {
+  display: block;
+  height: 100%;
+  background: var(--ticket, #ff8552);
+}
+
+.hbay__short {
+  font-size: 0.82rem;
+  color: #a9b8c5;
+}
+
+.hbay--soon {
+  justify-content: center;
+  border-style: dashed;
+  color: #a9b8c5;
+}
+
+.hbay__soon-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  color: #5c6b7a;
+}
+
+@media (max-width: 56rem) {
+  .hangar-bays__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 34rem) {
+  .hangar-bays {
+    padding: 1rem;
+  }
+
+  .hangar-bays__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

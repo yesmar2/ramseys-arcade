@@ -203,6 +203,50 @@ export const STINGRAY: SkinArt = {
   ],
 }
 
+/*
+ * The Hangar's (lib/skins.ts HANGAR_SKINS): skins for good, traded for tickets. Not space: the arcade's own
+ * looks, so a season's skins stay the season's.
+ */
+
+/** The Gold Lander, Lander's: a moon lander of the old school, a gold foil stage on four legs, a grey cabin. */
+export const GOLD_LANDER: SkinArt = {
+  flame: [
+    { d: 'M43 70L50 94L57 70z', fill: '#ff9a3c' },
+    { d: 'M46 70L50 84L54 70z', fill: '#ffe08a' },
+  ],
+  body: [
+    { d: 'M36 64L24 84M64 64L76 84M42 66L36 84M58 66L64 84', stroke: '#c9a227', width: 3.5, cap: 'round' },
+    { d: 'M18 86h12M70 86h12', stroke: '#c9a227', width: 4, cap: 'round' },
+    { d: 'M28 50L34 44H66L72 50V64L66 70H34L28 64Z', fill: '#e8b23a', stroke: '#8a6510', width: 2, join: 'round' },
+    { d: 'M34 52H66M34 58H66', stroke: '#fff1b8', width: 1.5, alpha: 0.7 },
+    { d: 'M36 44L40 24H60L64 44Z', fill: '#c7ccd6', stroke: '#5b6270', width: 2, join: 'round' },
+    { d: roundRect(44, 28, 12, 9, 2), fill: '#1b2230' },
+    { d: 'M50 24V12', stroke: '#5b6270', width: 2 },
+    { d: circle(50, 10, 2.5), fill: '#e8b23a' },
+  ],
+}
+
+/** The Retro Wedge, Asteroids': the old vector arcade's arrow, a green outline glowing on the dark. */
+export const RETRO_WEDGE: SkinArt = {
+  flame: [{ d: 'M42 76L50 94L58 76', stroke: '#7cf29a', width: 3, join: 'round' }],
+  body: [
+    { d: 'M50 12L74 84L50 72L26 84Z', stroke: '#7cf29a', width: 7, join: 'round', alpha: 0.25 },
+    { d: 'M50 12L74 84L50 72L26 84Z', fill: '#06120a', stroke: '#7cf29a', width: 3, join: 'round' },
+  ],
+}
+
+/** The Paper Plane, Barrage's: a folded white plane with a ruled-paper crease and a red tip. */
+export const PAPER_PLANE: SkinArt = {
+  flame: [{ d: 'M45 78L50 92L55 78z', fill: '#ff9a3c' }],
+  body: [
+    { d: 'M50 10L86 74L54 66L50 80L46 66L14 74Z', fill: '#f7f4ea', stroke: '#9aa3b5', width: 2, join: 'round' },
+    { d: 'M50 10L50 80', stroke: '#9aa3b5', width: 1.5 },
+    { d: 'M50 10L46 66M50 10L54 66', stroke: '#c9cfdb', width: 1.2 },
+    { d: 'M24 70L76 70', stroke: '#7fb2e5', width: 1, alpha: 0.6 },
+    { d: 'M50 10L47 18H53Z', fill: '#e8564f' },
+  ],
+}
+
 export type RGB = [number, number, number]
 
 /**
@@ -288,11 +332,28 @@ export const SATURN_TAIL = snakeTail({
   ],
 })
 
+/** The Candy Stripe tail, Snake's (the Hangar's): a white head, then beads in turn red and white, like a cane. */
+export const CANDY_TAIL: SnakeTail = {
+  head: 0.75,
+  glow: 1.25,
+  headFill: [255, 255, 255],
+  headRing: [232, 64, 84],
+  glowColor: [255, 120, 140],
+  eyes: '#3a1018',
+  bead(t) {
+    const k = Math.min(1, Math.max(0, t))
+    // Turn and turn about down the body: about fourteen beads to a long tail.
+    const red = Math.floor(k * 14) % 2 === 0
+    return { r: 0.57 - 0.29 * k, alpha: 1 - 0.45 * k, rgb: red ? [232, 64, 84] : [255, 246, 240] }
+  },
+}
+
 /** Snake's skins, by id. */
 export const SNAKE_TAILS: Record<string, SnakeTail> = {
   'snake-comet-tail': COMET_TAIL,
   'snake-nebula-tail': NEBULA_TAIL,
   'snake-saturn-tail': SATURN_TAIL,
+  'snake-candy-stripe': CANDY_TAIL,
 }
 
 /** Asteroids' skins: the drawing, and where its nose and tail are on the board, to lay it along the hull. */
@@ -300,13 +361,24 @@ export const ASTEROIDS_ART: Record<string, { art: SkinArt; nose: number; tail: n
   'asteroids-comet': { art: COMET_SHIP, nose: 12, tail: 84 },
   'asteroids-shuttle': { art: SHUTTLE, nose: 9, tail: 86 },
   'asteroids-orbiter': { art: ORBITER, nose: 8, tail: 86 },
+  'asteroids-retro': { art: RETRO_WEDGE, nose: 12, tail: 84 },
 }
 
 /** Lander's skins: feet 52 apart on the board's y 86, as the hull's are. */
-export const LANDER_ART: Record<string, SkinArt> = { 'lander-moonhopper': MOONHOPPER, 'lander-eagle': EAGLE, 'lander-starhopper': STARHOPPER }
+export const LANDER_ART: Record<string, SkinArt> = {
+  'lander-moonhopper': MOONHOPPER,
+  'lander-eagle': EAGLE,
+  'lander-starhopper': STARHOPPER,
+  'lander-gold': GOLD_LANDER,
+}
 
 /** Barrage's skins: nose at the board's y 10, tail at 80, as the usual ship is long. */
-export const BARRAGE_ART: Record<string, SkinArt> = { 'barrage-nova': NOVA_FIGHTER, 'barrage-ringship': RINGSHIP, 'barrage-stingray': STINGRAY }
+export const BARRAGE_ART: Record<string, SkinArt> = {
+  'barrage-nova': NOVA_FIGHTER,
+  'barrage-ringship': RINGSHIP,
+  'barrage-stingray': STINGRAY,
+  'barrage-paper-plane': PAPER_PLANE,
+}
 
 const paths = new Map<string, Path2D>()
 
