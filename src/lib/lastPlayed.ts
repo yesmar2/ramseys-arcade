@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Which games this device has actually opened, most recent first.
+ * Which games this device has actually played (begun a run of), most recent first.
  *
  * Kept on the device rather than the account: it answers "what were you just
  * doing", which is a property of the seat in front of the screen, and it has to

@@ -17,13 +17,10 @@ import {
   boardLede,
   boardYouStats,
   firstResultWord,
-  firstRunWord,
-  offBoardLines,
   oneRunBoard,
   placeBeating,
   playersFromRuns,
   playersNote,
-  priceList,
   runsChart,
   youOnBoard,
   type BoardPlayer,
@@ -57,9 +54,9 @@ import { PlayerName } from './PlayerName'
 /*
  * One game's own board. The banner is the game at the scale of the page, its
  * demo playing on the screen, with who leads it and by how much. Then where
- * you stand on it and your runs, and the board itself: one row per player at
- * their best run, and every run a tap away. Beside it, the scores to beat and
- * the way on to the other boards. What a place pays toward the standings is
+ * you stand on it and your runs (nothing, until you're on it), and the board
+ * itself: one row per player at their best run, and every run a tap away.
+ * Beside it, the way on to the other boards. What a place pays toward the standings is
  * left to How your rank works.
  *
  * A daily's board opens on today's. Its week, month and all time are its day points (leaderboardFormat
@@ -350,56 +347,6 @@ function YouOnBoard({
   )
 }
 
-function YouOffBoard({
-  slug,
-  copy,
-  name,
-  players,
-  allTimeBest,
-}: {
-  slug: LeaderboardGame
-  copy: PeriodCopy
-  name: string
-  players: BoardPlayer[]
-  allTimeBest: number | null
-}) {
-  const { line, callout } = offBoardLines(slug, copy, players, allTimeBest)
-  return (
-    <div className="sb-card sb-you__card">
-      <div className="sb-you__top">
-        <PlayerMark name={name} className="sb-you__mark" />
-        <span className="sb-you__kicker">
-          {name} · {copy.phrase}
-        </span>
-      </div>
-      <h2 className="gb-you__title">Not on it yet</h2>
-      <p className="sb-you__line">{line}</p>
-      <p className="gb-callout gb-callout--quiet">
-        <ArrowIcon />
-        <span>{callout}</span>
-      </p>
-      <div className="sb-you__foot sb-you__foot--acts">
-        <PlayLink slug={slug} />
-      </div>
-    </div>
-  )
-}
-
-function FirstVisit({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
-  // Today's board on a first-run daily keeps the day's first result, not the best.
-  const counts = oneRunBoard(slug, period) ? `your first ${firstRunWord(slug)} of the day` : 'your best run'
-  return (
-    <div className="sb-card sb-you__card sb-first">
-      <p className="sb-kicker">Get on the board</p>
-      <h2 className="sb-first__title">Any run puts you on it.</h2>
-      <p className="sb-first__text">Sign in to save your runs. Only {counts} counts.</p>
-      <div className="sb-you__foot sb-you__foot--acts">
-        <PlayLink slug={slug} />
-      </div>
-    </div>
-  )
-}
-
 function PlayLink({ slug }: { slug: LeaderboardGame }) {
   const device = useDeviceType()
   const game = getGame(slug)
@@ -449,30 +396,6 @@ function RunsCard({ slug, copy, you, players }: { slug: string; copy: PeriodCopy
       <p className="visually-hidden">
         Your runs, oldest first: {chart.bars.map((b) => `${b.score} on ${dayOf(b.at)}`).join(', ')}.
       </p>
-    </div>
-  )
-}
-
-/** The scores that take each step up the board, best first: the score on the left, the step on the right. */
-function ScoresCard({ slug, period, players }: { slug: string; period: LeaderboardPeriod; players: BoardPlayer[] }) {
-  const rows = priceList(slug, players)
-  const board = period === 'all' ? 'The all-time board' : `${PERIOD_LABELS[period]}’s board`
-  return (
-    <div className="sb-card gb-price">
-      <h2 className="sb-card__title">Scores to beat</h2>
-      <p className="gb-card__sub">
-        {players.length ? `${board}, place by place.` : 'Nobody’s on it yet, so any run takes first.'}
-      </p>
-      <ul className="gb-price__rows">
-        {rows.map((r) => (
-          <li key={r.what} className="gb-price__row">
-            <span className="gb-price__beat">
-              <b>{r.beat}</b>
-            </span>
-            <span className="gb-price__step">{r.what}</span>
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }
@@ -850,6 +773,8 @@ export function GameBoard({ slug, period, day }: { slug: LeaderboardGame; period
  * board under them doesn't move when they come.
  */
 function YouWaiting({ held }: { held: ReturnType<typeof useHeldHeight<HTMLElement>> }) {
+  // Last time this board had no row for you (you weren't on it): hold no room for one now.
+  if (held.known && !held.style) return null
   const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
   return (
     <section className="sb-you gb-you" aria-hidden="true" ref={held.ref} style={held.style}>
@@ -876,7 +801,7 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   const standing = youOnBoard(players, data.runs, you)
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
-  const youHeld = useHeldHeight<HTMLElement>(`gb-you-${period}`, data.loading)
+  const youHeld = useHeldHeight<HTMLElement>(`gb-you-${slug}-${period}`, data.loading)
   const mainHeld = useHeldHeight<HTMLDivElement>(`gb-main-${period}`, data.loading)
 
   if (data.error) {
@@ -923,24 +848,21 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
         group={group}
       />
 
-      {data.loading ? <YouWaiting held={youHeld} /> : null}
+      {/* Signed out, nobody is on the board, so nothing waits for a place to show. */}
+      {data.loading && you ? <YouWaiting held={youHeld} /> : null}
       {!data.loading ? (
-        <section className="sb-you gb-you" aria-label="Your place on this board" ref={youHeld.ref}>
+        // Off the board, the row isn't drawn, but it's kept (empty) so the next visit's wait holds no room for it.
+        <section
+          className={`sb-you gb-you${standing ? '' : ' gb-you--none'}`}
+          aria-label={standing ? 'Your place on this board' : undefined}
+          ref={youHeld.ref}
+        >
           {standing ? (
             <>
               <YouOnBoard slug={slug} period={period} copy={copy} you={standing} avatarId={data.youRun?.avatarId} />
               <RunsCard slug={slug} copy={copy} you={standing} players={players} />
             </>
-          ) : (
-            <>
-              {you ? (
-                <YouOffBoard slug={slug} copy={copy} name={you} players={players} allTimeBest={data.allTimeBest} />
-              ) : (
-                <FirstVisit slug={slug} period={period} />
-              )}
-              <ScoresCard slug={slug} period={period} players={players} />
-            </>
-          )}
+          ) : null}
         </section>
       ) : null}
 
@@ -948,8 +870,6 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
         <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} players={players} you={you} />
         {!data.loading ? (
           <aside className="gb-side" aria-label="More about this board">
-            {/* Once your run is on a board that takes one a player, no score on it is yours to beat. */}
-            {standing && !oneRunBoard(slug, period) ? <ScoresCard slug={slug} period={period} players={players} /> : null}
             <OtherBoards others={data.others} period={period} />
           </aside>
         ) : null}

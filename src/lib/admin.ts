@@ -153,26 +153,6 @@ export function fetchAdminWhoami() {
 }
 
 /**
- * Why the API wouldn't open the admin page, from the code /admin/whoami said
- * no with: it doesn't know the sign-in, it has no admin list (ADMIN_EMAILS
- * isn't reaching it), or its list hasn't this email. An older API said only
- * NOT_FOUND.
- */
-export function notAdminWords(code: string | undefined, email: string | undefined): string {
-  const who = email ?? 'This account'
-  switch (code) {
-    case 'SIGNED_OUT':
-      return 'The API doesn’t know this sign-in any more. Sign out and back in, then open this page again.'
-    case 'NO_ADMINS':
-      return 'The API has no admin list, so ADMIN_EMAILS isn’t reaching it. On Render, open the ramseys-arcade-api service, then Environment, add ADMIN_EMAILS with your email as its value, and save it with a deploy (or run Manual Deploy after). This page opens once that deploy is live.'
-    case 'NOT_ADMIN':
-      return `The API has an admin list, but ${who} isn’t on it. Put this exact email in ADMIN_EMAILS on Render (the ramseys-arcade-api service, Environment), or sign in with the one that’s there.`
-    default:
-      return `${who} isn’t an admin. Admins are the emails in ADMIN_EMAILS on the API’s service on Render (Environment).`
-  }
-}
-
-/**
  * Who's playing (the API's playerStats.ts): players who played today, this week and this month; accounts
  * made; how many came back the next day and within a week of signing up; each of the last 14 days; and runs
  * begun in the last day, the only trace of signed-out play. Active means saved a run, which needs an account.

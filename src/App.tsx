@@ -20,7 +20,6 @@ import {
 import { refreshGlobalRank } from './lib/globalRank'
 import { refreshPersonalBests } from './lib/personalBest'
 import { playMusicFor, silenceMusic, unlockSound } from './lib/sound'
-import { rememberPlayed } from './lib/lastPlayed'
 import { isImpersonating } from './lib/impersonate'
 import { pruneOrphanTournamentIds } from './lib/tournaments'
 import { GameHubPage } from './pages/GameHubPage'
@@ -173,13 +172,6 @@ function App() {
     if (place) place.scrollIntoView({ block: 'start' })
     else window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [scrollKey])
-
-  // Opening a game is what "recently played" means — the home page offers the
-  // most recent one back rather than making you find it in the grid again.
-  const playingSlug = route.name === 'gamePlay' ? route.slug : null
-  useEffect(() => {
-    if (playingSlug) rememberPlayed(playingSlug)
-  }, [playingSlug])
 
   useEffect(() => {
     void bootstrapApp()

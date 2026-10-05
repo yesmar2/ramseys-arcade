@@ -537,6 +537,11 @@ a.sb-row__link:focus-visible {
   gap: 1rem;
 }
 
+/* The game board's row when you aren't on it: kept, empty, so its wait next time holds no room. */
+.gb-you--none {
+  display: none;
+}
+
 @media (min-width: 56rem) {
   .sb-you {
     grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
@@ -1191,8 +1196,8 @@ a.sb-board__link:hover .sb-board__go {
 
 /* ==========================================================================
    One game's board, inside the same scoreboard (`.sb.gb`): the game's own
-   banner, your place and your runs, the board by player, and beside it the
-   scores to beat and the other boards.
+   banner, your place and your runs (once you're on it), the board by player,
+   and beside it the other boards.
    `--gb-accent` is the game's colour.
    ========================================================================== */
 
@@ -1487,49 +1492,6 @@ a.sb-board__link:hover .sb-board__go {
   text-align: center;
   white-space: nowrap;
   color: var(--muted);
-}
-
-/* ---------- scores to beat ---------- */
-
-.gb-price__rows {
-  list-style: none;
-  margin: 0.9rem 0 0;
-  padding: 0;
-}
-
-.gb-price__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.7rem 0;
-  border-top: 1px solid var(--sb-line);
-}
-
-.gb-price__beat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.gb-price__beat b {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.gb-price__beat span {
-  font-size: 0.82rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-/* Scores to beat: the step a score takes, across from it. */
-.gb-price__step {
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: var(--sb-brand-ink);
-  white-space: nowrap;
 }
 
 /* ---------- more boards ---------- */

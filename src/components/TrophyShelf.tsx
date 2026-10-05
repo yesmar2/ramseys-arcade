@@ -55,7 +55,7 @@ function trophyWhen(t: TrophyAward): string {
  */
 function trophyHaul(t: TrophyAward, isSelf: boolean): string | null {
   if (t.period === 'hunt') return `All ${numberWord(SET_SIZE)} bugs`
-  if (t.period === 'secret') return isSelf ? (secretByNumber(t.periodKey)?.says ?? null) : 'Nobody says how to find it'
+  if (t.period === 'secret') return isSelf ? (secretByNumber(t.periodKey)?.says ?? null) : 'A secret trophy'
   if (t.score <= 0 || t.games <= 0) return null
   return t.games === 1 ? 'on 1 game' : `over ${t.games} games`
 }
@@ -206,8 +206,8 @@ export function TrophyShelf({
                 <span className="pshelf__name">Find a secret</span>
                 <span className="pshelf__when">
                   {isSelf
-                    ? `${SECRETS.length} trophies are secret. Nobody says how to find them.`
-                    : 'Some trophies are secret, and nobody says how to find them.'}
+                    ? `${SECRETS.length} secret trophies are hidden around the arcade.`
+                    : 'Some trophies are secret, hidden around the arcade.'}
                 </span>
               </span>
             </li>
@@ -257,7 +257,7 @@ export function TrophyShelf({
                       ))}
                     </span>
                     <span className="pshelf__minis-note">
-                      {hidden.length === 1 ? 'One still hidden.' : `${hidden.length} still hidden.`} Nobody says how to find them.
+                      {hidden.length === 1 ? 'One still hidden.' : `${hidden.length} still hidden.`}
                     </span>
                   </div>
                 ) : null
@@ -296,7 +296,7 @@ export function TrophyShelf({
       )}
       <p className="pshelf__foot">
         The arcade’s top ten each week and month get a trophy, and so does every event’s winner and every full month
-        of the bug hunt. Some trophies are secret: nobody says how to get them.
+        of the bug hunt. Some trophies are secret, hidden around the arcade.
       </p>
     </article>
   )

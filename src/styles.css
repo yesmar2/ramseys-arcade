@@ -3497,6 +3497,15 @@ html[data-theme='dark'] .patriot__power {
   pointer-events: none;
 }
 
+/* The wave's record chip is under the score (asteroids-records.css): the powerups go under it, not over its countdown. */
+.asteroids__buffs--under {
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 2.9rem);
+}
+
+.asteroids__buffs--under-low {
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 5.4rem);
+}
+
 .asteroids__buff {
   --hue: 198;
   display: inline-flex;

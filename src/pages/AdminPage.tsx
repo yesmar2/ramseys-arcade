@@ -17,7 +17,6 @@ import {
   fetchOpenFlags,
   grantTickets,
   liftBan,
-  notAdminWords,
   settleFlag,
   type AdminBan,
   type AdminClientError,
@@ -91,6 +90,7 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
  * /admin/courses, /admin/caves, /admin/pours) and every trophy, secret, easter egg and bit of flair there is
  * (/admin/trophies). It opens for the emails in the API's ADMIN_EMAILS
  * (Render): the API is asked, and it's the API that answers every card.
+ * Anyone else sees only that the page is restricted, not how to get in.
  */
 
 type Gate = 'checking' | 'signedOut' | 'notAdmin' | 'failed' | 'ready'
@@ -115,8 +115,6 @@ function errorText(err: unknown, fallback: string) {
 export function AdminPage({ section }: { section?: AdminSection }) {
   const { account, loading } = useAuth()
   const [gate, setGate] = useState<Gate>('checking')
-  // The code the API said no with, for the words under a closed page.
-  const [refusal, setRefusal] = useState<string>()
   const here = SECTIONS.find((s) => s.section === section) ?? SECTIONS[0]!
 
   useEffect(() => {
@@ -133,7 +131,6 @@ export function AdminPage({ section }: { section?: AdminSection }) {
       })
       .catch((err) => {
         if (cancelled) return
-        setRefusal(err instanceof ApiError ? err.code : undefined)
         setGate(err instanceof ApiError && err.status === 404 ? 'notAdmin' : 'failed')
       })
     return () => {
@@ -150,9 +147,9 @@ export function AdminPage({ section }: { section?: AdminSection }) {
             ? [{ href: homeHref(), label: 'Home' }, { href: adminHref(), label: 'Admin' }, { label: here.title }]
             : [{ href: homeHref(), label: 'Home' }, { label: 'Admin' }]
         }
-        kicker="Admins only"
-        title={here.title}
-        blurb={here.blurb}
+        kicker={gate === 'ready' ? 'Admins only' : undefined}
+        title={gate === 'ready' ? here.title : gate === 'checking' ? 'Admin' : 'Restricted'}
+        blurb={gate === 'ready' ? here.blurb : undefined}
       />
       <div className="adm">
         {gate === 'ready' ? (
@@ -211,11 +208,9 @@ export function AdminPage({ section }: { section?: AdminSection }) {
             <p className="adm-note">
               {gate === 'checking'
                 ? 'Checking…'
-                : gate === 'signedOut'
-                  ? 'Sign in with an admin account to use this page.'
-                  : gate === 'notAdmin'
-                    ? notAdminWords(refusal, account?.email)
-                    : 'Couldn’t reach the API. Try again in a moment.'}
+                : gate === 'failed'
+                  ? 'Couldn’t reach the API. Try again in a moment.'
+                  : 'This page is restricted.'}
             </p>
           </section>
         )}

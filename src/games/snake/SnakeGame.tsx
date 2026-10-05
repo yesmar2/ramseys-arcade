@@ -29,16 +29,13 @@ import {
 } from '../../lib/runAchievements'
 import {
   formatRecordMs,
-  snakeFastestLengthRecordId,
   SNAKE_LENGTH_MILESTONE_MAX,
   SNAKE_LENGTH_MILESTONE_MIN,
   SNAKE_LENGTH_MILESTONE_STEP,
-  SNAKE_SPRINT_LENGTH,
   submitSnakeFastestLength,
   submitSnakeLongest,
   shouldCelebrateRecordSubmit,
 } from '../../lib/records'
-import { useRecordTop } from '../../hooks/useRecordTop'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   CHAIN_TOP,
@@ -76,22 +73,6 @@ const DEATH_TITLE: Record<DeathCause, string> = {
 
 /** A chain of one is just a bite; the readout shows it once it is a chain. */
 const CHAIN_SHOW = 2
-
-/**
- * The skill goal, sat beside the endurance one on the start card. The score
- * board asks for a long clean run; this asks how fast you can get there, which
- * is a question a first visit can actually answer.
- */
-function SnakeSprintRow() {
-  const top = useRecordTop('snake', snakeFastestLengthRecordId(SNAKE_SPRINT_LENGTH))
-
-  return (
-    <div className="game-pause-meta__row">
-      <span>Fastest to {SNAKE_SPRINT_LENGTH}</span>
-      <strong>{top ? formatRecordMs(top.score) : '—'}</strong>
-    </div>
-  )
-}
 
 export function SnakeGame() {
   const tournament = useTournamentPlay()
@@ -531,7 +512,6 @@ export function SnakeGame() {
               <GameStartCard
                 title="Snake"
                 slug="snake"
-                extraMeta={<SnakeSprintRow />}
                 tools={
                   <AdminWaveSkip
                     mode="start"

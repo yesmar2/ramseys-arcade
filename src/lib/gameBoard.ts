@@ -14,8 +14,8 @@ import { ordinal, type PeriodCopy, type Stat } from './scoreboard'
 /*
  * One game's board as players rather than runs. The API lists runs, best
  * first, so one player can hold several places in a row; a player's place is
- * their best run's. Everything the game board page says about places, gaps
- * and the scores to beat is worked out here from the runs.
+ * their best run's. Everything the game board page says about places and
+ * gaps is worked out here from the runs.
  */
 
 /** One player on a board: their best run and how many runs they have. */
@@ -262,63 +262,6 @@ export function playersNote(slug: string, period: LeaderboardPeriod): string {
  */
 export function wouldPlace(players: BoardPlayer[], best: number): { place: number } {
   return { place: players.filter((p) => p.best.score >= best).length + 1 }
-}
-
-/** For a player not on this board yet: what their best elsewhere would do here, or how to get on. */
-export function offBoardLines(
-  slug: string,
-  copy: PeriodCopy,
-  players: BoardPlayer[],
-  allTimeBest: number | null,
-): { line: string; callout: string } {
-  const game = gameName(slug)
-  const when = copy.noun ? ` ${copy.phrase}` : ''
-  const field = players.length
-  const halfway = field >= 6 ? players[Math.ceil(field / 2) - 1] : null
-  const callout = halfway
-    ? `Beat ${formatLeaderboardScore(slug, halfway.best.score)} to be halfway up the board.`
-    : field
-      ? `${whatPutsYouOn(slug)}.`
-      : 'Any run takes first.'
-  let line: string
-  if (allTimeBest != null && allTimeBest > 0) {
-    const { place } = wouldPlace(players, allTimeBest)
-    line = `Your best, ${formatLeaderboardScore(slug, allTimeBest)}, would put you ${ordinal(place)}${when}.`
-  } else {
-    // How to get on, unless the callout under it already says so.
-    const on = halfway || !field ? ` ${whatPutsYouOn(slug)}.` : ''
-    line = `You haven’t played ${game}${copy.noun ? when : ' yet'}.${on}`
-  }
-  return { line, callout }
-}
-
-/* ---------- scores to beat ---------- */
-
-export type PriceRow = { beat: string; what: string }
-
-/**
- * The scores that take each step up the board, best first: first, the
- * podium, the top ten and halfway up (on a small board halfway comes before
- * the top ten), then any run at all. Ties can make two steps one score (three
- * tied on top: beating them is first and the podium both), so only the
- * bigger step is kept.
- */
-export function priceList(slug: string, players: BoardPlayer[]): PriceRow[] {
-  const field = players.length
-  const steps: { place: number; what: string }[] = [{ place: 1, what: '1st' }]
-  if (field >= 3) steps.push({ place: 3, what: 'Podium' })
-  if (field >= 10) steps.push({ place: 10, what: 'Top ten' })
-  if (field >= 6) steps.push({ place: Math.ceil(field / 2), what: 'Halfway up' })
-  const rows: PriceRow[] = []
-  let last: number | null = null
-  for (const { place, what } of steps.sort((a, b) => a.place - b.place)) {
-    const at = players[place - 1]
-    if (!at || at.best.score === last) continue
-    last = at.best.score
-    rows.push({ beat: `Beat ${formatLeaderboardScore(slug, at.best.score)}`, what })
-  }
-  rows.push({ beat: 'Any run', what: field ? 'On the board' : 'Takes first' })
-  return rows
 }
 
 /* ---------- your runs, charted ---------- */

@@ -20,6 +20,7 @@ import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
 import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
 import { BrandMark } from './BrandMark'
+import { useLiveEvents } from '../hooks/useLiveEvents'
 
 /**
  * The footer, with weight: the brand and its promise on the left, then a
@@ -29,6 +30,8 @@ import { BrandMark } from './BrandMark'
 export function Footer() {
   const year = new Date().getFullYear()
   const shelf = games.filter((g) => isListedGame(g) && !g.comingSoon).slice(0, 6)
+  // The arcade's own events can be paused (/admin, Site events): then none is listed, and no link offers them.
+  const { official } = useLiveEvents('')
 
   return (
     <footer className="site-footer">
@@ -84,9 +87,11 @@ export function Footer() {
           <div className="site-footer__col">
             <h3 className="site-footer__head">Events</h3>
             <ul className="site-footer__list">
-              <li>
-                <a href={tournamentsHref()}>Live events</a>
-              </li>
+              {official.length > 0 ? (
+                <li>
+                  <a href={tournamentsHref()}>Live events</a>
+                </li>
+              ) : null}
               <li>
                 <a href={tournamentCreateHref()}>Create an event</a>
               </li>

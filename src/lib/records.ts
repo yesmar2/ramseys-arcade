@@ -16,18 +16,10 @@ import {
 } from './leaderboard'
 
 export const ASTEROIDS_WAVE_RECORD_MAX = 20
-export const SNAKE_LENGTH_MILESTONE_MIN = 20
+// Fastest to length 20 was retired (Ramsey, 2026-10-05): the books start at 30.
+export const SNAKE_LENGTH_MILESTONE_MIN = 30
 export const SNAKE_LENGTH_MILESTONE_MAX = 100
 export const SNAKE_LENGTH_MILESTONE_STEP = 10
-/**
- * The milestone Snake puts on its start card.
- *
- * Its score board rewards a long run without a mistake — a fine goal once you
- * are hooked, a poor one for a first visit. Length 20 is well under a minute,
- * so the first screen also offers a goal you can attempt before deciding
- * whether you like the game.
- */
-export const SNAKE_SPRINT_LENGTH = SNAKE_LENGTH_MILESTONE_MIN
 export const CROSSWALK_ROW_MILESTONE_MIN = 50
 export const CROSSWALK_ROW_MILESTONE_MAX = 200
 export const CROSSWALK_ROW_MILESTONE_STEP = 25

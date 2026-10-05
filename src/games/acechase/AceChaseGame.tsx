@@ -53,6 +53,7 @@ import { PastResultCard, PastStartCard } from './PastCards'
 import { hasHoleResult, nextHoleKind, pastHoleFacts, usePastHoleFigures, type PastHoleFigures } from './pastFigures'
 import { TrialResultCard, TrialStartCard } from './TrialCards'
 import { AceScene, type View } from './scene'
+import { rememberPlayed } from '../../lib/lastPlayed'
 
 const SLUG = 'acechase'
 const IN_RUN = new Set<Phase>(['intro', 'aim', 'roll', 'missed', 'return', 'holed'])
@@ -517,7 +518,11 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     if (pausedRef.current || saveOpenRef.current) return
     const s = stateRef.current!
     if (s.phase === 'roll') change(fastForward)
-    else if (s.phase === 'aim') change(putt)
+    else if (s.phase === 'aim') {
+      // Ace Chase opens no run (runSession.ts), so its putts are what count as having played it.
+      rememberPlayed('acechase')
+      change(putt)
+    }
   }
   const pickView = (v: View) => {
     if (stateRef.current!.phase !== 'aim') return

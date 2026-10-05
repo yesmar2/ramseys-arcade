@@ -1,4 +1,5 @@
 import { noteRunBegun } from './engagement'
+import { rememberPlayed } from './lastPlayed'
 import { api } from './leaderboard'
 
 /**
@@ -45,6 +46,8 @@ export function openRunsThrough(slug: string, open: (() => Promise<{ runId?: str
  */
 export function beginRun(slug: string): void {
   noteRunBegun()
+  // A run begun, not a page opened, is what "recently played" means: the home page says "Jump back in" off it.
+  rememberPlayed(slug)
   const through = opener && opener.slug === slug ? opener.open : null
   const run = (
     through

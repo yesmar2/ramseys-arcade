@@ -663,6 +663,12 @@ export function AsteroidsGame() {
     }
   }
 
+  // The wave's record and its countdown, under the score while you play it.
+  const recordGlance =
+    ui.phase === 'playing' && !tournament && !isRunAssisted()
+      ? glancesRef.current.get(asteroidsWaveTimeRecordId(ui.wave) ?? '') ?? null
+      : null
+
   return (
     <section
       className={`asteroids asteroids--fullscreen${device === 'tablet' ? ' asteroids--tablet' : ''}${saveOpen || ui.phase === 'waveClear' ? ' asteroids--saving' : ''}`}
@@ -696,9 +702,9 @@ export function AsteroidsGame() {
             >
               {ui.score}
             </PlayReadoutScore>
-            {ui.phase === 'playing' && !tournament && !isRunAssisted() && glancesRef.current.get(asteroidsWaveTimeRecordId(ui.wave) ?? '') ? (
+            {recordGlance ? (
               <WaveRecordChip
-                glance={glancesRef.current.get(asteroidsWaveTimeRecordId(ui.wave) ?? '')!}
+                glance={recordGlance}
                 seconds={ui.time}
                 name={playerName}
                 low={challenge != null}
@@ -729,7 +735,10 @@ export function AsteroidsGame() {
               ui.buffSpread > 0 ||
               ui.buffShield > 0 ||
               ui.buffSlow > 0) ? (
-              <div className="asteroids__buffs" aria-label="Active powerups">
+              <div
+                className={`asteroids__buffs${recordGlance ? (challenge != null ? ' asteroids__buffs--under-low' : ' asteroids__buffs--under') : ''}`}
+                aria-label="Active powerups"
+              >
                 {(
                   [
                     ['rapid', ui.buffRapid],

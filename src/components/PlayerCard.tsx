@@ -123,7 +123,7 @@ function caseWords(kind: TrophyCaseKind, isSelf: boolean): string {
   if (kind.period === 'secret') {
     const secret = secretByNumber(kind.secret ?? 0)
     if (!secret) return 'A secret'
-    return isSelf ? `${secret.name}: ${secret.says}` : `${secret.name}: a secret. Nobody says how to find it.`
+    return isSelf ? `${secret.name}: ${secret.says}` : `${secret.name}: a secret trophy.`
   }
   if (kind.period === 'event') return n === 1 ? 'An event won' : `${n} events won`
   if (kind.period === 'hunt') return n === 1 ? 'A full month of the bug hunt' : `${n} full months of the bug hunt`
