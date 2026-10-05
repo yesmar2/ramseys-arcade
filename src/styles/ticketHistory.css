@@ -1,0 +1,631 @@
+/*
+ * Your tickets (/prizes/tickets): a day a card, each line a game's picture or
+ * a bonus's sign, what it paid for, and its tickets on the right. Tickets in
+ * are the counter's orange; traded ones blue, and they read "−" as well.
+ */
+
+:root {
+  --tixh-spend: #1d6aa3;
+}
+
+html[data-theme='dark'] {
+  --tixh-spend: #8cc8f2;
+}
+
+.lb-page__inner.tixh-page {
+  width: min(100% - 1.25rem, 58rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem 0 3rem;
+}
+
+.tixh-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.tixh-crumbs a {
+  color: var(--ticket-text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tixh-crumbs a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- the head: what this is, and your numbers ---------- */
+
+.tixh-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.25rem 1.75rem;
+}
+
+.tixh-head__text {
+  flex: 1 1 18rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tixh-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.tixh-lede {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+.tixh-stats {
+  flex: 1 1 27rem;
+  min-width: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.tixh-stat {
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tixh-stat dt {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tixh-stat dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tixh-stat--balance {
+  border: 1px solid color-mix(in srgb, var(--ticket) 42%, transparent);
+  background: color-mix(in srgb, var(--ticket) 11%, var(--surface));
+}
+
+.tixh-stat--balance dt {
+  color: var(--ticket-text);
+}
+
+.tixh-stat--today dd {
+  color: var(--ticket-text);
+}
+
+/* ---------- what to show ---------- */
+
+.tixh-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.tixh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tixh-chip {
+  min-height: 2.75rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tixh-chip:hover {
+  border-color: rgba(var(--ink-rgb), 0.3);
+}
+
+.tixh-chip[aria-pressed='true'] {
+  border-color: var(--ticket);
+  background: var(--ticket);
+  color: var(--ticket-ink);
+  font-weight: 800;
+}
+
+.tixh-game {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tixh-game select {
+  min-height: 2.75rem;
+  padding: 0 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* ---------- a day ---------- */
+
+.tixh-day {
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.tixh-day__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  min-height: 3.25rem;
+  box-sizing: border-box;
+  padding: 0.75rem 1.25rem;
+  background: rgba(var(--ink-rgb), 0.035);
+}
+
+.tixh-day__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.tixh-day__name span {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.tixh-day__sums {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.tixh-sum b {
+  font-size: 1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tixh-plus {
+  color: var(--ticket-text);
+}
+
+.tixh-minus {
+  color: var(--tixh-spend);
+}
+
+.tixh-cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.tixh-cap--waiting {
+  visibility: hidden;
+}
+
+.tixh-cap__bar {
+  display: inline-block;
+  width: 4.5rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.12);
+  overflow: hidden;
+}
+
+.tixh-cap__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ticket);
+}
+
+.tixh-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tixh-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.tixh-row__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tixh-row__title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.tixh-row__sub {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.tixh-row__words,
+.tixh-row__parts {
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--ink) 78%, var(--muted));
+}
+
+.tixh-row__parts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.tixh-row__time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tixh-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.6rem;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.tixh-part b {
+  font-weight: 800;
+  color: var(--ticket-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.tixh-amt {
+  flex: none;
+  min-width: 3.6rem;
+  box-sizing: border-box;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--ticket) 14%, transparent);
+  color: var(--ticket-text);
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tixh-amt--spent {
+  background: color-mix(in srgb, var(--tixh-spend) 14%, transparent);
+  color: var(--tixh-spend);
+}
+
+/* ---------- what stands beside a line ---------- */
+
+.tixh-icon {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.tixh-icon--game .game-art {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.tixh-icon--bug,
+.tixh-icon--calendar,
+.tixh-icon--season {
+  --tixh-tint: var(--accent);
+  background: color-mix(in srgb, var(--tixh-tint) 20%, transparent);
+  color: color-mix(in srgb, var(--tixh-tint) 70%, var(--ink));
+}
+
+.tixh-icon--calendar {
+  --tixh-tint: var(--accent-2);
+}
+
+.tixh-icon--season {
+  --tixh-tint: #8a6ad4;
+}
+
+.tixh-icon--bug svg,
+.tixh-icon--calendar svg,
+.tixh-icon--season svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tixh-icon--ticket {
+  background: color-mix(in srgb, var(--ticket) 14%, transparent);
+}
+
+/* A prize is drawn for the counter's dark case, so it keeps a dark tile in both themes. */
+.tixh-icon--prize {
+  background: #15212b;
+}
+
+.tixh-icon--prize svg {
+  max-width: 2.5rem;
+  max-height: 2.5rem;
+}
+
+/* ---------- a day folded to a line, and older days ---------- */
+
+.tixh-fold {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.6rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tixh-fold:hover {
+  border-color: rgba(var(--ink-rgb), 0.22);
+}
+
+.tixh-fold__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+}
+
+.tixh-fold__name {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.tixh-fold__name span {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.tixh-fold__chev {
+  flex: none;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tixh-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tixh-more p,
+.tixh-end {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.tixh-btn {
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tixh-btn:hover {
+  border-color: rgba(var(--ink-rgb), 0.32);
+}
+
+.tixh-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* ---------- nothing to show, signed out, loading ---------- */
+
+.tixh-note,
+.tixh-signin {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1.4rem 1.5rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.tixh-note p,
+.tixh-signin p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.tixh-signin__btn {
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ticket);
+  color: var(--ticket-ink);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tixh-ghost {
+  display: block;
+  border-radius: 0.5rem;
+  background: rgba(var(--ink-rgb), 0.08);
+}
+
+.tixh-ghost--head {
+  width: 11rem;
+  height: 1.1rem;
+}
+
+.tixh-ghost--title {
+  width: min(14rem, 70%);
+  height: 1.05rem;
+}
+
+.tixh-ghost--words {
+  width: min(20rem, 90%);
+  height: 0.9rem;
+}
+
+.tixh-ghost--amt {
+  flex: none;
+  width: 3.6rem;
+  height: 2.2rem;
+  border-radius: 0.75rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tixh-day--ghost .tixh-ghost {
+    animation: tixh-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes tixh-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 640px) {
+  .lb-page__inner.tixh-page {
+    gap: 1rem;
+    padding-top: 1rem;
+  }
+
+  .tixh-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tixh-stat dd {
+    font-size: 1.35rem;
+  }
+
+  .tixh-day__head,
+  .tixh-fold {
+    padding: 0.7rem 0.9rem;
+  }
+
+  .tixh-row {
+    gap: 0.7rem;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .tixh-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .tixh-row__title {
+    font-size: 0.95rem;
+  }
+
+  .tixh-amt {
+    min-width: 3.1rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.95rem;
+  }
+
+  .tixh-game {
+    flex: 1 1 100%;
+  }
+
+  .tixh-game select {
+    flex: 1 1 auto;
+  }
+}

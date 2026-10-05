@@ -5,6 +5,7 @@ import { SignArt } from '../components/prizes/SignArt'
 import { TicketGlyph } from '../components/prizes/Ticket'
 import { PrizePanel } from '../components/prizes/PrizePanel'
 import { openSiteMenu } from '../components/siteNav'
+import { ticketsHref } from '../hooks/useHashRoute'
 import { FOR_SALE, PRIZE_KINDS, prizeById, SHELVES, SIGNS, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
 import { useAuth } from '../hooks/useAuth'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
@@ -166,6 +167,9 @@ export function PrizeCounterPage() {
                   <span className="counter-led__side">
                     <span className="counter-led__label">Tickets</span>
                     {tickets.today.earned > 0 ? <span className="counter-led__today">+{tickets.today.earned.toLocaleString()} today</span> : null}
+                    <a className="counter-led__history" href={ticketsHref()}>
+                      How you earned them ›
+                    </a>
                   </span>
                 </div>
                 {goal ? (

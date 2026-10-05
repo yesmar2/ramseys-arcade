@@ -19,6 +19,7 @@ import {
   prizesHref,
   seasonHref,
   termsHref,
+  ticketsHref,
   todayHref,
   tournamentCreateHref,
   tournamentHref,
@@ -376,6 +377,8 @@ export function pageMeta(route: Route): PageMeta {
           'Every run pays tickets. Trade them at the prize counter for looks that show on the boards: badge finishes, name styles, card themes, confetti and titles. Earned by playing, never bought.',
         path: prizesHref(),
       }
+    case 'tickets':
+      return { ...site, title: titled('Your tickets'), path: ticketsHref(), noindex: true }
     case 'season':
       return {
         ...site,
