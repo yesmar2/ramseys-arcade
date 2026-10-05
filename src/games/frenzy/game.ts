@@ -218,8 +218,12 @@ const DASH_DODGE = 0.12
 const STUN_TIME = 0.95
 export const COMBO_WINDOW = 2.6
 export const FRENZY_AT = 8
-/** No predators for the first stretch of a run — learn to swim first. */
-const GRACE = 15
+/** No predators for the first few seconds of a run — learn to swim first. */
+const GRACE = 6
+/** Bigger fish cruise from early on, but none hunts you until this far in. */
+const HUNT_GRACE = 20
+/** Seconds for a run to warm from its opening to its hardest. */
+const HEAT_TIME = 240
 const ALERT_TIME = 0.6
 /** A patroller that turns to charge you stops and stares this long first. */
 const CHARGE_WINDUP = 0.55
@@ -440,18 +444,40 @@ function speedScale(s: GameState) {
   return s.phase === 'menu' ? 1 : worldScale(s.player.level)
 }
 
+/**
+ * How far a run has warmed up, 0..1. It rises steadily over the first four
+ * minutes and eases in at both ends, so there is no moment where it jumps.
+ */
+function heat(s: GameState) {
+  if (s.phase !== 'playing') return 0.5
+  const t = Math.min(1, Math.max(0, s.elapsed - GRACE) / HEAT_TIME)
+  return t * t * (3 - 2 * t)
+}
+
+/** Bigger fish allowed around the screen at once: a couple early, more as the run warms and the water deepens. */
+function maxThreats(s: GameState) {
+  return 2 + Math.round(3 * heat(s)) + zoneIndexAt(s.player.y)
+}
+
 function spawnSolo(s: GameState, where: { x: number; y: number } | null, forcePrey: boolean) {
   if (!where) return
   const zone = zoneAt(where.y)
   const L = spawnBase(s)
-  const ramp = Math.min(1, Math.max(0, s.elapsed - GRACE) / 150)
+  const h = heat(s)
   const graceOver = s.phase !== 'playing' || s.elapsed >= GRACE
-  const dangerChance = forcePrey || !graceOver ? 0 : zone.danger + zone.dangerRamp * ramp
+  let threats = 0
+  if (s.phase === 'playing') for (const f of s.fishes) if (f.level > s.player.level) threats += 1
+  const crowded = s.phase === 'playing' && threats >= maxThreats(s)
+  const dangerChance =
+    forcePrey || !graceOver || crowded ? 0 : zone.danger * (0.85 + 0.15 * h) + zone.dangerRamp * h
   if (Math.random() < dangerChance) {
     const spec = pickWeighted(speciesInZone('predator', zone.id), Math.random())
     if (!spec) return
+    const hunts = s.phase !== 'playing' || s.elapsed >= HUNT_GRACE
     const aggressive =
-      spec.behavior === 'chaser' && Math.random() < Math.min(0.88, zone.aggressive + 0.12 * ramp)
+      hunts &&
+      spec.behavior === 'chaser' &&
+      Math.random() < Math.min(0.88, zone.aggressive * (0.7 + 0.3 * h) + 0.12 * h)
     s.fishes.push(makeFish(s, spec.id, predatorLevel(L, zone.reach), where.x, where.y, { aggressive }))
     return
   }
@@ -467,7 +493,7 @@ function spawnSchool(s: GameState, where: { x: number; y: number } | null) {
   if (!spec) return
   const L = s.phase === 'menu' ? 3 : s.player.level
   const level = Math.max(1, Math.round(L * rand(0.35, 0.75)))
-  const count = 6 + Math.floor(rand(0, 6))
+  const count = 5 + Math.floor(rand(0, 4))
   const id = ++s.nextSchool
   const heading = Math.atan2(s.cameraY - where.y, s.cameraX - where.x) + rand(-0.6, 0.6)
   const spread = radiusForLevel(level) * 4
@@ -624,8 +650,8 @@ export function startGame(prev: GameState): GameState {
   s.cameraX = s.player.x
   s.cameraY = s.player.y
   clampCamera(s)
-  for (let i = 0; i < 9; i++) spawnSolo(s, viewPoint(s, 30), true)
-  for (let i = 0; i < 6; i++) spawnSolo(s, ringPoint(s, 1.05, 1.4), true)
+  for (let i = 0; i < 7; i++) spawnSolo(s, viewPoint(s, 30), true)
+  for (let i = 0; i < 5; i++) spawnSolo(s, ringPoint(s, 1.05, 1.4), true)
   spawnSchool(s, viewPoint(s, 60))
   spawnSchool(s, ringPoint(s, 1.1, 1.3))
   return s
@@ -655,6 +681,24 @@ export function requestDash(state: GameState, angle?: number): GameState {
   return { ...state, dashQueued: angle ?? Number.NaN }
 }
 
+/**
+ * Where the fish is on screen, in pixels from the middle. The camera runs
+ * ahead of a moving fish and catches up after a turn, so the fish is rarely
+ * dead centre, and a pointer has to be read against the fish, not the screen.
+ */
+export function playerScreenOffset(s: GameState) {
+  const ppu = pixelsPerUnit(s)
+  return { x: (s.player.x - s.cameraX) * ppu, y: (s.player.y - s.cameraY) * ppu }
+}
+
+/** Dash at a point on screen (pixels from the middle): toward it from where the fish is drawn. */
+export function requestDashAt(state: GameState, offsetX: number, offsetY: number): GameState {
+  const o = playerScreenOffset(state)
+  const dx = offsetX - o.x
+  const dy = offsetY - o.y
+  return requestDash(state, Math.hypot(dx, dy) > 8 ? Math.atan2(dy, dx) : undefined)
+}
+
 function playerDesire(s: GameState): { angle: number; frac: number } | null {
   const { keys } = s
   let dx = 0
@@ -665,11 +709,14 @@ function playerDesire(s: GameState): { angle: number; frac: number } | null {
   if (keys.right) dx += 1
   if (dx !== 0 || dy !== 0) return { angle: Math.atan2(dy, dx), frac: 1 }
   if (s.pointerDir) {
-    const d = Math.hypot(s.pointerDir.x, s.pointerDir.y)
-    // A resting fish sits in the middle of the screen, so a pointer on it means stay.
+    // Read against the fish as it is drawn, so a pointer on it means stay.
+    const o = playerScreenOffset(s)
+    const px = s.pointerDir.x - o.x
+    const py = s.pointerDir.y - o.y
+    const d = Math.hypot(px, py)
     if (d < POINTER_DEAD_ZONE) return null
     return {
-      angle: Math.atan2(s.pointerDir.y, s.pointerDir.x),
+      angle: Math.atan2(py, px),
       frac: Math.min(1, (d - POINTER_DEAD_ZONE) / POINTER_FULL_SPEED_DIST),
     }
   }
@@ -956,7 +1003,9 @@ function updateFish(
           const before = f.nextTurn
           cruise()
           const turned = before > 0 && f.nextTurn > before
-          if (turned && d < noticeR * 1.6 && Math.random() < 0.35 && mayAttack()) beginAttack('alert')
+          if (turned && s.elapsed >= HUNT_GRACE && d < noticeR * 1.6 && Math.random() < 0.35 && mayAttack()) {
+            beginAttack('alert')
+          }
         }
         break
       }
@@ -965,7 +1014,7 @@ function updateFish(
         if (f.state === 'cruise' || f.state === 'flee') {
           if (f.state === 'flee') f.state = 'cruise'
           cruise()
-          if (d < strikeR && mayAttack()) beginAttack('windup')
+          if (d < strikeR && s.elapsed >= HUNT_GRACE && mayAttack()) beginAttack('windup')
         } else if (f.state === 'windup') {
           desired = toPlayer
           frac = 0
@@ -1487,8 +1536,8 @@ function spawnAndCull(s: GameState) {
 function maintainPopulation(s: GameState, dt: number) {
   const alive = s.phase === 'playing'
   const zone = zoneAt(alive ? s.player.y : s.cameraY)
-  const zoomT = (1 - s.zoom) / (1 - MIN_ZOOM)
-  const soloTarget = alive ? Math.round(20 + 14 * zoomT) : 14
+  // The same crowd on screen at every size: growing used to bring more fish, and more of them hunters.
+  const soloTarget = alive ? 21 : 14
 
   let solo = 0
   let edible = 0
@@ -1503,7 +1552,7 @@ function maintainPopulation(s: GameState, dt: number) {
   if (s.spawnTimer <= 0) {
     s.spawnTimer = 0.2
     if (solo < soloTarget) spawnSolo(s, ringPoint(s, 1.05, 1.5), false)
-    if (alive && edible < 8) spawnSolo(s, ringPoint(s, 1.05, 1.4), true)
+    if (alive && edible < 7) spawnSolo(s, ringPoint(s, 1.05, 1.4), true)
   }
 
   s.schoolTimer -= dt
@@ -1540,8 +1589,9 @@ function updateCamera(s: GameState, dt: number, follow: boolean) {
   const p = s.player
   if (follow) {
     const v = viewHalf(s)
-    const leadX = Math.max(-v.w * 0.22, Math.min(v.w * 0.22, p.vx * 0.3))
-    const leadY = Math.max(-v.h * 0.22, Math.min(v.h * 0.22, p.vy * 0.3))
+    // A little look-ahead, not so much that the fish slides around the screen.
+    const leadX = Math.max(-v.w * 0.14, Math.min(v.w * 0.14, p.vx * 0.2))
+    const leadY = Math.max(-v.h * 0.14, Math.min(v.h * 0.14, p.vy * 0.2))
     const k = 1 - Math.exp(-dt * 5)
     s.cameraX += (p.x + leadX - s.cameraX) * k
     s.cameraY += (p.y + leadY - s.cameraY) * k

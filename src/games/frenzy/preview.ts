@@ -3,6 +3,7 @@ import {
   clearPointerDir,
   createInitialState,
   fishRadius,
+  playerScreenOffset,
   radiusForLevel,
   requestDash,
   resizeState,
@@ -161,7 +162,8 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
   // Cruise at a player's pace; only a hunter on your tail gets full speed.
   const len = Math.hypot(ax, ay)
   const reach = fleeing || m.escapeFor > 0 ? 120 : 52
-  let next = len < 0.05 ? clearPointerDir(s) : setPointerDir(s, (ax / len) * reach, (ay / len) * reach)
+  const o = playerScreenOffset(s)
+  let next = len < 0.05 ? clearPointerDir(s) : setPointerDir(s, o.x + (ax / len) * reach, o.y + (ay / len) * reach)
   if (dash !== null) next = requestDash(next, dash)
   return next
 }

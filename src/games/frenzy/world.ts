@@ -58,7 +58,7 @@ export const ZONES: readonly Zone[] = [
     dangerRamp: 0.1,
     aggressive: 0.48,
     reach: 2.6,
-    jellies: 5,
+    jellies: 3,
     mines: 1,
     schools: 1,
     rockChance: 0.48,

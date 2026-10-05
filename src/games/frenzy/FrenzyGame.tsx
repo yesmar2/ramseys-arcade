@@ -16,6 +16,7 @@ import {
   createInitialState,
   releaseInput,
   requestDash,
+  requestDashAt,
   resizeState,
   setKey,
   setPointerDir,
@@ -142,8 +143,9 @@ export function FrenzyGame() {
    */
   const toMenu = () => restart(true)
 
+  /** Pixels from the middle of the canvas, which is where the camera is. */
   const offsetFromCentre = (e: ReactPointerEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
+    const rect = (canvasRef.current ?? e.currentTarget).getBoundingClientRect()
     return {
       x: e.clientX - (rect.left + rect.width / 2),
       y: e.clientY - (rect.top + rect.height / 2),
@@ -176,7 +178,7 @@ export function FrenzyGame() {
       mouseRef.current = { awake: true, from: null }
       aimFromEvent(e)
       const o = offsetFromCentre(e)
-      stateRef.current = requestDash(stateRef.current, Math.hypot(o.x, o.y) > 8 ? Math.atan2(o.y, o.x) : undefined)
+      stateRef.current = requestDashAt(stateRef.current, o.x, o.y)
     } else {
       aimFromEvent(e)
       touchRef.current = { x: e.clientX, y: e.clientY, t: performance.now() }
@@ -216,7 +218,7 @@ export function FrenzyGame() {
       Math.hypot(e.clientX - touch.x, e.clientY - touch.y) < TAP_SLOP
     ) {
       const o = offsetFromCentre(e)
-      stateRef.current = requestDash(stateRef.current, Math.atan2(o.y, o.x))
+      stateRef.current = requestDashAt(stateRef.current, o.x, o.y)
     }
     if (e.pointerType !== 'mouse') stateRef.current = clearPointerDir(stateRef.current)
   }
