@@ -194,6 +194,15 @@ const topChasing = (top: BoardGhost, me: string): Chasing =>
   top.name === me ? { who: 'you', skin: top.skin } : { who: 'rival', name: top.name, skin: top.skin }
 
 /**
+ * Your own best, as a ghost: in the skin it was flown in. A run kept before runs kept their skin borrows the
+ * board's, when the #1 is you at the same time.
+ */
+const mineChasing = (mine: GhostRun, top: BoardGhost | null, me: string): Chasing => ({
+  who: 'you',
+  skin: mine.skin ?? (top && top.name === me && Math.abs(top.time - mine.time) < 0.0005 ? top.skin : undefined),
+})
+
+/**
  * The run to beat: the board's #1, on their own line, or on the blue ship's at their time when theirs isn't
  * known (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board, your best
  * here when it beats the blue ship, else the blue ship's. Your own is the one of whoever is signed in now.
@@ -204,7 +213,7 @@ function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: st
   if (top && (!mine || top.time < mine.time - 0.0005)) {
     return { ghost: new Ghost(top.run ?? standIn(pace, top.time)), chasing: topChasing(top, me) }
   }
-  return mine && mine.time < pace.time ? { ghost: new Ghost(mine), chasing: { who: 'you' } } : { ghost: new Ghost(pace), chasing: { who: 'pace' } }
+  return mine && mine.time < pace.time ? { ghost: new Ghost(mine), chasing: mineChasing(mine, top, me) } : { ghost: new Ghost(pace), chasing: { who: 'pace' } }
 }
 
 /**
@@ -221,7 +230,7 @@ function cardChase(lander: LanderDay, practice: boolean, top: BoardGhost | null,
   if (top && (!mine || top.time < mine.time - 0.0005)) {
     return { ghost: top.run ? new Ghost(top.run) : waiting(top.time), chasing: topChasing(top, me) }
   }
-  if (mine && mine.time < lander.pace) return { ghost: new Ghost(mine), chasing: { who: 'you' } }
+  if (mine && mine.time < lander.pace) return { ghost: new Ghost(mine), chasing: mineChasing(mine, top, me) }
   return { ghost: flown ? new Ghost(flown) : waiting(lander.pace), chasing: { who: 'pace' } }
 }
 
@@ -624,7 +633,7 @@ function LanderDayGame({
       const improved = !kept || time < kept.time
       const path = g.record
       if (improved && g.owner !== undefined) {
-        const run = { time, splits: [...g.splits], ghost: path }
+        const run = { time, splits: [...g.splits], ghost: path, ...(skinRef.current ? { skin: skinRef.current } : {}) }
         if (practice) keepPracticeRun(g.day, g.owner, run)
         else keepBestRun(g.day, g.owner, run)
       }

@@ -373,7 +373,10 @@ function HotLapDay({
       // In the skin the lap was driven in, when it's the board's.
       return { lap, chasing: top.name === nameRef.current ? { who: 'you', skin: top.skin } : { who: 'rival', name: top.name, skin: top.skin } }
     }
-    return mine ? { lap: mine, chasing: { who: 'you' } } : { lap: pace, chasing: { who: 'pace' } }
+    // Your own best, in the skin it was driven in; a lap kept before laps kept theirs borrows the board's, when
+    // the #1 is you at the same time.
+    const mineSkin = mine?.skin ?? (top && mine && top.name === nameRef.current && Math.abs(top.time - mine.time) < 0.0005 ? top.skin : undefined)
+    return mine ? { lap: mine, chasing: { who: 'you', skin: mineSkin } } : { lap: pace, chasing: { who: 'pace' } }
   }
 
   const gameRef = useRef<Game | null>(null)
@@ -623,7 +626,9 @@ function HotLapDay({
       // Against the best of whoever drove it, and kept as theirs: someone else signed in meanwhile has theirs.
       const kept = g.owner === undefined ? null : bestLapOf(g.day, g.test, ownerAccount(g.owner))
       const improved = !kept || time < kept.time
-      if (improved && g.owner !== undefined) keepBestLap(g.day, g.test, g.owner, { time, splits: [...run.splits], ghost: g.record })
+      if (improved && g.owner !== undefined) {
+        keepBestLap(g.day, g.test, g.owner, { time, splits: [...run.splits], ghost: g.record, ...(skinRef.current ? { skin: skinRef.current } : {}) })
+      }
       g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved, run: g.past ? runIdFor(SLUG) : null, path: g.record }
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')

@@ -10,7 +10,8 @@ import { ownKey, ownRun, SIGNED_OUT, type OwnedRuns, type Viewer } from '../../l
  * A run as its ghost flies it: its time, when it passed each gate and landed, and where it was (sim.ts
  * Flight's ghost: x, y, angle and engine, GHOST_RATE a second, the landing's moment last).
  */
-export type GhostRun = { time: number; splits: number[]; ghost: number[] }
+/** A run and its path; `skin`, the season skin it was flown in (lib/skins.ts), so its ghost wears it too. */
+export type GhostRun = { time: number; splits: number[]; ghost: number[]; skin?: string }
 
 /** A ghost sample's numbers (sim.ts GHOST_STRIDE), here so this file needs no engine. */
 const STRIDE = 4
@@ -34,7 +35,7 @@ function validRun(raw: Partial<GhostRun> | null | undefined): GhostRun | null {
   if (!raw || typeof raw.time !== 'number' || !(raw.time > 10 && raw.time < 900)) return null
   if (!Array.isArray(raw.splits) || raw.splits.length < 1 || !raw.splits.every(Number.isFinite)) return null
   if (!Array.isArray(raw.ghost) || raw.ghost.length < STRIDE * 10 || raw.ghost.length % STRIDE !== 0 || !raw.ghost.every(Number.isFinite)) return null
-  return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
+  return { time: raw.time, splits: raw.splits, ghost: raw.ghost, ...(typeof raw.skin === 'string' ? { skin: raw.skin } : {}) }
 }
 
 /** Each day's best runs on this device, by whose they are: an account's id, or SIGNED_OUT. */

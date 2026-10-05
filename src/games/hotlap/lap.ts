@@ -8,7 +8,8 @@ import { botLap, buildTrack, GHOST_RATE, lapDistance, nearest, type GhostPath, t
  */
 
 /** A lap as the ghost drives it: its time, where each sector ended, and where the car was. */
-export type GhostLap = { time: number; splits: number[]; ghost: GhostPath }
+/** A lap and its path; `skin`, the season skin it was driven in (lib/skins.ts), so its ghost wears it too. */
+export type GhostLap = { time: number; splits: number[]; ghost: GhostPath; skin?: string }
 
 /*
  * Not a score: the board keeps that. This is only each day's best lap and its path, for the ghost, on
@@ -30,7 +31,7 @@ function validLap(raw: Partial<GhostLap> | null | undefined): GhostLap | null {
   if (!raw || typeof raw.time !== 'number' || !(raw.time > 20 && raw.time < 600)) return null
   if (!Array.isArray(raw.splits) || raw.splits.length !== 3 || !raw.splits.every(Number.isFinite)) return null
   if (!Array.isArray(raw.ghost) || raw.ghost.length < 30 || raw.ghost.length % 3 !== 0 || !raw.ghost.every(Number.isFinite)) return null
-  return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
+  return { time: raw.time, splits: raw.splits, ghost: raw.ghost, ...(typeof raw.skin === 'string' ? { skin: raw.skin } : {}) }
 }
 
 /** Each day's best laps on this device, by whose they are: an account's id, or SIGNED_OUT. */
