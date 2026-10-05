@@ -117,7 +117,7 @@ export function youLine(entries: GlobalBoardEntry[], me: string, period: GroupPe
   if (!name) return null
   const i = entries.findIndex((e) => normalizePlayerName(e.name) === name)
   if (i < 0) {
-    return period === 'all' ? 'One run on any game puts you on the table.' : `You’re not on the table ${periodWords(period) === 'this week' ? 'this week' : `for ${periodWords(period)}`} yet: one run puts you on it.`
+    return period === 'all' ? 'One run on any ranked game puts you on the table.' : `You’re not on the table ${periodWords(period) === 'this week' ? 'this week' : `for ${periodWords(period)}`} yet: one run puts you on it.`
   }
   if (afterLead && i <= 1) return null
   const mine = entries[i]!

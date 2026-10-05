@@ -310,7 +310,7 @@ export function GroupStandings({
             <TrophyIcon />
           </span>
           <p className="grp-empty__title">Nobody’s played {period === 'weekly' ? 'this week' : `in ${periodWords(period)}`} yet</p>
-          <p className="grp-copy">Any run on any game puts you top of the {group.name} table.</p>
+          <p className="grp-copy">Any run on a ranked game puts you top of the {group.name} table.</p>
         </div>
       ) : (
         <>

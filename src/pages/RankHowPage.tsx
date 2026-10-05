@@ -69,10 +69,11 @@ import '../styles/rankHow.css'
 /*
  * How your rank works (/how-ranks-work): the one page that shows a rank worked out, so every other page
  * can say places and names. It covers one player, yours or anyone's (/how-ranks-work/SAM/weekly), at the
- * header's period and group, told in four steps with pictures: every game ranks its players, a place pays
- * up to 100, the rank adds them up, and the dailies go day by day (with every day in a table behind a
- * fold). Then the quickest ways up, and the exact rule and the ties in small print. Every figure is the
- * API's (lib/rankHow.ts has the working); signed out, it's the same four steps in general terms.
+ * header's period and group, told in four steps with pictures: the games rank their players (all but the
+ * dailies just for fun), a place pays up to 100, the rank adds them up, and the dailies go day by day
+ * (with every day in a table behind a fold). Then the quickest ways up, and the exact rule and the ties
+ * in small print. Every figure is the API's (lib/rankHow.ts has the working); signed out, it's the same
+ * four steps in general terms.
  */
 
 /** Whose page it is, as its sentences name them. */
@@ -93,11 +94,22 @@ const ALL_DAILIES = RANKED_LEADERBOARD_GAMES.filter((slug) => isDailyGame(slug))
 /** The dailies just for fun, for the line that says they give no points. */
 const FUN_DAILIES = VISIBLE_LEADERBOARD_GAMES.filter((slug) => isDailyGame(slug) && !isRankedGame(slug))
 
+/** The games that don't rank anyone, said where the page says the games rank: "Ace Chase … don't rank anyone." */
+function FunDailiesLine() {
+  return FUN_DAILIES.length ? (
+    <p className="rh-step__p">
+      {andList(FUN_DAILIES.map(gameName))} {FUN_DAILIES.length === 1 ? 'doesn’t' : 'don’t'} rank anyone:{' '}
+      {FUN_DAILIES.length === 1 ? 'it’s a daily' : 'they’re dailies'} just for fun, so {FUN_DAILIES.length === 1 ? 'it adds' : 'they add'}{' '}
+      nothing to a rank.
+    </p>
+  ) : null
+}
+
 const STEP_IDS = { games: 'rh-games', pays: 'rh-pays', adds: 'rh-adds', dailies: 'rh-dailies', up: 'rh-up' } as const
 
 function stepTitles(who: Who) {
   return {
-    games: 'Every game ranks its players',
+    games: FUN_DAILIES.length ? 'Most games rank their players' : 'Every game ranks its players',
     pays: who.self ? 'Your place pays up to 100' : 'Each place pays up to 100',
     adds: who.self ? 'Your rank adds them up' : `${who.name}’s rank adds them up`,
     dailies: 'Dailies go day by day',
@@ -220,7 +232,7 @@ function Thumb({ slug, className }: { slug: string; className?: string }) {
   return <GameThumbArt slug={slug} accent={gameAccent(slug)} className={`rh-thumb${className ? ` ${className}` : ''}`} />
 }
 
-/* ---------- step 1: every game ranks its players ---------- */
+/* ---------- step 1: the games rank their players ---------- */
 
 function Fields({ placed, who }: { placed: Placed[]; who: Who }) {
   return (
@@ -267,7 +279,7 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
       <p className="rh-step__p">
         Only {whose(who)} best run on each game counts. {on}{' '}
         <b>
-          {n.toLocaleString()} of the {boards.toLocaleString()} games
+          {n.toLocaleString()} of the {boards.toLocaleString()} ranked games
         </b>
         .
         {retired.length
@@ -276,11 +288,12 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
       </p>
       <p className="rh-step__p">
         {rest <= 0
-          ? 'That’s every game there is.'
+          ? 'That’s every game that ranks.'
           : rest === 1
             ? `The other one doesn’t count against ${youOf(who)}. It just hasn’t added anything yet.`
             : `The other ${rest.toLocaleString()} don’t count against ${youOf(who)}. They just haven’t added anything yet.`}
       </p>
+      <FunDailiesLine />
     </Step>
   )
 }
@@ -852,7 +865,7 @@ function DailiesStep({
       </p>
       {FUN_DAILIES.length ? (
         <p className="rh-step__p">
-          {andList(FUN_DAILIES.map(gameName))} are dailies just for fun: their answer is the same for everyone, so they
+          {andList(FUN_DAILIES.map(gameName))} go day by day too, but their answer is the same for everyone, so they
           give no points and have no boards.
         </p>
       ) : null}
@@ -1256,8 +1269,8 @@ function FinePrint({ words, tie }: { words: PeriodWords; tie?: string | null }) 
           <span>Small print</span>
         </div>
         <p>
-          <b>100 × (players − your place + 1) ÷ players</b>, rounded, never below 1. Your rank is the sum over every game{' '}
-          {words.noun ? words.phrase : 'you’ve played'}.
+          <b>100 × (players − your place + 1) ÷ players</b>, rounded, never below 1. Your rank is the sum over every ranked
+          game {words.noun ? words.phrase : 'you’ve played'}.
         </p>
         <p>The dailies score each day this way, then add the days up.</p>
         <p>Events work the same way on a small scale: 1st on a game pays 10, last pays 1.</p>
@@ -1287,9 +1300,11 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
     <>
       <Step id={STEP_IDS.games} n="1" title={stepTitles(who).games}>
         <p className="rh-step__p">
-          Only your best run on each game counts, and every game has its own board for the week, the month and all time.
+          Only your best run on each game counts, and each ranked game has its own board for the week, the month and all
+          time.
         </p>
         <p className="rh-step__p">A game you haven’t played doesn’t count against you. It just hasn’t added anything yet.</p>
+        <FunDailiesLine />
       </Step>
       <Step id={STEP_IDS.pays} n="2" title={stepTitles(who).pays}>
         <p className="rh-step__p">
@@ -1301,7 +1316,7 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
         </p>
       </Step>
       <Step id={STEP_IDS.adds} n="3" title={stepTitles(who).adds}>
-        <p className="rh-step__p">Your rank is what every game paid you, added up, and the most goes first.</p>
+        <p className="rh-step__p">Your rank is what the ranked games paid you, added up, and the most goes first.</p>
         <p className="rh-step__p">
           Points can move while you’re away: a new player below you raises what your place pays, and one who passes you
           lowers it.
@@ -1328,7 +1343,7 @@ function General({ signedIn, loading, period }: { signedIn: boolean; loading: bo
       <Hero
         kicker="How ranks work"
         title="How your rank works"
-        lede="Every game ranks everyone who played it. Your place on each pays up to 100, and your rank adds them up."
+        lede={`${FUN_DAILIES.length ? 'Most games rank everyone who played them' : 'Every game ranks everyone who played it'}. Your place on each pays up to 100, and your rank adds them up.`}
         words
       />
       {loading ? null : (
@@ -1424,7 +1439,7 @@ function PlayerHow({
         <Hero
           kicker={kicker}
           title={self ? `Not on the boards${when} yet` : `${name} isn’t on the boards${when} yet`}
-          lede={`A rank adds up the places on every game played${when}. One run on any game puts ${youOf(who)} on the boards${groupName ? ` ${where}` : ''}.`}
+          lede={`A rank adds up the places on every ranked game played${when}. One run on any of them puts ${youOf(who)} on the boards${groupName ? ` ${where}` : ''}.`}
           tabs={tabs}
           words
         />

@@ -147,7 +147,7 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     id: 'home-standings',
     page: 'on the home page',
     thing: 'the Standings',
-    lesson: 'The Standings rank everyone across all the games. Every game you play moves you up.',
+    lesson: 'The Standings rank everyone across the ranked games. Every one you play moves you up.',
   },
   {
     id: 'home-records',
@@ -165,7 +165,7 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     id: 'boards-standings',
     page: 'on the Boards',
     thing: 'the standings',
-    lesson: 'The standings rank everyone by points across all games: every board you play pays points for your place on it.',
+    lesson: 'The standings rank everyone by points across the ranked games: every board you play pays points for your place on it.',
   },
   { id: 'records-books', page: 'in the Record books', thing: 'the first book on the shelf', lesson: BOOK_LESSON },
   {

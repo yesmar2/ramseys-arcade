@@ -16,7 +16,8 @@
   --rh-on-game: rgba(8, 18, 14, 0.86);
   display: flex;
   flex-direction: column;
-  width: min(100% - 2rem, 75rem);
+  /* As wide as the other pages (.lb-page__inner); the words keep their own measure. */
+  width: min(100% - 1.25rem, var(--max-width));
   padding-bottom: 3.5rem;
 }
 

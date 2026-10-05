@@ -66,7 +66,7 @@ export function AboutPage() {
           books on select games, and jump into rotating{' '}
           <a href={tournamentsHref()}>events</a> when you want a little extra pressure. Your
           player name is your identity on the board — pick something you’re proud to see in
-          the top ten. Every game you play counts toward your overall rank, and{' '}
+          the top ten. Every ranked game you play counts toward your overall rank, and{' '}
           <a href={rankHowHref()}>How your rank works</a> shows yours, game by game.
         </p>
 

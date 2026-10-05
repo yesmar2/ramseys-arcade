@@ -228,7 +228,7 @@ function standing({
       sub:
         other && otherRank != null
           ? `#${otherRank} ${periodWord(other)}. One run ${word} puts ${you} on this one.`
-          : `One run on any game puts ${you} on the boards.`,
+          : `One run on any ranked game puts ${you} on the boards.`,
     }
   }
 
