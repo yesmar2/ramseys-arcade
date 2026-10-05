@@ -1,5 +1,5 @@
 import { seasonHref } from '../../hooks/useHashRoute'
-import { isSpotlight, liveSeason, useSeason } from '../../lib/season'
+import { isSpotlight, liveSeason, useSeason, type SeasonInfo } from '../../lib/season'
 import { useTickets } from '../../lib/tickets'
 import { RewardArt } from './RewardArt'
 import { MissionPatch } from './SeasonArt'
@@ -31,6 +31,27 @@ export function SpotlightCard({ slug, name }: { slug: string; name: string }) {
             ? `The ${skin.name} is yours, for ${name}.`
             : `The ${skin.name}, a ${skin.what.toLowerCase()}, is at Level ${skin.level} of the pass.`
           : `${name} is in this season’s spotlight.`}
+      </span>
+      <span className="season-spotcard__go">See the pass</span>
+    </a>
+  )
+}
+
+/**
+ * The season on the home page's welcome banner, a first visit's (HomeHero.tsx): the welcome stays what the
+ * arcade is, with Play first, and this says there's a season on and where its free pass is.
+ */
+export function SeasonWelcomeCard({ season }: { season: SeasonInfo }) {
+  return (
+    <a className="season-spotcard season-spotcard--welcome" href={seasonHref()}>
+      <span className="season-spotcard__art" aria-hidden="true">
+        <MissionPatch size={44} />
+      </span>
+      <span className="season-spotcard__text">
+        <b>
+          Season {season.id} · {season.name}
+        </b>
+        Win tickets in any game to climb a free pass of {season.levels} levels.
       </span>
       <span className="season-spotcard__go">See the pass</span>
     </a>

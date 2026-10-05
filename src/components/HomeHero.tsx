@@ -29,6 +29,7 @@ import { preloadGamePage } from '../pages/gamePages'
 import { liveSeason, useSeason, seasonTop } from '../lib/season'
 import { EventCountdown } from './EventCountdown'
 import { SeasonBanner } from './season/SeasonBanner'
+import { SeasonWelcomeCard } from './season/SeasonSpotlight'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 
@@ -674,6 +675,13 @@ export function HomeHero() {
             <DailyCard t={daily} />
           ) : eventsLoading && eventLastTime ? (
             <span className="home-banner__daily home-banner__daily--wait" aria-hidden="true" />
+          ) : null}
+          {/* A season on is a reason to come back: said here, with Play still first. Its room is held while it isn't
+              known yet whether one is on, as there nearly always is. */}
+          {season ? (
+            <SeasonWelcomeCard season={season} />
+          ) : !seasonStore.loaded && !seasonStore.season ? (
+            <span className="season-spotcard season-spotcard--wait" aria-hidden="true" />
           ) : null}
           <div className="home-banner__acts">
             <a className="home-banner__cta" href={gamePlayHref(slug)}>

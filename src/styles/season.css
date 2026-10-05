@@ -1556,3 +1556,22 @@ a.season-skin__art:hover {
     display: none;
   }
 }
+
+/* The season on the welcome banner (HomeHero.tsx): under its words, over Play. */
+.season-spotcard--welcome {
+  margin-top: 0.2rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Its room while it isn't known whether a season is on: the card's size, shimmering. */
+.season-spotcard.season-spotcard--wait {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4.8rem;
+  margin-top: 0.2rem;
+  margin-bottom: 0.4rem;
+  border-color: transparent;
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
