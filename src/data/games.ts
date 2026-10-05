@@ -277,6 +277,16 @@ export const games: Game[] = [
     inDevelopment: true,
     daily: true,
   },
+  {
+    name: 'Pileup',
+    slug: 'pileup',
+    tags: ['puzzle', 'arcade'],
+    description: 'Fill a row to clear it. Shake the gaps out.',
+    accent: PALETTE.pink,
+    playable: true,
+    // New, and held back until it's released: listed nowhere yet, played at its own address.
+    onDeck: true,
+  },
 ]
 
 export function getGame(slug: string) {

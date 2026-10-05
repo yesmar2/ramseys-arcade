@@ -297,6 +297,7 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   bop: 25,
   putt: 2000,
   fireflies: 60,
+  pileup: 3000,
 }
 
 export type RecordSubmitOutcome = {
@@ -857,6 +858,7 @@ export const GAMES_WITH_RECORDS = [
   'pellets',
   'crumbtrail',
   'fireflies',
+  'pileup',
   // The dailies: each track's, hole's and day's record (the API's records.ts COURSES).
   'hotlap',
   'acechase',

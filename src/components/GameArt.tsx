@@ -1,4 +1,6 @@
 import { useId, type ReactNode } from 'react'
+import { PALETTE } from '../data/games'
+import { mixColor } from '../lib/color'
 
 /*
  * Each game's picture, drawn to look like the game as it plays now: its own
@@ -1555,6 +1557,147 @@ function Lander({ id }: { id: Id }) {
   )
 }
 
+/*
+ * Pileup's pieces, as its renderer draws them in the dark theme: a soft wash
+ * of the piece's colour against the well, its outline the colour lifted
+ * halfway to white, rounded where it turns outward, seams between its blocks.
+ */
+const PILE_GROUND = '#121c24'
+const PILE_HUES = [PALETTE.pink, PALETTE.amber, PALETTE.violet, PALETTE.green, PALETTE.orange, PALETTE.sky, PALETTE.red]
+
+function pileTone(kind: number) {
+  const hue = PILE_HUES[kind]!
+  return { fill: mixColor(hue, PILE_GROUND, 0.28), line: mixColor(hue, '#ffffff', 0.5) }
+}
+
+/** Cells (column, row up from the floor) as one piece, `c` a cell, the floor at `floor`. */
+function PileShape({ cells, kind, x0, floor, c, opacity = 1 }: { cells: Array<[number, number]>; kind: number; x0: number; floor: number; c: number; opacity?: number }) {
+  const has = (x: number, y: number) => cells.some(([cx, cy]) => cx === x && cy === y)
+  const ins = c * 0.04
+  const r = c * 0.26
+  let fill = ''
+  let edge = ''
+  let seam = ''
+  for (const [x, y] of cells) {
+    const px = x0 + x * c
+    const py = floor - (y + 1) * c
+    const T = !has(x, y + 1)
+    const B = !has(x, y - 1)
+    const L = !has(x - 1, y)
+    const R = !has(x + 1, y)
+    const a = px + (L ? ins : 0)
+    const b = px + c - (R ? ins : 0)
+    const t = py + (T ? ins : 0)
+    const u = py + c - (B ? ins : 0)
+    const tl = T && L ? r : 0
+    const tr = T && R ? r : 0
+    const br = B && R ? r : 0
+    const bl = B && L ? r : 0
+    fill += `M${a + tl} ${t} H${b - tr} Q${b} ${t} ${b} ${t + tr} V${u - br} Q${b} ${u} ${b - br} ${u} H${a + bl} Q${a} ${u} ${a} ${u - bl} V${t + tl} Q${a} ${t} ${a + tl} ${t} Z `
+    if (T) edge += `M${L ? a + tl : px} ${t} H${R ? b - tr : px + c} `
+    if (B) edge += `M${L ? a + bl : px} ${u} H${R ? b - br : px + c} `
+    if (L) edge += `M${a} ${T ? t + tl : py} V${B ? u - bl : py + c} `
+    if (R) edge += `M${b} ${T ? t + tr : py} V${B ? u - br : py + c} `
+    if (tl) edge += `M${a} ${t + tl} Q${a} ${t} ${a + tl} ${t} `
+    if (tr) edge += `M${b - tr} ${t} Q${b} ${t} ${b} ${t + tr} `
+    if (br) edge += `M${b} ${u - br} Q${b} ${u} ${b - br} ${u} `
+    if (bl) edge += `M${a + bl} ${u} Q${a} ${u} ${a} ${u - bl} `
+    if (!R) seam += `M${px + c} ${py + c * 0.24} V${py + c * 0.76} `
+    if (!T) seam += `M${px + c * 0.24} ${py} H${px + c * 0.76} `
+  }
+  const tone = pileTone(kind)
+  return (
+    <g opacity={opacity}>
+      <path d={fill} fill={tone.fill} />
+      <path d={seam} {...line(tone.line, c * 0.05, 0.35)} />
+      <path d={edge} {...line(tone.line, c * 0.1)} />
+    </g>
+  )
+}
+
+/** The pile, by piece: [kind, cells]. Kinds as the game numbers them: 0 long, 1 square, then T, S, Z, J, L. */
+const PILE_PIECES: Array<[number, Array<[number, number]>]> = [
+  [0, [[0, 0], [1, 0], [2, 0], [3, 0]]],
+  [5, [[4, 1], [4, 0], [5, 0], [6, 0]]],
+  [1, [[7, 0], [8, 0], [7, 1], [8, 1]]],
+  [6, [[9, 0], [9, 1], [9, 2], [8, 2]]],
+  [2, [[0, 1], [1, 1], [2, 1], [1, 2]]],
+  [3, [[5, 1], [6, 1], [6, 2], [7, 2]]],
+  [2, [[0, 2], [0, 3], [0, 4], [1, 3]]],
+]
+
+/** Blocks a Shake knocked loose, on their way down into the gaps: [kind, column, row now]. */
+const PILE_FALLING: Array<[number, number, number]> = [
+  [4, 3, 1.55],
+  [4, 3, 2.75],
+  [3, 5, 3.4],
+  [6, 2, 3.9],
+]
+
+/** Pileup's well in the middle of a Shake: loose blocks dropping into the gaps, the bottom row going white as it clears, and the next piece waiting at the top, eyes on it all. */
+function Pileup({ id }: { id: Id }) {
+  // The well fills the icon's square, x 6 to 34; held and next stand outside it, on the card only.
+  const c = 2.8
+  const x0 = 6
+  const floor = 29.4
+  const at = (col: number, row: number) => ({ x: x0 + col * c, y: floor - (row + 1) * c })
+  const waiting: Array<[number, number]> = [[5, 9], [4, 8], [5, 8], [6, 8]]
+  const eyesY = floor - 8.75 * c
+  const box = (x: number, y: number, w: number, h: number) => (
+    <rect x={x} y={y} width={w} height={h} rx="0.8" fill="#ffffff" fillOpacity="0.05" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="0.18" />
+  )
+  return (
+    <>
+      <Backdrop id={id} stops={[[0, '#1b2744'], [1, '#0d141d']]} />
+      {/* The well, a step darker than the room, with dots where its cells meet. */}
+      <rect x={x0 - 0.4} y="-1" width={10 * c + 0.8} height={floor + 1.4} rx="0.9" fill="#0b1218" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="0.2" />
+      {Array.from({ length: 9 }, (_, i) =>
+        Array.from({ length: 10 }, (__, j) => (
+          <circle key={`${i}-${j}`} cx={x0 + (i + 1) * c} cy={floor - (j + 1) * c} r="0.1" fill="#ffffff" opacity="0.13" />
+        )),
+      )}
+      {PILE_PIECES.map(([kind, cells], i) => (
+        <PileShape key={i} cells={cells} kind={kind} x0={x0} floor={floor} c={c} />
+      ))}
+      {/* Loose blocks dropping, each with the streak of its fall above it. */}
+      {PILE_FALLING.map(([kind, col, row]) => {
+        const p = at(col, row)
+        return (
+          <g key={`${col}-${row}`}>
+            <path d={`M${p.x + c * 0.3} ${p.y - c * 0.85} V${p.y - c * 0.12} M${p.x + c * 0.7} ${p.y - c * 1.25} V${p.y - c * 0.12}`} {...line(pileTone(kind).line, 0.2, 0.45)} />
+            <PileShape cells={[[col, row]]} kind={kind} x0={x0} floor={floor} c={c} />
+          </g>
+        )
+      })}
+      {/* The rattle: the well shaking. */}
+      <path d={`M${x0 - 2.1} 13.6 q-0.7 0.8 0 1.6 q0.7 0.8 0 1.6`} {...line(PALETTE.pink, 0.34, 0.8)} />
+      <path d={`M${x0 + 10 * c + 2.1} 13.6 q0.7 0.8 0 1.6 q-0.7 0.8 0 1.6`} {...line(PALETTE.pink, 0.34, 0.8)} />
+      {/* The bottom row, full, going white as it clears, sparks off it. */}
+      <Glow id={id} name="clear" cx={20} cy={floor - c / 2} r={12} colour="#ffffff" strength={0.2} />
+      <rect x={x0 - 0.1} y={floor - c + 0.2} width={10 * c + 0.2} height={c - 0.4} rx="1.2" fill="#ffffff" opacity="0.72" />
+      {[
+        [9.6, 23.4, 0.6, 1],
+        [14.4, 22.6, 0.5, 3],
+        [24.2, 22.9, 0.6, 5],
+        [30.2, 23.6, 0.5, 0],
+        [19.2, 21.9, 0.45, 6],
+      ].map(([x, y, s, kind]) => (
+        <rect key={x} x={x} y={y} width={s} height={s} rx={s * 0.3} fill={pileTone(kind!).line} opacity="0.85" />
+      ))}
+      {/* The piece in play, waiting at the top while the pile settles. */}
+      <PileShape cells={waiting} kind={2} x0={x0} floor={floor} c={c} />
+      <Eyes at={[[x0 + 5.5 * c - 0.78, eyesY], [x0 + 5.5 * c + 0.78, eyesY]]} r={0.62} look={[0, 1]} ring={pileTone(2).line} />
+      {/* Held, and next: the boxes either side of the well. */}
+      {box(0.5, 2, 4.3, 4.6)}
+      <PileShape cells={[[1, 0], [2, 0], [0, -1], [1, -1]]} kind={3} x0={0.5 + 2.15 - 1.35} floor={2 + 2.3 + 0.9} c={0.9} />
+      {box(35.2, 2, 4.3, 4.6)}
+      <PileShape cells={[[0, 0], [1, 0], [0, 1], [1, 1]]} kind={1} x0={35.2 + 2.15 - 0.9} floor={2 + 2.3 + 0.9} c={0.9} />
+      {box(35.2, 7.6, 4.3, 3.6)}
+      <PileShape cells={[[0, 1], [1, 1], [1, 0], [2, 0]]} kind={4} x0={35.2 + 2.15 - 1.05} floor={7.6 + 1.8 + 0.7} c={0.7} />
+    </>
+  )
+}
+
 const SCENES: Record<string, Scene> = {
   asteroids: Asteroids,
   patriot: Patriot,
@@ -1576,6 +1719,7 @@ const SCENES: Record<string, Scene> = {
   halffull: HalfFull,
   marblerun: MarbleRun,
   lander: Lander,
+  pileup: Pileup,
 }
 
 /**

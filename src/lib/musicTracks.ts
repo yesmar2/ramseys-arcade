@@ -588,6 +588,7 @@ const GAME_MUSIC: Record<string, TrackId> = {
   pop: 'bonus',
   stacker: 'puzzle',
   spotter: 'puzzle',
+  pileup: 'puzzle',
   centroid: 'paper',
   halffull: 'paper',
   putt: 'credits',

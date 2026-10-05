@@ -412,6 +412,24 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       },
     ],
   },
+  pileup: {
+    goal: 'Keep the pile off the top as the blocks speed up.',
+    controls: [
+      { does: 'Move', touch: 'Drag', keys: '← →' },
+      { does: 'Turn', touch: 'Tap', keys: '↑ · Z the other way' },
+      { does: 'Drop', touch: 'Flick down · drag down', keys: 'Space · hold ↓' },
+      { does: 'Hold for later', touch: 'Flick up · the Hold box', keys: 'C' },
+      { does: 'Shake, when charged', touch: 'Shake', keys: 'S' },
+    ],
+    scores: [
+      { what: 'Rows cleared at once', pts: '10 · 30 · 50 · 80', sub: 'one to four, × the level' },
+      { what: 'Four rows straight after four', pts: '×1.5' },
+      { what: 'Clears piece after piece', pts: '+5, +10, +15…', sub: '× the level' },
+      { what: 'A row a Shake clears', pts: '+10 × level' },
+    ],
+    ends: 'The pile reaches the top.',
+    tip: 'Every 12 rows you clear charges a Shake: every block drops straight down into the gaps under it, and any row that fills clears. The piece you’re dropping waits at the top meanwhile.',
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {

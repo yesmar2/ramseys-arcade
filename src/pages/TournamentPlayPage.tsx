@@ -46,6 +46,7 @@ const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
   hotlap: lazyPage(() => import('../games/hotlap/HotLapGame').then((m) => m.HotLapGame)),
   patriot: lazyPage(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
   pellets: lazyPage(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
+  pileup: lazyPage(() => import('../games/pileup/PileupGame').then((m) => m.PileupGame)),
   pop: lazyPage(() => import('../games/whack/WhackGame').then((m) => m.WhackGame)),
   // Retired for Fireflies, but an event that was already running with it plays out.
   simon: lazyPage(() => import('../games/simon/SimonGame').then((m) => m.SimonGame)),

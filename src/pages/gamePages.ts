@@ -23,6 +23,7 @@ export const GAME_PAGES: Record<string, LazyPage<object>> = {
   marblerun: lazyPage(() => import('./MarbleRunPage').then((m) => m.MarbleRunPage)),
   patriot: lazyPage(() => import('./PatriotPage').then((m) => m.PatriotPage)),
   pellets: lazyPage(() => import('./PelletsPage').then((m) => m.PelletsPage)),
+  pileup: lazyPage(() => import('./PileupPage').then((m) => m.PileupPage)),
   pop: lazyPage(() => import('./WhackPage').then((m) => m.WhackPage)),
   putt: lazyPage(() => import('./PuttPage').then((m) => m.PuttPage)),
   snake: lazyPage(() => import('./SnakePage').then((m) => m.SnakePage)),

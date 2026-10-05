@@ -429,6 +429,20 @@ function HalfFullThumb({ accent }: { accent: string }) {
   )
 }
 
+/** The falling piece, eyes down, over the long one already laid. */
+function PileupThumb({ accent }: { accent: string }) {
+  return (
+    <>
+      <path d="M13 5.5 H19 V11.5 H25 V17.5 H7 V11.5 H13 Z" {...mark(accent, 0.28, 1.7)} />
+      <circle cx="14.4" cy="14" r="1.35" fill="#fff" />
+      <circle cx="17.6" cy="14" r="1.35" fill="#fff" />
+      <circle cx="14.4" cy="14.55" r="0.65" fill={accent} />
+      <circle cx="17.6" cy="14.55" r="0.65" fill={accent} />
+      <rect x="4" y="21" width="24" height="6" rx="1.6" {...mark(accent, 0.28, 1.7)} />
+    </>
+  )
+}
+
 const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   putt: PuttThumb,
   bop: BopThumb,
@@ -448,6 +462,7 @@ const thumbBySlug: Record<string, (props: { accent: string }) => ReactNode> = {
   frenzy: FrenzyThumb,
   fireflies: FirefliesThumb,
   halffull: HalfFullThumb,
+  pileup: PileupThumb,
 }
 
 /**
