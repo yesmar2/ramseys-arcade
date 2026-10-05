@@ -570,14 +570,17 @@ function headCell(s: Pick<GameState, 'head'>): Cell {
 
 function randomFood(
   state: Pick<GameState, 'cols' | 'rows' | 'trail' | 'segments' | 'walls'> &
-    Partial<Pick<GameState, 'golden' | 'mouse'>>,
+    Partial<Pick<GameState, 'golden' | 'mouse' | 'nextWalls'>>,
 ): Cell {
   const body = sampleTrail(state.trail, state.segments * 2, SEG_SPACING * 0.5)
   const golden = state.golden
   const mouse = state.mouse
+  const coming = state.nextWalls ?? null
 
+  // Nor inside the outline of the layout the next bite brings (see clearOfNextWalls).
   const taken = (x: number, y: number) =>
     state.walls.has(wallKey(x, y)) ||
+    (coming != null && coming.has(wallKey(x, y))) ||
     (golden != null && golden.x === x && golden.y === y) ||
     (mouse != null && Math.hypot(mouse.x - (x + 0.5), mouse.y - (y + 0.5)) < 1.2)
 
@@ -602,13 +605,18 @@ function randomFood(
   if (free.length) return free[Math.floor(Math.random() * free.length)]
 
   // Board this full: take any open cell at all, but never a walled one —
-  // food inside a barrier is food that can never be eaten.
+  // food inside a barrier is food that can never be eaten — and one outside
+  // the coming layout while there is any.
+  let open: Cell | null = null
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
-      if (!state.walls.has(wallKey(x, y))) return { x, y }
+      const key = wallKey(x, y)
+      if (state.walls.has(key)) continue
+      if (!coming?.has(key)) return { x, y }
+      open ??= { x, y }
     }
   }
-  return { x: 0, y: 0 }
+  return open ?? { x: 0, y: 0 }
 }
 
 function pickKind(previous: FruitKind | null): FruitKind {
@@ -1181,6 +1189,30 @@ function levelUp(s: GameState) {
   s.nextWalls = nextLevelPreview(s)
 }
 
+/**
+ * Nothing to eat inside the outline of the layout the next bite brings. Eating
+ * there lands the level on the head, and only the one block the head stands in
+ * holds its fire: a bite counts from just short of its cell, and the rest of a
+ * block that comes down around the head kills it a step later. Ramsey: "a fruit
+ * was placed inside of the pre-wall thing, and right when i got it the wall
+ * shows up and kills me".
+ *
+ * New food already keeps out of it (randomFood, spawnGolden) and the mouse won't
+ * walk into it (mouseWorld). This moves on whatever was out before the outline
+ * appeared, the way landLevel moves on what a block comes down on. The fruit is
+ * left to the caller, since a fruit's own bite places the next one anyway.
+ */
+function clearOfNextWalls(s: GameState, fruitToo: boolean) {
+  const coming = s.nextWalls
+  if (!coming) return
+  if (fruitToo && coming.has(wallKey(s.fruit.x, s.fruit.y))) placeFruit(s, s.fruit.kind)
+  if (s.golden && coming.has(wallKey(s.golden.x, s.golden.y))) {
+    emit(s, 'spark', s.golden.x + 0.5, s.golden.y + 0.5, 6, 2.4, 0.1, 'amber', 0.5)
+    s.golden = null
+    s.goldenTimer = rand(...GOLDEN_GAP) * 0.5
+  }
+}
+
 function tryEat(s: GameState): boolean {
   const f = s.fruit
   const at = { x: f.x + 0.5, y: f.y + 0.5 }
@@ -1222,8 +1254,10 @@ function tryEat(s: GameState): boolean {
   }
 
   levelUp(s)
-  // After the walls, so a new level never drops a fruit inside one.
+  // After the walls, so a new level never drops a fruit inside one, nor inside
+  // the outline of the next.
   placeFruit(s, f.kind)
+  clearOfNextWalls(s, false)
   return true
 }
 
@@ -1243,6 +1277,7 @@ function tryEatGolden(s: GameState) {
   s.flashTint = 'amber'
   sfx('good')
   levelUp(s)
+  clearOfNextWalls(s, true)
 }
 
 function tryCatchMouse(s: GameState) {
@@ -1265,6 +1300,7 @@ function tryCatchMouse(s: GameState) {
   sfx('good')
   sfx('hop', 16)
   levelUp(s)
+  clearOfNextWalls(s, true)
 }
 
 function breakChain(s: GameState) {
@@ -1302,6 +1338,7 @@ function spawnGolden(s: GameState, grid: Grid) {
   for (let y = 0; y < s.rows; y++) {
     for (let x = 0; x < s.cols; x++) {
       if (grid.cells[y * s.cols + x]) continue
+      if (s.nextWalls?.has(wallKey(x, y))) continue
       if (Math.abs(x - s.fruit.x) + Math.abs(y - s.fruit.y) < 2) continue
       if (mouse && Math.hypot(mouse.x - (x + 0.5), mouse.y - (y + 0.5)) < 1.5) continue
       const far = Math.abs(x - from.x) + Math.abs(y - from.y)
@@ -1321,10 +1358,12 @@ function spawnGolden(s: GameState, grid: Grid) {
 
 function mouseWorld(s: GameState, grid: Grid): MouseWorld {
   const v = VEC[s.dir]
+  const coming = s.nextWalls
   return {
     cols: s.cols,
     rows: s.rows,
-    blocked: (x, y) => grid.cells[y * s.cols + x] === 1,
+    // The coming layout too: a mouse caught inside its outline would land the level on the head.
+    blocked: (x, y) => grid.cells[y * s.cols + x] === 1 || (coming != null && coming.has(wallKey(x, y))),
     head: s.head,
     heading: v,
   }
