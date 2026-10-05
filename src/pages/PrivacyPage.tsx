@@ -2,14 +2,14 @@ import { APP_NAME, SITE_HOST } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
 import { termsHref } from '../hooks/useHashRoute'
 
-const UPDATED = 'September 26, 2026'
+const UPDATED = 'October 5, 2026'
 
 export function PrivacyPage() {
   return (
     <LegalDocument title="Privacy Policy" updated={UPDATED}>
       <p>
         This Privacy Policy describes how {APP_NAME} (“we”, “us”) handles information when you
-        use our free browser arcade at {SITE_HOST} and related pages (the “Service”).
+        use our browser arcade at {SITE_HOST} and related pages (the “Service”).
       </p>
 
       <h2>Information we collect</h2>
@@ -56,6 +56,17 @@ export function PrivacyPage() {
           and other play have paid, what you’ve traded them for at the prize counter, and the prize
           you’re saving for.
         </li>
+        <li>
+          <strong>Purchases.</strong> If you buy Pass+ or join Plus, payment is handled by Stripe,
+          which collects your card and billing details under its own privacy policy. We never see
+          or store your full card number. We keep what you bought, Stripe’s identifiers for you
+          and your membership, the membership’s status, and when it renews or ends.
+        </li>
+        <li>
+          <strong>Alerts.</strong> If you turn on alerts, your browser gives us an address to send
+          them to, through your browser maker’s push service. We keep it, and your alert settings,
+          until you turn alerts off.
+        </li>
       </ul>
 
       <h2>How we use information</h2>
@@ -64,6 +75,8 @@ export function PrivacyPage() {
         <li>Run games, leaderboards, record books, and tournaments</li>
         <li>Display public rankings and player names you choose to submit</li>
         <li>Authenticate accounts and prevent abuse</li>
+        <li>Take payments, and give you what you bought</li>
+        <li>Send the alerts you turn on</li>
         <li>Improve stability and fix problems with the Service</li>
       </ul>
       <p>We do not sell your personal information.</p>
@@ -71,7 +84,10 @@ export function PrivacyPage() {
       <h2>What is public</h2>
       <p>
         Player names and scores you submit to leaderboards, record books, or tournaments may be
-        visible to other visitors. Choose a name you are comfortable displaying publicly.
+        visible to other visitors, along with your avatar, the looks you wear, and the season
+        skin a run was played in. If you’re a Plus member, a small Plus mark shows beside your
+        player name, and your player card says so. Choose a name you are comfortable displaying
+        publicly.
       </p>
 
       <h2>Cookies and local storage</h2>
@@ -97,6 +113,14 @@ export function PrivacyPage() {
           email delivery service (Resend), which receives your email address to deliver it.
         </li>
         <li>
+          <strong>Stripe</strong> — handles payments for Pass+ and Plus; governed by Stripe’s
+          privacy policy. Stripe receives your payment details and email address directly.
+        </li>
+        <li>
+          <strong>Push services</strong> — if you turn on alerts, they are delivered through your
+          browser maker’s push service (for example Google, Apple or Mozilla).
+        </li>
+        <li>
           <strong>Hosting</strong> — the site and API are hosted on third-party infrastructure
           (for example Vercel and Render) that process traffic on our behalf.
         </li>
@@ -107,17 +131,19 @@ export function PrivacyPage() {
 
       <h2>Children</h2>
       <p>
-        The Service is a casual arcade intended for a general audience. We do not knowingly
-        collect personal information from children under 13. If you believe a child has
-        provided personal information, contact us and we will take reasonable steps to delete
-        it.
+        The Service is a casual arcade intended for a general audience. Anyone can play without
+        an account, but you must be 13 or older to sign in, and we do not knowingly collect
+        personal information from children under 13. If you believe a child under 13 has signed
+        in or given us personal information, contact us and we will delete it.
       </p>
 
       <h2>Retention</h2>
       <p>
-        Leaderboard and account data may be retained while the Service operates. Local data on
-        your device remains until you clear your browser storage. We may delete inactive or
-        test data at any time, especially during early development.
+        Leaderboard and account data may be retained while the Service operates. Records of
+        purchases are kept as long as tax and accounting rules require, even if you ask us to
+        remove your account. Local data on your device remains until you clear your browser
+        storage. We may delete inactive or test data at any time, especially during early
+        development.
       </p>
 
       <h2>Your choices</h2>
@@ -125,6 +151,8 @@ export function PrivacyPage() {
         <li>Play without signing in; nothing goes on the boards until you do</li>
         <li>Clear site data in your browser to remove local preferences</li>
         <li>Choose a different public player name before submitting scores</li>
+        <li>Turn alerts off, or choose which ones you get, in your notification settings</li>
+        <li>Cancel Plus any time from the Plus page</li>
         <li>Request account or score removal by contacting us</li>
       </ul>
 

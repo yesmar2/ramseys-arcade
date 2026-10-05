@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 import { AUTH_EVENT } from '../lib/auth'
 import { dayBefore, OPEN_DAYS } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
-import { homeHref, prizesHref, seasonHref, tournamentsHref } from '../hooks/useHashRoute'
+import { homeHref, prizesHref, seasonHref, termsHref, tournamentsHref } from '../hooks/useHashRoute'
 import {
   confirmPlusMembership,
   fetchPlus,
@@ -314,6 +314,10 @@ export function PlusPage() {
                   : byYear
                     ? `About ${money(Math.round(yearly / 12), currency)} a month. Cancel any time; what you’ve won stays yours.`
                     : `${season ? `About ${perSeason(monthly, season, currency)} a season, with every season’s Pass+ in it. ` : ''}Cancel any time. What you’ve won stays yours.`}
+              </span>
+              <span className="home-banner__hint plus-hero__fine">
+                Renews automatically every {unit} until you cancel, which you can do here any time. By joining you agree to the{' '}
+                <a href={termsHref()}>Terms</a>.
               </span>
               {founder ? (
                 <span className="home-banner__hint plus-hero__founder">

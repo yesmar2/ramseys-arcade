@@ -108,3 +108,15 @@
   color: var(--accent);
   outline: none;
 }
+
+/* The legal pages' way to reach us while no contact address is set (components/LegalDocument.tsx). */
+.legal-prose__contact.feedback-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent-sky);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

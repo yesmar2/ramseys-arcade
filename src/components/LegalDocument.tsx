@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { CONTACT_EMAIL } from '../lib/brand'
+import { openFeedback } from '../lib/feedback'
 import { homeHref } from '../hooks/useHashRoute'
 import { PageBanner } from './PageBanner'
 import { PageShell } from './PageShell'
+import '../styles/feedback.css'
 
 type LegalDocumentProps = {
   title: string
@@ -37,7 +39,13 @@ export function LegalContact() {
           Email us at <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
         </>
       ) : (
-        <>Use the sign-in menu on the site to reach the operator.</>
+        <>
+          Write to us with{' '}
+          <button type="button" className="feedback-link legal-prose__contact" onClick={() => openFeedback('idea')}>
+            Send feedback
+          </button>
+          , also at the bottom of the site’s menu.
+        </>
       )}
     </p>
   )

@@ -2371,3 +2371,13 @@ html[data-theme='dark'] .plus-every__save {
 .plus-hero__founder {
   font-weight: 700;
 }
+
+/* The renewal line beside the Join button: plain, small, and never hidden (pages/PlusPage.tsx). */
+.plus-hero__fine {
+  font-size: 0.78rem;
+}
+
+.plus-hero__fine a {
+  color: inherit;
+  text-decoration: underline;
+}
