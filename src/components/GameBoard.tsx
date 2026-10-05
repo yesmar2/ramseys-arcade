@@ -1,4 +1,5 @@
 import { SkinMark } from './season/SkinMark'
+import { getPersonalBest } from '../lib/personalBest'
 import { useHeldHeight } from '../lib/heldShape'
 import { Suspense, useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame, isDailyGame } from '../data/games'
@@ -777,9 +778,20 @@ export function GameBoard({ slug, period, day }: { slug: LeaderboardGame; period
  * Your place on a board while it loads: its two cards' shapes, held at the height they had last time, so the
  * board under them doesn't move when they come.
  */
-function YouWaiting({ held, solo = false }: { held: ReturnType<typeof useHeldHeight<HTMLElement>>; solo?: boolean }) {
+function YouWaiting({
+  held,
+  solo = false,
+  likely = true,
+}: {
+  held: ReturnType<typeof useHeldHeight<HTMLElement>>
+  solo?: boolean
+  /** A first look, with nothing kept: whether you're likely on it, so worth holding room for. */
+  likely?: boolean
+}) {
   // Last time this board had no row for you (you weren't on it): hold no room for one now.
   if (held.known && !held.style) return null
+  // A first look at this board: room only if you've a score in the game, as off the board there's no row.
+  if (!held.known && !likely) return null
   const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
   return (
     <section className={`sb-you gb-you${solo ? ' sb-you--solo' : ''}`} aria-hidden="true" ref={held.ref} style={held.style}>
@@ -861,7 +873,7 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
       />
 
       {/* Signed out, nobody is on the board, so nothing waits for a place to show. */}
-      {data.loading && you ? <YouWaiting held={youHeld} /> : null}
+      {data.loading && you ? <YouWaiting held={youHeld} likely={getPersonalBest(slug) > 0} /> : null}
       {!data.loading ? (
         // Off the board, the row isn't drawn, but it's kept (empty) so the next visit's wait holds no room for it.
         <section
