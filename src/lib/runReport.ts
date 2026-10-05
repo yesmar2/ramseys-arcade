@@ -2,12 +2,13 @@ import { chosenSkin } from './skins'
 import { getGame, isRankedGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
 import { noteSeasonRun, type SeasonRun } from './season'
-import { gapBetween, gapFigure, playersFromRuns, wouldPlace, type BoardPlayer } from './gameBoard'
+import { gapBetween, gapFigure, playersFromRuns, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
 import {
   addLeaderboardScore,
   fetchGlobalRank,
   getLeaderboard,
+  getPlayerBoard,
   normalizePlayerName,
   type GlobalRankResult,
   type LeaderboardEntry,
@@ -464,8 +465,8 @@ async function readBoardRuns(slug: string, period: LeaderboardPeriod) {
 }
 
 /**
- * Where a score would place on the period's board, for a run not saved yet;
- * null when the board can't be read, or the score doesn't beat the lowest run read.
+ * Where a score would place on the period's board, for a run not saved yet, as the API counts it among the
+ * players (getPlayerBoard `would`): behind everyone at or above it, however deep. Null when it can't be read.
  */
 export async function wouldPlaceOnBoard(
   slug: string,
@@ -473,10 +474,7 @@ export async function wouldPlaceOnBoard(
   score: number,
 ): Promise<number | null> {
   try {
-    const board = await readBoardRuns(slug, period)
-    const lowest = board.entries[board.entries.length - 1]
-    if (board.entries.length < board.total && lowest && score <= lowest.score) return null
-    return wouldPlace(playersFromRuns(board.entries), score).place
+    return (await getPlayerBoard(slug, period, undefined, { limit: 1, would: score })).wouldPlace
   } catch {
     return null
   }

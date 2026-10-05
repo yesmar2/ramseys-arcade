@@ -546,13 +546,17 @@ export type PlayerBoard = {
   band: { place: number; half: boolean; score: number } | null
   yourRuns: LeaderboardEntry[]
   found: PlayerBoardRow[]
+  /** The rows at the places asked for (`marks`), each with the place a run just better than it takes. */
+  marked: (PlayerBoardRow & { beatPlace: number })[]
+  /** Where a run of the score asked for (`would`) would land now. */
+  wouldPlace: number | null
 }
 
 export async function getPlayerBoard(
   slug: string,
   period: LeaderboardPeriod,
   name?: string,
-  page?: { offset?: number; limit?: number; find?: string; around?: number },
+  page?: { offset?: number; limit?: number; find?: string; around?: number; marks?: number[]; would?: number | null },
 ): Promise<PlayerBoard> {
   return withGroupFallback(async () => {
     const params = applyBoardScope(new URLSearchParams({ period, players: '1' }))
@@ -562,6 +566,8 @@ export async function getPlayerBoard(
     if (page?.limit) params.set('limit', String(Math.max(1, Math.floor(page.limit))))
     if (page?.find) params.set('find', page.find.trim().slice(0, 12))
     if (page?.around != null) params.set('around', String(page.around))
+    if (page?.marks?.length) params.set('marks', page.marks.join(','))
+    if (page?.would != null) params.set('would', String(page.would))
     const data = await api<Partial<PlayerBoard> & { entries?: PlayerBoardRow[] }>(`/leaderboards/${slug}?${params.toString()}`)
     return {
       total: data.total ?? 0,
@@ -573,6 +579,8 @@ export async function getPlayerBoard(
       band: data.band ?? null,
       yourRuns: data.yourRuns ?? [],
       found: data.found ?? [],
+      marked: data.marked ?? [],
+      wouldPlace: data.wouldPlace ?? null,
     }
   })
 }

@@ -1,6 +1,6 @@
 import type { Game } from '../data/games'
 import type { HubDay } from '../hooks/useGameHub'
-import { placeBeating, type BoardPlayer, type BoardYou } from './gameBoard'
+import type { BoardPlayer, BoardYou } from './gameBoard'
 import type { LeaderboardPeriod } from './leaderboard'
 import { numberWord } from './numberWord'
 import { andList, barPosition, nextLine, shareLines, talksInPlaces } from './profileMath'
@@ -26,13 +26,52 @@ export type Step = {
   passes: string[]
 }
 
-/** The step from where `you` stand to just past `target`: past anyone tied with it too (gameBoard placeBeating). */
-function stepFor(players: BoardPlayer[], you: BoardYou, target: number): Step {
-  const place = placeBeating(players, target, you.player.name)
-  const passes = players
-    .filter((p) => p.place < you.player.place && p.best.score <= target)
-    .map((p) => p.name)
-  return { beat: target, place, passes }
+/** A player at a place the page asked the API for, with the place a run just better than theirs takes. */
+export type MarkedPlayer = { player: BoardPlayer; beatPlace: number }
+
+/**
+ * The parts of a board a game's page reads, rather than the whole of it: its first players, the viewer
+ * and those either side of them, and the players at the places asked for (hubMarks: 1st, 10th, the middle,
+ * the next share line), each with what passing them takes. The API counts every place.
+ */
+export type BoardSample = {
+  field: number
+  top: BoardPlayer[]
+  around: BoardPlayer[]
+  marks: Map<number, MarkedPlayer>
+}
+
+function playerAt(sample: BoardSample, place: number): BoardPlayer | undefined {
+  return sample.marks.get(place)?.player ?? sample.top.find((p) => p.place === place) ?? sample.around.find((p) => p.place === place)
+}
+
+/**
+ * The places a game's page asks the API for besides its first players and the viewer's: never played, 1st,
+ * 10th and the middle (firstRunAims); further down than the top ten, the next share line and the two after
+ * it, whose names the run past it would pass.
+ */
+export function hubMarks(field: number, you: BoardYou | null): number[] {
+  if (!you) return field ? [1, 10, Math.ceil(field / 2)].filter((p) => p <= field) : []
+  if (talksInPlaces(you.player.place, field)) return []
+  const line = nextLine(you.player.place, field)
+  return line ? [line.rank, line.rank + 1, line.rank + 2].filter((p) => p < you.player.place) : []
+}
+
+/**
+ * The step from where `you` stand to just past `target`: past anyone tied with it too. The players passed
+ * are named where they're known (the API sends the line's and the two after it, and the three above you);
+ * past three the list only counts them, so the rest needn't be.
+ */
+function stepFor(sample: BoardSample, you: BoardYou, target: MarkedPlayer): Step {
+  const place = target.beatPlace
+  const count = Math.max(0, you.player.place - place)
+  const names: string[] = []
+  for (let at = place; at < you.player.place && names.length < 3; at++) {
+    const p = playerAt(sample, at)
+    if (p) names.push(p.name)
+  }
+  const passes = count > 3 ? [...names.slice(0, 2), ...Array.from({ length: count - 2 }, () => '')] : names
+  return { beat: target.player.best.score, place, passes }
 }
 
 export type Standing = {
@@ -58,18 +97,19 @@ export type Standing = {
  * line (the top half, 25%, 10%), which means the same on a board of any size.
  * On a board that takes one run a player, theirs is it: nothing to chase.
  */
-export function standingOn(players: BoardPlayer[], you: BoardYou, oneRun = false): Standing {
+export function standingOn(sample: BoardSample, you: BoardYou, oneRun = false): Standing {
   const { player, field, above, below } = you
   const lines = shareLines(field).map((l) => ({ label: l.label, rank: l.rank, at: barPosition(l.rank, field) }))
   let next: Step | null = null
   if (above && !oneRun) {
+    const passAbove: MarkedPlayer = { player: above, beatPlace: you.nextPlace }
     if (talksInPlaces(player.place, field)) {
-      next = stepFor(players, you, above.best.score)
+      next = stepFor(sample, you, passAbove)
     } else {
       // Further down, the run to chase is the next share line's score; the page just doesn't name the line.
       const line = nextLine(player.place, field)
-      const at = line ? players[line.rank - 1] : null
-      next = stepFor(players, you, (at ?? above).best.score)
+      const at = line ? sample.marks.get(line.rank) : undefined
+      next = stepFor(sample, you, at ?? passAbove)
     }
   }
   return {
@@ -93,19 +133,21 @@ export type Aim = { label: string; beat: number | null; place: number }
  * record, each with the place it takes. On a daily's board, which is today's,
  * the top is 1st today: a course's record is the best on it of all time.
  */
-export function firstRunAims(players: BoardPlayer[], daily = false): Aim[] {
-  const field = players.length
-  const aim = (label: string, at: BoardPlayer | undefined): Aim | null =>
-    at ? { label, beat: at.best.score, place: placeBeating(players, at.best.score) } : null
+export function firstRunAims(sample: BoardSample, daily = false): Aim[] {
+  const { field } = sample
+  const aim = (label: string, place: number): Aim | null => {
+    const at = sample.marks.get(place)
+    return at ? { label, beat: at.player.best.score, place: at.beatPlace } : null
+  }
   const aims = [
     // On a small board, just turning up; on a bigger one, the middle.
     field >= 6
-      ? aim('Middle', players[Math.ceil(field / 2) - 1])
+      ? aim('Middle', Math.ceil(field / 2))
       : field > 0
         ? { label: 'Any run', beat: null, place: field + 1 }
         : null,
-    field >= 14 ? aim('Top ten', players[9]) : null,
-    aim(daily ? '1st today' : 'Record', players[0]),
+    field >= 14 ? aim('Top ten', 10) : null,
+    aim(daily ? '1st today' : 'Record', 1),
   ].filter((a): a is Aim => a !== null)
   // Ties can make two marks the same run (beating the middle's score already reaches the top ten): keep the bigger claim.
   return aims.filter((a, i) => !aims.slice(i + 1).some((later) => later.place === a.place))

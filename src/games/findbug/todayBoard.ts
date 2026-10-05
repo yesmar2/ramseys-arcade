@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { currentAccountId } from '../../lib/auth'
-import { playersFromRuns } from '../../lib/gameBoard'
 import { isImpersonating } from '../../lib/impersonate'
-import { getLeaderboard } from '../../lib/leaderboard'
+import { getPlayerBoard } from '../../lib/leaderboard'
 import { adoptBoardResult } from './daily'
 
 /*
@@ -37,19 +36,18 @@ export function useTodayBoard(day: string | null, me: string, again: unknown = n
   useEffect(() => {
     if (!day) return
     let cancelled = false
-    getLeaderboard(SLUG, 'daily', me || undefined, { limit: 100 })
-      .then(({ entries, you }) => {
+    // As players, counted by the API (getPlayerBoard): the leader, how many, and your place among them.
+    getPlayerBoard(SLUG, 'daily', me || undefined, { limit: 1, around: 0 })
+      .then((b) => {
         if (cancelled) return
-        const players = playersFromRuns(entries)
-        const top = players[0]
-        const mine = me ? players.find((p) => p.name === me) : undefined
-        const yours = mine ? { place: mine.place, score: mine.best.score } : you ? { place: you.rank, score: you.score } : null
+        const top = b.entries[0]
+        const yours = b.you ? { place: b.you.place, score: b.you.score } : null
         // Kept for the account it was asked for, if it's still the one signed in. Playing as another tag
         // (a dev's stand-in), the board's you isn't the account's own.
         if (yours && typeof viewer === 'string' && currentAccountId() === viewer && !isImpersonating()) {
           adoptBoardResult(day, viewer, yours.score, Date.now())
         }
-        setHeld({ for: asker, board: { count: players.length, leader: top ? { name: top.name, score: top.best.score } : null, you: yours } })
+        setHeld({ for: asker, board: { count: b.total, leader: top ? { name: top.name, score: top.score } : null, you: yours } })
       })
       .catch(() => {
         if (!cancelled) setHeld({ for: asker, board: null })

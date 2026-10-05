@@ -3,7 +3,7 @@ import { isDailyGame } from '../data/games'
 import { rankHowHref } from '../hooks/useHashRoute'
 import type { HubBeyond, HubBoard } from '../hooks/useGameHub'
 import { dailyWords } from '../lib/dailyWords'
-import { dayRunIn, firstRunWord, gapBetween, oneRunBoard, whatPutsYouOn, wouldPlace, youOnBoard } from '../lib/gameBoard'
+import { dayRunIn, firstRunWord, gapBetween, oneRunBoard, whatPutsYouOn } from '../lib/gameBoard'
 import { dailyHistory, daysIn, firstRunAims, soFar, standingOn, type Aim, type DailyHistory, type Standing } from '../lib/gameHub'
 import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -46,18 +46,18 @@ export function GameHubStanding({
 
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
   const when = periodWord(period)
-  const you = board.loading ? null : youOnBoard(board.players, board.runs, me)
-  const field = board.players.length
+  const you = board.loading ? null : board.you
+  const field = board.field
 
   let title = 'Where you stand'
   let body: ReactNode
   if (board.loading) {
     body = <StandingSkeleton />
   } else if (you) {
-    body = <OnBoard slug={slug} standing={standingOn(board.players, you, oneRunBoard(slug, period))} when={when} />
+    body = <OnBoard slug={slug} standing={standingOn(board.sample, you, oneRunBoard(slug, period))} when={when} />
   } else if (me && board.allTimeBest != null && board.allTimeBest > 0) {
     const best = board.allTimeBest
-    const landing = wouldPlace(board.players, best)
+    const landing = { place: board.wouldPlace ?? board.field + 1 }
     body = (
       <>
         <div className="gh-stand__lead">
@@ -79,7 +79,7 @@ export function GameHubStanding({
     )
   } else {
     title = 'Where you’d start'
-    const aims = firstRunAims(board.players)
+    const aims = firstRunAims(board.sample)
     body = (
       <>
         <div className="gh-stand__lead">
@@ -139,8 +139,8 @@ function DailyStanding({
   const words = dailyWords(slug)
   const today = boardDay()
   const { days } = board
-  const field = board.players.length
-  const you = board.loading ? null : youOnBoard(board.players, board.runs, me)
+  const field = board.field
+  const you = board.loading ? null : board.you
   const history = dailyHistory(days, me)
   const run = firstRunWord(slug)
   // "Today’s track" mid-sentence: the names (Today’s Wanted, Today’s Pour) keep their capitals.
@@ -165,7 +165,7 @@ function DailyStanding({
       </div>
     )
   } else if (you) {
-    body = <OnBoard slug={slug} standing={standingOn(board.players, you, oneRunBoard(slug, 'daily'))} when="today" daily />
+    body = <OnBoard slug={slug} standing={standingOn(board.sample, you, oneRunBoard(slug, 'daily'))} when="today" daily />
     foot = (
       <RankFoot period={over}>
         {place ? (
@@ -269,7 +269,7 @@ function TodayAims({
   run: string
   history: DailyHistory
 }) {
-  const field = board.players.length
+  const field = board.field
   if (!field) {
     // Someone new, or not known to be back, has just been told nobody's played today.
     return (
@@ -290,7 +290,7 @@ function TodayAims({
       </Callout>
     )
   }
-  const aims = firstRunAims(board.players, true)
+  const aims = firstRunAims(board.sample, true)
   return (
     <>
       {lead ? (

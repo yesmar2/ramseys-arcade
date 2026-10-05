@@ -52,8 +52,8 @@ export function GameHubBoard({
   me: string
 }) {
   const route = useRoute()
-  const { players, loading, error, aimAt } = board
-  const mine = me ? players.find((p) => p.name === me) : undefined
+  const { top: leaders, field, loading, error, aimAt } = board
+  const mine = me ? board.you?.player : undefined
   // A daily's board is the day's whatever the period, so it's called today's and has no periods to pick.
   const daily = isDailyGame(slug)
   const periodLabel = PERIOD_LABELS[daily ? 'daily' : period]
@@ -61,15 +61,15 @@ export function GameHubBoard({
 
   // The top five, then, when you are further down, a gap and you between the players either side of you.
   // Otherwise the top eight, and you among them.
-  let top = players.slice(0, ALL_ROWS)
+  let top = leaders.slice(0, ALL_ROWS)
   let around: BoardPlayer[] = []
   if (mine && mine.place > ALL_ROWS) {
-    top = players.slice(0, TOP_ROWS)
-    around = players.slice(mine.place - 2, mine.place + 1)
+    top = leaders.slice(0, TOP_ROWS)
+    around = board.around.filter((p) => p.place >= mine.place - 1 && p.place <= mine.place + 1)
   } else if (mine) {
-    top = players.slice(0, Math.max(ALL_ROWS, mine.place + 1))
+    top = leaders.slice(0, Math.max(ALL_ROWS, mine.place + 1))
   }
-  const skipped = around.length ? around[0].place - top.length - 1 : players.length - top.length
+  const skipped = around.length ? around[0].place - top.length - 1 : field - top.length
 
   return (
     <section className="gh-card gh-board" aria-labelledby="gh-board-title" data-hunt={`g-board-${slug}`}>
@@ -78,7 +78,7 @@ export function GameHubBoard({
           {periodLabel}
           {!loading && !error ? (
             <span className="gh-board__count">
-              {players.length === 0 ? 'no players yet' : `${players.length} ${players.length === 1 ? 'player' : 'players'}`}
+              {field === 0 ? 'no players yet' : `${field.toLocaleString()} ${field === 1 ? 'player' : 'players'}`}
             </span>
           ) : null}
         </h2>
@@ -116,7 +116,7 @@ export function GameHubBoard({
         </ol>
       ) : error ? (
         <BoardEmpty title="Couldn’t load the board" detail="Check your connection and try again." />
-      ) : players.length === 0 ? (
+      ) : field === 0 ? (
         <div className="gh-open">
           <div className="gh-open__note">
             <span className="gh-open__mark" aria-hidden="true">
@@ -155,7 +155,7 @@ export function GameHubBoard({
             <li className="gh-row gh-row--ghost">
               <PlusIcon />
               {daily ? (
-                <DailyGhost slug={slug} leader={players[0]} history={dailyHistory(board.days, me)} />
+                <DailyGhost slug={slug} leader={leaders[0]} history={dailyHistory(board.days, me)} />
               ) : (
                 <>Your {board.allTimeBest ? 'next' : 'first'} run goes here</>
               )}

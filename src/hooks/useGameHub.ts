@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { isDailyGame } from '../data/games'
-import { playersFromRuns, type BoardPlayer } from '../lib/gameBoard'
+import { boardPlayer, youFromBoard, type BoardPlayer, type BoardYou } from '../lib/gameBoard'
+import { hubMarks, type BoardSample } from '../lib/gameHub'
 import { applyBoardScope, withGroupFallback } from '../lib/groups'
 import {
   api,
   fetchGlobalRank,
   getLeaderboard,
+  getPlayerBoard,
   normalizePlayerName,
   type LeaderboardEntry,
   type LeaderboardGame,
@@ -42,11 +44,20 @@ export type HubBeyond = {
 export type HubBoard = {
   loading: boolean
   error: boolean
-  players: BoardPlayer[]
-  /** Every run on the board this period (up to the cap), best first. */
-  runs: LeaderboardEntry[]
+  /** The board's first players, best first. */
+  top: BoardPlayer[]
+  /** Players on the board. */
+  field: number
+  /** Where the viewer stands, when they're on it. */
+  you: BoardYou | null
+  /** The viewer and the three players either side of them. */
+  around: BoardPlayer[]
+  /** What the page reads of the board (gameHub BoardSample): the above, and the places it asked for. */
+  sample: BoardSample
   /** The viewer's best over all time, when they are not on this period's board. */
   allTimeBest: number | null
+  /** Where a run like that best would land on this period's board. */
+  wouldPlace: number | null
   /** An empty period's stand-in: the month's best (or all time's), to aim at. */
   aimAt: { period: LeaderboardPeriod; players: BoardPlayer[] } | null
   /**
@@ -56,7 +67,21 @@ export type HubBoard = {
   days: HubDay[] | null
 }
 
-const BOARD_LOADING: HubBoard = { loading: true, error: false, players: [], runs: [], allTimeBest: null, aimAt: null, days: null }
+const NO_SAMPLE: BoardSample = { field: 0, top: [], around: [], marks: new Map() }
+
+const BOARD_LOADING: HubBoard = {
+  loading: true,
+  error: false,
+  top: [],
+  field: 0,
+  you: null,
+  around: [],
+  sample: NO_SAMPLE,
+  allTimeBest: null,
+  wouldPlace: null,
+  aimAt: null,
+  days: null,
+}
 
 /**
  * Every day the viewer has played a daily, newest first. Null when they didn't load: the page then can't
@@ -76,22 +101,15 @@ async function dailyDays(slug: string, me: string, groupId: string | null): Prom
     .catch(() => null)
 }
 
-/** Runs per request, and the most read: places are counted from every run. */
-const PAGE = 500
-const RUN_CAP = 2000
+/** Players a game's page reads from the top of its board: the list it shows is the top five. */
+const HUB_TOP = 10
 
-async function allRuns(slug: LeaderboardGame, period: LeaderboardPeriod, me: string) {
-  const first = await getLeaderboard(slug, period, me || undefined, { limit: PAGE })
-  const runs = [...first.entries]
-  while (runs.length < first.total && runs.length < RUN_CAP) {
-    const next = await getLeaderboard(slug, period, undefined, { offset: runs.length, limit: PAGE })
-    if (!next.entries.length) break
-    runs.push(...next.entries)
-  }
-  return { runs, you: first.you }
-}
-
-/** The period's board as players, the viewer's all-time best when they are off it, and a stand-in when it is empty. */
+/**
+ * The period's board as the page reads it (the API counts every place, so this is a few small asks however
+ * big the board): its first players, the viewer's place with three either side, the places the page names
+ * (gameHub hubMarks), the viewer's all-time best and where it would land when they are off it, and a
+ * stand-in when it is empty.
+ */
 export function useHubBoard(
   slug: LeaderboardGame | null,
   period: LeaderboardPeriod,
@@ -113,31 +131,49 @@ export function useHubBoard(
         // A daily's other days were other tracks, holes and scenes: nothing there to measure today by. What
         // they do tell is whether the viewer is new to it; read beside today's board.
         const daily = isDailyGame(slug)
-        const [{ runs, you }, days] = await Promise.all([
-          allRuns(slug, period, me),
+        const [first, days] = await Promise.all([
+          getPlayerBoard(slug, period, me || undefined, { limit: HUB_TOP, around: 3 }),
           daily && me ? dailyDays(slug, me, groupId) : Promise.resolve(null),
         ])
-        const players = playersFromRuns(runs)
+        const top = first.entries.map(boardPlayer)
+        const around = first.around.map(boardPlayer)
+        const you = youFromBoard(first)
+        const field = first.total
         let allTimeBest: number | null = null
         if (me && !you && period !== 'all' && !daily) {
           allTimeBest = await getLeaderboard(slug, 'all', me, { limit: 1 })
             .then((b) => b.you?.score ?? null)
             .catch(() => null)
         }
+        // The places the page names, and where a best from another period would land: one more small ask.
+        const marks = hubMarks(field, you)
+        const would = allTimeBest != null && allTimeBest > 0 ? allTimeBest : null
+        const asked =
+          marks.length || would != null
+            ? await getPlayerBoard(slug, period, undefined, { limit: 1, marks, would }).catch(() => null)
+            : null
+        const sample: BoardSample = {
+          field,
+          top,
+          around,
+          marks: new Map((asked?.marked ?? []).map((m) => [m.place, { player: boardPlayer(m), beatPlace: m.beatPlace }])),
+        }
         let aimAt: HubBoard['aimAt'] = null
-        if (players.length === 0 && period !== 'all' && !daily) {
+        if (field === 0 && period !== 'all' && !daily) {
           // Nobody on it yet: the month's best to aim at, or all time's when the month is empty too.
           const widths: LeaderboardPeriod[] = ['daily', 'weekly', 'monthly', 'all']
           for (const wider of widths.slice(widths.indexOf(period) + 1)) {
-            const board = await getLeaderboard(slug, wider, undefined, { limit: 60 }).catch(() => null)
-            const top = board ? playersFromRuns(board.entries).slice(0, 3) : []
-            if (top.length) {
-              aimAt = { period: wider, players: top }
+            const board = await getPlayerBoard(slug, wider, undefined, { limit: 3 }).catch(() => null)
+            const best = board ? board.entries.map(boardPlayer) : []
+            if (best.length) {
+              aimAt = { period: wider, players: best }
               break
             }
           }
         }
-        if (!cancelled) setData({ loading: false, error: false, players, runs, allTimeBest, aimAt, days })
+        if (!cancelled) {
+          setData({ loading: false, error: false, top, field, you, around, sample, allTimeBest, wouldPlace: asked?.wouldPlace ?? null, aimAt, days })
+        }
       } catch {
         if (!cancelled) setData({ ...BOARD_LOADING, loading: false, error: true })
       }

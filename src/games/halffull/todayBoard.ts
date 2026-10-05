@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAccountId } from '../../hooks/useAccountId'
 import { currentAccountId, recallAccountTag } from '../../lib/auth'
-import { playersFromRuns } from '../../lib/gameBoard'
-import { getLeaderboard } from '../../lib/leaderboard'
+import { getPlayerBoard } from '../../lib/leaderboard'
 import { adoptBoardResult, pourDay } from './daily'
 
 /*
@@ -32,19 +31,14 @@ export function useTodayBoard(day: string | null, me: string, again: unknown = n
   useEffect(() => {
     if (!day || !ask) return
     let cancelled = false
-    getLeaderboard(SLUG, 'daily', me || undefined, { limit: 100 })
-      .then(({ entries, you, total }) => {
+    // As players, counted by the API (getPlayerBoard): the leader, how many, and your place among them.
+    getPlayerBoard(SLUG, 'daily', me || undefined, { limit: 1, around: 0 })
+      .then((b) => {
         if (cancelled) return
         // Just past midnight the API's clock may still be on yesterday: that board isn't today's.
         const onDay = (at: number) => pourDay(at) === day
-        const players = playersFromRuns(entries.filter((e) => onDay(e.at)))
-        const top = players[0]
-        const mine = me ? players.find((p) => p.name === me && onDay(p.best.at)) : undefined
-        const yours = mine
-          ? { place: mine.place, score: mine.best.score }
-          : you && onDay(you.at)
-            ? { place: you.rank, score: you.score }
-            : null
+        const top = b.entries[0] && onDay(b.entries[0].at) ? b.entries[0] : null
+        const yours = b.you && onDay(b.you.at) ? { place: b.you.place, score: b.you.score } : null
         // Only the account's own pour, under its own tag, and only while it's still the one signed in: a tag
         // left over from whoever was signed in before is never read as this account's.
         const own = typeof viewer === 'string' && me !== '' && recallAccountTag(viewer) === me
@@ -52,9 +46,8 @@ export function useTodayBoard(day: string | null, me: string, again: unknown = n
         setGot({
           ask,
           board: {
-            // Past the first page, the board's own count (one run a player: first run only).
-            count: players.length < entries.length ? players.length : Math.max(total, players.length),
-            leader: top ? { name: top.name, score: top.best.score } : null,
+            count: top ? b.total : 0,
+            leader: top ? { name: top.name, score: top.score } : null,
             you: yours,
           },
         })

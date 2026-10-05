@@ -52,14 +52,6 @@ export function playersFromRuns(runs: LeaderboardEntry[]): BoardPlayer[] {
   })
 }
 
-/**
- * The place a run just better than `score` takes: above everyone at or below it, so past anyone tied
- * with it as well (two tied on top, and beating their score takes 1st, not 2nd). `me` isn't counted.
- */
-export function placeBeating(players: BoardPlayer[], score: number, me = ''): number {
-  return players.filter((p) => p.name !== me && p.best.score > score).length + 1
-}
-
 /* ---------- words ---------- */
 
 /** What each game counts, where it is not points. Time boards count seconds. */
@@ -168,7 +160,7 @@ export type BoardYou = {
   field: number
   above: BoardPlayer | null
   below: BoardPlayer | null
-  /** The place a run just better than the player above takes (placeBeating); for the player in first, 1. */
+  /** The place a run just better than the player above takes (past anyone tied with them); for the player in first, 1. */
   nextPlace: number
   runs: LeaderboardEntry[]
 }
@@ -197,21 +189,6 @@ export function bandLine(slug: string, band: PlayerBoard['band']): string | null
   if (!band) return null
   const into = band.half ? 'the top half' : `the top ${band.place.toLocaleString()}`
   return `Beat ${formatLeaderboardScore(slug, band.score)} to reach ${into}.`
-}
-
-export function youOnBoard(players: BoardPlayer[], runs: LeaderboardEntry[], me: string): BoardYou | null {
-  if (!me) return null
-  const index = players.findIndex((p) => p.name === me)
-  if (index < 0) return null
-  const above = players[index - 1] ?? null
-  return {
-    player: players[index],
-    field: players.length,
-    above,
-    below: players[index + 1] ?? null,
-    nextPlace: above ? placeBeating(players, above.best.score, me) : 1,
-    runs: runs.filter((r) => normalizePlayerName(r.name ?? '') === me),
-  }
 }
 
 /** How far to the player above and how far back the one below is, in the game's own terms. */
@@ -285,14 +262,6 @@ export function firstResultWord(slug: string): string {
 export function playersNote(slug: string, period: LeaderboardPeriod): string {
   if (oneRunBoard(slug, period)) return `Each player’s first ${firstResultWord(slug)} today.`
   return 'Each player’s best run.'
-}
-
-/**
- * Where a run of `best` would land on this board if played now: behind everyone at or above it, as a tie
- * goes to whoever got there first and a new run is the latest. (placeBeating is a run just better than it.)
- */
-export function wouldPlace(players: BoardPlayer[], best: number): { place: number } {
-  return { place: players.filter((p) => p.best.score >= best).length + 1 }
 }
 
 /* ---------- your runs, charted ---------- */

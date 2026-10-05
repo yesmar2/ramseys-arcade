@@ -5,7 +5,7 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
-import { gapBetween, gapFigure, playersFromRuns, type BoardPlayer } from '../lib/gameBoard'
+import { gapBetween, gapFigure } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
@@ -13,11 +13,10 @@ import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import {
   getLeaderboard,
+  getPlayerBoard,
   normalizePlayerName,
   PERIOD_LABELS,
-  type LeaderboardEntry,
   type LeaderboardPeriod,
-  type YouEntry,
 } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
@@ -51,93 +50,26 @@ type Place = { name: string; score: number; place: number }
  */
 type Rung = { you: Place; above: Place | null; below: Place | null; third?: Place | null }
 
-const RUNG_PAGE = 25
-
-/** Runs per request while reading a board down to your best, and the deepest best it is read down to. */
-const READ_PAGE = 500
-const READ_CAP = 2000
-
-/** `count` runs of a board from `offset`, best first, a page at a time; fewer where the board ends. */
-async function readRuns(slug: string, board: LeaderboardPeriod, offset: number, count: number): Promise<LeaderboardEntry[]> {
-  const runs: LeaderboardEntry[] = []
-  while (runs.length < count) {
-    const limit = Math.min(READ_PAGE, count - runs.length)
-    const { entries } = await getLeaderboard(slug, board, undefined, { offset: offset + runs.length, limit })
-    runs.push(...entries)
-    if (entries.length < limit) break
-  }
-  return runs
-}
-
 /*
- * A board lists runs, not players, and one player can hold several runs in a
- * row, so the API's rank for your best counts runs: #5 there can be 3rd on
- * the game's page. The API sends your place among the players with it; for
- * one that doesn't yet, it is counted here the way that page counts it, as
- * players (playersFromRuns), from every run above your best. Too deep to
- * read, it isn't known: 0.
- */
-async function placeOn(slug: string, board: LeaderboardPeriod, you: YouEntry): Promise<number> {
-  if (you.rank > READ_CAP) return 0
-  return playersFromRuns(await readRuns(slug, board, 0, you.rank - 1)).length + 1
-}
-
-/*
- * Too deep to read from the top, the rung is taken from the place the API
- * counted for your best and one window of runs around it: the run just above
- * yours, and the next other player below, read on a page at a time. That far
- * down it is near enough, though a player's other runs can sit between yours
- * and their best.
- */
-async function rungAround(slug: string, board: LeaderboardPeriod, name: string, you: YouEntry, place: number): Promise<Rung> {
-  const start = Math.max(0, you.rank - 2)
-  let above: Place | null = null
-  let below: Place | null = null
-  for (let page = 0; page < 3 && !below; page += 1) {
-    const offset = start + page * RUNG_PAGE
-    const runs = await readRuns(slug, board, offset, RUNG_PAGE)
-    for (const [i, e] of runs.entries()) {
-      if (e.name === name) continue
-      if (offset + i + 1 < you.rank) above = { name: e.name, score: e.score, place: place - 1 }
-      else if (!below && e.name !== above?.name) below = { name: e.name, score: e.score, place: place + 1 }
-    }
-    if (runs.length < RUNG_PAGE) break
-  }
-  return { you: { name, score: you.score, place }, above, below }
-}
-
-/*
- * The board is read from the top, down past your best, and taken as players
- * (see placeOn): your place, the player above you, and the ones behind. A
- * player's other runs can sit just under yours, so the runs below are read on
- * a page at a time until enough other players turn up: one behind you, or two
- * when nobody is ahead of you.
+ * Your rung on the game's board: your place, the player above you, and the ones behind, as the API counts
+ * them (getPlayerBoard). Passing the player above you passes anyone tied with them too, so the place you're
+ * after is the first of those (its nextPlace). One small ask, however deep you are.
  */
 async function fetchRung(slug: string, name: string): Promise<Rung | null> {
   // A daily's all time is its day points (leaderboardFormat isDayPointsBoard): its next place up is today's.
   const board: LeaderboardPeriod = isDailyGame(slug) ? 'daily' : 'all'
-  const { you } = await getLeaderboard(slug, board, name, { limit: 1 })
-  if (!you) return null
-  // Deeper than that, a window around your best (rungAround) on the place the API counted; an API that sends
-  // none gets the plain banner, rather than a place counted wrong.
-  if (you.rank > READ_CAP) return you.place ? rungAround(slug, board, name, you, you.place) : null
-  const runs = await readRuns(slug, board, 0, you.rank + RUNG_PAGE)
-  let ended = runs.length < you.rank + RUNG_PAGE
-  let players = playersFromRuns(runs)
-  const at = players.findIndex((p) => p.name === name)
-  if (at < 0) return null
-  const wanted = at === 0 ? 2 : 1
-  for (let page = 0; page < 2 && !ended && players.length - at - 1 < wanted; page += 1) {
-    const more = await readRuns(slug, board, runs.length, RUNG_PAGE)
-    runs.push(...more)
-    ended = more.length < RUNG_PAGE
-    players = playersFromRuns(runs)
+  const b = await getPlayerBoard(slug, board, name, { limit: 1, around: 2 })
+  if (!b.you) return null
+  const at = (place: number) => b.around.find((p) => p.place === place)
+  const place = (p: { name: string; score: number; place: number } | undefined): Place | null =>
+    p ? { name: p.name, score: p.score, place: p.place } : null
+  const over = at(b.you.place - 1)
+  return {
+    you: place(b.you)!,
+    above: over ? { name: over.name, score: over.score, place: b.nextPlace ?? over.place } : null,
+    below: place(at(b.you.place + 1)),
+    third: place(at(b.you.place + 2)),
   }
-  const place = (p: BoardPlayer | undefined): Place | null => (p ? { name: p.name, score: p.best.score, place: p.place } : null)
-  // Passing the player above you passes anyone tied with them too, so the place you're after is the first of those.
-  const over = players[at - 1]
-  const above = over ? players.find((p) => p.best.score === over.best.score) : undefined
-  return { you: place(players[at])!, above: place(above), below: place(players[at + 1]), third: place(players[at + 2]) }
 }
 
 /*
@@ -432,10 +364,9 @@ export function HomeHero() {
     }
     let cancelled = false
     getLeaderboard(slug, boardPeriod, name || undefined, { limit: 1 })
-      .then(async ({ entries, you }) => {
-        // Your place shows only on the plain banner. The API sends it with your best; for one that doesn't, the board
-        // is read down to you for it (placeOn), but not with a rung remembered, as the rung banner is what shows then.
-        const place = !you ? 0 : (you.place ?? (remembered ? 0 : await placeOn(slug, boardPeriod, you).catch(() => 0)))
+      .then(({ entries, you }) => {
+        // Your place shows only on the plain banner: the API's, among the players.
+        const place = you?.place ?? 0
         if (cancelled) return
         const leader = entries[0]
         setScores({
