@@ -338,6 +338,16 @@ function resetDeviceIdentityForAccountSwitch() {
   clearTournamentIdentity()
 }
 
+/**
+ * Signed out, the device shows no one's tag. A session can end without a sign-out here (it ran out, or
+ * the API no longer knows it: staging's data was cleared on 2026-10-05, and pages went on calling a
+ * signed-out viewer by the old tag), so a tag left behind goes the way signing out takes it.
+ */
+export function dropSignedOutIdentity() {
+  if (getSessionToken() || !getLastPlayerName()) return
+  resetDeviceIdentityForAccountSwitch()
+}
+
 export async function requestMagicLink(email: string): Promise<{
   email: string
   verifyUrl?: string
@@ -393,9 +403,14 @@ export async function fetchAuthMe(): Promise<{
     return { account: data.account, names: data.names ?? [], limits: data.limits }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
-      // Only clear if this request's token is still the active one.
+      // Only clear if this request's token is still the active one. The session ended without a sign-out
+      // here, so the device's identity goes with it, as signing out takes it.
       if (getSessionToken() === tokenAtStart) {
-        setSessionToken(null)
+        const accountBefore = currentAccountId()
+        setSessionToken(null, { emit: false })
+        resetDeviceIdentityForAccountSwitch()
+        announceAccountId(accountBefore)
+        emitAuth()
       }
       return null
     }

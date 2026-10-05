@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   AUTH_EVENT,
+  dropSignedOutIdentity,
   fetchAuthMe,
   getAuthGeneration,
   getSessionToken,
@@ -76,6 +77,8 @@ export function useAuth() {
         cachedLimits = FREE_LIMITS
         inflightMe = null
         inflightGeneration = -1
+        // A tag a session left behind isn't this signed-out viewer's.
+        dropSignedOutIdentity()
         if (!cancelled) {
           setAccount(null)
           setLimits(FREE_LIMITS)
