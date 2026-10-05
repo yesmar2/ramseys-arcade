@@ -247,11 +247,11 @@ function gameAnchors(): HuntAnchor[] {
       out.push(
         game.daily && !isRankedGame(slug)
           ? {
-              // A daily just for fun keeps no records: the same id hides at the top of its past days.
+              // A daily just for fun keeps no records: the same id hides behind the top card of its past days.
               id: `r-head-${slug}`,
               href: dailyTabHref(slug, 'past'),
               page: `on ${possessive(game.name)} past days`,
-              thing: 'the top of the list',
+              thing: 'the card at the top of the list',
               lesson: FUN_PAST_LESSON,
             }
           : game.daily

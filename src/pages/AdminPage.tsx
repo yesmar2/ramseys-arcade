@@ -24,7 +24,7 @@ import {
   type AdminFeedback,
   type AdminFlag,
 } from '../lib/admin'
-import { HUNT_ANCHORS, huntTestHref } from '../lib/bugHunt'
+import { capitalName, HUNT_ANCHORS, huntDay, huntPick, huntTestHref, huntWhere, msUntilNextBug } from '../lib/bugHunt'
 import { lazyPage } from '../lib/lazyPage'
 import { ApiError } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -44,7 +44,7 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
     label: 'Overview',
     title: 'Admin',
     blurb:
-      'What players sent, what broke in their browsers, scores that looked wrong on the way in, tickets, banned tags, and what the daily games have planned.',
+      'What players sent, what broke in their browsers, scores that looked wrong on the way in, tickets, banned tags, what the daily games have planned, and where the bug is hiding.',
   },
   {
     section: 'holes',
@@ -197,6 +197,7 @@ export function AdminPage({ section }: { section?: AdminSection }) {
                 <AdminSiteEvents />
                 <AdminSeasonPreview />
                 <DailyGamesCard />
+                <BugHuntCard />
                 <FeedbackCard />
                 <ErrorsCard />
                 <FlagsCard />
@@ -311,6 +312,71 @@ function DailyGamesCard() {
             <span>step through every hiding place; a catch there doesn’t count</span>
           </li>
         ) : null}
+      </ul>
+    </section>
+  )
+}
+
+/** How many days of the bug hunt the card shows, today's first. */
+const HUNT_DAYS = 7
+
+/** A day `n` days after `day` (YYYY-MM-DD), the same way written. */
+function dayAfter(day: string, n: number) {
+  const at = new Date(`${day}T12:00:00Z`)
+  at.setUTCDate(at.getUTCDate() + n)
+  return at.toISOString().slice(0, 10)
+}
+
+const huntDayWords = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+
+/** "13 h 45 min" or "40 min". */
+function untilWords(ms: number) {
+  const minutes = Math.max(1, Math.round(ms / 60_000))
+  const hours = Math.floor(minutes / 60)
+  return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`
+}
+
+/**
+ * Where the daily bug hides (lib/bugHunt.ts huntPick), today's and the week's after it, so an admin never has
+ * to hunt for it (Ramsey: "we should add it to admin page"). Going there is the real hunt, and a catch counts;
+ * Test shows it at the same spot in the hunt's test mode, where it doesn't.
+ */
+function BugHuntCard() {
+  const today = huntDay()
+  const days = Array.from({ length: HUNT_DAYS }, (_, i) => huntPick(dayAfter(today, i)))
+  return (
+    <section className="adm-card" aria-labelledby="adm-hunt">
+      <div className="adm-card__head">
+        <h2 className="adm-card__title" id="adm-hunt">
+          Bug hunt
+        </h2>
+      </div>
+      <p className="adm-card__sub">
+        Where today’s bug hides, and the week after it. Go there is the real hunt: a catch counts for you. Test shows it
+        in the same spot in test mode, where a catch doesn’t count. The next bug gets loose at midnight on the boards’
+        clock, in {untilWords(msUntilNextBug())}.
+      </p>
+      <ul className="adm-list">
+        {days.map((pick, i) => (
+          <li key={pick.day} className="adm-row">
+            <div className="adm-row__main">
+              <b className="adm-row__title">
+                {i === 0 ? 'Today' : huntDayWords.format(new Date(`${pick.day}T12:00:00Z`))} · {capitalName(pick.bug)}
+              </b>
+              <span className="adm-row__sub">{huntWhere(pick.anchor, pick.pose)}</span>
+            </div>
+            <div className="adm-row__acts">
+              {i === 0 ? (
+                <a className="panel__btn panel__btn--ghost adm-small" href={pick.anchor.href}>
+                  Go there
+                </a>
+              ) : null}
+              <a className="panel__btn panel__btn--ghost adm-small" href={huntTestHref({ anchor: pick.anchor, pose: pick.pose, at: pick.at })}>
+                Test
+              </a>
+            </div>
+          </li>
+        ))}
       </ul>
     </section>
   )

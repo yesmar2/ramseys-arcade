@@ -192,6 +192,7 @@ function PastCard({
   viewer,
   avatarId,
   here,
+  hunt,
   archiveOpen,
   onOpen,
 }: {
@@ -202,6 +203,8 @@ function PastCard({
   viewer: PastViewer
   avatarId: string | null
   here: boolean
+  /** A bug hunt hiding place on this card (lib/bugHunt.ts), if it's one. */
+  hunt?: string
   /** Whether the viewer may play archived days: Plus. Undefined while who's signed in isn't known. */
   archiveOpen: boolean | undefined
   onOpen: (day: string) => void
@@ -245,7 +248,7 @@ function PastCard({
     daysState === 'ok' && entry && !(rankedGame && you && you.place != null) ? ` · ${entry.players.toLocaleString()} ${verbDone(slug)}` : ''
 
   return (
-    <li ref={ref} id={`course-${source.anchor(day)}`} tabIndex={-1} className={`pc${here ? ' pc--here' : ''}`}>
+    <li ref={ref} id={`course-${source.anchor(day)}`} tabIndex={-1} className={`pc${here ? ' pc--here' : ''}`} data-hunt={hunt}>
       <div className="pc-stage" aria-hidden="true">
         <span className="dp-art pc-art">{art}</span>
         {rankedGame ? (
@@ -382,8 +385,7 @@ export function PastCourses({ source }: { source: PastSource }) {
   const openKind = opened ? kindOf(source, opened, openEntry, boards?.rows?.get(opened), daysState, viewer) : null
   return (
     <div className="dp">
-      {/* On a daily just for fun, a bug hunt hiding place, where a ranked one's Records tab was (lib/bugHunt.ts). */}
-      <div ref={headRef} className="dp-head" data-hunt={isRankedGame(slug) ? undefined : `r-head-${slug}`}>
+      <div ref={headRef} className="dp-head">
         <h2 className="dp-head__title">{words.pastTab}</h2>
         {count ? (
           <span className="dp-head__count">
@@ -417,7 +419,7 @@ export function PastCourses({ source }: { source: PastSource }) {
       {count ? (
         <>
           <ol className="pc-grid">
-            {listed.map((day) => (
+            {listed.map((day, i) => (
               <PastCard
                 key={day}
                 source={source}
@@ -427,6 +429,10 @@ export function PastCourses({ source }: { source: PastSource }) {
                 viewer={viewer}
                 avatarId={avatarId}
                 here={here === day}
+                // On a daily just for fun, a bug hunt hiding place where a ranked one's Records tab was (lib/bugHunt.ts):
+                // the top card, a solid panel to hide behind. The heading row it was on first is see-through, so the bug
+                // hung there in the open (Ramsey: "it's upsidedown and not really behind anything").
+                hunt={i === 0 && !isRankedGame(slug) ? `r-head-${slug}` : undefined}
                 archiveOpen={archiveOpen}
                 onOpen={setOpened}
               />
