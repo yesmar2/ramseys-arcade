@@ -6,6 +6,7 @@ import {
   type RefObject,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { lockScroll, unlockScroll } from '../lib/scrollLock'
 
 /*
  * One way to float over the page: the panel every modal on the site is
@@ -21,24 +22,6 @@ const FOCUSABLE =
 
 /** Panels open now, the newest last: only the top one answers Esc and Tab. */
 const openPanels: symbol[] = []
-
-/*
- * The page stops scrolling while any panel is open, and gets back what it had
- * when the last one closes, whatever order they close in.
- */
-let scrollLocks = 0
-let scrollBefore = ''
-
-function lockScroll() {
-  if (scrollLocks++ === 0) {
-    scrollBefore = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-  }
-}
-
-function unlockScroll() {
-  if (--scrollLocks === 0) document.body.style.overflow = scrollBefore
-}
 
 type PanelProps = {
   onClose: () => void

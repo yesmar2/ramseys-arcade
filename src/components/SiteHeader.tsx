@@ -15,6 +15,7 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { lockScroll, unlockScroll } from '../lib/scrollLock'
 import { currentTheme, THEME_EVENT, type Theme } from '../lib/theme'
 import { AvatarStudio, type AvatarWear } from './AvatarStudio'
 import { BrandMark } from './BrandMark'
@@ -142,8 +143,9 @@ export function SiteHeader() {
 
   useEffect(() => {
     if (!menuOpen) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // Shared with the panels, so a panel closed under the menu (a prize's Sign in opens it) can't leave the
+    // page locked or unlocked out of turn.
+    lockScroll()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setMenuOpen(false)
@@ -176,7 +178,7 @@ export function SiteHeader() {
     panelRef.current?.querySelector<HTMLElement>('.site-menu__close')?.focus()
     const opener = openerRef.current
     return () => {
-      document.body.style.overflow = prevOverflow
+      unlockScroll()
       window.removeEventListener('keydown', onKey)
       opener?.focus()
     }
