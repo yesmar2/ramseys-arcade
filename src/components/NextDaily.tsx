@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { useAccountId } from '../hooks/useAccountId'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { gamePlayHref, navigate, todayHref } from '../hooks/useHashRoute'
@@ -36,10 +36,15 @@ export type NextDailyViewProps = {
   done: number
   total: number
   className?: string
+  /**
+   * A racing daily's tomorrow (TomorrowTease), under the row once all of today's are done: before that, the next
+   * of today's is the better way on (Ramsey, 2026-10-05: the report was "a lot").
+   */
+  tomorrow?: ReactNode
 }
 
 /** What NextDaily shows, given the day's punches: also the dev page's samples. */
-export function NextDailyView({ slug, punches, done, total, className = '' }: NextDailyViewProps) {
+export function NextDailyView({ slug, punches, done, total, className = '', tomorrow = null }: NextDailyViewProps) {
   const allow = useDeliberatePress()
   const next = nextAfter(punches as Punch[], slug)
   // Played just now, the ticket may not have this one in yet: it's done all the same.
@@ -52,13 +57,16 @@ export function NextDailyView({ slug, punches, done, total, className = '' }: Ne
   if (!next) {
     if (!total || doneNow < total) return null
     return (
-      <div className={`next-daily next-daily--all ${className}`}>
-        <span className="next-daily__kicker">The Dailies</span>
-        <span className="next-daily__title">All {total} done today</span>
-        <a className="next-daily__more" href={todayHref()} onClick={go(todayHref())}>
-          See your ticket ›
-        </a>
-      </div>
+      <>
+        <div className={`next-daily next-daily--all ${className}`}>
+          <span className="next-daily__kicker">The Dailies</span>
+          <span className="next-daily__title">All {total} done today</span>
+          <a className="next-daily__more" href={todayHref()} onClick={go(todayHref())}>
+            See your ticket ›
+          </a>
+        </div>
+        {tomorrow}
+      </>
     )
   }
 
@@ -86,9 +94,9 @@ export function NextDailyView({ slug, punches, done, total, className = '' }: Ne
 }
 
 /** After a daily's run: the next of today's still to play, for whoever is playing on this device. */
-export default function NextDaily({ slug, className }: { slug: string; className?: string }) {
+export default function NextDaily({ slug, className, tomorrow }: { slug: string; className?: string; tomorrow?: ReactNode }) {
   const viewer = useAccountId()
   const ticket = useTicket(viewer)
   if (!ticket.punches.length) return null
-  return <NextDailyView slug={slug} punches={ticket.punches} done={ticket.done} total={ticket.total} className={className} />
+  return <NextDailyView slug={slug} punches={ticket.punches} done={ticket.done} total={ticket.total} className={className} tomorrow={tomorrow} />
 }

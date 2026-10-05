@@ -368,6 +368,40 @@ html[data-theme='dark'] .pname--prism {
   border-color: rgba(var(--ink-rgb), 0.16);
 }
 
+/* A run that paid nothing: a quiet line in from the report's sides, not a box (Ramsey, 2026-10-05: "a lot"). */
+.run-tix-quiet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.5rem var(--report-pad-x, 1.75rem) 0.55rem;
+  text-align: left;
+}
+
+.run-tix-quiet__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* As wide as the medal over it (raceMedals.css .run-medal--in), so the two lines' words start together. */
+.run-tix-quiet__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 1.35em;
+}
+
+.run-tix-quiet__line b {
+  font-weight: 750;
+  color: color-mix(in srgb, var(--ink) 82%, var(--muted));
+}
+
 .run-tix svg {
   flex: none;
 }

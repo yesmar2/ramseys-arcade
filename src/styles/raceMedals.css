@@ -51,6 +51,12 @@
   font-weight: 800;
 }
 
+/* In the run's ticket box, or above its quiet "no new tickets" line: the box's own room around it. */
+.run-medal--in {
+  margin: 0.3rem 0 0.1rem;
+  font-size: 0.86rem;
+}
+
 /* Today's ticket: the racing dailies' medals and the day's goal, gold on all of them (TodayCard MedalGoal). */
 .today-medals__goal {
   align-self: center;

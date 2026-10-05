@@ -3,6 +3,12 @@ import { PageShell } from '../components/PageShell'
 import { NextDailyView } from '../components/NextDaily'
 import { PushAsk } from '../components/PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from '../components/prizes/RunTickets'
+import { RunMedalLine } from '../components/RaceMedal'
+import { SeasonRunLine } from '../components/season/SeasonRun'
+import { caveDay } from '../games/lander/daily'
+import { formatRun } from '../games/lander/score'
+import { TomorrowCave } from '../games/lander/TomorrowCave'
+import type { SeasonRun } from '../lib/season'
 import type { RunTickets } from '../lib/tickets'
 import {
   ReportSignIn,
@@ -229,6 +235,18 @@ const SAMPLE_TICKETS: Partial<Record<string, RunTickets>> = {
     capped: 0,
     todayLeft: 146,
   },
+  capped: {
+    earned: 0,
+    lines: [],
+    balance: 1500,
+    reached: { at: 46, tickets: 3 },
+    next: { at: 69, tickets: 5 },
+    base: 1,
+    step: 3,
+    paidBefore: 0,
+    capped: 3,
+    todayLeft: 0,
+  },
 }
 
 function reportSample(key: string, note: string, f: RunFacts, title: string, sub: string): Sample {
@@ -266,6 +284,44 @@ const SAMPLE_PUNCHES = [
   { key: 'course', slug: 'marblerun', game: 'Marble Run', kicker: 'Today’s Course #3', title: 'Nova Line', done: false },
   { key: 'cave', slug: 'lander', game: 'Lander', kicker: 'Today’s Cave #2', title: 'Nova Drift', done: false },
 ] as const
+
+/*
+ * A racing daily's runs, as ScoreSaveCard puts them together: Lander on a day whose blue ship lands in a
+ * minute, so its ladder (the API's ticketLadders.ts) and its medals (lib/raceMedals.ts) go by 60s.
+ */
+const PACE_MS = 60_000
+const shipAt = (ms: number) => 1_000_000 - ms
+const LANDER_STEPS = {
+  within: { at: shipAt(61_200), tickets: 5, label: 'within 2% of the blue ship' },
+  beat: { at: shipAt(PACE_MS) + 1, tickets: 8, label: 'beating the blue ship' },
+  by3: { at: shipAt(58_200), tickets: 11, label: 'beating the blue ship by 3%' },
+}
+
+const LANDER_SEASON: SeasonRun = { id: 1, name: 'Space Race', earned: 290, added: 3, level: 2, levels: 30, nextAt: 300, next: null, levelUp: [] }
+
+const landerMedal = (ms: number, previousMs: number | null) => (
+  <RunMedalLine paceMs={PACE_MS} ms={ms} previousMs={previousMs} format={formatRun} embedded />
+)
+
+function landerSample(key: string, note: string, ms: number, tickets: ReactNode, children?: ReactNode): Sample {
+  return {
+    key,
+    note,
+    body: {
+      tier: 'quiet',
+      ribbon: null,
+      eyebrow: 'Today’s Cave #2',
+      score: formatRun(ms / 1000),
+      unit: '',
+      sub: 'Landed',
+      scoreTone: 'plain',
+      lines: [],
+      tickets,
+      children,
+      who: <ReportWho name="VERA" text="Saved as VERA" />,
+    },
+  }
+}
 
 /** An ordinary saved run with the arcade's ask for alerts under it (components/PushAsk.tsx). */
 function askSample(key: string, note: string, ask: ReactNode, secondary?: string): Sample {
@@ -382,6 +438,73 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
       <NextDailyView slug="hotlap" punches={SAMPLE_PUNCHES} done={1} total={6} />,
       'Challenge a friend',
     ),
+    landerSample(
+      'medal',
+      'A racing daily’s run that paid: its medal in the ticket box, saying what’s next once; the season pass it moved.',
+      59_000,
+      <>
+        <RunTicketsLine
+          paid={{
+            earned: 3,
+            lines: [{ reason: 'run', amount: 3 }],
+            balance: 1290,
+            reached: LANDER_STEPS.beat,
+            next: LANDER_STEPS.by3,
+            base: 3,
+            baseLabel: 'a run today',
+            step: 8,
+            paidBefore: 5,
+            capped: 0,
+            todayLeft: 170,
+          }}
+          game="lander"
+          medal={landerMedal(59_000, 61_000)}
+        />
+        <SeasonRunLine run={LANDER_SEASON} />
+      </>,
+    ),
+    landerSample(
+      'medal-none',
+      'A racing daily’s run that paid nothing: one quiet line under the day’s medal, and no season pass.',
+      60_500,
+      <RunTicketsLine
+        paid={{
+          earned: 0,
+          lines: [],
+          balance: 1290,
+          reached: LANDER_STEPS.within,
+          next: LANDER_STEPS.beat,
+          base: 3,
+          baseLabel: 'a run today',
+          step: 5,
+          paidBefore: 8,
+          capped: 0,
+          todayLeft: 170,
+        }}
+        game="lander"
+        medal={landerMedal(60_500, 59_000)}
+      />,
+    ),
+    landerSample(
+      'medal-signin',
+      'A racing daily’s run, signed out: the medal in the waiting box.',
+      59_000,
+      <RunTicketsWaiting medal={landerMedal(59_000, null)} />,
+    ),
+    landerSample(
+      'tomorrow',
+      'The last of today’s dailies: all done, and tomorrow’s cave under it.',
+      60_500,
+      null,
+      <NextDailyView
+        slug="lander"
+        punches={SAMPLE_PUNCHES.map((p) => ({ ...p, done: true }))}
+        done={6}
+        total={6}
+        tomorrow={<TomorrowCave day={caveDay()} />}
+      />,
+    ),
+    reportSample('capped', 'A run past the day’s cap: the quiet line, no box.', facts(318, {}), 'Run over', 'Flattened by traffic'),
   ]
 }
 

@@ -648,14 +648,11 @@ export function ScoreSaveCard({
   }
   // And the way on to the next of today's dailies: first, or after the sign-in for a run that isn't saved yet.
   if (onTicket && (phase === 'saved' || phase === 'needAuth')) {
-    // And under it, a racing daily's tomorrow: what comes next, and when.
+    // Once all of today's are done, a racing daily's tomorrow under it: what comes next, and when.
     const next = (
-      <>
-        <Suspense fallback={null}>
-          <NextDaily slug={gameSlug} />
-        </Suspense>
-        {tomorrow ?? null}
-      </>
+      <Suspense fallback={null}>
+        <NextDaily slug={gameSlug} tomorrow={tomorrow} />
+      </Suspense>
     )
     block = phase === 'needAuth' ? (
       <>
@@ -702,16 +699,21 @@ export function ScoreSaveCard({
   const lines = pending ? null : (data?.lines ?? [])
   const heading = ribbon?.text ?? title
   // A racing daily's medal for the run, saved or not: it's worked out from the run and the day's blue. The
-  // racing dailies keep a million less the ms (their score.ts).
-  const medalLine =
+  // racing dailies keep a million less the ms (their score.ts). It goes in the run's ticket box (one box for
+  // both, saying what's next once), or on a line of its own for a run that gets no box.
+  const runMedal = (embedded: boolean) =>
     medalPace && medalFormat && score > 0 ? (
       <RunMedalLine
         paceMs={medalPace}
         ms={1_000_000 - score}
         previousMs={previousBest && previousBest > 0 ? 1_000_000 - previousBest : null}
         format={medalFormat}
+        embedded={embedded}
       />
     ) : null
+  const paidTickets = phase === 'saved' ? (facts?.tickets ?? null) : null
+  // The season's pass card only when the run moved it: what it added, or a level it reached.
+  const seasonMoved = facts?.season && (facts.season.added > 0 || facts.season.levelUp.length > 0) ? facts.season : null
   // First in the standings takes the whole screen, once, with the report under it, in the standings' own period.
   const standingsPeriod = facts?.standingsPeriod ?? period
   const takeover =
@@ -746,19 +748,19 @@ export function ScoreSaveCard({
         }
         race={data?.race ?? null}
         tickets={
-          medalLine || (phase === 'saved' && facts?.tickets) || (unsaved && score > 0) ? (
+          paidTickets ? (
             <>
-              {medalLine}
-              {phase === 'saved' && facts?.tickets ? (
-                <>
-                  <RunTicketsLine paid={facts.tickets} game={gameSlug} />
-                  {facts.season ? <SeasonRunLine run={facts.season} /> : null}
-                </>
-              ) : unsaved && score > 0 ? (
-                <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
-              ) : null}
+              <RunTicketsLine paid={paidTickets} game={gameSlug} medal={runMedal(true)} />
+              {seasonMoved ? <SeasonRunLine run={seasonMoved} /> : null}
             </>
-          ) : null
+          ) : unsaved && score > 0 ? (
+            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} medal={runMedal(true)} />
+          ) : phase === 'checking' || phase === 'saving' ? (
+            // While the save answers, nothing: the medal comes with the box, rather than moving into it.
+            null
+          ) : (
+            runMedal(false)
+          )
         }
         primary={primary}
         secondary={secondary}

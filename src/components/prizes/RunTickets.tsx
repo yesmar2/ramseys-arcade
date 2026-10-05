@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { getGame } from '../../data/games'
 import { prizeById } from '../../data/prizes'
 import { prizesHref } from '../../hooks/useHashRoute'
@@ -47,7 +47,8 @@ function nextWords(next: LadderStep, game: string): string {
   return `${next.tickets} for ${next.label}${figure ? ` (${formatLeaderboardScore(game, next.at)})` : ''}`
 }
 
-function why(paid: RunTickets, game: string): string {
+/** What the tickets were for; `withNext`, and the next step's, unless the run's medal already says it. */
+function why(paid: RunTickets, game: string, withNext = true): string {
   const parts: string[] = []
   for (const line of paid.lines) {
     switch (line.reason) {
@@ -74,12 +75,16 @@ function why(paid: RunTickets, game: string): string {
     }
   }
   if (paid.capped > 0) parts.push('today’s run tickets are all in')
-  else if (paid.next) parts.push(`next: ${nextWords(paid.next, game)}`)
+  else if (paid.next && withNext) parts.push(`next: ${nextWords(paid.next, game)}`)
   return parts.join(' · ')
 }
 
-/** The run's tickets, once the save has answered. */
-export function RunTicketsLine({ paid, game }: { paid: RunTickets; game: string }) {
+/**
+ * The run's tickets, once the save has answered. A racing daily's `medal` (RaceMedal RunMedalLine) goes in the
+ * same box and says what's next, from the day's best; the tickets then don't say it again, so the two never
+ * disagree. A run that paid nothing is a quiet line, not a box (Ramsey, 2026-10-05: the report was "a lot").
+ */
+export function RunTicketsLine({ paid, game, medal = null }: { paid: RunTickets; game: string; medal?: ReactNode }) {
   const { goal: goalId, balance } = useTickets()
   const goal = prizeById(goalId)
   // The store may not have caught up with this save yet; the save's own answer is the newer.
@@ -91,16 +96,22 @@ export function RunTicketsLine({ paid, game }: { paid: RunTickets; game: string 
     const said =
       paid.capped > 0 || paid.paidBefore <= 0
         ? 'Today’s run tickets are all in. Tomorrow’s runs pay again.'
-        : paid.next
-          ? `Today’s best already got its tickets. Next: ${nextWords(paid.next, game)}.`
-          : 'You’ve got every ticket today’s best can pay.'
+        : medal
+          ? 'Today’s best already got them.'
+          : paid.next
+            ? `Today’s best already got them. Next: ${nextWords(paid.next, game)}.`
+            : 'You’ve got every ticket today’s best can pay.'
     return (
-      <div className="run-tix run-tix--dim">
-        <TicketStub label="0" dim width={78} />
-        <div className="run-tix__body">
-          <span className="run-tix__n">No new tickets</span>
-          <span className="run-tix__why">{said}</span>
-        </div>
+      <div className="run-tix-quiet">
+        {medal}
+        <p className="run-tix-quiet__line">
+          <span className="run-tix-quiet__icon">
+            <TicketGlyph size={16} dim />
+          </span>
+          <span>
+            <b>No new tickets.</b> {said}
+          </span>
+        </p>
       </div>
     )
   }
@@ -119,7 +130,8 @@ export function RunTicketsLine({ paid, game }: { paid: RunTickets; game: string 
             <span ref={payout.sumRef}>{total.toLocaleString()}</span>
           </span>
         </div>
-        <span className="run-tix__why">{why(paid, game)}</span>
+        <span className="run-tix__why">{why(paid, game, !medal)}</span>
+        {medal}
         {goal ? (
           <a className="run-tix__goal" href={prizesHref()}>
             <span className="tix-meter" aria-hidden="true">
@@ -253,8 +265,11 @@ function usePayout(earned: number, total: number, price: number | null) {
   return { stage, stripRef, slotRef, countRef, sumRef, meterRef, skip: () => skipRef.current() }
 }
 
-/** Signed out: a saved run pays tickets too, and so does each run kept on the device for the sign-in (lib/pendingRuns.ts). */
-export function RunTicketsWaiting({ runs = 1 }: { runs?: number }) {
+/**
+ * Signed out: a saved run pays tickets too, and so does each run kept on the device for the sign-in
+ * (lib/pendingRuns.ts). A racing daily's `medal` goes in the same box.
+ */
+export function RunTicketsWaiting({ runs = 1, medal = null }: { runs?: number; medal?: ReactNode }) {
   return (
     <div className="run-tix run-tix--dim">
       <TicketStub label="?" dim width={78} />
@@ -263,6 +278,7 @@ export function RunTicketsWaiting({ runs = 1 }: { runs?: number }) {
         <span className="run-tix__why">
           Sign in and {runs > 1 ? `these ${runs} runs pay` : 'this run pays'} tickets for the prize counter. They’re kept on your account.
         </span>
+        {medal}
       </div>
     </div>
   )

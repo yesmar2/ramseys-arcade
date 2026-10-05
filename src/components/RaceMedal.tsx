@@ -67,11 +67,14 @@ export function RunMedalLine({
   ms,
   previousMs,
   format,
+  embedded = false,
 }: {
   paceMs: number
   ms: number
   previousMs: number | null
   format: (seconds: number) => string
+  /** Inside the run's ticket box or its quiet line (prizes/RunTickets.tsx), rather than a line of the report's own. */
+  embedded?: boolean
 }) {
   const now = medalFor(paceMs, ms)
   const before = medalFor(paceMs, previousMs)
@@ -84,8 +87,8 @@ export function RunMedalLine({
   else if (fresh) said = then ? `${MEDAL_NAMES[best]} medal! Next: ${then}.` : `${MEDAL_NAMES[best]} medal! That’s all four today.`
   else said = then ? `${MEDAL_NAMES[best]} medal today. Next: ${then}.` : `${MEDAL_NAMES[best]} medal today: all four.`
   return (
-    <p className={`run-medal${fresh ? ' run-medal--new' : ''}`}>
-      <MedalIcon medal={best ?? 'bronze'} dim={!best} size={26} />
+    <p className={`run-medal${fresh ? ' run-medal--new' : ''}${embedded ? ' run-medal--in' : ''}`}>
+      <MedalIcon medal={best ?? 'bronze'} dim={!best} size={embedded ? 22 : 26} />
       <span>{said}</span>
     </p>
   )
