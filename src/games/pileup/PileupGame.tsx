@@ -10,9 +10,19 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
-import { clearRunAchievements } from '../../lib/runAchievements'
+import {
+  PILEUP_COMBO_ID,
+  PILEUP_FOURS_ID,
+  PILEUP_ROWS_ID,
+  PILEUP_SHAKE_ID,
+  shouldCelebrateRecordSubmit,
+  submitPileupBook,
+} from '../../lib/records'
+import { clearRunAchievements, pushRunAchievement } from '../../lib/runAchievements'
 import { beginRun } from '../../lib/runSession'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -96,6 +106,9 @@ function boxStyle(box: Box): CSSProperties {
 export function PileupGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('pileup')
+  const playerName = normalizePlayerName(usePlayerName())
+  /** The run whose books have gone, so a re-render never posts them twice. */
+  const booksKey = useRef('')
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playRef = useRef<HTMLDivElement>(null)
@@ -261,6 +274,37 @@ export function PileupGame() {
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
+
+  /*
+   * Its books are run totals, so they post once the run is over, one after
+   * another; any that places goes on the run's card. Not from an event's run,
+   * which is the event's alone.
+   */
+  useEffect(() => {
+    if (tournament || !playerName || ui.phase !== 'gameover') return
+    const key = `${playerName}:${ui.serial}:${ui.score}:${ui.rows}`
+    if (booksKey.current === key) return
+    booksKey.current = key
+    const books: [string, number, string][] = [
+      [PILEUP_FOURS_ID, ui.fours, 'Fours in a run'],
+      [PILEUP_ROWS_ID, ui.rows, 'Rows cleared in a run'],
+      [PILEUP_COMBO_ID, ui.bestCombo, 'Highest combo'],
+      [PILEUP_SHAKE_ID, ui.bestShake, 'Biggest Shake'],
+    ]
+    void (async () => {
+      for (const [id, value, label] of books) {
+        const result = await submitPileupBook(id, value, playerName)
+        if (shouldCelebrateRecordSubmit(result)) {
+          pushRunAchievement({
+            id: `pileup:${id}`,
+            label,
+            value: id === PILEUP_COMBO_ID ? `×${value}` : String(value),
+            rank: result.rank,
+          })
+        }
+      }
+    })()
+  }, [ui.phase, ui.serial, ui.score, ui.rows, ui.fours, ui.bestCombo, ui.bestShake, playerName, tournament])
 
   // Dev only: lets a script read and steer the run for a play-test.
   useEffect(() => {

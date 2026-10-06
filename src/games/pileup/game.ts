@@ -226,6 +226,8 @@ export type GameState = {
   backToBack: boolean
   fours: number
   shakes: number
+  /** The most rows one Shake has cleared this run. */
+  bestShake: number
   /** Rows toward the next Shake. */
   charge: number
   shakeReady: boolean
@@ -280,6 +282,7 @@ export type Snapshot = {
   bestCombo: number
   fours: number
   shakes: number
+  bestShake: number
   /** 0–1 toward the next Shake. */
   charge: number
   shakeReady: boolean
@@ -297,6 +300,7 @@ export function toSnapshot(s: GameState): Snapshot {
     bestCombo: s.bestCombo,
     fours: s.fours,
     shakes: s.shakes,
+    bestShake: s.bestShake,
     charge: s.shakeReady ? 1 : Math.min(1, s.charge / SHAKE_ROWS),
     shakeReady: s.shakeReady,
     canHold: s.phase === 'playing' && !s.held && s.piece !== null,
@@ -362,6 +366,7 @@ function emptyState(): GameState {
     backToBack: false,
     fours: 0,
     shakes: 0,
+    bestShake: 0,
     charge: 0,
     shakeReady: false,
     fall: 0,
@@ -743,6 +748,7 @@ function payShake(s: GameState, rows: number[]) {
   const n = rows.length
   const pts = SHAKE_POINTS * n * s.level
   s.score += pts
+  s.bestShake = Math.max(s.bestShake, n)
   const mid = rows.reduce((a, b) => a + b, 0) / n
   floater(s, { x: COLS / 2, y: mid + 0.5, text: `Shake +${pts.toLocaleString()}`, sub: n > 1 ? `${n} rows` : undefined, tone: 'shake' })
   burst(s, rows)

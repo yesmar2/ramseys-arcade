@@ -201,6 +201,9 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === CRUMBTRAIL_ROWS_ID) return 'Rows'
   if (row.id === CRUMBTRAIL_GHOSTS_ID) return 'Chasers'
   if (row.id === SNAKE_LONGEST_ID) return 'Longest'
+  if (row.id === PILEUP_FOURS_ID) return 'Fours'
+  if (row.id === PILEUP_ROWS_ID) return 'Rows'
+  if (row.id === PILEUP_SHAKE_ID) return 'Shake'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -271,7 +274,22 @@ export const CRUMBTRAIL_ROWS_MIN = 10
  * multiplier step, so the board starts where the streak starts mattering.
  */
 export const PELLETS_CRUMB_STREAK_MIN = 10
+export const PILEUP_FOURS_ID = 'fours'
+export const PILEUP_ROWS_ID = 'rows-cleared'
+/** The same book id as Asteroids' combo, so it reads ×7 and is called Combo the same way. */
+export const PILEUP_COMBO_ID = 'highest-combo'
+export const PILEUP_SHAKE_ID = 'biggest-shake'
+/** Below these a run's figure is noise, not a go at the book: a single clear isn't a combo. */
+export const PILEUP_BOOK_MIN: Record<string, number> = {
+  [PILEUP_FOURS_ID]: 1,
+  [PILEUP_ROWS_ID]: 10,
+  [PILEUP_COMBO_ID]: 3,
+  [PILEUP_SHAKE_ID]: 2,
+}
 const PLAIN_COUNT_RECORD_IDS = new Set<string>([
+  PILEUP_FOURS_ID,
+  PILEUP_ROWS_ID,
+  PILEUP_SHAKE_ID,
   CROSSWALK_MOST_COINS_ID,
   CROSSWALK_LONGEST_CHAIN_ID,
   CROSSWALK_NEAR_MISSES_ID,
@@ -844,6 +862,22 @@ export async function submitSnakeLongest(
   try {
     const result = await submitRecord('snake', SNAKE_LONGEST_ID, cleaned, value)
     return toRecordSubmitOutcome(result)
+  } catch {
+    return null
+  }
+}
+
+/** Best-effort Pileup book submit: one of its run's figures, once it's past the book's floor. */
+export async function submitPileupBook(
+  recordId: string,
+  value: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const v = Math.floor(value)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(v >= (PILEUP_BOOK_MIN[recordId] ?? 1))) return null
+  try {
+    return toRecordSubmitOutcome(await submitRecord('pileup', recordId, cleaned, v))
   } catch {
     return null
   }
