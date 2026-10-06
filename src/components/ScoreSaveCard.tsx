@@ -74,7 +74,7 @@ type ScoreSaveProps = {
   /** The run's own words for how it ended: Ship down, Run over. */
   title: string
   subtitle?: string
-  /** Best at the start of this run, before the engine saved a new record. */
+  /** The best before this run. Read once, as the card opens on the run: the card goes on to keep the run as the best. */
   previousBest?: number
   /** Prize tickets the run picked up on the way (Crosswalk's), paid with the save. */
   pickups?: number
@@ -199,7 +199,11 @@ export function ScoreSaveCard({
   /** A challenge went out from this card: the moment to offer an alert for when it's beaten. */
   const [challenged, setChallenged] = useState(false)
   const [copied, setCopied] = useState(false)
-  const recordRef = useRef(previousBest ?? 0)
+  // The best before this run, as the card opened on it. The card goes on to keep the run as the best (signed out
+  // as this device's, signed in once it's saved), and a game that reads its best live hands the run back as the
+  // best before it: a signed-out first run of the day said "tied your best today".
+  const [bestBefore] = useState(previousBest)
+  const recordRef = useRef(bestBefore ?? 0)
   /** Which pass of the save is the live one; an older pass bows out. */
   const savePass = useRef(0)
   /** The run this card is about, taken as it ended (see runIdFor). */
@@ -710,10 +714,10 @@ export function ScoreSaveCard({
   const seasonMoved = facts?.season && (facts.season.added > 0 || facts.season.levelUp.length > 0) ? facts.season : null
   // A racing daily's run (RaceReport): its medals as a ladder, its tickets and season in one row, its place in
   // another. Its best goes under the score, and its Standings line is left to the header. The racing dailies
-  // keep a million less the ms (their score.ts), and `previousBest` is today's best before this run.
+  // keep a million less the ms (their score.ts), and `bestBefore` is today's best before this run.
   const race =
     isRaceGame(gameSlug) && medalPace && medalFormat && score > 0
-      ? { game: gameSlug, paceMs: medalPace, format: medalFormat, ms: 1_000_000 - score, previousMs: previousBest && previousBest > 0 ? 1_000_000 - previousBest : null }
+      ? { game: gameSlug, paceMs: medalPace, format: medalFormat, ms: 1_000_000 - score, previousMs: bestBefore && bestBefore > 0 ? 1_000_000 - bestBefore : null }
       : null
   const raceSub = race ? raceSubWords(ribbon ? (kicker ?? title) : title, race.ms, race.previousMs, race.format) : null
   const racePlace = race ? (data?.lines.find((line) => line.id === 'board') ?? null) : null
