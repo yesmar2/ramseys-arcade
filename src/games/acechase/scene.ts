@@ -14,7 +14,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { isDarkTheme, THEME_EVENT } from '../../lib/theme'
-import { introTime, type GameState, type Phase, type PathPoint } from './game'
+import { introTime, type GameState, type Phase, type PathPoint, type Shot, type ShotEnd } from './game'
 import { BALL_R, BULL_R, RINGS, WALL_H, WALL_T, onGreen, slope, type Hole, type Spot, type Style, type Wall } from './physics'
 
 export type View = 'tee' | 'target' | 'top'
@@ -282,6 +282,8 @@ export class AceScene {
   private greenUniforms: Record<string, THREE.IUniform> | null = null
   private ghostLines: THREE.Line[] = []
   private ghostsShown: GameState['ghosts'] | null = null
+  private markers: THREE.Sprite[] = []
+  private markersShown: GameState['shots'] | null = null
 
   private hole: Hole | null = null
   private holeKey = -1
@@ -1415,7 +1417,7 @@ export class AceScene {
   private drawFlow(state: GameState, dt: number) {
     const f = this.flow
     if (!f) return
-    const show = this.showSlopes && state.phase === 'aim'
+    const show = this.showSlopes && (state.phase === 'aim' || state.phase === 'swing')
     f.marks.visible = show
     if (!show) return
     const h = state.hole
@@ -1492,6 +1494,39 @@ export class AceScene {
     }
     this.view = null
     this.onUserMove?.()
+  }
+
+  // ---------- markers: where each try stopped ----------
+
+  /**
+   * A numbered marker where each try came to rest, in the share's cold-to-hot colours (Ramsey, 2026-10-06:
+   * misses that say warmer or colder), so the green shows how the tries are closing in. A ball that was lost
+   * leaves none.
+   */
+  private showMarkers(shots: readonly Shot[]) {
+    for (const m of this.markers) {
+      this.scene.remove(m)
+      m.material.map?.dispose()
+      m.material.dispose()
+    }
+    this.markers = []
+    const newest = shots.length ? shots[shots.length - 1]!.n : 0
+    for (const shot of shots) {
+      if (!shot.at || shot.bull) continue
+      const sprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({ map: markerTexture(shot.n, shot.end), transparent: true, depthTest: false, fog: false }),
+      )
+      const [x, y, z] = shot.at
+      sprite.position.set(x, y + 0.42, z)
+      // The newest a little bigger; older ones fainter, so the latest reads first.
+      const size = shot.n === newest ? 0.62 : 0.48
+      sprite.scale.set(size, size, 1)
+      sprite.material.opacity = shot.n === newest ? 1 : 0.78
+      sprite.renderOrder = 4
+      this.scene.add(sprite)
+      this.markers.push(sprite)
+    }
+    this.markersShown = shots
   }
 
   // ---------- ghosts: the last few tries' paths ----------
@@ -1727,6 +1762,7 @@ export class AceScene {
       this.hole = h
       this.buildHole(h)
       this.showGhosts([])
+      this.showMarkers([])
       this.last.set(state.ball.x, state.ball.y, state.ball.z)
       this.ball.position.copy(this.last)
       // A new hole starts its phase afresh, even one that has the same name as the last hole's.
@@ -1737,6 +1773,7 @@ export class AceScene {
       this.phase = state.phase
     }
     if (state.ghosts !== this.ghostsShown) this.showGhosts(state.ghosts)
+    if (state.shots !== this.markersShown) this.showMarkers(state.shots)
     if (state.bulls !== this.bulls) {
       if (this.bulls >= 0 && this.greenUniforms) this.greenUniforms.flash!.value = 1
       this.bulls = state.bulls
@@ -1817,7 +1854,7 @@ export class AceScene {
   }
 
   private drawAim(state: GameState) {
-    const show = state.phase === 'aim'
+    const show = state.phase === 'aim' || state.phase === 'swing'
     this.dots.visible = this.tip.visible = show
     if (this.protractor) this.protractor.visible = show || state.phase === 'intro' || state.phase === 'return'
     if (!show) return
@@ -1861,4 +1898,37 @@ export class AceScene {
     this.renderer.dispose()
     this.renderer.forceContextLoss()
   }
+}
+
+/** A try's colour on the green, as its square in the share: cold to hot. */
+const MARK_COLOUR: Record<ShotEnd, string> = {
+  bull: '#f5b942',
+  inner: '#3ecf8e',
+  outer: '#f5c542',
+  near: '#f28c38',
+  off: '#e5534b',
+  lost: '#4aa8e8',
+}
+
+/** A round marker with the try's number on it. */
+function markerTexture(n: number, end: ShotEnd): THREE.CanvasTexture {
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = c.height = size
+  const g = c.getContext('2d')!
+  g.beginPath()
+  g.arc(size / 2, size / 2, size / 2 - 6, 0, Math.PI * 2)
+  g.fillStyle = MARK_COLOUR[end]
+  g.fill()
+  g.lineWidth = 8
+  g.strokeStyle = 'rgba(255,255,255,0.92)'
+  g.stroke()
+  g.fillStyle = '#16212b'
+  g.font = `800 ${n > 9 ? 56 : 66}px Outfit, system-ui, sans-serif`
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.fillText(String(n), size / 2, size / 2 + 4)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
 }

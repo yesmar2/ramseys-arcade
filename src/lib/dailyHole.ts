@@ -217,8 +217,24 @@ function previousDay(day: string): string {
 
 /* ---------------------------------------------------------- sharing --- */
 
-const END_CODE: Record<ShotEnd, string> = { bull: 'b', inner: 'i', outer: 'o', off: 'x', lost: 'l' }
-const CODE_EMOJI: Record<string, string> = { b: '🎯', i: '🟢', o: '🔵', x: '⚪', l: '💧' }
+const END_CODE: Record<ShotEnd, string> = { bull: 'b', inner: 'i', outer: 'o', near: 'n', off: 'x', lost: 'l' }
+/**
+ * Cold to hot, the way the tries closed in (Ramsey, 2026-10-06): far off red, near orange, the outer ring
+ * yellow, the inner green, then the bullseye. A share tells the chase without the settings that won it.
+ */
+const CODE_EMOJI: Record<string, string> = { b: '🎯', i: '🟩', o: '🟨', n: '🟧', x: '🟥', l: '💧' }
+
+/** A day's medal by its tries, as the racing dailies give theirs by time: gold in 1–2, silver in 3–4, bronze in 5–7. */
+export type HoleMedal = 'gold' | 'silver' | 'bronze'
+export const HOLE_MEDALS: readonly { medal: HoleMedal; most: number; emoji: string; name: string }[] = [
+  { medal: 'gold', most: 2, emoji: '🥇', name: 'Gold' },
+  { medal: 'silver', most: 4, emoji: '🥈', name: 'Silver' },
+  { medal: 'bronze', most: 7, emoji: '🥉', name: 'Bronze' },
+]
+
+export function holeMedal(tries: number): (typeof HOLE_MEDALS)[number] | null {
+  return tries > 0 ? (HOLE_MEDALS.find((m) => tries <= m.most) ?? null) : null
+}
 
 /** A day's tries as letters, one a try: the API keeps them, and the share line draws them. */
 export function patternOf(shots: readonly Shot[]): string {
@@ -231,7 +247,7 @@ export function shareText(hole: TodaysHole, tries: number, pattern: string): str
   const shown = marks.length > 24 ? [...marks.slice(0, 23), '…', marks[marks.length - 1]!] : marks
   return [
     `Ace Chase · Today's Hole #${hole.n} ${PLACE_EMOJI[hole.pick.style]}`,
-    `${hole.def.name}: bullseye in ${tries} ${tries === 1 ? 'try' : 'tries'}`,
+    `${hole.def.name}: ${holeMedal(tries) ? `${holeMedal(tries)!.emoji} ` : ''}bullseye in ${tries} ${tries === 1 ? 'try' : 'tries'}`,
     shown.join(''),
   ].join('\n')
 }

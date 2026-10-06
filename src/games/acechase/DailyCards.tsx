@@ -20,6 +20,8 @@ import {
   PLACE_NAME,
   claimDay,
   dayResult,
+  HOLE_MEDALS,
+  holeMedal,
   msUntilNextHole,
   shareText,
   syncDaily,
@@ -56,7 +58,7 @@ function NextHole() {
 }
 
 
-const END_NAME: Record<string, string> = { b: 'bullseye', i: 'inner ring', o: 'outer ring', x: 'off the rings', l: 'lost' }
+const END_NAME: Record<string, string> = { b: 'bullseye', i: 'inner ring', o: 'outer ring', n: 'near', x: 'further off', l: 'lost' }
 
 /** The day's tries as marks, one a try: where each ended. */
 function Pattern({ pattern }: { pattern: string }) {
@@ -70,6 +72,30 @@ function Pattern({ pattern }: { pattern: string }) {
         </span>
       ))}
     </div>
+  )
+}
+
+/**
+ * The day's medals by tries (lib/dailyHole HOLE_MEDALS: gold in 1–2, silver in 3–4, bronze in 5–7), the one
+ * this result took lit, as the racing dailies show theirs by time.
+ */
+function Medals({ tries }: { tries: number }) {
+  const won = holeMedal(tries)
+  return (
+    <ol className="acechase-medals" aria-label={won ? `${won.name} medal` : 'No medal today'}>
+      {HOLE_MEDALS.map((m, i) => {
+        const from = i === 0 ? 1 : HOLE_MEDALS[i - 1]!.most + 1
+        return (
+          <li key={m.medal} className={`acechase-medals__m acechase-medals__m--${m.medal}${won?.medal === m.medal ? ' is-won' : ''}`}>
+            <span className="acechase-medals__disc" aria-hidden="true">
+              {m.emoji}
+            </span>
+            <b>{m.name}</b>
+            <span>{from === m.most ? `${m.most} tries` : `${from}–${m.most} tries`}</span>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -425,6 +451,7 @@ export function DailyResultCard({
       </div>
       {practice ? <RunLabel kind="practice" slug={SLUG} className="acechase-daily__label" /> : null}
       {shown?.pattern ? <Pattern pattern={shown.pattern} /> : null}
+      {shown && !practice ? <Medals tries={shown.tries} /> : null}
       <div className="game-pause-meta">
         {/* Ace Chase is just for fun (data/games.ts Game.ranked): how everyone did, and no place for anyone. */}
         <Everyone server={server} />

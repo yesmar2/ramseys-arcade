@@ -24,7 +24,7 @@ import {
   type Spot,
 } from './physics'
 
-export type Phase = 'menu' | 'intro' | 'aim' | 'roll' | 'missed' | 'return' | 'holed' | 'gameover'
+export type Phase = 'menu' | 'intro' | 'aim' | 'swing' | 'roll' | 'missed' | 'return' | 'holed' | 'gameover'
 
 /** The flyover at the start of each hole, unless it's skipped. */
 export const INTRO_TIME = 6
@@ -36,19 +36,50 @@ const MISSED_TIME = 1.4
 export const RETURN_TIME = 0.6
 /** How long a bullseye is celebrated before the day's result. */
 export const HOLED_TIME = 2.8
+/**
+ * The swing (Ramsey, 2026-10-06: "a swing meter or something"): Putt sets a needle swinging round the power
+ * on the dial, SWING either side, and a second press strikes the ball at wherever the needle is. Stopped
+ * dead on the mark, the shot is the dial's; a little early or late, a little soft or firm. So a hole's two
+ * numbers aren't the whole answer, and they can't be handed on as one. The needle starts at the soft end,
+ * so a press straight after Putt isn't the dial's power for free; it takes SWING_PERIOD to go there and back.
+ */
+export const SWING = 3
+export const SWING_PERIOD = 2.4
+
+/** Where the needle is, −1 (soft end) to 1 (firm end), this far into the swing. */
+export function swingAt(phaseTime: number): number {
+  const u = (phaseTime / SWING_PERIOD) % 1
+  return u < 0.5 ? -1 + 4 * u : 3 - 4 * u
+}
+
+/** The power the ball is struck with, at this point of the swing: to the tenth. */
+export function swingPower(state: Pick<GameState, 'power' | 'phaseTime'>): number {
+  return clamp(Math.round((state.power + SWING * swingAt(state.phaseTime)) * 10) / 10, 0, 100)
+}
+
+/** A try that stopped this near the target (metres), off the rings, is "near": the share's warmer squares. */
+export const NEAR = 3
+
 /** The dials as a hole starts. */
 export const START_POWER = 60
 export const START_ANGLE = 0
 
 export type PathPoint = readonly [number, number, number]
 
-/** Where a try ended: on the bull, in the rings, off them, or lost. */
-export type ShotEnd = 'bull' | 'inner' | 'outer' | 'off' | 'lost'
+/** Where a try ended: on the bull, in the rings, near them, further off, or lost. */
+export type ShotEnd = 'bull' | 'inner' | 'outer' | 'near' | 'off' | 'lost'
 
 export type Shot = {
   n: number
+  /** The power the ball was struck with (the swing's). */
   power: number
+  /** The power on the dial, that the swing went round. Absent on tries from before the swing. */
+  aimed?: number
   angle: number
+  /** Where the ball came to rest; absent when it was lost, or on tries from before. */
+  at?: PathPoint
+  /** How far from the middle of the target it stopped, in metres; absent when lost. */
+  dist?: number
   /** Where it ended, in words. */
   what: string
   bull: boolean
@@ -93,6 +124,8 @@ export type GameState = {
   holeKey: number
   /** Bumped at each bullseye, so the scene can light the target up. */
   bulls: number
+  /** The power the shot in play was struck with. */
+  struck: number
 }
 
 /** A target for a hole, from the spots it offers. */
@@ -151,6 +184,7 @@ export function createInitialState(def: HoleDef, mode: Mode = 'daily', random: (
     from: null,
     holeKey: ++keys,
     bulls: 0,
+    struck: START_POWER,
   }
 }
 
@@ -189,16 +223,30 @@ export function setAngle(state: GameState, v: number): GameState {
   return angle === state.angle ? state : { ...state, angle: angle === 0 ? 0 : angle }
 }
 
-/** Putt with the dials as they are. */
+/** Putt: the needle starts its swing round the power on the dial. */
 export function putt(state: GameState): GameState {
   if (state.phase !== 'aim') return state
-  const ball = launch(state.hole, state.power, state.angle)
-  sfx('zip', state.power < 50 ? 1 : 0)
-  if (state.power >= 50) sfx('whoosh')
+  sfx('tap', 1)
+  return { ...state, phase: 'swing', phaseTime: 0 }
+}
+
+/** The second press: strike the ball with the power the needle is at. */
+export function strike(state: GameState): GameState {
+  if (state.phase !== 'swing') return state
+  return strikeWith(state, swingPower(state))
+}
+
+/** Strike the ball at a given power, the dial's own if none (a script's play-test, straight from the tee). */
+export function strikeWith(state: GameState, power = state.power): GameState {
+  if (state.phase !== 'aim' && state.phase !== 'swing') return state
+  const ball = launch(state.hole, power, state.angle)
+  sfx('zip', power < 50 ? 1 : 0)
+  if (power >= 50) sfx('whoosh')
   return {
     ...state,
     phase: 'roll',
     phaseTime: 0,
+    struck: power,
     tries: state.tries + 1,
     ball,
     path: [[ball.x, ball.y, ball.z]],
@@ -292,7 +340,14 @@ function endOf(s: Pick<GameState, 'ball' | 'hole'>): ShotEnd {
   if (b.done === 'bull') return 'bull'
   if (b.done === 'splash' || b.done === 'out') return 'lost'
   const d = Math.hypot(b.x - s.hole.target.x, b.z - s.hole.target.z)
-  return d < RINGS[1] ? 'inner' : d < RINGS[2] ? 'outer' : 'off'
+  return d < RINGS[1] ? 'inner' : d < RINGS[2] ? 'outer' : d < NEAR ? 'near' : 'off'
+}
+
+/** Where the ball came to rest, and how far that is from the target: nothing for a ball that was lost. */
+function restOf(s: Pick<GameState, 'ball' | 'hole'>): { at?: PathPoint; dist?: number } {
+  const b = s.ball
+  if (b.done === 'splash' || b.done === 'out') return {}
+  return { at: [b.x, b.y, b.z], dist: Math.round(Math.hypot(b.x - s.hole.target.x, b.z - s.hole.target.z) * 100) / 100 }
 }
 
 /** The shot in play has stopped, or gone: a bullseye, or a try to learn from. */
@@ -308,7 +363,7 @@ function finishShot(s: GameState): GameState {
       phaseTime: 0,
       path,
       ghosts,
-      shots: [...s.shots, { n: s.tries, power: s.power, angle: s.angle, what: 'Bullseye!', bull: true, end: 'bull' }],
+      shots: [...s.shots, { n: s.tries, power: s.struck, aimed: s.power, angle: s.angle, ...restOf(s), what: 'Bullseye!', bull: true, end: 'bull' }],
       bulls: s.bulls + 1,
     }
   }
@@ -319,7 +374,7 @@ function finishShot(s: GameState): GameState {
     phaseTime: 0,
     path,
     ghosts,
-    shots: [...s.shots, { n: s.tries, power: s.power, angle: s.angle, what: describe(s), bull: false, end: endOf(s) }],
+    shots: [...s.shots, { n: s.tries, power: s.struck, aimed: s.power, angle: s.angle, ...restOf(s), what: describe(s), bull: false, end: endOf(s) }],
   }
 }
 

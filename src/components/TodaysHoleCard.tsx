@@ -171,9 +171,10 @@ export function TodaysHoleCard() {
 const ENDS: { code: string; name: string; colour: string }[] = [
   { code: 'b', name: 'Bullseye', colour: 'var(--gh-accent, #2eb8a0)' },
   { code: 'i', name: 'Inner ring', colour: '#3ecf8e' },
-  { code: 'o', name: 'Outer ring', colour: '#4aa8e8' },
-  { code: 'x', name: 'Off the rings', colour: 'rgba(var(--ink-rgb), 0.35)' },
-  { code: 'l', name: 'Lost', colour: '#1f5577' },
+  { code: 'o', name: 'Outer ring', colour: '#f5c542' },
+  { code: 'n', name: 'Near', colour: '#f28c38' },
+  { code: 'x', name: 'Further off', colour: '#e5534b' },
+  { code: 'l', name: 'Lost', colour: '#4aa8e8' },
 ]
 
 /** A day's tries as dots, one a try, where each ended. */

@@ -287,16 +287,17 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     goal: 'Stop the ball on today’s bullseye in as few tries as you can. A new hole comes every day at midnight, New York time.',
     controls: [
       { does: 'Set the shot', touch: 'Tap − and +, or type', keys: '↑ ↓ power · ← → angle' },
-      { does: 'Putt', touch: 'Tap Putt', keys: 'Space' },
+      { does: 'Swing', touch: 'Tap Putt, then Strike! on the mark', keys: 'Space, then Space on the mark' },
       { does: 'Look around', touch: 'Drag · pinch · two fingers', keys: 'Drag · scroll · right-drag' },
       { does: 'Read the green', touch: 'Double-tap a spot · Slopes', keys: 'Double-click a spot · Slopes' },
     ],
     scores: [
       { what: 'Your score', pts: 'the tries your first bullseye took', sub: 'the fewer the better' },
       { what: 'Every try', pts: 'counts', sub: 'even if you leave and come back' },
+      { what: 'Medals', pts: 'gold in 1–2 tries', sub: 'silver in 3–4, bronze in 5–7' },
     ],
     ends: 'At your first bullseye. After that, play it again for practice; that doesn’t count.',
-    tip: 'Each miss says how far off it was. Double-tap the green, or turn on Slopes, to see which way it runs.',
+    tip: 'Putt swings a needle round your power: strike when it’s on the middle mark to hit that power, a little either side to hit softer or firmer. Each miss leaves a numbered marker where it stopped and says whether you’re getting warmer. Double-tap the green, or turn on Slopes, to see which way it runs.',
     // Ace Chase is just for fun (data/games.ts Game.ranked): a past hole keeps no board, so it's practice.
     counts: [
       {

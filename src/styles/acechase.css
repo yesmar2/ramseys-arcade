@@ -345,6 +345,97 @@
   font-weight: 600;
 }
 
+/* The swing under way: the button strikes, and says so. */
+.acechase__putt.is-swing {
+  background: var(--ace-gold, #f5b942);
+  color: #2a1d05;
+  box-shadow: 0 10px 24px rgba(245, 185, 66, 0.35);
+}
+
+/* The swing meter: the needle runs round the power on the dial; stop it on the middle mark to hit that power. */
+.acechase__meter {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font: 700 0.75rem/1 var(--font-display);
+  color: rgba(var(--ink-rgb), 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.acechase__meter-track {
+  position: relative;
+  flex: 1;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e5534b 0%, #f5c542 35%, #3ecf8e 50%, #f5c542 65%, #e5534b 100%);
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+.acechase__meter.is-live .acechase__meter-track {
+  opacity: 1;
+}
+
+.acechase__meter-mark {
+  position: absolute;
+  left: 50%;
+  top: -0.3rem;
+  bottom: -0.3rem;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.acechase__meter-needle {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 0.95rem;
+  height: 0.95rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 2px #16212b,
+    0 4px 10px rgba(0, 0, 0, 0.35);
+  visibility: hidden;
+}
+
+.acechase__meter.is-live .acechase__meter-needle {
+  visibility: visible;
+}
+
+.acechase__meter-reading {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.4rem;
+  background: #16212b;
+  color: #fff;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+/* Under a miss: warmer or colder than the closest try before it. */
+.acechase__warmth {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.acechase__warmth--warm {
+  color: #e8782a;
+}
+
+.acechase__warmth--cold {
+  color: #4a90c8;
+}
+
 .acechase__putt:disabled {
   background: var(--ace-fill);
   color: rgba(var(--ink-rgb), 0.5);
@@ -577,7 +668,51 @@
   align-self: center;
 }
 
-/* One mark a try, the colours of the share line: off the rings, outer, inner, lost, and the bull. */
+/* The day's medals by tries: the one this result took lit, the others quiet. */
+.acechase-medals {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.acechase-medals__m {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.5rem 0.3rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  font-size: 0.78rem;
+  color: rgba(var(--ink-rgb), 0.55);
+  opacity: 0.6;
+}
+
+.acechase-medals__m b {
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
+.acechase-medals__disc {
+  font-size: 1.4rem;
+  line-height: 1;
+  filter: grayscale(1);
+}
+
+.acechase-medals__m.is-won {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--panel-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--panel-accent) 12%, transparent);
+}
+
+.acechase-medals__m.is-won .acechase-medals__disc {
+  filter: none;
+}
+
+/* One mark a try, the colours of the share line, cold to hot: further off, near, outer, inner, the bull; lost is water. */
 .acechase-daily__pattern {
   display: flex;
   flex-wrap: wrap;
@@ -593,8 +728,16 @@
   box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.18);
 }
 
+.acechase-daily__mark--x {
+  background: #e5534b;
+}
+
+.acechase-daily__mark--n {
+  background: #f28c38;
+}
+
 .acechase-daily__mark--o {
-  background: #4aa8e8;
+  background: #f5c542;
 }
 
 .acechase-daily__mark--i {
@@ -602,7 +745,7 @@
 }
 
 .acechase-daily__mark--l {
-  background: #1f5577;
+  background: #4aa8e8;
 }
 
 .acechase-daily__mark--b {

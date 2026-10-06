@@ -42,10 +42,16 @@ import {
   setPower,
   skipIntro,
   startGame,
+  strike,
+  strikeWith,
+  SWING,
+  swingAt,
+  swingPower,
   tick,
   toSnapshot,
   type GameState,
   type Phase,
+  type Shot,
   type Snapshot,
 } from './game'
 import { DailyResultCard, DailyStartCard } from './DailyCards'
@@ -56,7 +62,23 @@ import { AceScene, type View } from './scene'
 import { rememberPlayed } from '../../lib/lastPlayed'
 
 const SLUG = 'acechase'
-const IN_RUN = new Set<Phase>(['intro', 'aim', 'roll', 'missed', 'return', 'holed'])
+
+/**
+ * Warmer or colder (Ramsey, 2026-10-06): how the latest miss compares with the closest before it, so each try
+ * is a clue. Nothing to compare on the first try, or when either was lost.
+ */
+function warmth(shots: readonly Shot[]): { text: string; tone: 'warm' | 'cold' } | null {
+  const last = shots[shots.length - 1]
+  if (!last || last.bull || last.dist == null) return null
+  const before = shots.slice(0, -1).filter((t) => t.dist != null)
+  if (!before.length) return null
+  const best = before.reduce((a, b) => (b.dist! < a.dist! ? b : a))
+  const gap = best.dist! - last.dist!
+  if (gap > 0.05) return { text: `Closest yet · ${gap.toFixed(1)} m closer than try ${best.n}`, tone: 'warm' }
+  if (gap < -0.05) return { text: `Colder · try ${best.n} was ${Math.abs(gap).toFixed(1)} m closer`, tone: 'cold' }
+  return { text: `As close as try ${best.n}`, tone: 'warm' }
+}
+const IN_RUN = new Set<Phase>(['intro', 'aim', 'swing', 'roll', 'missed', 'return', 'holed'])
 /** While these are on, the panels step aside for the view. */
 const CINEMA = new Set<Phase>(['menu', 'intro', 'holed', 'gameover'])
 const VIEWS: readonly [View, string][] = [
@@ -282,6 +304,9 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
   const sceneRef = useRef<AceScene | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const dockRef = useRef<HTMLDivElement>(null)
+  /** The swing's needle and its reading, moved every frame from the game's own clock. */
+  const needleRef = useRef<HTMLSpanElement>(null)
+  const readingRef = useRef<HTMLSpanElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current!))
   const [view, setView] = useState<View | null>('tee')
   const [slopes, setSlopes] = useState(slopesChosen)
@@ -375,6 +400,11 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
         uiAcc = 0
         setUi(toSnapshot(s))
       }
+      if (s.phase === 'swing') {
+        const at = swingAt(s.phaseTime)
+        if (needleRef.current) needleRef.current.style.left = `${((at + 1) / 2) * 100}%`
+        if (readingRef.current) readingRef.current.textContent = swingPower(s).toFixed(1)
+      }
       scene.frame(s, pausedRef.current ? 0 : raw)
       raf = requestAnimationFrame(loop)
     }
@@ -431,7 +461,7 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     w.__acechaseScene = () => sceneRef.current
     w.__acechasePutt = (power, angle, instant = true) => {
       let s = skipIntro(stateRef.current!)
-      s = putt(setAngle(setPower(s, power), angle))
+      s = strikeWith(setAngle(setPower(s, power), angle))
       stateRef.current = instant ? fastForward(s) : s
     }
     w.__acechaseSkip = () => {
@@ -518,11 +548,12 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     if (pausedRef.current || saveOpenRef.current) return
     const s = stateRef.current!
     if (s.phase === 'roll') change(fastForward)
-    else if (s.phase === 'aim') {
+    else if (s.phase === 'swing') {
       // Ace Chase opens no run (runSession.ts), so its putts are what count as having played it.
       rememberPlayed('acechase')
-      change(putt)
-    }
+      haptic('hit')
+      change(strike)
+    } else if (s.phase === 'aim') change(putt)
   }
   const pickView = (v: View) => {
     if (stateRef.current!.phase !== 'aim') return
@@ -614,6 +645,7 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
 
   const last = ui.shots[ui.shots.length - 1]
   const showMiss = (ui.phase === 'missed' || ui.phase === 'return') && last && !last.bull
+  const warm = showMiss ? warmth(ui.shots) : null
   const cinema = CINEMA.has(ui.phase)
   const touch = touchScreen()
 
@@ -716,7 +748,9 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
                 <div className="acechase__log" aria-live="polite">
                   {ui.shots.slice(-4).map((shot, i, all) => (
                     <span key={shot.n} className={`${i === all.length - 1 ? 'is-last' : ''}${shot.bull ? ' is-bull' : ''}`}>
-                      #{shot.n} · <b>{shot.power.toFixed(1)}</b> · <b>{signed(shot.angle)}°</b> → {shot.what}
+                      #{shot.n} · <b>{shot.power.toFixed(1)}</b>
+                      {shot.aimed != null && Math.abs(shot.aimed - shot.power) >= 0.05 ? <small> (dial {shot.aimed.toFixed(1)})</small> : null} ·{' '}
+                      <b>{signed(shot.angle)}°</b> → {shot.what}
                     </span>
                   ))}
                 </div>
@@ -743,12 +777,25 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
                   />
                   <button
                     type="button"
-                    className={`acechase__putt${ui.phase === 'roll' ? ' is-skip' : ''}`}
-                    disabled={!(ui.phase === 'aim' || ui.phase === 'roll') || paused}
+                    className={`acechase__putt${ui.phase === 'roll' ? ' is-skip' : ''}${ui.phase === 'swing' ? ' is-swing' : ''}`}
+                    disabled={!(ui.phase === 'aim' || ui.phase === 'swing' || ui.phase === 'roll') || paused}
                     onClick={shoot}
                   >
-                    {ui.phase === 'roll' ? 'Skip ahead' : 'Putt'}
+                    {ui.phase === 'roll' ? 'Skip ahead' : ui.phase === 'swing' ? 'Strike!' : 'Putt'}
                   </button>
+                  {/* The swing: the needle runs round the dial's power, SWING either side; stop it on the mark. */}
+                  <div className={`acechase__meter${ui.phase === 'swing' ? ' is-live' : ''}`} aria-hidden="true">
+                    <span className="acechase__meter-end">−{SWING}</span>
+                    <span className="acechase__meter-track">
+                      <span className="acechase__meter-mark" />
+                      <span ref={needleRef} className="acechase__meter-needle">
+                        <span ref={readingRef} className="acechase__meter-reading">
+                          {ui.power.toFixed(1)}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="acechase__meter-end">+{SWING}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -756,6 +803,7 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
             {showMiss ? (
               <div className="acechase__toast" role="status">
                 Try {last.n}: {last.what}
+                {warm ? <span className={`acechase__warmth acechase__warmth--${warm.tone}`}>{warm.text}</span> : null}
               </div>
             ) : hint && ui.phase === 'aim' ? (
               <div className="acechase__toast acechase__toast--hint" role="status">
