@@ -15,6 +15,7 @@ import { ordinal } from '../lib/profileMath'
 import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import type { TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
+import { AlsoToday } from './AlsoToday'
 import { DailyKindTag } from './DailyKindTag'
 import { GamePreview } from './GamePreview'
 import { FlameIcon, StarIcon } from './TodayChip'
@@ -229,6 +230,8 @@ export function HomeToday() {
     done,
   )
   if (!total) return null
+  // Ranked or just for fun, on each card only while the row has both (a day before the puzzles came off the ticket).
+  const mixed = punches.some((p) => isRankedGame(p.slug)) && punches.some((p) => !isRankedGame(p.slug))
   // The streak is the API's, once it has answered; before then it isn't said, as on the chip.
   const said = signedIn && !ticket.server ? null : streakWords(ticket, signedIn)
   const next = (
@@ -270,10 +273,12 @@ export function HomeToday() {
           <li key={p.key}>
             <DayCard p={p} day={day} standing={standings ? standings.get(p.slug) : undefined} asking={standings === null} />
             {/* Ranked or just for fun, on the picture: a button of its own, so it sits over the card's link, not in it. */}
-            <DailyKindTag slug={p.slug} look="pill" className="home-day__kind" />
+            {mixed ? <DailyKindTag slug={p.slug} look="pill" className="home-day__kind" /> : null}
           </li>
         ))}
       </ul>
+      {/* The day's puzzles, just for fun, in a slim line under the races (AlsoToday.tsx). */}
+      <AlsoToday punches={ticket.also} compact />
       {/* On a phone the time to the next dailies comes under the cards (homeToday.css), and the one over them goes. */}
       <p className="home-day__next home-day__next--under">{next}</p>
     </section>

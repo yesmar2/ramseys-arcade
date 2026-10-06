@@ -11,9 +11,10 @@ import { OUTFIT } from '../api/_og/fonts.js'
  *
  * Every daily's Share sends that day's link. Its page is the site's shell with the day's title, words and
  * card stamped in (the app opens the Today page, useHashRoute.ts), and its card is a picture of the
- * day: the hole drawn from above, the track, and the five bugs wanted, the same for everyone that day, and
- * from the days they join the ticket, the day's glasses, empty, and the day's course from above. Both are made here, at build, for
- * the days either side of it (a link is sent the day it's played, and unfurled then), so a link costs
+ * day's ticket, the same for everyone that day: since 2026-10-06 the four races (the track, the marble's
+ * course, the cave and the hills), and before then the hole, the bugs wanted and the glasses (empty) too, as
+ * each joined. Both are made here, at build, for the days either side of it (a link is sent the day it's
+ * played, and unfurled then), so a link costs
  * nothing to open: no function, no API, nothing to wake. A day outside the window falls back to the shell
  * and the site's own card.
  */
@@ -349,26 +350,37 @@ function faces(bugs, size) {
 
 /** The day's card, in the measures its dailies take (THREE to SEVEN). */
 function card(day, size) {
-  const panels = [
-    panel(size, {
-      kicker: `ACE CHASE · HOLE #${day.hole.n}`,
-      accent: HOLE_ACCENT,
-      name: day.hole.name,
-      picture: holePicture(day.hole.layers, size),
-    }),
-    panel(size, {
-      kicker: `HOT LAP · TRACK #${day.track.n}`,
-      accent: TRACK_ACCENT,
-      name: day.track.name,
-      picture: h('img', { src: day.track.picture, width: size.picW, height: size.picH }),
-    }),
-    panel(size, {
-      kicker: `FIND THE BUG · WANTED #${day.wanted.n}`,
-      accent: BUG_ACCENT,
-      name: day.wanted.names,
-      picture: faces(day.wanted.faces, size),
-    }),
-  ]
+  const panels = []
+  if (day.hole) {
+    panels.push(
+      panel(size, {
+        kicker: `ACE CHASE · HOLE #${day.hole.n}`,
+        accent: HOLE_ACCENT,
+        name: day.hole.name,
+        picture: holePicture(day.hole.layers, size),
+      }),
+    )
+  }
+  if (day.track) {
+    panels.push(
+      panel(size, {
+        kicker: `HOT LAP · TRACK #${day.track.n}`,
+        accent: TRACK_ACCENT,
+        name: day.track.name,
+        picture: h('img', { src: day.track.picture, width: size.picW, height: size.picH }),
+      }),
+    )
+  }
+  if (day.wanted) {
+    panels.push(
+      panel(size, {
+        kicker: `FIND THE BUG · WANTED #${day.wanted.n}`,
+        accent: BUG_ACCENT,
+        name: day.wanted.names,
+        picture: faces(day.wanted.faces, size),
+      }),
+    )
+  }
   if (day.pour) {
     panels.push(
       panel(size, {
@@ -454,24 +466,20 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { buildTrack } = await server.ssrLoadModule('/src/games/hotlap/sim.ts')
   const { trackPlan } = await server.ssrLoadModule('/src/games/hotlap/trackPlan.ts')
   const { dayNumber, dayWanted, wantedNames } = await server.ssrLoadModule('/src/games/findbug/daily.ts')
-  const { TODAY_FROM, dayNumber: pourNumber } = await server.ssrLoadModule('/src/games/halffull/daily.ts')
+  const { dayNumber: pourNumber } = await server.ssrLoadModule('/src/games/halffull/daily.ts')
   const { dayPlan } = await server.ssrLoadModule('/src/games/halffull/plan.ts')
   const { glassNames, pourPlanSvg } = await server.ssrLoadModule('/src/games/halffull/planSvg.ts')
-  const { dailyCourse, laidNumber, TODAY_FROM: COURSE_FROM } = await server.ssrLoadModule('/src/games/marblerun/daily.ts')
+  const { dailyCourse, laidNumber } = await server.ssrLoadModule('/src/games/marblerun/daily.ts')
   const { plannedCourse, point } = await server.ssrLoadModule('/src/games/marblerun/sim.ts')
-  const { dailyCave, laidNumber: caveLaid, TODAY_FROM: CAVE_FROM } = await server.ssrLoadModule('/src/games/lander/daily.ts')
+  const { dailyCave, laidNumber: caveLaid } = await server.ssrLoadModule('/src/games/lander/daily.ts')
   const { plannedCave } = await server.ssrLoadModule('/src/games/lander/sim.ts')
-  const { dailyHills, laidNumber: hillsLaid, TODAY_FROM: HILLS_FROM } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
+  const { dailyHills, laidNumber: hillsLaid } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
   const { heightAt, hillsSpan, plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
   const { mixColor } = await server.ssrLoadModule('/src/lib/color.ts')
-  const { isGameListed } = await server.ssrLoadModule('/src/data/games.ts')
   const { gamePlayHref } = await server.ssrLoadModule('/src/hooks/useHashRoute.ts')
-  // Today's Pour, Today's Course, Today's Cave and Today's Hills are on a day's card from the days they join
-  // the ticket, as long as their games are listed (lib/today.ts).
-  const pourFrom = TODAY_FROM && isGameListed('halffull') ? TODAY_FROM : null
-  const courseFrom = COURSE_FROM && isGameListed('marblerun') ? COURSE_FROM : null
-  const caveFrom = CAVE_FROM && isGameListed('lander') ? CAVE_FROM : null
-  const hillsFrom = HILLS_FROM && isGameListed('swoop') ? HILLS_FROM : null
+  // A day's card is that day's ticket (lib/today.ts liveDailies): each daily from the day it joined, while its
+  // game is listed, and the puzzles until they came off it, when the Dailies became the four races.
+  const { liveDailies } = await server.ssrLoadModule('/src/lib/today.ts')
 
   const fonts = OUTFIT.map(({ weight, base64 }) => ({ name: 'Outfit', data: Buffer.from(base64, 'base64'), weight, style: 'normal' }))
   const faceOf = new Map()
@@ -489,45 +497,37 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   let made = 0
   let drawn = 0
   for (let day = from; day <= to; day = addDays(day, 1)) {
-    const hole = todaysHole(day)
-    const spot = hole.def.spots[0]
-    const track = dailyTrack(day)
-    const wanted = dayWanted(day)
-    const poured = pourFrom != null && day >= pourFrom
-    const rolled = courseFrom != null && day >= courseFrom
-    const flown = caveFrom != null && day >= caveFrom
-    const swooped = hillsFrom != null && day >= hillsFrom
-    const size = SIZES[3 + (poured ? 1 : 0) + (rolled ? 1 : 0) + (flown ? 1 : 0) + (swooped ? 1 : 0)]
-    const info = {
-      words: dayWords(day),
-      hole: {
-        n: hole.n,
-        name: hole.def.name,
-        layers: holePlanLayers(hole.def, spot, size.picW, size.picH, pngDataUrl),
-      },
-      track: {
-        n: track.n,
-        name: track.name,
-        picture: svgUrl(trackSvg(trackPlan(buildTrack(track.pieces, { heading: track.shape.heading })), size)),
-      },
-      wanted: { n: dayNumber(day), names: wantedNames(wanted), faces: wanted.map((w) => face(w.id)) },
+    const live = new Set(liveDailies(day).map((d) => d.key))
+    const size = SIZES[live.size]
+    const info = { words: dayWords(day) }
+    if (live.has('hole')) {
+      const hole = todaysHole(day)
+      info.hole = { n: hole.n, name: hole.def.name, layers: holePlanLayers(hole.def, hole.def.spots[0], size.picW, size.picH, pngDataUrl) }
     }
-    if (poured) {
+    if (live.has('track')) {
+      const track = dailyTrack(day)
+      info.track = { n: track.n, name: track.name, picture: svgUrl(trackSvg(trackPlan(buildTrack(track.pieces, { heading: track.shape.heading })), size)) }
+    }
+    if (live.has('wanted')) {
+      const wanted = dayWanted(day)
+      info.wanted = { n: dayNumber(day), names: wantedNames(wanted), faces: wanted.map((w) => face(w.id)) }
+    }
+    if (live.has('pour')) {
       // The day's glasses, empty: nothing on the card shows where half is.
       const plan = dayPlan(day)
       info.pour = { n: pourNumber(day), names: glassNames(plan), picture: svgUrl(pourPlanSvg(plan, size.picW, size.picH)) }
     }
-    if (rolled) {
+    if (live.has('course')) {
       const daily = dailyCourse(day)
       const course = plannedCourse(laidNumber(daily), daily.attempt)
       info.course = { n: daily.n, name: daily.name, picture: svgUrl(courseSvg(course, point, size)) }
     }
-    if (flown) {
+    if (live.has('cave')) {
       const daily = dailyCave(day)
       const cave = plannedCave(caveLaid(daily), daily.attempt)
       info.cave = { n: daily.n, name: daily.name, picture: svgUrl(caveSvg(cave, size)) }
     }
-    if (swooped) {
+    if (live.has('hills')) {
       const daily = dailyHills(day)
       const hills = plannedHills(hillsLaid(daily), daily.attempt)
       info.hills = { n: daily.n, name: daily.name, picture: svgUrl(hillsSvg(hills, heightAt, hillsSpan, mixColor, size)) }
@@ -545,16 +545,20 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
     writeFileSync(join(dist, 'og/today', `${day}.png`), png)
 
     const title = `Today on ${appName} · ${info.words}`
-    const dailies = [
-      `Today’s Hole #${info.hole.n}, ${info.hole.name}`,
-      `Today’s Track #${info.track.n}, ${info.track.name}`,
-      `Today’s Wanted #${info.wanted.n}: ${info.wanted.names}`,
-    ]
-    const links = [
-      { href: gamePlayHref('acechase'), label: `Play Today’s Hole #${info.hole.n}` },
-      { href: gamePlayHref('hotlap'), label: `Race Today’s Track #${info.track.n}` },
-      { href: gamePlayHref('findbug'), label: `Find Today’s Wanted #${info.wanted.n}` },
-    ]
+    const dailies = []
+    const links = []
+    if (info.hole) {
+      dailies.push(`Today’s Hole #${info.hole.n}, ${info.hole.name}`)
+      links.push({ href: gamePlayHref('acechase'), label: `Play Today’s Hole #${info.hole.n}` })
+    }
+    if (info.track) {
+      dailies.push(`Today’s Track #${info.track.n}, ${info.track.name}`)
+      links.push({ href: gamePlayHref('hotlap'), label: `Race Today’s Track #${info.track.n}` })
+    }
+    if (info.wanted) {
+      dailies.push(`Today’s Wanted #${info.wanted.n}: ${info.wanted.names}`)
+      links.push({ href: gamePlayHref('findbug'), label: `Find Today’s Wanted #${info.wanted.n}` })
+    }
     if (info.pour) {
       dailies.push(`Today’s Pour #${info.pour.n}: ${info.pour.names}`)
       links.push({ href: gamePlayHref('halffull'), label: `Pour Today’s Pour #${info.pour.n}` })

@@ -12,11 +12,12 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * The Today set, which players know as the Dailies (since 2026-09-30): the day's dailies on one punch card
  * (components/TodayCard.tsx, on the Dailies page at /dailies, pages/TodayPage.tsx, with a row of it on the
  * home page, HomeToday.tsx), and a streak of days kept, shown in the header too (components/TodayChip.tsx,
- * the way to the page). The dailies are Ace Chase's Today's Hole, Hot Lap's Today's Track and Find the
- * Bug's Today's Wanted, and Half Full's Today's Pour, Marble Run's Today's Course, Lander's Today's Cave and
- * Swoop's Today's Hills from the days they join (TODAY_DAILIES). Any three of a day's live dailies keep the
- * streak; with more than three live, punching every one is a Full ticket. Today's event, the One Shot and the bug hunt are bonus punches that don't
- * count.
+ * the way to the page). Since 2026-10-06 the dailies on it are the races: Hot Lap's Today's Track, Marble
+ * Run's Today's Course, Lander's Today's Cave and Swoop's Today's Hills. Any two of them keep the streak, and
+ * all four is a Full ticket. The puzzles (Ace Chase's Today's Hole, Find the Bug's Today's Wanted, Half Full's
+ * Today's Pour) were on it until then, when any three of a day's dailies kept it; now they're under the ticket
+ * as "Also today", just for fun (TODAY_DAILIES, alsoDailies). Today's event, the One Shot and the bug hunt are
+ * bonus punches that don't count.
  *
  * The API keeps the streak for a signed-in account (GET /today, its today.ts), and settles its rewards
  * when asked. This module holds the API's word and asks again whenever something may have changed it:
@@ -40,28 +41,48 @@ export type TodayDaily = {
   better: 'lower' | 'higher'
   /** The first day it's on the ticket, YYYY-MM-DD: '' for from the start, null for not yet (as the API's). */
   from: string | null
+  /**
+   * The last day it was on the ticket, YYYY-MM-DD, for a daily that's come off it; after that it's one of
+   * the day's puzzles under the ticket ("Also today"), and counts toward no streak.
+   */
+  until?: string
 }
 
 /**
- * The dailies, in the ticket's order, as the API's TODAY_DAILIES has them: the ranked ones first, which count
- * toward your rank, then the three just for fun (Ramsey, 2026-10-04: "can we put the ranked games first, then
- * the just for fun second"; they were the other way round from 2026-10-02). Everywhere the dailies are listed
- * reads this order: the Dailies ticket, the home row, the Dailies bar, the header chip and "Up next". The hole,
- * the track and the Wanted have been on every day, so every day before Today's Pour joins is judged as it
- * always was: all three needed.
+ * The last day the puzzles (Ace Chase's hole, Find the Bug's Wanted, Half Full's pour) were on the ticket. From
+ * the next, the Dailies are the four races and the puzzles are under the ticket as "Also today", just for fun
+ * and off the streak (Ramsey, 2026-10-06, picking B from the "Dailies: races only?" canvas). The API's today.ts
+ * PUZZLES_UNTIL says the same.
+ */
+export const PUZZLES_UNTIL = '2026-10-05'
+
+/** From this day any two of the day's races keep the streak; before it, any three of its dailies did. */
+export const RACES_ONLY_FROM = '2026-10-06'
+
+/**
+ * The dailies, in the ticket's order, as the API's TODAY_DAILIES has them: the races, which count toward your
+ * rank, then the three puzzles, just for fun, which were on the ticket until PUZZLES_UNTIL (Ramsey, 2026-10-04:
+ * "can we put the ranked games first, then the just for fun second"). Everywhere the dailies are listed reads
+ * this order: the Dailies ticket, the home row, the Dailies bar, the header chip and "Up next". The hole, the
+ * track and the Wanted were on every day until the puzzles came off, so every day is judged as it was then.
  */
 export const TODAY_DAILIES: readonly TodayDaily[] = [
   { key: 'track', slug: 'hotlap', label: 'Track', emoji: '🏎️', better: 'higher', from: '' },
   { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
   { key: 'cave', slug: 'lander', label: 'Cave', emoji: '🚀', better: 'higher', from: CAVE_FROM },
   { key: 'hills', slug: 'swoop', label: 'Hills', emoji: '🐦', better: 'higher', from: HILLS_FROM },
-  { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '' },
-  { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '' },
-  { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM },
+  { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '', until: PUZZLES_UNTIL },
+  { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '', until: PUZZLES_UNTIL },
+  { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM, until: PUZZLES_UNTIL },
 ]
 
-/** Any this many of a day's live dailies keep the streak (the API's TODAY_KEEP). */
+/** Any this many of a day's live dailies keep the streak (the API's TODAY_KEEP): three, then two from RACES_ONLY_FROM. */
 export const TODAY_KEEP = 3
+
+/** How many of a day's live dailies keep it, as the API's keepOn has it. */
+export function keepOn(day: string): number {
+  return day >= RACES_ONLY_FROM ? 2 : TODAY_KEEP
+}
 
 /**
  * One of the account's days, as the API's TodayDay has it: kept, a Full ticket, and (left out by an older
@@ -135,17 +156,27 @@ export type TodayServer = {
  */
 export function liveDailies(day: string, server?: Pick<TodayServer, 'day' | 'live'> | null): TodayDaily[] {
   const told = server?.day === day ? server.live : undefined
-  return TODAY_DAILIES.filter((d) => d.from != null && d.from <= day && isGameListed(d.slug) && (!told || told.includes(d.key)))
+  return TODAY_DAILIES.filter(
+    (d) => d.from != null && d.from <= day && (d.until == null || day <= d.until) && isGameListed(d.slug) && (!told || told.includes(d.key)),
+  )
+}
+
+/** A day's puzzles under the ticket ("Also today"): the dailies that have come off it, whose game is listed. */
+export function alsoDailies(day: string): TodayDaily[] {
+  return TODAY_DAILIES.filter((d) => d.until != null && d.until < day && d.from != null && d.from <= day && isGameListed(d.slug))
 }
 
 /** How many of a day's live dailies keep the streak, and how many there are. */
-export function todayRule(liveCount: number): { need: number; count: number } {
-  return { need: Math.min(TODAY_KEEP, liveCount), count: liveCount }
+export function todayRule(liveCount: number, day: string): { need: number; count: number } {
+  return { need: Math.min(keepOn(day), liveCount), count: liveCount }
 }
 
-/** Whether a day with `done` of its live dailies punched is kept, and whether it's a Full ticket. */
+/**
+ * Whether a day with `done` of its live dailies punched is kept, and whether it's a Full ticket: more on the
+ * ticket than keep the day, and every one punched.
+ */
 export function dayMarks(done: number, rule: { need: number; count: number }): { kept: boolean; full: boolean } {
-  return { kept: rule.count > 0 && done >= rule.need, full: rule.count > TODAY_KEEP && done >= rule.count }
+  return { kept: rule.count > 0 && done >= rule.need, full: rule.count > rule.need && done >= rule.count }
 }
 
 /** What a streak earns, once an account (the API's TODAY_MILESTONES): looks and tickets, never score. */

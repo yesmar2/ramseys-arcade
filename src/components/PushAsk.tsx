@@ -170,7 +170,7 @@ export function PushAsk({
 function keptToday(server: TodayServer | null): boolean {
   if (!server) return false
   const live = server.live ?? liveDailies(server.day, server).map((d) => d.key)
-  const need = server.need ?? todayRule(live.length).need
+  const need = server.need ?? todayRule(live.length, server.day).need
   return live.length > 0 && live.filter((key) => server.done[key as keyof TodayServer['done']]).length >= need
 }
 

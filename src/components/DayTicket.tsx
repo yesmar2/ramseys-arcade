@@ -50,18 +50,19 @@ export type TicketTile = {
 }
 
 /**
- * A daily's tile: its picture and name, then how it went or the way in. Whether it's ranked or just for fun
- * is a mark on the picture's top corner, with a tip of its own, so it sits beside the picture's link rather
- * than in it; punched is a check on the other corner, over the picture dimmed.
+ * A daily's tile: its picture and name, then how it went or the way in. On a ticket with ranked and
+ * just-for-fun dailies both (a day before the puzzles came off it), which it is is a mark on the picture's top
+ * corner, with a tip of its own, so it sits beside the picture's link rather than in it; punched is a check
+ * on the other corner, over the picture dimmed.
  */
-function Tile({ tile: t }: { tile: TicketTile }) {
+function Tile({ tile: t, marked }: { tile: TicketTile; marked: boolean }) {
   return (
     <li className={`today-tile${t.done ? ' today-tile--done' : ''}`}>
       <div className="today-tile__pic">
         <a className="today-tile__art" href={t.page} title={t.course} tabIndex={-1} aria-hidden="true">
           <GameArt slug={t.slug} className="today-tile__scene" />
         </a>
-        <DailyKindTag slug={t.slug} look="badge" className="today-tile__kind" />
+        {marked ? <DailyKindTag slug={t.slug} look="badge" className="today-tile__kind" /> : null}
         {t.done ? (
           <span className="today-tile__check" aria-hidden="true">
             <CheckIcon />
@@ -141,6 +142,7 @@ type DayTicketProps = {
 }
 
 export function DayTicket({ labelId, title, count, action, kicker, streak, full, line, freezes, punched, tiles, children }: DayTicketProps) {
+  const groups = groupsOf(tiles)
   return (
     <section className="today" aria-labelledby={labelId}>
       <div className="today-card">
@@ -185,17 +187,20 @@ export function DayTicket({ labelId, title, count, action, kicker, streak, full,
           {/*
            * The ranked dailies, then the just-for-fun ones (lib/today.ts TODAY_DAILIES has them so), each group
            * under its tag, so which count toward your rank is plain at a glance. Side by side while there's
-           * room, the narrower ticket stacks them, three a row.
+           * room, the narrower ticket stacks them, three a row. A ticket of one kind (the races, since the
+           * puzzles came off it) needs no tags: its four go two by two on a narrow ticket.
            */}
-          <div className="today-groups">
-            {groupsOf(tiles).map((group) => (
+          <div className={`today-groups${groups.length === 1 && tiles.length === 4 ? ' today-groups--pairs' : ''}`}>
+            {groups.map((group) => (
               <div key={group.kind} className={`today-group today-group--${group.kind}`} style={{ '--n': group.tiles.length } as CSSProperties}>
-                <div className="today-group__label">
-                  <DailyKindTag slug={group.tiles[0]!.slug} look="chip" />
-                </div>
+                {groups.length > 1 ? (
+                  <div className="today-group__label">
+                    <DailyKindTag slug={group.tiles[0]!.slug} look="chip" />
+                  </div>
+                ) : null}
                 <ul className="today-tiles" style={{ '--n': group.tiles.length } as CSSProperties}>
                   {group.tiles.map((t) => (
-                    <Tile key={t.key} tile={t} />
+                    <Tile key={t.key} tile={t} marked={groups.length > 1} />
                   ))}
                 </ul>
               </div>

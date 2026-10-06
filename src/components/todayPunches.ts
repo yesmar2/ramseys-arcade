@@ -34,10 +34,10 @@ import type { Viewer } from '../lib/deviceRuns'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import {
+  alsoDailies,
   dayMarks,
   liveDailies,
   subscribeToday,
-  TODAY_KEEP,
   todayRule,
   todayServer,
   todayShareText,
@@ -126,7 +126,7 @@ const triesWords = (n: number) => `${n} ${n === 1 ? 'try' : 'tries'}`
 
 export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-/** What the streak needs next, from the streak before today: the day kept, then (with more than three live) a Full ticket. */
+/** What the streak needs next, from the streak before today: the day kept, then (with more live than keep it) a Full ticket. */
 export function streakLine({ before, done, rule }: Pick<Ticket, 'before' | 'done' | 'rule'>): string {
   const n = before + 1
   if (done < rule.need) {
@@ -134,7 +134,7 @@ export function streakLine({ before, done, rule }: Pick<Ticket, 'before' | 'done
     const goal = before === 0 ? 'to start your streak' : `to make it ${n}`
     return left === 1 ? `One more ${goal}` : `${capital(numberWord(left))} to go ${goal}`
   }
-  if (rule.count > TODAY_KEEP && done < rule.count) return `Kept. ${capital(numberWord(rule.count - done))} more for a Full ticket`
+  if (rule.count > rule.need && done < rule.count) return `Kept. ${capital(numberWord(rule.count - done))} more for a Full ticket`
   return `Back tomorrow for Day ${n + 1}`
 }
 
@@ -328,6 +328,8 @@ export type Ticket = {
   left: number
   /** The day's share, as its Share sends it (without the link). */
   shareText: string
+  /** The day's puzzles under the ticket ("Also today"): just for fun, off the streak. */
+  also: Punch[]
 }
 
 /**
@@ -355,7 +357,7 @@ export function useTicket(viewer: Viewer): Ticket {
   const raw = todayServer()
   const server = raw?.day === day ? raw : null
   const live = liveDailies(day, server)
-  const punches = live.map((d): Punch => {
+  const punchOf = (d: TodayDaily): Punch => {
     const own = punchDay(d.key, day, server, viewer)
     return {
       key: d.key,
@@ -365,10 +367,11 @@ export function useTicket(viewer: Viewer): Ticket {
       fresh: d.from ? daysBetween(d.from, day) < FRESH_DAYS : false,
       ...own,
     }
-  })
+  }
+  const punches = live.map(punchOf)
   const done = punches.filter((p) => p.done).length
   const total = punches.length
-  const rule = todayRule(total)
+  const rule = todayRule(total, day)
   const marks = dayMarks(done, rule)
   // The API counts today once it's in; until then this device's punches say where today stands.
   const streak = server?.streak ?? { current: 0, best: 0 }
@@ -394,5 +397,6 @@ export function useTicket(viewer: Viewer): Ticket {
       streak: current,
       full: marks.full,
     }),
+    also: alsoDailies(day).map(punchOf),
   }
 }

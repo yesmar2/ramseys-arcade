@@ -445,6 +445,11 @@ html[data-theme='dark'] {
   .today-groups .today-tiles {
     --cols: 3;
   }
+
+  /* A ticket of four of one kind (the races): two by two. */
+  .today-groups--pairs .today-tiles {
+    --cols: 2;
+  }
 }
 
 .today-tile {

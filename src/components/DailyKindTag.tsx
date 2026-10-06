@@ -19,7 +19,7 @@ const WORDS = {
   fun: {
     word: 'Just for fun',
     lead: 'Doesn’t count toward your rank.',
-    more: 'Your result still punches the Dailies and keeps your streak. There’s no board: the answer is the same for everyone, so a friend could just tell you.',
+    more: 'Your result keeps your days in a row on it, off the Dailies streak. There’s no board: the answer is the same for everyone, so a friend could just tell you.',
   },
 } as const
 

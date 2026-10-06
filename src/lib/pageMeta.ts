@@ -395,7 +395,7 @@ export function pageMeta(route: Route): PageMeta {
         // A past day picked on the page is known by its day: "Dailies · Mon, Sep 28".
         title: titled(route.day ? `Dailies · ${archiveDayWords(route.day)}` : 'Dailies'),
         description:
-          'The Dailies: five games, new every day and the same for everyone. A hole, a lap, five bugs wanted, five glasses to pour and a marble course. Play any three to keep your streak going.',
+          'The Dailies: four races, new every day and the same for everyone. A lap, a marble course, a cave to fly down and a run over the hills. Play any two to keep your streak going, all four for a Full ticket, and three daily puzzles just for fun.',
         path: todayHref(route.day),
         // A past day's ticket is the viewer's own: only the page itself is for search.
         ...(route.day ? { noindex: true } : {}),

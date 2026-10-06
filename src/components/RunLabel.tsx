@@ -25,7 +25,7 @@ export function runLabelWords(kind: RunLabelKind, slug: string): { full: string;
     return {
       full: 'Just for fun',
       short: 'For fun',
-      sub: `${words.today} is yours: it punches today’s Dailies and keeps your days in a row. Nobody is ranked on it.`,
+      sub: `${words.today} is yours: it keeps your days in a row here, off the Dailies streak. Nobody is ranked on it.`,
     }
   }
   if (kind === 'board') {

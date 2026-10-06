@@ -7,7 +7,6 @@ import { capitalName, huntDay, huntPick, huntStats, openBugHunt, subscribeHunt }
 import { dailyWords } from '../lib/dailyWords'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { numberWord } from '../lib/numberWord'
-import { TODAY_KEEP } from '../lib/today'
 import type { TournamentSummary } from '../lib/tournaments'
 import { CheckIcon, DayTicket, DoneCount, type TicketTile } from './DayTicket'
 import { MedalIcon } from './RaceMedal'
@@ -171,7 +170,7 @@ function tileOf(p: Punch): TicketTile {
 export function TodayCard({ ticket, signedIn }: { ticket: Ticket; signedIn: boolean }) {
   const { day, punches, server, done, total, all, rule, marks, current, shareText } = ticket
   if (!punches.length) return null
-  const more = rule.count > TODAY_KEEP
+  const more = rule.count > rule.need
   // The streak is the API's: until it answers, nothing rather than a streak of none.
   const known = signedIn && server != null
   return (
@@ -183,7 +182,7 @@ export function TodayCard({ ticket, signedIn }: { ticket: Ticket; signedIn: bool
       kicker="Your streak"
       streak={known ? current : null}
       full={marks.full}
-      line={known ? `${streakLine(ticket)}.` : signedIn ? null : `Sign in to keep a streak: ${more ? 'any three' : `all ${numberWord(total)}`} a day.`}
+      line={known ? `${streakLine(ticket)}.` : signedIn ? null : `Sign in to keep a streak: ${more ? `any ${numberWord(rule.need)}` : `all ${numberWord(total)}`} a day.`}
       freezes={known ? server?.freezes : null}
       punched={{ done, total }}
       tiles={punches.map(tileOf)}

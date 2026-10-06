@@ -4,6 +4,7 @@ import { PageShell } from '../components/PageShell'
 import { PastDayTicket } from '../components/PastDayTicket'
 import { StreakFreezes } from '../components/StreakFreezes'
 import { openSiteMenu } from '../components/siteNav'
+import { AlsoToday } from '../components/AlsoToday'
 import { CheckIcon, ShareDay, TodayCard } from '../components/TodayCard'
 import { FlameIcon, FreezeIcon, StarIcon } from '../components/TodayChip'
 import {
@@ -31,7 +32,6 @@ import {
   rivalsScope,
   setRivalsScope,
   subscribeToday,
-  TODAY_KEEP,
   TODAY_MILESTONES,
   TODAY_SINCE_FALLBACK,
   type TodayRivals as Rivals,
@@ -113,7 +113,7 @@ function andList(items: readonly (string | number)[]): string {
 function dayLine({ total, rule }: Ticket): string | null {
   if (!total) return null
   const dailies = total === 1 ? 'One daily, about a minute.' : `${capital(numberWord(total))} dailies, about a minute each.`
-  return rule.count > TODAY_KEEP
+  return rule.count > rule.need
     ? `${dailies} Any ${numberWord(rule.need)} keep your streak; all ${numberWord(total)} is a Full ticket.`
     : `${dailies} Finish all ${numberWord(total)} to keep your streak going.`
 }
@@ -253,7 +253,7 @@ const monthDay = (day: string) =>
 /** Your last five weeks: the days you kept, your Full tickets, the ones missed, and today. Each opens its ticket. */
 function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
   const days = calendarDays(ticket)
-  const more = ticket.rule.count > TODAY_KEEP || days.some((d) => d.state === 'full')
+  const more = ticket.rule.count > ticket.rule.need || days.some((d) => d.state === 'full')
   // Each day, said aloud: "Friday, September 25: kept".
   const words: Record<CalendarState, string> = {
     full: 'Full ticket',
@@ -429,7 +429,11 @@ export function TodayPage() {
           {day ? (
             <PastDayTicket day={day} said={said} streak={streak} name={name} signedIn={signedIn} />
           ) : (
-            <TodayCard ticket={ticket} signedIn={signedIn} />
+            <>
+              <TodayCard ticket={ticket} signedIn={signedIn} />
+              {/* The day's puzzles, just for fun, off the ticket (AlsoToday.tsx). */}
+              <AlsoToday punches={ticket.also} />
+            </>
           )}
           {signedIn ? (
             day ? null : (

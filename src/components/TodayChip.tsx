@@ -38,7 +38,7 @@ export function TodayChip({ here }: { here: boolean }) {
   if (!state) return null
   // Only today's live dailies count: an API from before Today's Pour has no word on it.
   const live = liveDailies(state.day, state)
-  const rule = todayRule(live.length)
+  const rule = todayRule(live.length, state.day)
   const done = live.filter((d) => state.done[d.key]).length
   const marks = dayMarks(done, rule)
   const full = state.full ?? marks.full

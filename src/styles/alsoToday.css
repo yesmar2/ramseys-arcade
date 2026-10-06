@@ -1,0 +1,196 @@
+/*
+ * The day's puzzles under the races (components/AlsoToday.tsx): a card under the Dailies ticket, and a slim one
+ * under the home page's race cards, in the just-for-fun violet (DailyKindTag's), so they read as apart from the
+ * ticket.
+ */
+
+.also {
+  --also: #7046b3;
+  box-sizing: border-box;
+  padding: 1.15rem 1.35rem 1.25rem;
+  border-radius: 1.4rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--also) 30%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+html[data-theme='dark'] .also {
+  --also: #c3a3f7;
+}
+
+.also__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.also__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.also__sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.also__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.also__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.6rem 0.75rem 0.6rem 0.6rem;
+  border-radius: 1rem;
+  background: rgba(var(--ink-rgb), 0.04);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.also__pic {
+  flex: none;
+  width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--also) 45%, transparent);
+}
+
+.also__art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.also__item--done .also__pic {
+  opacity: 0.6;
+}
+
+.also__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.also__game {
+  color: inherit;
+  font-weight: 800;
+  font-size: 0.98rem;
+  text-decoration: none;
+}
+
+.also__game:hover,
+.also__game:focus-visible {
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--ink-rgb), 0.35);
+  text-underline-offset: 0.2em;
+}
+
+.also__course {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.also__go,
+.also__result {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  font-weight: 800;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.also__go {
+  box-sizing: border-box;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  color: var(--also);
+  border: 1.5px solid color-mix(in srgb, var(--also) 60%, transparent);
+  text-decoration: none;
+}
+
+.also__go:hover,
+.also__go:focus-visible {
+  background: color-mix(in srgb, var(--also) 12%, transparent);
+}
+
+.also__go:focus-visible {
+  outline: 3px solid rgba(var(--ink-rgb), 0.55);
+  outline-offset: 2px;
+}
+
+.also__go svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+.also__result {
+  color: var(--also);
+  font-variant-numeric: tabular-nums;
+}
+
+.also__result svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* On the home page, under the race cards: one slim line. */
+.also--compact {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 1.1rem;
+  box-shadow: none;
+}
+
+.also--compact .also__head {
+  margin-bottom: 0.6rem;
+}
+
+.also--compact .also__title {
+  font-size: 1rem;
+}
+
+.also--compact .also__sub {
+  font-size: 0.82rem;
+}
+
+.also--compact .also__item {
+  padding: 0.4rem 0.6rem 0.4rem 0.4rem;
+}
+
+.also--compact .also__pic {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+@media (max-width: 48rem) {
+  .also {
+    padding: 1rem 0.9rem 1.05rem;
+  }
+
+  .also__list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.55rem;
+  }
+}

@@ -189,7 +189,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       {
         what: 'Today’s Wanted',
         kind: 'fun',
-        sub: 'Your first run today is your result: it punches today’s Dailies and keeps your days in a row. Just for fun: nobody is ranked on it. Runs after it are practice.',
+        sub: 'Your first run today is your result, and keeps your days in a row here. Just for fun: nobody is ranked on it, and it’s not part of your Dailies streak. Runs after it are practice.',
       },
       { what: 'A past day', kind: 'practice', sub: 'Play any past day. Nothing is saved.' },
     ],
@@ -302,7 +302,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       {
         what: 'Today’s hole',
         kind: 'fun',
-        sub: 'Your first bullseye today is your result: it punches today’s Dailies and keeps your days in a row. Just for fun: nobody is ranked on it.',
+        sub: 'Your first bullseye today is your result, and keeps your days in a row here. Just for fun: nobody is ranked on it, and it’s not part of your Dailies streak.',
       },
       { what: 'A past hole', kind: 'practice', sub: 'Play any past hole as often as you like. Nothing is saved.' },
     ],
@@ -353,7 +353,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       {
         what: 'Today’s Pour',
         kind: 'fun',
-        sub: 'Your first pour today is your result: it punches today’s Dailies and keeps your days in a row. Just for fun: nobody is ranked on it. Pours after it are practice.',
+        sub: 'Your first pour today is your result, and keeps your days in a row here. Just for fun: nobody is ranked on it, and it’s not part of your Dailies streak. Pours after it are practice.',
       },
       { what: 'A past day', kind: 'practice', sub: 'Pour any past day. Nothing is saved.' },
     ],

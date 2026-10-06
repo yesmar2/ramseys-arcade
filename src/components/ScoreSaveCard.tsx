@@ -53,7 +53,8 @@ import { dropPendingRun, holdPendingRun, keepPendingRun, pendingCount, releasePe
 import { rememberDeviceBest } from '../lib/personalBest'
 import { runIdFor } from '../lib/runSession'
 import { periodCopy } from '../lib/scoreboard'
-import { TODAY_DAILIES } from '../lib/today'
+import { boardDay } from '../lib/rankHow'
+import { alsoDailies, liveDailies } from '../lib/today'
 import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
 import { isRaceGame, medalFor } from '../lib/raceMedals'
@@ -655,12 +656,14 @@ export function ScoreSaveCard({
     else if (challenged) block = <PushAsk reason="challenge" />
   }
   // A daily of the Dailies just saved: once today is kept, the moment to offer a nudge before a day ends unkept.
-  const onTicket = TODAY_DAILIES.some((d) => d.slug === gameSlug)
+  const today = boardDay()
+  const onTicket = liveDailies(today).some((d) => d.slug === gameSlug)
   if (phase === 'saved' && signedIn && !impersonation && onTicket && !block) {
     block = <StreakPushAsk active />
   }
   // And the way on to the next of today's dailies: first, or after the sign-in for a run that isn't saved yet.
-  if (onTicket && (phase === 'saved' || phase === 'needAuth')) {
+  // One of the day's puzzles (Also today) leads on to the races too.
+  if ((onTicket || alsoDailies(today).some((d) => d.slug === gameSlug)) && (phase === 'saved' || phase === 'needAuth')) {
     // Once all of today's are done, a racing daily's tomorrow under it: what comes next, and when.
     const next = (
       <Suspense fallback={null}>

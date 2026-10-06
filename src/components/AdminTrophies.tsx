@@ -290,11 +290,11 @@ export function AdminTrophies() {
           </h2>
         </div>
         <p className="adm-card__sub">
-          Today’s ticket, on the Dailies page: a streak day is one with any three of the day’s live dailies done (Today’s
-          Hole solved, a lap on Today’s Track saved, Today’s Wanted’s first run saved, Today’s Pour’s first pour
-          saved), on the boards’ New York day. Before Today’s Pour joined, on 28 September 2026, that was all three.
-          Doing all four is a Full ticket: a gold mark in the week and “Full” on the header chip, with no reward of
-          its own. Today’s event, the One Shot and the bug hunt are bonus
+          Today’s ticket, on the Dailies page: since 6 October 2026 a streak day is one with any two of the day’s races
+          done (a run saved on Today’s Track, Course, Cave or Hills), on the boards’ New York day, and all four is a
+          Full ticket: a gold mark in the week and “Full” on the header chip, with no reward of its own. Before
+          then the puzzles (Today’s Hole, Wanted and Pour) were on it too and any three kept the day; now they’re
+          under the ticket as Also today, just for fun. Today’s event, the One Shot and the bug hunt are bonus
           punches and don’t count. Signed-in players with a tag see the streak in the header too. Each reward comes
           once an account, however often a streak breaks, with a note in the inbox.
         </p>
