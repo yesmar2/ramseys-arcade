@@ -363,7 +363,7 @@ function drawGulls(ctx: CanvasRenderingContext2D, v: View) {
 /** Under the surface: the fisherman's line, his hook, and the worm on it (or whatever bit). */
 function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   const b = v.s.boat
-  if (!b) return
+  if (b.stage === 'rest' || b.stage === 'sail') return
   const tip = rodTip(b)
   const tx = X(v, tip.x)
   const hy = Y(v, b.hookY)
@@ -382,7 +382,7 @@ function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
     drawOne(ctx, v, pal, SPECIES[caught.species].art, { x: tip.x, y: b.hookY + T.r * 1.1, angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 5 }, T.r, { amp: 1.6 })
   } else if (caught === 'you') {
     drawOne(ctx, v, pal, playerArt(v.s.player.size), { x: tip.x, y: b.hookY + playerRadius(v.s), angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 7 }, playerRadius(v.s), { amp: 1.6, fill: 0.55 })
-  } else if (b.stage !== 'leave') {
+  } else if (b.stage === 'cast' || b.stage === 'wait') {
     // The worm, wriggling.
     ctx.strokeStyle = '#e85d9a'
     ctx.lineWidth = 3.2 * k
@@ -412,7 +412,6 @@ function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
 /** On the surface: the fisherman in his boat, rod out over the water. */
 function drawBoat(ctx: CanvasRenderingContext2D, v: View) {
   const b = v.s.boat
-  if (!b) return
   const x = X(v, b.x)
   const k = v.ppu
   if (x < -90 * k || x > v.w + 90 * k) return

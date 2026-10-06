@@ -50,7 +50,7 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
   if (k && Math.abs(p.y - k.y) < k.r * 1.6) ay += (p.y < k.y ? -1 : 1) * 5
   // Keep clear of the fisherman's hook.
   const b = s.boat
-  if (b) {
+  if (b.stage === 'cast' || b.stage === 'wait') {
     const tip = rodTip(b)
     const dx = p.x - tip.x
     const dy = p.y - b.hookY

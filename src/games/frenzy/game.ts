@@ -18,9 +18,9 @@ import type { SpeciesId } from './species'
  * meals and more hunters. Swim up hard through the surface and you leap out: nothing can follow you into
  * the air, flying fish and gulls up there are worth a bonus, and the splash scatters the small fish where
  * you land. Every so often a shark crosses at your depth, after a red "!" at the edge it comes from, and eats
- * whatever is in its lane (unless you're in the air). A fisherman drifts by on the surface now and then, his
- * worm on a hook below: touch the hook and you're reeled in ("can we add a fisherman with a hook to avoid
- * too?"). Three lives; bites in quick succession chain up to ×5.
+ * whatever is in its lane (unless you're in the air). A fisherman's boat is always on the surface, sailing
+ * to a spot near you and casting a worm on a hook below: touch the hook and you're reeled in ("can we add a
+ * fisherman with a hook to avoid too?"). Three lives; bites in quick succession chain up to ×5.
  *
  * Everything here is in world units, y down from the surface (above it is negative); the renderer scales.
  */
@@ -91,9 +91,9 @@ const SPLASH_R = 110
 const SHARK_WARN = 1.4
 const SHARK_SPEED = 360
 const SHARK_R = 56
-/** The fisherman: when he first comes, how long between boats, how deep he fishes. */
-const BOAT_FIRST = 22
-const BOAT_GAP: readonly [number, number] = [16, 26]
+/** The fisherman: how long he waits before his first cast of a run, his speed between spots. */
+const BOAT_FIRST = 12
+const BOAT_SPEED = 55
 const HOOK_R = 6
 /** Points for things caught in the air. */
 const FLYER_AIR_POINTS = 25
@@ -142,17 +142,20 @@ export type Player = {
 export type Shark = { stage: 'warn' | 'pass'; t: number; x: number; y: number; dir: 1 | -1; swim: number; left: number; r: number }
 
 /**
- * The fisherman's boat on the surface, its line down to a worm on a hook at `hookY`. It drifts in, casts,
- * waits, reels in, and after a few casts sails off. Whatever bites is reeled up with it.
+ * The fisherman's boat, always on the surface (Ramsey, 2026-10-06: "shouldn't just appear and disappear
+ * though, should always be there"). He rests, sails to a spot not far from you, casts a worm on a hook down
+ * to `hookY`, waits, reels in, and rests again. Whatever bites is reeled up with it.
  */
 export type Boat = {
   x: number
   dir: 1 | -1
-  stage: 'cast' | 'wait' | 'reel' | 'leave'
+  stage: 'rest' | 'sail' | 'cast' | 'wait' | 'reel'
   t: number
+  /** How long this rest lasts, and where he's sailing to. */
+  rest: number
+  to: number
   hookY: number
   depth: number
-  casts: number
   /** On the hook, being reeled up: a fish (its species and tier), or you. */
   caught: { species: SpeciesId; tier: number } | 'you' | null
 }
@@ -190,8 +193,7 @@ export type GameState = {
   gullIn: number
   shark: Shark | null
   sharkIn: number
-  boat: Boat | null
-  boatIn: number
+  boat: Boat
   /** Seconds of frenzy left (double points), at the top size. */
   frenzy: number
   /** Where the fish is heading, in world units; null to coast to a stop. */
@@ -236,6 +238,12 @@ export function viewHalf(s: Pick<GameState, 'screenW' | 'screenH' | 'ppu'>) {
   return { w: s.screenW / 2 / s.ppu, h: s.screenH / 2 / s.ppu }
 }
 
+/** The boat as a run finds it: resting on the surface just off to one side, in sight from the start. */
+function freshBoat(): Boat {
+  const x = OCEAN_W / 2 + (Math.random() < 0.5 ? -1 : 1) * rand(90, 150)
+  return { x, dir: x > OCEAN_W / 2 ? -1 : 1, stage: 'rest', t: 0, rest: BOAT_FIRST, to: x, hookY: -28, depth: 200, caught: null }
+}
+
 function freshPlayer(): Player {
   return { x: OCEAN_W / 2, y: 120, vx: 0, vy: 0, angle: 0, roll: 1, swim: 0, mouth: 0, size: 0, invuln: START_INVULN, air: false }
 }
@@ -264,8 +272,7 @@ export function createInitialState(w = 960, h = 540): GameState {
     gullIn: 2,
     shark: null,
     sharkIn: 16,
-    boat: null,
-    boatIn: BOAT_FIRST,
+    boat: freshBoat(),
     frenzy: 0,
     target: null,
     keys: { up: false, down: false, left: false, right: false },
@@ -332,8 +339,7 @@ export function startGame(s: GameState): GameState {
     gullIn: 3,
     shark: null,
     sharkIn: 18,
-    boat: null,
-    boatIn: BOAT_FIRST,
+    boat: freshBoat(),
     frenzy: 0,
     target: null,
     particles: [],
@@ -343,6 +349,19 @@ export function startGame(s: GameState): GameState {
   }
   frame(next, 1)
   for (let i = 0; i < 6; i++) spawn(next, true)
+  return next
+}
+
+/**
+ * Straight to a size (1 to 8), for testing: the admin's skip on the pause and start cards (AdminWaveSkip),
+ * which marks the run assisted so it never reaches a board. The water around you is cleared, and fills
+ * with fish for the new size.
+ */
+export function jumpToSize(s: GameState, size: number): GameState {
+  const to = clamp(Math.round(size) - 1, 0, MAX_SIZE)
+  const next: GameState = { ...s, player: { ...s.player, size: to, invuln: 1.5 }, bar: 0, frenzy: 0, fishes: [], spawnIn: 0 }
+  next.floaters = [...s.floaters, { x: s.player.x, y: s.player.y - 34, text: `${STAGES[to]}!`, t: 0, tone: 'grow' }]
+  frame(next, 1)
   return next
 }
 
@@ -764,23 +783,34 @@ function moveShark(s: GameState, dt: number, playing: boolean) {
   }
 }
 
-/** The fisherman: drifts in on the surface near you, casts, waits, reels in; a few casts, then away. */
+/** The fisherman: rests, sails to a spot not far from you, casts, waits, reels in, rests again. */
 function moveBoat(s: GameState, dt: number, playing: boolean) {
   const half = viewHalf(s)
   const p = s.player
-  s.boatIn -= dt
-  if (!s.boat && s.boatIn <= 0 && playing) {
-    const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1
-    // Somewhere ahead of you on the surface, never right overhead.
-    const x = clamp(p.x + (Math.random() < 0.5 ? -1 : 1) * rand(160, Math.max(200, half.w * 0.8)), 120, OCEAN_W - 120)
-    s.boat = { x, dir, stage: 'cast', t: 0, hookY: 0, depth: clamp(p.y + rand(-60, 120), 80, 520), casts: 0, caught: null }
-  }
   const b = s.boat
-  if (!b) return
   b.t += dt
-  b.x += b.dir * (b.stage === 'leave' ? 70 : 8) * dt
   const tip = rodTip(b)
-  if (b.stage === 'cast') {
+  if (b.stage === 'rest') {
+    b.hookY = tip.y
+    if (b.t >= b.rest) {
+      // A spot near you, but never right overhead.
+      const side = Math.random() < 0.5 ? -1 : 1
+      b.to = clamp(p.x + side * rand(150, Math.max(220, half.w * 0.75)), 120, OCEAN_W - 120)
+      b.stage = 'sail'
+      b.t = 0
+    }
+  } else if (b.stage === 'sail') {
+    b.hookY = tip.y
+    const dx = b.to - b.x
+    if (Math.abs(dx) > 1) b.dir = dx > 0 ? 1 : -1
+    b.x += Math.sign(dx) * Math.min(Math.abs(dx), BOAT_SPEED * dt)
+    if (Math.abs(dx) <= 1) {
+      b.stage = 'cast'
+      b.t = 0
+      b.depth = clamp(p.y + rand(-60, 140), 80, 560)
+      b.hookY = 0
+    }
+  } else if (b.stage === 'cast') {
     b.hookY = Math.min(b.depth, b.hookY + 160 * dt)
     if (b.hookY >= b.depth) {
       b.stage = 'wait'
@@ -792,23 +822,15 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
       b.stage = 'reel'
       b.t = 0
     }
-  } else if (b.stage === 'reel') {
+  } else {
     b.hookY -= 230 * dt
     if (b.hookY <= tip.y + 10) {
       b.caught = null
-      b.casts += 1
-      if (b.casts >= 3) b.stage = 'leave'
-      else {
-        b.stage = 'cast'
-        b.depth = clamp(p.y + rand(-60, 140), 80, 560)
-      }
-      b.hookY = Math.max(0, b.hookY)
+      b.hookY = tip.y
+      b.stage = 'rest'
+      b.rest = rand(2, 4)
       b.t = 0
     }
-  } else if (b.t > 6 || b.x < -200 || b.x > OCEAN_W + 200) {
-    s.boat = null
-    s.boatIn = rand(BOAT_GAP[0], BOAT_GAP[1])
-    return
   }
   if (b.stage !== 'wait' && b.stage !== 'cast') return
   const hx = tip.x
@@ -884,7 +906,7 @@ export function tick(state: GameState, dt: number): GameState {
   moveFishes(s, dt, playing)
   moveGulls(s, dt, playing)
   if (playing || s.shark) moveShark(s, dt, playing)
-  if (playing || s.boat) moveBoat(s, dt, playing)
+  moveBoat(s, dt, playing)
   if (s.frenzy > 0) {
     s.frenzy = Math.max(0, s.frenzy - dt)
     if (s.frenzy === 0) s.bar = 0

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import '../../styles/frenzy.css'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
+import { AdminWaveSkip } from '../../components/AdminWaveSkip'
 import { GameStage } from '../../components/GameStage'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -14,6 +15,7 @@ import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   clearTarget,
   createInitialState,
+  jumpToSize,
   releaseInput,
   resizeState,
   setKey,
@@ -305,9 +307,41 @@ export function FrenzyGame() {
               paused={paused}
               onResume={resume}
               onRestart={restart}
+              tools={
+                pausable ? (
+                  <AdminWaveSkip
+                    unit="size"
+                    wave={ui.size}
+                    onSkipNext={() => {
+                      stateRef.current = jumpToSize(stateRef.current, ui.size + 1)
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                    onJump={(size) => {
+                      stateRef.current = jumpToSize(stateRef.current, size)
+                      setUi(toSnapshot(stateRef.current))
+                      resume()
+                    }}
+                  />
+                ) : null
+              }
             />
             {ui.phase === 'menu' && !saveOpen && !paused && (
-              <GameStartCard title="Frenzy" slug="frenzy" />
+              <GameStartCard
+                title="Frenzy"
+                slug="frenzy"
+                tools={
+                  <AdminWaveSkip
+                    mode="start"
+                    unit="size"
+                    onJump={(size) => {
+                      restart()
+                      stateRef.current = jumpToSize(stateRef.current, size)
+                      setUi(toSnapshot(stateRef.current))
+                    }}
+                  />
+                }
+              />
             )}
             {ui.phase === 'gameover' && saveOpen && (
               tournament ? (
