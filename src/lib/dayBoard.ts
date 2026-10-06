@@ -142,6 +142,17 @@ const LOADERS: Record<string, () => Promise<DayCourse>> = {
       board: trackBoardOf('lander', caveNumber),
     }
   },
+  async swoop() {
+    const { FIRST_DAY, hillsDay, hillsNumber, dailyHills } = await import('../games/swoop/daily')
+    return {
+      first: FIRST_DAY,
+      today: () => hillsDay(),
+      title: (day) => `#${hillsNumber(day)} ${dailyHills(day).name}`,
+      anchor: (day) => day,
+      playHref: (day) => `${gamePlayHref('swoop')}?day=${day}`,
+      board: trackBoardOf('swoop', hillsNumber),
+    }
+  },
 }
 
 const loaded = new Map<string, Promise<DayCourse>>()

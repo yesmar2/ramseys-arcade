@@ -37,15 +37,17 @@ const H = 630
 /**
  * The card's measures: three dailies across it, four from the day Today's Pour joins the ticket (Half
  * Full's TODAY_FROM), five from the day Today's Course does (Marble Run's), six from the day Today's Cave
- * does (Lander's), each picture narrower and its words smaller, to fit the same width. Each has its
- * picture's box, its kicker's size and spacing, its name's size, and the wanted faces' size and gap.
+ * does (Lander's), seven from the day Today's Hills do (Swoop's), each picture narrower and its words
+ * smaller, to fit the same width. Each has its picture's box, its kicker's size and spacing, its name's size,
+ * and the wanted faces' size and gap.
  */
 const THREE = { picW: 344, picH: 206, kicker: 18, spacing: 3, name: 29, face: 58, faceGap: 7 }
 const FOUR = { picW: 254, picH: 206, kicker: 14, spacing: 1.5, name: 24, face: 42, faceGap: 5 }
 const FIVE = { picW: 202, picH: 190, kicker: 12, spacing: 1, name: 20, face: 34, faceGap: 4 }
 const SIX = { picW: 168, picH: 178, kicker: 10, spacing: 0.4, name: 17, face: 28, faceGap: 3 }
-const SIZES = { 3: THREE, 4: FOUR, 5: FIVE, 6: SIX }
-const COUNT_WORDS = { 3: 'three', 4: 'four', 5: 'five', 6: 'six' }
+const SEVEN = { picW: 144, picH: 170, kicker: 8.5, spacing: 0.1, name: 15, face: 24, faceGap: 2 }
+const SIZES = { 3: THREE, 4: FOUR, 5: FIVE, 6: SIX, 7: SEVEN }
+const COUNT_WORDS = { 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven' }
 
 const HOLE_ACCENT = '#3ec8cf'
 const TRACK_ACCENT = '#f2813a'
@@ -53,6 +55,7 @@ const BUG_ACCENT = '#5fd3c4'
 const POUR_ACCENT = '#f5b942'
 const COURSE_ACCENT = '#d774f0'
 const CAVE_ACCENT = '#a48af0'
+const HILLS_ACCENT = '#f2706a'
 
 /* ---------- a PNG from pixels, for the hole's shaded green ---------- */
 
@@ -224,6 +227,57 @@ function caveSvg(cave, { picW, picH }) {
   )
 }
 
+/**
+ * The hills from the side as Swoop draws them (its HillsDrawing.tsx), in a picture's box: the whole way to the
+ * line at dusk, the tops stretched up, washed in the day's colour with a lit edge, the flags and the line.
+ * `hills` is the game's sim.ts layHills, with its `heightAt` and `hillsSpan`; `mix` is lib/color's mixColor.
+ */
+function hillsSvg(hills, heightAt, hillsSpan, mix, { picW, picH }) {
+  const [lo, hi] = hillsSpan(hills)
+  const x0 = -hills.finish * 0.03
+  const x1 = hills.finish * 1.04
+  const kx = picW / (x1 - x0)
+  const X = (x) => ((x - x0) * kx).toFixed(1)
+  // Stretched up no more than four times, so the hills still roll rather than spike.
+  const ky = Math.min((picH * 0.4) / Math.max(1, hi - lo), kx * 4)
+  const Y = (y) => (picH * 0.58 + ((lo + hi) / 2 - y) * ky).toFixed(1)
+  const line = []
+  for (let i = 0; i <= 160; i++) {
+    const x = x0 + ((x1 - x0) * i) / 160
+    line.push(`${X(x)} ${Y(heightAt(hills, x))}`)
+  }
+  const surface = `M${line.join(' L')}`
+  const flagH = picH * 0.1
+  const flags = hills.flags
+    .map((x) => {
+      const px = Number(X(x))
+      const py = Number(Y(heightAt(hills, x)))
+      return (
+        `<line x1="${px}" y1="${py}" x2="${px}" y2="${(py - flagH).toFixed(1)}" stroke="#e7eef3" stroke-width="1.2" opacity="0.75"/>` +
+        `<path d="M${px} ${(py - flagH).toFixed(1)} L${(px + flagH * 0.5).toFixed(1)} ${(py - flagH * 0.82).toFixed(1)} L${px} ${(py - flagH * 0.64).toFixed(1)} Z" fill="#f5b942"/>`
+      )
+    })
+    .join('')
+  const fx = Number(X(hills.finish))
+  const fy = Number(Y(heightAt(hills, hills.finish)))
+  const cell = flagH * 0.24
+  const chequer = [0, 1, 2]
+    .flatMap((r) => [0, 1].map((q) => `<rect x="${(fx + q * cell).toFixed(1)}" y="${(fy - flagH * 1.3 + r * cell).toFixed(1)}" width="${cell.toFixed(1)}" height="${cell.toFixed(1)}" fill="${(r + q) % 2 === 0 ? '#e7eef3' : '#0e1230'}"/>`))
+    .join('')
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${picW}" height="${picH}" viewBox="0 0 ${picW} ${picH}">` +
+    `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0.1" stop-color="#0a0e29"/><stop offset="0.8" stop-color="#47306b"/></linearGradient></defs>` +
+    `<rect width="${picW}" height="${picH}" fill="url(#sky)"/>` +
+    `<circle cx="${(picW * 0.8).toFixed(1)}" cy="${(picH * 0.2).toFixed(1)}" r="${(picH * 0.06).toFixed(1)}" fill="#f3ecd2"/>` +
+    `<path d="${surface} L${picW} ${picH} L0 ${picH} Z" fill="${mix(hills.hue, '#0e1230', 0.45)}"/>` +
+    `<path d="${surface}" fill="none" stroke="${mix(hills.hue, '#ffffff', 0.5)}" stroke-width="2" stroke-linejoin="round"/>` +
+    flags +
+    `<line x1="${fx}" y1="${fy}" x2="${fx}" y2="${(fy - flagH * 1.3).toFixed(1)}" stroke="#e7eef3" stroke-width="1.4"/>` +
+    chequer +
+    `</svg>`
+  )
+}
+
 /* ---------- the card ---------- */
 
 const text = (style, words) => h('div', { style: { display: 'flex', ...style } }, words)
@@ -293,7 +347,7 @@ function faces(bugs, size) {
   )
 }
 
-/** The day's card, in the measures its dailies take (THREE, FOUR, FIVE or SIX). */
+/** The day's card, in the measures its dailies take (THREE to SEVEN). */
 function card(day, size) {
   const panels = [
     panel(size, {
@@ -342,6 +396,16 @@ function card(day, size) {
         accent: CAVE_ACCENT,
         name: day.cave.name,
         picture: h('img', { src: day.cave.picture, width: size.picW, height: size.picH }),
+      }),
+    )
+  }
+  if (day.hills) {
+    panels.push(
+      panel(size, {
+        kicker: `SWOOP · HILLS #${day.hills.n}`,
+        accent: HILLS_ACCENT,
+        name: day.hills.name,
+        picture: h('img', { src: day.hills.picture, width: size.picW, height: size.picH }),
       }),
     )
   }
@@ -397,13 +461,17 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { plannedCourse, point } = await server.ssrLoadModule('/src/games/marblerun/sim.ts')
   const { dailyCave, laidNumber: caveLaid, TODAY_FROM: CAVE_FROM } = await server.ssrLoadModule('/src/games/lander/daily.ts')
   const { plannedCave } = await server.ssrLoadModule('/src/games/lander/sim.ts')
+  const { dailyHills, laidNumber: hillsLaid, TODAY_FROM: HILLS_FROM } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
+  const { heightAt, hillsSpan, plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
+  const { mixColor } = await server.ssrLoadModule('/src/lib/color.ts')
   const { isGameListed } = await server.ssrLoadModule('/src/data/games.ts')
   const { gamePlayHref } = await server.ssrLoadModule('/src/hooks/useHashRoute.ts')
-  // Today's Pour, Today's Course and Today's Cave are on a day's card from the days they join the ticket, as
-  // long as their games are listed (lib/today.ts).
+  // Today's Pour, Today's Course, Today's Cave and Today's Hills are on a day's card from the days they join
+  // the ticket, as long as their games are listed (lib/today.ts).
   const pourFrom = TODAY_FROM && isGameListed('halffull') ? TODAY_FROM : null
   const courseFrom = COURSE_FROM && isGameListed('marblerun') ? COURSE_FROM : null
   const caveFrom = CAVE_FROM && isGameListed('lander') ? CAVE_FROM : null
+  const hillsFrom = HILLS_FROM && isGameListed('swoop') ? HILLS_FROM : null
 
   const fonts = OUTFIT.map(({ weight, base64 }) => ({ name: 'Outfit', data: Buffer.from(base64, 'base64'), weight, style: 'normal' }))
   const faceOf = new Map()
@@ -428,7 +496,8 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
     const poured = pourFrom != null && day >= pourFrom
     const rolled = courseFrom != null && day >= courseFrom
     const flown = caveFrom != null && day >= caveFrom
-    const size = SIZES[3 + (poured ? 1 : 0) + (rolled ? 1 : 0) + (flown ? 1 : 0)]
+    const swooped = hillsFrom != null && day >= hillsFrom
+    const size = SIZES[3 + (poured ? 1 : 0) + (rolled ? 1 : 0) + (flown ? 1 : 0) + (swooped ? 1 : 0)]
     const info = {
       words: dayWords(day),
       hole: {
@@ -457,6 +526,11 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
       const daily = dailyCave(day)
       const cave = plannedCave(caveLaid(daily), daily.attempt)
       info.cave = { n: daily.n, name: daily.name, picture: svgUrl(caveSvg(cave, size)) }
+    }
+    if (swooped) {
+      const daily = dailyHills(day)
+      const hills = plannedHills(hillsLaid(daily), daily.attempt)
+      info.hills = { n: daily.n, name: daily.name, picture: svgUrl(hillsSvg(hills, heightAt, hillsSpan, mixColor, size)) }
     }
     const tree = card(info, size)
     const kept = join(CACHE, `${createHash('sha256').update(JSON.stringify(tree)).digest('hex').slice(0, 24)}.png`)
@@ -492,6 +566,10 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
     if (info.cave) {
       dailies.push(`Today’s Cave #${info.cave.n}, ${info.cave.name}`)
       links.push({ href: gamePlayHref('lander'), label: `Fly Today’s Cave #${info.cave.n}` })
+    }
+    if (info.hills) {
+      dailies.push(`Today’s Hills #${info.hills.n}, ${info.hills.name}`)
+      links.push({ href: gamePlayHref('swoop'), label: `Swoop Today’s Hills #${info.hills.n}` })
     }
     const count = COUNT_WORDS[dailies.length]
     const description =

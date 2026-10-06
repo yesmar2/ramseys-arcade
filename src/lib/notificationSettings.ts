@@ -1,6 +1,7 @@
 import { isGameListed } from '../data/games'
 import { TODAY_FROM as CAVE_FROM } from '../games/lander/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
+import { TODAY_FROM as HILLS_FROM } from '../games/swoop/daily'
 import { API_BASE, authHeaders } from './auth'
 
 /**
@@ -13,8 +14,8 @@ import { API_BASE, authHeaders } from './auth'
 export type NotificationLevel = 'push' | 'inbox' | 'off'
 
 /**
- * A kind of note, except that a friend beating your lap on Today's Track, or your run on Today's Course or
- * Today's Cave, is apart from the hole, the Wanted and the pour: those you can still take back.
+ * A kind of note, except that a friend beating your lap on Today's Track, or your run on Today's Course,
+ * Today's Cave or Today's Hills, is apart from the hole, the Wanted and the pour: those you can still take back.
  */
 export type NotificationTopic =
   | 'match-open'
@@ -41,11 +42,20 @@ export type TopicInfo = {
   offWarning?: string
 }
 
-/** Today's Course and Today's Cave are on the ticket, so their "beat you" notes come with the lap's: a run can be had again too. */
+/**
+ * Today's Course, Today's Cave and Today's Hills are on the ticket, so their "beat you" notes come with the
+ * lap's: a run can be had again too.
+ */
 const COURSE_ON_TICKET = COURSE_FROM != null && isGameListed('marblerun')
 const CAVE_ON_TICKET = CAVE_FROM != null && isGameListed('lander')
+const HILLS_ON_TICKET = HILLS_FROM != null && isGameListed('swoop')
 /** Where a lap or a run can be beaten and taken back: "Today’s Track or Today’s Course", and so on. */
-const RUN_DAILIES = ['Today’s Track', ...(COURSE_ON_TICKET ? ['Today’s Course'] : []), ...(CAVE_ON_TICKET ? ['Today’s Cave'] : [])]
+const RUN_DAILIES = [
+  'Today’s Track',
+  ...(COURSE_ON_TICKET ? ['Today’s Course'] : []),
+  ...(CAVE_ON_TICKET ? ['Today’s Cave'] : []),
+  ...(HILLS_ON_TICKET ? ['Today’s Hills'] : []),
+]
 const runDailies = RUN_DAILIES.length > 2 ? `${RUN_DAILIES.slice(0, -1).join(', ')} or ${RUN_DAILIES.at(-1)}` : RUN_DAILIES.join(' or ')
 
 export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[] }[] = [
@@ -58,7 +68,7 @@ export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[
         hint: 'Once, before the day ends, on a day you haven’t kept yet. Never at night.',
         offWarning: 'A day you miss ends your streak, so keep an eye on the Dailies.',
       },
-      COURSE_ON_TICKET || CAVE_ON_TICKET
+      COURSE_ON_TICKET || CAVE_ON_TICKET || HILLS_ON_TICKET
         ? {
             topic: 'today-lap',
             label: 'A friend beats your lap or your run',

@@ -1,0 +1,20 @@
+/*
+ * The admin's Hills Book (AdminHillsBook.tsx), on the Track Book's layout (adminBooks.css): Swoop's hills drawn
+ * from the side at dusk (HillsDrawing.tsx). The hills run long and low, so their pictures are wide.
+ */
+
+.hlb-map {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 0.7rem;
+  background: #0a0e29;
+}
+
+.tb-feature .hlb-map {
+  border-radius: 0.9rem;
+}
+
+.hlb-note {
+  margin-top: 1rem;
+}

@@ -285,6 +285,17 @@ export const games: Game[] = [
     accent: PALETTE.pink,
     playable: true,
   },
+  {
+    name: 'Swoop',
+    slug: 'swoop',
+    tags: ['arcade', 'quick'],
+    description:
+      'New hills every day, the same for everyone. Hold to dive down the slopes and let go to fly off the tops: land along the far side of a hill to keep your speed, into the next one and you lose it. Beat the blue bird.',
+    accent: PALETTE.red,
+    playable: true,
+    inDevelopment: true,
+    daily: true,
+  },
 ]
 
 export function getGame(slug: string) {

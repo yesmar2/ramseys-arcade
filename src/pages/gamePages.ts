@@ -28,6 +28,7 @@ export const GAME_PAGES: Record<string, LazyPage<object>> = {
   putt: lazyPage(() => import('./PuttPage').then((m) => m.PuttPage)),
   snake: lazyPage(() => import('./SnakePage').then((m) => m.SnakePage)),
   stacker: lazyPage(() => import('./StackerPage').then((m) => m.StackerPage)),
+  swoop: lazyPage(() => import('./SwoopPage').then((m) => m.SwoopPage)),
 }
 
 /** Start fetching a game's chunk; nothing happens for a slug that is not a game. */

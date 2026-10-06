@@ -87,6 +87,16 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     past: 'board',
     hudPast: 'Past cave · not ranked',
   },
+  // Swoop's day is a stretch of hills: "hills" names it, and "course" is the word a sentence counts it by.
+  swoop: {
+    course: 'course',
+    today: 'Today’s hills',
+    pastTab: 'Past hills',
+    verb: 'Swoop',
+    playToday: 'Swoop today’s hills',
+    past: 'board',
+    hudPast: 'Past hills · not ranked',
+  },
 }
 
 const FALLBACK: DailyWords = {

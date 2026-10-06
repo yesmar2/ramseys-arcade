@@ -2,6 +2,7 @@ import { isGameListed } from '../data/games'
 import { TODAY_FROM } from '../games/halffull/daily'
 import { TODAY_FROM as CAVE_FROM } from '../games/lander/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
+import { TODAY_FROM as HILLS_FROM } from '../games/swoop/daily'
 import { ROUTE_EVENT } from '../hooks/useHashRoute'
 import { sessionFingerprint, subscribeAccountId } from './auth'
 import { api, ApiError, type LeaderboardGame } from './leaderboard'
@@ -12,9 +13,9 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * (components/TodayCard.tsx, on the Dailies page at /dailies, pages/TodayPage.tsx, with a row of it on the
  * home page, HomeToday.tsx), and a streak of days kept, shown in the header too (components/TodayChip.tsx,
  * the way to the page). The dailies are Ace Chase's Today's Hole, Hot Lap's Today's Track and Find the
- * Bug's Today's Wanted, and Half Full's Today's Pour, Marble Run's Today's Course and Lander's Today's Cave from
- * the days they join (TODAY_DAILIES). Any three of a day's live dailies keep the streak; with more than three live, punching
- * every one is a Full ticket. Today's event, the One Shot and the bug hunt are bonus punches that don't
+ * Bug's Today's Wanted, and Half Full's Today's Pour, Marble Run's Today's Course, Lander's Today's Cave and
+ * Swoop's Today's Hills from the days they join (TODAY_DAILIES). Any three of a day's live dailies keep the
+ * streak; with more than three live, punching every one is a Full ticket. Today's event, the One Shot and the bug hunt are bonus punches that don't
  * count.
  *
  * The API keeps the streak for a signed-in account (GET /today, its today.ts), and settles its rewards
@@ -25,7 +26,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * punches at once and works signed out.
  */
 
-export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave'
+export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave' | 'hills'
 
 /** One of the Today set's dailies. */
 export type TodayDaily = {
@@ -42,7 +43,7 @@ export type TodayDaily = {
 }
 
 /**
- * The dailies, in the ticket's order, as the API's TODAY_DAILIES has them: the three ranked first, which count
+ * The dailies, in the ticket's order, as the API's TODAY_DAILIES has them: the ranked ones first, which count
  * toward your rank, then the three just for fun (Ramsey, 2026-10-04: "can we put the ranked games first, then
  * the just for fun second"; they were the other way round from 2026-10-02). Everywhere the dailies are listed
  * reads this order: the Dailies ticket, the home row, the Dailies bar, the header chip and "Up next". The hole,
@@ -53,6 +54,7 @@ export const TODAY_DAILIES: readonly TodayDaily[] = [
   { key: 'track', slug: 'hotlap', label: 'Track', emoji: '🏎️', better: 'higher', from: '' },
   { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
   { key: 'cave', slug: 'lander', label: 'Cave', emoji: '🚀', better: 'higher', from: CAVE_FROM },
+  { key: 'hills', slug: 'swoop', label: 'Hills', emoji: '🐦', better: 'higher', from: HILLS_FROM },
   { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '' },
   { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '' },
   { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM },
@@ -87,9 +89,12 @@ export const TODAY_SINCE_FALLBACK = '2026-09-27'
 export type TodayServer = {
   /** The boards' day, YYYY-MM-DD. */
   day: string
-  /** Whether each is done today. An API from before Today's Pour, Today's Course or Today's Cave leaves them out. */
-  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave'>, boolean> & { pour?: boolean; course?: boolean; cave?: boolean }
-  /** Today's results as the boards keep them: tries, and board scores for the lap, the bug run, the pour, the marble's run and the ship's. */
+  /** Whether each is done today. An API from before Today's Pour, Course, Cave or Hills leaves them out. */
+  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave' | 'hills'>, boolean> & { pour?: boolean; course?: boolean; cave?: boolean; hills?: boolean }
+  /**
+   * Today's results as the boards keep them: tries, and board scores for the lap, the bug run, the pour, the
+   * marble's run, the ship's and the bird's.
+   */
   results: {
     hole: { tries: number } | null
     track: { score: number } | null
@@ -97,6 +102,7 @@ export type TodayServer = {
     pour?: { score: number } | null
     course?: { score: number } | null
     cave?: { score: number } | null
+    hills?: { score: number } | null
   }
   streak: { current: number; best: number }
   /** Streak freezes held, and the next one's way off; an older API leaves them out. */
@@ -279,6 +285,7 @@ const STILL: Record<TodayKey, string> = {
   pour: 'still to pour',
   course: 'still to roll',
   cave: 'still to fly',
+  hills: 'still to swoop',
 }
 
 /**
@@ -310,7 +317,8 @@ export type TodayRival = {
   me: boolean
   /**
    * Tries on today's hole, the best lap's board score, the bug run's board score, the pour's, the best marble
-   * run's and the best cave run's; null if not yet. An API from before Today's Pour, Course or Cave leaves them out.
+   * run's, the best cave run's and the best run over the hills; null if not yet. An API from before Today's
+   * Pour, Course, Cave or Hills leaves them out.
    */
   hole: number | null
   track: number | null
@@ -318,6 +326,7 @@ export type TodayRival = {
   pour?: number | null
   course?: number | null
   cave?: number | null
+  hills?: number | null
   streak: number
   avatarId: string
 }

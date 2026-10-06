@@ -1,8 +1,8 @@
 /*
- * Medals on the racing dailies (Hot Lap, Marble Run, Lander): how a day's best went against that day's blue
- * car, ball or ship, on the same steps its tickets are paid by (the API's ticketLadders.ts). Bronze beats the
- * blue; silver, gold and platinum are one, two and three of the game's steps faster (MEDAL_STEP). Ramsey
- * picked them (2026-10-05) so every run has a goal in reach and "gold on all three" is one for the day.
+ * Medals on the racing dailies (Hot Lap, Marble Run, Lander, Swoop): how a day's best went against that day's
+ * blue car, ball, ship or bird, on the same steps its tickets are paid by (the API's ticketLadders.ts). Bronze
+ * beats the blue; silver, gold and platinum are one, two and three of the game's steps faster (MEDAL_STEP).
+ * Ramsey picked them (2026-10-05) so every run has a goal in reach and "gold on all three" is one for the day.
  *
  * They aren't the boards' gold, silver and bronze (PodiumMedal: 1st, 2nd, 3rd). These are against the blue, so
  * anyone can have one. They're worked out here from a day's blue time, which each game's plan holds (and the
@@ -14,14 +14,14 @@
  * (RaceMedal MedalLadder), and nothing says "all four": platinum is "the top medal".
  */
 
-export type RaceGame = 'hotlap' | 'marblerun' | 'lander'
+export type RaceGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop'
 export type Medal = 'bronze' | 'silver' | 'gold' | 'platinum'
 
 export const MEDALS: readonly Medal[] = ['bronze', 'silver', 'gold', 'platinum']
 
 export const MEDAL_NAMES: Record<Medal, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' }
 
-const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ball', lander: 'blue ship' }
+const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ball', lander: 'blue ship', swoop: 'blue bird' }
 
 /**
  * How much faster than the day's blue each medal past bronze is, in each game: silver one step, gold two,
@@ -31,9 +31,10 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * platinum about where his best runs land; he found that "still needs to be a little harder", so it's a point
  * more a step in Lander and Marble Run, and platinum is a few points past his usual best: 24% in Lander, 27%
  * in Marble Run. Hot Lap went to 7% too, then back to 6% once he found its platinum "just a little too hard"
- * (18%: his 17.6% lap that day just missed it).
+ * (18%: his 17.6% lap that day just missed it). Swoop came at 7% (platinum 21%), between the two: its blue
+ * bird reacts a third of a second late, so a quick player lands about 20% under it.
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.09, lander: 0.08 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.09, lander: 0.08, swoop: 0.07 }
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in
@@ -42,7 +43,7 @@ export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0
 export const MEDAL_TICKETS: Record<Medal, number> = { bronze: 5, silver: 8, gold: 11, platinum: 15 }
 
 export function isRaceGame(slug: string): slug is RaceGame {
-  return slug === 'hotlap' || slug === 'marblerun' || slug === 'lander'
+  return slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop'
 }
 
 /** The day's blue, as a run's report names it: "blue ship". */

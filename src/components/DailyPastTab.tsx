@@ -15,6 +15,7 @@ const BugArchive = lazyPage(() => import('./archive/BugArchive').then((m) => m.B
 const PourArchive = lazyPage(() => import('./archive/PourArchive').then((m) => m.PourArchive))
 const CourseArchive = lazyPage(() => import('./archive/CourseArchive').then((m) => m.CourseArchive))
 const CaveArchive = lazyPage(() => import('./archive/CaveArchive').then((m) => m.CaveArchive))
+const HillsArchive = lazyPage(() => import('./archive/HillsArchive').then((m) => m.HillsArchive))
 
 /** Each daily's cards of its past courses. */
 const LISTS: Record<string, typeof TrackArchive> = {
@@ -24,6 +25,7 @@ const LISTS: Record<string, typeof TrackArchive> = {
   halffull: PourArchive,
   marblerun: CourseArchive,
   lander: CaveArchive,
+  swoop: HillsArchive,
 }
 
 /** While a game's cards are on their way: the tab's title and a row of cards' shapes, so nothing jumps when they come. */

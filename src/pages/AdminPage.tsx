@@ -37,6 +37,7 @@ const AdminHoleBook = lazyPage(() => import('../components/AdminHoleBook').then(
 const AdminTrackBook = lazyPage(() => import('../components/AdminTrackBook').then((m) => m.AdminTrackBook))
 const AdminCourseBook = lazyPage(() => import('../components/AdminCourseBook').then((m) => m.AdminCourseBook))
 const AdminCaveBook = lazyPage(() => import('../components/AdminCaveBook').then((m) => m.AdminCaveBook))
+const AdminHillsBook = lazyPage(() => import('../components/AdminHillsBook').then((m) => m.AdminHillsBook))
 const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
 
 const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: string }[] = [
@@ -69,6 +70,12 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
     label: 'Cave Book',
     title: 'Cave Book',
     blurb: 'Every planned day of Lander’s Today’s Cave, to test fly ahead of its day.',
+  },
+  {
+    section: 'hills',
+    label: 'Hills Book',
+    title: 'Hills Book',
+    blurb: 'Every planned day of Swoop’s Today’s Hills, to test fly ahead of its day.',
   },
   {
     section: 'pours',
@@ -196,6 +203,10 @@ export function AdminPage({ section }: { section?: AdminSection }) {
               <Suspense fallback={<p className="adm-note">Opening the Cave Book…</p>}>
                 <AdminCaveBook />
               </Suspense>
+            ) : section === 'hills' ? (
+              <Suspense fallback={<p className="adm-note">Opening the Hills Book…</p>}>
+                <AdminHillsBook />
+              </Suspense>
             ) : section === 'pours' ? (
               <Suspense fallback={<p className="adm-note">Opening the Pour Book…</p>}>
                 <AdminPourBook />
@@ -289,6 +300,10 @@ function DailyGamesCard() {
           <b>Cave Book</b>
           <span>Lander: every planned Today’s Cave, to test fly</span>
         </a>
+        <a className="adm-book" href={adminHref('hills')}>
+          <b>Hills Book</b>
+          <span>Swoop: every planned Today’s Hills, to test fly</span>
+        </a>
         <a className="adm-book" href={adminHref('pours')}>
           <b>Pour Book</b>
           <span>Half Full: every day’s glasses, how hard each came out, and any day off its band</span>
@@ -310,6 +325,10 @@ function DailyGamesCard() {
         <li>
           <a href={gamePlayHref('lander')}>Lander · Today’s Cave</a>
           <span>the real one, where your best run today counts; the Cave Book test-flies any day ahead</span>
+        </li>
+        <li>
+          <a href={gamePlayHref('swoop')}>Swoop · Today’s Hills</a>
+          <span>the real one, where your best run today counts; the Hills Book test-flies any day ahead</span>
         </li>
         {HUNT_ANCHORS[0] ? (
           <li>

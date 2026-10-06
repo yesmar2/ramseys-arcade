@@ -582,6 +582,8 @@ const GAME_MUSIC: Record<string, TrackId> = {
   snake: 'pocket',
   frenzy: 'pocket',
   bop: 'pocket',
+  // A bouncy tune for a bird over the hills.
+  swoop: 'pocket',
   crosswalk: 'coinop',
   crumbtrail: 'coinop',
   pellets: 'bonus',

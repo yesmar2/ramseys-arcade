@@ -24,6 +24,9 @@ import { formatRun as formatCaveRun } from '../games/lander/score'
 import { courseDay, dailyCourse } from '../games/marblerun/daily'
 import { keptRun } from '../games/marblerun/runStore'
 import { formatRun } from '../games/marblerun/score'
+import { dailyHills, hillsDay } from '../games/swoop/daily'
+import { keptRun as keptHillsRun } from '../games/swoop/runStore'
+import { formatRun as formatHillsRun } from '../games/swoop/score'
 import { todayShareHref } from '../hooks/useHashRoute'
 import { medalFor, paceMsOf, type Medal } from '../lib/raceMedals'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
@@ -271,12 +274,33 @@ function cavePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   }
 }
 
+function hillsPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
+  const vday = hillsDay()
+  const hills = dailyHills(vday)
+  const serverRun = server?.results.hills?.score ?? null
+  // The viewer's own best run on this device (never another player's, nor one flown signed out while they're signed in).
+  const runTime = keptHillsRun(vday, viewer)?.time ?? null
+  const runWords = serverRun != null ? formatLeaderboardScore('swoop', serverRun) : runTime != null ? formatHillsRun(runTime) : null
+  const done = runWords != null || Boolean(server?.done.hills)
+  return {
+    kicker: `Today’s Hills #${hills.n}`,
+    title: hills.name,
+    done,
+    mine: runWords ? `${runWords} run` : done ? 'Done' : null,
+    short: runWords,
+    carry: null,
+    share: runWords ? `${hills.name} ${runWords}` : null,
+    medal: medalFor('swoop', paceMsOf(hills.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+  }
+}
+
 function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer: Viewer): PunchDay {
   if (key === 'hole') return holePunch(day, server, viewer)
   if (key === 'track') return trackPunch(server, viewer)
   if (key === 'wanted') return wantedPunch(server, viewer)
   if (key === 'course') return coursePunch(server, viewer)
   if (key === 'cave') return cavePunch(server, viewer)
+  if (key === 'hills') return hillsPunch(server, viewer)
   return pourPunch(server, viewer)
 }
 

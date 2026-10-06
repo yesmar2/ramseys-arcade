@@ -7,6 +7,7 @@ import { glassNames } from '../games/halffull/planSvg'
 import { dailyTrack, trackNumber } from '../games/hotlap/daily'
 import { dailyCave } from '../games/lander/daily'
 import { dailyCourse } from '../games/marblerun/daily'
+import { dailyHills } from '../games/swoop/daily'
 import { dailyTabHref, gamePlayHref } from '../hooks/useHashRoute'
 import { inArchive, useArchiveOpen, useDailyDays, type ArchiveDay, type DailyDays } from '../lib/archive'
 import { archiveTip } from '../lib/dailyPast'
@@ -52,14 +53,27 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
     const cave = dailyCave(day)
     return { kicker: `Cave #${cave.n}`, title: cave.name, play: `${gamePlayHref('lander')}?day=${day}`, page: dailyTabHref('lander', 'past', day) }
   }
+  if (key === 'hills') {
+    const hills = dailyHills(day)
+    return { kicker: `Hills #${hills.n}`, title: hills.name, play: `${gamePlayHref('swoop')}?day=${day}`, page: dailyTabHref('swoop', 'past', day) }
+  }
   const course = dailyCourse(day)
   return { kicker: `Course #${course.n}`, title: course.name, play: `${gamePlayHref('marblerun')}?day=${day}`, page: dailyTabHref('marblerun', 'past', day) }
 }
 
 /** A racing daily's medal that day (lib/raceMedals.ts): your best then, against the day's blue. */
 function medalOf(key: TodayKey, day: string, score: number): Medal | null {
-  const game = key === 'track' ? 'hotlap' : key === 'course' ? 'marblerun' : key === 'cave' ? 'lander' : null
-  const pace = key === 'track' ? dailyTrack(day).pace : key === 'course' ? dailyCourse(day).pace : key === 'cave' ? dailyCave(day).pace : null
+  const game = key === 'track' ? 'hotlap' : key === 'course' ? 'marblerun' : key === 'cave' ? 'lander' : key === 'hills' ? 'swoop' : null
+  const pace =
+    key === 'track'
+      ? dailyTrack(day).pace
+      : key === 'course'
+        ? dailyCourse(day).pace
+        : key === 'cave'
+          ? dailyCave(day).pace
+          : key === 'hills'
+            ? dailyHills(day).pace
+            : null
   // The racing dailies keep a million less the ms (their score.ts).
   return game == null || pace == null ? null : medalFor(game, paceMsOf(pace), 1_000_000 - score)
 }
@@ -126,6 +140,7 @@ export function PastDayTicket({
     pour: useDailyDays('halffull', name),
     course: useDailyDays('marblerun', name),
     cave: useDailyDays('lander', name),
+    hills: useDailyDays('swoop', name),
   }
   const card = said?.live ? TODAY_DAILIES.filter((d) => said.live!.includes(d.key) && isGameListed(d.slug)) : liveDailies(day)
   const archiveOpen = useArchiveOpen()

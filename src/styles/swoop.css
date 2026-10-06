@@ -1,0 +1,287 @@
+/*
+ * Swoop: the hills fill the screen from the side, following the bird. Over them, the site's play readout (the
+ * clock, your best, the last flag against the ghost, and the speed), a map of the whole way under the chrome,
+ * the countdown, and the coach's word at the bottom for the first few runs. Before a run the camera rides along
+ * with the run to beat; the start card stands clear of it.
+ */
+
+.swoop--fullscreen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  --swoop-good: #198a58;
+  --swoop-bad: #c93d47;
+  --swoop-accent: var(--celeb-accent, var(--accent));
+}
+
+html[data-theme='dark'] .swoop--fullscreen {
+  --swoop-good: #3ecf8e;
+  --swoop-bad: #f07a8a;
+}
+
+.swoop .game-play {
+  position: relative;
+}
+
+.swoop__play {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.swoop__holder {
+  position: absolute;
+  inset: 0;
+}
+
+.swoop__view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.swoop--showroom .swoop__view {
+  cursor: pointer;
+}
+
+/* Before a run the card has the corner the map would take. */
+.swoop--showroom .swoop__map {
+  display: none;
+}
+
+/* The clock and its figures sit over the sky: give them a surface to read on. */
+.swoop .play-readout__score,
+.swoop .play-stats {
+  text-shadow:
+    0 1px 0 rgba(var(--surface-rgb), 0.9),
+    0 0 14px rgba(var(--surface-rgb), 0.75);
+}
+
+/* Three figures and the clock don't fit across a phone: the speed goes (the card says the top speed). */
+@media (max-width: 420px) {
+  .swoop .play-stats .play-stat:nth-child(3) {
+    display: none;
+  }
+}
+
+.swoop__delta--good {
+  color: var(--swoop-good);
+}
+
+.swoop__delta--bad {
+  color: var(--swoop-bad);
+}
+
+/* ---------- the map, the countdown, the notices ---------- */
+
+/* The way from the start to the line is long and low: a wide strip. */
+.swoop__map {
+  position: absolute;
+  top: calc(var(--readout-middle) + 1.6rem);
+  right: max(0.6rem, env(safe-area-inset-right, 0px));
+  z-index: 9;
+  width: 150px;
+  height: 58px;
+  box-sizing: border-box;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 1rem;
+  background: rgba(var(--surface-rgb), 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+@media (max-width: 420px) {
+  .swoop__map {
+    width: 112px;
+    height: 46px;
+  }
+}
+
+.swoop__count {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 16vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #fff;
+  text-shadow:
+    0 0 28px color-mix(in srgb, var(--swoop-accent) 85%, transparent),
+    0 0 3px rgba(7, 5, 15, 0.9);
+  pointer-events: none;
+}
+
+.swoop__count.is-go {
+  color: #3ecf8e;
+  text-shadow:
+    0 0 28px rgba(62, 207, 142, 0.8),
+    0 0 3px rgba(7, 5, 15, 0.9);
+}
+
+.swoop__toast {
+  position: absolute;
+  top: calc(var(--readout-middle) + 2.4rem);
+  left: 50%;
+  z-index: 11;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(26rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 1.1rem;
+  background: var(--surface);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  animation: swoop-in 0.18s ease-out;
+}
+
+/* Past hills' chip sits under the back control: on a narrow screen the notices go below it. */
+@media (max-width: 820px) {
+  .swoop--past .swoop__toast {
+    top: calc(var(--readout-middle) + var(--score-size) / 2 + 2.85rem);
+  }
+}
+
+@keyframes swoop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+.swoop__nocanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--ink);
+  background: var(--playfield, var(--bg));
+}
+
+/* The coach's word: how to dive, then when to hold and when to let go. Nothing to say, nothing shown. */
+.swoop__hint {
+  position: absolute;
+  left: 50%;
+  bottom: max(1.75rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+  z-index: 9;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.82);
+  color: rgba(var(--ink-rgb), 0.78);
+  max-width: calc(100% - 2rem);
+  box-sizing: border-box;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
+
+.swoop__hint:empty,
+.swoop--showroom .swoop__hint {
+  display: none;
+}
+
+/* ---------- the cards ---------- */
+
+.swoop__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4.75rem 0.85rem max(1rem, env(safe-area-inset-bottom));
+  overflow: auto;
+  pointer-events: none;
+}
+
+/* Before a run the hills are shown off: on a phone the card sits low and the hills above it. */
+.swoop--showroom .swoop__overlay {
+  align-items: flex-end;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+/* On a wide screen the cards stand at the right, like a game's menu, and the hills have the left. */
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) {
+  .swoop__overlay,
+  .swoop--showroom .swoop__overlay {
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: max(2.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* Today's hills, by name, across the card's figures. */
+.game-card .swoop-hills {
+  grid-column: 1 / -1;
+}
+
+/*
+ * Past hills' cards (PracticeCards.tsx, on components/PastCourseCards.tsx): the overlay lets presses through
+ * to the hills, so the card after a run takes them itself. The start card is tapped through.
+ */
+.swoop__overlay .past-card:not(.game-card--start) {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swoop__toast {
+    animation: none;
+  }
+}
+
+/* An admin's test run (TestCards.tsx): the hills either side and the way back to the Hills Book, under Start. */
+.swoop-test__nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: -0.4rem;
+  font-size: 0.86rem;
+  font-weight: 650;
+  pointer-events: auto;
+}
+
+.swoop-test__nav a {
+  padding: 0.3rem 0.15rem;
+  color: var(--panel-accent-ink);
+  text-decoration: none;
+}
+
+.swoop-test__nav a:hover {
+  text-decoration: underline;
+}
+
+.swoop-test__nav > :first-child {
+  justify-self: start;
+}
+
+.swoop-test__nav > :last-child {
+  justify-self: end;
+}

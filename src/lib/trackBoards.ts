@@ -6,16 +6,16 @@ import { noteTicketsPaid } from './tickets'
 
 /*
  * Course records (the API's trackLaps.ts). Every course of a ranked daily keeps a board of its own for good,
- * its All time board: Hot Lap's tracks, Marble Run's courses and Lander's caves (`game`; a course's number is
- * a track's, or a course's or cave's day number). On its day a course is the Daily, and its runs are the
- * day's board, which closes at midnight with the day's places, points and tickets. After that a run on it
- * goes on the course's own board: its day's runs and every run since, each player's best. The past tabs
- * show each course's record; a past course's cards show its board and where you stand. The names here
- * still say "track", from when Hot Lap's were the only ones.
+ * its All time board: Hot Lap's tracks, Marble Run's courses, Lander's caves and Swoop's hills (`game`; a
+ * course's number is a track's, or a course's, cave's or hills' day number). On its day a course is the Daily,
+ * and its runs are the day's board, which closes at midnight with the day's places, points and tickets. After
+ * that a run on it goes on the course's own board: its day's runs and every run since, each player's best. The
+ * past tabs show each course's record; a past course's cards show its board and where you stand. The names
+ * here still say "track", from when Hot Lap's were the only ones.
  */
 
 /** The dailies whose past courses keep All time boards. */
-export type TrackGame = 'hotlap' | 'marblerun' | 'lander'
+export type TrackGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop'
 
 export type TrackLapFigure = { name: string; score: number; avatarId?: string; skin?: string }
 

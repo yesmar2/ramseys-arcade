@@ -42,6 +42,7 @@ const ACCENT: Record<TodayKey, string> = {
   pour: '#f5b942',
   course: '#d774f0',
   cave: '#a48af0',
+  hills: '#f2706a',
 }
 
 /** The way in, short enough for a card. */
@@ -52,6 +53,7 @@ const GO: Record<TodayKey, string> = {
   pour: 'Pour',
   course: 'Roll it',
   cave: 'Fly it',
+  hills: 'Swoop it',
 }
 
 const CheckIcon = () => (

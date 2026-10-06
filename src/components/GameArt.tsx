@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react'
 import { PALETTE } from '../data/games'
+import { BirdMark } from '../games/swoop/BirdMark'
 import { mixColor } from '../lib/color'
 
 /*
@@ -1557,6 +1558,95 @@ function Lander({ id }: { id: Id }) {
   )
 }
 
+/** Swoop's hill: tops and bottoms joined by half cosines, as the game lays its hills (y down here). */
+const SWOOP_HILL: Array<[number, number]> = [
+  [-1, 23.5],
+  [12.5, 17],
+  [28.5, 27.6],
+  [41, 20.5],
+]
+
+function swoopHillAt(x: number): { y: number; deg: number } {
+  let i = 0
+  while (i < SWOOP_HILL.length - 2 && x > SWOOP_HILL[i + 1]![0]) i++
+  const [x0, y0] = SWOOP_HILL[i]!
+  const [x1, y1] = SWOOP_HILL[i + 1]!
+  const u = Math.min(1, Math.max(0, (x - x0) / (x1 - x0)))
+  const slope = ((y1 - y0) * Math.PI * Math.sin(Math.PI * u)) / (2 * (x1 - x0))
+  return { y: y0 + ((y1 - y0) * (1 - Math.cos(Math.PI * u))) / 2, deg: (Math.atan(slope) * 180) / Math.PI }
+}
+
+/** The hill's surface, `dy` below it. */
+const swoopLine = (dy: number) =>
+  Array.from({ length: 85 }, (_, i) => `${i ? 'L' : 'M'}${-1 + i * 0.5} ${(swoopHillAt(-1 + i * 0.5).y + dy).toFixed(2)}`).join(' ')
+
+const SWOOP_SURFACE = swoopLine(0)
+const SWOOP_BLIPS = Array.from({ length: 19 }, (_, i) => -0.4 + i * 2.3).map((x) => [x, swoopHillAt(x).y + 5.6] as const)
+/** The bird's trail off the top, the way it came: falling a little behind it. */
+const SWOOP_TRAIL = [0.15, 0.27, 0.39, 0.51, 0.63, 0.75].map((t) => [12.9 + t * 9, 15.4 - t * 4.6 + t * t * 2.6] as const)
+
+/**
+ * Swoop: the bird just off the top of a hill, flying, its wing up and its dotted trail behind it, the blue bird
+ * coming up the slope after it, at dusk over the day's green hills with their turf, their seams of earth and
+ * their row of blips, as the game draws them. A flag further on.
+ */
+function Swoop({ id }: { id: Id }) {
+  const hue = PALETTE.green
+  const blue = swoopHillAt(5.6)
+  return (
+    <>
+      <defs>
+        <linearGradient id={id('earth')} x1="0" y1="0.55" x2="0" y2="1">
+          <stop offset="0" stopColor={mixColor(hue, '#0e1230', 0.45)} />
+          <stop offset="1" stopColor={mixColor(hue, '#0e1230', 0.72)} />
+        </linearGradient>
+      </defs>
+      <Backdrop
+        id={id}
+        stops={[
+          [0, '#0a0e29'],
+          [0.75, '#47306b'],
+        ]}
+      />
+      <Stars
+        points={[
+          [3, 3, 0.18],
+          [8.4, 6.2, 0.14, 0.5],
+          [14, 2.4, 0.16],
+          [19.6, 5.4, 0.13, 0.5],
+          [25.6, 2, 0.17],
+          [28.4, 8.4, 0.12, 0.45],
+          [38.6, 10.4, 0.15, 0.5],
+          [6, 11.2, 0.12, 0.45],
+        ]}
+      />
+      <Moon id={id} cx={34} cy={5.6} r={2.4} />
+      <path d="M-1 31 V18.6 C4 16.4 9 17.6 15 17.2 C22 16.6 26 13.4 32 14.2 C36.4 14.8 38.6 16.6 41 16.2 V31 Z" fill={mixColor(hue, '#1b1745', 0.72)} />
+      <path d={`${SWOOP_SURFACE} V31 H-1 Z`} fill={`url(#${id('earth')})`} />
+      <path d={swoopLine(0.75)} {...line(mixColor(hue, '#ffffff', 0.12), 1.3)} />
+      <path d={swoopLine(3.4)} {...line(mixColor(hue, '#0e1230', 0.62), 0.32)} />
+      <path d={swoopLine(8.4)} {...line(mixColor(hue, '#0e1230', 0.62), 0.32)} />
+      {SWOOP_BLIPS.map(([x, y]) => (
+        <circle key={x} cx={x} cy={y} r="0.38" fill={mixColor(hue, '#ffffff', 0.3)} />
+      ))}
+      <path d={SWOOP_SURFACE} {...line(mixColor(hue, '#ffffff', 0.5), 0.5)} />
+      {/* A flag further on. */}
+      <path d="M37.2 21.4 V15.2" {...line('#e7eef3', 0.22, 0.8)} />
+      <path d="M37.2 15.2 L40 16.2 L37.2 17.2 Z" fill="#f5b942" />
+      {/* The blue bird on the slope behind, and the dotted way your bird came. */}
+      <g transform={`translate(5.6 ${blue.y.toFixed(2)}) rotate(${blue.deg.toFixed(1)}) translate(0 -1.55) scale(1.65)`} opacity="0.7">
+        <BirdMark fill="#4cb8f0" line={mixColor('#4cb8f0', '#ffffff', 0.4)} />
+      </g>
+      {SWOOP_TRAIL.map(([x, y], i) => (
+        <circle key={x} cx={x} cy={y} r="0.3" fill="#ffffff" opacity={0.3 + i * 0.1} />
+      ))}
+      <g transform="translate(23.4 10.6) rotate(12) scale(2.7)">
+        <BirdMark fill="#e8564f" line={mixColor('#e8564f', '#ffffff', 0.4)} wingUp />
+      </g>
+    </>
+  )
+}
+
 /*
  * Pileup's pieces, as its renderer draws them in the dark theme: a soft wash
  * of the piece's colour against the well, its outline the colour lifted
@@ -1720,6 +1810,7 @@ const SCENES: Record<string, Scene> = {
   marblerun: MarbleRun,
   lander: Lander,
   pileup: Pileup,
+  swoop: Swoop,
 }
 
 /**

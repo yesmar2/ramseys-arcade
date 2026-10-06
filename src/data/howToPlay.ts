@@ -430,6 +430,34 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ends: 'The pile reaches the top.',
     tip: 'Every 12 rows you clear charges a Shake: every block drops straight down into the gaps under it, and any row that fills clears. The piece you’re dropping waits at the top meanwhile.',
   },
+  swoop: {
+    goal: 'Fly the bird over today’s hills to the finish, fastest. New hills come every day at midnight, New York time.',
+    controls: [
+      { does: 'Dive', touch: 'Hold anywhere', keys: 'Hold Space or ↓' },
+      { does: 'Fly', touch: 'Let go', keys: 'Let go' },
+      { does: 'Start the run again', touch: '↻', keys: 'R' },
+    ],
+    scores: [
+      { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
+      { what: 'Land along a slope', pts: 'keeps your speed', sub: 'a clean landing adds a little' },
+      { what: 'Land into a hill', pts: 'costs speed', sub: 'up to 40% of it' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bird, then every 7% faster' },
+    ],
+    ends: 'Over the finish line. Fly it as often as you like.',
+    tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face.',
+    counts: [
+      {
+        what: 'Today’s hills',
+        kind: 'counts',
+        sub: 'Your best run today goes on today’s board, your week and your rank.',
+      },
+      {
+        what: 'Past hills',
+        kind: 'board',
+        sub: `Your best run goes on that course’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
+      },
+    ],
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {
