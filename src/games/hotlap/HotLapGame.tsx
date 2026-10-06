@@ -395,7 +395,9 @@ function HotLapDay({
   nameRef.current = playerName
 
   /**
-   * The lap to beat. On today's track, once you've a lap on the board, the player's one place above you, for
+   * The lap to beat. Your first lap on a track is against the blue car (Ramsey, 2026-10-06: "the first time you
+   * play it should be against blue and not the top score"): no lap of yours here yet, none on the board, and the
+   * #1 isn't you. On today's track, once you've a lap on the board, the player's one place above you, for
    * their place: pass them and the next one lines up (Ramsey, 2026-10-05: a ghost in reach every lap). Else
    * the board's #1, on their own line, or on the blue car's at their time when theirs isn't known
    * (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board, your best, or
@@ -405,6 +407,7 @@ function HotLapDay({
   const chase = (): Chase => {
     const mine = bestLapOf(day, test, currentAccountId())
     const next = nextRef.current
+    if (!mine && !next && topRef.current?.name !== nameRef.current) return { lap: pace, chasing: { who: 'pace' } }
     if (next && !test && !past && (!mine || next.time < mine.time - 0.0005)) {
       return { lap: next.lap ?? standIn(pace, next.time), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
     }

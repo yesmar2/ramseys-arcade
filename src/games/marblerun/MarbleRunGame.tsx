@@ -174,15 +174,24 @@ type Chase = { ghost: Ghost; chasing: Chasing }
 const topChasing = (top: BoardGhost, me: string): Chasing => (top.name === me ? { who: 'you' } : { who: 'rival', name: top.name })
 
 /**
- * The run to beat. On today's course, once you've a run on the board, the player's one place above you, for
- * their place: pass them and the next one lines up (Ramsey, 2026-10-05: a ghost in reach every run). Else the
- * board's #1, on their own line, or on the blue ball's at their time when theirs isn't known (boardGhost.ts
- * standIn); unless your own best here is faster. With nobody on the board, your best here when it beats the
- * blue ball, else the blue ball's. Your own is the one of whoever is signed in now.
+ * Your first run on a course is against the blue ball (Ramsey, 2026-10-06: "the first time you play it should
+ * be against blue and not the top score"): no run of yours here yet, none on the board, and the #1 isn't you.
+ */
+const firstRun = (mine: GhostRun | null, top: BoardGhost | null, me: string, next: NextGhost | null) =>
+  !mine && !next && top?.name !== me
+
+/**
+ * The run to beat. Your first here, the blue ball's. On today's course, once you've a run on the board, the
+ * player's one place above you, for their place: pass them and the next one lines up (Ramsey, 2026-10-05: a
+ * ghost in reach every run). Else the board's #1, on their own line, or on the blue ball's at their time when
+ * theirs isn't known (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board,
+ * your best here when it beats the blue ball, else the blue ball's. Your own is the one of whoever is signed in
+ * now.
  */
 function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null): Chase {
   const pace = paceOf(day)
   const mine = bestOf(day, practice, currentAccountId())
+  if (firstRun(mine, top, me, next)) return { ghost: new Ghost(pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
     return { ghost: new Ghost(next.run ?? standIn(pace, next.time)), chasing: { who: 'next', name: next.name, place: next.place } }
   }
@@ -200,6 +209,7 @@ function cardChase(marble: MarbleDay, practice: boolean, top: BoardGhost | null,
   const mine = bestOf(marble.day, practice, currentAccountId())
   const sp = marble.course.spawns[0]!
   const waiting = (time: number) => new Ghost({ time, splits: [], ghost: [sp.x, sp.y, sp.z, sp.x, sp.y, sp.z] })
+  if (firstRun(mine, top, me, next)) return { ghost: waiting(marble.pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
     return { ghost: next.run ? new Ghost(next.run) : waiting(next.time), chasing: { who: 'next', name: next.name, place: next.place } }
   }
