@@ -16,6 +16,7 @@ import { inkOn } from '../lib/color'
 import { cachedMyGroups, useActiveGroup } from '../lib/groups'
 import {
   fetchGlobalBoard,
+  findInStandings,
   normalizePlayerName,
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_PERIODS,
@@ -208,11 +209,39 @@ function Standings({
   const [loadingMore, setLoadingMore] = useState(false)
   // A phone shows the top five until asked for more; a link to the standings is asking.
   const [opened, setOpened] = useState(() => focusFromUrl() === 'standings')
+  // Find a player: what's typed, and who it found (null while nothing is typed).
+  const [find, setFind] = useState('')
+  const [found, setFound] = useState<Standing[] | null>(null)
 
   // A new period or group is a new list.
   useEffect(() => {
     setMore([])
+    setFind('')
+    setFound(null)
   }, [standings])
+
+  // Asked once typing stops.
+  useEffect(() => {
+    const q = find.trim()
+    if (!q) {
+      setFound(null)
+      return
+    }
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      findInStandings(q, period)
+        .then((rows) => {
+          if (!cancelled) setFound(rows.map((r) => ({ ...r, games: r.games ?? Object.keys(r.byGame ?? {}).length })))
+        })
+        .catch(() => {
+          if (!cancelled) setFound([])
+        })
+    }, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [find, period])
 
   // Brought into view once they're in, and again whenever a link asks while the page is open.
   useEffect(() => {
@@ -271,6 +300,29 @@ function Standings({
           How your rank works ›
         </a>
       </div>
+      {/* Held while the list loads too, so it doesn't push the rows down when it comes. */}
+      {loading || totalPlayers > 10 ? (
+        <div className="gb-find sb-standings__find">
+          <label className="gb-find__box" htmlFor={`sb-find-${period}`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <span className="visually-hidden">Find a player</span>
+            <input
+              id={`sb-find-${period}`}
+              type="search"
+              placeholder="Find a player"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={12}
+              value={find}
+              disabled={loading}
+              onChange={(e) => setFind(e.target.value)}
+            />
+          </label>
+        </div>
+      ) : null}
       {loading ? (
         <ol className="sb-rows" aria-busy="true">
           {Array.from({ length: heldRows }, (_, i) => (
@@ -286,6 +338,16 @@ function Standings({
             </li>
           ))}
         </ol>
+      ) : found ? (
+        found.length ? (
+          <ol className="sb-rows" aria-label={`Players matching ${find.trim()}`}>
+            {found.map((row) => (
+              <StandingRow key={row.name} row={row} leaderScore={leaderScore} you={you} period={period} />
+            ))}
+          </ol>
+        ) : (
+          <p className="gb-board__note gb-find__none">Nobody on the Standings goes by “{find.trim().toUpperCase()}”.</p>
+        )
       ) : (
         <ol className="sb-rows">
           {rows.map((row) => (
@@ -349,7 +411,7 @@ function Standings({
           </ol>
         </div>
       ) : null}
-      {!loading && hasFoot ? (
+      {!loading && hasFoot && !found ? (
         <div className="sb-standings__foot">
           {/* With nobody left to fetch, it is only a phone's hidden sixth to tenth still to show. */}
           <button

@@ -740,6 +740,16 @@ export async function fetchGlobalBoard(
   )
 }
 
+/** Up to ten players on the Standings whose tag holds `find`, each with its place (GET /leaderboards/rank?find=). */
+export async function findInStandings(find: string, period: LeaderboardPeriod = 'all'): Promise<GlobalBoardEntry[]> {
+  return withGroupFallback(async () => {
+    const qs = applyBoardScope(new URLSearchParams({ find: find.trim().slice(0, 12) }))
+    if (period !== 'all') qs.set('period', period)
+    const data = await api<{ found?: GlobalBoardEntry[] }>(`/leaderboards/rank?${qs}`)
+    return data.found ?? []
+  })
+}
+
 export type QualifiesResult = {
   qualifies: boolean
   rank: number | null
