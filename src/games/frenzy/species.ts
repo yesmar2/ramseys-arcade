@@ -421,24 +421,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
   },
 }
 
-/** The player: the arcade's magenta, grown into grander fins stage by stage. */
-export const EVOLUTION = [
-  { level: 1, name: 'Fry' },
-  { level: 10, name: 'Darter' },
-  { level: 25, name: 'Hunter' },
-  { level: 60, name: 'Predator' },
-  { level: 150, name: 'Apex' },
-  { level: 400, name: 'Leviathan' },
-] as const
-
-export function stageFor(level: number) {
-  let stage = 0
-  for (let i = 0; i < EVOLUTION.length; i++) {
-    if (level >= EVOLUTION[i]!.level) stage = i
-  }
-  return stage
-}
-
+/** The player: the arcade's magenta. */
 const PLAYER_BASE: FishArt = {
   length: 2.2,
   height: 0.44,
@@ -454,42 +437,24 @@ const PLAYER_BASE: FishArt = {
   swatch: 'magenta',
 }
 
-const playerArtCache: FishArt[] = []
+/**
+ * You, at each size: a new shape every time you grow, always in the arcade's magenta (Ramsey, 2026-10-06:
+ * "should the fish change when it evolves?"). Fry and Minnow are little darting fish; Darter grows a sail;
+ * Hunter is long and lean with an underbite; Predator heavy with jaws; Brute carries a bill; Apex is a shark;
+ * Leviathan a grander shark that glows.
+ */
+const PLAYER_LOOKS: readonly FishArt[] = [
+  PLAYER_BASE,
+  { ...PLAYER_BASE, dorsal: 'sail', dorsalSize: 0.62, tailSize: 1.1 },
+  { ...PLAYER_BASE, height: 0.5, dorsal: 'long', dorsalSize: 0.66, tail: 'fan', tailSize: 1.1, anal: true },
+  { ...SPECIES.barracuda.art, height: 0.24, swatch: 'magenta', tailSwatch: undefined },
+  { ...SPECIES.grouper.art, swatch: 'magenta', tailSwatch: 'pink' },
+  { ...SPECIES.swordfish.art, height: 0.3, swatch: 'magenta', tailSwatch: 'pink' },
+  { ...SPECIES.shark.art, swatch: 'magenta', tailSwatch: 'pink' },
+  { ...SPECIES.shark.art, height: 0.32, dorsalSize: (SPECIES.shark.art.dorsalSize ?? 0.5) * 1.25, tailSize: SPECIES.shark.art.tailSize * 1.15, swatch: 'magenta', tailSwatch: 'violet', glow: '#ffd2ff' },
+]
 
 export function playerArt(stage: number): FishArt {
-  const cached = playerArtCache[stage]
-  if (cached) return cached
-  let art: FishArt = { ...PLAYER_BASE }
-  if (stage >= 1) art = { ...art, dorsal: 'sail', dorsalSize: 0.62, tailSize: 1.1 }
-  if (stage >= 2) art = { ...art, tail: 'fan', tailSize: 1.05, anal: true }
-  if (stage >= 3) art = { ...art, dorsal: 'long', dorsalSize: 0.6, glow: '#f7b2ff' }
-  if (stage >= 4) art = { ...art, tailSize: 1.2, dorsalSize: 0.72 }
-  if (stage >= 5) art = { ...art, tailSize: 1.32, dorsalSize: 0.82, glow: '#ffd2ff' }
-  playerArtCache[stage] = art
-  return art
+  return PLAYER_LOOKS[Math.max(0, Math.min(PLAYER_LOOKS.length - 1, stage))]!
 }
 
-export function speciesInZone(role: Role, zone: ZoneId, behavior?: Behavior): Species[] {
-  return Object.values(SPECIES).filter(
-    (s) =>
-      s.role === role &&
-      s.zones.includes(zone) &&
-      (behavior ? s.behavior === behavior : s.behavior !== 'school'),
-  )
-}
-
-export function pickWeighted<T extends { weight: number }>(list: readonly T[], roll: number): T | null {
-  const total = list.reduce((sum, item) => sum + item.weight, 0)
-  if (total <= 0) return null
-  let acc = roll * total
-  for (const item of list) {
-    acc -= item.weight
-    if (acc <= 0) return item
-  }
-  return list[list.length - 1] ?? null
-}
-
-/** "a shark", "an anglerfish". */
-export function withArticle(name: string) {
-  return /^[aeiou]/i.test(name) ? `an ${name}` : `a ${name}`
-}

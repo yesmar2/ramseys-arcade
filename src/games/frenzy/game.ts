@@ -6,16 +6,21 @@ import type { SpeciesId } from './species'
  * "do you think we should do levels or just keep growing? i like it to be more open ocean too, and it'd be
  * cool to have the surface where you could actually jump out of water", and "go ahead and build").
  *
- * One run, no levels: eat fish smaller than you to fill the bar, and each time it fills you grow a size,
- * six in all, and bigger fish come out to meet you. There are no numbers on the fish: size and colour say
- * who eats whom, and anything that can eat you has a red eye and comes for you when you're near.
+ * One run, no levels: eat fish smaller than you to fill the bar, and each time it fills you grow a size and
+ * take a new shape (Fry, Minnow, Darter, Hunter, Predator, Brute, Apex, Leviathan), and bigger fish come out
+ * to meet you. At the top the bar turns gold, and filling it sets off a frenzy: double points for a while,
+ * and again each time it fills (Ramsey, 2026-10-06: "should the fish change when it evolves? why is there a
+ * max?"). There are no numbers on the fish: size and colour say who eats whom, and anything that can eat
+ * you has a red eye and comes for you when you're near.
  *
  * The ocean is a few screens wide and two deep, with a surface, a sea floor and walls at the sides, and the
  * camera follows you, pulling back as you grow. Most fish live near the top; the deep has the bigger
  * meals and more hunters. Swim up hard through the surface and you leap out: nothing can follow you into
  * the air, flying fish and gulls up there are worth a bonus, and the splash scatters the small fish where
  * you land. Every so often a shark crosses at your depth, after a red "!" at the edge it comes from, and eats
- * whatever is in its lane (unless you're in the air). Three lives; bites in quick succession chain up to ×5.
+ * whatever is in its lane (unless you're in the air). A fisherman drifts by on the surface now and then, his
+ * worm on a hook below: touch the hook and you're reeled in ("can we add a fisherman with a hook to avoid
+ * too?"). Three lives; bites in quick succession chain up to ×5.
  *
  * Everything here is in world units, y down from the surface (above it is negative); the renderer scales.
  */
@@ -23,32 +28,51 @@ import type { SpeciesId } from './species'
 export type Phase = 'menu' | 'playing' | 'dying' | 'gameover'
 
 /** The ocean: its width, the sea floor's depth, and how high above the surface the view can go. */
-export const OCEAN_W = 1800
-export const FLOOR = 1000
-export const SKY = -240
+export const OCEAN_W = 2400
+export const FLOOR = 1300
+export const SKY = -260
 /** How much water a screen shows, top to bottom, at the smallest size; more as you grow. */
-const VIEW_H = 460
-const ZOOM_PER_SIZE = 0.12
+const VIEW_H = 440
+const ZOOM_PER_SIZE = 0.11
 
-/** The fish's sizes, smallest first: radius, the kinds drawn at that size, and points. */
-export const TIERS: readonly { r: number; species: readonly SpeciesId[]; points: number }[] = [
-  { r: 5, species: ['sardine'], points: 5 },
-  { r: 8, species: ['clownfish', 'hatchetfish'], points: 8 },
-  { r: 11.5, species: ['angelfish', 'lanternfish'], points: 10 },
-  { r: 16, species: ['tang', 'puffer'], points: 15 },
-  { r: 21.5, species: ['puffer', 'grouper'], points: 20 },
-  { r: 28, species: ['barracuda'], points: 30 },
-  { r: 36, species: ['grouper', 'swordfish'], points: 40 },
-  { r: 47, species: ['swordfish', 'anglerfish'], points: 55 },
-  { r: 60, species: ['anglerfish'], points: 80 },
+/** The kinds drawn at each size of fish, smallest first. */
+const TIER_SPECIES: readonly (readonly SpeciesId[])[] = [
+  ['sardine'],
+  ['clownfish'],
+  ['lanternfish', 'angelfish'],
+  ['tang', 'angelfish'],
+  ['puffer', 'tang'],
+  ['barracuda', 'puffer'],
+  ['barracuda', 'grouper'],
+  ['grouper', 'swordfish'],
+  ['swordfish', 'anglerfish'],
+  ['anglerfish', 'grouper'],
+  ['anglerfish'],
 ]
-/** The player's radius at each size. At size s it eats tiers up to s + 1; tiers from s + 2 eat it. */
-const PLAYER_R = [9, 13, 18, 24, 31, 40] as const
-export const MAX_SIZE = PLAYER_R.length - 1
-/** How much eating fills the bar to the next size (a fish your size or bigger counts 1, smaller ones less). */
-const GROW_NEED = [10, 13, 16, 20, 24] as const
-/** Points for each size reached. */
+/**
+ * The fish's sizes, smallest first: each a third bigger than the last, the kinds drawn at that size, and
+ * points that rise with size.
+ */
+export const TIERS: readonly { r: number; species: readonly SpeciesId[]; points: number }[] = TIER_SPECIES.map((species, t) => ({
+  r: 5 * 1.33 ** t,
+  species,
+  points: Math.round(5 * 1.4 ** t),
+}))
+/** What you are at each size. */
+export const STAGES = ['Fry', 'Minnow', 'Darter', 'Hunter', 'Predator', 'Brute', 'Apex', 'Leviathan'] as const
+export const MAX_SIZE = STAGES.length - 1
+/**
+ * The player's radius at each size: a little bigger than the fish one size up, so at size s it eats tiers up
+ * to s + 1, and tiers from s + 2 eat it.
+ */
+const PLAYER_R = STAGES.map((_, size) => TIERS[size + 1]!.r * 1.14)
+/** How much eating fills the bar to the next size (a fish your size or bigger counts 1, smaller ones a third). */
+const GROW_NEED = [10, 12, 14, 17, 20, 24, 28] as const
+/** Points for each size reached, times the size. */
 const GROW_BONUS = 50
+/** At the top: the bar fills toward a frenzy, which doubles points for FRENZY_TIME. */
+const FRENZY_NEED = 20
+export const FRENZY_TIME = 8
 
 const LIVES = 3
 const PLAYER_SPEED = 220
@@ -66,7 +90,11 @@ const SPLASH_R = 110
 /** The shark: seconds of warning, its speed, its size. */
 const SHARK_WARN = 1.4
 const SHARK_SPEED = 360
-export const SHARK_R = 56
+const SHARK_R = 56
+/** The fisherman: when he first comes, how long between boats, how deep he fishes. */
+const BOAT_FIRST = 22
+const BOAT_GAP: readonly [number, number] = [16, 26]
+const HOOK_R = 6
 /** Points for things caught in the air. */
 const FLYER_AIR_POINTS = 25
 const GULL_POINTS = 50
@@ -111,7 +139,23 @@ export type Player = {
   air: boolean
 }
 
-export type Shark = { stage: 'warn' | 'pass'; t: number; x: number; y: number; dir: 1 | -1; swim: number; left: number }
+export type Shark = { stage: 'warn' | 'pass'; t: number; x: number; y: number; dir: 1 | -1; swim: number; left: number; r: number }
+
+/**
+ * The fisherman's boat on the surface, its line down to a worm on a hook at `hookY`. It drifts in, casts,
+ * waits, reels in, and after a few casts sails off. Whatever bites is reeled up with it.
+ */
+export type Boat = {
+  x: number
+  dir: 1 | -1
+  stage: 'cast' | 'wait' | 'reel' | 'leave'
+  t: number
+  hookY: number
+  depth: number
+  casts: number
+  /** On the hook, being reeled up: a fish (its species and tier), or you. */
+  caught: { species: SpeciesId; tier: number } | 'you' | null
+}
 
 export type Particle = { x: number; y: number; vx: number; vy: number; r: number; t: number; life: number; color: string; drop?: boolean }
 export type Floater = { x: number; y: number; text: string; t: number; tone: 'plain' | 'hot' | 'grow' | 'bad' }
@@ -146,6 +190,10 @@ export type GameState = {
   gullIn: number
   shark: Shark | null
   sharkIn: number
+  boat: Boat | null
+  boatIn: number
+  /** Seconds of frenzy left (double points), at the top size. */
+  frenzy: number
   /** Where the fish is heading, in world units; null to coast to a stop. */
   target: { x: number; y: number } | null
   keys: Keys
@@ -160,7 +208,7 @@ export type GameState = {
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
-const need = (size: number) => GROW_NEED[Math.min(size, GROW_NEED.length - 1)]!
+const need = (size: number) => (size >= MAX_SIZE ? FRENZY_NEED : GROW_NEED[size]!)
 /** The player's radius: its size, and a little more as the bar fills toward the next. */
 export const playerRadius = (s: Pick<GameState, 'player' | 'bar'>) => {
   const size = s.player.size
@@ -171,8 +219,13 @@ export const playerRadius = (s: Pick<GameState, 'player' | 'bar'>) => {
 export const fishRadius = (f: Pick<Fish, 'tier'>) => TIERS[f.tier]!.r
 /** Can a fish of this tier be eaten by a player of this size? */
 export const edible = (tier: number, size: number) => tier <= size + 1
-/** How full the bar is, 0..1 (always full at the largest size). */
-export const barFill = (s: Pick<GameState, 'bar' | 'player'>) => (s.player.size >= MAX_SIZE ? 1 : clamp(s.bar / need(s.player.size), 0, 1))
+/** How full the bar is, 0..1: toward the next size, or at the top toward a frenzy (and in one, how much is left). */
+export const barFill = (s: Pick<GameState, 'bar' | 'player' | 'frenzy'>) =>
+  s.frenzy > 0 ? clamp(s.frenzy / FRENZY_TIME, 0, 1) : clamp(s.bar / need(s.player.size), 0, 1)
+/** The shark is always far bigger than you. */
+export const sharkRadius = (s: Pick<GameState, 'player' | 'bar'>) => Math.max(SHARK_R, playerRadius(s) * 1.7)
+/** Where the fisherman's rod tip is, and so where his line hangs from. */
+export const rodTip = (b: Pick<Boat, 'x' | 'dir'>) => ({ x: b.x + b.dir * 30, y: -38 })
 /** The chain's multiplier. */
 export const chainOf = (s: Pick<GameState, 'chain'>) => Math.max(1, Math.min(MAX_CHAIN, s.chain))
 
@@ -211,6 +264,9 @@ export function createInitialState(w = 960, h = 540): GameState {
     gullIn: 2,
     shark: null,
     sharkIn: 16,
+    boat: null,
+    boatIn: BOAT_FIRST,
+    frenzy: 0,
     target: null,
     keys: { up: false, down: false, left: false, right: false },
     particles: [],
@@ -276,6 +332,9 @@ export function startGame(s: GameState): GameState {
     gullIn: 3,
     shark: null,
     sharkIn: 18,
+    boat: null,
+    boatIn: BOAT_FIRST,
+    frenzy: 0,
     target: null,
     particles: [],
     floaters: [],
@@ -494,7 +553,7 @@ function eatPoints(s: GameState, x: number, y: number, base: number) {
   s.chain = s.chainTime > 0 ? s.chain + 1 : 1
   s.chainTime = CHAIN_WINDOW
   const mult = chainOf(s)
-  const pts = base * mult
+  const pts = base * mult * (s.frenzy > 0 ? 2 : 1)
   s.score += pts
   s.floaters.push({ x, y: y - 8, text: mult > 1 ? `+${pts} ×${mult}` : `+${pts}`, t: 0, tone: mult > 2 ? 'hot' : 'plain' })
   sfx('eat')
@@ -513,19 +572,28 @@ function eat(s: GameState, f: Fish) {
 
 function grow(s: GameState, by: number) {
   const p = s.player
-  if (p.size >= MAX_SIZE) return
+  // In a frenzy the bar is its clock, and fills no further.
+  if (s.frenzy > 0) return
   s.bar += by
   if (s.bar < need(p.size)) return
   s.bar = 0
+  if (p.size >= MAX_SIZE) {
+    s.frenzy = FRENZY_TIME
+    s.floaters.push({ x: p.x, y: p.y - 40, text: 'FRENZY! ×2', t: 0, tone: 'grow' })
+    burst(s, p.x, p.y, '#f5b942', 26, 170)
+    sfx('perfect')
+    return
+  }
   p.size += 1
   const bonus = GROW_BONUS * p.size
   s.score += bonus
-  s.floaters.push({ x: p.x, y: p.y - 34, text: p.size >= MAX_SIZE ? `Top of the food chain! +${bonus}` : `You grew! +${bonus}`, t: 0, tone: 'grow' })
+  s.floaters.push({ x: p.x, y: p.y - 34, text: `${STAGES[p.size]}! +${bonus}`, t: 0, tone: 'grow' })
   burst(s, p.x, p.y, '#3ecf8e', 20, 140)
   sfx(p.size >= MAX_SIZE ? 'perfect' : 'good')
 }
 
-function hurt(s: GameState, by: string) {
+/** A life lost, to `cause` ("Eaten by a tang", "Caught by the fisherman"). */
+function hurt(s: GameState, cause: string) {
   const p = s.player
   s.lives -= 1
   s.chain = 0
@@ -534,7 +602,7 @@ function hurt(s: GameState, by: string) {
   if (s.lives <= 0) {
     s.phase = 'dying'
     s.phaseTime = 0
-    s.deathCause = `Eaten by ${by}`
+    s.deathCause = cause
     sfx('die')
     return
   }
@@ -565,7 +633,7 @@ function moveFishes(s: GameState, dt: number, playing: boolean) {
       const sp = (110 + f.tier * 5) * pace
       f.vx += ((dx / d) * sp - f.vx) * dt * 2.2
       f.vy += ((dy / d) * sp - f.vy) * dt * 2.2
-    } else if (playing && !bigger && d < 90 + fr) {
+    } else if (playing && !bigger && d < (s.frenzy > 0 ? 150 : 90) + fr) {
       // Runs from you, but not fast enough to get away from a chase.
       f.vx -= (dx / d) * 170 * dt
       f.vy -= (dy / d) * 170 * dt
@@ -616,7 +684,7 @@ function moveFishes(s: GameState, dt: number, playing: boolean) {
         f.tier = -1
         if (s.phase !== 'playing') break
       } else if (p.invuln <= 0 && !p.air) {
-        hurt(s, NAMES[f.species] ?? 'a bigger fish')
+        hurt(s, `Eaten by ${NAMES[f.species] ?? 'a bigger fish'}`)
         if (s.phase !== 'playing') break
       }
     }
@@ -659,8 +727,9 @@ function moveShark(s: GameState, dt: number, playing: boolean) {
   if (!s.shark && s.sharkIn <= SHARK_WARN && playing && p.y > 40) {
     // Toward you along your depth, from whichever side has room.
     const dir: 1 | -1 = p.x - half.w - 160 < 0 ? -1 : p.x + half.w + 160 > OCEAN_W ? 1 : Math.random() < 0.5 ? 1 : -1
-    const y = clamp(p.y + rand(-30, 30), 50, FLOOR - 60)
-    s.shark = { stage: 'warn', t: 0, x: dir > 0 ? s.camX - half.w - SHARK_R * 2 : s.camX + half.w + SHARK_R * 2, y, dir, swim: 0, left: half.w * 2 + SHARK_R * 6 + 200 }
+    const y = clamp(p.y + rand(-30, 30), 60, FLOOR - 80)
+    const r = sharkRadius(s)
+    s.shark = { stage: 'warn', t: 0, x: dir > 0 ? s.camX - half.w - r * 2 : s.camX + half.w + r * 2, y, dir, swim: 0, left: half.w * 2 + r * 6 + 200, r }
     sfx('whoosh')
   }
   const k = s.shark
@@ -668,7 +737,7 @@ function moveShark(s: GameState, dt: number, playing: boolean) {
   k.t += dt
   if (k.stage === 'warn') {
     // It keeps to the edge of the view while it waits.
-    k.x = k.dir > 0 ? s.camX - half.w - SHARK_R * 2 : s.camX + half.w + SHARK_R * 2
+    k.x = k.dir > 0 ? s.camX - half.w - k.r * 2 : s.camX + half.w + k.r * 2
     if (k.t >= SHARK_WARN) {
       k.stage = 'pass'
       k.t = 0
@@ -680,18 +749,89 @@ function moveShark(s: GameState, dt: number, playing: boolean) {
   k.left -= step
   k.swim += dt * 14
   for (const f of s.fishes) {
-    if (Math.abs(f.x - k.x) < SHARK_R && Math.abs(f.y - k.y) < SHARK_R * 0.5) {
+    if (Math.abs(f.x - k.x) < k.r && Math.abs(f.y - k.y) < k.r * 0.5) {
       f.tier = -1
       burst(s, f.x, f.y, '#ffffff', 4, 60)
     }
   }
   s.fishes = s.fishes.filter((f) => f.tier >= 0)
-  if (playing && p.invuln <= 0 && !p.air && Math.abs(p.x - k.x) < SHARK_R * 0.95 && Math.abs(p.y - k.y) < SHARK_R * 0.45 + playerRadius(s) * 0.5) {
-    hurt(s, 'the shark')
+  if (playing && p.invuln <= 0 && !p.air && Math.abs(p.x - k.x) < k.r * 0.95 && Math.abs(p.y - k.y) < k.r * 0.45 + playerRadius(s) * 0.5) {
+    hurt(s, 'Eaten by the shark')
   }
   if (k.left <= 0) {
     s.shark = null
     s.sharkIn = rand(14, 20) / (1 + Math.min(0.4, s.elapsed / 500))
+  }
+}
+
+/** The fisherman: drifts in on the surface near you, casts, waits, reels in; a few casts, then away. */
+function moveBoat(s: GameState, dt: number, playing: boolean) {
+  const half = viewHalf(s)
+  const p = s.player
+  s.boatIn -= dt
+  if (!s.boat && s.boatIn <= 0 && playing) {
+    const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1
+    // Somewhere ahead of you on the surface, never right overhead.
+    const x = clamp(p.x + (Math.random() < 0.5 ? -1 : 1) * rand(160, Math.max(200, half.w * 0.8)), 120, OCEAN_W - 120)
+    s.boat = { x, dir, stage: 'cast', t: 0, hookY: 0, depth: clamp(p.y + rand(-60, 120), 80, 520), casts: 0, caught: null }
+  }
+  const b = s.boat
+  if (!b) return
+  b.t += dt
+  b.x += b.dir * (b.stage === 'leave' ? 70 : 8) * dt
+  const tip = rodTip(b)
+  if (b.stage === 'cast') {
+    b.hookY = Math.min(b.depth, b.hookY + 160 * dt)
+    if (b.hookY >= b.depth) {
+      b.stage = 'wait'
+      b.t = 0
+    }
+  } else if (b.stage === 'wait') {
+    b.hookY = b.depth + Math.sin(b.t * 2.2) * 10
+    if (b.t > 7) {
+      b.stage = 'reel'
+      b.t = 0
+    }
+  } else if (b.stage === 'reel') {
+    b.hookY -= 230 * dt
+    if (b.hookY <= tip.y + 10) {
+      b.caught = null
+      b.casts += 1
+      if (b.casts >= 3) b.stage = 'leave'
+      else {
+        b.stage = 'cast'
+        b.depth = clamp(p.y + rand(-60, 140), 80, 560)
+      }
+      b.hookY = Math.max(0, b.hookY)
+      b.t = 0
+    }
+  } else if (b.t > 6 || b.x < -200 || b.x > OCEAN_W + 200) {
+    s.boat = null
+    s.boatIn = rand(BOAT_GAP[0], BOAT_GAP[1])
+    return
+  }
+  if (b.stage !== 'wait' && b.stage !== 'cast') return
+  const hx = tip.x
+  const hy = b.hookY
+  // You, on the hook: reeled in.
+  if (playing && !p.air && p.invuln <= 0 && Math.hypot(p.x - hx, p.y - hy) < playerRadius(s) * 0.65 + HOOK_R) {
+    b.caught = 'you'
+    b.stage = 'reel'
+    b.t = 0
+    hurt(s, 'Caught by the fisherman')
+    return
+  }
+  // A small fish takes the worm now and then.
+  for (const f of s.fishes) {
+    if (f.tier > 2 || f.flyer !== undefined) continue
+    if (Math.hypot(f.x - hx, f.y - hy) < fishRadius(f) + HOOK_R) {
+      b.caught = { species: f.species, tier: f.tier }
+      b.stage = 'reel'
+      b.t = 0
+      f.tier = -1
+      s.fishes = s.fishes.filter((g) => g.tier >= 0)
+      return
+    }
   }
 }
 
@@ -744,6 +884,11 @@ export function tick(state: GameState, dt: number): GameState {
   moveFishes(s, dt, playing)
   moveGulls(s, dt, playing)
   if (playing || s.shark) moveShark(s, dt, playing)
+  if (playing || s.boat) moveBoat(s, dt, playing)
+  if (s.frenzy > 0) {
+    s.frenzy = Math.max(0, s.frenzy - dt)
+    if (s.frenzy === 0) s.bar = 0
+  }
   stepEffects(s, dt)
   // In the menu the camera drifts along the shallows.
   if (s.phase === 'menu') s.player.x = OCEAN_W / 2 + Math.sin(s.time * 0.05) * 300
@@ -755,11 +900,13 @@ export function tick(state: GameState, dt: number): GameState {
 export type Snapshot = {
   phase: Phase
   score: number
+  /** 1 to 8, and what you are at that size. */
   size: number
+  stage: string
   lives: number
   deathCause: string
 }
 
 export function toSnapshot(s: GameState): Snapshot {
-  return { phase: s.phase, score: Math.round(s.score), size: s.player.size + 1, lives: s.lives, deathCause: s.deathCause }
+  return { phase: s.phase, score: Math.round(s.score), size: s.player.size + 1, stage: STAGES[s.player.size]!, lives: s.lives, deathCause: s.deathCause }
 }

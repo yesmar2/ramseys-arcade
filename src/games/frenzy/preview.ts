@@ -1,11 +1,11 @@
 import { runPreview, type Sim } from '../previewKit'
 import {
-  SHARK_R,
   createInitialState,
   edible,
   fishRadius,
   playerRadius,
   resizeState,
+  rodTip,
   setTarget,
   startGame,
   tick,
@@ -17,7 +17,8 @@ import { renderGame } from './render'
  * Frenzy playing itself, for its tile on the home page. Everything on screen is the game's own engine and
  * renderer, so the preview changes whenever the game does. The only thing added is a pilot that plays the
  * way a person would: it goes after the nearest fish it can eat, swims away from anything that can eat it,
- * gets out of the shark's lane when the warning shows, and now and then leaps out of the water. When it's
+ * gets out of the shark's lane when the warning shows, keeps off the fisherman's hook, and now and then
+ * leaps out of the water. When it's
  * eaten, a new run starts.
  */
 
@@ -46,7 +47,19 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
     }
   }
   const k = s.shark
-  if (k && Math.abs(p.y - k.y) < SHARK_R * 1.6) ay += (p.y < k.y ? -1 : 1) * 5
+  if (k && Math.abs(p.y - k.y) < k.r * 1.6) ay += (p.y < k.y ? -1 : 1) * 5
+  // Keep clear of the fisherman's hook.
+  const b = s.boat
+  if (b) {
+    const tip = rodTip(b)
+    const dx = p.x - tip.x
+    const dy = p.y - b.hookY
+    const d = Math.hypot(dx, dy) || 1
+    if (d < pr * 4 + 40) {
+      ax += (dx / d) * 4
+      ay += (dy / d) * 4
+    }
+  }
   // Now and then, near the top, a leap.
   m.leapIn -= dt
   m.leaping -= dt

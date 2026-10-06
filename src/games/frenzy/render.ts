@@ -5,12 +5,14 @@ import {
   FLOOR,
   MAX_SIZE,
   OCEAN_W,
-  SHARK_R,
+  STAGES,
+  TIERS,
   barFill,
   chainOf,
   edible,
   fishRadius,
   playerRadius,
+  rodTip,
   viewHalf,
   type GameState,
 } from './game'
@@ -19,9 +21,10 @@ import { SPECIES, playerArt, type FishArt } from './species'
 /*
  * The open ocean, drawn back to front through the camera: the sky and its sun, the water deepening down
  * to the sea floor with its sand, kelp and rocks, light from above and drifting specks, the rock walls at
- * the ocean's ends, the surface's waves, gulls, the fish smaller than you, you, the ones that can eat you
- * (so a threat is never hidden behind a meal), the shark and its warning, splashes and bubbles, the words
- * that float up, and last the bar along the bottom with your lives.
+ * the ocean's ends, the fisherman's line and hook, the fish smaller than you, you, the ones that can eat you
+ * (so a threat is never hidden behind a meal), the shark and its warning, the surface's waves, the
+ * fisherman's boat and gulls above them, splashes and bubbles, the words that float up, and last the bar
+ * along the bottom with what you are and your lives.
  */
 
 const FONT = '"Outfit", system-ui, sans-serif'
@@ -357,6 +360,112 @@ function drawGulls(ctx: CanvasRenderingContext2D, v: View) {
   }
 }
 
+/** Under the surface: the fisherman's line, his hook, and the worm on it (or whatever bit). */
+function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const b = v.s.boat
+  if (!b) return
+  const tip = rodTip(b)
+  const tx = X(v, tip.x)
+  const hy = Y(v, b.hookY)
+  if (tx < -60 || tx > v.w + 60) return
+  const k = Math.max(0.8, v.ppu)
+  ctx.save()
+  ctx.strokeStyle = pal.dark ? 'rgba(230, 236, 242, 0.7)' : 'rgba(30, 40, 50, 0.6)'
+  ctx.lineWidth = 1.2
+  ctx.beginPath()
+  ctx.moveTo(tx, Y(v, tip.y))
+  ctx.quadraticCurveTo(tx + Math.sin(v.s.time * 1.3) * 6 * k, (Y(v, tip.y) + hy) / 2, tx, hy - 6 * k)
+  ctx.stroke()
+  const caught = b.caught
+  if (caught && caught !== 'you') {
+    const T = TIERS[caught.tier]!
+    drawOne(ctx, v, pal, SPECIES[caught.species].art, { x: tip.x, y: b.hookY + T.r * 1.1, angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 5 }, T.r, { amp: 1.6 })
+  } else if (caught === 'you') {
+    drawOne(ctx, v, pal, playerArt(v.s.player.size), { x: tip.x, y: b.hookY + playerRadius(v.s), angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 7 }, playerRadius(v.s), { amp: 1.6, fill: 0.55 })
+  } else if (b.stage !== 'leave') {
+    // The worm, wriggling.
+    ctx.strokeStyle = '#e85d9a'
+    ctx.lineWidth = 3.2 * k
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    for (let i = 0; i <= 8; i++) {
+      const wx = tx + Math.sin(v.s.time * 7 + i * 0.9) * 3 * k
+      const wy = hy - 2 * k + i * 1.6 * k
+      if (i === 0) ctx.moveTo(wx, wy)
+      else ctx.lineTo(wx, wy)
+    }
+    ctx.stroke()
+  }
+  // The hook.
+  ctx.strokeStyle = pal.dark ? '#d8dee4' : '#55626d'
+  ctx.lineWidth = 1.8 * k
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(tx, hy - 7 * k)
+  ctx.lineTo(tx, hy + 6 * k)
+  ctx.arc(tx - 4 * k, hy + 6 * k, 4 * k, 0, Math.PI, false)
+  ctx.lineTo(tx - 8 * k, hy + 2 * k)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** On the surface: the fisherman in his boat, rod out over the water. */
+function drawBoat(ctx: CanvasRenderingContext2D, v: View) {
+  const b = v.s.boat
+  if (!b) return
+  const x = X(v, b.x)
+  const k = v.ppu
+  if (x < -90 * k || x > v.w + 90 * k) return
+  const bob = Math.sin(v.s.time * 1.6) * 2 * k
+  const y = Y(v, 0) + bob
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.scale(b.dir, 1)
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = Math.max(1.2, 2 * k)
+  ctx.strokeStyle = '#3b2a1e'
+  // The fisherman: hat, head, coat, arm out to the rod.
+  ctx.fillStyle = PALETTE.amber
+  ctx.beginPath()
+  ctx.roundRect(-14 * k, -30 * k, 14 * k, 18 * k, 4 * k)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = '#f2c9a0'
+  ctx.beginPath()
+  ctx.arc(-7 * k, -36 * k, 6 * k, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = '#2f5d7c'
+  ctx.beginPath()
+  ctx.ellipse(-7 * k, -41 * k, 10 * k, 2.5 * k, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.roundRect(-12 * k, -48 * k, 10 * k, 8 * k, 2 * k)
+  ctx.fill()
+  // The rod: from his hands to its tip (game.ts rodTip), bent a little when something's on.
+  ctx.strokeStyle = '#5a3d26'
+  ctx.lineWidth = Math.max(1.2, 2.2 * k)
+  ctx.beginPath()
+  ctx.moveTo(-2 * k, -22 * k)
+  ctx.quadraticCurveTo(14 * k, (b.caught ? -30 : -36) * k, 30 * k, -38 * k)
+  ctx.stroke()
+  // The hull.
+  ctx.fillStyle = PALETTE.red
+  ctx.strokeStyle = '#3b2a1e'
+  ctx.lineWidth = Math.max(1.2, 2 * k)
+  ctx.beginPath()
+  ctx.moveTo(-40 * k, -12 * k)
+  ctx.lineTo(30 * k, -12 * k)
+  ctx.lineTo(22 * k, 6 * k)
+  ctx.lineTo(-32 * k, 6 * k)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+  ctx.fillRect(-36 * k, -9 * k, 62 * k, 3 * k)
+  ctx.restore()
+}
+
 function drawOne(
   ctx: CanvasRenderingContext2D,
   v: View,
@@ -408,7 +517,17 @@ function drawPlayer(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   if (s.phase !== 'playing') return
   // Blinks while it can't be hurt.
   if (p.invuln > 0 && Math.floor(p.invuln * 10) % 2 === 1) return
-  drawOne(ctx, v, pal, playerArt(p.size), { ...p, seed: 7 }, playerRadius(s), { amp: p.air ? 0.4 : 1.1, fill: 0.55 })
+  const r = playerRadius(s)
+  if (s.frenzy > 0) {
+    const g = ctx.createRadialGradient(X(v, p.x), Y(v, p.y), 0, X(v, p.x), Y(v, p.y), r * 2.6 * v.ppu)
+    g.addColorStop(0, `rgba(245, 185, 66, ${0.35 + 0.15 * Math.sin(s.time * 10)})`)
+    g.addColorStop(1, 'rgba(245, 185, 66, 0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(X(v, p.x), Y(v, p.y), r * 2.6 * v.ppu, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  drawOne(ctx, v, pal, playerArt(p.size), { ...p, seed: 7 }, r, { amp: p.air ? 0.4 : 1.1, fill: 0.55 })
 }
 
 function drawShark(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
@@ -441,7 +560,7 @@ function drawShark(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
     return
   }
   const art = SPECIES.shark.art
-  drawOne(ctx, v, pal, art, { x: k.x, y: k.y, angle: k.dir > 0 ? 0 : Math.PI, roll: k.dir, swim: k.swim, mouth: 1, seed: 3 }, (SHARK_R * 2.2) / art.length, {
+  drawOne(ctx, v, pal, art, { x: k.x, y: k.y, angle: k.dir > 0 ? 0 : Math.PI, roll: k.dir, swim: k.swim, mouth: 1, seed: 3 }, (k.r * 2.2) / art.length, {
     alarm: 1,
     amp: 1.4,
     fill: 0.5,
@@ -498,11 +617,23 @@ function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   ctx.fill()
   const fill = barFill(s)
   if (fill > 0) {
+    ctx.globalAlpha = s.frenzy > 0 ? 0.75 + 0.25 * Math.sin(s.time * 12) : 1
     ctx.fillStyle = s.player.size >= MAX_SIZE ? PALETTE.amber : PALETTE.green
     ctx.beginPath()
     ctx.roundRect(bx, by, Math.max(bh, bw * fill), bh, bh / 2)
     ctx.fill()
+    ctx.globalAlpha = 1
   }
+  // What you are, and at the top what the bar fills toward.
+  ctx.font = `800 12px ${FONT}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  ctx.fillStyle = s.frenzy > 0 || s.player.size >= MAX_SIZE ? PALETTE.amber : '#eef4f7'
+  const label = s.frenzy > 0 ? 'FRENZY ×2' : s.player.size >= MAX_SIZE ? `${STAGES[s.player.size]} · fill for a frenzy` : `${STAGES[s.player.size]} → ${STAGES[s.player.size + 1]}`
+  ctx.lineWidth = 3
+  ctx.strokeStyle = 'rgba(8, 18, 28, 0.7)'
+  ctx.strokeText(label.toUpperCase(), bx + bw / 2, by - 12)
+  ctx.fillText(label.toUpperCase(), bx + bw / 2, by - 12)
   // Lives: little fish to the left of the bar.
   const art = playerArt(0)
   for (let i = 0; i < 3; i++) {
@@ -541,12 +672,14 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   drawWater(ctx, v, pal)
   drawFloor(ctx, v, pal)
   drawWalls(ctx, v, pal)
+  drawLine(ctx, v, pal)
   drawFishes(ctx, v, pal, false)
   drawGulls(ctx, v)
   drawPlayer(ctx, v, pal)
   drawFishes(ctx, v, pal, true)
   drawShark(ctx, v, pal)
   drawSurface(ctx, v, pal)
+  drawBoat(ctx, v)
   drawEffects(ctx, v, pal)
   drawBar(ctx, v, pal)
 }

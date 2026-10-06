@@ -292,7 +292,7 @@ export function FrenzyGame() {
             </PlayReadoutScore>
             {inRun || ui.phase === 'dying' ? (
               <PlayReadoutStats>
-                <PlayStat label="Size" value={ui.size} />
+                <PlayStat label="Size" value={ui.stage} />
                 <PlayStat label="Lives" value={ui.lives} urgent={ui.lives === 1} />
               </PlayReadoutStats>
             ) : null}
