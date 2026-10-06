@@ -1,3 +1,4 @@
+import { standIn } from './boardGhost'
 import { dailyHills, laidNumber, type DailyHills } from './daily'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE, GHOST_STRIDE, HOLD, paceRun, plannedHills, type Hills } from './sim'
@@ -29,14 +30,16 @@ export function swoopDay(day: string): SwoopDay {
 
 /**
  * The blue bird's run over the day's hills, the ghost until you have a run of your own: flown once a day,
- * when it's first wanted (it takes a moment on a phone).
+ * when it's first wanted (it takes a moment on a phone). Its hands fly the line, and it's raced along that
+ * line in the plan's time, 10% quicker (sim.ts BLUE_PACE), which its medals, tickets and boards go by.
  */
 export function paceOf(day: string): GhostRun {
   let pace = paces.get(day)
   if (!pace) {
     const { hills, pace: planned } = swoopDay(day)
     const run = paceRun(hills)
-    pace = { time: run.finished ? run.time : planned, splits: run.splits, ghost: run.ghost }
+    const flown = { time: run.time, splits: run.splits, ghost: run.ghost }
+    pace = run.finished ? standIn(flown, planned) : { ...flown, time: planned }
     if (paces.size > 2) paces.clear()
     paces.set(day, pace)
   }

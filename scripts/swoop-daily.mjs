@@ -2,6 +2,7 @@
 //
 //   node scripts/swoop-daily.mjs plan [days]        add days after the last one planned (180 in all by default)
 //   node scripts/swoop-daily.mjs replan <n> [days]  lay every day from #n on again (only days nobody has played)
+//   node scripts/swoop-daily.mjs repace             time every day's blue bird again, each day's hills as they are
 //   node scripts/swoop-daily.mjs show <n>           lay hills #n from the plan and say how the blue bird does
 //
 // A day's hills are laid from its number (src/games/swoop/sim.ts layHills), and a try is kept only once the
@@ -14,7 +15,10 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { firstGoodHills, hillsSpan, paceRun, plannedHills } from '../src/games/swoop/sim.ts'
+import { BLUE_PACE, firstGoodHills, hillsSpan, paceRun, plannedHills } from '../src/games/swoop/sim.ts'
+
+/** A day's pace, in ms: its blue bird's hands' time, raced quicker (sim.ts BLUE_PACE). */
+const paceMs = (flight) => Math.round(flight.time * BLUE_PACE * 1000)
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAN = join(root, 'src/games/swoop/dailyPlan.ts')
@@ -33,8 +37,8 @@ function writePlan(days) {
     PLAN,
     `// Written by scripts/swoop-daily.mjs: each day's hills, from the first day (daily.ts FIRST_DAY) on. \`a\` is
 // the try at the day's number that was kept (sim.ts plannedHills), \`pace\` the blue bird's time in
-// milliseconds when it was planned. Don't edit it by hand, and don't change sim.ts in a way that changes the
-// hills of days people have played.
+// milliseconds as it's raced: its hands' time when it was planned, quicker by sim.ts BLUE_PACE. Don't edit it
+// by hand, and don't change sim.ts in a way that changes the hills of days people have played.
 
 export type PlannedHills = { a: number; name: string; pace: number }
 
@@ -48,10 +52,10 @@ ${lines.join('\n')}
   writeFileSync(
     API,
     `// Written by the site's scripts/swoop-daily.mjs from its src/games/swoop/dailyPlan.ts: each planned day's
-// blue bird (its run over the day's hills), in milliseconds, from the first day on. Swoop's ticket ladder
-// goes by it (ticketLadders.ts), and so does the fastest run a day's board believes (routes.ts), whatever the
-// site sends. Past the last planned day the days come round again, as the site's dailyHills has them.
-// Don't edit it by hand: the script writes it again whenever the plan changes.
+// blue bird (its run over the day's hills, as it's raced), in milliseconds, from the first day on. Swoop's
+// ticket ladder goes by it (ticketLadders.ts), and so does the fastest run a day's board believes (routes.ts),
+// whatever the site sends. Past the last planned day the days come round again, as the site's dailyHills has
+// them. Don't edit it by hand: the script writes it again whenever the plan changes.
 export const SWOOP_FIRST_DAY = '${FIRST_DAY}'
 
 export const SWOOP_PACE_MS: readonly number[] = [
@@ -69,7 +73,7 @@ if (cmd === 'plan' || cmd === 'replan') {
   const t0 = Date.now()
   for (let n = days.length + 1; n <= want; n++) {
     const { hills, attempt, pace } = firstGoodHills(n)
-    days.push({ a: attempt, name: hills.name, pace: Math.round(pace.time * 1000) })
+    days.push({ a: attempt, name: hills.name, pace: paceMs(pace) })
     if (n % 20 === 0) console.log(`#${n} ${hills.name} (try ${attempt}) ${pace.time.toFixed(2)}s · ${((Date.now() - t0) / 1000).toFixed(0)} s so far`)
   }
   writePlan(days)
@@ -85,7 +89,15 @@ if (cmd === 'plan' || cmd === 'replan') {
   const pace = paceRun(hills)
   const [lo, hi] = hillsSpan(hills)
   console.log(`#${n} ${hills.name}: ${hills.finish.toFixed(0)} m to the line, ${hills.tops} tops, ${(hi - lo).toFixed(0)} m from the lowest to the highest`)
-  console.log(`  pace ${pace.time.toFixed(2)} s (planned ${(day.pace / 1000).toFixed(2)} s), splits ${pace.splits.map((s) => s.toFixed(1)).join(' ')}`)
+  console.log(`  hands ${pace.time.toFixed(2)} s, raced in ${(paceMs(pace) / 1000).toFixed(2)} s (planned ${(day.pace / 1000).toFixed(2)} s), splits ${pace.splits.map((s) => s.toFixed(1)).join(' ')}`)
+} else if (cmd === 'repace') {
+  // Every planned day keeps its hills (the try it kept) and its name; only its blue bird's time is worked out
+  // again, as when the blue bird went quicker (sim.ts BLUE_PACE).
+  const days = readPlan().map((d, i) => ({ ...d, pace: paceMs(paceRun(plannedHills(i + 1, d.a))) }))
+  writePlan(days)
+  const times = days.map((d) => d.pace / 1000).sort((a, b) => a - b)
+  console.log(`${days.length} days paced again; pace ${times[0].toFixed(1)}–${times[times.length - 1].toFixed(1)} s, median ${times[Math.floor(times.length / 2)].toFixed(1)} s`)
+  console.log(`wrote ${PLAN}\nwrote ${API}`)
 } else {
-  console.log('node scripts/swoop-daily.mjs plan [days] | replan <n> [days] | show <n>')
+  console.log('node scripts/swoop-daily.mjs plan [days] | replan <n> [days] | repace | show <n>')
 }

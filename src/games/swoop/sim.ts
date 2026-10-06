@@ -11,7 +11,8 @@
  *
  * Ramsey played the prototype (2026-10-06) and couldn't beat its blue bird, then learned to: the blue bird
  * here plays like a person who knows what to do and reacts a third of a second late (BLUE_HANDS), so a player
- * who has the hang of it beats it, and holding the whole way never does.
+ * who has the hang of it beats it, and holding the whole way never does. Once he had, it was raced 10%
+ * quicker along its own line (BLUE_PACE).
  *
  * No imports, so a script can run this with plain Node (scripts/swoop-daily.mjs plans the days with it). The
  * hills a day gets depend on everything here: once a day is planned, changing the hills or the physics
@@ -429,6 +430,16 @@ export function makePerson(h: Hills, { lag = 0.3, look = 0.12, air = 0.5, jitter
 
 /** The blue bird's hands: a person with a fair reaction, a third of a second, who dives in the air half the time. */
 export const BLUE_HANDS: HandsStyle = { lag: 0.3, look: 0.12, air: 0.5, jitter: 0, seed: 7 }
+
+/**
+ * The blue bird as it's raced and timed: its hands' flight, along the same line, 10% quicker (Ramsey,
+ * 2026-10-06: "blue needs to be a little bit harder"; his run on #1 was 36.6% under it, where his best runs
+ * land 18 to 24% under the other racing dailies' blues). Quicker hands won't do: a third of a second's
+ * difference makes one day's flight a third faster and another's slower. A try is still kept by its hands'
+ * own time (PACE_FROM to PACE_TO), so no day's hills changed with it; the plan's pace is the quicker time
+ * (scripts/swoop-daily.mjs), and the game flies the line to it (runs.ts paceOf).
+ */
+export const BLUE_PACE = 0.9
 
 /** A good player's hands, quick and always diving in the air: the dev autopilot's. */
 export const GOOD_HANDS: HandsStyle = { lag: 0.14, look: 0.16, air: 1, jitter: 0, seed: 3 }

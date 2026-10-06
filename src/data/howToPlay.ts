@@ -442,7 +442,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Land along a slope', pts: 'keeps your speed', sub: 'a clean landing adds a little' },
       { what: 'Land into a hill', pts: 'costs speed', sub: 'up to 40% of it' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bird, then every 7% faster' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bird, then every 10% faster' },
     ],
     ends: 'Over the finish line. Fly it as often as you like.',
     tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face.',
