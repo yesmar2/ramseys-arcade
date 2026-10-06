@@ -60,7 +60,7 @@ export function createDayPreview(day: string): GamePreviewRun {
           ghostTag: '',
           ghostMine: false,
           calm: false,
-          greet: false,
+          out: null,
         },
         dt,
       )

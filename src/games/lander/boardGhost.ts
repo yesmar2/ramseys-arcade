@@ -1,7 +1,7 @@
 import { chosenSkin } from '../../lib/skins'
 import { api } from '../../lib/leaderboard'
 import type { GhostRun } from './runStore'
-import { GHOST_RATE, GHOST_STRIDE, inAir, nearestNode, WRECKED, wrap, type Cave } from './sim'
+import { GHOST_RATE, GHOST_STRIDE, inAir, nearestNode, WRECKED, wrap, type Breach, type Cave } from './sim'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's and Marble Run's are), for everyone to race: in today's
@@ -104,9 +104,10 @@ const MOST_IN_ROCK = 0.02
 /**
  * Whether a ghost's path was flown down this cave: next to none of it in rock. A cave dug again after a run
  * was flown in it (the plan changed before launch, as #1–#3's did on Oct 1) leaves a path that cuts through
- * its walls, and the ghost flies the blue ship's line at the #1's time instead (standIn).
+ * its walls, and the ghost flies the blue ship's line at the #1's time instead (standIn). `breach`: the cave's
+ * easter egg (breakout.ts), whose way out and space a run may have flown through, which isn't rock to it.
  */
-export function fitsCave(cave: Cave, run: GhostRun): boolean {
+export function fitsCave(cave: Cave, run: GhostRun, breach: Breach | null = null): boolean {
   const g = run.ghost
   const samples = g.length / S
   let hint = 0
@@ -115,7 +116,7 @@ export function fitsCave(cave: Cave, run: GhostRun): boolean {
     const x = g[k * S]!
     const y = g[k * S + 1]!
     hint = nearestNode(cave, x, y, hint)
-    if (!inAir(cave, x, y, hint)) rock++
+    if (!inAir(cave, x, y, hint, breach)) rock++
   }
   return rock <= samples * MOST_IN_ROCK
 }

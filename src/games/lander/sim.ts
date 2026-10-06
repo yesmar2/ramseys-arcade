@@ -138,8 +138,12 @@ export type Cave = {
   route: Route
 }
 
-/** Whether a point is in the cave's air, looking at the nodes either side of `hint`. */
-export function inAir(cave: Cave, x: number, y: number, hint: number): boolean {
+/**
+ * Whether a point is in the cave's air, looking at the nodes either side of `hint`. `open`: a broken breach,
+ * whose way out and space are air too.
+ */
+export function inAir(cave: Cave, x: number, y: number, hint: number, open: Breach | null = null): boolean {
+  if (open && inBreachAir(open, x, y)) return true
   for (const p of cave.pillars) if ((x - p.x) ** 2 + (y - p.y) ** 2 < p.r * p.r) return false
   for (const m of cave.rooms) if (x >= m.x0 && x <= m.x1 && y >= m.y0 && y <= m.y1) return true
   const N = cave.nodes
@@ -177,23 +181,25 @@ export function nearestNode(cave: Cave, x: number, y: number, hint: number): num
 }
 
 /** Whether the whole ship, at a place and angle, is in the air. */
-function hullInAir(cave: Cave, x: number, y: number, a: number, hint: number): boolean {
+function hullInAir(cave: Cave, x: number, y: number, a: number, hint: number, open: Breach | null = null): boolean {
   for (const [hx, hy] of HULL) {
     const [wx, wy] = toWorld({ x, y, a }, hx, hy)
-    if (!inAir(cave, wx, wy, hint)) return false
+    if (!inAir(cave, wx, wy, hint, open)) return false
   }
   return true
 }
 
 /**
  * Which way is out of the rock at a point just inside it: the unit step toward the nearest air, from a
- * pillar's middle outward, toward the tunnel's middle line, or into a room.
+ * pillar's middle outward, toward the tunnel's middle line, or into a room. With a breach open, also off the
+ * moon, toward the middle of the way through the wall, and straight out from the rock face over the space.
  */
-export function outOfRock(cave: Cave, x: number, y: number, hint: number): [number, number] {
+export function outOfRock(cave: Cave, x: number, y: number, hint: number, open: Breach | null = null): [number, number] {
   const unit = (dx: number, dy: number): [number, number] => {
     const l = Math.hypot(dx, dy) || 1
     return [dx / l, dy / l]
   }
+  if (open && inMoon(open, x, y)) return y > open.pad.y - 0.35 ? [0, 1] : unit(x - open.moon.x, y - open.moon.y)
   for (const p of cave.pillars) if ((x - p.x) ** 2 + (y - p.y) ** 2 < p.r * p.r) return unit(x - p.x, y - p.y)
   // The air nearest the point: a node's circle (how far outside its edge), or a room (how far outside it).
   let best: [number, number] = [0, 1]
@@ -216,6 +222,20 @@ export function outOfRock(cave: Cave, x: number, y: number, hint: number): [numb
       best = unit(cx - x, cy - y)
     }
   }
+  if (open) {
+    const [out, along] = breachFrame(open, x, y)
+    // Beside the way through the wall: toward its middle.
+    const beside = Math.abs(along) - open.wide / 2
+    if (out >= -0.6 && out <= open.deep && beside > 0 && beside < gap) {
+      gap = beside
+      best = along > 0 ? [open.uy, -open.ux] : [-open.uy, open.ux]
+    }
+    // In the rock face over the space: straight out into it.
+    if (out < open.deep && open.deep - out < gap) {
+      gap = open.deep - out
+      best = [open.ux, open.uy]
+    }
+  }
   return best
 }
 
@@ -226,6 +246,77 @@ function crosses(ax: number, ay: number, bx: number, by: number, g: Gate): boole
   const e1 = (bx - ax) * (g.y0 - ay) - (by - ay) * (g.x0 - ax)
   const e2 = (bx - ax) * (g.y1 - ay) - (by - ay) * (g.x1 - ax)
   return e1 * e2 <= 0
+}
+
+/* ------------------------------------------------------------- the way out --- */
+
+/**
+ * Lander's easter egg, where breakout.ts finds it in a cave: a patch of a side wall, cracked, with open space
+ * behind it. Knocked a few times (KNOCKS), or rammed once (BREAK_SPEED), it breaks, and the way out is open for
+ * the rest of the run: through the wall onto the open space beside the cave, where a little moon floats with a
+ * pad on its flat top. Set down on that and the secret's found. The space is a dead end: the only way back into
+ * the cave is the way out, the run still ends on the landing pad, and the clock runs all the while. Too far out,
+ * a ship is lost in space, which is a crash. Nothing here runs unless a cave's breach is given (step's `egg`),
+ * so the blue ship's flights, the plan and the boards are as they were.
+ */
+export type Breach = {
+  /** The cracked patch's middle, on the tunnel's wall, and the way out through it: a unit step into the rock. */
+  x: number
+  y: number
+  ux: number
+  uy: number
+  /** The rock's thickness there, from the wall to the open space, and the width of the way through it. */
+  deep: number
+  wide: number
+  /** How far into the space, from where the way comes out, a ship can fly before it's lost. */
+  far: number
+  /** The moon: its middle and size. Its top is cut flat, at its pad. */
+  moon: { x: number; y: number; r: number }
+  pad: Pad
+}
+
+/** Rammed this hard straight in, m/s, the patch breaks at once; met more gently, it takes KNOCKS knocks. */
+const BREAK_SPEED = 3.5
+export const KNOCKS = 3
+/** A knock is the patch met at least this fast, m/s: sliding along it isn't one. */
+const KNOCK_SPEED = 0.8
+
+/** A point in the breach's own frame: how far out through the wall (0 at the wall), and how far along it. */
+function breachFrame(b: Breach, x: number, y: number): [number, number] {
+  const dx = x - b.x
+  const dy = y - b.y
+  return [dx * b.ux + dy * b.uy, dy * b.ux - dx * b.uy]
+}
+
+/** Whether a point is in the cracked patch: rock till it breaks, then the way out, wall to space. */
+function inPlug(b: Breach, x: number, y: number): boolean {
+  const [out, along] = breachFrame(b, x, y)
+  return out >= -0.6 && out <= b.deep + 0.6 && Math.abs(along) <= b.wide / 2
+}
+
+/** Whether a point is in the moon's rock: in its round, under its flat top. */
+function inMoon(b: Breach, x: number, y: number): boolean {
+  return y <= b.pad.y && (x - b.moon.x) ** 2 + (y - b.moon.y) ** 2 <= b.moon.r * b.moon.r
+}
+
+/** How far a point out in the space is from where the way out comes out into it; −1 short of the space. */
+function outInSpace(b: Breach, x: number, y: number): number {
+  const [out, along] = breachFrame(b, x, y)
+  return out < b.deep ? -1 : Math.hypot(out - b.deep, along)
+}
+
+/** Whether a point is in the air the broken patch opens: the way through the wall and the space past it, but the moon. */
+function inBreachAir(b: Breach, x: number, y: number): boolean {
+  if (inMoon(b, x, y)) return false
+  if (inPlug(b, x, y)) return true
+  const d = outInSpace(b, x, y)
+  // A little past `far`, so a ship is lost before its hull meets the edge.
+  return d >= 0 && d <= b.far + 3
+}
+
+/** Whether a ship's middle has flown so far out into the space that it's lost. */
+function lostInSpace(b: Breach, x: number, y: number): boolean {
+  return outInSpace(b, x, y) > b.far
 }
 
 /* ---------------------------------------------------------------- the ship --- */
@@ -250,13 +341,20 @@ export type Ship = {
    * moment, not the step's end, so landings a few milliseconds apart don't all count as the same tick.
    */
   landFrac?: number
+  /** The easter egg (Breach), this run: knocks on the cracked patch so far, and whether it's broken through. */
+  knocks?: number
+  broke?: boolean
 }
 
 /** The hands on the ship: turn −1…1 (right is +), and the engine 0…1. */
 export type Hands = { turn: number; thrust: number }
 
-/** A step's news: a crash, a bump off the rock, down on the landing pad, down gently on the start pad, or a gate passed. */
-export type StepEvent = 'crash' | 'bump' | 'landed' | 'rest' | { gate: number } | null
+/**
+ * A step's news: a crash, a bump off the rock, down on the landing pad, down gently on the start pad, or a gate
+ * passed. With the easter egg (Breach): a knock on the cracked patch, the patch broken through, down on the
+ * moon, or lost in space, which is a crash.
+ */
+export type StepEvent = 'crash' | 'bump' | 'landed' | 'rest' | 'knock' | 'breach' | 'moon' | 'lost' | { gate: number } | null
 
 /** A point on the ship, in the world: +y is the nose, +x the right wing. */
 export function toWorld(s: { x: number; y: number; a: number }, px: number, py: number): [number, number] {
@@ -285,8 +383,9 @@ export function engineOn(s: Ship, hands: Hands): boolean {
   return !s.rest && s.hold <= 0 && hands.thrust > 0.05
 }
 
-/** One step of DT. */
-export function step(cave: Cave, s: Ship, hands: Hands, dt = DT): StepEvent {
+/** One step of DT. `egg`: the cave's breach (breakout.ts), for a player's own ship; the blue ship has none. */
+export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | null = null): StepEvent {
+  const open = egg && s.broke ? egg : null
   if (s.hold > 0) {
     if (hands.thrust > 0.02 || Math.abs(hands.turn) > 0.02) s.hold = 0
     else {
@@ -316,7 +415,8 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT): StepEvent {
 
   // A foot on a pad, coming down onto it: a landing if it's gentle and near level, else a crash. Going up (lifting
   // off and turning as it goes), a foot that dips onto the pad only stands on it: the ship pivots on that foot.
-  for (const pad of cave.pads) {
+  // With the way out open, the moon's pad is one too.
+  for (const pad of open ? [...cave.pads, open.pad] : cave.pads) {
     if (py < pad.y + 0.3) continue
     for (const side of [1, -1]) {
       const [fx, fy] = toWorld(s, side * FOOT, -FOOT)
@@ -333,16 +433,28 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT): StepEvent {
       Object.assign(s, { y: pad.y + FOOT, vx: 0, vy: 0, a: 0 })
       if (pad.end) return 'landed'
       s.rest = true
-      return 'rest'
+      return pad === open?.pad ? 'moon' : 'rest'
     }
   }
   for (const [hx, hy] of HULL) {
     const [wx, wy] = toWorld(s, hx, hy)
-    if (inAir(cave, wx, wy, s.hint)) continue
+    if (inAir(cave, wx, wy, s.hint, open)) continue
     // Rock. How fast the ship came straight into it says which: hard is a crash; gently, a bump, the ship back
     // where it was, its speed into the rock turned round and mostly spent, a little of its speed along it lost.
-    const [nx, ny] = outOfRock(cave, wx, wy, s.hint)
+    const [nx, ny] = outOfRock(cave, wx, wy, s.hint, open)
     const into = -(s.vx * nx + s.vy * ny)
+    // The cracked patch: rammed, or knocked enough times, it gives, and the ship goes on through, slowed.
+    // Knocked more gently, it's a bump like any other rock's, and a crack more.
+    const knock = egg !== null && !s.broke && into >= KNOCK_SPEED && inPlug(egg, wx, wy)
+    if (knock) {
+      s.knocks = (s.knocks ?? 0) + 1
+      if (into >= BREAK_SPEED || s.knocks >= KNOCKS) {
+        s.broke = true
+        s.vx *= 0.6
+        s.vy *= 0.6
+        return 'breach'
+      }
+    }
     if (into > BUMP_SPEED) return 'crash'
     const vn = -into
     const keep = Math.max(0, 1 - SCRAPE * dt)
@@ -352,11 +464,12 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT): StepEvent {
     // From where it was, on along the rock with what's left: it slides, rather than sticking, where that's air.
     const sx = px + s.vx * dt
     const sy = py + s.vy * dt
-    if (hullInAir(cave, sx, sy, pa, s.hint)) Object.assign(s, { x: sx, y: sy, a: pa })
+    if (hullInAir(cave, sx, sy, pa, s.hint, open)) Object.assign(s, { x: sx, y: sy, a: pa })
     else Object.assign(s, { x: px, y: py, a: pa })
     s.hint = nearestNode(cave, s.x, s.y, s.hint)
-    return 'bump'
+    return knock ? 'knock' : 'bump'
   }
+  if (open && lostInSpace(open, s.x, s.y)) return 'lost'
   const next = cave.gates[s.gate + 1]
   if (next && crosses(px, py, s.x, s.y, next)) {
     s.gate += 1

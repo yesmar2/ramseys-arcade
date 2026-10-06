@@ -1,15 +1,15 @@
-import { ALIEN_H, alienMiddle, type Alien } from './alien'
 import type { GhostPose } from './runs'
 import { drawSkinArt, LANDER_ART, type SkinArt } from '../../lib/skinArt'
-import { FOOT, G, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Cave } from './sim'
+import { FOOT, G, inAir, KNOCKS, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Breach, type Cave } from './sim'
 
 /*
  * Lander on a 2D canvas: the cave from the side, following the ship. Rock is near-black with flecks; the air
  * is a deep violet with a grid every 4 m; the walls are lit edges, violet near the top and magenta deeper
  * down. Gates are dashed amber lines that turn green once passed; the pads are amber, the landing pad's lights
  * running toward its middle. The ship is Asteroids' arrow in white with an amber flame; the ghost is cyan
- * (or amber, your own best) with whose run it is over it. A little green alien stands in a nook a third of the
- * way down (alien.ts): two eyes blinking in the dark till your ship comes near enough to light it.
+ * (or amber, your own best) with whose run it is over it. A patch of side wall about a third of the way down
+ * is cracked, with starlight showing through (breakout.ts): broken through, it opens on open space, stars and
+ * a little moon with a pad on top, where a flag goes up when your ship sets down.
  *
  * It draws only with fills and strokes, never shadowBlur or overlapping circle fills, so a phone's canvas
  * keeps up. The cave is always dark, whatever the site's theme: it's underground.
@@ -30,21 +30,20 @@ const C = {
   ghost: '#46e4ff',
   mine: '#f5b942',
   bad: '#f07a8a',
-  alien: [134, 227, 111],
-  alienShade: [86, 178, 80],
-  alienEye: [234, 255, 216],
-  alienPupil: '#12301a',
+  space: '#04030b',
+  star: '#dfe7ff',
+  face: [196, 206, 255],
+  moon: '#d4d0e2',
+  moonDark: '#8f89a6',
+  crater: '#a7a1bc',
+  flag: '#ffb347',
+  earth: '#3b7be0',
+  land: '#4fbf7a',
 } as const
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
-
-/** The air's own colour, as numbers, for the alien to fade into in the dark. */
-const AIR_RGB = [21, 13, 41] as const
-
-/** A colour `f` of the way from the air's to `rgb`: the alien drawn solid, so its parts never show through each other. */
-const fromAir = (rgb: readonly number[], f: number) =>
-  `rgb(${rgb.map((v, i) => Math.round(lerp(AIR_RGB[i]!, v, f))).join(', ')})`
+const ease = (t: number) => 1 - (1 - clamp(t, 0, 1)) ** 3
 
 /** What a frame shows: where the ship is, and the run to beat beside it. */
 export type SceneFrame = {
@@ -61,8 +60,8 @@ export type SceneFrame = {
   ghostMine: boolean
   /** Before a run the camera rides with the run to beat; with less motion asked for, it stays on the start pad. */
   calm: boolean
-  /** The alien is waving: your ship (never the ghost) is flying close to it. */
-  greet: boolean
+  /** The easter egg this run (sim.ts Breach): knocks on the cracked patch, broken through, down on the moon. */
+  out: { knocks: number; broke: boolean; planted: boolean } | null
   /** The player's chosen skin (lib/skins.ts), drawn on their own ship. */
   skin?: string | null
   /** The skin the ghost's run was flown in: everyone who races it sees it in that. */
@@ -71,6 +70,10 @@ export type SceneFrame = {
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; hot: boolean }
 type Shard = { x: number; y: number; vx: number; vy: number; a: number; spin: number; half: number }
+/** A chunk of the broken patch, tumbling. */
+type Rubble = { x: number; y: number; vx: number; vy: number; a: number; spin: number; size: number; life: number }
+/** A star past the broken patch, in the breach's own frame: how far out through the wall, and along it. */
+type Star = { out: number; along: number; size: number; phase: number }
 
 /** A Lander skin's board to the ship: its feet, 52 apart on the board, on the hull's feet. */
 const HOPPER_SCALE = FOOT / 26
@@ -93,14 +96,15 @@ export class CaveScene {
   private shards: Shard[] = []
   private wreckFor = 0
   private time = 0
-  /** The easter egg's alien, once the cave's is known (alien.ts alienOf). */
-  private alien: Alien | null = null
-  /** How far into a wave it is, 0 (arm down) to 1, and its arm's swing. */
-  private wave = 0
-  private swing = 0
-  /** Whether it was waving last frame, and when it blinked at a ship coming. */
-  private greeting = false
-  private blinkAt = -1
+  /** The easter egg's breach, once the cave's is known (breakout.ts breachOf), with its stars and its cracks. */
+  private breach: Breach | null = null
+  private stars: Star[] = []
+  /** Each crack, from the wall into the rock, as points in the breach's frame (out, along). */
+  private cracks: [number, number][][] = []
+  private rubble: Rubble[] = []
+  /** When your ship set down on the moon this run, for its flag going up. */
+  private planted = false
+  private plantedAt = -1
 
   constructor(canvas: HTMLCanvasElement, cave: Cave) {
     const ctx = canvas.getContext('2d')
@@ -136,9 +140,63 @@ export class CaveScene {
     this.canvas.height = Math.max(1, Math.round(this.H * dpr))
   }
 
-  /** The cave's alien, to draw from now on: it waits on the blue ship's flight to know where it stands. */
-  meet(alien: Alien | null) {
-    this.alien = alien
+  /**
+   * The cave's breach, to draw from now on: it waits on the blue ship's flight to know where it is. Its stars
+   * and cracks are the same every time, from where it is.
+   */
+  meet(breach: Breach | null) {
+    this.breach = breach
+    this.stars = []
+    this.cracks = []
+    if (!breach) return
+    const rnd = mulberry32((Math.round(breach.x * 97) ^ Math.round(breach.y * 31)) >>> 0)
+    const R = breach.far + 3
+    while (this.stars.length < 170) {
+      const out = rnd() * R
+      const along = (rnd() * 2 - 1) * R
+      if (out * out + along * along <= R * R) this.stars.push({ out: breach.deep + out, along, size: 0.05 + rnd() ** 3 * 0.17, phase: rnd() * Math.PI * 2 })
+    }
+    // From the wall, jagged, into the rock: spread across the patch, the first few shown in its middle and at
+    // either side, each starting where the rock does, since the wall may bend a little across it.
+    const N = this.cave.nodes
+    let hint = 0
+    N.forEach((p, i) => {
+      if ((p.x - breach.x) ** 2 + (p.y - breach.y) ** 2 < (N[hint]!.x - breach.x) ** 2 + (N[hint]!.y - breach.y) ** 2) hint = i
+    })
+    for (const slot of [3, 1, 5, 0, 6, 2, 4]) {
+      let along = (((slot + 0.5) / 7) * 2 - 1) * (breach.wide / 2 - 0.3) + (rnd() - 0.5) * 0.25
+      let out = -0.8
+      while (out < 0.6 && inAir(this.cave, breach.x + breach.ux * out - breach.uy * along, breach.y + breach.uy * out + breach.ux * along, hint)) out += 0.05
+      const line: [number, number][] = [[out, along]]
+      const reach = out + 0.7 + rnd() * 1.3
+      while (out < reach) {
+        out += 0.18 + rnd() * 0.24
+        along = clamp(along + (rnd() - 0.5) * 0.5, -breach.wide / 2, breach.wide / 2)
+        line.push([out, along])
+      }
+      this.cracks.push(line)
+    }
+  }
+
+  /** The patch gives: chunks of it tumble out through the hole. */
+  breakOut() {
+    const b = this.breach
+    if (!b) return
+    for (let k = 0; k < 18; k++) {
+      const out = Math.random() * b.deep
+      const along = (Math.random() * 2 - 1) * (b.wide / 2)
+      const sp = 2 + Math.random() * 5
+      this.rubble.push({
+        x: b.x + b.ux * out - b.uy * along,
+        y: b.y + b.uy * out + b.ux * along,
+        vx: b.ux * sp + (Math.random() - 0.5) * 3,
+        vy: b.uy * sp + (Math.random() - 0.3) * 3,
+        a: Math.random() * 6,
+        spin: (Math.random() - 0.5) * 8,
+        size: 0.15 + Math.random() * 0.35,
+        life: 1.2 + Math.random() * 0.8,
+      })
+    }
   }
 
   /** The camera jumps to the ship at the next frame, rather than gliding there: a new run, or back at a gate. */
@@ -195,7 +253,10 @@ export class CaveScene {
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     this.drawCave(f)
-    this.drawAlien(f, dt)
+    if (f.out?.planted && !this.planted) this.plantedAt = this.time
+    this.planted = Boolean(f.out?.planted)
+    this.drawBreach(f)
+    this.drawRubble(dt)
     // At the start card a ghost that isn't flying (one whose path isn't known yet) would sit on your ship: it waits unseen.
     const ghostShown = f.ghost && !f.ghost.wrecked && !(f.mode === 'menu' && f.ghost.done)
     if (f.ghost && ghostShown) this.drawGhost(f.ghost, f.ghostTag, f.ghostMine, f.mode !== 'done' && !f.ghost.done, f.ghostSkin ?? null)
@@ -209,6 +270,7 @@ export class CaveScene {
   dispose() {
     this.sparks.length = 0
     this.shards.length = 0
+    this.rubble.length = 0
   }
 
   /* ---------- the camera ---------- */
@@ -466,134 +528,297 @@ export class CaveScene {
     }
   }
 
-  /* ---------- the alien (alien.ts) ---------- */
+  /* ---------- the way out (breakout.ts) ---------- */
+
+  /** A point in the breach's frame (how far out through the wall, how far along it), on the screen. */
+  private atBreach(b: Breach, out: number, along: number): [number, number] {
+    return [this.sx(b.x + b.ux * out - b.uy * along), this.sy(b.y + b.uy * out + b.ux * along)]
+  }
+
+  /** The breach, when it's in view: the cracked patch, or, broken through, the way out and the space past it. */
+  private drawBreach(f: SceneFrame) {
+    const b = this.breach
+    if (!b) return
+    const { cam, W, H } = this
+    const reach = b.far + 6
+    const mx = b.x + b.ux * b.deep
+    const my = b.y + b.uy * b.deep
+    if (Math.abs(mx - cam.x) > W / 2 / cam.k + reach || Math.abs(my - cam.y) > H / 2 / cam.k + reach) return
+    if (f.out?.broke) this.drawSpace(b)
+    else this.drawCracks(b, f.out?.knocks ?? 0)
+  }
 
   /**
-   * The alien, when it's in view. Far from your ship it's all but the dark it stands in: two pale eyes that
-   * blink now and then, the egg's clue. Nearer, your ship's light shows it; close, it waves and says hi. It's
-   * drawn solid, from the air's colour toward its own, in a frame of its own: feet at the origin, metres up
-   * its body, turned to face out of its nook.
+   * The patch, whole: cracks running from the wall into the rock, with starlight showing in them, faint, the
+   * egg's clue. Every knock opens more of them.
    */
-  private drawAlien(f: SceneFrame, dt: number) {
-    const al = this.alien
-    if (!al) return
-    const { ctx, cam, W, H } = this
-    // The wave eases in and out, the arm swinging while it's up; it blinks as it sees a ship come.
-    if (f.greet && !this.greeting) this.blinkAt = this.time
-    this.greeting = f.greet
-    this.wave += ((f.greet ? 1 : 0) - this.wave) * Math.min(1, dt * 6)
-    if (this.wave > 0.01) this.swing += dt * 9
-    else this.swing = 0
-    const [mx, my] = alienMiddle(al)
-    const edge = 3 * cam.k
-    if (this.sx(mx) < -edge || this.sx(mx) > W + edge || this.sy(my) < -edge || this.sy(my) > H + edge) return
-    // Lit by your ship: unseen past 10 m, all there inside 5.
-    const dx = f.ship.x - mx
-    const dy = f.ship.y - my
-    const lit = clamp((10 - Math.hypot(dx, dy)) / 5, 0, 1)
-    // Two blinks every few seconds.
-    const beat = this.time % 4.6
-    const shut = beat < 0.12 || (beat > 0.26 && beat < 0.36) || this.time - this.blinkAt < 0.14
-    const skin = fromAir(C.alien, lit)
-    const shade = fromAir(C.alienShade, lit)
-
+  private drawCracks(b: Breach, knocks: number) {
+    const { ctx, cam } = this
+    const shown = Math.min(this.cracks.length, 3 + Math.round((knocks / KNOCKS) * 4))
     ctx.save()
-    ctx.translate(this.sx(al.x), this.sy(al.y))
-    ctx.rotate(al.a)
-    ctx.scale(cam.k * al.facing, -cam.k)
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    // Unlit, there's nothing of it to see but its eyes.
-    if (lit > 0) this.drawAlienBody(skin, shade)
-    // Its eyes, slanting up at the outer corners: faint in the dark, and once it can see your ship, looking at it.
-    ctx.fillStyle = fromAir(C.alienEye, 0.45 + 0.55 * lit)
-    for (const side of [-1, 1]) {
-      ctx.beginPath()
-      ctx.ellipse(side * 0.16, 1.13, 0.12, shut ? 0.014 : 0.085, side * 0.32, 0, Math.PI * 2)
-      ctx.fill()
+    ctx.strokeStyle = this.wallColor(b.y, 0.5 + knocks * 0.12)
+    ctx.lineWidth = Math.max(1, (0.05 + knocks * 0.02) * cam.k)
+    ctx.beginPath()
+    for (const line of this.cracks.slice(0, shown)) {
+      line.forEach(([out, along], i) => {
+        const [px, py] = this.atBreach(b, out, along)
+        if (i === 0) ctx.moveTo(px, py)
+        else ctx.lineTo(px, py)
+      })
     }
-    if (lit > 0.3 && !shut) {
-      // Your ship, in its own terms: across (its way of facing) and up its body.
-      const [rx, ry] = toWorld({ x: 0, y: 0, a: al.a }, 1, 0)
-      const across = (dx * rx + dy * ry) * al.facing
-      const up = dx * -ry + dy * rx
-      const l = Math.hypot(across, up) || 1
-      ctx.fillStyle = C.alienPupil
-      ctx.globalAlpha = lit
-      for (const side of [-1, 1]) {
-        ctx.beginPath()
-        ctx.arc(side * 0.16 + (across / l) * 0.04, 1.13 + (up / l) * 0.025, 0.04, 0, Math.PI * 2)
-        ctx.fill()
-      }
+    ctx.stroke()
+    // Starlight through them: a speck at each crack's deep end, twinkling, a little cross of light at its brightest.
+    ctx.fillStyle = C.star
+    this.cracks.slice(0, shown).forEach((line, i) => {
+      const [out, along] = line[line.length - 1]!
+      const [px, py] = this.atBreach(b, out, along)
+      const tw = 0.5 + 0.5 * Math.sin(this.time * 2.3 + i * 1.7)
+      const s = Math.max(1.6, 0.09 * cam.k)
+      ctx.globalAlpha = 0.35 + 0.6 * tw
+      ctx.fillRect(px - s / 2, py - s / 2, s, s)
+      const arm = s * (0.8 + 1.4 * tw)
+      ctx.globalAlpha = 0.3 * tw
+      ctx.fillRect(px - arm, py - s * 0.2, arm * 2, s * 0.4)
+      ctx.fillRect(px - s * 0.2, py - arm, s * 0.4, arm * 2)
+    })
+    ctx.restore()
+  }
+
+  /**
+   * Broken through: the way out through the wall, lit at its sides, and the space past it, stars to its edge,
+   * where it fades into the dark, the Earth far off, the rock face of the cave behind, and the moon.
+   */
+  private drawSpace(b: Breach) {
+    const { ctx, cam } = this
+    const R = b.far + 3
+    const space = new Path2D()
+    for (let k = 0; k <= 48; k++) {
+      const t = -Math.PI / 2 + (Math.PI * k) / 48
+      const [px, py] = this.atBreach(b, b.deep + R * Math.cos(t), R * Math.sin(t))
+      if (k === 0) space.moveTo(px, py)
+      else space.lineTo(px, py)
     }
+    space.closePath()
+    const [cx, cy] = this.atBreach(b, b.deep, 0)
+    const deep = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * cam.k)
+    deep.addColorStop(0, C.space)
+    deep.addColorStop(0.72, C.space)
+    deep.addColorStop(1, C.rock)
+    ctx.fillStyle = deep
+    ctx.fill(space)
+
+    ctx.save()
+    ctx.clip(space)
+    ctx.fillStyle = C.star
+    for (const s of this.stars) {
+      const fade = clamp((1 - Math.hypot(s.out - b.deep, s.along) / R) * 3.5, 0, 1)
+      ctx.globalAlpha = fade * (0.55 + 0.45 * Math.sin(this.time * 1.7 + s.phase))
+      const [px, py] = this.atBreach(b, s.out, s.along)
+      const size = Math.max(1, s.size * cam.k)
+      ctx.fillRect(px - size / 2, py - size / 2, size, size)
+    }
+    ctx.globalAlpha = 1
+    // The Earth, far off and up: it's one small step from there.
+    const ex = this.sx(b.x + b.ux * (b.deep + b.far * 0.6))
+    const ey = this.sy(b.y + b.uy * (b.deep + b.far * 0.6) + b.far * 0.42)
+    const er = 1.15 * cam.k
+    ctx.beginPath()
+    ctx.arc(ex, ey, er, 0, Math.PI * 2)
+    ctx.fillStyle = C.earth
+    ctx.fill()
+    ctx.save()
+    ctx.clip()
+    ctx.fillStyle = C.land
+    ctx.beginPath()
+    ctx.ellipse(ex - er * 0.25, ey - er * 0.1, er * 0.42, er * 0.3, 0.6, 0, Math.PI * 2)
+    ctx.ellipse(ex + er * 0.45, ey + er * 0.45, er * 0.3, er * 0.18, -0.4, 0, Math.PI * 2)
+    ctx.fill()
+    // Its night side.
+    ctx.fillStyle = 'rgba(4, 3, 11, 0.55)'
+    ctx.beginPath()
+    ctx.arc(ex + er * 0.55, ey + er * 0.2, er * 1.05, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
     ctx.restore()
 
-    // "hi", over it while it waves.
-    if (this.wave > 0.05) {
-      const [tx, ty] = toWorld(al, al.facing * 0.55, ALIEN_H + 0.3)
+    // The rock face the way out comes through, lit faintly by the stars, fading off either way.
+    const [ax, ay] = this.atBreach(b, b.deep, -R)
+    const [bx, by] = this.atBreach(b, b.deep, R)
+    const faceLine = ctx.createLinearGradient(ax, ay, bx, by)
+    const [fr, fg, fb] = C.face
+    faceLine.addColorStop(0, `rgba(${fr}, ${fg}, ${fb}, 0)`)
+    faceLine.addColorStop(0.35, `rgba(${fr}, ${fg}, ${fb}, 0.5)`)
+    faceLine.addColorStop(0.65, `rgba(${fr}, ${fg}, ${fb}, 0.5)`)
+    faceLine.addColorStop(1, `rgba(${fr}, ${fg}, ${fb}, 0)`)
+    ctx.strokeStyle = faceLine
+    ctx.lineCap = 'round'
+    ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
+    ctx.beginPath()
+    for (const [from, to] of [
+      [-R, -b.wide / 2],
+      [b.wide / 2, R],
+    ] as const) {
+      const [px, py] = this.atBreach(b, b.deep, from)
+      const [qx, qy] = this.atBreach(b, b.deep, to)
+      ctx.moveTo(px, py)
+      ctx.lineTo(qx, qy)
+    }
+    ctx.stroke()
+
+    // The way out: the cave's air turning to the space's, its sides lit like the walls.
+    const corners = [
+      this.atBreach(b, -0.6, -b.wide / 2),
+      this.atBreach(b, b.deep + 0.05, -b.wide / 2),
+      this.atBreach(b, b.deep + 0.05, b.wide / 2),
+      this.atBreach(b, -0.6, b.wide / 2),
+    ]
+    const [ix, iy] = this.atBreach(b, 0, 0)
+    const through = ctx.createLinearGradient(ix, iy, cx, cy)
+    through.addColorStop(0, C.air)
+    through.addColorStop(1, C.space)
+    ctx.fillStyle = through
+    ctx.beginPath()
+    corners.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)))
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = this.wallColor(b.y, 1)
+    ctx.lineWidth = 0.44 * cam.k
+    ctx.beginPath()
+    for (const side of [-1, 1]) {
+      const [px, py] = this.atBreach(b, 0, (side * b.wide) / 2)
+      const [qx, qy] = this.atBreach(b, b.deep, (side * b.wide) / 2)
+      ctx.moveTo(px, py)
+      ctx.lineTo(qx, qy)
+    }
+    ctx.stroke()
+
+    this.drawMoon(b)
+  }
+
+  /** The moon: grey, cratered, its top cut flat with a pad on it, and a flag on it once your ship's been down. */
+  private drawMoon(b: Breach) {
+    const { ctx, cam } = this
+    const mx = this.sx(b.moon.x)
+    const my = this.sy(b.moon.y)
+    const r = b.moon.r * cam.k
+    const top = this.sy(b.pad.y)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mx - r - 2, top, r * 2 + 4, r * 2 + 4)
+    ctx.clip()
+    const lit = ctx.createRadialGradient(mx - r * 0.4, my - r * 0.5, r * 0.2, mx, my, r)
+    lit.addColorStop(0, C.moon)
+    lit.addColorStop(1, C.moonDark)
+    ctx.fillStyle = lit
+    ctx.beginPath()
+    ctx.arc(mx, my, r, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = C.crater
+    for (const [dx, dy, cr] of [
+      [-0.35, 0.25, 0.22],
+      [0.3, 0.5, 0.16],
+      [0.05, 0.02, 0.12],
+    ] as const) {
+      ctx.beginPath()
+      ctx.arc(mx + dx * r, my + dy * r, cr * r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
+    // Its flat top, and the pad on it: lights blinking till it's been landed on, then lit.
+    const x0 = this.sx(b.pad.x0)
+    const x1 = this.sx(b.pad.x1)
+    const h = Math.max(2.5, 0.22 * cam.k)
+    ctx.fillStyle = 'rgba(255, 179, 71, 0.8)'
+    ctx.fillRect(x0, top - h, x1 - x0, h)
+    for (let i = 0; i < 4; i++) {
+      const f = (i + 0.5) / 4
+      const on = this.planted || ((Math.floor(this.time * 2.5) + i) & 1) === 0
+      ctx.beginPath()
+      ctx.arc(lerp(x0, x1, f), top - h - Math.max(2, 0.16 * cam.k), Math.max(1.4, 0.11 * cam.k), 0, Math.PI * 2)
+      ctx.fillStyle = on ? '#fff4d6' : 'rgba(255, 179, 71, 0.35)'
+      ctx.fill()
+    }
+    if (!this.planted) return
+    // The flag, going up by the ship, waving; and what it means, for a moment over it.
+    const since = this.time - this.plantedAt
+    const rise = ease(since / 0.6)
+    const px = this.sx(b.pad.x1 - 0.3)
+    const pole = 1.7 * cam.k * rise
+    ctx.strokeStyle = '#ece8f6'
+    ctx.lineWidth = Math.max(1.5, 0.07 * cam.k)
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(px, top - h)
+    ctx.lineTo(px, top - h - pole)
+    ctx.stroke()
+    if (rise > 0.9) {
+      const fw = 0.85 * cam.k
+      const fh = 0.5 * cam.k
+      const y0 = top - h - pole
+      ctx.fillStyle = C.flag
+      ctx.beginPath()
+      ctx.moveTo(px, y0)
+      for (let k = 0; k <= 8; k++) {
+        const t = k / 8
+        ctx.lineTo(px + fw * t, y0 + Math.sin(this.time * 6 - t * 4) * 0.06 * cam.k * t)
+      }
+      for (let k = 8; k >= 0; k--) {
+        const t = k / 8
+        ctx.lineTo(px + fw * t, y0 + fh + Math.sin(this.time * 6 - t * 4) * 0.06 * cam.k * t)
+      }
+      ctx.closePath()
+      ctx.fill()
+    }
+    const words = clamp(Math.min(since / 0.4, (4 - since) / 0.6), 0, 1)
+    if (words > 0) {
       ctx.save()
-      ctx.globalAlpha = this.wave
-      ctx.font = `700 ${Math.max(11, 0.6 * cam.k)}px ${this.font}`
+      ctx.globalAlpha = words
+      ctx.font = `800 ${Math.max(12, 0.85 * cam.k)}px ${this.font}`
       ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = fromAir(C.alien, 1)
-      ctx.fillText('hi', this.sx(tx), this.sy(ty))
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillStyle = C.star
+      ctx.fillText('ONE SMALL STEP', mx, top - h - 2.8 * cam.k)
       ctx.restore()
     }
   }
 
-  /** The alien's legs, body, arms, head and antennae, in its own frame, the arm it waves where the wave has it. */
-  private drawAlienBody(skin: string, shade: string) {
-    const { ctx } = this
-    // Its legs, and the arm at its back.
-    ctx.strokeStyle = shade
-    ctx.lineWidth = 0.12
-    ctx.beginPath()
-    ctx.moveTo(-0.15, 0.03)
-    ctx.lineTo(-0.11, 0.38)
-    ctx.moveTo(0.15, 0.03)
-    ctx.lineTo(0.11, 0.38)
-    ctx.moveTo(-0.2, 0.74)
-    ctx.lineTo(-0.36, 0.44)
-    ctx.stroke()
-    // Its body, and the arm it waves: down at its side, or up and swinging.
-    ctx.fillStyle = skin
-    ctx.beginPath()
-    ctx.ellipse(0, 0.6, 0.26, 0.3, 0, 0, Math.PI * 2)
-    ctx.fill()
-    const arm = 0.35 + this.wave * (2.1 + Math.sin(this.swing) * 0.45)
-    const hx = 0.2 + Math.sin(arm) * 0.46
-    const hy = 0.74 - Math.cos(arm) * 0.46
-    ctx.strokeStyle = skin
-    ctx.lineWidth = 0.1
-    ctx.beginPath()
-    ctx.moveTo(0.2, 0.74)
-    ctx.lineTo(hx, hy)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(hx, hy, 0.075, 0, Math.PI * 2)
-    ctx.fill()
-    // Its head, and its antennae, nodding a little.
-    ctx.beginPath()
-    ctx.ellipse(0, 1.12, 0.4, 0.32, 0, 0, Math.PI * 2)
-    ctx.fill()
-    const nod = Math.sin(this.time * 2.6) * 0.03
-    const tips = [
-      [-0.26, 1.64 + nod],
-      [0.27, 1.64 - nod],
-    ] as const
-    ctx.lineWidth = 0.05
-    ctx.beginPath()
-    for (const [x, y] of tips) {
-      ctx.moveTo(x / 2, 1.38)
-      ctx.lineTo(x, y)
-    }
-    ctx.stroke()
-    for (const [x, y] of tips) {
+  /** The broken patch's chunks, tumbling and falling, fading as they go. */
+  private drawRubble(dt: number) {
+    const { ctx, cam, rubble } = this
+    if (!rubble.length) return
+    ctx.save()
+    for (let i = rubble.length - 1; i >= 0; i--) {
+      const p = rubble[i]!
+      p.life -= dt
+      if (p.life <= 0) {
+        rubble.splice(i, 1)
+        continue
+      }
+      p.vy -= G * 0.8 * dt
+      p.x += p.vx * dt
+      p.y += p.vy * dt
+      p.a += p.spin * dt
+      ctx.globalAlpha = clamp(p.life / 0.6, 0, 1)
+      ctx.save()
+      ctx.translate(this.sx(p.x), this.sy(p.y))
+      ctx.rotate(p.a)
+      const s = p.size * cam.k
+      ctx.fillStyle = C.rock
+      ctx.strokeStyle = this.wallColor(p.y, 0.8)
+      ctx.lineWidth = Math.max(1, 0.04 * cam.k)
       ctx.beginPath()
-      ctx.arc(x, y, 0.065, 0, Math.PI * 2)
+      ctx.moveTo(-s, -s * 0.6)
+      ctx.lineTo(s * 0.7, -s)
+      ctx.lineTo(s, s * 0.5)
+      ctx.lineTo(-s * 0.4, s)
+      ctx.closePath()
       ctx.fill()
+      ctx.stroke()
+      ctx.restore()
     }
+    ctx.restore()
   }
 
   /* ---------- the ships ---------- */

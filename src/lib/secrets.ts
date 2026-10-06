@@ -6,10 +6,11 @@
  * `secrets`; `announceSecrets` puts it on screen. The player's clock goes with what the site posts
  * (leaderboard.ts api), for Night Owl and Early Bird.
  *
- * Seven are retired, at Ramsey's word (2026-10-05): Palindrome, Lucky Sevens, Photo Finish, So Close, Make a
- * Wish, Déjà Vu and Round Number. Their numbers (4–7, 11–13) stay unused, so every other secret keeps the
- * number its finds are kept under; a find of a retired one is shown nowhere (trophies.ts fetchTrophies, and
- * the API's trophiesForName).
+ * Eight are retired, at Ramsey's word: Palindrome, Lucky Sevens, Photo Finish, So Close, Make a Wish, Déjà Vu
+ * and Round Number (2026-10-05), and Little Green Friend, Lander's waving alien, which gave way to One Small
+ * Step (2026-10-06). Their numbers (4–7, 11–13, 26) stay unused, so every other secret keeps the number its
+ * finds are kept under; a find of a retired one is shown nowhere (trophies.ts fetchTrophies, and the API's
+ * trophiesForName).
  */
 
 export type SecretKey =
@@ -31,10 +32,10 @@ export type SecretKey =
   | 'marbles'
   | 'wargames'
   | 'safespot'
-  | 'alien'
   | 'shootingstar'
   | 'moon'
   | 'staffonly'
+  | 'smallstep'
 
 export type Secret = { n: number; key: SecretKey; name: string; says: string }
 
@@ -57,10 +58,10 @@ export const SECRETS: readonly Secret[] = [
   { n: 23, key: 'marbles', name: 'Lost Your Marbles', says: 'Fell off Marble Run three times before the first checkpoint.' },
   { n: 24, key: 'wargames', name: 'Shall We Play a Game?', says: 'Let a whole wave of Patriot fall without firing a shot.' },
   { n: 25, key: 'safespot', name: 'Safe Spot', says: 'Hid from the chasers in Pellets’ safe spot.' },
-  { n: 26, key: 'alien', name: 'Little Green Friend', says: 'Got a wave from the alien in Lander’s cave.' },
   { n: 27, key: 'shootingstar', name: 'Shooting Star', says: 'Caught a shooting star over the Fireflies pond.' },
   { n: 28, key: 'moon', name: 'Shoot the Moon', says: 'Shot the moon over Barrage until it had a black eye.' },
   { n: 29, key: 'staffonly', name: 'Staff Only', says: 'Tried the door marked Staff Only.' },
+  { n: 30, key: 'smallstep', name: 'One Small Step', says: 'Broke out of Lander’s cave and set down on the moon.' },
 ]
 
 export function secretByNumber(n: number): Secret | undefined {

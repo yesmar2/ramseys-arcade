@@ -31,7 +31,7 @@ import { beginRun, runIdFor } from '../../lib/runSession'
 import { sfx } from '../../lib/sound'
 import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
-import { alienMiddle, alienOf, sayHi, WAVE_NEAR, type Alien } from './alien'
+import { breachOf, breakSound, crackSound, smallStepSound } from './breakout'
 import { EngineSound } from './audio'
 import { fetchBoardGhost, fetchNextGhost, fitsCave, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
 import { ordinal } from '../../lib/scoreboard'
@@ -73,6 +73,7 @@ import {
   step,
   WRECKED,
   wrap,
+  type Breach,
   type Hands,
   type Ship,
 } from './sim'
@@ -153,8 +154,8 @@ type Game = {
   crashes: number
   /** The run's clock at the last bump's knock, so sliding along rock knocks now and then, not every step. */
   bumpAt: number
-  /** The alien has waved at this run's ship: the easter egg's found, and it said hi. */
-  greeted: boolean
+  /** This run's ship has set down on the moon past the cave's broken wall: the easter egg's found. */
+  stepped: boolean
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
@@ -276,7 +277,7 @@ function freshGame(lander: LanderDay, chase: Chase): Game {
     splits: [],
     crashes: 0,
     bumpAt: -1,
-    greeted: false,
+    stepped: false,
     ghost: chase.ghost,
     chasing: chase.chasing,
     run: null,
@@ -415,8 +416,8 @@ function LanderDayGame({
   const stickRef = useRef<HTMLDivElement>(null)
   const knobRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<CaveScene | null>(null)
-  /** The cave's alien (alien.ts), once the blue ship has flown and it's known where it stands. */
-  const alienRef = useRef<Alien | null>(null)
+  /** The cave's breach (breakout.ts), the easter egg, once the blue ship has flown and it's known where it is. */
+  const breachRef = useRef<Breach | null>(null)
   const soundRef = useRef<EngineSound | null>(null)
   const keysRef = useRef<Held>({ ...NONE })
   /** The finger on the stick: where it came down, and where it is now. */
@@ -518,7 +519,7 @@ function LanderDayGame({
   /** The board's fastest run, as it's known: at the start card, the ghost to race changes to it at once. */
   const takeTop = (next: BoardGhost | null) => {
     // A path flown down this cave before it was dug again flies through rock: their time on the blue ship's line instead.
-    topRef.current = next?.run && !fitsCave(lander.cave, next.run) ? { ...next, run: null } : next
+    topRef.current = next?.run && !fitsCave(lander.cave, next.run, breachOf(lander.cave, paceOf(lander.day).ghost)) ? { ...next, run: null } : next
     rechase()
   }
   const takeTopRef = useRef(takeTop)
@@ -570,7 +571,7 @@ function LanderDayGame({
       // Signed in as someone else meanwhile: theirs is asked for in turn.
       if (tag !== nameRef.current) return
       // A path flown down this cave before it was dug again flies through rock: their time on the blue ship's line instead.
-      nextRef.current = next?.run && !fitsCave(lander.cave, next.run) ? { ...next, run: null } : next
+      nextRef.current = next?.run && !fitsCave(lander.cave, next.run, breachOf(lander.cave, paceOf(lander.day).ghost)) ? { ...next, run: null } : next
       rechaseRef.current()
     })
   }
@@ -758,27 +759,45 @@ function LanderDayGame({
           if (g.steps % GHOST_EVERY === 0) {
             g.record.push(Math.round(s.x * 100) / 100, Math.round(s.y * 100) / 100, Math.round(s.a * 100) / 100, engineOn(s, hands) ? ENGINE_ON : ENGINE_OFF)
           }
-          const ev = step(lander.cave, s, hands)
+          const ev = step(lander.cave, s, hands, DT, breachRef.current)
           g.steps += 1
           g.t += DT
           g.throttle = s.rest || s.hold > 0 ? 0 : hands.thrust
-          if (ev === 'crash') {
+          if (ev === 'crash' || ev === 'lost') {
+            // Lost in space past the broken wall (sim.ts Breach) is a crash too, gone without a bang.
             g.crashes += 1
             g.phase = 'wrecked'
             g.wreckFor = CRASH_FOR
             g.throttle = 0
-            scene.crash(s, CRASH_FOR)
+            if (ev === 'crash') scene.crash(s, CRASH_FOR)
             const back = s.gate < 0 ? 'the start' : s.gate === lander.cave.gates.length - 1 ? 'the landing room' : `gate ${s.gate + 1}`
-            sayRef.current(`Crashed · back to ${back}`, 1.6)
-            sfx('boom')
-            haptic('crash')
-          } else if (ev === 'bump') {
+            sayRef.current(`${ev === 'lost' ? 'Lost in space' : 'Crashed'} · back to ${back}`, 1.6)
+            if (ev === 'crash') {
+              sfx('boom')
+              haptic('crash')
+            }
+          } else if (ev === 'bump' || ev === 'knock') {
             // Knocked off the rock, and on: a knock and a buzz, no more than a few times a second while it slides.
             if (g.t - g.bumpAt > 0.3) {
               sfx('hit')
               haptic('hit')
             }
             g.bumpAt = g.t
+            // The cracked patch knocked: it cracks a little more.
+            if (ev === 'knock') crackSound()
+          } else if (ev === 'breach') {
+            // Through the wall, out onto open space.
+            scene.breakOut()
+            breakSound()
+            haptic('crash')
+          } else if (ev === 'moon') {
+            // Down on the moon: the easter egg, found the first time a run sets down there. The clock runs on.
+            if (!g.stepped) {
+              g.stepped = true
+              smallStepSound()
+              haptic('boost')
+              void reportEgg('smallstep')
+            }
           } else if (ev === 'landed') {
             // Timed to the moment the foot met the pad, inside the step, as a lap is to the line.
             g.t -= DT * (1 - (s.landFrac ?? 1))
@@ -823,20 +842,8 @@ function LanderDayGame({
         ghost = g.ghost.at(attract)
         if (ghost.done && attract > g.ghost.run.time + 2) attract = 0
       } else ghost = g.ghost.at(g.phase === 'countdown' ? 0 : g.t)
-      // The easter egg: the alien waves at your ship, never the ghost, while it's flying close. The first wave
-      // of a run says hi and finds the secret.
-      const alien = alienRef.current
-      let greet = false
-      if (alien && g.phase === 'flying') {
-        const [ax, ay] = alienMiddle(alien)
-        greet = Math.hypot(s.x - ax, s.y - ay) < WAVE_NEAR
-        if (greet && !g.greeted) {
-          g.greeted = true
-          sayHi()
-          haptic('turn')
-          void reportEgg('alien')
-        }
-      }
+      // The easter egg, as this run has it: the cracked patch's knocks, broken through, and down on the moon.
+      const out = g.phase === 'menu' ? null : { knocks: s.knocks ?? 0, broke: Boolean(s.broke), planted: g.stepped }
       const mode = g.phase === 'menu' ? 'menu' : g.phase === 'wrecked' ? 'wreck' : g.phase === 'landed' || g.phase === 'gameover' ? 'done' : 'play'
       scene.frame(
         {
@@ -850,7 +857,7 @@ function LanderDayGame({
           calm,
           skin: skinRef.current,
           ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
-          greet,
+          out,
         },
         live ? dt : 0,
       )
@@ -871,11 +878,11 @@ function LanderDayGame({
     }
     raf = requestAnimationFrame(loop)
     // The blue ship's run, flown now while the card is up, so the start doesn't wait on it; the card's camera
-    // then rides along with the run to beat. The alien stands a little way off its line, so it comes then too.
+    // then rides along with the run to beat. The easter egg's breach is kept off its line, so it comes then too.
     const warm = window.setTimeout(() => {
       const pace = paceOf(lander.day)
-      alienRef.current = alienOf(cave, pace.ghost)
-      scene.meet(alienRef.current)
+      breachRef.current = breachOf(cave, pace.ghost)
+      scene.meet(breachRef.current)
       rechaseRef.current()
     }, 400)
     return () => {

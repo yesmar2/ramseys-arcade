@@ -306,18 +306,6 @@ const SECRET_ART: Record<number, ReactNode> = {
       <Numeral n="?" x={33.5} y={24} size={11} />
     </>
   ),
-  // Little Green Friend: an alien in the dark, waving hello.
-  26: (
-    <>
-      <path className="trophy-art__fill trophy-art__fill--soft" d="M24 14c7 0 11 5.5 11 12s-5 13-11 13-11-6.5-11-13 4-12 11-12Z" />
-      <path d="M19 14.5 15.5 8M29 14.5 32.5 8" />
-      <circle className="trophy-art__fill" cx="15.5" cy="7.5" r="1.7" />
-      <circle className="trophy-art__fill" cx="32.5" cy="7.5" r="1.7" />
-      <ellipse className="trophy-art__fill" cx="19.5" cy="25" rx="2.6" ry="3.8" />
-      <ellipse className="trophy-art__fill" cx="28.5" cy="25" rx="2.6" ry="3.8" />
-      <path d="M21.5 33q2.5 1.6 5 0M35 30l5-7M41.5 16.5l1.5-2.5M44 21h3" />
-    </>
-  ),
   // Shooting Star: across the dusk, its tail behind it.
   27: (
     <>
@@ -345,6 +333,18 @@ const SECRET_ART: Record<number, ReactNode> = {
       <path d="M27.5 21.5h4.5M24 32.5q2.2-2 4.4 0" />
       <circle cx="31" cy="31" r="1.6" />
       <path d="M38 8l2 4M44 11l-4 1.5M42 4l-2.5 4" />
+    </>
+  ),
+  // One Small Step: the little moon past Lander's cave, with its flag planted.
+  30: (
+    <>
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="22" cy="30" r="13" />
+      <circle cx="16.5" cy="31" r="2.6" />
+      <circle cx="26" cy="37" r="1.8" />
+      <circle cx="27.5" cy="27" r="1.2" />
+      <path d="M29.5 19.4 34 5.5" />
+      <path className="trophy-art__fill" d="M34 5.5q4.6-.4 8.4 2.6l-1.7 5.2q-3.8-3-8.4-2.6Z" />
+      <path d="M9 8v3.5M7.25 9.75h3.5" />
     </>
   ),
 }
