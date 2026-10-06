@@ -141,7 +141,7 @@ export function MedalLadder({
   )
 }
 
-/** Every medal's time, for the row's tip: "Bronze 57.75s · Silver 54.28s · Gold 50.82s · Platinum 47.35s". */
+/** Every medal's time, for the row's tip: "Bronze 57.75s · Silver 53.71s · Gold 49.67s · Platinum 45.62s". */
 function medalTitle(game: RaceGame, paceMs: number, format: (seconds: number) => string): string {
   const times = medalTimes(game, paceMs)
   return MEDALS.map((m) => `${MEDAL_NAMES[m]} ${format(times[m] / 1000)}`).join(' · ')

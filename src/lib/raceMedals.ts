@@ -27,10 +27,12 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * How much faster than the day's blue each medal past bronze is, in each game: silver one step, gold two,
  * platinum three (the API's ticketLadders.ts RACE_MEDAL_STEP). They were 3% and 6% for gold and platinum
  * until Ramsey found platinum came "almost every time" (2026-10-06): his best runs of the day land 15 to 30%
- * under the blue, which drives carefully, and each blue leaves its own slack. So platinum now sits about
- * where the best runs so far land: 18% in Hot Lap, 21% in Lander, 24% in Marble Run.
+ * under the blue, which drives carefully, and each blue leaves its own slack. Steps of 6, 7 and 8% put
+ * platinum about where his best runs land; he found that "still needs to be a little harder", so it's a point
+ * more a step, and platinum is a few points past his usual best: 21% in Hot Lap, 24% in Lander, 27% in
+ * Marble Run.
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.08, lander: 0.07 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.07, marblerun: 0.09, lander: 0.08 }
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in
@@ -47,7 +49,7 @@ export function blueOf(game: RaceGame): string {
   return BLUE[game]
 }
 
-/** A medal's lead on the blue, in percent: 0 for bronze, 7 for Lander's silver, 21 for its platinum. */
+/** A medal's lead on the blue, in percent: 0 for bronze, 8 for Lander's silver, 24 for its platinum. */
 export function medalPercent(game: RaceGame, medal: Medal): number {
   return Math.round(MEDALS.indexOf(medal) * MEDAL_STEP[game] * 100)
 }
