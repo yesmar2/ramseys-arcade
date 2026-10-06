@@ -512,37 +512,143 @@ function Pop({ id }: { id: Id }) {
   )
 }
 
-function MazeWall({ x, y, w, h, hue = 234 }: { x: number; y: number; w: number; h: number; hue?: number }) {
+/** A loop of points with its corners rounded, as Pellets rounds its walls (render.ts roundedLoop). */
+function roundedLoop(pts: Array<[number, number]>, r: number, open = false) {
+  const n = pts.length
+  const at = (i: number) => pts[(i + n) % n]!
+  const toward = (p: [number, number], q: [number, number], d: number) => {
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1
+    const k = Math.min(d, len / 2) / len
+    return `${(p[0] + (q[0] - p[0]) * k).toFixed(3)} ${(p[1] + (q[1] - p[1]) * k).toFixed(3)}`
+  }
+  if (open) {
+    let d = `M${pts[0]![0]} ${pts[0]![1]}`
+    for (let i = 1; i < n - 1; i++) d += ` L${toward(at(i), at(i - 1), r)} Q${at(i)[0]} ${at(i)[1]} ${toward(at(i), at(i + 1), r)}`
+    return `${d} L${pts[n - 1]![0]} ${pts[n - 1]![1]}`
+  }
+  let d = `M${toward(at(0), at(1), r)}`
+  for (let i = 1; i <= n; i++) d += ` L${toward(at(i), at(i - 1), r)} Q${at(i)[0]} ${at(i)[1]} ${toward(at(i), at(i + 1), r)}`
+  return `${d} Z`
+}
+
+/** A Pellets chaser as the game draws it (render.ts traceGhost): a dome, straight sides, four feet. */
+function chaser(cx: number, cy: number, r: number, step = 0) {
+  const foot = cy + r * 0.9
+  let d = `M${cx - r} ${foot - r * 0.1} L${cx - r} ${cy - r * 0.05} A${r} ${r} 0 0 1 ${cx + r} ${cy - r * 0.05} L${cx + r} ${foot - r * 0.1}`
+  for (let i = 0; i < 4; i++) {
+    const x0 = cx + r - (i * 2 * r) / 4
+    const x1 = cx + r - ((i + 1) * 2 * r) / 4
+    const down = (i + step) % 2 === 0
+    d += ` Q${(x0 + x1) / 2} ${foot + (down ? r * 0.28 : -r * 0.02)} ${x1} ${foot - r * 0.1}`
+  }
+  return `${d} Z`
+}
+
+const PELLETS_GROUND = '#0c1118'
+
+function Chaser({ cx, cy, hue, look, step = 0 }: { cx: number; cy: number; hue: number; look: [number, number]; step?: number }) {
+  const r = 0.4
+  const rim = hsl(hue, 70, 66, 0.95)
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx="1.8" fill={hsl(hue, 45, 22, 0.55)} stroke={hsl(hue, 72, 66)} strokeWidth="0.5" />
-      <rect x={x + 0.8} y={y + 0.8} width={w - 1.6} height={h - 1.6} rx="1.1" {...line(hsl(hue, 72, 66), 0.25, 0.45)} />
+      <path d={chaser(cx, cy, r, step)} fill={PELLETS_GROUND} />
+      <path d={chaser(cx, cy, r, step)} fill={hsl(hue, 72, 60, 0.34)} stroke={rim} strokeWidth="0.07" strokeLinejoin="round" />
+      {[-1, 1].map((side) => {
+        const ex = cx + side * r * 0.36 + look[0] * r * 0.1
+        const ey = cy - r * 0.22 + look[1] * r * 0.1
+        return (
+          <g key={side}>
+            <ellipse cx={ex} cy={ey} rx={r * 0.25} ry={r * 0.31} fill="#eef3f7" stroke={rim} strokeWidth={r * 0.07} />
+            <circle cx={ex + look[0] * r * 0.11} cy={ey + look[1] * r * 0.13} r={r * 0.13} fill="#23306e" />
+          </g>
+        )
+      })}
     </g>
   )
 }
 
-/** Down a corridor of the neon maze: the chomp at speed, pellets ahead, a ghost coming up from below. */
+/**
+ * Close in on the first maze's top left corner, drawn as the game draws it (pellets/render.ts): the chomp
+ * eating its way along the top lane to the power pip, picked-clean ground and its trail behind it, Blink coming
+ * up the side lane and Pinky round the block. Measured in the maze's tiles, a tile 4.76 across.
+ */
 function Pellets({ id }: { id: Id }) {
+  const wall = {
+    fill: hsl(234, 70, 60, 0.13),
+    stroke: hsl(234, 85, 70, 0.95),
+    strokeWidth: 0.075,
+    strokeLinejoin: 'round' as const,
+  }
+  const inner = { fill: 'none', stroke: hsl(234, 85, 70, 0.38), strokeWidth: 0.04, strokeLinejoin: 'round' as const }
+  // Each block's tile outline; drawn inset, and again further in for the inner line.
+  const blocks: Array<Array<[number, number]>> = [
+    [[2, 2], [6, 2], [6, 3], [4, 3], [4, 5], [2, 5]],
+    [[7, 2], [8, 2], [8, 3], [7, 3]],
+    [[5, 4], [8, 4], [8, 5], [5, 5]],
+    [[9, 2], [11, 2], [11, 5], [9, 5]],
+  ]
+  const inset = (loop: Array<[number, number]>, d: number): Array<[number, number]> => {
+    // Each block here is drawn clockwise in tiles, so a corner moves in along both its edges' normals.
+    const n = loop.length
+    return loop.map((p, i) => {
+      const a = loop[(i + n - 1) % n]!
+      const b = loop[(i + 1) % n]!
+      const e1 = [Math.sign(p[0] - a[0]), Math.sign(p[1] - a[1])]
+      const e2 = [Math.sign(b[0] - p[0]), Math.sign(b[1] - p[1])]
+      // The inward normal of a clockwise edge (y down) is its direction turned right.
+      const n1 = [-e1[1], e1[0]]
+      const n2 = [-e2[1], e2[0]]
+      return [p[0] + (n1[0] + n2[0]) * d, p[1] + (n1[1] + n2[1]) * d] as [number, number]
+    })
+  }
+  const crumbs: Array<[number, number]> = [
+    [2, 1], [1, 2], [6, 2], [8, 2], [1, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [1, 4], [4, 4], [8, 4],
+    [1, 5], [2, 5], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [1, 6], [3, 6], [5, 6],
+  ]
+  const eaten = [4, 5, 6, 7, 8]
+  const trail: Array<[number, number]> = [
+    [4.5, 0.7],
+    [5.3, 0.45],
+    [6.1, 0.25],
+  ]
+  const r = 0.41
   return (
     <>
-      <Backdrop id={id} stops={[[0, '#10151e'], [1, '#0c1017']]} />
-      <MazeWall x={-2} y={2.6} w={44} h={6} />
-      <MazeWall x={-2} y={21.6} w={15.6} h={9} />
-      <MazeWall x={21.4} y={21.6} w={20.6} h={9} />
-      <path d="M29 8.6 H33.6" {...line('#e85d9a', 0.6)} />
-      {[25.6, 29.2, 36.4].map((x) => (
-        <circle key={x} cx={x} cy="15" r="0.62" fill="#f2c14e" />
-      ))}
-      <Glow id={id} name="power" cx={32.8} cy={15} r={2.6} colour="#f2c14e" strength={0.45} />
-      <circle cx="32.8" cy="15" r="1.25" fill="#f2c14e" />
-      <circle cx="10.6" cy="15" r="3.2" fill={hsl(24, 90, 58, 0.14)} />
-      <circle cx="6.6" cy="15" r="2.6" fill={hsl(24, 90, 58, 0.07)} />
-      <Glow id={id} name="chomp" cx={17} cy={15} r={7.5} colour="#f2813a" strength={0.35} />
-      <g transform="translate(17 15)">
-        <path d={chomp(4.3)} {...wash(24, 90, 58, 0.36, 0.65)} />
+      <rect x="-1" y="-1" width="42" height="32" fill={PELLETS_GROUND} />
+      <g transform="scale(4.762) translate(-0.3 -0.3)">
+        {eaten.map((x) => (
+          <circle key={x} cx={x + 0.5} cy="1.5" r="0.045" fill="#e7eef3" opacity="0.07" />
+        ))}
+        {/* The maze's outer wall, top and left, and the blocks. */}
+        <path d={roundedLoop([[-1, -1], [12, -1], [12, 0.85], [0.85, 0.85], [0.85, 8], [-1, 8]], 0.3)} {...wall} />
+        <path d={roundedLoop([[12, 0.62], [0.62, 0.62], [0.62, 8]], 0.22, true)} {...inner} />
+        {blocks.map((loop, i) => (
+          <g key={i}>
+            <path d={roundedLoop(inset(loop, 0.15), 0.3)} {...wall} />
+            <path d={roundedLoop(inset(loop, 0.3), 0.18)} {...inner} />
+          </g>
+        ))}
+        {crumbs.map(([x, y]) => (
+          <circle key={`${x}-${y}`} cx={x + 0.5} cy={y + 0.5} r="0.1" fill={hsl(42, 92, 64)} />
+        ))}
+        {/* The power pip, glowing. */}
+        <Glow id={id} name="pip" cx={1.5} cy={1.5} r={0.65} colour={hsl(42, 95, 60)} strength={0.42} />
+        <circle cx="1.5" cy="1.5" r="0.27" fill={hsl(42, 92, 62, 0.9)} stroke={hsl(42, 80, 78, 0.95)} strokeWidth="0.04" />
+        <circle cx="1.42" cy="1.42" r="0.08" fill="#fff" opacity="0.7" />
+        {trail.map(([x, life]) => (
+          <circle key={x} cx={x} cy="1.5" r={r * (0.35 + 0.5 * life)} fill={hsl(42, 92, 60, 0.2 * life)} />
+        ))}
+        <Glow id={id} name="lamp" cx={3.7} cy={1.5} r={r * 2.6} colour={hsl(24, 90, 60)} strength={0.26} />
+        <Chaser cx={1.5} cy={4.6} hue={356} look={[0, -1]} />
+        <Chaser cx={7.5} cy={3.5} hue={322} look={[-1, 0]} step={1} />
+        {/* The chomp, headed left for the pip, with the shine on its crown and its eye over the mouth. */}
+        <g transform="translate(3.7 1.5) scale(-1 1)">
+          <path d={`M${-r * 0.12} 0 ${chomp(r, 0.39).slice(4)}`} fill={hsl(24, 92, 60, 0.42)} stroke={hsl(24, 85, 70, 0.98)} strokeWidth="0.075" strokeLinejoin="round" />
+          <path d={`M${(r * 0.7 * Math.cos(Math.PI * 1.12)).toFixed(3)} ${(r * 0.7 * Math.sin(Math.PI * 1.12)).toFixed(3)} A${r * 0.7} ${r * 0.7} 0 0 1 ${(r * 0.7 * Math.cos(Math.PI * 1.42)).toFixed(3)} ${(r * 0.7 * Math.sin(Math.PI * 1.42)).toFixed(3)}`} {...line('#fff', 0.06, 0.55)} />
+          <ellipse cx={r * 0.14} cy={-r * 0.5} rx={r * 0.12} ry={r * 0.15} fill="#16202b" />
+          <circle cx={r * 0.18} cy={-r * 0.55} r={r * 0.045} fill="#fff" />
+        </g>
       </g>
-      <path d={ghost(17.5, 26.2, 2.7)} {...wash(188, 78, 62, 0.3, 0.5)} />
-      <GhostEyes cx={17.5} cy={26.2} r={2.7} look={[0, -1]} />
     </>
   )
 }
