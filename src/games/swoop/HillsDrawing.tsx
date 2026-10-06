@@ -22,7 +22,8 @@ export function HillsDrawing({ hills, className }: { hills: Hills; className?: s
   // The hills fill the middle band, stretched up no more than four times, so they still roll rather than spike.
   const ky = Math.min((h * 0.36) / Math.max(1, hi - lo), kx * 4)
   const Y = (y: number) => (h * 0.56 + ((lo + hi) / 2 - y) * ky).toFixed(1)
-  const steps = 260
+  // A point every four or five metres of hills, so even the quickest bumps keep their shape.
+  const steps = Math.max(260, Math.round(hills.finish / 4.5))
   const line: string[] = []
   for (let i = 0; i <= steps; i++) {
     const x = x0 + ((x1 - x0) * i) / steps

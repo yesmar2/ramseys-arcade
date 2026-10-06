@@ -243,8 +243,10 @@ function hillsSvg(hills, heightAt, hillsSpan, mix, { picW, picH }) {
   const ky = Math.min((picH * 0.4) / Math.max(1, hi - lo), kx * 4)
   const Y = (y) => (picH * 0.58 + ((lo + hi) / 2 - y) * ky).toFixed(1)
   const line = []
-  for (let i = 0; i <= 160; i++) {
-    const x = x0 + ((x1 - x0) * i) / 160
+  // A point every eight metres or so of hills: the card is small, but the quick bumps still read as bumps.
+  const steps = Math.max(160, Math.round(hills.finish / 8))
+  for (let i = 0; i <= steps; i++) {
+    const x = x0 + ((x1 - x0) * i) / steps
     line.push(`${X(x)} ${Y(heightAt(hills, x))}`)
   }
   const surface = `M${line.join(' L')}`

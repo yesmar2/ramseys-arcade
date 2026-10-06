@@ -118,9 +118,18 @@ export type Hills = {
 }
 
 /**
- * Day n's hills, try `attempt`: about a kilometre of tops and bottoms, in stretches of quick bumps and long
- * rollers, drifting up and down as a whole so some runs are long and fast and some climbs are long and slow,
- * down onto a long flat at the end with the line just past its foot. Try 0 is the prototype's hills.
+ * A day's hills run this many times as far as the prototype's kilometre or so. On that length Ramsey's best
+ * runs took about 30 seconds once streaks came in (2026-10-06), and he asked for longer: "so users aren't
+ * getting 30 second runs", then "maybe do like 75% longer, not twice as long".
+ */
+const LENGTH = 1.75
+
+/**
+ * Day n's hills, try `attempt`: about two kilometres of tops and bottoms, in stretches of quick bumps and
+ * long rollers, drifting up and down as a whole so some runs are long and fast and some climbs are long and
+ * slow, down onto a long flat at the end with the line just past its foot. Their first kilometre or so is the
+ * whole of what they were before LENGTH (try 0's is the prototype's hills), and they keep the name they had:
+ * it's drawn where those hills ended, as it was then, and the hills go on from there.
  */
 export function layHills(n: number, attempt = 0): Hills {
   const rnd = mulberry32((Math.imul(n + 7, 2654435761) ^ 0x51ed ^ Math.imul(attempt, 0x9e3779b1)) >>> 0)
@@ -143,7 +152,10 @@ export function layHills(n: number, attempt = 0): Hills {
   let stretch = 0
   let spacing = 20
   let amp = 10
-  while (x < length) {
+  let name = ''
+  const nameThem = () => `${FIRST[Math.floor(rnd() * FIRST.length)]} ${SECOND[Math.floor(rnd() * SECOND.length)]}`
+  while (x < length * LENGTH) {
+    if (!name && x >= length) name = nameThem()
     if (stretch <= 0) {
       // A new stretch: quick bumps, long rollers, or something between.
       const kind = rnd()
@@ -182,7 +194,7 @@ export function layHills(n: number, attempt = 0): Hills {
   pts.push([footX, footY])
   pts.push([footX + 400, footY])
   const finish = footX + 22
-  const name = `${FIRST[Math.floor(rnd() * FIRST.length)]} ${SECOND[Math.floor(rnd() * SECOND.length)]}`
+  if (!name) name = nameThem()
   const xs = pts.map((p) => p[0])
   const ys = pts.map((p) => p[1])
   let tops = 0
@@ -504,8 +516,8 @@ export function paceRun(h: Hills): Flight {
 }
 
 /** A blue bird crossing the line in this many seconds makes the hills fair: not a sprint, not a slog. */
-export const PACE_FROM = 42
-export const PACE_TO = 72
+export const PACE_FROM = 42 * LENGTH
+export const PACE_TO = 72 * LENGTH
 
 /** Hills `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): laid the same on every device. */
 export function plannedHills(n: number, attempt: number): Hills {
