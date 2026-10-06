@@ -235,6 +235,9 @@ export const games: Game[] = [
     inDevelopment: true,
     daily: true,
     ranked: false,
+    // Held back (Ramsey, 2026-10-06: "let's hide it for now"), after the swing in a026bf4 didn't land either.
+    // Off every listing and off Also today; its pages still play by address. The API's ON_DECK_GAMES too.
+    onDeck: true,
   },
   {
     name: 'Hot Lap',
