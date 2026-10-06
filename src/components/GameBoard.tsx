@@ -1,5 +1,4 @@
 import { SkinMark } from './season/SkinMark'
-import { getPersonalBest } from '../lib/personalBest'
 import { useHeldHeight } from '../lib/heldShape'
 import { Suspense, useState, type CSSProperties, type ReactNode } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame, isDailyGame } from '../data/games'
@@ -364,7 +363,7 @@ function PlayLink({ slug }: { slug: LeaderboardGame }) {
   )
 }
 
-/** A daily's board shows your runs from this many on: a run or two, your place card says it all. */
+/** A board shows your runs from this many on: a run or two, your place card says it all. */
 const RUNS_TO_CHART = 3
 
 function RunsCard({ slug, copy, you, leader }: { slug: string; copy: PeriodCopy; you: BoardYou; leader: BoardPlayer | undefined }) {
@@ -795,38 +794,6 @@ export function GameBoard({ slug, period, day }: { slug: LeaderboardGame; period
   return <PeriodBoard slug={slug} period={period} />
 }
 
-/**
- * Your place on a board while it loads: its two cards' shapes, held at the height they had last time, so the
- * board under them doesn't move when they come.
- */
-function YouWaiting({
-  held,
-  likely = true,
-}: {
-  held: ReturnType<typeof useHeldHeight<HTMLElement>>
-  /** A first look, with nothing kept: whether you're likely on it, so worth holding room for. */
-  likely?: boolean
-}) {
-  // Last time this board had no row for you (you weren't on it): hold no room for one now.
-  if (held.known && !held.style) return null
-  // A first look at this board: room only if you've a score in the game, as off the board there's no row.
-  if (!held.known && !likely) return null
-  const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
-  return (
-    <section className="sb-you gb-you" aria-hidden="true" ref={held.ref} style={held.style}>
-      {[0, 1].map((i) => (
-        <div key={i} className="sb-card sb-you__card">
-          <div className="sb-you__top">
-            <span className="sb-you__kicker">{line('7rem')}</span>
-          </div>
-          <p className="sb-you__big">{line('5rem')}</p>
-          <p className="sb-you__line">{line('14rem')}</p>
-        </div>
-      ))}
-    </section>
-  )
-}
-
 function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
@@ -837,13 +804,10 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   const standing = data.you
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
-  // A daily's board is the first thing under the banner (Ramsey, 2026-10-06: "i want the board to be the first
-  // thing below the hero"), with your place on the right under More boards ("maybe the DAD today card can go to
-  // the right of the standings under the more boards"); the other games' boards put yours over the board.
-  const daily = isDailyGame(slug)
-  const youHeld = useHeldHeight<HTMLElement>(`gb-you-${slug}-${period}`, data.loading)
-  // Held apart from the other games' boards of the same name: a daily's side holds your cards too.
-  const mainHeld = useHeldHeight<HTMLDivElement>(`gb-main-${daily ? 'daily-' : ''}${period}`, data.loading)
+  // The board is the first thing under the banner (Ramsey, 2026-10-06: "i want the board to be the first thing
+  // below the hero", first on the dailies, then every game's), with your place on the right under More boards
+  // ("maybe the DAD today card can go to the right of the standings under the more boards").
+  const mainHeld = useHeldHeight<HTMLDivElement>(`gb-main-${period}`, data.loading)
 
   if (data.error) {
     return (
@@ -854,7 +818,7 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
     )
   }
 
-  /** Beside the board: More boards, holding its rows' room till they come, and on a daily your cards under it. */
+  /** Beside the board: More boards, holding its rows' room till they come, and your cards under it. */
   const side = (yourCards: ReactNode) =>
     !data.loading ? (
       <aside className="gb-side" aria-label="More about this board">
@@ -881,65 +845,29 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
     )
   }
 
-  const banner = (
-    <Banner
-      slug={slug}
-      period={period}
-      copy={copy}
-      players={players}
-      field={data.field}
-      runs={data.runCount}
-      loading={data.loading}
-      group={group}
-    />
-  )
-  const board = <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
-
-  if (daily) {
-    return (
-      <div className="sb gb" style={style}>
-        {banner}
-        <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
-          {board}
-          {side(
-            standing ? (
-              <>
-                <YouOnBoard slug={slug} period={period} copy={copy} you={standing} avatarId={data.youRun?.avatarId} />
-                {/* Your runs once there are a few to see (Ramsey: "maybe we want that card but only if they've done 3 or more runs?"). */}
-                {standing.runs.length >= RUNS_TO_CHART ? <RunsCard slug={slug} copy={copy} you={standing} leader={players[0]} /> : null}
-              </>
-            ) : null,
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="sb gb" style={style}>
-      {banner}
-
-      {/* Signed out, nobody is on the board, so nothing waits for a place to show. */}
-      {data.loading && you ? <YouWaiting held={youHeld} likely={getPersonalBest(slug) > 0} /> : null}
-      {!data.loading ? (
-        // Off the board, the row isn't drawn, but it's kept (empty) so the next visit's wait holds no room for it.
-        <section
-          className={`sb-you gb-you${standing ? '' : ' gb-you--none'}`}
-          aria-label={standing ? 'Your place on this board' : undefined}
-          ref={youHeld.ref}
-        >
-          {standing ? (
+      <Banner
+        slug={slug}
+        period={period}
+        copy={copy}
+        players={players}
+        field={data.field}
+        runs={data.runCount}
+        loading={data.loading}
+        group={group}
+      />
+      <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
+        <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
+        {side(
+          standing ? (
             <>
               <YouOnBoard slug={slug} period={period} copy={copy} you={standing} avatarId={data.youRun?.avatarId} />
-              <RunsCard slug={slug} copy={copy} you={standing} leader={players[0]} />
+              {/* Your runs once there are a few to see (Ramsey: "maybe we want that card but only if they've done 3 or more runs?"). */}
+              {standing.runs.length >= RUNS_TO_CHART ? <RunsCard slug={slug} copy={copy} you={standing} leader={players[0]} /> : null}
             </>
-          ) : null}
-        </section>
-      ) : null}
-
-      <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
-        {board}
-        {side(null)}
+          ) : null,
+        )}
       </div>
     </div>
   )

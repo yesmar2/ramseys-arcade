@@ -537,11 +537,6 @@ a.sb-row__link:focus-visible {
   gap: 1rem;
 }
 
-/* The game board's row when you aren't on it: kept, empty, so its wait next time holds no room. */
-.gb-you--none {
-  display: none;
-}
-
 @media (min-width: 56rem) {
   .sb-you {
     grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
@@ -1647,8 +1642,8 @@ a.sb-board__link:hover .sb-board__go {
   min-width: 0;
 }
 
-/* Your cards on a daily's today, week and month boards: on the right under More boards; on a phone, straight
-   after the board, before the other boards. */
+/* Your cards: on the right under More boards (a past day's: under Other days); on a phone, straight after the
+   board, before the rest. */
 .gb-side__you {
   display: flex;
   flex-direction: column;
@@ -1663,24 +1658,12 @@ a.sb-board__link:hover .sb-board__go {
   }
 }
 
-/* A past day's board, the first thing under the banner, with you that day under it in its column. */
+/* A past day's board, the first thing under the banner, with Race it under it in its column. */
 .gb-lead {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
-  container-type: inline-size;
-}
-
-/* Your two cards one over the other, till the column has room for them side by side. */
-.gb-lead .sb-you {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@container (min-width: 46rem) {
-  .gb-lead .sb-you:not(.sb-you--solo) {
-    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
-  }
 }
 
 .gb-board {

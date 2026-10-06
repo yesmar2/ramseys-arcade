@@ -827,7 +827,8 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
     <div className="sb gb db" style={style}>
       <Banner slug={slug} day={day} course={course} board={dayBoard} group={group} />
 
-      {/* The board first under the banner, as on the daily's other boards (GameBoard), you that day under it. */}
+      {/* The board first under the banner, Race it under it; Other days beside it, where you finished under that,
+          as a game's board has More boards and your place (GameBoard). */}
       <div className="gb-main">
         <div className="gb-lead">
           <Board
@@ -841,17 +842,20 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
             onMore={(tab) => setShown((s) => ({ ...s, [tab]: s[tab] + MORE_ROWS }))}
             group={group}
           />
-          {/* Once the board has settled: drawn while it loads, they'd move as its rows came. */}
+          {/* Once the board has settled: drawn while it loads, it'd move as its rows came. */}
           {!dayBoard.loading ? (
-            <section className="sb-you gb-you db-you" aria-label="You that day">
-              <YouThatDay slug={slug} day={day} name={name} board={dayBoard} group={group} />
-              <PlayAgain slug={slug} day={day} course={course} courseFailed={courseFailed} dayBoard={dayBoard} courseBoard={courseBoard} />
-            </section>
+            <PlayAgain slug={slug} day={day} course={course} courseFailed={courseFailed} dayBoard={dayBoard} courseBoard={courseBoard} />
           ) : null}
         </div>
-        <aside className="gb-side" aria-label="Other days">
-          <OtherDays slug={slug} day={day} name={name} course={course} group={group} />
-        </aside>
+        {/* Both at once, once the board and the day's course are in, so neither pushes the other down. */}
+        {!dayBoard.loading && (course || courseFailed) ? (
+          <aside className="gb-side" aria-label="More about this day">
+            <OtherDays slug={slug} day={day} name={name} course={course} group={group} />
+            <div className="gb-side__you">
+              <YouThatDay slug={slug} day={day} name={name} board={dayBoard} group={group} />
+            </div>
+          </aside>
+        ) : null}
       </div>
     </div>
   )
