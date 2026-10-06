@@ -1,5 +1,6 @@
 import { chosenSkin } from '../../lib/skins'
 import { api } from '../../lib/leaderboard'
+import { launchWarp } from '../../lib/ghostWarp'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE, GHOST_STRIDE, inAir, nearestNode, WRECKED, wrap, type Breach, type Cave } from './sim'
 
@@ -122,23 +123,24 @@ export function fitsCave(cave: Cave, run: GhostRun, breach: Breach | null = null
 }
 
 /**
- * A run of `time` seconds along another run's line: the blue ship's, flown faster or slower all the way down
- * in step, so it passes each gate and lands at the same share of `time` as its own run. For a #1 whose path
- * isn't known: their time, on the blue ship's line.
+ * A run of `time` seconds along another run's line: the blue ship's, lifted off as it was and then flown
+ * faster or slower to make the difference up by the pad (lib/ghostWarp.ts), passing each gate when that
+ * clock does. For a player whose path isn't known: their time, on the blue ship's line.
  */
 export function standIn(line: GhostRun, time: number): GhostRun {
-  const scale = time / line.time
+  const warp = launchWarp(line.time, time)
   const g = line.ghost
   const samples = g.length / S
   const out: number[] = []
-  // Samples as often as the ghost's own rate, each where the line was at the same share of its run.
-  const count = Math.max(2, Math.round((samples - 1) * scale) + 1)
+  // Samples as often as the ghost's own rate, each where the line was at that moment of the stand-in's clock.
+  const every = line.time / (samples - 1)
+  const count = Math.max(2, Math.round(((samples - 1) * time) / line.time) + 1)
   for (let k = 0; k < count; k++) {
-    const at = Math.min(samples - 1, k / scale)
+    const at = Math.min(samples - 1, warp.lineAt(k * every) / every)
     const i = Math.min(samples - 2, Math.floor(at))
     between(g, i, at - i, out)
   }
-  return { time, splits: line.splits.map((s) => s * scale), ghost: out }
+  return { time, splits: line.splits.map((s) => warp.ghostAt(s)), ghost: out }
 }
 
 /** Send a saved run's path, under the tag it was saved as. Answers whether it's the cave's ghost now. */

@@ -1,5 +1,6 @@
 import { chosenSkin } from '../../lib/skins'
 import { api } from '../../lib/leaderboard'
+import { launchWarp } from '../../lib/ghostWarp'
 import type { GhostLap } from './lap'
 import { GHOST_RATE, type GhostPath } from './sim'
 
@@ -81,25 +82,26 @@ export async function fetchNextGhost(track: number, tag: string): Promise<NextGh
 }
 
 /**
- * A lap of `time` seconds along another lap's line: the blue car's, driven faster or slower all the way
- * round in step, so it crosses each sector's end and the line at the same share of `time` as its own lap.
- * For a #1 whose path isn't known: their time, on the blue car's line.
+ * A lap of `time` seconds along another lap's line: the blue car's, launched as it was and then driven
+ * faster or slower to make the difference up by the line (lib/ghostWarp.ts), crossing each sector's end
+ * when that clock does. For a player whose path isn't known: their time, on the blue car's line.
  */
 export function standIn(line: GhostLap, time: number): GhostLap {
-  const scale = time / line.time
+  const warp = launchWarp(line.time, time)
   const g = line.ghost
   const samples = g.length / 3
   const out: number[] = []
-  // Samples as often as the ghost's own rate, each where the line was at the same share of its lap.
-  const count = Math.max(2, Math.round((samples - 1) * scale) + 1)
+  // Samples as often as the ghost's own rate, each where the line was at that moment of the stand-in's clock.
+  const every = line.time / (samples - 1)
+  const count = Math.max(2, Math.round(((samples - 1) * time) / line.time) + 1)
   for (let k = 0; k < count; k++) {
-    const at = Math.min(samples - 1, k / scale)
+    const at = Math.min(samples - 1, warp.lineAt(k * every) / every)
     const i = Math.min(samples - 2, Math.floor(at))
     const f = at - i
     const turn = Math.atan2(Math.sin(g[i * 3 + 5]! - g[i * 3 + 2]!), Math.cos(g[i * 3 + 5]! - g[i * 3 + 2]!))
     out.push(g[i * 3]! + (g[i * 3 + 3]! - g[i * 3]!) * f, g[i * 3 + 1]! + (g[i * 3 + 4]! - g[i * 3 + 1]!) * f, g[i * 3 + 2]! + turn * f)
   }
-  return { time, splits: line.splits.map((s) => s * scale), ghost: out }
+  return { time, splits: line.splits.map((s) => warp.ghostAt(s)), ghost: out }
 }
 
 /** Send a saved lap's path, under the tag it was saved as. Answers whether it's the track's ghost now. */
