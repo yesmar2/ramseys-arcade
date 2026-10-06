@@ -1,6 +1,7 @@
 import { isDailyGame } from '../data/games'
 import { AUTH_EVENT, SESSION_KEY } from './accountEvents'
 import { fetchPlayerBests, getLastPlayerName } from './leaderboard'
+import { keptSinceReset } from './runResets'
 
 export type PersonalBestKind = 'first' | 'new' | 'tie' | 'short'
 
@@ -39,7 +40,8 @@ export function subscribePersonalBests(onStoreChange: () => void) {
 const DEVICE_KEY = 'skermix-device-bests'
 const boardDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
 
-type DeviceBest = { score: number; day: string }
+/** A device's best on a game: its score, its board day, and when it was kept (missing on bests kept before resets). */
+type DeviceBest = { score: number; day: string; at?: number }
 
 function signedIn(): boolean {
   try {
@@ -58,11 +60,15 @@ function readDeviceBests(): Record<string, DeviceBest> {
   }
 }
 
+/** A device's best on a game that's still its: today's, on a daily, and kept since the game's runs were reset. */
+function liveBest(slug: string, kept: DeviceBest | undefined): DeviceBest | null {
+  if (!kept || typeof kept.score !== 'number') return null
+  if (isDailyGame(slug) && kept.day !== boardDay.format(new Date())) return null
+  return keptSinceReset(slug, kept.at) ? kept : null
+}
+
 function deviceBest(slug: string): number {
-  const kept = readDeviceBests()[slug]
-  if (!kept || typeof kept.score !== 'number') return 0
-  if (isDailyGame(slug) && kept.day !== boardDay.format(new Date())) return 0
-  return kept.score
+  return liveBest(slug, readDeviceBests()[slug])?.score ?? 0
 }
 
 /** A signed-out run's score, kept as this device's best on its game if it beats it (a daily's, if it's today's). */
@@ -70,9 +76,9 @@ export function rememberDeviceBest(slug: string, score: number) {
   if (score <= 0 || signedIn()) return
   const bests = readDeviceBests()
   const today = boardDay.format(new Date())
-  const kept = bests[slug]
-  if (kept && kept.score >= score && (!isDailyGame(slug) || kept.day === today)) return
-  bests[slug] = { score, day: today }
+  const kept = liveBest(slug, bests[slug])
+  if (kept && kept.score >= score) return
+  bests[slug] = { score, day: today, at: Date.now() }
   try {
     localStorage.setItem(DEVICE_KEY, JSON.stringify(bests))
   } catch {

@@ -1,4 +1,5 @@
 import { ownKey, ownRun, SIGNED_OUT, type OwnedRuns, type Viewer } from '../../lib/deviceRuns'
+import { keptSinceReset } from '../../lib/runResets'
 
 /*
  * Your own best run over each day's course, kept on the device with where the bird was all the way along, so it
@@ -37,7 +38,10 @@ function validRun(raw: Partial<GhostRun> | null | undefined): GhostRun | null {
   return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
 }
 
-/** Each day's best runs on this device, by whose they are: an account's id, or SIGNED_OUT. */
+/**
+ * Each day's best runs on this device, by whose they are: an account's id, or SIGNED_OUT. A run kept before
+ * Swoop's runs were reset (lib/runResets.ts) is gone.
+ */
 function readRuns(): Record<string, OwnedRuns<KeptRun>> {
   try {
     const parsed = JSON.parse(localStorage.getItem(RUNS_KEY) ?? 'null') as { days?: Record<string, Record<string, Partial<KeptRun>> | null> } | null
@@ -45,7 +49,8 @@ function readRuns(): Record<string, OwnedRuns<KeptRun>> {
     for (const [day, runs] of Object.entries(parsed?.days ?? {})) {
       for (const [owner, raw] of Object.entries(runs ?? {})) {
         const run = validRun(raw)
-        if (run) days[day] = { ...days[day], [owner]: { ...run, at: typeof raw.at === 'number' ? raw.at : 0 } }
+        const at = typeof raw.at === 'number' ? raw.at : 0
+        if (run && keptSinceReset('swoop', at)) days[day] = { ...days[day], [owner]: { ...run, at } }
       }
     }
     return days
