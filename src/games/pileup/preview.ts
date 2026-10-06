@@ -26,7 +26,7 @@ export function makeSim(): Sim<GameState> {
     render: (ctx, s, w, h) => renderGame(ctx, s, w, h),
     // The pile doesn't depend on the screen's size, only how it's drawn does.
     resize: (s) => s,
-    // The still: the long piece, eyes open, over the slot it's about to drop into.
+    // The still: the long piece over the slot it's about to drop into.
     poster: { seed: 1, at: 40 },
     hold: 1.4,
   }

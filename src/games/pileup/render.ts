@@ -1,7 +1,6 @@
 import { PALETTE } from '../../data/games'
 import { mixColor } from '../../lib/color'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
-import { drawEyes } from '../eyes'
 import {
   CLEAR_TIME,
   COLS,
@@ -27,9 +26,8 @@ import { pileLayout, type Box, type Layout } from './layout'
  * blocks can still be counted. A row that clears splits as it goes, and a
  * piece keeps its shape until a clear or a Shake breaks it up.
  *
- * The falling piece has eyes. It watches where it's going to land, glances the
- * way it was pushed, blinks now and then; the ones waiting their turn in the
- * boxes are asleep. Where it will land is a dashed outline of it.
+ * Where the falling piece will land is a dashed outline of it. The pieces have
+ * no faces: Ramsey asked for the eyes off them (2026-10-06).
  *
  * Seven colours of the arcade's ten: the long one pink, the square amber, T
  * violet, S green, Z orange, J sky and L red. The well is the page's own
@@ -275,37 +273,6 @@ function pieceCells(p: Piece, y = p.y): CellAt[] {
   return SHAPES[p.kind]![p.rot]!.map(([cx, cy]) => ({ x: p.x + cx, y: y + cy }))
 }
 
-/** The middle of a piece's blocks, in cells: where its eyes go. */
-function middleOf(cells: readonly CellAt[]) {
-  let x = 0
-  let y = 0
-  for (const c of cells) {
-    x += c.x + 0.5
-    y += c.y + 0.5
-  }
-  return { x: x / cells.length, y: y / cells.length }
-}
-
-type EyeLook = { look?: { x: number; y: number }; closed?: boolean; dead?: string }
-
-function eyesOn(v: View, cells: readonly CellAt[], ox: number, oy: number, c: number, tone: Tones, e: EyeLook) {
-  const m = middleOf(cells)
-  // drawEyes sits a face looking down a little under its middle; this puts the pair on the piece's.
-  const span = c * 0.56
-  drawEyes(v.ctx, {
-    x: ox + m.x * c,
-    y: oy + m.y * c - span * 0.36 - c * 0.04,
-    rx: span,
-    ry: span,
-    radius: c * 0.15,
-    facing: 'down',
-    look: e.look,
-    line: tone.line,
-    closed: e.closed,
-    dead: e.dead,
-  })
-}
-
 // ——————————————————————————————————————————————————————————— the room
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -505,7 +472,6 @@ function drawTopOut(v: View, shiftX: number) {
     const tone = v.tones[stuck.kind]!
     const lift = t < beat ? 0 : (t - beat) * c * 6
     drawShape(ctx, cells, tone, ox + shiftX, oy - lift, c, { alpha: 1 - clamp01((t - beat) / 0.5), flash: red * 0.4 })
-    eyesOn(v, cells, ox + shiftX, oy - lift, c, tone, { dead: v.dark ? '#ffffff' : '#1a2b3c' })
   }
 }
 
@@ -548,7 +514,6 @@ function drawWaiting(v: View, shiftX: number) {
   const cells = pieceCells(p, p.y + bob)
   const tone = v.tones[p.kind]!
   drawShape(ctx, cells, tone, ox + shiftX, oy, c, { alpha: 0.85 })
-  eyesOn(v, cells, ox + shiftX, oy, c, tone, { look: { x: 0, y: 1 } })
 }
 
 function drawPiece(v: View, shiftX: number) {
@@ -572,12 +537,6 @@ function drawPiece(v: View, shiftX: number) {
   }
   const cells = pieceCells(p, p.y + bob)
   drawShape(ctx, cells, tone, ox + shiftX, oy, c)
-  const glance = s.time - s.lookT < 0.4
-  const blink = (s.time % 3.6) < 0.12
-  eyesOn(v, cells, ox + shiftX, oy, c, tone, {
-    look: glance ? { x: s.lookX, y: 0.35 } : { x: 0, y: 1 },
-    closed: blink,
-  })
   ctx.restore()
 }
 
@@ -604,7 +563,7 @@ function drawPanel(v: View, box: Box, label: string) {
   ctx.restore()
 }
 
-/** A piece asleep in a box, sized to fit it, a little under the box's middle to clear its label. */
+/** A piece in a box, sized to fit it, a little under the box's middle to clear its label. */
 function drawBoxed(v: View, box: Box, kind: Kind, dim: boolean, labelled: boolean) {
   const shape = SHAPES[kind]![0]!
   const xs = shape.map(([x]) => x)
@@ -621,10 +580,6 @@ function drawBoxed(v: View, box: Box, kind: Kind, dim: boolean, labelled: boolea
   const tone = v.tones[kind]!
   const alpha = dim ? 0.4 : 1
   drawShape(v.ctx, cells, tone, ox, oy, mini, { alpha })
-  v.ctx.save()
-  v.ctx.globalAlpha = alpha
-  eyesOn(v, cells, ox, oy, mini, tone, { closed: true })
-  v.ctx.restore()
 }
 
 function drawBoxes(v: View) {

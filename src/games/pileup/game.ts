@@ -267,9 +267,6 @@ export type GameState = {
   bump: number
   /** The piece just locked and when, for its flash. */
   locked: { id: number; t: number } | null
-  /** Rows the piece last moved across, -1 or 1, and when: its eyes follow. */
-  lookX: number
-  lookT: number
   lastTap: number
   /** The piece that wouldn't fit, at the end. */
   stuck: Piece | null
@@ -388,8 +385,6 @@ function emptyState(): GameState {
     trails: [],
     bump: 0,
     locked: null,
-    lookX: 0,
-    lookT: -10,
     lastTap: 0,
     stuck: null,
   }
@@ -404,7 +399,7 @@ export function createInitialState(): GameState {
       s.ids[y * COLS + x] = id
     }
   }
-  // The long one, standing on end over its slot, eyes on it.
+  // The long one, standing on end over its slot.
   s.piece = { kind: PIECE_I, rot: 1, x: COLS - 3, y: 9 }
   return s
 }
@@ -531,8 +526,6 @@ export function move(s: GameState, dx: -1 | 1): boolean {
   if (!canAct(s) || !p) return false
   if (!fits(s, p.kind, p.rot, p.x + dx, p.y)) return false
   p.x += dx
-  s.lookX = dx
-  s.lookT = s.time
   afterShift(s)
   if (s.time - s.lastTap > 0.045) {
     s.lastTap = s.time

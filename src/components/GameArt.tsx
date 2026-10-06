@@ -1724,7 +1724,7 @@ const PILE_FALLING: Array<[number, number, number]> = [
   [6, 2, 3.9],
 ]
 
-/** Pileup's well in the middle of a Shake: loose blocks dropping into the gaps, the bottom row going white as it clears, and the next piece waiting at the top, eyes on it all. */
+/** Pileup's well in the middle of a Shake: loose blocks dropping into the gaps, the bottom row going white as it clears, and the next piece waiting at the top. */
 function Pileup({ id }: { id: Id }) {
   // The well fills the icon's square, x 6 to 34; held and next stand outside it, on the card only.
   const c = 2.8
@@ -1732,7 +1732,6 @@ function Pileup({ id }: { id: Id }) {
   const floor = 29.4
   const at = (col: number, row: number) => ({ x: x0 + col * c, y: floor - (row + 1) * c })
   const waiting: Array<[number, number]> = [[5, 9], [4, 8], [5, 8], [6, 8]]
-  const eyesY = floor - 8.75 * c
   const box = (x: number, y: number, w: number, h: number) => (
     <rect x={x} y={y} width={w} height={h} rx="0.8" fill="#ffffff" fillOpacity="0.05" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="0.18" />
   )
@@ -1776,7 +1775,6 @@ function Pileup({ id }: { id: Id }) {
       ))}
       {/* The piece in play, waiting at the top while the pile settles. */}
       <PileShape cells={waiting} kind={2} x0={x0} floor={floor} c={c} />
-      <Eyes at={[[x0 + 5.5 * c - 0.78, eyesY], [x0 + 5.5 * c + 0.78, eyesY]]} r={0.62} look={[0, 1]} ring={pileTone(2).line} />
       {/* Held, and next: the boxes either side of the well. */}
       {box(0.5, 2, 4.3, 4.6)}
       <PileShape cells={[[1, 0], [2, 0], [0, -1], [1, -1]]} kind={3} x0={0.5 + 2.15 - 1.35} floor={2 + 2.3 + 0.9} c={0.9} />
