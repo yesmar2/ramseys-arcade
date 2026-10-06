@@ -62,6 +62,20 @@ const START_SPEED = 7
 export const CLEAN_ANGLE = 0.22
 const CLEAN_AIR = 0.3
 const CLEAN_BOOST = 1.05
+/**
+ * From higher up the bird comes down steeper and faster, onto only the steepest stretch of a downhill, so the
+ * window opens with the fall: CLEAN_HIGH more from CLEAN_LOW metres up to CLEAN_TALL and over. Ramsey "never
+ * really" saw a clean landing "unless i'm really low" (2026-10-06): off a big flight a landing that looks
+ * smooth came down 15 to 20 degrees off the slope, and only the quickest hands could find the 12.
+ */
+const CLEAN_HIGH = 0.16
+const CLEAN_LOW = 5
+const CLEAN_TALL = 30
+
+/** The angle a landing has to be within to be clean, falling this many metres from the top of its flight. */
+export function cleanAngleFor(fall: number): number {
+  return CLEAN_ANGLE + CLEAN_HIGH * Math.min(1, Math.max(0, (fall - CLEAN_LOW) / (CLEAN_TALL - CLEAN_LOW)))
+}
 /** Past this angle it's a thump. However badly it lands, it keeps this much of its speed. */
 const BUMP_ANGLE = 0.62
 const LAND_FLOOR = 0.6
@@ -275,8 +289,9 @@ export type Bird = {
   /** Speed along the hill, while on it. */
   s: number
   ground: boolean
-  /** Seconds since it last left the ground. */
+  /** Seconds since it last left the ground, and the highest it's been since. */
   air: number
+  peak: number
   /** Seconds since the go. */
   t: number
   /** Clean landings this run, the streak of them now, and the longest. */
@@ -302,6 +317,7 @@ export function newBird(h: Hills): Bird {
     s: START_SPEED,
     ground: true,
     air: 0,
+    peak: heightAt(h, 0),
     t: 0,
     clean: 0,
     streak: 0,
@@ -339,6 +355,7 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
       b.vy = (b.s * d) / n
       b.x += b.vx * DT
       b.y += b.vy * DT
+      b.peak = b.y
       ev = 'launch'
     } else {
       b.x += (b.s / n) * DT
@@ -359,6 +376,7 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
     b.x += b.vx * DT
     b.y += b.vy * DT
     b.air += DT
+    if (b.y > b.peak) b.peak = b.y
     const floor = heightAt(h, b.x)
     if (b.y <= floor) {
       const d = slopeAt(h, b.x)
@@ -369,7 +387,7 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
       const speed = Math.hypot(b.vx, b.vy)
       // What runs along the hill is kept; landing into it costs the rest, down to a floor.
       let s = speed * Math.max(LAND_FLOOR, along / Math.max(0.001, speed))
-      if (along > 0 && angle < CLEAN_ANGLE && b.air > CLEAN_AIR) {
+      if (along > 0 && angle < cleanAngleFor(b.peak - floor) && b.air > CLEAN_AIR) {
         s *= CLEAN_BOOST
         b.clean += 1
         b.streak += 1
