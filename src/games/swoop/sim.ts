@@ -7,7 +7,7 @@
  * it's speed thrown away; over a top it keeps the bird on the hill, where letting go lets it fly off. In the
  * air, holding drops it sooner, to land on the far side of the next hill rather than into the face of it.
  * Landing along a downhill keeps the speed (and a clean one adds a little); landing into an uphill loses most
- * of it, never below LAND_FLOOR.
+ * of it, never below LAND_FLOOR. Clean landings in a row are a streak, and on one the bird can go faster.
  *
  * Ramsey played the prototype (2026-10-06) and couldn't beat its blue bird, then learned to: the blue bird
  * here plays like a person who knows what to do and reacts a third of a second late (BLUE_HANDS), so a player
@@ -26,14 +26,35 @@ export const G_DIVE = 62
 /** The ground as a whole falls this much a metre along, under its two slow waves. */
 const FALL = 0.005
 /**
- * Air and snow both slow a bird the faster it goes, and past CAP it's like hitting a wall of wind, so the
- * very best runs top out rather than run away.
+ * Air and snow both slow a bird the faster it goes, and past its cap it's like hitting a wall of wind: CAP,
+ * or higher on a streak (capFor), so a run tops out rather than runs away.
  */
 const DRAG = 0.0011
 const AIR_DRAG = 0.0005
 const CAP = 55
 const CAP_DRAG = 0.04
-const drag = (v: number, k: number) => k * v * v + (v > CAP ? CAP_DRAG * (v - CAP) * (v - CAP) : 0)
+const drag = (v: number, k: number, cap: number) => k * v * v + (v > cap ? CAP_DRAG * (v - cap) * (v - cap) : 0)
+/**
+ * Clean landings in a row are a streak. From STREAK_ON of them the wind lets the bird go faster: the wall
+ * moves up STREAK_CAP for each clean landing in the streak, to at most STREAK_CAP_MOST higher. A landing off a
+ * flight that isn't clean ends the streak (a hop too short to be clean doesn't), as a thump does, and the
+ * wall comes back down. Ramsey found near-perfect runs coming out close together (2026-10-06): with one wall
+ * for everyone, a slip cost a top run about a seventh of a second, so everyone good bunched up. On a streak,
+ * a run that's clean all the way pulls clear of one that slips.
+ */
+export const STREAK_ON = 3
+const STREAK_CAP = 4
+const STREAK_CAP_MOST = 20
+
+/** The wall of wind for a streak this long, m/s. */
+export function capFor(streak: number): number {
+  return streak < STREAK_ON ? CAP : CAP + Math.min(STREAK_CAP_MOST, STREAK_CAP * (streak - STREAK_ON + 1))
+}
+
+/** How far a streak this long has moved the wall up: 0 off a streak, 1 all the way. */
+export function streakLift(streak: number): number {
+  return (capFor(streak) - CAP) / STREAK_CAP_MOST
+}
 /** A bird never quite stops: up the steepest hill it keeps crawling. */
 export const MIN_SPEED = 9
 const START_SPEED = 7
@@ -289,12 +310,13 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
   if (b.done) return null
   // Held up the far side of a bottom it pulls as hard as down it: a hold kept too long costs speed.
   const g = hold ? G_DIVE : G_GLIDE
+  const cap = capFor(b.streak)
   let ev: StepEvent = null
   const x0 = b.x
   if (b.ground) {
     const d = slopeAt(h, b.x)
     const n = Math.sqrt(1 + d * d)
-    b.s += ((-g * d) / n - drag(b.s, DRAG)) * DT
+    b.s += ((-g * d) / n - drag(b.s, DRAG, cap)) * DT
     if (b.s < MIN_SPEED) b.s = MIN_SPEED
     const k = curveAt(h, b.x) / (n * n * n)
     if (k < 0 && b.s * b.s * -k > g / n) {
@@ -318,7 +340,7 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
     b.vy -= g * DT
     const v = Math.hypot(b.vx, b.vy)
     if (v > 0) {
-      const slow = (drag(v, AIR_DRAG) * DT) / v
+      const slow = (drag(v, AIR_DRAG, cap) * DT) / v
       b.vx -= b.vx * slow
       b.vy -= b.vy * slow
     }
@@ -345,6 +367,8 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
         b.streak = 0
         ev = 'thump'
       } else {
+        // Off a flight, a landing that isn't clean ends the streak; a little hop doesn't.
+        if (b.air > CLEAN_AIR) b.streak = 0
         ev = 'land'
       }
       b.s = Math.max(MIN_SPEED, s)

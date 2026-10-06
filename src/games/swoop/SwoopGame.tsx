@@ -55,7 +55,7 @@ import {
 } from './runs'
 import { HillsScene } from './scene'
 import { cleanWords, formatRun, formatSwoopBoardScore, swoopBoardScore, swoopMsFromBoardScore } from './score'
-import { DT, GHOST_EVERY, GLIDE, GOOD_HANDS, HOLD, makePerson, newBird, slopeAt, step, type Bird, type Hills } from './sim'
+import { DT, GHOST_EVERY, GLIDE, GOOD_HANDS, HOLD, makePerson, newBird, slopeAt, step, STREAK_ON, type Bird, type Hills } from './sim'
 import { TestResultCard, TestStartCard } from './TestCards'
 import { TomorrowHills } from './TomorrowHills'
 
@@ -304,7 +304,8 @@ function HillsTiles({ swoop, ghost, chasing, bestMs }: { swoop: SwoopDay; ghost:
  * Swoop: a bird over a day of hills, against the clock. Hold to dive: down a slope that's speed, and over a
  * top it keeps the bird on the hill. Let go near the bottom and the bird flies off the next top; land on the
  * far side of a hill, along its slope, to keep the speed (a clean landing adds a little), and not into the
- * face of the next one, which costs most of it.
+ * face of the next one, which costs most of it. Clean landings in a row are a streak: from three, the bird
+ * glows and can go faster, until a landing isn't clean.
  *
  * It's a daily: new hills every day, the same for everyone (daily.ts), flown as often as you like, and the
  * board is the day's (the API keeps Swoop's board to today's hills, whatever the period). SwoopGame mounts it
@@ -745,6 +746,7 @@ function SwoopDayGame({
           }
           // The ghost's path keeps time with the clock.
           if (g.steps % GHOST_EVERY === 0) g.record.push(Math.round(b.x * 100) / 100, Math.round(b.y * 100) / 100, hold ? HOLD : GLIDE)
+          const streak = b.streak
           const ev = step(hills, b, hold)
           g.steps += 1
           if (ev === 'launch') sfx('whoosh')
@@ -757,7 +759,11 @@ function SwoopDayGame({
             sfx('hit')
             haptic('hit')
           } else if (ev === 'land') scene.landed('land', b.x, b.y, b.vx, 0)
-          else if (ev === 'finish') {
+          if (streak >= STREAK_ON && b.streak === 0) {
+            scene.streakOver(b.x, b.y)
+            if (ev === 'land') sfx('miss')
+          }
+          if (ev === 'finish') {
             g.phase = 'crossed'
             g.clock = 0
             finishRun(g)
@@ -825,6 +831,7 @@ function SwoopDayGame({
           ghostMine: g.chasing.who === 'you',
           ghostBlue: g.chasing.who === 'pace',
           calm,
+          streak: flying.streak,
         },
         live ? dt : 0,
       )

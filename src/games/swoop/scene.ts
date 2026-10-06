@@ -1,7 +1,7 @@
 import { mixColor, withAlpha } from '../../lib/color'
 import { isDarkTheme } from '../../lib/theme'
 import type { GhostPose } from './runs'
-import { heightAt, mulberry32, type Hills } from './sim'
+import { heightAt, mulberry32, STREAK_ON, streakLift, type Hills } from './sim'
 
 /*
  * Swoop on a 2D canvas: the day's hills from the side, following the bird. The sky follows the site's theme,
@@ -96,11 +96,15 @@ export type SceneFrame = {
   ghostBlue: boolean
   /** Less motion asked for: no rushing air, and before a run the camera stays at the start. */
   calm: boolean
+  /** Your bird's clean landings in a row: from sim.ts STREAK_ON it's on a streak, and glows. */
+  streak?: number
 }
 
 type Bit = { x: number; y: number; vx: number; vy: number; life: number; max: number; spark: boolean }
-type Floater = { x: number; y: number; text: string; life: number; good: boolean }
-type Dot = { x: number; y: number; life: number }
+/** A word over a landing; `row` 1 sits a line above another said at once. */
+type Floater = { x: number; y: number; text: string; life: number; good: boolean; row?: number }
+/** A dot of the trail behind a bird in the air: gold, laid on a streak. */
+type Dot = { x: number; y: number; life: number; gold: boolean }
 
 /** Where the camera keeps the bird across the screen, and down it. */
 const LEAD = 0.32
@@ -168,12 +172,16 @@ export class HillsScene {
     this.trail.length = 0
   }
 
-  /** Down on the hill: a clean landing sparkles and says so, a thump kicks up dirt, any landing squashes the bird a little. */
+  /**
+   * Down on the hill: a clean landing sparkles and says so (the one that starts a streak says it's faster now),
+   * a thump kicks up dirt, any landing squashes the bird a little.
+   */
   landed(kind: 'clean' | 'thump' | 'land', x: number, y: number, vx: number, streak: number) {
     if (kind === 'clean') {
       this.squash = 1
-      this.floaters.push({ x, y, text: streak > 1 ? `Clean ×${streak}` : 'Clean!', life: 1, good: true })
-      for (let i = 0; i < 10; i++) {
+      const text = streak === STREAK_ON ? `Clean ×${streak} · faster` : streak > 1 ? `Clean ×${streak}` : 'Clean!'
+      this.floaters.push({ x, y, text, life: 1, good: true })
+      for (let i = 0, n = streak >= STREAK_ON ? 16 : 10; i < n; i++) {
         const a = Math.random() * Math.PI * 2
         const sp = 3 + Math.random() * 8
         this.bits.push({ x, y: y + 1, vx: Math.cos(a) * sp + vx * 0.3, vy: Math.abs(Math.sin(a)) * sp, life: 0.6 + Math.random() * 0.4, max: 1, spark: true })
@@ -187,6 +195,11 @@ export class HillsScene {
         this.bits.push({ x, y, vx: Math.cos(a) * sp + vx * 0.2, vy: Math.sin(a) * sp, life: 0.4 + Math.random() * 0.3, max: 0.7, spark: false })
       }
     }
+  }
+
+  /** A streak ended: the glow goes, and it says so, over the landing's own word if it had one. */
+  streakOver(x: number, y: number) {
+    this.floaters.push({ x, y, text: 'Streak over', life: 1, good: false, row: 1 })
   }
 
   frame(f: SceneFrame, dt: number) {
@@ -205,12 +218,13 @@ export class HillsScene {
     } else this.follow(f.bird.x, f.bird.y, f.bird.vx, f.bird.vy, dt)
     this.lastGhost = g ? { x: g.x, y: g.y } : null
 
-    // A dotted line behind a bird in the air, fading.
+    // A dotted line behind a bird in the air, fading: gold on a streak.
+    const lift = f.mode === 'play' ? streakLift(f.streak ?? 0) : 0
     if (f.mode === 'play' && !f.bird.ground) {
       this.trailAt += dt
       while (this.trailAt > 1 / 40) {
         this.trailAt -= 1 / 40
-        this.trail.push({ x: f.bird.x, y: f.bird.y, life: 1 })
+        this.trail.push({ x: f.bird.x, y: f.bird.y, life: 1, gold: lift > 0 })
       }
     }
 
@@ -229,6 +243,7 @@ export class HillsScene {
     if (f.mode !== 'menu' || f.calm || !g) {
       const b = f.mode === 'menu' ? { x: 0, y: heightAt(this.hills, 0), vx: 7, vy: 0, ground: true } : f.bird
       const angle = Math.atan2(b.vy, Math.max(0.01, b.vx))
+      if (lift > 0) this.drawGlow(b.x, b.y, angle, this.birdSize(), lift)
       this.drawBird(b.x, b.y, angle, this.birdSize(), RED, {
         flap: this.time * (b.ground ? 0 : 20),
         dive: f.mode === 'play' && f.hold,
@@ -630,7 +645,8 @@ export class HillsScene {
     const { ctx, C, cam, trail } = this
     if (!trail.length) return
     const lift = this.birdSize() * 0.9
-    ctx.fillStyle = C.dark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(26, 43, 60, 0.35)'
+    const plain = C.dark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(26, 43, 60, 0.35)'
+    const r = Math.max(1.2, 0.18 * cam.k)
     for (let i = trail.length - 1; i >= 0; i--) {
       const p = trail[i]!
       p.life -= dt * 0.9
@@ -638,9 +654,29 @@ export class HillsScene {
         trail.splice(i, 1)
         continue
       }
-      ctx.globalAlpha = p.life * 0.8
+      ctx.globalAlpha = p.life * (p.gold ? 0.95 : 0.8)
+      ctx.fillStyle = p.gold ? BEAK : plain
       ctx.beginPath()
-      ctx.arc(this.sx(p.x), this.sy(p.y) - lift, Math.max(1.2, 0.18 * cam.k), 0, Math.PI * 2)
+      ctx.arc(this.sx(p.x), this.sy(p.y) - lift, p.gold ? r * 1.4 : r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+  }
+
+  /**
+   * A bird on a streak glows: rings of the beak's gold behind it, breathing, brighter the further the streak
+   * has moved the wall of wind up (`lift`, 0 to 1). Fills only, like everything here.
+   */
+  private drawGlow(x: number, y: number, angle: number, size: number, lift: number) {
+    const { ctx } = this
+    const px = this.sx(x) - Math.sin(angle) * size * 0.95
+    const py = this.sy(y) - Math.cos(angle) * size * 0.95
+    const breath = 0.5 + 0.5 * Math.sin(this.time * 8)
+    ctx.fillStyle = BEAK
+    for (let i = 3; i >= 1; i--) {
+      ctx.globalAlpha = (0.17 + 0.13 * lift) * (1.2 - i * 0.3) * (0.75 + 0.25 * breath)
+      ctx.beginPath()
+      ctx.arc(px, py, size * (1.15 + i * (0.35 + 0.15 * lift) + 0.12 * breath), 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.globalAlpha = 1
@@ -694,7 +730,7 @@ export class HillsScene {
       ctx.lineWidth = size * 0.28
       ctx.strokeStyle = C.paper
       const px = this.sx(f.x)
-      const py = this.sy(f.y) - this.birdSize() * 2.6 - t * 40
+      const py = this.sy(f.y) - this.birdSize() * 2.6 - t * 40 - (f.row ?? 0) * size * 1.15
       ctx.strokeText(f.text, px, py)
       ctx.fillStyle = f.good ? C.good : C.bad
       ctx.fillText(f.text, px, py)
