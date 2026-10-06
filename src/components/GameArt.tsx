@@ -1191,19 +1191,7 @@ function Fish({ x, y, scale, flip = false, body, fin, glow }: { x: number; y: nu
   )
 }
 
-function Badge({ x, y, n, colour }: { x: number; y: number; n: string; colour: string }) {
-  const w = 1.6 + n.length * 1.2
-  return (
-    <g>
-      <rect x={x - w / 2} y={y - 1.35} width={w} height="2.7" rx="1.35" fill={colour} stroke="#fff" strokeOpacity="0.55" strokeWidth="0.18" />
-      <text x={x} y={y + 0.72} textAnchor="middle" fontSize="2" fontWeight="800" fill="#fff" fontFamily="Outfit, system-ui, sans-serif">
-        {n}
-      </text>
-    </g>
-  )
-}
-
-/** Under the sea: you, glowing, among fish with their numbers, smaller ones to eat and one too big. */
+/** Under the sea: you among smaller fish to eat and one too big, the growth bar filling, and a shark's "!" at the edge. */
 function Frenzy({ id }: { id: Id }) {
   return (
     <>
@@ -1220,14 +1208,19 @@ function Frenzy({ id }: { id: Id }) {
         <circle key={`${x}-${y}`} cx={x} cy={y} r={r} {...line('#fff', 0.15, 0.4)} />
       ))}
       <Fish x={7.6} y={9.6} scale={0.3} body={[210, 70, 64]} />
-      <Badge x={7.6} y={5.6} n="9" colour="#2f9e5a" />
       <Fish x={9.4} y={23.4} scale={0.34} body={[200, 68, 62]} />
-      <Badge x={9.4} y={19} n="12" colour="#2f9e5a" />
       <Fish x={33.2} y={21.6} scale={0.62} flip body={[228, 58, 62]} fin={[44, 88, 58]} />
-      <Badge x={33.8} y={14.6} n="31" colour="#d64545" />
       <Glow id={id} name="you" cx={19.4} cy={15.4} r={9} colour="#d46be8" strength={0.4} />
       <Fish x={19.4} y={15.4} scale={0.62} body={[292, 72, 66]} glow />
-      <Badge x={19.4} y={9.2} n="23" colour="#8a3fb0" />
+      {/* The shark's warning at the edge, and the bar along the bottom with its two grow marks. */}
+      <circle cx="2.6" cy="9" r="1.7" fill="#e8564f" />
+      <text x="2.6" y="9.8" textAnchor="middle" fontSize="2.4" fontWeight="800" fill="#fff" fontFamily="Outfit, system-ui, sans-serif">
+        !
+      </text>
+      <rect x="11" y="27" width="18" height="1.6" rx="0.8" fill="#fff" opacity="0.18" />
+      <rect x="11" y="27" width="12.4" height="1.6" rx="0.8" fill="#3ecf8e" />
+      <rect x="16.9" y="26.6" width="0.2" height="2.4" fill="#fff" />
+      <rect x="22.9" y="26.6" width="0.2" height="2.4" fill="#fff" />
     </>
   )
 }

@@ -12,17 +12,16 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
-  clearPointerDir,
+  clearTarget,
   createInitialState,
   releaseInput,
-  requestDash,
-  requestDashAt,
   resizeState,
   setKey,
-  setPointerDir,
+  setTarget,
   startGame,
   tick,
   toSnapshot,
+  toWorld,
   type GameState,
   type Snapshot,
 } from './game'
@@ -40,11 +39,7 @@ const KEY_MAP: Record<string, 'up' | 'down' | 'left' | 'right'> = {
   KeyD: 'right',
 }
 
-const DASH_KEYS = new Set(['Space', 'ShiftLeft', 'ShiftRight'])
-
-/** A touch this short and this still is a tap, and a tap is a dash. */
-const TAP_MS = 230
-const TAP_SLOP = 14
+const START_KEYS = new Set(['Space', 'Enter'])
 
 /**
  * How far the mouse has to travel (px) before it steers. A run starts with it
@@ -53,19 +48,26 @@ const TAP_SLOP = 14
  */
 const MOUSE_WAKE_PX = 24
 
+/**
+ * Frenzy, the food chain (game.ts). The mouse steers by pointing: the fish
+ * swims to it. A finger steers like a trackpad, anywhere on the screen: the
+ * fish moves the way the finger moves, so it's never under your thumb. The
+ * arrow keys or WASD swim too.
+ */
 export function FrenzyGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('frenzy')
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
-  const touchRef = useRef<{ x: number; y: number; t: number } | null>(null)
+  /** A finger down: where it landed, and where the fish was then, in world units. */
+  const touchRef = useRef<{ id: number; x: number; y: number; fx: number; fy: number } | null>(null)
   const mouseRef = useRef<{ awake: boolean; from: { x: number; y: number } | null }>({ awake: false, from: null })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('frenzy'))
-  const pausable = ui.phase === 'playing' && !saveOpen
+  const pausable = (ui.phase === 'playing' || ui.phase === 'clear') && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
@@ -143,18 +145,24 @@ export function FrenzyGame() {
    */
   const toMenu = () => restart(true)
 
-  /** Pixels from the middle of the canvas, which is where the camera is. */
-  const offsetFromCentre = (e: ReactPointerEvent<HTMLElement>) => {
+  /** The pointer, in pixels from the canvas's top left. */
+  const local = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = (canvasRef.current ?? e.currentTarget).getBoundingClientRect()
-    return {
-      x: e.clientX - (rect.left + rect.width / 2),
-      y: e.clientY - (rect.top + rect.height / 2),
-    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
   }
 
-  const aimFromEvent = (e: ReactPointerEvent<HTMLElement>) => {
-    const o = offsetFromCentre(e)
-    stateRef.current = setPointerDir(stateRef.current, o.x, o.y)
+  const pointTo = (e: ReactPointerEvent<HTMLElement>) => {
+    const o = local(e)
+    const at = toWorld(stateRef.current, o.x, o.y)
+    stateRef.current = setTarget(stateRef.current, at.x, at.y)
+  }
+
+  /** A finger: the fish goes where it was when the finger landed, plus how far the finger has moved. */
+  const dragTo = (e: ReactPointerEvent<HTMLElement>) => {
+    const t = touchRef.current
+    if (!t || t.id !== e.pointerId) return
+    const s = stateRef.current
+    stateRef.current = setTarget(s, t.fx + (e.clientX - t.x) / s.ppu, t.fy + (e.clientY - t.y) / s.ppu)
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
@@ -166,29 +174,26 @@ export function FrenzyGame() {
       /* ignore */
     }
     const phase = stateRef.current.phase
-    if (phase === 'menu') {
-      restart()
-      // A finger steers from the moment it lands; a mouse click on Start is not a heading.
-      if (e.pointerType !== 'mouse') aimFromEvent(e)
-      return
-    }
-    if (phase !== 'playing') return
+    if (phase === 'menu') restart()
+    if (stateRef.current.phase !== 'playing' && stateRef.current.phase !== 'clear') return
     if (e.pointerType === 'mouse') {
-      // Mouse steers by hovering, so a click is free to mean dash — and means the mouse is in use.
       mouseRef.current = { awake: true, from: null }
-      aimFromEvent(e)
-      const o = offsetFromCentre(e)
-      stateRef.current = requestDashAt(stateRef.current, o.x, o.y)
+      pointTo(e)
     } else {
-      aimFromEvent(e)
-      touchRef.current = { x: e.clientX, y: e.clientY, t: performance.now() }
+      const p = stateRef.current.player
+      touchRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, fx: p.x, fy: p.y }
     }
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpen || pausedRef.current) return
-    if (stateRef.current.phase !== 'playing') return
-    if (e.pointerType === 'mouse' && !mouseRef.current.awake) {
+    const phase = stateRef.current.phase
+    if (phase !== 'playing' && phase !== 'clear') return
+    if (e.pointerType !== 'mouse') {
+      dragTo(e)
+      return
+    }
+    if (!mouseRef.current.awake) {
       const from = mouseRef.current.from
       if (!from) {
         mouseRef.current.from = { x: e.clientX, y: e.clientY }
@@ -197,35 +202,24 @@ export function FrenzyGame() {
       if (Math.hypot(e.clientX - from.x, e.clientY - from.y) < MOUSE_WAKE_PX) return
       mouseRef.current = { awake: true, from: null }
     }
-    aimFromEvent(e)
+    pointTo(e)
   }
 
   /** The mouse left the water: stop where you are rather than chase a cursor you can't see. */
   const onPointerLeave = (e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType !== 'mouse') return
     sleepMouse()
-    stateRef.current = clearPointerDir(stateRef.current)
+    stateRef.current = clearTarget(stateRef.current)
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
-    const touch = touchRef.current
-    touchRef.current = null
-    if (
-      touch &&
-      e.pointerType !== 'mouse' &&
-      stateRef.current.phase === 'playing' &&
-      performance.now() - touch.t < TAP_MS &&
-      Math.hypot(e.clientX - touch.x, e.clientY - touch.y) < TAP_SLOP
-    ) {
-      const o = offsetFromCentre(e)
-      stateRef.current = requestDashAt(stateRef.current, o.x, o.y)
-    }
-    if (e.pointerType !== 'mouse') stateRef.current = clearPointerDir(stateRef.current)
+    if (touchRef.current?.id === e.pointerId) touchRef.current = null
+    if (e.pointerType !== 'mouse') stateRef.current = clearTarget(stateRef.current)
   }
 
   const onPointerCancel = () => {
     touchRef.current = null
-    stateRef.current = clearPointerDir(stateRef.current)
+    stateRef.current = clearTarget(stateRef.current)
   }
 
   useEffect(() => {
@@ -238,18 +232,12 @@ export function FrenzyGame() {
         if (phase === 'menu') restart()
         // The keys take over: the fish now moves only while one is held.
         sleepMouse()
-        stateRef.current = clearPointerDir(setKey(stateRef.current, dir, true))
+        stateRef.current = clearTarget(setKey(stateRef.current, dir, true))
         return
       }
-      if (DASH_KEYS.has(e.code) || e.code === 'Enter') {
+      if (START_KEYS.has(e.code) && phase === 'menu') {
         e.preventDefault()
-        if (phase === 'menu') {
-          if (e.code !== 'ShiftLeft' && e.code !== 'ShiftRight') restart()
-          return
-        }
-        if (phase === 'playing' && DASH_KEYS.has(e.code) && !e.repeat) {
-          stateRef.current = requestDash(stateRef.current)
-        }
+        restart()
       }
     }
     const onKeyUp = (e: KeyboardEvent) => {
@@ -272,13 +260,11 @@ export function FrenzyGame() {
     }
   }, [saveOpen])
 
-  const inRun = ui.phase === 'playing'
-  // Past the twilight the water is dark in either theme, so the readout goes light with it.
-  const deep = ui.mult >= 3
+  const inRun = ui.phase === 'playing' || ui.phase === 'clear'
 
   return (
     <section
-      className={`frenzy frenzy--fullscreen${deep ? ' frenzy--deep' : ''}${saveOpen ? ' frenzy--saving' : ''}`}
+      className={`frenzy frenzy--fullscreen${saveOpen ? ' frenzy--saving' : ''}`}
     >
       <div
         className="frenzy__play"
@@ -293,7 +279,7 @@ export function FrenzyGame() {
 
           <GamePlayChrome
             slug="frenzy"
-            inRun={() => stateRef.current.phase === 'playing'}
+            inRun={() => stateRef.current.phase === 'playing' || stateRef.current.phase === 'clear'}
             paused={paused}
           >
             {(pausable || paused) ? (
@@ -307,8 +293,8 @@ export function FrenzyGame() {
             </PlayReadoutScore>
             {inRun || ui.phase === 'dying' ? (
               <PlayReadoutStats>
-                <PlayStat label="Level" value={ui.level.toLocaleString()} urgent={ui.danger} />
-                <PlayStat label="Depth" value={`×${ui.mult}`} />
+                <PlayStat label="Level" value={ui.level.toLocaleString()} />
+                <PlayStat label="Lives" value={ui.lives} urgent={ui.lives === 1} />
               </PlayReadoutStats>
             ) : null}
           </PlayReadout>

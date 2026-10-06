@@ -1,5 +1,6 @@
 import type { Swatch } from '../../data/games'
-import type { ZoneId } from './world'
+/** The depths the old open-ocean Frenzy had: the species still say where they lived. */
+type ZoneId = 'shallows' | 'twilight' | 'midnight' | 'abyss'
 
 /*
  * Every fish in the ocean. A species is how a fish looks and how it behaves;

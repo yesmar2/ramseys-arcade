@@ -26,18 +26,6 @@
   display: block;
 }
 
-/*
- * The water is the site's own playfield at the surface, so the readout keeps
- * the theme's ink there. Below the twilight the water is dark in either theme,
- * and the readout goes light with it. Scoped to the readout alone: the start,
- * pause and score cards keep their themed panels.
- */
-.frenzy--deep .play-readout {
-  --ink: #e7eef3;
-  --ink-rgb: 231, 238, 243;
-  --surface-rgb: 24, 36, 46;
-}
-
 .frenzy__overlay {
   position: fixed;
   inset: 0;
