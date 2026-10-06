@@ -76,7 +76,7 @@ function Pattern({ pattern }: { pattern: string }) {
 }
 
 /**
- * The day's medals by tries (lib/dailyHole HOLE_MEDALS: gold in 1–2, silver in 3–4, bronze in 5–7), the one
+ * The day's medals by tries (lib/dailyHole HOLE_MEDALS: gold in 1–3, silver in 4–6, bronze in 7–10, looser since the swing), the one
  * this result took lit, as the racing dailies show theirs by time.
  */
 function Medals({ tries }: { tries: number }) {

@@ -47,8 +47,8 @@ export function TrialStartCard({ hole, onStart }: { hole: TodaysHole; onStart: (
         </p>
       </div>
       <p className="acechase-daily__rules">
-        {isPast(hole) ? 'A past day’s hole, to play again.' : 'This day’s hole, ahead of its day.'} One putt a try, as many
-        tries as it takes; Skip ahead shows where a putt ends. Nothing here is kept, so it counts for no board or tickets.
+        {isPast(hole) ? 'A past day’s hole, to play again.' : 'This day’s hole, ahead of its day.'} One swing a try, as many
+        tries as it takes; Skip ahead shows where a shot ends. Nothing here is kept, so it counts for no board or tickets.
       </p>
       <div className="game-card__actions">
         <button type="button" className="panel__btn" onClick={onStart}>

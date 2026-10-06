@@ -286,18 +286,18 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
   acechase: {
     goal: 'Stop the ball on today’s bullseye in as few tries as you can. A new hole comes every day at midnight, New York time.',
     controls: [
-      { does: 'Set the shot', touch: 'Tap − and +, or type', keys: '↑ ↓ power · ← → angle' },
-      { does: 'Swing', touch: 'Tap Putt, then Strike! on the mark', keys: 'Space, then Space on the mark' },
-      { does: 'Look around', touch: 'Drag · pinch · two fingers', keys: 'Drag · scroll · right-drag' },
+      { does: 'Set up', touch: 'Drag the ball along the white line · drag on the green to aim', keys: 'A D slide the ball · ← → aim' },
+      { does: 'Swing', touch: 'Swing, then Set power, then Strike! on the mark', keys: 'Space three times' },
+      { does: 'Look around', touch: 'Two fingers · pinch', keys: 'Right-drag · scroll' },
       { does: 'Read the green', touch: 'Double-tap a spot · Slopes', keys: 'Double-click a spot · Slopes' },
     ],
     scores: [
       { what: 'Your score', pts: 'the tries your first bullseye took', sub: 'the fewer the better' },
       { what: 'Every try', pts: 'counts', sub: 'even if you leave and come back' },
-      { what: 'Medals', pts: 'gold in 1–2 tries', sub: 'silver in 3–4, bronze in 5–7' },
+      { what: 'Medals', pts: 'gold in 1–3 tries', sub: 'silver in 4–6, bronze in 7–10' },
     ],
     ends: 'At your first bullseye. After that, play it again for practice; that doesn’t count.',
-    tip: 'Putt swings a needle round your power: strike when it’s on the middle mark to hit that power, a little either side to hit softer or firmer. Each miss leaves a numbered marker where it stopped and says whether you’re getting warmer. Double-tap the green, or turn on Slopes, to see which way it runs.',
+    tip: 'The needle climbs for power, then comes back: strike on the white mark to go straight down your line; early pushes it right, late pulls it left. Each miss leaves a numbered marker and says whether you’re getting warmer. Double-tap the green, or turn on Slopes, to see which way it runs.',
     // Ace Chase is just for fun (data/games.ts Game.ranked): a past hole keeps no board, so it's practice.
     counts: [
       {
@@ -441,11 +441,12 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Land along a slope', pts: 'keeps your speed', sub: 'a clean landing adds a little' },
+      { what: 'Clean landings in a row', pts: 'faster and faster', sub: 'from 3 in a row, until one isn’t clean' },
       { what: 'Land into a hill', pts: 'costs speed', sub: 'up to 40% of it' },
       { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bird, then every 10% faster' },
     ],
     ends: 'Over the finish line. Fly it as often as you like.',
-    tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face.',
+    tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face. Three clean landings in a row and the bird glows: keep landing clean and it can keep going faster.',
     counts: [
       {
         what: 'Today’s hills',

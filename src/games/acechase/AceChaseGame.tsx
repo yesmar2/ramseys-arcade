@@ -37,16 +37,17 @@ import { sfx } from '../../lib/sound'
 import {
   createInitialState,
   fastForward,
+  LATE,
   putt,
+  riseAt,
   setAngle,
+  setPlace,
   setPower,
   skipIntro,
+  snapAt,
   startGame,
   strike,
   strikeWith,
-  SWING,
-  swingAt,
-  swingPower,
   tick,
   toSnapshot,
   type GameState,
@@ -78,7 +79,7 @@ function warmth(shots: readonly Shot[]): { text: string; tone: 'warm' | 'cold' }
   if (gap < -0.05) return { text: `Colder · try ${best.n} was ${Math.abs(gap).toFixed(1)} m closer`, tone: 'cold' }
   return { text: `As close as try ${best.n}`, tone: 'warm' }
 }
-const IN_RUN = new Set<Phase>(['intro', 'aim', 'swing', 'roll', 'missed', 'return', 'holed'])
+const IN_RUN = new Set<Phase>(['intro', 'aim', 'swing', 'snap', 'roll', 'missed', 'return', 'holed'])
 /** While these are on, the panels step aside for the view. */
 const CINEMA = new Set<Phase>(['menu', 'intro', 'holed', 'gameover'])
 const VIEWS: readonly [View, string][] = [
@@ -97,120 +98,10 @@ const slopesChosen = () => {
   }
 }
 
-const signed = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1)
-const readNumber = (s: string) => parseFloat(s.replace('−', '-').replace('+', ''))
-
-/**
- * A stepper: tap for a fine step; hold and it runs, faster the longer it's held.
- */
-function Stepper({ label, glyph, onStep, disabled }: { label: string; glyph: string; onStep: (steps: number) => void; disabled: boolean }) {
-  const timers = useRef({ hold: 0, again: 0, n: 0 })
-  const stop = () => {
-    window.clearTimeout(timers.current.hold)
-    window.clearTimeout(timers.current.again)
-  }
-  useEffect(() => stop, [])
-  useEffect(() => {
-    if (disabled) stop()
-  }, [disabled])
-  return (
-    <button
-      type="button"
-      className="acechase__step"
-      aria-label={label}
-      disabled={disabled}
-      onPointerDown={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        const t = timers.current
-        t.n = 0
-        onStep(1)
-        const run = () => {
-          t.n++
-          onStep(t.n > 24 ? 10 : t.n > 10 ? 4 : 1)
-          t.again = window.setTimeout(run, 70)
-        }
-        t.hold = window.setTimeout(run, 380)
-      }}
-      onPointerUp={stop}
-      onPointerLeave={stop}
-      onPointerCancel={stop}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          e.stopPropagation()
-          onStep(1)
-        }
-      }}
-    >
-      {glyph}
-    </button>
-  )
-}
-
-/**
- * A dial: − and + either side of the number, which can also be typed. The steps are sent as a count, not
- * a new value, so a held button keeps adding to what the dial says now rather than to what it said when
- * the button went down.
- */
-function Dial({
-  id,
-  label,
-  hint,
-  value,
-  format,
-  onStep,
-  onSet,
-  disabled,
-}: {
-  id: string
-  label: string
-  hint: string
-  value: number
-  format: (v: number) => string
-  onStep: (steps: number) => void
-  onSet: (v: number) => void
-  disabled: boolean
-}) {
-  const [draft, setDraft] = useState<string | null>(null)
-  const commit = () => {
-    if (draft === null) return
-    const v = readNumber(draft)
-    if (Number.isFinite(v)) onSet(v)
-    setDraft(null)
-  }
-  return (
-    <div className="acechase__dial" id={`${id}-dial`}>
-      <label htmlFor={id}>
-        {label} <small>{hint}</small>
-      </label>
-      <Stepper label={`${label} down`} glyph="−" disabled={disabled} onStep={(k) => onStep(-k)} />
-      <input
-        id={id}
-        inputMode="decimal"
-        autoComplete="off"
-        disabled={disabled}
-        value={draft ?? format(value)}
-        onFocus={(e) => e.currentTarget.select()}
-        onChange={(e) => setDraft(e.currentTarget.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          e.stopPropagation()
-          if (e.key === 'Enter') {
-            commit()
-            e.currentTarget.blur()
-          }
-          if (e.key === 'Escape') {
-            setDraft(null)
-            e.currentTarget.blur()
-          }
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      />
-      <Stepper label={`${label} up`} glyph="+" disabled={disabled} onStep={(k) => onStep(k)} />
-    </div>
-  )
-}
+/** Where the mark sits along the meter: to its right the power, to its left where a late press pulls. */
+const METER_MARK = 0.14
+/** A place on the meter, as a share of its width: `u` is 0 at the mark, 1 at full power, below 0 past it. */
+const meterAt = (u: number) => `${(METER_MARK + Math.max(-LATE, Math.min(1, u)) * (1 - METER_MARK)) * 100}%`
 
 /**
  * Keep where today's play stands, on the run of the player it began with (`owner`, lib/deviceRuns.ts)
@@ -227,6 +118,7 @@ function keepDay(today: TodaysHole, owner: string, s: GameState) {
     ghosts: s.ghosts.map((g) => [...g]),
     power: s.power,
     angle: s.angle,
+    place: s.place,
   })
   const last = s.shots[s.shots.length - 1]
   if (last?.bull && !before?.solved) recordSolved(today.day, owner, { tries: s.tries, at: Date.now(), pattern: patternOf(s.shots) })
@@ -241,6 +133,7 @@ function keepPast(hole: TodaysHole, owner: string, s: GameState) {
     ghosts: s.ghosts.map((g) => [...g]),
     power: s.power,
     angle: s.angle,
+    place: s.place,
     ...(before?.solved ? { solved: before.solved, sent: before.sent } : {}),
   })
   const last = s.shots[s.shots.length - 1]
@@ -248,9 +141,10 @@ function keepPast(hole: TodaysHole, owner: string, s: GameState) {
 }
 
 /**
- * Ace Chase: Today's Hole in 3D, played with numbers. Set the power and the angle, putt, and see where it
- * stops; the misses say how far off, and the next try is yours to adjust. The ball has to come to rest on
- * the bull.
+ * Ace Chase: Today's Hole in 3D, played with a swing (game.ts), never numbers. Set the ball on the tee line,
+ * point the line at a spot on the green, and swing: one press starts the meter, the next sets the power,
+ * the last strikes, straight on the mark. See where it stops; the misses say how far off, and the next try
+ * is yours to adjust. The ball has to come to rest on the bull.
  *
  * Everyone plays the same hole that day. Every try is kept on the device as it's played, so leaving and
  * coming back carries on the count, and the first bullseye is the day's result: lib/dailyHole.ts keeps
@@ -262,9 +156,11 @@ function keepPast(hole: TodaysHole, owner: string, s: GameState) {
  * starts their own. One played signed out is the one thing another player can take up, here only: carry
  * it on, put it on the board, or sign in with its result card up.
  *
- * The camera is yours between shots (drag, pinch, two fingers, or the Tee, Target and Above buttons).
- * Keys: ↑ ↓ power (Shift for 5), ← → angle (Shift for 1°), Space or Enter to putt, and again to see how
- * a putt ends without watching it all. A tap skips the flyover. P or Escape pauses.
+ * Between shots one finger (or the left button) on the green points the line, and on the ball slides it
+ * along the tee line; the camera is two fingers (or the right button and the wheel), or the Tee, Target and
+ * Above buttons. Keys: ← → turn the line (Shift for more), A D slide the ball, Space or Enter for each of the
+ * swing's presses, and again to see how a shot ends without watching it all. A tap skips the flyover. P or
+ * Escape pauses.
  *
  * With `ahead`, it plays that day's hole ahead of its day, on trial (the admin's): nothing is kept, and a
  * bullseye ends it. With `past`, a day's hole after its day, from its row on Past holes (AceChasePastGame,
@@ -304,9 +200,11 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
   const sceneRef = useRef<AceScene | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const dockRef = useRef<HTMLDivElement>(null)
-  /** The swing's needle and its reading, moved every frame from the game's own clock. */
+  /** The meter's needle, its fill and the power set, moved every frame from the game's own clock. */
+  const meterRef = useRef<HTMLDivElement>(null)
   const needleRef = useRef<HTMLSpanElement>(null)
-  const readingRef = useRef<HTMLSpanElement>(null)
+  const fillRef = useRef<HTMLSpanElement>(null)
+  const setRef = useRef<HTMLSpanElement>(null)
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current!))
   const [view, setView] = useState<View | null>('tee')
   const [slopes, setSlopes] = useState(slopesChosen)
@@ -335,7 +233,7 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     canvas.className = 'acechase__viewport'
     canvas.setAttribute(
       'aria-label',
-      'The hole, in 3D. Drag to look around; right-drag or two fingers to move; scroll or pinch to zoom; double-tap or double-click a spot to look closer.',
+      'The hole, in 3D. Drag on the green to aim, or drag the ball along the tee line; two fingers or right-drag to look around; scroll or pinch to zoom; double-tap or double-click a spot to look closer.',
     )
     holder.append(canvas)
     let scene: AceScene
@@ -348,6 +246,17 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     }
     sceneRef.current = scene
     scene.onUserMove = () => setView(null)
+    // Pointing the line and sliding the ball, between shots only.
+    const aimBy = (f: (s: GameState) => GameState) => {
+      const s = stateRef.current!
+      if (s.phase !== 'aim' || pausedRef.current || saveOpenRef.current) return
+      const after = f(s)
+      if (after === s) return
+      stateRef.current = after
+      setUi(toSnapshot(after))
+    }
+    scene.onAim = (angle) => aimBy((s) => setAngle(s, angle))
+    scene.onPlace = (place) => aimBy((s) => setPlace(s, place))
     let raf = 0
     let last = performance.now()
     let uiAcc = 0
@@ -400,10 +309,17 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
         uiAcc = 0
         setUi(toSnapshot(s))
       }
-      if (s.phase === 'swing') {
-        const at = swingAt(s.phaseTime)
-        if (needleRef.current) needleRef.current.style.left = `${((at + 1) / 2) * 100}%`
-        if (readingRef.current) readingRef.current.textContent = swingPower(s).toFixed(1)
+      // The meter: the needle climbs from the mark, then comes back to it from the power set.
+      const meter = meterRef.current
+      if (meter && needleRef.current && fillRef.current && setRef.current) {
+        const live = s.phase === 'swing' || s.phase === 'snap'
+        const u = s.phase === 'swing' ? riseAt(s.phaseTime) : s.phase === 'snap' ? snapAt(s) : 0
+        const set = s.phase === 'snap' ? s.power / 100 : s.phase === 'roll' || s.phase === 'missed' ? s.struck / 100 : null
+        meter.classList.toggle('is-live', live)
+        meter.classList.toggle('is-set', set != null)
+        needleRef.current.style.left = meterAt(u)
+        if (set != null) setRef.current.style.left = meterAt(set)
+        fillRef.current.style.width = `${Math.max(0, s.phase === 'swing' ? u : (set ?? 0)) * (1 - METER_MARK) * 100}%`
       }
       scene.frame(s, pausedRef.current ? 0 : raw)
       raf = requestAnimationFrame(loop)
@@ -461,7 +377,7 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     w.__acechaseScene = () => sceneRef.current
     w.__acechasePutt = (power, angle, instant = true) => {
       let s = skipIntro(stateRef.current!)
-      s = strikeWith(setAngle(setPower(s, power), angle))
+      s = strikeWith(setPower(s, power), power, angle)
       stateRef.current = instant ? fastForward(s) : s
     }
     w.__acechaseSkip = () => {
@@ -494,14 +410,14 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
       // Today's Hole carries on from where the player's own run left it; once they have a result, here or
       // on the board, it's practice.
       const p = dayProgress(today.day, viewerNow)
-      const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
+      const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle, place: p.place } : null
       stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
       keptShots.current = stateRef.current.shots.length
     } else if (past) {
       // A past hole carries on from where the player left it too; signed out, or with a result on it
       // already, it's practice.
       const p = pastProgress(past.day, viewerNow)
-      const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle } : null
+      const resume = p && !again ? { tries: p.tries, shots: p.shots, ghosts: p.ghosts, power: p.power, angle: p.angle, place: p.place } : null
       stateRef.current = startGame(stateRef.current!, Math.random, resume, again)
       keptShots.current = stateRef.current.shots.length
     } else {
@@ -534,24 +450,25 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
     refresh()
   }
 
-  const dialsLive = ui.phase === 'aim' && !paused && !saveOpen
-  /** The dials turn only at the tee, between shots. */
-  const dial = (f: (s: GameState) => GameState) => {
+  /** The line and the ball's place change only at the tee, between shots. */
+  const nudge = (f: (s: GameState) => GameState) => {
     if (stateRef.current!.phase !== 'aim' || pausedRef.current || saveOpenRef.current) return
     const before = stateRef.current
     change(f)
     if (stateRef.current !== before) sfx('click', 1)
   }
-  const stepPower = (steps: number) => dial((s) => setPower(s, s.power + steps * 0.5))
-  const stepAngle = (steps: number) => dial((s) => setAngle(s, s.angle + steps * 0.1))
+  /** Each press of the swing: start the meter, set the power, strike; and in a roll, to the end of it. */
   const shoot = () => {
     if (pausedRef.current || saveOpenRef.current) return
     const s = stateRef.current!
     if (s.phase === 'roll') change(fastForward)
-    else if (s.phase === 'swing') {
-      // Ace Chase opens no run (runSession.ts), so its putts are what count as having played it.
+    else if (s.phase === 'snap') {
+      // Ace Chase opens no run (runSession.ts), so its shots are what count as having played it.
       rememberPlayed('acechase')
       haptic('hit')
+      change(strike)
+    } else if (s.phase === 'swing') {
+      haptic('turn')
       change(strike)
     } else if (s.phase === 'aim') change(putt)
   }
@@ -618,7 +535,6 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
-      if (e.target instanceof HTMLInputElement) return
       const s = stateRef.current!
       if (e.code === 'Space' || e.code === 'Enter') {
         // A focused button does its own thing with these.
@@ -631,11 +547,12 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
         else shoot()
         return
       }
-      const steps = e.shiftKey ? 10 : 1
-      if (e.code === 'ArrowUp') stepPower(steps)
-      else if (e.code === 'ArrowDown') stepPower(-steps)
-      else if (e.code === 'ArrowRight') stepAngle(steps)
-      else if (e.code === 'ArrowLeft') stepAngle(-steps)
+      const turn = e.shiftKey ? 2 : 0.25
+      const slide = e.shiftKey ? 0.5 : 0.1
+      if (e.code === 'ArrowRight') nudge((st) => setAngle(st, st.angle + turn))
+      else if (e.code === 'ArrowLeft') nudge((st) => setAngle(st, st.angle - turn))
+      else if (e.code === 'KeyD') nudge((st) => setPlace(st, st.place + slide))
+      else if (e.code === 'KeyA') nudge((st) => setPlace(st, st.place - slide))
       else return
       e.preventDefault()
     }
@@ -748,54 +665,36 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
                 <div className="acechase__log" aria-live="polite">
                   {ui.shots.slice(-4).map((shot, i, all) => (
                     <span key={shot.n} className={`${i === all.length - 1 ? 'is-last' : ''}${shot.bull ? ' is-bull' : ''}`}>
-                      #{shot.n} · <b>{shot.power.toFixed(1)}</b>
-                      {shot.aimed != null && Math.abs(shot.aimed - shot.power) >= 0.05 ? <small> (dial {shot.aimed.toFixed(1)})</small> : null} ·{' '}
-                      <b>{signed(shot.angle)}°</b> → {shot.what}
+                      <b>#{shot.n}</b> {shot.what}
                     </span>
                   ))}
                 </div>
                 <div className="acechase__dock" ref={dockRef} onPointerDown={(e) => e.stopPropagation()}>
-                  <Dial
-                    id="acechase-power"
-                    label="Power"
-                    hint="0–100, steps of 0.5"
-                    value={ui.power}
-                    format={(v) => v.toFixed(1)}
-                    onStep={stepPower}
-                    onSet={(v) => dial((st) => setPower(st, v))}
-                    disabled={!dialsLive}
-                  />
-                  <Dial
-                    id="acechase-angle"
-                    label="Angle"
-                    hint="degrees, + is right"
-                    value={ui.angle}
-                    format={signed}
-                    onStep={stepAngle}
-                    onSet={(v) => dial((st) => setAngle(st, v))}
-                    disabled={!dialsLive}
-                  />
+                  {/* The golf meter: start it, stop it for the power, then stop it again on the mark. */}
+                  <div ref={meterRef} className="acechase__meter" aria-hidden="true">
+                    <span className="acechase__meter-late" />
+                    <span ref={fillRef} className="acechase__meter-fill" />
+                    <span className="acechase__meter-mark" />
+                    <span ref={setRef} className="acechase__meter-set" />
+                    <span ref={needleRef} className="acechase__meter-needle" />
+                  </div>
                   <button
                     type="button"
-                    className={`acechase__putt${ui.phase === 'roll' ? ' is-skip' : ''}${ui.phase === 'swing' ? ' is-swing' : ''}`}
-                    disabled={!(ui.phase === 'aim' || ui.phase === 'swing' || ui.phase === 'roll') || paused}
-                    onClick={shoot}
+                    className={`acechase__putt${ui.phase === 'roll' ? ' is-skip' : ''}${ui.phase === 'swing' || ui.phase === 'snap' ? ' is-swing' : ''}`}
+                    disabled={!(ui.phase === 'aim' || ui.phase === 'swing' || ui.phase === 'snap' || ui.phase === 'roll') || paused}
+                    onPointerDown={(e) => {
+                      // The press counts as the finger lands, not as it lifts: a swing is all timing.
+                      if (e.button !== 0) return
+                      e.preventDefault()
+                      shoot()
+                    }}
+                    onClick={(e) => {
+                      // A keyboard's Enter or Space on the focused button (a pointer has pressed already).
+                      if (e.detail === 0) shoot()
+                    }}
                   >
-                    {ui.phase === 'roll' ? 'Skip ahead' : ui.phase === 'swing' ? 'Strike!' : 'Putt'}
+                    {ui.phase === 'roll' ? 'Skip ahead' : ui.phase === 'swing' ? 'Set power' : ui.phase === 'snap' ? 'Strike!' : 'Swing'}
                   </button>
-                  {/* The swing: the needle runs round the dial's power, SWING either side; stop it on the mark. */}
-                  <div className={`acechase__meter${ui.phase === 'swing' ? ' is-live' : ''}`} aria-hidden="true">
-                    <span className="acechase__meter-end">−{SWING}</span>
-                    <span className="acechase__meter-track">
-                      <span className="acechase__meter-mark" />
-                      <span ref={needleRef} className="acechase__meter-needle">
-                        <span ref={readingRef} className="acechase__meter-reading">
-                          {ui.power.toFixed(1)}
-                        </span>
-                      </span>
-                    </span>
-                    <span className="acechase__meter-end">+{SWING}</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -808,8 +707,8 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
             ) : hint && ui.phase === 'aim' ? (
               <div className="acechase__toast acechase__toast--hint" role="status">
                 {touch
-                  ? 'Drag to look around · pinch to zoom · two fingers to move · double-tap a spot to look closer'
-                  : 'Drag to look around · scroll to zoom · right-drag to move · double-click a spot to look closer'}
+                  ? 'Drag on the green to aim · drag the ball along the white line · two fingers to look around'
+                  : 'Drag on the green to aim · drag the ball along the white line · right-drag to look around · ← → A D'}
               </div>
             ) : null}
 

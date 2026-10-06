@@ -73,6 +73,8 @@ export type DayProgress = {
   ghosts: PathPoint[][]
   power: number
   angle: number
+  /** Where the ball sat on the tee line (metres right of its middle), as left. */
+  place?: number
   solved?: DailySolved
   /** The API has the result. */
   sent?: boolean
@@ -227,9 +229,9 @@ const CODE_EMOJI: Record<string, string> = { b: '🎯', i: '🟩', o: '🟨', n:
 /** A day's medal by its tries, as the racing dailies give theirs by time: gold in 1–2, silver in 3–4, bronze in 5–7. */
 export type HoleMedal = 'gold' | 'silver' | 'bronze'
 export const HOLE_MEDALS: readonly { medal: HoleMedal; most: number; emoji: string; name: string }[] = [
-  { medal: 'gold', most: 2, emoji: '🥇', name: 'Gold' },
-  { medal: 'silver', most: 4, emoji: '🥈', name: 'Silver' },
-  { medal: 'bronze', most: 7, emoji: '🥉', name: 'Bronze' },
+  { medal: 'gold', most: 3, emoji: '🥇', name: 'Gold' },
+  { medal: 'silver', most: 6, emoji: '🥈', name: 'Silver' },
+  { medal: 'bronze', most: 10, emoji: '🥉', name: 'Bronze' },
 ]
 
 export function holeMedal(tries: number): (typeof HOLE_MEDALS)[number] | null {

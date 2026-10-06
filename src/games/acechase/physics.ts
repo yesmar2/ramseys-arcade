@@ -19,8 +19,11 @@ export const G = 9.81
 export const ROLL = 5 / 7
 export const FRICTION = 0.07
 export const BALL_R = 0.1
-/** The target: a bullseye the ball has to come to rest on, its rings at these radii, the bull the first. */
-export const RINGS = [0.45, 1.0, 1.6] as const
+/**
+ * The target: a bullseye the ball has to come to rest on, its rings at these radii, the bull the first.
+ * Wider since the swing took over from the dials (2026-10-06): a struck ball is never exactly the one meant.
+ */
+export const RINGS = [0.75, 1.35, 2.0] as const
 export const BULL_R = RINGS[0]
 /** Each target sits in a shallow dish, deep enough that a ball that settles in it settles in the bull. */
 export const DISH_D = 0.13
@@ -39,10 +42,15 @@ export const DT = 1 / 240
 export const MAX_TIME = 70
 /** Off the green altogether, the ground is this far down: a ball that goes over the edge is gone. */
 export const DROP = -6
-/** The dials: power 0 to 100 in halves, the angle in tenths of a degree either way of straight up the hole. */
+/**
+ * The grid the hole checker plays: power 0 to 100 in halves, the angle in tenths of a degree either way of
+ * straight up the hole. (The player has a swing, not dials, since 2026-10-06.)
+ */
 export const POWER_STEP = 0.5
 export const ANGLE_STEP = 0.1
 export const MAX_ANGLE = 60
+/** The tee is a line across the hole: the ball can be set anywhere on it, this far either side of its middle. */
+export const TEE_HALF = 3
 
 export type Pt = readonly [number, number]
 /** Where a target sits; on some holes the ground it sits on is raised or lowered by `lift` as well. */
@@ -300,13 +308,17 @@ function nearestOnSegment(px: number, pz: number, w: Wall): [number, number] {
   return [w.ax + dx * t, w.az + dz * t]
 }
 
-/** A new shot: `power` 0–100, `angle` in degrees off straight up the hole, right positive. */
-export function launch(hole: Hole, power: number, angle: number): Ball {
+/**
+ * A new shot: `power` 0–100, `angle` in degrees off straight up the hole, right positive, from `across`
+ * metres right of the middle of the tee line (left negative).
+ */
+export function launch(hole: Hole, power: number, angle: number, across = 0): Ball {
   const a = (angle * Math.PI) / 180
   const speed = (MAX_SPEED * power) / 100
-  const y = hole.height(hole.tee.x, hole.tee.z) + BALL_R
+  const x = hole.tee.x + across
+  const y = hole.height(x, hole.tee.z) + BALL_R
   return {
-    x: hole.tee.x,
+    x,
     y,
     z: hole.tee.z,
     vx: Math.sin(a) * speed,
@@ -495,8 +507,8 @@ export function step(hole: Hole, b: Ball): Ball {
 }
 
 /** Play a shot out at once, and say how it ended. */
-export function simulate(hole: Hole, power: number, angle: number) {
-  const b = launch(hole, power, angle)
+export function simulate(hole: Hole, power: number, angle: number, across = 0) {
+  const b = launch(hole, power, angle, across)
   let near = Infinity
   while (!b.done) {
     step(hole, b)

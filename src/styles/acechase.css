@@ -233,90 +233,18 @@
 }
 
 .acechase__dock {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
   gap: 0.75rem;
-  width: min(46rem, 100%);
+  width: min(36rem, 100%);
   box-sizing: border-box;
   padding: 0.75rem;
   border-radius: 1.5rem;
 }
 
-.acechase__dial {
-  flex: 1 1 13rem;
-  display: grid;
-  grid-template-columns: 3rem 1fr 3rem;
-  align-items: center;
-  column-gap: 0.4rem;
-}
-
-.acechase__dial label {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0 0.35rem 0.35rem;
-  font-family: var(--font-display);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(var(--ink-rgb), 0.62);
-}
-
-.acechase__dial label small {
-  font-size: 0.74rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.acechase__step {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  border: 1px solid var(--ace-line);
-  background: var(--ace-fill);
-  color: var(--ink);
-  font: 500 1.55rem/1 var(--font-display);
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-}
-
-.acechase__step:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--ace-accent) 55%, transparent);
-}
-
-.acechase__step:active:not(:disabled) {
-  background: color-mix(in srgb, var(--ace-accent) 24%, transparent);
-}
-
-.acechase__dial input {
-  width: 100%;
-  min-width: 0;
-  height: 3rem;
-  box-sizing: border-box;
-  border: 1px solid var(--ace-line);
-  border-radius: 1rem;
-  background: var(--ace-fill);
-  color: var(--ink);
-  font: 650 1.5rem/1 var(--font-display);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-.acechase__step:disabled,
-.acechase__dial input:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .acechase__putt {
-  flex: 1 1 8rem;
+  min-width: 8.5rem;
   min-height: 3.25rem;
   padding: 0 1.2rem;
   border: 0;
@@ -326,6 +254,8 @@
   font: 700 1.1rem/1 var(--font-display);
   cursor: pointer;
   touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
   box-shadow: 0 10px 24px color-mix(in srgb, var(--ace-accent) 28%, transparent);
   transition:
     transform 0.12s ease,
@@ -345,79 +275,84 @@
   font-weight: 600;
 }
 
-/* The swing under way: the button strikes, and says so. */
+/* The swing under way: the button sets the power, then strikes, and says so. */
 .acechase__putt.is-swing {
   background: var(--ace-gold, #f5b942);
   color: #2a1d05;
   box-shadow: 0 10px 24px rgba(245, 185, 66, 0.35);
 }
 
-/* The swing meter: the needle runs round the power on the dial; stop it on the middle mark to hit that power. */
+/*
+ * The golf meter (game.ts RISE, BACK, LATE): the mark near the left end, the power to the right of it, and
+ * past the mark on the left, striped, where a late press pulls the ball. The needle and the power set are
+ * placed by the game's loop, as a share of the track (AceChaseGame METER_MARK).
+ */
 .acechase__meter {
-  flex: 1 1 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  font: 700 0.75rem/1 var(--font-display);
-  color: rgba(var(--ink-rgb), 0.55);
-  font-variant-numeric: tabular-nums;
-}
-
-.acechase__meter-track {
   position: relative;
-  flex: 1;
-  height: 0.7rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #e5534b 0%, #f5c542 35%, #3ecf8e 50%, #f5c542 65%, #e5534b 100%);
-  opacity: 0.45;
-  transition: opacity 0.15s ease;
+  height: 2.6rem;
+  border-radius: 0.9rem;
+  background: var(--ace-fill);
+  border: 1px solid var(--ace-line);
+  overflow: hidden;
 }
 
-.acechase__meter.is-live .acechase__meter-track {
-  opacity: 1;
+.acechase__meter-late {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 14%;
+  background: repeating-linear-gradient(135deg, rgba(229, 83, 75, 0.28) 0 6px, rgba(229, 83, 75, 0.12) 6px 12px);
+}
+
+.acechase__meter-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 14%;
+  width: 0;
+  background: linear-gradient(90deg, #2f9e6e, #3ecf8e 45%, #f5c542 78%, #e5534b);
+  opacity: 0.85;
 }
 
 .acechase__meter-mark {
   position: absolute;
-  left: 50%;
-  top: -0.3rem;
-  bottom: -0.3rem;
-  width: 2px;
-  transform: translateX(-50%);
+  top: 0;
+  bottom: 0;
+  left: 14%;
+  width: 3px;
+  margin-left: -1.5px;
   background: var(--ink);
+}
+
+.acechase__meter-set {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 4px;
+  margin-left: -2px;
   border-radius: 2px;
+  background: #f5b942;
+  box-shadow: 0 0 0 1px #16212b;
+  visibility: hidden;
 }
 
 .acechase__meter-needle {
   position: absolute;
-  left: 0;
-  top: 50%;
-  width: 0.95rem;
-  height: 0.95rem;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
+  top: -2px;
+  bottom: -2px;
+  left: 14%;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
   background: #fff;
   box-shadow:
-    0 0 0 2px #16212b,
-    0 4px 10px rgba(0, 0, 0, 0.35);
+    0 0 0 1px #16212b,
+    0 0 8px rgba(255, 255, 255, 0.8);
   visibility: hidden;
 }
 
-.acechase__meter.is-live .acechase__meter-needle {
+.acechase__meter.is-live .acechase__meter-needle,
+.acechase__meter.is-set .acechase__meter-set {
   visibility: visible;
-}
-
-.acechase__meter-reading {
-  position: absolute;
-  bottom: calc(100% + 0.35rem);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.15rem 0.35rem;
-  border-radius: 0.4rem;
-  background: #16212b;
-  color: #fff;
-  font-size: 0.72rem;
-  white-space: nowrap;
 }
 
 /* Under a miss: warmer or colder than the closest try before it. */
@@ -443,8 +378,7 @@
   cursor: default;
 }
 
-.acechase button:focus-visible,
-.acechase input:focus-visible {
+.acechase button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--ace-accent) 70%, transparent);
   outline-offset: 2px;
 }
@@ -569,7 +503,7 @@
   }
 }
 
-/* A phone: the card full width, the two dials stacked beside a tall Putt, two tries in the log. */
+/* A phone: the card full width, two tries in the log, the meter beside a shorter Swing. */
 @media (max-width: 560px) {
   .acechase__card {
     width: 100%;
@@ -584,53 +518,19 @@
   }
 
   .acechase__dock {
-    display: grid;
-    grid-template-columns: 1fr 5.4rem;
-    grid-template-areas:
-      'power putt'
-      'angle putt';
-    gap: 0.5rem 0.6rem;
-    padding: 0.65rem;
+    gap: 0.55rem;
+    padding: 0.6rem;
   }
 
-  #acechase-power-dial {
-    grid-area: power;
-  }
-
-  #acechase-angle-dial {
-    grid-area: angle;
+  .acechase__meter {
+    height: 3rem;
   }
 
   .acechase__putt {
-    grid-area: putt;
-    align-self: stretch;
-    padding: 0 0.5rem;
-    border-radius: 1.5rem;
-    white-space: normal;
-    line-height: 1.15;
-  }
-
-  .acechase__dial {
-    grid-template-columns: 2.75rem 1fr 2.75rem;
-  }
-
-  .acechase__dial label {
-    padding-bottom: 0.25rem;
-  }
-
-  .acechase__dial label small {
-    display: none;
-  }
-
-  .acechase__step {
-    width: 2.75rem;
-    height: 2.75rem;
-    font-size: 1.4rem;
-  }
-
-  .acechase__dial input {
-    height: 2.75rem;
-    font-size: 1.3rem;
+    min-width: 6.8rem;
+    min-height: 3rem;
+    padding: 0 0.8rem;
+    font-size: 1rem;
   }
 }
 

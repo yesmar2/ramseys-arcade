@@ -36,6 +36,8 @@ export type PastProgress = {
   ghosts: PathPoint[][]
   power: number
   angle: number
+  /** Where the ball sat on the tee line (metres right of its middle), as left. */
+  place?: number
   solved?: DailySolved
   /** The API has the result, or had one on this hole already. */
   sent?: boolean
@@ -94,7 +96,7 @@ export function pastProgress(day: string, viewer: Viewer): PastProgress | null {
   if (kept) return kept
   const onItsDay = dayProgress(day, viewer)
   if (!onItsDay || onItsDay.tries <= 0 || onItsDay.solved) return null
-  return { tries: onItsDay.tries, shots: onItsDay.shots, ghosts: [], power: onItsDay.power, angle: onItsDay.angle, touched: 0 }
+  return { tries: onItsDay.tries, shots: onItsDay.shots, ghosts: [], power: onItsDay.power, angle: onItsDay.angle, place: onItsDay.place, touched: 0 }
 }
 
 /** A past hole's play from signed out on this device, which the account signed in may take up at the hole. */

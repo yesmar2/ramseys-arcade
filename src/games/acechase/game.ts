@@ -1,9 +1,9 @@
 /**
- * Ace Chase: Today's Hole (./daily), one hole a day, the same for everyone. Set a power and an angle and
- * putt from the tee, again and again, until the ball comes to rest on the bull. There is no limit on
+ * Ace Chase: Today's Hole (./daily), one hole a day, the same for everyone. Set the ball on the tee line,
+ * point the line, and swing, again and again, until the ball comes to rest on the bull. There is no limit on
  * tries; they carry on from where the player left them, and the first bullseye is the day's result.
  *
- * The ball is played out by ./physics, a fixed step at a time, so the same numbers always do the same
+ * The ball is played out by ./physics, a fixed step at a time, so the same strike always does the same
  * thing. A day's hole can also be played ahead of its day, on trial, when nothing is kept.
  *
  * The state is plain data. The scene (./scene) draws it and flies the camera; the page (AceChaseGame)
@@ -14,6 +14,7 @@ import {
   DT,
   MAX_ANGLE,
   RINGS,
+  TEE_HALF,
   launch,
   makeHole,
   step,
@@ -24,7 +25,7 @@ import {
   type Spot,
 } from './physics'
 
-export type Phase = 'menu' | 'intro' | 'aim' | 'swing' | 'roll' | 'missed' | 'return' | 'holed' | 'gameover'
+export type Phase = 'menu' | 'intro' | 'aim' | 'swing' | 'snap' | 'roll' | 'missed' | 'return' | 'holed' | 'gameover'
 
 /** The flyover at the start of each hole, unless it's skipped. */
 export const INTRO_TIME = 6
@@ -37,30 +38,45 @@ export const RETURN_TIME = 0.6
 /** How long a bullseye is celebrated before the day's result. */
 export const HOLED_TIME = 2.8
 /**
- * The swing (Ramsey, 2026-10-06: "a swing meter or something"): Putt sets a needle swinging round the power
- * on the dial, SWING either side, and a second press strikes the ball at wherever the needle is. Stopped
- * dead on the mark, the shot is the dial's; a little early or late, a little soft or firm. So a hole's two
- * numbers aren't the whole answer, and they can't be handed on as one. The needle starts at the soft end,
- * so a press straight after Putt isn't the dial's power for free; it takes SWING_PERIOD to go there and back.
+ * The swing, a golf meter (Ramsey, 2026-10-06: "make the swing the power and direction ... we don't ever
+ * have the number options", then "lets try A"). There are no dials: the line is pointed on the green, and
+ * the meter does the rest in three presses.
+ *
+ * - Swing: the needle sets off from the mark and climbs, taking RISE to reach full power, and falls back
+ *   again if it isn't stopped (then nothing is struck, and it's back to aiming).
+ * - The second press sets the power where the needle is.
+ * - The needle then runs back down towards the mark, the full meter in BACK, and the third press strikes.
+ *   On the mark, the ball goes straight down the line; early pushes it right, late pulls it left, HOOK
+ *   degrees for every full meter off. Not pressed by LATE past the mark, it strikes there, pulled.
+ *
+ * Even a careful press is a twentieth of a second either way, a power or two and under a degree, which the
+ * wider rings allow for (./physics RINGS).
  */
-export const SWING = 3
-export const SWING_PERIOD = 2.4
+export const RISE = 2.6
+export const BACK = 1.4
+export const HOOK = 20
+export const LATE = 0.16
 
-/** Where the needle is, −1 (soft end) to 1 (firm end), this far into the swing. */
-export function swingAt(phaseTime: number): number {
-  const u = (phaseTime / SWING_PERIOD) % 1
-  return u < 0.5 ? -1 + 4 * u : 3 - 4 * u
+/** Where the needle is on the way up, 0 (the mark) to 1 (full power), this far into the swing. */
+export function riseAt(phaseTime: number): number {
+  const u = phaseTime / RISE
+  return u <= 1 ? u : Math.max(0, 2 - u)
 }
 
-/** The power the ball is struck with, at this point of the swing: to the tenth. */
-export function swingPower(state: Pick<GameState, 'power' | 'phaseTime'>): number {
-  return clamp(Math.round((state.power + SWING * swingAt(state.phaseTime)) * 10) / 10, 0, 100)
+/** Where the needle is on the way back: from the power set, down to the mark (0) and past it (below 0). */
+export function snapAt(state: Pick<GameState, 'power' | 'phaseTime'>): number {
+  return state.power / 100 - state.phaseTime / BACK
+}
+
+/** The way the ball sets off, for a press with the needle at `u` on the way back: early right, late left. */
+export function hookAngle(aim: number, u: number): number {
+  return clamp(Math.round((aim + u * HOOK) * 100) / 100, -90, 90)
 }
 
 /** A try that stopped this near the target (metres), off the rings, is "near": the share's warmer squares. */
 export const NEAR = 3
 
-/** The dials as a hole starts. */
+/** The meter and the line as a hole starts: straight up the hole. */
 export const START_POWER = 60
 export const START_ANGLE = 0
 
@@ -71,11 +87,12 @@ export type ShotEnd = 'bull' | 'inner' | 'outer' | 'near' | 'off' | 'lost'
 
 export type Shot = {
   n: number
-  /** The power the ball was struck with (the swing's). */
+  /** The power the ball was struck with, and the way it set off (degrees, right positive). */
   power: number
-  /** The power on the dial, that the swing went round. Absent on tries from before the swing. */
-  aimed?: number
   angle: number
+  /** The way the line was pointed, and where on the tee line the ball sat (metres right of its middle). */
+  aim?: number
+  place?: number
   /** Where the ball came to rest; absent when it was lost, or on tries from before. */
   at?: PathPoint
   /** How far from the middle of the target it stopped, in metres; absent when lost. */
@@ -101,8 +118,12 @@ export type GameState = {
   /** Where its target is. */
   spot: Spot
   hole: Hole
+  /** The power set on the meter (the swing's second press). */
   power: number
+  /** The line, pointed on the green: degrees off straight up the hole, right positive. */
   angle: number
+  /** Where the ball sits on the tee line, metres right of its middle (left negative). */
+  place: number
   /** Tries so far, the one in play included. */
   tries: number
   ball: Ball
@@ -124,16 +145,17 @@ export type GameState = {
   holeKey: number
   /** Bumped at each bullseye, so the scene can light the target up. */
   bulls: number
-  /** The power the shot in play was struck with. */
+  /** The power and the way the shot in play was struck with. */
   struck: number
+  struckAngle: number
 }
 
 /** A target for a hole, from the spots it offers. */
 const pickOne = (def: HoleDef, random: () => number) => def.spots[Math.floor(random() * def.spots.length)] ?? def.spots[0]!
 
-/** A ball sitting on the tee. */
-function teeBall(hole: Hole): Ball {
-  return launch(hole, 0, 0)
+/** A ball sitting on the tee line, `place` metres right of its middle. */
+function teeBall(hole: Hole, place = 0): Ball {
+  return launch(hole, 0, 0, place)
 }
 
 let keys = 0
@@ -144,7 +166,7 @@ function atHole(state: GameState): GameState {
     ...state,
     hole,
     tries: 0,
-    ball: teeBall(hole),
+    ball: teeBall(hole, state.place),
     path: [],
     ghosts: [],
     shots: [],
@@ -171,6 +193,7 @@ export function createInitialState(def: HoleDef, mode: Mode = 'daily', random: (
     hole,
     power: START_POWER,
     angle: START_ANGLE,
+    place: 0,
     tries: 0,
     ball: teeBall(hole),
     path: [],
@@ -185,20 +208,22 @@ export function createInitialState(def: HoleDef, mode: Mode = 'daily', random: (
     holeKey: ++keys,
     bulls: 0,
     struck: START_POWER,
+    struckAngle: START_ANGLE,
   }
 }
 
 /** Where a day's play left off, to carry on from. */
-export type Resume = { tries: number; shots: readonly Shot[]; ghosts: readonly (readonly PathPoint[])[]; power: number; angle: number }
+export type Resume = { tries: number; shots: readonly Shot[]; ghosts: readonly (readonly PathPoint[])[]; power: number; angle: number; place?: number }
 
 /**
  * Off to the tee, after the flyover. A hole on trial picks a fresh target each time; Today's Hole keeps
  * its one target, and carries on from `resume`: the tries already spent, the log and the last paths, and
- * the dials as left.
+ * the line and the ball's place on the tee as left.
  */
 export function startGame(state: GameState, random: () => number = Math.random, resume?: Resume | null, practice = false): GameState {
   const spot = state.mode === 'test' ? pickOne(state.def, random) : state.spot
-  const fresh = atHole({ ...state, spot, power: START_POWER, angle: START_ANGLE, practice })
+  const place = resume && !practice ? clamp(resume.place ?? 0, -TEE_HALF, TEE_HALF) : 0
+  const fresh = atHole({ ...state, spot, power: START_POWER, angle: START_ANGLE, place, practice })
   const carried = resume && !practice ? { tries: resume.tries, shots: resume.shots, ghosts: resume.ghosts, power: resume.power, angle: resume.angle } : {}
   return { ...fresh, ...carried, phase: 'intro', phaseTime: 0 }
 }
@@ -210,36 +235,51 @@ export function skipIntro(state: GameState): GameState {
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
-/** Power 0 to 100, in halves. */
+/** Power 0 to 100, to the tenth (a script's play-test; the player sets it with the swing). */
 export function setPower(state: GameState, v: number): GameState {
-  const power = clamp(Math.round(v * 2) / 2, 0, 100)
+  const power = clamp(Math.round(v * 10) / 10, 0, 100)
   return power === state.power ? state : { ...state, power }
 }
 
-/** The angle off straight up the hole, right positive, in tenths of a degree. */
+/** Point the line: degrees off straight up the hole, right positive, to the hundredth. */
 export function setAngle(state: GameState, v: number): GameState {
-  const angle = clamp(Math.round(v * 10) / 10, -MAX_ANGLE, MAX_ANGLE)
-  // No negative zero: it would print as "−0.0".
+  const angle = clamp(Math.round(v * 100) / 100, -MAX_ANGLE, MAX_ANGLE)
+  // No negative zero.
   return angle === state.angle ? state : { ...state, angle: angle === 0 ? 0 : angle }
 }
 
-/** Putt: the needle starts its swing round the power on the dial. */
+/** Set the ball on the tee line, metres right of its middle, while aiming. */
+export function setPlace(state: GameState, v: number): GameState {
+  if (state.phase !== 'aim') return state
+  const place = clamp(Math.round(v * 100) / 100, -TEE_HALF, TEE_HALF)
+  if (place === state.place) return state
+  return { ...state, place: place === 0 ? 0 : place, ball: teeBall(state.hole, place) }
+}
+
+/** The first press: the needle sets off up the meter. */
 export function putt(state: GameState): GameState {
   if (state.phase !== 'aim') return state
   sfx('tap', 1)
   return { ...state, phase: 'swing', phaseTime: 0 }
 }
 
-/** The second press: strike the ball with the power the needle is at. */
+/**
+ * The next press: on the way up it sets the power where the needle is, and the needle heads back; on the
+ * way back it strikes, the way the needle's place off the mark sends it.
+ */
 export function strike(state: GameState): GameState {
-  if (state.phase !== 'swing') return state
-  return strikeWith(state, swingPower(state))
+  if (state.phase === 'swing') {
+    sfx('tap', 2)
+    return { ...state, phase: 'snap', phaseTime: 0, power: Math.round(riseAt(state.phaseTime) * 1000) / 10 }
+  }
+  if (state.phase === 'snap') return strikeWith(state, state.power, hookAngle(state.angle, snapAt(state)))
+  return state
 }
 
-/** Strike the ball at a given power, the dial's own if none (a script's play-test, straight from the tee). */
-export function strikeWith(state: GameState, power = state.power): GameState {
-  if (state.phase !== 'aim' && state.phase !== 'swing') return state
-  const ball = launch(state.hole, power, state.angle)
+/** Strike the ball at a given power and way, the meter's and the line's if none (a script's play-test). */
+export function strikeWith(state: GameState, power = state.power, angle = state.angle): GameState {
+  if (state.phase !== 'aim' && state.phase !== 'swing' && state.phase !== 'snap') return state
+  const ball = launch(state.hole, power, angle, state.place)
   sfx('zip', power < 50 ? 1 : 0)
   if (power >= 50) sfx('whoosh')
   return {
@@ -247,6 +287,7 @@ export function strikeWith(state: GameState, power = state.power): GameState {
     phase: 'roll',
     phaseTime: 0,
     struck: power,
+    struckAngle: angle,
     tries: state.tries + 1,
     ball,
     path: [[ball.x, ball.y, ball.z]],
@@ -294,7 +335,7 @@ function which(side: number, along: number): string {
  * Where a miss ended, in words that say which way to adjust; and first, if it struck a post or a named
  * wall, that it did, since then it's the angle to change rather than the power.
  */
-export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {
+export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'> & { place?: number }): string {
   const where = placeOf(s)
   if (s.ball.done === 'rest' && s.hole.def.sand?.(s.ball.x, s.ball.z)) return `in the sand: ${where}`
   if (s.ball.posts) return `off a post: ${where}`
@@ -302,7 +343,7 @@ export function describe(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'lande
   return where
 }
 
-function placeOf(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): string {
+function placeOf(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'> & { place?: number }): string {
   const b = s.ball
   const h = s.hole
   const lost = LOST_IN[h.lost]
@@ -325,7 +366,7 @@ function placeOf(s: Pick<GameState, 'ball' | 'hole' | 'closest' | 'landed'>): st
   if (d < RINGS[1]) return `inner ring, ${d.toFixed(2)} m ${way || 'off'}`
   if (d < RINGS[2]) return `outer ring, ${d.toFixed(1)} m ${way || 'off'}`
   if (s.closest < RINGS[1]) return `ran over the target, stopped ${d.toFixed(1)} m ${way || 'past'}`
-  if (Math.hypot(b.x - h.tee.x, b.z - h.tee.z) < 1.5) return 'rolled back to the tee'
+  if (Math.hypot(b.x - h.tee.x - (s.place ?? 0), b.z - h.tee.z) < 1.5) return 'rolled back to the tee'
   if (line && Math.abs(line.along) > 3) {
     // In a part ("in the posts"), unless its name says how ("on the climb").
     const part = line.part ? `${/^(in|on|at) /.test(line.part) ? line.part : `in ${line.part}`}, ` : ''
@@ -363,7 +404,7 @@ function finishShot(s: GameState): GameState {
       phaseTime: 0,
       path,
       ghosts,
-      shots: [...s.shots, { n: s.tries, power: s.struck, aimed: s.power, angle: s.angle, ...restOf(s), what: 'Bullseye!', bull: true, end: 'bull' }],
+      shots: [...s.shots, { n: s.tries, power: s.struck, angle: s.struckAngle, aim: s.angle, place: s.place, ...restOf(s), what: 'Bullseye!', bull: true, end: 'bull' }],
       bulls: s.bulls + 1,
     }
   }
@@ -374,7 +415,7 @@ function finishShot(s: GameState): GameState {
     phaseTime: 0,
     path,
     ghosts,
-    shots: [...s.shots, { n: s.tries, power: s.struck, aimed: s.power, angle: s.angle, ...restOf(s), what: describe(s), bull: false, end: endOf(s) }],
+    shots: [...s.shots, { n: s.tries, power: s.struck, angle: s.struckAngle, aim: s.angle, place: s.place, ...restOf(s), what: describe(s), bull: false, end: endOf(s) }],
   }
 }
 
@@ -393,6 +434,14 @@ export function tick(state: GameState, dt: number): GameState {
     case 'intro':
       if (s.phaseTime >= introTime(s.hole)) s = { ...s, phase: 'aim', phaseTime: 0 }
       break
+    case 'swing':
+      // Up and back down without a press: no shot, back to aiming.
+      if (s.phaseTime >= RISE * 2) s = { ...s, phase: 'aim', phaseTime: 0 }
+      break
+    case 'snap':
+      // Not pressed by LATE past the mark: it strikes there, pulled.
+      if (snapAt(s) <= -LATE) s = strikeWith(s, s.power, hookAngle(s.angle, -LATE))
+      break
     case 'roll': {
       s.ball = { ...s.ball }
       s.path = [...s.path]
@@ -408,7 +457,7 @@ export function tick(state: GameState, dt: number): GameState {
       if (s.phaseTime >= MISSED_TIME) s = { ...s, phase: 'return', phaseTime: 0, from: [s.ball.x, s.ball.y, s.ball.z] }
       break
     case 'return': {
-      const tee = teeBall(s.hole)
+      const tee = teeBall(s.hole, s.place)
       const from = s.from ?? [tee.x, tee.y, tee.z]
       const k = Math.min(1, s.phaseTime / RETURN_TIME)
       const e = k * k * (3 - 2 * k)
@@ -440,6 +489,7 @@ export type Snapshot = {
   tries: number
   power: number
   angle: number
+  place: number
   shots: readonly Shot[]
 }
 
@@ -454,6 +504,7 @@ export function toSnapshot(s: GameState): Snapshot {
     tries: s.tries,
     power: s.power,
     angle: s.angle,
+    place: s.place,
     shots: s.shots,
   }
 }

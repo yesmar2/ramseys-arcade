@@ -15,7 +15,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { isDarkTheme, THEME_EVENT } from '../../lib/theme'
 import { introTime, type GameState, type Phase, type PathPoint, type Shot, type ShotEnd } from './game'
-import { BALL_R, BULL_R, RINGS, WALL_H, WALL_T, onGreen, slope, type Hole, type Spot, type Style, type Wall } from './physics'
+import { BALL_R, BULL_R, RINGS, TEE_HALF, WALL_H, WALL_T, onGreen, slope, type Hole, type Spot, type Style, type Wall } from './physics'
 
 export type View = 'tee' | 'target' | 'top'
 /** The clear part of the screen between the panels, in CSS pixels from the top of the canvas. */
@@ -221,7 +221,9 @@ const TREES = 150
 /** Behind the start card the camera circles the hole this far out and this high, in hole lengths: over the trees. */
 const MENU_OUT = 0.62
 const MENU_UP = 0.72
-const DOTS = 30
+const DOTS = 40
+/** How far the aiming line reaches: the power isn't known until the swing, so it's always the same. */
+const AIM_REACH = 4.6
 /** The arrows that show the slopes: at most this many, on ground at least this steep (rise per metre), running
  * downhill at this many metres a second per unit of slope, and never faster than the last. */
 const FLOW = 600
@@ -277,6 +279,11 @@ export class AceScene {
 
   private course: THREE.Group | null = null
   private protractor: THREE.Group | null = null
+  private teeMat: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
+  /** Where the ball sits on the tee line, as the mat and the protractor show it. */
+  private placeShown = NaN
+  /** The line as the game has it, for a drag that's given up to go back to. */
+  private aimNow = 0
   private beacon: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial> | null = null
   private water: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshPhysicalMaterial> | null = null
   private greenUniforms: Record<string, THREE.IUniform> | null = null
@@ -309,6 +316,10 @@ export class AceScene {
   } | null = null
   /** Called when a drag, pinch or scroll takes the camera off a set view. */
   onUserMove: (() => void) | null = null
+  /** Called as the line is pointed at a spot on the green (degrees off straight up the hole, right positive). */
+  onAim: ((angle: number) => void) | null = null
+  /** Called as the ball is slid along the tee line (metres right of its middle). */
+  onPlace: ((place: number) => void) | null = null
   private readonly glide = {
     from: new THREE.Vector3(),
     to: new THREE.Vector3(),
@@ -354,6 +365,9 @@ export class AceScene {
     controls.screenSpacePanning = false
     controls.panSpeed = 1.2
     controls.enabled = false
+    // One finger, or the left button, points the line and slides the ball (below); the camera has the rest.
+    controls.mouseButtons = { LEFT: -1 as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
+    controls.touches = { ONE: -1 as THREE.TOUCH, TWO: THREE.TOUCH.DOLLY_ROTATE }
     controls.addEventListener('start', () => {
       this.view = null
       this.onUserMove?.()
@@ -381,6 +395,39 @@ export class AceScene {
       },
       { signal },
     )
+    // Aiming (Ramsey, 2026-10-06: no dials, a swing): one finger or the left button on the green points the
+    // line at that spot, and on the ball it slides the ball along the tee line. A second finger is the camera,
+    // and the line goes back to where it was.
+    const pointers = new Set<number>()
+    let aiming: { id: number; kind: 'aim' | 'place'; from: number } | null = null
+    canvas.addEventListener(
+      'pointerdown',
+      (e) => {
+        pointers.add(e.pointerId)
+        if (pointers.size > 1) {
+          if (aiming?.kind === 'aim') this.onAim?.(aiming.from)
+          aiming = null
+          return
+        }
+        if (e.button !== 0 || this.phase !== 'aim' || !this.controls.enabled || !this.hole) return
+        aiming = { id: e.pointerId, kind: this.nearBall(e.clientX, e.clientY, canvas) ? 'place' : 'aim', from: this.aimNow }
+        this.pointAt(aiming.kind, e.clientX, e.clientY, canvas)
+      },
+      { signal },
+    )
+    canvas.addEventListener(
+      'pointermove',
+      (e) => {
+        if (aiming && aiming.id === e.pointerId && this.phase === 'aim') this.pointAt(aiming.kind, e.clientX, e.clientY, canvas)
+      },
+      { signal },
+    )
+    const lift = (e: PointerEvent) => {
+      pointers.delete(e.pointerId)
+      if (aiming?.id === e.pointerId) aiming = null
+    }
+    canvas.addEventListener('pointerup', lift, { signal })
+    canvas.addEventListener('pointercancel', lift, { signal })
 
     this.sky = new THREE.Mesh(
       new THREE.SphereGeometry(300, 32, 16),
@@ -1308,28 +1355,62 @@ export class AceScene {
       }
     }
 
-    // The tee: a mat and two markers.
+    // The tee: a chalk line across the hole the ball can sit anywhere on, a peg at each end, and a mat
+    // and a protractor under the ball, which go where it goes (placeTee).
     const ty = h.height(h.tee.x, h.tee.z)
+    // A painted strip, a few centimetres wide, following the ground.
+    const strip: number[] = []
+    const W = 0.035
+    for (let x = -TEE_HALF; x <= TEE_HALF + 1e-6; x += 0.1) {
+      const y = h.height(h.tee.x + x, h.tee.z) + 0.008
+      strip.push(h.tee.x + x, y, h.tee.z - W, h.tee.x + x, y, h.tee.z + W)
+    }
+    const lineGeo = new THREE.BufferGeometry()
+    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(strip, 3))
+    const index: number[] = []
+    for (let i = 0; i + 3 < strip.length / 3; i += 2) index.push(i, i + 1, i + 2, i + 1, i + 3, i + 2)
+    lineGeo.setIndex(index)
+    course.add(new THREE.Mesh(lineGeo, new THREE.MeshBasicMaterial({ color: CHALK, transparent: true, opacity: 0.9, side: THREE.DoubleSide })))
+    for (const side of [-1, 1]) {
+      const mk = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 10), new THREE.MeshStandardMaterial({ color: place.target.bull, roughness: 0.4 }))
+      const x = h.tee.x + side * TEE_HALF
+      mk.position.set(x, h.height(x, h.tee.z) + 0.06, h.tee.z)
+      mk.castShadow = true
+      course.add(mk)
+    }
     const mat = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.9), new THREE.MeshStandardMaterial({ color: place.mat, roughness: 1 }))
     mat.rotation.x = -Math.PI / 2
     mat.position.set(h.tee.x, ty + 0.004, h.tee.z)
     mat.receiveShadow = true
     course.add(mat)
-    for (const side of [-1, 1]) {
-      const mk = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 10), new THREE.MeshStandardMaterial({ color: place.target.bull, roughness: 0.4 }))
-      mk.position.set(h.tee.x + side * 0.55, ty + 0.05, h.tee.z)
-      mk.castShadow = true
-      course.add(mk)
-    }
+    this.teeMat = mat
+    this.placeShown = NaN
 
-    // A protractor at the tee: a tick every 5°, the 0° line in gold.
+    this.scene.add(course)
+    this.course = course
+    this.buildFlow(h, course)
+    this.applyLook()
+  }
+
+  /** The mat and the protractor under the ball, where it sits on the tee line. */
+  private placeTee(h: Hole, at: number) {
+    this.placeShown = at
+    const x0 = h.tee.x + at
+    const z0 = h.tee.z
+    if (this.teeMat) this.teeMat.position.set(x0, h.height(x0, z0) + 0.004, z0)
+    const wasShown = this.protractor?.visible ?? false
+    if (this.protractor) {
+      this.course?.remove(this.protractor)
+      this.disposeObject(this.protractor)
+    }
+    // A protractor round the ball: a tick every 5°, straight up the hole in gold. No numbers on it.
     const protractor = new THREE.Group()
     const R = 0.8
     const arc: THREE.Vector3[] = []
     for (let a = -60; a <= 60; a += 2) {
       const r = (a * Math.PI) / 180
-      const x = h.tee.x + Math.sin(r) * R
-      const z = h.tee.z - Math.cos(r) * R
+      const x = x0 + Math.sin(r) * R
+      const z = z0 - Math.cos(r) * R
       arc.push(new THREE.Vector3(x, h.height(x, z) + 0.012, z))
     }
     protractor.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arc), new THREE.LineBasicMaterial({ color: CHALK, transparent: true, opacity: 0.75 })))
@@ -1339,20 +1420,87 @@ export class AceScene {
       const r = (a * Math.PI) / 180
       const long = a % 15 === 0
       for (const rr of [R - (long ? 0.1 : 0.05), R + (long ? 0.05 : 0.02)]) {
-        const x = h.tee.x + Math.sin(r) * rr
-        const z = h.tee.z - Math.cos(r) * rr
+        const x = x0 + Math.sin(r) * rr
+        const z = z0 - Math.cos(r) * rr
         ;(a === 0 ? zero : ticks).push(new THREE.Vector3(x, h.height(x, z) + 0.013, z))
       }
     }
     protractor.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ticks), new THREE.LineBasicMaterial({ color: CHALK, transparent: true, opacity: 0.8 })))
     protractor.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(zero), new THREE.LineBasicMaterial({ color: GOLD })))
-    course.add(protractor)
+    protractor.visible = wasShown
+    this.course?.add(protractor)
     this.protractor = protractor
+  }
 
-    this.scene.add(course)
-    this.course = course
-    this.buildFlow(h, course)
-    this.applyLook()
+  // ---------- aiming: pointing the line, sliding the ball ----------
+
+  /** A ray from the camera through the screen point (x, y). */
+  private rayAt(clientX: number, clientY: number, canvas: HTMLCanvasElement) {
+    const r = canvas.getBoundingClientRect()
+    const ray = new THREE.Raycaster()
+    ray.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera)
+    return ray
+  }
+
+  /** The spot of green under the screen point (x, y), or null if it's off the green. */
+  private greenAt(clientX: number, clientY: number, canvas: HTMLCanvasElement): THREE.Vector3 | null {
+    const h = this.hole
+    if (!h) return null
+    const ray = this.rayAt(clientX, clientY, canvas)
+    const at = (t: number) => ray.ray.origin.clone().addScaledVector(ray.ray.direction, t)
+    const under = (p: THREE.Vector3) => onGreen(h, p.x, p.z) && p.y <= h.height(p.x, p.z)
+    // Down the ray to the first point on the green, then close in on it.
+    let lo = 0
+    let hi = -1
+    for (let t = 0.2; t < 160; t += 0.1) {
+      if (under(at(t))) {
+        hi = t
+        break
+      }
+      lo = t
+    }
+    if (hi < 0) return null
+    for (let i = 0; i < 20; i++) {
+      const mid = (lo + hi) / 2
+      if (under(at(mid))) hi = mid
+      else lo = mid
+    }
+    const spot = at(hi)
+    spot.y = h.height(spot.x, spot.z)
+    return spot
+  }
+
+  /** Where the ray through (x, y) meets the level of the ball, for points off the green and the tee line. */
+  private levelAt(clientX: number, clientY: number, canvas: HTMLCanvasElement): THREE.Vector3 | null {
+    const ray = this.rayAt(clientX, clientY, canvas)
+    return ray.ray.intersectPlane(new THREE.Plane(this.up, -this.ball.position.y), new THREE.Vector3())
+  }
+
+  /** Whether the screen point (x, y) is on the ball, near enough for a finger. */
+  private nearBall(clientX: number, clientY: number, canvas: HTMLCanvasElement): boolean {
+    const r = canvas.getBoundingClientRect()
+    const p = this.ball.position.clone().project(this.camera)
+    const px = ((p.x + 1) / 2) * r.width + r.left
+    const py = ((1 - p.y) / 2) * r.height + r.top
+    const edge = this.ball.position.clone().add(this.tmp.set(BALL_R, 0, 0).applyQuaternion(this.camera.quaternion)).project(this.camera)
+    const radius = Math.abs(((edge.x - p.x) / 2) * r.width)
+    return Math.hypot(clientX - px, clientY - py) < Math.max(this.touch ? 34 : 22, radius * 2.2)
+  }
+
+  /** Point the line at the spot under (x, y), or slide the ball along the tee line to it. */
+  private pointAt(kind: 'aim' | 'place', clientX: number, clientY: number, canvas: HTMLCanvasElement) {
+    const h = this.hole
+    if (!h) return
+    if (kind === 'place') {
+      const p = this.levelAt(clientX, clientY, canvas)
+      if (p) this.onPlace?.(Math.max(-TEE_HALF, Math.min(TEE_HALF, p.x - h.tee.x)))
+      return
+    }
+    const p = this.greenAt(clientX, clientY, canvas) ?? this.levelAt(clientX, clientY, canvas)
+    if (!p) return
+    const b = this.ball.position
+    if (Math.hypot(p.x - b.x, p.z - b.z) < 0.25) return
+    this.onAim?.((Math.atan2(p.x - b.x, -(p.z - b.z)) * 180) / Math.PI)
   }
 
   // ---------- the slopes, drawn as arrows running downhill ----------
@@ -1417,7 +1565,7 @@ export class AceScene {
   private drawFlow(state: GameState, dt: number) {
     const f = this.flow
     if (!f) return
-    const show = this.showSlopes && (state.phase === 'aim' || state.phase === 'swing')
+    const show = this.showSlopes && (state.phase === 'aim' || state.phase === 'swing' || state.phase === 'snap')
     f.marks.visible = show
     if (!show) return
     const h = state.hole
@@ -1455,31 +1603,9 @@ export class AceScene {
 
   /** Glide in to look round the spot of green under the screen point (x, y), from the way the camera looks now. */
   private lookRound(clientX: number, clientY: number, canvas: HTMLCanvasElement) {
-    const h = this.hole
-    if (!h || !this.controls.enabled) return
-    const r = canvas.getBoundingClientRect()
-    const ray = new THREE.Raycaster()
-    ray.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera)
-    const at = (t: number) => ray.ray.origin.clone().addScaledVector(ray.ray.direction, t)
-    const under = (p: THREE.Vector3) => onGreen(h, p.x, p.z) && p.y <= h.height(p.x, p.z)
-    // Down the ray to the first point on the green, then close in on it.
-    let lo = 0
-    let hi = -1
-    for (let t = 0.2; t < 160; t += 0.1) {
-      if (under(at(t))) {
-        hi = t
-        break
-      }
-      lo = t
-    }
-    if (hi < 0) return
-    for (let i = 0; i < 20; i++) {
-      const mid = (lo + hi) / 2
-      if (under(at(mid))) hi = mid
-      else lo = mid
-    }
-    const spot = at(hi)
-    spot.y = h.height(spot.x, spot.z)
+    if (!this.hole || !this.controls.enabled) return
+    const spot = this.greenAt(clientX, clientY, canvas)
+    if (!spot) return
     const back = this.camera.position.clone().sub(this.controls.target)
     const dist = Math.min(7, Math.max(3.5, back.length()))
     const g = this.glide
@@ -1561,8 +1687,10 @@ export class AceScene {
     return clear
   }
 
+  /** Where the ball sits on the tee line. */
   private teePoint(h: Hole) {
-    return new THREE.Vector3(h.tee.x, h.height(h.tee.x, h.tee.z), h.tee.z)
+    const x = h.tee.x + (Number.isFinite(this.placeShown) ? this.placeShown : 0)
+    return new THREE.Vector3(x, h.height(x, h.tee.z), h.tee.z)
   }
 
   private targetPoint(h: Hole) {
@@ -1772,6 +1900,8 @@ export class AceScene {
       this.enterPhase(state)
       this.phase = state.phase
     }
+    if (state.place !== this.placeShown) this.placeTee(h, state.place)
+    this.aimNow = state.angle
     if (state.ghosts !== this.ghostsShown) this.showGhosts(state.ghosts)
     if (state.shots !== this.markersShown) this.showMarkers(state.shots)
     if (state.bulls !== this.bulls) {
@@ -1854,7 +1984,7 @@ export class AceScene {
   }
 
   private drawAim(state: GameState) {
-    const show = state.phase === 'aim' || state.phase === 'swing'
+    const show = state.phase === 'aim' || state.phase === 'swing' || state.phase === 'snap'
     this.dots.visible = this.tip.visible = show
     if (this.protractor) this.protractor.visible = show || state.phase === 'intro' || state.phase === 'return'
     if (!show) return
@@ -1862,9 +1992,10 @@ export class AceScene {
     const a = (state.angle * Math.PI) / 180
     const dx = Math.sin(a)
     const dz = -Math.cos(a)
-    const reach = 0.5 + (state.power / 100) * 3
+    // The same length always: the power is the swing's.
+    const reach = AIM_REACH
     const n = Math.min(DOTS, Math.max(3, Math.round(reach / 0.12)))
-    const colour = new THREE.Color().setHSL((46 - (state.power / 100) * 42) / 360, 0.95, 0.6)
+    const colour = new THREE.Color().setHSL(46 / 360, 0.95, 0.62)
     this.dots.material.color.copy(colour)
     this.tip.material.color.copy(colour)
     for (let i = 0; i < DOTS; i++) {
