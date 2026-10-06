@@ -51,13 +51,15 @@ export const BACK_TO_BACK = 1.5
 
 /*
  * How long a piece can sit on the pile before it locks: half a second left
- * alone, and a move or a turn buys the half second back, six times. However
- * it's moved, a piece that has touched down locks within two seconds, unless
- * it drops to a row lower than it has been, which starts it all again.
+ * alone, and a move or a turn buys the half second back, twice. However it's
+ * moved, a piece that has touched down locks within a second, unless it drops
+ * to a row lower than it has been, which starts it all again. It was six times
+ * and two seconds, and Ramsey still found it "too much" (2026-10-06): he
+ * wanted a little grace, not a piece he could keep sliding about.
  */
 const LOCK_DELAY = 0.5
-const MAX_RESETS = 6
-const GROUND_LIMIT = 2
+const MAX_RESETS = 2
+const GROUND_LIMIT = 1
 /** The flash of a full row before it goes. */
 export const CLEAR_TIME = 0.3
 /** The well rattling before the pile drops, and how hard it drops, in rows a second a second. */
@@ -513,7 +515,7 @@ function canAct(s: GameState): boolean {
   return s.phase === 'playing' && s.piece !== null && !s.clearing && !s.settle
 }
 
-/** A move or a turn on the pile buys the piece its half second back, six times over. */
+/** A move or a turn on the pile buys the piece its half second back, twice. */
 function afterShift(s: GameState) {
   if (s.lockT > 0 || grounded(s)) {
     if (s.resets < MAX_RESETS) {
