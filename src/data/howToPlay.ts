@@ -76,7 +76,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Under the wave’s par time', pts: '+20 a second' },
     ],
     ends: 'All three ships are lost.',
-    tip: 'A new ship every third wave. Saucers join from wave 3.',
+    tip: 'A new ship every third wave, and a Shield takes one hit for you. Saucers join from wave 3.',
   },
   patriot: {
     goal: 'Keep your six cities standing.',

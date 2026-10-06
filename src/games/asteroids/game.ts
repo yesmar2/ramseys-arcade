@@ -636,10 +636,18 @@ function splitRock(rock: Rock, speedScale: number, worldScale: number): Rock[] {
   return kids
 }
 
+/**
+ * A rock's chance of leaving a power-up as it breaks. They were 34%, 22% and 11% for large, medium and small,
+ * about 1.2 a large rock with what it breaks into: 6 a wave at the start and 15 from wave 8, when each of the
+ * four was on most of the time for a player who took them, the shield and the slow-down too, and the late
+ * waves got easier, not harder (Ramsey, 2026-10-06: "should asteroids have less powerups?", then "yes make
+ * changes"). Now a large rock 12%, a medium one 6% and a small one never: about 1 in the first wave and 3 a wave
+ * later on, a find rather than a given.
+ */
 function dropChance(size: RockSize) {
-  if (size === 'large') return 0.34
-  if (size === 'medium') return 0.22
-  return 0.11
+  if (size === 'large') return 0.12
+  if (size === 'medium') return 0.06
+  return 0
 }
 
 function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
@@ -681,9 +689,10 @@ function applyPowerup(state: GameState, kind: PowerKind): GameState {
     return { ...state, buffSpread: BUFF_DURATION, floaters }
   }
   if (kind === 'shield') {
+    // Held until something hits the ship: one hit, not a time (breakShield).
     return {
       ...state,
-      buffShield: BUFF_DURATION,
+      buffShield: 1,
       floaters,
     }
   }
@@ -1026,6 +1035,33 @@ function tryFire(state: GameState): GameState {
   }
 }
 
+/** Seconds the ship can't be hit after its shield takes a hit: long enough to get clear, and the gun keeps firing (it stops past 1.6). */
+const SHIELD_GRACE = 1.2
+
+/**
+ * The shield takes the hit and goes, in a burst of its colour; the ship flies on, blinking for a moment so it
+ * can get clear of what hit it. `shot`: the saucer's shot that hit it, which goes too (-1 for a rock or the
+ * saucer itself).
+ */
+function breakShield(state: GameState, shot: number): GameState {
+  const hull = shipRadius(state.scale)
+  const hue = POWER_HUE.shield
+  const particles = [...state.particles]
+  shards(particles, state.ship.x, state.ship.y, hue, 8, 120 * state.scale, hull * 0.26)
+  const rings = [...(state.rings ?? [])]
+  ring(rings, state.ship.x, state.ship.y, hull * 1.5, hull * 4.2, 0.5, hue)
+  sfx('hurt')
+  return {
+    ...state,
+    buffShield: 0,
+    ship: { ...state.ship, invuln: SHIELD_GRACE },
+    enemyBullets: shot >= 0 ? state.enemyBullets.filter((_, i) => i !== shot) : state.enemyBullets,
+    particles,
+    rings,
+    shake: Math.max(state.shake ?? 0, 0.35),
+  }
+}
+
 function killShip(state: GameState): GameState {
   const particles = [...state.particles]
   const hull = shipRadius(state.scale)
@@ -1135,7 +1171,8 @@ export function tick(state: GameState, dt: number): GameState {
     floaters: tickFloaters(state.floaters, dt, state.scale),
     buffRapid: Math.max(0, (state.buffRapid ?? 0) - dt),
     buffSpread: Math.max(0, (state.buffSpread ?? 0) - dt),
-    buffShield: Math.max(0, (state.buffShield ?? 0) - dt),
+    // A shield doesn't run down: it's held till it takes a hit.
+    buffShield: (state.buffShield ?? 0) > 0 ? 1 : 0,
     buffSlow: Math.max(0, (state.buffSlow ?? 0) - dt),
     powerups: state.powerups ?? [],
   }
@@ -1457,29 +1494,20 @@ export function tick(state: GameState, dt: number): GameState {
   }
   s = { ...s, powerups: stillPowerups, ship }
 
-  if (ship.invuln <= 0 && (s.buffShield ?? 0) <= 0) {
-    for (const r of rocks) {
-      if (dist(ship.x, ship.y, r.x, r.y) < r.radius + hull * 0.7) {
-        return killShip(s)
-      }
-    }
-    if (s.saucer && dist(ship.x, ship.y, s.saucer.x, s.saucer.y) < s.saucer.radius + hull * 0.7) {
-      return killShip(s)
-    }
-    for (const b of s.enemyBullets) {
-      if (dist(ship.x, ship.y, b.x, b.y) < hull * 0.75 + b.radius) {
-        return killShip(s)
-      }
-    }
+  if (ship.invuln <= 0) {
+    // What hits the ship, if anything: a rock, the saucer, or one of the saucer's shots (which goes with it).
+    const shot = s.enemyBullets.findIndex((b) => dist(ship.x, ship.y, b.x, b.y) < hull * 0.75 + b.radius)
+    const hit =
+      shot >= 0 ||
+      rocks.some((r) => dist(ship.x, ship.y, r.x, r.y) < r.radius + hull * 0.7) ||
+      (s.saucer != null && dist(ship.x, ship.y, s.saucer.x, s.saucer.y) < s.saucer.radius + hull * 0.7)
+    if (hit) return (s.buffShield ?? 0) > 0 ? breakShield(s, shot) : killShip(s)
   }
 
-  // Clear only when rocks and saucer are gone (enemy shots can linger briefly)
+  // Clear only when rocks and saucer are gone (enemy shots can linger briefly). Power-ups still floating go
+  // with the wave: you get only what you fly over (they used to be handed over as the wave ended).
   if (rocks.length === 0 && !s.saucer && s.wavePause <= 0) {
-    // Don't discard field pickups when the wave ends (incl. drops from the last rock).
-    let cleared = s
-    for (const p of cleared.powerups ?? []) {
-      cleared = applyPowerup(cleared, p.kind)
-    }
+    const cleared = s
     const nextWave = cleared.wave + 1
     const timeBonus = Math.max(
       0,

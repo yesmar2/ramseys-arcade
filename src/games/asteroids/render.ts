@@ -219,10 +219,8 @@ function traceShip(ctx: CanvasRenderingContext2D, r: number) {
   ctx.closePath()
 }
 
+/** The shield round the ship, held till it takes a hit (game.ts breakShield), so it never blinks out. */
 function drawShield(ctx: CanvasRenderingContext2D, state: GameState, r: number, scale: number, dark: boolean, t: number) {
-  const left = state.buffShield ?? 0
-  // Blinks as it runs out, so the last second never comes as a surprise.
-  if (left < 1.5 && Math.floor(t * 8) % 2 === 0) return
   const hue = POWER_HUE.shield
   const R = r * 1.5
   const { x, y } = state.ship

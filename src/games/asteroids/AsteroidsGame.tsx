@@ -761,9 +761,12 @@ export function AsteroidsGame() {
                       <span className="asteroids__buff__name">
                         {POWER_LABEL[kind as PowerKind]}
                       </span>
-                      <span className="asteroids__buff__time">
-                        {Math.ceil(left)}
-                      </span>
+                      {/* A shield has no time: it's held till it takes a hit. */}
+                      {kind === 'shield' ? null : (
+                        <span className="asteroids__buff__time">
+                          {Math.ceil(left)}
+                        </span>
+                      )}
                     </span>
                   ))}
               </div>

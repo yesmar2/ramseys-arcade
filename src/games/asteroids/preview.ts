@@ -123,13 +123,14 @@ type Reading = { turn: number; pace: number }
 /**
  * What will reach the ship within `horizon` seconds if nothing changes, as
  * the pilot reads each course and with the ship flying at `vx`, `vy`. Nothing
- * counts before a new ship's grace or a shield runs out.
+ * counts before a new ship's grace runs out (a shield takes one hit: it's no
+ * time to count on).
  */
 function threats(s: GameState, read: (id: number) => Reading, horizon: number, vx = s.ship.vx, vy = s.ship.vy): Threat[] {
   const { ship, scale: sc } = s
   const hull = shipRadius(sc)
   const pad = 5 * sc
-  const grace = Math.max(s.buffShield, ship.invuln)
+  const grace = ship.invuln
   const out: Threat[] = []
   if (grace >= horizon) return out
   const check = (id: number, x: number, y: number, tvx: number, tvy: number, reach: number) => {
@@ -376,9 +377,9 @@ function look(s: GameState, p: Pilot) {
   const cy = s.stageH / 2
   const midReach = Math.hypot(cx, cy)
 
-  // Under a shield there is nothing to fear, and a player wades in close,
-  // which is where the shield leaves them when it runs out.
-  const brave = s.buffShield > 1.2
+  // Under a shield a player wades in close, counting on it to take a hit,
+  // which is where it leaves them when it does.
+  const brave = s.buffShield > 0
 
   // Every few seconds a player shifts ground for a better angle, somewhere
   // away from the edges, shooting at whatever the nose passes on the way and
