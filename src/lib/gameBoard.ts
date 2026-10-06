@@ -270,6 +270,15 @@ export function playersNote(slug: string, period: LeaderboardPeriod): string {
 const CHART_RUNS = 12
 
 /**
+ * How far under a line, in hundredths of the chart's height, a bar must stop for its score, over the bar, to
+ * stay clear of the line's words over the line.
+ */
+const LABEL_ROOM = 13
+
+/** Where a line's words sit along it. */
+export type ChartLabelSide = 'right' | 'left' | 'center'
+
+/**
  * Your runs in the period, oldest first, against the score that takes the
  * next place (and first, when it is in reach). Time boards count down to a
  * floor under the slowest run, so their differences show; points count up
@@ -292,15 +301,28 @@ export function runsChart(slug: string, you: BoardYou, leader: BoardPlayer | und
   const floor = isInvertedBoard(slug) ? Math.max(0, min - (max - min) * 0.6 - (isTimeBoard(slug) ? 1000 : 1)) : 0
   const top = max + (max - floor) * 0.12
   const pct = (score: number) => ((score - floor) / (top - floor || 1)) * 100
-  return {
-    bars: runs.map((r) => ({
-      id: r.id,
-      score: formatLeaderboardScore(slug, r.score),
-      height: Math.max(3, pct(r.score)),
-      best: r.id === you.player.best.id,
-      at: r.at,
-    })),
-    lines: lines.map((l) => ({ label: l.label, bottom: pct(l.score) })),
-    count: you.runs.length,
-  }
+  const bars = runs.map((r) => ({
+    id: r.id,
+    score: formatLeaderboardScore(slug, r.score),
+    height: Math.max(3, pct(r.score)),
+    best: r.id === you.player.best.id,
+    at: r.at,
+  }))
+  // A line's words go at its right end, unless a bar comes up so near under them that its score would run into
+  // them: then at its left end, or in the middle, wherever none does. Two lines close together take different
+  // places. The words take up about a third of a narrow chart's width, so that many bars lie under them.
+  const span = Math.max(1, Math.ceil(bars.length * 0.3))
+  const mid = Math.floor((bars.length - span) / 2)
+  const under = (side: ChartLabelSide) => (side === 'right' ? bars.slice(-span) : side === 'left' ? bars.slice(0, span) : bars.slice(mid, mid + span))
+  const placed: { bottom: number; side: ChartLabelSide }[] = []
+  const chartLines = lines.map((l) => {
+    const bottom = pct(l.score)
+    const clear = (side: ChartLabelSide) =>
+      under(side).every((b) => bottom - b.height >= LABEL_ROOM) &&
+      placed.every((p) => p.side !== side || Math.abs(p.bottom - bottom) >= LABEL_ROOM)
+    const side = (['right', 'left', 'center'] as const).find(clear) ?? 'right'
+    placed.push({ bottom, side })
+    return { label: l.label, bottom, side }
+  })
+  return { bars, lines: chartLines, count: you.runs.length }
 }

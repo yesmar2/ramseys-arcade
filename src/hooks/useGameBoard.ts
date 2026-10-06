@@ -43,6 +43,8 @@ export type GameBoardData = {
   allTimeBest: number | null
   /** The other boards, the viewer's first; arrives after the rest. */
   others: OtherBoard[]
+  /** Whether the other boards have come, or failed to: till then their card holds its room (GameBoard). */
+  othersReady: boolean
 }
 
 const LOADING: GameBoardData = {
@@ -57,6 +59,15 @@ const LOADING: GameBoardData = {
   youRun: null,
   allTimeBest: null,
   others: [],
+  othersReady: false,
+}
+
+/**
+ * The boards a board's More boards lists: every board of the period but its own. Only a daily has a board for
+ * today, so today's way onward is the other dailies; a daily has none for all time.
+ */
+export function otherBoardSlugs(slug: LeaderboardGame, period: LeaderboardPeriod): LeaderboardGame[] {
+  return standingsGames(period).filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g)))
 }
 
 /** Players a board opens on. */
@@ -113,6 +124,7 @@ export function useGameBoard(
           ...openingBoard(first, slug),
           allTimeBest,
           others: [],
+          othersReady: false,
         })
       } catch {
         if (!cancelled) setData({ ...LOADING, loading: false, error: true })
@@ -128,15 +140,15 @@ export function useGameBoard(
         if (cancelled) return
         const leaders = new Map(summary.map((g) => [g.slug, distinctTop(g.entries, 1)[0] ?? null]))
         const places = mine?.byGame ?? {}
-        // Only a daily has a board for today, so today's way onward is the other dailies; a daily has none for all time.
-        const others = standingsGames(period).filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g))).map((g) => ({
+        const others = otherBoardSlugs(slug, period).map((g) => ({
           slug: g,
           leader: leaders.get(g) ?? null,
           place: places[g]?.place ?? null,
         }))
-        setData((prev) => ({ ...prev, others }))
+        setData((prev) => ({ ...prev, others, othersReady: true }))
       } catch {
-        /* no list of other boards, then */
+        // No list of other boards, then.
+        if (!cancelled) setData((prev) => ({ ...prev, othersReady: true }))
       }
     })()
 

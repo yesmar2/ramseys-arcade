@@ -549,8 +549,7 @@ a.sb-row__link:focus-visible {
     align-items: stretch;
   }
 
-  /* One card in the row takes all of it: a record's page when you're on it but don't hold it, and a
-     daily's week, month or all time (day points have no second card). */
+  /* One card in the row takes all of it: a record's page when you're on it but don't hold it. */
   .sb-you.sb-you--solo {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -686,6 +685,20 @@ a.sb-row__link:focus-visible {
     flex: none;
     margin-top: 0;
     padding-top: 0;
+  }
+}
+
+/* Beside the board, the side is too narrow for the words and the button side by side: one over the other. */
+@media (min-width: 64rem) {
+  .gb-side .gb-first {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .gb-side .gb-first .sb-you__foot {
+    margin-top: auto;
+    padding-top: 1.5rem;
   }
 }
 
@@ -1457,6 +1470,21 @@ a.sb-board__link:hover .sb-board__go {
   color: var(--muted);
 }
 
+/* Where a bar would run into the words at the line's right end (lib/gameBoard.ts runsChart). */
+.gb-runs__line--left span {
+  right: auto;
+  left: 0;
+  padding: 0 0.4rem 0 0;
+}
+
+/* Centred by its margins: centred by a transform, its box's edge showed as a seam. */
+.gb-runs__line--center span {
+  left: 0;
+  width: max-content;
+  margin: 0 auto;
+  padding: 0 0.4rem;
+}
+
 .gb-runs__bars {
   position: absolute;
   inset: 0;
@@ -1555,6 +1583,16 @@ a.sb-board__link:hover .sb-board__go {
   --inline-thumb-size: 2.4rem;
 }
 
+/* A thumb's room while More boards loads. */
+.gb-more__skel-thumb {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: calc(2.4rem * 0.28);
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.06), rgba(var(--ink-rgb), 0.12), rgba(var(--ink-rgb), 0.06));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
 .gb-more__text {
   display: flex;
   flex-direction: column;
@@ -1609,7 +1647,23 @@ a.sb-board__link:hover .sb-board__go {
   min-width: 0;
 }
 
-/* A daily's board, the first thing under the banner, with your cards under it in its column. */
+/* Your cards on a daily's today, week and month boards: on the right under More boards; on a phone, straight
+   after the board, before the other boards. */
+.gb-side__you {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  order: -1;
+  min-width: 0;
+}
+
+@media (min-width: 64rem) {
+  .gb-side__you {
+    order: 0;
+  }
+}
+
+/* A past day's board, the first thing under the banner, with you that day under it in its column. */
 .gb-lead {
   display: flex;
   flex-direction: column;
