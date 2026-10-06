@@ -241,6 +241,60 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
 }
 
 /**
+ * Each season's Pass+ headliners, left, middle and right: the skins its stage shows big (he picked A of the
+ * Pass+ showpiece, 2026-10-06). A season not here shows its three highest-level Pass+ skins.
+ */
+const HEADLINERS: Record<number, readonly [string, string, string]> = {
+  1: ['asteroids-orbiter', 'hotlap-midnight', 'lander-starhopper'],
+}
+
+function headlinersOf(season: SeasonInfo, plus: SeasonPlus): SeasonReward[] {
+  const skins = plus.rewards.filter((r) => r.kind === 'skin')
+  const named = HEADLINERS[season.id]
+  if (named) {
+    const found = named.map((id) => skins.find((r) => r.id === id)).filter((r): r is SeasonReward => r != null)
+    if (found.length === 3) return found
+  }
+  // The three latest, the latest in the middle.
+  const top = [...skins].sort((a, b) => b.level - a.level).slice(0, 3)
+  return top.length === 3 ? [top[1]!, top[0]!, top[2]!] : top
+}
+
+/**
+ * The Pass+ stage: its best skins big, on lit stands, as a pass leads with its best (Ramsey: "go with A",
+ * after asking whether a whole season should be paid, as Fortnite's pass is). Each says its level, or that it's
+ * yours once Pass+ is and your level has reached it.
+ */
+function HeadlinerStage({ headliners, owned, level }: { headliners: SeasonReward[]; owned: boolean; level: number }) {
+  if (headliners.length < 3) return null
+  return (
+    <div className="pass-stage" role="group" aria-label="Pass+ headliners">
+      <span className="pass-stage__kick">The headliners</span>
+      <ul className="pass-stage__row">
+        {headliners.map((reward, i) => {
+          const middle = i === 1
+          const game = reward.game ? (getGame(reward.game)?.name ?? reward.game) : null
+          const yours = owned && reward.level <= level
+          return (
+            <li key={reward.id} className={`pass-stage__spot${middle ? ' pass-stage__spot--star' : ''}`}>
+              {middle ? <span className="pass-stage__only">Pass+ only</span> : null}
+              <span className="pass-stage__art" aria-hidden="true">
+                <RewardArt reward={reward} size={middle ? 230 : 160} />
+              </span>
+              <span className="pass-stage__stand" aria-hidden="true" />
+              <b className="pass-stage__name">{reward.name}</b>
+              <span className="pass-stage__what">
+                {game ? `${game} ${reward.what.replace(/^.*\s/, '').toLowerCase()}` : reward.what} · {yours ? 'yours' : `Level ${reward.level}`}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+/**
  * Pass+: the paid second row of the pass, on the same levels, and the way to get it (Stripe's checkout, from
  * the API). Without it, its rewards show what they are, and the ones your level has reached say they're
  * yours the moment you get it. Looks only, never score; what it gives is kept for good.
@@ -286,6 +340,7 @@ function PassPlus({
     }
   }, [plus.owned])
   const firstBonus = plus.rewards.find((r) => r.level > season.levels)?.id
+  const headliners = headlinersOf(season, plus)
 
   // Back from Stripe's page: a paid checkout gives Pass+ now (its webhook may be a moment behind).
   useEffect(() => {
@@ -391,6 +446,7 @@ function PassPlus({
           ) : null}
         </div>
       </div>
+      <HeadlinerStage headliners={headliners} owned={plus.owned} level={level} />
       <ol className="season-track season-track--plus">
         {plus.rewards.map((reward) => {
           const state = stateOfPlus(reward)
