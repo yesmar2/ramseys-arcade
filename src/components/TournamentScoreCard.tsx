@@ -246,7 +246,9 @@ export function TournamentScoreCard({
 }: TournamentScoreCardProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
-  const canSaveScores = signedIn || Boolean(impersonation)
+  // Saving needs an account, and acting as a tag (dev) doesn't give one: a borrowed tag left on a device
+  // signed out showed "Signed in, no tag yet" and a tag box the API then refused.
+  const canSaveScores = signedIn
   const playerName = usePlayerName()
   const knownName = (playerName || getLastPlayerName()).trim().toUpperCase()
   const [name, setName] = useState(knownName)

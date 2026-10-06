@@ -169,7 +169,9 @@ export function ScoreSaveCard({
 }: ScoreSaveProps) {
   const { signedIn, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
-  const canSaveScores = signedIn || Boolean(impersonation)
+  // Saving needs an account, and acting as a tag (dev) doesn't give one: a borrowed tag left on a device
+  // signed out showed "Signed in, no tag yet" and a tag box the API then refused.
+  const canSaveScores = signedIn
   const accountId = useAccountId()
   // Another account's run is saved only once that account is signed in, and looked at again whenever that changes.
   const ownerIn = typeof owner !== 'string' || accountId === owner
