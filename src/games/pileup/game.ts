@@ -49,9 +49,15 @@ export const SHAKE_POINTS = 10
 /** Four rows straight after four rows. */
 export const BACK_TO_BACK = 1.5
 
-/** How long a piece can sit on the pile before it locks, and how often a move can buy it more. */
+/*
+ * How long a piece can sit on the pile before it locks: half a second left
+ * alone, and a move or a turn buys the half second back, six times. However
+ * it's moved, a piece that has touched down locks within two seconds, unless
+ * it drops to a row lower than it has been, which starts it all again.
+ */
 const LOCK_DELAY = 0.5
-const MAX_RESETS = 15
+const MAX_RESETS = 6
+const GROUND_LIMIT = 2
 /** The flash of a full row before it goes. */
 export const CLEAR_TIME = 0.3
 /** The well rattling before the pile drops, and how hard it drops, in rows a second a second. */
@@ -99,6 +105,14 @@ export const SHAPES: readonly (readonly (readonly Cell[])[])[] = SPAWN.map(({ si
 })
 
 export const BOX_SIZE: readonly number[] = SPAWN.map((p) => p.size)
+
+/** BOTTOM[kind][turn]: the lowest of its cells in its box, so a turn isn't mistaken for a drop. */
+const BOTTOM: readonly (readonly number[])[] = SHAPES.map((turns) => turns.map((cells) => Math.max(...cells.map(([, y]) => y))))
+
+/** The row the piece's lowest block is in. */
+function bottomRow(p: Piece): number {
+  return p.y + BOTTOM[p.kind]![p.rot]!
+}
 
 /**
  * Where a turn tries the piece when it doesn't fit where it is: one step to a
@@ -218,10 +232,16 @@ export type GameState = {
   /** Seconds toward the next row down. */
   fall: number
   softDrop: boolean
-  /** Seconds sitting on the pile, toward locking. */
+  /** Seconds sitting on the pile since the last move that bought time, toward locking. */
   lockT: number
   resets: number
-  /** The lowest the piece has been, so reaching lower gives back its moves. */
+  /**
+   * Seconds since the piece first touched down at its lowest row, lifted by a
+   * turn or not: no amount of turning keeps it loose past GROUND_LIMIT.
+   */
+  groundT: number
+  touched: boolean
+  /** The lowest row the piece's foot has reached, so reaching lower gives back its moves. */
   lowest: number
   /** Full rows flashing before they go; from a Shake, they pay as one. */
   clearing: { rows: number[]; t: number } | null
@@ -348,6 +368,8 @@ function emptyState(): GameState {
     softDrop: false,
     lockT: 0,
     resets: 0,
+    groundT: 0,
+    touched: false,
     lowest: 0,
     clearing: null,
     settle: null,
@@ -470,6 +492,8 @@ function spawn(s: GameState, kind: Kind = s.waiting ?? nextKind(s)) {
   s.fall = 0
   s.lockT = 0
   s.resets = 0
+  s.groundT = 0
+  s.touched = false
   // A pile up to the brim still lets a piece in higher, over the top and out of sight.
   for (let up = 0; up < HIDDEN && !fits(s, p.kind, p.rot, p.x, p.y); up++) p.y -= 1
   if (!fits(s, p.kind, p.rot, p.x, p.y)) {
@@ -477,14 +501,14 @@ function spawn(s: GameState, kind: Kind = s.waiting ?? nextKind(s)) {
     return
   }
   s.piece = p
-  s.lowest = p.y
+  s.lowest = bottomRow(p)
 }
 
 function canAct(s: GameState): boolean {
   return s.phase === 'playing' && s.piece !== null && !s.clearing && !s.settle
 }
 
-/** A move or a turn on the pile buys the piece more time, fifteen times over. */
+/** A move or a turn on the pile buys the piece its half second back, six times over. */
 function afterShift(s: GameState) {
   if (s.lockT > 0 || grounded(s)) {
     if (s.resets < MAX_RESETS) {
@@ -637,11 +661,15 @@ function lock(s: GameState) {
   else spawn(s)
 }
 
+/** Lower than the piece has been: its time on the pile starts over. */
 function reachedRow(s: GameState) {
   const p = s.piece
-  if (p && p.y > s.lowest) {
-    s.lowest = p.y
+  if (p && bottomRow(p) > s.lowest) {
+    s.lowest = bottomRow(p)
     s.resets = 0
+    s.lockT = 0
+    s.groundT = 0
+    s.touched = false
   }
 }
 
@@ -900,11 +928,20 @@ export function tick(s: GameState, dt: number): GameState {
     reachedRow(s)
   }
 
-  if (grounded(s)) {
+  // Lifted off the pile by a turn, the clocks don't start over: only a lower row does that (reachedRow).
+  const down = grounded(s)
+  if (down) s.touched = true
+  if (s.touched) s.groundT += dt
+  if (down) {
     s.lockT += dt
-    if (s.lockT >= LOCK_DELAY) lock(s)
-  } else {
-    s.lockT = 0
+    if (s.lockT >= LOCK_DELAY || s.groundT >= GROUND_LIMIT) lock(s)
+  } else if (s.touched && s.groundT >= GROUND_LIMIT) {
+    // Out of time while a turn has it in the air: it settles where it is, unless that's lower than it has been.
+    const to = landingY(s, p)
+    if (to + BOTTOM[p.kind]![p.rot]! <= s.lowest) {
+      p.y = to
+      lock(s)
+    }
   }
   return s
 }
