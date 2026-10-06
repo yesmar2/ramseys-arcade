@@ -213,7 +213,7 @@ export const games: Game[] = [
     name: 'Frenzy',
     slug: 'frenzy',
     tags: ['arcade'],
-    description: 'Eat smaller fish, grow, and clear the level before something bigger eats you. Watch for the shark.',
+    description: 'Eat smaller fish and grow, size by size, across an open ocean. Leap out of the water, and watch for the shark.',
     accent: PALETTE.magenta,
     playable: true,
   },

@@ -1,8 +1,8 @@
 import { runPreview, type Sim } from '../previewKit'
 import {
-  SHARK_RADIUS,
-  WORLD_H,
+  SHARK_R,
   createInitialState,
+  edible,
   fishRadius,
   playerRadius,
   resizeState,
@@ -17,30 +17,25 @@ import { renderGame } from './render'
  * Frenzy playing itself, for its tile on the home page. Everything on screen is the game's own engine and
  * renderer, so the preview changes whenever the game does. The only thing added is a pilot that plays the
  * way a person would: it goes after the nearest fish it can eat, swims away from anything that can eat it,
- * and gets out of the shark's lane when the warning shows. When it's eaten, a new run starts.
+ * gets out of the shark's lane when the warning shows, and now and then leaps out of the water. When it's
+ * eaten, a new run starts.
  */
 
-/**
- * A tile is small: drawn at its own scale the little fish would be a few pixels long. Draw it at least at
- * the scale a phone has, centred, and let the edges of the water fall off the tile.
- */
-const MIN_PPU = 0.78
+/** A tile is small: drawn at the game's own scale the little fish would be a few pixels long. */
+const MIN_PPU = 0.8
 
-function sized(s: GameState, w: number, h: number): GameState {
-  const fit = resizeState(s, w, h)
-  if (fit.ppu >= MIN_PPU) return fit
-  return { ...fit, ppu: MIN_PPU, offX: (w - fit.W * MIN_PPU) / 2, offY: (h - WORLD_H * MIN_PPU) / 2 }
-}
+const sized = (s: GameState, w: number, h: number) => resizeState({ ...s, minPpu: MIN_PPU }, w, h)
 
-type Pilot = { mealId: number; pickIn: number }
+type Pilot = { mealId: number; pickIn: number; leapIn: number; leaping: number }
 
 function pilot(s: GameState, m: Pilot, dt: number): GameState {
   const p = s.player
+  if (p.air) return s
   const pr = playerRadius(s)
   let ax = 0
   let ay = 0
   for (const f of s.fishes) {
-    if (f.tier <= p.size) continue
+    if (edible(f.tier, p.size)) continue
     const dx = p.x - f.x
     const dy = p.y - f.y
     const d = Math.hypot(dx, dy) || 1
@@ -51,14 +46,22 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
     }
   }
   const k = s.shark
-  if (k && Math.abs(p.y - k.y) < SHARK_RADIUS * 1.4) ay += (p.y < k.y ? -1 : 1) * 5
+  if (k && Math.abs(p.y - k.y) < SHARK_R * 1.6) ay += (p.y < k.y ? -1 : 1) * 5
+  // Now and then, near the top, a leap.
+  m.leapIn -= dt
+  m.leaping -= dt
+  if (m.leapIn <= 0 && p.y < 140) {
+    m.leapIn = 6 + Math.random() * 6
+    m.leaping = 1.5
+  }
+  if (m.leaping > 0) return setTarget(s, p.x + (p.vx >= 0 ? 60 : -60), -200)
   m.pickIn -= dt
-  let meal = s.fishes.find((f) => f.id === m.mealId && f.tier <= p.size) ?? null
+  let meal = s.fishes.find((f) => f.id === m.mealId && edible(f.tier, p.size)) ?? null
   if (!meal || m.pickIn <= 0) {
     let best = 0
     meal = null
     for (const f of s.fishes) {
-      if (f.tier > p.size || f.x < 10 || f.x > s.W - 10) continue
+      if (!edible(f.tier, p.size) || f.y < 0) continue
       const score = (1 + f.tier) / (Math.hypot(f.x - p.x, f.y - p.y) + 60)
       if (score > best) {
         best = score
@@ -75,18 +78,19 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
     ax += (dx / d) * 1.6
     ay += (dy / d) * 1.6
   } else {
-    ax += (s.W / 2 - p.x) / s.W
-    ay += (WORLD_H / 2 - p.y) / WORLD_H
+    ay += (120 - p.y) / 200
+    ax += p.vx >= 0 ? 0.5 : -0.5
   }
   const len = Math.hypot(ax, ay) || 1
   return setTarget(s, p.x + (ax / len) * 70, p.y + (ay / len) * 70)
 }
 
 export function makeSim(): Sim<GameState> {
-  const m: Pilot = { mealId: -1, pickIn: 0 }
+  const m: Pilot = { mealId: -1, pickIn: 0, leapIn: 5, leaping: 0 }
   return {
     start: (w, h) => {
       m.mealId = -1
+      m.leapIn = 4
       return sized(startGame(createInitialState(w, h)), w, h)
     },
     step: (s, dt) => tick(s.phase === 'playing' ? pilot(s, m, dt) : s, dt),

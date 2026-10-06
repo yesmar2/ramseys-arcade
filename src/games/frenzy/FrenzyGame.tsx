@@ -49,10 +49,10 @@ const START_KEYS = new Set(['Space', 'Enter'])
 const MOUSE_WAKE_PX = 24
 
 /**
- * Frenzy, the food chain (game.ts). The mouse steers by pointing: the fish
- * swims to it. A finger steers like a trackpad, anywhere on the screen: the
+ * Frenzy, the food chain in an open ocean (game.ts). The mouse steers by
+ * pointing: the fish swims toward it, and the camera follows. A finger steers like a trackpad, anywhere on the screen: the
  * fish moves the way the finger moves, so it's never under your thumb. The
- * arrow keys or WASD swim too.
+ * arrow keys or WASD swim too. Swimming up hard through the surface leaps out.
  */
 export function FrenzyGame() {
   const tournament = useTournamentPlay()
@@ -67,7 +67,7 @@ export function FrenzyGame() {
   const [saveOpen, setSaveOpen] = useState(false)
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('frenzy'))
-  const pausable = (ui.phase === 'playing' || ui.phase === 'clear') && !saveOpen
+  const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
@@ -175,7 +175,7 @@ export function FrenzyGame() {
     }
     const phase = stateRef.current.phase
     if (phase === 'menu') restart()
-    if (stateRef.current.phase !== 'playing' && stateRef.current.phase !== 'clear') return
+    if (stateRef.current.phase !== 'playing') return
     if (e.pointerType === 'mouse') {
       mouseRef.current = { awake: true, from: null }
       pointTo(e)
@@ -187,8 +187,7 @@ export function FrenzyGame() {
 
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
     if (saveOpen || pausedRef.current) return
-    const phase = stateRef.current.phase
-    if (phase !== 'playing' && phase !== 'clear') return
+    if (stateRef.current.phase !== 'playing') return
     if (e.pointerType !== 'mouse') {
       dragTo(e)
       return
@@ -260,7 +259,7 @@ export function FrenzyGame() {
     }
   }, [saveOpen])
 
-  const inRun = ui.phase === 'playing' || ui.phase === 'clear'
+  const inRun = ui.phase === 'playing'
 
   return (
     <section
@@ -279,7 +278,7 @@ export function FrenzyGame() {
 
           <GamePlayChrome
             slug="frenzy"
-            inRun={() => stateRef.current.phase === 'playing' || stateRef.current.phase === 'clear'}
+            inRun={() => stateRef.current.phase === 'playing'}
             paused={paused}
           >
             {(pausable || paused) ? (
@@ -293,7 +292,7 @@ export function FrenzyGame() {
             </PlayReadoutScore>
             {inRun || ui.phase === 'dying' ? (
               <PlayReadoutStats>
-                <PlayStat label="Level" value={ui.level.toLocaleString()} />
+                <PlayStat label="Size" value={ui.size} />
                 <PlayStat label="Lives" value={ui.lives} urgent={ui.lives === 1} />
               </PlayReadoutStats>
             ) : null}

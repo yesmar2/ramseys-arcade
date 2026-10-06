@@ -2,21 +2,26 @@ import { PALETTE, type Swatch } from '../../data/games'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
 import { drawFish, type FishPaint } from './fishArt'
 import {
-  GROW_MARKS,
-  SHARK_RADIUS,
+  FLOOR,
+  MAX_SIZE,
+  OCEAN_W,
+  SHARK_R,
   barFill,
   chainOf,
+  edible,
   fishRadius,
   playerRadius,
+  viewHalf,
   type GameState,
 } from './game'
 import { SPECIES, playerArt, type FishArt } from './species'
 
 /*
- * The food chain's water, drawn back to front: the water (the site's playfield, deepening toward the
- * bottom), light from above and drifting specks, the shark's warning, the fish that are smaller than you,
- * you, the ones that can eat you (so a threat is never hidden behind a meal), the shark, bubbles and the
- * words that float up, and last the bar along the bottom with your lives.
+ * The open ocean, drawn back to front through the camera: the sky and its sun, the water deepening down
+ * to the sea floor with its sand, kelp and rocks, light from above and drifting specks, the rock walls at
+ * the ocean's ends, the surface's waves, gulls, the fish smaller than you, you, the ones that can eat you
+ * (so a threat is never hidden behind a meal), the shark and its warning, splashes and bubbles, the words
+ * that float up, and last the bar along the bottom with your lives.
  */
 
 const FONT = '"Outfit", system-ui, sans-serif'
@@ -58,33 +63,59 @@ function hslToRgb(h: number, s: number, l: number): RGB {
   return [f(0) * 255, f(8) * 255, f(4) * 255]
 }
 
-/** The water: the site's playfield at the top, deepening toward the bottom, in either theme. */
-type Water = { top: RGB; bottom: RGB; dark: boolean; ink: string; key: string }
-let water: Water | null = null
+/** The colours of the place, from the site's playfield, in either theme. */
+type Palette = {
+  skyTop: RGB
+  skyLow: RGB
+  shallow: RGB
+  deep: RGB
+  sand: RGB
+  rock: RGB
+  kelp: RGB
+  dark: boolean
+  /** Ink for words over the shallows and over the deep. */
+  inkShallow: string
+  inkDeep: string
+  key: string
+}
+let palette: Palette | null = null
 const paints = new Map<string, FishPaint>()
 
-function waterNow(): Water {
+function paletteNow(): Palette {
   const field = playfieldColor()
   const dark = isDarkTheme()
   const key = `${field}|${dark}`
-  if (water?.key === key) return water
+  if (palette?.key === key) return palette
   const base = toRgb(field)
-  const top = mix(base, toRgb(PALETTE.sky), dark ? 0.22 : 0.3)
-  const bottom = mix(base, dark ? [6, 18, 30] : [38, 96, 140], dark ? 0.55 : 0.55)
-  water = { top, bottom, dark, ink: lum(top) < 0.5 ? '#eef4f7' : '#16242f', key }
+  const sky = toRgb(PALETTE.sky)
+  const shallow = mix(base, sky, dark ? 0.24 : 0.32)
+  const deep = dark ? mix(base, [4, 12, 22], 0.7) : mix(base, [22, 62, 98], 0.82)
+  palette = {
+    skyTop: dark ? mix(base, [10, 20, 40], 0.4) : mix(base, sky, 0.45),
+    skyLow: dark ? mix(base, sky, 0.12) : mix(base, [255, 255, 255], 0.55),
+    shallow,
+    deep,
+    sand: dark ? [70, 62, 48] : [226, 206, 158],
+    rock: dark ? [34, 44, 56] : [96, 112, 124],
+    kelp: dark ? [40, 110, 80] : [62, 150, 104],
+    dark,
+    inkShallow: lum(shallow) < 0.5 ? '#eef4f7' : '#16242f',
+    inkDeep: '#eef4f7',
+    key,
+  }
   paints.clear()
-  return water
+  return palette
 }
 
 /** A fish's colours: its palette colour as a soft fill over the water, the same colour for its outline. */
-function paintFor(art: FishArt, w: Water, fill = 0.42): FishPaint {
+function paintFor(art: FishArt, pal: Palette, fill = 0.42): FishPaint {
   const key = `${art.swatch}|${art.tailSwatch ?? ''}|${art.pattern}|${fill}`
   const cached = paints.get(key)
   if (cached) return cached
-  const under = mix(w.top, w.bottom, 0.4)
+  const under = mix(pal.shallow, pal.deep, 0.35)
   const hue = hueOf(toRgb(PALETTE[art.swatch as Swatch]))
   const tailHue = art.tailSwatch ? hueOf(toRgb(PALETTE[art.tailSwatch])) : hue
-  const lineL = w.dark ? 66 : 40
+  const lineL = pal.dark ? 66 : 40
   const soft = (h: number, amount: number) => css(mix(under, hslToRgb(h, 0.66, 0.58), amount))
   const line = `hsla(${hue}, 64%, ${lineL}%, 0.95)`
   const fin = soft(hue, fill * 0.62)
@@ -95,7 +126,7 @@ function paintFor(art: FishArt, w: Water, fill = 0.42): FishPaint {
     tail: art.tailSwatch ? soft(tailHue, Math.min(0.9, fill * 2)) : fin,
     line,
     tailLine: `hsla(${tailHue}, 64%, ${lineL}%, 0.95)`,
-    pattern: lightMarks ? `hsla(${hue}, 60%, ${w.dark ? 88 : 97}%, 0.95)` : line,
+    pattern: lightMarks ? `hsla(${hue}, 60%, ${pal.dark ? 88 : 97}%, 0.95)` : line,
     eye: '#ffffff',
     pupil: '#16202a',
     mouth: '#16202a',
@@ -108,77 +139,262 @@ function paintFor(art: FishArt, w: Water, fill = 0.42): FishPaint {
 
 const rollScale = (roll: number) => (Math.sign(roll) || 1) * Math.max(0.18, Math.abs(roll))
 
-type View = { ppu: number; ox: number; oy: number; w: number; h: number }
-const X = (v: View, x: number) => v.ox + x * v.ppu
-const Y = (v: View, y: number) => v.oy + y * v.ppu
+/** The camera, in pixels. */
+type View = { s: GameState; w: number; h: number; ppu: number; x0: number; y0: number }
+const X = (v: View, x: number) => (x - v.x0) * v.ppu
+const Y = (v: View, y: number) => (y - v.y0) * v.ppu
 
-function drawWater(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Water) {
-  const g = ctx.createLinearGradient(0, 0, 0, v.h)
-  g.addColorStop(0, css(w.top))
-  g.addColorStop(1, css(w.bottom))
+/** A number from a position, the same every visit, for where kelp and rocks go. */
+const hash = (n: number) => {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+
+function drawSky(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const sy = Y(v, 0)
+  if (sy <= 0) return
+  const g = ctx.createLinearGradient(0, Y(v, -260), 0, sy)
+  g.addColorStop(0, css(pal.skyTop))
+  g.addColorStop(1, css(pal.skyLow))
   ctx.fillStyle = g
-  ctx.fillRect(0, 0, v.w, v.h)
-  // Light from above, slowly drifting.
-  ctx.save()
-  ctx.globalAlpha = w.dark ? 0.05 : 0.12
-  ctx.fillStyle = '#ffffff'
-  const span = v.w + v.h * 0.6
-  for (let i = 0; i < 5; i++) {
-    const x = ((i * span) / 5 + s.time * 14) % span - v.h * 0.3
+  ctx.fillRect(0, 0, v.w, sy)
+  // The sun, far off, a little parallax.
+  const sunX = v.w * 0.78 - (v.s.camX / OCEAN_W - 0.5) * v.w * 0.2
+  const sunY = Y(v, -170)
+  ctx.fillStyle = pal.dark ? 'rgba(240, 244, 255, 0.85)' : 'rgba(255, 236, 170, 0.95)'
+  ctx.beginPath()
+  ctx.arc(sunX, sunY, 22 * Math.max(0.8, v.ppu), 0, Math.PI * 2)
+  ctx.fill()
+  // A few soft clouds, drifting.
+  ctx.fillStyle = pal.dark ? 'rgba(200, 215, 235, 0.12)' : 'rgba(255, 255, 255, 0.8)'
+  for (let i = 0; i < 6; i++) {
+    const wx = ((i * 431 + v.s.time * 6) % (OCEAN_W + 400)) - 200
+    const wy = -200 + hash(i) * 70
+    const cx = X(v, wx)
+    const cy = Y(v, wy)
+    if (cx < -120 || cx > v.w + 120) continue
+    const r = (16 + hash(i + 9) * 10) * v.ppu
     ctx.beginPath()
-    ctx.moveTo(x, 0)
-    ctx.lineTo(x + v.w * 0.06, 0)
-    ctx.lineTo(x + v.w * 0.06 + v.h * 0.3, v.h)
-    ctx.lineTo(x + v.h * 0.3 - v.w * 0.02, v.h)
+    ctx.ellipse(cx, cy, r * 2.2, r, 0, 0, Math.PI * 2)
+    ctx.ellipse(cx + r * 1.3, cy - r * 0.4, r * 1.4, r * 0.9, 0, 0, Math.PI * 2)
     ctx.fill()
   }
-  ctx.restore()
-  // Specks drifting up, the same ones every visit.
-  ctx.fillStyle = w.dark ? 'rgba(200, 230, 255, 0.22)' : 'rgba(255, 255, 255, 0.55)'
-  for (let i = 0; i < 46; i++) {
-    const sx = ((i * 97.13) % 1) * v.w + Math.sin(s.time * 0.4 + i) * 6
-    const rise = 8 + ((i * 37) % 14)
-    const sy = (((i * 61.7) % 1) * v.h - s.time * rise) % v.h
+}
+
+function drawWater(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const top = Math.max(0, Y(v, 0))
+  if (top >= v.h) return
+  const g = ctx.createLinearGradient(0, Y(v, 0), 0, Y(v, FLOOR))
+  g.addColorStop(0, css(pal.shallow))
+  g.addColorStop(0.35, css(mix(pal.shallow, pal.deep, 0.45)))
+  g.addColorStop(1, css(pal.deep))
+  ctx.fillStyle = g
+  ctx.fillRect(0, top, v.w, v.h - top)
+  // Light from above, slowly drifting, fading with depth.
+  const rayBottom = Y(v, 520)
+  if (rayBottom > top) {
+    const fade = ctx.createLinearGradient(0, Y(v, 0), 0, rayBottom)
+    fade.addColorStop(0, pal.dark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.16)')
+    fade.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = fade
+    for (let i = 0; i < 12; i++) {
+      const wx = i * 170 + Math.sin(v.s.time * 0.2 + i) * 20
+      const x = X(v, wx)
+      const w = 40 * v.ppu
+      if (x < -v.h || x > v.w + w) continue
+      ctx.beginPath()
+      ctx.moveTo(x, Y(v, 0))
+      ctx.lineTo(x + w, Y(v, 0))
+      ctx.lineTo(x + w + 160 * v.ppu, rayBottom)
+      ctx.lineTo(x + 110 * v.ppu, rayBottom)
+      ctx.fill()
+    }
+  }
+  // Specks drifting up, tied to the water so they slide by as you swim.
+  ctx.fillStyle = pal.dark ? 'rgba(200, 230, 255, 0.22)' : 'rgba(255, 255, 255, 0.5)'
+  const cell = 70
+  const half = viewHalf(v.s)
+  const cx0 = Math.floor((v.s.camX - half.w) / cell)
+  const cx1 = Math.ceil((v.s.camX + half.w) / cell)
+  const cy0 = Math.max(0, Math.floor((v.s.camY - half.h) / cell))
+  const cy1 = Math.ceil((v.s.camY + half.h) / cell)
+  for (let ix = cx0; ix <= cx1; ix++) {
+    for (let iy = cy0; iy <= cy1; iy++) {
+      const h = hash(ix * 91 + iy * 7)
+      if (h > 0.5) continue
+      const wx = ix * cell + h * cell * 2
+      const wy = iy * cell + ((hash(ix + iy * 13) * cell - v.s.time * (6 + h * 10)) % cell)
+      if (wy < 4) continue
+      ctx.beginPath()
+      ctx.arc(X(v, wx), Y(v, wy), Math.max(0.7, (0.6 + h * 1.2) * v.ppu), 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+}
+
+/** The sea floor: sand, with kelp swaying and rocks, the same along the ocean every visit. */
+function drawFloor(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const fy = Y(v, FLOOR)
+  if (fy > v.h + 10) return
+  const half = viewHalf(v.s)
+  const from = Math.floor((v.s.camX - half.w - 80) / 40)
+  const to = Math.ceil((v.s.camX + half.w + 80) / 40)
+  // Kelp behind the sand line.
+  ctx.lineCap = 'round'
+  for (let i = from; i <= to; i++) {
+    if (hash(i) > 0.28) continue
+    const bx = X(v, i * 40 + hash(i + 3) * 30)
+    const tall = (90 + hash(i + 5) * 170) * v.ppu
+    ctx.strokeStyle = css(pal.kelp, 0.8)
+    ctx.lineWidth = Math.max(2, 5 * v.ppu)
     ctx.beginPath()
-    ctx.arc(sx, sy < 0 ? sy + v.h : sy, 0.8 + ((i * 13) % 5) * 0.3, 0, Math.PI * 2)
+    ctx.moveTo(bx, fy)
+    const sway = Math.sin(v.s.time * 0.8 + i) * 14 * v.ppu
+    ctx.bezierCurveTo(bx + sway, fy - tall * 0.35, bx - sway, fy - tall * 0.7, bx + sway * 0.6, fy - tall)
+    ctx.stroke()
+  }
+  // The sand, gently uneven.
+  ctx.fillStyle = css(pal.sand)
+  ctx.beginPath()
+  ctx.moveTo(0, v.h)
+  for (let px = 0; px <= v.w + 20; px += 20) {
+    const wx = v.x0 + px / v.ppu
+    ctx.lineTo(px, fy - (Math.sin(wx * 0.013) * 6 + Math.sin(wx * 0.031) * 3) * v.ppu)
+  }
+  ctx.lineTo(v.w, v.h)
+  ctx.closePath()
+  ctx.fill()
+  // Rocks.
+  for (let i = from; i <= to; i++) {
+    if (hash(i + 17) > 0.12) continue
+    const rx = X(v, i * 40)
+    const r = (18 + hash(i + 21) * 26) * v.ppu
+    ctx.fillStyle = css(pal.rock)
+    ctx.beginPath()
+    ctx.ellipse(rx, fy, r * 1.4, r, 0, Math.PI, Math.PI * 2)
     ctx.fill()
+  }
+}
+
+/** Rock walls past the ocean's ends, so you can see where it stops. */
+function drawWalls(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  ctx.fillStyle = css(pal.rock)
+  const lx = X(v, 0)
+  if (lx > 0) ctx.fillRect(0, Math.max(0, Y(v, -20)), lx, v.h)
+  const rx = X(v, OCEAN_W)
+  if (rx < v.w) ctx.fillRect(rx, Math.max(0, Y(v, -20)), v.w - rx, v.h)
+}
+
+/** The surface: a band of waves, light on top. */
+function drawSurface(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const sy = Y(v, 0)
+  if (sy < -20 || sy > v.h + 20) return
+  const t = v.s.time
+  const wave = (px: number) => {
+    const wx = v.x0 + px / v.ppu
+    return sy + (Math.sin(wx * 0.04 + t * 2.2) * 2.2 + Math.sin(wx * 0.017 - t * 1.3) * 2.8) * v.ppu
+  }
+  ctx.fillStyle = css(mix(pal.shallow, [255, 255, 255], 0.25), 0.9)
+  ctx.beginPath()
+  ctx.moveTo(0, sy + 8 * v.ppu)
+  for (let px = 0; px <= v.w + 12; px += 12) ctx.lineTo(px, wave(px))
+  ctx.lineTo(v.w, sy + 8 * v.ppu)
+  ctx.closePath()
+  ctx.fill()
+  ctx.strokeStyle = pal.dark ? 'rgba(220, 240, 255, 0.55)' : 'rgba(255, 255, 255, 0.95)'
+  ctx.lineWidth = Math.max(1.5, 2.2 * v.ppu)
+  ctx.beginPath()
+  for (let px = 0; px <= v.w + 12; px += 12) (px === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, px, wave(px))
+  ctx.stroke()
+}
+
+function drawGulls(ctx: CanvasRenderingContext2D, v: View) {
+  for (const g of v.s.gulls) {
+    const x = X(v, g.x)
+    const y = Y(v, g.y)
+    if (x < -40 || x > v.w + 40 || y < -40 || y > v.h + 40) continue
+    const k = Math.max(0.8, v.ppu)
+    const flap = Math.sin(g.flap) * 7 * k
+    const dir = g.vx >= 0 ? 1 : -1
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.scale(dir, 1)
+    ctx.strokeStyle = '#3b4a56'
+    ctx.lineWidth = 1.6 * k
+    ctx.lineJoin = 'round'
+    ctx.fillStyle = '#c9d2d9'
+    // Wings.
+    ctx.beginPath()
+    ctx.moveTo(-2 * k, 0)
+    ctx.quadraticCurveTo(-10 * k, -8 * k - flap, -20 * k, -2 * k - flap)
+    ctx.quadraticCurveTo(-10 * k, -1 * k, -2 * k, 3 * k)
+    ctx.moveTo(2 * k, 0)
+    ctx.quadraticCurveTo(8 * k, -8 * k - flap, 18 * k, -2 * k - flap)
+    ctx.quadraticCurveTo(9 * k, -1 * k, 2 * k, 3 * k)
+    ctx.fill()
+    ctx.stroke()
+    // Body, head, beak.
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.ellipse(0, 2 * k, 8 * k, 4 * k, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(8 * k, -0.5 * k, 3.4 * k, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = PALETTE.orange
+    ctx.beginPath()
+    ctx.moveTo(11 * k, -1 * k)
+    ctx.lineTo(15.5 * k, 0.4 * k)
+    ctx.lineTo(11 * k, 1.2 * k)
+    ctx.fill()
+    ctx.fillStyle = '#16202a'
+    ctx.beginPath()
+    ctx.arc(9 * k, -1.4 * k, 0.9 * k, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
   }
 }
 
 function drawOne(
   ctx: CanvasRenderingContext2D,
   v: View,
-  s: GameState,
+  pal: Palette,
   art: FishArt,
   at: { x: number; y: number; angle: number; roll: number; swim: number; mouth: number; seed: number },
   r: number,
-  w: Water,
   o: { alarm?: number; amp?: number; alpha?: number; fill?: number } = {},
 ) {
+  const x = X(v, at.x)
+  const y = Y(v, at.y)
+  const reach = r * art.length * v.ppu
+  if (x < -reach * 1.5 || x > v.w + reach * 1.5 || y < -reach || y > v.h + reach) return
   ctx.save()
   ctx.globalAlpha = o.alpha ?? 1
-  ctx.translate(X(v, at.x), Y(v, at.y))
+  ctx.translate(x, y)
   ctx.rotate(at.angle)
   ctx.scale(1, rollScale(at.roll))
   drawFish(
     ctx,
     art,
-    { length: r * art.length * v.ppu, swim: at.swim, amp: o.amp ?? 0.9, mouth: at.mouth, lookX: 1, lookY: 0.05, alarm: o.alarm ?? 0, puff: 0, time: s.time },
+    { length: reach, swim: at.swim, amp: o.amp ?? 0.9, mouth: at.mouth, lookX: 1, lookY: 0.05, alarm: o.alarm ?? 0, puff: 0, time: v.s.time },
     at.seed,
     null,
-    paintFor(art, w, o.fill),
+    paintFor(art, pal, o.fill),
   )
   ctx.restore()
 }
 
-function drawFishes(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Water, bigger: boolean) {
+function drawFishes(ctx: CanvasRenderingContext2D, v: View, pal: Palette, threats: boolean) {
+  const s = v.s
   const size = s.player.size
   const live = s.phase !== 'menu'
   for (const f of s.fishes) {
-    const threat = live && f.tier > size
-    if (threat !== bigger) continue
+    const threat = live && !edible(f.tier, size)
+    if (threat !== threats) continue
     // Anything that can eat you has a red eye, redder as it comes for you.
-    drawOne(ctx, v, s, SPECIES[f.species].art, f, fishRadius(f), w, {
+    drawOne(ctx, v, pal, SPECIES[f.species].art, f, fishRadius(f), {
       alarm: threat ? Math.max(0.45, f.hunt) : 0,
       amp: f.hunt > 0.5 ? 1.3 : 0.85,
       alpha: f.fade,
@@ -186,24 +402,23 @@ function drawFishes(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Wat
   }
 }
 
-function drawPlayer(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Water) {
+function drawPlayer(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const s = v.s
   const p = s.player
-  if (s.phase === 'menu' || s.phase === 'gameover') return
-  if (s.phase === 'dying') return
+  if (s.phase !== 'playing') return
   // Blinks while it can't be hurt.
   if (p.invuln > 0 && Math.floor(p.invuln * 10) % 2 === 1) return
-  const r = playerRadius(s)
-  drawOne(ctx, v, s, playerArt(p.size * 2), { ...p, seed: 7 }, r, w, { amp: 1.1, fill: 0.55 })
+  drawOne(ctx, v, pal, playerArt(p.size), { ...p, seed: 7 }, playerRadius(s), { amp: p.air ? 0.4 : 1.1, fill: 0.55 })
 }
 
-function drawShark(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Water) {
-  const k = s.shark
+function drawShark(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const k = v.s.shark
   if (!k) return
   if (k.stage === 'warn') {
-    // A "!" at the edge it will come from, at its height, blinking.
-    const blink = 0.55 + 0.45 * Math.sin(s.time * 18)
-    const ex = k.dir > 0 ? X(v, 0) + 22 : X(v, s.W) - 22
-    const ey = Y(v, k.y)
+    // A "!" at the edge it will come from, at its depth, blinking.
+    const blink = 0.55 + 0.45 * Math.sin(v.s.time * 18)
+    const ex = k.dir > 0 ? 24 : v.w - 24
+    const ey = Math.max(30, Math.min(v.h - 70, Y(v, k.y)))
     ctx.save()
     ctx.globalAlpha = blink
     ctx.fillStyle = PALETTE.red
@@ -215,7 +430,6 @@ function drawShark(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Wate
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText('!', ex, ey + 1)
-    // The way it will go.
     ctx.strokeStyle = PALETTE.red
     ctx.lineWidth = 3
     ctx.setLineDash([8, 8])
@@ -227,17 +441,18 @@ function drawShark(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Wate
     return
   }
   const art = SPECIES.shark.art
-  drawOne(ctx, v, s, art, { x: k.x, y: k.y, angle: k.dir > 0 ? 0 : Math.PI, roll: k.dir, swim: k.swim, mouth: 1, seed: 3 }, SHARK_RADIUS / (art.length / 2.2), w, {
+  drawOne(ctx, v, pal, art, { x: k.x, y: k.y, angle: k.dir > 0 ? 0 : Math.PI, roll: k.dir, swim: k.swim, mouth: 1, seed: 3 }, (SHARK_R * 2.2) / art.length, {
     alarm: 1,
     amp: 1.4,
     fill: 0.5,
   })
 }
 
-function drawEffects(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Water) {
+function drawEffects(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const s = v.s
   for (const q of s.particles) {
     ctx.globalAlpha = 1 - q.t / q.life
-    ctx.fillStyle = w.dark ? q.color : 'rgba(255, 255, 255, 0.95)'
+    ctx.fillStyle = q.drop || !pal.dark ? 'rgba(255, 255, 255, 0.95)' : q.color
     ctx.beginPath()
     ctx.arc(X(v, q.x), Y(v, q.y), q.r * Math.max(0.8, v.ppu), 0, Math.PI * 2)
     ctx.fill()
@@ -247,15 +462,16 @@ function drawEffects(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Wa
   ctx.textBaseline = 'middle'
   for (const f of s.floaters) {
     const big = f.tone === 'grow'
-    const life = big ? 1.3 : 0.9
+    const life = big ? 1.6 : 0.9
     ctx.globalAlpha = Math.min(1, (1 - f.t / life) * 1.6)
-    const size = Math.round((big ? 26 : 15) * Math.max(0.85, Math.min(1.3, v.ppu)))
+    const size = Math.round((big ? 22 : 15) * Math.max(0.85, Math.min(1.3, v.ppu)))
     ctx.font = `800 ${size}px ${FONT}`
-    const colour = f.tone === 'hot' ? PALETTE.amber : f.tone === 'grow' ? PALETTE.green : f.tone === 'bad' ? PALETTE.red : w.ink
+    const deep = f.y > 260
+    const colour = f.tone === 'hot' ? PALETTE.amber : f.tone === 'grow' ? PALETTE.green : f.tone === 'bad' ? PALETTE.red : deep ? pal.inkDeep : pal.inkShallow
     const x = X(v, f.x)
     const y = Y(v, f.y) - f.t * 36
     ctx.lineWidth = 4
-    ctx.strokeStyle = w.dark ? 'rgba(8, 18, 28, 0.85)' : 'rgba(255, 255, 255, 0.9)'
+    ctx.strokeStyle = deep || pal.dark ? 'rgba(8, 18, 28, 0.85)' : 'rgba(255, 255, 255, 0.9)'
     ctx.strokeText(f.text, x, y)
     ctx.fillStyle = colour
     ctx.fillText(f.text, x, y)
@@ -263,74 +479,47 @@ function drawEffects(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Wa
   ctx.globalAlpha = 1
 }
 
-/** Along the bottom: your lives, the bar with its two grow marks, and the chain. */
-function drawBar(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Water) {
+/** Along the bottom: your lives, the bar to your next size, and the chain. */
+function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+  const s = v.s
   if (s.phase === 'menu' || s.phase === 'gameover') return
-  const bw = Math.min(260, v.w * 0.5)
+  const bw = Math.min(240, v.w * 0.42)
   const bh = 14
   const bx = (v.w - bw) / 2
   const by = v.h - 30 - bh
   ctx.save()
-  ctx.fillStyle = w.dark ? 'rgba(8, 18, 28, 0.55)' : 'rgba(255, 255, 255, 0.6)'
+  ctx.fillStyle = pal.dark ? 'rgba(8, 18, 28, 0.6)' : 'rgba(8, 18, 28, 0.45)'
   ctx.beginPath()
-  ctx.roundRect(bx - 8, by - 8, bw + 16, bh + 16, 15)
+  ctx.roundRect(bx - 112, by - 8, bw + 166, bh + 16, 15)
   ctx.fill()
-  ctx.fillStyle = w.dark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(22, 36, 47, 0.12)'
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.16)'
   ctx.beginPath()
   ctx.roundRect(bx, by, bw, bh, bh / 2)
   ctx.fill()
   const fill = barFill(s)
   if (fill > 0) {
-    ctx.fillStyle = PALETTE.green
+    ctx.fillStyle = s.player.size >= MAX_SIZE ? PALETTE.amber : PALETTE.green
     ctx.beginPath()
     ctx.roundRect(bx, by, Math.max(bh, bw * fill), bh, bh / 2)
     ctx.fill()
   }
-  ctx.fillStyle = w.ink
-  for (const m of GROW_MARKS) ctx.fillRect(bx + bw * m - 1, by - 3, 2, bh + 6)
   // Lives: little fish to the left of the bar.
   const art = playerArt(0)
   for (let i = 0; i < 3; i++) {
-    const lx = bx - 26 - (2 - i) * 27
-    if (lx < 6) continue
+    const lx = bx - 22 - (2 - i) * 31
     ctx.save()
     ctx.globalAlpha = i < s.lives ? 1 : 0.25
     ctx.translate(lx, by + bh / 2)
-    drawFish(ctx, art, { length: 18, swim: s.time * 4 + i, amp: 0.6, mouth: 0, lookX: 1, lookY: 0, alarm: 0, puff: 0, time: s.time }, i, null, paintFor(art, w, 0.55))
+    drawFish(ctx, art, { length: 18, swim: s.time * 4 + i, amp: 0.6, mouth: 0, lookX: 1, lookY: 0, alarm: 0, puff: 0, time: s.time }, i, null, paintFor(art, pal, 0.55))
     ctx.restore()
   }
   // The chain, to the right.
   const mult = chainOf(s)
-  if (s.chain > 1) {
-    ctx.font = `800 18px ${FONT}`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = mult > 2 ? PALETTE.amber : w.ink
-    ctx.fillText(`×${mult}`, bx + bw + 14, by + bh / 2 + 1)
-  }
-  ctx.restore()
-}
-
-function drawBanner(ctx: CanvasRenderingContext2D, v: View, s: GameState, w: Water) {
-  if (s.phase !== 'clear') return
-  const a = Math.min(1, s.phaseTime * 4)
-  ctx.save()
-  ctx.globalAlpha = a
-  ctx.textAlign = 'center'
+  ctx.font = `800 16px ${FONT}`
+  ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  ctx.font = `800 ${Math.round(34 * Math.max(0.8, Math.min(1.3, v.ppu)))}px ${FONT}`
-  ctx.lineWidth = 6
-  ctx.strokeStyle = w.dark ? 'rgba(8, 18, 28, 0.85)' : 'rgba(255, 255, 255, 0.92)'
-  const text = `Level ${s.level} clear!`
-  ctx.strokeText(text, v.w / 2, v.h * 0.4)
-  ctx.fillStyle = PALETTE.amber
-  ctx.fillText(text, v.w / 2, v.h * 0.4)
-  ctx.font = `700 ${Math.round(16 * Math.max(0.85, Math.min(1.2, v.ppu)))}px ${FONT}`
-  ctx.lineWidth = 4
-  const sub = 'Next: faster water'
-  ctx.strokeText(sub, v.w / 2, v.h * 0.4 + 34)
-  ctx.fillStyle = w.ink
-  ctx.fillText(sub, v.w / 2, v.h * 0.4 + 34)
+  ctx.fillStyle = mult > 2 ? PALETTE.amber : '#eef4f7'
+  ctx.fillText(s.chain > 1 ? `×${mult}` : '', bx + bw + 12, by + bh / 2 + 1)
   ctx.restore()
 }
 
@@ -344,14 +533,20 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
     canvas.height = ch
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  const w = waterNow()
-  const v: View = { ppu: s.ppu, ox: s.offX, oy: s.offY, w: width, h: height }
-  drawWater(ctx, v, s, w)
-  drawFishes(ctx, v, s, w, false)
-  drawPlayer(ctx, v, s, w)
-  drawFishes(ctx, v, s, w, true)
-  drawShark(ctx, v, s, w)
-  drawEffects(ctx, v, s, w)
-  drawBar(ctx, v, s, w)
-  drawBanner(ctx, v, s, w)
+  const pal = paletteNow()
+  const v: View = { s, w: width, h: height, ppu: s.ppu, x0: s.camX - width / 2 / s.ppu, y0: s.camY - height / 2 / s.ppu }
+  ctx.fillStyle = css(pal.deep)
+  ctx.fillRect(0, 0, width, height)
+  drawSky(ctx, v, pal)
+  drawWater(ctx, v, pal)
+  drawFloor(ctx, v, pal)
+  drawWalls(ctx, v, pal)
+  drawFishes(ctx, v, pal, false)
+  drawGulls(ctx, v)
+  drawPlayer(ctx, v, pal)
+  drawFishes(ctx, v, pal, true)
+  drawShark(ctx, v, pal)
+  drawSurface(ctx, v, pal)
+  drawEffects(ctx, v, pal)
+  drawBar(ctx, v, pal)
 }

@@ -255,15 +255,19 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     tip: 'Water, lava, or flying off the course costs a stroke.',
   },
   frenzy: {
-    goal: 'Eat smaller fish to grow and clear the level. Don’t get eaten.',
-    controls: [{ does: 'Swim', touch: 'Drag anywhere', keys: 'Mouse, arrows or WASD' }],
+    goal: 'Eat smaller fish to grow, size by size, to the top of the food chain. Don’t get eaten.',
+    controls: [
+      { does: 'Swim', touch: 'Drag anywhere', keys: 'Mouse, arrows or WASD' },
+      { does: 'Leap out', touch: 'Swim up hard through the surface', keys: 'Swim up hard through the surface' },
+    ],
     scores: [
-      { what: 'A fish eaten', pts: '10 · 20 · 40', sub: 'by its size' },
+      { what: 'A fish eaten', pts: '5 to 80', sub: 'by its size' },
       { what: 'Bites in quick succession', pts: 'up to ×5' },
-      { what: 'A level cleared', pts: '250 × the level' },
+      { what: 'Growing a size', pts: '50 × the size' },
+      { what: 'A flying fish or gull caught in a leap', pts: '25 · 50' },
     ],
     ends: 'When the last of your three lives is eaten.',
-    tip: 'Red eyes can eat you. A red ! at the edge means a shark is coming across at that height: get out of its way.',
+    tip: 'Red eyes can eat you, and nothing can follow you into the air. A red ! at the edge means a shark is coming across at that depth.',
   },
   fireflies: {
     goal: 'Sing their tunes back. Light five lanterns a night.',
