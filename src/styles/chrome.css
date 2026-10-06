@@ -1094,6 +1094,12 @@ html[data-theme='light'] .site-menu__row-lead--hot {
   border-top: 1px solid rgba(var(--ink-rgb), 0.08);
 }
 
+/* On Settings' own sheet (SiteMenu's settings view) they come first, with nothing over them to rule off. */
+.site-menu__settings--sheet {
+  padding-top: 0.3rem;
+  border-top: 0;
+}
+
 .site-menu__setting {
   display: flex;
   align-items: center;

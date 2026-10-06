@@ -714,37 +714,6 @@ export function BugHuntStrip() {
   )
 }
 
-/** The menu's row for the hunt: who's loose, or that today's is caught. */
-export function BugHuntMenuRow({ onOpen }: { onOpen: () => void }) {
-  const { pick, stats } = useHunt()
-  return (
-    <button
-      type="button"
-      className="site-menu__row"
-      onClick={() => {
-        onOpen()
-        openBugHunt()
-      }}
-    >
-      {/* A glass, not the bug: on a day it hides in the menu, there's only the one to find. */}
-      <span className="site-menu__row-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-          <circle cx="10.5" cy="10.5" r="6" />
-          <path d="M15 15l5 5" />
-        </svg>
-      </span>
-      <span className="site-menu__row-text">
-        <span className="site-menu__row-label">Bug hunt</span>
-        <span className="site-menu__row-sub">
-          {stats.foundToday
-            ? `Caught ${pick.bug.name} today · ${stats.set.have.size} of ${SET_SIZE} for ${stats.set.month}`
-            : `${capitalName(pick.bug)} is loose somewhere on the site`}
-        </span>
-      </span>
-    </button>
-  )
-}
-
 /* ------------------------------------------------------------ panels --- */
 
 function HuntPanel({ onClose }: { onClose: () => void }) {

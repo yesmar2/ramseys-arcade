@@ -14,7 +14,6 @@ import {
   prizesHref,
   rankHowHref,
   seasonHref,
-  statsHref,
   termsHref,
 } from '../hooks/useHashRoute'
 import { useIsAdmin } from '../lib/admin'
@@ -39,7 +38,7 @@ import {
   MoonIcon,
   PencilIcon,
   SignOutIcon,
-  StatsIcon,
+  SlidersIcon,
   SunIcon,
 } from './chromeIcons'
 import type { AvatarWear } from './AvatarStudio'
@@ -55,7 +54,6 @@ import { fetchPlus, freeWeekFor, heldPlus, type PlusInfo } from '../lib/plus'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
-import { BugHuntMenuRow } from './BugHunt'
 
 /** The themes, in the order the picker shows them. */
 const THEME_CHOICES: Theme[] = ['light', 'dark']
@@ -71,9 +69,15 @@ export type MenuStanding = {
 /**
  * Your menu: a panel from the right on a wide screen, a sheet from the bottom
  * on a phone (where the tab bar's You opens it). You at the top as a small
- * player card; then your inbox, stats, friends and groups; then the theme and
- * the sounds as controls you can see all of; sign out; the small print. Signed
- * out, the top says what an account is for and holds the way in.
+ * player card; then the places that are yours (your inbox, the season, the
+ * prize counter, Plus, friends, groups) and Settings, which opens in place as
+ * the inbox does: the theme, the sounds, the music, what tells you, signing
+ * out and the small print. Signed out, the top says what an account is for and
+ * holds the way in.
+ *
+ * It was "really full" (Ramsey, 2026-10-06), and he picked the shorter one ("B
+ * works"): your stats are on your player card, the bug hunt on the home page,
+ * and About, Privacy and Terms in the page's footer, so the menu fits a phone.
  */
 export function SiteMenu({
   id,
@@ -123,9 +127,20 @@ export function SiteMenu({
   onSignOut: () => void
   signingOut: boolean
 }) {
-  // The inbox opens in place of the menu, as a sheet of its own with a way back.
-  const [view, setView] = useState<'menu' | 'inbox'>('menu')
+  // The inbox and Settings open in place of the menu, each a sheet of its own with a way back.
+  const [view, setView] = useState<'menu' | 'inbox' | 'settings'>('menu')
   const isFresh = useInboxLook(notes, view === 'inbox')
+  // The pressed row goes as the sheet changes, so focus moves with it: to the way back, or back to the close.
+  const [turned, setTurned] = useState(false)
+  useEffect(() => {
+    if (!turned) return
+    const panel = document.getElementById(id)
+    panel?.querySelector<HTMLElement>(view === 'menu' ? '.site-menu__close' : '.site-menu__back')?.focus()
+  }, [view, turned, id])
+  const turnTo = (next: 'menu' | 'inbox' | 'settings') => {
+    setTurned(true)
+    setView(next)
+  }
   const isAdmin = useIsAdmin()
   const tickets = useTickets()
   const seasonStore = useSeason()
@@ -263,7 +278,7 @@ export function SiteMenu({
         <div id={id} ref={panelRef} className="site-menu__panel" role="dialog" aria-modal="true" aria-labelledby={titleId}>
           <span className="site-menu__grab" aria-hidden="true" />
           <div className="site-menu__top site-menu__top--inbox">
-            <button type="button" className="site-menu__back" aria-label="Back to your menu" onClick={() => setView('menu')}>
+            <button type="button" className="site-menu__back" aria-label="Back to your menu" onClick={() => turnTo('menu')}>
               <ChevronRightIcon />
             </button>
             <h2 id={titleId} className="site-menu__inbox-title">
@@ -279,6 +294,82 @@ export function SiteMenu({
             <div className="inbox inbox--sheet">
               <Inbox notes={notes} isFresh={isFresh} onNavigate={onClose} onWear={onWear} />
             </div>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )
+  }
+
+  // Settings, behind their own row: the theme, the sounds and the music, what tells you, signing out, the small print.
+  if (view === 'settings') {
+    return createPortal(
+      <div className="site-menu" role="presentation">
+        <button type="button" className="site-menu__scrim" aria-label="Close menu" onClick={onClose} />
+        <div id={id} ref={panelRef} className="site-menu__panel" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+          <span className="site-menu__grab" aria-hidden="true" />
+          <div className="site-menu__top site-menu__top--inbox">
+            <button type="button" className="site-menu__back" aria-label="Back to your menu" onClick={() => turnTo('menu')}>
+              <ChevronRightIcon />
+            </button>
+            <h2 id={titleId} className="site-menu__inbox-title">
+              Settings
+            </h2>
+            <button type="button" className="site-menu__close" aria-label="Close menu" onClick={onClose}>
+              <CloseIcon />
+            </button>
+          </div>
+          <div className="site-menu__body">
+            <section className="site-menu__settings site-menu__settings--sheet" aria-label="Settings">
+              <div className="site-menu__setting">
+                <span className="site-menu__cap">Theme</span>
+                <div className="site-seg site-menu__seg" role="group" aria-label="Theme">
+                  {THEME_CHOICES.map((choice) => (
+                    <button key={choice} type="button" aria-pressed={theme === choice} onClick={() => setTheme(choice)}>
+                      {choice === 'light' ? <SunIcon /> : <MoonIcon />}
+                      {themeLabel(choice)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="site-menu__setting">
+                <span className="site-menu__cap">Sounds</span>
+                <SoundPackSelect variant="chips" className="site-seg site-menu__seg site-menu__sounds" />
+              </div>
+              <div className="site-menu__setting">
+                <span className="site-menu__cap">Music</span>
+                <MusicToggle variant="seg" className="site-menu__seg" />
+              </div>
+              {signedIn ? (
+                <a className="site-menu__setting site-menu__setting-link" href={notificationSettingsHref()} onClick={onClose}>
+                  <span className="site-menu__cap">Notifications</span>
+                  <span className="site-menu__setting-go">
+                    What tells you, and how
+                    <ChevronRightIcon />
+                  </span>
+                </a>
+              ) : null}
+              <DevImpersonateControl variant="drawer" />
+            </section>
+
+            {signedIn ? (
+              <button type="button" className="site-menu__signout" disabled={signingOut} onClick={onSignOut}>
+                <SignOutIcon />
+                Sign out
+              </button>
+            ) : null}
+
+            <nav className="site-menu__foot" aria-label="About">
+              <a href={aboutHref()} onClick={onClose}>
+                About {APP_NAME}
+              </a>
+              <a href={privacyHref()} onClick={onClose}>
+                Privacy
+              </a>
+              <a href={termsHref()} onClick={onClose}>
+                Terms
+              </a>
+            </nav>
           </div>
         </div>
       </div>,
@@ -309,7 +400,7 @@ export function SiteMenu({
           {signedIn ? (
             <ul className="site-menu__rows" aria-label="Yours">
               <li>
-                <button type="button" className="site-menu__row" onClick={() => setView('inbox')}>
+                <button type="button" className="site-menu__row" onClick={() => turnTo('inbox')}>
                   <span className="site-menu__row-mark site-menu__row-mark--bell">
                     <BellIcon />
                     {notes.unread > 0 ? (
@@ -334,7 +425,6 @@ export function SiteMenu({
                   </span>
                 </button>
               </li>
-              {tagged ? row(<StatsIcon />, 'Your stats', 'Streaks and near records', statsHref()) : null}
               {season
                 ? row(
                     <MissionPatch size={22} />,
@@ -362,7 +452,8 @@ export function SiteMenu({
                   <span className="site-menu__row-text">
                     <span className="site-menu__row-label">Plus</span>
                     <span className="site-menu__row-sub">
-                      {isPlus ? (plusInfo?.you?.status === 'trialing' ? 'Your free week' : 'Your membership') : 'Every past daily and every season’s Pass+'}
+                      {/* One line, so the menu fits a phone's screen. */}
+                      {isPlus ? (plusInfo?.you?.status === 'trialing' ? 'Your free week' : 'Your membership') : 'Every past daily, and Pass+'}
                     </span>
                   </span>
                   {!isPlus && freeWeekFor(plusInfo) ? <span className="site-menu__badge site-menu__badge--plus">Free week</span> : null}
@@ -413,9 +504,21 @@ export function SiteMenu({
             </ul>
           )}
 
-          <ul className="site-menu__rows" aria-label="Bug hunt">
+          {/* Settings open in place, as the inbox does. */}
+          <ul className="site-menu__rows" aria-label="Settings">
             <li>
-              <BugHuntMenuRow onOpen={onClose} />
+              <button type="button" className="site-menu__row" onClick={() => turnTo('settings')}>
+                <span className="site-menu__row-mark">
+                  <SlidersIcon />
+                </span>
+                <span className="site-menu__row-text">
+                  <span className="site-menu__row-label">Settings</span>
+                  <span className="site-menu__row-sub">{signedIn ? 'Theme, sounds, music, alerts' : 'Theme, sounds, music'}</span>
+                </span>
+                <span className="site-menu__row-go">
+                  <ChevronRightIcon />
+                </span>
+              </button>
             </li>
           </ul>
 
@@ -426,55 +529,7 @@ export function SiteMenu({
             </section>
           ) : null}
 
-          <section className="site-menu__settings" aria-label="Settings">
-            <div className="site-menu__setting">
-              <span className="site-menu__cap">Theme</span>
-              <div className="site-seg site-menu__seg" role="group" aria-label="Theme">
-                {THEME_CHOICES.map((choice) => (
-                  <button key={choice} type="button" aria-pressed={theme === choice} onClick={() => setTheme(choice)}>
-                    {choice === 'light' ? <SunIcon /> : <MoonIcon />}
-                    {themeLabel(choice)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="site-menu__setting">
-              <span className="site-menu__cap">Sounds</span>
-              <SoundPackSelect variant="chips" className="site-seg site-menu__seg site-menu__sounds" />
-            </div>
-            <div className="site-menu__setting">
-              <span className="site-menu__cap">Music</span>
-              <MusicToggle variant="seg" className="site-menu__seg" />
-            </div>
-            {signedIn ? (
-              <a className="site-menu__setting site-menu__setting-link" href={notificationSettingsHref()} onClick={onClose}>
-                <span className="site-menu__cap">Notifications</span>
-                <span className="site-menu__setting-go">
-                  What tells you, and how
-                  <ChevronRightIcon />
-                </span>
-              </a>
-            ) : null}
-            <DevImpersonateControl variant="drawer" />
-          </section>
-
-          {signedIn ? (
-            <button type="button" className="site-menu__signout" disabled={signingOut} onClick={onSignOut}>
-              <SignOutIcon />
-              Sign out
-            </button>
-          ) : null}
-
-          <nav className="site-menu__foot" aria-label="About">
-            <a href={aboutHref()} onClick={onClose}>
-              About {APP_NAME}
-            </a>
-            <a href={privacyHref()} onClick={onClose}>
-              Privacy
-            </a>
-            <a href={termsHref()} onClick={onClose}>
-              Terms
-            </a>
+          <nav className="site-menu__foot" aria-label="More">
             <button
               type="button"
               className="feedback-link"
