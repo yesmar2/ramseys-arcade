@@ -263,7 +263,7 @@ function CourseTiles({ marble, ghost, chasing, bestMs }: { marble: MarbleDay; gh
         <span>{chasingLabel(chasing)}</span>
         <strong>{formatRun(ghost)}</strong>
       </div>
-      <MedalRow paceMs={paceMsOf(marble.pace)} bestMs={bestMs} format={formatRun} />
+      <MedalRow game="marblerun" paceMs={paceMsOf(marble.pace)} bestMs={bestMs} format={formatRun} />
       <div className="game-pause-meta__row">
         <span>Next course</span>
         <strong>{untilWords(left)}</strong>

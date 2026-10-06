@@ -177,7 +177,7 @@ function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: lapWords,
     carry: null,
     share: lapWords ? `${track.name} ${lapWords}` : null,
-    medal: medalFor(paceMsOf(track.pace), serverLap != null ? msOfScore(serverLap) : lapTime != null ? Math.round(lapTime * 1000) : null),
+    medal: medalFor('hotlap', paceMsOf(track.pace), serverLap != null ? msOfScore(serverLap) : lapTime != null ? Math.round(lapTime * 1000) : null),
   }
 }
 
@@ -247,7 +247,7 @@ function coursePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: runWords,
     carry: null,
     share: runWords ? `${course.name} ${runWords}` : null,
-    medal: medalFor(paceMsOf(course.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+    medal: medalFor('marblerun', paceMsOf(course.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
   }
 }
 
@@ -267,7 +267,7 @@ function cavePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: runWords,
     carry: null,
     share: runWords ? `${cave.name} ${runWords}` : null,
-    medal: medalFor(paceMsOf(cave.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+    medal: medalFor('lander', paceMsOf(cave.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
   }
 }
 

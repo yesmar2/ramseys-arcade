@@ -318,7 +318,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'within 2% of the blue car, beat it, by 3%, by 6%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue car, then every 6% faster' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'The call under the clock names the next corner and counts down to it: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
@@ -367,7 +367,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Off the edge', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'within 2% of the blue ball, beat it, by 3%, by 6%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue ball, then every 8% faster' },
     ],
     ends: 'At the goal. Roll it as often as you like.',
     tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. The ghost is the run to beat.',
@@ -395,7 +395,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Bump the rock', pts: 'nothing', sub: 'a gentle knock bounces you off' },
       { what: 'Hit the rock hard', pts: 'the time it takes', sub: 'back to the last gate, clock running' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'within 2% of the blue ship, beat it, by 3%, by 6%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue ship, then every 7% faster' },
     ],
     ends: 'Down on the landing pad, slowly and level. Fly it as often as you like.',
     tip: 'Gravity is free speed: let the ship fall down the shafts, then turn the nose up and brake before the bottom. Let go of everything and the ship rights itself. Come down onto the pad slowly and level: the speed by your ship turns green when it’s slow enough.',

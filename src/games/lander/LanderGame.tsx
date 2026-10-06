@@ -324,7 +324,7 @@ function CaveTiles({ lander, ghost, chasing, bestMs }: { lander: LanderDay; ghos
         <span>{chasingLabel(chasing)}</span>
         <strong>{formatRun(ghost)}</strong>
       </div>
-      <MedalRow paceMs={paceMsOf(lander.pace)} bestMs={bestMs} format={formatRun} />
+      <MedalRow game="lander" paceMs={paceMsOf(lander.pace)} bestMs={bestMs} format={formatRun} />
       <div className="game-pause-meta__row">
         <span>Next cave</span>
         <strong>{untilWords(left)}</strong>

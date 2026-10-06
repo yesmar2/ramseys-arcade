@@ -290,11 +290,12 @@ const SAMPLE_PUNCHES = [
  */
 const PACE_MS = 60_000
 const shipAt = (ms: number) => 1_000_000 - ms
+// Lander's medals go every 7% (raceMedals.ts MEDAL_STEP): bronze 59.99s, silver 55.80s, gold 51.60s, platinum 47.40s.
 const LANDER_STEPS = {
-  within: { at: shipAt(61_200), tickets: 5, label: 'within 2% of the blue ship' },
-  beat: { at: shipAt(PACE_MS) + 1, tickets: 8, label: 'beating the blue ship' },
-  by3: { at: shipAt(58_200), tickets: 11, label: 'beating the blue ship by 3%' },
-  by6: { at: shipAt(56_400), tickets: 15, label: 'beating the blue ship by 6%' },
+  bronze: { at: shipAt(PACE_MS) + 1, tickets: 5, label: 'beating the blue ship' },
+  silver: { at: shipAt(55_800), tickets: 8, label: 'beating the blue ship by 7%' },
+  gold: { at: shipAt(51_600), tickets: 11, label: 'beating the blue ship by 14%' },
+  platinum: { at: shipAt(47_400), tickets: 15, label: 'beating the blue ship by 21%' },
 }
 
 const LANDER_SEASON: SeasonRun = { id: 1, name: 'Space Race', earned: 290, added: 3, level: 2, levels: 30, nextAt: 300, next: null, levelUp: [] }
@@ -473,8 +474,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     landerSample(
       'medal',
       'A racing daily’s run that paid: the medal ladder lights Silver, new, and dashes Gold; the tickets and the season in one row; the place.',
-      59_000,
-      61_000,
+      55_500,
+      58_000,
       {
         tickets: (
           <RunTicketsLine
@@ -482,8 +483,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
               earned: 3,
               lines: [{ reason: 'run', amount: 3 }],
               balance: 1290,
-              reached: LANDER_STEPS.beat,
-              next: LANDER_STEPS.by3,
+              reached: LANDER_STEPS.silver,
+              next: LANDER_STEPS.gold,
               base: 3,
               baseLabel: 'a run today',
               step: 8,
@@ -501,8 +502,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     landerSample(
       'medal-none',
       'A racing daily’s slower run: the day’s best keeps Silver, one quiet line for the tickets.',
-      60_500,
-      59_000,
+      57_000,
+      55_500,
       {
         tickets: (
           <RunTicketsLine
@@ -510,8 +511,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
               earned: 0,
               lines: [],
               balance: 1290,
-              reached: LANDER_STEPS.within,
-              next: LANDER_STEPS.beat,
+              reached: LANDER_STEPS.bronze,
+              next: LANDER_STEPS.silver,
               base: 3,
               baseLabel: 'a run today',
               step: 5,
@@ -529,8 +530,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     landerSample(
       'medal-top',
       'A racing daily’s run to the top medal: Platinum, and nothing past it.',
-      56_000,
-      57_000,
+      47_000,
+      50_000,
       {
         tickets: (
           <RunTicketsLine
@@ -538,7 +539,7 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
               earned: 4,
               lines: [{ reason: 'run', amount: 4 }],
               balance: 1301,
-              reached: LANDER_STEPS.by6,
+              reached: LANDER_STEPS.platinum,
               next: null,
               base: 3,
               baseLabel: 'a run today',
@@ -567,7 +568,7 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
               lines: [{ reason: 'run', amount: 3 }],
               balance: 1290,
               reached: null,
-              next: LANDER_STEPS.within,
+              next: LANDER_STEPS.bronze,
               base: 3,
               baseLabel: 'a run today',
               step: 3,
@@ -582,14 +583,14 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
         place: landerPlace('#9', '0.40s behind NOVA for 8th', 'plain'),
       },
     ),
-    landerSample('medal-signin', 'A racing daily’s run, signed out: the ladder, and the tickets a sign-in pays.', 59_000, null, {
+    landerSample('medal-signin', 'A racing daily’s run, signed out: the ladder, and the tickets a sign-in pays.', 55_500, null, {
       tickets: <RunTicketsWaiting />,
       signedOut: true,
     }),
-    landerSample('medal-saving', 'A racing daily’s run while the save answers: the ladder at once, the rows’ room held.', 59_000, 61_000, {
+    landerSample('medal-saving', 'A racing daily’s run while the save answers: the ladder at once, the rows’ room held.', 55_500, 58_000, {
       pending: true,
     }),
-    landerSample('tomorrow', 'The last of today’s dailies: all done, and tomorrow’s cave under it.', 60_500, 59_000, {
+    landerSample('tomorrow', 'The last of today’s dailies: all done, and tomorrow’s cave under it.', 57_000, 55_500, {
       place: landerPlace('#4', '0.31s behind PILOT for 3rd', 'plain'),
       children: (
         <NextDailyView

@@ -40,14 +40,24 @@ export function MedalIcon({ medal, size = 18, dim = false, className }: { medal:
  * A racing daily's medals on its start card: the four, those won today lit, and the time the next one takes.
  * `format` says a time (in seconds) the way the game does.
  */
-export function MedalRow({ paceMs, bestMs, format }: { paceMs: number; bestMs: number | null; format: (seconds: number) => string }) {
-  const held = medalFor(paceMs, bestMs)
-  const next = nextMedal(paceMs, held)
+export function MedalRow({
+  game,
+  paceMs,
+  bestMs,
+  format,
+}: {
+  game: RaceGame
+  paceMs: number
+  bestMs: number | null
+  format: (seconds: number) => string
+}) {
+  const held = medalFor(game, paceMs, bestMs)
+  const next = nextMedal(game, paceMs, held)
   const won = held ? MEDALS.indexOf(held) : -1
   const said = `${held ? `${MEDAL_NAMES[held]} won today. ` : ''}${next ? `Next, ${MEDAL_NAMES[next.medal]}: ${format(next.ms / 1000)}` : 'That’s the top medal'}`
   // A tile on the start card: what's next in its label, the time it takes as its figure, the four under it.
   return (
-    <div className="game-pause-meta__row race-medals-row" title={medalTitle(paceMs, format)}>
+    <div className="game-pause-meta__row race-medals-row" title={medalTitle(game, paceMs, format)}>
       <span aria-hidden="true">{next ? `Next medal · ${MEDAL_NAMES[next.medal]}` : 'Top medal won'}</span>
       <strong aria-label={said}>{next ? format(next.ms / 1000) : 'Platinum'}</strong>
       <div className="race-medals__icons" aria-hidden="true">
@@ -78,12 +88,12 @@ export function MedalLadder({
   previousMs: number | null
   format: (seconds: number) => string
 }) {
-  const before = medalFor(paceMs, previousMs)
+  const before = medalFor(game, paceMs, previousMs)
   const bestMs = previousMs != null && previousMs > 0 ? Math.min(ms, previousMs) : ms
-  const held = medalFor(paceMs, bestMs)
+  const held = medalFor(game, paceMs, bestMs)
   const fresh = held != null && medalBeats(held, before)
-  const next = nextMedal(paceMs, held)
-  const times = medalTimes(paceMs)
+  const next = nextMedal(game, paceMs, held)
+  const times = medalTimes(game, paceMs)
   const won = held ? MEDALS.indexOf(held) : -1
   const blue = blueOf(game)
   const then = next ? `${MEDAL_NAMES[next.medal]} is ` : ''
@@ -131,8 +141,8 @@ export function MedalLadder({
   )
 }
 
-/** Every medal's time, for the row's tip: "Bronze 59.51s · Silver 58.33s · Gold 56.59s · Platinum 54.84s". */
-function medalTitle(paceMs: number, format: (seconds: number) => string): string {
-  const times = medalTimes(paceMs)
+/** Every medal's time, for the row's tip: "Bronze 57.75s · Silver 54.28s · Gold 50.82s · Platinum 47.35s". */
+function medalTitle(game: RaceGame, paceMs: number, format: (seconds: number) => string): string {
+  const times = medalTimes(game, paceMs)
   return MEDALS.map((m) => `${MEDAL_NAMES[m]} ${format(times[m] / 1000)}`).join(' · ')
 }

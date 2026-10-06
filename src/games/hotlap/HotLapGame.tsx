@@ -309,7 +309,7 @@ function TrackTiles({
         <strong>{course.name}</strong>
       </div>
       {chase}
-      <MedalRow paceMs={paceMsOf(course.pace)} bestMs={bestMs} format={formatLap} />
+      <MedalRow game="hotlap" paceMs={paceMsOf(course.pace)} bestMs={bestMs} format={formatLap} />
       {test ? (
         <div className="game-pause-meta__row">
           <span>Its day</span>

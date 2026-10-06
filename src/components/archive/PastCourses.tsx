@@ -21,7 +21,7 @@ import {
 import { BOARD_NAMES, boardTip, dailyWords, type PastBoard, type PastKind } from '../../lib/dailyWords'
 import { formatLeaderboardScore } from '../../lib/leaderboardFormat'
 import { ordinal } from '../../lib/profileMath'
-import { MEDAL_NAMES, medalFor, paceMsOf, type Medal } from '../../lib/raceMedals'
+import { isRaceGame, MEDAL_NAMES, medalFor, paceMsOf, type Medal } from '../../lib/raceMedals'
 import { BoardEmpty } from '../BoardChrome'
 import { MedalIcon } from '../RaceMedal'
 import { BoardsIcon, LockIcon, PlayIcon } from '../chromeIcons'
@@ -251,7 +251,7 @@ function PastCard({
   const rankedGame = isRankedGame(slug)
   const you = showYou ? (entry?.you ?? null) : null
   // A racing daily's medal that day: your best then against the day's blue (they keep a million less the ms).
-  const medal = you && source.pace ? medalFor(paceMsOf(source.pace(day)), 1_000_000 - you.score) : null
+  const medal = you && source.pace && isRaceGame(slug) ? medalFor(slug, paceMsOf(source.pace(day)), 1_000_000 - you.score) : null
   let ranked: ReactNode
   if (daysState === 'wait') ranked = <Waiting />
   else if (daysState === 'failed') ranked = <Unknown />

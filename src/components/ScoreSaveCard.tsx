@@ -764,7 +764,7 @@ export function ScoreSaveCard({
                   <RunTicketsLine
                     paid={paidTickets}
                     game={gameSlug}
-                    race={{ medal: medalFor(race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms)), season: seasonMoved }}
+                    race={{ medal: medalFor(race.game, race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms)), season: seasonMoved }}
                   />
                 ) : unsaved ? (
                   <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />

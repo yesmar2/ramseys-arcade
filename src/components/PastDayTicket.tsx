@@ -58,9 +58,10 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
 
 /** A racing daily's medal that day (lib/raceMedals.ts): your best then, against the day's blue. */
 function medalOf(key: TodayKey, day: string, score: number): Medal | null {
+  const game = key === 'track' ? 'hotlap' : key === 'course' ? 'marblerun' : key === 'cave' ? 'lander' : null
   const pace = key === 'track' ? dailyTrack(day).pace : key === 'course' ? dailyCourse(day).pace : key === 'cave' ? dailyCave(day).pace : null
   // The racing dailies keep a million less the ms (their score.ts).
-  return pace == null ? null : medalFor(paceMsOf(pace), 1_000_000 - score)
+  return game == null || pace == null ? null : medalFor(game, paceMsOf(pace), 1_000_000 - score)
 }
 
 /** A daily on the day's ticket, as its tile shows it. */
