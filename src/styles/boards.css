@@ -1609,6 +1609,26 @@ a.sb-board__link:hover .sb-board__go {
   min-width: 0;
 }
 
+/* A daily's board, the first thing under the banner, with your cards under it in its column. */
+.gb-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* Your two cards one over the other, till the column has room for them side by side. */
+.gb-lead .sb-you {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 46rem) {
+  .gb-lead .sb-you:not(.sb-you--solo) {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+  }
+}
+
 .gb-board {
   padding: 1.4rem 1.2rem 1.2rem;
 }

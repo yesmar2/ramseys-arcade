@@ -73,7 +73,13 @@ export function BoardPlayers({
     search === undefined
       ? (q: string) => getPlayerBoard(slug, period, undefined, { limit: 1, find: q }).then((b) => b.found.map(boardPlayer))
       : search
-  const [rows, setRows] = useState(() => new Map<number, BoardPlayer>())
+  // The rows it opens on are there on its first paint, not an effect later: under a daily's board are your
+  // cards (GameBoard), which an empty board's first frame would shove down as the rows came.
+  const [rows, setRows] = useState(() => {
+    const opening = new Map<number, BoardPlayer>()
+    for (const p of [...top, ...around]) opening.set(p.place, p)
+    return opening
+  })
   const [busy, setBusy] = useState<number | null>(null)
   const [find, setFind] = useState('')
   const [found, setFound] = useState<BoardPlayer[] | null>(null)

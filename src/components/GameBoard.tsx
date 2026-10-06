@@ -764,8 +764,8 @@ export function GameBoard({ slug, period, day }: { slug: LeaderboardGame; period
 }
 
 /**
- * Your place on a board while it loads: its two cards' shapes, held at the height they had last time, so the
- * board under them doesn't move when they come.
+ * Your place on a board while it loads: its two cards' shapes, held at the height they had last time, so
+ * nothing after them moves when they come (the board, or under a daily's board, the page's foot).
  */
 function YouWaiting({
   held,
@@ -807,8 +807,12 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   const standing = data.you
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
+  // A daily's board is the first thing under the banner, with your place under it in its column (Ramsey,
+  // 2026-10-06: "i want the board to be the first thing below the hero"); the other games' put yours first.
+  const daily = isDailyGame(slug)
   const youHeld = useHeldHeight<HTMLElement>(`gb-you-${slug}-${period}`, data.loading)
-  const mainHeld = useHeldHeight<HTMLDivElement>(`gb-main-${period}`, data.loading)
+  // Held apart from the other games' boards of the same name: a daily's holds your cards too.
+  const mainHeld = useHeldHeight<HTMLDivElement>(`gb-main-${daily ? 'daily-' : ''}${period}`, data.loading)
 
   if (data.error) {
     return (
@@ -827,18 +831,20 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
     return (
       <div className="sb gb" style={style}>
         <Banner slug={slug} period={period} copy={copy} players={players} field={data.field} runs={data.runCount} loading={data.loading} group={group} />
-        {data.loading ? <YouWaiting held={youHeld} solo /> : null}
-        {!data.loading ? (
-          <section
-            className={`sb-you gb-you sb-you--solo${pointsCard ? '' : ' gb-you--none'}`}
-            aria-label={pointsCard ? 'Your place on this board' : undefined}
-            ref={youHeld.ref}
-          >
-            {pointsCard ? <PointsYou slug={slug} copy={copy} you={standing} /> : null}
-          </section>
-        ) : null}
         <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
-          <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
+          <div className="gb-lead">
+            <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
+            {data.loading ? <YouWaiting held={youHeld} solo /> : null}
+            {!data.loading ? (
+              <section
+                className={`sb-you gb-you sb-you--solo${pointsCard ? '' : ' gb-you--none'}`}
+                aria-label={pointsCard ? 'Your place on this board' : undefined}
+                ref={youHeld.ref}
+              >
+                {pointsCard ? <PointsYou slug={slug} copy={copy} you={standing} /> : null}
+              </section>
+            ) : null}
+          </div>
           {!data.loading ? (
             <aside className="gb-side" aria-label="More about this board">
               <OtherBoards others={data.others} period={period} />
@@ -849,19 +855,8 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
     )
   }
 
-  return (
-    <div className="sb gb" style={style}>
-      <Banner
-        slug={slug}
-        period={period}
-        copy={copy}
-        players={players}
-        field={data.field}
-        runs={data.runCount}
-        loading={data.loading}
-        group={group}
-      />
-
+  const yours = (
+    <>
       {/* Signed out, nobody is on the board, so nothing waits for a place to show. */}
       {data.loading && you ? <YouWaiting held={youHeld} likely={getPersonalBest(slug) > 0} /> : null}
       {!data.loading ? (
@@ -879,9 +874,34 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
           ) : null}
         </section>
       ) : null}
+    </>
+  )
+  const board = <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
+
+  return (
+    <div className="sb gb" style={style}>
+      <Banner
+        slug={slug}
+        period={period}
+        copy={copy}
+        players={players}
+        field={data.field}
+        runs={data.runCount}
+        loading={data.loading}
+        group={group}
+      />
+
+      {daily ? null : yours}
 
       <div className="gb-main" ref={mainHeld.ref} style={mainHeld.style}>
-        <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} />
+        {daily ? (
+          <div className="gb-lead">
+            {board}
+            {yours}
+          </div>
+        ) : (
+          board
+        )}
         {!data.loading ? (
           <aside className="gb-side" aria-label="More about this board">
             <OtherBoards others={data.others} period={period} />

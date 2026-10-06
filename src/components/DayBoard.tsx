@@ -16,6 +16,7 @@ import { useDeviceType } from '../lib/device'
 import { FIRST_RUN_DAILIES, firstResultWord, firstRunWord, gapBetween } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { cachedMyGroups, groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { useHeldHeight } from '../lib/heldShape'
 import { ApiError, getDayBoard, normalizePlayerName, type DayBoardEntry, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { boardToday, ordinal } from '../lib/scoreboard'
@@ -185,6 +186,10 @@ function Banner({
   const counted = board.meta?.counted !== false
   const dayWords = archiveDayWords(day)
   const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
+  // They wrap with the names and numbers in them: held at last time's height while those load (lib/heldShape.ts),
+  // as the daily's other boards hold theirs (GameBoard), so the board under them doesn't move when they come.
+  const titleHeld = useHeldHeight<HTMLHeadingElement>('db-title', loading)
+  const ledeHeld = useHeldHeight<HTMLParagraphElement>('db-lede', loading)
   return (
     <section className="home-banner gb-banner db-banner" style={style} aria-labelledby="gb-title">
       <div className="home-banner__text gb-banner__text">
@@ -199,9 +204,15 @@ function Banner({
           <span aria-current="page">{dayWords}</span>
         </nav>
         <DaySteps slug={slug} day={day} course={course} group={group} />
-        <h1 id="gb-title" className="gb-title">
+        <h1 id="gb-title" className="gb-title" ref={titleHeld.ref} style={titleHeld.style}>
           {loading ? (
-            <span className="skel-line" style={{ '--skel-w': '12ch' } as CSSProperties} />
+            // The sentence it most often is (dayHeadline), the names and the gap shimmering, so it wraps where the
+            // real one will, even the first time.
+            <>
+              <span className="skel-line" style={{ '--skel-w': '3.6em' } as CSSProperties} /> was 1st,{' '}
+              <span className="skel-line" style={{ '--skel-w': '3.4em' } as CSSProperties} /> clear of{' '}
+              <span className="skel-line" style={{ '--skel-w': '3.6em' } as CSSProperties} />.
+            </>
           ) : (
             <>
               {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
@@ -209,7 +220,7 @@ function Banner({
             </>
           )}
         </h1>
-        <p className="home-banner__blurb gb-lede">
+        <p className="home-banner__blurb gb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
           {loading ? (
             <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
           ) : failed ? (
@@ -816,23 +827,28 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
     <div className="sb gb db" style={style}>
       <Banner slug={slug} day={day} course={course} board={dayBoard} group={group} />
 
-      <section className="sb-you gb-you db-you" aria-label="You that day">
-        <YouThatDay slug={slug} day={day} name={name} board={dayBoard} group={group} />
-        <PlayAgain slug={slug} day={day} course={course} courseFailed={courseFailed} dayBoard={dayBoard} courseBoard={courseBoard} />
-      </section>
-
+      {/* The board first under the banner, as on the daily's other boards (GameBoard), you that day under it. */}
       <div className="gb-main">
-        <Board
-          slug={slug}
-          day={day}
-          name={name}
-          course={course}
-          dayBoard={dayBoard}
-          courseBoard={courseBoard}
-          shown={shown}
-          onMore={(tab) => setShown((s) => ({ ...s, [tab]: s[tab] + MORE_ROWS }))}
-          group={group}
-        />
+        <div className="gb-lead">
+          <Board
+            slug={slug}
+            day={day}
+            name={name}
+            course={course}
+            dayBoard={dayBoard}
+            courseBoard={courseBoard}
+            shown={shown}
+            onMore={(tab) => setShown((s) => ({ ...s, [tab]: s[tab] + MORE_ROWS }))}
+            group={group}
+          />
+          {/* Once the board has settled: drawn while it loads, they'd move as its rows came. */}
+          {!dayBoard.loading ? (
+            <section className="sb-you gb-you db-you" aria-label="You that day">
+              <YouThatDay slug={slug} day={day} name={name} board={dayBoard} group={group} />
+              <PlayAgain slug={slug} day={day} course={course} courseFailed={courseFailed} dayBoard={dayBoard} courseBoard={courseBoard} />
+            </section>
+          ) : null}
+        </div>
         <aside className="gb-side" aria-label="Other days">
           <OtherDays slug={slug} day={day} name={name} course={course} group={group} />
         </aside>
