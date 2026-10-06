@@ -29,10 +29,11 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * until Ramsey found platinum came "almost every time" (2026-10-06): his best runs of the day land 15 to 30%
  * under the blue, which drives carefully, and each blue leaves its own slack. Steps of 6, 7 and 8% put
  * platinum about where his best runs land; he found that "still needs to be a little harder", so it's a point
- * more a step, and platinum is a few points past his usual best: 21% in Hot Lap, 24% in Lander, 27% in
- * Marble Run.
+ * more a step in Lander and Marble Run, and platinum is a few points past his usual best: 24% in Lander, 27%
+ * in Marble Run. Hot Lap went to 7% too, then back to 6% once he found its platinum "just a little too hard"
+ * (18%: his 17.6% lap that day just missed it).
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.07, marblerun: 0.09, lander: 0.08 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.09, lander: 0.08 }
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in

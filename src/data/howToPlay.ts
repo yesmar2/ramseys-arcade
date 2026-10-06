@@ -318,7 +318,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue car, then every 7% faster' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue car, then every 6% faster' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'The call under the clock names the next corner and counts down to it: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
