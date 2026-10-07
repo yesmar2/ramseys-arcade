@@ -24,6 +24,8 @@ export type Saucer = {
   turnIn: number
   /** Shots fired so far: every third of a small saucer's is a homing missile. */
   shots: number
+  /** How far it leans into its weave, in radians, eased so a new heading doesn't snap it (render.ts tilts it by this). */
+  bank: number
 }
 
 export type EnemyBullet = {
@@ -500,7 +502,14 @@ function spawnSaucer(state: GameState): Saucer {
     fireCooldown: 0.45 + Math.random() * 0.35,
     turnIn: WEAVE[size].every[0] * (0.4 + Math.random() * 0.4),
     shots: 0,
+    bank: 0,
   }
+}
+
+/** A saucer leans into its weave, nose down on a dive and up on a climb, easing over to each new heading. */
+function easeBank(saucer: Saucer, dt: number) {
+  const bank = saucer.bank ?? 0
+  return bank + (0.45 * Math.atan(saucer.vy / saucer.vx) - bank) * Math.min(1, dt * 5)
 }
 
 /** A saucer onto a new heading: climbing, level or diving, never the one it was on, for a second or two. */
@@ -1371,6 +1380,7 @@ export function tick(state: GameState, dt: number): GameState {
         fireCooldown,
         shots,
         turnIn: (saucer.turnIn ?? 0) - rockDt,
+        bank: easeBank(saucer, rockDt),
       }
       // Onto a new heading, now and then: a saucer weaves across.
       if (saucer.turnIn <= 0) saucer = newCourse(saucer)

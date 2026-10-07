@@ -7,6 +7,7 @@ import {
   type EnemyBullet,
   type GameState,
   type Particle,
+  type Point,
   type Powerup,
   type Ring,
   type Rock,
@@ -29,6 +30,8 @@ const SKY_HUE = 204
 const GOLD = '#f5b942'
 const GOLD_DEEP = '#b7791f'
 const SAUCER_HUE = 0
+/** Seconds before a saucer's shot that its pod starts to glow: the tell. */
+const SAUCER_TELL = 0.35
 const TAU = Math.PI * 2
 const FONT = 'Outfit, system-ui, sans-serif'
 
@@ -324,41 +327,155 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
   if (shielded) drawShield(ctx, state, r, scale, dark, t)
 }
 
-function drawSaucer(ctx: CanvasRenderingContext2D, saucer: Saucer, scale: number, dark: boolean, t: number) {
+/**
+ * A saucer with someone flying it: on the big one a little green pilot in a glass dome, watching the
+ * ship; on the small one a red light, glaring. It leans into its weave (game.ts easeBank), its rim
+ * lights chase the way it flies, and the pod underneath, where its shots come from, heats up just
+ * before it fires (SAUCER_TELL).
+ */
+function drawSaucer(ctx: CanvasRenderingContext2D, saucer: Saucer, scale: number, dark: boolean, t: number, aim: Point) {
   const r = saucer.radius
-  const line = hsla(SAUCER_HUE, 52, lineL(dark), 0.95)
+  const big = saucer.size === 'large'
+  const line = hsla(SAUCER_HUE, 58, lineL(dark), 0.95)
+  const lw = Math.max(1.8, 2.2 * scale)
+  const charge = Math.max(0, Math.min(1, 1 - saucer.fireCooldown / SAUCER_TELL))
+  const heat = 42 - 34 * charge
+  const traceTop = () => {
+    ctx.moveTo(-r, 0)
+    ctx.bezierCurveTo(-r * 0.7, -r * 0.35, r * 0.7, -r * 0.35, r, 0)
+  }
   ctx.save()
-  ctx.translate(saucer.x, saucer.y)
+  ctx.translate(saucer.x, saucer.y + Math.sin(t * 2.4 + saucer.id) * r * 0.04)
+  ctx.rotate(saucer.bank ?? 0)
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  ctx.strokeStyle = line
-  ctx.fillStyle = hsla(SAUCER_HUE, 52, 58, dark ? 0.2 : 0.24)
-  ctx.lineWidth = Math.max(1.8, 2.2 * scale)
 
-  // Dome.
+  // A warm glow under the belly, flaring as it's about to fire.
+  ctx.save()
+  ctx.translate(0, r * 0.44)
+  ctx.scale(1, 0.42)
+  const glowR = r * (0.85 + 0.3 * charge)
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, glowR)
+  const glowA = (dark ? 0.3 : 0.22) * (0.8 + 0.2 * Math.sin(t * 6 + saucer.id)) + 0.45 * charge
+  glow.addColorStop(0, hsla(heat, 100, dark ? 62 : 55, glowA))
+  glow.addColorStop(1, hsla(heat, 100, dark ? 62 : 55, 0))
+  ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.ellipse(0, -r * 0.15, r * 0.55, r * 0.38, 0, Math.PI, 0)
+  ctx.arc(0, 0, glowR, 0, TAU)
   ctx.fill()
+  ctx.restore()
+
+  // The pod underneath.
+  ctx.beginPath()
+  ctx.ellipse(0, r * 0.26, r * 0.24, r * 0.18, 0, 0, Math.PI)
+  ctx.closePath()
+  ctx.fillStyle = hsla(heat, 100, (dark ? 56 : 52) + 24 * charge, (dark ? 0.35 : 0.4) + 0.6 * charge)
+  ctx.fill()
+  ctx.strokeStyle = line
+  ctx.lineWidth = lw * 0.8
   ctx.stroke()
 
-  // Hull.
+  // Belly.
   ctx.beginPath()
   ctx.moveTo(-r, 0)
-  ctx.quadraticCurveTo(-r * 0.2, r * 0.55, r, 0)
-  ctx.quadraticCurveTo(r * 0.2, -r * 0.2, -r, 0)
+  ctx.bezierCurveTo(-r * 0.6, r * 0.42, r * 0.6, r * 0.42, r, 0)
   ctx.closePath()
+  ctx.fillStyle = hsla(SAUCER_HUE, 58, dark ? 42 : 54, dark ? 0.4 : 0.34)
   ctx.fill()
+  ctx.lineWidth = lw
   ctx.stroke()
 
-  // Running lights, chasing each other round the rim.
-  const lights = saucer.size === 'large' ? [-0.45, 0, 0.45] : [-0.28, 0.28]
-  const lit = Math.floor(t * 7) % lights.length
-  lights.forEach((lx, i) => {
+  // The glass dome and who's flying it, clipped to above the hull's top so none of it shows through.
+  const domeY = -r * 0.14
+  const glass = big ? 188 : 350
+  ctx.save()
+  ctx.beginPath()
+  traceTop()
+  ctx.lineTo(r, -r)
+  ctx.lineTo(-r, -r)
+  ctx.closePath()
+  ctx.clip()
+  ctx.beginPath()
+  ctx.ellipse(0, domeY, r * 0.46, r * 0.46, 0, Math.PI, 0)
+  ctx.closePath()
+  ctx.fillStyle = hsla(glass, 70, dark ? 66 : 60, dark ? 0.16 : 0.22)
+  ctx.fill()
+  ctx.save()
+  ctx.clip()
+  if (big) {
+    // The pilot turns its head and eyes toward the ship.
+    const lookX = Math.max(-1, Math.min(1, (aim.x - saucer.x) / (r * 5)))
+    const lookY = Math.max(-1, Math.min(1, (aim.y - saucer.y) / (r * 5)))
+    const hx = lookX * r * 0.05
+    const hy = domeY - r * 0.2
+    // Shoulders.
     ctx.beginPath()
-    ctx.arc(r * lx, r * 0.12, Math.max(1.4, 1.8 * scale), 0, TAU)
-    ctx.fillStyle = i === lit ? hsla(40, 95, dark ? 66 : 52) : line
+    ctx.ellipse(hx * 0.5, domeY + r * 0.02, r * 0.28, r * 0.16, 0, Math.PI, 0)
+    ctx.closePath()
+    ctx.fillStyle = hsla(110, 45, dark ? 42 : 44)
     ctx.fill()
-  })
+    // Head: a big brow and a small chin.
+    ctx.beginPath()
+    ctx.moveTo(hx, hy + r * 0.2)
+    ctx.bezierCurveTo(hx - r * 0.1, hy + r * 0.18, hx - r * 0.22, hy + r * 0.04, hx - r * 0.21, hy - r * 0.06)
+    ctx.bezierCurveTo(hx - r * 0.2, hy - r * 0.24, hx + r * 0.2, hy - r * 0.24, hx + r * 0.21, hy - r * 0.06)
+    ctx.bezierCurveTo(hx + r * 0.22, hy + r * 0.04, hx + r * 0.1, hy + r * 0.18, hx, hy + r * 0.2)
+    ctx.closePath()
+    ctx.fillStyle = hsla(110, 55, dark ? 58 : 54)
+    ctx.fill()
+    ctx.strokeStyle = hsla(110, 50, dark ? 26 : 28, 0.9)
+    ctx.lineWidth = Math.max(0.9, 1.1 * scale)
+    ctx.stroke()
+    // Eyes: big, dark and slanted.
+    for (const side of [-1, 1]) {
+      ctx.beginPath()
+      ctx.ellipse(hx + side * r * 0.09 + lookX * r * 0.025, hy + r * 0.01 + lookY * r * 0.015, r * 0.075, r * 0.045, -side * 0.5, 0, TAU)
+      ctx.fillStyle = '#0d1418'
+      ctx.fill()
+    }
+  } else {
+    // The small one's pilot is too small to see: just a light that glares.
+    const pulse = 0.7 + 0.3 * Math.sin(t * 7 + saucer.id)
+    ctx.beginPath()
+    ctx.arc(0, domeY - r * 0.16, r * 0.15, 0, TAU)
+    ctx.fillStyle = hsla(SAUCER_HUE, 95, dark ? 62 : 54, 0.55 + 0.45 * pulse)
+    ctx.fill()
+  }
+  ctx.restore()
+  ctx.beginPath()
+  ctx.ellipse(0, domeY, r * 0.46, r * 0.46, 0, Math.PI, 0)
+  ctx.strokeStyle = hsla(glass, 50, lineL(dark), 0.9)
+  ctx.lineWidth = lw * 0.85
+  ctx.stroke()
+  // A glint on the glass.
+  ctx.beginPath()
+  ctx.ellipse(0, domeY, r * 0.32, r * 0.32, 0, Math.PI * 1.14, Math.PI * 1.42)
+  ctx.strokeStyle = `rgba(255, 255, 255, ${dark ? 0.6 : 0.95})`
+  ctx.lineWidth = Math.max(1.1, 1.5 * scale)
+  ctx.stroke()
+  ctx.restore()
+
+  // Top of the disc.
+  ctx.beginPath()
+  traceTop()
+  ctx.closePath()
+  ctx.fillStyle = hsla(SAUCER_HUE, 58, 60, dark ? 0.26 : 0.3)
+  ctx.fill()
+  ctx.strokeStyle = line
+  ctx.lineWidth = lw
+  ctx.stroke()
+
+  // Lights round the rim, chasing the way it flies.
+  const count = big ? 7 : 4
+  const way = saucer.vx < 0 ? 1 : -1
+  for (let i = 0; i < count; i++) {
+    const k = -0.72 + (1.44 * i) / (count - 1)
+    const lit = 0.5 + 0.5 * Math.sin(t * 9 + i * 1.2 * way)
+    ctx.beginPath()
+    ctx.arc(r * k, r * 0.07, Math.max(1.2, 1.5 * scale) * (0.85 + 0.25 * lit), 0, TAU)
+    ctx.fillStyle = hsla(44, 100, dark ? 48 + 26 * lit : 42 + 14 * lit, 0.4 + 0.6 * lit)
+    ctx.fill()
+  }
   ctx.restore()
 }
 
@@ -575,7 +692,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
 
   for (const rock of state.rocks) drawRock(ctx, rock, scale, dark)
   for (const p of state.powerups ?? []) drawPowerup(ctx, p, scale, dark, t)
-  if (state.saucer) drawSaucer(ctx, state.saucer, scale, dark, t)
+  if (state.saucer) drawSaucer(ctx, state.saucer, scale, dark, t, state.ship)
   drawBullets(ctx, state, scale, dark)
   for (const b of state.enemyBullets ?? []) {
     if (b.kind === 'missile') drawMissile(ctx, b, scale, dark)
