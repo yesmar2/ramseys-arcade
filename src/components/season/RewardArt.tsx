@@ -5,12 +5,12 @@ import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
 import { FROST, SPACE, sparklePath } from '../../lib/seasonArt'
 import greenFlashPicture from '../../assets/season/green-flash.webp'
-import midnightRocketPicture from '../../assets/season/midnight-rocket.webp'
+import moonBuggyPicture from '../../assets/season/moon-buggy.webp'
 import rocketCarPicture from '../../assets/season/rocket-car.webp'
-import sunracerPicture from '../../assets/season/sunracer.webp'
-import iceRocketPicture from '../../assets/season/ice-rocket.webp'
-import borealisPicture from '../../assets/season/borealis.webp'
-import whiteoutPicture from '../../assets/season/whiteout.webp'
+import shuttleCarPicture from '../../assets/season/shuttle-car.webp'
+import bobsledPicture from '../../assets/season/bobsled.webp'
+import auroraGliderPicture from '../../assets/season/aurora-glider.webp'
+import crystalCarPicture from '../../assets/season/crystal-car.webp'
 import {
   AURORA_TAIL,
   FIRESIDE_TAIL,
@@ -149,7 +149,7 @@ export function NovaFighter() {
 }
 
 /**
- * The Rocket car: a picture of Hot Lap's own 3D model (car.ts buildRocketCar), from behind and above as the
+ * A Hot Lap car: a picture of the game's own 3D model (car.ts, seasonCars.ts), from behind and above as the
  * game's camera sees it, rendered once in a browser (WebGL) and kept as a file. Re-render it if the car
  * changes, so the pass never shows another car than the one you drive.
  */
@@ -467,12 +467,12 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-midnight': (size) => (
     <Board size={size}>
-      <RocketCar picture={midnightRocketPicture} />
+      <RocketCar picture={moonBuggyPicture} />
     </Board>
   ),
   'hotlap-sunracer': (size) => (
     <Board size={size}>
-      <RocketCar picture={sunracerPicture} />
+      <RocketCar picture={shuttleCarPicture} />
     </Board>
   ),
   'barrage-stingray': (size) => (
@@ -513,7 +513,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-ice-rocket': (size) => (
     <Board size={size}>
-      <RocketCar picture={iceRocketPicture} />
+      <RocketCar picture={bobsledPicture} />
     </Board>
   ),
   'snake-snowdrift-tail': (size) => (
@@ -533,7 +533,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-whiteout': (size) => (
     <Board size={size}>
-      <RocketCar picture={whiteoutPicture} />
+      <RocketCar picture={crystalCarPicture} />
     </Board>
   ),
   'barrage-snowy-owl': (size) => (
@@ -553,7 +553,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-borealis': (size) => (
     <Board size={size}>
-      <RocketCar picture={borealisPicture} />
+      <RocketCar picture={auroraGliderPicture} />
     </Board>
   ),
   'snake-fireside-tail': (size) => (

@@ -7,6 +7,7 @@
  */
 import * as THREE from 'three'
 import { buildCar, buildRocketCar, FORMULA, INDY_LIVERIES, ROCKET_SKINS, WHEEL_RADIUS, WHEELS, type CarModel } from './car'
+import { SEASON_CARS } from './seasonCars'
 import { bounds } from './courses'
 import type { GhostPose } from './lap'
 import { CAR, HALF_WIDTH as TW, nearest, type Run, type Track } from './sim'
@@ -1020,12 +1021,10 @@ export class HotLapScene {
       this.skinShown = f.skin ?? null
       // Your car in your skin, made the first time you drive in it.
       const skin = this.skinShown
-      const colors = skin ? ROCKET_SKINS[skin] : undefined
-      const livery = skin ? INDY_LIVERIES[skin] : undefined
       let car = this.car
-      if (skin && (colors || livery)) {
-        // A Rocket car in its colours, or the everyday car in a Hangar livery.
-        car = this.skinned.get(skin) ?? (livery ? buildCar(this.paint.bind(this), false, undefined, FORMULA, livery) : buildRocketCar(this.paint.bind(this), { colors }))
+      const made = skin ? (this.skinned.get(skin) ?? this.skinCar(skin, false)) : null
+      if (skin && made) {
+        car = made
         if (!this.skinned.has(skin)) {
           this.skinned.set(skin, car)
           this.scene.add(car.group)
@@ -1102,7 +1101,7 @@ export class HotLapScene {
   }
 
   /**
-   * The ghost in the skin its lap was driven in, seen through in that skin's own colours: a Rocket car's, or the
+   * The ghost in the skin its lap was driven in, seen through in that skin's own colours: a season car's own body, a Rocket car, or the
    * Indy car in a Hangar livery. Without one, the Indy car in cyan. Ramsey (2026-10-05): with every skin in the
    * same cyan "it doesn't really show it's colors so most of them look the same anyway"; he picked B of three.
    */
@@ -1110,17 +1109,17 @@ export class HotLapScene {
     if (skin === this.ghostSkinShown) return
     this.ghostSkinShown = skin
     let next = this.ghostIndy
-    const colors = skin ? ROCKET_SKINS[skin] : undefined
-    const livery = skin ? INDY_LIVERIES[skin] : undefined
-    if (skin && (colors || livery)) {
-      let car = this.ghostSkinned.get(skin)
+    if (skin) {
+      let car = this.ghostSkinned.get(skin) ?? null
       if (!car) {
-        car = livery ? buildCar(this.paint.bind(this), true, undefined, FORMULA, livery) : buildRocketCar(this.paint.bind(this), { ghost: true, colors })
-        car.group.visible = false
-        this.ghostSkinned.set(skin, car)
-        this.scene.add(car.group)
+        car = this.skinCar(skin, true)
+        if (car) {
+          car.group.visible = false
+          this.ghostSkinned.set(skin, car)
+          this.scene.add(car.group)
+        }
       }
-      next = car
+      if (car) next = car
     }
     if (next === this.ghostCar) return
     const was = this.ghostCar
@@ -1131,6 +1130,21 @@ export class HotLapScene {
       next.group.add(this.ghostTag)
     }
     this.ghostCar = next
+  }
+
+  /**
+   * A skin's car, or its ghost: a season car with a body of its own (seasonCars.ts), a Rocket car in its colours, or
+   * the everyday car in a Hangar livery. Null for a skin that isn't a car.
+   */
+  private skinCar(skin: string, ghost: boolean): CarModel | null {
+    const paint = this.paint.bind(this)
+    const own = SEASON_CARS[skin]
+    if (own) return own(paint, ghost)
+    const colors = ROCKET_SKINS[skin]
+    if (colors) return buildRocketCar(paint, { ghost, colors })
+    const livery = INDY_LIVERIES[skin]
+    if (livery) return buildCar(paint, ghost, undefined, FORMULA, livery)
+    return null
   }
 
   /** The name over the ghost car, painted again only when it changes. */

@@ -178,7 +178,7 @@ function cap(ring: Point[]) {
 }
 
 /** One mesh's worth from many shapes: their positions, normals and faces. */
-function merge(parts: THREE.BufferGeometry[]) {
+export function merge(parts: THREE.BufferGeometry[]) {
   let vertices = 0
   let indices = 0
   for (const g of parts) {
@@ -276,7 +276,7 @@ const tube = (points: Point[], radius: number) =>
     false,
   )
 
-type Shapes = {
+export type Shapes = {
   skin: THREE.BufferGeometry
   dark: THREE.BufferGeometry
   canopy: THREE.BufferGeometry
@@ -294,7 +294,7 @@ type Shapes = {
 const made = new Map<CarDesign, Shapes>()
 
 /** A design's shapes, worked out once for the car and its ghost both. */
-function shapesOf(d: CarDesign): Shapes {
+export function shapesOf(d: CarDesign): Shapes {
   let shapes = made.get(d)
   if (shapes) return shapes
   const skin: THREE.BufferGeometry[] = []
@@ -443,24 +443,22 @@ function shapesOf(d: CarDesign): Shapes {
   return shapes
 }
 
-type Paint = (w: number, h: number, draw: (g: CanvasRenderingContext2D, w: number, h: number) => void, hasText?: boolean) => THREE.Texture
+export type Paint = (w: number, h: number, draw: (g: CanvasRenderingContext2D, w: number, h: number) => void, hasText?: boolean) => THREE.Texture
 
 /** A livery on the Indy car (a Hangar skin): its body's colour and its lights'. */
 export type Livery = { body: string; glow: string }
 
-/** Hot Lap's skins that are the everyday car in a livery of its own (lib/skins.ts): the Hangar's, and a season's. */
+/** Hot Lap's skins that are the everyday car in a livery of its own (lib/skins.ts): the Hangar's. */
 export const INDY_LIVERIES: Record<string, Livery> = {
   // British racing green, with gold lights.
   'hotlap-green-flash': { body: '#1d5a3a', glow: '#ffc94d' },
-  // Season 2's Pass+ (Cold Snap): snow white, with ice-blue lights.
-  'hotlap-whiteout': { body: '#e8f0f8', glow: '#7fd0ff' },
 }
 
 /**
  * A ghost driven in a skin shows a little more than the cyan one, so its colours read. Ramsey picked it (2026-10-05,
  * "B" of three): the cyan ghost made every skin look the same ("it doesn't really show it's colors").
  */
-const SKIN_GHOST_MORE = 1.25
+export const SKIN_GHOST_MORE = 1.25
 
 /**
  * The car, or with `ghost` its ghost: the same shape seen through in `ghostColor`, or with a `livery` in the
@@ -569,10 +567,10 @@ export function buildCar(paint: Paint, ghost: boolean, ghostColor = '#46e4ff', d
   return { group, body, wheels, steer, see, lines, ...(tint ? { seeMore: SKIN_GHOST_MORE } : {}) }
 }
 
-type Std = (params: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial
+export type Std = (params: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial
 
 /** The wheels: dark tyres, their faces ringed in light. A ghost's are all in its colour. */
-function addWheels(group: THREE.Group, shapes: Shapes, design: CarDesign, std: Std, ghostColor: string | null, glow: string, outline: THREE.LineBasicMaterial | null) {
+export function addWheels(group: THREE.Group, shapes: Shapes, design: CarDesign, std: Std, ghostColor: string | null, glow: string, outline: THREE.LineBasicMaterial | null) {
   const tyre = std({ color: ghostColor ?? '#14171b', roughness: 0.85, metalness: 0 })
   const well = std({ color: ghostColor ?? '#0c1014', roughness: 0.5, metalness: 0.3 })
   const rimRing = std({ color: ghostColor ?? '#2a1004', emissive: glow, emissiveIntensity: ghostColor ? 0.8 : 1.4, roughness: 0.3 })
@@ -599,12 +597,12 @@ function addWheels(group: THREE.Group, shapes: Shapes, design: CarDesign, std: S
   return { wheels, steer }
 }
 
-/** Orange light on the road under the car, and a soft shadow. */
-function addUnderGlow(group: THREE.Group, paint: Paint) {
+/** Light on the road under the car (orange unless `rgb` says, as "r,g,b"), and a soft shadow. */
+export function addUnderGlow(group: THREE.Group, paint: Paint, rgb = '255,110,20') {
   const under = paint(128, 64, (g, w, h) => {
     const grad = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2)
-    grad.addColorStop(0, 'rgba(255,110,20,0.5)')
-    grad.addColorStop(1, 'rgba(255,110,20,0)')
+    grad.addColorStop(0, `rgba(${rgb},0.5)`)
+    grad.addColorStop(1, `rgba(${rgb},0)`)
     g.fillStyle = grad
     g.fillRect(0, 0, w, h)
   })
@@ -712,32 +710,19 @@ function fin(root: [number, number], tip: [number, number], span: number, thick:
 
 /**
  * A Rocket car's colours: its body, its stripe and fin tip, its wings and fins, and its nozzle's light. `rim` is the
- * light round its wheels: orange unless a set says (Season 1's cars keep the orange; Cold Snap's are icy).
+ * light round its wheels: orange unless a set says.
  */
 export type RocketColors = { body: string; stripe: string; trim: string; glow: string; flame: readonly [string, string]; rim?: string }
 
 /** The Rocket car's own, as the pass draws it: white, a red stripe, navy wings, an orange flame. */
 export const ROCKET_COLORS: RocketColors = { body: '#ece9f7', stripe: '#e8564f', trim: '#101634', glow: '#ff7a1a', flame: ['#f2813a', '#ffe7a3'] }
 
-/** The Midnight rocket (Season 1's Pass+): navy, an amber stripe, orange wings and a violet flame. */
-export const MIDNIGHT_COLORS: RocketColors = { body: '#141a4a', stripe: '#f5b942', trim: '#f2813a', glow: '#9a7bff', flame: ['#8a6ad4', '#e2d9ff'] }
-
-/** The Sunracer (Season 1's Pass+): sun-orange, a cream stripe, navy wings and a white-hot flame. */
-export const SUNRACER_COLORS: RocketColors = { body: '#f07c16', stripe: '#fff3d6', trim: '#101634', glow: '#ffd27a', flame: ['#ffcf5a', '#fff3c4'] }
-
-/** The Ice rocket (Season 2, Cold Snap): snow white, a teal stripe, navy wings, aurora-green lights round the wheels. */
-export const ICE_ROCKET_COLORS: RocketColors = { body: '#eef7ff', stripe: '#33c6d6', trim: '#13284a', glow: '#5cf2b0', flame: ['#33c6d6', '#d8fff2'], rim: '#5cf2b0' }
-
-/** Borealis (Season 2's Pass+): polar navy, an aurora-green stripe, violet wings and a violet flame. */
-export const BOREALIS_COLORS: RocketColors = { body: '#0f2a44', stripe: '#5cf2b0', trim: '#9b7bff', glow: '#5cf2b0', flame: ['#9b7bff', '#d8fff2'], rim: '#5cf2b0' }
-
-/** Hot Lap's skins (lib/skins.ts): each a Rocket car in its colours. */
+/**
+ * Hot Lap's skins that are a Rocket car in their colours (lib/skins.ts): just the Rocket car now. The other season
+ * cars have bodies of their own (seasonCars.ts): Ramsey, 2026-10-06, they "need to be unique to the season".
+ */
 export const ROCKET_SKINS: Record<string, RocketColors> = {
   'hotlap-rocket': ROCKET_COLORS,
-  'hotlap-midnight': MIDNIGHT_COLORS,
-  'hotlap-sunracer': SUNRACER_COLORS,
-  'hotlap-ice-rocket': ICE_ROCKET_COLORS,
-  'hotlap-borealis': BOREALIS_COLORS,
 }
 
 /**
