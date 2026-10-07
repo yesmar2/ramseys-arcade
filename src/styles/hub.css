@@ -1506,7 +1506,10 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   }
 }
 
-/* A phone: the name and tags beside a small screen, the words and Play under them. */
+/*
+ * A phone: the name and tags beside a small screen, the words and Play under them, then whatever else the hero
+ * has (a skin picker, the season's card, a note, where it plays) across under those, in that order.
+ */
 @media (max-width: 40rem) {
   .gh-hero.gh-hero--daily {
     grid-template-columns: minmax(0, 1fr) 9.5rem;
@@ -1515,9 +1518,7 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
       'name screen'
       'tags screen'
       'blurb blurb'
-      'acts acts'
-      'hint hint'
-      'where where';
+      'acts acts';
     align-items: start;
     gap: 0.55rem 0.9rem;
     padding: 1rem 1rem 1.1rem 1.1rem;
@@ -1561,25 +1562,32 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
     font-size: 1rem;
   }
 
+  /* Play across the hero, How to play and share under it: the three don't fit on one line. */
   .gh-hero--daily .gh-hero__acts {
     grid-area: acts;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     margin-top: 0.3rem;
   }
 
   .gh-hero--daily .gh-hero__acts .gh-play {
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     min-height: 3.2rem;
     padding: 0 1.1rem 0 0.95rem;
     font-size: 1.02rem;
   }
 
-  .gh-hero--daily .gh-hero__hint {
-    grid-area: hint;
+  /* The rest go across the whole hero, under Play, one after another: in a column of their own they were squeezed
+     into the width of the words beside the screen. */
+  .gh-hero--daily .skin-pick,
+  .gh-hero--daily .season-spotcard,
+  .gh-hero--daily .gh-hero__hint,
+  .gh-hero--daily .gh-hero__where {
+    grid-column: 1 / -1;
   }
 
-  .gh-hero--daily .gh-hero__where {
-    grid-area: where;
+  .gh-hero--daily .skin-pick,
+  .gh-hero--daily .season-spotcard {
+    margin-top: 0.2rem;
   }
 
   .gh-hero--daily .gh-screen {

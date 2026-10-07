@@ -5,9 +5,10 @@ import { gameHref, gamePlayHref, homeHref, recordsHref } from '../hooks/useHashR
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { dailyWords } from '../lib/dailyWords'
-import { hasGamePreview } from '../lib/gamePreviews'
+import { hasDayPreview, hasGamePreview } from '../lib/gamePreviews'
 import type { LeaderboardEntry, LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { boardDay } from '../lib/rankHow'
 import { DevicesIcon, PlayIcon } from './chromeIcons'
 import { GameHubHowTo } from './GameHubHowTo'
 import { GamePreview } from './GamePreview'
@@ -69,6 +70,10 @@ export function GameHubHero({
   const ranked = isRankedGame(game.slug)
   const playLabel = daily ? dailyPlayLabel(game.slug) : `Play ${game.name}`
   const spotlight = useSpotlight(game.slug)
+  // A daily's screen plays today where it has a day to play, as its card on the home page's Dailies row does:
+  // the track driven, the course rolled, the cave flown, the hills flown. With only its thumb, a racing daily's
+  // screen was a small picture in the middle of a dark one (Ramsey, 2026-10-07: "the game image is very small").
+  const plays = hasGamePreview(game.slug) || (daily && hasDayPreview(game.slug))
 
   return (
     <section
@@ -137,7 +142,7 @@ export function GameHubHero({
         </p>
       </div>
 
-      {/* The game on its screen: its thumb until the first frame is down. */}
+      {/* The game on its screen (a daily's, today): its thumb until the first frame is down. */}
       <a
         className="gh-screen"
         href={canPlay ? playHref : gameHref(game.slug)}
@@ -148,7 +153,7 @@ export function GameHubHero({
         <span className="gh-screen__thumb">
           <GameThumbArt slug={game.slug} accent={accent} />
         </span>
-        {hasGamePreview(game.slug) ? <GamePreview slug={game.slug} className="gh-screen__game" autoplay /> : null}
+        {plays ? <GamePreview slug={game.slug} day={daily ? boardDay() : undefined} className="gh-screen__game" autoplay /> : null}
         {/* A daily just for fun has no 1st: nobody is placed (data/games.ts Game.ranked). */}
         {ranked ? (
           <span className="gh-screen__top">
