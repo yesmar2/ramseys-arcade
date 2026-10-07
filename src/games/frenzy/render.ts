@@ -1,6 +1,6 @@
 import { PALETTE, type Swatch } from '../../data/games'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
-import { drawFish, type FishPaint } from './fishArt'
+import { drawFish, type FishPaint, type Glow } from './fishArt'
 import {
   FLOOR,
   MAX_SIZE,
@@ -25,6 +25,15 @@ import { SPECIES, playerArt, type FishArt } from './species'
  * (so a threat is never hidden behind a meal), the shark and its warning, the surface's waves, the
  * fisherman's boat and gulls above them, splashes and bubbles, the words that float up, and last the bar
  * along the bottom with what you are and your lives.
+ *
+ * The deep lights itself, as the old open-ocean Frenzy's did (Ramsey, 2026-10-06: "can we have some of the
+ * cool images from the original like in the deep ocean?"): below the reach of the sun the water darkens
+ * round you, the fish glow at their edges and marks, plankton breathes in the dark and flares wherever you
+ * swim through it, jellyfish drift with burning bells, and the rocks and kelp on the sea floor glow. The
+ * lights are gathered as the frame is drawn and added over the dark at the end, so they punch through it.
+ *
+ * Anything that can eat you is drawn with a red outline and a red glow, its eye red, and a "!" over it
+ * once it comes for you ("it's hard to tell which fish are the predators still").
  */
 
 const FONT = '"Outfit", system-ui, sans-serif'
@@ -111,8 +120,8 @@ function paletteNow(): Palette {
 }
 
 /** A fish's colours: its palette colour as a soft fill over the water, the same colour for its outline. */
-function paintFor(art: FishArt, pal: Palette, fill = 0.42): FishPaint {
-  const key = `${art.swatch}|${art.tailSwatch ?? ''}|${art.pattern}|${fill}`
+function paintFor(art: FishArt, pal: Palette, fill = 0.42, threat = false): FishPaint {
+  const key = `${art.swatch}|${art.tailSwatch ?? ''}|${art.pattern}|${fill}|${threat}`
   const cached = paints.get(key)
   if (cached) return cached
   const under = mix(pal.shallow, pal.deep, 0.35)
@@ -120,7 +129,8 @@ function paintFor(art: FishArt, pal: Palette, fill = 0.42): FishPaint {
   const tailHue = art.tailSwatch ? hueOf(toRgb(PALETTE[art.tailSwatch])) : hue
   const lineL = pal.dark ? 66 : 40
   const soft = (h: number, amount: number) => css(mix(under, hslToRgb(h, 0.66, 0.58), amount))
-  const line = `hsla(${hue}, 64%, ${lineL}%, 0.95)`
+  // Anything that can eat you is outlined in red.
+  const line = threat ? 'hsla(2, 88%, 56%, 1)' : `hsla(${hue}, 64%, ${lineL}%, 0.95)`
   const fin = soft(hue, fill * 0.62)
   const lightMarks = art.pattern === 'bands' || art.pattern === 'lateral'
   const made: FishPaint = {
@@ -128,7 +138,7 @@ function paintFor(art: FishArt, pal: Palette, fill = 0.42): FishPaint {
     fin,
     tail: art.tailSwatch ? soft(tailHue, Math.min(0.9, fill * 2)) : fin,
     line,
-    tailLine: `hsla(${tailHue}, 64%, ${lineL}%, 0.95)`,
+    tailLine: threat ? 'hsla(2, 88%, 56%, 1)' : `hsla(${tailHue}, 64%, ${lineL}%, 0.95)`,
     pattern: lightMarks ? `hsla(${hue}, 60%, ${pal.dark ? 88 : 97}%, 0.95)` : line,
     eye: '#ffffff',
     pupil: '#16202a',
@@ -141,6 +151,218 @@ function paintFor(art: FishArt, pal: Palette, fill = 0.42): FishPaint {
 }
 
 const rollScale = (roll: number) => (Math.sign(roll) || 1) * Math.max(0.18, Math.abs(roll))
+
+const smooth = (t: number) => {
+  const k = Math.max(0, Math.min(1, t))
+  return k * k * (3 - 2 * k)
+}
+/** How much things light themselves at a depth: none in the sunlit top, full by the deep. */
+const lumAt = (y: number) => smooth((y - 420) / 480)
+/** How dark the water is round the view, for the dark that closes in on you in the deep. */
+const darkAt = (y: number) => smooth((y - 320) / 700)
+
+/** The colours the water's own life glows in: mostly cyan, some violet and blue, a little pink. */
+const PLANKTON = ['#6ff4ff', '#6ff4ff', '#6ff4ff', '#8ef7d4', '#a98bff', '#7fb2ff', '#ff8ad8']
+/** The red of anything that can eat you. */
+const DANGER = '#ff4a3d'
+
+/** The frame's lights, in pixels, added over the dark at the end of it. */
+let lights: Glow[] = []
+
+const glowSprites = new Map<string, HTMLCanvasElement>()
+
+/** One soft light, painted once per colour and stamped wherever it's wanted. */
+function glowSprite(color: string) {
+  let sprite = glowSprites.get(color)
+  if (!sprite) {
+    sprite = document.createElement('canvas')
+    sprite.width = 64
+    sprite.height = 64
+    const g = sprite.getContext('2d')!
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+    // A colour as written: hex, rgb() or hsl()/hsla().
+    const n = color.match(/[\d.]+/g)?.map(Number) ?? [255, 255, 255]
+    const c: RGB = color.startsWith('hsl') ? hslToRgb(n[0] ?? 0, (n[1] ?? 0) / 100, (n[2] ?? 100) / 100) : toRgb(color)
+    grad.addColorStop(0, css(c, 0.55))
+    grad.addColorStop(0.35, css(c, 0.22))
+    grad.addColorStop(1, css(c, 0))
+    g.fillStyle = grad
+    g.fillRect(0, 0, 64, 64)
+    if (glowSprites.size > 160) glowSprites.clear()
+    glowSprites.set(color, sprite)
+  }
+  return sprite
+}
+
+function drawLights(ctx: CanvasRenderingContext2D) {
+  if (!lights.length) return
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  const n = Math.min(lights.length, 420)
+  for (let i = 0; i < n; i++) {
+    const g = lights[i]!
+    const a = Math.min(1, g.strength)
+    if (g.r < 2 || a < 0.03) continue
+    ctx.globalAlpha = a
+    ctx.drawImage(glowSprite(g.color), g.x - g.r, g.y - g.r, g.r * 2, g.r * 2)
+  }
+  ctx.restore()
+}
+
+/** A fish's own lights, from its frame (drawFish) to the screen's. */
+function placeLights(local: Glow[], x: number, y: number, angle: number, roll: number, alpha: number) {
+  const c = Math.cos(angle)
+  const sn = Math.sin(angle)
+  const rs = rollScale(roll)
+  for (const g of local) {
+    const ly = g.y * rs
+    lights.push({ x: x + c * g.x - sn * ly, y: y + sn * g.x + c * ly, r: g.r, color: g.color, strength: g.strength * alpha })
+  }
+}
+
+/** Where you've just been, so the plankton behind you can still be glowing. */
+type WakePoint = { x: number; y: number; t: number }
+let wake: WakePoint[] = []
+const WAKE_LIFE = 1.5
+
+function wakeNow(s: GameState) {
+  const p = s.player
+  const last = wake[wake.length - 1]
+  if (last && (last.t > s.time || s.phase !== 'playing')) wake = []
+  if (s.phase === 'playing' && !p.air && (!last || Math.hypot(p.x - last.x, p.y - last.y) > 8 || s.time - last.t > 0.12)) wake.push({ x: p.x, y: p.y, t: s.time })
+  while (wake.length && s.time - wake[0]!.t > WAKE_LIFE) wake.shift()
+  return wake
+}
+
+/**
+ * The water's plankton in the deep: a field of tiny lights fixed in the water, each breathing on its own
+ * clock, flaring as you swim through and fading behind you.
+ */
+function drawPlankton(ctx: CanvasRenderingContext2D, v: View) {
+  const s = v.s
+  const half = viewHalf(s)
+  if (lumAt(s.camY + half.h) < 0.02) return
+  const trail = wakeNow(s)
+  const reach = 60 + playerRadius(s) * 1.6
+  const cell = 46
+  const x0 = Math.floor((s.camX - half.w) / cell) - 1
+  const x1 = Math.ceil((s.camX + half.w) / cell) + 1
+  const y0 = Math.max(0, Math.floor((s.camY - half.h) / cell) - 1)
+  const y1 = Math.ceil((s.camY + half.h) / cell) + 1
+  for (let iy = y0; iy <= y1; iy++) {
+    for (let ix = x0; ix <= x1; ix++) {
+      const h1 = hash(ix * 31 + iy * 7.7)
+      const h2 = hash(ix * 5.3 - iy * 13.1)
+      const drift = s.time * (0.25 + h1 * 0.3) + h2 * 10
+      const wx = ix * cell + h1 * cell + Math.sin(drift) * cell * 0.12
+      const wy = iy * cell + h2 * cell + Math.cos(drift * 0.8) * cell * 0.1
+      const lum = lumAt(wy)
+      if (lum < 0.02) continue
+      let lit = 0
+      for (let i = trail.length - 1; i >= 0; i -= 2) {
+        const w = trail[i]!
+        const dx = wx - w.x
+        const dy = wy - w.y
+        if (dx > reach || dx < -reach || dy > reach || dy < -reach) continue
+        const d = Math.sqrt(dx * dx + dy * dy)
+        if (d < reach) lit = Math.max(lit, (1 - d / reach) * (1 - (s.time - w.t) / WAKE_LIFE))
+      }
+      const breathe = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(s.time * (0.5 + h2 * 0.9) + h1 * 40))
+      const color = PLANKTON[Math.floor(h1 * 97) % PLANKTON.length]!
+      const a = Math.min(1, lum * (0.5 * breathe + lit * 1.2))
+      if (a < 0.03) continue
+      const x = X(v, wx)
+      const y = Y(v, wy)
+      const R = Math.max(0.8, 1.2 * Math.min(1.5, Math.max(0.8, v.ppu)) * (1 + lit * 1.4))
+      ctx.globalAlpha = a
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(x, y, R, 0, Math.PI * 2)
+      ctx.fill()
+      if (lit > 0.25) lights.push({ x, y, r: R * 7, color, strength: lit * lum * 0.8 })
+    }
+  }
+  ctx.globalAlpha = 1
+}
+
+/**
+ * Jellyfish drifting in the deep, harmless: a few to a stretch of water, each bobbing on its own, its bell's
+ * edge burning and its tentacles ending in points of light. Where they are comes from the water itself, so
+ * they're the same on every swim.
+ */
+function drawJellies(ctx: CanvasRenderingContext2D, v: View) {
+  const s = v.s
+  const half = viewHalf(s)
+  const cell = 260
+  const x0 = Math.floor((s.camX - half.w) / cell) - 1
+  const x1 = Math.ceil((s.camX + half.w) / cell) + 1
+  const y0 = Math.max(2, Math.floor((s.camY - half.h) / cell) - 1)
+  const y1 = Math.min(Math.floor((FLOOR - 120) / cell), Math.ceil((s.camY + half.h) / cell) + 1)
+  for (let iy = y0; iy <= y1; iy++) {
+    for (let ix = x0; ix <= x1; ix++) {
+      const h = hash(ix * 17.3 + iy * 101.7)
+      if (h > 0.45) continue
+      const wx = ix * cell + hash(ix + iy * 3.1) * cell + Math.sin(s.time * 0.15 + h * 20) * 30
+      const wy = iy * cell + hash(ix * 2.2 - iy) * cell + Math.sin(s.time * 0.4 + h * 9) * 18
+      const lum = lumAt(wy)
+      if (lum < 0.05) continue
+      const R = (10 + h * 14) * v.ppu
+      const x = X(v, wx)
+      const y = Y(v, wy)
+      if (x < -R * 3 || x > v.w + R * 3 || y < -R * 3 || y > v.h + R * 4) continue
+      const hue = [190, 280, 320, 170][Math.floor(h * 40) % 4]!
+      const beat = Math.sin(s.time * 2 + h * 30)
+      const rx = R * (1 - 0.08 * beat)
+      const ry = R * 0.82 * (1 + 0.12 * beat)
+      ctx.save()
+      ctx.globalAlpha = Math.min(1, lum * 1.2)
+      ctx.lineCap = 'round'
+      ctx.strokeStyle = `hsla(${hue}, 70%, 66%, 0.5)`
+      ctx.lineWidth = Math.max(1, R * 0.05)
+      for (let i = 0; i < 6; i++) {
+        const bx = x + ((i / 5 - 0.5) * 1.5) * rx * 0.8
+        const len = R * (2 + (i % 3) * 0.35)
+        ctx.beginPath()
+        ctx.moveTo(bx, y)
+        for (let k = 1; k <= 6; k++) {
+          const t = k / 6
+          ctx.lineTo(bx + Math.sin(s.time * 2.4 + i * 1.3 + t * 5) * R * 0.16 * t, y + len * t)
+        }
+        ctx.stroke()
+        if (i % 2 === 0) lights.push({ x: bx + Math.sin(s.time * 2.4 + i * 1.3 + 5) * R * 0.16, y: y + len, r: R * 0.6, color: `hsl(${hue}, 92%, 76%)`, strength: 0.6 * lum })
+      }
+      ctx.beginPath()
+      ctx.ellipse(x, y, rx, ry, 0, Math.PI, 0)
+      ctx.closePath()
+      ctx.fillStyle = `hsla(${hue}, 70%, 58%, 0.28)`
+      ctx.fill()
+      ctx.strokeStyle = `hsla(${hue}, 80%, 72%, 0.95)`
+      ctx.lineWidth = Math.max(1.3, R * 0.08)
+      ctx.stroke()
+      ctx.restore()
+      lights.push({ x, y: y - ry * 0.2, r: R * 2.6, color: `hsl(${hue}, 85%, 72%)`, strength: 0.55 * lum })
+    }
+  }
+}
+
+/** The dark closing in round you, deeper down: night blue rather than black, so the dark has a colour. */
+function drawDark(ctx: CanvasRenderingContext2D, v: View) {
+  const s = v.s
+  const dark = darkAt(s.camY)
+  if (dark < 0.04) return
+  const fx = s.phase === 'playing' ? X(v, s.player.x) : v.w / 2
+  const fy = s.phase === 'playing' ? Y(v, s.player.y) : v.h / 2
+  const inner = Math.min(v.w, v.h) * (0.55 - dark * 0.22)
+  const outer = Math.hypot(v.w, v.h) * 0.62
+  const grad = ctx.createRadialGradient(fx, fy, inner, fx, fy, outer)
+  grad.addColorStop(0, 'rgba(3, 5, 20, 0)')
+  grad.addColorStop(1, `rgba(3, 5, 20, ${0.78 * dark})`)
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, v.w, v.h)
+  // And the whole of the water a little darker, so the lights read.
+  ctx.fillStyle = `rgba(3, 5, 20, ${0.28 * dark})`
+  ctx.fillRect(0, Math.max(0, Y(v, 0)), v.w, v.h)
+}
 
 /** The camera, in pixels. */
 type View = { s: GameState; w: number; h: number; ppu: number; x0: number; y0: number }
@@ -255,6 +477,14 @@ function drawFloor(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
     const sway = Math.sin(v.s.time * 0.8 + i) * 14 * v.ppu
     ctx.bezierCurveTo(bx + sway, fy - tall * 0.35, bx - sway, fy - tall * 0.7, bx + sway * 0.6, fy - tall)
     ctx.stroke()
+    // Its tip glows, a bulb of light on the end.
+    const color = PLANKTON[Math.floor(hash(i + 8) * 7)]!
+    const pulse = 0.5 + 0.5 * Math.sin(v.s.time * 1.4 + i)
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(bx + sway * 0.6, fy - tall, Math.max(1.8, 4 * v.ppu), 0, Math.PI * 2)
+    ctx.fill()
+    lights.push({ x: bx + sway * 0.6, y: fy - tall, r: 26 * v.ppu, color, strength: 0.5 + 0.4 * pulse })
   }
   // The sand, gently uneven.
   ctx.fillStyle = css(pal.sand)
@@ -276,6 +506,29 @@ function drawFloor(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
     ctx.beginPath()
     ctx.ellipse(rx, fy, r * 1.4, r, 0, Math.PI, Math.PI * 2)
     ctx.fill()
+    // Glowing moss over its face, and a rim of light.
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.strokeStyle = 'rgba(111, 244, 255, 0.28)'
+    ctx.lineWidth = Math.max(1.5, 2.2 * v.ppu)
+    ctx.beginPath()
+    ctx.ellipse(rx, fy, r * 1.4, r, 0, Math.PI, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
+    for (let k = 0; k < 6; k++) {
+      const a = Math.PI + hash(i * 7 + k) * Math.PI
+      const d = Math.sqrt(hash(i * 3 + k * 5)) * 0.8
+      const mx = rx + Math.cos(a) * r * 1.4 * d
+      const my = fy + Math.sin(a) * r * d
+      const color = PLANKTON[(i + k) % PLANKTON.length]!
+      ctx.fillStyle = color
+      ctx.globalAlpha = 0.85
+      ctx.beginPath()
+      ctx.arc(mx, my, Math.max(1, 1.8 * v.ppu), 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      lights.push({ x: mx, y: my, r: 12 * v.ppu, color, strength: 0.5 })
+    }
   }
 }
 
@@ -472,26 +725,31 @@ function drawOne(
   art: FishArt,
   at: { x: number; y: number; angle: number; roll: number; swim: number; mouth: number; seed: number },
   r: number,
-  o: { alarm?: number; amp?: number; alpha?: number; fill?: number } = {},
+  o: { alarm?: number; amp?: number; alpha?: number; fill?: number; threat?: number } = {},
 ) {
   const x = X(v, at.x)
   const y = Y(v, at.y)
   const reach = r * art.length * v.ppu
   if (x < -reach * 1.5 || x > v.w + reach * 1.5 || y < -reach || y > v.h + reach) return
+  const alpha = o.alpha ?? 1
+  const local: Glow[] = []
   ctx.save()
-  ctx.globalAlpha = o.alpha ?? 1
+  ctx.globalAlpha = alpha
   ctx.translate(x, y)
   ctx.rotate(at.angle)
   ctx.scale(1, rollScale(at.roll))
   drawFish(
     ctx,
     art,
-    { length: reach, swim: at.swim, amp: o.amp ?? 0.9, mouth: at.mouth, lookX: 1, lookY: 0.05, alarm: o.alarm ?? 0, puff: 0, time: v.s.time },
+    { length: reach, swim: at.swim, amp: o.amp ?? 0.9, mouth: at.mouth, lookX: 1, lookY: 0.05, alarm: o.alarm ?? 0, puff: 0, time: v.s.time, biolume: lumAt(at.y) },
     at.seed,
-    null,
-    paintFor(art, pal, o.fill),
+    local,
+    paintFor(art, pal, o.fill, o.threat !== undefined),
   )
   ctx.restore()
+  placeLights(local, x, y, at.angle, at.roll, alpha)
+  // A threat's red glow, stronger as it comes for you.
+  if (o.threat !== undefined) lights.push({ x, y, r: reach * 0.95, color: DANGER, strength: (0.22 + 0.4 * o.threat) * alpha })
 }
 
 function drawFishes(ctx: CanvasRenderingContext2D, v: View, pal: Palette, threats: boolean) {
@@ -501,13 +759,38 @@ function drawFishes(ctx: CanvasRenderingContext2D, v: View, pal: Palette, threat
   for (const f of s.fishes) {
     const threat = live && !edible(f.tier, size)
     if (threat !== threats) continue
-    // Anything that can eat you has a red eye, redder as it comes for you.
+    // Anything that can eat you: a red outline and glow, and a red eye, redder as it comes for you.
     drawOne(ctx, v, pal, SPECIES[f.species].art, f, fishRadius(f), {
-      alarm: threat ? Math.max(0.45, f.hunt) : 0,
+      alarm: threat ? Math.max(0.6, f.hunt) : 0,
       amp: f.hunt > 0.5 ? 1.3 : 0.85,
       alpha: f.fade,
+      threat: threat ? f.hunt : undefined,
     })
   }
+}
+
+/** A red "!" over anything coming for you. */
+function drawAlerts(ctx: CanvasRenderingContext2D, v: View) {
+  const s = v.s
+  if (s.phase !== 'playing') return
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `800 15px ${FONT}`
+  for (const f of s.fishes) {
+    if (f.hunt < 0.3 || edible(f.tier, s.player.size)) continue
+    const x = X(v, f.x)
+    const y = Y(v, f.y) - fishRadius(f) * v.ppu - 16
+    if (x < -20 || x > v.w + 20 || y < -20 || y > v.h + 20) continue
+    ctx.globalAlpha = Math.min(1, (f.hunt - 0.3) * 3)
+    ctx.fillStyle = PALETTE.red
+    ctx.beginPath()
+    ctx.arc(x, y, 10, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText('!', x, y + 1)
+  }
+  ctx.restore()
 }
 
 function drawPlayer(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
@@ -665,12 +948,15 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   const pal = paletteNow()
   const v: View = { s, w: width, h: height, ppu: s.ppu, x0: s.camX - width / 2 / s.ppu, y0: s.camY - height / 2 / s.ppu }
+  lights = []
   ctx.fillStyle = css(pal.deep)
   ctx.fillRect(0, 0, width, height)
   drawSky(ctx, v, pal)
   drawWater(ctx, v, pal)
+  drawPlankton(ctx, v)
   drawFloor(ctx, v, pal)
   drawWalls(ctx, v, pal)
+  drawJellies(ctx, v)
   drawLine(ctx, v, pal)
   drawFishes(ctx, v, pal, false)
   drawGulls(ctx, v)
@@ -679,6 +965,9 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   drawShark(ctx, v, pal)
   drawSurface(ctx, v, pal)
   drawBoat(ctx, v)
+  drawDark(ctx, v)
+  drawLights(ctx)
+  drawAlerts(ctx, v)
   drawEffects(ctx, v, pal)
   drawBar(ctx, v, pal)
 }
