@@ -14,7 +14,6 @@ export const SITE_RECORD_IDS = [
   'games-in-a-day',
   'runs-in-a-day',
   'days-played',
-  'games-played',
   'boards-topped',
 ] as const
 export type SiteRecordId = (typeof SITE_RECORD_IDS)[number]

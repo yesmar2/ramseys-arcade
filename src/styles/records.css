@@ -349,6 +349,11 @@ html[data-theme="dark"] .rbk-book__value b {
   border: 1px solid var(--sb-line);
 }
 
+/* An odd one out takes the whole last row, rather than leaving a hole beside it. */
+.rbk-house__tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .rbk-house__label {
   font-size: 0.82rem;
   font-weight: 700;
