@@ -6,7 +6,7 @@
   "rewrites": [
     { "source": "/c/:game/:id", "destination": "/api/challenge-page?game=:game&id=:id" },
     { "source": "/e/:id/:name", "destination": "/api/event-page?id=:id&name=:name" },
-    { "source": "/((?!api/|_vercel/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|_vercel/|assets/).*)", "destination": "/index.html" }
   ],
   "git": {
     "deploymentEnabled": true
