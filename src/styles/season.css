@@ -134,6 +134,13 @@ html.season-on[data-theme='dark'] body::after {
   opacity: 0.85;
 }
 
+/* Cold Snap's sky is frosted glass: the frost over the whole window, from its corners, over the snow. */
+html.season-on.season-cold-snap body::after {
+  background-position: center, 0 0;
+  background-size: 100% 100%, 420px 420px;
+  opacity: 1;
+}
+
 html.season-on .site-bar {
   background-image: var(--season-bar-light);
   background-size: 260px 62px;

@@ -1,6 +1,6 @@
 /*
- * Small drawing helpers for the season's look (Season 1, Space Race): a seeded
- * star field as a CSS background tile, and the four-point sparkle the patches
+ * Small drawing helpers for the seasons' looks: Space Race's seeded
+ * star field as a CSS background tile, Cold Snap's snow and frost, and the four-point sparkle the patches
  * and confetti use. Seeded, so a page draws the same sky every time.
  */
 
@@ -73,4 +73,79 @@ export function starTile(color: string, seed: number, options: TileOptions = {})
   const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
   tiles.set(key, url)
   return url
+}
+
+/**
+ * A repeating tile of snow in `color`, Cold Snap's in place of stars: soft dots and a few little six-armed flakes.
+ * Seeded the way frostCorners is, so the sky is the one Ramsey picked on the canvas.
+ */
+export function snowTile(color: string, seed: number, { size = 420, flakes = 6, dots = 26 } = {}): string {
+  const key = `snow|${color}|${seed}|${size}|${flakes}|${dots}`
+  const known = tiles.get(key)
+  if (known) return known
+  const r = parkMiller(seed)
+  let body = ''
+  for (let i = 0; i < dots; i++) {
+    body += `<circle cx="${(r() * size).toFixed(1)}" cy="${(r() * size).toFixed(1)}" r="${(0.8 + r() * 1.8).toFixed(2)}" fill="${color}" opacity="${(0.25 + r() * 0.5).toFixed(2)}"/>`
+  }
+  for (let i = 0; i < flakes; i++) {
+    const x = r() * size
+    const y = r() * size
+    const s = 3 + r() * 6
+    const opacity = (0.35 + r() * 0.5).toFixed(2)
+    let arms = ''
+    for (let a = 0; a < 6; a++) {
+      const t = (a * Math.PI) / 3
+      arms += `M${x.toFixed(1)} ${y.toFixed(1)}L${(x + Math.cos(t) * s).toFixed(1)} ${(y + Math.sin(t) * s).toFixed(1)}`
+      const mx = x + Math.cos(t) * s * 0.55
+      const my = y + Math.sin(t) * s * 0.55
+      for (const d of [-0.7, 0.7]) arms += `M${mx.toFixed(1)} ${my.toFixed(1)}L${(mx + Math.cos(t + d) * s * 0.35).toFixed(1)} ${(my + Math.sin(t + d) * s * 0.35).toFixed(1)}`
+    }
+    body += `<path d="${arms}" stroke="${color}" stroke-width="1.1" stroke-linecap="round" fill="none" opacity="${opacity}"/>`
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${body}</svg>`
+  const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+  tiles.set(key, url)
+  return url
+}
+
+/**
+ * Frost creeping in from the four corners of the page, Cold Snap's sky (Ramsey picked C, Frosted glass, 2026-10-07):
+ * branching fern lines in `color`, drawn for a 1600 × 900 page and stretched to the window's.
+ */
+export function frostCorners(color: string): string {
+  const key = `frost|${color}`
+  const known = tiles.get(key)
+  if (known) return known
+  const r = parkMiller(21)
+  let d = ''
+  const branch = (x: number, y: number, a: number, len: number, depth: number) => {
+    if (depth > 5 || len < 6) return
+    const ex = x + Math.cos(a) * len
+    const ey = y + Math.sin(a) * len
+    d += `M${x.toFixed(1)} ${y.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}`
+    for (let i = 1; i <= 3; i++) {
+      const t = i / 4
+      const bx = x + (ex - x) * t
+      const by = y + (ey - y) * t
+      branch(bx, by, a + 0.75 + (r() - 0.5) * 0.3, len * 0.42, depth + 1)
+      branch(bx, by, a - 0.75 + (r() - 0.5) * 0.3, len * 0.42, depth + 1)
+    }
+    branch(ex, ey, a + (r() - 0.5) * 0.5, len * 0.7, depth + 1)
+  }
+  for (let i = 0; i < 7; i++) branch(0, 0, 0.1 + i * 0.22 + (r() - 0.5) * 0.1, 120 + r() * 120, 0)
+  const corner = (turn: string) => `<g transform="${turn}"><path d="${d}" stroke="${color}" stroke-width="1.4" fill="none" stroke-linecap="round"/></g>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" preserveAspectRatio="none">${corner('')}${corner('translate(1600 0) scale(-1 1)')}${corner('translate(0 900) scale(1 -1)')}${corner('translate(1600 900) scale(-1 -1)')}</svg>`
+  const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+  tiles.set(key, url)
+  return url
+}
+
+/** The seeded randomness the snow and frost were drawn with on the canvas Ramsey picked from. */
+function parkMiller(seed: number): () => number {
+  let s = seed
+  return () => {
+    s = (s * 16807) % 2147483647
+    return (s - 1) / 2147483646
+  }
 }
