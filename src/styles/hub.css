@@ -1,8 +1,8 @@
 /*
  * A game's page (GameHubPage): its name and Play beside its screen, where it
- * plays itself, and the period's board beside them; then where you stand, the
- * record book and any event it is in; how to play; the games most like it.
- * Everything wears the game's colour, --gh-accent, with --gh-ink on it.
+ * plays itself, across the page; then where you stand, the period's board, the
+ * record book and any event it is in, side by side; how to play; the games most
+ * like it. Everything wears the game's colour, --gh-accent, with --gh-ink on it.
  */
 
 .gh-rail {
@@ -86,20 +86,13 @@
   letter-spacing: -0.02em;
 }
 
-/* ---------- the top: the game and its board ---------- */
+/* ---------- the hero: the game, across the page ---------- */
 
-.gh-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 25.5rem;
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.gh-top--solo {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* The words, 25rem across, and the game across the rest of the card, out to its edges (.gh-screen). */
+/*
+ * The words, 28.6rem across, and the game across the rest of the card, out to its edges (.gh-screen). Across the
+ * page on every game's, as a daily's is (Ramsey, 2026-10-07: "the hero on the game hubs for non-daily games should
+ * be full width now"); its board went under it, beside where you stand (.gh-band).
+ */
 .gh-hero {
   position: relative;
   display: grid;
@@ -717,39 +710,13 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   padding: 0 0.6rem 0.4rem;
 }
 
-/* ---------- the band: where you stand, the record book, the events ---------- */
+/* ---------- the band: where you stand, the board, the record book, the events, side by side ---------- */
 
 .gh-band {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
   gap: 1rem;
   align-items: stretch;
-}
-
-/* Alone in the band (a game with no record book or event running), the card runs in two columns: you on the left, what to do on the right. */
-@media (min-width: 48rem) {
-  .gh-band > .gh-stand:only-child {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-auto-flow: row dense;
-    align-items: center;
-    gap: 0.9rem 2.5rem;
-  }
-
-  .gh-band > .gh-stand:only-child > .gh-cap {
-    grid-column: 1 / -1;
-  }
-
-  .gh-band > .gh-stand:only-child > .gh-stand__lead,
-  .gh-band > .gh-stand:only-child > .gh-bar {
-    grid-column: 1;
-  }
-
-  .gh-band > .gh-stand:only-child > .gh-callout,
-  .gh-band > .gh-stand:only-child > .gh-aims,
-  .gh-band > .gh-stand:only-child > .gh-stand__signin {
-    grid-column: 2;
-  }
 }
 
 .gh-stand__lead {
@@ -988,16 +955,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 
 .gh-stand__foot .gh-more {
   margin-left: auto;
-}
-
-@media (min-width: 48rem) {
-  .gh-band > .gh-stand:only-child > .gh-stand__today {
-    grid-column: 2;
-  }
-
-  .gh-band > .gh-stand:only-child > .gh-stand__foot {
-    grid-column: 1 / -1;
-  }
 }
 
 /*
@@ -1308,47 +1265,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 @media (max-width: 72rem) {
   .gh .gh-shelf__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 64rem) {
-  .gh-top {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/*
- * Beside the board on a narrower desk the hero hasn't the room for the game beside the words (it was a strip a few
- * fingers wide), so the game goes across its top, sixteen by nine and no taller than 15rem, as on a daily's page.
- */
-@media (min-width: 64.01rem) and (max-width: 76rem) {
-  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 0;
-  }
-
-  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-screen {
-    order: -1;
-    aspect-ratio: 16 / 9;
-    min-height: 0;
-    max-height: 15rem;
-  }
-
-  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-screen::after {
-    inset: auto 0 0;
-    width: auto;
-    height: 36%;
-    background: linear-gradient(0deg, var(--gh-hero-bg), transparent);
-  }
-
-  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-screen__top {
-    left: 0;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-hero__text {
-    padding: 0.4rem 1.6rem 1.4rem;
   }
 }
 
