@@ -2,8 +2,9 @@ import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BEAT, SWIFT_BODY, SWIFT_EYE, SWIFT_WING_
 
 /*
  * Swoop's season skins (lib/skins.ts): Season 2's snow swift on the free pass, and the penguin and the aurora
- * phoenix on Pass+, as Ramsey approved them from the season's skin mocks. Only your own bird wears one: the
- * blue bird, the ghosts and the pictures keep the usual look. Looks only, like every skin: each is drawn in the
+ * phoenix on Pass+, as Ramsey approved them from the season's skin mocks. Your own bird wears yours, and a ghost
+ * the one its run was flown in, lighter (scene.ts drawGhost); the blue bird and the pictures keep the usual
+ * look. Looks only, like every skin: each is drawn in the
  * swift's unit frame (birdShape.ts), facing right with the body's middle at the origin, the same size and the
  * same height off the hill, so it flies, dives and lands exactly as the red swift does.
  *

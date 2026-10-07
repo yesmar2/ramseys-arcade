@@ -9,9 +9,10 @@ import { keptSinceReset } from '../../lib/runResets'
 
 /**
  * A run as its ghost flies it: its time, when it passed each flag and the line, and where it was (sim.ts
- * Flight's ghost: x, y and whether it was holding, GHOST_RATE a second, the line's moment last).
+ * Flight's ghost: x, y and whether it was holding, GHOST_RATE a second, the line's moment last). `skin`, the
+ * season skin it was flown in (lib/skins.ts), so its ghost wears it too.
  */
-export type GhostRun = { time: number; splits: number[]; ghost: number[] }
+export type GhostRun = { time: number; splits: number[]; ghost: number[]; skin?: string }
 
 /** A ghost sample's numbers (sim.ts GHOST_STRIDE), here so this file needs no engine. */
 const STRIDE = 3
@@ -35,7 +36,7 @@ function validRun(raw: Partial<GhostRun> | null | undefined): GhostRun | null {
   if (!raw || typeof raw.time !== 'number' || !(raw.time > 10 && raw.time < 900)) return null
   if (!Array.isArray(raw.splits) || raw.splits.length < 1 || !raw.splits.every(Number.isFinite)) return null
   if (!Array.isArray(raw.ghost) || raw.ghost.length < STRIDE * 10 || raw.ghost.length % STRIDE !== 0 || !raw.ghost.every(Number.isFinite)) return null
-  return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
+  return { time: raw.time, splits: raw.splits, ghost: raw.ghost, ...(typeof raw.skin === 'string' ? { skin: raw.skin } : {}) }
 }
 
 /**
@@ -74,6 +75,7 @@ const toKeep = (run: GhostRun): KeptRun => ({
   time: run.time,
   splits: run.splits,
   ghost: run.ghost.map((v) => Math.round(v * 100) / 100),
+  ...(run.skin ? { skin: run.skin } : {}),
   at: Date.now(),
 })
 

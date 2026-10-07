@@ -77,9 +77,14 @@ const COACH_KEY = 'skermix-swoop-coach'
 
 /**
  * Whose run the ghost flies: the player one place above you today (`next`, for their place); the board's #1,
- * under their tag; your own best; or the blue bird's.
+ * under their tag; your own best; or the blue bird's. `skin`, the season skin the run was flown in, which its
+ * ghost wears (lib/skins.ts); the blue bird is always blue.
  */
-type Chasing = { who: 'next'; name: string; place: number } | { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
+type Chasing =
+  | { who: 'next'; name: string; place: number; skin?: string }
+  | { who: 'rival'; name: string; skin?: string }
+  | { who: 'you'; skin?: string }
+  | { who: 'pace' }
 
 /** The name over the ghost: whose run it flies. */
 function ghostTag(chasing: Chasing): string {
@@ -132,6 +137,8 @@ type Game = {
     improved: boolean
     before: number | null
     path: number[]
+    /** The skin it was flown in (lib/skins.ts), which its ghost wears. */
+    skin?: string
     runId: Promise<string | undefined> | null
   } | null
 }
@@ -166,8 +173,16 @@ function bestOf(day: string, practice: boolean, viewer: string | null | undefine
 /** The run to chase, and whose it is. */
 type Chase = { ghost: Ghost; chasing: Chasing }
 
-/** Whose the #1's run is: yours, when it's your tag at the top. */
-const topChasing = (top: BoardGhost, me: string): Chasing => (top.name === me ? { who: 'you' } : { who: 'rival', name: top.name })
+/** Whose the #1's run is: yours, when it's your tag at the top. In the skin it was flown in. */
+const topChasing = (top: BoardGhost, me: string): Chasing =>
+  top.name === me ? { who: 'you', skin: top.skin } : { who: 'rival', name: top.name, skin: top.skin }
+
+/**
+ * Your own best, in the skin it was flown in; a run kept before runs kept theirs borrows the board's, when it's
+ * yours at the top at the same time.
+ */
+const yourSkin = (mine: GhostRun, top: BoardGhost | null, me: string) =>
+  mine.skin ?? (top && top.name === me && Math.abs(top.time - mine.time) < 0.0005 ? top.skin : undefined)
 
 /**
  * Your first run over these hills is against the blue bird (Ramsey, 2026-10-06: "the first time you play it
@@ -189,12 +204,14 @@ function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: st
   const mine = bestOf(day, practice, currentAccountId())
   if (firstRun(mine, top, me, next)) return { ghost: new Ghost(pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
-    return { ghost: new Ghost(next.run ?? standIn(pace, next.time)), chasing: { who: 'next', name: next.name, place: next.place } }
+    return { ghost: new Ghost(next.run ?? standIn(pace, next.time)), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
   }
   if (top && (!mine || top.time < mine.time - 0.0005)) {
     return { ghost: new Ghost(top.run ?? standIn(pace, top.time)), chasing: topChasing(top, me) }
   }
-  return mine && mine.time < pace.time ? { ghost: new Ghost(mine), chasing: { who: 'you' } } : { ghost: new Ghost(pace), chasing: { who: 'pace' } }
+  return mine && mine.time < pace.time
+    ? { ghost: new Ghost(mine), chasing: { who: 'you', skin: yourSkin(mine, top, me) } }
+    : { ghost: new Ghost(pace), chasing: { who: 'pace' } }
 }
 
 /**
@@ -209,12 +226,12 @@ function cardChase(swoop: SwoopDay, practice: boolean, top: BoardGhost | null, m
   const waiting = (time: number) => new Ghost(flown ? standIn(flown, time) : { time, splits: [], ghost: [start.x, start.y, GLIDE, start.x, start.y, GLIDE] })
   if (firstRun(mine, top, me, next)) return { ghost: flown ? new Ghost(flown) : waiting(swoop.pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
-    return { ghost: next.run ? new Ghost(next.run) : waiting(next.time), chasing: { who: 'next', name: next.name, place: next.place } }
+    return { ghost: next.run ? new Ghost(next.run) : waiting(next.time), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
   }
   if (top && (!mine || top.time < mine.time - 0.0005)) {
     return { ghost: top.run ? new Ghost(top.run) : waiting(top.time), chasing: topChasing(top, me) }
   }
-  if (mine && mine.time < swoop.pace) return { ghost: new Ghost(mine), chasing: { who: 'you' } }
+  if (mine && mine.time < swoop.pace) return { ghost: new Ghost(mine), chasing: { who: 'you', skin: yourSkin(mine, top, me) } }
   return { ghost: flown ? new Ghost(flown) : waiting(swoop.pace), chasing: { who: 'pace' } }
 }
 
@@ -519,7 +536,7 @@ function SwoopDayGame({
    * player above you is asked for again, as you may have passed them. On past hills only one that could be
    * their fastest goes: the #1 is faster, or their line is known and at least as fast, and it stays home.
    */
-  const sendGhost = (run: { time: number; score: number; splits: number[]; path: number[] }, name: string) => {
+  const sendGhost = (run: { time: number; score: number; splits: number[]; path: number[]; skin?: string }, name: string) => {
     if ((practice && !past) || !signedIn || !name) return
     const known = topRef.current
     const today = !practice
@@ -582,7 +599,7 @@ function SwoopDayGame({
     if (practice || !topAsked || !signedIn || typeof viewer !== 'string' || !playerName || offered.current === viewer) return
     offered.current = viewer
     const mine = keptRun(day, viewer)
-    if (mine) sendGhostRef.current({ time: mine.time, score: swoopBoardScore(mine.time), splits: mine.splits, path: mine.ghost }, playerName)
+    if (mine) sendGhostRef.current({ time: mine.time, score: swoopBoardScore(mine.time), splits: mine.splits, path: mine.ghost, skin: mine.skin }, playerName)
   }, [practice, topAsked, signedIn, viewer, playerName, day])
 
   /**
@@ -592,7 +609,7 @@ function SwoopDayGame({
   const claimSaved = (g: Game) => {
     const id = currentAccountId()
     if (g.owner !== SIGNED_OUT || !g.run || typeof id !== 'string') return
-    claimRun(g.day, id, { time: g.run.time, splits: g.run.splits, ghost: g.run.path })
+    claimRun(g.day, id, { time: g.run.time, splits: g.run.splits, ghost: g.run.path, ...(g.run.skin ? { skin: g.run.skin } : {}) })
     g.owner = id
   }
 
@@ -686,8 +703,10 @@ function SwoopDayGame({
       const improved = !kept || time < kept.time
       const path = g.record
       const splits = [...b.splits]
+      // The skin it was flown in, so its ghost wears it: yours as your best, everyone's from the board.
+      const skin = skinRef.current ?? undefined
       if (improved && g.owner !== undefined) {
-        const run = { time, splits, ghost: path }
+        const run = { time, splits, ghost: path, ...(skin ? { skin } : {}) }
         if (practice) keepPracticeRun(g.day, g.owner, run)
         else keepBestRun(g.day, g.owner, run)
       }
@@ -701,6 +720,7 @@ function SwoopDayGame({
         improved,
         before: kept?.time ?? null,
         path,
+        ...(skin ? { skin } : {}),
         runId: past ? runIdFor(SLUG) : null,
       }
       // On down the flat past the line, for looks.
@@ -834,6 +854,8 @@ function SwoopDayGame({
           ghostTag: ghostTag(g.chasing),
           ghostMine: g.chasing.who === 'you',
           ghostBlue: g.chasing.who === 'pace',
+          // The ghost in the skin its run was flown in; the blue bird is always blue.
+          ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
           calm,
           streak: flying.streak,
           skin: skinRef.current,
