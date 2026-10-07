@@ -19,8 +19,8 @@ import type { TrophyAward } from './trophies'
  * much as at the end of a busy month.
  *
  * A board pays by place: first gets 100, last a point or two, and a board with
- * nobody on it pays its first run all 100. A player's total is their boards
- * added together (see placePoints in the API's store). The page says places
+ * nobody on it pays its first run all 100. A player's total is their ten best
+ * boards added together (see placePoints and STANDINGS_BEST in the API's store). The page says places
  * and names; what each place pays, and a player's points game by game, are on
  * How your rank works (lib/rankHow).
  */

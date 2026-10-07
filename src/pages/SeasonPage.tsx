@@ -479,7 +479,7 @@ function StandingsCard({ season, standings }: { season: SeasonInfo; standings: S
   return (
     <section className="season-card" aria-labelledby="season-standings-title">
       <h2 id="season-standings-title">Season standings</h2>
-      <p className="season-card__sub">Points across all games, this season only</p>
+      <p className="season-card__sub">Points from your ten best games, this season only</p>
       {standings.top.length ? (
         <ol className="season-standings">
           {standings.top.map((row) => (

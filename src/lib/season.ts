@@ -77,7 +77,7 @@ export type SeasonRun = {
   levelUp: SeasonReward[]
 }
 
-/** The season's standings: points across all games over its days, shown by place and name. */
+/** The season's standings: points from each player's ten best games over its days, shown by place and name. */
 export type SeasonStandings = {
   total: number
   top: { rank: number; name: string; avatarId: string }[]

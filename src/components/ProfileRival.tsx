@@ -7,6 +7,7 @@ import { RANKED_LEADERBOARD_GAMES, type GlobalRankResult, type LeaderboardPeriod
 import {
   andList,
   cheapestClimb,
+  gainWith,
   headToHead,
   ordinal,
   periodWord,
@@ -101,7 +102,7 @@ export function ProfileRival({
     ? `You’re #${you.rank.toLocaleString()} ${word}`
     : `#${them.rank.toLocaleString()} ${word}, ${relation}`
 
-  // Games on the wall only: a hidden game still counts, but it can't be named as somewhere to go.
+  // Games on the wall only: a hidden game counts toward nobody's rank, and can't be named as somewhere to go.
   const missing = pointsFromMissing(onWall(them.byGame), you.byGame)
   const missingNames = missing.slugs.map(gameName)
   const when = period === 'all' ? '' : ` ${word}`
@@ -115,7 +116,8 @@ export function ProfileRival({
     const climb = cheapestClimb(you.byGame, gap)
     // A game not played yet that would count: all time's leave the dailies out (lib/allTime.ts).
     const unplayed = standingsGames(period).some((slug) => !you.byGame[slug])
-    const middling = unplayed && gap < MIDDLING
+    // What a middling run there adds: past ten games, only what it beats the tenth by.
+    const middling = unplayed && gap < gainWith(you.byGame, '', MIDDLING)
     const passWord = second ? 'pass' : 'passes'
     if (climb) {
       climbSlug = climb.slug

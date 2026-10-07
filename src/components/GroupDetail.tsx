@@ -251,7 +251,7 @@ const SHOWN = 10
 
 /**
  * The group's table, by the boards' own points: each game pays the group by
- * place and a player's games add up. It is the group's Standings, so it keeps
+ * place and a player's best ten add up. It is the group's Standings, so it keeps
  * its points, and links to the page that works them out. A quiet week says
  * what the first run does rather than showing an empty table.
  */
