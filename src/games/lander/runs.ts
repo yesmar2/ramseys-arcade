@@ -1,6 +1,6 @@
 import { dailyCave, laidNumber, type DailyCave } from './daily'
 import type { GhostRun } from './runStore'
-import { ENGINE_ON, GHOST_RATE, GHOST_STRIDE, paceRun, plannedCave, WRECKED, wrap, type Cave } from './sim'
+import { ENGINE_OFF, ENGINE_ON, GHOST_RATE, GHOST_STRIDE, labCave, paceRun, plannedCave, WRECKED, wrap, type Cave } from './sim'
 
 export * from './runStore'
 
@@ -15,12 +15,18 @@ export type LanderDay = DailyCave & { cave: Cave }
 const dugDays = new Map<string, LanderDay>()
 const paces = new Map<string, GhostRun>()
 
+/**
+ * The test cave's day: not a date. The test cave (sim.ts labCave) has every new kind of thing in it, for an
+ * admin to fly at /games/lander/play?lab=1; its runs are saved nowhere, and there's no blue ship to race.
+ */
+export const LAB_DAY = 'lab'
+
 /** The day's cave, dug once a day: the same try the plan kept, so the same cave on every device. */
 export function landerDay(day: string): LanderDay {
   let found = dugDays.get(day)
   if (!found) {
-    const daily = dailyCave(day)
-    found = { ...daily, cave: plannedCave(laidNumber(daily), daily.attempt) }
+    const daily = day === LAB_DAY ? { day, n: 0, name: 'Test Cave', attempt: 0, pace: 0 } : dailyCave(day)
+    found = { ...daily, cave: day === LAB_DAY ? labCave() : plannedCave(laidNumber(daily), daily.attempt) }
     if (dugDays.size > 2) dugDays.clear()
     dugDays.set(day, found)
   }
@@ -33,6 +39,12 @@ export function landerDay(day: string): LanderDay {
  */
 export function paceOf(day: string): GhostRun {
   let pace = paces.get(day)
+  if (!pace && day === LAB_DAY) {
+    // No blue ship flies the test cave: a run that sits on the start pad stands in for one.
+    const { x, y } = landerDay(day).cave.spawn
+    pace = { time: 0, splits: [], ghost: [x, y, 0, ENGINE_OFF, x, y, 0, ENGINE_OFF] }
+    paces.set(day, pace)
+  }
   if (!pace) {
     const { cave, pace: planned } = landerDay(day)
     const run = paceRun(cave)

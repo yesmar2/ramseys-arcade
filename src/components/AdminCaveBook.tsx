@@ -89,6 +89,12 @@ export function AdminCaveBook() {
           still to come, ahead of its day: a test flight’s runs go on no board. A past one flies as practice.
           {last ? ` The plan runs to #${last.n} on ${dayWords(last.day)}, ${last.day.slice(0, 4)}; after that the days go round again from #1.` : ''}
         </p>
+        <p className="vb-lab">
+          <a className="panel__btn adm-small" href={`${gamePlayHref(SLUG)}?lab=1`}>
+            Test cave: new obstacles →
+          </a>
+          <span>Steam vents, crushers, a turning bar, water, low gravity, lava, a shortcut and a pad on a lift, all in one cave. Not in any day’s cave yet.</span>
+        </p>
         {todays ? (
           <div className="tb-feature">
             <CaveDrawing cave={todays.cave} className="vb-map" aspect={1} />

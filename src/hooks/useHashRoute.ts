@@ -63,9 +63,10 @@ export type Route =
    * `hole`: one of Ace Chase's days played as practice, `?hole=day:YYYY-MM-DD` on the play page, from the
    * archive or the admin's Hole Book. `track`: a test drive of one of Hot Lap's daily tracks,
    * `?track=<number or day>`, from the archive or the admin's Track Book. `day`: a past day of Find the
-   * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive.
+   * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive. `lab`: a racing daily's test
+   * course, every new kind of obstacle in one, `?lab=1`, from the admin's Cave Book or Course Book.
    */
-  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string }
+  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean }
   | { name: 'authVerify'; token: string }
   /** Where Discord sends a player back after signing in (pages/DiscordReturnPage). */
   | { name: 'authDiscord' }
@@ -524,6 +525,7 @@ export function hrefForRoute(
     case 'gamePlay':
       if (route.track) return `${gamePlayHref(route.slug)}?track=${encodeURIComponent(route.track)}`
       if (route.day) return `${gamePlayHref(route.slug)}?day=${encodeURIComponent(route.day)}`
+      if (route.lab) return `${gamePlayHref(route.slug)}?lab=1`
       return route.hole ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}` : gamePlayHref(route.slug)
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
@@ -749,12 +751,14 @@ export function parseUrl(pathname: string, search: string): Route {
     const hole = params.get('hole')?.trim()
     const track = params.get('track')?.trim()
     const day = params.get('day')?.trim()
+    const lab = params.get('lab') === '1'
     return {
       name: 'gamePlay',
       slug: canonicalGameSlug(decodeURIComponent(gamePlayMatch[1])),
       ...(hole ? { hole } : {}),
       ...(track ? { track } : {}),
       ...(day ? { day } : {}),
+      ...(lab ? { lab } : {}),
     }
   }
 

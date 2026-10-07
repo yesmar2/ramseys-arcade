@@ -9,17 +9,19 @@ const isDay = (day: string | undefined): day is string => typeof day === 'string
  * Lander's page: today's cave. With ?day=YYYY-MM-DD, a past day's from the Past tab, flown again as practice,
  * where nothing is kept; or today's or one still to come, from the admin's Cave Book, as an admin's test flight
  * (LanderGame sends anyone else to today's). A day before the first isn't shown, and one older than a
- * week is Plus's (components/archive/ArchiveGate.tsx).
+ * week is Plus's (components/archive/ArchiveGate.tsx). With ?lab=1, the test cave, an admin's: every new kind
+ * of thing in one cave (sim.ts labCave).
  */
 export function LanderPage() {
   const route = useRoute()
   const asked = route.name === 'gamePlay' ? route.day : undefined
   const day = isDay(asked) && asked >= FIRST_DAY && asked < caveDay() ? asked : null
   const test = testRunDay(asked)
+  const lab = !day && !test && route.name === 'gamePlay' && route.lab === true
   return (
     <main className="game-page game-page--fullscreen">
       <ArchiveGate slug="lander" day={day}>
-        <LanderGame key={day ?? 'today'} practiceDay={day} testDay={test} />
+        <LanderGame key={lab ? 'lab' : (day ?? 'today')} practiceDay={day} testDay={test} lab={lab} />
       </ArchiveGate>
     </main>
   )

@@ -1,6 +1,23 @@
 import type { GhostPose } from './runs'
 import { drawSkinArt, LANDER_ART, type SkinArt } from '../../lib/skinArt'
-import { FOOT, G, inAir, KNOCKS, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWorld, type Breach, type Cave } from './sim'
+import {
+  crusherAt,
+  FOOT,
+  G,
+  inAir,
+  KNOCKS,
+  LAND_ANGLE,
+  LAND_SPEED,
+  liftAt,
+  mulberry32,
+  SHIP,
+  spinnerAngle,
+  toWorld,
+  ventBlow,
+  type Breach,
+  type Cave,
+  type CaveNode,
+} from './sim'
 
 /*
  * Lander on a 2D canvas: the cave from the side, following the ship. Rock is near-black with flecks; the air
@@ -10,6 +27,10 @@ import { FOOT, G, inAir, KNOCKS, LAND_ANGLE, LAND_SPEED, mulberry32, SHIP, toWor
  * (or amber, your own best) with whose run it is over it. A patch of side wall about a third of the way down
  * is cracked, with starlight showing through (breakout.ts): broken through, it opens on open space, stars and
  * a little moon with a pad on top, where a flag goes up when your ship sets down.
+ *
+ * The test cave's new things (sim.ts LabCave) are drawn where they are at the run's moment: steam puffing
+ * from vents, crushers in hazard stripes, a turning bar, water with a moving surface, a bubble of low gravity,
+ * lava glowing in the floor, the shortcut's tunnel, and the landing pad riding its lift.
  *
  * It draws only with fills and strokes, never shadowBlur or overlapping circle fills, so a phone's canvas
  * keeps up. The cave is always dark, whatever the site's theme: it's underground.
@@ -64,6 +85,8 @@ export type SceneFrame = {
   out: { knocks: number; broke: boolean; planted: boolean } | null
   /** The player's chosen skin (lib/skins.ts), drawn on their own ship. */
   skin?: string | null
+  /** The run's clock, where the test cave's moving things are (sim.ts LabCave); at the start card, any moment. */
+  t?: number
   /** The skin the ghost's run was flown in: everyone who races it sees it in that. */
   ghostSkin?: string | null
 }
@@ -105,6 +128,8 @@ export class CaveScene {
   /** When your ship set down on the moon this run, for its flag going up. */
   private planted = false
   private plantedAt = -1
+  /** The moment the test cave's moving things are drawn at: the run's clock (SceneFrame t). */
+  private now = 0
 
   constructor(canvas: HTMLCanvasElement, cave: Cave) {
     const ctx = canvas.getContext('2d')
@@ -238,6 +263,7 @@ export class CaveScene {
     const { ctx, W, H } = this
     if (W <= 0 || H <= 0) return
     this.time += dt
+    this.now = f.t ?? this.time
     if (f.mode === 'menu') {
       const g = f.ghost
       if (f.calm || !g) this.follow(this.cave.spawn.x, this.cave.spawn.y + 4, 0, 0, dt)
@@ -376,7 +402,39 @@ export class CaveScene {
       air.rect(this.sx(m.x0), this.sy(m.y1), (m.x1 - m.x0) * cam.k, (m.y1 - m.y0) * cam.k)
       edge.rect(this.sx(m.x0), this.sy(m.y1), (m.x1 - m.x0) * cam.k, (m.y1 - m.y0) * cam.k)
     }
+    // The test cave's shortcut: a tunnel of its own, traced the same way round so its air joins the cave's.
+    for (const B of cave.lab?.branches ?? []) this.tunnelShape(B, air, edge)
     return { air, edge }
+  }
+
+  /** A whole tunnel's two walls and round ends, added to the cave's air and edges. */
+  private tunnelShape(N: readonly CaveNode[], air: Path2D, edge: Path2D) {
+    const { cam } = this
+    const left: [number, number][] = []
+    const right: [number, number][] = []
+    for (let i = 0; i < N.length; i++) {
+      const a = N[Math.max(0, i - 1)]!
+      const b = N[Math.min(N.length - 1, i + 1)]!
+      const L = Math.hypot(b.x - a.x, b.y - a.y) || 1
+      const nx = -(b.y - a.y) / L
+      const ny = (b.x - a.x) / L
+      const p = N[i]!
+      left.push([this.sx(p.x + nx * p.r), this.sy(p.y + ny * p.r)])
+      right.push([this.sx(p.x - nx * p.r), this.sy(p.y - ny * p.r)])
+    }
+    if (!left.length) return
+    air.moveTo(left[0]![0], left[0]![1])
+    for (const q of left) air.lineTo(q[0], q[1])
+    for (let i = right.length - 1; i >= 0; i--) air.lineTo(right[i]![0], right[i]![1])
+    air.closePath()
+    edge.moveTo(left[0]![0], left[0]![1])
+    for (const q of left) edge.lineTo(q[0], q[1])
+    edge.moveTo(right[0]![0], right[0]![1])
+    for (const q of right) edge.lineTo(q[0], q[1])
+    for (const p of [N[0]!, N[N.length - 1]!]) {
+      air.moveTo(this.sx(p.x) + p.r * cam.k, this.sy(p.y))
+      air.arc(this.sx(p.x), this.sy(p.y), p.r * cam.k, 0, Math.PI * 2)
+    }
   }
 
   private drawCave(f: SceneFrame) {
@@ -397,6 +455,8 @@ export class CaveScene {
     const span = this.spanInView()
     const wall = this.wallColor(cam.y, 1)
     const { air, edge } = this.caveShapes(span)
+    // Lava in the rock under the air, so the air covers all but the floor it glows in.
+    this.drawLava(edge, false)
     // Light spilling off the walls into the rock, then the lit edge; the air then covers the inner halves.
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
@@ -435,6 +495,8 @@ export class CaveScene {
     }
     ctx.stroke()
     ctx.restore()
+    this.drawLava(edge, true)
+    this.drawLabAir(air)
 
     // Pillars: rock, lit round the edge.
     for (const p of cave.pillars) {
@@ -451,6 +513,7 @@ export class CaveScene {
       ctx.fill()
     }
 
+    this.drawLabSolids()
     this.drawGates(f)
     this.drawPads()
   }
@@ -495,10 +558,13 @@ export class CaveScene {
 
   private drawPads() {
     const { ctx, cam } = this
+    const lift = this.cave.lab?.lift
     for (const pad of this.cave.pads) {
       const x0 = this.sx(pad.x0)
       const x1 = this.sx(pad.x1)
-      const y = this.sy(pad.y)
+      const top = pad.end && lift ? liftAt(lift, this.now).y : pad.y
+      const y = this.sy(top)
+      if (pad.end && lift) this.drawPiston(pad.x0, pad.x1, top, lift.y0)
       const h = Math.max(3, 0.3 * cam.k)
       if (pad.end) {
         // Light rising off the landing pad.
@@ -1009,14 +1075,289 @@ export class CaveScene {
     ctx.restore()
   }
 
+  /* ---------- the test cave's things (sim.ts LabCave) ---------- */
+
+  /**
+   * Lava: under the air, the rock of its box in hot orange (the air then covers all but the floor); over it,
+   * the cave's edge where it runs through the box, white-hot.
+   */
+  private drawLava(edge: Path2D, over: boolean) {
+    const { ctx, cam } = this
+    const lava = this.cave.lab?.lava
+    if (!lava?.length) return
+    for (const l of lava) {
+      const x0 = this.sx(l.x0)
+      const x1 = this.sx(l.x1)
+      const y0 = this.sy(l.y1)
+      const y1 = this.sy(l.y0)
+      if (x1 < 0 || x0 > this.W || y1 < 0 || y0 > this.H) continue
+      ctx.save()
+      if (!over) {
+        const glow = ctx.createLinearGradient(0, y0, 0, y1)
+        glow.addColorStop(0, '#ffd166')
+        glow.addColorStop(0.18, '#ff7a1a')
+        glow.addColorStop(0.55, '#c2185b')
+        glow.addColorStop(1, 'rgba(60, 10, 40, 0.9)')
+        ctx.fillStyle = glow
+        ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+        // Brighter lava drifting along it.
+        const rnd = mulberry32(Math.round(Math.abs(l.x0) * 13) >>> 0)
+        ctx.fillStyle = 'rgba(255, 230, 140, 0.55)'
+        for (let i = 0; i < 14; i++) {
+          const along = (rnd() + this.time * 0.04 * (0.5 + rnd())) % 1
+          const depth = 0.4 + rnd() * 2.2
+          const r = (0.25 + rnd() * 0.35) * cam.k * (0.8 + 0.2 * Math.sin(this.time * 3 + i))
+          ctx.beginPath()
+          ctx.arc(lerp(x0, x1, along), y0 + depth * cam.k, r, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      } else {
+        ctx.beginPath()
+        ctx.rect(x0, y0 - 2 * cam.k, x1 - x0, y1 - y0 + 2 * cam.k)
+        ctx.clip()
+        ctx.lineJoin = 'round'
+        ctx.lineWidth = 0.9 * cam.k
+        ctx.strokeStyle = 'rgba(255, 122, 26, 0.35)'
+        ctx.stroke(edge)
+        ctx.lineWidth = 0.32 * cam.k
+        ctx.strokeStyle = '#ffd166'
+        ctx.stroke(edge)
+      }
+      ctx.restore()
+    }
+  }
+
+  /** In the air: water with a moving surface and bubbles, the low-gravity bubble's shimmer, and the vents' steam. */
+  private drawLabAir(air: Path2D) {
+    const lab = this.cave.lab
+    if (!lab) return
+    const { ctx, cam, W, H } = this
+    ctx.save()
+    ctx.clip(air)
+    for (const p of lab.pools) {
+      const x0 = this.sx(p.x0)
+      const x1 = this.sx(p.x1)
+      const top = this.sy(p.y)
+      if (x1 < 0 || x0 > W || top > H) continue
+      // The surface rolls, a little.
+      const wave = (x: number) => top + Math.sin(((x - W / 2) / cam.k + cam.x) * 0.9 + this.time * 2.2) * 0.12 * cam.k
+      const body = new Path2D()
+      body.moveTo(x0, H + 10)
+      for (let x = x0; x < x1; x += 6) body.lineTo(x, wave(x))
+      body.lineTo(x1, wave(x1))
+      body.lineTo(x1, H + 10)
+      body.closePath()
+      const deep = ctx.createLinearGradient(0, top, 0, top + 14 * cam.k)
+      deep.addColorStop(0, 'rgba(70, 160, 255, 0.42)')
+      deep.addColorStop(1, 'rgba(20, 60, 160, 0.62)')
+      ctx.fillStyle = deep
+      ctx.fill(body)
+      ctx.strokeStyle = 'rgba(170, 225, 255, 0.85)'
+      ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
+      ctx.beginPath()
+      ctx.moveTo(x0, wave(x0))
+      for (let x = x0 + 6; x < x1; x += 6) ctx.lineTo(x, wave(x))
+      ctx.lineTo(x1, wave(x1))
+      ctx.stroke()
+      // Bubbles rising to the surface.
+      const rnd = mulberry32(Math.round(Math.abs(p.x0) * 7) >>> 0)
+      ctx.fillStyle = 'rgba(200, 235, 255, 0.5)'
+      for (let i = 0; i < 26; i++) {
+        const bx = lerp(p.x0, p.x1, rnd())
+        const rise = (rnd() * 14 + this.time * (0.8 + rnd() * 0.8)) % 14
+        ctx.beginPath()
+        ctx.arc(this.sx(bx + Math.sin(this.time * 2 + i) * 0.2), this.sy(p.y - 14 + rise), Math.max(1.2, (0.08 + rnd() * 0.1) * cam.k), 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    for (const b of lab.bubbles) {
+      const cx = this.sx(b.x)
+      const cy = this.sy(b.y)
+      const r = b.r * cam.k
+      if (cx + r < 0 || cx - r > W || cy + r < 0 || cy - r > H) continue
+      const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r)
+      glow.addColorStop(0, 'rgba(120, 230, 255, 0.10)')
+      glow.addColorStop(1, 'rgba(120, 230, 255, 0.02)')
+      ctx.fillStyle = glow
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.setLineDash([0.6 * cam.k, 0.5 * cam.k])
+      ctx.lineDashOffset = -this.time * 0.6 * cam.k
+      ctx.strokeStyle = 'rgba(160, 235, 255, 0.45)'
+      ctx.lineWidth = Math.max(1, 0.08 * cam.k)
+      ctx.stroke()
+      ctx.setLineDash([])
+      // Motes drifting up, slowly: there's hardly any weight here.
+      const rnd = mulberry32(Math.round(Math.abs(b.x * 11 + b.y)) >>> 0)
+      ctx.fillStyle = 'rgba(200, 245, 255, 0.7)'
+      for (let i = 0; i < 30; i++) {
+        const a = rnd() * Math.PI * 2
+        const d = Math.sqrt(rnd()) * b.r * 0.92
+        const up = ((rnd() * 2 + this.time * 0.15) % 2) - 1
+        const x = b.x + Math.cos(a) * d + Math.sin(this.time * 0.7 + i) * 0.3
+        const y = b.y + Math.sin(a) * d * 0.6 + up * b.r * 0.35
+        if ((x - b.x) ** 2 + (y - b.y) ** 2 > b.r * b.r) continue
+        ctx.beginPath()
+        ctx.arc(this.sx(x), this.sy(y), Math.max(1, 0.07 * cam.k), 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.font = `700 ${Math.max(10, 0.6 * cam.k)}px ${this.font}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = 'rgba(160, 235, 255, 0.55)'
+      // Its name, under the hall's ceiling: the bubble's own top is up in the rock.
+      ctx.fillText('LOW GRAVITY', cx, this.sy(b.y + Math.min(b.r - 1.5, 7)))
+    }
+    for (const v of lab.vents) {
+      const blow = ventBlow(v, this.now)
+      const ux = Math.cos(v.dir)
+      const uy = Math.sin(v.dir)
+      const ox = this.sx(v.x)
+      const oy = this.sy(v.y)
+      if (Math.hypot(ox - W / 2, oy - H / 2) > Math.hypot(W, H) / 2 + v.reach * cam.k) continue
+      // Its nozzle: a grate in the rock, warm while it blows.
+      ctx.save()
+      ctx.translate(ox, oy)
+      ctx.rotate(-v.dir + Math.PI / 2)
+      ctx.fillStyle = '#2a2140'
+      ctx.fillRect(-v.wide * 0.275 * cam.k, -0.15 * cam.k, v.wide * 0.55 * cam.k, 0.5 * cam.k)
+      ctx.fillStyle = blow > 0 ? `rgba(255, 190, 120, ${(0.4 + 0.5 * blow).toFixed(3)})` : 'rgba(140, 120, 190, 0.5)'
+      for (let i = -2; i <= 2; i++) ctx.fillRect((i * 0.5 - 0.1) * cam.k, -0.1 * cam.k, 0.2 * cam.k, 0.38 * cam.k)
+      ctx.restore()
+      // Steam: puffs rising along the jet, thick while it blows, wisps between.
+      const rnd = mulberry32(Math.round(Math.abs(v.x * 17 + v.y * 3)) >>> 0)
+      const strength = blow > 0 ? blow : 0.12
+      for (let i = 0; i < 46; i++) {
+        const lane = (rnd() - 0.5) * v.wide * 0.8
+        const speed = 7 + rnd() * 6
+        const off = rnd()
+        const along = ((off + (this.time * speed) / v.reach) % 1) * v.reach
+        const share = along / v.reach
+        const spread = 0.6 + 0.6 * share
+        const r = (0.35 + share * 1.2 + rnd() * 0.3) * cam.k
+        const x = v.x + ux * along - uy * lane * spread
+        const y = v.y + uy * along + ux * lane * spread
+        ctx.beginPath()
+        ctx.arc(this.sx(x), this.sy(y), r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(235, 240, 255, ${(0.16 * strength * (1 - share)).toFixed(3)})`
+        ctx.fill()
+      }
+    }
+    ctx.restore()
+  }
+
+  /** The things that move and crash a ship: the crushers, in hazard stripes, and the turning bar. */
+  private drawLabSolids() {
+    const lab = this.cave.lab
+    if (!lab) return
+    const { ctx, cam, W, H } = this
+    for (const c of lab.crushers) {
+      const b = crusherAt(c, this.now)
+      const x0 = this.sx(b.x - c.hw)
+      const y0 = this.sy(b.y + c.hh)
+      const w = 2 * c.hw * cam.k
+      const h = 2 * c.hh * cam.k
+      if (x0 > W || x0 + w < 0 || y0 > H || y0 + h < 0) continue
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(x0, y0, w, h)
+      ctx.fillStyle = '#3a3150'
+      ctx.fill()
+      ctx.clip()
+      // Hazard stripes across its business end, the end that shuts.
+      const down = c.by < c.ay
+      const endY = down ? y0 + h : y0
+      const toward = down ? 1 : -1
+      ctx.fillStyle = '#f5b942'
+      for (let i = -6; i < 14; i++) {
+        const sx = x0 + i * 0.9 * cam.k
+        ctx.beginPath()
+        ctx.moveTo(sx, endY)
+        ctx.lineTo(sx + 0.45 * cam.k, endY)
+        ctx.lineTo(sx + 2.05 * cam.k, endY - toward * 1.6 * cam.k)
+        ctx.lineTo(sx + 1.6 * cam.k, endY - toward * 1.6 * cam.k)
+        ctx.closePath()
+        ctx.fill()
+      }
+      ctx.restore()
+      ctx.strokeStyle = '#f5b942'
+      ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
+      ctx.strokeRect(x0, y0, w, h)
+    }
+    for (const sp of lab.spinners) {
+      const a = spinnerAngle(sp, this.now)
+      const cx = this.sx(sp.x)
+      const cy = this.sy(sp.y)
+      const L = sp.half * cam.k
+      if (cx + L < 0 || cx - L > W || cy + L < 0 || cy - L > H) continue
+      const T = sp.thick * cam.k
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate(-a)
+      ctx.beginPath()
+      ctx.roundRect(-L, -T / 2, 2 * L, T, T / 2)
+      ctx.fillStyle = '#4a1d3a'
+      ctx.fill()
+      ctx.strokeStyle = '#f07a8a'
+      ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
+      ctx.stroke()
+      // Lights along it, so its turning reads at a glance.
+      for (let i = -3; i <= 3; i++) {
+        if (i === 0) continue
+        ctx.beginPath()
+        ctx.arc((i / 3.4) * L, 0, Math.max(1.5, 0.12 * cam.k), 0, Math.PI * 2)
+        ctx.fillStyle = Math.abs(i) === 3 ? '#ffd166' : 'rgba(240, 122, 138, 0.8)'
+        ctx.fill()
+      }
+      ctx.restore()
+      ctx.beginPath()
+      ctx.arc(cx, cy, Math.max(4, 0.7 * cam.k), 0, Math.PI * 2)
+      ctx.fillStyle = '#2a2140'
+      ctx.fill()
+      ctx.strokeStyle = '#f07a8a'
+      ctx.stroke()
+    }
+  }
+
+  /** The lift under the landing pad: a piston from the room's floor up to the pad's slab. */
+  private drawPiston(x0: number, x1: number, top: number, floor: number) {
+    const { ctx, cam } = this
+    const px0 = this.sx(x0 + 1.2)
+    const px1 = this.sx(x1 - 1.2)
+    const y0 = this.sy(top - 0.5)
+    const y1 = this.sy(floor)
+    if (y1 > y0) {
+      const metal = ctx.createLinearGradient(px0, 0, px1, 0)
+      metal.addColorStop(0, '#2a2140')
+      metal.addColorStop(0.5, '#5a4d7a')
+      metal.addColorStop(1, '#2a2140')
+      ctx.fillStyle = metal
+      ctx.fillRect(px0, y0, px1 - px0, y1 - y0)
+      ctx.strokeStyle = 'rgba(255, 179, 71, 0.5)'
+      ctx.lineWidth = Math.max(1, 0.06 * cam.k)
+      for (let y = y0 + 0.6 * cam.k; y < y1; y += 0.8 * cam.k) {
+        ctx.beginPath()
+        ctx.moveTo(px0, y)
+        ctx.lineTo(px1, y)
+        ctx.stroke()
+      }
+    }
+    // The slab the pad sits on.
+    ctx.fillStyle = '#3a3150'
+    ctx.fillRect(this.sx(x0), this.sy(top), (x1 - x0) * cam.k, 0.5 * cam.k)
+  }
+
   /** Near the pad: how fast you're coming down, green once it's slow enough and level enough to land. */
   private drawLandingGuide(ship: SceneFrame['ship']) {
     const { ctx, cam } = this
     const pad = this.cave.pads[1]
+    const lift = this.cave.lab?.lift ? liftAt(this.cave.lab.lift, this.now) : null
     const dx = Math.abs(ship.x - (pad.x0 + pad.x1) / 2)
-    const dy = ship.y - pad.y
+    const dy = ship.y - (lift ? lift.y : pad.y)
     if (dy > 14 || dy < 0 || dx > 16) return
-    const speed = Math.hypot(ship.vx, ship.vy)
+    // On the lift, how fast against the pad: what the landing goes by.
+    const speed = Math.hypot(ship.vx, ship.vy - (lift ? lift.vy : 0))
     const tilt = Math.abs(ship.a)
     const ok = speed <= LAND_SPEED && tilt <= LAND_ANGLE
     ctx.save()

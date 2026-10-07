@@ -136,6 +136,203 @@ export type Cave = {
   /** Everything there is to see: x0, x1, y0, y1. */
   box: [number, number, number, number]
   route: Route
+  /** The test cave's new kinds of thing (LabCave). No planned cave has any. */
+  lab?: LabCave
+}
+
+/* ---------------------------------------------------------------- the test cave's things --- */
+
+/**
+ * New kinds of thing in a cave, tried on one test cave (labCave) before any goes into the daily caves: Ramsey,
+ * 2026-10-06, "can you try all these ideas ... put them all on like a test track". A cave without `lab`, every
+ * planned cave, flies exactly as it did: none of this runs for it.
+ *
+ * What moves, moves on the run's own clock (step's `now`: seconds since the go, crashes and all), so it's in
+ * the same place at the same moment for everyone, ghosts included.
+ */
+export type LabCave = {
+  vents: Vent[]
+  crushers: Crusher[]
+  spinners: Spinner[]
+  pools: Pool[]
+  bubbles: Bubble[]
+  lava: Lava[]
+  /** Tunnels off the cave's own line, air like the rest of it: the shortcut. */
+  branches: CaveNode[][]
+  /** The landing pad on a lift, or none. */
+  lift: Lift | null
+}
+
+/**
+ * A vent in the rock that puffs steam on a beat: while it blows, a push of `push` m/s² along `dir` (radians,
+ * 0 right, π/2 up), out to `reach` metres and `wide` across, weaker toward its far end. It blows `on` of every
+ * `period` seconds.
+ */
+export type Vent = { x: number; y: number; dir: number; reach: number; wide: number; push: number; period: number; on: number; phase: number }
+
+/**
+ * A block that slams across a tunnel and back on a beat: its middle goes from (ax, ay), tucked in the rock,
+ * to (bx, by), shutting the tunnel, and back. `hw` and `hh` are its half sizes. Touch it and it's a crash.
+ */
+export type Crusher = { ax: number; ay: number; bx: number; by: number; hw: number; hh: number; period: number; phase: number }
+
+/** A bar turning round its middle, `half` long either side and `thick` thick: touch it and it's a crash. */
+export type Spinner = { x: number; y: number; half: number; thick: number; speed: number; phase: number }
+
+/** Water: the air under `y`, from x0 to x1. The ship floats up in it, slowly, and it drags. */
+export type Pool = { x0: number; x1: number; y: number }
+
+/** A bubble of low gravity: inside it, gravity is `g` of what it is. */
+export type Bubble = { x: number; y: number; r: number; g: number }
+
+/** Lava: rock in this box glows, and touching it is a crash, however gently. */
+export type Lava = { x0: number; x1: number; y0: number; y1: number }
+
+/** The landing pad on a lift: its top rises from y0 to y1 and back down every `period` seconds. */
+export type Lift = { y0: number; y1: number; period: number; phase: number }
+
+/** In water: gravity turns round to float the ship up, and the water drags. */
+const WATER_G = -0.3
+const WATER_DRAG = 2
+/** A lift's piston is this much narrower than its pad, either side; its pad's slab is this thick. */
+const PISTON_IN = 1.2
+const SLAB = 0.5
+
+/** Where a moment falls in a beat of `period` seconds, 0 to 1. */
+function beatOf(now: number, period: number, phase: number): number {
+  const t = (now + phase) % period
+  return (t < 0 ? t + period : t) / period
+}
+
+/** How hard a vent is blowing at a moment, 0 to 1: it builds, holds, then dies away, `on` of each beat. */
+export function ventBlow(v: Vent, now: number): number {
+  const t = beatOf(now, v.period, v.phase)
+  if (t > v.on) return 0
+  const ramp = Math.min(0.08, v.on / 3)
+  return Math.min(1, t / ramp, (v.on - t) / ramp)
+}
+
+/**
+ * Where a crusher's block is at a moment, and how fast it's going: open, tucked in the rock, for 40% of its
+ * beat; slamming shut in a tenth; shut for a fifth; then drawn back over the rest.
+ */
+export function crusherAt(c: Crusher, now: number): { x: number; y: number; vx: number; vy: number } {
+  const t = beatOf(now, c.period, c.phase)
+  let f = 0
+  let df = 0
+  if (t >= 0.4 && t < 0.5) {
+    const u = (t - 0.4) / 0.1
+    f = u * u
+    df = (2 * u) / (0.1 * c.period)
+  } else if (t >= 0.5 && t < 0.7) f = 1
+  else if (t >= 0.7) {
+    const u = (t - 0.7) / 0.3
+    f = 1 - smooth(u)
+    df = -(6 * u * (1 - u)) / (0.3 * c.period)
+  }
+  const dx = c.bx - c.ax
+  const dy = c.by - c.ay
+  return { x: c.ax + dx * f, y: c.ay + dy * f, vx: dx * df, vy: dy * df }
+}
+
+/** A spinner's angle at a moment. */
+export function spinnerAngle(sp: Spinner, now: number): number {
+  return sp.phase + sp.speed * now
+}
+
+/** The lift's pad top at a moment, and how fast it's rising. */
+export function liftAt(l: Lift, now: number): { y: number; vy: number } {
+  const t = beatOf(now, l.period, l.phase)
+  const k = (2 * Math.PI) / l.period
+  return { y: l.y0 + ((l.y1 - l.y0) * (1 - Math.cos(2 * Math.PI * t))) / 2, vy: ((l.y1 - l.y0) * k * Math.sin(2 * Math.PI * t)) / 2 }
+}
+
+/** Whether a point is in a branch's air: in a node's circle, or between two neighbours' sides. */
+function inBranchAir(lab: LabCave, x: number, y: number): boolean {
+  for (const B of lab.branches) {
+    for (let i = 0; i < B.length; i++) {
+      const a = B[i]!
+      const dx = x - a.x
+      const dy = y - a.y
+      if (dx * dx + dy * dy <= a.r * a.r) return true
+      if (i === B.length - 1) break
+      const b = B[i + 1]!
+      const ex = b.x - a.x
+      const ey = b.y - a.y
+      const L2 = ex * ex + ey * ey
+      const t = (dx * ex + dy * ey) / L2
+      if (t >= 0 && t <= 1 && Math.abs(dx * ey - dy * ex) / Math.sqrt(L2) <= a.r + (b.r - a.r) * t) return true
+    }
+  }
+  return false
+}
+
+/** Gravity's share, the water's drag, and a vent's push, where the ship is, at a moment. */
+function labField(lab: LabCave, x: number, y: number, now: number): { g: number; drag: number; ax: number; ay: number } {
+  let g = 1
+  let drag = 0
+  let ax = 0
+  let ay = 0
+  for (const p of lab.pools) {
+    if (x >= p.x0 && x <= p.x1 && y <= p.y) {
+      g = WATER_G
+      drag = WATER_DRAG
+    }
+  }
+  for (const b of lab.bubbles) if ((x - b.x) ** 2 + (y - b.y) ** 2 <= b.r * b.r) g = Math.min(g, b.g)
+  for (const v of lab.vents) {
+    const blow = ventBlow(v, now)
+    if (blow <= 0) continue
+    const ux = Math.cos(v.dir)
+    const uy = Math.sin(v.dir)
+    const along = (x - v.x) * ux + (y - v.y) * uy
+    const across = Math.abs((x - v.x) * uy - (y - v.y) * ux)
+    if (along < 0 || along > v.reach || across > v.wide / 2) continue
+    const push = v.push * blow * (1 - 0.45 * (along / v.reach))
+    ax += ux * push
+    ay += uy * push
+  }
+  return { g, drag, ax, ay }
+}
+
+/** A hull point inside something that moves: a crusher, a spinner (both a crash), or the lift (met like rock). */
+type LabHit = { crash: boolean; nx: number; ny: number; vx: number; vy: number }
+
+function labHit(lab: LabCave, cave: Cave, x: number, y: number, now: number): LabHit | null {
+  for (const c of lab.crushers) {
+    const b = crusherAt(c, now)
+    if (Math.abs(x - b.x) <= c.hw && Math.abs(y - b.y) <= c.hh) return { crash: true, nx: 0, ny: 0, vx: b.vx, vy: b.vy }
+  }
+  for (const sp of lab.spinners) {
+    const a = spinnerAngle(sp, now)
+    const ux = Math.cos(a)
+    const uy = Math.sin(a)
+    const along = clamp((x - sp.x) * ux + (y - sp.y) * uy, -sp.half, sp.half)
+    if (Math.hypot(x - (sp.x + ux * along), y - (sp.y + uy * along)) <= sp.thick / 2) return { crash: true, nx: 0, ny: 0, vx: 0, vy: 0 }
+  }
+  const l = lab.lift
+  if (l) {
+    const pad = cave.pads[1]
+    const at = liftAt(l, now)
+    // The pad's slab, and the piston under it down to the room's floor.
+    const inSlab = x >= pad.x0 && x <= pad.x1 && y <= at.y && y >= at.y - SLAB
+    const inPiston = x >= pad.x0 + PISTON_IN && x <= pad.x1 - PISTON_IN && y < at.y - SLAB && y >= l.y0 - 1
+    if (inSlab || inPiston) {
+      // Out the nearest way: over the top, or off the side it's nearer.
+      const up = at.y - y
+      const left = x - (inSlab ? pad.x0 : pad.x0 + PISTON_IN)
+      const right = (inSlab ? pad.x1 : pad.x1 - PISTON_IN) - x
+      const n: [number, number] = up <= left && up <= right ? [0, 1] : left < right ? [-1, 0] : [1, 0]
+      return { crash: false, nx: n[0], ny: n[1], vx: 0, vy: at.vy }
+    }
+  }
+  return null
+}
+
+/** Whether a point of rock is lava. */
+function inLava(lab: LabCave, x: number, y: number): boolean {
+  for (const l of lab.lava) if (x >= l.x0 && x <= l.x1 && y >= l.y0 && y <= l.y1) return true
+  return false
 }
 
 /**
@@ -162,7 +359,8 @@ export function inAir(cave: Cave, x: number, y: number, hint: number, open: Brea
     const t = (dx * ex + dy * ey) / L2
     if (t >= 0 && t <= 1 && Math.abs(dx * ey - dy * ex) / Math.sqrt(L2) <= a.r + (b.r - a.r) * t) return true
   }
-  return false
+  // The test cave's shortcut, off the cave's own line.
+  return cave.lab ? inBranchAir(cave.lab, x, y) : false
 }
 
 /** The node nearest a point, looking either side of `hint`. */
@@ -220,6 +418,16 @@ export function outOfRock(cave: Cave, x: number, y: number, hint: number, open: 
     if (d > 0 && d < gap) {
       gap = d
       best = unit(cx - x, cy - y)
+    }
+  }
+  // The test cave's shortcut is air too: its nodes' circles.
+  for (const B of cave.lab?.branches ?? []) {
+    for (const a of B) {
+      const d = Math.hypot(a.x - x, a.y - y) - a.r
+      if (d < gap) {
+        gap = d
+        best = unit(a.x - x, a.y - y)
+      }
     }
   }
   if (open) {
@@ -383,9 +591,13 @@ export function engineOn(s: Ship, hands: Hands): boolean {
   return !s.rest && s.hold <= 0 && hands.thrust > 0.05
 }
 
-/** One step of DT. `egg`: the cave's breach (breakout.ts), for a player's own ship; the blue ship has none. */
-export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | null = null): StepEvent {
+/**
+ * One step of DT. `egg`: the cave's breach (breakout.ts), for a player's own ship; the blue ship has none.
+ * `now`: the run's clock as the step begins, where the test cave's moving things are (LabCave).
+ */
+export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | null = null, now = 0): StepEvent {
   const open = egg && s.broke ? egg : null
+  const lab = cave.lab ?? null
   if (s.hold > 0) {
     if (hands.thrust > 0.02 || Math.abs(hands.turn) > 0.02) s.hold = 0
     else {
@@ -405,8 +617,15 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
   const push = clamp(hands.thrust, 0, 1) * THRUST
   const speed = Math.hypot(s.vx, s.vy)
   const drag = DRAG + DRAG2 * speed
-  s.vx += (Math.sin(s.a) * push - s.vx * drag) * dt
-  s.vy += (Math.cos(s.a) * push - G - s.vy * drag) * dt
+  if (lab) {
+    // The test cave: water floats the ship and drags it, a bubble lightens it, a vent shoves it.
+    const f = labField(lab, s.x, s.y, now)
+    s.vx += (Math.sin(s.a) * push + f.ax - s.vx * (drag + f.drag)) * dt
+    s.vy += (Math.cos(s.a) * push + f.ay - G * f.g - s.vy * (drag + f.drag)) * dt
+  } else {
+    s.vx += (Math.sin(s.a) * push - s.vx * drag) * dt
+    s.vy += (Math.cos(s.a) * push - G - s.vy * drag) * dt
+  }
   const px = s.x
   const py = s.y
   s.x += s.vx * dt
@@ -415,18 +634,22 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
 
   // A foot on a pad, coming down onto it: a landing if it's gentle and near level, else a crash. Going up (lifting
   // off and turning as it goes), a foot that dips onto the pad only stands on it: the ship pivots on that foot.
-  // With the way out open, the moon's pad is one too.
-  for (const pad of open ? [...cave.pads, open.pad] : cave.pads) {
+  // With the way out open, the moon's pad is one too. On the test cave's lift, the landing pad is where the lift
+  // has it, and a landing's speed is the ship's against the pad's.
+  const lift = lab?.lift ? liftAt(lab.lift, now) : null
+  const pads = lift ? [cave.pads[0], { ...cave.pads[1], y: lift.y }] : open ? [...cave.pads, open.pad] : cave.pads
+  for (const pad of pads) {
     if (py < pad.y + 0.3) continue
     for (const side of [1, -1]) {
       const [fx, fy] = toWorld(s, side * FOOT, -FOOT)
       if (fy > pad.y || fx < pad.x0 || fx > pad.x1) continue
-      if (s.vy > 0) {
+      const rise = lift && pad.end ? lift.vy : 0
+      if (s.vy - rise > 0) {
         // A hair above the pad, so the foot is never a rounding error into the rock under it.
         s.y += pad.y - fy + 1e-6
         continue
       }
-      if (Math.hypot(s.vx, s.vy) > LAND_SPEED || Math.abs(s.a) > LAND_ANGLE) return 'crash'
+      if (Math.hypot(s.vx, s.vy - rise) > LAND_SPEED || Math.abs(s.a) > LAND_ANGLE) return 'crash'
       // Where the foot was as the step began (a step's turn is too small to count), so where it met the pad.
       const was = fy - (s.y - py)
       s.landFrac = was > fy ? clamp((was - pad.y) / (was - fy), 0, 1) : 1
@@ -436,9 +659,32 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
       return pad === open?.pad ? 'moon' : 'rest'
     }
   }
+  // The test cave's moving things: a crusher or a spinner is a crash however it's met; the lift is met like
+  // rock, but rock that moves, so it's the ship's speed against the lift's that counts.
+  if (lab) {
+    for (const [hx, hy] of HULL) {
+      const [wx, wy] = toWorld(s, hx, hy)
+      const hit = labHit(lab, cave, wx, wy, now)
+      if (!hit) continue
+      if (hit.crash) return 'crash'
+      const rvx = s.vx - hit.vx
+      const rvy = s.vy - hit.vy
+      const vn = rvx * hit.nx + rvy * hit.ny
+      if (-vn > BUMP_SPEED) return 'crash'
+      const keep = Math.max(0, 1 - SCRAPE * dt)
+      const back = vn < 0 ? -vn * BOUNCE : vn
+      s.vx = hit.vx + (rvx - vn * hit.nx) * keep + back * hit.nx
+      s.vy = hit.vy + (rvy - vn * hit.ny) * keep + back * hit.ny
+      Object.assign(s, { x: px + hit.nx * 0.02, y: py + hit.ny * 0.02 + hit.vy * dt, a: pa })
+      s.hint = nearestNode(cave, s.x, s.y, s.hint)
+      return 'bump'
+    }
+  }
   for (const [hx, hy] of HULL) {
     const [wx, wy] = toWorld(s, hx, hy)
     if (inAir(cave, wx, wy, s.hint, open)) continue
+    // Lava, on the test cave: touched at all, it's a crash.
+    if (lab && inLava(lab, wx, wy)) return 'crash'
     // Rock. How fast the ship came straight into it says which: hard is a crash; gently, a bump, the ship back
     // where it was, its speed into the rock turned round and mostly spent, a little of its speed along it lost.
     const [nx, ny] = outOfRock(cave, wx, wy, s.hint, open)
@@ -825,6 +1071,170 @@ function boxOf(nodes: CaveNode[], rooms: readonly Room[]): [number, number, numb
   return [x0, x1, y0, y1]
 }
 
+/* ------------------------------------------------------------- the test cave --- */
+
+/**
+ * The test cave: every new kind of thing (LabCave) in one cave, top to bottom, with a gate before each, so a
+ * crash costs only the one you were trying.
+ *
+ * - Steam vents puffing up the first shaft (a cushion, if it's blowing as you come down) and up a chimney
+ *   (a lift, if you ride it).
+ * - A corridor where two crushers slam shut, floor to ceiling, out of step.
+ * - A tall chamber with a bar turning in it.
+ * - A flooded dip: the ship floats and drags, so it has to dive under.
+ * - A hall of low gravity, with two pillars in it.
+ * - A corridor with a lava floor, under a hanging rock.
+ * - A fork: round the long way, or straight down a narrow crooked shaft.
+ * - The landing pad on a lift.
+ */
+export function labCave(): Cave {
+  const start: Room = { x0: -11, x1: 11, y0: 0, y1: 13 }
+  const d = new Digger(5.5, 2.5, DOWN, 5.8)
+  const gateAfter: number[] = []
+  const mark = () => d.nodes.length - 1
+  const at = (i: number) => d.nodes[i]!
+
+  // Down a shaft, a vent puffing up from its foot.
+  d.line(26, 6.5)
+  const shaftFoot = at(mark())
+  // Round to the right and up a chimney, a vent at its foot.
+  d.turnTo(RIGHT, 9)
+  d.line(10, 6.2)
+  d.bend(8, Math.PI / 2, 6.5)
+  const chimneyFoot = at(mark())
+  d.line(14, 6.5)
+  d.bend(8, -Math.PI / 2, 5.6)
+  d.line(6, 5.6)
+  gateAfter.push(mark())
+
+  // The crusher corridor.
+  const c0 = mark()
+  d.line(30, 5.6)
+  const corridorY = at(c0).y
+  const corridorX0 = at(c0).x
+  gateAfter.push(mark())
+
+  // Down into a tall chamber with a bar turning in it.
+  d.turnTo(DOWN, 8)
+  d.line(8, 10.5)
+  const h0 = mark()
+  d.line(22, 10.5)
+  const h1 = mark()
+  d.line(8, 6)
+  gateAfter.push(mark())
+  const hallMid = at(Math.round((h0 + h1) / 2))
+
+  // Back the other way, through a flooded dip.
+  d.turnTo(LEFT, 8, 6)
+  const sumpIn = at(mark())
+  d.bend(12, 1.2)
+  d.bend(12, -2.4)
+  d.bend(12, 1.2)
+  const sumpOut = at(mark())
+  gateAfter.push(mark())
+
+  // A hall of low gravity.
+  d.line(8, 9.5)
+  const l0 = mark()
+  d.line(24, 9.5)
+  const l1 = mark()
+  d.line(8, 5.4)
+  gateAfter.push(mark())
+  const lowMid = at(Math.round((l0 + l1) / 2))
+
+  // Over a lava floor, under a hanging rock.
+  const v0 = mark()
+  d.line(26, 5.4)
+  const v1 = mark()
+  const lavaY = at(v0).y
+
+  // The fork: the long way round, west, down and back east, or straight down a crooked shaft.
+  d.turnTo(DOWN, 8, 5.8)
+  d.line(4)
+  gateAfter.push(mark())
+  const forkTop = at(mark())
+  d.turnTo(LEFT, 7)
+  d.line(14)
+  d.turnTo(DOWN, 7)
+  d.line(14)
+  d.turnTo(RIGHT, 7)
+  d.line(14)
+  d.turnTo(DOWN, 7)
+  const forkFoot = at(mark())
+  d.line(6)
+  gateAfter.push(mark())
+
+  // Down into the landing room, the pad on its lift off to one side.
+  d.turnTo(DOWN, d.r + 3, 5.8)
+  d.line(10, 5.8)
+  const last = at(mark())
+  const padX = last.x + 6.5
+  const cx = (last.x + padX) / 2
+  const end: Room = { x0: cx - 12.5, x1: cx + 12.5, y0: last.y - 13.5, y1: last.y - 1.5 }
+
+  const nodes = d.nodes
+  const gates: Gate[] = gateAfter.map((i) => gateAt(nodes, i))
+  gates.push(gateAt(nodes, nodes.length - 1))
+
+  // Pillars in the low hall, and the rock hanging over the lava.
+  pillarAt(d, Math.round(l0 + (l1 - l0) * 0.3), 3.6, 2)
+  pillarAt(d, Math.round(l0 + (l1 - l0) * 0.72), -3.6, 2)
+  const lavaMid = Math.round((v0 + v1) / 2)
+  d.pillars.push({ x: at(lavaMid).x, y: lavaY + 4.2, r: 2.4 })
+
+  // The shortcut: from the fork's top straight down to its foot, narrow, with a jink in the middle.
+  const shortcut: CaveNode[] = []
+  const drop = forkTop.y - forkFoot.y
+  const crook = (u: number) => (u < 0.35 ? 0 : u < 0.5 ? 2.6 * smooth((u - 0.35) / 0.15) : u < 0.62 ? 2.6 : u < 0.77 ? 2.6 * (1 - smooth((u - 0.62) / 0.15)) : 0)
+  for (let k = 0; k <= 28; k++) {
+    const u = k / 28
+    // Wide where it opens off the fork and into its foot, narrowing smoothly to its tight middle.
+    const open = Math.max(1 - smooth(Math.min(1, u / 0.16)), 1 - smooth(Math.min(1, (1 - u) / 0.16)))
+    shortcut.push({ x: forkTop.x + crook(u), y: forkTop.y - drop * u, r: 2.45 + 1.55 * open, s: 0 })
+  }
+
+  // Where the corridors' rock begins: above the crusher corridor, and under the lava one.
+  const ceiling = corridorY + 5.6
+  const floor = corridorY - 5.6
+  const crusher = (x: number, phase: number): Crusher => ({ ax: x, ay: ceiling + 5.85, bx: x, by: floor + 5.75, hw: 1.6, hh: 5.8, period: 3, phase })
+  const lab: LabCave = {
+    vents: [
+      { x: shaftFoot.x - 1.5, y: shaftFoot.y - 9.5, dir: Math.PI / 2, reach: 24, wide: 6.5, push: 8.5, period: 2.4, on: 0.5, phase: 0 },
+      { x: chimneyFoot.x + 1, y: chimneyFoot.y - 7.5, dir: Math.PI / 2, reach: 26, wide: 6, push: 12, period: 2.6, on: 0.6, phase: 1.1 },
+    ],
+    crushers: [crusher(corridorX0 + 10, 0), crusher(corridorX0 + 21, 1.5)],
+    spinners: [{ x: hallMid.x, y: hallMid.y, half: 7.6, thick: 0.8, speed: 1.15, phase: 0.4 }],
+    pools: [{ x0: sumpOut.x - 1, x1: sumpIn.x + 2, y: sumpIn.y - 7 }],
+    bubbles: [{ x: lowMid.x, y: lowMid.y, r: 12, g: 0.18 }],
+    lava: [{ x0: at(v0).x - 24, x1: at(v0).x - 2, y0: lavaY - 9, y1: lavaY - 5.25 }],
+    branches: [shortcut],
+    lift: { y0: end.y0, y1: end.y0 + 3.5, period: 5, phase: 0 },
+  }
+  const spawn = { x: -5.5, y: FOOT }
+  const pads: [Pad, Pad] = [
+    { x0: -9.2, x1: -1.8, y: 0, end: false },
+    { x0: padX - 3.6, x1: padX + 3.6, y: end.y0, end: true },
+  ]
+  const rooms: [Room, Room] = [start, end]
+  const box = boxOf([...nodes, ...shortcut], rooms)
+  return {
+    n: 0,
+    attempt: 0,
+    name: 'Test Cave',
+    kinds: ['shaft', 'climb', 'corridor', 'chamber', 'corridor', 'chamber', 'corridor', 'zigzag'],
+    nodes,
+    rooms,
+    pillars: d.pillars,
+    pads,
+    gates,
+    spawn,
+    length: d.s,
+    box,
+    route: planRoute(nodes, d.pillars, spawn, end, padX),
+    lab,
+  }
+}
+
 /* --------------------------------------------------------------- the pilot --- */
 
 const A_LAT = 7
@@ -1025,7 +1435,7 @@ export function flyWith(cave: Cave, hands: (s: Ship) => Hands, limit = 150, cras
     }
     const input = hands(s)
     if (steps % GHOST_EVERY === 0) ghost.push(r2(s.x), r2(s.y), r2(s.a), engineOn(s, input) ? ENGINE_ON : ENGINE_OFF)
-    const ev = step(cave, s, input)
+    const ev = step(cave, s, input, DT, null, steps * DT)
     steps++
     // The blue ship's run (crashLimit 0) never touches rock: for it a bump is a crash.
     if (ev === 'crash' || (ev === 'bump' && crashLimit === 0)) {

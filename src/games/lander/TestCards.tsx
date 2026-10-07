@@ -95,6 +95,101 @@ export function TestStartCard({ lander, best }: { lander: LanderDay; best: numbe
   )
 }
 
+/** The things in the test cave, top to bottom, as its start card lists them. */
+const LAB_THINGS = [
+  'Steam vents: a cushion down the first shaft, a lift up the chimney, when they’re blowing',
+  'Crushers: two slam the corridor shut, out of step',
+  'A turning bar in the tall chamber',
+  'Water in the dip: you float and drag, so dive under',
+  'Low gravity in the hall',
+  'A lava floor under a hanging rock: touch it and you crash',
+  'A fork: the long way round, or the narrow crooked shaft',
+  'The landing pad rides a lift',
+]
+
+/** The test cave's start card: what's in it, and that nothing here is kept. It starts on a tap anywhere but its links. */
+export function LabStartCard({ best }: { best: number | null }) {
+  return (
+    <div ref={fitCardToSpace} className="game-card game-card--start lander-test" style={gameAccentStyle(SLUG)}>
+      <div className="game-card__head">
+        <span className="game-card__kicker">Test cave · new obstacles</span>
+        <h2 className="game-card__title game-card__title--big">Test Cave</h2>
+        <p className="game-card__blurb">Every new thing, in order, a gate before each. Runs here aren’t saved.</p>
+      </div>
+      <ul className="lander-test__list">
+        {LAB_THINGS.map((thing) => (
+          <li key={thing}>{thing}</li>
+        ))}
+      </ul>
+      <div className="game-pause-meta">
+        <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
+      </div>
+      <button type="button" className="panel__btn game-card__start">
+        Start
+      </button>
+      <nav className="lander-test__nav" aria-label="Back">
+        <span />
+        <a href={adminHref('caves')} onPointerDown={holdPress}>
+          Cave Book
+        </a>
+        <span />
+      </nav>
+    </div>
+  )
+}
+
+/** After a flight down the test cave: its time and crashes, against your best here. */
+export function LabResultCard({
+  time,
+  crashes,
+  best,
+  improved,
+  onAgain,
+  onDone,
+}: {
+  time: number
+  crashes: number
+  best: number
+  improved: boolean
+  onAgain: () => void
+  onDone: () => void
+}) {
+  const allow = useDeliberatePress()
+  return (
+    <div ref={fitCardToSpace} className="game-card lander-test" style={gameAccentStyle(SLUG)} role="dialog" aria-label={`Test Cave: ${formatRun(time)}`} onPointerDown={holdPress}>
+      <div className="game-card__head">
+        <span className="game-card__kicker">Test cave · new obstacles</span>
+        <h2 className="game-card__title game-card__title--big">{formatRun(time)}</h2>
+        <p className="game-card__blurb">Down, with {crashWords(crashes)}.</p>
+      </div>
+      <div className="game-pause-meta">
+        <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
+      </div>
+      <p className="game-card__hint">The test cave: not saved.</p>
+      <div className="game-card__actions">
+        <button
+          type="button"
+          className="panel__btn"
+          onClick={(e) => {
+            if (allow(e)) onAgain()
+          }}
+        >
+          Fly it again
+        </button>
+        <button
+          type="button"
+          className="panel__btn panel__btn--ghost"
+          onClick={(e) => {
+            if (allow(e)) onDone()
+          }}
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /** After a test flight: its time, against your best here and the blue ship's. */
 export function TestResultCard({
   lander,

@@ -17,6 +17,17 @@
 }
 
 /* Today's stretches, in the order they come. */
+/* The way to the test cave (LanderPage ?lab=1): its button, and what's in it. */
+.vb-lab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+  margin: 0 0 1rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
 .vb-stretches {
   margin: 0;
   font-size: 0.84rem;

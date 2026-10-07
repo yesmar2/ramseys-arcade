@@ -45,6 +45,7 @@ import {
   keepBestRun,
   keepPracticeRun,
   keptRun,
+  LAB_DAY,
   landerDay,
   paceIfFlown,
   paceOf,
@@ -59,7 +60,7 @@ import { crashWords, formatLanderBoardScore, formatRun, landerBoardScore, lander
 import { MedalRow } from '../../components/RaceMedal'
 import { paceMsOf } from '../../lib/raceMedals'
 import { TomorrowCave } from './TomorrowCave'
-import { TestResultCard, TestStartCard } from './TestCards'
+import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
 import {
   CRASH_FOR,
   DT,
@@ -368,6 +369,7 @@ function LanderDayGame({
   day,
   practice = false,
   test = false,
+  lab = false,
   itsDay,
   pastBoard = null,
   onNewDay,
@@ -384,6 +386,8 @@ function LanderDayGame({
    * practice (and `practice` is set with it), on cards of its own (TestCards.tsx).
    */
   test?: boolean
+  /** The test cave (runs.ts LAB_DAY, sim.ts labCave): every new kind of thing, with `practice` and `test` set. No ghost flies it. */
+  lab?: boolean
   /** A past cave's day as the API has it, for its cards: who was 1st, and you. */
   itsDay?: ItsDay
   /** A past cave's All time board: signed in, a flight on it goes there, under a run of its own. */
@@ -769,7 +773,7 @@ function LanderDayGame({
           if (g.steps % GHOST_EVERY === 0) {
             g.record.push(Math.round(s.x * 100) / 100, Math.round(s.y * 100) / 100, Math.round(s.a * 100) / 100, engineOn(s, hands) ? ENGINE_ON : ENGINE_OFF)
           }
-          const ev = step(lander.cave, s, hands, DT, breachRef.current)
+          const ev = step(lander.cave, s, hands, DT, breachRef.current, g.t)
           g.steps += 1
           g.t += DT
           g.throttle = s.rest || s.hold > 0 ? 0 : hands.thrust
@@ -846,7 +850,11 @@ function LanderDayGame({
         vy: s.vy,
       }
       let ghost: GhostPose | null
-      if (g.phase === 'menu') {
+      if (lab) {
+        // Nobody to race in the test cave; the card's moving things keep their own time.
+        ghost = null
+        if (live && g.phase === 'menu') attract += dt
+      } else if (g.phase === 'menu') {
         // Before a run the camera rides with the run to beat, round and round.
         if (live) attract += dt
         ghost = g.ghost.at(attract)
@@ -868,6 +876,8 @@ function LanderDayGame({
           skin: skinRef.current,
           ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
           out,
+          // Where the test cave's moving things are: the run's moment, or at the card, the card's.
+          t: g.phase === 'menu' ? attract : g.phase === 'countdown' ? 0 : g.t,
         },
         live ? dt : 0,
       )
@@ -891,7 +901,8 @@ function LanderDayGame({
     // then rides along with the run to beat. The easter egg's breach is kept off its line, so it comes then too.
     const warm = window.setTimeout(() => {
       const pace = paceOf(lander.day)
-      breachRef.current = breachOf(cave, pace.ghost)
+      // The test cave has no blue ship's line to keep the easter egg off, and no egg.
+      breachRef.current = lab ? null : breachOf(cave, pace.ghost)
       scene.meet(breachRef.current)
       rechaseRef.current()
     }, 400)
@@ -1179,7 +1190,9 @@ function LanderDayGame({
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noCanvas ? (
-                test ? (
+                lab ? (
+                  <LabStartCard best={practiceBestTime} />
+                ) : test ? (
                   <TestStartCard lander={lander} best={practiceBestTime} />
                 ) : pastPlay ? (
                   <PracticeStartCard lander={lander} kind={pastKind} facts={pastPlay.facts ?? []} tiles={extra} board={board} />
@@ -1188,7 +1201,16 @@ function LanderDayGame({
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && run ? (
-                test ? (
+                lab ? (
+                  <LabResultCard
+                    time={run.time}
+                    crashes={run.crashes}
+                    best={practiceBestTime ?? run.time}
+                    improved={run.improved}
+                    onAgain={start}
+                    onDone={toMenu}
+                  />
+                ) : test ? (
                   <TestResultCard
                     lander={lander}
                     time={run.time}
@@ -1276,16 +1298,19 @@ function PastLander({ day }: { day: string }) {
  * flown from the admin's Cave Book. A test flight is only an admin's: anyone else is sent to today's cave,
  * with a word about why when the cave's day hasn't come.
  */
-export function LanderGame({ practiceDay, testDay }: { practiceDay?: string | null; testDay?: string | null }) {
+export function LanderGame({ practiceDay, testDay, lab = false }: { practiceDay?: string | null; testDay?: string | null; lab?: boolean }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? caveDay() }))
   const admin = useAdminState()
   const { loading } = useAuth()
   // Sent away only once we know: signed in (or not), and the API has said this account isn't an admin.
-  const shut = Boolean(testDay) && admin === false && !loading
+  const shut = (Boolean(testDay) || lab) && admin === false && !loading
   useEffect(() => {
     if (shut) navigate(gamePlayHref(SLUG), { replace: true })
   }, [shut])
   if (practiceDay) return <PastLander key={`practice-${practiceDay}`} day={practiceDay} />
+  // The test cave, an admin's: every new kind of thing, saved nowhere.
+  if (lab && admin === true) return <LanderDayGame key="lab" day={LAB_DAY} practice test lab onNewDay={() => {}} />
+  if (lab && !shut) return null
   if (testDay && admin === true) return <LanderDayGame key={`test-${testDay}`} day={testDay} practice test onNewDay={() => {}} />
   // Still signing in, or still asking the API whether this account is an admin.
   if (testDay && !shut) return null
