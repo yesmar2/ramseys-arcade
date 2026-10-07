@@ -262,7 +262,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
   frenzy: {
     goal: 'Eat smaller fish to grow, from Fry to Leviathan. Don’t get eaten, or caught.',
     controls: [
-      { does: 'Swim', touch: 'Drag anywhere', keys: 'Mouse, arrows or WASD' },
+      { does: 'Swim', touch: 'Hold anywhere and push the way to go', keys: 'Mouse, arrows or WASD' },
       { does: 'Leap out', touch: 'Swim up hard through the surface', keys: 'Swim up hard through the surface' },
     ],
     scores: [

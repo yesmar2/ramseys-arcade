@@ -13,12 +13,14 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  clearSteer,
   clearTarget,
   createInitialState,
   jumpToSize,
   releaseInput,
   resizeState,
   setKey,
+  setSteer,
   setTarget,
   startGame,
   tick,
@@ -50,11 +52,20 @@ const START_KEYS = new Set(['Space', 'Enter'])
  */
 const MOUSE_WAKE_PX = 24
 
+/** How far a thumb pushes the stick for full speed, in CSS pixels: Marble Run's stick's. */
+const STICK_R = 58
+
+/** A push under this share of the stick's reach doesn't swim, so a resting thumb never drifts the fish. */
+const STICK_DEAD = 0.14
+
 /**
  * Frenzy, the food chain in an open ocean (game.ts). The mouse steers by
- * pointing: the fish swims toward it, and the camera follows. A finger steers like a trackpad, anywhere on the screen: the
- * fish moves the way the finger moves, so it's never under your thumb. The
- * arrow keys or WASD swim too. Swimming up hard through the surface leaps out.
+ * pointing: the fish swims toward it, and the camera follows. A finger is a
+ * stick wherever it lands, as Marble Run's is: push the way to swim, harder
+ * to go faster, and the fish keeps swimming while it's held, so it's never
+ * under your thumb and never needs a swipe after swipe (Ramsey, 2026-10-07:
+ * "you have to keep swiping for it to move"). The arrow keys or WASD swim
+ * too. Swimming up hard through the surface leaps out.
  */
 export function FrenzyGame() {
   const tournament = useTournamentPlay()
@@ -62,8 +73,10 @@ export function FrenzyGame() {
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
-  /** A finger down: where it landed, and where the fish was then, in world units. */
-  const touchRef = useRef<{ id: number; x: number; y: number; fx: number; fy: number } | null>(null)
+  /** The thumb on the stick: where it came down, in pixels from the play area's top left. */
+  const stickAt = useRef<{ id: number; x0: number; y0: number } | null>(null)
+  const stickRef = useRef<HTMLDivElement>(null)
+  const knobRef = useRef<HTMLDivElement>(null)
   const mouseRef = useRef<{ awake: boolean; from: { x: number; y: number } | null }>({ awake: false, from: null })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
@@ -159,12 +172,49 @@ export function FrenzyGame() {
     stateRef.current = setTarget(stateRef.current, at.x, at.y)
   }
 
-  /** A finger: the fish goes where it was when the finger landed, plus how far the finger has moved. */
-  const dragTo = (e: ReactPointerEvent<HTMLElement>) => {
-    const t = touchRef.current
-    if (!t || t.id !== e.pointerId) return
-    const s = stateRef.current
-    stateRef.current = setTarget(s, t.fx + (e.clientX - t.x) / s.ppu, t.fy + (e.clientY - t.y) / s.ppu)
+  /** A thumb comes down: the stick is there, centred under it, not yet pushed. */
+  const takeStick = (e: ReactPointerEvent<HTMLElement>) => {
+    const box = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - box.left
+    const y = e.clientY - box.top
+    stickAt.current = { id: e.pointerId, x0: x, y0: y }
+    const stick = stickRef.current
+    if (stick) {
+      stick.style.left = `${x}px`
+      stick.style.top = `${y}px`
+      stick.hidden = false
+    }
+    if (knobRef.current) knobRef.current.style.transform = ''
+  }
+
+  /** The thumb moves: the knob follows it to the stick's edge, and the fish swims that way, as hard as it's pushed. */
+  const pushStick = (e: ReactPointerEvent<HTMLElement>) => {
+    const s = stickAt.current
+    if (!s || s.id !== e.pointerId) return
+    const box = e.currentTarget.getBoundingClientRect()
+    let dx = e.clientX - box.left - s.x0
+    let dy = e.clientY - box.top - s.y0
+    const l = Math.hypot(dx, dy)
+    if (l > STICK_R) {
+      dx *= STICK_R / l
+      dy *= STICK_R / l
+    }
+    if (knobRef.current) knobRef.current.style.transform = `translate(${dx}px, ${dy}px)`
+    const reach = Math.min(1, l / STICK_R)
+    if (reach < STICK_DEAD) {
+      stateRef.current = clearSteer(stateRef.current)
+      return
+    }
+    // Past the dead zone, from a slow swim up to full speed at the stick's edge.
+    const amount = (reach - STICK_DEAD) / (1 - STICK_DEAD)
+    stateRef.current = setSteer(stateRef.current, (dx / l) * amount, (dy / l) * amount)
+  }
+
+  /** The thumb lifts: the stick goes, and the fish coasts to a stop. */
+  const letGoStick = () => {
+    stickAt.current = null
+    if (stickRef.current) stickRef.current.hidden = true
+    stateRef.current = clearSteer(stateRef.current)
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
@@ -181,9 +231,8 @@ export function FrenzyGame() {
     if (e.pointerType === 'mouse') {
       mouseRef.current = { awake: true, from: null }
       pointTo(e)
-    } else {
-      const p = stateRef.current.player
-      touchRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, fx: p.x, fy: p.y }
+    } else if (!stickAt.current) {
+      takeStick(e)
     }
   }
 
@@ -191,7 +240,7 @@ export function FrenzyGame() {
     if (saveOpen || pausedRef.current) return
     if (stateRef.current.phase !== 'playing') return
     if (e.pointerType !== 'mouse') {
-      dragTo(e)
+      pushStick(e)
       return
     }
     if (!mouseRef.current.awake) {
@@ -214,12 +263,11 @@ export function FrenzyGame() {
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
-    if (touchRef.current?.id === e.pointerId) touchRef.current = null
-    if (e.pointerType !== 'mouse') stateRef.current = clearTarget(stateRef.current)
+    if (stickAt.current?.id === e.pointerId) letGoStick()
   }
 
   const onPointerCancel = () => {
-    touchRef.current = null
+    letGoStick()
     stateRef.current = clearTarget(stateRef.current)
   }
 
@@ -363,6 +411,9 @@ export function FrenzyGame() {
             )}
           </div>
         </GameStage>
+        <div ref={stickRef} className="frenzy__stick" hidden>
+          <div ref={knobRef} className="frenzy__knob" />
+        </div>
       </div>
     </section>
   )

@@ -205,6 +205,8 @@ export type GameState = {
   frenzy: number
   /** Where the fish is heading, in world units; null to coast to a stop. */
   target: { x: number; y: number } | null
+  /** A thumb on the stick: which way, and how hard, each −1 to 1, no longer than 1 all told; null with no thumb down. */
+  steer: { x: number; y: number } | null
   keys: Keys
   particles: Particle[]
   floaters: Floater[]
@@ -282,6 +284,7 @@ export function createInitialState(w = 960, h = 540): GameState {
     boat: freshBoat(),
     frenzy: 0,
     target: null,
+    steer: null,
     keys: { up: false, down: false, left: false, right: false },
     particles: [],
     floaters: [],
@@ -349,6 +352,7 @@ export function startGame(s: GameState): GameState {
     boat: freshBoat(),
     frenzy: 0,
     target: null,
+    steer: null,
     particles: [],
     floaters: [],
     deathCause: '',
@@ -380,12 +384,23 @@ export function clearTarget(s: GameState): GameState {
   return s.target ? { ...s, target: null } : s
 }
 
+/** A thumb on the stick: swim that way, as hard as it's pushed, for as long as it's held. */
+export function setSteer(s: GameState, x: number, y: number): GameState {
+  const l = Math.hypot(x, y)
+  const k = l > 1 ? 1 / l : 1
+  return { ...s, steer: { x: x * k, y: y * k }, target: null }
+}
+
+export function clearSteer(s: GameState): GameState {
+  return s.steer ? { ...s, steer: null } : s
+}
+
 export function setKey(s: GameState, key: keyof Keys, down: boolean): GameState {
   return s.keys[key] === down ? s : { ...s, keys: { ...s.keys, [key]: down } }
 }
 
 export function releaseInput(s: GameState): GameState {
-  return { ...s, target: null, keys: { up: false, down: false, left: false, right: false } }
+  return { ...s, target: null, steer: null, keys: { up: false, down: false, left: false, right: false } }
 }
 
 /** What swims in at a depth: mostly food, some your size and up, and more of the big ones deeper down. */
@@ -484,7 +499,7 @@ const NAMES: Partial<Record<SpeciesId, string>> = {
   lanternfish: 'a lanternfish',
 }
 
-/** One step of the player: toward the target, or the way the keys say; in the air, a leap's arc. */
+/** One step of the player: the way the keys or the stick say, or toward the target; in the air, a leap's arc. */
 function movePlayer(s: GameState, dt: number) {
   const p = s.player
   const r = playerRadius(s)
@@ -493,6 +508,7 @@ function movePlayer(s: GameState, dt: number) {
     let ax = 0
     const kx = (s.keys.right ? 1 : 0) - (s.keys.left ? 1 : 0)
     if (kx) ax = kx * 260
+    else if (s.steer) ax = s.steer.x * 260
     else if (s.target) ax = clamp((s.target.x - p.x) * 3, -260, 260)
     p.vx += ax * dt
     p.vy += GRAVITY * dt
@@ -513,6 +529,10 @@ function movePlayer(s: GameState, dt: number) {
       const l = Math.hypot(kx, ky)
       tvx = (kx / l) * speed
       tvy = (ky / l) * speed
+    } else if (s.steer) {
+      // The stick: its way, and as fast as it's pushed; held still, the fish keeps swimming.
+      tvx = s.steer.x * speed
+      tvy = s.steer.y * speed
     } else if (s.target) {
       const dx = s.target.x - p.x
       const dy = s.target.y - p.y

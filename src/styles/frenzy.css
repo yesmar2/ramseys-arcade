@@ -26,6 +26,35 @@
   display: block;
 }
 
+/* A touch screen's stick, wherever a thumb lands (as Marble Run's): in the sea's own light blue. */
+.frenzy__stick {
+  position: absolute;
+  z-index: 9;
+  width: 128px;
+  height: 128px;
+  margin: -64px 0 0 -64px;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(120, 214, 255, 0.12), rgba(4, 22, 40, 0.35) 70%);
+  pointer-events: none;
+}
+
+.frenzy__stick[hidden] {
+  display: none;
+}
+
+.frenzy__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: rgba(150, 224, 255, 0.55);
+  box-shadow: 0 0 22px rgba(120, 214, 255, 0.5);
+}
+
 .frenzy__overlay {
   position: fixed;
   inset: 0;
