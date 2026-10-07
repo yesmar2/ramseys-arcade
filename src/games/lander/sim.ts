@@ -190,7 +190,7 @@ export type Pool = { x0: number; x1: number; y: number }
 /** A bubble of low gravity: inside it, gravity is `g` of what it is. */
 export type Bubble = { x: number; y: number; r: number; g: number }
 
-/** Lava: rock in this box glows, and touching it is a crash, however gently. */
+/** Lava: a molten pool along a floor, its surface at y1, from x0 to x1; anything in it, down to y0, is a crash. */
 export type Lava = { x0: number; x1: number; y0: number; y1: number }
 
 /** The landing pad on a lift: its top rises from y0 to y1 and back down every `period` seconds. */
@@ -335,7 +335,7 @@ function labHit(lab: LabCave, cave: Cave, x: number, y: number, now: number): La
   return null
 }
 
-/** Whether a point of rock is lava. */
+/** Whether a point is in lava: under a pool's surface, in its box. */
 function inLava(lab: LabCave, x: number, y: number): boolean {
   for (const l of lab.lava) if (x >= l.x0 && x <= l.x1 && y >= l.y0 && y <= l.y1) return true
   return false
@@ -670,6 +670,8 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
   if (lab) {
     for (const [hx, hy] of HULL) {
       const [wx, wy] = toWorld(s, hx, hy)
+      // In the lava, however gently: a crash.
+      if (inLava(lab, wx, wy)) return 'crash'
       const hit = labHit(lab, cave, wx, wy, now)
       if (!hit) continue
       if (hit.crash) return 'crash'
@@ -689,8 +691,6 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
   for (const [hx, hy] of HULL) {
     const [wx, wy] = toWorld(s, hx, hy)
     if (inAir(cave, wx, wy, s.hint, open)) continue
-    // Lava, on the test cave: touched at all, it's a crash.
-    if (lab && inLava(lab, wx, wy)) return 'crash'
     // Rock. How fast the ship came straight into it says which: hard is a crash; gently, a bump, the ship back
     // where it was, its speed into the rock turned round and mostly spent, a little of its speed along it lost.
     const [nx, ny] = outOfRock(cave, wx, wy, s.hint, open)
@@ -1212,7 +1212,8 @@ export function labCave(): Cave {
     spinners: [{ x: hallMid.x, y: hallMid.y, half: 7.6, thick: 0.8, speed: 1.15, phase: 0.4 }],
     pools: [{ x0: sumpOut.x - 1, x1: sumpIn.x + 2, y: sumpIn.y - 7 }],
     bubbles: [{ x: lowMid.x, y: lowMid.y, r: 12, g: 0.18 }],
-    lava: [{ x0: at(v0).x - 24, x1: at(v0).x - 2, y0: lavaY - 9, y1: lavaY - 5.25 }],
+    // The pool's surface a little over half a metre above the corridor's floor.
+    lava: [{ x0: at(v0).x - 24, x1: at(v0).x - 2, y0: lavaY - 9, y1: lavaY - 5.4 + 0.55 }],
     branches: [shortcut],
     lift: { y0: end.y0, y1: end.y0 + 3.5, period: 5, phase: 0 },
   }

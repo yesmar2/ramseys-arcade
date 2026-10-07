@@ -30,7 +30,7 @@ import {
  *
  * The test cave's new things (sim.ts LabCave) are drawn where they are at the run's moment: steam puffing
  * from vents, crushers in hazard stripes, a turning bar, water with a moving surface, a bubble of low gravity,
- * lava glowing in the floor, the shortcut's tunnel, and the landing pad riding its lift.
+ * a molten pool along a floor, the shortcut's tunnel, and the landing pad riding its lift.
  *
  * It draws only with fills and strokes, never shadowBlur or overlapping circle fills, so a phone's canvas
  * keeps up. The cave is always dark, whatever the site's theme: it's underground.
@@ -455,8 +455,6 @@ export class CaveScene {
     const span = this.spanInView()
     const wall = this.wallColor(cam.y, 1)
     const { air, edge } = this.caveShapes(span)
-    // Lava in the rock under the air, so the air covers all but the floor it glows in.
-    this.drawLava(edge, false)
     // Light spilling off the walls into the rock, then the lit edge; the air then covers the inner halves.
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
@@ -495,7 +493,7 @@ export class CaveScene {
     }
     ctx.stroke()
     ctx.restore()
-    this.drawLava(edge, true)
+    this.drawLava(air)
     this.drawLabAir(air)
 
     // Pillars: rock, lit round the edge.
@@ -1078,52 +1076,61 @@ export class CaveScene {
   /* ---------- the test cave's things (sim.ts LabCave) ---------- */
 
   /**
-   * Lava: under the air, the rock of its box in hot orange (the air then covers all but the floor); over it,
-   * the cave's edge where it runs through the box, white-hot.
+   * Lava, Ramsey's pick of four looks (2026-10-06; a slab of hot rock "didn't blend well with the cave"): a
+   * molten layer lying along the floor, its top rolling a little, glowing up into the air with embers rising
+   * off it. It's drawn over the air, and only where there's air: the rock under it stays rock.
    */
-  private drawLava(edge: Path2D, over: boolean) {
+  private drawLava(air: Path2D) {
     const { ctx, cam } = this
     const lava = this.cave.lab?.lava
     if (!lava?.length) return
     for (const l of lava) {
       const x0 = this.sx(l.x0)
       const x1 = this.sx(l.x1)
-      const y0 = this.sy(l.y1)
-      const y1 = this.sy(l.y0)
-      if (x1 < 0 || x0 > this.W || y1 < 0 || y0 > this.H) continue
+      const top = this.sy(l.y1)
+      if (x1 < 0 || x0 > this.W || top - 4 * cam.k > this.H || top + cam.k < 0) continue
+      const pulse = 0.85 + 0.15 * Math.sin(this.time * 1.7)
       ctx.save()
-      if (!over) {
-        const glow = ctx.createLinearGradient(0, y0, 0, y1)
-        glow.addColorStop(0, '#ffd166')
-        glow.addColorStop(0.18, '#ff7a1a')
-        glow.addColorStop(0.55, '#c2185b')
-        glow.addColorStop(1, 'rgba(60, 10, 40, 0.9)')
-        ctx.fillStyle = glow
-        ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
-        // Brighter lava drifting along it.
-        const rnd = mulberry32(Math.round(Math.abs(l.x0) * 13) >>> 0)
-        ctx.fillStyle = 'rgba(255, 230, 140, 0.55)'
-        for (let i = 0; i < 14; i++) {
-          const along = (rnd() + this.time * 0.04 * (0.5 + rnd())) % 1
-          const depth = 0.4 + rnd() * 2.2
-          const r = (0.25 + rnd() * 0.35) * cam.k * (0.8 + 0.2 * Math.sin(this.time * 3 + i))
-          ctx.beginPath()
-          ctx.arc(lerp(x0, x1, along), y0 + depth * cam.k, r, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      } else {
-        ctx.beginPath()
-        ctx.rect(x0, y0 - 2 * cam.k, x1 - x0, y1 - y0 + 2 * cam.k)
-        ctx.clip()
-        ctx.lineJoin = 'round'
-        ctx.lineWidth = 0.9 * cam.k
-        ctx.strokeStyle = 'rgba(255, 122, 26, 0.35)'
-        ctx.stroke(edge)
-        ctx.lineWidth = 0.32 * cam.k
-        ctx.strokeStyle = '#ffd166'
-        ctx.stroke(edge)
-      }
+      ctx.clip(air)
+      const surface = (x: number) => top + Math.sin(((x - this.W / 2) / cam.k + this.cam.x) * 1.3 + this.time * 1.6) * 0.07 * cam.k
+      const body = new Path2D()
+      body.moveTo(x0, this.sy(l.y1 - 1.6))
+      for (let x = x0; x < x1; x += 5) body.lineTo(x, surface(x))
+      body.lineTo(x1, surface(x1))
+      body.lineTo(x1, this.sy(l.y1 - 1.6))
+      body.closePath()
+      const melt = ctx.createLinearGradient(0, top, 0, this.sy(l.y1 - 1))
+      melt.addColorStop(0, '#ffe08a')
+      melt.addColorStop(0.35, '#ff8a2a')
+      melt.addColorStop(1, '#a8124f')
+      ctx.fillStyle = melt
+      ctx.fill(body)
+      // Heat rising off it.
+      const heat = ctx.createLinearGradient(0, top, 0, this.sy(l.y1 + 2.8))
+      heat.addColorStop(0, `rgba(255, 110, 40, ${(0.22 * pulse).toFixed(3)})`)
+      heat.addColorStop(1, 'rgba(255, 110, 40, 0)')
+      ctx.fillStyle = heat
+      ctx.fillRect(x0, this.sy(l.y1 + 2.8), x1 - x0, 2.8 * cam.k)
       ctx.restore()
+      this.embers(l.x0, l.x1, l.y1)
+    }
+  }
+
+  /** Embers rising off the lava from x0 to x1, flickering out as they go. */
+  private embers(x0: number, x1: number, surface: number) {
+    const { ctx, cam } = this
+    const rnd = mulberry32(Math.round(Math.abs(x0) * 31) >>> 0)
+    for (let i = 0; i < 26; i++) {
+      const x = lerp(x0, x1, rnd())
+      const speed = 0.35 + rnd() * 0.5
+      const up = (rnd() + this.time * speed * 0.4) % 1
+      const sway = Math.sin(this.time * 2 + i * 1.7) * 0.25
+      const a = (1 - up) * (0.55 + 0.45 * Math.sin(this.time * 9 + i))
+      if (a <= 0.02) continue
+      ctx.beginPath()
+      ctx.arc(this.sx(x + sway), this.sy(surface + 0.2 + up * 3.4), Math.max(1.2, 0.09 * cam.k), 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255, 200, 100, ${a.toFixed(3)})`
+      ctx.fill()
     }
   }
 
