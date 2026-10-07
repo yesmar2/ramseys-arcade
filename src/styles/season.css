@@ -364,15 +364,19 @@ html[data-theme] .gh-tag.season-tag {
 /* ---------- choosing a skin, on its game's page ---------- */
 
 .skin-pick {
+  margin-top: 1rem;
+  min-width: 0;
+}
+
+.skin-pick__head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.9rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .skin-pick__label {
-  margin-right: 0.2rem;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -380,35 +384,178 @@ html[data-theme] .gh-tag.season-tag {
   color: var(--muted);
 }
 
-.skin-pick__opt {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 2.4rem;
-  padding: 0 0.85rem;
-  border-radius: 999px;
-  border: 1.5px solid rgba(var(--ink-rgb), 0.16);
-  background: rgba(var(--ink-rgb), 0.03);
-  color: var(--ink);
+.skin-pick__all {
+  padding: 0.3rem 0;
+  border: 0;
+  background: none;
+  color: color-mix(in srgb, var(--gh-accent, var(--space-orange)) 70%, var(--ink));
   font: inherit;
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 800;
   cursor: pointer;
 }
 
-.skin-pick__opt--on {
-  border-color: var(--space-orange);
-  background: color-mix(in srgb, var(--space-orange) 14%, transparent);
+.skin-pick__wrap {
+  position: relative;
 }
 
-.skin-pick__art {
+/* One line however many there are: it scrolls sideways, each picture snapping into place. */
+.skin-pick__row {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding: 2px;
+}
+
+.skin-pick__row::-webkit-scrollbar {
+  display: none;
+}
+
+.skin-pick__wrap--more::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3.5rem;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gh-accent, var(--space-orange)) 20%, var(--surface)) 80%);
+}
+
+.skin-pick__more {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 0.2rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin-top: -1.1rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--surface);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.skin-tile {
+  flex: none;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 6.6rem;
+  padding: 0.45rem 0.35rem 0.55rem;
+  box-sizing: border-box;
+  border-radius: 0.9rem;
+  border: 2px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.skin-tile:hover {
+  border-color: rgba(var(--ink-rgb), 0.26);
+}
+
+.skin-tile--on,
+.skin-tile--on:hover {
+  border-color: var(--gh-accent, var(--space-orange));
+  background: color-mix(in srgb, var(--gh-accent, var(--space-orange)) 16%, transparent);
+}
+
+.skin-tile__art {
   display: grid;
   place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  margin-left: -0.35rem;
-  border-radius: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.7rem;
+  overflow: hidden;
   background: var(--space-night);
+}
+
+.skin-tile__art > svg {
+  width: 100%;
+  height: 100%;
+}
+
+.skin-tile__name {
+  max-width: 100%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.skin-tile__note {
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--muted);
+}
+
+.skin-tile--on .skin-tile__note {
+  color: color-mix(in srgb, var(--gh-accent, var(--space-orange)) 70%, var(--ink));
+}
+
+/* Still to win: dimmed, saying where; a Hangar one dashed, with its price. */
+.skin-tile--locked .skin-tile__art > svg {
+  opacity: 0.4;
+  filter: grayscale(0.5);
+}
+
+.skin-tile--locked .skin-tile__name {
+  color: var(--muted);
+}
+
+.skin-tile--shop {
+  border-style: dashed;
+}
+
+.skin-tile__note--price {
+  color: var(--ticket-text, #c2461d);
+}
+
+html[data-theme='dark'] .skin-tile__note--price {
+  color: #ffab85;
+}
+
+/* The whole garage, from See all. */
+.skin-garage__group + .skin-garage__group {
+  margin-top: 1.1rem;
+}
+
+.skin-garage__name {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.skin-garage__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.2rem, 1fr));
+  gap: 0.6rem;
+}
+
+.skin-garage__grid .skin-tile {
+  width: auto;
+}
+
+.skin-garage__grid .skin-tile__art {
+  width: 5.25rem;
+  height: 5.25rem;
 }
 
 /* A run's skin beside a name on a board (SkinMark): on a dark chip, so a white ship shows on a light page. */
@@ -1721,21 +1868,6 @@ a.season-skin__art:hover {
 }
 
 /* A Hangar skin still to trade for, in a game's skin picker (SkinPicker.tsx): to its bay at the prize counter. */
-.skin-pick__opt--shop {
-  text-decoration: none;
-  border-style: dashed;
-}
-
-.skin-pick__price {
-  margin-left: 0.15rem;
-  font-weight: 700;
-  color: var(--ticket-text, #c2461d);
-}
-
-html[data-theme='dark'] .skin-pick__price {
-  color: #ffab85;
-}
-
 /* ---------- the Pass+ stage: its headliners big, on lit stands (SeasonPage.tsx HeadlinerStage) ---------- */
 
 .pass-stage {
