@@ -69,6 +69,15 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     past: 'practice',
     hudPast: 'Past day · practice',
   },
+  centroid: {
+    course: 'day',
+    today: 'Today’s Plates',
+    pastTab: 'Past days',
+    verb: 'Play',
+    playToday: 'Play today’s plates',
+    past: 'practice',
+    hudPast: 'Past day · practice',
+  },
   marblerun: {
     course: 'course',
     today: 'Today’s course',

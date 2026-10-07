@@ -1,5 +1,6 @@
 import { isGameListed } from '../data/games'
 import { TODAY_FROM } from '../games/halffull/daily'
+import { TODAY_FROM as PLATES_FROM } from '../games/dead-center/daily'
 import { TODAY_FROM as CAVE_FROM } from '../games/lander/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
 import { TODAY_FROM as HILLS_FROM } from '../games/swoop/daily'
@@ -27,7 +28,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * punches at once and works signed out.
  */
 
-export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave' | 'hills'
+export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave' | 'hills' | 'plates'
 
 /** One of the Today set's dailies. */
 export type TodayDaily = {
@@ -74,6 +75,9 @@ export const TODAY_DAILIES: readonly TodayDaily[] = [
   { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '', until: PUZZLES_UNTIL },
   { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '', until: PUZZLES_UNTIL },
   { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM, until: PUZZLES_UNTIL },
+  // Centroid's daily came after the puzzles left the ticket (Ramsey, 2026-10-06: "centroid should be a daily like
+  // the fill the cup game"): one of them, under it ("Also today"), and never on it. The API's today.ts says the same.
+  { key: 'plates', slug: 'centroid', label: 'Plates', emoji: '⚖️', better: 'higher', from: PLATES_FROM, until: PUZZLES_UNTIL },
 ]
 
 /** Any this many of a day's live dailies keep the streak (the API's TODAY_KEEP): three, then two from RACES_ONLY_FROM. */
@@ -111,7 +115,7 @@ export type TodayServer = {
   /** The boards' day, YYYY-MM-DD. */
   day: string
   /** Whether each is done today. An API from before Today's Pour, Course, Cave or Hills leaves them out. */
-  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave' | 'hills'>, boolean> & { pour?: boolean; course?: boolean; cave?: boolean; hills?: boolean }
+  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave' | 'hills' | 'plates'>, boolean> & { pour?: boolean; course?: boolean; cave?: boolean; hills?: boolean; plates?: boolean }
   /**
    * Today's results as the boards keep them: tries, and board scores for the lap, the bug run, the pour, the
    * marble's run, the ship's and the bird's.
@@ -121,6 +125,7 @@ export type TodayServer = {
     track: { score: number } | null
     wanted: { score: number } | null
     pour?: { score: number } | null
+    plates?: { score: number } | null
     course?: { score: number } | null
     cave?: { score: number } | null
     hills?: { score: number } | null
@@ -192,7 +197,7 @@ export const TODAY_MILESTONES: readonly { day: number; prize: string }[] = [
 export const TODAY_EVENT = 'skermix:today'
 
 /** Things that may move the card along: a hole solved, a day's bugs found or glasses poured, tickets paid for a lap or a run. */
-const NUDGES = ['skermix-acechase-daily', 'skermix-findbug-daily', 'skermix-halffull-daily', 'arcade-tickets', ROUTE_EVENT] as const
+const NUDGES = ['skermix-acechase-daily', 'skermix-findbug-daily', 'skermix-halffull-daily', 'skermix-centroid-daily', 'arcade-tickets', ROUTE_EVENT] as const
 /** Asked again at most this often, however many nudges come. */
 const FRESH_MS = 4000
 
@@ -317,6 +322,7 @@ const STILL: Record<TodayKey, string> = {
   course: 'still to roll',
   cave: 'still to fly',
   hills: 'still to swoop',
+  plates: 'still to balance',
 }
 
 /**
@@ -358,6 +364,7 @@ export type TodayRival = {
   course?: number | null
   cave?: number | null
   hills?: number | null
+  plates?: number | null
   streak: number
   avatarId: string
 }

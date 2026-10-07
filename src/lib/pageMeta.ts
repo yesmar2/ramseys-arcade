@@ -137,6 +137,11 @@ const PLAY_OF_THE_DAY: Readonly<Record<string, { title: string; description: str
     description:
       'Five new Half Full glasses every day, the same for everyone. Fill each exactly half full by what it holds: your first pour is your result. Share it without giving it away.',
   },
+  centroid: {
+    title: 'Today’s Plates',
+    description:
+      'Six new Centroid plates every day, the same for everyone. Tap where each one would balance: the closer to its true center, the higher your score. Your first go is your result.',
+  },
 }
 
 function dailyMeta(slug: string): PageMeta | null {

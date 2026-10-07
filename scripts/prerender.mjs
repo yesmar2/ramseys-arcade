@@ -146,7 +146,7 @@ try {
     swoop: { clock: 'hundredths', base: SWOOP_SCORE_BASE },
   }
   // The boards that keep a percent, in hundredths of a point (Half Full's 9120 is 91.2%): the figure says its unit.
-  const PERCENTS = new Set(['halffull'])
+  const PERCENTS = new Set(['halffull', 'centroid'])
   /** What the challenge functions need to word and colour a game's card. */
   const cardGames = {}
   let challengePages = 0

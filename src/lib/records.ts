@@ -308,7 +308,8 @@ export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
   snake: 500,
   crosswalk: 75,
   stacker: 15,
-  centroid: 6000,
+  // A daily just for fun since 2026-10-06: no records.
+  centroid: 0,
   pop: 300,
   simon: 10,
   spotter: 955_000,
@@ -890,7 +891,6 @@ export const GAMES_WITH_RECORDS = [
   'crosswalk',
   'pop',
   'stacker',
-  'centroid',
   'simon',
   'spotter',
   'pellets',

@@ -131,18 +131,22 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     tip: 'A perfect drop keeps its full width. Five in a row make it grow.',
   },
   centroid: {
-    goal: 'Pin each plate at its balance point.',
-    controls: [
-      { does: 'Set the pin', touch: 'Tap', keys: 'Arrows, then Space' },
-    ],
+    goal: 'Pin each of today’s six plates at its balance point. New plates every day at midnight, New York time.',
+    controls: [{ does: 'Set the pin', touch: 'Tap', keys: 'Arrows, then Space' }],
     scores: [
-      { what: 'Balanced', pts: '+20 to +100', sub: 'closer pays more' },
-      { what: 'Dead center', pts: '+30' },
-      { what: 'Quick', pts: 'up to +20' },
-      { what: 'Balanced in a row', pts: 'up to ×1.4' },
+      { what: 'A plate', pts: '100 dead on', sub: 'less 3 for every percent of its size off' },
+      { what: 'Your day', pts: 'the average of the six', sub: 'as a percent' },
     ],
-    ends: 'Your pins run out. A fallen plate costs one.',
-    tip: 'Ten balanced in a row win a pin back.',
+    ends: 'After the sixth plate. There’s no clock.',
+    tip: 'Lopsided plates and Ls fool an eye that aims for the middle: the balance point sits toward where there’s more plate.',
+    counts: [
+      {
+        what: 'Today’s Plates',
+        kind: 'fun',
+        sub: 'Your first go today is your result, and keeps your days in a row here. Just for fun: nobody is ranked on it, and it’s not part of your Dailies streak. Goes after it are practice.',
+      },
+      { what: 'A past day', kind: 'practice', sub: 'Play any past day’s plates. Nothing is saved.' },
+    ],
   },
   pop: {
     goal: 'Pop bubbles before they fade.',

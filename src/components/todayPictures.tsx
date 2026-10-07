@@ -13,6 +13,8 @@ import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
 import { todaysHole } from '../lib/dailyHole'
 import type { TodayKey } from '../lib/today'
+import { dayPlan as platePlan } from '../games/dead-center/plan'
+import { PlatesPicture } from './TodaysPlatesCard'
 import { GameArt } from './GameArt'
 
 /*
@@ -235,5 +237,6 @@ export function DayPicture({ daily, day }: { daily: TodayKey; day: string }) {
   if (daily === 'pour') return <PourPicture day={day} />
   if (daily === 'cave') return <CavePicture day={day} />
   if (daily === 'hills') return <HillsPicture day={day} />
+  if (daily === 'plates') return <PlatesPicture plan={platePlan(day)} width={W} height={H} className="day-picture__plates" />
   return <CoursePicture />
 }

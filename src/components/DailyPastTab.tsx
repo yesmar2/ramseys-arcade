@@ -16,6 +16,7 @@ const PourArchive = lazyPage(() => import('./archive/PourArchive').then((m) => m
 const CourseArchive = lazyPage(() => import('./archive/CourseArchive').then((m) => m.CourseArchive))
 const CaveArchive = lazyPage(() => import('./archive/CaveArchive').then((m) => m.CaveArchive))
 const HillsArchive = lazyPage(() => import('./archive/HillsArchive').then((m) => m.HillsArchive))
+const PlatesArchive = lazyPage(() => import('./archive/PlatesArchive').then((m) => m.PlatesArchive))
 
 /** Each daily's cards of its past courses. */
 const LISTS: Record<string, typeof TrackArchive> = {
@@ -23,6 +24,7 @@ const LISTS: Record<string, typeof TrackArchive> = {
   acechase: HoleArchive,
   findbug: BugArchive,
   halffull: PourArchive,
+  centroid: PlatesArchive,
   marblerun: CourseArchive,
   lander: CaveArchive,
   swoop: HillsArchive,

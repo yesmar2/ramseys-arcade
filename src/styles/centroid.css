@@ -36,3 +36,77 @@
   pointer-events: none;
   z-index: 9;
 }
+
+/* The daily's cards take the pointer; the table round them doesn't. */
+.centroid__overlay > * {
+  pointer-events: auto;
+}
+
+/* The daily's cards (DeadCenterGame.tsx): the day's score, and the six plates as squares with their points. */
+.centroid-card__lede {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.centroid-card__result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.centroid-card__result strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.centroid-card__result span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--panel-accent-ink);
+}
+
+.centroid-card__result--big strong {
+  font-size: 2.8rem;
+}
+
+.centroid-card__marks {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.centroid-card__mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0 0.3rem;
+  border-radius: 0.6rem;
+  background: var(--panel-fill);
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+
+.centroid-card__mark small {
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.centroid-card__standing {
+  margin: -0.2rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--panel-accent-ink);
+}

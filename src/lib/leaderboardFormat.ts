@@ -2,6 +2,7 @@ import { isDailyGame, isRankedGame } from '../data/games'
 import { formatAcechaseBoardScore } from '../games/acechase/score'
 import { formatFindbugBoardScore } from '../games/findbug/score'
 import { formatBoard } from '../games/halffull/boardFigure'
+import { formatBoard as formatPlatesBoard } from '../games/dead-center/boardFigure'
 import { formatHotlapBoardScore } from '../games/hotlap/score'
 import { formatLanderBoardScore } from '../games/lander/score'
 import { formatMarblerunBoardScore } from '../games/marblerun/score'
@@ -28,7 +29,7 @@ export function isInvertedBoard(slug: string): boolean {
  * 91.2%). Higher is better, as with points, but the figure says its own unit.
  */
 export function isPercentBoard(slug: string): boolean {
-  return slug === 'halffull'
+  return slug === 'halffull' || slug === 'centroid'
 }
 
 /** Boards that store inverted time rather than points render as a clock; inverted tries, as tries; a percent, as one. */
@@ -41,6 +42,8 @@ export function formatLeaderboardScore(slug: string, score: number): string {
   if (slug === 'lander') return formatLanderBoardScore(score)
   if (slug === 'swoop') return formatSwoopBoardScore(score)
   if (slug === 'halffull') return formatBoard(score)
+  // Centroid's daily since 2026-10-06, its days in hundredths of a point (dead-center/score.ts).
+  if (slug === 'centroid') return formatPlatesBoard(score)
   return score.toLocaleString()
 }
 

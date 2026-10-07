@@ -42,6 +42,8 @@ const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').the
 const TodaysCourseCard = lazyPage(() => import('../components/TodaysCourseCard').then((m) => m.TodaysCourseCard))
 const TodaysCaveCard = lazyPage(() => import('../components/TodaysCaveCard').then((m) => m.TodaysCaveCard))
 const TodaysHillsCard = lazyPage(() => import('../components/TodaysHillsCard').then((m) => m.TodaysHillsCard))
+/** Centroid's Today's Plates, the same way. */
+const TodaysPlatesCard = lazyPage(() => import('../components/TodaysPlatesCard').then((m) => m.TodaysPlatesCard))
 
 /** Each daily's Today card, the run that counts, at the top of its Today tab. */
 const TODAY_CARDS: Partial<Record<string, typeof TodaysHoleCard>> = {
@@ -49,6 +51,7 @@ const TODAY_CARDS: Partial<Record<string, typeof TodaysHoleCard>> = {
   hotlap: TodaysTrackCard,
   findbug: TodaysWantedCard,
   halffull: TodaysPourCard,
+  centroid: TodaysPlatesCard,
   marblerun: TodaysCourseCard,
   lander: TodaysCaveCard,
   swoop: TodaysHillsCard,
@@ -64,6 +67,7 @@ const TODAY_PARTS: Partial<Record<string, typeof TodaysHoleByTry>> = {
   acechase: TodaysHoleByTry,
   findbug: lazyPage(() => import('../components/TodaysWantedCard').then((m) => m.TodaysWantedByScene)),
   halffull: lazyPage(() => import('../components/TodaysPourCard').then((m) => m.TodaysPourByGlass)),
+  centroid: lazyPage(() => import('../components/TodaysPlatesCard').then((m) => m.TodaysPlatesByPlate)),
 }
 
 /** A daily's other two tabs, each in a chunk of its own with the plans it reads. */
@@ -298,7 +302,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                   ) : (
                     // Just for fun: your days, then today part by part (YourDays.tsx).
                     <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
-                      <YourDaysCard slug={game.slug as 'acechase' | 'findbug' | 'halffull'} />
+                      <YourDaysCard slug={game.slug as 'acechase' | 'findbug' | 'halffull' | 'centroid'} />
                       {TodayParts ? <TodayParts /> : null}
                     </Suspense>
                   )}

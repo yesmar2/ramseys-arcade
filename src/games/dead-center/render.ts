@@ -594,6 +594,10 @@ function drawClock(g: Gfx, s: GameState) {
   const cy = v.oy + 0.905 * v.k
   const half = 0.26 * v.k
   const cx = v.ox + 0.5 * v.k
+  if (s.day) {
+    drawDayRow(g, s, cx, cy)
+    return
+  }
   const th = Math.max(3, v.k * 0.011)
   const aiming = s.phase === 'aiming'
   const left = aiming ? s.clock / s.clockMax : 0
@@ -633,6 +637,34 @@ function drawClock(g: Gfx, s: GameState) {
       ctx.strokeStyle = inkColor()
       ctx.globalAlpha = dark ? 0.25 : 0.2
       ctx.lineWidth = Math.max(1, v.k * 0.0025)
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+  }
+  ctx.restore()
+}
+
+/** A day's plates have no clock: a dot for each of the six instead, coloured as its square once it's played. */
+function drawDayRow(g: Gfx, s: GameState, cx: number, cy: number) {
+  const { ctx, v, dark } = g
+  const day = s.day!
+  const n = day.plan.plates.length
+  const gap = Math.max(18, v.k * 0.06)
+  const r = Math.max(4, v.k * 0.014)
+  const hueOf = (score: number) => (score >= 97 ? GOLD : score >= 91 ? 150 : score >= 82 ? 48 : score >= 70 ? 26 : BAD_HUE)
+  ctx.save()
+  for (let i = 0; i < n; i++) {
+    const x = cx + (i - (n - 1) / 2) * gap
+    const score = day.scores[i]
+    ctx.beginPath()
+    ctx.arc(x, cy, r, 0, TAU)
+    if (score !== undefined) {
+      ctx.fillStyle = hsla(hueOf(score), 85, dark ? 60 : 50)
+      ctx.fill()
+    } else {
+      ctx.strokeStyle = inkColor()
+      ctx.globalAlpha = i === s.plateNo - 1 ? 0.7 : dark ? 0.25 : 0.2
+      ctx.lineWidth = i === s.plateNo - 1 ? Math.max(1.6, v.k * 0.005) : Math.max(1, v.k * 0.0025)
       ctx.stroke()
       ctx.globalAlpha = 1
     }
@@ -701,9 +733,11 @@ function drawHint(g: Gfx, s: GameState, w: number, h: number) {
   const { ctx, v, dark } = g
   const alpha = clamp01((s.appear - 0.5) / 0.4)
   if (alpha <= 0) return
-  const lines = isTouch()
-    ? ['Tap where the plate would balance', 'Its true center, before the clock runs out']
-    : ['Click where the plate would balance', 'Or the arrow keys, then Space, before the clock runs out']
+  const lines = s.day
+    ? [isTouch() ? 'Tap where the plate would balance' : 'Click where the plate would balance', 'Its true center: six plates, no clock']
+    : isTouch()
+      ? ['Tap where the plate would balance', 'Its true center, before the clock runs out']
+      : ['Click where the plate would balance', 'Or the arrow keys, then Space, before the clock runs out']
   const big = Math.round(Math.max(13, Math.min(16, w * 0.036)))
   const small = Math.round(big * 0.84)
   ctx.save()

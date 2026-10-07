@@ -44,6 +44,7 @@ const ACCENT: Record<TodayKey, string> = {
   course: '#d774f0',
   cave: '#a48af0',
   hills: '#f2706a',
+  plates: '#4aa8e8',
 }
 
 /** The way in, short enough for a card. */
@@ -55,6 +56,7 @@ const GO: Record<TodayKey, string> = {
   course: 'Roll it',
   cave: 'Fly it',
   hills: 'Swoop it',
+  plates: 'Balance',
 }
 
 const CheckIcon = () => (

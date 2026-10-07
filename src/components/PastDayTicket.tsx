@@ -141,6 +141,7 @@ export function PastDayTicket({
     course: useDailyDays('marblerun', name),
     cave: useDailyDays('lander', name),
     hills: useDailyDays('swoop', name),
+    plates: useDailyDays('centroid', name),
   }
   const card = said?.live ? TODAY_DAILIES.filter((d) => said.live!.includes(d.key) && isGameListed(d.slug)) : liveDailies(day)
   const archiveOpen = useArchiveOpen()

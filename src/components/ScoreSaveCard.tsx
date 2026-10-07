@@ -29,6 +29,7 @@ import {
   normalizePlayerName,
   type LeaderboardGame,
   type LeaderboardPeriod,
+  type SavedPlates,
   type SavedPours,
 } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -83,6 +84,8 @@ type ScoreSaveProps = {
   pace?: number
   /** Half Full: the day's five pours, which the API scores the day from (the `score` is only what's shown). */
   pours?: SavedPours
+  /** Centroid: the day's six taps, which the API scores the day from. */
+  plates?: SavedPlates
   /** A daily's run to send on, its day's link included (Hot Lap's lap): a Share link under the report. */
   shareLine?: string
   /**
@@ -158,6 +161,7 @@ export function ScoreSaveCard({
   pickups,
   pace,
   pours,
+  plates,
   shareLine,
   medalPace,
   medalFormat,
@@ -220,6 +224,8 @@ export function ScoreSaveCard({
   paceRef.current = pace
   const poursRef = useRef(pours)
   poursRef.current = pours
+  const platesRef = useRef(plates)
+  platesRef.current = plates
   const settledRef = useRef(onSettled)
   settledRef.current = onSettled
   const savedRef = useRef(onSaved)
@@ -357,6 +363,7 @@ export function ScoreSaveCard({
         pickups: pickupsRef.current,
         pace: paceRef.current,
         pours: poursRef.current,
+        plates: platesRef.current,
       })
       landedRef.current = true
       settledRef.current?.()
@@ -462,6 +469,7 @@ export function ScoreSaveCard({
         pickups: pickupsRef.current,
         pace: paceRef.current,
         pours: poursRef.current,
+        plates: platesRef.current,
       })
       landedRef.current = true
       settledRef.current?.()

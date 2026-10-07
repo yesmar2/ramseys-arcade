@@ -768,6 +768,9 @@ export async function checkQualifies(
 /** A Half Full day as it's saved: the API works the score out from these, never from the figure sent. */
 export type SavedPours = { day: string; levels: number[]; auto: boolean[] }
 
+/** A Centroid day as it's saved: the day and its six taps; the API works the score out from these. */
+export type SavedPlates = { day: string; taps: { x: number; y: number }[] }
+
 export async function addLeaderboardScore(
   slug: string,
   name: string,
@@ -783,6 +786,8 @@ export async function addLeaderboardScore(
     pace?: number
     /** Half Full: the day and its five locked levels, which the API scores the day from. */
     pours?: SavedPours
+    /** Centroid: the day and its six taps, which the API scores the day from. */
+    plates?: SavedPlates
     /** The season skin the run was played in, which the API keeps if the player owns it. */
     skin?: string | null
   } = {},
@@ -846,6 +851,7 @@ export async function addLeaderboardScore(
       ...(opts.pickups ? { pickups: Math.floor(opts.pickups) } : {}),
       ...(opts.pace ? { pace: Math.round(opts.pace) } : {}),
       ...(opts.pours ? { pours: opts.pours } : {}),
+      ...(opts.plates ? { plates: opts.plates } : {}),
       ...(opts.skin ? { skin: opts.skin } : {}),
     }),
   })

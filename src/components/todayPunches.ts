@@ -15,6 +15,9 @@ import { dayDone as pourDone, dayRun as pourRun, dayTag as pourTag, pourDay, sub
 import { dayPlan, ROUNDS } from '../games/halffull/plan'
 import { glassNames } from '../games/halffull/planSvg'
 import { formatBoard, judgeLevels, markFor, tierFor } from '../games/halffull/score'
+import { dayDone as platesDone, dayRun as platesRun, dayTag as platesTag, plateDay, subscribePlateDay } from '../games/dead-center/daily'
+import { dayPlan as platePlan, PLATES } from '../games/dead-center/plan'
+import { formatBoard as formatPlates, judgeTaps, markFor as plateMark, tierFor as plateTier } from '../games/dead-center/score'
 import { dailyTrack, trackDay } from '../games/hotlap/daily'
 import { keptLap } from '../games/hotlap/lap'
 import { formatLap } from '../games/hotlap/score'
@@ -234,6 +237,28 @@ function pourPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   }
 }
 
+/** Centroid's day: six plates, the viewer's own run of them here, or the API's word on it. */
+function platesPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
+  const pday = plateDay()
+  const plan = platePlan(pday)
+  const serverDay = server?.results.plates?.score ?? null
+  const run = platesRun(pday, viewer)
+  const taps = run?.taps ?? []
+  const judged = taps.length >= PLATES ? judgeTaps(plan, taps.slice(0, PLATES)) : null
+  const same = judged && (serverDay == null || judged.board === serverDay) ? judged : null
+  const score = serverDay ?? same?.board ?? run?.board ?? null
+  const done = score != null || Boolean(server?.done.plates) || platesDone(run)
+  return {
+    kicker: `Today’s Plates ${platesTag(pday)}`,
+    title: `Six plates · ${plan.label}`,
+    done,
+    mine: score != null ? `${formatPlates(score)}${same ? `, ${plateTier(same.day)}` : ''}` : done ? 'Done' : null,
+    short: score != null ? formatPlates(score) : null,
+    carry: !done && taps.length > 0 ? `Carry on, plate ${Math.min(PLATES, taps.length + 1)} of ${PLATES}` : null,
+    share: score != null ? `${same ? `${same.scores.map(plateMark).join('')} ` : ''}${formatPlates(score)}` : null,
+  }
+}
+
 function coursePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const cday = courseDay()
   const course = dailyCourse(cday)
@@ -301,6 +326,7 @@ function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer
   if (key === 'course') return coursePunch(server, viewer)
   if (key === 'cave') return cavePunch(server, viewer)
   if (key === 'hills') return hillsPunch(server, viewer)
+  if (key === 'plates') return platesPunch(server, viewer)
   return pourPunch(server, viewer)
 }
 
@@ -342,6 +368,7 @@ export function useTicket(viewer: Viewer): Ticket {
   useEffect(() => subscribeDaily(refresh), [])
   useEffect(() => subscribeBugDay(refresh), [])
   useEffect(() => subscribePourDay(refresh), [])
+  useEffect(() => subscribePlateDay(refresh), [])
   useEffect(() => subscribeToday(refresh), [])
   useEffect(() => {
     void syncDaily()

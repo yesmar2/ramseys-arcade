@@ -221,7 +221,7 @@ export function boardCallout(slug: string, you: BoardYou, period: LeaderboardPer
  * bullseye (the API's dailyHole.ts keeps an account's first result a day, and holes.ts its first on a hole
  * after its day). Hot Lap's day is its best lap, so another lap can always move you.
  */
-export const FIRST_RUN_DAILIES: ReadonlySet<string> = new Set(['findbug', 'acechase', 'halffull'])
+export const FIRST_RUN_DAILIES: ReadonlySet<string> = new Set(['findbug', 'acechase', 'halffull', 'centroid'])
 
 /** What a daily calls one go at its day, where it isn't a run: Ace Chase's bullseye, Half Full's pour, Hot Lap's lap. */
 const RUN_WORDS: Partial<Record<string, string>> = { acechase: 'bullseye', halffull: 'pour', hotlap: 'lap' }

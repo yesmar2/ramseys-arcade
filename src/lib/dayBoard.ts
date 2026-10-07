@@ -120,6 +120,16 @@ const LOADERS: Record<string, () => Promise<DayCourse>> = {
       playHref: (day) => `${gamePlayHref('halffull')}?day=${day}`,
     }
   },
+  async centroid() {
+    const { FIRST_DAY, plateDay, dayNumber } = await import('../games/dead-center/daily')
+    return {
+      first: FIRST_DAY,
+      today: () => plateDay(),
+      title: (day) => `Plates #${dayNumber(day)}`,
+      anchor: (day) => day,
+      playHref: (day) => `${gamePlayHref('centroid')}?day=${day}`,
+    }
+  },
   async marblerun() {
     const { FIRST_DAY, courseDay, courseNumber, dailyCourse } = await import('../games/marblerun/daily')
     return {

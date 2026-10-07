@@ -3,6 +3,7 @@ import { acechaseTriesFromBoardScore, formatTries } from '../games/acechase/scor
 import { findbugMsFromBoardScore, formatFindbugMs } from '../games/findbug/score'
 import { formatBoard } from '../games/halffull/boardFigure'
 import { tierFor } from '../games/halffull/score'
+import { tierFor as plateTier } from '../games/dead-center/score'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { archiveDayWords, useDailyDays } from '../lib/archive'
@@ -19,7 +20,7 @@ import '../styles/yourDays.css'
  * the cards here.
  */
 
-export type FunDaily = 'acechase' | 'findbug' | 'halffull'
+export type FunDaily = 'acechase' | 'findbug' | 'halffull' | 'centroid'
 
 type Kind = {
   /** The card's title. */
@@ -71,6 +72,17 @@ const KINDS: Record<FunDaily, Kind> = {
     // To a tenth, rounded down, as a day's own figure is.
     mean: (percent) => `${(Math.floor(percent * 10) / 10).toFixed(1)}%`,
     word: (percent) => tierFor(percent),
+  },
+  centroid: {
+    title: 'Your days',
+    one: 'a day',
+    first: '2026-10-06',
+    // The board's figure is hundredths of a point (93.4% is 9340).
+    value: (score) => score / 100,
+    higher: true,
+    show: (percent) => formatBoard(Math.round(percent * 100)),
+    mean: (percent) => `${(Math.floor(percent * 10) / 10).toFixed(1)}%`,
+    word: (percent) => plateTier(percent),
   },
 }
 

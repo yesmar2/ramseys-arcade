@@ -125,9 +125,13 @@ export const games: Game[] = [
     name: 'Centroid',
     slug: 'centroid',
     tags: ['puzzle', 'quick'],
-    description: 'Balance each plate on a pin. Find its true center, or watch it tip.',
+    description: 'Six new plates every day, the same for everyone. Tap where each one would balance: the closer to its true center, the higher your score. Your first go is your result.',
     accent: PALETTE.sky,
     playable: true,
+    // A daily since 2026-10-06, as Ramsey asked ("centroid should be a daily like the fill the cup game"):
+    // just for fun, with the puzzles under the Dailies ticket ("Also today").
+    daily: true,
+    ranked: false,
   },
   {
     name: 'Pop',
