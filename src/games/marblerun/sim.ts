@@ -105,14 +105,24 @@ export function mulberry32(seed: number): () => number {
 
 /* ------------------------------------------------------------------ pieces --- */
 
-export type Feature = 'sweeper' | 'hairpin' | 'esses' | 'narrow' | 'drop' | 'rollers' | 'posts' | 'chute' | 'jump'
+export type Feature = 'sweeper' | 'hairpin' | 'esses' | 'narrow' | 'drop' | 'rollers' | 'posts' | 'chute' | 'jump' | PieceKind
+
+/**
+ * The test track's pieces as stretches of a day's course (PIECES), from PIECES_FROM on: boost pads and mud,
+ * bumpers, hammers, a windmill, a moving platform, an iced turn, a fork and a loop.
+ */
+export type PieceKind = 'pads' | 'bumpers' | 'hammers' | 'windmill' | 'platform' | 'ice' | 'fork' | 'loop'
+
+/** The stretches every course is made of (FEATURES). */
+type BaseFeature = Exclude<Feature, PieceKind>
 
 /** Rollers across a piece: humps `a` high, a `wave` apart, slanted by `k` metres along for each across. */
 export type Rollers = { a: number; wave: number; k: number }
 
 /*
- * The new pieces (2026-10-06, on the test track only: labCourse). A piece or a course without their fields rolls
- * exactly as before, so the planned courses lay and roll the same to the bit.
+ * The new pieces (2026-10-06, on the test track first, labCourse; in the day's courses from PIECES_FROM on). A
+ * piece or a course without their fields rolls exactly as before, so the courses planned before them lay and
+ * roll the same to the bit.
  */
 
 /** A patch of track that rolls differently: `u0`..`u1` along its piece and `v0`..`v1` across it (all of it, unsaid). */
@@ -190,6 +200,8 @@ export type Spec = {
   hole?: Hole
   /** A loop's way out, this far to the right of its way in. */
   shift?: number
+  /** The line across it the pace ball keeps to (racingPlan), clear of its bumpers or wide of a windmill's post. */
+  lane?: number
 }
 
 /** A piece of track, laid. */
@@ -232,6 +244,8 @@ export type Bumper = Post
 export type Mover = {
   kind: 'hammer' | 'arm'
   p: Piece
+  /** How far along its piece it is. */
+  u: number
   x: number
   y: number
   z: number
@@ -638,6 +652,7 @@ function layMover(p: Piece, m: MoverSpec): Mover {
   return {
     kind: m.kind,
     p,
+    u: m.u,
     x,
     z,
     ground,
@@ -784,6 +799,8 @@ export type Ball = {
   /** This step, on a course with them: the bumper it hit (its index, or −1), and how hard a hammer or an arm knocked it, in m/s. */
   bumped: number
   knocked: number
+  /** Whether it has met a bumper, a hammer or an arm at all this run: the pace ball never may (timeThings). */
+  touched: boolean
   /** Riding a loop, round it rather than on the track. */
   loop: LoopRide | null
 }
@@ -819,6 +836,7 @@ export function newBall(course: Course, at = 0): Ball {
     support: null,
     bumped: -1,
     knocked: 0,
+    touched: false,
     loop: null,
   }
   respawn(course, b, at)
@@ -1109,6 +1127,7 @@ function collideExtras(x: Extras, b: Ball, t: number) {
     const d = Math.hypot(dx, dz)
     if (d >= r || d < 1e-9) continue
     if (b.y - BALL_R > k.y + k.h) continue
+    b.touched = true
     const nx = dx / d
     const nz = dz / d
     b.x = k.x + nx * r
@@ -1156,6 +1175,7 @@ function collideExtras(x: Extras, b: Ball, t: number) {
     const d = Math.hypot(dx, dz)
     const r = HUB_R + BALL_R
     if (d < r && d > 1e-9 && b.y - BALL_R < m.ground + HUB_H) {
+      b.touched = true
       const nx = dx / d
       const nz = dz / d
       b.x = m.x + nx * r
@@ -1216,6 +1236,7 @@ function knock(b: Ball, cx: number, cy: number, cz: number, r: number, mx: numbe
   const reach = r + BALL_R
   const d = Math.hypot(nx, ny, nz)
   if (d >= reach) return
+  b.touched = true
   if (d < 1e-9) {
     nx = 0
     ny = 1
@@ -1403,7 +1424,7 @@ function outerRail(turn: number, on: boolean): Spec {
  * far the course has turned so far, so turns bring it back round and it winds down the hill instead of
  * curling up on itself.
  */
-const FEATURES: Record<Feature, (r: () => number, ctx: Turner) => Spec[]> = {
+const FEATURES: Record<BaseFeature, (r: () => number, ctx: Turner) => Spec[]> = {
   sweeper(r, ctx) {
     const R = 13 + r() * 9
     const turn = ctx.side(r, (55 + r() * 55) * (Math.PI / 180))
@@ -1481,12 +1502,14 @@ const FEATURES: Record<Feature, (r: () => number, ctx: Turner) => Spec[]> = {
  */
 export const LONGER_FROM = 3
 
-function recipe(r: () => number, longer: boolean): Feature[] | null {
-  const must: Feature[] = ['jump', 'narrow', 'drop', r() < 0.5 ? 'posts' : 'rollers']
-  const turns: Feature[] = ['sweeper', 'sweeper', 'esses', 'hairpin']
-  const extra: Feature[] = ['sweeper', 'rollers', 'posts', 'chute', 'esses', 'hairpin', 'drop']
+function recipe(r: () => number, longer: boolean, fewer = 0, sweepersOut = 0): BaseFeature[] | null {
+  const must: BaseFeature[] = ['jump', 'narrow', 'drop', r() < 0.5 ? 'posts' : 'rollers']
+  // An iced turn or a fork stands in for a sweeper (tryCourse).
+  const turns = (['sweeper', 'sweeper', 'esses', 'hairpin'] as BaseFeature[]).slice(sweepersOut)
+  const extra: BaseFeature[] = ['sweeper', 'rollers', 'posts', 'chute', 'esses', 'hairpin', 'drop']
   const bag = [...must, ...turns]
-  const more = (longer ? 4 : 2) + Math.floor(r() * 2)
+  // A course with new pieces has `fewer` of these, two at least, so it isn't much longer for them (tryCourse).
+  const more = Math.max(2, (longer ? 4 : 2) + Math.floor(r() * 2) - fewer)
   for (let i = 0; i < more; i++) bag.push(extra[Math.floor(r() * extra.length)]!)
   for (let tries = 0; tries < 200; tries++) {
     const order = [...bag]
@@ -1506,14 +1529,227 @@ function recipe(r: () => number, longer: boolean): Feature[] | null {
   return null
 }
 
+/* -------------------------------------------- the new pieces in a day's course --- */
+
+/**
+ * From this course on (2026-10-07), each day's course has two to four of the test track's pieces among its
+ * stretches, chosen and laid from its number (Ramsey, 2026-10-06, after rolling them: "i like all the stuff in
+ * marble run too"). The courses before are laid as they were, bit for bit.
+ */
+export const PIECES_FROM = 9
+
+/** How likely each piece is in a day's course; then a course has PIECES_LEAST at least and PIECES_MOST at most. */
+const PIECE_CHANCE: [PieceKind, number][] = [
+  ['pads', 0.4],
+  ['bumpers', 0.4],
+  ['hammers', 0.35],
+  ['windmill', 0.35],
+  ['platform', 0.3],
+  ['ice', 0.35],
+  ['fork', 0.35],
+  ['loop', 0.4],
+]
+const PIECES_LEAST = 2
+const PIECES_MOST = 4
+
+/** What each piece is called, as the Course Book and the test track's cards say. */
+export const PIECE_WORDS: Record<PieceKind, string> = {
+  pads: 'boost pads and mud',
+  bumpers: 'bumpers',
+  hammers: 'hammers',
+  windmill: 'a windmill',
+  platform: 'a moving platform',
+  ice: 'ice',
+  fork: 'a fork',
+  loop: 'a loop',
+}
+
+/** A bumper's radius, on the test track and in a day's course. */
+const BUMPER_R = 0.65
+/** The pace ball's speed over a moving slab's gap, on the slab (racingPlan), and the share of the slab's cycle that crossing takes. */
+const SLAB_PACE = 2
+const SLAB_CROSSING = 0.62
+
+const isPiece = (f: Feature): f is PieceKind => f in PIECE_WORDS
+
+/** A course's pieces, in the order they come down it. */
+export function coursePieces(course: Course): PieceKind[] {
+  return course.order.filter(isPiece)
+}
+
+function shuffle<T>(list: T[], r: () => number): T[] {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1))
+    ;[list[i], list[j]] = [list[j]!, list[i]!]
+  }
+  return list
+}
+
+/** A day's course's pieces: each by its chance, two at least and four at most, in the order they'll come. */
+function piecesFor(rp: () => number): PieceKind[] {
+  const picks = PIECE_CHANCE.filter(([, p]) => rp() < p).map(([k]) => k)
+  const spare = shuffle(
+    PIECE_CHANCE.map(([k]) => k).filter((k) => !picks.includes(k)),
+    rp,
+  )
+  while (picks.length < PIECES_LEAST && spare.length) picks.push(spare.pop()!)
+  while (picks.length > PIECES_MOST) picks.splice(Math.floor(rp() * picks.length), 1)
+  return shuffle(picks, rp)
+}
+
+/** A course's stretches with its pieces among them, each in a gap of its own (never first), so no two come together. */
+function withPieces(base: BaseFeature[], kinds: PieceKind[], rp: () => number): Feature[] {
+  const gaps = shuffle(
+    base.map((_, i) => i + 1),
+    rp,
+  )
+  const at = gaps.slice(0, kinds.length).sort((a, b) => a - b)
+  const out: Feature[] = []
+  let k = 0
+  for (let i = 0; i <= base.length; i++) {
+    if (at[k] === i) out.push(kinds[k++]!)
+    if (i < base.length) out.push(base[i]!)
+  }
+  return out
+}
+
+/**
+ * The test track's pieces as stretches of a day's course, each with calm track before it (where its checkpoint
+ * goes) and after it. The pace ball has a way through every one: over a pad and through the mud, down a line
+ * clear of the bumpers (Spec lane), past the hammers and the windmill and over a gap as they're timed for it
+ * (timeThings), round the outside of a fork, and over a loop at the speed its boost pad gives.
+ */
+const PIECES: Record<PieceKind, (r: () => number, ctx: Turner) => Spec[]> = {
+  pads(r) {
+    // A boost pad down the middle, then mud over all but a lane along one edge: the mud brakes you for what
+    // comes next, and the lane keeps your speed, if you can keep the marble in it.
+    const w = 7
+    const len = 36 + r() * 6
+    const b0 = 4 + r() * 2
+    const b1 = b0 + 6 + r() * 2
+    const m0 = b1 + 7 + r() * 3
+    const m1 = Math.min(len - 4, m0 + 9 + r() * 3)
+    const mud: Zone = r() < 0.5 ? { kind: 'mud', u0: m0, u1: m1, v0: -w / 2, v1: 1.6 } : { kind: 'mud', u0: m0, u1: m1, v0: -1.6, v1: w / 2 }
+    return [
+      { len: 10, w, dy: -0.4 },
+      { len, w, dy: -(1.2 + r() * 0.5), zones: [{ kind: 'boost', u0: b0, u1: b1, v0: -1.3, v1: 1.3 }, mud] },
+    ]
+  },
+  bumpers(r) {
+    // A wide railed table of them in rows, one in each just clear of a line through it (`lane`), on either side
+    // by turns, and some further out.
+    const w = 9
+    const len = 24 + r() * 6
+    const lane = (r() < 0.5 ? -1 : 1) * (1.1 + r() * 0.4)
+    const room = w / 2 - BUMPER_R - 0.25
+    const bumpers: { u: number; v: number; r: number }[] = []
+    let side = r() < 0.5 ? -1 : 1
+    for (let u = 6; u <= len - 5; u += 4.5 + r()) {
+      const near = lane + side * (1.5 + r() * 0.3)
+      if (Math.abs(near) <= room) bumpers.push({ u, v: near, r: BUMPER_R })
+      const far = near + side * (2.3 + r() * 0.5)
+      if (Math.abs(far) <= room && r() < 0.6) bumpers.push({ u: u + r() - 0.5, v: far, r: BUMPER_R })
+      side = -side
+    }
+    return [
+      { len: 12, w, dy: -0.5, railL: true, railR: true },
+      { len, w, dy: -(1.2 + r() * 0.6), railL: true, railR: true, bumpers, lane },
+    ]
+  },
+  hammers(r) {
+    // Two or three swinging across a straight with no rails, each to a beat of its own.
+    const len = 26 + r() * 8
+    const n = len >= 30 ? 3 : 2
+    const period = 2.4 + r() * 0.5
+    const movers: MoverSpec[] = []
+    for (let i = 0; i < n; i++) movers.push({ kind: 'hammer', u: 6 + ((len - 12) * i) / (n - 1), arm: 3.6, swing: 1, period: period + (r() - 0.5) * 0.3 })
+    return [
+      { len: 12, w: 5, dy: -0.4 },
+      { len, w: 5, dy: -(0.7 + r() * 0.4), movers },
+      { len: 10, w: 7, dy: -0.3 },
+    ]
+  },
+  windmill(r) {
+    // A bar turning round a post in the middle of a wide straight with no rails, a little room outside its ends.
+    // The pace ball passes the post on the side where it goes round it the way the bar turns (the bar turning
+    // right, a positive period: on the left): there it can slip by between the bar's two ends, where on the other
+    // side the bar sweeps across its line whenever it comes.
+    const len = 20 + r() * 4
+    const reach = 2.5 + r() * 0.3
+    const period = (r() < 0.5 ? -1 : 1) * (3.6 + r() * 0.8)
+    return [
+      { len: 10, w: 8, dy: -0.3 },
+      { len, w: 8, dy: -0.5, movers: [{ kind: 'arm', u: len / 2, v: 0, reach, back: reach, period }], lane: -Math.sign(period) * 1.8 },
+      { len: 8, w: 6.5, dy: -0.3 },
+    ]
+  },
+  platform(r) {
+    // A gap too long to jump and a slab shuttling over it, resting at either end: roll on while it rests at your
+    // end and keep rolling gently, and it rests at the far end as you get there.
+    const gap = 8 + r() * 2
+    const slab = 5 + r()
+    const period = slab / SLAB_PACE / SLAB_CROSSING + (r() - 0.5) * 0.3
+    return [
+      { len: 10, w: 4.4, dy: -0.5, mEnd: 0 },
+      { len: 6, w: 4.4, dy: 0, mEnd: 0 },
+      { len: gap, w: 4.4, gap: true, platforms: [{ u: gap / 2, du: (gap - slab) / 2, len: slab, w: 4.4, period, rest: 0.3 }] },
+      { len: 8, w: 4.4, m0: 0, dy: 0, mEnd: 0 },
+      { len: 6, w: 6.5, dy: -0.4 },
+    ]
+  },
+  ice(r, ctx) {
+    // A banked turn iced over from just after it starts: you can't steer through it, only into it, so slow down first.
+    const R = 18 + r() * 4
+    const turn = ctx.side(r, (50 + r() * 20) * (Math.PI / 180))
+    const len = R * Math.abs(turn)
+    return [
+      { len: 10, w: 7.5, dy: -0.4 },
+      { kind: 'arc', R, turn, w: 7.5, dy: -0.5, bank: 0.16, zones: [{ kind: 'ice', u0: 1.5, u1: len - 1.5 }] },
+      { len: 8, w: 8, dy: -0.4 },
+    ]
+  },
+  fork(r, ctx) {
+    // A wide railed turn with a hole through its inside: round the outside, or along a plank 2 m wide across the
+    // inside, much shorter. The inside is on the right turning right (v > 0), on the left turning left.
+    const R = 13 + r() * 2
+    const turn = ctx.side(r, (95 + r() * 20) * (Math.PI / 180))
+    const len = R * Math.abs(turn)
+    const hole: Hole = turn > 0 ? { u0: 5, u1: len - 4, v0: 1.5, v1: 4, railV0: true } : { u0: 5, u1: len - 4, v0: -4, v1: -1.5, railV1: true }
+    return [
+      { len: 10, w: 12, dy: -0.4 },
+      { kind: 'arc', R, turn, w: 12, dy: -0.8, bank: 0.12, ...outerRail(turn, true), hole },
+      { len: 8, w: 6, dy: -0.4 },
+    ]
+  },
+  loop(r) {
+    // A loop, with a boost pad down the middle of the way in: miss it and you're too slow to get over the top.
+    const R = 4.4 + r() * 0.4
+    const shift = (r() < 0.5 ? -1 : 1) * (3.8 + r() * 0.6)
+    return [
+      { len: 12, w: 5, dy: -0.5 },
+      { len: 22, w: 4.2, dy: -0.6, zones: [{ kind: 'boost', u0: 9, u1: 19, v0: -1, v1: 1 }] },
+      { kind: 'loop', R, shift, w0: 4.2, w: 2.4 },
+      { len: 24, w0: 4.2, w: 6, dy: -0.4, railL: true, railR: true },
+      { len: 10, w: 6.5, dy: -0.5 },
+    ]
+  },
+}
+
 /**
  * One try at a course from a key: its pieces laid out, or null if it ran into itself. A longer one has two
- * more stretches, with a checkpoint every third stretch as always.
+ * more stretches, with a checkpoint every third stretch as always. With `addPieces` (PIECES_FROM), two to four of
+ * the test track's pieces come among its stretches too, from a random stream of their own, each with a
+ * checkpoint before it. Each stands in for one of the other stretches, an iced turn or a fork for a sweeper,
+ * so the course isn't much longer for them.
  */
-export function tryCourse(key: string, longer = false): Course | null {
+export function tryCourse(key: string, longer = false, addPieces = false): Course | null {
   const r = mulberry32(hashString(`marble:${key}`))
-  const order = recipe(r, longer)
-  if (!order) return null
+  const rp = addPieces ? mulberry32(hashString(`marble-pieces:${key}`)) : null
+  const kinds = rp ? piecesFor(rp) : []
+  const turning = kinds.filter((k) => k === 'ice' || k === 'fork').length
+  const base = recipe(r, longer, kinds.length - turning, turning)
+  if (!base) return null
+  const order: Feature[] = rp ? withPieces(base, kinds, rp) : base
   let net = 0
   const ctx: Turner = {
     side(rr, amount) {
@@ -1530,9 +1766,10 @@ export function tryCourse(key: string, longer = false): Course | null {
     { len: 14 + r() * 4, w: 6, dy: -(0.8 + r() * 0.6) },
   ]
   order.forEach((kind, i) => {
-    const part = FEATURES[kind](r, ctx)
-    // A checkpoint at the start of every third stretch.
-    if (i > 0 && i % 3 === 0) part[0] = { ...part[0], cp: true }
+    const piece = isPiece(kind)
+    const part = isPiece(kind) ? PIECES[kind](rp!, ctx) : FEATURES[kind](r, ctx)
+    // A checkpoint at the start of every third stretch, and of every piece.
+    if ((i > 0 && i % 3 === 0) || piece) part[0] = { ...part[0], cp: true }
     part[0] = { ...part[0], feature: kind }
     specs.push(...part)
   })
@@ -1547,13 +1784,17 @@ export function tryCourse(key: string, longer = false): Course | null {
 /** Whether a course runs into or too near itself anywhere it doesn't simply carry on from itself. */
 function crosses(pieces: readonly Piece[]): boolean {
   const pts: { d: number; x: number; z: number; hw: number }[] = []
+  // Round a loop the track comes back over itself, as it's meant to: along the course a loop counts for nothing.
+  let looped = 0
   for (const p of pieces) {
+    const loop = p.kind === 'loop'
     const n = Math.max(2, Math.ceil(p.len / 2))
     for (let i = 0; i <= n; i++) {
       const u = (p.len * i) / n
       const [x, z] = point(p, u, 0)
-      pts.push({ d: p.d0 + u, x, z, hw: p.gap ? 1 : halfWidth(p, u) })
+      pts.push({ d: loop ? p.d0 - looped : p.d0 + u - looped, x, z, hw: p.gap ? 1 : halfWidth(p, u) })
     }
+    if (loop) looped += p.len
   }
   for (let a = 0; a < pts.length; a++)
     for (let b = a + 1; b < pts.length; b++) {
@@ -1566,25 +1807,135 @@ function crosses(pieces: readonly Piece[]): boolean {
   return false
 }
 
-/** Course `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): laid the same on every device. */
-export function plannedCourse(n: number, attempt: number): Course {
-  const course = tryCourse(`${n}:${attempt}`, n >= LONGER_FROM)
+/**
+ * Course `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): laid the same on every device, its hammers,
+ * arms and slabs set to the plan's moments (`timing`, timeThings).
+ */
+export function plannedCourse(n: number, attempt: number, timing?: readonly number[]): Course {
+  const course = tryCourse(`${n}:${attempt}`, n >= LONGER_FROM, n >= PIECES_FROM)
   if (!course) throw new Error(`Marble Run: course #${n} try ${attempt} doesn't lay`)
+  if (timing?.length) applyTiming(course, timing)
   return course
 }
 
 /**
  * Course `n` from scratch: the first try at it that lays out and that the pace ball gets all the way down
- * without falling off. The plan script keeps which try that was, and the pace ball's time.
+ * without falling off or touching a bumper, a hammer or an arm, its moving pieces timed for it. The plan
+ * script keeps which try that was, the pace ball's time, and the moments its pieces are set to.
  */
-export function firstGoodCourse(n: number): { course: Course; attempt: number; pace: PaceRun } {
+export function firstGoodCourse(n: number): { course: Course; attempt: number; pace: PaceRun; timing: number[] } {
   for (let attempt = 0; attempt < 200; attempt++) {
-    const course = tryCourse(`${n}:${attempt}`, n >= LONGER_FROM)
+    const course = tryCourse(`${n}:${attempt}`, n >= LONGER_FROM, n >= PIECES_FROM)
     if (!course) continue
+    const timing = timeThings(course)
+    if (timing === null) continue
+    applyTiming(course, timing)
     const pace = paceRun(course)
-    if (pace.finished) return { course, attempt, pace }
+    if (pace.finished && !pace.touched) return { course, attempt, pace, timing }
   }
   throw new Error(`Marble Run: no course for #${n}`)
+}
+
+/* ------------------------------------------------ timing the moving pieces --- */
+
+/** A hammer, an arm or a slab: from where along the course it can reach a ball to where it can't, and its phase. */
+type Timed = { from: number; to: number; set: (phase: number) => void }
+
+/** A course's hammers, arms and slabs, in the order they come down it. */
+function timedThings(course: Course): Timed[] {
+  const x = course.extras
+  if (!x) return []
+  const out: Timed[] = []
+  for (const m of x.movers) {
+    const d = m.p.d0 + m.u
+    const r = (m.kind === 'hammer' ? HAMMER_HALF + HAMMER_R : Math.max(m.reach, m.back) + ARM_R) + BALL_R
+    out.push({ from: d - r, to: d + r, set: (phase) => (m.phase = phase) })
+  }
+  for (const pl of x.platforms) out.push({ from: pl.p.d0 - 1, to: pl.p.d0 + pl.p.len + 1, set: (phase) => (pl.phase = phase) })
+  return out.sort((a, b) => a.from - b.from)
+}
+
+/** Phases each moving piece is tried at, round its cycle, as the pace ball comes to it. */
+const PHASES = 48
+/** The fewest of them in a row that must let the pace ball by for a piece to be timed (in the middle of them). */
+const PHASES_CLEAR = 4
+
+/**
+ * The moments a course's hammers, arms and slabs keep, for the plan (dailyPlan.ts `t`), in the order they come:
+ * each one's phase, the middle of the phases that let the pace ball by untouched (onto a slab and off it), as it
+ * comes to that one with the ones before it set. [] for a course with none; null if one lets it by at no phase.
+ */
+export function timeThings(course: Course): number[] | null {
+  const things = timedThings(course)
+  if (!things.length) return []
+  const plan = racingPlan(course)
+  if (!plan) return null
+  const S = plan.S
+  const at = { idx: 0 }
+  const drive = steerer(plan, at)
+  const b = newBall(course, 0)
+  const out: number[] = []
+  for (const th of things) {
+    // Rolled on to a little short of it, where it can't reach the ball yet whatever its phase.
+    while (S[at.idx]!.d < th.from - 6) {
+      step(course, b, drive(b))
+      if (b.lost || b.touched || b.finished || b.t > 180) return null
+    }
+    const clear: boolean[] = []
+    for (let j = 0; j < PHASES; j++) {
+      th.set((TAU * j) / PHASES)
+      const c = cloneBall(b)
+      const ca = { idx: at.idx }
+      const cd = steerer(plan, ca)
+      let by = false
+      for (let n = 0; n < 240 * 30 && !c.lost && !c.touched && !c.finished; n++) {
+        step(course, c, cd(c))
+        if (!c.lost && !c.touched && !c.air && S[ca.idx]!.d > th.to + 2) {
+          by = true
+          break
+        }
+      }
+      clear.push(by)
+    }
+    const phase = middleOfClear(clear)
+    if (phase === null) return null
+    const kept = Math.round(phase * 1000) / 1000
+    th.set(kept)
+    out.push(kept)
+  }
+  return out
+}
+
+/** The phase in the middle of the longest run of clear ones, round the cycle, or null if none is PHASES_CLEAR long. */
+function middleOfClear(clear: boolean[]): number | null {
+  const n = clear.length
+  if (clear.every(Boolean)) return 0
+  let best = 0
+  let bestAt = 0
+  for (let i = 0; i < n; i++) {
+    // Each run counted from its start, the phase after one that isn't clear.
+    if (!clear[i] || clear[(i + n - 1) % n]) continue
+    let len = 0
+    while (len < n && clear[(i + len) % n]) len++
+    if (len > best) {
+      best = len
+      bestAt = i
+    }
+  }
+  if (best < PHASES_CLEAR) return null
+  return ((TAU * ((bestAt + (best - 1) / 2) % n)) / n) % TAU
+}
+
+/** A course's hammers, arms and slabs set to the plan's moments (timeThings), in the order they come down it. */
+export function applyTiming(course: Course, t: readonly number[]) {
+  timedThings(course).forEach((th, k) => {
+    if (t[k] !== undefined) th.set(t[k]!)
+  })
+}
+
+/** A ball to roll on from where another is, apart from it. */
+function cloneBall(b: Ball): Ball {
+  return { ...b, splits: [...b.splits], support: b.support ? { ...b.support } : null, loop: b.loop ? { ...b.loop } : null }
 }
 
 /* --------------------------------------------------------------- the test track --- */
@@ -1597,7 +1948,7 @@ export const LAB_PIECES_IN_WORDS = `${LAB_PIECES.slice(0, -1).join(', ')} and ${
 /**
  * The test track (Ramsey, 2026-10-06: try all the new pieces on one track): each in turn, calm track between
  * them and a checkpoint before each, so a fall costs only the piece it was on. It's laid by hand, the same every
- * time, and no day's course has any of it yet.
+ * time. From PIECES_FROM on, the day's courses have its pieces too, a few each (PIECES).
  */
 export function labCourse(): Course {
   // Three hammers in step for a ball at about 7 m/s: each one 8 m on swings as the one before did 8/7 s earlier.
@@ -1688,7 +2039,10 @@ export function racingPlan(course: Course): RacingPlan | null {
     for (let i = 0; i < n; i++) {
       const u = (p.len * i) / n
       const [x, z] = point(p, u, 0)
-      S.push({ p, u, x, z, y: heightAt(p, u, 0), h: headingAt(p, u), d: p.d0 + u, k: p.kind === 'arc' ? 1 / p.R! : 0, off: 0, coast: !!(p.kicker || p.gap) })
+      // Over a kicker and a jump's gap it lets the ball fly, and round a loop the tilt does nothing; over a slab's
+      // gap it rolls gently on the slab.
+      const coast = !!(p.kicker || (p.gap && !p.platforms) || p.kind === 'loop')
+      S.push({ p, u, x, z, y: heightAt(p, u, 0), h: headingAt(p, u), d: p.d0 + u, k: p.kind === 'arc' ? 1 / p.R! : 0, off: 0, coast })
     }
   }
   const last = course.pieces[course.pieces.length - 1]!
@@ -1704,17 +2058,36 @@ export function racingPlan(course: Course): RacingPlan | null {
     }
   }
 
-  const v = S.map((s) => {
+  // Through a piece's bumpers or past a windmill's post, on its line (Spec lane): eased over to it before the
+  // piece and back after it.
+  for (const p of course.pieces) {
+    if (p.lane === undefined) continue
+    const a = p.d0
+    const z = p.d0 + p.len
+    for (const s of S) {
+      const w = s.d < a + 4 ? smooth01((s.d - a + 14) / 18) : s.d > z - 3 ? smooth01((z + 9 - s.d) / 12) : 1
+      if (w > 0) s.off += p.lane * w
+    }
+  }
+  // Ice under the middle of the track: the tilt turns and brakes the ball a third as well there (ICE_GRIP).
+  const icy = S.map((s) => !!s.p.zones && zoneAt(s.p, s.u, 0)?.kind === 'ice')
+
+  const v = S.map((s, i) => {
     const p = s.p
+    // Round a loop as fast as it comes; over a slab's gap, gently.
+    if (p.kind === 'loop') return 24
+    if (p.platforms) return SLAB_PACE
     let top = 24
     if (s.k) {
       const e = ease(p, s.u)
       const lean = (p.bank ?? 0) * e + (p.pipe ? p.pipe * e * 2.4 : 0)
-      top = Math.min(top, Math.sqrt((ROLL * G * (0.5 * TILT_MAX + lean)) / s.k))
+      const tilt = icy[i] ? 0.5 * TILT_MAX * ICE_GRIP : 0.5 * TILT_MAX
+      top = Math.min(top, Math.sqrt((ROLL * G * (tilt + lean)) / s.k))
     }
     if (2 * halfWidth(p, s.u) < 3.6) top = Math.min(top, 8.5)
     if (p.rollers) top = Math.min(top, 8)
     if (p.posts) top = Math.min(top, 7)
+    if (p.bumpers || p.lane !== undefined) top = Math.min(top, 8)
     return top
   })
 
@@ -1752,7 +2125,7 @@ export function racingPlan(course: Course): RacingPlan | null {
     if (S[i]!.coast) continue
     const ds = Math.max(0.1, S[i + 1]!.d - S[i]!.d)
     const grade = (S[i + 1]!.y - S[i]!.y) / ds
-    const brake = Math.max(0.4, ROLL * G * (0.6 * TILT_MAX + grade))
+    const brake = icy[i] ? Math.max(0.15, ROLL * G * (0.6 * TILT_MAX * ICE_GRIP + grade)) : Math.max(0.4, ROLL * G * (0.6 * TILT_MAX + grade))
     v[i] = Math.min(v[i]!, Math.sqrt(v[i + 1]! ** 2 + 2 * brake * ds))
   }
   return { S, v, jumps }
@@ -1764,13 +2137,21 @@ export function racingPlan(course: Course): RacingPlan | null {
  * first, braking with what's left, as a careful player would.
  */
 export function makeDriver(plan: RacingPlan): (b: Ball) => Tilt {
+  return steerer(plan, { idx: 0 })
+}
+
+/**
+ * makeDriver's hands, keeping how far along the plan the ball is in `at`, so a run can be taken up from the
+ * middle (timeThings). On a moving slab they go by the ball's speed on the slab, which carries it the rest; on
+ * ice they lean three times as hard for the same pull (ICE_GRIP).
+ */
+function steerer(plan: RacingPlan, at: { idx: number }): (b: Ball) => Tilt {
   const { S, v } = plan
-  let idx = 0
   return (b) => {
-    let best = idx
+    let best = at.idx
     let bd = Infinity
     const bottom = b.y - BALL_R
-    for (let j = Math.max(0, idx - 12); j < Math.min(S.length, idx + 80); j++) {
+    for (let j = Math.max(0, at.idx - 12); j < Math.min(S.length, at.idx + 80); j++) {
       const s = S[j]!
       const d = (s.x - b.x) ** 2 + (s.z - b.z) ** 2 + 0.25 * (s.y - bottom) ** 2
       if (d < bd) {
@@ -1778,20 +2159,23 @@ export function makeDriver(plan: RacingPlan): (b: Ball) => Tilt {
         best = j
       }
     }
-    idx = best
-    const here = S[idx]!
-    const sp = Math.hypot(b.vx, b.vz)
+    at.idx = best
+    const here = S[at.idx]!
+    const slab = !b.air && b.support?.plat ? platformPose(b.support.plat, b.t) : null
+    const bvx = slab ? b.vx - slab.vx : b.vx
+    const bvz = slab ? b.vz - slab.vz : b.vz
+    const sp = Math.hypot(bvx, bvz)
     const nx = -Math.sin(here.h)
     const nz = Math.cos(here.h)
     // How far right of its line it is, and how fast it's going that way.
     const off = (b.x - here.x) * nx + (b.z - here.z) * nz - here.off
-    const drift = b.vx * nx + b.vz * nz
-    const soon = S[Math.min(S.length - 1, idx + Math.round((0.3 + 0.1 * sp) / 0.5))]!
+    const drift = bvx * nx + bvz * nz
+    const soon = S[Math.min(S.length - 1, at.idx + Math.round((0.3 + 0.1 * sp) / 0.5))]!
     const dir = soon.h + clamp(-0.32 * off - (0.3 * drift) / Math.max(sp, 2), -0.6, 0.6)
-    const want = v[Math.min(S.length - 1, idx + Math.round((1 + 0.35 * sp) / 0.5))]!
+    const want = v[Math.min(S.length - 1, at.idx + Math.round((1 + 0.35 * sp) / 0.5))]!
     const K = 2.4
-    let ax = K * (Math.cos(dir) * want - b.vx)
-    let az = K * (Math.sin(dir) * want - b.vz)
+    let ax = K * (Math.cos(dir) * want - bvx)
+    let az = K * (Math.sin(dir) * want - bvz)
     if (here.k) {
       // The curve's own pull toward its middle.
       const c = sp * sp * here.k * here.p.s
@@ -1799,25 +2183,26 @@ export function makeDriver(plan: RacingPlan): (b: Ball) => Tilt {
       az += c * nz
     }
     const coast = here.coast || b.air
-    if (b.air) return split(b, ax / G, az / G, coast)
-    // What the track does by itself, which the tilt needn't.
+    if (b.air) return split(bvx, bvz, ax / G, az / G, coast)
+    // What the track does by itself, which the tilt needn't. A slab is level.
     let gax = 0
     let gaz = 0
-    if (b.support) {
+    if (b.support && !slab) {
       const [mx, my, mz] = normalAt(b.support.p, b.x, b.z)
       gax = ROLL * G * my * mx
       gaz = ROLL * G * my * mz
     }
-    return split(b, (ax - gax) / (ROLL * G), (az - gaz) / (ROLL * G), coast)
+    const pull = zoneUnder(b.support)?.kind === 'ice' ? ROLL * G * ICE_GRIP : ROLL * G
+    return split(bvx, bvz, (ax - gax) / pull, (az - gaz) / pull, coast)
   }
 }
 
-/** A tilt within the limit, turning first: across the way the ball goes, then along it with what's left. */
-function split(b: Ball, tx: number, tz: number, coast: boolean): Tilt {
-  const sp = Math.hypot(b.vx, b.vz)
+/** A tilt within the limit, turning first: across the way the ball goes (vx, vz), then along it with what's left. */
+function split(vx: number, vz: number, tx: number, tz: number, coast: boolean): Tilt {
+  const sp = Math.hypot(vx, vz)
   if (sp < 0.5) return clampTilt(tx, tz)
-  const ux = b.vx / sp
-  const uz = b.vz / sp
+  const ux = vx / sp
+  const uz = vz / sp
   const across = clamp(-tx * uz + tz * ux, -TILT_MAX, TILT_MAX)
   const room = Math.sqrt(TILT_MAX * TILT_MAX - across * across)
   // Over a kicker and through the air it only keeps straight.
@@ -1885,13 +2270,16 @@ export function handsTilt(course: Course, b: Ball, hands: { x: number; y: number
   return { x: along * fx + across * rx, z: along * fz + across * rz }
 }
 
-/** The pace ball's run: its time, its checkpoint splits, and where it was 30 times a second. */
-export type PaceRun = { finished: boolean; time: number; splits: number[]; ghost: number[]; plan: RacingPlan | null }
+/**
+ * The pace ball's run: its time, its checkpoint splits, and where it was 30 times a second; and whether it met a
+ * bumper, a hammer or an arm on the way (a planned course's never does: firstGoodCourse).
+ */
+export type PaceRun = { finished: boolean; time: number; splits: number[]; ghost: number[]; plan: RacingPlan | null; touched: boolean }
 
 /** The pace ball all the way down. */
 export function paceRun(course: Course, maxT = 180): PaceRun {
   const plan = racingPlan(course)
-  if (!plan) return { finished: false, time: Infinity, splits: [], ghost: [], plan: null }
+  if (!plan) return { finished: false, time: Infinity, splits: [], ghost: [], plan: null, touched: false }
   const drive = makeDriver(plan)
   const b = newBall(course, 0)
   const ghost: number[] = []
@@ -1902,5 +2290,5 @@ export function paceRun(course: Course, maxT = 180): PaceRun {
     n += 1
   }
   ghost.push(b.x, b.y, b.z)
-  return { finished: b.finished, time: b.time ?? Infinity, splits: b.splits, ghost, plan }
+  return { finished: b.finished, time: b.time ?? Infinity, splits: b.splits, ghost, plan, touched: b.touched }
 }

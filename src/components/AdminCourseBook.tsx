@@ -3,7 +3,7 @@ import { CourseDrawing } from '../games/marblerun/CourseDrawing'
 import { courseDay, dayOfCourse, PLANNED_COURSES } from '../games/marblerun/daily'
 import { DAILY_COURSES, type PlannedCourse } from '../games/marblerun/dailyPlan'
 import { formatRun } from '../games/marblerun/score'
-import { LAB_PIECES_IN_WORDS, plannedCourse, type Course, type Feature } from '../games/marblerun/sim'
+import { coursePieces, LAB_PIECES_IN_WORDS, PIECE_WORDS, PIECES_FROM, plannedCourse, type Course, type Feature, type PieceKind } from '../games/marblerun/sim'
 import { courseRunHref, LAB_HREF } from '../games/marblerun/links'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import '../styles/adminBooks.css'
@@ -29,6 +29,8 @@ type BookCourse = {
   /** How far it falls from the start to its lowest point, in metres. */
   drop: number
   checkpoints: number
+  /** The test track's pieces it has (sim.ts PIECES_FROM on), in the order they come. */
+  pieces: PieceKind[]
 }
 
 const FEATURE_WORDS: Record<Feature, string> = {
@@ -41,6 +43,20 @@ const FEATURE_WORDS: Record<Feature, string> = {
   posts: 'posts',
   chute: 'chute',
   jump: 'jump',
+  pads: 'boost and mud',
+  bumpers: 'bumpers',
+  hammers: 'hammers',
+  windmill: 'windmill',
+  platform: 'moving platform',
+  ice: 'ice turn',
+  fork: 'fork',
+  loop: 'loop',
+}
+
+/** "a windmill, ice and a loop". */
+const piecesInWords = (pieces: readonly PieceKind[]) => {
+  const words = pieces.map((k) => PIECE_WORDS[k])
+  return words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}` : (words[0] ?? '')
 }
 
 const monthFormat = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -51,7 +67,7 @@ const dayWords = (day: string) => dayFormat.format(dateOf(day))
 
 function bookCourse(entry: PlannedCourse, i: number): BookCourse {
   const n = i + 1
-  const course = plannedCourse(n, entry.a)
+  const course = plannedCourse(n, entry.a, entry.t)
   return {
     n,
     day: dayOfCourse(n),
@@ -61,6 +77,7 @@ function bookCourse(entry: PlannedCourse, i: number): BookCourse {
     metres: Math.round(course.length),
     drop: Math.round(course.maxY - course.minY),
     checkpoints: course.lines.length - 1,
+    pieces: coursePieces(course),
   }
 }
 
@@ -77,6 +94,7 @@ export function AdminCourseBook() {
   const shown = courses.filter((c) => (month === 'all' || c.day.startsWith(month)) && (!q || c.name.toLowerCase().includes(q) || String(c.n) === q))
   const groups = months.map((key) => ({ key, courses: shown.filter((c) => c.day.startsWith(key)) })).filter((g) => g.courses.length)
   const last = courses[courses.length - 1]
+  const firstWithPieces = courses[PIECES_FROM - 1]
 
   return (
     <div className="tb cb">
@@ -86,7 +104,8 @@ export function AdminCourseBook() {
         </h2>
         <p className="adm-card__sub">
           Every course planned, a new one each day at midnight New York time, the same for everyone. Each was kept
-          only once the blue ball got all the way down it without falling off. Test run today’s or any still to
+          only once the blue ball got all the way down it without falling off or touching a bumper, a hammer or a
+          windmill, its hammers, windmills and platforms timed for it. Test run today’s or any still to
           come, ahead of its day: a test run’s runs go on no board. A past one plays as practice.
           {last ? ` The plan runs to #${last.n} on ${dayWords(last.day)}, ${last.day.slice(0, 4)}; after that the days go round again from #1.` : ''}
         </p>
@@ -95,7 +114,8 @@ export function AdminCourseBook() {
             Test track: new pieces →
           </a>
           <p className="tb-feature__next">
-            {LAB_PIECES_IN_WORDS.charAt(0).toUpperCase() + LAB_PIECES_IN_WORDS.slice(1)}, all on one course to try. None is in a day’s course yet.
+            {LAB_PIECES_IN_WORDS.charAt(0).toUpperCase() + LAB_PIECES_IN_WORDS.slice(1)}, all on one course to try. Every day’s course has two to
+            four of them from #{PIECES_FROM}{firstWithPieces ? `, ${dayWords(firstWithPieces.day)}` : ''}.
           </p>
         </div>
         {todays ? (
@@ -109,6 +129,7 @@ export function AdminCourseBook() {
                 {todays.drop} m down
               </p>
               <p className="cb-stretches">{todays.course.order.map((f) => FEATURE_WORDS[f]).join(' → ')}</p>
+              {todays.pieces.length ? <p className="cb-pieces">With {piecesInWords(todays.pieces)}</p> : null}
               <div className="tb-feature__acts">
                 <a className="panel__btn adm-small" href={courseRunHref(todays.day)}>
                   Test run
@@ -177,7 +198,8 @@ export function AdminCourseBook() {
         <p className="adm-note">No course in the plan goes by that.</p>
       )}
       <p className="adm-note cb-note">
-        {PLANNED_COURSES} courses planned. Longer courses (two more stretches) from #3: courses #1 and #2 are as they were played.
+        {PLANNED_COURSES} courses planned. Longer courses (two more stretches) from #3: courses #1 and #2 are as they were played. The
+        test track’s pieces from #{PIECES_FROM}: the courses before are as they were played.
       </p>
     </div>
   )
@@ -199,6 +221,7 @@ function CourseTile({ course, today }: { course: BookCourse; today: string }) {
       <div className="tb-tile__body">
         <span className="tb-tile__date">{dayWords(course.day)}</span>
         <h4 className="tb-tile__name">{course.name}</h4>
+        {course.pieces.length ? <p className="cb-pieces cb-pieces--tile">{course.pieces.map((k) => PIECE_WORDS[k]).join(' · ')}</p> : null}
         <dl className="tb-figs">
           <div>
             <dt>Blue ball</dt>

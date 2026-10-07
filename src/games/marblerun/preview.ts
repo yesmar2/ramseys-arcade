@@ -54,6 +54,8 @@ export function createDayPreview(day: string): GamePreviewRun {
       ball.x = pose.x
       ball.y = pose.y
       ball.z = pose.z
+      // The course's hammers, arms and slabs where they were as the pace ball rolled it.
+      ball.t = pose.done ? run.run.time : t
       ball.vx = last && dt > 0 ? (pose.x - last.x) / dt : 0
       ball.vy = last && dt > 0 ? (pose.y - last.y) / dt : 0
       ball.vz = last && dt > 0 ? (pose.z - last.z) / dt : 0

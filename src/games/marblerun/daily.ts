@@ -70,13 +70,15 @@ export type DailyCourse = {
   attempt: number
   /** The pace ball's time when the day was planned, in seconds. */
   pace: number
+  /** The moments its hammers, arms and slabs are set to (sim.ts timeThings), from sim.ts PIECES_FROM on. */
+  timing?: readonly number[]
 }
 
 /** A day's course from the plan. */
 export function dailyCourse(day = courseDay()): DailyCourse {
   const n = Math.max(1, courseNumber(day))
   const entry = DAILY_COURSES[(n - 1) % DAILY_COURSES.length]!
-  return { day, n, name: entry.name, attempt: entry.a, pace: entry.pace / 1000 }
+  return { day, n, name: entry.name, attempt: entry.a, pace: entry.pace / 1000, ...(entry.t ? { timing: entry.t } : {}) }
 }
 
 /** The course number a day's course is laid from: its own, or the planned day it stands in for. */

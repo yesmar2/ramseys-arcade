@@ -5,8 +5,10 @@
 //   node scripts/marblerun-daily.mjs show <n>        lay course #n from the plan and say how the pace ball does
 //
 // A day's course is laid from its number (src/games/marblerun/sim.ts tryCourse), and a try is kept only once
-// the pace ball has been all the way down it without falling off. The plan keeps which try that was, the
-// course's name, and the pace ball's time; the API gets its own copy of the times (ramseys-arcade-api
+// the pace ball has been all the way down it without falling off (or, from sim.ts PIECES_FROM on, touching a
+// bumper, a hammer or an arm). The plan keeps which try that was, the course's name, the pace ball's time, and
+// from PIECES_FROM on, `t`: the moments its hammers, arms and slabs are set to (sim.ts timeThings), so every
+// device sets them the same without rolling the pace ball first. The API gets its own copy of the times (ramseys-arcade-api
 // src/marblerunPace.ts, or API_DIR's), since a run's tickets and its fastest believable time go by them.
 //
 // `plan` only ever adds days: a day that's been played keeps its course. Changing sim.ts's generator or
@@ -14,7 +16,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { firstGoodCourse, paceRun, plannedCourse } from '../src/games/marblerun/sim.ts'
+import { coursePieces, firstGoodCourse, paceRun, plannedCourse } from '../src/games/marblerun/sim.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAN = join(root, 'src/games/marblerun/dailyPlan.ts')
@@ -24,19 +26,25 @@ const FIRST_DAY = '2026-09-29'
 function readPlan() {
   if (!existsSync(PLAN)) return []
   const text = readFileSync(PLAN, 'utf8')
-  return [...text.matchAll(/\{ a: (\d+), name: '([^']+)', pace: (\d+) \}/g)].map((m) => ({ a: Number(m[1]), name: m[2], pace: Number(m[3]) }))
+  return [...text.matchAll(/\{ a: (\d+), name: '([^']+)', pace: (\d+)(?:, t: \[([^\]]*)\])? \}/g)].map((m) => ({
+    a: Number(m[1]),
+    name: m[2],
+    pace: Number(m[3]),
+    t: m[4] ? m[4].split(',').map(Number) : [],
+  }))
 }
 
 function writePlan(days) {
-  const lines = days.map((d) => `  { a: ${d.a}, name: '${d.name}', pace: ${d.pace} },`)
+  const lines = days.map((d) => `  { a: ${d.a}, name: '${d.name}', pace: ${d.pace}${d.t?.length ? `, t: [${d.t.join(', ')}]` : ''} },`)
   writeFileSync(
     PLAN,
     `// Written by scripts/marblerun-daily.mjs: each day's course, from the first day (daily.ts FIRST_DAY) on. \`a\`
 // is the try at the day's number that was kept (sim.ts plannedCourse), \`pace\` the pace ball's time in
-// milliseconds when it was planned. Don't edit it by hand, and don't change sim.ts in a way that changes
-// the courses of days people have played.
+// milliseconds when it was planned, \`t\` the moments its hammers, arms and slabs are set to (sim.ts
+// timeThings). Don't edit it by hand, and don't change sim.ts in a way that changes the courses of days
+// people have played.
 
-export type PlannedCourse = { a: number; name: string; pace: number }
+export type PlannedCourse = { a: number; name: string; pace: number; t?: readonly number[] }
 
 export const DAILY_COURSES: readonly PlannedCourse[] = [
 ${lines.join('\n')}
@@ -68,8 +76,8 @@ if (cmd === 'plan' || cmd === 'replan') {
   const days = cmd === 'replan' ? readPlan().slice(0, Math.max(0, Number(arg) - 1)) : readPlan()
   const t0 = Date.now()
   for (let n = days.length + 1; n <= want; n++) {
-    const { course, attempt, pace } = firstGoodCourse(n)
-    days.push({ a: attempt, name: course.name, pace: Math.round(pace.time * 1000) })
+    const { course, attempt, pace, timing } = firstGoodCourse(n)
+    days.push({ a: attempt, name: course.name, pace: Math.round(pace.time * 1000), t: timing })
     if (n % 20 === 0) console.log(`#${n} ${course.name} (try ${attempt}) ${pace.time.toFixed(2)}s · ${((Date.now() - t0) / 1000).toFixed(0)} s so far`)
   }
   writePlan(days)
@@ -80,10 +88,11 @@ if (cmd === 'plan' || cmd === 'replan') {
   const n = Number(arg)
   const day = readPlan()[n - 1]
   if (!day) throw new Error(`#${n} isn't planned`)
-  const course = plannedCourse(n, day.a)
+  const course = plannedCourse(n, day.a, day.t)
   const pace = paceRun(course)
   console.log(`#${n} ${course.name}: ${course.length.toFixed(0)} m, ${(course.maxY - course.minY).toFixed(0)} m down, ${course.lines.length - 1} checkpoints`)
   console.log(`  ${course.order.join(' → ')}`)
+  if (coursePieces(course).length) console.log(`  pieces: ${coursePieces(course).join(', ')}${day.t.length ? `, timed [${day.t.join(', ')}]` : ''}`)
   console.log(`  pace ${pace.time.toFixed(2)} s (planned ${(day.pace / 1000).toFixed(2)} s), splits ${pace.splits.map((s) => s.toFixed(1)).join(' ')}`)
 } else {
   console.log('node scripts/marblerun-daily.mjs plan [days] | show <n>')

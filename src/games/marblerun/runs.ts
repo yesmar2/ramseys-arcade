@@ -20,7 +20,7 @@ export function marbleDay(day: string): MarbleDay {
   let found = laidDays.get(day)
   if (!found) {
     const daily = dailyCourse(day)
-    found = { ...daily, course: plannedCourse(laidNumber(daily), daily.attempt) }
+    found = { ...daily, course: plannedCourse(laidNumber(daily), daily.attempt, daily.timing) }
     if (laidDays.size > 2) laidDays.clear()
     laidDays.set(day, found)
   }

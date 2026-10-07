@@ -15,6 +15,20 @@
   border-radius: 0.9rem;
 }
 
+/* A course's new pieces (sim.ts coursePieces): boost pads and mud, bumpers, hammers and the rest, from #9 on. */
+.cb-pieces {
+  margin: 0.25rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--panel-accent-ink, var(--accent));
+}
+
+.cb-pieces--tile {
+  margin: 0.1rem 0 0.35rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 /* Today's stretches, in the order they come. */
 .cb-stretches {
   margin: 0;
