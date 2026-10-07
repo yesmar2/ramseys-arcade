@@ -1409,12 +1409,13 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 /* ---------- a daily's page: a shorter hero, its tabs (dailyTabs.css), and the Today tab ---------- */
 
 /*
- * The hero keeps to one band, so the tabs under it are in view. Its screen is up to 30rem wide (480×300), as Ramsey
- * picked (B of the "Daily hero screen sizes" canvas, 2026-10-07; it was 24rem, 384×240). It's never narrower than
- * it was, and grows past that only up to 45% of the hero, so a narrower desk keeps room for the words.
+ * The hero keeps to one band, so the tabs under it are in view. Its screen is 44% of the hero across, never less
+ * than the 24rem (384×240) it was: 522×326 on a 1280 px screen and 678×424 at the page's widest (1600 px). Ramsey
+ * picked a bigger screen (B of the "Daily hero screen sizes" canvas, 2026-10-07: 480×300 at 1280), then found it
+ * "still seems kinda small" on his wider screen, where it stopped at 480 px and left a gap across the hero.
  */
 .gh-hero.gh-hero--daily {
-  grid-template-columns: minmax(0, 1fr) minmax(0, max(24rem, min(30rem, 45%)));
+  grid-template-columns: minmax(0, 1fr) minmax(0, max(24rem, 44%));
   align-items: center;
   gap: 1.6rem;
   min-height: 0;
@@ -1440,7 +1441,7 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 
 .gh-hero--daily .gh-screen {
   aspect-ratio: 16 / 10;
-  max-height: 18.75rem;
+  max-height: 27rem;
 }
 
 /*
