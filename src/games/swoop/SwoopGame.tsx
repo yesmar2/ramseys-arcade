@@ -30,6 +30,7 @@ import { paceMsOf } from '../../lib/raceMedals'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun, runIdFor } from '../../lib/runSession'
 import { ordinal } from '../../lib/scoreboard'
+import { useSkinInto } from '../../lib/skins'
 import { sfx } from '../../lib/sound'
 import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -378,6 +379,9 @@ function SwoopDayGame({
   const speedRef = useRef<HTMLSpanElement>(null)
   const hintRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<HillsScene | null>(null)
+  // The player's own skin, if they chose one (lib/skins.ts): looks only, and only on their bird.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto(SLUG, skinRef)
   const soundRef = useRef<WindSound | null>(null)
   /** The keys held down, and the fingers on the screen: any of them dives. */
   const keysRef = useRef(new Set<string>())
@@ -832,6 +836,7 @@ function SwoopDayGame({
           ghostBlue: g.chasing.who === 'pace',
           calm,
           streak: flying.streak,
+          skin: skinRef.current,
         },
         live ? dt : 0,
       )

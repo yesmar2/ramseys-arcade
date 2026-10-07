@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import sharp from 'sharp'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { createServer } from 'vite'
 
 /**
@@ -26,9 +26,11 @@ try {
   mkdirSync('public/og/skins', { recursive: true })
   for (const skin of SKINS) {
     const file = `public/og/skins/${skin.id}.png`
-    const render = { 'hotlap-rocket': 'rocket-car', 'hotlap-midnight': 'moon-buggy', 'hotlap-sunracer': 'shuttle-car', 'hotlap-green-flash': 'green-flash', 'hotlap-ice-rocket': 'bobsled', 'hotlap-borealis': 'aurora-glider', 'hotlap-whiteout': 'crystal-car' }[skin.id]
+    // A render of the game's own drawing, as the pass shows it: Hot Lap's cars by their names, and the skins whose
+    // picture is a render under their own id (Swoop's, Marble Run's and Pileup's).
+    const named = { 'hotlap-rocket': 'rocket-car', 'hotlap-midnight': 'moon-buggy', 'hotlap-sunracer': 'shuttle-car', 'hotlap-green-flash': 'green-flash', 'hotlap-ice-rocket': 'bobsled', 'hotlap-borealis': 'aurora-glider', 'hotlap-whiteout': 'crystal-car' }[skin.id]
+    const render = named ?? (existsSync(`src/assets/season/${skin.id}.webp`) ? skin.id : null)
     if (render) {
-      // A render of Hot Lap's own 3D car, as the pass shows it.
       await sharp(`src/assets/season/${render}.webp`).resize(SIZE, SIZE, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(file)
     } else {
       const svg = renderToStaticMarkup(createElement(RewardArt, { reward: { kind: 'skin', id: skin.id, name: skin.name }, size: SIZE }))

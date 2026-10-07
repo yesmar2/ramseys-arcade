@@ -11,6 +11,15 @@ import shuttleCarPicture from '../../assets/season/shuttle-car.webp'
 import bobsledPicture from '../../assets/season/bobsled.webp'
 import auroraGliderPicture from '../../assets/season/aurora-glider.webp'
 import crystalCarPicture from '../../assets/season/crystal-car.webp'
+import snowSwiftPicture from '../../assets/season/swoop-snow-swift.webp'
+import penguinPicture from '../../assets/season/swoop-penguin.webp'
+import auroraPhoenixPicture from '../../assets/season/swoop-aurora-phoenix.webp'
+import snowballPicture from '../../assets/season/marblerun-snowball.webp'
+import iceMarblePicture from '../../assets/season/marblerun-ice-marble.webp'
+import polarNightPicture from '../../assets/season/marblerun-polar-night.webp'
+import iceCubesPicture from '../../assets/season/pileup-ice-cubes.webp'
+import knittedPicture from '../../assets/season/pileup-knitted.webp'
+import northernLightsPicture from '../../assets/season/pileup-northern-lights.webp'
 import {
   AURORA_TAIL,
   FIRESIDE_TAIL,
@@ -149,11 +158,11 @@ export function NovaFighter() {
 }
 
 /**
- * A Hot Lap car: a picture of the game's own 3D model (car.ts, seasonCars.ts), from behind and above as the
- * game's camera sees it, rendered once in a browser (WebGL) and kept as a file. Re-render it if the car
- * changes, so the pass never shows another car than the one you drive.
+ * A skin's picture rendered from its game's own drawing, once in a browser, and kept as a file: a Hot Lap car
+ * (car.ts, seasonCars.ts) from behind and above as the game's camera sees it, a Swoop bird, a Marble Run marble,
+ * Pileup's blocks. Re-render it if the drawing changes, so the pass never shows another look than the one you play.
  */
-export function RocketCar({ picture = rocketCarPicture }: { picture?: string }) {
+export function RenderedSkin({ picture = rocketCarPicture }: { picture?: string }) {
   return <image href={picture} x="0" y="0" width="100" height="100" />
 }
 
@@ -436,7 +445,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-rocket': (size) => (
     <Board size={size}>
-      <RocketCar />
+      <RenderedSkin />
     </Board>
   ),
   'snake-comet-tail': (size) => (
@@ -467,12 +476,12 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-midnight': (size) => (
     <Board size={size}>
-      <RocketCar picture={moonBuggyPicture} />
+      <RenderedSkin picture={moonBuggyPicture} />
     </Board>
   ),
   'hotlap-sunracer': (size) => (
     <Board size={size}>
-      <RocketCar picture={shuttleCarPicture} />
+      <RenderedSkin picture={shuttleCarPicture} />
     </Board>
   ),
   'barrage-stingray': (size) => (
@@ -495,7 +504,8 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       <ShipArt art={STARHOPPER} flame={false} />
     </Board>
   ),
-  // Season 2's skins (Cold Snap), free row then Pass+.
+  // Season 2's skins (Cold Snap), free row then Pass+. Its Lander, Asteroids and Barrage ones sit the season out
+  // (lib/skins.ts) but keep their pictures here for a later one.
   'lander-icebreaker': (size) => (
     <Board size={size}>
       <ShipArt art={ICE_BREAKER} flame={false} />
@@ -511,9 +521,54 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       <ShipArt art={SNOWBIRD} />
     </Board>
   ),
+  'swoop-snow-swift': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={snowSwiftPicture} />
+    </Board>
+  ),
+  'marblerun-snowball': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={snowballPicture} />
+    </Board>
+  ),
+  'pileup-ice-cubes': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={iceCubesPicture} />
+    </Board>
+  ),
+  'swoop-penguin': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={penguinPicture} />
+    </Board>
+  ),
+  'swoop-aurora-phoenix': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={auroraPhoenixPicture} />
+    </Board>
+  ),
+  'marblerun-ice-marble': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={iceMarblePicture} />
+    </Board>
+  ),
+  'marblerun-polar-night': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={polarNightPicture} />
+    </Board>
+  ),
+  'pileup-knitted': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={knittedPicture} />
+    </Board>
+  ),
+  'pileup-northern-lights': (size) => (
+    <Board size={size}>
+      <RenderedSkin picture={northernLightsPicture} />
+    </Board>
+  ),
   'hotlap-ice-rocket': (size) => (
     <Board size={size}>
-      <RocketCar picture={bobsledPicture} />
+      <RenderedSkin picture={bobsledPicture} />
     </Board>
   ),
   'snake-snowdrift-tail': (size) => (
@@ -533,7 +588,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-whiteout': (size) => (
     <Board size={size}>
-      <RocketCar picture={crystalCarPicture} />
+      <RenderedSkin picture={crystalCarPicture} />
     </Board>
   ),
   'barrage-snowy-owl': (size) => (
@@ -553,7 +608,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'hotlap-borealis': (size) => (
     <Board size={size}>
-      <RocketCar picture={auroraGliderPicture} />
+      <RenderedSkin picture={auroraGliderPicture} />
     </Board>
   ),
   'snake-fireside-tail': (size) => (
@@ -574,7 +629,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   // The Hangar's: for good, traded for tickets.
   'hotlap-green-flash': (size) => (
     <Board size={size}>
-      <RocketCar picture={greenFlashPicture} />
+      <RenderedSkin picture={greenFlashPicture} />
     </Board>
   ),
   'lander-gold': (size) => (

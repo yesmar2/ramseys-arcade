@@ -1,5 +1,5 @@
 import { PALETTE } from '../../data/games'
-import { mixColor } from '../../lib/color'
+import { mixColor, withAlpha } from '../../lib/color'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import {
   CLEAR_TIME,
@@ -48,35 +48,227 @@ const HUES: readonly string[] = [
   PALETTE.red,
 ]
 
+/*
+ * Skins (lib/skins.ts) restyle the player's pieces, wherever drawShape draws
+ * them: the pile, the falling piece and where it will land, the hold and next
+ * boxes, and the bits a Shake knocks loose. Looks only. Each kind keeps its
+ * own colour in every skin, as players read a piece by its colour as much as
+ * by its shape. Season 2 (Cold Snap):
+ *
+ * - Ice cubes: clear ice faintly tinted the kind's colour, a frosty outline,
+ *   a frosted glint in each block's corner and a bubble or two.
+ * - Knitted: the kind's colour in jumper wool, rows of little V stitches, a
+ *   darker edge, and a white snowflake stitched on one block of each piece.
+ * - Northern lights: night-blue pieces, faintly the kind's colour, outlined
+ *   in the aurora (green into cyan into violet), green light rising in each
+ *   block and a star here and there.
+ *
+ * A skin's block (the ice's sheen and glint, the knit, the aurora's light) is
+ * a pattern made once per kind and cell size, so a frame costs about what the
+ * usual look does. The aurora's glow is a wide faint stroke under the
+ * outline, never a shadow blur.
+ */
+type Look = 'plain' | 'ice' | 'knit' | 'aurora'
+
+const LOOKS: Record<string, Look> = {
+  'pileup-ice-cubes': 'ice',
+  'pileup-knitted': 'knit',
+  'pileup-northern-lights': 'aurora',
+}
+
+const AURORA = ['#5cf2b0', '#46e4ff', '#9b7bff'] as const
+
 type Tones = {
+  look: Look
+  kind: Kind
+  dark: boolean
   fill: string
   line: string
   seam: string
+  /** The light along a piece's top; empty for none. */
   shine: string
+  /** Where the piece will land, and the speed lines of a hard drop. */
+  ghost: string
+  /** A second, thinner line just inside the outline: the frost on ice in the light theme. */
+  rim?: string
+  /** Ice's corner glints, the knit's stitches, the aurora's stars. */
+  deco?: string
+  /** Ice's bubbles, the shade under the knit's stitches, the aurora's light. */
+  deco2?: string
 }
 
-let toneCache: { key: string; tones: Tones[] } | null = null
+/** By theme, ground and look: a cabinet's preview in the usual look can run beside a game in a skin. */
+const toneCache = new Map<string, Tones[]>()
 
-function tonesFor(dark: boolean, ground: string): Tones[] {
-  const key = `${dark}:${ground}`
-  if (toneCache?.key === key) return toneCache.tones
-  const tones = HUES.map((hue) =>
-    dark
+function tonesFor(dark: boolean, ground: string, look: Look): Tones[] {
+  const key = `${dark}:${ground}:${look}`
+  const kept = toneCache.get(key)
+  if (kept) return kept
+  if (toneCache.size > 16) toneCache.clear()
+  const tones = HUES.map((hue, i): Tones => {
+    const kind = i as Kind
+    if (look === 'ice') {
+      // Cold clear blue, taking enough of the kind's colour to tell it by.
+      const ice = mixColor('#b4e4fb', hue, dark ? 0.58 : 0.5)
+      return dark
+        ? {
+            look,
+            kind,
+            dark,
+            fill: mixColor(ice, ground, 0.24),
+            line: mixColor('#f2fbff', hue, 0.15),
+            seam: mixColor(ice, '#ffffff', 0.5),
+            shine: '',
+            ghost: mixColor('#e6f7ff', hue, 0.25),
+            deco: 'rgba(255, 255, 255, 0.7)',
+            deco2: 'rgba(255, 255, 255, 0.5)',
+          }
+        : {
+            look,
+            kind,
+            dark,
+            fill: mixColor(ice, '#ffffff', 0.35),
+            line: mixColor('#4f7f9f', hue, 0.3),
+            seam: mixColor('#4f7f9f', '#ffffff', 0.3),
+            shine: '',
+            ghost: mixColor('#4f7f9f', hue, 0.3),
+            rim: 'rgba(255, 255, 255, 0.95)',
+            deco: 'rgba(255, 255, 255, 0.95)',
+            deco2: mixColor('#4f7f9f', hue, 0.2),
+          }
+    }
+    if (look === 'knit') {
+      return {
+        look,
+        kind,
+        dark,
+        fill: dark ? mixColor(hue, ground, 0.08) : hue,
+        line: mixColor(hue, '#1a1020', 0.42),
+        seam: mixColor(hue, '#1a1020', 0.3),
+        shine: '',
+        ghost: dark ? mixColor(hue, '#ffffff', 0.25) : mixColor(hue, '#1a1020', 0.25),
+        deco: mixColor(hue, '#ffffff', 0.4),
+        deco2: mixColor(hue, '#1a1020', 0.22),
+      }
+    }
+    if (look === 'aurora') {
+      return {
+        look,
+        kind,
+        dark,
+        fill: mixColor('#0c1834', hue, 0.12),
+        line: AURORA[0],
+        seam: 'rgba(92, 242, 176, 0.55)',
+        shine: 'rgba(200, 255, 236, 0.22)',
+        ghost: dark ? AURORA[1] : '#1aa6c4',
+        deco: '#ffffff',
+        // The light in the blocks: the kind's colour, drawn a little toward the aurora's green.
+        deco2: mixColor(mixColor(hue, AURORA[0], 0.15), '#ffffff', 0.22),
+      }
+    }
+    return dark
       ? {
+          look,
+          kind,
+          dark,
           fill: mixColor(hue, ground, 0.28),
           line: mixColor(hue, '#ffffff', 0.5),
           seam: mixColor(hue, ground, 0.55),
           shine: 'rgba(255, 255, 255, 0.3)',
+          ghost: mixColor(hue, '#ffffff', 0.5),
         }
       : {
+          look,
+          kind,
+          dark,
           fill: mixColor(hue, '#ffffff', 0.4),
           line: mixColor(hue, '#1a2b3c', 0.45),
           seam: mixColor(hue, '#1a2b3c', 0.12),
           shine: 'rgba(255, 255, 255, 0.75)',
-        },
-  )
-  toneCache = { key, tones }
+          ghost: mixColor(hue, '#1a2b3c', 0.45),
+        }
+  })
+  toneCache.set(key, tones)
   return tones
+}
+
+/** One block of a skin, `px` device pixels square, made once and kept. */
+const tiles = new Map<string, CanvasPattern | null>()
+
+function tileFor(ctx: CanvasRenderingContext2D, tone: Tones, px: number): CanvasPattern | null {
+  const id = `${tone.look}:${tone.kind}:${tone.dark}:${px}`
+  if (tiles.has(id)) return tiles.get(id)!
+  // Sizes come and go as the window does; a handful is all a page uses at once.
+  if (tiles.size > 48) tiles.clear()
+  const canvas = document.createElement('canvas')
+  canvas.width = px
+  canvas.height = px
+  const g = canvas.getContext('2d')
+  let pattern: CanvasPattern | null = null
+  if (g) {
+    g.fillStyle = tone.fill
+    g.fillRect(0, 0, px, px)
+    if (tone.look === 'knit') {
+      // Four rows of four Vs, each over a darker one a little lower, so the stitches stand up off the wool.
+      const step = px / 4
+      g.lineCap = 'round'
+      g.lineJoin = 'round'
+      g.lineWidth = Math.max(1, px * 0.055)
+      for (const [colour, drop] of [
+        [tone.deco2!, px * 0.035],
+        [tone.deco!, 0],
+      ] as const) {
+        g.strokeStyle = colour
+        g.beginPath()
+        for (let r = 0; r < 4; r++) {
+          for (let k = 0; k < 4; k++) {
+            const x = k * step + step * 0.14
+            const y = r * step + step * 0.2 + drop
+            g.moveTo(x, y)
+            g.lineTo(x + step * 0.36, y + step * 0.56)
+            g.lineTo(x + step * 0.72, y)
+          }
+        }
+        g.stroke()
+      }
+    } else if (tone.look === 'ice') {
+      // Lighter at the top, as light comes through a cube, and a frosted glint in its corner.
+      const sheen = g.createLinearGradient(0, 0, 0, px)
+      sheen.addColorStop(0, 'rgba(255, 255, 255, 0.34)')
+      sheen.addColorStop(0.55, 'rgba(255, 255, 255, 0.06)')
+      sheen.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      g.fillStyle = sheen
+      g.fillRect(0, 0, px, px)
+      g.fillStyle = tone.deco!
+      g.beginPath()
+      g.moveTo(px * 0.16, px * 0.16)
+      g.lineTo(px * 0.4, px * 0.16)
+      g.quadraticCurveTo(px * 0.24, px * 0.24, px * 0.16, px * 0.4)
+      g.closePath()
+      g.fill()
+      g.strokeStyle = tone.deco!
+      g.lineCap = 'round'
+      g.lineWidth = Math.max(1, px * 0.035)
+      g.globalAlpha = 0.6
+      g.beginPath()
+      g.moveTo(px * 0.5, px * 0.17)
+      g.lineTo(px * 0.6, px * 0.17)
+      g.moveTo(px * 0.17, px * 0.5)
+      g.lineTo(px * 0.17, px * 0.58)
+      g.stroke()
+    } else {
+      // Light rising from the foot of the block, in the kind's own colour of aurora, gone before the top.
+      const wash = g.createLinearGradient(0, px, 0, px * 0.1)
+      wash.addColorStop(0, withAlpha(tone.deco2!, 0.85))
+      wash.addColorStop(0.5, withAlpha(tone.deco2!, 0.34))
+      wash.addColorStop(1, withAlpha(tone.deco2!, 0))
+      g.fillStyle = wash
+      g.fillRect(0, 0, px, px)
+    }
+    pattern = ctx.createPattern(canvas, 'repeat')
+  }
+  tiles.set(id, pattern)
+  return pattern
 }
 
 function clamp01(v: number) {
@@ -151,12 +343,58 @@ function drawShape(
   const shine = new Path2D()
   const dx = o.dx ?? 0
   const dy = o.dy ?? 0
+  const look = tone.look
+  // A skin's marks go by where a block sits in its piece, so they hold still while the piece moves.
+  let minX = Infinity
+  let minY = Infinity
+  if (look !== 'plain') {
+    for (const cell of cells) {
+      minX = Math.min(minX, cell.x)
+      minY = Math.min(minY, Math.round(cell.y))
+    }
+  }
+  const deco = look === 'aurora' ? new Path2D() : null
+  const bubbles = look === 'ice' ? new Path2D() : null
 
   for (const cell of cells) {
     const x = cell.x
     const y = Math.round(cell.y)
     const px = ox + cell.x * c + dx
     const py = oy + cell.y * c + dy
+    if (bubbles || deco) {
+      const rx = x - minX
+      const ry = y - minY
+      if (bubbles) {
+        // A bubble or two, set by the block's place in its piece.
+        const flip = (rx + ry + tone.kind) % 2 === 1
+        const bx = px + c * (flip ? 0.34 : 0.68)
+        const by = py + c * (flip ? 0.7 : 0.64)
+        const br = c * 0.07
+        bubbles.moveTo(bx + br, by)
+        bubbles.arc(bx, by, br, 0, TAU)
+        if (!flip) {
+          const sx = px + c * 0.5
+          const sy = py + c * 0.8
+          bubbles.moveTo(sx + br * 0.6, sy)
+          bubbles.arc(sx, sy, br * 0.6, 0, TAU)
+        }
+      } else if (deco && hash(rx, ry, tone.kind + 3) < 0.4) {
+        // A star, a tiny four-pointed one.
+        const sx = px + c * (0.25 + hash(rx, ry, tone.kind + 5) * 0.45)
+        const sy = py + c * (0.2 + hash(rx, ry, tone.kind + 7) * 0.35)
+        const a = Math.max(1, c * 0.09)
+        const b = a * 0.22
+        deco.moveTo(sx, sy - a)
+        deco.lineTo(sx + b, sy - b)
+        deco.lineTo(sx + a, sy)
+        deco.lineTo(sx + b, sy + b)
+        deco.lineTo(sx, sy + a)
+        deco.lineTo(sx - b, sy + b)
+        deco.lineTo(sx - a, sy)
+        deco.lineTo(sx - b, sy - b)
+        deco.closePath()
+      }
+    }
     const T = !has(x, y - 1)
     const B = !has(x, y + 1)
     const Lf = !has(x - 1, y)
@@ -232,40 +470,147 @@ function drawShape(
     }
   }
 
+  // The aurora runs across each piece from green on its left to violet on its right.
+  let outline: string | CanvasGradient = tone.line
+  if (look === 'aurora') {
+    let lo = Infinity
+    let hi = -Infinity
+    for (const cell of cells) {
+      lo = Math.min(lo, cell.x)
+      hi = Math.max(hi, cell.x + 1)
+    }
+    const g = ctx.createLinearGradient(ox + lo * c + dx, 0, ox + hi * c + dx, 0)
+    g.addColorStop(0, AURORA[0])
+    g.addColorStop(0.5, AURORA[1])
+    g.addColorStop(1, AURORA[2])
+    outline = g
+  }
+
   ctx.save()
   ctx.globalAlpha *= o.alpha ?? 1
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   if (o.ghost) {
-    ctx.fillStyle = tone.line
+    ctx.fillStyle = tone.ghost
     ctx.globalAlpha *= 0.08
     ctx.fill(fill)
     ctx.globalAlpha /= 0.08
     ctx.setLineDash([c * 0.2, c * 0.14])
-    ctx.strokeStyle = tone.line
+    ctx.strokeStyle = look === 'aurora' ? outline : tone.ghost
     ctx.lineWidth = lw
-    ctx.globalAlpha *= 0.62
+    ctx.globalAlpha *= look === 'plain' ? 0.62 : 0.75
     ctx.stroke(line)
     ctx.restore()
     return
   }
-  ctx.fillStyle = tone.fill
+  if (look !== 'plain') {
+    // The block's tile, laid from the first block's corner so every block of the piece starts a tile.
+    const t = ctx.getTransform()
+    const px = Math.max(4, Math.round(c * Math.hypot(t.a, t.b)))
+    const pattern = tileFor(ctx, tone, px)
+    if (pattern) {
+      const first = cells[0]!
+      pattern.setTransform(new DOMMatrix().translate(ox + first.x * c + dx, oy + first.y * c + dy).scale(c / px))
+      ctx.fillStyle = pattern
+    } else ctx.fillStyle = tone.fill
+  } else ctx.fillStyle = tone.fill
   ctx.fill(fill)
   ctx.strokeStyle = tone.seam
   ctx.lineWidth = Math.max(1, c * 0.035)
   ctx.globalAlpha *= 0.55
   ctx.stroke(seam)
   ctx.globalAlpha /= 0.55
-  ctx.strokeStyle = tone.shine
-  ctx.lineWidth = Math.max(1, c * 0.05)
-  ctx.stroke(shine)
+  if (tone.shine) {
+    ctx.strokeStyle = tone.shine
+    ctx.lineWidth = Math.max(1, c * 0.05)
+    ctx.stroke(shine)
+  }
+  if (deco) {
+    ctx.fillStyle = tone.deco!
+    ctx.globalAlpha *= 0.85
+    ctx.fill(deco)
+    ctx.globalAlpha /= 0.85
+  }
+  if (bubbles) {
+    ctx.strokeStyle = tone.deco2!
+    ctx.lineWidth = Math.max(0.75, c * 0.032)
+    ctx.stroke(bubbles)
+  }
+  if (look === 'knit' && cells.length > 1) drawFlake(ctx, cells, ox + dx, oy + dy, c)
   if (o.flash) {
     ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * clamp01(o.flash)})`
     ctx.fill(fill)
   }
-  ctx.strokeStyle = tone.line
+  if (look === 'aurora') {
+    // The glow: the outline again, wide and faint, under the line itself.
+    ctx.strokeStyle = outline
+    ctx.lineWidth = lw * 3.4
+    ctx.globalAlpha *= tone.dark ? 0.2 : 0.14
+    ctx.stroke(line)
+    ctx.globalAlpha /= tone.dark ? 0.2 : 0.14
+  }
+  ctx.strokeStyle = outline
   ctx.lineWidth = lw
   ctx.stroke(line)
+  if (tone.rim) {
+    ctx.strokeStyle = tone.rim
+    ctx.lineWidth = Math.max(0.75, lw * 0.4)
+    ctx.stroke(line)
+  }
+  ctx.restore()
+}
+
+/**
+ * The knit's snowflake, white, on the block nearest the middle of the piece
+ * (the top one, then the left, of two as near), so it stays on the same block
+ * from falling to locked.
+ */
+function drawFlake(ctx: CanvasRenderingContext2D, cells: readonly CellAt[], ox: number, oy: number, c: number) {
+  let mx = 0
+  let my = 0
+  for (const cell of cells) {
+    mx += cell.x
+    my += cell.y
+  }
+  mx /= cells.length
+  my /= cells.length
+  let best = cells[0]!
+  let bestD = Infinity
+  for (const cell of cells) {
+    const d = (cell.x - mx) ** 2 + (cell.y - my) ** 2
+    if (d < bestD - 1e-6 || (Math.abs(d - bestD) < 1e-6 && (cell.y < best.y || (cell.y === best.y && cell.x < best.x)))) {
+      best = cell
+      bestD = d
+    }
+  }
+  const cx = ox + (best.x + 0.5) * c
+  const cy = oy + (best.y + 0.5) * c
+  const arm = c * 0.27
+  const barb = arm * 0.38
+  const path = new Path2D()
+  for (let i = 0; i < 6; i++) {
+    const a = (i * Math.PI) / 3 - Math.PI / 2
+    const ex = cx + Math.cos(a) * arm
+    const ey = cy + Math.sin(a) * arm
+    path.moveTo(cx, cy)
+    path.lineTo(ex, ey)
+    // A little V near each arm's tip.
+    const kx = cx + Math.cos(a) * arm * 0.62
+    const ky = cy + Math.sin(a) * arm * 0.62
+    for (const side of [-1, 1]) {
+      path.moveTo(kx, ky)
+      path.lineTo(kx + Math.cos(a + side * 0.75) * barb, ky + Math.sin(a + side * 0.75) * barb)
+    }
+  }
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = 'rgba(26, 16, 32, 0.28)'
+  ctx.lineWidth = Math.max(1.6, c * 0.1)
+  ctx.stroke(path)
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = Math.max(1, c * 0.06)
+  ctx.stroke(path)
   ctx.restore()
 }
 
@@ -483,7 +828,7 @@ function drawTrails(v: View, shiftX: number) {
   ctx.lineCap = 'round'
   ctx.lineWidth = Math.max(1, c * 0.07)
   for (const trail of s.trails) {
-    ctx.strokeStyle = v.tones[trail.kind]!.line
+    ctx.strokeStyle = v.tones[trail.kind]!.ghost
     for (const col of trail.cells) {
       // Two speed lines down each column it fell, brightest just over where it landed, gone towards the top.
       const top = oy + col.top * c
@@ -654,8 +999,17 @@ function drawBits(v: View, shiftX: number) {
 /**
  * One frame, into a context already set to CSS pixels. Without a layout it
  * lays itself out for a canvas with nothing over it (a cabinet's preview).
+ * `skin`: the player's chosen skin (lib/skins.ts), for their own game only;
+ * previews pass none.
  */
-export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, w: number, h: number, layout?: Layout) {
+export function renderGame(
+  ctx: CanvasRenderingContext2D,
+  s: GameState,
+  w: number,
+  h: number,
+  layout?: Layout,
+  skin: string | null = null,
+) {
   const L = layout ?? pileLayout(w, h, 8, 8)
   const dark = isDarkTheme()
   const ground = playfieldColor()
@@ -667,7 +1021,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, w: numbe
     dark,
     ground,
     ink: inkColor(),
-    tones: tonesFor(dark, ground),
+    tones: tonesFor(dark, ground, (skin && LOOKS[skin]) || 'plain'),
     L,
     c,
     ox: L.well.x,

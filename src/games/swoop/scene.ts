@@ -2,6 +2,7 @@ import { mixColor, withAlpha } from '../../lib/color'
 import { isDarkTheme } from '../../lib/theme'
 import type { GhostPose } from './runs'
 import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BODY, SWIFT_EYE, SWIFT_LIFT, SWIFT_WING_FOLDED, SWIFT_WING_ROOT, SWIFT_WING_UP, SWIFT_BEAT } from './birdShape'
+import { frostColour, frostSparkle, SNOW_SWIFT, skinPainter } from './birdSkins'
 import { heightAt, mulberry32, STREAK_ON, streakLift, type Hills } from './sim'
 
 /** How much bigger than the bird's size the swift is drawn in a run. */
@@ -24,8 +25,8 @@ const SHAPE_OF = () =>
  * near ones. The near hills are washed in the day's colour (sim.ts HILL_HUES): a lit edge along the top, a
  * band of turf under it, and seams of earth further down, one of them a row of dots, the arcade's blips (no
  * stripes: those are Tiny Wings'). The flags split the run; the finish is a chequered banner. Your bird is
- * Swoop's red; the blue bird is the racing dailies' blue, and anyone else's run is a ghost's outline, cyan
- * (or amber, your own best), with whose run it is over it.
+ * Swoop's red, or the season skin you chose (birdSkins.ts); the blue bird is the racing dailies' blue, and
+ * anyone else's run is a ghost's outline, cyan (or amber, your own best), with whose run it is over it.
  *
  * It draws only with fills and strokes, never shadowBlur, so a phone's canvas keeps up.
  */
@@ -113,13 +114,15 @@ export type SceneFrame = {
   calm: boolean
   /** Your bird's clean landings in a row: from sim.ts STREAK_ON it's on a streak, and glows. */
   streak?: number
+  /** The skin your bird wears (birdSkins.ts), if you chose one; the run to beat never wears one. */
+  skin?: string | null
 }
 
 type Bit = { x: number; y: number; vx: number; vy: number; life: number; max: number; spark: boolean }
 /** A word over a landing; `row` 1 sits a line above another said at once. */
 type Floater = { x: number; y: number; text: string; life: number; good: boolean; row?: number }
-/** A dot of the trail behind a bird in the air: gold, laid on a streak. */
-type Dot = { x: number; y: number; life: number; gold: boolean }
+/** A dot of the trail behind a bird in the air: gold, laid on a streak; `seed` scatters a snow swift's frost. */
+type Dot = { x: number; y: number; life: number; gold: boolean; seed: number }
 
 /** Where the camera keeps the bird across the screen, and down it. */
 const LEAD = 0.32
@@ -239,7 +242,7 @@ export class HillsScene {
       this.trailAt += dt
       while (this.trailAt > 1 / 40) {
         this.trailAt -= 1 / 40
-        this.trail.push({ x: f.bird.x, y: f.bird.y, life: 1, gold: lift > 0 })
+        this.trail.push({ x: f.bird.x, y: f.bird.y, life: 1, gold: lift > 0, seed: Math.random() })
       }
     }
 
@@ -254,7 +257,7 @@ export class HillsScene {
 
     // At the start card a run to beat that's over the line waits unseen; in a run, one over the line has gone on.
     if (g && !g.done) this.drawGhost(g, f)
-    this.drawTrail(dt)
+    this.drawTrail(dt, f.skin)
     if (f.mode !== 'menu' || f.calm || !g) {
       const b = f.mode === 'menu' ? { x: 0, y: heightAt(this.hills, 0), vx: 7, vy: 0, ground: true } : f.bird
       const angle = Math.atan2(b.vy, Math.max(0.01, b.vx))
@@ -264,6 +267,7 @@ export class HillsScene {
         folded: b.ground,
         dive: f.mode === 'play' && f.hold,
         squish: this.squash,
+        skin: f.skin,
       })
       if (f.mode !== 'menu' && !f.calm) this.drawSpeedLines(Math.hypot(b.vx, b.vy))
     }
@@ -548,7 +552,8 @@ export class HillsScene {
       squish = 0,
       alpha = 1,
       ghost = false,
-    }: { flap?: number; dive?: boolean; folded?: boolean; squish?: number; alpha?: number; ghost?: boolean } = {},
+      skin = null,
+    }: { flap?: number; dive?: boolean; folded?: boolean; squish?: number; alpha?: number; ghost?: boolean; skin?: string | null } = {},
   ) {
     const { ctx, C } = this
     const SHAPE = SHAPE_OF()
@@ -565,6 +570,13 @@ export class HillsScene {
     const sq = 1 - squish * 0.22
     // The swift (birdShape.ts) is drawn in its own unit frame, a unit to the bird's size.
     ctx.scale((size * stretch) / Math.sqrt(sq), (size * sq) / stretch)
+    // A skin draws the whole bird itself, in the same frame (birdSkins.ts).
+    const paint = ghost ? null : skinPainter(skin)
+    if (paint) {
+      paint(ctx, { flap, dive, ground: folded, time: this.time, px1: 1 / size })
+      ctx.restore()
+      return
+    }
     const line = ghost ? colour : colour === RED ? C.birdLine : C.dark ? mixColor(colour, '#ffffff', 0.4) : '#1a2b3c'
     const px1 = 1 / size
     ctx.lineJoin = 'round'
@@ -652,8 +664,10 @@ export class HillsScene {
 
   /* ---------- trails, bits, words, rushing air ---------- */
 
-  private drawTrail(dt: number) {
+  /** The dots behind your bird; a snow swift leaves frost instead, twinkling, scattered a little. */
+  private drawTrail(dt: number, skin: string | null | undefined) {
     const { ctx, C, cam, trail } = this
+    const frost = skin === SNOW_SWIFT
     if (!trail.length) return
     const lift = this.birdSize() * SWIFT_LIFT
     const plain = C.dark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(26, 43, 60, 0.35)'
@@ -663,6 +677,16 @@ export class HillsScene {
       p.life -= dt * 0.9
       if (p.life <= 0) {
         trail.splice(i, 1)
+        continue
+      }
+      if (frost && !p.gold) {
+        // About half the dots, so it reads as sparkles, not a line.
+        if (p.seed < 0.5) continue
+        const twinkle = 0.65 + 0.35 * Math.sin(this.time * 14 + p.seed * 40)
+        ctx.globalAlpha = p.life * 0.95
+        ctx.fillStyle = frostColour(C.dark)
+        const s = r * (1.4 + p.seed * 1.6) * twinkle * (0.6 + 0.4 * p.life)
+        frostSparkle(ctx, this.sx(p.x), this.sy(p.y) - lift + (p.seed - 0.75) * 4 * r, s)
         continue
       }
       ctx.globalAlpha = p.life * (p.gold ? 0.95 : 0.8)

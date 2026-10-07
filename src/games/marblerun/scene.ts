@@ -29,6 +29,7 @@ import {
   type Tilt,
   type Zone,
 } from './sim'
+import { marbleLook, marbleMaps } from './marbleLook'
 
 /*
  * Marble Run in 3D: a course of dark glass drawn in light, hanging over a floor of light far below, and
@@ -82,6 +83,8 @@ export type SceneFrame = {
   ghostTag: string
   /** Lines crossed so far (checkpoints, then the goal): their gates turn green. */
   passed: number
+  /** The player's chosen skin (lib/skins.ts), on their own marble; the ghost stays as it is. */
+  skin?: string | null
 }
 
 type Paint = (g: CanvasRenderingContext2D, w: number, h: number) => void
@@ -176,6 +179,8 @@ export class MarbleScene {
   private readonly pool: THREE.Mesh
   /** The pool's grid as made: a 1 m square, flat, round the origin. */
   private readonly poolAt: Float32Array
+  /** The skin the marble is in now (lib/skins.ts); null, Marble Run's own glass. */
+  private skinShown: string | null = null
   private readonly ghost = new THREE.Group()
   /** The ghost's ball of wire, which rolls; its tag stays upright over it. */
   private readonly ghostBall = new THREE.Group()
@@ -246,47 +251,11 @@ export class MarbleScene {
     this.buildCourse()
     this.buildFloor()
 
-    // The marble: white glass with a swirl, lit by a painted light so it shines without lamps.
-    const matcap = this.paint(256, 256, (g, w, h) => {
-      const base = g.createRadialGradient(w * 0.42, h * 0.38, 4, w / 2, h / 2, w / 2)
-      base.addColorStop(0, '#ffffff')
-      base.addColorStop(0.45, '#d9d0ee')
-      base.addColorStop(0.85, '#5b3f8c')
-      base.addColorStop(1, '#2a1650')
-      g.fillStyle = base
-      g.fillRect(0, 0, w, h)
-      const rim = g.createRadialGradient(w / 2, h / 2, w * 0.36, w / 2, h / 2, w / 2)
-      rim.addColorStop(0, 'rgba(255,92,225,0)')
-      rim.addColorStop(1, 'rgba(255,92,225,0.65)')
-      g.fillStyle = rim
-      g.fillRect(0, 0, w, h)
-      g.fillStyle = 'rgba(255,255,255,0.95)'
-      g.beginPath()
-      g.ellipse(w * 0.36, h * 0.3, w * 0.07, h * 0.045, -0.6, 0, Math.PI * 2)
-      g.fill()
-    })
-    const swirl = this.paint(512, 256, (g, w, h) => {
-      g.fillStyle = '#ffffff'
-      g.fillRect(0, 0, w, h)
-      const band = (color: string, phase: number, y: number, amp: number, thick: number) => {
-        g.strokeStyle = color
-        g.lineWidth = thick
-        g.lineCap = 'round'
-        g.beginPath()
-        for (let x = -10; x <= w + 10; x += 6) {
-          const yy = y + Math.sin((x / w) * Math.PI * 4 + phase) * amp
-          if (x === -10) g.moveTo(x, yy)
-          else g.lineTo(x, yy)
-        }
-        g.stroke()
-      }
-      band('#ff4fd8', 0, h * 0.42, h * 0.1, 26)
-      band('#46e4ff', 1.9, h * 0.62, h * 0.08, 14)
-      band('#8a5cff', 3.4, h * 0.26, h * 0.06, 8)
-    })
-    this.ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 48, 32), new THREE.MeshMatcapMaterial({ matcap, map: swirl }))
+    // The marble: white glass with a swirl, lit by a painted light so it shines without lamps, or the player's
+    // skin (marbleLook.ts); it's dressed in its look below (wear).
+    this.ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 48, 32), new THREE.MeshMatcapMaterial())
     const dot = this.dotTexture()
-    this.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: dot, color: '#ff8cf0', transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }))
+    this.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: dot, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }))
     this.glow.scale.setScalar(BALL_R * 4.2)
     // A pool of light on the track under the ball: where it'll come down, when it's flying. It's laid on the
     // track's own shape each frame (frame), so it lies flush in a bowl or over a roller.
@@ -295,11 +264,12 @@ export class MarbleScene {
     this.poolAt = Float32Array.from(poolGeo.attributes.position!.array)
     this.pool = new THREE.Mesh(
       poolGeo,
-      new THREE.MeshBasicMaterial({ map: dot, color: '#ff8cf0', transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ map: dot, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }),
     )
     this.pool.frustumCulled = false
     this.pool.renderOrder = 3
     this.scene.add(this.ball, this.glow, this.pool)
+    this.wear(null)
 
     // The ghost: a ball of cyan wire, with whose run it is over it.
     const shell = new THREE.IcosahedronGeometry(BALL_R, 1)
@@ -356,6 +326,24 @@ export class MarbleScene {
     this.textures.push(tex)
     if (hasText) this.lettered.push([tex, draw])
     return tex
+  }
+
+  /**
+   * Dress the marble in a skin's look (marbleLook.ts), or Marble Run's own for null: its painted light, its pattern,
+   * and the colour of its glow and the pool of light under it. The textures it had are let go.
+   */
+  private wear(skin: string | null) {
+    this.skinShown = skin
+    const look = marbleLook(skin)
+    const { matcap, map } = marbleMaps(look, Math.min(8, this.renderer.capabilities.getMaxAnisotropy()))
+    const mat = this.ball.material as THREE.MeshMatcapMaterial
+    mat.matcap?.dispose()
+    mat.map?.dispose()
+    mat.matcap = matcap
+    mat.map = map
+    mat.needsUpdate = true
+    ;(this.glow.material as THREE.SpriteMaterial).color.set(look.glow)
+    ;(this.pool.material as THREE.MeshBasicMaterial).color.set(look.glow)
   }
 
   private dotTexture() {
@@ -1095,6 +1083,7 @@ export class MarbleScene {
     const clock = f.mode === 'menu' ? this.idle : b.t
     this.moveExtras(clock)
     this.placeCamera(f, dt)
+    if ((f.skin ?? null) !== this.skinShown) this.wear(f.skin ?? null)
 
     // The marble, rolling: on the track it turns about the line across the way it's going, as fast as it goes.
     // In the air it keeps the spin it left the ground with, through a jump or a bounce (Ramsey: "it's just
@@ -1290,6 +1279,9 @@ export class MarbleScene {
 
   dispose() {
     this.disposed = true
+    const marble = this.ball.material as THREE.MeshMatcapMaterial
+    marble.matcap?.dispose()
+    marble.map?.dispose()
     this.scene.traverse((o) => {
       const mesh = o as THREE.Mesh
       mesh.geometry?.dispose()

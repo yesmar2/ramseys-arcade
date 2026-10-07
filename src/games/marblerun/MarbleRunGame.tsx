@@ -28,6 +28,7 @@ import type { PastPlay } from '../../lib/pastPlay'
 import { getPersonalBest } from '../../lib/personalBest'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun, runIdFor } from '../../lib/runSession'
+import { useSkinInto } from '../../lib/skins'
 import { sfx } from '../../lib/sound'
 import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -380,6 +381,9 @@ function MarbleRunDay({
   const knobRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<MarbleScene | null>(null)
   const soundRef = useRef<RollSound | null>(null)
+  /** The skin the player chose for their marble (lib/skins.ts), for the scene. */
+  const skinRef = useRef<string | null>(null)
+  useSkinInto(SLUG, skinRef)
   const keysRef = useRef<Held>({ ...NONE })
   /** The thumb on the stick: where it came down, and where it is now. */
   const stickAt = useRef<{ id: number; x0: number; y0: number; x: number; y: number } | null>(null)
@@ -835,6 +839,7 @@ function MarbleRunDay({
             ghost: ghostAt,
             ghostTag: ghostTag(g.chasing),
             passed: b.next,
+            skin: skinRef.current,
           },
           live ? dt : 0,
         )

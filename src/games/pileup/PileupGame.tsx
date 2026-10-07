@@ -24,6 +24,7 @@ import {
 } from '../../lib/records'
 import { clearRunAchievements, pushRunAchievement } from '../../lib/runAchievements'
 import { beginRun } from '../../lib/runSession'
+import { useSkinInto } from '../../lib/skins'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   createInitialState,
@@ -121,6 +122,9 @@ export function PileupGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('pileup'))
   const startGrace = useRef(0)
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto('pileup', skinRef)
   // The pile tumbling out is its own ending; pausing through it would only hold the card back.
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
@@ -260,7 +264,7 @@ export function PileupGame() {
         const ctx = canvas.getContext('2d')
         if (ctx) {
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-          renderGame(ctx, stateRef.current, w, h, layoutRef.current)
+          renderGame(ctx, stateRef.current, w, h, layoutRef.current, skinRef.current)
         }
       }
 

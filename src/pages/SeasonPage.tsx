@@ -247,7 +247,7 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
  */
 const HEADLINERS: Record<number, readonly [string, string, string]> = {
   1: ['asteroids-orbiter', 'hotlap-midnight', 'lander-starhopper'],
-  2: ['barrage-frost-dragon', 'hotlap-borealis', 'lander-yeti'],
+  2: ['swoop-penguin', 'hotlap-borealis', 'swoop-aurora-phoenix'],
 }
 
 function headlinersOf(season: SeasonInfo, plus: SeasonPlus): SeasonReward[] {
