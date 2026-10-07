@@ -1,6 +1,7 @@
 import { useId, useMemo } from 'react'
 import { mixColor } from '../../lib/color'
 import { BirdMark } from './BirdMark'
+import { SWIFT_LIFT } from './birdShape'
 import { hillsColours, hillsView } from './hillsPicture'
 import type { Hills } from './sim'
 
@@ -47,13 +48,13 @@ export function HillsPostcard({ hills, w = 480, h = 360, className }: { hills: H
       ))}
       <path d={view.surface} fill="none" stroke={C.edge} strokeWidth={Math.max(2.5, 0.42 * k)} strokeLinejoin="round" />
       {/* The blue bird, sitting on the slope behind. */}
-      <g transform={`translate(${blue.x} ${blue.y}) rotate(${blue.deg}) translate(0 ${-blue.size * 0.95}) scale(${blue.size})`} opacity="0.7">
+      <g transform={`translate(${blue.x} ${blue.y}) rotate(${blue.deg}) translate(0 ${-blue.size * SWIFT_LIFT}) scale(${blue.size})`} opacity="0.7">
         <BirdMark fill={C.blue} line={lineFor(C.blue)} />
       </g>
       {view.trail.map(([x, y], i) => (
         <circle key={i} cx={x} cy={y} r={Math.max(1.2, 0.18 * k)} fill="#ffffff" opacity={0.25 + (i / view.trail.length) * 0.5} />
       ))}
-      <g transform={`translate(${bird.x} ${bird.y}) rotate(${bird.deg}) translate(0 ${-bird.size * 0.95}) scale(${bird.size})`}>
+      <g transform={`translate(${bird.x} ${bird.y}) rotate(${bird.deg}) translate(0 ${-bird.size * SWIFT_LIFT}) scale(${bird.size})`}>
         <BirdMark fill={C.bird} line={C.birdLine} wingUp />
       </g>
     </svg>

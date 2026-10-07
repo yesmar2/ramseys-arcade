@@ -1733,7 +1733,7 @@ function Swoop({ id }: { id: Id }) {
       <path d="M37.2 21.4 V15.2" {...line('#e7eef3', 0.22, 0.8)} />
       <path d="M37.2 15.2 L40 16.2 L37.2 17.2 Z" fill="#f5b942" />
       {/* The blue bird on the slope behind, and the dotted way your bird came. */}
-      <g transform={`translate(5.6 ${blue.y.toFixed(2)}) rotate(${blue.deg.toFixed(1)}) translate(0 -1.55) scale(1.65)`} opacity="0.7">
+      <g transform={`translate(5.6 ${blue.y.toFixed(2)}) rotate(${blue.deg.toFixed(1)}) translate(0 -0.91) scale(1.65)`} opacity="0.7">
         <BirdMark fill="#4cb8f0" line={mixColor('#4cb8f0', '#ffffff', 0.4)} />
       </g>
       {SWOOP_TRAIL.map(([x, y], i) => (

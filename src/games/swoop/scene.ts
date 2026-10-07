@@ -1,7 +1,22 @@
 import { mixColor, withAlpha } from '../../lib/color'
 import { isDarkTheme } from '../../lib/theme'
 import type { GhostPose } from './runs'
+import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BODY, SWIFT_EYE, SWIFT_LIFT, SWIFT_WING_FOLDED, SWIFT_WING_ROOT, SWIFT_WING_UP, SWIFT_BEAT } from './birdShape'
 import { heightAt, mulberry32, STREAK_ON, streakLift, type Hills } from './sim'
+
+/** How much bigger than the bird's size the swift is drawn in a run. */
+const SWIFT_SCALE = 1.2
+
+/** The swift's parts as paths, made once the first bird is drawn (Path2D needs a browser). */
+let shape: { body: Path2D; belly: Path2D; beak: Path2D; up: Path2D; folded: Path2D } | null = null
+const SHAPE_OF = () =>
+  (shape ??= {
+    body: new Path2D(SWIFT_BODY),
+    belly: new Path2D(SWIFT_BELLY),
+    beak: new Path2D(SWIFT_BEAK),
+    up: new Path2D(SWIFT_WING_UP),
+    folded: new Path2D(SWIFT_WING_FOLDED),
+  })
 
 /*
  * Swoop on a 2D canvas: the day's hills from the side, following the bird. The sky follows the site's theme,
@@ -245,7 +260,8 @@ export class HillsScene {
       const angle = Math.atan2(b.vy, Math.max(0.01, b.vx))
       if (lift > 0) this.drawGlow(b.x, b.y, angle, this.birdSize(), lift)
       this.drawBird(b.x, b.y, angle, this.birdSize(), RED, {
-        flap: this.time * (b.ground ? 0 : 20),
+        flap: this.time * 20,
+        folded: b.ground,
         dive: f.mode === 'play' && f.hold,
         squish: this.squash,
       })
@@ -525,81 +541,75 @@ export class HillsScene {
     angle: number,
     size: number,
     colour: string,
-    { flap = 0, dive = false, squish = 0, alpha = 1, ghost = false }: { flap?: number; dive?: boolean; squish?: number; alpha?: number; ghost?: boolean } = {},
+    {
+      flap = 0,
+      dive = false,
+      folded = false,
+      squish = 0,
+      alpha = 1,
+      ghost = false,
+    }: { flap?: number; dive?: boolean; folded?: boolean; squish?: number; alpha?: number; ghost?: boolean } = {},
   ) {
     const { ctx, C } = this
+    const SHAPE = SHAPE_OF()
+    // The swift is slimmer than the round bird it took over from, so it's drawn a little bigger to read as big.
+    size *= SWIFT_SCALE
     // Sitting on the hill: lifted off the ground along the slope's own up, not straight up the screen.
-    const px = this.sx(x) - Math.sin(angle) * size * 0.95
-    const py = this.sy(y) - Math.cos(angle) * size * 0.95
+    const px = this.sx(x) - Math.sin(angle) * size * SWIFT_LIFT
+    const py = this.sy(y) - Math.cos(angle) * size * SWIFT_LIFT
     ctx.save()
     ctx.globalAlpha = alpha
     ctx.translate(px, py)
     ctx.rotate(-angle)
-    const stretch = dive ? 1.16 : 1
+    const stretch = dive ? 1.12 : 1
     const sq = 1 - squish * 0.22
-    ctx.scale(stretch / Math.sqrt(sq), sq / stretch)
+    // The swift (birdShape.ts) is drawn in its own unit frame, a unit to the bird's size.
+    ctx.scale((size * stretch) / Math.sqrt(sq), (size * sq) / stretch)
     const line = ghost ? colour : colour === RED ? C.birdLine : C.dark ? mixColor(colour, '#ffffff', 0.4) : '#1a2b3c'
+    const px1 = 1 / size
     ctx.lineJoin = 'round'
-    // The tuft: two feathers swept back off the top of the head.
-    ctx.lineWidth = Math.max(1.2, size * 0.1)
     ctx.strokeStyle = line
-    for (const [lean, len] of [
-      [-0.5, 0.55],
-      [-0.9, 0.45],
-    ] as const) {
-      ctx.beginPath()
-      ctx.moveTo(size * 0.25, -size * 0.8)
-      ctx.quadraticCurveTo(size * 0.1, -size * (0.8 + len), size * (0.25 + lean * len), -size * (0.85 + len * 0.7))
-      ctx.stroke()
-    }
-    // Body.
-    ctx.lineWidth = Math.max(1.5, size * 0.12)
-    ctx.beginPath()
-    ctx.ellipse(0, 0, size * 1.05, size * 0.88, 0, 0, Math.PI * 2)
+    // Body and tail.
+    ctx.lineWidth = Math.max(1.5 * px1, 0.1)
     ctx.fillStyle = ghost ? withAlpha(colour, 0.1) : colour
-    ctx.fill()
-    ctx.stroke()
+    ctx.fill(SHAPE.body)
+    ctx.stroke(SHAPE.body)
     if (!ghost) {
-      // A lighter belly.
-      ctx.beginPath()
-      ctx.ellipse(size * 0.18, size * 0.32, size * 0.6, size * 0.42, 0, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
-      ctx.fill()
+      // The pale throat and belly.
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+      ctx.fill(SHAPE.belly)
     }
     // Beak.
-    ctx.beginPath()
-    ctx.moveTo(size * 0.95, -size * 0.12)
-    ctx.lineTo(size * 1.55, size * 0.06)
-    ctx.lineTo(size * 0.92, size * 0.24)
-    ctx.closePath()
     if (!ghost) {
       ctx.fillStyle = BEAK
-      ctx.fill()
+      ctx.fill(SHAPE.beak)
     }
-    ctx.lineWidth = Math.max(1.2, size * 0.09)
-    ctx.stroke()
-    // Wing.
+    ctx.lineWidth = Math.max(1.2 * px1, 0.07)
+    ctx.stroke(SHAPE.beak)
+    // Wing: folded along the body in a dive and on the hill, else beating about its root.
     ctx.save()
-    ctx.translate(-size * 0.2, -size * 0.05)
-    ctx.rotate(dive ? 0.25 : -0.4 + Math.sin(flap) * 0.7)
-    ctx.beginPath()
-    ctx.ellipse(-size * 0.25, 0, size * (dive ? 0.6 : 0.75), size * 0.34, -0.2, 0, Math.PI * 2)
-    ctx.fillStyle = ghost ? withAlpha(colour, 0.08) : mixColor(colour, '#000000', 0.15)
-    ctx.fill()
-    ctx.stroke()
+    if (!dive && !folded) {
+      const [rx, ry] = SWIFT_WING_ROOT
+      ctx.translate(rx, ry)
+      ctx.rotate((0.5 - 0.5 * Math.sin(flap)) * SWIFT_BEAT)
+      ctx.translate(-rx, -ry)
+    }
+    const wing = dive || folded ? SHAPE.folded : SHAPE.up
+    ctx.fillStyle = ghost ? withAlpha(colour, 0.08) : mixColor(colour, '#000000', 0.18)
+    ctx.lineWidth = Math.max(1.5 * px1, 0.1)
+    ctx.fill(wing)
+    ctx.stroke(wing)
     ctx.restore()
     // Eye: white with a dark pupil, looking ahead, or down in a dive.
-    const ex = size * 0.48
-    const ey = -size * 0.28
-    const er = size * 0.27
+    const e = SWIFT_EYE
     ctx.beginPath()
-    ctx.arc(ex, ey, er, 0, Math.PI * 2)
+    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
     ctx.fillStyle = ghost ? withAlpha('#ffffff', 0.5) : '#ffffff'
     ctx.fill()
-    ctx.lineWidth = Math.max(1, size * 0.07)
+    ctx.lineWidth = Math.max(px1, 0.05)
     ctx.stroke()
     ctx.beginPath()
-    ctx.arc(ex + er * 0.35, ey + (dive ? er * 0.3 : 0), er * 0.52, 0, Math.PI * 2)
+    ctx.arc(e.px, e.y + (dive ? e.r * 0.35 : 0), e.pr, 0, Math.PI * 2)
     ctx.fillStyle = ghost ? colour : '#1a2b3c'
     ctx.fill()
     ctx.restore()
@@ -613,7 +623,8 @@ export class HillsScene {
     const colour = f.ghostBlue ? C.blue : f.ghostMine ? C.mine : C.ghost
     const menuBird = f.mode === 'menu'
     this.drawBird(g.x, g.y, g.a, size, colour, {
-      flap: this.time * (onHill ? 0 : 18),
+      flap: this.time * 18,
+      folded: onHill,
       dive: g.dive,
       alpha: f.ghostBlue ? (menuBird ? 0.9 : 0.6) : menuBird ? 0.95 : 0.85,
       ghost: !f.ghostBlue,
@@ -644,7 +655,7 @@ export class HillsScene {
   private drawTrail(dt: number) {
     const { ctx, C, cam, trail } = this
     if (!trail.length) return
-    const lift = this.birdSize() * 0.9
+    const lift = this.birdSize() * SWIFT_LIFT
     const plain = C.dark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(26, 43, 60, 0.35)'
     const r = Math.max(1.2, 0.18 * cam.k)
     for (let i = trail.length - 1; i >= 0; i--) {
@@ -669,8 +680,8 @@ export class HillsScene {
    */
   private drawGlow(x: number, y: number, angle: number, size: number, lift: number) {
     const { ctx } = this
-    const px = this.sx(x) - Math.sin(angle) * size * 0.95
-    const py = this.sy(y) - Math.cos(angle) * size * 0.95
+    const px = this.sx(x) - Math.sin(angle) * size * SWIFT_LIFT
+    const py = this.sy(y) - Math.cos(angle) * size * SWIFT_LIFT
     const breath = 0.5 + 0.5 * Math.sin(this.time * 8)
     ctx.fillStyle = BEAK
     for (let i = 3; i >= 1; i--) {

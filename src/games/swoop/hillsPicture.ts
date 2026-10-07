@@ -1,4 +1,5 @@
 import { mixColor } from '../../lib/color'
+import { SWIFT_LIFT } from './birdShape'
 import { heightAt, mulberry32, slopeAt, type Hills } from './sim'
 
 /*
@@ -111,7 +112,7 @@ export function hillsView(hills: Hills, w: number, h: number): HillsView {
   const trail: Array<[number, number]> = []
   for (let t = 0.04; t < 0.36; t += 0.045) {
     const [x, y] = at(t)
-    trail.push([X(x), Y(y) - size * 0.9])
+    trail.push([X(x), Y(y) - size * SWIFT_LIFT])
   }
   const vyNow = vy0 - 20 * 0.45
   // The blue bird on the slope up to the top, behind.

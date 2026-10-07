@@ -1,22 +1,22 @@
+import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BODY, SWIFT_EYE, SWIFT_WING_FOLDED, SWIFT_WING_UP } from './birdShape'
+
 /**
- * A Swoop bird in SVG, as the game draws one (scene.ts drawBird), a unit across its body and facing right: the
- * tuft swept back, the body and its lighter belly, the beak, the wing (raised in flight, folded on the hill)
- * and the eye looking ahead. The home row's picture (components/todayPictures.tsx) and the game's picture
- * (components/GameArt.tsx) place it with a transform.
+ * A Swoop bird in SVG, as the game draws one (scene.ts drawBird): the swift (birdShape.ts), a unit across its
+ * body and facing right, its wing raised in flight or folded on the hill. The pictures (HillsPostcard.tsx,
+ * components/GameArt.tsx) place it with a transform; one sitting on a hill sits SWIFT_LIFT over it.
  */
 export function BirdMark({ fill, line, wingUp = false }: { fill: string; line: string; wingUp?: boolean }) {
+  const wing = wingUp ? SWIFT_WING_UP : SWIFT_WING_FOLDED
+  const e = SWIFT_EYE
   return (
-    <g strokeLinejoin="round" stroke={line}>
-      <path d="M0.25 -0.8 Q0.1 -1.35 -0.03 -1.24 M0.25 -0.8 Q0.1 -1.25 -0.16 -1.17" fill="none" strokeWidth="0.1" strokeLinecap="round" />
-      <ellipse cx="0" cy="0" rx="1.05" ry="0.88" fill={fill} strokeWidth="0.12" />
-      <ellipse cx="0.18" cy="0.32" rx="0.6" ry="0.42" fill="#ffffff" fillOpacity="0.35" stroke="none" />
-      <path d="M0.95 -0.12 L1.55 0.06 L0.92 0.24 Z" fill="#f5b942" strokeWidth="0.09" />
-      <g transform={`translate(-0.2 -0.05) rotate(${wingUp ? -50 : -23})`}>
-        <ellipse cx="-0.25" cy="0" rx="0.75" ry="0.34" transform="rotate(-11 -0.25 0)" fill={fill} strokeWidth="0.12" />
-        <ellipse cx="-0.25" cy="0" rx="0.75" ry="0.34" transform="rotate(-11 -0.25 0)" fill="#000000" fillOpacity="0.15" stroke="none" />
-      </g>
-      <circle cx="0.48" cy="-0.28" r="0.27" fill="#ffffff" strokeWidth="0.07" />
-      <circle cx="0.57" cy="-0.28" r="0.14" fill="#1a2b3c" stroke="none" />
+    <g strokeLinejoin="round" stroke={line} strokeWidth="0.1">
+      <path d={SWIFT_BODY} fill={fill} />
+      <path d={SWIFT_BELLY} fill="#ffffff" fillOpacity="0.55" stroke="none" />
+      <path d={SWIFT_BEAK} fill="#f5b942" strokeWidth="0.07" />
+      <path d={wing} fill={fill} />
+      <path d={wing} fill="#000000" fillOpacity="0.18" stroke="none" />
+      <circle cx={e.x} cy={e.y} r={e.r} fill="#ffffff" strokeWidth="0.05" />
+      <circle cx={e.px} cy={e.y} r={e.pr} fill="#1a2b3c" stroke="none" />
     </g>
   )
 }
