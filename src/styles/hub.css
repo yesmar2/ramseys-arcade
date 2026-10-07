@@ -99,16 +99,16 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* The words, 25rem across, and the game across the rest of the card, out to its edges (.gh-screen). */
 .gh-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 25rem) minmax(0, 1fr);
-  gap: 1.4rem;
+  grid-template-columns: minmax(0, 28.6rem) minmax(0, 1fr);
+  align-items: stretch;
   min-height: 32rem;
   box-sizing: border-box;
-  padding: 1.6rem 1.5rem 1.6rem 2.4rem;
   border-radius: 1.9rem;
-  /* The hero's own colour, which a daily's screen fades into (below). */
+  /* The hero's own colour, which its screen fades into (below). */
   --gh-hero-bg: color-mix(in srgb, var(--gh-accent) 20%, var(--surface));
   background: var(--gh-hero-bg);
   border: 1px solid color-mix(in srgb, var(--gh-accent) 40%, transparent);
@@ -126,6 +126,7 @@ html[data-theme='light'] .gh-hero {
   justify-content: space-between;
   gap: 1.25rem;
   min-width: 0;
+  padding: 1.6rem 1.2rem 1.6rem 2.4rem;
 }
 
 .gh-crumbs {
@@ -296,22 +297,34 @@ html[data-theme='light'] .gh-hero {
   flex: none;
 }
 
-/* The screen: the game playing itself, the high score over it, Press start breathing in the corner. */
+/*
+ * The screen: the game playing itself across the right of the card, top to bottom and out to its edges, faded into
+ * the card's colour where it meets the words, as the home page's banner has it (Ramsey picked it for the daily
+ * pages, B of the "Daily hero preview" canvas, then asked for it on every game's, 2026-10-07). The high score is
+ * over it, and Press start breathes in the corner.
+ */
 .gh-screen {
   position: relative;
-  align-self: center;
   display: block;
   width: 100%;
-  aspect-ratio: 10 / 7;
-  max-height: 29rem;
-  border-radius: 1.4rem;
+  min-height: 21rem;
   overflow: hidden;
   background: #0b1116;
-  box-shadow: 0 0 0 1px rgba(var(--ink-rgb), 0.16), 0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
 
 html[data-theme='light'] .gh-screen {
   background: #dfeef6;
+}
+
+/* The card's colour over the game's near edge, so it runs into the words; the high score and Press start over it. */
+.gh-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  width: 34%;
+  background: linear-gradient(90deg, var(--gh-hero-bg), transparent);
+  pointer-events: none;
 }
 
 .gh-screen__thumb {
@@ -339,11 +352,13 @@ html[data-theme='light'] .gh-screen {
   opacity: 1;
 }
 
+/* Clear of the fade, its edge softened. */
 .gh-screen__top {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 18%;
   right: 0;
+  z-index: 2;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -356,9 +371,12 @@ html[data-theme='light'] .gh-screen {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 1rem);
+  mask-image: linear-gradient(90deg, transparent, #000 1rem);
 }
 
-html[data-theme='light'] .gh-screen__top {
+/* Light over a game drawn light, as most are in the light theme; a day's game is dark in either (GameHubHero night). */
+html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__top {
   background: linear-gradient(rgba(255, 255, 255, 0.88), transparent);
   color: #1a2b3c;
 }
@@ -370,7 +388,7 @@ html[data-theme='light'] .gh-screen__top {
   color: color-mix(in srgb, var(--gh-accent) 85%, #ffffff);
 }
 
-html[data-theme='light'] .gh-screen__hi b {
+html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
   color: color-mix(in srgb, var(--gh-accent) 58%, #10281c);
 }
 
@@ -380,8 +398,9 @@ html[data-theme='light'] .gh-screen__hi b {
 
 .gh-screen__start {
   position: absolute;
-  right: 0.8rem;
-  bottom: 0.8rem;
+  right: 1.4rem;
+  bottom: 1.2rem;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -1298,25 +1317,71 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   }
 }
 
-/* The screen goes on top, and the words and Play under it. */
+/*
+ * Beside the board on a narrower desk the hero hasn't the room for the game beside the words (it was a strip a few
+ * fingers wide), so the game goes across its top, sixteen by nine and no taller than 15rem, as on a daily's page.
+ */
+@media (min-width: 64.01rem) and (max-width: 76rem) {
+  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-screen {
+    order: -1;
+    aspect-ratio: 16 / 9;
+    min-height: 0;
+    max-height: 15rem;
+  }
+
+  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-screen::after {
+    inset: auto 0 0;
+    width: auto;
+    height: 36%;
+    background: linear-gradient(0deg, var(--gh-hero-bg), transparent);
+  }
+
+  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-screen__top {
+    left: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .gh-top:not(.gh-top--solo) > .gh-hero:not(.gh-hero--daily) .gh-hero__text {
+    padding: 0.4rem 1.6rem 1.4rem;
+  }
+}
+
+/* The game goes across the top, out to the card's edges, fading into the words and Play under it. */
 @media (max-width: 56rem) {
   .gh-hero {
     grid-template-columns: minmax(0, 1fr);
-    gap: 1rem;
     min-height: 0;
-    padding: 0.55rem 0.55rem 1.3rem;
     border-radius: 1.75rem;
   }
 
   .gh-screen {
     order: -1;
-    max-height: none;
-    border-radius: 1.3rem;
+    aspect-ratio: 10 / 7;
+    min-height: 0;
+  }
+
+  .gh-screen::after {
+    inset: auto 0 0;
+    width: auto;
+    height: 36%;
+    background: linear-gradient(0deg, var(--gh-hero-bg), transparent);
+  }
+
+  .gh-screen__top {
+    left: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .gh-hero__text {
     gap: 0.9rem;
-    padding: 0 0.7rem;
+    padding: 0.4rem 1.3rem 1.3rem;
   }
 
   .gh-hero__main {
@@ -1411,18 +1476,14 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 /* ---------- a daily's page: a shorter hero, its tabs (dailyTabs.css), and the Today tab ---------- */
 
 /*
- * The hero keeps to one band, so the tabs under it are in view. Its game runs across the right of the card, top to
- * bottom and out to its edges, faded into the card's colour where it meets the words, as the home page's banner
- * has it: Ramsey asked for that ("should we just do the preview on the whole card with the fade effect like it does
- * on the home page heros?") and picked B of the "Daily hero preview" canvas, 2026-10-07. Before, the game had a
+ * The hero keeps to one band, so the tabs under it are in view, its game across the right of the card as every
+ * game's is (.gh-screen), about half of it: Ramsey asked for that on the daily pages first ("should we just do the
+ * preview on the whole card with the fade effect like it does on the home page heros?"). Before, the game had a
  * screen of its own inside the card, which he found small, then "still kinda small" at 44% of the hero.
  */
 .gh-hero.gh-hero--daily {
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  align-items: stretch;
-  gap: 0;
   min-height: 0;
-  padding: 0;
 }
 
 .gh-hero--daily .gh-hero__text {
@@ -1441,52 +1502,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 .gh-hero--daily .gh-hero__blurb {
   max-width: 40rem;
   font-size: clamp(1rem, 1.3vw, 1.15rem);
-}
-
-.gh-hero--daily .gh-screen {
-  align-self: stretch;
-  aspect-ratio: auto;
-  min-height: 21rem;
-  max-height: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* The card's colour over the game's near edge, so it runs into the words; the high score and Press start over it. */
-.gh-hero--daily .gh-screen::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  z-index: 1;
-  width: 34%;
-  background: linear-gradient(90deg, var(--gh-hero-bg), transparent);
-  pointer-events: none;
-}
-
-.gh-hero--daily .gh-screen__top,
-.gh-hero--daily .gh-screen__start {
-  z-index: 2;
-}
-
-/* Clear of the fade, its own edge softened; dark in either theme, over a game that's dark in either. */
-.gh-hero--daily .gh-screen__top {
-  left: 18%;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 1rem);
-  mask-image: linear-gradient(90deg, transparent, #000 1rem);
-}
-
-html[data-theme='light'] .gh-hero--daily .gh-screen__top {
-  background: linear-gradient(rgba(6, 12, 16, 0.74), transparent);
-  color: #e7eef3;
-}
-
-html[data-theme='light'] .gh-hero--daily .gh-screen__hi b {
-  color: color-mix(in srgb, var(--gh-accent) 85%, #ffffff);
-}
-
-.gh-hero--daily .gh-screen__start {
-  right: 1.4rem;
-  bottom: 1.2rem;
 }
 
 /*
@@ -1537,34 +1552,17 @@ html[data-theme='light'] .gh-hero--daily .gh-screen__hi b {
 }
 
 /*
- * Narrower, the game goes across the top of the card, sixteen by nine and out to its edges, fading into the words
- * under it, as the home page's banner does on a phone (B of the "Daily hero preview" canvas, for a phone too).
+ * Narrower, the game goes across the top as every game's does, only sixteen by nine and no taller than 15rem, so
+ * the tabs stay near (B of the "Daily hero preview" canvas, for a phone too).
  */
 @media (max-width: 56rem) {
   .gh-hero.gh-hero--daily {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    padding: 0;
   }
 
   .gh-hero--daily .gh-screen {
-    order: -1;
     aspect-ratio: 16 / 9;
-    min-height: 0;
     max-height: 15rem;
-  }
-
-  .gh-hero--daily .gh-screen::after {
-    inset: auto 0 0;
-    width: auto;
-    height: 36%;
-    background: linear-gradient(0deg, var(--gh-hero-bg), transparent);
-  }
-
-  .gh-hero--daily .gh-screen__top {
-    left: 0;
-    -webkit-mask-image: none;
-    mask-image: none;
   }
 
   .gh-hero--daily .gh-hero__text {

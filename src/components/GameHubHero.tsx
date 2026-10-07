@@ -74,10 +74,12 @@ export function GameHubHero({
   // the track driven, the course rolled, the cave flown, the hills flown. With only its thumb, a racing daily's
   // screen was a small picture in the middle of a dark one (Ramsey, 2026-10-07: "the game image is very small").
   const plays = hasGamePreview(game.slug) || (daily && hasDayPreview(game.slug))
+  // A day's track, course, cave and hills are drawn dark in either theme: the high score over them stays dark too.
+  const night = daily && hasDayPreview(game.slug)
 
   return (
     <section
-      className={`gh-hero${daily ? ' gh-hero--daily' : ''}`}
+      className={`gh-hero${daily ? ' gh-hero--daily' : ''}${night ? ' gh-hero--night' : ''}`}
       aria-labelledby="gh-title"
       data-hunt={`g-hero-${game.slug}`}
     >
