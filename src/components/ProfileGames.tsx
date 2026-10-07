@@ -5,7 +5,7 @@ import type { GameBest } from '../hooks/useProfileBoards'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { standingsGames } from '../lib/allTime'
-import { type GlobalGamePlace, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
+import { RANKED_LEADERBOARD_GAMES, type GlobalGamePlace, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { COUNTED_GAMES, ordinal, periodWord } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
@@ -45,9 +45,13 @@ function Cabinet({
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
   const style = { '--tile-accent': accent } as CSSProperties
-  const word = periodWord(period)
   // A daily has no all-time board (lib/allTime.ts): its line is its place in its other period instead.
   const daily = isDailyGame(game.slug)
+  // Looking at all time, a daily stands at its place this month, and says it counts toward the week and the month only.
+  const monthOnly = daily && period === 'all'
+  const shownPeriod = monthOnly ? other.period : period
+  const shownPlace = monthOnly ? other.place : place
+  const word = periodWord(shownPeriod)
   // The player's place among players.
   const allPlace = daily ? null : (allTime?.place ?? null)
   const flag =
@@ -62,14 +66,16 @@ function Cabinet({
   const allTimeShown = period === 'all' ? null : allPlace
   const label = [
     game.name,
-    place ? `${ordinal(place.place)} ${word}` : `no run ${word}`,
-    daily
-      ? other.place
-        ? `${ordinal(other.place.place)} ${periodWord(other.period)}`
-        : null
-      : best
-        ? `best run ${formatLeaderboardScore(game.slug, best.score)}${allTimeShown != null ? `, ${ordinal(allTimeShown)} all time` : ''}`
-        : null,
+    shownPlace ? `${ordinal(shownPlace.place)} ${word}` : `no run ${word}`,
+    monthOnly
+      ? 'counts toward the week and the month only'
+      : daily
+        ? other.place
+          ? `${ordinal(other.place.place)} ${periodWord(other.period)}`
+          : null
+        : best
+          ? `best run ${formatLeaderboardScore(game.slug, best.score)}${allTimeShown != null ? `, ${ordinal(allTimeShown)} all time` : ''}`
+          : null,
   ]
     .filter(Boolean)
     .join(', ')
@@ -77,8 +83,8 @@ function Cabinet({
   return (
     <li className="wall__cell">
       <a
-        className={`wall-tile pgame${place ? '' : ' pgame--idle'}`}
-        href={gameBoardHref(game.slug as LeaderboardGame, period)}
+        className={`wall-tile pgame${shownPlace || (monthOnly && other.loading) ? '' : ' pgame--idle'}`}
+        href={gameBoardHref(game.slug as LeaderboardGame, shownPeriod)}
         style={style}
         aria-label={label}
       >
@@ -96,19 +102,25 @@ function Cabinet({
         <span className="pgame__info" aria-hidden="true">
           <span className="pgame__title">
             <span className="pgame__name">{game.name}</span>
-            {place ? (
+            {shownPlace ? (
               <span className="pgame__place">
-                <b className={place.place <= 3 ? `pgame__medal pgame__medal--${place.place}` : undefined}>#{place.place}</b>
+                <b className={shownPlace.place <= 3 ? `pgame__medal pgame__medal--${shownPlace.place}` : undefined}>#{shownPlace.place}</b>
                 <span className="pgame__when"> {word}</span>
-                <span className="pgame__when pgame__when--short"> {PERIOD_SHORT[period]}</span>
+                <span className="pgame__when pgame__when--short"> {PERIOD_SHORT[shownPeriod]}</span>
               </span>
+            ) : monthOnly && other.loading ? (
+              <span className="skel-line pgame__skel pgame__skel--place" />
             ) : (
               <span className="pgame__place">
                 No run<span className="pgame__when"> {word}</span>
               </span>
             )}
           </span>
-          {daily ? (
+          {monthOnly ? (
+            <span className="pgame__line">
+              <span className="pgame__only">Week and month only</span>
+            </span>
+          ) : daily ? (
             <span className="pgame__line">
               <span className="pgame__tag">{other.period === 'monthly' ? 'MONTH' : 'WEEK'}</span>
               {other.place ? (
@@ -144,10 +156,12 @@ function Cabinet({
  * The player's games as cabinets, like the home wall's: each one's screen,
  * their place on it this period, and their best run on it ever, with their
  * place all time. A daily has no board for all time (lib/allTime.ts): its
- * cabinet has its place in its other period instead, and all time's games
- * leave the dailies out. Games played before but not this period stand after
- * them, quieter. Every game never played goes in a panel underneath, as the
- * next ones to try.
+ * cabinet has its place in its other period instead. All time's rank leaves
+ * the dailies out, but the ones played still stand after its games, at their
+ * place this month, saying they count toward the week and the month only, so
+ * they don't look forgotten. Games played before but not this period stand
+ * after them, quieter. Every game never played goes in a panel underneath, as
+ * the next ones to try.
  */
 export function ProfileGames({
   name,
@@ -190,7 +204,14 @@ export function ProfileGames({
     .sort((a, b) => (byGame[b.slug]?.points ?? 0) - (byGame[a.slug]?.points ?? 0) || (byGame[a.slug]?.place ?? 0) - (byGame[b.slug]?.place ?? 0))
   const earlier = everPlayed ? games.filter((g) => !byGame[g.slug] && everPlayed.has(g.slug)) : []
   const never = everPlayed ? games.filter((g) => !byGame[g.slug] && !everPlayed.has(g.slug)) : []
-  const shown = [...placed, ...earlier]
+  // All time leaves the dailies out of the rank, not off the card: the ones played, after the rest.
+  const dailies =
+    period === 'all' && everPlayed
+      ? RANKED_LEADERBOARD_GAMES.filter((slug) => isDailyGame(slug) && everPlayed.has(slug))
+          .map((slug) => getGame(slug))
+          .filter((g): g is Game => Boolean(g))
+      : []
+  const shown = [...placed, ...dailies, ...earlier]
   const bestsLoading = bests === null
 
   return (
@@ -201,6 +222,7 @@ export function ProfileGames({
         </h2>
         <span className="pgames__count">
           {placed.length === 0 ? `None played ${word}` : `${placed.length} played ${word}`}
+          {dailies.length > 0 ? `, ${dailies.length} ${dailies.length === 1 ? 'daily' : 'dailies'}` : ''}
           {earlier.length > 0 ? `, ${earlier.length} before` : ''}
         </span>
         {progressHref && shown.length > 0 ? (

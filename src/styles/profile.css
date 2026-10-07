@@ -1182,6 +1182,19 @@ html[data-theme='dark'] .pbest__flag--ten {
   --skel-w: 6rem;
 }
 
+.pgame__skel--place {
+  --skel-w: 3.5rem;
+  flex: none;
+}
+
+/* A daily on all time: it counts toward the week and the month only. */
+.pgame__only {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The games not played yet: what each could add. */
 .pgames__todo {
   display: grid;
