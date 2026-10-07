@@ -7,7 +7,8 @@ import { ownedNow, subscribeTickets, useTickets } from './tickets'
  * `price`); either way owned like prizes, in the tickets' `owned`. Looks only: a skin
  * never changes speed, size, hitbox or score. Chosen per game on its page and kept on this device; a
  * choice the signed-in player doesn't own is ignored, so another account on the device plays in the usual
- * look. Ghosts and replays of other players keep the usual look too.
+ * look. A ghost wears the skin its own run was played in. A game's preview (its preview.ts) plays in the
+ * player's own choice, as their run would.
  */
 
 /** A skin: a season's (`season`, its pass gives it) or the Hangar's (`price` in tickets, for good). */
@@ -98,7 +99,8 @@ export function chooseSkin(game: string, id: string | null) {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENT))
 }
 
-function subscribe(onChange: () => void) {
+/** Hear when a skin is chosen, here or in another tab, or what the player owns changes. */
+export function subscribeSkins(onChange: () => void) {
   window.addEventListener(EVENT, onChange)
   window.addEventListener('storage', onChange)
   const stopTickets = subscribeTickets(onChange)
@@ -112,7 +114,7 @@ function subscribe(onChange: () => void) {
 /** The skin chosen for a game, kept up to date as the player chooses or their tickets load. */
 export function useChosenSkin(game: string): string | null {
   return useSyncExternalStore(
-    subscribe,
+    subscribeSkins,
     () => chosenSkin(game),
     () => null,
   )

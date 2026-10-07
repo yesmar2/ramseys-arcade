@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DAY_PREVIEWS, GAME_PREVIEWS, type GamePreviewRun } from '../lib/gamePreviews'
+import { subscribeSkins } from '../lib/skins'
 import { THEME_EVENT } from '../lib/theme'
 
 /** Frames a second for a preview: plenty for a tile, and half the work of a full game. */
@@ -260,8 +261,8 @@ export function GamePreview({
       playing(true)
       raf = requestAnimationFrame(frame)
     }
-    // A frozen preview still redraws for a new theme or size, and once the page's fonts are in, in case its
-    // lettering was first drawn in a stand-in.
+    // A frozen preview still redraws for a new theme or size, for a skin just chosen (a preview plays in the
+    // player's own), and once the page's fonts are in, in case its lettering was first drawn in a stand-in.
     const redraw = () => {
       if (!raf) draw(0)
     }
@@ -372,6 +373,7 @@ export function GamePreview({
     document.addEventListener('visibilitychange', resume)
     still.addEventListener('change', resume)
     window.addEventListener(THEME_EVENT, redraw)
+    const stopSkins = subscribeSkins(redraw)
     document.fonts.addEventListener('loadingdone', redraw)
 
     return () => {
@@ -389,6 +391,7 @@ export function GamePreview({
       document.removeEventListener('visibilitychange', resume)
       still.removeEventListener('change', resume)
       window.removeEventListener(THEME_EVENT, redraw)
+      stopSkins()
       document.fonts.removeEventListener('loadingdone', redraw)
       if (raf) cancelAnimationFrame(raf)
       made?.dispose?.()

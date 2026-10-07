@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { runPreview, type Sim } from '../previewKit'
 import { createInitialState, jumpToWave, startGame, tick, type GameState } from './game'
 import { makePilot } from './pilot'
@@ -29,7 +30,8 @@ export function makeSim(): Sim<GameState> {
       return tick(s, dt)
     },
     over: (s) => s.phase === 'gameover',
-    render: (ctx, s, w, h) => renderGame(ctx, screen(s), w, h),
+    // The ship is in the player's own skin.
+    render: (ctx, s, w, h) => renderGame(ctx, screen(s), w, h, chosenSkin('barrage')),
     // The world is one shape at any size, so a new size changes nothing.
     resize: (s) => s,
     // The still: the ship threading a wall's gap, grazing the orbs either side, a pip falling to it and octos firing above.

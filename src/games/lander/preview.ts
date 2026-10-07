@@ -1,4 +1,5 @@
 import type { GamePreviewRun } from '../../lib/gamePreviews'
+import { chosenSkin } from '../../lib/skins'
 import { Ghost, landerDay, paceOf, type GhostPose } from './runs'
 import { CaveScene } from './scene'
 
@@ -61,6 +62,8 @@ export function createDayPreview(day: string): GamePreviewRun {
           ghostMine: false,
           calm: false,
           out: null,
+          // Flown in the player's own skin, as their run would be.
+          skin: chosenSkin('lander'),
           // The cave's moving things where they were as the blue ship flew it.
           t: pose.done ? run.run.time : t,
         },

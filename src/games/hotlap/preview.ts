@@ -1,4 +1,5 @@
 import type { GamePreviewRun } from '../../lib/gamePreviews'
+import { chosenSkin } from '../../lib/skins'
 import { dailyTrack } from './daily'
 import { HotLapScene } from './scene'
 import { botDriver, buildTrack, newRun, STEP, stepRun, type Controls, type Run, type Track } from './sim'
@@ -56,7 +57,8 @@ export function createDayPreview(day: string): GamePreviewRun {
         scene.startLap()
       }
       scene.resize(w, h)
-      scene.frame({ run, showroom: false, driving: true, ghost: null, cardAside: false }, dt)
+      // Driven in the player's own skin, as their lap would be.
+      scene.frame({ run, showroom: false, driving: true, ghost: null, cardAside: false, skin: chosenSkin('hotlap') }, dt)
       // Onto the card's own canvas, at the screen's density.
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const cw = Math.max(1, Math.floor(w * dpr))

@@ -1,4 +1,5 @@
 import type { GamePreviewRun } from '../../lib/gamePreviews'
+import { chosenSkin } from '../../lib/skins'
 import { Ghost, swoopDay, type GhostPose } from './runs'
 import { HillsScene } from './scene'
 import { flyWith, GHOST_RATE, GHOST_STRIDE, GOOD_HANDS, heightAt, makePerson, type Hills } from './sim'
@@ -92,6 +93,8 @@ export function createDayPreview(day: string): GamePreviewRun {
           ghostMine: false,
           ghostBlue: false,
           calm: false,
+          // Flown in the player's own skin, as their run would be.
+          skin: chosenSkin('swoop'),
         },
         dt,
       )

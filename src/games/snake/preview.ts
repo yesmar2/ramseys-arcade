@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { runPreview, type Sim } from '../previewKit'
 import { playHeader } from '../playHeader'
 import {
@@ -369,7 +370,7 @@ export function makeSim(): Sim<GameState> {
     // first seconds, and the words that go up with the score pops ("Chain 5",
     // "Golden apple", "Chain lost"), which at a cabinet's size would crowd the
     // lawn. The pops' points stay, and the price over a fruit's ring, as part
-    // of the play.
+    // of the play. The snake is in the player's own skin.
     render: (ctx, s, w, h) =>
       renderGame(
         ctx,
@@ -381,6 +382,7 @@ export function makeSim(): Sim<GameState> {
         },
         w,
         h,
+        chosenSkin('snake'),
       ),
     // The lawn is the same whatever the screen, so a resize keeps the run,
     // drawn to fit the new screen.

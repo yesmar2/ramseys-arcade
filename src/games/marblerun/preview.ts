@@ -1,4 +1,5 @@
 import type { GamePreviewRun } from '../../lib/gamePreviews'
+import { chosenSkin } from '../../lib/skins'
 import { Ghost, marbleDay, paceOf } from './runs'
 import { MarbleScene } from './scene'
 import { BALL_R, newBall, surfaceAt } from './sim'
@@ -66,7 +67,11 @@ export function createDayPreview(day: string): GamePreviewRun {
       const splits = run.run.splits
       let passed = 0
       while (passed < splits.length && splits[passed]! <= t) passed++
-      scene.frame({ ball, tilt: { x: 0, z: 0 }, mode: pose.done ? 'done' : 'play', doneFor, ghost: null, ghostTag: '', passed }, dt)
+      // Rolled in the player's own skin, as their run would be.
+      scene.frame(
+        { ball, tilt: { x: 0, z: 0 }, mode: pose.done ? 'done' : 'play', doneFor, ghost: null, ghostTag: '', passed, skin: chosenSkin('marblerun') },
+        dt,
+      )
       // Onto the card's own canvas, at the screen's density.
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const cw = Math.max(1, Math.floor(w * dpr))

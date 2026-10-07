@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { runPreview, type Sim } from '../previewKit'
 import { createInitialState, jumpToLevel, startGame, tick, type GameState } from './game'
 import { makePilot } from './pilot'
@@ -23,7 +24,8 @@ export function makeSim(): Sim<GameState> {
     },
     step: (s, dt) => tick(drive(s, dt), dt),
     over: (s) => s.phase === 'gameover',
-    render: (ctx, s, w, h) => renderGame(ctx, s, w, h),
+    // The blocks are in the player's own skin.
+    render: (ctx, s, w, h) => renderGame(ctx, s, w, h, undefined, chosenSkin('pileup')),
     // The pile doesn't depend on the screen's size, only how it's drawn does.
     resize: (s) => s,
     // The still: the long piece over the slot it's about to drop into.

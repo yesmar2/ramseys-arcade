@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { runPreview, type Sim } from '../previewKit'
 import {
   beginNextWave,
@@ -549,8 +550,8 @@ export function makeSim(): Sim<GameState> {
     over: (s) => s.phase === 'gameover',
     // The field as the game draws it, minus what is written over it for a
     // player: the points that float up off each hit, the combo count and the
-    // wave's name as it begins.
-    render: (ctx, s, w, h) => renderGame(ctx, { ...s, floaters: [], combo: 0, waveIntro: 0 }, w, h),
+    // wave's name as it begins. The ship is in the player's own skin.
+    render: (ctx, s, w, h) => renderGame(ctx, { ...s, floaters: [], combo: 0, waveIntro: 0 }, w, h, chosenSkin('asteroids')),
     resize: (s, w, h) => {
       const { fw, fh } = fieldSize(w, h)
       const next = resizeState(s, fw, fh)
