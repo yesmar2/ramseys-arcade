@@ -20,9 +20,11 @@ import polarNightPicture from '../../assets/season/marblerun-polar-night.webp'
 import iceCubesPicture from '../../assets/season/pileup-ice-cubes.webp'
 import knittedPicture from '../../assets/season/pileup-knitted.webp'
 import northernLightsPicture from '../../assets/season/pileup-northern-lights.webp'
+import cometPicture from '../../assets/season/snake-comet-tail.webp'
+import astroWormPicture from '../../assets/season/snake-nebula-tail.webp'
+import auroraSerpentPicture from '../../assets/season/snake-aurora-tail.webp'
+import iceDragonPicture from '../../assets/season/snake-fireside-tail.webp'
 import {
-  AURORA_TAIL,
-  FIRESIDE_TAIL,
   FROST_DRAGON,
   GONDOLA,
   ICE_BREAKER,
@@ -35,12 +37,10 @@ import {
   YETI,
   CANDY_TAIL,
   COMET_SHIP,
-  COMET_TAIL,
   EAGLE,
   GOLD_LANDER,
   PAPER_PLANE,
   RETRO_WEDGE,
-  NEBULA_TAIL,
   NOVA_FIGHTER,
   ORBITER,
   RINGSHIP,
@@ -176,7 +176,7 @@ function ShipArt({ art, flame = true }: { art: SkinArt; flame?: boolean }) {
   )
 }
 
-// The Comet tail's path on the board, head last: one bead every 12, as Snake lays one every spacing.
+// A bead tail's path on the board, head last: one bead every 12, as Snake lays one every spacing.
 const SNAKE: [number, number][] = [[18, 78], [30, 78], [42, 78], [54, 78], [66, 78], [66, 66], [66, 54], [54, 54], [42, 54], [30, 54], [30, 42], [30, 30], [42, 30], [54, 30], [66, 30]]
 
 /** A bead tail's picture (Snake's skins), drawn as Snake draws it. */
@@ -201,9 +201,6 @@ function BeadTail({ tail, spark }: { tail: SnakeTail; spark: string }) {
   )
 }
 
-export function CometTail() {
-  return <BeadTail tail={COMET_TAIL} spark={SPACE.orange} />
-}
 
 function FinishArt({ badge, size }: { badge: AvatarBadge; size: number }) {
   const avatar: Avatar = { kind: 'mono', letters: 1, pattern: 'plain', body: 4, detail: 0, badge, ring: null, pin: null }
@@ -450,7 +447,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'snake-comet-tail': (size) => (
     <Board size={size}>
-      <CometTail />
+      <RenderedSkin picture={cometPicture} />
     </Board>
   ),
   // Season 1's Pass+ skins.
@@ -471,7 +468,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'snake-nebula-tail': (size) => (
     <Board size={size}>
-      <BeadTail tail={NEBULA_TAIL} spark="#5fe0c8" />
+      <RenderedSkin picture={astroWormPicture} />
     </Board>
   ),
   'hotlap-midnight': (size) => (
@@ -603,7 +600,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'snake-aurora-tail': (size) => (
     <Board size={size}>
-      <BeadTail tail={AURORA_TAIL} spark={FROST.violet} />
+      <RenderedSkin picture={auroraSerpentPicture} />
     </Board>
   ),
   'hotlap-borealis': (size) => (
@@ -613,7 +610,7 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   ),
   'snake-fireside-tail': (size) => (
     <Board size={size}>
-      <BeadTail tail={FIRESIDE_TAIL} spark={FROST.amber} />
+      <RenderedSkin picture={iceDragonPicture} />
     </Board>
   ),
   'barrage-frost-dragon': (size) => (

@@ -298,35 +298,6 @@ function snakeTail(look: { headFill: RGB; headRing: RGB; glowColor: RGB; eyes: s
   }
 }
 
-/**
- * The Comet tail, Snake's: a white head in an amber glow, then beads fading from amber to violet, by way of
- * a warm pink (straight across, the middle of the tail goes a muddy grey).
- */
-export const COMET_TAIL = snakeTail({
-  headFill: [255, 255, 255],
-  headRing: [245, 185, 66],
-  glowColor: [245, 185, 66],
-  eyes: SPACE.night,
-  stops: [
-    [245, 185, 66],
-    [240, 112, 132],
-    [138, 106, 212],
-  ],
-})
-
-/** The Nebula tail, Snake's (Season 1's Pass+): a night-violet head in a pink glow, beads from pink to violet to teal. */
-export const NEBULA_TAIL = snakeTail({
-  headFill: [42, 31, 92],
-  headRing: [255, 122, 193],
-  glowColor: [196, 110, 230],
-  eyes: SPACE.star,
-  stops: [
-    [255, 122, 193],
-    [150, 112, 230],
-    [95, 224, 200],
-  ],
-})
-
 /** The Saturn tail, Snake's (Season 1's Pass+): a pale gold planet of a head in its ring, beads to rust and dusk violet. */
 export const SATURN_TAIL = snakeTail({
   headFill: [240, 217, 160],
@@ -545,32 +516,6 @@ export const SNOWDRIFT_TAIL = snakeTail({
   ],
 })
 
-/** The Aurora tail, Snake's (Season 2's Pass+): a night head ringed green, beads rippling green, teal, violet. */
-export const AURORA_TAIL = snakeTail({
-  headFill: [11, 24, 48],
-  headRing: [92, 242, 176],
-  glowColor: [92, 242, 176],
-  eyes: FROST.snow,
-  stops: [
-    [92, 242, 176],
-    [51, 198, 214],
-    [155, 123, 255],
-  ],
-})
-
-/** The Fireside tail, Snake's (Season 2's Pass+): a warm one for the cold, an amber head and beads from gold to ember red. */
-export const FIRESIDE_TAIL = snakeTail({
-  headFill: [255, 195, 90],
-  headRing: [232, 86, 79],
-  glowColor: [255, 150, 60],
-  eyes: '#3a1406',
-  stops: [
-    [255, 210, 120],
-    [242, 129, 58],
-    [196, 64, 64],
-  ],
-})
-
 /** The Candy Stripe tail, Snake's (the Hangar's): a white head, then beads in turn red and white, like a cane. */
 export const CANDY_TAIL: SnakeTail = {
   head: 0.75,
@@ -587,15 +532,14 @@ export const CANDY_TAIL: SnakeTail = {
   },
 }
 
-/** Snake's skins, by id. */
+/**
+ * Snake's bead-tail skins, by id. The Blazing comet, Astro worm, Aurora serpent and Ice dragon are creatures of
+ * their own instead (games/snake/skinBodies.ts), Ramsey's picks (2026-10-07): "the snakes need to be different".
+ */
 export const SNAKE_TAILS: Record<string, SnakeTail> = {
-  'snake-comet-tail': COMET_TAIL,
-  'snake-nebula-tail': NEBULA_TAIL,
   'snake-saturn-tail': SATURN_TAIL,
   'snake-candy-stripe': CANDY_TAIL,
   'snake-snowdrift-tail': SNOWDRIFT_TAIL,
-  'snake-aurora-tail': AURORA_TAIL,
-  'snake-fireside-tail': FIRESIDE_TAIL,
 }
 
 /** Asteroids' skins: the drawing, and where its nose and tail are on the board, to lay it along the hull. */

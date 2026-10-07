@@ -29,6 +29,7 @@ import {
   type GameState,
   type Tint,
 } from './game'
+import { SNAKE_BODIES } from './skinBodies'
 
 /*
  * The lawn, drawn back to front: the board in its hedge, the next level's
@@ -519,6 +520,17 @@ function lookTarget(s: GameState): Look {
   return best
 }
 
+/** What the eyes are on, in the head's own frame (nose along +x), in pixels. */
+function headLook(s: GameState, angle: number, c: number): Look {
+  const target = lookTarget(s)
+  if (!target) return null
+  const dx = (target.x - s.head.x) * c
+  const dy = (target.y - s.head.y) * c
+  const cos = Math.cos(-angle)
+  const sin = Math.sin(-angle)
+  return { x: dx * cos - dy * sin, y: dx * sin + dy * cos }
+}
+
 /** Head outline in local space, nose along +x. */
 /**
  * Head outline in local space, nose along +x: broadest across the eyes and
@@ -643,7 +655,7 @@ function drawEyes(
 }
 
 /*
- * A bead tail (Season 1's Comet tail and Nebula tail, lib/skins.ts), drawn as the pass's picture is
+ * A bead tail (Season 1's Saturn tail, Season 2's Snowdrift tail, the Hangar's Candy Stripe; lib/skins.ts), drawn as the pass's picture is
  * (lib/skinArt.ts): a head in a glow, then beads down the body that shrink and fade through the skin's
  * colours. The snake is the same underneath, so it's measured cell by cell as ever; the beads only follow
  * its path.
@@ -819,6 +831,35 @@ function drawSnake(ctx: CanvasRenderingContext2D, palette: Skin, v: View, s: Gam
     ctx.restore()
   }
 
+  // A creature skin (skinBodies.ts) draws the whole snake its own way, over the same path.
+  const creature = playerSkin ? SNAKE_BODIES[playerSkin] : undefined
+  if (creature) {
+    const hintB = { i: 1 }
+    creature({
+      ctx,
+      c,
+      length,
+      time: s.time,
+      dark: sk.dark,
+      angle,
+      at: (at) => {
+        const p = along(pts, at, hintB)
+        return { x: px(v, p.x), y: py(v, p.y), dx: p.dx, dy: p.dy }
+      },
+      swell: (at) => (s.bulges.length ? bodyWidth(at, length, s.bulges) / bodyWidth(at, length, []) : 1),
+      drain: (at) => q(drainOf(at)),
+      deadFill: sk.deadFill,
+      deadLine: sk.deadLine,
+      dying,
+      blink: !dying && blinking(s.time),
+      hot,
+      rainbow: (k) => hslToRgb(hueOf(WHEEL[(k + Math.floor(s.time * 9)) % WHEEL.length]!), 0.72, sk.dark ? 0.62 : 0.52),
+      boosting,
+      look: headLook(s, angle, c),
+    })
+    return
+  }
+
   if (beadTail) {
     drawBeadTail(ctx, beadTail, sk, v, s, pts, length, angle, { dying, drainOf, q, hot, boosting })
     return
@@ -924,16 +965,7 @@ function drawSnake(ctx: CanvasRenderingContext2D, palette: Skin, v: View, s: Gam
     ctx.arc(c * 0.42, side * c * 0.09, Math.max(0.8, c * 0.026), 0, Math.PI * 2)
     ctx.fill()
   }
-  const target = lookTarget(s)
-  let look: { x: number; y: number } | null = null
-  if (target) {
-    const dx = (target.x - s.head.x) * c
-    const dy = (target.y - s.head.y) * c
-    const cos = Math.cos(-angle)
-    const sin = Math.sin(-angle)
-    look = { x: dx * cos - dy * sin, y: dx * sin + dy * cos }
-  }
-  drawEyes(ctx, c, look, !dying && blinking(s.time), dying, sk)
+  drawEyes(ctx, c, headLook(s, angle, c), !dying && blinking(s.time), dying, sk)
   ctx.restore()
 
   if (hot || boosting) {
