@@ -294,7 +294,7 @@ function overallLine(f: RunFacts, copy: PeriodCopy): { line: ReportLine; newTop:
   if (!f.overall.before) return null
   const before = f.overall.before.rank ?? null
   const below = (after.nearby ?? []).find((n) => n.rank === rank + 1)
-  // Every game added up: the Standings, as the Boards page names that table.
+  // The best ten games added up: the Standings, as the Boards page names that table.
   // Beside the game's own line, "Overall" read as one more place on this game,
   // and "All games" as the list of games it names everywhere else on the site.
   const label = scopeLabel('Standings', copy)

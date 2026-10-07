@@ -403,6 +403,46 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Past the best ten: a dashed line, then the rest in grey, paying as much but adding nothing. */
+.rh-pays__cut {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.6rem 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rh-pays__cut::before,
+.rh-pays__cut::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed rgba(var(--ink-rgb), 0.28);
+}
+
+.rh-pays__cut::before {
+  flex: none;
+  width: 1.25rem;
+}
+
+.rh-pay--out .rh-pay__game,
+.rh-pay--out .rh-pay__v {
+  color: var(--muted);
+}
+
+.rh-pay--out .rh-pay__thumb {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.rh-pay--out .rh-ruler i,
+.rh-pay--out .rh-ruler b {
+  background: rgba(var(--ink-rgb), 0.28);
+}
+
 .rh-scale {
   display: flex;
   justify-content: space-between;
@@ -787,6 +827,16 @@
 
 .rh-box--pay b {
   color: var(--rh-accent-ink);
+}
+
+/* A daily outside the best ten: what it pays, in grey, since it adds nothing. */
+.rh-box--pay.rh-box--out {
+  border-color: var(--rh-line);
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.rh-box--pay.rh-box--out b {
+  color: var(--muted);
 }
 
 .rh-also {

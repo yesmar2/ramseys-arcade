@@ -2,7 +2,7 @@ import { getGame, isDailyGame, isGameListed } from '../data/games'
 import type { GlobalGamePlace, LeaderboardPeriod } from './leaderboard'
 import { formatLeaderboardScore } from './leaderboardFormat'
 import { numberWord } from './numberWord'
-import { ordinal, placePoints, shareLines, type ShareLine } from './profileMath'
+import { COUNTED_GAMES, gainWith, ordinal, placePoints, shareLines, type ShareLine } from './profileMath'
 import { resolveGameAccent } from './theme'
 
 /*
@@ -13,8 +13,8 @@ import { resolveGameAccent } from './theme'
  * add up to), and the "what if" of the ways up, which are told as the boards stand right now.
  *
  * A place pays 100 × (players − place + 1) ÷ players, rounded, never below 1 (placePoints, as the
- * API's store.ts has it), and a rank adds up what every game paid. A daily pays each day that way, and
- * its days add up to its week, which is then ranked like any other game's board.
+ * API's store.ts has it), and a rank adds up the ten games that pay most (COUNTED_GAMES). A daily pays
+ * each day that way, and its days add up to its week, which is then ranked like any other game's board.
  */
 
 export type ByGame = Partial<Record<string, GlobalGamePlace>>
@@ -156,6 +156,19 @@ export function placedGames(byGame: ByGame): Placed[] {
   return out.sort((a, b) => b.points - a.points || b.total - a.total || gameName(a.slug).localeCompare(gameName(b.slug)))
 }
 
+/**
+ * placedGames split into the ten that add up to the rank and the rest. A tie for tenth counts the
+ * same either way; the busier board goes in, as placedGames orders them.
+ */
+export function countedGames(placed: Placed[]): { counted: Placed[]; rest: Placed[] } {
+  return { counted: placed.slice(0, COUNTED_GAMES), rest: placed.slice(COUNTED_GAMES) }
+}
+
+/** The tenth game that counts, once a player has ten: what a new place has to beat to count. */
+export function tenthGame(placed: Placed[]): Placed | null {
+  return placed.length >= COUNTED_GAMES ? placed[COUNTED_GAMES - 1]! : null
+}
+
 /** Whether a game is on the wall, rather than retired or on deck: its places still count, but it can't be played from here. */
 export function onWall(slug: string): boolean {
   return isGameListed(slug)
@@ -263,7 +276,8 @@ export type BoardChange =
 /**
  * What a change does to another player's points: a climb pushes everyone it passes on that board
  * down a place, and a new player grows the field, which pays everyone above them a little more and
- * everyone below a little less. Null when their places weren't sent, so it can't be told.
+ * everyone below a little less, on that game only if it's in their ten. Null when their places
+ * weren't sent, so it can't be told.
  */
 function pointsAfter(other: Standing, change: BoardChange): number | null {
   if (change.kind === 'first') return other.score
@@ -277,7 +291,7 @@ function pointsAfter(other: Standing, change: BoardChange): number | null {
   } else if (place >= change.place) {
     place += 1
   }
-  return other.score - row.points + placePoints(place, change.field)
+  return other.score + gainWith(other.byGame, change.slug, placePoints(place, change.field))
 }
 
 export type Outcome = {
@@ -297,9 +311,8 @@ export type Outcome = {
  * the standings above them, best first, starting at place `offset + 1`.
  */
 export function outcome(me: Standing & { byGame: ByGame }, change: BoardChange, above: Standing[], offset: number): Outcome {
-  const row = me.byGame[change.slug]
-  const now = change.kind === 'climb' && row ? row.points : 0
-  const gain = placePoints(change.place, change.field) - now
+  // Past ten games, a place adds only what it beats the tenth by.
+  const gain = gainWith(me.byGame, change.slug, placePoints(change.place, change.field))
   const score = me.score + gain
   const games = gamesOf(me) + (change.kind === 'climb' ? 0 : 1)
   const others = above.filter((s) => s.name !== me.name)

@@ -23,12 +23,13 @@ import {
 } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
-import { andList, barPosition, ordinal, placePoints, toPass } from '../lib/profileMath'
+import { andList, barPosition, COUNTED_GAMES, ordinal, placePoints, toPass } from '../lib/profileMath'
 import {
   bestClimb,
   boardDay,
   boardLines,
   capital,
+  countedGames,
   dateOf,
   dayInFull,
   dayMarks,
@@ -50,6 +51,7 @@ import {
   playedDays,
   quietAndBusy,
   RESULT_WORD,
+  tenthGame,
   tieLine,
   TODAY_NAME,
   weekdayWord,
@@ -70,8 +72,8 @@ import '../styles/rankHow.css'
  * How your rank works (/how-ranks-work): the one page that shows a rank worked out, so every other page
  * can say places and names. It covers one player, yours or anyone's (/how-ranks-work/SAM/weekly), at the
  * header's period and group, told in four steps with pictures: the games rank their players (all but the
- * dailies just for fun), a place pays up to 100, the rank adds them up, and the dailies go day by day
- * (with every day in a table behind a fold). Then the quickest ways up, and the exact rule and the ties
+ * dailies just for fun), a place pays up to 100, the rank adds up the ten that pay most, and the dailies go
+ * day by day (with every day in a table behind a fold). Then the quickest ways up, and the exact rule and the ties
  * in small print. Every figure is the API's (lib/rankHow.ts has the working); signed out, it's the same
  * four steps in general terms.
  */
@@ -125,7 +127,7 @@ function stepTitles(who: Who) {
   return {
     games: FUN_DAILIES.length ? 'Most games rank their players' : 'Every game ranks its players',
     pays: who.self ? 'Your place pays up to 100' : 'Each place pays up to 100',
-    adds: who.self ? 'Your rank adds them up' : `${who.name}’s rank adds them up`,
+    adds: who.self ? 'Your best ten add up' : `${who.name}’s best ten add up`,
     dailies: 'Dailies go day by day',
     up: who.self ? 'Your quickest ways up' : `${who.name}’s quickest ways up`,
   }
@@ -288,6 +290,11 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
     ? `${capital(words.phrase)} ${who.self ? 'you’re' : `${who.name} is`} on`
     : `${who.self ? 'You’ve' : `${who.name} has`} played`
   const rest = boards - n
+  // On ten games already, one more counts only by beating one of the ten (step 3).
+  const more =
+    placed.length >= COUNTED_GAMES
+      ? `A good place on ${rest === 1 ? 'it' : 'one'} could still take a spot in ${whose(who)} best ten.`
+      : `${rest === 1 ? 'It just hasn’t' : 'They just haven’t'} added anything yet.`
   return (
     <Step id={STEP_IDS.games} n="1" title={stepTitles(who).games} show={<Fields placed={placed} who={who} />}>
       <p className="rh-step__p">
@@ -304,8 +311,8 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
         {rest <= 0
           ? 'That’s every game that ranks.'
           : rest === 1
-            ? `The other one doesn’t count against ${youOf(who)}. It just hasn’t added anything yet.`
-            : `The other ${rest.toLocaleString()} don’t count against ${youOf(who)}. They just haven’t added anything yet.`}
+            ? `The other one doesn’t count against ${youOf(who)}. ${more}`
+            : `The other ${rest.toLocaleString()} don’t count against ${youOf(who)}. ${more}`}
       </p>
       {words.noun ? null : <AllTimeDailiesLine />}
       <FunDailiesLine />
@@ -318,30 +325,35 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
 function Pays({ placed, who }: { placed: Placed[]; who: Who }) {
   const example = exampleGame(placed)
   const worked = example ? workedExample(example, who) : null
+  // Past the best ten, the rest pay as much but add nothing: under a line, in grey.
+  const { counted, rest } = countedGames(placed)
+  const pay = (p: Placed, out: boolean) => (
+    <li key={p.slug} className={`rh-pay${out ? ' rh-pay--out' : ''}`} style={{ '--g': gameAccent(p.slug) } as CSSProperties}>
+      <span className="rh-pay__game">
+        <Thumb slug={p.slug} className="rh-pay__thumb" />
+        <span>
+          {gameName(p.slug)}
+          <small>
+            {ordinal(p.place)} of {p.total.toLocaleString()}
+          </small>
+        </span>
+      </span>
+      <span className="rh-ruler" aria-hidden="true">
+        <i style={{ width: `${p.points}%` }} />
+        <b style={{ left: `${p.points}%` }} />
+      </span>
+      <span className="rh-pay__v">
+        <span className="visually-hidden">pays </span>
+        {p.points}
+      </span>
+    </li>
+  )
   return (
     <div className="rh-card rh-pays">
       <ul className="rh-pays__list">
-        {placed.map((p) => (
-          <li key={p.slug} className="rh-pay" style={{ '--g': gameAccent(p.slug) } as CSSProperties}>
-            <span className="rh-pay__game">
-              <Thumb slug={p.slug} className="rh-pay__thumb" />
-              <span>
-                {gameName(p.slug)}
-                <small>
-                  {ordinal(p.place)} of {p.total.toLocaleString()}
-                </small>
-              </span>
-            </span>
-            <span className="rh-ruler" aria-hidden="true">
-              <i style={{ width: `${p.points}%` }} />
-              <b style={{ left: `${p.points}%` }} />
-            </span>
-            <span className="rh-pay__v">
-              <span className="visually-hidden">pays </span>
-              {p.points}
-            </span>
-          </li>
-        ))}
+        {counted.map((p) => pay(p, false))}
+        {rest.length ? <li className="rh-pays__cut">Not in {whose(who)} best ten</li> : null}
+        {rest.map((p) => pay(p, true))}
       </ul>
       <p className="rh-scale" aria-hidden="true">
         <span>
@@ -387,7 +399,8 @@ function PaysStep({ placed, who }: { placed: Placed[]; who: Who }) {
 function standingLine(me: Standing, rows: Standing[], who: Who, words: PeriodWords, where: string): string {
   const above = rows.find((r) => r.rank === me.rank - 1)
   const below = rows.find((r) => r.rank === me.rank + 1)
-  const from = (s: Standing) => (s.games != null ? ` from ${numberWord(s.games)}` : '')
+  const from = (s: Standing) =>
+    s.games == null ? '' : s.games > COUNTED_GAMES ? ` from their best ten of ${numberWord(s.games)}` : ` from ${numberWord(s.games)}`
   if (me.rank > 1 && above) {
     if (above.score > me.score) {
       return `${above.name} has ${above.score.toLocaleString()}${from(above)}, so ${above.name} is one place ahead.`
@@ -405,20 +418,22 @@ function standingLine(me: Standing, rows: Standing[], who: Who, words: PeriodWor
 function Sums({ rows, me, period }: { rows: Standing[]; me: string; period: LeaderboardPeriod }) {
   const max = Math.max(1, ...rows.map((r) => r.score))
   const meRow = rows.find((r) => r.name === me)
+  // Each bar is the games that add up: a player's best ten.
+  const partsOf = (r: Standing) => countedGames(placedGames(r.byGame ?? {})).counted
   // Games share the ten swatches, so only the player's own games get a colour here, and never one another of theirs has.
   const colour = new Map<string, string>()
-  for (const p of placedGames(meRow?.byGame ?? {})) {
+  for (const p of meRow ? partsOf(meRow) : []) {
     const taken = new Set(colour.values())
     const c = taken.has(gameAccent(p.slug)) ? Object.values(PALETTE).find((s) => !taken.has(s)) : gameAccent(p.slug)
     if (!c) break // past ten games the rest go with the other games
     colour.set(p.slug, c)
   }
-  const others = rows.some((r) => placedGames(r.byGame ?? {}).some((p) => !colour.has(p.slug)))
+  const others = rows.some((r) => partsOf(r).some((p) => !colour.has(p.slug)))
   return (
     <div className="rh-card rh-sums">
       <ol className="rh-sums__list">
         {rows.map((r) => {
-          const parts = placedGames(r.byGame ?? {})
+          const parts = partsOf(r)
           const mine = r.name === me
           return (
             <li key={r.name} className={`rh-sum${mine ? ' rh-sum--you' : ''}`}>
@@ -500,11 +515,19 @@ function AddsStep({
   where: string
   period: LeaderboardPeriod
 }) {
-  const n = Object.keys(me.byGame ?? {}).length
+  const placed = placedGames(me.byGame ?? {})
+  const n = placed.length
+  const tenth = tenthGame(placed)
+  const paid = n > COUNTED_GAMES ? `${capital(whose(who))} best ten of ${n.toLocaleString()} games paid` : `${capital(gamesWord(n))} paid`
   return (
     <Step id={STEP_IDS.adds} n="3" title={stepTitles(who).adds} show={<Sums rows={rows} me={me.name} period={period} />}>
       <p className="rh-step__p">
-        {capital(gamesWord(n))} paid {youOf(who)} <b>{me.score.toLocaleString()}</b>. {standingLine(me, rows, who, words, where)}
+        {paid} {youOf(who)} <b>{me.score.toLocaleString()}</b>. {standingLine(me, rows, who, words, where)}
+      </p>
+      <p className="rh-step__p">
+        {tenth
+          ? `Only the best ten count, so a new place adds something only by beating ${whose(who)} tenth: ${gameName(tenth.slug)}’s ${tenth.points}.`
+          : `Only the best ten count. ${who.self ? 'You’re' : `${who.name} is`} on ${numberWord(n)}, so every new game adds what it pays.`}
       </p>
       <p className="rh-step__p">
         Points can move while {who.self ? 'you’re' : `${who.name} is`} away: a new player below {youOf(who)} raises what{' '}
@@ -526,6 +549,8 @@ type DailyWork = {
   place: number
   field: number
   pays: number
+  /** Whether it's one of the best ten that add up to the rank. */
+  counts: boolean
 }
 
 function dailyWork(slug: string, byGame: ByGame, bests: Partial<Record<string, number>>, days: Record<string, RankDay[] | null> | null, period: LeaderboardPeriod, today: string): DailyWork {
@@ -533,6 +558,7 @@ function dailyWork(slug: string, byGame: ByGame, bests: Partial<Record<string, n
   const all = days ? days[slug] : undefined
   const played = all ? playedDays(all, period, today) : null
   return {
+    counts: countedGames(placedGames(byGame)).counted.some((p) => p.slug === slug),
     slug,
     played,
     failed: all === null,
@@ -607,8 +633,8 @@ function DayFlow({ work, who, words }: { work: DailyWork; who: Who; words: Perio
           {ordinal(work.place)} <small>of {work.field.toLocaleString()}</small>
         </b>
       </li>
-      <li className="rh-box rh-box--pay">
-        <span>Toward {whose(who)} rank</span>
+      <li className={`rh-box rh-box--pay${work.counts ? '' : ' rh-box--out'}`}>
+        <span>{work.counts ? `Toward ${whose(who)} rank` : `Not in ${whose(who)} best ten`}</span>
         <b>{work.pays}</b>
       </li>
     </ol>
@@ -725,8 +751,9 @@ function DayTable({
             {who.self ? `Your ${work.total.toLocaleString()} puts you` : `${who.name}’s ${work.total.toLocaleString()} is`}{' '}
             {ordinal(work.place)} of {work.field.toLocaleString()} on {board}.
           </b>{' '}
-          {ordinal(work.place)} of {work.field.toLocaleString()} pays {work.pays} toward {whose(who)} rank: that’s {name}’s bar in
-          step 2.
+          {work.counts
+            ? `${ordinal(work.place)} of ${work.field.toLocaleString()} pays ${work.pays} toward ${whose(who)} rank: that’s ${name}’s bar in step 2.`
+            : `${ordinal(work.place)} of ${work.field.toLocaleString()} pays ${work.pays}, which isn’t in ${whose(who)} best ten: that’s ${name}’s bar under the line in step 2.`}
         </p>
       ) : null}
     </section>
@@ -928,6 +955,9 @@ function waysUp({
   const when = words.noun ? words.phrase : 'yet'
   const href = (slug: string) => (who.self ? gamePlayHref(slug) : undefined)
   const ways: { first?: Way; climb?: Way; daily?: Way; fresh?: Way } = {}
+  // On ten games already, a new one adds only what it beats the tenth by: said wherever a new game's points are.
+  const tenth = tenthGame(placedGames(byGame))
+  const beyond = tenth ? ` Only ${whose(who)} best ten count, so it adds what it beats ${gameName(tenth.slug)}’s ${tenth.points} by.` : ''
 
   const empties = data.boards.filter((b) => b.top.length === 0 && onWall(b.slug))
   if (empties[0]) {
@@ -940,13 +970,16 @@ function waysUp({
       // Who it passes, while the big figure is the place it takes (else they're under the figure).
       const passed = o.rank != null && o.rank < me.rank ? passedWords(o).replace(/^past /, '') : ''
       const total = ` ${capital(whose(who))} ${me.score.toLocaleString()} points would become ${o.score.toLocaleString()}${passed ? `, passing ${passed}` : ''}.`
-      ways.first = {
-        key: 'first',
-        slug,
-        ...effect(o, me.rank, who),
-        title: `Play ${gameName(slug)}`,
-        text: `${takes}${total}${alsoLine}`,
-        href: href(slug),
+      // Ten games that all pay 100 leave a 1st nothing to add.
+      if (o.gain > 0) {
+        ways.first = {
+          key: 'first',
+          slug,
+          ...effect(o, me.rank, who),
+          title: `Play ${gameName(slug)}`,
+          text: `${takes}${beyond}${total}${alsoLine}`,
+          href: href(slug),
+        }
       }
     } else if (!me) {
       ways.first = {
@@ -1052,30 +1085,62 @@ function waysUp({
     const holder = fresh.top[0]
     if (players === 1 && holder) {
       const o = me && above ? outcome(me, { kind: 'join', slug, place: 2, field: 2 }, above.entries, above.offset) : null
-      ways.fresh = {
-        key: 'fresh',
-        slug,
-        ...(o && me ? effect(o, me.rank, who) : { big: '+50', small: 'any run' }),
-        title: `Play ${gameName(slug)}`,
-        text: `Only ${holder.name} has played it${words.noun ? ` ${words.phrase}` : ''}. Any run pays 50, and beating ${formatLeaderboardScore(slug, holder.score)} pays 100.`,
-        href: href(slug),
+      if (!o || o.gain > 0) {
+        ways.fresh = {
+          key: 'fresh',
+          slug,
+          ...(o && me ? effect(o, me.rank, who) : { big: '+50', small: 'any run' }),
+          title: `Play ${gameName(slug)}`,
+          text: `Only ${holder.name} has played it${words.noun ? ` ${words.phrase}` : ''}. Any run pays 50, and beating ${formatLeaderboardScore(slug, holder.score)} pays 100.${beyond}`,
+          href: href(slug),
+        }
       }
     } else {
       const half = halfwayUp(players)
       const o = me && above ? outcome(me, { kind: 'join', slug, place: half.place, field: half.field }, above.entries, above.offset) : null
-      const about = players >= 10 ? 50 : placePoints(half.place, half.field)
+      const pays = players >= 10 ? 50 : placePoints(half.place, half.field)
+      // On ten games already, it adds what it beats the tenth by.
+      const about = tenth ? (o ? o.gain : Math.max(0, pays - tenth.points)) : pays
       const lands = o && me && o.rank != null && o.rank < me.rank ? `, which would put ${you} about ${ordinal(o.rank)}` : ''
       const on = `${players.toLocaleString()} players ${words.noun ? `are on it ${words.phrase}` : 'have played it'}`
-      ways.fresh = {
-        key: 'fresh',
-        slug,
-        big: `About +${about}`,
-        small: 'halfway up',
-        title: `Play ${gameName(slug)}`,
-        text: me
-          ? `${on}, and a run halfway up adds about ${about}${lands}.`
-          : `${on}. Any run puts ${you} on the boards, and a run halfway up adds about ${about}.`,
-        href: href(slug),
+      if (about > 0) {
+        ways.fresh = {
+          key: 'fresh',
+          slug,
+          big: `About +${about}`,
+          small: 'halfway up',
+          title: `Play ${gameName(slug)}`,
+          text: !me
+            ? `${on}. Any run puts ${you} on the boards, and a run halfway up adds about ${about}.`
+            : tenth
+              ? `${on}, and a run halfway up pays about ${pays}.${beyond} That’s about ${about}${lands}.`
+              : `${on}, and a run halfway up adds about ${about}${lands}.`,
+          href: href(slug),
+        }
+      }
+    }
+    // An ordinary run there wouldn't beat the tenth of the ten that count: the lowest place that would.
+    if (!ways.fresh && me && tenth) {
+      const field = players + 1
+      let need = 0
+      for (let place = field; place >= 1 && !need; place--) if (placePoints(place, field) > tenth.points) need = place
+      if (need) {
+        const o = above ? outcome(me, { kind: 'join', slug, place: need, field }, above.entries, above.offset) : null
+        const lands = o && o.rank != null && o.rank < me.rank ? `, which would put ${you} about ${ordinal(o.rank)}` : ''
+        const on =
+          players === 1 && holder
+            ? `Only ${holder.name} has played it${words.noun ? ` ${words.phrase}` : ''}`
+            : `${players.toLocaleString()} players ${words.noun ? `are on it ${words.phrase}` : 'have played it'}`
+        const from = need === 1 ? 'only by taking 1st' : `from ${ordinal(need)} up`
+        ways.fresh = {
+          key: 'fresh',
+          slug,
+          big: ordinal(need),
+          small: need === 1 ? 'to count' : 'or better',
+          title: `Play ${gameName(slug)}`,
+          text: `${on}. Only ${whose(who)} best ten count, so a run there adds something ${from}: ${ordinal(need)} pays ${placePoints(need, field)}, more than ${gameName(tenth.slug)}’s ${tenth.points}${lands}.`,
+          href: href(slug),
+        }
       }
     }
   }
@@ -1280,8 +1345,8 @@ function FinePrint({ words, tie }: { words: PeriodWords; tie?: string | null }) 
           <span>Small print</span>
         </div>
         <p>
-          <b>100 × (players − your place + 1) ÷ players</b>, rounded, never below 1. Your rank is the sum over every ranked
-          game {words.noun ? words.phrase : 'you’ve played, but the dailies'}.
+          <b>100 × (players − your place + 1) ÷ players</b>, rounded, never below 1. Your rank adds up the ten ranked games
+          that pay you most{words.noun ? ` ${words.phrase}` : ', leaving out the dailies'}. Any more don’t count.
         </p>
         <p>The dailies score each day this way, then add up the week’s days and the month’s. They don’t count all time.</p>
         <p>Events work the same way on a small scale: 1st on a game pays 10, last pays 1.</p>
@@ -1327,7 +1392,10 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
         </p>
       </Step>
       <Step id={STEP_IDS.adds} n="3" title={stepTitles(who).adds}>
-        <p className="rh-step__p">Your rank is what the ranked games paid you, added up, and the most goes first.</p>
+        <p className="rh-step__p">
+          Your rank is what your best ten ranked games paid you, added up, and the most goes first. Past ten games, a new
+          one counts only if it beats one of your ten.
+        </p>
         <p className="rh-step__p">
           Points can move while you’re away: a new player below you raises what your place pays, and one who passes you
           lowers it.
@@ -1356,7 +1424,7 @@ function General({ signedIn, loading, period }: { signedIn: boolean; loading: bo
       <Hero
         kicker="How ranks work"
         title="How your rank works"
-        lede={`${FUN_DAILIES.length ? 'Most games rank everyone who played them' : 'Every game ranks everyone who played it'}. Your place on each pays up to 100, and your rank adds them up.`}
+        lede={`${FUN_DAILIES.length ? 'Most games rank everyone who played them' : 'Every game ranks everyone who played it'}. Your place on each pays up to 100, and your rank adds up your best ten.`}
         words
       />
       {loading ? null : (
@@ -1452,7 +1520,7 @@ function PlayerHow({
         <Hero
           kicker={kicker}
           title={self ? `Not on the boards${when} yet` : `${name} isn’t on the boards${when} yet`}
-          lede={`A rank adds up the places on every ranked game played${when}${words.noun ? '' : ', but the dailies'}. One run on any of them puts ${youOf(who)} on the boards${groupName ? ` ${where}` : ''}.`}
+          lede={`A rank adds up a player’s ten best places on the ranked games${when}${words.noun ? '' : ', but the dailies'}. One run on any of them puts ${youOf(who)} on the boards${groupName ? ` ${where}` : ''}.`}
           tabs={tabs}
           words
         />

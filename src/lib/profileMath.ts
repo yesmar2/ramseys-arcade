@@ -5,6 +5,7 @@ import { formatLeaderboardScore, isInvertedBoard, isPercentBoard } from './leade
  * The arithmetic behind a player's card. Global points are shares: each game
  * pays 1 to 100 by the share of its field a player beats, so a player's points
  * mean the same with a hundred players or ten thousand, and only places grow.
+ * A player's best ten games add up (COUNTED_GAMES).
  * How your rank works leans on that: past the top ten it talks in gaps to
  * share lines, which read the same at any size. Everyday pages, the player
  * card among them, say only places and names.
@@ -14,6 +15,31 @@ import { formatLeaderboardScore, isInvertedBoard, isPercentBoard } from './leade
 export function placePoints(place: number, field: number): number {
   if (place < 1 || field < 1 || place > field) return 0
   return Math.max(1, Math.round((100 * (field - place + 1)) / field))
+}
+
+/**
+ * How many of a player's games their Standings add up: the ten that pay them most, as the API's
+ * store.ts STANDINGS_BEST. Past ten, a game counts only by beating one of the ten.
+ */
+export const COUNTED_GAMES = 10
+
+/** Standings points from what each game pays: the best COUNTED_GAMES added up. */
+export function countedTotal(points: number[]): number {
+  return [...points]
+    .sort((a, b) => b - a)
+    .slice(0, COUNTED_GAMES)
+    .reduce((sum, p) => sum + p, 0)
+}
+
+/** A player's Standings points from their places, as the API adds them up. */
+export function totalOf(byGame: ByGame): number {
+  return countedTotal(Object.values(byGame).flatMap((row) => (row && row.points > 0 ? [row.points] : [])))
+}
+
+/** What one game paying `points` (0 for nothing) would add to a player's Standings points: nothing, past ten, unless it beats one of their ten. */
+export function gainWith(byGame: ByGame, slug: string, points: number): number {
+  const rest = Object.entries(byGame).flatMap(([s, row]) => (s !== slug && row && row.points > 0 ? [row.points] : []))
+  return countedTotal(points > 0 ? [...rest, points] : rest) - totalOf(byGame)
 }
 
 /** "this week" / "this month" / "all time", mid-sentence. */
@@ -88,14 +114,15 @@ export type Climb = { slug: string; places: number; gain: number }
 
 /**
  * The fewest places to climb on one game already placed on to gain more than
- * `gap` points, the field staying as it is. Null when no single game can.
+ * `gap` points, the field staying as it is. Null when no single game can. A
+ * game outside the ten that count gains only what it beats the tenth by.
  */
 export function cheapestClimb(mine: ByGame, gap: number): Climb | null {
   let best: Climb | null = null
   for (const [slug, row] of Object.entries(mine)) {
     if (!row || !row.total || row.place <= 1) continue
     for (let places = 1; places < row.place; places++) {
-      const gain = placePoints(row.place - places, row.total) - row.points
+      const gain = gainWith(mine, slug, placePoints(row.place - places, row.total))
       if (gain > gap) {
         if (!best || places < best.places || (places === best.places && gain > best.gain)) {
           best = { slug, places, gain }
