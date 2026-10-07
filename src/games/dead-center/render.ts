@@ -347,7 +347,7 @@ function drawPin(g: Gfx, at: Point, height: number, down: number, away: Point, a
  * ring round it as wide as the margin for a balance, the red dimple where the
  * pin went in, and, for a miss, a line from one to the other.
  */
-function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, margin: number, reveal: number, lift = 0, alpha = 1) {
+function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: number, lift = 0, alpha = 1) {
   const { ctx, v, dark } = g
   if (reveal <= 0 || alpha <= 0.01) return
   const c = plate.centroid
@@ -358,22 +358,6 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, margin: n
   ctx.globalAlpha = alpha * clamp01(reveal * 2.5)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-
-  // The margin: every pin inside this ring would have balanced it.
-  const ring: Point[] = []
-  const r = margin * plate.size
-  for (let i = 0; i < 40; i++) {
-    const a = (i / 40) * TAU
-    ring.push(at({ x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r }))
-  }
-  path(ctx, ring)
-  ctx.fillStyle = hsla(GOLD, 90, 60, dark ? 0.1 : 0.14)
-  ctx.fill()
-  ctx.setLineDash([Math.max(2, k * 0.01), Math.max(2, k * 0.008)])
-  ctx.strokeStyle = hsla(GOLD, 85, lineL(dark), 0.9)
-  ctx.lineWidth = Math.max(1, k * 0.003)
-  ctx.stroke()
-  ctx.setLineDash([])
 
   const gp = at(c)
   const pin = outcome.pin
@@ -407,19 +391,21 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, margin: n
     ctx.stroke()
   }
 
-  // The balance point itself: small, so it marks a point rather than an area.
-  const gr = Math.max(2, k * 0.0062) * pop
+  // The balance point: a tiny gold dot and a thin gold ring well out from it, as the pin's red one is
+  // (Ramsey picked D from the "Centroid center marks" options, 2026-10-07).
+  const gr = Math.max(1.8, k * 0.0042) * pop
   ctx.fillStyle = hsla(GOLD, 95, 58)
-  ctx.strokeStyle = hsla(GOLD, 80, dark ? 82 : 34)
-  ctx.lineWidth = Math.max(1, k * 0.0035)
+  ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.9)' : 'rgba(255, 255, 255, 0.95)'
+  ctx.lineWidth = Math.max(1, k * 0.0022)
   ctx.beginPath()
   ctx.arc(gp.x, gp.y, gr, 0, TAU)
   ctx.fill()
   ctx.stroke()
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+  ctx.strokeStyle = hsla(GOLD, 90, dark ? 62 : 46)
+  ctx.lineWidth = Math.max(1, k * 0.0028)
   ctx.beginPath()
-  ctx.arc(gp.x - gr * 0.3, gp.y - gr * 0.3, gr * 0.32, 0, TAU)
-  ctx.fill()
+  ctx.arc(gp.x, gp.y, Math.max(14, k * 0.045) * pop, 0, TAU)
+  ctx.stroke()
   ctx.restore()
 }
 
@@ -822,12 +808,12 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     drawPlate(g, leaving.plate, leavingSolid)
     const lift = leaving.lift ? clamp01(leaving.t / LEAVE_TIME) ** 2 * 0.35 : 0
     if (leaving.outcome) {
-      drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, leaving.margin, 1, lift, leavingSolid.alpha)
+      drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, 1, lift, leavingSolid.alpha)
     }
   }
   if (plate && solid) {
     drawPlate(g, plate, solid)
-    if (o) drawMarks(g, plate, s.pose, o, s.margin, revealOf(s))
+    if (o) drawMarks(g, plate, s.pose, o, revealOf(s))
     drawCrack(g, s)
   }
   drawShards(g, s)
