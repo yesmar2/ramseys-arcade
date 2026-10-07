@@ -71,6 +71,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     auto: 'Your ship fires by itself.',
     scores: [
       { what: 'Rock', pts: '20 · 50 · 100', sub: 'big to small' },
+      { what: 'Saucer', pts: '300 · 1,200', sub: 'big · small, and it leaves a power-up' },
       { what: 'Hits in quick succession', pts: 'up to ×2' },
       { what: 'Wave cleared', pts: '+100 and up' },
       { what: 'Under the wave’s par time', pts: '+20 a second' },

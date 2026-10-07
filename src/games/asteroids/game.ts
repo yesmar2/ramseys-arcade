@@ -20,6 +20,10 @@ export type Saucer = {
   size: SaucerSize
   radius: number
   fireCooldown: number
+  /** Seconds till it turns onto a new heading: it weaves across rather than flying straight (WEAVE). */
+  turnIn: number
+  /** Shots fired so far: every third of a small saucer's is a homing missile. */
+  shots: number
 }
 
 export type EnemyBullet = {
@@ -282,10 +286,26 @@ function waveSpeedScale(wave: number) {
 }
 
 const SAUCER_START_WAVE = 3
+/**
+ * The saucers are smarter and tougher (Ramsey, 2026-10-06: "can we make the alien ships a little better now?",
+ * then "Smarter and tougher"): they weave, the big one aims near the ship and the small one where it's going,
+ * so they're worth more than they were (200 and 1,000), and each leaves a power-up when it's shot down.
+ */
 const SAUCER_SCORE: Record<SaucerSize, number> = {
-  large: 200,
-  small: 1000,
+  large: 300,
+  small: 1200,
 }
+/**
+ * How the saucers weave: every so often (seconds, from and to) each turns onto a new heading, climbing, level or
+ * diving, at this share of its speed across; the small one sharper and sooner.
+ */
+const WEAVE: Record<SaucerSize, { slope: number; every: readonly [number, number] }> = {
+  large: { slope: 0.55, every: [1.2, 2.2] },
+  small: { slope: 0.8, every: [0.8, 1.5] },
+}
+/** The small saucer's shots: quicker than the big one's, at where the ship is going, give or take this much. */
+const SMALL_SHOT_SPEED = 260
+const SMALL_SPREAD = 0.1
 const ENEMY_BULLET_LIFE = 1.15
 const MISSILE_LIFE = 4.4
 const MISSILE_SPEED = 138
@@ -468,24 +488,60 @@ function spawnSaucer(state: GameState): Saucer {
     state.scale *
     (0.95 + Math.max(0, state.wave - 3) * 0.035)
   const y = state.stageH * (0.18 + Math.random() * 0.64)
+  // It comes in level, and soon turns.
   return {
     id: uid(),
     x: fromLeft ? -radius : state.stageW + radius,
     y,
     vx: fromLeft ? speed : -speed,
-    vy: (Math.random() - 0.5) * 36 * state.scale,
+    vy: 0,
     size,
     radius,
     fireCooldown: 0.45 + Math.random() * 0.35,
+    turnIn: WEAVE[size].every[0] * (0.4 + Math.random() * 0.4),
+    shots: 0,
   }
 }
 
+/** A saucer onto a new heading: climbing, level or diving, never the one it was on, for a second or two. */
+function newCourse(saucer: Saucer): Saucer {
+  const { slope, every } = WEAVE[saucer.size]
+  const ways = [-1, 0, 1].filter((d) => d !== Math.sign(saucer.vy))
+  const way = ways[Math.floor(Math.random() * ways.length)]!
+  return { ...saucer, vy: way * Math.abs(saucer.vx) * slope, turnIn: every[0] + Math.random() * (every[1] - every[0]) }
+}
+
+/** How far off the big saucer aims at the ship, either way, in radians: wide at first, closer as the waves go on. */
+function largeSpread(wave: number) {
+  return Math.max(0.22, 0.5 - (wave - SAUCER_START_WAVE) * 0.04)
+}
+
+/**
+ * A saucer's shot. The big one fires near the ship, never quite at it (it used to fire anywhere at all). The
+ * small one fires where the ship is going, near enough, and every third shot is a homing missile.
+ */
 function saucerFireBullet(
   saucer: Saucer,
   ship: Ship,
   wave: number,
   scale: number,
 ): EnemyBullet {
+  if (saucer.size === 'small' && saucer.shots % 3 !== 2) {
+    const speed = SMALL_SHOT_SPEED * scale
+    // Where the ship will be as the shot gets there, with one look ahead.
+    const t = dist(saucer.x, saucer.y, ship.x, ship.y) / speed
+    const aim = Math.atan2(ship.y + ship.vy * t - saucer.y, ship.x + ship.vx * t - saucer.x) + (Math.random() * 2 - 1) * SMALL_SPREAD
+    return {
+      id: uid(),
+      x: saucer.x,
+      y: saucer.y,
+      vx: Math.cos(aim) * speed,
+      vy: Math.sin(aim) * speed,
+      life: ENEMY_BULLET_LIFE,
+      kind: 'shot',
+      radius: ENEMY_SHOT_RADIUS * scale,
+    }
+  }
   if (saucer.size === 'small') {
     const aim = Math.atan2(ship.y - saucer.y, ship.x - saucer.x)
     const speed = MISSILE_SPEED * scale
@@ -501,7 +557,7 @@ function saucerFireBullet(
     }
   }
 
-  const angle = Math.random() * Math.PI * 2
+  const angle = Math.atan2(ship.y - saucer.y, ship.x - saucer.x) + (Math.random() * 2 - 1) * largeSpread(wave)
   const speed = (210 + Math.min(40, (wave - 3) * 6)) * scale
   return {
     id: uid(),
@@ -652,15 +708,19 @@ function dropChance(size: RockSize) {
 
 function maybeSpawnPowerup(rock: Rock, scale: number): Powerup | null {
   if (Math.random() > dropChance(rock.size)) return null
-  const kind = pickPowerKind()
+  return powerupAt(rock.x, rock.y, scale)
+}
+
+/** A power-up of any kind, drifting a little from where it was left: a broken rock, or a saucer shot down (always). */
+function powerupAt(x: number, y: number, scale: number): Powerup {
   const drift = 28 * scale
   return {
     id: uid(),
-    x: rock.x,
-    y: rock.y,
+    x,
+    y,
     vx: (Math.random() - 0.5) * drift,
     vy: (Math.random() - 0.5) * drift,
-    kind,
+    kind: pickPowerKind(),
     life: POWER_LIFE,
     radius: 20 * scale,
   }
@@ -1293,13 +1353,15 @@ export function tick(state: GameState, dt: number): GameState {
       saucer = null
     } else {
       let fireCooldown = saucer.fireCooldown - dt
+      let shots = saucer.shots ?? 0
       const fired: EnemyBullet[] = []
       if (fireCooldown <= 0) {
-        fired.push(saucerFireBullet(saucer, ship, s.wave, sc))
+        fired.push(saucerFireBullet({ ...saucer, shots }, ship, s.wave, sc))
+        shots += 1
         fireCooldown =
           saucer.size === 'large'
             ? 1.05 + Math.random() * 0.3
-            : 1.55 + Math.random() * 0.45
+            : 1.25 + Math.random() * 0.4
         sfx('fire')
       }
       saucer = {
@@ -1307,7 +1369,11 @@ export function tick(state: GameState, dt: number): GameState {
         x: nextX,
         y: nextY,
         fireCooldown,
+        shots,
+        turnIn: (saucer.turnIn ?? 0) - rockDt,
       }
+      // Onto a new heading, now and then: a saucer weaves across.
+      if (saucer.turnIn <= 0) saucer = newCourse(saucer)
       enemyBullets = [...enemyBullets, ...fired]
     }
   }
@@ -1382,6 +1448,8 @@ export function tick(state: GameState, dt: number): GameState {
           life: 0.85,
           maxLife: 0.85,
         })
+        // A saucer shot down always leaves a power-up: the surest way to one, now rocks leave few.
+        dropped.push(powerupAt(saucer.x, saucer.y, sc))
         saucer = null
         break
       }
