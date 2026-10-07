@@ -69,43 +69,7 @@ html.season-on[data-theme='dark'] .site-bar {
   }
 }
 
-/* ---------- the ring: in the header beside the tickets, and round You in the tab bar ---------- */
-
-.season-chip {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.043);
-  border: 1px solid rgba(var(--ink-rgb), 0.09);
-  color: var(--ink);
-  text-decoration: none;
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-
-.season-chip:hover,
-.season-chip:focus-visible {
-  background: color-mix(in srgb, var(--space-orange) 14%, transparent);
-  outline: none;
-}
-
-.season-chip--here {
-  background: color-mix(in srgb, var(--space-orange) 18%, transparent);
-  border-color: color-mix(in srgb, var(--space-orange) 45%, transparent);
-}
-
-.season-chip svg {
-  display: block;
-}
-
-/* Under 900px the tab bar takes over, and the ring goes round You there. */
-@media (max-width: 900px) {
-  .site-bar .season-chip {
-    display: none;
-  }
-}
+/* ---------- the ring: round You, in the header and in the tab bar (SeasonChip.tsx SeasonYouRing) ---------- */
 
 .season-tabring {
   position: absolute;

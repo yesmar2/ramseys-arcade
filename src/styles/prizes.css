@@ -291,63 +291,6 @@ html[data-theme='dark'] .pname--prism {
   bottom: 2px;
 }
 
-/* ---------- the header's ticket chip ---------- */
-
-.tix-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex: none;
-  min-height: 2.6rem;
-  box-sizing: border-box;
-  padding: 0 0.85rem 0 0.7rem;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--ticket) 42%, transparent);
-  background: color-mix(in srgb, var(--ticket) 11%, transparent);
-  color: var(--ink);
-  font-size: 0.9rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-
-.tix-chip:hover,
-.tix-chip:focus-visible {
-  border-color: color-mix(in srgb, var(--ticket) 75%, transparent);
-  outline: none;
-}
-
-.tix-chip--here {
-  background: color-mix(in srgb, var(--ticket) 20%, transparent);
-  border-color: color-mix(in srgb, var(--ticket) 75%, transparent);
-}
-
-.tix-chip svg {
-  display: block;
-  flex: none;
-}
-
-/* Where the header gets tight the count goes and the ticket stays; on a phone it lives in the menu. */
-@media (max-width: 1180px) {
-  .tix-chip {
-    padding: 0 0.6rem;
-  }
-
-  .tix-chip__n {
-    display: none;
-  }
-}
-
-@media (max-width: 900px) {
-  .site-bar .tix-chip {
-    display: none;
-  }
-}
-
 /* ---------- what a run paid, on its report ---------- */
 
 .run-tix {

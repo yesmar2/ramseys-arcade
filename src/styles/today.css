@@ -120,8 +120,8 @@ html[data-theme='dark'] {
   box-shadow: inset 0 0 0 1px var(--today-full);
 }
 
-/* Narrower, the word goes; on a phone the chip is the streak and the count. */
-@media (max-width: 1180px) {
+/* Narrower, the word goes (as the header's others do, chrome.css); on a phone the chip is the streak and the count. */
+@media (max-width: 1120px) {
   .today-chip__word {
     display: none;
   }

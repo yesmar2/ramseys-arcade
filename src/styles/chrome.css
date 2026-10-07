@@ -467,6 +467,18 @@ html[data-theme='dark'] .site-seg > button[aria-pressed='true'] {
   height: 1.8rem;
 }
 
+/* The season's ring round you (season.css .season-tabring): the mark makes room inside it, and lets its level tag out. */
+.site-you__mark:has(.season-tabring) {
+  position: relative;
+  overflow: visible;
+  background: none;
+}
+
+.site-you__mark:has(.season-tabring) .player-avatar {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
 .site-you__name {
   min-width: 0;
   overflow: hidden;
@@ -1263,9 +1275,13 @@ html[data-theme='dark'] .site-menu__sounds .chips__item--active {
   }
 }
 
-/* ---------- a narrow desk or a tablet on its side: the chips drop their words, the bell goes in the menu ---------- */
+/*
+ * ---------- a narrow desk or a tablet on its side: the chips drop their words, the bell goes in the menu ----------
+ * From 1180px down to 1120 since the bar went lighter (Groups, the tickets and the season's chip off it,
+ * 2026-10-06): everything fits there now, with about 90px to spare at 1181.
+ */
 
-@media (min-width: 901px) and (max-width: 1180px) {
+@media (min-width: 901px) and (max-width: 1120px) {
   .site-bar__you > .site-header__notifs,
   .site-bar__you > .site-header__invites {
     display: none;

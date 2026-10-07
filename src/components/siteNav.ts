@@ -7,7 +7,6 @@ import {
   recordsIndexHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
-import { groupsIndexHref } from '../lib/groups'
 import type { AvatarWear } from './AvatarStudio'
 
 export type SiteNavItem = {
@@ -17,25 +16,20 @@ export type SiteNavItem = {
   match: 'games' | 'boards' | 'records' | 'events' | 'groups' | 'you'
 }
 
-/** Primary destinations — the desktop header's links (Global lives under Boards). Games first: it is the shelf. */
-export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
-  { href: homeHref(), label: 'Games', match: 'games' },
-  { href: leaderboardHref(), label: 'Boards', match: 'boards' },
-  { href: tournamentsHref(), label: 'Events', match: 'events' },
-  { href: recordsIndexHref(), label: 'Record books', match: 'records' },
-  { href: groupsIndexHref(), label: 'Groups', match: 'groups' },
-] as const
-
 /**
- * The phone's tab bar, before You: the same places with shorter names. Groups
- * are yours, so on a phone they live in the You menu instead.
+ * Primary destinations: the desktop header's links, and the phone's tab bar before You, the same four
+ * places under the same names (Global lives under Boards). Games first: it is the shelf. Groups are yours,
+ * so they live in the You menu on a desk as on a phone, since Ramsey picked the lighter bar (2026-10-06).
  */
-export const SITE_TABS: readonly SiteNavItem[] = [
+export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
   { href: homeHref(), label: 'Games', match: 'games' },
   { href: leaderboardHref(), label: 'Boards', match: 'boards' },
   { href: tournamentsHref(), label: 'Events', match: 'events' },
   { href: recordsIndexHref(), label: 'Records', match: 'records' },
 ] as const
+
+/** The phone's tab bar, before You: the header's places. */
+export const SITE_TABS: readonly SiteNavItem[] = SITE_NAV_LINKS
 
 /** Fired on window to open the header's menu from anywhere on the page: where signing in lives. */
 export const OPEN_MENU_EVENT = 'skermix:open-menu'
