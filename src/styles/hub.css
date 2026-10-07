@@ -108,14 +108,16 @@
   box-sizing: border-box;
   padding: 1.6rem 1.5rem 1.6rem 2.4rem;
   border-radius: 1.9rem;
-  background: color-mix(in srgb, var(--gh-accent) 20%, var(--surface));
+  /* The hero's own colour, which a daily's screen fades into (below). */
+  --gh-hero-bg: color-mix(in srgb, var(--gh-accent) 20%, var(--surface));
+  background: var(--gh-hero-bg);
   border: 1px solid color-mix(in srgb, var(--gh-accent) 40%, transparent);
   box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
 
 html[data-theme='light'] .gh-hero {
-  background: color-mix(in srgb, var(--gh-accent) 15%, var(--surface));
+  --gh-hero-bg: color-mix(in srgb, var(--gh-accent) 15%, var(--surface));
 }
 
 .gh-hero__text {
@@ -1409,21 +1411,23 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 /* ---------- a daily's page: a shorter hero, its tabs (dailyTabs.css), and the Today tab ---------- */
 
 /*
- * The hero keeps to one band, so the tabs under it are in view. Its screen is 44% of the hero across, never less
- * than the 24rem (384×240) it was: 522×326 on a 1280 px screen and 678×424 at the page's widest (1600 px). Ramsey
- * picked a bigger screen (B of the "Daily hero screen sizes" canvas, 2026-10-07: 480×300 at 1280), then found it
- * "still seems kinda small" on his wider screen, where it stopped at 480 px and left a gap across the hero.
+ * The hero keeps to one band, so the tabs under it are in view. Its game runs across the right of the card, top to
+ * bottom and out to its edges, faded into the card's colour where it meets the words, as the home page's banner
+ * has it: Ramsey asked for that ("should we just do the preview on the whole card with the fade effect like it does
+ * on the home page heros?") and picked B of the "Daily hero preview" canvas, 2026-10-07. Before, the game had a
+ * screen of its own inside the card, which he found small, then "still kinda small" at 44% of the hero.
  */
 .gh-hero.gh-hero--daily {
-  grid-template-columns: minmax(0, 1fr) minmax(0, max(24rem, 44%));
-  align-items: center;
-  gap: 1.6rem;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
   min-height: 0;
-  padding: 1.4rem 1.4rem 1.4rem 2.2rem;
+  padding: 0;
 }
 
 .gh-hero--daily .gh-hero__text {
   gap: 1rem;
+  padding: 1.4rem 1.2rem 1.4rem 2.2rem;
 }
 
 .gh-hero--daily .gh-hero__main {
@@ -1440,8 +1444,49 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 }
 
 .gh-hero--daily .gh-screen {
-  aspect-ratio: 16 / 10;
-  max-height: 27rem;
+  align-self: stretch;
+  aspect-ratio: auto;
+  min-height: 21rem;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The card's colour over the game's near edge, so it runs into the words; the high score and Press start over it. */
+.gh-hero--daily .gh-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  width: 34%;
+  background: linear-gradient(90deg, var(--gh-hero-bg), transparent);
+  pointer-events: none;
+}
+
+.gh-hero--daily .gh-screen__top,
+.gh-hero--daily .gh-screen__start {
+  z-index: 2;
+}
+
+/* Clear of the fade, its own edge softened; dark in either theme, over a game that's dark in either. */
+.gh-hero--daily .gh-screen__top {
+  left: 18%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 1rem);
+  mask-image: linear-gradient(90deg, transparent, #000 1rem);
+}
+
+html[data-theme='light'] .gh-hero--daily .gh-screen__top {
+  background: linear-gradient(rgba(6, 12, 16, 0.74), transparent);
+  color: #e7eef3;
+}
+
+html[data-theme='light'] .gh-hero--daily .gh-screen__hi b {
+  color: color-mix(in srgb, var(--gh-accent) 85%, #ffffff);
+}
+
+.gh-hero--daily .gh-screen__start {
+  right: 1.4rem;
+  bottom: 1.2rem;
 }
 
 /*
@@ -1484,24 +1529,49 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   background: rgba(var(--ink-rgb), 0.03);
 }
 
-/* Narrower, the screen stays beside the words rather than going on top. */
+/* A narrower desk gives the words more of the card, so Play, How to play and share keep to one line. */
+@media (max-width: 72rem) {
+  .gh-hero.gh-hero--daily {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+}
+
+/*
+ * Narrower, the game goes across the top of the card, sixteen by nine and out to its edges, fading into the words
+ * under it, as the home page's banner does on a phone (B of the "Daily hero preview" canvas, for a phone too).
+ */
 @media (max-width: 56rem) {
   .gh-hero.gh-hero--daily {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 15rem);
-    gap: 1rem;
-    padding: 1.1rem 1.1rem 1.2rem 1.4rem;
-  }
-
-  .gh-hero--daily .gh-screen {
-    order: 0;
-    border-radius: 1.1rem;
-  }
-
-  .gh-hero--daily .gh-hero__text {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
     padding: 0;
   }
 
-  /* Play and share keep to one line beside the screen: share alone under Play only makes the hero taller. */
+  .gh-hero--daily .gh-screen {
+    order: -1;
+    aspect-ratio: 16 / 9;
+    min-height: 0;
+    max-height: 15rem;
+  }
+
+  .gh-hero--daily .gh-screen::after {
+    inset: auto 0 0;
+    width: auto;
+    height: 36%;
+    background: linear-gradient(0deg, var(--gh-hero-bg), transparent);
+  }
+
+  .gh-hero--daily .gh-screen__top {
+    left: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .gh-hero--daily .gh-hero__text {
+    padding: 0.4rem 1.4rem 1.3rem;
+  }
+
+  /* Play, How to play and share keep to one line across the card: share alone under Play only makes it taller. */
   .gh-hero--daily .gh-hero__acts {
     flex-wrap: nowrap;
   }
@@ -1511,43 +1581,27 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   }
 }
 
-/*
- * A phone: the name and tags beside a small screen, the words and Play under them, then whatever else the hero
- * has (a skin picker, the season's card, a note, where it plays) across under those, in that order.
- */
+/* A phone: the game across the top as above, then the words, Play, and the rest of the hero under it. */
 @media (max-width: 40rem) {
   .gh-hero.gh-hero--daily {
-    grid-template-columns: minmax(0, 1fr) 9.5rem;
-    grid-template-areas:
-      'crumbs screen'
-      'name screen'
-      'tags screen'
-      'blurb blurb'
-      'acts acts';
-    align-items: start;
-    gap: 0.55rem 0.9rem;
-    padding: 1rem 1rem 1.1rem 1.1rem;
     border-radius: 1.5rem;
   }
 
-  .gh-hero--daily .gh-hero__text,
+  .gh-hero--daily .gh-hero__text {
+    gap: 0.8rem;
+    padding: 0.3rem 1.1rem 1.1rem;
+  }
+
   .gh-hero--daily .gh-hero__main {
-    display: contents;
+    gap: 0.7rem;
   }
 
   .gh-hero--daily .gh-crumbs {
-    grid-area: crumbs;
     font-size: 0.8rem;
   }
 
   .gh-hero--daily .gh-tags {
-    grid-area: tags;
     gap: 0.35rem;
-  }
-
-  /* Beside the screen there's room for the lead tag and the note only. */
-  .gh-hero--daily .gh-tag:not(.gh-tag--lead, .gh-tag--note) {
-    display: none;
   }
 
   .gh-hero--daily .gh-tag {
@@ -1557,21 +1611,17 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   }
 
   .gh-hero--daily .gh-hero__name {
-    grid-area: name;
     font-size: 2.5rem;
   }
 
   .gh-hero--daily .gh-hero__blurb {
-    grid-area: blurb;
-    margin-top: 0.2rem;
     font-size: 1rem;
   }
 
   /* Play across the hero, How to play and share under it: the three don't fit on one line. */
   .gh-hero--daily .gh-hero__acts {
-    grid-area: acts;
     flex-wrap: wrap;
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
   }
 
   .gh-hero--daily .gh-hero__acts .gh-play {
@@ -1581,44 +1631,8 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
     font-size: 1.02rem;
   }
 
-  /* The rest go across the whole hero, under Play, one after another: in a column of their own they were squeezed
-     into the width of the words beside the screen. */
-  .gh-hero--daily .skin-pick,
-  .gh-hero--daily .season-spotcard,
-  .gh-hero--daily .gh-hero__hint,
-  .gh-hero--daily .gh-hero__where {
-    grid-column: 1 / -1;
-  }
-
   .gh-hero--daily .skin-pick,
   .gh-hero--daily .season-spotcard {
     margin-top: 0.2rem;
-  }
-
-  .gh-hero--daily .gh-screen {
-    grid-area: screen;
-    align-self: start;
-    aspect-ratio: 10 / 7;
-    border-radius: 0.9rem;
-  }
-
-  .gh-hero--daily .gh-screen__thumb .inline-thumb {
-    --inline-thumb-size: 3.2rem;
-  }
-
-  .gh-hero--daily .gh-screen__top {
-    padding: 0.4rem 0.5rem 0.9rem;
-    font-size: 0.55rem;
-    letter-spacing: 0.08em;
-  }
-
-  .gh-hero--daily .gh-screen__hi b {
-    margin-left: 0.3rem;
-    font-size: 0.72rem;
-  }
-
-  .gh-hero--daily .gh-screen__who,
-  .gh-hero--daily .gh-screen__start {
-    display: none;
   }
 }
