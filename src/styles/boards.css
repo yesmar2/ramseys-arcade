@@ -771,8 +771,18 @@ a.sb-row__link:focus-visible {
 
 /* ---------- every board ---------- */
 
+/*
+ * On a card of its own, as the page's other panels are: on the bare page, a season's sky (Space Race's stars and
+ * planet, Cold Snap's frost) showed through behind the names and scores (Ramsey, 2026-10-07: "the Every Board
+ * table is hard to read with a background behind it").
+ */
 .sb-table {
   margin-top: 1.4rem;
+  padding: 1.1rem 0.6rem 0.4rem;
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--sb-line);
+  box-shadow: var(--shadow-soft);
 }
 
 .sb-table__head,
@@ -840,6 +850,11 @@ a.sb-row__link:focus-visible {
   border-bottom: 1px solid var(--sb-line);
 }
 
+/* The card's own edge closes the last row. */
+.sb-board:last-child {
+  border-bottom: 0;
+}
+
 .sb-board__link {
   min-height: 5rem;
   padding: 0.75rem 1.25rem;
@@ -849,9 +864,10 @@ a.sb-row__link:focus-visible {
   transition: background-color 0.15s ease;
 }
 
+/* A shade over the card, which is the surface already. */
 a.sb-board__link:hover,
 a.sb-board__link:focus-visible {
-  background: var(--surface);
+  background: rgba(var(--ink-rgb), 0.05);
   outline: none;
 }
 
