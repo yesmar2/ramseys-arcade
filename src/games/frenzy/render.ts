@@ -662,7 +662,12 @@ function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   ctx.restore()
 }
 
-/** On the surface: the fisherman in his boat, rod out over the water. */
+/**
+ * On the surface: the fisherman's trawler, rod out over the water. Ramsey picked B, Trawler captain, of three
+ * on the "Frenzy fisherman" canvas (2026-10-07, "the fisherman needs a little redesign"): a little red fishing
+ * boat with a white wheelhouse, a stack and a lifebuoy, the captain at the rail in his cap and a ginger beard.
+ * The rod's tip stays where game.ts rodTip has it, so the line and hook hang from it as before.
+ */
 function drawBoat(ctx: CanvasRenderingContext2D, v: View) {
   const b = v.s.boat
   const x = X(v, b.x)
@@ -670,51 +675,163 @@ function drawBoat(ctx: CanvasRenderingContext2D, v: View) {
   if (x < -90 * k || x > v.w + 90 * k) return
   const bob = Math.sin(v.s.time * 1.6) * 2 * k
   const y = Y(v, 0) + bob
+  const ink = '#3b2a1e'
+  const line = (w: number) => Math.max(1, w * k)
   ctx.save()
   ctx.translate(x, y)
   ctx.scale(b.dir, 1)
   ctx.lineJoin = 'round'
-  ctx.lineWidth = Math.max(1.2, 2 * k)
-  ctx.strokeStyle = '#3b2a1e'
-  // The fisherman: hat, head, coat, arm out to the rod.
-  ctx.fillStyle = PALETTE.amber
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = ink
+  ctx.lineWidth = line(2)
+
+  // The wheelhouse behind him: white, a navy roof, a round window, a red stack, a lifebuoy on its side.
+  ctx.fillStyle = '#f4f2ee'
   ctx.beginPath()
-  ctx.roundRect(-14 * k, -30 * k, 14 * k, 18 * k, 4 * k)
-  ctx.fill()
-  ctx.stroke()
-  ctx.fillStyle = '#f2c9a0'
-  ctx.beginPath()
-  ctx.arc(-7 * k, -36 * k, 6 * k, 0, Math.PI * 2)
+  ctx.roundRect(-40 * k, -34 * k, 22 * k, 22 * k, 3 * k)
   ctx.fill()
   ctx.stroke()
   ctx.fillStyle = '#2f5d7c'
   ctx.beginPath()
-  ctx.ellipse(-7 * k, -41 * k, 10 * k, 2.5 * k, 0, 0, Math.PI * 2)
+  ctx.roundRect(-42 * k, -38 * k, 26 * k, 5 * k, 2 * k)
   ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = '#9fd6f2'
   ctx.beginPath()
-  ctx.roundRect(-12 * k, -48 * k, 10 * k, 8 * k, 2 * k)
+  ctx.arc(-29 * k, -24 * k, 4 * k, 0, Math.PI * 2)
   ctx.fill()
-  // The rod: from his hands to its tip (game.ts rodTip), bent a little when something's on.
+  ctx.stroke()
+  ctx.fillStyle = PALETTE.red
+  ctx.beginPath()
+  ctx.rect(-36 * k, -46 * k, 5 * k, 8 * k)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = '#1e2a33'
+  ctx.fillRect(-36 * k, -47 * k, 5 * k, 2.4 * k)
+  ctx.lineWidth = line(2.6)
+  ctx.strokeStyle = '#ffffff'
+  ctx.beginPath()
+  ctx.arc(-40 * k, -18 * k, 3.4 * k, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.strokeStyle = PALETTE.red
+  ctx.setLineDash([2.6 * k, 2.6 * k])
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  // The captain: a navy sweater with pale stripes, his arm out to the rod.
+  ctx.strokeStyle = ink
+  ctx.lineWidth = line(1.8)
+  ctx.fillStyle = '#2b3f5c'
+  ctx.beginPath()
+  ctx.moveTo(-15 * k, -12 * k)
+  ctx.lineTo(-14 * k, -26 * k)
+  ctx.quadraticCurveTo(-13 * k, -31 * k, -7 * k, -31 * k)
+  ctx.quadraticCurveTo(-1 * k, -31 * k, 0, -26 * k)
+  ctx.lineTo(1 * k, -12 * k)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
+  ctx.lineWidth = line(1)
+  ctx.beginPath()
+  for (const sy of [-24, -20, -16]) {
+    ctx.moveTo(-13 * k, sy * k)
+    ctx.lineTo(0, sy * k)
+  }
+  ctx.stroke()
+  ctx.strokeStyle = ink
+  ctx.lineWidth = line(1.8)
+  ctx.fillStyle = '#2b3f5c'
+  ctx.beginPath()
+  ctx.moveTo(-5 * k, -27 * k)
+  ctx.quadraticCurveTo(0, -27 * k, 1 * k, -22 * k)
+  ctx.lineTo(-3 * k, -20 * k)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  // His head, ginger beard and eye, and his white cap with its black peak and gold badge.
+  ctx.fillStyle = '#f2c9a0'
+  ctx.beginPath()
+  ctx.arc(-7 * k, -36 * k, 5.4 * k, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = '#c4622e'
+  ctx.beginPath()
+  ctx.moveTo(-12 * k, -36 * k)
+  ctx.quadraticCurveTo(-11 * k, -29 * k, -6 * k, -30 * k)
+  ctx.quadraticCurveTo(-2 * k, -31 * k, -1.8 * k, -35 * k)
+  ctx.quadraticCurveTo(-6 * k, -33 * k, -12 * k, -36 * k)
+  ctx.fill()
+  ctx.fillStyle = ink
+  ctx.beginPath()
+  ctx.arc(-4.5 * k, -37.5 * k, 0.8 * k, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#f4f2ee'
+  ctx.beginPath()
+  ctx.roundRect(-13 * k, -45 * k, 12 * k, 5 * k, 2 * k)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = '#1e2a33'
+  ctx.beginPath()
+  ctx.moveTo(-3 * k, -40.5 * k)
+  ctx.lineTo(3 * k, -40 * k)
+  ctx.lineTo(-2 * k, -39 * k)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = PALETTE.amber
+  ctx.fillRect(-9 * k, -44 * k, 3 * k, 2 * k)
+
+  // The rod: from his hands to its tip (game.ts rodTip), bent a little when something's on, a reel by his hands.
   ctx.strokeStyle = '#5a3d26'
-  ctx.lineWidth = Math.max(1.2, 2.2 * k)
+  ctx.lineWidth = line(2.2)
   ctx.beginPath()
   ctx.moveTo(-2 * k, -22 * k)
   ctx.quadraticCurveTo(14 * k, (b.caught ? -30 : -36) * k, 30 * k, -38 * k)
   ctx.stroke()
-  // The hull.
-  ctx.fillStyle = PALETTE.red
-  ctx.strokeStyle = '#3b2a1e'
-  ctx.lineWidth = Math.max(1.2, 2 * k)
+  ctx.fillStyle = '#c9ced6'
+  ctx.strokeStyle = ink
+  ctx.lineWidth = line(1.2)
   ctx.beginPath()
-  ctx.moveTo(-40 * k, -12 * k)
-  ctx.lineTo(30 * k, -12 * k)
-  ctx.lineTo(22 * k, 6 * k)
-  ctx.lineTo(-32 * k, 6 * k)
+  ctx.arc(3 * k, -25 * k, 2.6 * k, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+
+  // The hull: red over a dark waterline, a white rail, its name on the bow.
+  ctx.lineWidth = line(2)
+  ctx.fillStyle = '#d6453f'
+  ctx.beginPath()
+  ctx.moveTo(-46 * k, -13 * k)
+  ctx.lineTo(34 * k, -16 * k)
+  ctx.quadraticCurveTo(30 * k, 2 * k, 18 * k, 6 * k)
+  ctx.lineTo(-38 * k, 6 * k)
+  ctx.quadraticCurveTo(-46 * k, 0, -46 * k, -13 * k)
   ctx.closePath()
   ctx.fill()
   ctx.stroke()
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-  ctx.fillRect(-36 * k, -9 * k, 62 * k, 3 * k)
+  ctx.fillStyle = '#1e2a33'
+  ctx.beginPath()
+  ctx.moveTo(-43 * k, 1 * k)
+  ctx.lineTo(26 * k, 1 * k)
+  ctx.quadraticCurveTo(22 * k, 5 * k, 18 * k, 6 * k)
+  ctx.lineTo(-38 * k, 6 * k)
+  ctx.closePath()
+  ctx.fill()
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = line(1.6)
+  ctx.beginPath()
+  ctx.moveTo(-44 * k, -9 * k)
+  ctx.lineTo(31 * k, -12 * k)
+  ctx.stroke()
+  // The name reads the right way round whichever way he's sailing.
+  ctx.save()
+  ctx.translate(20.5 * k, -4.5 * k)
+  ctx.scale(b.dir, 1)
+  ctx.fillStyle = '#ffffff'
+  ctx.font = `800 ${4.4 * k}px Outfit, system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('BLIP', 0, 0)
+  ctx.restore()
   ctx.restore()
 }
 
