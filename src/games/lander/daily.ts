@@ -71,13 +71,15 @@ export type DailyCave = {
   attempt: number
   /** The blue ship's time when the day was planned, in seconds. */
   pace: number
+  /** The moments its crushers, vents and lift are set to (sim.ts timeThings), from sim.ts THINGS_FROM on. */
+  timing?: readonly number[]
 }
 
 /** A day's cave from the plan. Before the first day, the first day's. */
 export function dailyCave(day = caveDay()): DailyCave {
   const n = Math.max(1, caveNumber(day))
   const entry = DAILY_CAVES[(n - 1) % DAILY_CAVES.length]!
-  return { day, n, name: entry.name, attempt: entry.a, pace: entry.pace / 1000 }
+  return { day, n, name: entry.name, attempt: entry.a, pace: entry.pace / 1000, ...(entry.t ? { timing: entry.t } : {}) }
 }
 
 /** The cave number a day's cave is dug from: its own, or the planned day it stands in for. */

@@ -6,7 +6,9 @@
 //
 // A day's cave is dug from its number (src/games/lander/sim.ts dig), and a try is kept only once the blue
 // ship has flown it and landed, without touching rock, in a fair time (sim.ts PACE_FROM to PACE_TO). The plan
-// keeps which try that was, the cave's name, and the blue ship's time; the API gets its own copy of the times
+// keeps which try that was, the cave's name, the blue ship's time, and from sim.ts THINGS_FROM on, `t`: the
+// moments its crushers, vents and lift are set to (sim.ts timeThings), so every device sets them the same
+// without flying the blue ship first. The API gets its own copy of the times
 // (ramseys-arcade-api src/landerPace.ts, or API_DIR's), since a run's tickets and its fastest believable time
 // go by them.
 //
@@ -15,7 +17,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { caveDepth, firstGoodCave, paceRun, plannedCave } from '../src/games/lander/sim.ts'
+import { caveDepth, caveThings, firstGoodCave, paceRun, plannedCave } from '../src/games/lander/sim.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAN = join(root, 'src/games/lander/dailyPlan.ts')
@@ -25,19 +27,25 @@ const FIRST_DAY = '2026-09-30'
 function readPlan() {
   if (!existsSync(PLAN)) return []
   const text = readFileSync(PLAN, 'utf8')
-  return [...text.matchAll(/\{ a: (\d+), name: '([^']+)', pace: (\d+) \}/g)].map((m) => ({ a: Number(m[1]), name: m[2], pace: Number(m[3]) }))
+  return [...text.matchAll(/\{ a: (\d+), name: '([^']+)', pace: (\d+)(?:, t: \[([^\]]*)\])? \}/g)].map((m) => ({
+    a: Number(m[1]),
+    name: m[2],
+    pace: Number(m[3]),
+    t: m[4] ? m[4].split(',').map(Number) : [],
+  }))
 }
 
 function writePlan(days) {
-  const lines = days.map((d) => `  { a: ${d.a}, name: '${d.name}', pace: ${d.pace} },`)
+  const lines = days.map((d) => `  { a: ${d.a}, name: '${d.name}', pace: ${d.pace}${d.t?.length ? `, t: [${d.t.join(', ')}]` : ''} },`)
   writeFileSync(
     PLAN,
     `// Written by scripts/lander-daily.mjs: each day's cave, from the first day (daily.ts FIRST_DAY) on. \`a\` is
 // the try at the day's number that was kept (sim.ts plannedCave), \`pace\` the blue ship's time in
-// milliseconds when it was planned. Don't edit it by hand, and don't change sim.ts in a way that changes the
-// caves of days people have played.
+// milliseconds when it was planned, \`t\` the moments its crushers, vents and lift are set to (sim.ts
+// timeThings). Don't edit it by hand, and don't change sim.ts in a way that changes the caves of days people
+// have played.
 
-export type PlannedCave = { a: number; name: string; pace: number }
+export type PlannedCave = { a: number; name: string; pace: number; t?: readonly number[] }
 
 export const DAILY_CAVES: readonly PlannedCave[] = [
 ${lines.join('\n')}
@@ -69,8 +77,8 @@ if (cmd === 'plan' || cmd === 'replan') {
   const days = cmd === 'replan' ? readPlan().slice(0, Math.max(0, Number(arg) - 1)) : readPlan()
   const t0 = Date.now()
   for (let n = days.length + 1; n <= want; n++) {
-    const { cave, attempt, pace } = firstGoodCave(n)
-    days.push({ a: attempt, name: cave.name, pace: Math.round(pace.time * 1000) })
+    const { cave, attempt, pace, timing } = firstGoodCave(n)
+    days.push({ a: attempt, name: cave.name, pace: Math.round(pace.time * 1000), t: timing })
     if (n % 20 === 0) console.log(`#${n} ${cave.name} (try ${attempt}) ${pace.time.toFixed(2)}s · ${((Date.now() - t0) / 1000).toFixed(0)} s so far`)
   }
   writePlan(days)
@@ -81,10 +89,11 @@ if (cmd === 'plan' || cmd === 'replan') {
   const n = Number(arg)
   const day = readPlan()[n - 1]
   if (!day) throw new Error(`#${n} isn't planned`)
-  const cave = plannedCave(n, day.a)
+  const cave = plannedCave(n, day.a, day.t)
   const pace = paceRun(cave)
   console.log(`#${n} ${cave.name}: ${cave.length.toFixed(0)} m long, ${caveDepth(cave).toFixed(0)} m down, ${cave.gates.length} gates, ${cave.pillars.length} pillars`)
   console.log(`  ${cave.kinds.join(' → ')}`)
+  if (cave.lab) console.log(`  things: ${caveThings(cave).join(', ') || 'none'}`)
   console.log(`  pace ${pace.time.toFixed(2)} s (planned ${(day.pace / 1000).toFixed(2)} s), splits ${pace.splits.map((s) => s.toFixed(1)).join(' ')}`)
 } else {
   console.log('node scripts/lander-daily.mjs plan [days] | replan <n> [days] | show <n>')

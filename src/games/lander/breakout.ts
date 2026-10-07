@@ -1,5 +1,5 @@
 import { soundOut } from '../../lib/sound'
-import { GHOST_STRIDE, type Breach, type Cave } from './sim'
+import { GHOST_STRIDE, type Breach, type Cave, type CaveNode } from './sim'
 
 /*
  * Lander's easter egg: a cracked patch of wall in every cave, with open space behind it (sim.ts Breach has the
@@ -63,10 +63,18 @@ function toSegment(px: number, py: number, ax: number, ay: number, bx: number, b
   return Math.hypot(px - ax - ex * t, py - ay - ey * t)
 }
 
-/** Whether a point is in any of the cave's air, anywhere along it: a far stretch of it may come back close. */
+/**
+ * Whether a point is in any of the cave's air, anywhere along it: a far stretch of it may come back close. A
+ * shortcut (sim.ts LabCave branches) is the cave's air too.
+ */
 function inAnyAir(cave: Cave, x: number, y: number): boolean {
   for (const m of cave.rooms) if (x >= m.x0 && x <= m.x1 && y >= m.y0 && y <= m.y1) return true
-  const N = cave.nodes
+  for (const B of cave.lab?.branches ?? []) if (inTube(B, x, y)) return true
+  return inTube(cave.nodes, x, y)
+}
+
+/** Whether a point is in a run of nodes' air: a node's circle, or between two neighbours' sides. */
+function inTube(N: readonly CaveNode[], x: number, y: number): boolean {
   for (let i = 0; i < N.length; i++) {
     const a = N[i]!
     const dx = x - a.x
@@ -129,6 +137,7 @@ function fit(cave: Cave, i: number, side: 1 | -1, far: number, flat: number): Br
     const keep = Math.abs(j - i) <= 6 ? CRUST : CLEAR
     if (toSpace(q.x, q.y) < q.r + keep) return null
   }
+  for (const B of cave.lab?.branches ?? []) for (const q of B) if (toSpace(q.x, q.y) < q.r + CLEAR) return null
   for (const m of cave.rooms) {
     for (let px = m.x0; px <= m.x1 + 1e-9; px += 1) {
       if (toSpace(px, m.y0) < CLEAR || toSpace(px, m.y1) < CLEAR) return null

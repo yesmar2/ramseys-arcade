@@ -61,6 +61,8 @@ export function createDayPreview(day: string): GamePreviewRun {
           ghostMine: false,
           calm: false,
           out: null,
+          // The cave's moving things where they were as the blue ship flew it.
+          t: pose.done ? run.run.time : t,
         },
         dt,
       )

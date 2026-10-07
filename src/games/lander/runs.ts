@@ -26,7 +26,7 @@ export function landerDay(day: string): LanderDay {
   let found = dugDays.get(day)
   if (!found) {
     const daily = day === LAB_DAY ? { day, n: 0, name: 'Test Cave', attempt: 0, pace: 0 } : dailyCave(day)
-    found = { ...daily, cave: day === LAB_DAY ? labCave() : plannedCave(laidNumber(daily), daily.attempt) }
+    found = { ...daily, cave: day === LAB_DAY ? labCave() : plannedCave(laidNumber(daily), daily.attempt, daily.timing) }
     if (dugDays.size > 2) dugDays.clear()
     dugDays.set(day, found)
   }

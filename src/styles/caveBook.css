@@ -28,6 +28,20 @@
   color: var(--muted);
 }
 
+/* A cave's things (sim.ts caveThings): steam vents, crushers, water and the rest, from cave #8 on. */
+.vb-things {
+  margin: 0.25rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--panel-accent-ink, var(--accent));
+}
+
+.vb-things--tile {
+  margin: 0.1rem 0 0.35rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .vb-stretches {
   margin: 0;
   font-size: 0.84rem;

@@ -401,7 +401,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue ship, then every 8% faster' },
     ],
     ends: 'Down on the landing pad, slowly and level. Fly it as often as you like.',
-    tip: 'Gravity is free speed: let the ship fall down the shafts, then turn the nose up and brake before the bottom. Let go of everything and the ship rights itself. Come down onto the pad slowly and level: the speed by your ship turns green when it’s slow enough.',
+    tip: 'Gravity is free speed: let the ship fall down the shafts, then turn the nose up and brake before the bottom. Let go of everything and the ship rights itself. Come down onto the pad slowly and level: the speed by your ship turns green when it’s slow enough. Each cave has a few things in it too: steam vents, crushers, turning bars, water, low gravity, lava, shortcuts, a pad on a lift. Crushers, bars and lava crash you at a touch.',
     counts: [
       {
         what: 'Today’s cave',

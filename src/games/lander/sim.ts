@@ -108,8 +108,8 @@ export type Pad = { x0: number; x1: number; y: number; end: boolean }
 /** A checkpoint across the cave at node `i`, from one wall to the other. */
 export type Gate = { i: number; x: number; y: number; x0: number; y0: number; x1: number; y1: number }
 
-/** The kinds of stretch a cave is dug from. */
-export type Stretch = 'shaft' | 'corridor' | 'climb' | 'zigzag' | 'squeeze' | 'chamber' | 'hairpin' | 'slant'
+/** The kinds of stretch a cave is dug from: the last two only in caves with things in them (THINGS_FROM). */
+export type Stretch = 'shaft' | 'corridor' | 'climb' | 'zigzag' | 'squeeze' | 'chamber' | 'hairpin' | 'slant' | 'sump' | 'fork'
 
 /** The blue ship's line: a point every metre, with the speed it may carry there. */
 export type Route = { X: number[]; Y: number[]; R: number[]; V: number[]; n: number }
@@ -184,8 +184,8 @@ export type Crusher = { ax: number; ay: number; bx: number; by: number; hw: numb
 /** A bar turning round its middle, `half` long either side and `thick` thick: touch it and it's a crash. */
 export type Spinner = { x: number; y: number; half: number; thick: number; speed: number; phase: number }
 
-/** Water: the air under `y`, from x0 to x1. The ship floats up in it, slowly, and it drags. */
-export type Pool = { x0: number; x1: number; y: number }
+/** Water: the air under `y`, down to y0, from x0 to x1. The ship floats up in it, slowly, and it drags. */
+export type Pool = { x0: number; x1: number; y: number; y0: number }
 
 /** A bubble of low gravity: inside it, gravity is `g` of what it is. */
 export type Bubble = { x: number; y: number; r: number; g: number }
@@ -279,7 +279,7 @@ function labField(lab: LabCave, x: number, y: number, vx: number, vy: number, no
   let ax = 0
   let ay = 0
   for (const p of lab.pools) {
-    if (x >= p.x0 && x <= p.x1 && y <= p.y) {
+    if (x >= p.x0 && x <= p.x1 && y <= p.y && y >= p.y0) {
       g = WATER_G
       drag = WATER_DRAG
     }
@@ -741,7 +741,12 @@ const DOWN = -Math.PI / 2
 const RIGHT = 0
 const LEFT = Math.PI
 
-type Mark = { n: number; x: number; y: number; dir: number; r: number; s: number; p: number }
+type Mark = { n: number; x: number; y: number; dir: number; r: number; s: number; p: number; notes: number; branches: number }
+
+/** A place a thing could go, noted as the cave is dug (addThings): a span of its nodes. */
+type Note = { kind: 'shaftFoot' | 'chimney' | 'flat' | 'hall' | 'sump'; i0: number; i1: number }
+/** A shortcut dug off a fork, and the span of the cave's own nodes the fork takes. */
+type DugBranch = { nodes: CaveNode[]; i0: number; i1: number }
 
 /** The cave's middle, dug on from wherever it got to: a line, a bend, a turn to a heading. */
 class Digger {
@@ -752,6 +757,8 @@ class Digger {
   s = 0
   nodes: CaveNode[]
   pillars: Pillar[] = []
+  notes: Note[] = []
+  branches: DugBranch[] = []
 
   constructor(x: number, y: number, dir: number, r: number) {
     this.x = x
@@ -761,11 +768,13 @@ class Digger {
     this.nodes = [{ x, y, r, s: 0 }]
   }
   save(): Mark {
-    return { n: this.nodes.length, x: this.x, y: this.y, dir: this.dir, r: this.r, s: this.s, p: this.pillars.length }
+    return { n: this.nodes.length, x: this.x, y: this.y, dir: this.dir, r: this.r, s: this.s, p: this.pillars.length, notes: this.notes.length, branches: this.branches.length }
   }
   load(k: Mark) {
     this.nodes.length = k.n
     this.pillars.length = k.p
+    this.notes.length = k.notes
+    this.branches.length = k.branches
     this.x = k.x
     this.y = k.y
     this.dir = k.dir
@@ -774,6 +783,10 @@ class Digger {
   }
   put() {
     this.nodes.push({ x: this.x, y: this.y, r: this.r, s: this.s })
+  }
+  /** A place a thing could go: from node `i0` to the last one dug. */
+  note(kind: Note['kind'], i0: number) {
+    this.notes.push({ kind, i0, i1: this.nodes.length - 1 })
   }
   line(len: number, rTo = this.r) {
     const n = Math.max(1, Math.round(len / STEP))
@@ -840,13 +853,16 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
     const r = within(rng, 5.8, 7)
     d.turnTo(DOWN, d.r + within(rng, 2, 4), r)
     d.line(within(rng, 22, 38), r)
+    d.note('shaftFoot', d.nodes.length - 1)
   },
   /** Level, left or right, sometimes over a hump. */
   corridor(d, rng) {
     const side = sideways(d, rng)
     const r = within(rng, 5.3, 6.3)
     d.turnTo(side, d.r + within(rng, 2, 4), r)
+    const a = d.nodes.length - 1
     d.line(within(rng, 8, 14))
+    d.note('flat', a)
     if (rng() < 0.6) {
       const up = side === RIGHT ? 1 : -1
       const k = within(rng, 0.3, 0.5)
@@ -855,7 +871,9 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
       d.bend(R, -2 * up * k)
       d.bend(R, up * k)
     }
+    const b = d.nodes.length - 1
     d.line(within(rng, 8, 14))
+    d.note('flat', b)
   },
   /** Up a chimney and on the same way: the engine against gravity. */
   climb(d, rng) {
@@ -863,7 +881,9 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
     const right = Math.cos(d.dir) > 0
     const R = d.r + within(rng, 2, 3.5)
     d.bend(R, right ? Math.PI / 2 : -Math.PI / 2)
+    const foot = d.nodes.length - 1
     d.line(within(rng, 10, 18), within(rng, 6, 7))
+    d.note('chimney', foot)
     d.bend(d.r + within(rng, 2, 3.5), right ? -Math.PI / 2 : Math.PI / 2)
     d.line(within(rng, 5, 9))
   },
@@ -900,6 +920,7 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
       pillarAt(d, Math.round(i0 + (i1 - i0) * 0.28), side * within(rng, 3, 4), within(rng, 2, 2.6))
       pillarAt(d, Math.round(i0 + (i1 - i0) * 0.74), -side * within(rng, 3, 4), within(rng, 2, 2.6))
     }
+    d.notes.push({ kind: 'hall', i0, i1 })
     d.line(9, within(rng, 5.5, 6.2))
   },
   /** Round a U-bend underneath and back the other way. */
@@ -918,20 +939,79 @@ const STRETCHES: Record<Stretch, (d: Digger, rng: () => number) => false | void>
     d.turnTo(dir, d.r + within(rng, 2, 4), r)
     d.line(within(rng, 18, 28))
   },
+  /**
+   * A dip below the level, flooded (addThings puts water in it): down and back up, deep enough that its roof at
+   * the bottom is under water, so a ship has to dive through.
+   */
+  sump(d, rng) {
+    if (!d.level) return false
+    const right = Math.cos(d.dir) > 0
+    const turn = within(rng, 1.15, 1.3)
+    const R = within(rng, 11.5, 13)
+    d.line(4, 6)
+    const i0 = d.nodes.length - 1
+    // Heading right, down is a right turn; heading left, a left one.
+    const down = right ? -turn : turn
+    d.bend(R, down)
+    d.bend(R, -2 * down)
+    d.bend(R, down)
+    d.note('sump', i0)
+    d.line(6)
+  },
+  /**
+   * A fork, heading down: round the long way, out to one side, down and back, or straight down a narrow crooked
+   * shortcut (a branch, air like the rest) from the fork's top to its foot.
+   */
+  fork(d, rng) {
+    if (Math.abs(wrap(d.dir - DOWN)) > 0.3) return false
+    const side = sideways(d, rng)
+    const away = side === LEFT ? RIGHT : LEFT
+    const legs = within(rng, 11, 15)
+    const drop = within(rng, 10, 15)
+    d.turnTo(DOWN, 7, 5.8)
+    d.line(3, 5.8)
+    const i0 = d.nodes.length - 1
+    const top = d.nodes[i0]!
+    d.turnTo(side, 7)
+    d.line(legs)
+    d.turnTo(DOWN, 7)
+    d.line(drop)
+    d.turnTo(away, 7)
+    d.line(legs)
+    d.turnTo(DOWN, 7)
+    const foot = d.nodes[d.nodes.length - 1]!
+    d.line(5)
+    // The shortcut jinks toward the side away from the long way, wide where it opens off the fork and into its foot.
+    const jink = (side === LEFT ? 1 : -1) * within(rng, 2, 3)
+    const crook = (u: number) => (u < 0.35 ? 0 : u < 0.5 ? smooth((u - 0.35) / 0.15) : u < 0.62 ? 1 : u < 0.77 ? 1 - smooth((u - 0.62) / 0.15) : 0)
+    const nodes: CaveNode[] = []
+    const n = Math.max(12, Math.round(Math.hypot(foot.x - top.x, foot.y - top.y) / 1.5))
+    for (let k = 0; k <= n; k++) {
+      const u = k / n
+      const open = Math.max(1 - smooth(Math.min(1, u / 0.16)), 1 - smooth(Math.min(1, (1 - u) / 0.16)))
+      nodes.push({ x: top.x + (foot.x - top.x) * u + jink * crook(u), y: top.y + (foot.y - top.y) * u, r: 2.45 + 1.55 * open, s: 0 })
+    }
+    d.branches.push({ nodes, i0, i1: d.nodes.length - 1 })
+  },
 }
 
 // Climbs and squeezes the least: a chimney against gravity, and the tightest pass.
-const WEIGHTS: Record<Stretch, number> = { shaft: 3, corridor: 3, climb: 0.6, zigzag: 2, squeeze: 1, chamber: 1.3, hairpin: 1.5, slant: 2.2 }
+const WEIGHTS: Partial<Record<Stretch, number>> = { shaft: 3, corridor: 3, climb: 0.6, zigzag: 2, squeeze: 1, chamber: 1.3, hairpin: 1.5, slant: 2.2 }
+/** From THINGS_FROM on: a flooded dip and a fork too, one of each at most. */
+const THINGS_WEIGHTS: Partial<Record<Stretch, number>> = { ...WEIGHTS, sump: 4, fork: 0.7 }
 
-function pickKind(rng: () => number, kinds: Stretch[], d: Digger, tried: Set<Stretch>): Stretch | null {
+function pickKind(rng: () => number, kinds: Stretch[], d: Digger, tried: Set<Stretch>, weights = WEIGHTS): Stretch | null {
   const last = kinds[kinds.length - 1]
   const count = (k: Stretch) => kinds.filter((x) => x === k).length
-  const options = (Object.entries(WEIGHTS) as [Stretch, number][]).filter(
+  const options = (Object.entries(weights) as [Stretch, number][]).filter(
     ([k]) =>
       k !== last &&
       !tried.has(k) &&
       !((k === 'climb' || k === 'hairpin') && (count(k) >= 2 || !d.level)) &&
-      !((k === 'chamber' || k === 'squeeze') && count(k) >= 2),
+      !((k === 'chamber' || k === 'squeeze') && count(k) >= 2) &&
+      !((k === 'sump' || k === 'fork') && count(k) >= 1) &&
+      !(k === 'sump' && !d.level) &&
+      !(k === 'fork' && Math.abs(wrap(d.dir - DOWN)) > 0.3),
   )
   if (!options.length) return null
   let x = rng() * options.reduce((a, [, w]) => a + w, 0)
@@ -960,6 +1040,26 @@ function clear(d: Digger, from: number, start: Room) {
       if (p.s - q.s < 28) continue
       if (Math.hypot(p.x - q.x, p.y - q.y) < p.r + q.r + WALL) return false
     }
+    // And between it and a shortcut, but for the fork the shortcut runs through and the tunnel carrying on
+    // down from its foot, which the shortcut joins.
+    for (const B of d.branches) {
+      if (j >= B.i0 - 2 && (j <= B.i1 + 2 || p.s - N[B.i1]!.s < 24)) continue
+      for (const q of B.nodes) if (Math.hypot(p.x - q.x, p.y - q.y) < p.r + q.r + WALL) return false
+    }
+  }
+  // A shortcut dug just now keeps rock between it and the cave dug before its fork, and the start room.
+  for (const B of d.branches) {
+    if (B.i0 < from) continue
+    const forkS = N[B.i0]!.s
+    for (const q of B.nodes) {
+      if (rectGap(start, q.x, q.y) < q.r + WALL) return false
+      for (let i = 0; i < B.i0 - 2; i++) {
+        const p = N[i]!
+        // The tunnel coming down into the fork carries straight on into the shortcut: that one's joined to it.
+        if (forkS - p.s < 24) continue
+        if (Math.hypot(p.x - q.x, p.y - q.y) < p.r + q.r + WALL) return false
+      }
+    }
   }
   return true
 }
@@ -979,6 +1079,7 @@ export function caveName(n: number): string {
 /** Dig cave `n`'s try `attempt`; null when it dug itself into a corner. */
 export function dig(n: number, attempt = 0): Cave | null {
   const rng = mulberry32(hashString(`lander:${n}:${attempt}`))
+  const things = n >= THINGS_FROM
   const start: Room = { x0: -11, x1: 11, y0: 0, y1: 13 }
   const d = new Digger(5.5, 2.5, DOWN, 5.8)
   const target = within(rng, 370, 450)
@@ -991,7 +1092,7 @@ export function dig(n: number, attempt = 0): Cave | null {
     const tried = new Set<Stretch>()
     let done = false
     while (!done) {
-      const kind = pickKind(rng, kinds, d, tried)
+      const kind = pickKind(rng, kinds, d, tried, things ? THINGS_WEIGHTS : WEIGHTS)
       if (!kind) break
       tried.add(kind)
       const k = d.save()
@@ -1015,6 +1116,7 @@ export function dig(n: number, attempt = 0): Cave | null {
   const cx = (last.x + padX) / 2
   const end: Room = { x0: cx - 12.5, x1: cx + 12.5, y0: last.y - 13.5, y1: last.y - 1.5 }
   for (const q of d.nodes) if (q.s < last.s - 24 && rectGap(end, q.x, q.y) < q.r + WALL) return null
+  for (const B of d.branches) for (const q of B.nodes) if (rectGap(end, q.x, q.y) < q.r + WALL) return null
 
   const nodes = d.nodes
   // A checkpoint after every third stretch, and one at the landing room's door.
@@ -1028,8 +1130,8 @@ export function dig(n: number, attempt = 0): Cave | null {
     { x0: padX - 3.6, x1: padX + 3.6, y: end.y0, end: true },
   ]
   const rooms: [Room, Room] = [start, end]
-  const box = boxOf(nodes, rooms)
-  return {
+  const box = boxOf([...nodes, ...d.branches.flatMap((b) => b.nodes)], rooms)
+  const cave: Cave = {
     n,
     attempt,
     name: caveName(n),
@@ -1042,8 +1144,12 @@ export function dig(n: number, attempt = 0): Cave | null {
     spawn,
     length: d.s,
     box,
-    route: planRoute(nodes, d.pillars, spawn, end, padX),
+    route: { X: [], Y: [], R: [], V: [], n: 0 },
   }
+  // Its things, from a stream of their own: the cave itself is dug the same whatever they turn out to be.
+  if (things) cave.lab = addThings(cave, d, mulberry32(hashString(`lander-things:${n}:${attempt}`)))
+  cave.route = planRoute(nodes, routePillars(cave), spawn, end, padX)
+  return cave
 }
 
 function gateAt(nodes: CaveNode[], i: number): Gate {
@@ -1075,6 +1181,271 @@ function boxOf(nodes: CaveNode[], rooms: readonly Room[]): [number, number, numb
     y1 = Math.max(y1, m.y1)
   }
   return [x0, x1, y0, y1]
+}
+
+/* --------------------------------------------------------- things in the daily caves --- */
+
+/**
+ * From this cave on (2026-10-07), each day's cave has a few of the test cave's things in it, chosen and set
+ * at random from its number (Ramsey, 2026-10-06, after flying them: "ok randomize them in the lander caves
+ * now"). The caves before are dug as they were, bit for bit.
+ */
+export const THINGS_FROM = 8
+
+/** A kind of thing a daily cave can have. Water comes with every flooded dip, a shortcut with every fork. */
+type Thing = 'vent' | 'crusher' | 'spinner' | 'lowg' | 'lava' | 'lift'
+
+/** How likely each is, where a cave has somewhere for it; then a cave has two things at least, four at most. */
+const THING_CHANCE: [Thing, number][] = [
+  ['spinner', 0.4],
+  ['lowg', 0.35],
+  ['crusher', 0.45],
+  ['lava', 0.4],
+  ['vent', 0.5],
+  ['lift', 0.3],
+]
+const THINGS_LEAST = 2
+const THINGS_MOST = 4
+
+/** The node nearest a point, of all of them. */
+function nearestOf(nodes: readonly CaveNode[], x: number, y: number): number {
+  let best = 0
+  let bd = Infinity
+  for (let i = 0; i < nodes.length; i++) {
+    const d = (nodes[i]!.x - x) ** 2 + (nodes[i]!.y - y) ** 2
+    if (d < bd) {
+      bd = d
+      best = i
+    }
+  }
+  return best
+}
+
+/** The floor straight under a point in the air, within `most` metres: the last of the air's height there. */
+function floorUnder(cave: Cave, x: number, y: number, most: number): number | null {
+  const hint = nearestOf(cave.nodes, x, y)
+  if (!inAir(cave, x, y, hint)) return null
+  for (let dy = 0.25; dy <= most; dy += 0.25) {
+    if (!inAir(cave, x, y - dy, nearestNode(cave, x, y - dy, hint))) return y - dy + 0.25
+  }
+  return null
+}
+
+/** How far a point is from a segment. */
+function offSegment(px: number, py: number, a: CaveNode, b: CaveNode): number {
+  const ex = b.x - a.x
+  const ey = b.y - a.y
+  const t = clamp(((px - a.x) * ex + (py - a.y) * ey) / (ex * ex + ey * ey || 1), 0, 1)
+  return Math.hypot(px - a.x - ex * t, py - a.y - ey * t)
+}
+
+/** Water lying in a flooded dip: its surface a little under the floor it's entered by, down to below its bottom. */
+function poolIn(N: readonly CaveNode[], s: Note): Pool {
+  const a = N[s.i0]!
+  const b = N[s.i1]!
+  let low = Infinity
+  for (let k = s.i0; k <= s.i1; k++) low = Math.min(low, N[k]!.y - N[k]!.r)
+  return { x0: Math.min(a.x, b.x) - 1, x1: Math.max(a.x, b.x) + 1, y: a.y - a.r - 0.8, y0: low - 1 }
+}
+
+/**
+ * A daily cave's things, chosen and set from its own random stream: water in its dips, its fork's shortcut,
+ * then each other kind by its chance where the cave has somewhere for it, two at least and four at most. A
+ * spinner takes the place of its chamber's pillars. Crushers and the lift are set to the plan's moments
+ * afterwards (timeThings, applyTiming).
+ */
+function addThings(cave: Cave, d: Digger, rng: () => number): LabCave {
+  const N = cave.nodes
+  const lab: LabCave = { vents: [], crushers: [], spinners: [], pools: [], bubbles: [], lava: [], branches: d.branches.map((b) => b.nodes), lift: null }
+  const of = (kind: Note['kind']) => d.notes.filter((n) => n.kind === kind)
+  const flats = of('flat').filter((f) => Math.abs(N[f.i1]!.x - N[f.i0]!.x) >= 9)
+  const halls = of('hall')
+  const feet = of('shaftFoot')
+  const chimneys = of('chimney')
+  for (const s of of('sump')) lab.pools.push(poolIn(N, s))
+  const take = <T>(list: T[]): T | undefined => (list.length ? list.splice(Math.floor(rng() * list.length), 1)[0] : undefined)
+  const can = (t: Thing) =>
+    t === 'vent' ? feet.length + chimneys.length + flats.length > 0 : t === 'crusher' || t === 'lava' ? flats.length > 0 : t === 'spinner' || t === 'lowg' ? halls.length > 0 : true
+  const picks = THING_CHANCE.filter(([t, p]) => can(t) && rng() < p).map(([t]) => t)
+  const fixed = lab.pools.length + lab.branches.length
+  while (fixed + picks.length > THINGS_MOST && picks.length) take(picks)
+  // How many more to place: those picked, and enough to make the least. A kind that finds no place gives way
+  // to one not picked, in turn.
+  const want = Math.max(picks.length, THINGS_LEAST - fixed)
+  const spare = THING_CHANCE.map(([t]) => t).filter((t) => can(t) && !picks.includes(t))
+  // Shuffled by the stream itself, so every browser shuffles them the same.
+  for (let i = spare.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[spare[i], spare[j]] = [spare[j]!, spare[i]!]
+  }
+  const order = [...picks, ...spare]
+  let placed = 0
+  const counts = () => lab.vents.length + lab.crushers.length + lab.spinners.length + lab.bubbles.length + lab.lava.length + (lab.lift ? 1 : 0)
+  for (const t of order) {
+    if (placed >= want) break
+    const before = counts()
+    if (t === 'spinner') {
+      const h = take(halls)
+      if (!h) continue
+      const a = N[h.i0]!
+      const b = N[h.i1]!
+      const m = N[Math.round((h.i0 + h.i1) / 2)]!
+      // Small enough that a ship can pass outside its sweep, along the wall: the blue ship does.
+      lab.spinners.push({ x: m.x, y: m.y, half: m.r - 4.5, thick: 0.8, speed: (rng() < 0.5 ? -1 : 1) * within(rng, 0.9, 1.3), phase: rng() * Math.PI * 2 })
+      cave.pillars = cave.pillars.filter((p) => offSegment(p.x, p.y, a, b) > m.r - 0.5)
+    } else if (t === 'lowg') {
+      const h = take(halls)
+      if (!h) continue
+      const a = N[h.i0]!
+      const b = N[h.i1]!
+      const m = N[Math.round((h.i0 + h.i1) / 2)]!
+      lab.bubbles.push({ x: m.x, y: m.y, r: Math.min(Math.hypot(b.x - a.x, b.y - a.y) / 2 + 3, 12.5), g: within(rng, 0.15, 0.25) })
+    } else if (t === 'crusher') {
+      const f = take(flats)
+      if (!f) continue
+      const a = N[f.i0]!
+      const lo = Math.min(a.x, N[f.i1]!.x)
+      const L = Math.abs(N[f.i1]!.x - a.x)
+      const hh = a.r + 0.2
+      const hw = within(rng, 1.4, 1.8)
+      const period = within(rng, 2.6, 3.4)
+      for (const u of L >= 16 ? [0.3, 0.72] : [0.5]) {
+        const x = lo + L * u
+        lab.crushers.push({ ax: x, ay: a.y + a.r + hh + 0.05, bx: x, by: a.y - a.r + hh - 0.1, hw, hh, period, phase: 0 })
+      }
+    } else if (t === 'lava') {
+      const f = take(flats)
+      if (!f) continue
+      const a = N[f.i0]!
+      const lo = Math.min(a.x, N[f.i1]!.x)
+      const hi = Math.max(a.x, N[f.i1]!.x)
+      const floor = a.y - a.r
+      lab.lava.push({ x0: lo + 1, x1: hi - 1, y0: floor - 3, y1: floor + 0.55 })
+      // Half the time a rock hangs over it, so the way across is lower, nearer the lava.
+      if (rng() < 0.5) cave.pillars.push({ x: (lo + hi) / 2, y: a.y + a.r - 1.2, r: 2.4 })
+    } else if (t === 'vent') {
+      // A lift up a chimney, if the cave has one; else a cushion at a shaft's foot; else an updraft off a corridor's floor.
+      const c = take(chimneys)
+      const f = c ? undefined : take(feet)
+      if (c) {
+        const foot = N[c.i0]!
+        const top = N[c.i1]!
+        const x = foot.x + (rng() - 0.5) * 2
+        const fy = floorUnder(cave, x, foot.y, 14)
+        if (fy === null) continue
+        const period = within(rng, 2.8, 3.4)
+        lab.vents.push({ x, y: fy, dir: Math.PI / 2, reach: top.y - fy + 4, wide: within(rng, 5.5, 6.5), push: within(rng, 20, 26), speed: within(rng, 9, 11), period, on: within(rng, 0.6, 0.7), phase: rng() * period })
+      } else if (f) {
+        const foot = N[f.i0]!
+        const x = foot.x + (rng() - 0.5) * 1.5
+        const fy = floorUnder(cave, x, foot.y, 14)
+        if (fy === null) continue
+        // Over the shaft's last stretch, with long enough quiet between puffs to drop straight through.
+        const period = within(rng, 3.4, 4.2)
+        lab.vents.push({ x, y: fy, dir: Math.PI / 2, reach: within(rng, 16, 20), wide: within(rng, 5.5, 6.5), push: within(rng, 13, 17), speed: within(rng, 4, 6), period, on: within(rng, 0.38, 0.45), phase: rng() * period })
+      } else {
+        const fl = take(flats)
+        if (!fl) continue
+        const a = N[fl.i0]!
+        const x = a.x + (N[fl.i1]!.x - a.x) * within(rng, 0.3, 0.7)
+        const period = within(rng, 2.2, 3)
+        lab.vents.push({ x, y: a.y - a.r + 0.2, dir: Math.PI / 2, reach: 2 * a.r - 0.8, wide: within(rng, 4.5, 5.5), push: within(rng, 13, 17), speed: within(rng, 5, 6.5), period, on: within(rng, 0.45, 0.55), phase: rng() * period })
+      }
+    } else if (t === 'lift') {
+      const pad = cave.pads[1]
+      lab.lift = { y0: pad.y, y1: pad.y + within(rng, 3, 4), period: within(rng, 4.5, 5.5), phase: 0 }
+    }
+    if (counts() > before) placed++
+  }
+  return lab
+}
+
+/** A cave's things in words, for the Cave Book and the plan script: [] for a cave with none. */
+export function caveThings(cave: Cave): string[] {
+  const L = cave.lab
+  if (!L) return []
+  const out: string[] = []
+  if (L.vents.length) out.push(L.vents.length > 1 ? 'steam vents' : 'a steam vent')
+  if (L.crushers.length) out.push(L.crushers.length > 1 ? 'crushers' : 'a crusher')
+  if (L.spinners.length) out.push('a turning bar')
+  if (L.pools.length) out.push('water')
+  if (L.bubbles.length) out.push('low gravity')
+  if (L.lava.length) out.push('lava')
+  if (L.branches.length) out.push('a shortcut')
+  if (L.lift) out.push('a pad on a lift')
+  return out
+}
+
+/** The pillars the blue ship's line swings round: the cave's, and each spinner's sweep. */
+function routePillars(cave: Cave): Pillar[] {
+  const sp = cave.lab?.spinners ?? []
+  return sp.length ? [...cave.pillars, ...sp.map((s) => ({ x: s.x, y: s.y, r: s.half + s.thick / 2 }))] : cave.pillars
+}
+
+/**
+ * The moments a cave's timed things keep, for the plan (dailyPlan.ts `t`): each crusher's phase, wide open as the
+ * blue ship goes under it; each vent's, quiet as it flies through; then the lift's, at rest as it lands. Worked
+ * out from the blue ship's flight with them all out of its way; [] for a cave with none, null if the blue ship
+ * can't land even then. Whoever's ahead of the blue ship or behind it meets them otherwise.
+ */
+export function timeThings(cave: Cave): number[] | null {
+  const lab = cave.lab
+  if (!lab || (!lab.crushers.length && !lab.vents.length && !lab.lift)) return []
+  const crushers = lab.crushers
+  const vents = lab.vents
+  const lift = lab.lift
+  lab.crushers = []
+  lab.vents = []
+  lab.lift = null
+  const run = paceRun(cave)
+  lab.crushers = crushers
+  lab.vents = vents
+  lab.lift = lift
+  if (!run.landed) return null
+  const g = run.ghost
+  const S = GHOST_STRIDE
+  const out: number[] = []
+  for (const c of crushers) {
+    let at = -1
+    for (let k = 0; k + S < g.length; k += S) {
+      const x0 = g[k]!
+      const x1 = g[k + S]!
+      if ((x0 - c.bx) * (x1 - c.bx) > 0 || Math.abs(g[k + 1]! - c.by) > c.hh) continue
+      at = (k / S + (x1 === x0 ? 0 : (c.bx - x0) / (x1 - x0))) / GHOST_RATE
+      break
+    }
+    if (at < 0) return null
+    // A fifth of the way through its beat, the middle of its open time, as the blue ship goes under it.
+    out.push((((0.2 * c.period - at) % c.period) + c.period) % c.period)
+  }
+  for (const v of vents) {
+    // When it's in the jet, if ever: its quiet time centred on the middle of that.
+    const ux = Math.cos(v.dir)
+    const uy = Math.sin(v.dir)
+    let tin = -1
+    let tout = -1
+    for (let k = 0; k < g.length; k += S) {
+      const along = (g[k]! - v.x) * ux + (g[k + 1]! - v.y) * uy
+      const across = Math.abs((g[k]! - v.x) * uy - (g[k + 1]! - v.y) * ux)
+      if (along < 0 || along > v.reach || across > v.wide / 2 + 1) continue
+      if (tin < 0) tin = k / S / GHOST_RATE
+      tout = k / S / GHOST_RATE
+    }
+    const mid = tin < 0 ? 0 : (tin + tout) / 2
+    out.push(tin < 0 ? v.phase : ((((1 + v.on) / 2) * v.period - mid) % v.period + v.period) % v.period)
+  }
+  if (lift) out.push((((-run.time) % lift.period) + lift.period) % lift.period)
+  return out.map((v) => Math.round(v * 1000) / 1000)
+}
+
+/** A cave's timed things set to the plan's moments (timeThings): crushers first, then vents, then the lift. */
+export function applyTiming(cave: Cave, t: readonly number[]) {
+  const lab = cave.lab
+  if (!lab) return
+  let k = 0
+  for (const c of lab.crushers) c.phase = t[k++] ?? c.phase
+  for (const v of lab.vents) v.phase = t[k++] ?? v.phase
+  if (lab.lift) lab.lift.phase = t[k++] ?? lab.lift.phase
 }
 
 /* ------------------------------------------------------------- the test cave --- */
@@ -1210,7 +1581,7 @@ export function labCave(): Cave {
     ],
     crushers: [crusher(corridorX0 + 10, 0), crusher(corridorX0 + 21, 1.5)],
     spinners: [{ x: hallMid.x, y: hallMid.y, half: 7.6, thick: 0.8, speed: 1.15, phase: 0.4 }],
-    pools: [{ x0: sumpOut.x - 1, x1: sumpIn.x + 2, y: sumpIn.y - 7 }],
+    pools: [{ x0: sumpOut.x - 1, x1: sumpIn.x + 2, y: sumpIn.y - 7, y0: sumpIn.y - 26 }],
     bubbles: [{ x: lowMid.x, y: lowMid.y, r: 12, g: 0.18 }],
     // The pool's surface a little over half a metre above the corridor's floor.
     lava: [{ x0: at(v0).x - 24, x1: at(v0).x - 2, y0: lavaY - 9, y1: lavaY - 5.4 + 0.55 }],
@@ -1371,7 +1742,10 @@ export type PilotStyle = { grip?: number; look?: number; lookSpeed?: number; tur
 /** The blue ship's hands: steer for a point along the line ahead, at the line's speed. */
 export function makePilot(cave: Cave, { grip = 2.6, look = 2.5, lookSpeed = 0.3, turnGrip = 7 }: PilotStyle = {}): (s: Ship) => Hands {
   const P = cave.route
+  const lab = cave.lab ?? null
   let i = 0
+  // Its own clock, a step a call, for where a vent's beat is.
+  let steps = 0
   return (s) => {
     let best = i
     let bd = Infinity
@@ -1396,11 +1770,26 @@ export function makePilot(cave: Cave, { grip = 2.6, look = 2.5, lookSpeed = 0.3,
       ax *= 9 / am
       ay *= 9 / am
     }
-    // Down is gravity's job: never turn the nose down to push that way.
-    ay = Math.max(ay, -0.85 * G)
-    const drag = DRAG + DRAG2 * speed
-    const fx = ax + s.vx * drag
-    const fy = ay + G + s.vy * drag
+    let fx: number
+    let fy: number
+    if (lab) {
+      // Water floats the ship, a bubble lightens it, a vent shoves it: the hands allow for each. In water, where
+      // the ship floats, going down takes the engine, so there the nose may turn down.
+      const f = labField(lab, s.x, s.y, s.vx, s.vy, steps * DT)
+      const g = G * f.g
+      ay = Math.max(ay, g > 0 ? -0.85 * g : -4)
+      const drag = DRAG + DRAG2 * speed + f.drag
+      fx = ax + s.vx * drag - f.ax
+      fy = ay + g + s.vy * drag - f.ay
+      if (g > 0) fy = Math.max(fy, 0.15 * g)
+    } else {
+      // Down is gravity's job: never turn the nose down to push that way.
+      ay = Math.max(ay, -0.85 * G)
+      const drag = DRAG + DRAG2 * speed
+      fx = ax + s.vx * drag
+      fy = ay + G + s.vy * drag
+    }
+    steps++
     const err = wrap(Math.atan2(fx, fy) - s.a)
     const turn = clamp(err * turnGrip, -1, 1)
     const thrust = Math.abs(err) < 1.3 ? clamp((Math.hypot(fx, fy) / THRUST) * Math.cos(err) ** 2, 0, 1) : 0
@@ -1468,10 +1857,14 @@ export function paceRun(cave: Cave): Flight {
 export const PACE_FROM = 42
 export const PACE_TO = 80
 
-/** Cave `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): dug the same on every device. */
-export function plannedCave(n: number, attempt: number): Cave {
+/**
+ * Cave `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): dug the same on every device, its timed things
+ * set to the plan's moments (`timing`, timeThings).
+ */
+export function plannedCave(n: number, attempt: number, timing?: readonly number[]): Cave {
   const cave = dig(n, attempt)
   if (!cave) throw new Error(`Lander: cave #${n} try ${attempt} doesn't dig`)
+  if (timing?.length) applyTiming(cave, timing)
   return cave
 }
 
@@ -1479,12 +1872,16 @@ export function plannedCave(n: number, attempt: number): Cave {
  * Cave `n` from scratch: the first try that digs through and that the blue ship flies and lands in a fair
  * time without touching rock. The plan script keeps which try that was, and the blue ship's time.
  */
-export function firstGoodCave(n: number): { cave: Cave; attempt: number; pace: Flight } {
+export function firstGoodCave(n: number): { cave: Cave; attempt: number; pace: Flight; timing: number[] } {
   for (let attempt = 0; attempt < 60; attempt++) {
     const cave = dig(n, attempt)
     if (!cave) continue
+    // Its crushers and lift set to the blue ship's flight, as the plan will keep them.
+    const timing = timeThings(cave)
+    if (timing === null) continue
+    applyTiming(cave, timing)
     const pace = paceRun(cave)
-    if (pace.landed && pace.time >= PACE_FROM && pace.time <= PACE_TO) return { cave, attempt, pace }
+    if (pace.landed && pace.time >= PACE_FROM && pace.time <= PACE_TO) return { cave, attempt, pace, timing }
   }
   throw new Error(`Lander: no cave for #${n}`)
 }

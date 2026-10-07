@@ -4,7 +4,7 @@ import { caveDay, dayOfCave, PLANNED_CAVES } from '../games/lander/daily'
 import { DAILY_CAVES, type PlannedCave } from '../games/lander/dailyPlan'
 import { caveRunHref } from '../games/lander/links'
 import { formatRun } from '../games/lander/score'
-import { caveDepth, plannedCave, type Cave, type Stretch } from '../games/lander/sim'
+import { caveDepth, caveThings, plannedCave, type Cave, type Stretch } from '../games/lander/sim'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import '../styles/adminBooks.css'
 import '../styles/caveBook.css'
@@ -39,6 +39,8 @@ const STRETCH_WORDS: Record<Stretch, string> = {
   chamber: 'chamber',
   hairpin: 'hairpin',
   slant: 'slant',
+  sump: 'flooded dip',
+  fork: 'fork',
 }
 
 const monthFormat = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -49,7 +51,7 @@ const dayWords = (day: string) => dayFormat.format(dateOf(day))
 
 function bookCave(entry: PlannedCave, i: number): BookCave {
   const n = i + 1
-  const cave = plannedCave(n, entry.a)
+  const cave = plannedCave(n, entry.a, entry.t)
   return {
     n,
     day: dayOfCave(n),
@@ -106,6 +108,7 @@ export function AdminCaveBook() {
                 {todays.gates === 1 ? 'gate' : 'gates'}
               </p>
               <p className="vb-stretches">{todays.cave.kinds.map((k) => STRETCH_WORDS[k]).join(' → ')}</p>
+              {caveThings(todays.cave).length ? <p className="vb-things">With {caveThings(todays.cave).join(', ')}</p> : null}
               <div className="tb-feature__acts">
                 <a className="panel__btn adm-small" href={caveRunHref(todays.day)}>
                   Test fly
@@ -202,6 +205,7 @@ function CaveTile({ cave, today }: { cave: BookCave; today: string }) {
       <div className="tb-tile__body">
         <span className="tb-tile__date">{dayWords(cave.day)}</span>
         <h4 className="tb-tile__name">{cave.name}</h4>
+        {caveThings(cave.cave).length ? <p className="vb-things vb-things--tile">{caveThings(cave.cave).join(' · ')}</p> : null}
         <dl className="tb-figs">
           <div>
             <dt>Blue ship</dt>
