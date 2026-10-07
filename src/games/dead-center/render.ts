@@ -391,21 +391,28 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: n
     ctx.stroke()
   }
 
-  // The balance point: a tiny gold dot and a thin gold ring well out from it, as the pin's red one is
-  // (Ramsey picked D from the "Centroid center marks" options, 2026-10-07).
-  const gr = Math.max(1.8, k * 0.0042) * pop
+  // The balance point: fine gold crosshairs with a gap at the middle, meeting at a tiny dot, so it reads as an
+  // exact point (Ramsey, 2026-10-07: "maybe we should do the crosshair actually", option B of the
+  // "Centroid center marks").
+  const gap = Math.max(4, k * 0.012) * pop
+  const arm = Math.max(13, k * 0.04) * pop
+  ctx.lineCap = 'round'
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    // A dark edge under each arm, so it reads on a light plate and a dark one.
+    ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.75)' : 'rgba(255, 255, 255, 0.85)'
+    ctx.lineWidth = Math.max(2.6, k * 0.0075)
+    ctx.beginPath()
+    ctx.moveTo(gp.x + dx * gap, gp.y + dy * gap)
+    ctx.lineTo(gp.x + dx * arm, gp.y + dy * arm)
+    ctx.stroke()
+    ctx.strokeStyle = hsla(GOLD, 95, 58)
+    ctx.lineWidth = Math.max(1.3, k * 0.0038)
+    ctx.stroke()
+  }
   ctx.fillStyle = hsla(GOLD, 95, 58)
-  ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.9)' : 'rgba(255, 255, 255, 0.95)'
-  ctx.lineWidth = Math.max(1, k * 0.0022)
   ctx.beginPath()
-  ctx.arc(gp.x, gp.y, gr, 0, TAU)
+  ctx.arc(gp.x, gp.y, Math.max(1.5, k * 0.0035) * pop, 0, TAU)
   ctx.fill()
-  ctx.stroke()
-  ctx.strokeStyle = hsla(GOLD, 90, dark ? 62 : 46)
-  ctx.lineWidth = Math.max(1, k * 0.0028)
-  ctx.beginPath()
-  ctx.arc(gp.x, gp.y, Math.max(14, k * 0.045) * pop, 0, TAU)
-  ctx.stroke()
   ctx.restore()
 }
 
