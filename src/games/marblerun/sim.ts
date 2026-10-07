@@ -2221,12 +2221,13 @@ function clampTilt(x: number, z: number): Tilt {
 export const TURN_HELP = 0.5
 
 /**
- * The steadying a thumb on the stick gets (handsTilt `steady`), as Ramsey found the marble "kinda hard on a
- * phone" (2026-10-07). A stand-in phone player, a moment late and a little unsteady, mostly fell weaving off the
- * narrows: with this it fell 2.6 times a run instead of 6.3, and never on a narrow, while a quick one's times were
- * the same. The keys keep none.
+ * The steadying a player's hands get (handsTilt `steady`), on a phone's stick and on the keys alike: Ramsey found
+ * the marble "kinda hard on a phone", then "the controlling of the marble should be easier on both" (2026-10-07).
+ * Stand-in players a moment late mostly fell weaving off the narrows and out of curves. With this a slow thumb fell
+ * 2.6 times a run instead of 6.3, never on a narrow; a slow hand on the keys fell outside the hammers and platforms
+ * 0.28 times instead of 0.94, and took 1.04× the blue ball's time instead of 1.29×. A quick player's times stayed.
  */
-export const PHONE_STEADY = 1
+export const STEADY = 1
 
 /** The piece `d` metres down the course, and how far along it: the last piece's end, past the course's. */
 export function pieceAt(course: Course, d: number): { p: Piece; u: number } {
