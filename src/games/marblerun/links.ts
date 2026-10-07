@@ -5,3 +5,6 @@ import { gamePlayHref } from '../../hooks/useHashRoute'
  * today practice (PracticeCards.tsx). The admin's Course Book links every day this way.
  */
 export const courseRunHref = (day: string) => `${gamePlayHref('marblerun')}?day=${day}`
+
+/** The test track of new pieces, an admin's, on the play page (?lab=1); the Course Book links to it. */
+export const LAB_HREF = `${gamePlayHref('marblerun')}?lab=1`

@@ -38,14 +38,14 @@ import { courseDay, courseNumber, msUntilNextCourse, untilWords } from './daily'
 import { CourseMap } from './map'
 import { onItsDayFact, type ItsDay } from './pastDay'
 import { PastCourseRunResult, PracticeStartCard } from './PracticeCards'
-import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, marbleDay, paceOf, practiceBest, type GhostRun, type MarbleDay } from './runs'
+import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, labDay, marbleDay, paceOf, practiceBest, type GhostRun, type MarbleDay } from './runs'
 import { MarbleScene } from './scene'
 import { formatMarblerunBoardScore, formatRun, marblerunBoardScore, marblerunMsFromBoardScore } from './score'
 import { MedalRow } from '../../components/RaceMedal'
 import { paceMsOf } from '../../lib/raceMedals'
 import { TomorrowCourse } from './TomorrowCourse'
-import { TestResultCard, TestStartCard } from './TestCards'
-import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, racingPlan, respawn, step, type Ball, type Tilt } from './sim'
+import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
+import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, racingPlan, respawn, step, zoneUnder, type Ball, type Tilt } from './sim'
 
 const SLUG = 'marblerun'
 
@@ -220,6 +220,12 @@ function cardChase(marble: MarbleDay, practice: boolean, top: BoardGhost | null,
   return { ghost: waiting(marble.pace), chasing: { who: 'pace' } }
 }
 
+/** The test track has no run to chase: a ghost that never leaves the start, which isn't shown. */
+function labChase(marble: MarbleDay): Chase {
+  const sp = marble.course.spawns[0]!
+  return { ghost: new Ghost({ time: 0, splits: [], ghost: [sp.x, sp.y, sp.z, sp.x, sp.y, sp.z] }), chasing: { who: 'pace' } }
+}
+
 function freshGame(marble: MarbleDay, chase: Chase): Game {
   return {
     phase: 'menu',
@@ -307,6 +313,7 @@ function MarbleRunDay({
   day,
   practice = false,
   test = false,
+  lab = false,
   itsDay,
   pastBoard = null,
   onNewDay,
@@ -323,6 +330,12 @@ function MarbleRunDay({
    * practice (and `practice` is set with it), on cards of its own (TestCards.tsx).
    */
   test?: boolean
+  /**
+   * The test track of new pieces (runs.ts labDay), an admin's, with `practice`: kept nowhere, not even the tab
+   * (your best here lasts while it's open), with no ghost, no blue ball and no call to the API, on cards of its
+   * own (TestCards.tsx LabStartCard).
+   */
+  lab?: boolean
   /** A past course's day as the API has it, for its cards: who was 1st, and you. */
   itsDay?: ItsDay
   /** A past course's All time board: signed in, a run on it goes there, under a run of its own. */
@@ -335,8 +348,10 @@ function MarbleRunDay({
   const viewer = useAccountId()
   const { signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
-  const marble = marbleDay(day)
+  const marble = lab ? labDay() : marbleDay(day)
   const pace = marble.pace
+  /** The test track's best run while it's open: kept nowhere else. */
+  const labBest = useRef<number | null>(null)
   const past = pastBoard !== null && !test
   const board = pastBoard?.board ?? null
   /** The board's #1 as last told (boardGhost.ts), and the tag you play under, for whose the ghost is. */
@@ -347,7 +362,7 @@ function MarbleRunDay({
   nameRef.current = playerName
 
   const gameRef = useRef<Game | null>(null)
-  if (!gameRef.current) gameRef.current = freshGame(marble, cardChase(marble, practice, null, playerName, null))
+  if (!gameRef.current) gameRef.current = freshGame(marble, lab ? labChase(marble) : cardChase(marble, practice, null, playerName, null))
   const [ui, setUi] = useState<Ui>(() => snapshot(gameRef.current!))
   const [saveOpen, setSaveOpen] = useState(false)
   const saveOpenRef = useRef(false)
@@ -439,7 +454,7 @@ function MarbleRunDay({
       beginRun(SLUG)
     } else if (past) beginRun(SLUG)
     previousBestRef.current = getPersonalBest(SLUG)
-    const g = freshGame(marble, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
+    const g = freshGame(marble, lab ? labChase(marble) : chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
     g.phase = 'countdown'
     g.owner = owner
     gameRef.current = g
@@ -458,7 +473,7 @@ function MarbleRunDay({
     if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
-    gameRef.current = freshGame(marble, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
+    gameRef.current = freshGame(marble, lab ? labChase(marble) : chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 300
     letGoStick()
@@ -474,7 +489,7 @@ function MarbleRunDay({
 
   /** At the start card, the run to beat worked out again: it changes at once. Mid-run, a run keeps the ghost it began with. */
   const rechase = () => {
-    if (gameRef.current!.phase !== 'menu') return
+    if (gameRef.current!.phase !== 'menu' || lab) return
     gameRef.current = freshGame(marble, cardChase(marble, practice, topRef.current, nameRef.current, nextRef.current))
     setUi(snapshot(gameRef.current))
   }
@@ -545,11 +560,11 @@ function MarbleRunDay({
   }, [signedIn, playerName, marble.n, practice])
 
   // The board's fastest run, for the ghost: asked for as the course opens (a past one's, its All time #1).
-  // A course whose day hasn't come, on an admin's test run, has no board yet.
+  // A course whose day hasn't come, on an admin's test run, has no board yet, nor has the test track.
   const [topAsked, setTopAsked] = useState(false)
   useEffect(() => {
     let live = true
-    const asked = marble.day > courseDay() ? Promise.resolve(null) : fetchBoardGhost(marble.n)
+    const asked = lab || marble.day > courseDay() ? Promise.resolve(null) : fetchBoardGhost(marble.n)
     void asked.then((found) => {
       if (!live) return
       if (found) takeTopRef.current(found)
@@ -558,7 +573,7 @@ function MarbleRunDay({
     return () => {
       live = false
     }
-  }, [marble.n, marble.day])
+  }, [marble.n, marble.day, lab])
 
   // Then your best here on this device, if it's faster than that: the API keeps it only if it's on the board
   // under your tag. So a run saved before runs sent their paths, or on a card closed too soon, still gets there.
@@ -666,10 +681,13 @@ function MarbleRunDay({
       const time = b.time!
       g.record.push(b.x, b.y, b.z)
       // Against the best of whoever rolled it, and kept as theirs: someone else signed in meanwhile has theirs.
-      const kept = g.owner === undefined ? null : bestOf(g.day, practice, ownerAccount(g.owner))
+      // The test track's best is kept only while it's open.
+      const kept = lab ? (labBest.current == null ? null : { time: labBest.current }) : g.owner === undefined ? null : bestOf(g.day, practice, ownerAccount(g.owner))
       const improved = !kept || time < kept.time
       const path = g.record
-      if (improved && g.owner !== undefined) {
+      if (lab) {
+        if (improved) labBest.current = time
+      } else if (improved && g.owner !== undefined) {
         const run = { time, splits: [...b.splits], ghost: path }
         if (practice) keepPracticeRun(g.day, g.owner, run)
         else keepBestRun(g.day, g.owner, run)
@@ -693,6 +711,9 @@ function MarbleRunDay({
     let last = performance.now()
     let shown = ''
     let failed = 0
+    // The new pieces' moments to hear (only a course with them has any): onto a boost pad, into a loop.
+    const extras = course.extras
+    let boosted = false
 
     const loop = (now: number) => {
       if (!alive) return
@@ -740,11 +761,28 @@ function MarbleRunDay({
             continue
           }
           g.tilt = g.phase === 'rolling' ? tiltFor(g) : { x: 0, z: 0 }
+          const rode = b.loop !== null
           step(marble.course, b, g.tilt)
           if (b.landed > 2.5) sfx('place')
           if (b.hit > 1.2) {
             sfx('plink', 2)
             haptic('hit')
+          }
+          if (extras) {
+            // A bumper's kick, which it flashes for; a hammer's or an arm's knock; into a loop; onto a boost pad.
+            if (b.bumped >= 0) {
+              scene.bumped(b.bumped, b.t)
+              sfx('boing', 1)
+              haptic('hit')
+            }
+            if (b.knocked > 2) {
+              sfx('hit')
+              haptic('crash')
+            }
+            if (b.loop && !rode) sfx('whoosh')
+            const boosting = zoneUnder(b.support)?.kind === 'boost'
+            if (boosting && !boosted) sfx('zip', 1)
+            boosted = boosting
           }
           if (g.phase !== 'rolling') continue
           if (b.crossed >= 0) {
@@ -762,7 +800,7 @@ function MarbleRunDay({
             g.fallFor = FALL_FOR
             b.lost = false
             b.air = true
-            if (b.falls === MARBLES_FALLS && b.next === 0) lostMarblesRef.current()
+            if (!lab && b.falls === MARBLES_FALLS && b.next === 0) lostMarblesRef.current()
             else sayRef.current('Off the edge · back to the checkpoint', 1.4)
             sfx('whoosh')
             haptic('crash')
@@ -786,7 +824,7 @@ function MarbleRunDay({
         }
       }
 
-      const ghostAt = g.phase === 'menu' ? null : g.ghost.at(b.t)
+      const ghostAt = g.phase === 'menu' || lab ? null : g.ghost.at(b.t)
       try {
         scene.frame(
           {
@@ -828,8 +866,8 @@ function MarbleRunDay({
       }
     }
     raf = requestAnimationFrame(loop)
-    // The pace ball's run, rolled now while the card is up, so the start doesn't wait on it.
-    const warm = window.setTimeout(() => paceOf(marble.day), 400)
+    // The pace ball's run, rolled now while the card is up, so the start doesn't wait on it. The test track has none.
+    const warm = lab ? 0 : window.setTimeout(() => paceOf(marble.day), 400)
     return () => {
       alive = false
       window.clearTimeout(warm)
@@ -984,7 +1022,7 @@ function MarbleRunDay({
   const g = gameRef.current!
   const showroom = ui.phase === 'menu'
   const run = g.run
-  const tabBest = practice ? (bestOf(day, true, g.owner === undefined ? viewer : ownerAccount(g.owner))?.time ?? null) : null
+  const tabBest = lab ? labBest.current : practice ? (bestOf(day, true, g.owner === undefined ? viewer : ownerAccount(g.owner))?.time ?? null) : null
   // A past course's best here is your best on its All time board too, signed in.
   const boardBest = past && viewer !== null && board?.you ? marblerunMsFromBoardScore(board.you.score) / 1000 : null
   const practiceBestTime = tabBest == null ? boardBest : boardBest == null ? tabBest : Math.min(tabBest, boardBest)
@@ -1017,7 +1055,12 @@ function MarbleRunDay({
         facts: [onItsDayFact(day, went), allTimeFact(SLUG, board, viewer !== null, formatMarblerunBoardScore)],
       }
     : null
-  const extra = practice ? (
+  const extra = lab ? (
+    <div className="game-pause-meta__row">
+      <span>Your best here</span>
+      <strong>{bestText}</strong>
+    </div>
+  ) : practice ? (
     <>
       <div className="game-pause-meta__row">
         <span>Blue ball</span>
@@ -1127,7 +1170,9 @@ function MarbleRunDay({
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noGl ? (
-                test ? (
+                lab ? (
+                  <LabStartCard best={practiceBestTime} />
+                ) : test ? (
                   <TestStartCard marble={marble} best={practiceBestTime} />
                 ) : pastPlay ? (
                   <PracticeStartCard marble={marble} kind={pastKind} facts={pastPlay.facts ?? []} tiles={extra} board={board} />
@@ -1136,7 +1181,9 @@ function MarbleRunDay({
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && run ? (
-                test ? (
+                lab ? (
+                  <LabResultCard time={run.time} falls={run.falls} best={practiceBestTime ?? run.time} improved={run.improved} onAgain={start} onDone={toMenu} />
+                ) : test ? (
                   <TestResultCard
                     marble={marble}
                     time={run.time}
@@ -1221,23 +1268,30 @@ function PastMarbleRun({ day }: { day: string }) {
 /**
  * Marble Run on today's course, mounted again for the next when midnight brings it; with `practiceDay`, a past
  * day's course from the past tab, onto its All time board; with `testDay`, today's course or one still to come,
- * test run from the admin's Course Book. A test run is only an admin's: anyone else is sent to today's
- * course, with a word about why when the course's day hasn't come.
+ * test run from the admin's Course Book; with `lab`, the test track of new pieces (runs.ts labDay), from the
+ * Course Book too. A test run and the test track are only an admin's: anyone else is sent to today's course,
+ * with a word about why when the course's day hasn't come, or when it was the test track.
  */
-export function MarbleRunGame({ practiceDay, testDay }: { practiceDay?: string | null; testDay?: string | null }) {
+export function MarbleRunGame({ practiceDay, testDay, lab = false }: { practiceDay?: string | null; testDay?: string | null; lab?: boolean }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? courseDay() }))
   const admin = useAdminState()
   const { loading } = useAuth()
+  const adminOnly = Boolean(testDay) || lab
   // Sent away only once we know: signed in (or not), and the API has said this account isn't an admin.
-  const shut = Boolean(testDay) && admin === false && !loading
+  const shut = adminOnly && admin === false && !loading
   useEffect(() => {
     if (shut) navigate(gamePlayHref(SLUG), { replace: true })
   }, [shut])
   if (practiceDay) return <PastMarbleRun key={`practice-${practiceDay}`} day={practiceDay} />
+  if (lab && admin === true) return <MarbleRunDay key="lab" day="lab" practice lab onNewDay={() => {}} />
   if (testDay && admin === true) return <MarbleRunDay key={`test-${testDay}`} day={testDay} practice test onNewDay={() => {}} />
   // Still signing in, or still asking the API whether this account is an admin.
-  if (testDay && !shut) return null
-  const notice = testDay && testDay !== courseDay() ? `Course #${courseNumber(testDay)}’s day hasn’t come yet. Here’s today’s.` : today.notice
+  if (adminOnly && !shut) return null
+  const notice = lab
+    ? 'The test track is for admins. Here’s today’s course.'
+    : testDay && testDay !== courseDay()
+      ? `Course #${courseNumber(testDay)}’s day hasn’t come yet. Here’s today’s.`
+      : today.notice
   return <MarbleRunDay key={today.day} day={today.day} notice={notice} onNewDay={(why) => setToday({ day: courseDay(), notice: why })} />
 }
 

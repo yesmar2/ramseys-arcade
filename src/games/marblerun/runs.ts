@@ -1,6 +1,6 @@
 import { dailyCourse, laidNumber, type DailyCourse } from './daily'
 import type { GhostRun } from './runStore'
-import { GHOST_RATE, paceRun, plannedCourse, type Course } from './sim'
+import { GHOST_RATE, labCourse, paceRun, plannedCourse, type Course } from './sim'
 
 export * from './runStore'
 
@@ -25,6 +25,16 @@ export function marbleDay(day: string): MarbleDay {
     laidDays.set(day, found)
   }
   return found
+}
+
+let lab: MarbleDay | null = null
+
+/**
+ * The test track of new pieces (sim.ts labCourse), an admin's (MarbleRunGame `lab`), as a day's course is had
+ * but of no day: no plan, no board, no blue ball (its `pace` is 0 and nothing shows it).
+ */
+export function labDay(): MarbleDay {
+  return (lab ??= { day: 'lab', n: 0, name: 'Test Track', attempt: 0, pace: 0, course: labCourse() })
 }
 
 /**

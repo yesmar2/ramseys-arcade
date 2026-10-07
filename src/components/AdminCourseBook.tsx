@@ -3,8 +3,8 @@ import { CourseDrawing } from '../games/marblerun/CourseDrawing'
 import { courseDay, dayOfCourse, PLANNED_COURSES } from '../games/marblerun/daily'
 import { DAILY_COURSES, type PlannedCourse } from '../games/marblerun/dailyPlan'
 import { formatRun } from '../games/marblerun/score'
-import { plannedCourse, type Course, type Feature } from '../games/marblerun/sim'
-import { courseRunHref } from '../games/marblerun/links'
+import { LAB_PIECES_IN_WORDS, plannedCourse, type Course, type Feature } from '../games/marblerun/sim'
+import { courseRunHref, LAB_HREF } from '../games/marblerun/links'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import '../styles/adminBooks.css'
 import '../styles/courseBook.css'
@@ -90,6 +90,14 @@ export function AdminCourseBook() {
           come, ahead of its day: a test run’s runs go on no board. A past one plays as practice.
           {last ? ` The plan runs to #${last.n} on ${dayWords(last.day)}, ${last.day.slice(0, 4)}; after that the days go round again from #1.` : ''}
         </p>
+        <div className="tb-feature__acts" style={{ marginTop: '0.8rem', alignItems: 'center' }}>
+          <a className="panel__btn panel__btn--ghost adm-small" href={LAB_HREF}>
+            Test track: new pieces →
+          </a>
+          <p className="tb-feature__next">
+            {LAB_PIECES_IN_WORDS.charAt(0).toUpperCase() + LAB_PIECES_IN_WORDS.slice(1)}, all on one course to try. None is in a day’s course yet.
+          </p>
+        </div>
         {todays ? (
           <div className="tb-feature">
             <CourseDrawing course={todays.course} className="cb-map" />

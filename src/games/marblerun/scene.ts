@@ -1,5 +1,34 @@
 import * as THREE from 'three'
-import { BALL_R, ease, halfWidth, hashString, headingAt, heightAt, local, mulberry32, point, RAIL_H, surfaceAt, type Ball, type Course, type Piece, type Tilt } from './sim'
+import {
+  ARM_R,
+  BALL_R,
+  ease,
+  HAMMER_HALF,
+  HAMMER_R,
+  halfWidth,
+  hashString,
+  headingAt,
+  heightAt,
+  HUB_H,
+  HUB_R,
+  local,
+  loopHalfWidth,
+  loopTheta,
+  moverAngle,
+  mulberry32,
+  platformPose,
+  point,
+  RAIL_H,
+  supportAt,
+  surfaceAt,
+  type Ball,
+  type Course,
+  type Mover,
+  type Piece,
+  type Platform,
+  type Tilt,
+  type Zone,
+} from './sim'
 
 /*
  * Marble Run in 3D: a course of dark glass drawn in light, hanging over a floor of light far below, and
@@ -26,6 +55,18 @@ const NEON = {
   floor: '#3a2270',
   peaks: '#4b2585',
   ghost: '#46e4ff',
+  // The new pieces (sim.ts labCourse): boost chevrons in hot lime, mud a dark matte plum-brown, ice a pale sheen;
+  // bumpers ringed in cyan light that flashes white; hammers and arms in danger red; slabs edged in cyan.
+  boost: '#b6ff3c',
+  mud: '#2b1a25',
+  ice: '#d8f2ff',
+  bumper: '#22123c',
+  bumperRing: '#7ff6ff',
+  bumperBand: '#ff5ce1',
+  danger: '#ff3b5c',
+  dangerDark: '#3a0c1a',
+  steel: '#2a2247',
+  slab: '#46e4ff',
 } as const
 
 /** What a frame shows. */
@@ -81,12 +122,19 @@ const UP = new THREE.Vector3(0, 1, 0)
 const POOL_GRID = 6
 const angleTo = (a: number, b: number) => Math.atan2(Math.sin(b - a), Math.cos(b - a))
 
+type At = (u: number, j: number) => [number, number, number, THREE.Color, number?, number?]
+
 /** Rows along a piece, `cols` across: `at(u, j)` gives [x, y, z, colour, uvU, uvV]. */
-function sheet(layer: Layer, p: Piece, cols: number, at: (u: number, j: number) => [number, number, number, THREE.Color, number?, number?], step = 0.5) {
-  const rows = Math.max(2, Math.ceil(p.len / step) + 1)
+function sheet(layer: Layer, p: Piece, cols: number, at: At, step = 0.5) {
+  strip(layer, 0, p.len, cols, at, step)
+}
+
+/** Rows along part of a piece, from `u0` to `u1`, `cols` across, as `sheet` lays a whole one. */
+function strip(layer: Layer, u0: number, u1: number, cols: number, at: At, step = 0.5) {
+  const rows = Math.max(2, Math.ceil((u1 - u0) / step) + 1)
   const first = layer.pos.length / 3
   for (let i = 0; i < rows; i++) {
-    const u = (p.len * i) / (rows - 1)
+    const u = u0 + ((u1 - u0) * i) / (rows - 1)
     for (let j = 0; j < cols; j++) {
       const [x, y, z, c, a, b] = at(u, j)
       layer.vert(x, y, z, c, a, b)
@@ -164,6 +212,24 @@ export class MarbleScene {
   private readonly camUp = new THREE.Vector3()
   private readonly axis = new THREE.Vector3()
   private readonly roll = new THREE.Vector3()
+
+  /*
+   * The new pieces (sim.ts labCourse), moved each frame to where the run's clock has them, the clock the ball's
+   * own physics keeps (Ball t), so what's seen is what hits.
+   */
+  private readonly hammers: { m: Mover; swing: THREE.Object3D }[] = []
+  private readonly arms: { m: Mover; turn: THREE.Object3D }[] = []
+  private readonly slabs: { pl: Platform; slab: THREE.Object3D }[] = []
+  /** Each bumper's lights, and when it was last hit on the run's clock. */
+  private readonly bumpers: { body: THREE.Object3D; ring: THREE.MeshBasicMaterial; glow: THREE.MeshBasicMaterial; base: THREE.Color; at: number }[] = []
+  private boostMap: THREE.Texture | null = null
+  /** The clock the moving pieces keep on the start card, where no run is rolling. */
+  private idle = 0
+  /** How far the camera has gone over to watching the loop the ball is riding, 0 to 1, and which loop that is. */
+  private loopView = 0
+  private loopSeen: Piece | null = null
+  private readonly loopEye = new THREE.Vector3()
+  private readonly loopLook = new THREE.Vector3()
 
   constructor(canvas: HTMLCanvasElement, course: Course) {
     this.course = course
@@ -349,14 +415,25 @@ export class MarbleScene {
       const cols = p.pipe || p.rollers || p.bank ? 13 : 7
       const narrow = p.w1 < 3.4 || p.w0 < 3.4
       // The top: shaded by its slopes, its grid running on from piece to piece; a kicker glows amber.
-      sheet(surface, p, cols, (u, j) => {
-        const v = -hw(u) + (2 * hw(u) * j) / (cols - 1)
+      const top = (u: number, v: number): ReturnType<At> => {
         const [x, z] = point(p, u, v)
         let c = WHITE.clone().multiplyScalar(shadeAt(p, u, v))
         if (p.kicker) c = c.lerp(kick, 0.45 * ease(p, u) + 0.35 * (u / p.len))
         else if (narrow) c = c.lerp(edgeColor, 0.12)
         return [x, heightAt(p, u, v), z, c, v / 2, (p.d0 + u) / 2]
-      })
+      }
+      const across = (u: number, j: number) => -hw(u) + (2 * hw(u) * j) / (cols - 1)
+      const hole = p.hole
+      if (!hole) sheet(surface, p, cols, (u, j) => top(u, across(u, j)))
+      else {
+        // A fork: the track whole before the hole and after it, and either side of it, with nothing between.
+        strip(surface, 0, hole.u0, cols, (u, j) => top(u, across(u, j)))
+        strip(surface, hole.u1, p.len, cols, (u, j) => top(u, across(u, j)))
+        strip(surface, hole.u0, hole.u1, 5, (u, j) => top(u, -hw(u) + ((hole.v0 + hw(u)) * j) / 4))
+        strip(surface, hole.u0, hole.u1, 9, (u, j) => top(u, hole.v1 + ((hw(u) - hole.v1) * j) / 8))
+        this.holeEdges(p, { edges, halos, skirts, railWalls, railTops }, DEPTH)
+      }
+      for (const zone of p.zones ?? []) this.zonePatch(p, zone)
       for (const side of [-1, 1]) {
         // The edge: a line of light and a glow falling off inward, and a skirt hanging below.
         sheet(edges, p, 2, (u, j) => {
@@ -418,6 +495,7 @@ export class MarbleScene {
         }
       }
     }
+    for (const p of course.extras?.loops ?? []) this.loopRibbon(p, { surface, edges, halos, skirts, railWalls, railTops })
 
     // The wall behind the start and the one past the goal: glass, like the rails.
     for (const w of course.walls) {
@@ -494,10 +572,389 @@ export class MarbleScene {
       group.add(core, glow)
     }
 
+    // Boost pads, mud and ice; bumpers, hammers, arms and slabs (only a course with them has any).
+    this.buildZones()
+    if (course.extras) this.buildMovers(grid)
+
     // Gates: the start's, one at every checkpoint, and the goal's.
     const start = course.pieces[0]!
     this.gate(start, start.len - 0.2, NEON.gate, false, fade, `${course.name.toUpperCase()}`)
     for (const L of course.lines) this.gates.push(this.gate(L.p, L.u, L.goal ? NEON.goal : NEON.gate, !!L.goal, fade, L.goal ? 'GOAL' : null))
+  }
+
+  /* ------------------------------------------------------------ the new pieces --- */
+
+  /** Boost pads, mud and ice, a layer of each, laid over the track as zonePatch finds them. */
+  private readonly zones: Record<Zone['kind'], Layer> = { boost: new Layer(), mud: new Layer(), ice: new Layer() }
+
+  /** A zone laid on its piece's track, just over it, following its banks and bowls. */
+  private zonePatch(p: Piece, zone: Zone) {
+    const layer = this.zones[zone.kind]
+    const lo = (u: number) => Math.max(zone.v0 ?? -Infinity, -halfWidth(p, u))
+    const hi = (u: number) => Math.min(zone.v1 ?? Infinity, halfWidth(p, u))
+    const n = 7
+    // A pad's chevrons stretch across it, one every 1.6 m; mud and ice are the same patch wherever they lie.
+    strip(
+      layer,
+      zone.u0,
+      zone.u1,
+      n,
+      (u, j) => {
+        const v = lo(u) + ((hi(u) - lo(u)) * j) / (n - 1)
+        const [x, z] = point(p, u, v)
+        return [x, heightAt(p, u, v) + 0.02, z, WHITE, zone.kind === 'boost' ? j / (n - 1) : v / 4, zone.kind === 'boost' ? (u - zone.u0) / 1.6 : (p.d0 + u) / 4]
+      },
+      0.25,
+    )
+  }
+
+  private buildZones() {
+    // Lifted off the track by depth as well as by height, so it never flickers through it from far away.
+    const lift = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4, side: THREE.DoubleSide } as const
+    if (!this.zones.boost.empty) {
+      // Chevrons pointing down the track, bright on a faint glow; they run forward (frame).
+      const map = this.paint(128, 128, (g, w, h) => {
+        g.clearRect(0, 0, w, h)
+        g.fillStyle = 'rgba(255,255,255,0.13)'
+        g.fillRect(0, 0, w, h)
+        g.strokeStyle = '#ffffff'
+        g.lineWidth = 17
+        g.lineJoin = 'round'
+        g.lineCap = 'round'
+        g.shadowColor = '#ffffff'
+        g.shadowBlur = 14
+        g.beginPath()
+        g.moveTo(w * 0.14, h * 0.78)
+        g.lineTo(w * 0.5, h * 0.3)
+        g.lineTo(w * 0.86, h * 0.78)
+        g.stroke()
+      })
+      map.wrapS = map.wrapT = THREE.RepeatWrapping
+      this.boostMap = map
+      const pad = this.zones.boost.mesh(new THREE.MeshBasicMaterial({ map, color: NEON.boost, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, ...lift }))
+      pad.renderOrder = 2
+      this.scene.add(pad)
+    }
+    if (!this.zones.mud.empty) {
+      // Dark, matte and blotched, as wet mud is.
+      const map = this.paint(256, 256, (g, w, h) => {
+        g.fillStyle = NEON.mud
+        g.fillRect(0, 0, w, h)
+        const r = mulberry32(11)
+        for (let i = 0; i < 70; i++) {
+          const x = r() * w
+          const y = r() * h
+          const s = 6 + r() * 26
+          g.fillStyle = r() < 0.55 ? 'rgba(14, 7, 12, 0.55)' : 'rgba(77, 47, 62, 0.5)'
+          for (const [ox, oy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) {
+            g.beginPath()
+            g.ellipse(x + ox!, y + oy!, s, s * (0.5 + r() * 0.5), r() * Math.PI, 0, Math.PI * 2)
+            g.fill()
+          }
+        }
+        g.fillStyle = 'rgba(255, 210, 235, 0.06)'
+        for (let i = 0; i < 40; i++) g.fillRect(r() * w, r() * h, 2, 2)
+      })
+      map.wrapS = map.wrapT = THREE.RepeatWrapping
+      this.scene.add(this.zones.mud.mesh(new THREE.MeshBasicMaterial({ map, color: '#ffffff', ...lift })))
+    }
+    if (!this.zones.ice.empty) {
+      // A pale sheen with streaks of shine across it.
+      const map = this.paint(256, 256, (g, w, h) => {
+        g.fillStyle = 'rgba(190, 228, 255, 0.42)'
+        g.fillRect(0, 0, w, h)
+        const r = mulberry32(5)
+        g.lineCap = 'round'
+        for (let i = 0; i < 26; i++) {
+          const x = r() * w
+          const y = r() * h
+          const len = 20 + r() * 70
+          g.strokeStyle = `rgba(255, 255, 255, ${0.25 + r() * 0.5})`
+          g.lineWidth = 1 + r() * 2.5
+          g.beginPath()
+          g.moveTo(x, y)
+          g.lineTo(x + len, y - len * 0.45)
+          g.stroke()
+        }
+        for (let i = 0; i < 60; i++) {
+          g.fillStyle = `rgba(255, 255, 255, ${0.4 + r() * 0.6})`
+          g.fillRect(r() * w, r() * h, 1.5, 1.5)
+        }
+      })
+      map.wrapS = map.wrapT = THREE.RepeatWrapping
+      const ice = this.zones.ice.mesh(new THREE.MeshBasicMaterial({ map, color: NEON.ice, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, ...lift }))
+      ice.renderOrder = 2
+      this.scene.add(ice)
+    }
+  }
+
+  /** A fork's hole: a line of light round it, its glow falling off onto the track, a skirt down into it, and its rails. */
+  private holeEdges(p: Piece, at: { edges: Layer; halos: Layer; skirts: Layer; railWalls: Layer; railTops: Layer }, depth: number) {
+    const h = p.hole!
+    const edge = new THREE.Color(NEON.edge)
+    const rail = new THREE.Color(NEON.rail)
+    const skirtTop = new THREE.Color(NEON.skirtTop)
+    const skirtLow = new THREE.Color(NEON.skirtLow)
+    const xyz = (u: number, v: number, dy = 0): [number, number, number] => {
+      const [x, z] = point(p, u, v)
+      return [x, heightAt(p, u, v) + dy, z]
+    }
+    // Along each side, the track's side of the hole being away from it: below v0, above v1.
+    for (const [v, away, railed] of [
+      [h.v0, -1, h.railV0],
+      [h.v1, 1, h.railV1],
+    ] as const) {
+      strip(at.edges, h.u0, h.u1, 2, (u, j) => [...xyz(u, v + away * j * 0.09, 0.015), edge])
+      strip(at.halos, h.u0, h.u1, 2, (u, j) => [...xyz(u, v + away * j * 0.9, 0.01), edge, j, 0])
+      strip(at.skirts, h.u0, h.u1, 2, (u, j) => [...xyz(u, v, -j * depth), j ? skirtLow : skirtTop])
+      if (railed) {
+        strip(at.railWalls, h.u0, h.u1, 2, (u, j) => [...xyz(u, v, j * RAIL_H), rail, j, 0])
+        strip(at.railTops, h.u0, h.u1, 2, (u, j) => {
+          const [x, z] = point(p, u, v + away * j * 0.08)
+          return [x, heightAt(p, u, v) + RAIL_H, z, rail]
+        })
+      }
+    }
+    // Across each end of it.
+    for (const [u, away] of [
+      [h.u0, -1],
+      [h.u1, 1],
+    ] as const) {
+      const n = 7
+      const lip = at.edges.pos.length / 3
+      const face = at.skirts.pos.length / 3
+      for (let k = 0; k < n; k++) {
+        const v = h.v0 + ((h.v1 - h.v0) * k) / (n - 1)
+        at.edges.vert(...xyz(u, v, 0.015), edge)
+        at.edges.vert(...xyz(u + away * 0.09, v, 0.015), edge)
+        at.skirts.vert(...xyz(u, v), skirtTop)
+        at.skirts.vert(...xyz(u, v, -depth), skirtLow)
+      }
+      for (let k = 0; k < n - 1; k++) {
+        const a = lip + k * 2
+        at.edges.tri(a, a + 1, a + 2)
+        at.edges.tri(a + 1, a + 3, a + 2)
+        const b = face + k * 2
+        at.skirts.tri(b, b + 1, b + 2)
+        at.skirts.tri(b + 1, b + 3, b + 2)
+      }
+    }
+  }
+
+  /**
+   * A loop's track: a ribbon up and over and down again, its grid running on from the track's, edged in light,
+   * walled low on both sides, its skirt on the outside.
+   */
+  private loopRibbon(p: Piece, at: { surface: Layer; edges: Layer; halos: Layer; skirts: Layer; railWalls: Layer; railTops: Layer }) {
+    const edge = new THREE.Color(NEON.edge)
+    const rail = new THREE.Color(NEON.rail)
+    const skirtTop = new THREE.Color(NEON.skirtTop)
+    const skirtLow = new THREE.Color(NEON.skirtLow)
+    const c = Math.cos(p.h0)
+    const s = Math.sin(p.h0)
+    // `u` round it and `v` across, lifted `off` toward the loop's middle (less than 0: away from it).
+    const xyz = (u: number, v: number, off = 0): [number, number, number] => {
+      const th = loopTheta(p, u)
+      const [x, z] = point(p, u, v)
+      const st = Math.sin(th)
+      return [x - st * c * off, heightAt(p, u, v) + Math.cos(th) * off, z - st * s * off]
+    }
+    const lit = (u: number) => {
+      const th = loopTheta(p, u)
+      const n = new THREE.Vector3(-Math.sin(th) * c, Math.cos(th), -Math.sin(th) * s)
+      return WHITE.clone().multiplyScalar(0.55 + 0.45 * Math.abs(n.dot(LIGHT)))
+    }
+    const step = 0.25
+    sheet(
+      at.surface,
+      p,
+      9,
+      (u, j) => {
+        const hw = loopHalfWidth(p, u)
+        const v = -hw + (2 * hw * j) / 8
+        return [...xyz(u, v), lit(u), v / 2, (p.d0 + u) / 2]
+      },
+      step,
+    )
+    for (const side of [-1, 1]) {
+      sheet(at.edges, p, 2, (u, j) => [...xyz(u, side * (loopHalfWidth(p, u) - j * 0.09), 0.015), edge], step)
+      sheet(at.halos, p, 2, (u, j) => [...xyz(u, side * (loopHalfWidth(p, u) - j * 0.9), 0.01), edge, j, 0], step)
+      sheet(at.skirts, p, 2, (u, j) => [...xyz(u, side * loopHalfWidth(p, u), -j * 0.6), j ? skirtLow : skirtTop], step)
+      sheet(at.railWalls, p, 2, (u, j) => [...xyz(u, side * loopHalfWidth(p, u), j * 0.45), rail, j, 0], step)
+      sheet(at.railTops, p, 2, (u, j) => [...xyz(u, side * (loopHalfWidth(p, u) - j * 0.08), 0.45), rail], step)
+    }
+  }
+
+  /** Bumpers, hammers, arms and slabs: each its own meshes, which `frame` moves. */
+  private buildMovers(grid: THREE.Texture) {
+    const x = this.course.extras!
+    const glowBits = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false } as const
+    // Danger, in stripes: the hammers' heads and the arms' bars.
+    const stripes = this.paint(128, 32, (g, w, h) => {
+      g.fillStyle = NEON.dangerDark
+      g.fillRect(0, 0, w, h)
+      g.fillStyle = NEON.danger
+      for (let i = -2; i < 8; i++) {
+        g.beginPath()
+        g.moveTo(i * 24, h)
+        g.lineTo(i * 24 + 12, h)
+        g.lineTo(i * 24 + 12 + h, 0)
+        g.lineTo(i * 24 + h, 0)
+        g.closePath()
+        g.fill()
+      }
+    })
+    stripes.wrapS = stripes.wrapT = THREE.RepeatWrapping
+    const danger = new THREE.MeshBasicMaterial({ map: stripes })
+    const hot = new THREE.MeshBasicMaterial({ color: NEON.danger })
+    const hotGlow = new THREE.MeshBasicMaterial({ color: NEON.danger, opacity: 0.2, ...glowBits })
+    const steel = new THREE.MeshBasicMaterial({ color: NEON.steel })
+    const steelEdge = new THREE.MeshBasicMaterial({ color: NEON.rail })
+
+    // Bumpers: a dark drum with a ring of light round its top and a band round its middle; the ring and its
+    // glow flash white and it swells a moment when it kicks (frame).
+    for (const k of x.bumpers) {
+      const body = new THREE.Group()
+      body.position.set(k.x, k.y, k.z)
+      const drum = new THREE.Mesh(new THREE.CylinderGeometry(k.r, k.r * 1.06, k.h, 28), new THREE.MeshBasicMaterial({ color: NEON.bumper }))
+      drum.position.y = k.h / 2
+      const base = new THREE.Color(NEON.bumperRing)
+      const ringMat = new THREE.MeshBasicMaterial({ color: base.clone() })
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(k.r * 0.86, 0.08, 10, 40), ringMat)
+      ring.rotation.x = Math.PI / 2
+      ring.position.y = k.h + 0.02
+      const cap = new THREE.Mesh(new THREE.CircleGeometry(k.r * 0.78, 28), new THREE.MeshBasicMaterial({ color: NEON.bumper, side: THREE.DoubleSide }))
+      cap.rotation.x = -Math.PI / 2
+      cap.position.y = k.h + 0.005
+      const band = new THREE.Mesh(new THREE.TorusGeometry(k.r * 1.04, 0.05, 8, 40), new THREE.MeshBasicMaterial({ color: NEON.bumperBand }))
+      band.rotation.x = Math.PI / 2
+      band.position.y = k.h * 0.45
+      const glowMat = new THREE.MeshBasicMaterial({ color: NEON.bumperRing, opacity: 0.18, ...glowBits })
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(k.r * 1.5, k.r * 1.5, k.h * 1.1, 28, 1, true), glowMat)
+      glow.position.y = k.h / 2
+      body.add(drum, ring, cap, band, glow)
+      this.scene.add(body)
+      this.bumpers.push({ body, ring: ringMat, glow: glowMat, base, at: -Infinity })
+    }
+
+    for (const m of x.movers) {
+      if (m.kind === 'hammer') {
+        // A gantry over the track: a pylon either side, clear of the head's swing, a beam across, the axle under
+        // its middle. The arm and the head swing from the axle, across the track.
+        const frame = new THREE.Group()
+        frame.position.set(m.x, m.y, m.z)
+        frame.rotation.y = -m.h
+        const wide = m.arm * Math.sin(m.swing) + HAMMER_R + 0.7
+        const drop = m.y - m.ground + 2.5
+        for (const side of [-1, 1]) {
+          const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.26, drop + 0.5, 0.26), steel)
+          pylon.position.set(0, 0.25 - drop / 2, side * wide)
+          const trim = new THREE.Mesh(new THREE.BoxGeometry(0.05, drop + 0.5, 0.3), steelEdge)
+          trim.position.set(0.14, 0.25 - drop / 2, side * wide)
+          frame.add(pylon, trim)
+        }
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 2 * wide + 0.26), steel)
+        beam.position.y = 0.42
+        const beamTrim = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 2 * wide + 0.3), steelEdge)
+        beamTrim.position.y = 0.6
+        const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.7, 14).rotateZ(Math.PI / 2), hot)
+        frame.add(beam, beamTrim, axle)
+        const swing = new THREE.Group()
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16, m.arm, 0.16), steel)
+        arm.position.y = -m.arm / 2
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(HAMMER_R, HAMMER_R, 2 * HAMMER_HALF, 28).rotateZ(Math.PI / 2), danger)
+        head.position.y = -m.arm
+        const halo = new THREE.Mesh(new THREE.CylinderGeometry(HAMMER_R * 1.35, HAMMER_R * 1.35, 2 * HAMMER_HALF * 1.1, 24, 1, true).rotateZ(Math.PI / 2), hotGlow)
+        halo.position.y = -m.arm
+        swing.add(arm, head, halo)
+        for (const end of [-1, 1]) {
+          const rim = new THREE.Mesh(new THREE.CylinderGeometry(HAMMER_R * 1.03, HAMMER_R * 1.03, 0.08, 28).rotateZ(Math.PI / 2), hot)
+          rim.position.set(end * HAMMER_HALF, -m.arm, 0)
+          swing.add(rim)
+        }
+        frame.add(swing)
+        this.scene.add(frame)
+        this.hammers.push({ m, swing })
+      } else {
+        // A post that stands still, and the bar through it that turns.
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(HUB_R, HUB_R * 1.1, HUB_H, 24), steel)
+        post.position.set(m.x, m.ground + HUB_H / 2, m.z)
+        const cap = new THREE.Mesh(new THREE.TorusGeometry(HUB_R * 0.95, 0.06, 8, 32), hot)
+        cap.rotation.x = Math.PI / 2
+        cap.position.set(m.x, m.ground + HUB_H, m.z)
+        this.scene.add(post, cap)
+        const turn = new THREE.Group()
+        turn.position.set(m.x, m.y, m.z)
+        const long = m.reach + m.back
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(long, 2 * ARM_R, 2 * ARM_R), danger)
+        bar.position.x = (m.reach - m.back) / 2
+        const halo = new THREE.Mesh(new THREE.BoxGeometry(long + 0.2, 2 * ARM_R + 0.22, 2 * ARM_R + 0.22), hotGlow)
+        halo.position.x = bar.position.x
+        turn.add(bar, halo)
+        for (const tip of [m.reach, -m.back]) {
+          if (tip === 0) continue
+          const end = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2 * ARM_R + 0.04, 2 * ARM_R + 0.04), hot)
+          end.position.x = tip - Math.sign(tip) * 0.05
+          turn.add(end)
+        }
+        this.scene.add(turn)
+        this.arms.push({ m, turn })
+      }
+    }
+
+    // Slabs: a block of the track's own glass, its top edged in cyan light.
+    for (const pl of x.platforms) {
+      const slab = new THREE.Group()
+      const T = 0.5
+      const top = new THREE.PlaneGeometry(2 * pl.hl, 2 * pl.hw)
+      top.rotateX(-Math.PI / 2)
+      const uv = top.attributes.uv!
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * pl.hl, uv.getY(i) * pl.hw)
+      slab.add(new THREE.Mesh(top, new THREE.MeshBasicMaterial({ map: grid, color: '#d9d2ff' })))
+      const block = new THREE.Mesh(new THREE.BoxGeometry(2 * pl.hl, T, 2 * pl.hw), new THREE.MeshBasicMaterial({ color: NEON.skirtTop }))
+      block.position.y = -T / 2 - 0.01
+      const under = new THREE.Mesh(new THREE.BoxGeometry(2 * pl.hl - 0.3, 0.6, 2 * pl.hw - 0.3), new THREE.MeshBasicMaterial({ color: NEON.skirtLow }))
+      under.position.y = -T - 0.3
+      slab.add(block, under)
+      const lit = new THREE.MeshBasicMaterial({ color: NEON.slab })
+      for (const side of [-1, 1]) {
+        const long = new THREE.Mesh(new THREE.BoxGeometry(2 * pl.hl, 0.05, 0.12), lit)
+        long.position.set(0, 0.02, side * (pl.hw - 0.06))
+        const short = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 2 * pl.hw), lit)
+        short.position.set(side * (pl.hl - 0.06), 0.02, 0)
+        slab.add(long, short)
+      }
+      const glow = new THREE.Mesh(new THREE.BoxGeometry(2 * pl.hl + 0.4, T + 0.3, 2 * pl.hw + 0.4), new THREE.MeshBasicMaterial({ color: NEON.slab, opacity: 0.1, ...glowBits }))
+      glow.position.y = -T / 2
+      slab.add(glow)
+      slab.rotation.y = -pl.h
+      this.scene.add(slab)
+      this.slabs.push({ pl, slab })
+    }
+  }
+
+  /** A bumper kicked the ball at `t` seconds into the run: its lights flash. */
+  bumped(index: number, t: number) {
+    const k = this.bumpers[index]
+    if (k) k.at = t
+  }
+
+  /** The moving pieces where the run's clock has them, and bumpers flashing a moment after a kick. */
+  private moveExtras(clock: number) {
+    for (const { m, swing } of this.hammers) swing.rotation.x = -moverAngle(m, clock)[0]
+    for (const { m, turn } of this.arms) turn.rotation.y = -(m.h + moverAngle(m, clock)[0])
+    for (const { pl, slab } of this.slabs) {
+      const at = platformPose(pl, clock)
+      slab.position.set(at.x, pl.y, at.z)
+    }
+    for (const k of this.bumpers) {
+      const since = clock - k.at
+      const flash = since >= 0 && since < 0.9 ? Math.exp(-since / 0.14) : 0
+      k.ring.color.copy(k.base).lerp(WHITE, flash)
+      k.glow.opacity = 0.18 + 0.6 * flash
+      k.body.scale.setScalar(1 + 0.16 * flash)
+    }
+    if (this.boostMap) this.boostMap.offset.y = -((clock * 1.5) % 1)
   }
 
   private gate(p: Piece, u: number, color: string, goal: boolean, fade: THREE.Texture, label: string | null): Gate {
@@ -620,6 +1077,10 @@ export class MarbleScene {
   snap() {
     this.snapNext = true
     this.omega.set(0, 0, 0)
+    this.loopView = 0
+    this.loopSeen = null
+    // A new run's clock starts again: last run's kicks aren't this one's.
+    for (const k of this.bumpers) k.at = -Infinity
   }
 
   /** The way the camera looks, across the ground: a tilt forward on the keys or the stick leans the world that way. */
@@ -629,6 +1090,10 @@ export class MarbleScene {
 
   frame(f: SceneFrame, dt: number) {
     const b = f.ball
+    // The moving pieces keep the run's clock, the one the ball's physics keeps; on the start card, one of their own.
+    if (f.mode === 'menu') this.idle += dt
+    const clock = f.mode === 'menu' ? this.idle : b.t
+    this.moveExtras(clock)
     this.placeCamera(f, dt)
 
     // The marble, rolling: on the track it turns about the line across the way it's going, as fast as it goes.
@@ -638,7 +1103,17 @@ export class MarbleScene {
     this.ball.position.set(b.x, b.y, b.z)
     this.glow.position.copy(this.ball.position)
     if (dt > 0) {
-      if (!b.air) {
+      if (b.loop) {
+        // Round a loop it rolls on the loop's track, about the line across it: the way in toward the loop's middle,
+        // crossed with the way it's going.
+        const th = loopTheta(b.loop.p, b.loop.u)
+        const nx = -Math.sin(th) * Math.cos(b.loop.p.h0)
+        const ny = Math.cos(th)
+        const nz = -Math.sin(th) * Math.sin(b.loop.p.h0)
+        this.roll.set(ny * b.vz - nz * b.vy, nz * b.vx - nx * b.vz, nx * b.vy - ny * b.vx).divideScalar(BALL_R)
+        this.landedFor += dt
+        this.omega.copy(this.roll)
+      } else if (!b.air) {
         const sp = Math.hypot(b.vx, b.vy, b.vz)
         const across = Math.hypot(b.vx, b.vz)
         if (across > 1e-4) this.roll.set(b.vz / across, 0, -b.vx / across).multiplyScalar(sp / BALL_R)
@@ -655,7 +1130,9 @@ export class MarbleScene {
       }
     }
     // The pool of light on the track below it, laid on the track's own shape, wider and fainter the higher it flies.
-    const under = f.mode === 'menu' ? null : surfaceAt(this.course, b.x, b.z, b.y)
+    // On a slab it's on the slab; round a loop there's none.
+    const under =
+      f.mode === 'menu' || b.loop ? null : this.slabs.length ? supportAt(this.course, b.x, b.z, b.y, clock) : surfaceAt(this.course, b.x, b.z, b.y)
     if (under) {
       const high = b.y - BALL_R - under.y
       const size = 1.6 + Math.min(4, high) * 0.35
@@ -727,11 +1204,12 @@ export class MarbleScene {
     }
     const b = f.ball
     const sp = Math.hypot(b.vx, b.vz)
-    // Look the way the track goes here, leaning toward the way the ball is going.
+    // Look the way the track goes here, leaning toward the way the ball is going. Round a loop, only the way
+    // the loop goes: the ball comes back over the top the other way.
     let target = this.yaw
     const s = b.support
     if (s) target = headingAt(s.p, Math.max(0, Math.min(s.p.len, s.u)))
-    if (sp > 2) target += Math.max(-0.9, Math.min(0.9, angleTo(target, Math.atan2(b.vz, b.vx)))) * 0.55
+    if (sp > 2 && !b.loop) target += Math.max(-0.9, Math.min(0.9, angleTo(target, Math.atan2(b.vz, b.vx)))) * 0.55
     if (this.snapNext) {
       this.yaw = target
       this.followY = b.y
@@ -742,8 +1220,8 @@ export class MarbleScene {
     if (!falling) {
       if (f.mode === 'done') this.yaw += dt * (this.calm ? 0.08 : 0.3)
       else this.yaw += angleTo(this.yaw, target) * (1 - Math.exp(-dt * 3.2))
-      // The height follows a little behind, so hops don't shake the view.
-      this.followY += (b.y - this.followY) * (1 - Math.exp(-dt * 9))
+      // The height follows a little behind, so hops don't shake the view; round a loop it stays at the bottom.
+      if (!b.loop) this.followY += (b.y - this.followY) * (1 - Math.exp(-dt * 9))
     }
     const fx = Math.cos(this.yaw)
     const fz = Math.sin(this.yaw)
@@ -769,6 +1247,27 @@ export class MarbleScene {
       eye.sub(focus).applyQuaternion(this.lean).add(focus)
       look.sub(focus).applyQuaternion(this.lean).add(focus)
       this.camUp.applyQuaternion(this.lean)
+    }
+    // Round a loop, the camera goes over to a place behind it and off to its left, where the ball is seen going
+    // all the way round, and comes back behind the ball once it's out.
+    if (!falling) {
+      const ride = b.loop
+      if (ride) this.loopSeen = ride.p
+      this.loopView += ((ride ? 1 : 0) - this.loopView) * (1 - Math.exp(-dt * (ride ? 5 : 2.4)))
+    }
+    const q = this.loopSeen
+    if (q && this.loopView > 1e-3) {
+      const c = Math.cos(q.h0)
+      const sn = Math.sin(q.h0)
+      const R = q.R!
+      const mid = (q.shift ?? 0) / 2
+      this.loopLook.set(q.x0 - mid * sn, q.y0 + R * 0.95, q.z0 + mid * c)
+      this.loopEye.set(q.x0 - c * R * 1.2 + sn * R * 2.4, q.y0 + R * 1.15, q.z0 - sn * R * 1.2 - c * R * 2.4)
+      const k = this.loopView * this.loopView * (3 - 2 * this.loopView)
+      eye.lerp(this.loopEye, k)
+      look.lerp(this.loopLook, k)
+      this.camUp.lerp(UP, k).normalize()
+      if (this.loopView < 0.01 && !b.loop) this.loopSeen = null
     }
     if (f.mode === 'done') {
       // Pull back and look down on it; on a tall screen, keep it above the card.
