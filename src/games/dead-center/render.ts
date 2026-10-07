@@ -390,16 +390,25 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, margin: n
     ctx.setLineDash([])
   }
   if (pin) {
+    // Exactly where the pin went in: a small red dot, and a thin ring well clear of it to find it by
+    // (Ramsey, 2026-10-07: "smaller to show exactly where you placed the pin ... the circle around it is too close").
     const pp = at(pin)
-    ctx.strokeStyle = hsla(PIN_HUE, 80, dark ? 62 : 46)
-    ctx.lineWidth = Math.max(1, k * 0.0045)
+    ctx.fillStyle = hsla(PIN_HUE, 85, dark ? 64 : 48)
+    ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.9)' : 'rgba(255, 255, 255, 0.95)'
+    ctx.lineWidth = Math.max(1, k * 0.0022)
     ctx.beginPath()
-    ctx.arc(pp.x, pp.y, Math.max(2.2, k * 0.009), 0, TAU)
+    ctx.arc(pp.x, pp.y, Math.max(1.8, k * 0.0042), 0, TAU)
+    ctx.fill()
+    ctx.stroke()
+    ctx.strokeStyle = hsla(PIN_HUE, 80, dark ? 62 : 46, 0.75)
+    ctx.lineWidth = Math.max(1, k * 0.0025)
+    ctx.beginPath()
+    ctx.arc(pp.x, pp.y, Math.max(14, k * 0.045), 0, TAU)
     ctx.stroke()
   }
 
-  // The balance point itself.
-  const gr = Math.max(2.6, k * 0.011) * pop
+  // The balance point itself: small, so it marks a point rather than an area.
+  const gr = Math.max(2, k * 0.0062) * pop
   ctx.fillStyle = hsla(GOLD, 95, 58)
   ctx.strokeStyle = hsla(GOLD, 80, dark ? 82 : 34)
   ctx.lineWidth = Math.max(1, k * 0.0035)

@@ -460,7 +460,8 @@ export function setPin(state: GameState, tapped: Point): GameState {
   const d = dist(pin, plate.centroid)
   const off = d / plate.size
   const balanced = off <= state.margin
-  const dead = off <= DEAD_OFF
+  // A day's dead center is its 🎯: within 1% of the plate's size (score.ts markFor), not the arcade's 2%.
+  const dead = off <= (state.day ? 0.01 : DEAD_OFF)
   const dir = d > 1e-6 ? { x: (plate.centroid.x - pin.x) / d, y: (plate.centroid.y - pin.y) / d } : { x: 0.8, y: -0.6 }
   let points = 0
   if (state.day) points = plateScore(off)
