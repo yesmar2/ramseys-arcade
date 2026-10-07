@@ -276,6 +276,12 @@
   transform: rotate(-2deg);
 }
 
+/* The card is dark gold in either theme, so its stars keep the bright gold. */
+html[data-theme='light'] .plus-card .plus-mark svg {
+  fill: #f5b942;
+  stroke: none;
+}
+
 .plus-card__top {
   display: flex;
   justify-content: space-between;
