@@ -2220,6 +2220,14 @@ function clampTilt(x: number, z: number): Tilt {
 /** How much of a curve's pull toward its middle a player's marble gets by itself: the rest is theirs. */
 export const TURN_HELP = 0.5
 
+/**
+ * The steadying a thumb on the stick gets (handsTilt `steady`), as Ramsey found the marble "kinda hard on a
+ * phone" (2026-10-07). A stand-in phone player, a moment late and a little unsteady, mostly fell weaving off the
+ * narrows: with this it fell 2.6 times a run instead of 6.3, and never on a narrow, while a quick one's times were
+ * the same. The keys keep none.
+ */
+export const PHONE_STEADY = 1
+
 /** The piece `d` metres down the course, and how far along it: the last piece's end, past the course's. */
 export function pieceAt(course: Course, d: number): { p: Piece; u: number } {
   for (const p of course.pieces) if (d < p.d0 + p.len) return { p, u: Math.max(0, d - p.d0) }
@@ -2236,7 +2244,7 @@ export function pieceAt(course: Course, d: number): { p: Piece; u: number } {
  * the line, and can lean against the help. `camera` is the way forward while there's no track under the
  * marble yet. The blue ball never uses this: its runs, and the plan's times, are as they were.
  */
-export function handsTilt(course: Course, b: Ball, hands: { x: number; y: number }, camera: number, help = TURN_HELP): Tilt {
+export function handsTilt(course: Course, b: Ball, hands: { x: number; y: number }, camera: number, help = TURN_HELP, steady = 0): Tilt {
   const s = b.support
   const sp = Math.hypot(b.vx, b.vz)
   let h = camera
@@ -2262,6 +2270,17 @@ export function handsTilt(course: Course, b: Ball, hands: { x: number; y: number
     const k = (help * (pull - own)) / (ROLL * G)
     hx = k * nx
     hz = k * nz
+  }
+  // Steadying (`steady`, per second): that share of the marble's slide across the track taken off by itself, as a
+  // thumb a moment late can't. It keeps the line the marble is on rather than steering it anywhere; not on ice, a
+  // slab, or in the air.
+  if (steady > 0 && s && !b.air && !s.plat && zoneUnder(s)?.kind !== 'ice') {
+    const c = headingAt(s.p, clamp(s.u, 0, s.p.len))
+    const nx = -Math.sin(c)
+    const nz = Math.cos(c)
+    const k = -(steady * (b.vx * nx + b.vz * nz)) / (ROLL * G)
+    hx += k * nx
+    hz += k * nz
   }
   // Across first, the hands' and the help's; then along, with what's left.
   const across = clamp(hands.x * TILT_MAX + hx * rx + hz * rz, -TILT_MAX, TILT_MAX)
