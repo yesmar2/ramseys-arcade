@@ -283,9 +283,8 @@ function Fields({ placed, who }: { placed: Placed[]; who: Who }) {
 }
 
 function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: number; who: Who; words: PeriodWords }) {
-  const listed = placed.filter((p) => onWall(p.slug))
-  const retired = placed.filter((p) => !onWall(p.slug)).map((p) => gameName(p.slug))
-  const n = listed.length
+  // A retired or on-deck game counts toward nobody's rank (the API's RANKED_GAMES), so it's never among them.
+  const n = placed.filter((p) => onWall(p.slug)).length
   const on = words.noun
     ? `${capital(words.phrase)} ${who.self ? 'you’re' : `${who.name} is`} on`
     : `${who.self ? 'You’ve' : `${who.name} has`} played`
@@ -303,9 +302,6 @@ function GamesStep({ placed, boards, who, words }: { placed: Placed[]; boards: n
           {n.toLocaleString()} of the {boards.toLocaleString()} {words.noun ? 'ranked games' : 'games that rank all time'}
         </b>
         .
-        {retired.length
-          ? ` ${andList(retired)} still ${retired.length === 1 ? 'counts' : 'count'}, from before ${retired.length === 1 ? 'it was' : 'they were'} retired.`
-          : null}
       </p>
       <p className="rh-step__p">
         {rest <= 0

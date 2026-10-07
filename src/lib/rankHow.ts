@@ -169,7 +169,7 @@ export function tenthGame(placed: Placed[]): Placed | null {
   return placed.length >= COUNTED_GAMES ? placed[COUNTED_GAMES - 1]! : null
 }
 
-/** Whether a game is on the wall, rather than retired or on deck: its places still count, but it can't be played from here. */
+/** Whether a game is on the wall, rather than retired or on deck: one that isn't counts toward nobody's rank (the API's RANKED_GAMES). */
 export function onWall(slug: string): boolean {
   return isGameListed(slug)
 }

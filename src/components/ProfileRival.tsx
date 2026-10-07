@@ -102,7 +102,7 @@ export function ProfileRival({
     ? `You’re #${you.rank.toLocaleString()} ${word}`
     : `#${them.rank.toLocaleString()} ${word}, ${relation}`
 
-  // Games on the wall only: a hidden game still counts, but it can't be named as somewhere to go.
+  // Games on the wall only: a hidden game counts toward nobody's rank, and can't be named as somewhere to go.
   const missing = pointsFromMissing(onWall(them.byGame), you.byGame)
   const missingNames = missing.slugs.map(gameName)
   const when = period === 'all' ? '' : ` ${word}`
