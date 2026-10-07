@@ -120,10 +120,11 @@ export function frostCorners(color: string): string {
   const r = parkMiller(21)
   let d = ''
   const branch = (x: number, y: number, a: number, len: number, depth: number) => {
-    if (depth > 5 || len < 6) return
+    // Three branchings deep: deeper, the picture runs to megabytes, too much for a page's background to paint.
+    if (depth > 3 || len < 6) return
     const ex = x + Math.cos(a) * len
     const ey = y + Math.sin(a) * len
-    d += `M${x.toFixed(1)} ${y.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}`
+    d += `M${x.toFixed(0)} ${y.toFixed(0)}L${ex.toFixed(0)} ${ey.toFixed(0)}`
     for (let i = 1; i <= 3; i++) {
       const t = i / 4
       const bx = x + (ex - x) * t
@@ -134,8 +135,9 @@ export function frostCorners(color: string): string {
     branch(ex, ey, a + (r() - 0.5) * 0.5, len * 0.7, depth + 1)
   }
   for (let i = 0; i < 7; i++) branch(0, 0, 0.1 + i * 0.22 + (r() - 0.5) * 0.1, 120 + r() * 120, 0)
-  const corner = (turn: string) => `<g transform="${turn}"><path d="${d}" stroke="${color}" stroke-width="1.4" fill="none" stroke-linecap="round"/></g>`
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" preserveAspectRatio="none">${corner('')}${corner('translate(1600 0) scale(-1 1)')}${corner('translate(0 900) scale(1 -1)')}${corner('translate(1600 900) scale(-1 -1)')}</svg>`
+  // One corner's frost, drawn once and turned into each of the four.
+  const corner = (turn: string) => `<use href="#f" transform="${turn}"/>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" preserveAspectRatio="none"><defs><path id="f" d="${d}" stroke="${color}" stroke-width="1.6" fill="none" stroke-linecap="round"/></defs>${corner('')}${corner('translate(1600 0) scale(-1 1)')}${corner('translate(0 900) scale(1 -1)')}${corner('translate(1600 900) scale(-1 -1)')}</svg>`
   const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
   tiles.set(key, url)
   return url
