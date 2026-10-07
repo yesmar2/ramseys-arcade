@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer } from 'react'
 import { getGame } from '../data/games'
 import { gameHref, gamePlayHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
@@ -10,6 +10,7 @@ import { numberWord } from '../lib/numberWord'
 import type { TournamentSummary } from '../lib/tournaments'
 import { CheckIcon, DayTicket, DoneCount, type TicketTile } from './DayTicket'
 import { MedalIcon } from './RaceMedal'
+import { useShare } from './SharePanel'
 import { MEDAL_NAMES } from '../lib/raceMedals'
 import { streakLine, todayShareUrl, type Punch, type Ticket } from './todayPunches'
 
@@ -108,37 +109,17 @@ function BonusPunches() {
   )
 }
 
-/** The share: the phone's share sheet where there is one, else copied. `short`, it says only "Share". */
+/** The share: the phone's share sheet where there is one, else copied (useShare). `short`, it says only "Share". */
 export function ShareDay({ text, day, all, short = false, className }: { text: string; day: string; all: boolean; short?: boolean; className: string }) {
-  const [copied, setCopied] = useState(false)
-  useEffect(() => {
-    if (!copied) return
-    const t = window.setTimeout(() => setCopied(false), 2200)
-    return () => window.clearTimeout(t)
-  }, [copied])
-  const share = async () => {
-    const url = todayShareUrl(day)
-    const touch = window.matchMedia('(hover: none) and (pointer: coarse)').matches
-    if (touch && navigator.share) {
-      try {
-        await navigator.share({ text: `${text}\n${url}` })
-        return
-      } catch {
-        /* closed, or not allowed: copy instead */
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(`${text}\n${url}`)
-      setCopied(true)
-    } catch {
-      /* nothing to copy to */
-    }
-  }
+  const { share, copied, panel } = useShare()
   return (
-    <button type="button" className={className} onClick={() => void share()}>
-      <ShareIcon />
-      {copied ? 'Copied' : short ? 'Share' : all ? 'Share your day' : 'Share so far'}
-    </button>
+    <>
+      <button type="button" className={className} onClick={() => share({ text: `${text}\n${todayShareUrl(day)}` })}>
+        <ShareIcon />
+        {copied ? 'Copied' : short ? 'Share' : all ? 'Share your day' : 'Share so far'}
+      </button>
+      {panel}
+    </>
   )
 }
 

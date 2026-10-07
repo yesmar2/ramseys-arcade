@@ -5,7 +5,7 @@ import { GameStage } from '../../components/GameStage'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { RunLabel } from '../../components/RunLabel'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
-import { copyText } from '../../components/ShareBoardButton'
+import { useShare } from '../../components/SharePanel'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
@@ -551,25 +551,17 @@ function DayCard({
 }
 
 function ShareButton({ plan, scores, allow, ghost = false }: { plan: DayPlan; scores: readonly number[]; allow?: (e: ReactMouseEvent) => boolean; ghost?: boolean }) {
-  const [copied, setCopied] = useState(false)
-  const share = (e: ReactMouseEvent) => {
+  const { share, copied, panel } = useShare()
+  const send = (e: ReactMouseEvent) => {
     if (allow && !allow(e)) return
-    const text = shareText(plan, scores, window.location.origin)
-    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-    if (touch && typeof navigator.share === 'function') {
-      navigator.share({ text }).catch(() => {})
-      return
-    }
-    const done = () => {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    }
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => copyText(text) && done())
-    else if (copyText(text)) done()
+    share({ text: shareText(plan, scores, window.location.origin) })
   }
   return (
-    <button type="button" className={`panel__btn${ghost ? ' panel__btn--ghost' : ''}`} onClick={share}>
-      {copied ? 'Copied' : 'Share'}
-    </button>
+    <>
+      <button type="button" className={`panel__btn${ghost ? ' panel__btn--ghost' : ''}`} onClick={send}>
+        {copied ? 'Copied' : 'Share'}
+      </button>
+      {panel}
+    </>
   )
 }

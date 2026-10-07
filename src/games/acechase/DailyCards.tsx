@@ -8,7 +8,7 @@ import { SeasonRunLine } from '../../components/season/SeasonRun'
 const NextDaily = lazy(() => import('../../components/NextDaily'))
 import { RunLabel } from '../../components/RunLabel'
 import { TagSlots } from '../../components/RunReport'
-import { copyText } from '../../components/ShareBoardButton'
+import { useShare } from '../../components/SharePanel'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { gameArchiveHref, navigate, prizesHref, todayShareHref } from '../../hooks/useHashRoute'
@@ -117,7 +117,7 @@ function Spread({ spread, mine }: { spread: number[]; mine: number | null }) {
   )
 }
 
-/** Send the day on: the phone's own share sheet, or copied to paste anywhere. */
+/** Send the day on: the phone's own share sheet, or copied to paste anywhere (useShare). */
 export function ShareButton({
   hole,
   tries,
@@ -129,27 +129,16 @@ export function ShareButton({
   pattern: string
   className?: string
 }) {
-  const [copied, setCopied] = useState(false)
-  const share = () => {
-    // The day's own link, which unfurls into the day's card and opens the Today page.
-    const url = `${window.location.origin}${todayShareHref(hole.day)}`
-    const text = `${shareText(hole, tries, pattern)}\n${url}`
-    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-    if (touch && typeof navigator.share === 'function') {
-      navigator.share({ text }).catch(() => {})
-      return
-    }
-    const done = () => {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    }
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => copyText(text) && done())
-    else if (copyText(text)) done()
-  }
+  const { share, copied, panel } = useShare()
+  // The day's own link, which unfurls into the day's card and opens the Today page.
+  const send = () => share({ text: `${shareText(hole, tries, pattern)}\n${window.location.origin}${todayShareHref(hole.day)}` })
   return (
-    <button type="button" className={className} onClick={share}>
-      {copied ? 'Copied' : 'Share'}
-    </button>
+    <>
+      <button type="button" className={className} onClick={send}>
+        {copied ? 'Copied' : 'Share'}
+      </button>
+      {panel}
+    </>
   )
 }
 

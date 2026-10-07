@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { GameThumbArt } from '../../components/GameThumbArt'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
+import { useShare } from '../../components/SharePanel'
 import { gameBoardHref, gameHref } from '../../hooks/useHashRoute'
 import { defaultPeriod } from '../../lib/defaultPeriod'
 import { getGame } from '../../data/games'
@@ -144,7 +145,7 @@ export function SpotterGame() {
   const [hintPenalty, setHintPenalty] = useState(0)
   const [shakeIndex, setShakeIndex] = useState<number | null>(null)
   const [saveOpen, setSaveOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const sendOn = useShare()
   const startRef = useRef<number | null>(null)
   const officialSaved = useRef(isSpotterSolvedToday())
 
@@ -219,25 +220,7 @@ export function SpotterGame() {
     setHintPenalty(SPOTTER_HINT_MS)
   }
 
-  const share = async () => {
-    const line = spotterShareLine(
-      puzzle.huntNumber,
-      leaderboardMs,
-      strikes,
-      puzzle.glitchDescription,
-    )
-    try {
-      if (navigator.share) {
-        await navigator.share({ text: line })
-        return
-      }
-      await navigator.clipboard.writeText(line)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      /* ignore */
-    }
-  }
+  const share = () => sendOn.share({ text: spotterShareLine(puzzle.huntNumber, leaderboardMs, strikes, puzzle.glitchDescription) })
 
   const solvedToday = isSpotterSolvedToday()
 
@@ -318,8 +301,9 @@ export function SpotterGame() {
           <p className="spotter__reveal">{puzzle.glitchDescription}</p>
           <div className="spotter__result-actions">
             <button type="button" className="spotter__cta" onClick={share}>
-              {copied ? 'Copied' : 'Share result'}
+              {sendOn.copied ? 'Copied' : 'Share result'}
             </button>
+            {sendOn.panel}
             <a className="spotter__link" href={gameBoardHref('spotter', defaultPeriod())}>
               Today&apos;s board
             </a>
