@@ -7,7 +7,7 @@ import { hasGamePreview } from '../lib/gamePreviews'
 import { standingsGames } from '../lib/allTime'
 import { type GlobalGamePlace, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
-import { ordinal, periodWord } from '../lib/profileMath'
+import { COUNTED_GAMES, ordinal, periodWord } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
 import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
@@ -233,8 +233,11 @@ export function ProfileGames({
           <div className="pgames__todo-head">
             <h3 className="pgames__todo-title">{quickest ? 'Try these next' : 'Not played yet'}</h3>
             <p className="pgames__todo-note">
+              {/* Only the best ten add up (lib/profileMath COUNTED_GAMES): past ten, a new game has to beat one. */}
               {isSelf
-                ? 'Every new game you play moves you up.'
+                ? placed.length < COUNTED_GAMES
+                  ? 'Every new game you play moves you up.'
+                  : 'Your best ten games count: a new one moves you up when it beats one of them.'
                 : `${never.length} ${never.length === 1 ? 'game' : 'games'} ${name} hasn’t posted a score on yet.`}
             </p>
           </div>
