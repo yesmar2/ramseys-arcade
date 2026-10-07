@@ -1,5 +1,5 @@
 import type { GhostPose } from './runs'
-import { drawSkinArt, LANDER_ART, type SkinArt } from '../../lib/skinArt'
+import { burnColor, drawSkinArt, LANDER_ART, type SkinArt } from '../../lib/skinArt'
 import {
   crusherAt,
   FOOT,
@@ -929,7 +929,8 @@ export class CaveScene {
     const { ctx, cam } = this
     const art = skin ? LANDER_ART[skin] : undefined
     if (art) {
-      this.drawFlame(x, y, a, level, ['rgba(242, 129, 58, 0.92)', 'rgba(245, 185, 66, 0.95)'])
+      // In the skin's own burn when it has one (Season 2's), as its picture has it.
+      this.drawFlame(x, y, a, level, art.burn ? [burnColor(art.burn.outer, 0.92), burnColor(art.burn.core, 0.95)] : ['rgba(242, 129, 58, 0.92)', 'rgba(245, 185, 66, 0.95)'])
       this.drawSkinShip(x, y, a, art)
       return
     }
