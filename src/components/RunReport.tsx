@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { getLocalAvatarId, wornPrizeOf } from '../lib/avatars'
+import { drawWinterPiece, isWinterConfetti, WINTER_CONFETTI, winterPieces } from '../lib/winterConfetti'
 import { getLastPlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
 import type {
   ReportIcon,
@@ -422,6 +423,8 @@ const KIND_COLOURS: Record<string, string[]> = {
   // Season 1's Pass+.
   'cf-meteors': ['#f2813a', '#f5b942', '#ff9a52', '#e8564f'],
   'cf-splashdown': ['#f2813a', '#e8564f', '#f2813a', '#f5b942'],
+  // Season 2's (Cold Snap): lib/winterConfetti.ts moves and draws them.
+  ...WINTER_CONFETTI,
   // Plus's monthly looks.
   'cf-streamers': ['#ff4fa8', '#2fe3cf', '#ffd23f', '#6c8cff', '#b86bff', '#ff8552'],
 }
@@ -686,6 +689,7 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
     const meteors = style === 'cf-meteors'
     const splash = style === 'cf-splashdown'
     const streaming = style === 'cf-streamers'
+    const winter = isWinterConfetti(style) ? style! : null
     // How fast a streamer unrolls, in pixels a millisecond: across the screen in about a second.
     const unroll = Math.max(w, h * 0.7) / 1100
     const pieces: Piece[] = fireworks
@@ -698,8 +702,10 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
             ? splashdown(w, h, colors)
             : streaming
               ? streamers(w, h, colors)
-              : []
-    const count = fireworks || shooting || meteors || splash || streaming ? 0 : w < 640 ? 70 : 110
+              : winter
+                ? winterPieces(winter, w, h)
+                : []
+    const count = fireworks || shooting || meteors || splash || streaming || winter ? 0 : w < 640 ? 70 : 110
     for (let i = 0; i < count; i++) {
       const side = i % 2 ? 1 : -1
       const x = w / 2 + side * (w * 0.12 + Math.random() * w * 0.2)
@@ -729,6 +735,10 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
       const fade = Math.max(0, Math.min(1, (life - t) / 700))
       for (const p of pieces) {
         if (t < p.delay) continue
+        if (winter) {
+          drawWinterPiece(ctx, winter, p, t, dt, fade)
+          continue
+        }
         if (fireworks) {
           // A spark slows, droops and fades as it goes, with a short tail behind it.
           p.vy += 0.045 * dt

@@ -28,6 +28,7 @@ import {
   type Route,
 } from '../hooks/useHashRoute'
 import { archiveDayWords } from './archive'
+import { seasonOn } from './seasonCalendar'
 import { APP_NAME, SITE_LINE } from './brand'
 import { BOARD_NAMES, dailyWords } from './dailyWords'
 import { groupHref, groupsIndexHref } from './groups'
@@ -382,7 +383,8 @@ export function pageMeta(route: Route): PageMeta {
     case 'season':
       return {
         ...site,
-        title: titled('Season 1: Space Race'),
+        // The season of the day (Space Race, then Cold Snap from Jan 5), as the prerender's build sees it.
+        title: titled(`Season ${seasonOn().id}: ${seasonOn().name}`),
         description:
           'A free season pass of 30 levels. Every ticket you win in any game moves you up, with ships, badges and titles to win on the way. Looks only, never score.',
         path: seasonHref(),

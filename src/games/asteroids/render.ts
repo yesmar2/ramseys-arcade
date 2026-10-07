@@ -13,7 +13,7 @@ import {
   type Saucer,
 } from './game'
 import { getGame } from '../../data/games'
-import { ASTEROIDS_ART, drawSkinArt } from '../../lib/skinArt'
+import { ASTEROIDS_ART, burnColor, drawSkinArt } from '../../lib/skinArt'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 
 /*
@@ -272,12 +272,13 @@ function drawShip(ctx: CanvasRenderingContext2D, state: GameState, scale: number
   if (comet) drawCometTail(ctx, r, ship.thrusting, t)
 
   if (ship.thrusting) {
-    // Flame from the notch: an outer tongue and a hotter core, flickering.
+    // Flame from the notch: an outer tongue and a hotter core, flickering; in a skin's own burn when it has one.
     const f = 0.75 + Math.random() * 0.45
     const root = -r * 0.34
+    const burn = skin ? ASTEROIDS_ART[skin]?.art.burn : undefined
     for (const [len, half, colour] of [
-      [r * (0.8 + 0.5 * f), r * 0.3, hsla(40, 92, dark ? 60 : 54, 0.92)],
-      [r * (0.45 + 0.3 * f), r * 0.16, hsla(48, 100, dark ? 84 : 72, 0.95)],
+      [r * (0.8 + 0.5 * f), r * 0.3, burn ? burnColor(burn.outer, 0.92) : hsla(40, 92, dark ? 60 : 54, 0.92)],
+      [r * (0.45 + 0.3 * f), r * 0.16, burn ? burnColor(burn.core, 0.95) : hsla(48, 100, dark ? 84 : 72, 0.95)],
     ] as const) {
       ctx.beginPath()
       ctx.moveTo(root, -half)

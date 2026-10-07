@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode, type Ref } fro
 import { useTickets } from '../lib/tickets'
 import { daysLeftLabel, liveSeason, useSeason } from '../lib/season'
 import { TicketGlyph } from './prizes/Ticket'
-import { MissionPatch } from './season/SeasonArt'
+import { SeasonPatch } from './season/SeasonLook'
 import { createPortal } from 'react-dom'
 import {
   aboutHref,
@@ -427,7 +427,7 @@ export function SiteMenu({
               </li>
               {season
                 ? row(
-                    <MissionPatch size={22} />,
+                    <SeasonPatch size={22} slug={season.slug} />,
                     `Season ${season.id} · ${season.name}`,
                     daysLeftLabel(season),
                     seasonHref(),

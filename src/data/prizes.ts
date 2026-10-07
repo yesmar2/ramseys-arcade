@@ -181,6 +181,75 @@ export const PRIZES: readonly Prize[] = [
     blurb: LIT,
     earned: { by: 'Keeping the Dailies on 30 days of Season 1', short: 'Season 1' },
   },
+  // Season 2, Cold Snap: its pass gives these at their levels (the API's seasons.ts).
+  ...(
+    [
+      ['t-cold-snap', 'title', 'Cold Snap', 5, LIT],
+      ['t-snow-day', 'title', 'Snow Day', 10, LIT],
+      ['t-hot-cocoa', 'title', 'Hot Cocoa', 16, LIT],
+      ['t-first-frost', 'title', 'First Frost', 21, LIT],
+      ['t-snow-bunny', 'title', 'Snow Bunny', 26, LIT],
+      ['nm-frost', 'name', 'Frost', 2, 'Your tag in frosted white, rimed with ice at the edges.'],
+      ['nm-frostbite', 'name', 'Frostbite', 11, 'Your tag in ice blue, its letters nipped white at the tips.'],
+      ['nm-glacier', 'name', 'Glacier', 24, 'Your tag in a glacier’s blues, deepening down the letters.'],
+      ['snowflake', 'finish', 'Snowflake', 4, 'Your badge on a winter night, a great snowflake turning behind it.'],
+      ['igloo', 'finish', 'Igloo', 14, 'Your badge as an igloo of snow blocks at dusk, its door lit warm.'],
+      ['snowman', 'finish', 'Snowman', 22, 'Your badge as a snowman’s face: coal eyes, a carrot nose and a knitted scarf.'],
+      ['blizzard', 'finish', 'Blizzard', 30, 'Your badge in the eye of a blizzard, the snow whirling round it. The top of the pass.'],
+      ['cd-snowfield', 'card', 'Snowfield', 6, 'Your card on a field of fresh snow under a winter sky, the snow still coming down.'],
+      ['cd-ski-lodge', 'card', 'Ski lodge', 17, 'Your card at a ski lodge at night, its windows warm, the lift going up the hill behind.'],
+      ['cd-pine-forest', 'card', 'Pine forest', 29, 'Your card in a pine forest deep in snow, a lantern lit among the trees.'],
+      ['cf-snowfall', 'confetti', 'Snowfall', 7, `Snowflakes drifting down ${CONFETTI}`],
+      ['cf-snowballs', 'confetti', 'Snowballs', 20, `Snowballs flying in, trailing powder, ${CONFETTI}`],
+      ['sign-cold-snap', 'sign', 'Cold Snap', 28, 'Your tag in lights, hung with icicles, the snow coming down.'],
+    ] as const
+  ).map(
+    ([id, kind, name, level, blurb]): Prize => ({
+      id,
+      kind,
+      name,
+      price: 0,
+      blurb,
+      earned: { by: `Season 2’s pass, level ${level}`, short: 'Season 2' },
+    }),
+  ),
+  // Season 2's Pass+ (the API's seasons.ts).
+  ...(
+    [
+      ['t-snow-angel', 'title', 'Snow Angel', 2, LIT],
+      ['nm-hoarfrost', 'name', 'Hoarfrost', 4, 'Your tag furred with hoarfrost, white feathers of ice along every letter.'],
+      ['nm-polar', 'name', 'Polar', 5, 'Your tag in white with an ice-blue edge, glowing cold.'],
+      ['cd-frozen-lake', 'card', 'Frozen lake', 8, 'Your card on a frozen lake at dusk, skate marks curling across the ice.'],
+      ['cd-ice-cave', 'card', 'Ice cave', 10, 'Your card in a glacier’s ice cave, blue light through its walls and icicles overhead.'],
+      ['cf-icicles', 'confetti', 'Icicles', 14, `Icicles dropping, a glint running down each one, ${CONFETTI}`],
+      ['cf-flurry', 'confetti', 'Flurry', 16, `A flurry of snowflakes whirling across the screen ${CONFETTI}`],
+      ['polar-bear', 'finish', 'Polar bear', 20, 'Your badge as a polar bear’s face: white fur, round ears and a black nose.'],
+      ['t-ice-cold', 'title', 'Ice Cold', 25, LIT],
+      ['t-polar-explorer', 'title', 'Polar Explorer', 26, LIT],
+      ['cd-northern-lights', 'card', 'Northern lights', 29, 'Your card under the northern lights, green and violet curtains over the snowy pines.'],
+      ['diamond-dust', 'finish', 'Diamond dust', 30, 'Your badge in diamond dust: ice glittering in the air, a halo round the winter sun.'],
+      ['nm-crystal', 'name', 'Crystal', 33, 'Your tag cut from clear ice, light catching on every facet.'],
+      ['ice-crown', 'finish', 'Ice crown', 34, 'Your badge crowned in ice, spikes of frost glittering all round its edge.'],
+      ['t-cold-legend', 'title', 'Cold Snap Legend', 35, LIT],
+    ] as const
+  ).map(
+    ([id, kind, name, level, blurb]): Prize => ({
+      id,
+      kind,
+      name,
+      price: 0,
+      blurb,
+      earned: { by: `Season 2’s Pass+, ${level > 30 ? 'bonus ' : ''}level ${level}`, short: 'Pass+' },
+    }),
+  ),
+  {
+    id: 't-snowbound',
+    kind: 'title',
+    name: 'Snowbound',
+    price: 0,
+    blurb: LIT,
+    earned: { by: 'Keeping the Dailies on 30 days of Season 2', short: 'Season 2' },
+  },
   // Plus: each month's look goes to every member that month, kept for good (the API's plus.ts).
   {
     id: 't-founder',

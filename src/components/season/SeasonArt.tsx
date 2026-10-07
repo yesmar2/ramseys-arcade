@@ -43,7 +43,7 @@ export function MissionPatch({ label, size, className }: { label?: string; size:
   )
 }
 
-/** The ring that fills toward the next level, with the level in the middle. */
+/** The ring that fills toward the next level, with the level in the middle, in the live season's accent (season.css). */
 export function SeasonRing({
   level,
   progress,
@@ -72,7 +72,7 @@ export function SeasonRing({
         cy="17"
         r={r}
         fill="none"
-        stroke={SPACE.orange}
+        style={{ stroke: 'var(--space-orange, #f2813a)' }}
         strokeWidth="3.5"
         strokeLinecap="round"
         strokeDasharray={`${(length * shown).toFixed(1)} ${length.toFixed(1)}`}

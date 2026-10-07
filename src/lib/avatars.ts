@@ -104,6 +104,15 @@ export const AVATAR_BADGES = [
   'eclipse',
   'blue-marble',
   'black-hole',
+  // Season 2's pass (components/season/WinterFinishes.tsx draws them).
+  'snowflake',
+  'igloo',
+  'snowman',
+  'blizzard',
+  // Season 2's Pass+.
+  'polar-bear',
+  'diamond-dust',
+  'ice-crown',
 ] as const
 export type AvatarBadge = (typeof AVATAR_BADGES)[number]
 
@@ -127,6 +136,13 @@ export const BADGE_LABELS: Record<AvatarBadge, string> = {
   eclipse: 'Eclipse',
   'blue-marble': 'Blue marble',
   'black-hole': 'Black hole',
+  snowflake: 'Snowflake',
+  igloo: 'Igloo',
+  snowman: 'Snowman',
+  blizzard: 'Blizzard',
+  'polar-bear': 'Polar bear',
+  'diamond-dust': 'Diamond dust',
+  'ice-crown': 'Ice crown',
 }
 
 /** The badges anyone can wear; the rest are finishes from the prize counter. */
@@ -168,8 +184,8 @@ export const AVATAR_GAME_PINS = [
   'pileup',
 ] as const
 
-/** Worn on the badge's edge, for what you've done. s1: Season 1's patch, for playing in it. */
-export const AVATAR_PINS = ['welcome', 'games', 'streak', 'today', 'crown', 'bugnet', 's1', ...AVATAR_GAME_PINS] as const
+/** Worn on the badge's edge, for what you've done. s1, s2: a season's patch, for playing in it. */
+export const AVATAR_PINS = ['welcome', 'games', 'streak', 'today', 'crown', 'bugnet', 's1', 's2', ...AVATAR_GAME_PINS] as const
 export type AvatarPin = (typeof AVATAR_PINS)[number]
 
 export function isGamePin(pin: string): boolean {
@@ -192,6 +208,8 @@ export function pinInfo(pin: AvatarPin): { label: string; rule: string } {
       return { label: 'Bug net', rule: 'Catch all ten bugs of a month’s bug hunt' }
     case 's1':
       return { label: 'Season 1', rule: 'Win a ticket in Season 1, Space Race' }
+    case 's2':
+      return { label: 'Season 2', rule: 'Win a ticket in Season 2, Cold Snap' }
     default: {
       const name = getGame(pin)?.name ?? pin
       return { label: name, rule: `Reach the all-time top ten on ${name}` }

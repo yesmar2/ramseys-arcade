@@ -22,6 +22,11 @@ export function askForOrbitronFont() {
   askForFont('Orbitron:wght@700;800')
 }
 
+/** Season 2's lettering (Cold Snap): its page and its banner. */
+export function askForRussoOneFont() {
+  askForFont('Russo+One')
+}
+
 /** The class for a name style, or '' for a plain tag. */
 export function nameStyleClass(style: string | null | undefined): string {
   if (!style) return ''

@@ -171,7 +171,34 @@ let inFlightCatchUp = false
 
 function emit(next: Store) {
   snapshot = next
-  if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENT))
+  if (typeof window !== 'undefined') {
+    scheduleTurnover(next.season)
+    window.dispatchEvent(new Event(EVENT))
+  }
+}
+
+/**
+ * Seasons run back to back (Space Race's last day, then Cold Snap's first). A page left open across the change
+ * asks again as the live season ends, or as the next starts, so the header's ring, the home banner and the
+ * Season page move on to the new season without waiting for a reload.
+ */
+let turnover: ReturnType<typeof setTimeout> | null = null
+let turnoverAt = 0
+
+function scheduleTurnover(season: SeasonInfo | null) {
+  const at = !season || season.status === 'over' ? 0 : season.status === 'live' ? season.endsAt : season.startsAt
+  if (at === turnoverAt) return
+  if (turnover) clearTimeout(turnover)
+  turnover = null
+  turnoverAt = at
+  // A moment after the boards' day turns, so the API's answer is the new season's.
+  const wait = at - Date.now() + 1500
+  if (!at || wait <= 0 || wait > 2 ** 31 - 1) return
+  turnover = setTimeout(() => {
+    turnover = null
+    turnoverAt = 0
+    void refreshSeason({ force: true })
+  }, wait)
 }
 
 function subscribe(onChange: () => void) {
@@ -251,9 +278,13 @@ export function useSeason(): Store {
   return snap
 }
 
-/** The season, when one is live (or previewed); null otherwise, and the site shows nothing of it. */
+/**
+ * The season, when one is live (or previewed); null otherwise, and the site shows nothing of it. One whose last
+ * day is over isn't live, even before the API has said what comes next (the turnover above asks it).
+ */
 export function liveSeason(store: Pick<Store, 'season'>): SeasonInfo | null {
-  return store.season?.status === 'live' ? store.season : null
+  const season = store.season
+  return season?.status === 'live' && season.endsAt > Date.now() ? season : null
 }
 
 export type SeasonProgress = {
@@ -302,6 +333,15 @@ export function rewardAt(rewards: SeasonReward[], level: number): SeasonReward |
 
 export function isSpotlight(season: SeasonInfo | null, game: string): boolean {
   return !!season && season.spotlight.includes(game)
+}
+
+/**
+ * The live season's slug ('space-race', 'cold-snap'), for a picture drawn in its look: read from the shared copy
+ * without asking the API, so the many small pictures (a patch on every reward) never each start a fetch.
+ */
+export function useSeasonSlug(): string | null {
+  const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return liveSeason(snap)?.slug ?? null
 }
 
 /** Whether a game is in the live season's spotlight. */

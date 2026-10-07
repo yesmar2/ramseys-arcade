@@ -2,7 +2,7 @@ import { seasonHref } from '../../hooks/useHashRoute'
 import { isSpotlight, liveSeason, useSeason, type SeasonInfo } from '../../lib/season'
 import { useTickets } from '../../lib/tickets'
 import { RewardArt } from './RewardArt'
-import { MissionPatch } from './SeasonArt'
+import { SeasonPatch } from './SeasonLook'
 import '../../styles/season.css'
 
 /*
@@ -20,7 +20,7 @@ export function SpotlightCard({ slug, name }: { slug: string; name: string }) {
   return (
     <a className="season-spotcard" href={seasonHref()}>
       <span className="season-spotcard__art" aria-hidden="true">
-        {skin ? <RewardArt reward={skin} size={48} /> : <MissionPatch size={44} />}
+        {skin ? <RewardArt reward={skin} size={48} /> : <SeasonPatch size={44} slug={season.slug} />}
       </span>
       <span className="season-spotcard__text">
         <b>
@@ -45,7 +45,7 @@ export function SeasonWelcomeCard({ season }: { season: SeasonInfo }) {
   return (
     <a className="season-spotcard season-spotcard--welcome" href={seasonHref()}>
       <span className="season-spotcard__art" aria-hidden="true">
-        <MissionPatch size={44} />
+        <SeasonPatch size={44} slug={season.slug} />
       </span>
       <span className="season-spotcard__text">
         <b>

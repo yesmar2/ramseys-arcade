@@ -4,6 +4,7 @@ import { BADGE_ART, EMBLEM_ART, PATTERN_ART, PIN_AT, PIN_DISC, PIN_EDGE, PIN_GLY
 import { avatarColor, isFinishBadge, isGamePin, monogramText, resolveAvatar, type Avatar, type AvatarBadge, type AvatarPin } from '../lib/avatars'
 import { inkOn, mixColor } from '../lib/color'
 import { GameThumbGlyph } from './GameThumbArt'
+import { isWinterFinish, WinterSurface, winterInks, winterRim } from './season/WinterFinishes'
 
 type PlayerAvatarProps = {
   /** Saved avatar string; falls back to the tag's default when missing or stale. */
@@ -40,6 +41,7 @@ const INK = '#10202c'
  */
 
 function finishRim(badge: AvatarBadge): string {
+  if (isWinterFinish(badge)) return winterRim(badge)
   switch (badge) {
     case 'holo':
       return 'rgba(255,255,255,0.55)'
@@ -113,6 +115,7 @@ function badgeFill(avatar: Avatar): string {
 function monoInks(avatar: Avatar): { pattern: string; letter: string; line: string } {
   const body = avatarColor(avatar.body)
   const line = avatarColor(avatar.detail)
+  if (isWinterFinish(avatar.badge)) return winterInks(avatar.badge)
   switch (avatar.badge) {
     case 'deep':
       return { pattern: mixColor(body, NAVY, 0.5), letter: body, line }
@@ -529,6 +532,8 @@ function SeasonSurface({ badge, uid }: { badge: AvatarBadge; uid: string }) {
 /** A finish's surface: the disc in it, and what lies over the disc before the face. */
 function FinishSurface({ avatar, uid }: { avatar: Avatar; uid: string }) {
   const body = avatarColor(avatar.body)
+  // Season 2's (Cold Snap) are drawn in their own file.
+  if (isWinterFinish(avatar.badge)) return <WinterSurface badge={avatar.badge} uid={uid} />
   switch (avatar.badge) {
     case 'orbit':
     case 'ringed':

@@ -24,13 +24,94 @@
   --season-soft: #f3f0fd;
   --season-edge: #d6cff5;
   --season-rail-off: #e2eaf0;
+  /* The same colours as numbers, for the see-through ones, and the few more the season's panels use. */
+  --space-violet-rgb: 138, 106, 212;
+  --space-orange-rgb: 242, 129, 58;
+  --space-night-rgb: 16, 22, 52;
+  --space-panel-rgb: 26, 34, 82;
+  --space-star-rgb: 244, 240, 255;
+  --space-amber: #f5b942;
+  --space-amber-rgb: 245, 185, 66;
+  --space-glow-rgb: 70, 82, 170;
+  --space-on-accent: #1a0e05;
+  --space-hover: #ffd2b3;
+  --space-chip-ink: #ffb27a;
+  --space-deep: #141a3a;
 }
 
 html[data-theme='dark'] {
   --season-ring-track: #2e3a78;
-  --season-soft: rgba(138, 106, 212, 0.14);
-  --season-edge: rgba(138, 106, 212, 0.38);
+  --season-soft: rgba(var(--space-violet-rgb), 0.14);
+  --season-edge: rgba(var(--space-violet-rgb), 0.38);
   --season-rail-off: rgba(231, 238, 243, 0.12);
+}
+
+/*
+ * Season 2, Cold Snap (Ramsey picked A, Northern Lights, 2026-10-06): the same tokens in a polar night's colours,
+ * aurora green where Space Race had orange (the accent's tokens keep their Season 1 names), teal where it had
+ * violet. The dressing puts the class on the page's root while it's live; the Season page carries it too, so
+ * it shows in its own look whichever season is on.
+ */
+html.season-cold-snap,
+.season-cold-snap {
+  --space-night: #0b1830;
+  --space-panel: #13284a;
+  --space-line: #24426e;
+  --space-violet: #33c6d6;
+  --space-violet-ink: #14506a;
+  --space-orange: #5cf2b0;
+  --space-orange-ink: #0d6b48;
+  --space-star: #eef7ff;
+  --space-text: #d4e3f5;
+  --space-muted: #9fb4d6;
+  --space-font: 'Russo One', var(--font-display);
+  --space-violet-rgb: 51, 198, 214;
+  --space-orange-rgb: 92, 242, 176;
+  --space-night-rgb: 11, 24, 48;
+  --space-panel-rgb: 19, 40, 74;
+  --space-star-rgb: 238, 247, 255;
+  --space-amber: #b8ffe0;
+  --space-amber-rgb: 155, 123, 255;
+  --space-glow-rgb: 40, 130, 170;
+  --space-on-accent: #06261a;
+  --space-hover: #c8ffe8;
+  --space-chip-ink: #8ff5c8;
+  --space-deep: #0e1d38;
+  --season-ring-track: #d2e8f2;
+  --season-soft: #eef7fb;
+  --season-edge: #c2e2ee;
+}
+
+html[data-theme='dark'].season-cold-snap,
+html[data-theme='dark'] .season-cold-snap {
+  --season-ring-track: #24426e;
+  --season-soft: rgba(51, 198, 214, 0.12);
+  --season-edge: rgba(51, 198, 214, 0.36);
+}
+
+/* Its Season page's sky: the northern lights where Space Race's planet was. */
+.season-cold-snap .season-hero__planet {
+  right: -8rem;
+  top: -4rem;
+  width: 34rem;
+  height: 9rem;
+  background: linear-gradient(100deg, rgba(92, 242, 176, 0) 0%, rgba(92, 242, 176, 0.75) 35%, rgba(51, 198, 214, 0.6) 60%, rgba(155, 123, 255, 0.55) 85%, rgba(155, 123, 255, 0));
+  filter: blur(18px);
+  transform: rotate(-10deg);
+  opacity: 0.55;
+}
+
+.season-cold-snap .season-hero__ring {
+  display: none;
+}
+
+/* Its spotlight flag: a snowflake for Space Race's rocket. */
+.season-cold-snap .wall-tile__flag--spotlight::before,
+.season-cold-snap .season-spot::before {
+  width: 0.7rem;
+  height: 0.7rem;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-12 -12 24 24'%3E%3Cg stroke='black' stroke-width='2.4' stroke-linecap='round' fill='none'%3E%3Cpath d='M0 -10V10M-8.7 -5L8.7 5M-8.7 5L8.7 -5M-3 -8L0 -5L3 -8M-3 8L0 5L3 8M-8.4 -1.2L-5.6 -2.4L-6.2 -5.6M8.4 1.2L5.6 2.4L6.2 5.6M8.4 -1.2L5.6 -2.4L6.2 -5.6M-8.4 1.2L-5.6 2.4L-6.2 5.6'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-12 -12 24 24'%3E%3Cg stroke='black' stroke-width='2.4' stroke-linecap='round' fill='none'%3E%3Cpath d='M0 -10V10M-8.7 -5L8.7 5M-8.7 5L8.7 -5M-3 -8L0 -5L3 -8M-3 8L0 5L3 8M-8.4 -1.2L-5.6 -2.4L-6.2 -5.6M8.4 1.2L5.6 2.4L6.2 5.6M8.4 -1.2L5.6 -2.4L6.2 -5.6M-8.4 1.2L-5.6 2.4L-6.2 5.6'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 /* ---------- the sky behind every page, and stars in the header's bar ---------- */
@@ -97,7 +178,7 @@ html.season-on[data-theme='dark'] .site-bar {
   box-sizing: border-box;
   border-radius: 999px;
   background: var(--space-orange);
-  color: #1a0e05;
+  color: var(--space-on-accent);
   font-size: 0.66rem;
   font-weight: 800;
   line-height: 1.05rem;
@@ -112,36 +193,36 @@ html[data-theme='dark'] .home-banner.home-banner--season {
   --banner-ink: #ffffff;
   --banner-muted: var(--space-text);
   --banner-faint: var(--space-muted);
-  --banner-hover: #ffd2b3;
-  --banner-chip-bg: rgba(242, 129, 58, 0.16);
-  --banner-chip-border: rgba(242, 129, 58, 0.42);
-  --banner-chip-ink: #ffb27a;
-  --banner-chip-hover: rgba(242, 129, 58, 0.26);
+  --banner-hover: var(--space-hover);
+  --banner-chip-bg: rgba(var(--space-orange-rgb), 0.16);
+  --banner-chip-border: rgba(var(--space-orange-rgb), 0.42);
+  --banner-chip-ink: var(--space-chip-ink);
+  --banner-chip-hover: rgba(var(--space-orange-rgb), 0.26);
   --banner-dot: var(--space-orange);
-  --banner-glow: rgba(138, 106, 212, 0.35);
+  --banner-glow: rgba(var(--space-violet-rgb), 0.35);
   background-color: var(--space-night);
   background-image: var(--season-stars-dark);
   background-size: 360px 360px;
-  border-color: rgba(138, 106, 212, 0.55);
-  box-shadow: 0 16px 40px rgba(16, 22, 52, 0.3);
+  border-color: rgba(var(--space-violet-rgb), 0.55);
+  box-shadow: 0 16px 40px rgba(var(--space-night-rgb), 0.3);
 }
 
 .home-banner--season .home-banner__name {
   font-family: var(--space-font);
   font-size: clamp(2.2rem, 4.2vw, 3.3rem);
   letter-spacing: 0.01em;
-  text-shadow: 0 0 22px rgba(138, 106, 212, 0.8), 0 4px 0 var(--space-violet-ink);
+  text-shadow: 0 0 22px rgba(var(--space-violet-rgb), 0.8), 0 4px 0 var(--space-violet-ink);
 }
 
 .home-banner--season .home-banner__ghost {
   color: #ffffff;
-  border-color: rgba(244, 240, 255, 0.35);
-  background: rgba(244, 240, 255, 0.06);
+  border-color: rgba(var(--space-star-rgb), 0.35);
+  background: rgba(var(--space-star-rgb), 0.06);
 }
 
 .home-banner--season .home-banner__ghost:hover,
 .home-banner--season .home-banner__ghost:focus-visible {
-  background: rgba(244, 240, 255, 0.14);
+  background: rgba(var(--space-star-rgb), 0.14);
 }
 
 .home-banner__art--season {
@@ -173,7 +254,7 @@ html[data-theme] .wall-tile__flag.wall-tile__flag--spotlight,
 .season-spot {
   background: var(--space-orange);
   border-color: var(--space-orange);
-  color: #1a0e05;
+  color: var(--space-on-accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
@@ -206,7 +287,7 @@ html[data-theme] .wall-tile__flag.wall-tile__flag--spotlight,
 html[data-theme] .gh-tag.season-tag {
   background: var(--space-orange);
   border-color: var(--space-orange);
-  color: #1a0e05;
+  color: var(--space-on-accent);
 }
 
 .season-spotcard {
@@ -220,7 +301,7 @@ html[data-theme] .gh-tag.season-tag {
   background-color: var(--space-night);
   background-image: var(--season-stars-dark);
   background-size: 300px 300px;
-  border: 1px solid rgba(138, 106, 212, 0.45);
+  border: 1px solid rgba(var(--space-violet-rgb), 0.45);
   color: var(--space-text);
   text-decoration: none;
   transition: transform 0.15s ease;
@@ -239,7 +320,7 @@ html[data-theme] .gh-tag.season-tag {
   width: 3.4rem;
   height: 3.4rem;
   border-radius: 0.75rem;
-  background: rgba(26, 34, 82, 0.9);
+  background: rgba(var(--space-panel-rgb), 0.9);
 }
 
 .season-spotcard__text {
@@ -331,7 +412,7 @@ html[data-theme] .gh-tag.season-tag {
   margin-left: 0.35rem;
   padding: 1px;
   border-radius: 0.4rem;
-  background: #141a3a;
+  background: var(--space-deep);
   vertical-align: middle;
   line-height: 0;
 }
@@ -353,7 +434,7 @@ html[data-theme] .gh-tag.season-tag {
 
 .skin-use--on {
   background: var(--space-orange);
-  color: #1a0e05;
+  color: var(--space-on-accent);
 }
 
 /* ---------- a run's report: what it added to the pass, and a level reached ---------- */
@@ -442,7 +523,7 @@ html[data-theme] .gh-tag.season-tag {
   background-color: var(--space-night);
   background-image: var(--season-stars-dark);
   background-size: 300px 300px;
-  border: 1px solid rgba(138, 106, 212, 0.5);
+  border: 1px solid rgba(var(--space-violet-rgb), 0.5);
   color: var(--space-star);
   text-align: center;
   animation: run-levelup-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
@@ -492,7 +573,7 @@ html[data-theme] .gh-tag.season-tag {
   width: 3.6rem;
   height: 3.6rem;
   border-radius: 0.8rem;
-  background: rgba(26, 34, 82, 0.9);
+  background: rgba(var(--space-panel-rgb), 0.9);
 }
 
 .run-levelup__what {
@@ -515,8 +596,8 @@ html[data-theme] .gh-tag.season-tag {
   margin: 0.35rem 0 0;
   padding: 0.6rem 0.8rem;
   border-radius: 0.9rem;
-  background: rgba(244, 240, 255, 0.07);
-  box-shadow: inset 0 0 0 1px rgba(242, 129, 58, 0.35);
+  background: rgba(var(--space-star-rgb), 0.07);
+  box-shadow: inset 0 0 0 1px rgba(var(--space-orange-rgb), 0.35);
   text-align: left;
 }
 
@@ -540,7 +621,7 @@ html[data-theme] .gh-tag.season-tag {
   height: 1.7rem;
   border-radius: 0.5rem;
   color: var(--space-orange);
-  background: rgba(242, 129, 58, 0.16);
+  background: rgba(var(--space-orange-rgb), 0.16);
 }
 
 .run-levelup__missed-lock svg {
@@ -556,7 +637,7 @@ html[data-theme] .gh-tag.season-tag {
   padding: 0 1.2rem;
   border-radius: 999px;
   background: var(--space-orange);
-  color: #1a0e05;
+  color: var(--space-on-accent);
   font-weight: 800;
   text-decoration: none;
 }
@@ -586,8 +667,8 @@ html[data-theme] .gh-tag.season-tag {
   overflow: hidden;
   isolation: isolate;
   background: var(--space-night);
-  border: 1px solid rgba(138, 106, 212, 0.45);
-  box-shadow: 0 16px 40px rgba(16, 22, 52, 0.3);
+  border: 1px solid rgba(var(--space-violet-rgb), 0.45);
+  box-shadow: 0 16px 40px rgba(var(--space-night-rgb), 0.3);
   color: var(--space-star);
 }
 
@@ -620,7 +701,7 @@ html[data-theme] .gh-tag.season-tag {
   width: 30rem;
   height: 5rem;
   border-radius: 50%;
-  border: 3px solid rgba(245, 185, 66, 0.35);
+  border: 3px solid rgba(var(--space-amber-rgb), 0.35);
   transform: rotate(-12deg);
 }
 
@@ -651,7 +732,7 @@ html[data-theme] .gh-tag.season-tag {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: #ffffff;
-  text-shadow: 0 0 24px rgba(138, 106, 212, 0.7), 0 4px 0 var(--space-violet-ink);
+  text-shadow: 0 0 24px rgba(var(--space-violet-rgb), 0.7), 0 4px 0 var(--space-violet-ink);
 }
 
 .season-hero__when {
@@ -674,10 +755,10 @@ html[data-theme] .gh-tag.season-tag {
   margin: 0.3rem 0 0;
   padding: 0.35rem 0.75rem;
   border-radius: 0.6rem;
-  background: rgba(242, 129, 58, 0.16);
-  border: 1px dashed rgba(242, 129, 58, 0.55);
+  background: rgba(var(--space-orange-rgb), 0.16);
+  border: 1px dashed rgba(var(--space-orange-rgb), 0.55);
   font-size: 0.8rem;
-  color: #ffd2b3;
+  color: var(--space-hover);
 }
 
 .season-level {
@@ -687,7 +768,7 @@ html[data-theme] .gh-tag.season-tag {
   gap: 1.3rem;
   padding: 1.3rem;
   border-radius: 1.1rem;
-  background: rgba(26, 34, 82, 0.85);
+  background: rgba(var(--space-panel-rgb), 0.85);
   border: 1.5px solid var(--space-line);
 }
 
@@ -748,7 +829,7 @@ html[data-theme] .gh-tag.season-tag {
   border: 0;
   border-radius: 999px;
   background: var(--space-orange);
-  color: #1a0e05;
+  color: var(--space-on-accent);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -944,8 +1025,8 @@ html[data-theme='dark'] .season-tile__got {
   margin-left: 0.4rem;
   padding: 0.06rem 0.4rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, #f5b942, var(--space-orange));
-  color: #1a0e05;
+  background: linear-gradient(135deg, var(--space-amber), var(--space-orange));
+  color: var(--space-on-accent);
   font-size: 0.66rem;
   font-weight: 850;
   vertical-align: middle;
@@ -1037,8 +1118,8 @@ html[data-theme='dark'] .season-tile__got {
 
 .season-plus__buy {
   border: none;
-  background: linear-gradient(135deg, #f5b942, var(--space-orange));
-  color: #1a0e05;
+  background: linear-gradient(135deg, var(--space-amber), var(--space-orange));
+  color: var(--space-on-accent);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--space-orange) 35%, transparent);
 }
 
@@ -1167,8 +1248,8 @@ html[data-theme='dark'] .season-tile__got {
 .season-tile__plusmark {
   padding: 0.12rem 0.42rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, #f5b942, var(--space-orange));
-  color: #1a0e05;
+  background: linear-gradient(135deg, var(--space-amber), var(--space-orange));
+  color: var(--space-on-accent);
   font-size: 0.66rem;
   font-weight: 850;
 }
@@ -1571,7 +1652,7 @@ a.season-skin__art:hover {
   background-color: var(--space-night);
   background-image: var(--season-stars-dark);
   background-size: 300px 300px;
-  border: 1px solid rgba(138, 106, 212, 0.55);
+  border: 1px solid rgba(var(--space-violet-rgb), 0.55);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   color: var(--space-text);
   animation: levelup-note-in 0.35s ease-out;
@@ -1658,9 +1739,9 @@ html[data-theme='dark'] .skin-pick__price {
   padding: 1.2rem 1rem 1.3rem;
   border-radius: 1.2rem;
   background-color: var(--space-night);
-  background-image: radial-gradient(ellipse at 50% 42%, rgba(70, 82, 170, 0.55), transparent 65%), var(--season-stars-dark);
+  background-image: radial-gradient(ellipse at 50% 42%, rgba(var(--space-glow-rgb), 0.55), transparent 65%), var(--season-stars-dark);
   background-size: auto, 300px 300px;
-  border: 1px solid rgba(138, 106, 212, 0.45);
+  border: 1px solid rgba(var(--space-violet-rgb), 0.45);
   color: #ffffff;
 }
 
@@ -1697,7 +1778,7 @@ html[data-theme='dark'] .skin-pick__price {
   white-space: nowrap;
   padding: 0.25rem 0.7rem;
   border-radius: 999px;
-  background: rgba(242, 129, 58, 0.18);
+  background: rgba(var(--space-orange-rgb), 0.18);
   color: var(--space-orange);
   font-family: var(--space-font);
   font-size: 0.62rem;
@@ -1723,11 +1804,11 @@ html[data-theme='dark'] .skin-pick__price {
   height: 1.1rem;
   margin-top: -0.9rem;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(138, 106, 212, 0.55), transparent 70%);
+  background: radial-gradient(ellipse, rgba(var(--space-violet-rgb), 0.55), transparent 70%);
 }
 
 .pass-stage__spot--star .pass-stage__stand {
-  background: radial-gradient(ellipse, rgba(242, 129, 58, 0.5), transparent 70%);
+  background: radial-gradient(ellipse, rgba(var(--space-orange-rgb), 0.5), transparent 70%);
 }
 
 .pass-stage__name {

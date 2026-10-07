@@ -448,10 +448,12 @@ type Paint = (w: number, h: number, draw: (g: CanvasRenderingContext2D, w: numbe
 /** A livery on the Indy car (a Hangar skin): its body's colour and its lights'. */
 export type Livery = { body: string; glow: string }
 
-/** Hot Lap's Hangar skins: the everyday car in a livery of its own (lib/skins.ts). */
+/** Hot Lap's skins that are the everyday car in a livery of its own (lib/skins.ts): the Hangar's, and a season's. */
 export const INDY_LIVERIES: Record<string, Livery> = {
   // British racing green, with gold lights.
   'hotlap-green-flash': { body: '#1d5a3a', glow: '#ffc94d' },
+  // Season 2's Pass+ (Cold Snap): snow white, with ice-blue lights.
+  'hotlap-whiteout': { body: '#e8f0f8', glow: '#7fd0ff' },
 }
 
 /**
@@ -708,8 +710,11 @@ function fin(root: [number, number], tip: [number, number], span: number, thick:
   return geo
 }
 
-/** A Rocket car's colours: its body, its stripe and fin tip, its wings and fins, and its nozzle's light. */
-export type RocketColors = { body: string; stripe: string; trim: string; glow: string; flame: readonly [string, string] }
+/**
+ * A Rocket car's colours: its body, its stripe and fin tip, its wings and fins, and its nozzle's light. `rim` is the
+ * light round its wheels: orange unless a set says (Season 1's cars keep the orange; Cold Snap's are icy).
+ */
+export type RocketColors = { body: string; stripe: string; trim: string; glow: string; flame: readonly [string, string]; rim?: string }
 
 /** The Rocket car's own, as the pass draws it: white, a red stripe, navy wings, an orange flame. */
 export const ROCKET_COLORS: RocketColors = { body: '#ece9f7', stripe: '#e8564f', trim: '#101634', glow: '#ff7a1a', flame: ['#f2813a', '#ffe7a3'] }
@@ -720,11 +725,19 @@ export const MIDNIGHT_COLORS: RocketColors = { body: '#141a4a', stripe: '#f5b942
 /** The Sunracer (Season 1's Pass+): sun-orange, a cream stripe, navy wings and a white-hot flame. */
 export const SUNRACER_COLORS: RocketColors = { body: '#f07c16', stripe: '#fff3d6', trim: '#101634', glow: '#ffd27a', flame: ['#ffcf5a', '#fff3c4'] }
 
+/** The Ice rocket (Season 2, Cold Snap): snow white, a teal stripe, navy wings, aurora-green lights round the wheels. */
+export const ICE_ROCKET_COLORS: RocketColors = { body: '#eef7ff', stripe: '#33c6d6', trim: '#13284a', glow: '#5cf2b0', flame: ['#33c6d6', '#d8fff2'], rim: '#5cf2b0' }
+
+/** Borealis (Season 2's Pass+): polar navy, an aurora-green stripe, violet wings and a violet flame. */
+export const BOREALIS_COLORS: RocketColors = { body: '#0f2a44', stripe: '#5cf2b0', trim: '#9b7bff', glow: '#5cf2b0', flame: ['#9b7bff', '#d8fff2'], rim: '#5cf2b0' }
+
 /** Hot Lap's skins (lib/skins.ts): each a Rocket car in its colours. */
 export const ROCKET_SKINS: Record<string, RocketColors> = {
   'hotlap-rocket': ROCKET_COLORS,
   'hotlap-midnight': MIDNIGHT_COLORS,
   'hotlap-sunracer': SUNRACER_COLORS,
+  'hotlap-ice-rocket': ICE_ROCKET_COLORS,
+  'hotlap-borealis': BOREALIS_COLORS,
 }
 
 /**
@@ -921,7 +934,7 @@ export function buildRocketCar(paint: Paint, opts: { ghost?: boolean; ghostColor
   body.add(canopy)
   if (outline) body.add(new THREE.LineSegments(new THREE.EdgesGeometry(bubble, 28), outline))
 
-  const { wheels, steer } = addWheels(group, shapesOf(FORMULA), FORMULA, std, cyan ? ghostColor : null, cyan ? '#aaf6ff' : tint ? c.glow : '#ff5a0a', outline)
+  const { wheels, steer } = addWheels(group, shapesOf(FORMULA), FORMULA, std, cyan ? ghostColor : null, cyan ? '#aaf6ff' : tint ? c.glow : (c.rim ?? '#ff5a0a'), outline)
   if (!ghost) addUnderGlow(group, paint)
   return { group, body, wheels, steer, see, lines, ...(ghost ? {} : { flame }), ...(tint ? { seeMore: SKIN_GHOST_MORE } : {}) }
 }

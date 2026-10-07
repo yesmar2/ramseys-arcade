@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { gamePlayHref, seasonHref } from '../../hooks/useHashRoute'
 import { daysLeftLabel, rewardAt, rewardPhrase, seasonProgress, type SeasonInfo, type SeasonReward, type SeasonYou } from '../../lib/season'
-import { MoonScene } from './SeasonArt'
+import { SeasonScene } from './SeasonLook'
 import '../../styles/season.css'
 
 /*
@@ -10,7 +10,8 @@ import '../../styles/season.css'
  * would have offered (today's pick, or the one you played last) as its second button.
  */
 
-const STYLE = { '--hero-accent': '#f2813a', '--hero-ink': '#1a0e05', '--tile-accent': '#f2813a' } as CSSProperties
+// The season's accent and the ink on it, from its tokens (season.css): Space Race's orange, Cold Snap's aurora green.
+const STYLE = { '--hero-accent': 'var(--space-orange)', '--hero-ink': 'var(--space-on-accent)', '--tile-accent': 'var(--space-orange)' } as CSSProperties
 
 export function SeasonBanner({
   season,
@@ -77,7 +78,7 @@ export function SeasonBanner({
         ) : null}
       </div>
       <a className="home-banner__art home-banner__art--season" href={seasonHref()} tabIndex={-1} aria-hidden="true">
-        <MoonScene />
+        <SeasonScene slug={season.slug} />
       </a>
     </section>
   )

@@ -63,7 +63,9 @@ export function flairNote(kind: 'ring' | 'pin', id: AvatarRing | AvatarPin, stat
     case 'bugnet':
       return 'No full month of the bug hunt yet'
     case 's1':
-      return 'Win a ticket this season'
+      return 'Win a ticket in Season 1'
+    case 's2':
+      return 'Win a ticket in Season 2'
     default:
       return best != null ? `You're ${ordinal(best)} all time` : 'Not played yet'
   }

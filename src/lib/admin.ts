@@ -177,15 +177,23 @@ export async function setSiteEvents(on: boolean) {
   return (await api<{ on: boolean }>('/admin/site-events', { method: 'POST', body: JSON.stringify({ on }) })).on
 }
 
-/** The season, and whether it's previewed early, live before its first day (the API's seasons.ts). */
-export type SeasonPreviewState = { season: SeasonInfo | null; previewFrom: number | null }
+/**
+ * The season, and whether it's previewed early, live before its first day (the API's seasons.ts). `previewSeason` is
+ * the season the preview shows when one was picked (null: the next to come), and `seasons` the ones to pick from.
+ */
+export type SeasonPreviewState = {
+  season: SeasonInfo | null
+  previewFrom: number | null
+  previewSeason?: number | null
+  seasons?: { id: number; name: string }[]
+}
 
 export function fetchSeasonPreview() {
   return api<SeasonPreviewState>('/admin/season-preview')
 }
 
-export function setSeasonPreview(on: boolean) {
-  return api<SeasonPreviewState>('/admin/season-preview', { method: 'POST', body: JSON.stringify({ on }) })
+export function setSeasonPreview(on: boolean, season: number | null = null) {
+  return api<SeasonPreviewState>('/admin/season-preview', { method: 'POST', body: JSON.stringify({ on, season }) })
 }
 
 /** A season's Pass+ for a tag's account, given or taken back, to try it without paying (the API's seasons.ts). */

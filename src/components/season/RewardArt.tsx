@@ -3,12 +3,27 @@ import { prizeById } from '../../data/prizes'
 import type { Avatar, AvatarBadge } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
-import { SPACE, sparklePath } from '../../lib/seasonArt'
+import { FROST, SPACE, sparklePath } from '../../lib/seasonArt'
 import greenFlashPicture from '../../assets/season/green-flash.webp'
 import midnightRocketPicture from '../../assets/season/midnight-rocket.webp'
 import rocketCarPicture from '../../assets/season/rocket-car.webp'
 import sunracerPicture from '../../assets/season/sunracer.webp'
+import iceRocketPicture from '../../assets/season/ice-rocket.webp'
+import borealisPicture from '../../assets/season/borealis.webp'
+import whiteoutPicture from '../../assets/season/whiteout.webp'
 import {
+  AURORA_TAIL,
+  FIRESIDE_TAIL,
+  FROST_DRAGON,
+  GONDOLA,
+  ICE_BREAKER,
+  ICE_CRYSTAL,
+  ICICLE,
+  NORTH_STAR,
+  SNOWBIRD,
+  SNOWDRIFT_TAIL,
+  SNOWY_OWL,
+  YETI,
   CANDY_TAIL,
   COMET_SHIP,
   COMET_TAIL,
@@ -27,7 +42,10 @@ import {
   type SkinArt,
   type SnakeTail,
 } from '../../lib/skinArt'
+import { FrostPatch } from './ColdSnapArt'
 import { ArtShapes, MissionPatch, Moonhopper, Rocket } from './SeasonArt'
+import { SeasonPatch } from './SeasonLook'
+import { WINTER_LOOKS_DRAW } from './WinterRewardArt'
 
 /*
  * A picture for each of Season 1's pass rewards, on a 100-wide board, for the
@@ -80,14 +98,18 @@ function NamePlate({ fill, children }: { fill: string; children: ReactNode }) {
   )
 }
 
-function Title({ text }: { text: string }) {
+/** Season 2's titles (Cold Snap), whose plates are its colours: a polar night edged in aurora green. */
+const WINTER_TITLES = new Set(['t-cold-snap', 't-snow-day', 't-hot-cocoa', 't-first-frost', 't-snow-bunny', 't-snow-angel', 't-ice-cold', 't-polar-explorer', 't-cold-legend', 't-snowbound'])
+
+function Title({ text, id }: { text: string; id?: string }) {
   // A title too long for one line of the plate (Space Race Legend, Founding Member) goes on two, split at its last space.
   const cut = text.length > 14 ? text.lastIndexOf(' ') : -1
+  const look = id && WINTER_TITLES.has(id) ? { plate: FROST.night, edge: FROST.green, ink: FROST.snow } : { plate: SPACE.night, edge: SPACE.orange, ink: SPACE.star }
   return (
     <>
-      <polygon points="11,34 89,34 96,41 96,59 89,66 11,66 4,59 4,41" fill={SPACE.night} stroke={SPACE.orange} strokeWidth="2" />
+      <polygon points="11,34 89,34 96,41 96,59 89,66 11,66 4,59 4,41" fill={look.plate} stroke={look.edge} strokeWidth="2" />
       {cut > 0 ? (
-        <text textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={600} fontSize="12" fill={SPACE.star}>
+        <text textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={600} fontSize="12" fill={look.ink}>
           <tspan x="50" y="48">
             {text.slice(0, cut)}
           </tspan>
@@ -96,7 +118,7 @@ function Title({ text }: { text: string }) {
           </tspan>
         </text>
       ) : (
-        <text x="50" y="55" textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={600} fontSize={text.length > 10 ? 12 : 14} fill={SPACE.star}>
+        <text x="50" y="55" textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={600} fontSize={text.length > 10 ? 12 : 14} fill={look.ink}>
           {text}
         </text>
       )}
@@ -204,6 +226,7 @@ function CardArt({ theme, size }: { theme: string; size: number }) {
 
 const DRAW: Record<string, (size: number) => ReactNode> = {
   's1': (size) => <MissionPatch label="S1" size={size} />,
+  's2': (size) => <FrostPatch label="S2" size={size} />,
   'nm-starlight': (size) => (
     <Board size={size}>
       <NamePlate fill={SPACE.night}>
@@ -368,6 +391,21 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
     </Board>
   ),
   'cd-snowglobe': (size) => <CardArt theme="cd-snowglobe" size={size} />,
+  // Season 2's looks (Cold Snap): finishes and card themes as they're worn, the rest in WinterRewardArt.tsx.
+  snowflake: (size) => <FinishArt badge="snowflake" size={size} />,
+  igloo: (size) => <FinishArt badge="igloo" size={size} />,
+  snowman: (size) => <FinishArt badge="snowman" size={size} />,
+  blizzard: (size) => <FinishArt badge="blizzard" size={size} />,
+  'polar-bear': (size) => <FinishArt badge="polar-bear" size={size} />,
+  'diamond-dust': (size) => <FinishArt badge="diamond-dust" size={size} />,
+  'ice-crown': (size) => <FinishArt badge="ice-crown" size={size} />,
+  'cd-snowfield': (size) => <CardArt theme="cd-snowfield" size={size} />,
+  'cd-ski-lodge': (size) => <CardArt theme="cd-ski-lodge" size={size} />,
+  'cd-pine-forest': (size) => <CardArt theme="cd-pine-forest" size={size} />,
+  'cd-frozen-lake': (size) => <CardArt theme="cd-frozen-lake" size={size} />,
+  'cd-ice-cave': (size) => <CardArt theme="cd-ice-cave" size={size} />,
+  'cd-northern-lights': (size) => <CardArt theme="cd-northern-lights" size={size} />,
+  ...WINTER_LOOKS_DRAW,
   'cf-streamers': (size) => (
     <Board size={size}>
       {([['M8 30C24 18 30 42 46 30S66 16 82 26S94 36 96 32', '#ff4fa8'], ['M6 58C22 48 34 70 52 58S72 44 92 56', '#2fe3cf'], ['M30 8C26 24 46 28 42 44S30 62 40 76S58 86 54 96', '#ffd23f'], ['M60 6C66 20 80 18 78 34S66 50 76 62', '#6c8cff']] as const).map(([d, c]) => (
@@ -457,6 +495,82 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
       <ShipArt art={STARHOPPER} flame={false} />
     </Board>
   ),
+  // Season 2's skins (Cold Snap), free row then Pass+.
+  'lander-icebreaker': (size) => (
+    <Board size={size}>
+      <ShipArt art={ICE_BREAKER} flame={false} />
+    </Board>
+  ),
+  'asteroids-icicle': (size) => (
+    <Board size={size}>
+      <ShipArt art={ICICLE} />
+    </Board>
+  ),
+  'barrage-snowbird': (size) => (
+    <Board size={size}>
+      <ShipArt art={SNOWBIRD} />
+    </Board>
+  ),
+  'hotlap-ice-rocket': (size) => (
+    <Board size={size}>
+      <RocketCar picture={iceRocketPicture} />
+    </Board>
+  ),
+  'snake-snowdrift-tail': (size) => (
+    <Board size={size}>
+      <BeadTail tail={SNOWDRIFT_TAIL} spark={FROST.green} />
+    </Board>
+  ),
+  'asteroids-ice-crystal': (size) => (
+    <Board size={size}>
+      <ShipArt art={ICE_CRYSTAL} />
+    </Board>
+  ),
+  'lander-gondola': (size) => (
+    <Board size={size}>
+      <ShipArt art={GONDOLA} flame={false} />
+    </Board>
+  ),
+  'hotlap-whiteout': (size) => (
+    <Board size={size}>
+      <RocketCar picture={whiteoutPicture} />
+    </Board>
+  ),
+  'barrage-snowy-owl': (size) => (
+    <Board size={size}>
+      <ShipArt art={SNOWY_OWL} />
+    </Board>
+  ),
+  'asteroids-north-star': (size) => (
+    <Board size={size}>
+      <ShipArt art={NORTH_STAR} />
+    </Board>
+  ),
+  'snake-aurora-tail': (size) => (
+    <Board size={size}>
+      <BeadTail tail={AURORA_TAIL} spark={FROST.violet} />
+    </Board>
+  ),
+  'hotlap-borealis': (size) => (
+    <Board size={size}>
+      <RocketCar picture={borealisPicture} />
+    </Board>
+  ),
+  'snake-fireside-tail': (size) => (
+    <Board size={size}>
+      <BeadTail tail={FIRESIDE_TAIL} spark={FROST.amber} />
+    </Board>
+  ),
+  'barrage-frost-dragon': (size) => (
+    <Board size={size}>
+      <ShipArt art={FROST_DRAGON} />
+    </Board>
+  ),
+  'lander-yeti': (size) => (
+    <Board size={size}>
+      <ShipArt art={YETI} flame={false} />
+    </Board>
+  ),
   // The Hangar's: for good, traded for tickets.
   'hotlap-green-flash': (size) => (
     <Board size={size}>
@@ -499,10 +613,10 @@ export function RewardArt({ reward, size }: { reward: RewardLike; size: number }
   if (reward.kind === 'title' || (reward.kind === 'prize' && reward.id && prizeById(reward.id)?.kind === 'title')) {
     return (
       <Board size={size}>
-        <Title text={reward.name} />
+        <Title text={reward.name} id={reward.id} />
       </Board>
     )
   }
   const draw = reward.id ? DRAW[reward.id] : undefined
-  return draw ? <>{draw(size)}</> : <MissionPatch size={size} />
+  return draw ? <>{draw(size)}</> : <SeasonPatch size={size} />
 }

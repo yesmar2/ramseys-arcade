@@ -210,6 +210,92 @@ html[data-theme='dark'] .pname--wormhole {
   filter: drop-shadow(0 0 1.5px #12002a) drop-shadow(0 0 2px #12002a) drop-shadow(0 0 8px rgba(214, 92, 214, 0.6));
 }
 
+/* Season 2's (Cold Snap, its pass). Frost: frosted white on the dark, ice blue on the light, a cold glow round it. */
+.pname--frost {
+  color: #2f74b0;
+  text-shadow: 0 0 6px rgba(127, 200, 255, 0.55);
+}
+
+html[data-theme='dark'] .pname--frost {
+  color: #f4fbff;
+  text-shadow:
+    0 0 3px #bfe6ff,
+    0 0 10px rgba(127, 200, 255, 0.7);
+}
+
+/* Frostbite: ice blue, its letters nipped white at the tips. */
+.pname--frostbite {
+  background: linear-gradient(180deg, #a9d8f5 0 24%, #2a7fc0 44%, #1d5a96);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme='dark'] .pname--frostbite {
+  background-image: linear-gradient(180deg, #ffffff 0 26%, #7fd0ff 44%, #3fa0e8);
+}
+
+/* Glacier: a glacier's blues, deepening down the letters. */
+.pname--glacier {
+  background: linear-gradient(180deg, #4aa8e8, #1d4f8a 70%, #14284d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme='dark'] .pname--glacier {
+  background-image: linear-gradient(180deg, #dff4ff, #7fc8ff 50%, #3a7fd0);
+  filter: drop-shadow(0 0 4px rgba(58, 127, 208, 0.55));
+}
+
+/* Season 2's Pass+. Hoarfrost: white feathers of ice along every letter. */
+.pname--hoarfrost {
+  color: #275f9c;
+  -webkit-text-stroke: 0.4px #9fd4f7;
+  text-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.9),
+    0 0 5px rgba(159, 212, 247, 0.9);
+}
+
+html[data-theme='dark'] .pname--hoarfrost {
+  color: #dff2ff;
+  -webkit-text-stroke: 0;
+  text-shadow:
+    1px -1px 0 rgba(255, 255, 255, 0.75),
+    -1px -1px 0 rgba(255, 255, 255, 0.45),
+    0 0 4px #bfe6ff,
+    0 0 9px rgba(159, 212, 247, 0.8);
+}
+
+/* Polar: white with an ice-blue edge, glowing cold. */
+.pname--polar {
+  color: #ffffff;
+  -webkit-text-stroke: 1px #2a7fc0;
+  paint-order: stroke fill;
+  text-shadow: 0 0 6px rgba(74, 168, 232, 0.6);
+}
+
+html[data-theme='dark'] .pname--polar {
+  -webkit-text-stroke-color: #4aa8e8;
+  text-shadow:
+    0 0 6px rgba(74, 168, 232, 0.9),
+    0 0 14px rgba(74, 168, 232, 0.5);
+}
+
+/* Crystal: clear ice cut in flat facets, a magenta glint in it. */
+.pname--crystal {
+  background: linear-gradient(135deg, #6aa9d8 0 25%, #1d5a96 25% 45%, #4a90c8 45% 60%, #14406e 60% 80%, #3a7fb8 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 2px rgba(232, 107, 208, 0.35));
+}
+
+html[data-theme='dark'] .pname--crystal {
+  background-image: linear-gradient(135deg, #e8f8ff 0 25%, #7fd0ff 25% 45%, #dff4ff 45% 60%, #4aa8e8 60% 80%, #c9eeff 80%);
+  filter: drop-shadow(0 0 3px rgba(232, 107, 208, 0.5));
+}
+
 /* Plus's monthly looks. Prism: the tag split into a rainbow, crisp, with a faint white edge. */
 .pname--prism {
   background: linear-gradient(90deg, #d42a3a, #e0640f 20%, #b88a00 40%, #1f9a46 60%, #1f6fd0 80%, #7a3fd0);
@@ -785,6 +871,56 @@ a.run-tix__total {
 .prize-stage .pname--wormhole {
   background-image: conic-gradient(from 0deg at 50% 50%, #c58bff, #4fe3ff 90deg, #7a5cff 180deg, #ff5fd8 270deg, #c58bff);
   filter: drop-shadow(0 0 1.5px #12002a) drop-shadow(0 0 2px #12002a) drop-shadow(0 0 8px rgba(214, 92, 214, 0.6));
+}
+
+.studio__card .pname--frost,
+.pcard--themed .pname--frost,
+.prize-stage .pname--frost {
+  color: #f4fbff;
+  text-shadow:
+    0 0 3px #bfe6ff,
+    0 0 10px rgba(127, 200, 255, 0.7);
+}
+
+.studio__card .pname--frostbite,
+.pcard--themed .pname--frostbite,
+.prize-stage .pname--frostbite {
+  background-image: linear-gradient(180deg, #ffffff 0 26%, #7fd0ff 44%, #3fa0e8);
+}
+
+.studio__card .pname--glacier,
+.pcard--themed .pname--glacier,
+.prize-stage .pname--glacier {
+  background-image: linear-gradient(180deg, #dff4ff, #7fc8ff 50%, #3a7fd0);
+  filter: drop-shadow(0 0 4px rgba(58, 127, 208, 0.55));
+}
+
+.studio__card .pname--hoarfrost,
+.pcard--themed .pname--hoarfrost,
+.prize-stage .pname--hoarfrost {
+  color: #dff2ff;
+  -webkit-text-stroke: 0;
+  text-shadow:
+    1px -1px 0 rgba(255, 255, 255, 0.75),
+    -1px -1px 0 rgba(255, 255, 255, 0.45),
+    0 0 4px #bfe6ff,
+    0 0 9px rgba(159, 212, 247, 0.8);
+}
+
+.studio__card .pname--polar,
+.pcard--themed .pname--polar,
+.prize-stage .pname--polar {
+  -webkit-text-stroke-color: #4aa8e8;
+  text-shadow:
+    0 0 6px rgba(74, 168, 232, 0.9),
+    0 0 14px rgba(74, 168, 232, 0.5);
+}
+
+.studio__card .pname--crystal,
+.pcard--themed .pname--crystal,
+.prize-stage .pname--crystal {
+  background-image: linear-gradient(135deg, #e8f8ff 0 25%, #7fd0ff 25% 45%, #dff4ff 45% 60%, #4aa8e8 60% 80%, #c9eeff 80%);
+  filter: drop-shadow(0 0 3px rgba(232, 107, 208, 0.5));
 }
 
 .studio__card .pname--prism,

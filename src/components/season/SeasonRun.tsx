@@ -5,7 +5,7 @@ import { boardDay } from '../../lib/rankHow'
 import { rewardPhrase, useSeason, type SeasonReward, type SeasonRun } from '../../lib/season'
 import { LockIcon } from '../chromeIcons'
 import { RewardArt } from './RewardArt'
-import { MissionPatch } from './SeasonArt'
+import { SeasonPatch } from './SeasonLook'
 import { UseSkin } from './SkinPicker'
 import '../../styles/season.css'
 
@@ -23,7 +23,7 @@ export function SeasonRunLine({ run }: { run: SeasonRun }) {
   return (
     <>
       <a className="run-season" href={seasonHref()}>
-        <MissionPatch label={String(Math.max(1, run.level))} size={40} />
+        <SeasonPatch label={String(Math.max(1, run.level))} size={40} />
         <span className="run-season__body">
           <span className="run-season__top">
             <span className="run-season__n">{run.added > 0 ? `Season pass +${run.added}` : 'Season pass'}</span>
@@ -93,7 +93,7 @@ export function SeasonLevelUp({ run }: { run: SeasonRun }) {
   return (
     <div className="run-levelup" role="status">
       <span className="run-levelup__kick">Level up</span>
-      <MissionPatch label={String(run.level)} size={76} />
+      <SeasonPatch label={String(run.level)} size={76} />
       <strong className="run-levelup__title">Level {run.level}</strong>
       <ul className="run-levelup__got">
         {shown.map((reward) => (

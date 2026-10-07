@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { DeepField, LaunchPad, MissionControl, NebulaCard, Porthole, SpaceStation } from './SeasonCardThemes'
 import { SnowGlobe } from './PlusCardThemes'
+import { FrozenLake, IceCave, NorthernLights, PineForest, SkiLodge, Snowfield } from './WinterCardThemes'
 
 /*
  * The card themes from the prize counter, drawn to fill any box: the whole
@@ -445,6 +446,18 @@ export function ThemeDrawing({ theme, w, h, s, id }: ThemeProps & { theme: strin
       return <SpaceStation w={w} h={h} s={s} id={id} />
     case 'cd-snowglobe':
       return <SnowGlobe w={w} h={h} s={s} id={id} />
+    case 'cd-snowfield':
+      return <Snowfield w={w} h={h} s={s} id={id} />
+    case 'cd-ski-lodge':
+      return <SkiLodge w={w} h={h} s={s} id={id} />
+    case 'cd-pine-forest':
+      return <PineForest w={w} h={h} s={s} id={id} />
+    case 'cd-frozen-lake':
+      return <FrozenLake w={w} h={h} s={s} id={id} />
+    case 'cd-ice-cave':
+      return <IceCave w={w} h={h} s={s} id={id} />
+    case 'cd-northern-lights':
+      return <NorthernLights w={w} h={h} s={s} id={id} />
     default:
       return <Carpet w={w} h={h} s={s} id={id} />
   }

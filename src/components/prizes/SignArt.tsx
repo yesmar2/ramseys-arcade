@@ -294,6 +294,82 @@ function Liftoff({ tag, id, top }: { tag: string; id: string; top: number }) {
   )
 }
 
+/* ---------- Cold Snap, from Season 2's pass ---------- */
+
+const COLD_FLAKES: [number, number, number][] = [
+  [48, 34, 1.6],
+  [120, 22, 1.2],
+  [196, 40, 1.4],
+  [262, 18, 1.1],
+  [330, 36, 1.5],
+  [392, 24, 1.2],
+  [70, 120, 1.3],
+  [150, 140, 1],
+  [384, 132, 1.4],
+  [300, 150, 1.1],
+]
+
+/** A six-armed snowflake's strokes round cx, cy. */
+function snowflake(cx: number, cy: number, r: number) {
+  let d = ''
+  for (let i = 0; i < 6; i++) {
+    const a = (i * Math.PI) / 3 - Math.PI / 2
+    const ex = cx + Math.cos(a) * r
+    const ey = cy + Math.sin(a) * r
+    d += `M${cx} ${cy}L${ex.toFixed(1)} ${ey.toFixed(1)}`
+    const bx = cx + Math.cos(a) * r * 0.55
+    const by = cy + Math.sin(a) * r * 0.55
+    for (const s of [-1, 1]) {
+      const b = a + (s * Math.PI) / 4
+      d += `M${bx.toFixed(1)} ${by.toFixed(1)}L${(bx + Math.cos(b) * r * 0.34).toFixed(1)} ${(by + Math.sin(b) * r * 0.34).toFixed(1)}`
+    }
+  }
+  return d
+}
+
+/** The tag in lights on a winter night's board, snow lying along its top and icicles hanging off its bottom. */
+function ColdSnap({ tag, id, top }: { tag: string; id: string; top: number }) {
+  const size = fitSize(tag, 250, 64)
+  const y = top + 76 + size * 0.36
+  const bottom = top + 166
+  let icicles = ''
+  for (let x = 40; x < 404; x += 22) {
+    const len = 8 + ((x * 37) % 17)
+    icicles += `M${x - 5} ${bottom}L${x} ${bottom + len}L${x + 5} ${bottom}Z`
+  }
+  return (
+    <>
+      <defs>
+        <Glow id={`${id}g`} blur={5} />
+        <linearGradient id={`${id}b`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#163463" />
+          <stop offset="1" stopColor="#0b1830" />
+        </linearGradient>
+      </defs>
+      <rect x="24" y={top - 4} width="392" height="170" rx="22" fill={`url(#${id}b)`} stroke="#9fd8ff" strokeWidth="3" />
+      <path d={icicles} fill="#dff4ff" opacity="0.9" />
+      <path
+        d={`M24 ${top + 18}V${top + 14}Q24 ${top - 4} 46 ${top - 4}H394Q416 ${top - 4} 416 ${top + 14}V${top + 18}Q404 ${top + 10} 392 ${top + 15}Q360 ${top + 7} 330 ${top + 14}Q296 ${top + 6} 262 ${top + 13}Q226 ${top + 5} 190 ${top + 13}Q150 ${top + 6} 116 ${top + 14}Q80 ${top + 7} 48 ${top + 15}Q36 ${top + 11} 24 ${top + 18}Z`}
+        fill="#ffffff"
+      />
+      {COLD_FLAKES.map(([x, sy, r]) => (
+        <circle key={`${x}-${sy}`} cx={x} cy={top + sy} r={r} fill="#ffffff" opacity="0.85" />
+      ))}
+      <path d={`${snowflake(62, top + 78, 16)}${snowflake(380, top + 78, 12)}`} fill="none" stroke="#bfe6ff" strokeWidth="2.4" strokeLinecap="round" />
+      <text x="220" y={y} textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={800} fontSize={size} letterSpacing={size * 0.04} fill="#7fc8ff" opacity="0.75" filter={`url(#${id}g)`}>
+        {tag}
+      </text>
+      <text x="220" y={y} textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={800} fontSize={size} letterSpacing={size * 0.04} fill="#ffffff">
+        {tag}
+      </text>
+      <path d={`M120 ${top + 118} H320`} stroke="#9fd8ff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+      <text x="220" y={top + 142} textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight={800} fontSize="12" letterSpacing="5" fill="#9fb4d6">
+        COLD SNAP
+      </text>
+    </>
+  )
+}
+
 /* ---------- the rooftop ---------- */
 
 /** Windows lit here and there in a block, the same every time it's drawn. */
@@ -409,6 +485,8 @@ export function SignDrawing({ sign, name, id, wires }: { sign: string; name: str
         <Marquee tag={tag} id={id} top={top} />
       ) : sign === 'sign-liftoff' ? (
         <Liftoff tag={tag} id={id} top={top} />
+      ) : sign === 'sign-cold-snap' ? (
+        <ColdSnap tag={tag} id={id} top={top} />
       ) : (
         <Neon tag={tag} id={id} top={top} />
       )}
@@ -422,6 +500,7 @@ const WORDS: Record<string, string> = {
   'sign-marquee': 'in marquee lights',
   'sign-rooftop': 'in neon on a rooftop',
   'sign-liftoff': 'in lights beside a rocket lifting off',
+  'sign-cold-snap': 'in lights, hung with icicles',
 }
 
 /** A sign from the wall with a tag on it: `sign` is its prize id. */

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
 import { RewardArt } from '../components/season/RewardArt'
-import { MissionPatch } from '../components/season/SeasonArt'
+import { SeasonPatch } from '../components/season/SeasonLook'
 import { UseSkin } from '../components/season/SkinPicker'
 import { openAvatarStudio, openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
@@ -30,7 +30,8 @@ import {
   type SeasonReward,
   type SeasonStandings,
 } from '../lib/season'
-import { SPACE, starTile } from '../lib/seasonArt'
+import { starTile } from '../lib/seasonArt'
+import { askForSeasonFont } from '../components/season/SeasonDressing'
 import { useTickets } from '../lib/tickets'
 import '../styles/season.css'
 
@@ -191,7 +192,7 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
         {season.preview ? <p className="season-hero__preview">Preview: the season starts for everyone on its first day. Tickets since the 1st count here, for trying it out.</p> : null}
       </div>
       <div className="season-level">
-        <MissionPatch label={level > 0 ? String(level) : undefined} size={104} className="season-level__patch" />
+        <SeasonPatch label={level > 0 ? String(level) : undefined} size={104} className="season-level__patch" slug={season.slug} />
         <div className="season-level__body">
           {!live ? (
             <>
@@ -246,6 +247,7 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
  */
 const HEADLINERS: Record<number, readonly [string, string, string]> = {
   1: ['asteroids-orbiter', 'hotlap-midnight', 'lander-starhopper'],
+  2: ['barrage-frost-dragon', 'hotlap-borealis', 'lander-yeti'],
 }
 
 function headlinersOf(season: SeasonInfo, plus: SeasonPlus): SeasonReward[] {
@@ -546,6 +548,12 @@ export function SeasonPage() {
   const top = seasonTop(store)
   const p = season ? seasonProgress(season, season.status === 'live' ? store.you : null, top || undefined) : null
   const level = p?.level ?? 0
+  const slug = season?.slug ?? null
+
+  // The page is in its season's look and lettering whichever season it shows (season.css .season-<slug>).
+  useEffect(() => {
+    askForSeasonFont(slug)
+  }, [slug])
 
   // The page asks for any reward a later release brought up to your level, and reads the pass fresh.
   useEffect(() => {
@@ -596,7 +604,7 @@ export function SeasonPage() {
   }
 
   return (
-    <PageShell innerClassName="lb-page__inner season-page">
+    <PageShell innerClassName={`lb-page__inner season-page season-${season.slug}`}>
       <Hero season={season} level={level} top={top || season.levels} fraction={p.fraction} toNext={p.toNext} earned={p.earned} signedIn={signedIn} authLoading={authLoading} />
 
       <section className="season-pass" aria-labelledby="season-pass-title">
@@ -632,7 +640,7 @@ export function SeasonPage() {
               const n = i + 1
               const style =
                 n === level + 1 && level > 0
-                  ? ({ background: `linear-gradient(90deg, ${SPACE.orange} ${Math.round(p.fraction * 100)}%, var(--season-rail-off) 0)` } as CSSProperties)
+                  ? ({ background: `linear-gradient(90deg, var(--space-orange) ${Math.round(p.fraction * 100)}%, var(--season-rail-off) 0)` } as CSSProperties)
                   : undefined
               return <span key={n} className={n <= level ? 'season-rail__on' : undefined} style={style} />
             })}

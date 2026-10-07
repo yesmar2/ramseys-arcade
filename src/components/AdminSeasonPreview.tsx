@@ -7,7 +7,9 @@ import { refreshTickets } from '../lib/tickets'
 /*
  * The admin page's switch for previewing the season before its first day (the API's seasons.ts): on, the
  * season is live early, counting tickets from the first of this month, so it can be tried on staging, or
- * on the live site before the launch. On its first day it's live for everyone either way.
+ * on the live site before the launch. On its first day it's live for everyone either way. A season can be picked
+ * to preview: then it's live early over the one that's on, to try the next season (Cold Snap while Space Race
+ * runs) before it comes.
  */
 
 function dayWords(key: number): string {
@@ -68,11 +70,11 @@ export function AdminSeasonPreview() {
 
   const on = state?.previewFrom != null
   const season = state?.season ?? null
-  const flip = () => {
+  const flip = (to = !on, pick: number | null = state?.previewSeason ?? null) => {
     if (!state || busy) return
     setBusy(true)
     setError(null)
-    setSeasonPreview(!on)
+    setSeasonPreview(to, pick)
       .then((next) => {
         setState(next)
         void refreshSeason({ force: true })
@@ -98,7 +100,7 @@ export function AdminSeasonPreview() {
           Season
           {status ? <span className="adm-card__count">{status}</span> : null}
         </h2>
-        <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={!state || busy || season?.status === 'over'} onClick={flip}>
+        <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={!state || busy || season?.status === 'over'} onClick={() => flip()}>
           {busy ? 'Saving…' : on ? 'End the preview' : 'Preview it now'}
         </button>
       </div>
@@ -112,6 +114,18 @@ export function AdminSeasonPreview() {
           ? `Previewing: it’s live now on this server, counting tickets since ${dayWords(state.previewFrom)}. On its first day it’s live for everyone anyway.`
           : 'Preview it to try the pass, the banner and the ring before its first day: it goes live on this server, counting tickets since the 1st of this month.'}
       </p>
+      {state?.seasons && state.seasons.length > 1 ? (
+        <div className="adm-form" role="group" aria-label="Season to preview">
+          <button type="button" className={`panel__btn adm-small${on && (state.previewSeason ?? null) === null ? '' : ' panel__btn--ghost'}`} disabled={busy} aria-pressed={on && (state.previewSeason ?? null) === null} onClick={() => flip(true, null)}>
+            The next to come
+          </button>
+          {state.seasons.map((s) => (
+            <button key={s.id} type="button" className={`panel__btn adm-small${on && state.previewSeason === s.id ? '' : ' panel__btn--ghost'}`} disabled={busy} aria-pressed={on && state.previewSeason === s.id} onClick={() => flip(true, s.id)}>
+              Preview {s.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {error ? <p className="adm-fail">{error}</p> : null}
       {season?.status === 'live' ? (
         <>

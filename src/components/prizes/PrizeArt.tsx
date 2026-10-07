@@ -6,6 +6,8 @@ import { askForOrbitronFont, askForPixelFont } from '../../lib/nameStyle'
 import { SHELF_SCALE, SIGN_W, signHeight, ticketPath } from '../../lib/prizeArt'
 import { ThemeDrawing } from './CardThemes'
 import { SignDrawing } from './SignArt'
+import { isWinterName, WinterTag } from '../season/WinterNames'
+import { flakeStrokes } from '../season/WinterFinishes'
 
 /*
  * What the prize counter draws: the ticket, the counter's LED readout, and
@@ -154,6 +156,8 @@ function Shadow({ rx }: { rx: number }) {
 /** A tag in a name style, in SVG, for the shelf's little board-row sign. */
 function StyledTag({ style, name, x, y, size, id }: { style: string; name: string; x: number; y: number; size: number; id: string }) {
   const at = { x, y, fontSize: size, letterSpacing: 1 }
+  // Season 2's (Cold Snap) are drawn in their own file.
+  if (isWinterName(style)) return <WinterTag style={style} name={name} x={x} y={y} size={size} id={id} />
   switch (style) {
     // Season 1's (Space Race, its pass).
     case 'nm-starlight':
@@ -766,6 +770,27 @@ function Popper({ kind, id }: { kind: string; id: string }) {
     } else if (kind === 'cf-stardust') {
       const c = ['#f5b942', '#ffe7a3', '#b9a6f0', '#f2813a'][Math.floor(rnd() * 4)]!
       bits.push(<path key={i} d={sparkle4(x, y, 3.5 + rnd() * 3.5)} fill={c} />)
+    } else if (kind === 'cf-snowfall' || kind === 'cf-flurry') {
+      // Season 2's: snowflakes, and in a flurry a few more, swept round.
+      const c = ['#ffffff', '#dff2ff', '#bfe6ff'][Math.floor(rnd() * 3)]!
+      const fx = kind === 'cf-flurry' ? x + Math.sin(i) * 10 : x
+      bits.push(<path key={i} d={flakeStrokes(fx, y, 3.5 + rnd() * 3, rot)} fill="none" stroke={c} strokeWidth="1.2" strokeLinecap="round" />)
+      if (kind === 'cf-flurry') bits.push(<circle key={`d${i}`} cx={x - 8} cy={y + 6} r="1.4" fill="#ffffff" opacity="0.8" />)
+    } else if (kind === 'cf-snowballs') {
+      if (i % 2 === 0) {
+        const r = 4 + rnd() * 3.5
+        bits.push(
+          <g key={i}>
+            <circle cx={x - r * 1.4} cy={y + r * 0.8} r={r * 0.45} fill="#eaf4fc" opacity="0.5" />
+            <circle cx={x} cy={y} r={r} fill="#ffffff" stroke="#a9c8e4" strokeWidth="1" />
+          </g>,
+        )
+      }
+    } else if (kind === 'cf-icicles') {
+      if (i % 2 === 0) {
+        const len = 12 + rnd() * 9
+        bits.push(<path key={i} d={`M${(x - 2.6).toFixed(1)} ${(y - len).toFixed(1)}H${(x + 2.6).toFixed(1)}L${x.toFixed(1)} ${y.toFixed(1)}Z`} fill="#dff4ff" stroke="#4aa8e8" strokeWidth="0.8" />)
+      }
     } else if (kind === 'cf-shooting') {
       if (i % 3 === 0) {
         const c = ['#ffffff', '#ffe7a3', '#b9a6f0'][Math.floor(rnd() * 3)]!

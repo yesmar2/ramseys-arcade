@@ -19,6 +19,24 @@ export const SPACE = {
   indigo: '#6b74e8',
 } as const
 
+/**
+ * Season 2's colours (Cold Snap: Ramsey picked A, Northern Lights, 2026-10-06): a polar night, aurora green in
+ * Space Race's orange's place, teal and violet beside it, snow, and a cabin's warm light.
+ */
+export const FROST = {
+  night: '#0b1830',
+  panel: '#13284a',
+  line: '#24426e',
+  green: '#5cf2b0',
+  teal: '#33c6d6',
+  violet: '#9b7bff',
+  snow: '#eef7ff',
+  ice: '#bfe6ff',
+  amber: '#ffc35a',
+  muted: '#9fb4d6',
+  text: '#d4e3f5',
+} as const
+
 export function seeded(seed: number): () => number {
   let a = seed
   return () => {

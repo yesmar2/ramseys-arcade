@@ -26,7 +26,7 @@ try {
   mkdirSync('public/og/skins', { recursive: true })
   for (const skin of SKINS) {
     const file = `public/og/skins/${skin.id}.png`
-    const render = { 'hotlap-rocket': 'rocket-car', 'hotlap-midnight': 'midnight-rocket', 'hotlap-sunracer': 'sunracer', 'hotlap-green-flash': 'green-flash' }[skin.id]
+    const render = { 'hotlap-rocket': 'rocket-car', 'hotlap-midnight': 'midnight-rocket', 'hotlap-sunracer': 'sunracer', 'hotlap-green-flash': 'green-flash', 'hotlap-ice-rocket': 'ice-rocket', 'hotlap-borealis': 'borealis', 'hotlap-whiteout': 'whiteout' }[skin.id]
     if (render) {
       // A render of Hot Lap's own 3D car, as the pass shows it.
       await sharp(`src/assets/season/${render}.webp`).resize(SIZE, SIZE, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(file)

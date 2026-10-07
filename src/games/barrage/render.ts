@@ -1,5 +1,5 @@
 import { withAlpha } from '../../lib/color'
-import { BARRAGE_ART, drawSkinArt } from '../../lib/skinArt'
+import { BARRAGE_ART, burnColor, drawSkinArt } from '../../lib/skinArt'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import {
   BANNER_TIME,
@@ -708,9 +708,11 @@ function drawShip(g: Gfx) {
   const flick = 0.75 + 0.25 * Math.sin(t * 43) + 0.1 * Math.sin(t * 71)
   const flame = w * (0.42 + 0.14 * flick)
   const grad = ctx.createLinearGradient(0, w * 0.3, 0, w * 0.3 + flame)
-  grad.addColorStop(0, nova ? 'rgba(255, 231, 163, 0.95)' : hsla(SHIP_HUE, 95, 70, 0.9))
-  grad.addColorStop(0.5, nova ? 'rgba(242, 129, 58, 0.6)' : hsla(180, 95, 65, 0.5))
-  grad.addColorStop(1, nova ? 'rgba(242, 129, 58, 0)' : hsla(200, 95, 65, 0))
+  // A skin with a burn of its own (Season 2's) burns in it, as its picture does.
+  const burn = drawn?.burn
+  grad.addColorStop(0, burn ? burnColor(burn.core, 0.95) : nova ? 'rgba(255, 231, 163, 0.95)' : hsla(SHIP_HUE, 95, 70, 0.9))
+  grad.addColorStop(0.5, burn ? burnColor(burn.outer, 0.6) : nova ? 'rgba(242, 129, 58, 0.6)' : hsla(180, 95, 65, 0.5))
+  grad.addColorStop(1, burn ? burnColor(burn.outer, 0) : nova ? 'rgba(242, 129, 58, 0)' : hsla(200, 95, 65, 0))
   ctx.fillStyle = grad
   ctx.beginPath()
   ctx.moveTo(-w * 0.1, w * 0.28)

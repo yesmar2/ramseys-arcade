@@ -118,6 +118,37 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
       return 'rgba(214,92,214,0.22)'
     case 'black-hole':
       return 'rgba(242,129,58,0.24)'
+    // Season 2's (Cold Snap, its pass and Pass+).
+    case 'snowflake':
+    case 'blizzard':
+    case 'nm-frost':
+    case 'nm-frostbite':
+    case 'nm-glacier':
+    case 'nm-polar':
+    case 'nm-hoarfrost':
+    case 'cd-snowfield':
+    case 'cf-snowfall':
+    case 'cf-flurry':
+    case 'cf-snowballs':
+    case 'cf-icicles':
+    case 'sign-cold-snap':
+      return 'rgba(127,200,255,0.24)'
+    case 'igloo':
+    case 'cd-ski-lodge':
+      return 'rgba(255,195,90,0.2)'
+    case 'snowman':
+    case 'polar-bear':
+    case 'diamond-dust':
+      return 'rgba(220,240,255,0.22)'
+    case 'cd-pine-forest':
+    case 'cd-northern-lights':
+      return 'rgba(92,242,176,0.2)'
+    case 'cd-frozen-lake':
+      return 'rgba(232,138,160,0.2)'
+    case 'cd-ice-cave':
+    case 'ice-crown':
+    case 'nm-crystal':
+      return 'rgba(127,227,255,0.24)'
     // Plus's monthly looks.
     case 'nm-prism':
       return 'rgba(255,255,255,0.14)'
