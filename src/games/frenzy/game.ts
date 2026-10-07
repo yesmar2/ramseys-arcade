@@ -92,9 +92,16 @@ const SHARK_WARN = 1.4
 const SHARK_SPEED = 360
 const SHARK_R = 56
 /** The fisherman: how long he waits before his first cast of a run, his speed between spots. */
-const BOAT_FIRST = 12
-const BOAT_SPEED = 55
-const HOOK_R = 6
+const BOAT_FIRST = 7
+const BOAT_SPEED = 75
+const HOOK_R = 8
+/**
+ * Harder since Ramsey's "i think the fisherman needs to be a little harder" (2026-10-06): he fishes close to
+ * you and at your depth, follows you with the boat while he waits (faster as you grow), sways his hook, and
+ * rests only a moment between casts.
+ */
+const BOAT_FOLLOW = 26
+const BOAT_FOLLOW_PER_SIZE = 4
 /** Points for things caught in the air. */
 const FLYER_AIR_POINTS = 25
 const GULL_POINTS = 50
@@ -795,7 +802,7 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
     if (b.t >= b.rest) {
       // A spot near you, but never right overhead.
       const side = Math.random() < 0.5 ? -1 : 1
-      b.to = clamp(p.x + side * rand(150, Math.max(220, half.w * 0.75)), 120, OCEAN_W - 120)
+      b.to = clamp(p.x + side * rand(110, Math.max(160, half.w * 0.5)), 120, OCEAN_W - 120)
       b.stage = 'sail'
       b.t = 0
     }
@@ -807,18 +814,26 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
     if (Math.abs(dx) <= 1) {
       b.stage = 'cast'
       b.t = 0
-      b.depth = clamp(p.y + rand(-60, 140), 80, 560)
+      // Down to where you are now, give or take.
+      b.depth = clamp(p.y + rand(-30, 40), 60, FLOOR - 80)
       b.hookY = 0
     }
   } else if (b.stage === 'cast') {
-    b.hookY = Math.min(b.depth, b.hookY + 160 * dt)
+    b.hookY = Math.min(b.depth, b.hookY + 240 * dt)
     if (b.hookY >= b.depth) {
       b.stage = 'wait'
       b.t = 0
     }
   } else if (b.stage === 'wait') {
-    b.hookY = b.depth + Math.sin(b.t * 2.2) * 10
-    if (b.t > 7) {
+    // He follows you along the surface, and lets the hook sink or rise a little toward you.
+    if (playing && !p.air) {
+      const dx = p.x - tip.x
+      const follow = (BOAT_FOLLOW + p.size * BOAT_FOLLOW_PER_SIZE) * dt
+      if (Math.abs(dx) > 4) b.x = clamp(b.x + Math.sign(dx) * Math.min(Math.abs(dx), follow), 60, OCEAN_W - 60)
+      b.depth = clamp(b.depth + Math.sign(p.y - b.depth) * Math.min(Math.abs(p.y - b.depth), 18 * dt), 60, FLOOR - 80)
+    }
+    b.hookY = b.depth + Math.sin(b.t * 2.2) * 16
+    if (b.t > 8) {
       b.stage = 'reel'
       b.t = 0
     }
@@ -828,12 +843,12 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
       b.caught = null
       b.hookY = tip.y
       b.stage = 'rest'
-      b.rest = rand(2, 4)
+      b.rest = rand(0.8, 1.8)
       b.t = 0
     }
   }
   if (b.stage !== 'wait' && b.stage !== 'cast') return
-  const hx = tip.x
+  const hx = rodTip(b).x
   const hy = b.hookY
   // You, on the hook: reeled in.
   if (playing && !p.air && p.invuln <= 0 && Math.hypot(p.x - hx, p.y - hy) < playerRadius(s) * 0.65 + HOOK_R) {
@@ -843,7 +858,8 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
     hurt(s, 'Caught by the fisherman')
     return
   }
-  // A small fish takes the worm now and then.
+  // A small fish takes the worm now and then, once it's been down a while.
+  if (b.stage !== 'wait' || b.t < 4) return
   for (const f of s.fishes) {
     if (f.tier > 2 || f.flyer !== undefined) continue
     if (Math.hypot(f.x - hx, f.y - hy) < fishRadius(f) + HOOK_R) {
