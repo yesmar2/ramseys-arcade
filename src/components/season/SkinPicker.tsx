@@ -190,19 +190,21 @@ function Garage({
   ]
   return (
     <Panel wide labelledBy={titleId} onClose={onClose} className="skin-garage">
-      <PanelHead titleId={titleId} title={title} kicker="Looks only: every one plays the same" onClose={onClose} />
-      {groups
-        .filter(([, tiles]) => tiles.length)
-        .map(([name, tiles]) => (
-          <section key={name} className="skin-garage__group" aria-label={name}>
-            <h3 className="skin-garage__name">{name}</h3>
-            <div className="skin-garage__grid">
-              {tiles.map((tile) => (
-                <SkinTile key={tile.kind === 'usual' ? 'usual' : tile.skin.id} game={game} tile={tile} chosen={chosen} big />
-              ))}
-            </div>
-          </section>
-        ))}
+      <PanelHead titleId={titleId} title={title} kicker="Looks only" onClose={onClose} />
+      <div className="panel__body">
+        {groups
+          .filter(([, tiles]) => tiles.length)
+          .map(([name, tiles]) => (
+            <section key={name} className="skin-garage__group" aria-label={name}>
+              <h3 className="skin-garage__name">{name}</h3>
+              <div className="skin-garage__grid">
+                {tiles.map((tile) => (
+                  <SkinTile key={tile.kind === 'usual' ? 'usual' : tile.skin.id} game={game} tile={tile} chosen={chosen} big />
+                ))}
+              </div>
+            </section>
+          ))}
+      </div>
     </Panel>
   )
 }
