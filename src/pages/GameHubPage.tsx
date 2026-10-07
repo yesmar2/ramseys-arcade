@@ -89,11 +89,11 @@ type GameHubPageProps = {
 }
 
 /**
- * A game's page. Up top, its name and Play beside its screen, where it plays
- * itself under the high score, and next to them the period's board. Then
- * where you stand on it and the one run that moves you, your side of its
- * record book, and any event it is in; how to play it and what scores; and
- * the games most like it.
+ * A game's page. Up top and across the page, its name and Play beside its
+ * screen, where it plays itself under the high score. Then, side by side,
+ * where you stand on it and the one run that moves you, the period's board,
+ * your side of its record book, and any event it is in; how to play it and
+ * what scores; and the games most like it.
  *
  * A daily's page is today's, with tabs under its hero: Today (today's card
  * across the page, then where you stand and its board), its past courses,
@@ -124,11 +124,10 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const highScore = useHubHighScore(ranked ? boardSlug : null, groupId)
   // A daily's records are its Records tab, not a card of the book.
   const records = useHubRecords(daily ? '' : slug, playerName, groupId)
-  // While the board and the records load, the top (the game and its board) and the band under it (where you
-  // stand, its records) hold the height they had last time this device was here (lib/heldShape.ts).
+  // While the board and the records load, the cards under the hero (where you stand, the board, its records) hold
+  // the height they had last time this device was here (lib/heldShape.ts).
   const settling = board.loading || (gameHasRecords(slug) && !daily && records === null)
-  const topHeld = useHeldHeight<HTMLDivElement>(`gh-top-${slug}`, settling)
-  const bandHeld = useHeldHeight<HTMLDivElement>(`gh-band-${slug}`, settling)
+  const bandHeld = useHeldHeight<HTMLDivElement>(`gh-cards-${slug}`, settling)
   const events = useHubEvents(slug)
   // For the games below: your best on each, your place on its board, and who leads it, as the wall shows them.
   const bests = usePlayerBests(playerName, period)
@@ -317,19 +316,21 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     )
   }
 
+  const recordsCard = hasRecords ? <GameHubRecords slug={game.slug} gameName={game.name} records={records} me={playerName} /> : null
   return (
     <PageShell innerClassName="gh-rail">
       <div className="gh" style={style}>
-        <div className={`gh-top${boardSlug ? '' : ' gh-top--solo'}`} ref={topHeld.ref} style={topHeld.style}>
-          {hero}
-          {boardCard}
-        </div>
+        {/* The hero across the page, as a daily's is; then the cards side by side under it (hub.css .gh-band). */}
+        {hero}
 
-        <div className="gh-band" ref={bandHeld.ref} style={bandHeld.style}>
-          {standing}
-          {hasRecords ? <GameHubRecords slug={game.slug} gameName={game.name} records={records} me={playerName} /> : null}
-          {eventsCard}
-        </div>
+        {standing || boardCard || recordsCard || eventsCard ? (
+          <div className="gh-band" ref={bandHeld.ref} style={bandHeld.style}>
+            {standing}
+            {boardCard}
+            {recordsCard}
+            {eventsCard}
+          </div>
+        ) : null}
 
         {shelfSection}
       </div>
