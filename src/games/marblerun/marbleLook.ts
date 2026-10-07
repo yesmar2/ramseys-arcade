@@ -5,7 +5,8 @@ import { mulberry32 } from './sim'
  * How the player's marble looks: the painted light it shines by (a matcap), the pattern on it that turns as it
  * rolls, and the colour of its glow and the pool of light under it. Marble Run's own is white glass with a
  * magenta swirl; a skin (lib/skins.ts) swaps all three. Skins are looks only: the marble's size and its roll
- * are the same in every one. The ghost, the previews and the course pictures always show Marble Run's own.
+ * are the same in every one. A ghost wears the skin its run was rolled in, faded (scene.ts dressGhost); the
+ * blue ball, the previews and the course pictures always show Marble Run's own.
  */
 
 type Paint = (g: CanvasRenderingContext2D, w: number, h: number) => void

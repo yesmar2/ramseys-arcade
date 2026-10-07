@@ -6,8 +6,11 @@ import { ownKey, ownRun, SIGNED_OUT, type OwnedRuns, type Viewer } from '../../l
  * best from it without loading the game.
  */
 
-/** A run as its ghost rolls it: its time, when it crossed each checkpoint and the goal, and where it was. */
-export type GhostRun = { time: number; splits: number[]; ghost: number[] }
+/**
+ * A run as its ghost rolls it: its time, when it crossed each checkpoint and the goal, and where it was; `skin`,
+ * the season skin it was rolled in (lib/skins.ts), so its ghost wears it too.
+ */
+export type GhostRun = { time: number; splits: number[]; ghost: number[]; skin?: string }
 
 /*
  * Not a score: the board keeps that. This is only each day's best run and its path, for the ghost, on this
@@ -28,7 +31,7 @@ function validRun(raw: Partial<GhostRun> | null | undefined): GhostRun | null {
   if (!raw || typeof raw.time !== 'number' || !(raw.time > 10 && raw.time < 900)) return null
   if (!Array.isArray(raw.splits) || raw.splits.length < 1 || !raw.splits.every(Number.isFinite)) return null
   if (!Array.isArray(raw.ghost) || raw.ghost.length < 30 || raw.ghost.length % 3 !== 0 || !raw.ghost.every(Number.isFinite)) return null
-  return { time: raw.time, splits: raw.splits, ghost: raw.ghost }
+  return { time: raw.time, splits: raw.splits, ghost: raw.ghost, ...(typeof raw.skin === 'string' ? { skin: raw.skin } : {}) }
 }
 
 /** Each day's best runs on this device, by whose they are: an account's id, or SIGNED_OUT. */
@@ -63,6 +66,7 @@ const toKeep = (run: GhostRun): KeptRun => ({
   time: run.time,
   splits: run.splits,
   ghost: run.ghost.map((v) => Math.round(v * 100) / 100),
+  ...(run.skin ? { skin: run.skin } : {}),
   at: Date.now(),
 })
 
