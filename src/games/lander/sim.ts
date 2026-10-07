@@ -164,11 +164,16 @@ export type LabCave = {
 }
 
 /**
- * A vent in the rock that puffs steam on a beat: while it blows, a push of `push` m/s² along `dir` (radians,
- * 0 right, π/2 up), out to `reach` metres and `wide` across, weaker toward its far end. It blows `on` of every
- * `period` seconds.
+ * A vent in the rock that puffs steam on a beat, along `dir` (radians, 0 right, π/2 up), out to `reach`
+ * metres and `wide` across. Its steam rushes at `speed` m/s, and while it blows it pulls the ship toward that,
+ * up to `push` m/s²: hard from a standstill or against it, easing off as the ship rides it, a little weaker
+ * toward its far end. It blows `on` of every `period` seconds. (Ramsey found the first vents not strong enough:
+ * a plain push twice as hard would have flung a ship up the chimney into its roof.)
  */
-export type Vent = { x: number; y: number; dir: number; reach: number; wide: number; push: number; period: number; on: number; phase: number }
+export type Vent = { x: number; y: number; dir: number; reach: number; wide: number; push: number; speed: number; period: number; on: number; phase: number }
+
+/** How hard a vent's steam pulls the ship toward its own speed, per m/s short of it. */
+const VENT_GRIP = 2.5
 
 /**
  * A block that slams across a tunnel and back on a beat: its middle goes from (ax, ay), tucked in the rock,
@@ -191,9 +196,9 @@ export type Lava = { x0: number; x1: number; y0: number; y1: number }
 /** The landing pad on a lift: its top rises from y0 to y1 and back down every `period` seconds. */
 export type Lift = { y0: number; y1: number; period: number; phase: number }
 
-/** In water: gravity turns round to float the ship up, and the water drags. */
+/** In water: gravity turns round to float the ship up, and the water drags (Ramsey found 2 "a little too slow"). */
 const WATER_G = -0.3
-const WATER_DRAG = 2
+const WATER_DRAG = 0.9
 /** A lift's piston is this much narrower than its pad, either side; its pad's slab is this thick. */
 const PISTON_IN = 1.2
 const SLAB = 0.5
@@ -267,8 +272,8 @@ function inBranchAir(lab: LabCave, x: number, y: number): boolean {
   return false
 }
 
-/** Gravity's share, the water's drag, and a vent's push, where the ship is, at a moment. */
-function labField(lab: LabCave, x: number, y: number, now: number): { g: number; drag: number; ax: number; ay: number } {
+/** Gravity's share, the water's drag, and a vent's push, where the ship is and as it's moving, at a moment. */
+function labField(lab: LabCave, x: number, y: number, vx: number, vy: number, now: number): { g: number; drag: number; ax: number; ay: number } {
   let g = 1
   let drag = 0
   let ax = 0
@@ -288,7 +293,8 @@ function labField(lab: LabCave, x: number, y: number, now: number): { g: number;
     const along = (x - v.x) * ux + (y - v.y) * uy
     const across = Math.abs((x - v.x) * uy - (y - v.y) * ux)
     if (along < 0 || along > v.reach || across > v.wide / 2) continue
-    const push = v.push * blow * (1 - 0.45 * (along / v.reach))
+    const short = v.speed - (vx * ux + vy * uy)
+    const push = Math.min(v.push, VENT_GRIP * Math.max(0, short)) * blow * (1 - 0.3 * (along / v.reach))
     ax += ux * push
     ay += uy * push
   }
@@ -619,7 +625,7 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
   const drag = DRAG + DRAG2 * speed
   if (lab) {
     // The test cave: water floats the ship and drags it, a bubble lightens it, a vent shoves it.
-    const f = labField(lab, s.x, s.y, now)
+    const f = labField(lab, s.x, s.y, s.vx, s.vy, now)
     s.vx += (Math.sin(s.a) * push + f.ax - s.vx * (drag + f.drag)) * dt
     s.vy += (Math.cos(s.a) * push + f.ay - G * f.g - s.vy * (drag + f.drag)) * dt
   } else {
@@ -1199,8 +1205,8 @@ export function labCave(): Cave {
   const crusher = (x: number, phase: number): Crusher => ({ ax: x, ay: ceiling + 5.85, bx: x, by: floor + 5.75, hw: 1.6, hh: 5.8, period: 3, phase })
   const lab: LabCave = {
     vents: [
-      { x: shaftFoot.x - 1.5, y: shaftFoot.y - 9.5, dir: Math.PI / 2, reach: 24, wide: 6.5, push: 8.5, period: 2.4, on: 0.5, phase: 0 },
-      { x: chimneyFoot.x + 1, y: chimneyFoot.y - 7.5, dir: Math.PI / 2, reach: 26, wide: 6, push: 12, period: 2.6, on: 0.6, phase: 1.1 },
+      { x: shaftFoot.x - 1.5, y: shaftFoot.y - 9.5, dir: Math.PI / 2, reach: 24, wide: 6.5, push: 16, speed: 5, period: 2.4, on: 0.5, phase: 0 },
+      { x: chimneyFoot.x + 1, y: chimneyFoot.y - 7.5, dir: Math.PI / 2, reach: 26, wide: 6, push: 24, speed: 10, period: 3.2, on: 0.65, phase: 1.1 },
     ],
     crushers: [crusher(corridorX0 + 10, 0), crusher(corridorX0 + 21, 1.5)],
     spinners: [{ x: hallMid.x, y: hallMid.y, half: 7.6, thick: 0.8, speed: 1.15, phase: 0.4 }],
