@@ -72,13 +72,13 @@ html[data-theme='dark'] .pcard-plus,
   color: #ffd27a;
 }
 
-/* As an icon: the menu's Plus row (components/SiteMenu.tsx). */
+/* As an icon: the menu's Plus row (components/SiteMenu.tsx), and the Plus page's at its own size. */
 .plus-mark--icon {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: var(--plus-mark-size, 1.25rem);
+  height: var(--plus-mark-size, 1.25rem);
   margin: 0;
   font-size: 1rem;
-  border-radius: 0.38rem;
+  border-radius: calc(var(--plus-mark-size, 1.25rem) * 0.3);
 }
 
 /* The menu's "Free week": Plus's own colours, not the red of something waiting on you. */

@@ -17,6 +17,7 @@ import { ordinal } from '../lib/profileMath'
 import {
   confirmPlusCheckout,
   daysLeftLabel,
+  headlinersOf,
   plusPrice,
   refreshSeason,
   startPlusCheckout,
@@ -241,26 +242,6 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
   )
 }
 
-/**
- * Each season's Pass+ headliners, left, middle and right: the skins its stage shows big (he picked A of the
- * Pass+ showpiece, 2026-10-06). A season not here shows its three highest-level Pass+ skins.
- */
-const HEADLINERS: Record<number, readonly [string, string, string]> = {
-  1: ['asteroids-orbiter', 'hotlap-midnight', 'lander-starhopper'],
-  2: ['swoop-penguin', 'hotlap-borealis', 'swoop-aurora-phoenix'],
-}
-
-function headlinersOf(season: SeasonInfo, plus: SeasonPlus): SeasonReward[] {
-  const skins = plus.rewards.filter((r) => r.kind === 'skin')
-  const named = HEADLINERS[season.id]
-  if (named) {
-    const found = named.map((id) => skins.find((r) => r.id === id)).filter((r): r is SeasonReward => r != null)
-    if (found.length === 3) return found
-  }
-  // The three latest, the latest in the middle.
-  const top = [...skins].sort((a, b) => b.level - a.level).slice(0, 3)
-  return top.length === 3 ? [top[1]!, top[0]!, top[2]!] : top
-}
 
 /**
  * The Pass+ stage: its best skins big, on lit stands, as a pass leads with its best (Ramsey: "go with A",

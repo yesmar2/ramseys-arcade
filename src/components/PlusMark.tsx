@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { usePlusMember } from '../lib/plus'
 import '../styles/plusMark.css'
 
@@ -24,10 +25,10 @@ function PlusCross() {
   )
 }
 
-/** The mark on its own, as an icon: the menu's Plus row. */
-export function PlusGlyph() {
+/** The mark on its own, as an icon: the menu's Plus row, and the Plus page at any `size` (a CSS length). */
+export function PlusGlyph({ size }: { size?: string }) {
   return (
-    <span className="plus-mark plus-mark--icon" aria-hidden="true">
+    <span className="plus-mark plus-mark--icon" aria-hidden="true" style={size ? ({ '--plus-mark-size': size } as CSSProperties) : undefined}>
       <PlusCross />
     </span>
   )
