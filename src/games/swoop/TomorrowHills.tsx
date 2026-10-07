@@ -1,6 +1,6 @@
 import { TomorrowTease } from '../../components/TomorrowTease'
 import { dayAfter } from '../../lib/dayBoard'
-import { HillsDrawing } from './HillsDrawing'
+import { HillsPostcard } from './HillsPostcard'
 import { dailyHills, hillsDay, msUntilNextHills, untilWords } from './daily'
 import { swoopDay } from './runs'
 
@@ -17,7 +17,7 @@ export function TomorrowHills({ day }: { day: string }) {
       name={hills.name}
       msLeft={msUntilNextHills}
       words={untilWords}
-      picture={<HillsDrawing hills={swoopDay(next).hills} />}
+      picture={<HillsPostcard hills={swoopDay(next).hills} w={640} h={360} />}
     />
   )
 }

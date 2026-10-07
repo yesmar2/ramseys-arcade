@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { HillsDrawing } from '../../games/swoop/HillsDrawing'
+import { HillsPostcard } from '../../games/swoop/HillsPostcard'
 import { dailyHills, FIRST_DAY, hillsDay, hillsNumber } from '../../games/swoop/daily'
 import { swoopDay } from '../../games/swoop/runs'
 import { gamePlayHref } from '../../hooks/useHashRoute'
@@ -16,8 +16,8 @@ const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
 // The name is the plan's, so a card has it without laying its hills.
 const title = (day: string) => `#${hillsNumber(day)} ${dailyHills(day).name}`
 
-// The drawing covers its box, sky and all.
-const art = (day: string) => <HillsDrawing hills={swoopDay(day).hills} />
+// The day's postcard covers its box, sky and all.
+const art = (day: string) => <HillsPostcard hills={swoopDay(day).hills} w={640} h={320} />
 
 /**
  * Swoop's past hills: every day's hills before today's, newest first. Each keeps an All time board of its own

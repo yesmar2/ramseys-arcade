@@ -5,11 +5,10 @@ import { heightAt, hillsSpan, mulberry32, type Hills } from './sim'
 const ASPECT = 1.55
 
 /**
- * A day's hills from the side, as the past days' cards, Today's Hills, the tomorrow tease and the Hills Book
- * draw them: the whole way from the start to the line at dusk, the tops stretched up so a card shows them,
- * washed in the day's colour with a lit edge, the three flags and the chequered line. It covers the box it's
- * put in (2:1 on a past card, 16:9.4 on Today's Hills), keeping the hills in its middle band so a wide box
- * crops only sky and earth.
+ * A day's hills from the side, as the Hills Book draws them: the whole way from the start to the line at dusk,
+ * the tops stretched up so a card shows them, washed in the day's colour with a lit edge, the three flags and
+ * the chequered line. The players' cards show the day's postcard instead (HillsPostcard.tsx). It covers the
+ * box it's put in, keeping the hills in its middle band so a wide box crops only sky and earth.
  */
 export function HillsDrawing({ hills, className }: { hills: Hills; className?: string }) {
   const h = 100

@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
-import { HillsDrawing } from '../games/swoop/HillsDrawing'
+import { HillsPostcard } from '../games/swoop/HillsPostcard'
 import { hillsDay, nextHillsAt } from '../games/swoop/daily'
 import { swoopDay } from '../games/swoop/runs'
 import { gamePlayHref } from '../hooks/useHashRoute'
@@ -74,7 +74,7 @@ export function TodaysHillsCard() {
     <section className="evp-card evp-daily tch" style={style} aria-labelledby="tch-title">
       <div className="evp-daily__screen">
         <a className="evp-screen tch__screen" href={href} aria-label={`Swoop Today’s Hills #${swoop.n}, ${swoop.name}`}>
-          <HillsDrawing hills={swoop.hills} className="tch-plan" />
+          <HillsPostcard hills={swoop.hills} w={640} h={360} className="tch-plan" />
           <span className="evp-screen__play" aria-hidden="true">
             <PlayIcon />
             Swoop

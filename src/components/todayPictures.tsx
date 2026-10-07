@@ -7,12 +7,10 @@ import { pourPlanSvg } from '../games/halffull/planSvg'
 import { dailyTrack } from '../games/hotlap/daily'
 import { CAVE_COLOURS, caveView } from '../games/lander/cavePicture'
 import { landerDay } from '../games/lander/runs'
-import { BirdMark } from '../games/swoop/BirdMark'
-import { hillsColours, hillsView } from '../games/swoop/hillsPicture'
+import { HillsPostcard } from '../games/swoop/HillsPostcard'
 import { swoopDay } from '../games/swoop/runs'
 import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
-import { mixColor } from '../lib/color'
 import { todaysHole } from '../lib/dailyHole'
 import type { TodayKey } from '../lib/today'
 import { GameArt } from './GameArt'
@@ -224,61 +222,10 @@ function CavePicture({ day }: { day: string }) {
   )
 }
 
-/**
- * The day's biggest hill close in, as Swoop draws its hills at dusk (hillsPicture.ts): the sky and its stars,
- * far hills rolling, the near hills in the day's colour with their turf, seams and blips, your bird just off
- * the top with its trail, and the blue bird coming up the slope behind.
- */
+/** The day's biggest hill close in, the hills' postcard (swoop/HillsPostcard.tsx). */
 function HillsPicture({ day }: { day: string }) {
-  const id = useId().replace(/[^a-zA-Z0-9]/g, '')
-  const hills = swoopDay(day).hills
-  const view = useMemo(() => hillsView(hills, W, H), [hills])
-  const C = hillsColours(hills.hue)
-  const { k, bird, blue } = view
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <defs>
-        <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={C.skyTop} />
-          <stop offset="0.75" stopColor={C.skyLow} />
-        </linearGradient>
-        <linearGradient id={`${id}-earth`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0.45" stopColor={C.body} />
-          <stop offset="1" stopColor={C.deep} />
-        </linearGradient>
-      </defs>
-      <rect width={W} height={H} fill={`url(#${id}-sky)`} />
-      {view.stars.map(([x, y, r, o], i) => (
-        <circle key={i} cx={x} cy={y} r={r} fill="#ffffff" opacity={o} />
-      ))}
-      <circle cx={W * 0.8} cy={H * 0.18} r={H * 0.07} fill={C.moon} />
-      <path d={view.far} fill={C.far} />
-      <path d={view.mid} fill={C.mid} />
-      <path d={view.ground} fill={`url(#${id}-earth)`} />
-      <path d={view.surface} fill="none" stroke={C.turf} strokeWidth={Math.max(3, 1.1 * k)} transform={`translate(0 ${Math.max(2, 0.55 * k)})`} />
-      {view.seams.map((d) => (
-        <path key={d} d={d} fill="none" stroke={C.seam} strokeWidth={Math.max(1.5, 0.32 * k)} />
-      ))}
-      {view.blips.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={Math.max(1.4, 0.36 * k)} fill={C.blip} />
-      ))}
-      <path d={view.surface} fill="none" stroke={C.edge} strokeWidth={Math.max(2.5, 0.42 * k)} strokeLinejoin="round" />
-      {/* The blue bird, sitting on the slope behind. */}
-      <g transform={`translate(${blue.x} ${blue.y}) rotate(${blue.deg}) translate(0 ${-blue.size * 0.95}) scale(${blue.size})`} opacity="0.7">
-        <BirdMark fill={C.blue} line={mixColorLine(C.blue)} />
-      </g>
-      {view.trail.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={Math.max(1.2, 0.18 * k)} fill="#ffffff" opacity={0.25 + (i / view.trail.length) * 0.5} />
-      ))}
-      <g transform={`translate(${bird.x} ${bird.y}) rotate(${bird.deg}) translate(0 ${-bird.size * 0.95}) scale(${bird.size})`}>
-        <BirdMark fill={C.bird} line={C.birdLine} wingUp />
-      </g>
-    </svg>
-  )
+  return <HillsPostcard hills={swoopDay(day).hills} w={W} h={H} />
 }
-
-/** A bird's outline at dusk: its own colour, lightened, as the game draws it in the dark. */
-const mixColorLine = (colour: string) => mixColor(colour, '#ffffff', 0.4)
 
 /** A daily's picture of the day. */
 export function DayPicture({ daily, day }: { daily: TodayKey; day: string }) {

@@ -1,6 +1,6 @@
 /*
- * Swoop's hills from the side on Today's Hills (TodaysHillsCard.tsx): the hills at dusk as the archive draws
- * them (HillsDrawing.tsx), covering the screen. The same in either theme.
+ * Swoop's hills from the side on Today's Hills (TodaysHillsCard.tsx): the day's biggest hill at dusk, its postcard
+ * (HillsPostcard.tsx), covering the screen. The same in either theme.
  */
 .evp-screen.tch__screen {
   background: #0a0e29;
