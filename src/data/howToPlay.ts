@@ -449,7 +449,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Land along a slope', pts: 'keeps your speed', sub: 'a clean landing adds a little' },
       { what: 'Clean landings in a row', pts: 'faster and faster', sub: 'from 3 in a row, until one isn’t clean' },
       { what: 'Land into a hill', pts: 'costs speed', sub: 'up to 40% of it' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bird, then every 10% faster' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bird, then every 12% faster' },
     ],
     ends: 'Over the finish line. Fly it as often as you like.',
     tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face. Three clean landings in a row and the bird glows: keep landing clean and it can keep going faster.',
