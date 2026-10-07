@@ -126,12 +126,12 @@ const UP = new THREE.Vector3(0, 1, 0)
 /** The pool of light under the ball is a grid this many cells a side, laid on the track. */
 const POOL_GRID = 6
 /**
- * How strongly a ghost in a skin shows that skin's marble, and its wire: the marble faded, so it reads as a ghost
- * but in its own colours, and the wire light, so the pattern shows through it (at full wire, every skin read as
- * its wire's colour and little else).
+ * A ghost in a skin is that skin's marble, lighter: a veil of white over its paint, then seen through at this
+ * strength. No wire round it (Ramsey, 2026-10-07: "it still has the outlines ... you see the skin, just lighter"),
+ * as Lander's ghost is its skin's ship at half strength.
  */
-const GHOST_SKIN_SHOWS = 0.72
-const GHOST_SKIN_WIRE = 0.45
+const GHOST_SKIN_SHOWS = 0.62
+const GHOST_SKIN_VEIL = 'rgba(255,255,255,0.28)'
 const angleTo = (a: number, b: number) => Math.atan2(Math.sin(b - a), Math.cos(b - a))
 
 type At = (u: number, j: number) => [number, number, number, THREE.Color, number?, number?]
@@ -199,7 +199,7 @@ export class MarbleScene {
   private readonly ghostPlain = new THREE.Group()
   private readonly ghostWire: THREE.LineBasicMaterial
   /** The ghost in each skin it has been in (dressGhost), made on first use. */
-  private readonly ghostSkinned = new Map<string, { group: THREE.Group; wire: THREE.LineBasicMaterial; shell: THREE.MeshMatcapMaterial }>()
+  private readonly ghostSkinned = new Map<string, { group: THREE.Group; shell: THREE.MeshMatcapMaterial }>()
   /** The skin the ghost is in now; null, the cyan wire. */
   private ghostSkinShown: string | null = null
   private readonly ghostTag: THREE.Sprite
@@ -363,9 +363,9 @@ export class MarbleScene {
   }
 
   /**
-   * Dress the ghost in the skin its run was rolled in, as Hot Lap's ghost wears its car's: the skin's marble seen
-   * through, its pattern turning as it rolls, under wire in the skin's glow. None, or a skin this game doesn't
-   * know, is the cyan wire, as the blue ball always is.
+   * Dress the ghost in the skin its run was rolled in: the skin's marble, lighter and seen through, its pattern
+   * turning as it rolls, with no wire round it. None, or a skin this game doesn't know, is the cyan wire, as the
+   * blue ball always is.
    */
   private dressGhost(skin: string | null) {
     const known = skin != null && marbleLook(skin) !== marbleLook(null) ? skin : null
@@ -376,15 +376,19 @@ export class MarbleScene {
     if (known == null || this.ghostSkinned.has(known)) return
     const look = marbleLook(known)
     const { matcap, map } = marbleMaps(look, Math.min(8, this.renderer.capabilities.getMaxAnisotropy()))
+    // Lighter: a veil of white over the skin's light and its pattern.
+    for (const tex of [matcap, map]) {
+      const c = tex.image as HTMLCanvasElement
+      const g = c.getContext('2d')!
+      g.fillStyle = GHOST_SKIN_VEIL
+      g.fillRect(0, 0, c.width, c.height)
+      tex.needsUpdate = true
+    }
     this.textures.push(matcap, map)
     const shell = new THREE.MeshMatcapMaterial({ matcap, map, transparent: true, opacity: GHOST_SKIN_SHOWS, depthWrite: false })
-    const wire = new THREE.LineBasicMaterial({ color: look.glow, transparent: true, opacity: 0.9 })
     const group = new THREE.Group()
-    group.add(
-      new THREE.Mesh(new THREE.SphereGeometry(BALL_R * 0.985, 32, 24), shell),
-      new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(BALL_R, 1)), wire),
-    )
-    this.ghostSkinned.set(known, { group, wire, shell })
+    group.add(new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 40, 28), shell))
+    this.ghostSkinned.set(known, { group, shell })
     this.ghostBall.add(group)
   }
 
@@ -1202,10 +1206,7 @@ export class MarbleScene {
       const shows = Math.min(0.9, 0.2 + this.ghost.position.distanceTo(this.ball.position) * 0.18)
       this.ghostWire.opacity = shows
       const dressed = this.ghostSkinShown ? this.ghostSkinned.get(this.ghostSkinShown) : undefined
-      if (dressed) {
-        dressed.wire.opacity = GHOST_SKIN_WIRE * shows
-        dressed.shell.opacity = (GHOST_SKIN_SHOWS * shows) / 0.9
-      }
+      if (dressed) dressed.shell.opacity = (GHOST_SKIN_SHOWS * shows) / 0.9
       this.setGhostTag(f.ghostTag)
     } else {
       this.ghost.visible = false

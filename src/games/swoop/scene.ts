@@ -26,7 +26,8 @@ const SHAPE_OF = () =>
  * band of turf under it, and seams of earth further down, one of them a row of dots, the arcade's blips (no
  * stripes: those are Tiny Wings'). The flags split the run; the finish is a chequered banner. Your bird is
  * Swoop's red, or the season skin you chose (birdSkins.ts); the blue bird is the racing dailies' blue, and
- * anyone else's run is a ghost's outline, cyan (or amber, your own best), with whose run it is over it.
+ * anyone else's run is a ghost in the skin it was flown in, lighter, or else a ghost's outline, cyan (or amber,
+ * your own best), with whose run it is over it.
  *
  * It draws only with fills and strokes, never shadowBlur, so a phone's canvas keeps up.
  */
@@ -114,8 +115,10 @@ export type SceneFrame = {
   calm: boolean
   /** Your bird's clean landings in a row: from sim.ts STREAK_ON it's on a streak, and glows. */
   streak?: number
-  /** The skin your bird wears (birdSkins.ts), if you chose one; the run to beat never wears one. */
+  /** The skin your bird wears (birdSkins.ts), if you chose one. */
   skin?: string | null
+  /** The skin the ghost's run was flown in: it flies in that, lighter, not as an outline. Never the blue bird's. */
+  ghostSkin?: string | null
 }
 
 type Bit = { x: number; y: number; vx: number; vy: number; life: number; max: number; spark: boolean }
@@ -537,7 +540,7 @@ export class HillsScene {
 
   /**
    * A bird: a round body leaning along its flight, a tuft on top, a wing that beats in the air and folds in a
-   * dive, a beak, an eye that looks where it's going. `ghost` draws the outline only, for a run you race.
+   * dive, a beak, an eye that looks where it's going. `ghost` draws the outline only, for a run you race in no skin.
    */
   private drawBird(
     x: number,
@@ -627,19 +630,24 @@ export class HillsScene {
     ctx.restore()
   }
 
-  /** The run to beat: the blue bird, or a ghost's outline, with whose run it is over it. */
+  /**
+   * The run to beat: the blue bird; a ghost in the skin its run was flown in, lighter, as Lander's ghost is its
+   * skin's ship at half strength; or a ghost's outline. With whose run it is over it.
+   */
   private drawGhost(g: GhostPose, f: SceneFrame) {
     const { ctx, C, cam } = this
     const size = this.birdSize() * 0.92
     const onHill = Math.abs(g.y - heightAt(this.hills, g.x)) < 0.08
     const colour = f.ghostBlue ? C.blue : f.ghostMine ? C.mine : C.ghost
     const menuBird = f.mode === 'menu'
+    const skin = !f.ghostBlue && f.ghostSkin && skinPainter(f.ghostSkin) ? f.ghostSkin : null
     this.drawBird(g.x, g.y, g.a, size, colour, {
       flap: this.time * 18,
       folded: onHill,
       dive: g.dive,
-      alpha: f.ghostBlue ? (menuBird ? 0.9 : 0.6) : menuBird ? 0.95 : 0.85,
-      ghost: !f.ghostBlue,
+      alpha: skin ? (menuBird ? 0.6 : 0.5) : f.ghostBlue ? (menuBird ? 0.9 : 0.6) : menuBird ? 0.95 : 0.85,
+      ghost: !f.ghostBlue && !skin,
+      skin,
     })
     // Whose run it is, on a dark pill over it.
     const name = f.ghostTag
