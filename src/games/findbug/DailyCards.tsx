@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
 import { RunLabel } from '../../components/RunLabel'
-import { copyText } from '../../components/ShareBoardButton'
+import { useShare } from '../../components/SharePanel'
 import { gameArchiveHref, gamePlayHref, todayShareHref } from '../../hooks/useHashRoute'
 import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { fitCardToSpace } from '../../lib/cardFit'
@@ -90,28 +90,18 @@ export function WantedLineup({ wanted, size = 44 }: { wanted: readonly WantedBug
   )
 }
 
-/** Send the day on: the phone's own share sheet, or copied to paste anywhere. */
+/** Send the day on: the phone's own share sheet, or copied to paste anywhere (useShare). */
 export function ShareDay({ day, result, className = 'panel__btn' }: { day: string; result: DayResult; className?: string }) {
-  const [copied, setCopied] = useState(false)
-  const share = () => {
-    // The day's own link, which unfurls into the day's card and opens the Today page.
-    const text = `${shareText(day, result)}\n${window.location.origin}${todayShareHref(day)}`
-    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-    if (touch && typeof navigator.share === 'function') {
-      navigator.share({ text }).catch(() => {})
-      return
-    }
-    const done = () => {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    }
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => copyText(text) && done())
-    else if (copyText(text)) done()
-  }
+  const { share, copied, panel } = useShare()
+  // The day's own link, which unfurls into the day's card and opens the Today page.
+  const send = () => share({ text: `${shareText(day, result)}\n${window.location.origin}${todayShareHref(day)}` })
   return (
-    <button type="button" className={className} onClick={share}>
-      {copied ? 'Copied' : 'Share'}
-    </button>
+    <>
+      <button type="button" className={className} onClick={send}>
+        {copied ? 'Copied' : 'Share'}
+      </button>
+      {panel}
+    </>
   )
 }
 

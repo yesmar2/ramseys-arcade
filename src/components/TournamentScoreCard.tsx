@@ -263,7 +263,7 @@ export function TournamentScoreCard({
   const tagRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
   const tagId = useId()
-  const [shareLink, sharePanel] = useLinkShare()
+  const [shareLink, sharePanel, shareCopied] = useLinkShare()
 
   useEffect(() => {
     if (knownName && !name) setName(knownName)
@@ -487,7 +487,7 @@ export function TournamentScoreCard({
     const message = posted && snapshot.detail && canShareEvent(snapshot.detail) ? eventShareMessage(snapshot.detail, gameSlug, name) : null
     if (message) {
       secondary = {
-        label: 'Share',
+        label: shareCopied ? 'Copied' : 'Share',
         onClick: () =>
           shareLink({
             game: gameSlug,

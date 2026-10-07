@@ -13,7 +13,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
-import { copyText } from './ShareBoardButton'
+import { useShare } from './SharePanel'
 import { PastTabButton, TodayCounts } from './TodaysCardParts'
 import { YourCard, YourRow } from './YourDays'
 import '../styles/evp.css'
@@ -104,25 +104,15 @@ function standingWords(judged: JudgedDay | null, run: DayRun | null, board: Toda
 }
 
 function ShareDay({ plan, run, className }: { plan: DayPlan; run: DayRun; className: string }) {
-  const [copied, setCopied] = useState(false)
-  const share = () => {
-    const text = shareText(plan, keptScores(plan, run), window.location.origin)
-    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-    if (touch && typeof navigator.share === 'function') {
-      navigator.share({ text }).catch(() => {})
-      return
-    }
-    const done = () => {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    }
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => copyText(text) && done())
-    else if (copyText(text)) done()
-  }
+  const { share, copied, panel } = useShare()
+  const send = () => share({ text: shareText(plan, keptScores(plan, run), window.location.origin) })
   return (
-    <button type="button" className={className} onClick={share}>
-      {copied ? 'Copied' : 'Share'}
-    </button>
+    <>
+      <button type="button" className={className} onClick={send}>
+        {copied ? 'Copied' : 'Share'}
+      </button>
+      {panel}
+    </>
   )
 }
 

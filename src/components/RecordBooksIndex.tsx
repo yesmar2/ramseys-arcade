@@ -406,7 +406,7 @@ export function RecordBooksIndex() {
             </a>
           </div>
           <p className="rbk-card__sub">
-            Not one game: the whole arcade. Turning up, ranging wide, keeping a streak alive.
+            Not one game: the whole arcade. Turning up, big days, keeping a streak alive.
           </p>
           {data.site ? (
             <ul className="rbk-house">

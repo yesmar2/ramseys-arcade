@@ -64,7 +64,7 @@ import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { RaceReport, raceSubWords } from './RaceReport'
 import { SeasonRunLine } from './season/SeasonRun'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
-import { copyText } from './ShareBoardButton'
+import { useShare } from './SharePanel'
 import { WinTakeover } from './WinTakeover'
 
 /** The way on to the next daily: only a daily's report shows it, and it brings the day's ticket with it. */
@@ -205,7 +205,8 @@ export function ScoreSaveCard({
   const [sendError, setSendError] = useState<string | null>(null)
   /** A challenge went out from this card: the moment to offer an alert for when it's beaten. */
   const [challenged, setChallenged] = useState(false)
-  const [copied, setCopied] = useState(false)
+  /** The daily's line going on (`shareLine`), the way every Share goes. */
+  const lineShare = useShare()
   // The best before this run, as the card opened on it. The card goes on to keep the run as the best (signed out
   // as this device's, signed in once it's saved), and a game that reads its best live hands the run back as the
   // best before it: a signed-out first run of the day said "tied your best today".
@@ -247,7 +248,7 @@ export function ScoreSaveCard({
   const facingRef = useRef(facing)
   facingRef.current = facing
   const outcome = facing ? challengeOutcome(facing, score) : null
-  const [share, sharePanel] = useChallengeShare()
+  const [share, sharePanel, challengeCopied] = useChallengeShare()
   const accentStyle = gameAccentStyle(gameSlug)
   const accent = String((accentStyle as Record<string, string>)['--celeb-accent'] ?? '#2eb8a0')
 
@@ -627,7 +628,7 @@ export function ScoreSaveCard({
     if (reply?.replyId && facing) {
       const replyId = reply.replyId
       secondary = {
-        label: 'Send it back',
+        label: challengeCopied ? 'Copied' : 'Send it back',
         icon: 'flag',
         onClick: () => {
           share({
@@ -643,8 +644,8 @@ export function ScoreSaveCard({
       }
     } else {
       secondary = {
-        label: sending ? 'Making the link…' : 'Challenge a friend',
-        shortLabel: sending ? 'Wait…' : 'Challenge',
+        label: sending ? 'Making the link…' : challengeCopied ? 'Copied' : 'Challenge a friend',
+        shortLabel: sending ? 'Wait…' : challengeCopied ? 'Copied' : 'Challenge',
         icon: 'flag',
         disabled: sending,
         onClick: () => {
@@ -704,20 +705,7 @@ export function ScoreSaveCard({
   // A daily's run goes on whether it's saved or not, as the other dailies' cards send theirs:
   // the phone's own share sheet, or copied to paste anywhere.
   if (shareLine) {
-    const sendOn = () => {
-      const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-      if (touch && typeof navigator.share === 'function') {
-        navigator.share({ text: shareLine }).catch(() => {})
-        return
-      }
-      const done = () => {
-        setCopied(true)
-        window.setTimeout(() => setCopied(false), 2000)
-      }
-      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(shareLine).then(done, () => copyText(shareLine) && done())
-      else if (copyText(shareLine)) done()
-    }
-    links = [{ label: copied ? 'Copied' : 'Share', onClick: sendOn }, ...links]
+    links = [{ label: lineShare.copied ? 'Copied' : 'Share', onClick: () => lineShare.share({ text: shareLine }) }, ...links]
   }
 
   const lines = pending ? null : (data?.lines ?? [])
@@ -809,6 +797,7 @@ export function ScoreSaveCard({
         {block}
       </RunReport>
       {sharePanel}
+      {lineShare.panel}
       {takeover ? (
         <WinTakeover
           data={takeover}

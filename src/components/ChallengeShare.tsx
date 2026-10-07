@@ -1,19 +1,14 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { challengeUrl } from '../lib/challenges'
-import { detectDeviceType } from '../lib/device'
-import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { scoreText } from '../lib/gameBoard'
-import { Panel, PanelHead } from './Panel'
-import { copyText } from './ShareBoardButton'
+import { useShare } from './SharePanel'
 
 /*
- * Sending a link on its way: a challenge, or where you stand in an event. On
- * a phone or a tablet the device's own share sheet opens, which is where
- * people's chats are. On a computer, or when the sheet can't open (it needs
- * the tap that asked for it, and a slow network can outlast that), the kit's
- * panel: the card the link unfurls into, the words that go with it, Copy
- * link, and the usual places.
+ * Sending a link on its way: a challenge, or where you stand in an event. It
+ * goes the way every Share does (useShare): the share sheet on a phone or a
+ * tablet, copied on a computer, and the kit's panel, with the card the link
+ * unfurls into, only when neither worked.
  */
 
 export type LinkShareInput = {
@@ -41,26 +36,15 @@ export type ChallengeShareInput = {
   title?: string
 }
 
-export function useLinkShare(): [(input: LinkShareInput) => void, ReactNode] {
-  const [open, setOpen] = useState<LinkShareInput | null>(null)
-
-  const share = (input: LinkShareInput) => {
-    if (typeof navigator.share === 'function' && detectDeviceType() !== 'desktop') {
-      navigator.share({ title: input.message, text: input.message, url: input.url }).catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-        setOpen(input)
-      })
-      return
-    }
-    setOpen(input)
-  }
-
-  const panel = open ? <LinkSharePanel {...open} onClose={() => setOpen(null)} /> : null
-  return [share, panel]
+/** `share` from the tap, the panel to render, and whether it was just copied (for the button's label). */
+export function useLinkShare(): [(input: LinkShareInput) => void, ReactNode, boolean] {
+  const { share, copied, panel } = useShare()
+  const shareLink = ({ message, ...rest }: LinkShareInput) => share({ text: message, ...rest })
+  return [shareLink, panel, copied]
 }
 
-export function useChallengeShare(): [(input: ChallengeShareInput) => void, ReactNode] {
-  const [share, panel] = useLinkShare()
+export function useChallengeShare(): [(input: ChallengeShareInput) => void, ReactNode, boolean] {
+  const [share, panel, copied] = useLinkShare()
   const shareChallenge = ({ game, id, score, message, title }: ChallengeShareInput) => {
     const name = getGame(game)?.name ?? game
     share({
@@ -74,94 +58,5 @@ export function useChallengeShare(): [(input: ChallengeShareInput) => void, Reac
       kicker: `${name} · ${scoreText(game, score)}`,
     })
   }
-  return [shareChallenge, panel]
-}
-
-function LinkSharePanel({ game, url, message, cards, cardAlt, title, kicker, onClose }: LinkShareInput & { onClose: () => void }) {
-  const titleId = useId()
-  const [copied, setCopied] = useState(false)
-  const timer = useRef(0)
-  const withLink = `${message}\n${url}`
-
-  useEffect(() => () => window.clearTimeout(timer.current), [])
-
-  const copy = () => {
-    const done = () => {
-      setCopied(true)
-      window.clearTimeout(timer.current)
-      timer.current = window.setTimeout(() => setCopied(false), 1600)
-    }
-    if (copyText(withLink)) {
-      done()
-      return
-    }
-    void navigator.clipboard?.writeText(withLink).then(done).catch(() => {})
-  }
-
-  const encodedUrl = encodeURIComponent(url)
-  const encodedMessage = encodeURIComponent(message)
-  const encodedBody = encodeURIComponent(withLink)
-  const nativeShare = typeof navigator.share === 'function'
-
-  return (
-    <Panel labelledBy={titleId} onClose={onClose} style={gameAccentStyle(game)} className="challenge-share">
-      <PanelHead titleId={titleId} title={title} kicker={kicker} onClose={onClose} />
-      <div className="panel__body panel__body--last">
-        {/* Showing the card here also draws it once, so a friend's chat finds it ready. */}
-        <img
-          className="challenge-share__card"
-          src={cards[0]}
-          alt={cardAlt}
-          width={1200}
-          height={630}
-          onError={(e) => {
-            const next = cards[cards.indexOf(e.currentTarget.getAttribute('src') ?? '') + 1]
-            if (next) e.currentTarget.src = next
-          }}
-        />
-        <p className="challenge-share__message">{message}</p>
-        <div className="challenge-share__link">
-          <span className="challenge-share__url">{url}</span>
-          <button type="button" className="panel__btn challenge-share__copy" onClick={copy}>
-            {copied ? 'Copied' : 'Copy link'}
-          </button>
-        </div>
-        <div className="share-panel__apps">
-          {nativeShare ? (
-            <button
-              type="button"
-              className="panel__btn panel__btn--ghost"
-              onClick={() => {
-                void navigator.share({ title: message, text: message, url }).catch(() => {})
-              }}
-            >
-              Share…
-            </button>
-          ) : null}
-          <a className="panel__btn panel__btn--ghost" href={`sms:?&body=${encodedBody}`}>
-            Messages
-          </a>
-          <a className="panel__btn panel__btn--ghost" href={`mailto:?subject=${encodedMessage}&body=${encodedBody}`}>
-            Email
-          </a>
-          <a
-            className="panel__btn panel__btn--ghost"
-            href={`https://twitter.com/intent/tweet?text=${encodedMessage}&url=${encodedUrl}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            X / Twitter
-          </a>
-          <a
-            className="panel__btn panel__btn--ghost"
-            href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Facebook
-          </a>
-        </div>
-      </div>
-    </Panel>
-  )
+  return [shareChallenge, panel, copied]
 }

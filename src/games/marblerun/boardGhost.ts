@@ -12,13 +12,13 @@ import { GHOST_RATE } from './sim'
  * the site, has none, and then the ghost rolls the blue ball's line at the #1's time (standIn).
  */
 
-/** A course's #1: whose run, its time in seconds, and the run itself when its path is known. */
-export type BoardGhost = { name: string; avatarId?: string; time: number; run: GhostRun | null }
+/** A course's #1: whose run, its time in seconds, the run itself when its path is known, and the skin it was rolled in. */
+export type BoardGhost = { name: string; avatarId?: string; time: number; run: GhostRun | null; skin?: string }
 
 /** Of a run's samples (30 a second), every third goes, and the goal's moment: ten a second is plenty to roll it again from. */
 const SEND_EVERY = 3
 
-type GhostReply = { name: string; avatarId?: string; time: number; splits?: number[]; rate?: number; path: number[] | null }
+type GhostReply = { name: string; avatarId?: string; time: number; splits?: number[]; rate?: number; path: number[] | null; skin?: string }
 
 /**
  * A path sent at `rate` samples a second, the goal's moment last, filled back in to the ghost's own rate: a
@@ -47,7 +47,14 @@ function toGhost(reply: GhostReply): BoardGhost | null {
   const time = reply.time / 1000
   const { path, splits, rate } = reply
   const known = Array.isArray(path) && path.length >= 6 && path.length % 3 === 0 && Array.isArray(splits) && splits.length >= 1 && rate != null && rate > 0
-  return { name: reply.name, avatarId: reply.avatarId, time, run: known ? { time, splits: splits!, ghost: fillIn(path!, rate!, time) } : null }
+  return {
+    name: reply.name,
+    avatarId: reply.avatarId,
+    time,
+    run: known ? { time, splits: splits!, ghost: fillIn(path!, rate!, time) } : null,
+    // The skin it was rolled in: whoever races the ghost sees it in that.
+    ...(typeof reply.skin === 'string' && reply.skin ? { skin: reply.skin } : {}),
+  }
 }
 
 /** A course's #1, with their run when its path is known; null while nobody has a run on it. `fresh` asks past the browser's copy. */
@@ -98,8 +105,11 @@ export function standIn(line: GhostRun, time: number): GhostRun {
   return { time, splits: line.splits.map((s) => warp.ghostAt(s)), ghost: out }
 }
 
-/** Send a saved run's path, under the tag it was saved as. Answers whether it's the course's ghost now. */
-export async function sendBoardGhost(course: number, name: string, run: { score: number; splits: number[]; path: number[] }): Promise<boolean> {
+/**
+ * Send a saved run's path, under the tag it was saved as, with the skin it was rolled in (the one chosen now,
+ * for a run kept before runs kept theirs). Answers whether it's the course's ghost now.
+ */
+export async function sendBoardGhost(course: number, name: string, run: { score: number; splits: number[]; path: number[]; skin?: string }): Promise<boolean> {
   const samples = run.path.length / 3
   if (samples < 2) return false
   const path: number[] = []
@@ -109,11 +119,12 @@ export async function sendBoardGhost(course: number, name: string, run: { score:
   // Every third of the run's samples, then the goal's moment, which the run's path ends with.
   for (let k = 0; k < samples - 1; k += SEND_EVERY) put(k)
   put(samples - 1)
+  const skin = run.skin ?? chosenSkin('marblerun')
   try {
     const reply = await api<{ kept?: boolean }>(`/tracks/marblerun/${course}/ghost`, {
       method: 'POST',
       // The skin it was played in, so whoever races the ghost sees it in that (lib/skins.ts).
-      body: JSON.stringify({ name, score: run.score, splits: run.splits, path, ...(chosenSkin('marblerun') ? { skin: chosenSkin('marblerun') } : {}) }),
+      body: JSON.stringify({ name, score: run.score, splits: run.splits, path, ...(skin ? { skin } : {}) }),
     })
     return reply.kept === true
   } catch {

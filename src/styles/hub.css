@@ -1408,9 +1408,14 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 
 /* ---------- a daily's page: a shorter hero, its tabs (dailyTabs.css), and the Today tab ---------- */
 
-/* The hero keeps to one band, so the tabs under it are in view. */
+/*
+ * The hero keeps to one band, so the tabs under it are in view. Its screen is 44% of the hero across, never less
+ * than the 24rem (384×240) it was: 522×326 on a 1280 px screen and 678×424 at the page's widest (1600 px). Ramsey
+ * picked a bigger screen (B of the "Daily hero screen sizes" canvas, 2026-10-07: 480×300 at 1280), then found it
+ * "still seems kinda small" on his wider screen, where it stopped at 480 px and left a gap across the hero.
+ */
 .gh-hero.gh-hero--daily {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+  grid-template-columns: minmax(0, 1fr) minmax(0, max(24rem, 44%));
   align-items: center;
   gap: 1.6rem;
   min-height: 0;
@@ -1436,7 +1441,7 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
 
 .gh-hero--daily .gh-screen {
   aspect-ratio: 16 / 10;
-  max-height: 15rem;
+  max-height: 27rem;
 }
 
 /*
@@ -1506,7 +1511,10 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   }
 }
 
-/* A phone: the name and tags beside a small screen, the words and Play under them. */
+/*
+ * A phone: the name and tags beside a small screen, the words and Play under them, then whatever else the hero
+ * has (a skin picker, the season's card, a note, where it plays) across under those, in that order.
+ */
 @media (max-width: 40rem) {
   .gh-hero.gh-hero--daily {
     grid-template-columns: minmax(0, 1fr) 9.5rem;
@@ -1515,9 +1523,7 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
       'name screen'
       'tags screen'
       'blurb blurb'
-      'acts acts'
-      'hint hint'
-      'where where';
+      'acts acts';
     align-items: start;
     gap: 0.55rem 0.9rem;
     padding: 1rem 1rem 1.1rem 1.1rem;
@@ -1561,25 +1567,32 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
     font-size: 1rem;
   }
 
+  /* Play across the hero, How to play and share under it: the three don't fit on one line. */
   .gh-hero--daily .gh-hero__acts {
     grid-area: acts;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     margin-top: 0.3rem;
   }
 
   .gh-hero--daily .gh-hero__acts .gh-play {
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     min-height: 3.2rem;
     padding: 0 1.1rem 0 0.95rem;
     font-size: 1.02rem;
   }
 
-  .gh-hero--daily .gh-hero__hint {
-    grid-area: hint;
+  /* The rest go across the whole hero, under Play, one after another: in a column of their own they were squeezed
+     into the width of the words beside the screen. */
+  .gh-hero--daily .skin-pick,
+  .gh-hero--daily .season-spotcard,
+  .gh-hero--daily .gh-hero__hint,
+  .gh-hero--daily .gh-hero__where {
+    grid-column: 1 / -1;
   }
 
-  .gh-hero--daily .gh-hero__where {
-    grid-area: where;
+  .gh-hero--daily .skin-pick,
+  .gh-hero--daily .season-spotcard {
+    margin-top: 0.2rem;
   }
 
   .gh-hero--daily .gh-screen {

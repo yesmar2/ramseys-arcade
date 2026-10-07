@@ -58,6 +58,7 @@ import {
 } from '../lib/eventPages'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
+import { COPIED_MS, copyToClipboard } from '../lib/share'
 import {
   attemptsPerGameMax,
   bracketGameForRound,
@@ -1111,14 +1112,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
         : null
 
   const copyInviteLink = async () => {
-    if (!inviteLink) return
-    try {
-      await navigator.clipboard.writeText(inviteLink)
-      setCopiedInvite(true)
-      window.setTimeout(() => setCopiedInvite(false), 2000)
-    } catch {
-      /* ignore */
-    }
+    if (!inviteLink || !(await copyToClipboard(inviteLink))) return
+    setCopiedInvite(true)
+    window.setTimeout(() => setCopiedInvite(false), COPIED_MS)
   }
 
   /** The host lets everyone in the event invite, or keeps it to themselves. */

@@ -386,42 +386,7 @@ html[data-theme='dark'] .panel__btn--destroy {
   color: var(--panel-accent-ink);
 }
 
-/* ---------- inside a panel: sharing ---------- */
-
-.share-panel__quote {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.9rem 1rem;
-  border-radius: 1rem;
-  background: var(--panel-fill);
-  border: 1px solid var(--panel-line);
-}
-
-.share-panel__label {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.4;
-  color: var(--ink);
-}
-
-.share-panel__url {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: ui-monospace, 'DM Mono', monospace;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.share-panel__hint {
-  margin: 0;
-  font-size: 0.86rem;
-  line-height: 1.45;
-  color: var(--muted);
-}
+/* ---------- inside a panel: sharing (SharePanel.tsx; its card, words and link are in challenge.css) ---------- */
 
 .share-panel__apps {
   display: grid;

@@ -85,9 +85,14 @@ const KEYS: Record<string, keyof Held> = {
 
 /**
  * Whose run the ghost rolls: the player one place above you today (`next`, for their place); the board's #1,
- * under their tag; your own best; or the blue ball's.
+ * under their tag; your own best; or the blue ball's. `skin`, the season skin the run was rolled in, which its
+ * ghost wears (lib/skins.ts); the blue ball is always blue.
  */
-type Chasing = { who: 'next'; name: string; place: number } | { who: 'rival'; name: string } | { who: 'you' } | { who: 'pace' }
+type Chasing =
+  | { who: 'next'; name: string; place: number; skin?: string }
+  | { who: 'rival'; name: string; skin?: string }
+  | { who: 'you'; skin?: string }
+  | { who: 'pace' }
 
 /** The name over the ghost: whose run it rolls. */
 function ghostTag(chasing: Chasing): string {
@@ -135,6 +140,8 @@ type Game = {
     improved: boolean
     before: number | null
     path: number[]
+    /** The skin it was rolled in (lib/skins.ts), which its ghost wears. */
+    skin?: string
     /** A past course's run, asked for as it ended (runSession runIdFor), which its All time board needs. */
     runId: Promise<string | undefined> | null
   } | null
@@ -171,8 +178,16 @@ function bestOf(day: string, practice: boolean, viewer: string | null | undefine
 /** The run to chase, and whose it is. */
 type Chase = { ghost: Ghost; chasing: Chasing }
 
-/** Whose the #1's run is: yours, when it's your tag at the top. */
-const topChasing = (top: BoardGhost, me: string): Chasing => (top.name === me ? { who: 'you' } : { who: 'rival', name: top.name })
+/** Whose the #1's run is: yours, when it's your tag at the top. In the skin it was rolled in. */
+const topChasing = (top: BoardGhost, me: string): Chasing =>
+  top.name === me ? { who: 'you', skin: top.skin } : { who: 'rival', name: top.name, skin: top.skin }
+
+/**
+ * Your own best, in the skin it was rolled in; a run kept before runs kept theirs borrows the board's, when it's
+ * yours at the top at the same time.
+ */
+const yourSkin = (mine: GhostRun, top: BoardGhost | null, me: string) =>
+  mine.skin ?? (top && top.name === me && Math.abs(top.time - mine.time) < 0.0005 ? top.skin : undefined)
 
 /**
  * Your first run on a course is against the blue ball (Ramsey, 2026-10-06: "the first time you play it should
@@ -194,12 +209,14 @@ function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: st
   const mine = bestOf(day, practice, currentAccountId())
   if (firstRun(mine, top, me, next)) return { ghost: new Ghost(pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
-    return { ghost: new Ghost(next.run ?? standIn(pace, next.time)), chasing: { who: 'next', name: next.name, place: next.place } }
+    return { ghost: new Ghost(next.run ?? standIn(pace, next.time)), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
   }
   if (top && (!mine || top.time < mine.time - 0.0005)) {
     return { ghost: new Ghost(top.run ?? standIn(pace, top.time)), chasing: topChasing(top, me) }
   }
-  return mine && mine.time < pace.time ? { ghost: new Ghost(mine), chasing: { who: 'you' } } : { ghost: new Ghost(pace), chasing: { who: 'pace' } }
+  return mine && mine.time < pace.time
+    ? { ghost: new Ghost(mine), chasing: { who: 'you', skin: yourSkin(mine, top, me) } }
+    : { ghost: new Ghost(pace), chasing: { who: 'pace' } }
 }
 
 /**
@@ -212,12 +229,12 @@ function cardChase(marble: MarbleDay, practice: boolean, top: BoardGhost | null,
   const waiting = (time: number) => new Ghost({ time, splits: [], ghost: [sp.x, sp.y, sp.z, sp.x, sp.y, sp.z] })
   if (firstRun(mine, top, me, next)) return { ghost: waiting(marble.pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
-    return { ghost: next.run ? new Ghost(next.run) : waiting(next.time), chasing: { who: 'next', name: next.name, place: next.place } }
+    return { ghost: next.run ? new Ghost(next.run) : waiting(next.time), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
   }
   if (top && (!mine || top.time < mine.time - 0.0005)) {
     return { ghost: top.run ? new Ghost(top.run) : waiting(top.time), chasing: topChasing(top, me) }
   }
-  if (mine && mine.time < marble.pace) return { ghost: new Ghost(mine), chasing: { who: 'you' } }
+  if (mine && mine.time < marble.pace) return { ghost: new Ghost(mine), chasing: { who: 'you', skin: yourSkin(mine, top, me) } }
   return { ghost: waiting(marble.pace), chasing: { who: 'pace' } }
 }
 
@@ -524,7 +541,7 @@ function MarbleRunDay({
    * player above you is asked for again, as you may have passed them. On a past course only one that could be
    * its fastest goes: the #1 is faster, or their line is known and at least as fast, and it stays home.
    */
-  const sendGhost = (run: { time: number; score: number; splits: number[]; path: number[] }, name: string) => {
+  const sendGhost = (run: { time: number; score: number; splits: number[]; path: number[]; skin?: string }, name: string) => {
     if ((practice && !past) || !signedIn || !name) return
     const known = topRef.current
     const today = !practice
@@ -587,7 +604,7 @@ function MarbleRunDay({
     if (practice || !topAsked || !signedIn || typeof viewer !== 'string' || !playerName || offered.current === viewer) return
     offered.current = viewer
     const mine = keptRun(day, viewer)
-    if (mine) sendGhostRef.current({ time: mine.time, score: marblerunBoardScore(mine.time), splits: mine.splits, path: mine.ghost }, playerName)
+    if (mine) sendGhostRef.current({ time: mine.time, score: marblerunBoardScore(mine.time), splits: mine.splits, path: mine.ghost, skin: mine.skin }, playerName)
   }, [practice, topAsked, signedIn, viewer, playerName, day])
 
   /**
@@ -597,7 +614,7 @@ function MarbleRunDay({
   const claimSaved = (g: Game) => {
     const id = currentAccountId()
     if (g.owner !== SIGNED_OUT || !g.run || typeof id !== 'string') return
-    claimRun(g.day, id, { time: g.run.time, splits: g.run.splits, ghost: g.run.path })
+    claimRun(g.day, id, { time: g.run.time, splits: g.run.splits, ghost: g.run.path, ...(g.run.skin ? { skin: g.run.skin } : {}) })
     g.owner = id
   }
 
@@ -689,10 +706,12 @@ function MarbleRunDay({
       const kept = lab ? (labBest.current == null ? null : { time: labBest.current }) : g.owner === undefined ? null : bestOf(g.day, practice, ownerAccount(g.owner))
       const improved = !kept || time < kept.time
       const path = g.record
+      // The skin it was rolled in, so its ghost wears it: yours as your best, everyone's from the board.
+      const skin = skinRef.current ?? undefined
       if (lab) {
         if (improved) labBest.current = time
       } else if (improved && g.owner !== undefined) {
-        const run = { time, splits: [...b.splits], ghost: path }
+        const run = { time, splits: [...b.splits], ghost: path, ...(skin ? { skin } : {}) }
         if (practice) keepPracticeRun(g.day, g.owner, run)
         else keepBestRun(g.day, g.owner, run)
       }
@@ -704,6 +723,7 @@ function MarbleRunDay({
         improved,
         before: kept?.time ?? null,
         path,
+        ...(skin ? { skin } : {}),
         runId: past ? runIdFor(SLUG) : null,
       }
       sfx(improved ? 'perfect' : 'good')
@@ -838,6 +858,8 @@ function MarbleRunDay({
             doneFor: g.phase === 'finished' ? g.clock : g.phase === 'gameover' ? CARD_AFTER + 1 : 0,
             ghost: ghostAt,
             ghostTag: ghostTag(g.chasing),
+            // The ghost in the skin its run was rolled in; the blue ball is always blue.
+            ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
             passed: b.next,
             skin: skinRef.current,
           },

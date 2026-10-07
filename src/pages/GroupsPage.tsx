@@ -43,6 +43,7 @@ import {
   type GroupPublic,
 } from '../lib/groups'
 import { ApiError, normalizePlayerName } from '../lib/leaderboard'
+import { COPIED_MS, copyToClipboard } from '../lib/share'
 
 function inviteUrl(id: string, code: string) {
   return `${window.location.origin}${groupHref(id, code)}`
@@ -266,14 +267,9 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
 
   const copyInvite = async () => {
     const code = group?.inviteCode
-    if (!code) return
-    try {
-      await navigator.clipboard.writeText(inviteUrl(id, code))
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      /* ignore */
-    }
+    if (!code || !(await copyToClipboard(inviteUrl(id, code)))) return
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), COPIED_MS)
   }
 
   const onLeave = async () => {

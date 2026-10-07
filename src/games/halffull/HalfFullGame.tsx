@@ -21,7 +21,7 @@ import { PastPlayChip } from '../../components/PastPlay'
 import { RunLabel } from '../../components/RunLabel'
 import { ScoreGuide } from '../../components/ScoreGuide'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
-import { copyText } from '../../components/ShareBoardButton'
+import { useShare } from '../../components/SharePanel'
 
 /** The way on to the next of today's dailies, with the day's ticket it brings. */
 const NextDaily = lazy(() => import('../../components/NextDaily'))
@@ -1455,25 +1455,17 @@ function ShareButton({
   /** The quieter button, beside a bigger one. */
   ghost?: boolean
 }) {
-  const [copied, setCopied] = useState(false)
-  const share = (e: ReactMouseEvent) => {
+  const { share, copied, panel } = useShare()
+  const send = (e: ReactMouseEvent) => {
     if (allow && !allow(e)) return
-    const text = shareText(plan, results, window.location.origin)
-    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-    if (touch && typeof navigator.share === 'function') {
-      navigator.share({ text }).catch(() => {})
-      return
-    }
-    const done = () => {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    }
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => copyText(text) && done())
-    else if (copyText(text)) done()
+    share({ text: shareText(plan, results, window.location.origin) })
   }
   return (
-    <button type="button" className={ghost ? 'panel__btn panel__btn--ghost' : 'panel__btn'} onClick={share} autoFocus={autoFocus}>
-      {copied ? 'Copied' : 'Share'}
-    </button>
+    <>
+      <button type="button" className={ghost ? 'panel__btn panel__btn--ghost' : 'panel__btn'} onClick={send} autoFocus={autoFocus}>
+        {copied ? 'Copied' : 'Share'}
+      </button>
+      {panel}
+    </>
   )
 }

@@ -175,6 +175,8 @@
   background: var(--panel-fill);
   font-size: 0.97rem;
   line-height: 1.45;
+  /* A daily's grid keeps its rows. */
+  white-space: pre-line;
   color: var(--ink);
 }
 

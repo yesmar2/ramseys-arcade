@@ -34,8 +34,8 @@ import { fetchSiteRecords, type SiteRecordBoard, type SiteRecordId, type SiteRec
  * you stand; and last, each record's top ten.
  *
  * Every other book belongs to a cabinet and asks how well somebody played it.
- * This one asks how they played: how often they turned up, how far they
- * ranged, how long they kept a streak alive. None of it is scored during a
+ * This one asks how they played: how often they turned up, how much they
+ * packed into a day, how long they kept a streak alive. None of it is scored during a
  * run; it's all read back out of the scores on the boards, which is why a
  * quiet player with a long habit can top it.
  */

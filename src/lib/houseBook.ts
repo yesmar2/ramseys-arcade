@@ -68,19 +68,14 @@ export function houseHeadline(boards: SiteRecordBoard[]): { name: string; rest: 
 }
 
 export const HOUSE_LEDE =
-  'Not one game: all of them. Who keeps turning up, who plays the widest, and whose streak is still alive.'
+  'Not one game: all of them. Who keeps turning up, who packs the most into a day, and whose streak is still alive.'
 
 export type HouseGroup = { key: string; title: string; sub: string; boards: SiteRecordBoard[] }
 
 const GROUPS: { key: string; title: string; sub: string; ids: SiteRecordId[] }[] = [
   { key: 'turning-up', title: 'Turning up', sub: 'Coming back, day after day.', ids: ['day-streak', 'days-played'] },
   { key: 'big-days', title: 'Big days', sub: 'The most anyone has packed into one day.', ids: ['games-in-a-day', 'runs-in-a-day'] },
-  {
-    key: 'whole-arcade',
-    title: 'Across the arcade',
-    sub: 'How much of the arcade has your name on it.',
-    ids: ['games-played', 'boards-topped'],
-  },
+  { key: 'whole-arcade', title: 'Across the arcade', sub: 'How much of the arcade has your name on it.', ids: ['boards-topped'] },
 ]
 
 /** The records in their groups, in the book's order; any the API adds later go at the end. */

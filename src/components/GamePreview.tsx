@@ -173,7 +173,8 @@ function nextTurn() {
  * it's the tile the row has come to rest on (above), and only then does it
  * load. None plays off screen, in a hidden tab, or with reduced motion. Given
  * a `day`, a daily plays that day (DAY_PREVIEWS) rather than the game's own
- * preview.
+ * preview; one with no day of its own to play (Find the Bug, Half Full) plays
+ * its own preview, as it would without one.
  */
 export function GamePreview({
   slug,
@@ -200,7 +201,7 @@ export function GamePreview({
   useEffect(() => {
     const canvas = ref.current
     const daily = day ? DAY_PREVIEWS[slug] : undefined
-    const load = day ? daily && (() => daily().then((m) => ({ createPreview: () => m.createDayPreview(day) }))) : GAME_PREVIEWS[slug]
+    const load = daily && day ? () => daily().then((m) => ({ createPreview: () => m.createDayPreview(day) })) : GAME_PREVIEWS[slug]
     const ctx = canvas?.getContext('2d')
     if (!canvas || !load || !ctx) return
     // The tile's link is what a pointer rests on and what takes focus.
