@@ -18,6 +18,7 @@ import {
 } from '../lib/leaderboard'
 import { ordinal, periodWord, talksInPlaces } from '../lib/profileMath'
 import { getGame } from '../data/games'
+import { GameArt, hasGameArt } from './GameArt'
 import { chosenSkin, SKINS, type Skin } from '../lib/skins'
 import { useHangarSkins } from './Hangar'
 import { RewardArt } from './season/RewardArt'
@@ -203,6 +204,20 @@ function HangarShelf({ skins, isSelf }: { skins: readonly string[]; isSelf: bool
   )
 }
 
+/**
+ * The player's best games with a picture, best first: by the most points they hold on a game's board in any
+ * period on the card, so a daily (which counts toward the week and the month only) can lead too.
+ */
+function bestGames(boards: (GlobalRankResult | null | undefined)[], n: number): string[] {
+  const best = new Map<string, number>()
+  for (const board of boards) {
+    for (const [slug, at] of Object.entries(board?.byGame ?? {})) {
+      if (at && hasGameArt(slug)) best.set(slug, Math.max(best.get(slug) ?? 0, at.points))
+    }
+  }
+  return [...best.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([slug]) => slug)
+}
+
 /** "just ahead of JO" → "Just ahead of JO", to start a line. */
 function capital(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
@@ -346,6 +361,8 @@ export function PlayerCard({
   const sign = wornPrize(look, 'sign')
   const member = usePlusMember(name)
   const skins = useHangarSkins(name, isSelf)
+  // Without a card theme, the pictures of their best games across the top.
+  const games = theme ? [] : bestGames([...Object.values(ranks), data], 2)
   const word = periodWord(period)
   // A Season tile after all time while the season has standings (and whenever the card is the season's).
   const withSeason = seasonHasStandings(useSeason().season) || period === 'season'
@@ -394,6 +411,9 @@ export function PlayerCard({
     >
       <div className="pcard__band" aria-hidden="true">
         {theme ? <CardBackdrop className="pcard__theme" theme={theme} width={1600} height={640} scale={1.5} /> : null}
+        {games.map((slug, i) => (
+          <GameArt key={slug} slug={slug} shape="card" className={`pcard__game pcard__game--${i + 1}`} />
+        ))}
       </div>
       {backHref ? (
         <a className="pcard__back" href={backHref}>

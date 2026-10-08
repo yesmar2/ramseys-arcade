@@ -137,6 +137,34 @@ html[data-theme='dark'] .pf {
   background: linear-gradient(180deg, color-mix(in srgb, var(--hero-accent) 42%, transparent), transparent);
 }
 
+/*
+ * No theme: the pictures of the player's best games, faded in from the right like a game page's hero and
+ * down into the card; the best one at the edge, the next a little further in and fainter.
+ */
+.pcard__game {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 4 / 3;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%), linear-gradient(180deg, #000 45%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 45%), linear-gradient(180deg, #000 45%, transparent);
+  mask-composite: intersect;
+}
+
+.pcard__game--1 {
+  right: 0;
+  opacity: 0.6;
+}
+
+.pcard__game--2 {
+  right: calc(var(--pcard-band) * 4 / 3 - 4rem);
+  opacity: 0.35;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%, #000 60%, transparent), linear-gradient(180deg, #000 45%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 40%, #000 60%, transparent), linear-gradient(180deg, #000 45%, transparent);
+}
+
 /* A theme from the prize counter: a dark card, the theme across its top fading into it. */
 .home-banner.pcard.pcard--themed {
   --pcard-bg: color-mix(in srgb, var(--hero-accent, #6a5acd) 8%, #11142a);
@@ -152,6 +180,32 @@ html[data-theme='dark'] .pf {
    shelves, so it still shows through to the foot. */
 .pcard--themed .pcard__band {
   height: 100%;
+}
+
+/*
+ * A theme is the player's pick, but the words on it are ours to keep readable however busy it is: what sits on
+ * it is frosted, and the loose words carry a shadow.
+ */
+.pcard--themed .pcard-shelf,
+.pcard--themed .pcard-coin__face,
+.pcard--themed .pcard__back {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.pcard--themed .pcard-shelf {
+  background: rgba(12, 15, 30, 0.6);
+}
+
+.pcard--themed .pcard-coin__face {
+  background: rgba(12, 15, 30, 0.68);
+}
+
+.pcard--themed .pcard__head,
+.pcard--themed .pcard__sub,
+.pcard--themed .pcard-coin__label,
+.pcard--themed .pcard__strip {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 12px rgba(0, 0, 0, 0.6);
 }
 
 .pcard--themed .pcard__band::after {
@@ -686,6 +740,17 @@ html[data-theme='dark'] .pf {
       'acts acts';
     gap: 0.9rem;
     padding: calc(var(--pcard-band) - 4.5rem) 1rem 1.1rem;
+  }
+
+  .pcard__game--2 {
+    display: none;
+  }
+
+  /* Under the name on a phone: fainter, and only at the far right. */
+  .pcard__game--1 {
+    opacity: 0.32;
+    -webkit-mask-image: linear-gradient(90deg, transparent 20%, #000 75%), linear-gradient(180deg, #000 35%, transparent);
+    mask-image: linear-gradient(90deg, transparent 20%, #000 75%), linear-gradient(180deg, #000 35%, transparent);
   }
 
   .pcard__tile {

@@ -1910,6 +1910,11 @@ const SCENES: Record<string, Scene> = {
   swoop: Swoop,
 }
 
+/** Whether a game has a picture yet. */
+export function hasGameArt(slug: string): boolean {
+  return slug in SCENES
+}
+
 /**
  * A game's picture: the whole scene for a cabinet's 4:3 screen (`card`), or
  * its middle square for an icon. A game with none yet shows `fallback`.
