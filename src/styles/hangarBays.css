@@ -71,6 +71,21 @@
   border: 2px solid #2eb8a0;
 }
 
+/*
+ * A skin's bay, sent to from its card on a board or a game's skin picker (#hangar-<id>): landed on with room
+ * above it, and lit in its game's colour.
+ */
+.hbay {
+  scroll-margin-top: max(5rem, 18vh);
+}
+
+.hbay--sought {
+  box-shadow:
+    0 0 0 3px #ffffff,
+    0 0 0 8px rgba(255, 255, 255, 0.14),
+    0 0 48px 8px color-mix(in srgb, var(--hbay) 55%, transparent);
+}
+
 /* The bay's light, in the game's colour, falling on the skin. */
 .hbay__light {
   position: absolute;

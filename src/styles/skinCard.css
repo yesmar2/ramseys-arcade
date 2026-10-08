@@ -1,0 +1,190 @@
+/*
+ * A skin on a board as a button, and the card it opens (components/season/SkinCard.tsx). The card wears an
+ * InfoTip's look (infoTip.css .infotip-tip: its ground, edge, shadow and arrow); this is what's in it.
+ */
+
+/*
+ * The skin: its picture as before (season.css .skin-mark), now pressed. A row's link is stretched over the row at
+ * this same height (hub.css .gh-row__go, boards.css): coming after it, the skin is the one on top.
+ */
+.skin-mark--button {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+/* A finger's room round a small picture: taller than wide, so it never reaches the name beside it. */
+.skin-mark--button::before {
+  content: '';
+  position: absolute;
+  inset: -0.6rem -0.3rem;
+}
+
+.skin-mark--button:hover,
+.skin-mark--button[data-open] {
+  background: rgba(var(--ink-rgb), 0.16);
+  box-shadow: 0 0 0 4px rgba(var(--ink-rgb), 0.16);
+}
+
+.skin-mark--button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- the card ---------- */
+
+.skin-card.infotip-tip {
+  width: 17.25rem;
+  padding: 0.85rem 0.9rem 0.9rem;
+}
+
+.skin-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+/* The skin on a stand of the season's night sky, as its pass shows it; a Hangar skin in its bay's light. */
+.skin-card__art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 0.85rem;
+  background-color: var(--space-night);
+  background-image: var(--season-stars-dark);
+  background-size: 260px 260px;
+}
+
+.skin-card__art--hangar {
+  background: radial-gradient(120% 95% at 50% 0%, color-mix(in srgb, var(--skin-card-bay) 34%, #1b2530), #10161c 72%);
+}
+
+.skin-card__art svg {
+  display: block;
+}
+
+.skin-card__words {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.skin-card__name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.skin-card__what {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.skin-card__from {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.skin-card__plus {
+  padding: 0.14rem 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--space-amber), var(--space-orange));
+  color: var(--space-on-accent);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.skin-card__tick {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--accent);
+}
+
+/* The tick cut out of its disc, in the card's own ground. */
+.skin-card__tick path {
+  stroke: var(--infotip-bg);
+}
+
+.skin-card__note {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.skin-card__go {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  width: 100%;
+  margin-top: 0.8rem;
+  min-height: 2.75rem;
+  padding: 0 0.6rem 0 0.95rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(var(--ink-rgb), 0.2);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.skin-card__go:hover,
+.skin-card__go:focus-visible {
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.skin-card__go:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.skin-card__go--wear {
+  padding: 0 0.95rem;
+  border-color: transparent;
+  background: var(--accent);
+  color: #04241d;
+}
+
+.skin-card__go--wear:hover,
+.skin-card__go--wear:focus-visible {
+  background: color-mix(in srgb, var(--accent) 88%, #ffffff);
+}
+
+/* Worn already: said, not pressed. */
+.skin-card__go--on {
+  padding: 0 0.95rem;
+  border-style: dashed;
+  color: var(--muted);
+  cursor: default;
+}
+
+.skin-card__go--on:hover {
+  background: none;
+}

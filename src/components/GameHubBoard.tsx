@@ -190,12 +190,15 @@ function BoardRow({ slug, player, me }: { slug: LeaderboardGame; player: BoardPl
     <li className={`gh-row${you ? ' gh-row--you' : ''}${medal}`}>
       <span className="gh-row__place">{player.place}</span>
       <PlayerAvatar avatarId={player.best.avatarId} name={player.name} size="md" className="gh-row__avatar" />
-      <a className="gh-row__name" href={rankHref(player.name)}>
-        <PlayerName name={player.name} avatarId={player.best.avatarId} />
+      {/* The name is the row's link, stretched over it (hub.css); the skin beside it opens its own card. */}
+      <span className="gh-row__name">
+        <a className="gh-row__go" href={rankHref(player.name)}>
+          <PlayerName name={player.name} avatarId={player.best.avatarId} />
+        </a>
         <SkinMark skin={player.best.skin} />
         {you ? <span className="gh-row__you">You</span> : null}
         {firstToday ? <span className="gh-row__first">1st today</span> : null}
-      </a>
+      </span>
       <span className="gh-row__score">
         {formatLeaderboardScore(slug, player.best.score)}
         <small>

@@ -925,6 +925,7 @@ a.sb-row__link:focus-visible {
 }
 
 .sb-board__link {
+  position: relative;
   min-height: 5rem;
   padding: 0.75rem 1.25rem;
   border-radius: 1rem;
@@ -933,14 +934,31 @@ a.sb-row__link:focus-visible {
   transition: background-color 0.15s ease;
 }
 
-/* A shade over the card, which is the surface already. */
-a.sb-board__link:hover,
-a.sb-board__link:focus-visible {
-  background: rgba(var(--ink-rgb), 0.05);
+/*
+ * A board's line goes to its board from anywhere on it: the game's name is the link, stretched over the line,
+ * and only a skin on it, raised over it (skinCard.css), opens its own card instead. The line shows its focus.
+ */
+a.sb-board__name {
+  color: inherit;
+  text-decoration: none;
   outline: none;
 }
 
-a.sb-board__link:focus-visible {
+/* Over the line's own layers (the arrow slides on a hover), under the skins, which come after it. */
+a.sb-board__name::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+}
+
+/* A shade over the card, which is the surface already. */
+.sb-board__link:has(> a.sb-board__name):hover,
+.sb-board__link:has(> a.sb-board__name:focus-visible) {
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.sb-board__link:has(> a.sb-board__name:focus-visible) {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
@@ -1074,7 +1092,7 @@ a.sb-board__link:focus-visible {
   transition: transform 0.15s ease, color 0.15s ease;
 }
 
-a.sb-board__link:hover .sb-board__go {
+.sb-board__link:has(> a.sb-board__name):hover .sb-board__go {
   color: var(--ink);
   transform: translateX(2px);
 }
@@ -1868,6 +1886,7 @@ a.sb-board__link:hover .sb-board__go {
 }
 
 .gb-row__link {
+  position: relative;
   min-height: 3.4rem;
   padding: 0.3rem 0.9rem;
   border-radius: 0.9rem;
@@ -1877,9 +1896,32 @@ a.sb-board__link:hover .sb-board__go {
 }
 
 .gb-row__link:hover,
-.gb-row__link:focus-visible {
+.gb-row__link:focus-visible,
+.gb-row__link:has(.gb-row__go:focus-visible) {
   background: rgba(var(--ink-rgb), 0.045);
   outline: none;
+}
+
+/*
+ * A row with a skin in it isn't one link (a skin opens its own card): the player's name is the link, stretched
+ * over the whole row so a press anywhere on it still goes to their card, and the skin is raised over it
+ * (skinCard.css). The row shows the name's focus.
+ */
+.gb-row__go {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+}
+
+.gb-row__go::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
 }
 
 .gb-row--you .gb-row__link {

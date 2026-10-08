@@ -87,7 +87,7 @@
   position: relative;
 }
 
-.lst--records .lst__name::after {
+.lst--records .lst__go::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -215,6 +215,14 @@
   text-decoration: none;
 }
 
+/* The name itself, the row's link when it has one: it gives way to the skin and the You beside it. */
+.lst__go {
+  display: flex;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
 .lst__name-text {
   min-width: 0;
   overflow: hidden;
@@ -222,8 +230,8 @@
   white-space: nowrap;
 }
 
-a.lst__name:hover .lst__name-text,
-a.lst__name:focus-visible .lst__name-text {
+a.lst__go:hover .lst__name-text,
+a.lst__go:focus-visible .lst__name-text {
   color: color-mix(in srgb, var(--event-accent, var(--accent)) 70%, var(--ink));
 }
 

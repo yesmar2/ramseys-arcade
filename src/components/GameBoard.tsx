@@ -493,12 +493,15 @@ function PlayerRow({ slug, player, you, period }: { slug: string; player: BoardP
   const medal = MEDALS[player.place - 1]
   return (
     <li className={`gb-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
-      <a className="gb-row__link" href={rankHref(player.name, period)}>
+      {/* The name is the row's link, stretched over it (boards.css); the skin beside it opens its own card. */}
+      <div className="gb-row__link">
         <span className="gb-row__ord">{ordinal(player.place).toUpperCase()}</span>
         <PlayerMark name={player.name} avatarId={player.best.avatarId} className="gb-row__mark" />
         <span className="gb-row__who">
           <span className="gb-row__name">
-            <PlayerName name={player.name} avatarId={player.best.avatarId} />
+            <a className="gb-row__go" href={rankHref(player.name, period)}>
+              <PlayerName name={player.name} avatarId={player.best.avatarId} />
+            </a>
             <SkinMark skin={player.best.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
@@ -511,7 +514,7 @@ function PlayerRow({ slug, player, you, period }: { slug: string; player: BoardP
           <DeviceIcon device={player.best.device} />
           {dayOf(player.best.at)}
         </span>
-      </a>
+      </div>
     </li>
   )
 }
@@ -679,12 +682,14 @@ function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; 
   const medal = MEDALS[player.place - 1]
   return (
     <li className={`gb-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
-      <a className="gb-row__link" href={rankHref(player.name, period)}>
+      <div className="gb-row__link">
         <span className="gb-row__ord">{ordinal(player.place).toUpperCase()}</span>
         <PlayerMark name={player.name} avatarId={player.best.avatarId} className="gb-row__mark" />
         <span className="gb-row__who">
           <span className="gb-row__name">
-            <PlayerName name={player.name} avatarId={player.best.avatarId} />
+            <a className="gb-row__go" href={rankHref(player.name, period)}>
+              <PlayerName name={player.name} avatarId={player.best.avatarId} />
+            </a>
             <SkinMark skin={player.best.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
@@ -695,7 +700,7 @@ function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; 
           <DeviceIcon device={player.best.device} />
           {dayOf(player.best.at)}
         </span>
-      </a>
+      </div>
     </li>
   )
 }

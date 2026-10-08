@@ -509,12 +509,15 @@ function DayRow({
   const medal = MEDALS[row.place - 1]
   return (
     <li className={`gb-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}${gap ? ' db-row--gap' : ''}`}>
-      <a className="gb-row__link" href={rankHref(row.name)}>
+      {/* The name is the row's link, stretched over it (boards.css); the skin beside it opens its own card. */}
+      <div className="gb-row__link">
         <span className="gb-row__ord">{ordinal(row.place).toUpperCase()}</span>
         <PlayerMark name={row.name} avatarId={row.avatarId} className="gb-row__mark" />
         <span className="gb-row__who">
           <span className="gb-row__name">
-            <PlayerName name={row.name} avatarId={row.avatarId} />
+            <a className="gb-row__go" href={rankHref(row.name)}>
+              <PlayerName name={row.name} avatarId={row.avatarId} />
+            </a>
             <SkinMark skin={row.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
@@ -525,7 +528,7 @@ function DayRow({
           {row.device ? <DeviceIcon device={row.device} /> : null}
           {when}
         </span>
-      </a>
+      </div>
     </li>
   )
 }

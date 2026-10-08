@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { prizesHref, seasonHref } from '../../hooks/useHashRoute'
 import { liveSeason, useSeason } from '../../lib/season'
 import { SEASON_CALENDAR } from '../../lib/seasonCalendar'
 import { chooseSkin, skinsFor, useChosenSkin, type Skin } from '../../lib/skins'
+import { hangarSkinHref, seasonSkinHref } from '../../lib/skinWhere'
 import { useTickets } from '../../lib/tickets'
 import { GameThumbArt } from '../GameThumbArt'
 import { Panel, PanelHead } from '../Panel'
@@ -89,7 +89,7 @@ function SkinTile({ game, tile, chosen, big = false }: { game: string; tile: Til
       </button>
     )
   }
-  const href = tile.kind === 'pass' ? seasonHref() : `${prizesHref()}#hangar-${tile.skin.id}`
+  const href = tile.kind === 'pass' ? seasonSkinHref(tile.skin.id) : hangarSkinHref(tile.skin.id)
   return (
     <a className={`skin-tile skin-tile--locked${tile.kind === 'shop' ? ' skin-tile--shop' : ''}`} href={href}>
       <span className="skin-tile__art" aria-hidden="true">

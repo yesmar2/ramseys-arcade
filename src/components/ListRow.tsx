@@ -71,19 +71,20 @@ export function ListRow({
       </span>
       <PlayerMark name={name} avatarId={avatarId} className="lst__mark" />
       <span className="lst__text">
-        {href ? (
-          <a className="lst__name" href={href} title={name}>
-            <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
-            <SkinMark skin={skin} />
-            {mine ? <span className="lst__you">You</span> : null}
-          </a>
-        ) : (
-          <span className="lst__name" title={name}>
-            <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
-            <SkinMark skin={skin} />
-            {mine ? <span className="lst__you">You</span> : null}
-          </span>
-        )}
+        {/* The name is the link; the skin beside it opens its own card, so it sits outside it. */}
+        <span className="lst__name">
+          {href ? (
+            <a className="lst__go" href={href} title={name}>
+              <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
+            </a>
+          ) : (
+            <span className="lst__go" title={name}>
+              <PlayerName className="lst__name-text" name={name} avatarId={avatarId} />
+            </span>
+          )}
+          <SkinMark skin={skin} />
+          {mine ? <span className="lst__you">You</span> : null}
+        </span>
         {sub ? <span className="lst__sub">{sub}</span> : null}
       </span>
       <span className="lst__score">

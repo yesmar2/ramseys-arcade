@@ -204,12 +204,13 @@ function BoardRow({
     .join('. ')
   return (
     <li className="sb-board">
-      <a className="sb-board__link" href={gameBoardHref(line.slug, period)} aria-label={label}>
+      {/* The game's name is the line's link, stretched over it (boards.css); a skin on it opens its own card. */}
+      <div className="sb-board__link">
         <GameThumbArt slug={line.slug} accent={accent} className="sb-board__thumb" />
-        <span className="sb-board__name">
+        <a className="sb-board__name" href={gameBoardHref(line.slug, period)} aria-label={label}>
           <span className="sb-board__title">{name}</span>
           {players ? <span className="sb-board__players">{players}</span> : null}
-        </span>
+        </a>
         {[0, 1, 2].map((i) => (
           <Place key={i} line={line} top={line.top[i]} place={i + 1} you={you} />
         ))}
@@ -225,7 +226,7 @@ function BoardRow({
         <span className="sb-board__go" aria-hidden="true">
           <ChevronIcon />
         </span>
-      </a>
+      </div>
     </li>
   )
 }

@@ -1429,6 +1429,24 @@ html[data-theme='dark'] .season-tile__got {
   color: color-mix(in srgb, var(--space-orange) 60%, var(--ink));
 }
 
+/*
+ * A skin's tile, sent to from its card on a board (#skin-<id>, pages/SeasonPage.tsx): landed on with room above
+ * it, and lit from inside, since a glow round it would be cut square by the row's sideways scroll.
+ */
+.season-tile {
+  scroll-margin-top: max(5rem, 24vh);
+}
+
+.season-tile.season-tile--sought {
+  border-color: #ffffff;
+  background: color-mix(in srgb, var(--space-amber) 12%, var(--surface));
+  box-shadow: inset 0 0 30px rgba(var(--space-amber-rgb), 0.38);
+}
+
+html[data-theme='light'] .season-tile.season-tile--sought {
+  border-color: var(--space-orange);
+}
+
 @media (max-width: 640px) {
   .season-plus {
     padding: 1.1rem 1rem 1.2rem;

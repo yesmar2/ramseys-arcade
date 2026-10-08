@@ -48,6 +48,27 @@ function stateOf(reward: SeasonReward, level: number): TileState {
   return reward.level <= level ? 'got' : reward.level === level + 1 ? 'next' : 'locked'
 }
 
+/**
+ * The skin the address asks for (#skin-<id>), from its card on a board or a game's skin picker: its tile is lit,
+ * and its row turned to it. The page's own scroll down to it is the address's, as any page's (App.tsx).
+ */
+function soughtSkin(): string | null {
+  const hash = typeof window === 'undefined' ? '' : window.location.hash
+  if (!hash.startsWith('#skin-')) return null
+  try {
+    return decodeURIComponent(hash.slice('#skin-'.length))
+  } catch {
+    return null
+  }
+}
+
+/** A row of tiles turned so that one sits in its middle. */
+function turnTo(track: HTMLElement, tile: HTMLElement) {
+  const row = track.getBoundingClientRect()
+  const at = tile.getBoundingClientRect()
+  track.scrollLeft += at.left - row.left - (row.width - at.width) / 2
+}
+
 function CheckBadge() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -121,12 +142,15 @@ function Tile({
   perLevel,
   toNext,
   action,
+  sought = false,
 }: {
   reward: SeasonReward
   state: TileState
   perLevel: number
   toNext: number | null
   action?: ReactNode
+  /** The skin the address asks for: lit. */
+  sought?: boolean
 }) {
   // A locked level's season tickets would read as a price at the counter: the rail says how far they are.
   const foot =
@@ -134,7 +158,9 @@ function Tile({
   const at = ((reward.level - 1) * perLevel).toLocaleString()
   return (
     <li
-      className={`season-tile season-tile--${state}${reward.plus ? ' season-tile--plus' : ''}`}
+      // A skin's tile is where its card on a board leads (lib/skinWhere.ts seasonSkinHref).
+      id={reward.kind === 'skin' ? `skin-${reward.id}` : undefined}
+      className={`season-tile season-tile--${state}${reward.plus ? ' season-tile--plus' : ''}${sought ? ' season-tile--sought' : ''}`}
       data-level={reward.level}
       title={state === 'locked' ? `Level ${reward.level}, at ${at} season tickets${reward.plus ? ', with Pass+' : ''}` : undefined}
     >
@@ -290,6 +316,7 @@ function PassPlus({
   authLoading,
   onPlus,
   actionFor,
+  sought,
 }: {
   season: SeasonInfo
   plus: SeasonPlus
@@ -300,7 +327,10 @@ function PassPlus({
   /** On Plus without Pass+ yet: the free week, whose first payment brings it. */
   onPlus: boolean
   actionFor: (reward: SeasonReward) => ReactNode
+  /** The skin the address asks for, when it's one of Pass+'s: its tile turned to and lit. */
+  sought: string | null
 }) {
+  const trackRef = useRef<HTMLOListElement>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ tone: 'good' | 'plain' | 'bad'; text: string } | null>(null)
   const price = plusPrice(plus)
@@ -323,6 +353,14 @@ function PassPlus({
   }, [plus.owned])
   const firstBonus = plus.rewards.find((r) => r.level > season.levels)?.id
   const headliners = headlinersOf(season, plus)
+
+  // A Pass+ skin the address asks for: the row turns to it.
+  const rewardsKey = plus.rewards.length
+  useEffect(() => {
+    const track = trackRef.current
+    const tile = sought ? document.getElementById(`skin-${sought}`) : null
+    if (track && tile && track.contains(tile)) turnTo(track, tile)
+  }, [sought, rewardsKey])
 
   // Back from Stripe's page: a paid checkout gives Pass+ now (its webhook may be a moment behind).
   useEffect(() => {
@@ -429,7 +467,7 @@ function PassPlus({
         </div>
       </div>
       <HeadlinerStage headliners={headliners} owned={plus.owned} level={level} />
-      <ol className="season-track season-track--plus">
+      <ol className="season-track season-track--plus" ref={trackRef}>
         {plus.rewards.map((reward) => {
           const state = stateOfPlus(reward)
           return (
@@ -439,7 +477,14 @@ function PassPlus({
                   <span>Bonus levels</span>
                 </li>
               ) : null}
-              <Tile reward={reward} state={state} perLevel={season.perLevel} toNext={toNext} action={plus.owned ? actionFor(reward) : null} />
+              <Tile
+                reward={reward}
+                state={state}
+                perLevel={season.perLevel}
+                toNext={toNext}
+                action={plus.owned ? actionFor(reward) : null}
+                sought={reward.id === sought}
+              />
             </Fragment>
           )
         })}
@@ -508,6 +553,7 @@ export function SeasonPage() {
   const { signedIn, isPlus, loading: authLoading } = useAuth()
   const avatar = useOwnAvatar()
   const trackRef = useRef<HTMLOListElement>(null)
+  const [sought] = useState(soughtSkin)
   const season = store.season
   const top = seasonTop(store)
   const p = season ? seasonProgress(season, season.status === 'live' ? store.you : null, top || undefined) : null
@@ -525,14 +571,19 @@ export function SeasonPage() {
     void refreshSeason({ signedIn, catchUp: signedIn })
   }, [signedIn, authLoading])
 
-  // The row starts at your next level, a couple of won ones showing to its left.
+  // The row starts at your next level, a couple of won ones showing to its left; or at the skin the address asks for.
   const rewardsKey = store.rewards.length
   useEffect(() => {
     const track = trackRef.current
     if (!track || !rewardsKey) return
+    const skin = sought ? document.getElementById(`skin-${sought}`) : null
+    if (skin && track.contains(skin)) {
+      turnTo(track, skin)
+      return
+    }
     const target = track.querySelector<HTMLElement>(`[data-level="${Math.max(1, level - 1)}"]`)
     if (target) track.scrollLeft = target.offsetLeft - track.offsetLeft - 8
-  }, [level, rewardsKey])
+  }, [level, rewardsKey, sought])
 
   const scrollBy = (dir: 1 | -1) => {
     const track = trackRef.current
@@ -595,6 +646,7 @@ export function SeasonPage() {
               perLevel={season.perLevel}
               toNext={p.toNext}
               action={actionFor(reward)}
+              sought={reward.id === sought}
             />
           ))}
         </ol>
@@ -626,6 +678,7 @@ export function SeasonPage() {
           authLoading={authLoading}
           onPlus={isPlus}
           actionFor={actionFor}
+          sought={sought}
         />
       ) : null}
 

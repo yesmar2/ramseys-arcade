@@ -36,8 +36,14 @@ function Bay({ skin, onTrade, busy }: { skin: Skin; onTrade: (skin: Skin) => voi
   const price = skin.price ?? 0
   const short = signedIn ? Math.max(0, price - balance) : 0
   const accent = game?.accent ?? '#ff8552'
+  // Sent here for this skin, from its card on a board or a game's skin picker: its bay is lit.
+  const sought = typeof window !== 'undefined' && window.location.hash === `#hangar-${skin.id}`
   return (
-    <li className={`hbay${mine ? ' hbay--mine' : ''}`} id={`hangar-${skin.id}`} style={{ '--hbay': accent } as CSSProperties}>
+    <li
+      className={`hbay${mine ? ' hbay--mine' : ''}${sought ? ' hbay--sought' : ''}`}
+      id={`hangar-${skin.id}`}
+      style={{ '--hbay': accent } as CSSProperties}
+    >
       <span className="hbay__light" aria-hidden="true" />
       <span className="hbay__art" aria-hidden="true">
         <RewardArt reward={{ kind: 'skin', id: skin.id, name: skin.name }} size={112} />

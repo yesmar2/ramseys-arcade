@@ -39,7 +39,8 @@ export function ChallengeTarget({ slug }: { slug: string }) {
       <span className="game-card__challenger">
         <PlayerAvatar avatarId={challenge.avatarId} name={challenge.name} size="sm" />
         {own ? 'Your challenge' : `${challenge.name} challenges you`}
-        <SkinMark skin={challenge.skin} />
+        {/* The picture alone: on the start card, a press starts the run. */}
+        <SkinMark skin={challenge.skin} plain />
       </span>
       <span className="game-card__target">
         <strong>{figure}</strong>
