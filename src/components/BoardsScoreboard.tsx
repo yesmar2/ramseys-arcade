@@ -41,6 +41,7 @@ import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
+import { SkinMark } from './season/SkinMark'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
@@ -464,6 +465,8 @@ function Place({ line, top, place, you }: { line: BoardLine; top: BoardTop | und
       <span className={`sb-board__who${mine ? ' sb-board__who--you' : ''}`}>
         {place === 1 ? <CrownIcon /> : null}
         <span>{top.name}</span>
+        {/* The skin the run was played in, as every game's own board shows it. */}
+        <SkinMark skin={top.skin} />
       </span>
       {/* A daily's week is in points, which its own board shows: here it is names. */}
       {line.points ? null : <span className="sb-board__score">{lineScore(line, top.score)}</span>}

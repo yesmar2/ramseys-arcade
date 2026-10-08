@@ -30,6 +30,8 @@ export type BoardTop = {
   name: string
   score: number
   avatarId?: string
+  /** The season skin the run was played in (lib/skins.ts), shown beside the name (SkinMark). */
+  skin?: string
   /**
    * For the player just above you (nextUp): the best place a run that beats their score takes. It is
    * higher than their own place when they are tied with the players above them.
@@ -257,7 +259,7 @@ export function distinctTop(entries: LeaderboardEntry[], n = 3): BoardTop[] {
     const name = normalizePlayerName(entry.name ?? '')
     if (!name || seen.has(name)) continue
     seen.add(name)
-    out.push({ name, score: entry.score, avatarId: entry.avatarId })
+    out.push({ name, score: entry.score, avatarId: entry.avatarId, ...(entry.skin ? { skin: entry.skin } : {}) })
     if (out.length === n) break
   }
   return out
