@@ -225,10 +225,9 @@ export const LEAVE_TIME = 0.26
 const SHATTER_HOLD = 0.7
 /**
  * A day's plate doesn't balance (Ramsey, 2026-10-08: "maybe we don't need to do the balancing anymore"): once
- * its pin is in, it settles flat onto the table in MARK_SETTLE and the pins stand on it, yours and the gold
- * one where it should have gone, for MARK_SHOW, then the next plate comes.
+ * its pin is in, it stays where it is and the pins stand on it, yours and the gold one where it should have
+ * gone, for MARK_SHOW, then the next plate comes.
  */
-const MARK_SETTLE = 0.18
 const MARK_SHOW = 1.8
 /** A shard lies still this long, then fades over this long. */
 export const SHARD_REST = 0.6
@@ -767,9 +766,9 @@ function tickSettling(state: GameState, dt: number) {
       return
     }
     case 'mark': {
-      // A day's plate settles flat onto the table, and shows where the pins went in.
-      const u = easeOut(state.stageT / MARK_SETTLE)
-      state.pose = { anchor: pin, at: { x: pin.x, y: pin.y, z: state.z * (1 - u) }, dir: o.dir, tilt: 0 }
+      // A day's plate stays just where it was, and shows where the pins went in (Ramsey, 2026-10-08: "the
+      // plate doesn't need to fall").
+      state.pose = { anchor: pin, at: { x: pin.x, y: pin.y, z: state.z }, dir: o.dir, tilt: 0 }
       if (state.settleT >= MARK_SHOW) next(state)
       return
     }
