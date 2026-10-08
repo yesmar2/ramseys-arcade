@@ -542,13 +542,39 @@ export function plannedHills(n: number, attempt: number): Hills {
   return layHills(n, attempt)
 }
 
+/** Hills more than this much big rollers (a drop of 12 m or more) and less than this much quick bumps (under 6 m) are one-note. */
+export const MOST_ROLLERS = 0.7
+export const LEAST_BUMPS = 0.05
+
 /**
- * Hills `n` from scratch: the first try the blue bird flies in a fair time. The plan script keeps which try
- * that was, and the blue bird's time.
+ * How the hills are made up, to the line: the share of the way that's big rollers, and the share that's quick
+ * bumps. Hills that are all big rollers in one steady rhythm are the easiest to fly well, nothing ever breaking
+ * the timing of a dive: Ramsey found one too easy (#3 Marigold Hills, 87% rollers and no bumps, 2026-10-08: "it's
+ * the level itself. like the hills on this specific one"), so hills mostly of rollers need some bumps among them.
+ */
+export function hillsMix(h: Hills): { rollers: number; bumps: number } {
+  let rollers = 0
+  let bumps = 0
+  let total = 0
+  for (let i = 2; i < h.xs.length - 2 && h.xs[i]! <= h.finish; i++) {
+    const dx = h.xs[i]! - h.xs[i - 1]!
+    const drop = Math.abs(h.ys[i - 1]! - h.ys[i]!)
+    total += dx
+    if (drop >= 12) rollers += dx
+    else if (drop < 6) bumps += dx
+  }
+  return { rollers: rollers / total, bumps: bumps / total }
+}
+
+/**
+ * Hills `n` from scratch: the first try that isn't one-note rollers (hillsMix) and that the blue bird flies in a
+ * fair time. The plan script keeps which try that was, and the blue bird's time.
  */
 export function firstGoodHills(n: number): { hills: Hills; attempt: number; pace: Flight } {
   for (let attempt = 0; attempt < 60; attempt++) {
     const hills = layHills(n, attempt)
+    const mix = hillsMix(hills)
+    if (mix.rollers > MOST_ROLLERS && mix.bumps < LEAST_BUMPS) continue
     const pace = paceRun(hills)
     if (pace.finished && pace.time >= PACE_FROM && pace.time <= PACE_TO) return { hills, attempt, pace }
   }
