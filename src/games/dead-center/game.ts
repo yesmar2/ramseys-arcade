@@ -66,7 +66,7 @@ export type Pose = { anchor: Point; at: Vec3; dir: Point; tilt: number }
  * then flops flat and rests. Too slow, and it falls flat with nothing under it.
  * Tapped again while it wobbles, the balanced plate shatters (an easter egg).
  */
-export type Stage = 'drop' | 'wobble' | 'shatter' | 'tip' | 'lean' | 'flop' | 'rest' | 'fall'
+export type Stage = 'drop' | 'wobble' | 'shatter' | 'tip' | 'lean' | 'flop' | 'rest' | 'fall' | 'mark'
 
 export type Outcome = {
   /** Where the pin went in, on the plate, or null when the clock ran out. */
@@ -223,6 +223,13 @@ const GRAVITY = 2.6
 export const LEAVE_TIME = 0.26
 /** A broken plate's shards fly at least this long before the next plate comes on. */
 const SHATTER_HOLD = 0.7
+/**
+ * A day's plate doesn't balance (Ramsey, 2026-10-08: "maybe we don't need to do the balancing anymore"): once
+ * its pin is in, it settles flat onto the table in MARK_SETTLE and the pins stand on it, yours and the gold
+ * one where it should have gone, for MARK_SHOW, then the next plate comes.
+ */
+const MARK_SETTLE = 0.18
+const MARK_SHOW = 1.8
 /** A shard lies still this long, then fades over this long. */
 export const SHARD_REST = 0.6
 export const SHARD_FADE = 0.5
@@ -498,6 +505,9 @@ export function setPin(state: GameState, tapped: Point): GameState {
       state.flash = 1
       sfx('perfect')
     } else if (balanced) sfx('pad', 1)
+    // No balancing: the plate settles flat and the pins go in on top.
+    state.stage = 'mark'
+    state.tiltV = 0
     return state
   }
   if (balanced) {
@@ -596,12 +606,13 @@ function fracture(points: Point[], hit: Point): Point[][] {
 export function shatter(state: GameState, at: Point): boolean {
   const o = state.outcome
   const plate = state.plate
-  if (state.phase !== 'settling' || state.stage !== 'wobble' || !o?.balanced || !o.pin || !plate) return false
+  if (state.phase !== 'settling' || (state.stage !== 'wobble' && state.stage !== 'mark') || !o?.balanced || !o.pin || !plate) return false
   const edge = nearestOnEdge(plate.points, at)
   const inside = onPlate(plate.points, at)
   if (!inside && edge.d > 0.02) return false
   const hit = inside ? at : edge.at
-  const z = PIN_H + THICK / 2
+  // Where the plate is: on its pin (the arcade's), or flat on the table (a day's).
+  const z = state.pose.at.z + THICK / 2
   for (const piece of fracture(plate.points, hit)) {
     const c = polygonCentroid(piece)
     const away = dist(c, hit) || 1
@@ -621,7 +632,7 @@ export function shatter(state: GameState, at: Point): boolean {
       rested: -1,
     })
   }
-  addSparks(state, { x: hit.x, y: hit.y, z: PIN_H + THICK }, 16, plate.hue)
+  addSparks(state, { x: hit.x, y: hit.y, z: state.pose.at.z + THICK }, 16, plate.hue)
   state.stage = 'shatter'
   state.stageT = 0
   state.tilt = 0
@@ -753,6 +764,13 @@ function tickSettling(state: GameState, dt: number) {
       const u = easeOut(state.stageT / DROP_TIME)
       state.pose = { anchor: pin, at: { x: pin.x, y: pin.y, z: state.z + (PIN_H - state.z) * u }, dir: o.dir, tilt: 0 }
       if (state.stageT >= DROP_TIME) toStage(state, o.balanced ? 'wobble' : 'tip')
+      return
+    }
+    case 'mark': {
+      // A day's plate settles flat onto the table, and shows where the pins went in.
+      const u = easeOut(state.stageT / MARK_SETTLE)
+      state.pose = { anchor: pin, at: { x: pin.x, y: pin.y, z: state.z * (1 - u) }, dir: o.dir, tilt: 0 }
+      if (state.settleT >= MARK_SHOW) next(state)
       return
     }
     case 'wobble': {

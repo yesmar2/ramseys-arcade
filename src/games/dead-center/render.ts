@@ -348,7 +348,7 @@ function drawPin(g: Gfx, at: Point, height: number, down: number, away: Point, a
  * ring round it as wide as the margin for a balance, the red dimple where the
  * pin went in, and, for a miss, a line from one to the other.
  */
-function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: number, lift = 0, alpha = 1) {
+function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: number, lift = 0, alpha = 1, standing = false) {
   const { ctx, v, dark } = g
   if (reveal <= 0 || alpha <= 0.01) return
   const c = plate.centroid
@@ -362,7 +362,7 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: n
 
   const gp = at(c)
   const pin = outcome.pin
-  if (pin && !outcome.balanced) {
+  if (pin && (!outcome.balanced || (standing && outcome.off > 0.012))) {
     // From where the pin went in to where it should have.
     const pp = at(pin)
     ctx.strokeStyle = hsla(GOLD, 85, lineL(dark), 0.75)
@@ -374,9 +374,9 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: n
     ctx.stroke()
     ctx.setLineDash([])
   }
-  // Where the pin went in and where it should have: a small dot each, red and gold, exact points; the
-  // ghost pin under the plate (drawGhostPin) stands at the gold one (Ramsey, 2026-10-08, picking B · Ghost
-  // pin from the "Centroid pin and center" mocks: "maybe the pins should be thinner along with the dot").
+  // Where the pin went in and where it should have: a small dot each, red and gold, exact points (Ramsey,
+  // 2026-10-08, picking B · Ghost pin from the "Centroid pin and center" mocks: "maybe the pins should be
+  // thinner along with the dot").
   const spot = (p: { x: number; y: number }, hue: number) => {
     ctx.fillStyle = hsla(hue, 90, dark ? 62 : 52)
     ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.9)' : 'rgba(255, 255, 255, 0.95)'
@@ -388,6 +388,12 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: n
   }
   if (pin) spot(at(pin), PIN_HUE)
   spot(gp, GOLD)
+  // A day's plate lies flat with its pins standing in it, on top (Ramsey, 2026-10-08: "the pins look like they
+  // are underneith and not on top"): yours in red, and the see-through gold one where it should have gone.
+  if (standing) {
+    topPin(g, onTop(pose, c, lift), GOLD, true, pop)
+    if (pin) topPin(g, onTop(pose, pin, lift), PIN_HUE, false, 1)
+  }
   ctx.restore()
 }
 
@@ -487,7 +493,7 @@ function drawShards(g: Gfx, s: GameState) {
  */
 function drawCrack(g: Gfx, s: GameState) {
   const o = s.outcome
-  if (!s.crackHint || s.phase !== 'settling' || s.stage !== 'wobble' || !o?.balanced || !o.pin || !s.plate) return
+  if (!s.crackHint || s.phase !== 'settling' || (s.stage !== 'wobble' && s.stage !== 'mark') || !o?.balanced || !o.pin || !s.plate) return
   const { ctx, v, dark } = g
   const pin = o.pin
   let seed = Math.floor(pin.x * 99991 + pin.y * 77933) >>> 0
@@ -649,35 +655,40 @@ function drawDayRow(g: Gfx, s: GameState, cx: number, cy: number) {
   ctx.restore()
 }
 
-/**
- * Where the pin should have gone: a see-through gold pin standing on the table at the plate's balance point,
- * up to the plate's underside there, beside the real one, so the miss reads as two pins.
- */
-function drawGhostPin(g: Gfx, plate: Plate, pose: Pose, reveal: number) {
-  const { ctx, v } = g
-  if (reveal <= 0.01) return
-  const c = plate.centroid
-  const head = 0.011
-  const top = Math.max(head, poseWorld(pose, c).z)
-  const b = project(v, { x: c.x, y: c.y, z: head })
-  const t = project(v, { x: c.x, y: c.y, z: top })
+/** How tall a pin stands out of a day's plate, in table units. */
+const TOP_PIN = 0.075
+
+/** A pin standing up out of the plate's face at `base`: a thin steel stem and a bead on top; a ghost is see-through gold. */
+function topPin(g: Gfx, base: Vec3, hue: number, ghost: boolean, pop: number) {
+  const { ctx, v, dark } = g
+  const head = 0.011 * (ghost ? pop : 1)
+  const b = project(v, base)
+  const t = project(v, { x: base.x, y: base.y, z: base.z + TOP_PIN })
   const r = head * v.k
   ctx.save()
-  ctx.globalAlpha = 0.7 * clamp01(reveal * 1.5)
+  if (ghost) ctx.globalAlpha *= 0.75
   ctx.lineCap = 'round'
-  ctx.strokeStyle = hsla(GOLD, 90, 62, 0.9)
-  ctx.lineWidth = Math.max(0.9, v.k * 0.0028)
+  if (!ghost) {
+    ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.8)' : 'rgba(40, 50, 60, 0.55)'
+    ctx.lineWidth = Math.max(1.3, v.k * 0.0048)
+    ctx.beginPath()
+    ctx.moveTo(b.x, b.y)
+    ctx.lineTo(t.x, t.y)
+    ctx.stroke()
+  }
+  ctx.strokeStyle = ghost ? hsla(GOLD, 90, 62, 0.95) : '#e4ebf1'
+  ctx.lineWidth = Math.max(0.8, v.k * (ghost ? 0.0028 : 0.0025))
   ctx.beginPath()
   ctx.moveTo(b.x, b.y)
   ctx.lineTo(t.x, t.y)
   ctx.stroke()
-  const bead = ctx.createRadialGradient(b.x - r * 0.35, b.y - r * 0.4, r * 0.1, b.x, b.y, r)
-  bead.addColorStop(0, hsla(GOLD, 95, 85))
-  bead.addColorStop(0.5, hsla(GOLD, 90, 60))
-  bead.addColorStop(1, hsla(GOLD, 80, 40))
+  const bead = ctx.createRadialGradient(t.x - r * 0.35, t.y - r * 0.4, r * 0.1, t.x, t.y, r)
+  bead.addColorStop(0, hsla(hue, 95, 85))
+  bead.addColorStop(0.5, hsla(hue, 85, 60))
+  bead.addColorStop(1, hsla(hue, 75, 40))
   ctx.fillStyle = bead
   ctx.beginPath()
-  ctx.arc(b.x, b.y, r, 0, TAU)
+  ctx.arc(t.x, t.y, r, 0, TAU)
   ctx.fill()
   ctx.restore()
 }
@@ -803,7 +814,8 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     leavingSolid = leaving.broken ? null : solidOf(leaving.plate, leaving.pose, lift, alpha, leaving.lift ? 0 : 1)
     if (leavingSolid) drawShadow(g, leavingSolid)
     const pin = leaving.outcome?.pin
-    if (pin) {
+    // A day's pins are on top of its plate (drawMarks), not under it.
+    if (pin && !s.day) {
       const height = leaving.lift ? leaving.pinH * (1 - u) : leaving.pinH
       drawPin(g, pin, height, leaving.pinDown, leaving.outcome!.dir, alpha)
     }
@@ -817,21 +829,18 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   if (solid) drawShadow(g, solid)
   drawShardShadows(g, s)
   const o = s.outcome
-  if (plate && o?.pin && s.phase !== 'aiming') {
-    drawPin(g, o.pin, s.pinH, s.pinDown, o.dir, 1)
-    drawGhostPin(g, plate, s.pose, revealOf(s))
-  }
+  if (plate && o?.pin && s.phase !== 'aiming' && !s.day) drawPin(g, o.pin, s.pinH, s.pinDown, o.dir, 1)
 
   if (leaving && leavingSolid) {
     drawPlate(g, leaving.plate, leavingSolid)
     const lift = leaving.lift ? clamp01(leaving.t / LEAVE_TIME) ** 2 * 0.35 : 0
     if (leaving.outcome) {
-      drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, 1, lift, leavingSolid.alpha)
+      drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, 1, lift, leavingSolid.alpha, Boolean(s.day))
     }
   }
   if (plate && solid) {
     drawPlate(g, plate, solid)
-    if (o) drawMarks(g, plate, s.pose, o, revealOf(s))
+    if (o) drawMarks(g, plate, s.pose, o, revealOf(s), 0, 1, Boolean(s.day))
     drawCrack(g, s)
   }
   drawShards(g, s)

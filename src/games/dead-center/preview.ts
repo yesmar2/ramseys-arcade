@@ -1,28 +1,26 @@
 import { runPreview, type Sim } from '../previewKit'
+import { plateDay } from './daily'
 import {
   createInitialState,
-  jumpToPlate,
   onPlate,
   setPin,
-  startGame,
+  startDaily,
   tick,
   type GameState,
   type Plate,
   type Point,
 } from './game'
+import { dayPlan } from './plan'
 import { renderGame } from './render'
 
 /*
  * Centroid playing itself, for its cabinet on the home page: the game's own
  * engine and renderer, and a pilot that looks each plate over for a second or
  * so and pins it where it judges the balance point to be. Its eye is good, not
- * perfect: most plates balance, now and then one is dead on, and now and then
- * one is off far enough to tip over, which is the game's best moment to see.
- * Its runs start a few plates in, where the plates stop being plain.
+ * perfect: most pins land close, now and then one is dead on, and now and then
+ * one is well off, with the gold pin standing where it should have gone. It
+ * plays today's six plates, as practice, over and over.
  */
-
-/** The plate the pilot's runs start on: a few in, where Ls and lopsided plates come often. */
-const FIRST_PLATE = 5
 
 /** How far off the balance point the pilot's pin lands, in plate sizes, for a plate with this margin. */
 function pickOff(margin: number): number {
@@ -64,7 +62,8 @@ export function makeSim(): Sim<GameState> {
   return {
     start: () => {
       plateNo = 0
-      return jumpToPlate(startGame(createInitialState()), FIRST_PLATE)
+      // Today's six plates, as practice: the game is the daily now, with no balancing (since 2026-10-08).
+      return startDaily(createInitialState(), dayPlan(plateDay()), true)
     },
     step: (s, dt) => tick(drive(s, dt), dt),
     over: (s) => s.phase === 'gameover',
@@ -74,8 +73,8 @@ export function makeSim(): Sim<GameState> {
     resize: (s) => s,
     // A cabinet's screen is small: closer in on the plate, leaving the clock under it out of the picture.
     zoom: 1.25,
-    // The still: a lopsided teal plate set down dead center on its pin, the gold ring going out.
-    poster: { seed: 52, at: 5.07 },
+    // The still: a plate with its pins in, yours and the gold one.
+    poster: { seed: 52, at: 3.4 },
     hold: 2,
   }
 }
