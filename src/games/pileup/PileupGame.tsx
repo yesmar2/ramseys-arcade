@@ -83,8 +83,12 @@ type Held = 'left' | 'right'
  * its drift across used to move the piece a column on the way (Ramsey,
  * 2026-10-08: "a lot of the time it moves over one, which isn't where i wanted
  * it to go"). So until the finger has clearly gone across, nothing moves across;
- * once it's going down (or up), drift across is ignored until it lets go. Going
- * across, then down, still drops it where it was steered.
+ * once it's going up, drift across is ignored until it lets go. Going across,
+ * then down, still drops it where it was steered. Going down, a clear turn
+ * across (a cell, at twice the slope of any drift) steers it again, so a piece
+ * swiped down can be tucked in before it locks, as the arrows can (Ramsey,
+ * 2026-10-08: "give the mobile experience the opportunity to shift real quick
+ * after a swipe down? like you can on desktop").
  */
 const DRAG_STEP = 0.85
 const TAP_MS = 260
@@ -101,6 +105,9 @@ const ACROSS_OVER_DOWN = 1.2
 /** Steered across, then this many cells down, and this many times more than across since: it drops from there. */
 const TURN_DOWN = 0.8
 const TURN_STEEP = 1.5
+/** Going down, then this many cells across, and this many times more than down since its last row: it steers across again. */
+const TURN_ACROSS = 1
+const TURN_FLAT = 2
 
 type Drag = {
   id: number
@@ -111,7 +118,10 @@ type Drag = {
   ay: number
   /** Which way the touch is going: not yet clear, across (columns), down (rows), or up (to hold). */
   way: 'none' | 'across' | 'down' | 'up'
-  /** Where the finger was when the touch last went across, or took its way: where down is measured from. */
+  /**
+   * Where the finger was when the touch last moved the piece across (or down a row), or took its way: where a
+   * turn down (or across) is measured from.
+   */
   sx: number
   sy: number
   t0: number
@@ -516,6 +526,11 @@ export function PileupGame() {
       // Steered across, now going down: it drops from the column it's in, and drift across no longer moves it.
       d.way = 'down'
       d.ay = d.sy
+    } else if (d.way === 'down' && Math.abs(dx) > cell * TURN_ACROSS && Math.abs(dx) > Math.max(0, dy) * TURN_FLAT) {
+      // Going down, then a clear turn across: it steers again, to tuck the piece in before it locks. A swipe
+      // down's drift never gets here: it goes down a row, and starts over, before it's gone a cell across.
+      d.way = 'across'
+      d.ax = d.sx
     }
     if (d.way === 'across') {
       const step = cell * DRAG_STEP
@@ -542,6 +557,9 @@ export function PileupGame() {
         const rows = Math.trunc(down / cell)
         softDropBy(s, rows)
         d.ay += rows * cell
+        // Still going down (landed or not): a turn across is measured from here.
+        d.sx = at.x
+        d.sy = at.y
       } else if (down < 0) {
         d.ay = at.y
       }
