@@ -52,20 +52,28 @@ const START_KEYS = new Set(['Space', 'Enter'])
  */
 const MOUSE_WAKE_PX = 24
 
-/** How far a thumb pushes the stick for full speed, in CSS pixels: Marble Run's stick's. */
-const STICK_R = 58
+/**
+ * How far the knob can sit from the stick's centre, in CSS pixels. Past it the centre follows the thumb, so the
+ * stick is always a short push from any way: turning is a flick, never a trip back across where the thumb landed.
+ */
+const STICK_LEASH = 22
 
-/** A push under this share of the stick's reach doesn't swim, so a resting thumb never drifts the fish. */
-const STICK_DEAD = 0.14
+/** Under this, in CSS pixels, the fish doesn't swim, so a resting thumb never drifts it. */
+const STICK_DEAD = 4
+
+/** From this push on, in CSS pixels, the fish swims at full speed: nearly always, whichever way it's going. */
+const STICK_FULL = 12
 
 /**
  * Frenzy, the food chain in an open ocean (game.ts). The mouse steers by
  * pointing: the fish swims toward it, and the camera follows. A finger is a
- * stick wherever it lands, as Marble Run's is: push the way to swim, harder
- * to go faster, and the fish keeps swimming while it's held, so it's never
- * under your thumb and never needs a swipe after swipe (Ramsey, 2026-10-07:
- * "you have to keep swiping for it to move"). The arrow keys or WASD swim
- * too. Swimming up hard through the surface leaps out.
+ * stick wherever it lands: push the way to swim and the fish swims there at
+ * full speed for as long as the thumb is held, so it's never under your thumb
+ * and never needs a swipe after swipe (Ramsey, 2026-10-07: "you have to keep
+ * swiping for it to move"). The stick follows the thumb, so the speed holds
+ * through a turn (2026-10-08: "sometimes it doesn't go as fast when you
+ * turn", when speed grew with the push from where the thumb landed). The
+ * arrow keys or WASD swim too. Swimming up hard through the surface leaps out.
  */
 export function FrenzyGame() {
   const tournament = useTournamentPlay()
@@ -73,8 +81,8 @@ export function FrenzyGame() {
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
-  /** The thumb on the stick: where it came down, in pixels from the play area's top left. */
-  const stickAt = useRef<{ id: number; x0: number; y0: number } | null>(null)
+  /** The thumb on the stick: the stick's centre, which follows the thumb, in pixels from the play area's top left. */
+  const stickAt = useRef<{ id: number; cx: number; cy: number } | null>(null)
   const stickRef = useRef<HTMLDivElement>(null)
   const knobRef = useRef<HTMLDivElement>(null)
   const mouseRef = useRef<{ awake: boolean; from: { x: number; y: number } | null }>({ awake: false, from: null })
@@ -172,41 +180,52 @@ export function FrenzyGame() {
     stateRef.current = setTarget(stateRef.current, at.x, at.y)
   }
 
+  /** Where the stick's centre is: the ring sits there. */
+  const placeStick = (cx: number, cy: number) => {
+    const stick = stickRef.current
+    if (!stick) return
+    stick.style.left = `${cx}px`
+    stick.style.top = `${cy}px`
+  }
+
   /** A thumb comes down: the stick is there, centred under it, not yet pushed. */
   const takeStick = (e: ReactPointerEvent<HTMLElement>) => {
     const box = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - box.left
     const y = e.clientY - box.top
-    stickAt.current = { id: e.pointerId, x0: x, y0: y }
-    const stick = stickRef.current
-    if (stick) {
-      stick.style.left = `${x}px`
-      stick.style.top = `${y}px`
-      stick.hidden = false
-    }
+    stickAt.current = { id: e.pointerId, cx: x, cy: y }
+    placeStick(x, y)
+    if (stickRef.current) stickRef.current.hidden = false
     if (knobRef.current) knobRef.current.style.transform = ''
   }
 
-  /** The thumb moves: the knob follows it to the stick's edge, and the fish swims that way, as hard as it's pushed. */
+  /**
+   * The thumb moves: the fish swims the way the knob sits from the stick's centre, at full speed past a small
+   * push. Pushed past the leash, the centre comes along behind the thumb, so the next turn is a short move.
+   */
   const pushStick = (e: ReactPointerEvent<HTMLElement>) => {
     const s = stickAt.current
     if (!s || s.id !== e.pointerId) return
     const box = e.currentTarget.getBoundingClientRect()
-    let dx = e.clientX - box.left - s.x0
-    let dy = e.clientY - box.top - s.y0
-    const l = Math.hypot(dx, dy)
-    if (l > STICK_R) {
-      dx *= STICK_R / l
-      dy *= STICK_R / l
+    const x = e.clientX - box.left
+    const y = e.clientY - box.top
+    let dx = x - s.cx
+    let dy = y - s.cy
+    let l = Math.hypot(dx, dy)
+    if (l > STICK_LEASH) {
+      s.cx = x - (dx / l) * STICK_LEASH
+      s.cy = y - (dy / l) * STICK_LEASH
+      placeStick(s.cx, s.cy)
+      dx = x - s.cx
+      dy = y - s.cy
+      l = STICK_LEASH
     }
     if (knobRef.current) knobRef.current.style.transform = `translate(${dx}px, ${dy}px)`
-    const reach = Math.min(1, l / STICK_R)
-    if (reach < STICK_DEAD) {
+    if (l < STICK_DEAD) {
       stateRef.current = clearSteer(stateRef.current)
       return
     }
-    // Past the dead zone, from a slow swim up to full speed at the stick's edge.
-    const amount = (reach - STICK_DEAD) / (1 - STICK_DEAD)
+    const amount = Math.min(1, (l - STICK_DEAD) / (STICK_FULL - STICK_DEAD))
     stateRef.current = setSteer(stateRef.current, (dx / l) * amount, (dy / l) * amount)
   }
 

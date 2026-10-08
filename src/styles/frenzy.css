@@ -26,13 +26,16 @@
   display: block;
 }
 
-/* A touch screen's stick, wherever a thumb lands (as Marble Run's): in the sea's own light blue. */
+/*
+ * A touch screen's stick, wherever a thumb lands, in the sea's own light blue. Small, and it follows the thumb
+ * (FrenzyGame.tsx STICK_LEASH): the knob never sits more than 22px from the ring's centre.
+ */
 .frenzy__stick {
   position: absolute;
   z-index: 9;
-  width: 128px;
-  height: 128px;
-  margin: -64px 0 0 -64px;
+  width: 88px;
+  height: 88px;
+  margin: -44px 0 0 -44px;
   border: 2px solid rgba(255, 255, 255, 0.24);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(120, 214, 255, 0.12), rgba(4, 22, 40, 0.35) 70%);
@@ -47,12 +50,12 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 54px;
-  height: 54px;
-  margin: -27px 0 0 -27px;
+  width: 38px;
+  height: 38px;
+  margin: -19px 0 0 -19px;
   border-radius: 50%;
   background: rgba(150, 224, 255, 0.55);
-  box-shadow: 0 0 22px rgba(120, 214, 255, 0.5);
+  box-shadow: 0 0 18px rgba(120, 214, 255, 0.5);
 }
 
 .frenzy__overlay {
