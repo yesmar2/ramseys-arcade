@@ -351,6 +351,8 @@ export function SiteHeader() {
           }
           onWear={wear}
           onSignOut={() => {
+            // The menu closes as you sign out, so the header saying Sign in is there to see: left open, nothing in it seemed to change.
+            setMenuOpen(false)
             setSigningOut(true)
             void logoutAccount().finally(() => setSigningOut(false))
           }}

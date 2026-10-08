@@ -70,10 +70,10 @@ export type MenuStanding = {
  * Your menu: a panel from the right on a wide screen, a sheet from the bottom
  * on a phone (where the tab bar's You opens it). You at the top as a small
  * player card; then the places that are yours (your inbox, the season, the
- * prize counter, Plus, friends, groups) and Settings, which opens in place as
- * the inbox does: the theme, the sounds, the music, what tells you, signing
- * out and the small print. Signed out, the top says what an account is for and
- * holds the way in.
+ * prize counter, Plus, friends, groups), Settings, which opens in place as
+ * the inbox does (the theme, the sounds, the music, what tells you and the
+ * small print), and Sign out under it. Signed out, the top says what an
+ * account is for and holds the way in.
  *
  * It was "really full" (Ramsey, 2026-10-06), and he picked the shorter one ("B
  * works"): your stats are on your player card, the bug hunt on the home page,
@@ -301,7 +301,7 @@ export function SiteMenu({
     )
   }
 
-  // Settings, behind their own row: the theme, the sounds and the music, what tells you, signing out, the small print.
+  // Settings, behind their own row: the theme, the sounds and the music, what tells you, the small print.
   if (view === 'settings') {
     return createPortal(
       <div className="site-menu" role="presentation">
@@ -351,13 +351,6 @@ export function SiteMenu({
               ) : null}
               <DevImpersonateControl variant="drawer" />
             </section>
-
-            {signedIn ? (
-              <button type="button" className="site-menu__signout" disabled={signingOut} onClick={onSignOut}>
-                <SignOutIcon />
-                Sign out
-              </button>
-            ) : null}
 
             <nav className="site-menu__foot" aria-label="About">
               <a href={aboutHref()} onClick={onClose}>
@@ -521,6 +514,14 @@ export function SiteMenu({
               </button>
             </li>
           </ul>
+
+          {/* On the menu itself, not behind Settings (Ramsey, 2026-10-08: "it should probably be on the first drawer menu"). */}
+          {signedIn ? (
+            <button type="button" className="site-menu__signout" disabled={signingOut} onClick={onSignOut}>
+              <SignOutIcon />
+              Sign out
+            </button>
+          ) : null}
 
           {invites > 0 ? (
             <section className="site-menu__invites" aria-label="Invites">
