@@ -116,23 +116,84 @@ html[data-theme='dark'] .pf {
 
 /* ---------- the card ---------- */
 
+/*
+ * The card (components/PlayerCard.tsx): a band across the top, the card theme from the prize counter or the
+ * player's colour; the character over its foot with the tag beside it; a row of tiles; two shelves.
+ */
 .home-banner.pcard {
+  --pcard-band: 10.5rem;
+  --pcard-bg: transparent;
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.pcard__band {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--pcard-band);
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hero-accent) 42%, transparent), transparent);
+}
+
+/* A theme from the prize counter: a dark card, the theme across its top fading into it. */
+.home-banner.pcard.pcard--themed {
+  --pcard-bg: color-mix(in srgb, var(--hero-accent, #6a5acd) 8%, #11142a);
+  background: var(--pcard-bg);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.pcard--themed .pcard__band {
+  background: none;
+}
+
+.pcard--themed .pcard__band::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, var(--pcard-bg) 100%);
+}
+
+.pcard__back {
+  position: absolute;
+  top: 1rem;
+  left: 1.2rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.45rem;
+  border-radius: 999px;
+  background: var(--banner-chip-bg);
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: var(--banner-ink);
+  text-decoration: none;
+}
+
+.pcard__back:hover,
+.pcard__back:focus-visible {
+  background: var(--banner-chip-hover);
+  outline: none;
 }
 
 .pcard__main {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(15rem, 19rem);
-  align-items: start;
-  gap: 1.4rem 2.2rem;
-  padding: 2.2rem 2.2rem 1.9rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'art id acts'
+    'tiles tiles tiles'
+    'shelves shelves shelves';
+  align-items: end;
+  gap: 1.5rem;
+  padding: calc(var(--pcard-band) - 4.5rem) 2rem 1.4rem;
 }
 
 .pcard__art {
+  grid-area: art;
   display: block;
   padding: 0;
   margin: 0;
@@ -156,8 +217,8 @@ html[data-theme='dark'] .pf {
   position: relative;
   display: grid;
   place-items: center;
-  width: 11.5rem;
-  height: 11.5rem;
+  width: 9.5rem;
+  height: 9.5rem;
   border-radius: 28%;
   background: linear-gradient(160deg, var(--banner-card-a), var(--banner-card-b));
   border: 1px solid var(--banner-card-border);
@@ -175,13 +236,13 @@ html[data-theme='dark'] .pf {
 }
 
 .pcard__tile .player-avatar {
-  width: 8rem;
-  height: 8rem;
+  width: 6.8rem;
+  height: 6.8rem;
   filter: var(--banner-mark-shadow);
 }
 
 .pcard__tile .home-banner__glyph {
-  font-size: 5rem;
+  font-size: 4.2rem;
 }
 
 .pcard__art--btn:hover .pcard__tile,
@@ -191,13 +252,13 @@ html[data-theme='dark'] .pf {
 
 .pcard__edit {
   position: absolute;
-  right: -0.55rem;
-  bottom: -0.55rem;
+  right: -0.5rem;
+  bottom: -0.5rem;
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 2.8rem;
-  height: 2.8rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   background: var(--banner-ink);
   color: var(--banner-mid);
@@ -205,38 +266,24 @@ html[data-theme='dark'] .pf {
 }
 
 .pcard__edit svg {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1rem;
+  height: 1rem;
 }
 
-.pcard__text {
+.pcard__id {
+  grid-area: id;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.6rem;
   min-width: 0;
-}
-
-.pcard__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.82rem;
-  font-weight: 750;
-  color: var(--banner-faint);
-  text-decoration: none;
-}
-
-.pcard__back:hover,
-.pcard__back:focus-visible {
-  color: var(--banner-ink);
-  outline: none;
+  padding-bottom: 0.2rem;
 }
 
 .pcard__name {
-  margin: 0.2rem 0 0;
+  margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 0.95;
@@ -244,24 +291,34 @@ html[data-theme='dark'] .pf {
   overflow-wrap: anywhere;
 }
 
+/* What they wear and where they stand, on one line under the name. */
+.pcard__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+}
+
+.pcard__chips > .pcard__title,
+.pcard__chips > .pcard-plus {
+  margin: 0;
+}
+
 .pcard__head {
-  margin: 0.45rem 0 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.25rem, 2.3vw, 1.65rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: var(--banner-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--banner-muted);
 }
 
 .pcard__hot {
   color: var(--banner-accent-ink);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .pcard__sub {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.45;
   color: var(--banner-muted);
@@ -272,13 +329,11 @@ html[data-theme='dark'] .pf {
   animation: none;
 }
 
-.pcard__race {
-  width: min(100%, 34rem);
-  margin-top: 0.4rem;
-}
-
 .pcard__acts {
-  margin-top: 0.35rem;
+  grid-area: acts;
+  margin: 0;
+  padding-bottom: 0.3rem;
+  flex-wrap: nowrap;
 }
 
 .pcard__arrow {
@@ -287,22 +342,27 @@ html[data-theme='dark'] .pf {
   margin-left: 0.45rem;
 }
 
-/* The week, the month and all time, down the right; the one on screen lit. */
-.pcard__ladder {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
+/* A tile a period, then the games played and the streak: one row on a desk. */
+.pcard__tiles {
+  grid-area: tiles;
+  display: grid;
+  grid-template-columns: repeat(var(--pcard-tiles, 5), minmax(0, 1fr));
+  gap: 0.75rem;
+  align-self: stretch;
 }
 
-.pcard__period {
+.pcard__ranks,
+.pcard__more {
+  display: contents;
+}
+
+.pcard__stat {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 4.1rem;
-  box-sizing: border-box;
-  padding: 0.7rem 1rem;
-  border-radius: 1rem;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem;
   background: var(--banner-chip-bg);
   border: 1px solid var(--banner-chip-border);
   color: var(--banner-ink);
@@ -310,107 +370,195 @@ html[data-theme='dark'] .pf {
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.pcard__period:hover,
-.pcard__period:focus-visible {
+.pcard__stat--link:hover,
+.pcard__stat--link:focus-visible {
   background: var(--banner-chip-hover);
   outline: none;
 }
 
-.pcard__period--on {
+.pcard__stat--on {
   background: color-mix(in srgb, var(--hero-accent) 24%, var(--banner-chip-bg));
   border-color: color-mix(in srgb, var(--hero-accent) 62%, transparent);
 }
 
-.pcard__period-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.pcard__period-label {
-  font-size: 0.66rem;
+.pcard__stat-label {
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--banner-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.pcard__period--on .pcard__period-label {
+.pcard__stat--on .pcard__stat-label {
   color: var(--banner-accent-ink);
 }
 
-.pcard__period-sub {
-  font-size: 0.82rem;
-  font-weight: 650;
-  color: var(--banner-muted);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.pcard__period-figure {
-  flex: none;
+.pcard__stat-figure {
   font-family: var(--font-display);
-  font-size: 1.9rem;
+  font-size: 1.75rem;
   font-weight: 800;
+  line-height: 1;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.pcard__period--none .pcard__period-figure {
+.pcard__stat-figure small {
   font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--banner-muted);
+}
+
+.pcard__stat--none .pcard__stat-figure {
+  font-size: 1rem;
   font-weight: 750;
   letter-spacing: 0;
+  line-height: 1.75rem;
   color: var(--banner-faint);
 }
 
-.pcard__strip {
-  align-items: center;
-  gap: 0.5rem 1.8rem;
+/* The trophies and the hangar, side by side along the foot. */
+.pcard__shelves {
+  grid-area: shelves;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 0.75rem;
 }
 
-.pcard__fact b {
+.pcard__shelves > :only-child {
+  grid-column: 1 / -1;
+}
+
+.pcard-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.8rem 0.95rem 0.9rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--banner-chip-bg) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--banner-chip-border) 70%, transparent);
+}
+
+.pcard-shelf__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pcard-shelf__title {
   font-family: var(--font-display);
+  font-size: 0.95rem;
   font-weight: 800;
-  font-variant-numeric: tabular-nums;
   color: var(--banner-ink);
 }
 
-/*
- * The trophy case along the foot of the card: a tile for each kind of trophy won, tinted to its own colour
- * as the shelf's plinths are, with how many on a tag at its corner.
- */
-.pcard-case {
-  position: relative;
-  z-index: 1;
+.pcard-shelf__count {
+  font-variant-numeric: tabular-nums;
+}
+
+.pcard-shelf__all {
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--banner-accent-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pcard-shelf__all:hover,
+.pcard-shelf__all:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  outline: none;
+}
+
+.pcard-shelf__row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.7rem 1.1rem;
-  padding: 0 2.2rem 1.35rem;
-}
-
-.pcard-case__label {
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--banner-faint);
-}
-
-.pcard-case__row {
-  display: flex;
-  flex-wrap: wrap;
   gap: 0.55rem;
   margin: 0;
   padding: 0;
   list-style: none;
+  min-width: 0;
 }
 
+.pcard-shelf__words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  margin-left: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--banner-muted);
+}
+
+.pcard-shelf__words span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pcard-shelf__skin a {
+  display: block;
+  width: 3.3rem;
+  height: 3.3rem;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background: #0b1028;
+  transition: transform 0.15s ease;
+}
+
+.pcard-shelf__skin a:hover,
+.pcard-shelf__skin a:focus-visible {
+  transform: translateY(-2px);
+}
+
+.pcard-shelf__skin svg,
+.pcard-shelf__skin img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pcard-shelf__more {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.3rem;
+  height: 3.3rem;
+  border-radius: 0.8rem;
+  background: var(--banner-chip-bg);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--banner-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pcard-shelf__more-narrow,
+.pcard-shelf__more--narrow {
+  display: none;
+}
+
+.pcard__strip {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 1.8rem;
+}
+
+/* A trophy's tile, tinted to its own colour as the shelf's plinths are, with how many on a tag at its corner. */
 .pcard-case__tile {
   position: relative;
   display: grid;
   place-items: center;
+  flex: none;
   width: 3.3rem;
   height: 3.3rem;
   box-sizing: border-box;
@@ -426,7 +574,6 @@ html[data-theme='dark'] .pf {
   border-color: color-mix(in srgb, var(--banner-ink) 30%, transparent);
 }
 
-/* The shelf's art, a little smaller than on the shelf. */
 .pcard-case__tile .trophy-art svg {
   width: 2.3rem;
   height: 2.3rem;
@@ -449,18 +596,203 @@ html[data-theme='dark'] .pf {
   font-variant-numeric: tabular-nums;
 }
 
-.pcard-case__all {
-  font-size: 0.85rem;
-  font-weight: 750;
-  color: var(--banner-ink);
-  text-decoration: none;
-  white-space: nowrap;
+/* A narrower desk: the actions under the tag; the tiles in two rows past five. */
+@media (max-width: 64rem) {
+  .pcard__main {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'art id'
+      'art acts'
+      'tiles tiles'
+      'shelves shelves';
+    row-gap: 0.9rem;
+  }
+
+  .pcard__acts {
+    padding: 0;
+  }
 }
 
-.pcard-case__all:hover,
-.pcard-case__all:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+@media (max-width: 52rem) {
+  .pcard__shelves {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pcard__tiles {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pcard__ranks,
+  .pcard__more {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+}
+
+/* A phone: one centred column. */
+@media (max-width: 36rem) {
+  .home-banner.pcard {
+    --pcard-band: 7.4rem;
+  }
+
+  .pcard__main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'art'
+      'id'
+      'tiles'
+      'shelves'
+      'acts';
+    justify-items: center;
+    gap: 0.75rem;
+    padding: calc(var(--pcard-band) - 4rem) 1rem 1.1rem;
+  }
+
+  .pcard__tile {
+    width: 6.75rem;
+    height: 6.75rem;
+  }
+
+  .pcard__tile .player-avatar {
+    width: 4.8rem;
+    height: 4.8rem;
+  }
+
+  .pcard__tile .home-banner__glyph {
+    font-size: 3rem;
+  }
+
+  .pcard__edit {
+    right: -0.4rem;
+    bottom: -0.4rem;
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+
+  .pcard__edit svg {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .pcard__id {
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .pcard__name {
+    font-size: clamp(2rem, 11vw, 2.8rem);
+  }
+
+  .pcard__name--sign svg {
+    display: block;
+    margin-inline: auto;
+  }
+
+  .pcard__chips {
+    justify-content: center;
+  }
+
+  .pcard__tiles,
+  .pcard__shelves,
+  .pcard__acts {
+    justify-self: stretch;
+  }
+
+  .pcard__ranks,
+  .pcard__more {
+    gap: 0.45rem;
+  }
+
+  .pcard__stat {
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.6rem 0.4rem;
+    text-align: center;
+  }
+
+  .pcard__stat-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
+
+  .pcard__stat-figure {
+    font-size: 1.35rem;
+  }
+
+  .pcard__stat-figure small {
+    font-size: 0.8rem;
+  }
+
+  .pcard__stat--none .pcard__stat-figure {
+    font-size: 0.85rem;
+    line-height: 1.35rem;
+  }
+
+  .pcard-shelf {
+    padding: 0.65rem 0.75rem 0.75rem;
+    gap: 0.55rem;
+  }
+
+  .pcard-shelf__all-long {
+    display: none;
+  }
+
+  .pcard-shelf__row {
+    gap: 0.4rem;
+  }
+
+  .pcard-case__tile,
+  .pcard-shelf__skin a,
+  .pcard-shelf__more {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.75rem;
+  }
+
+  .pcard-case__tile .trophy-art svg {
+    width: 1.95rem;
+    height: 1.95rem;
+  }
+
+  .pcard-shelf__words {
+    font-size: 0.75rem;
+  }
+
+  .pcard-shelf__skin:nth-child(6) {
+    display: none;
+  }
+
+  .pcard-shelf__more--narrow {
+    display: grid;
+  }
+
+  .pcard-shelf__more-wide {
+    display: none;
+  }
+
+  .pcard-shelf__more-narrow {
+    display: inline;
+  }
+
+  .pcard__acts > * {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .pcard__strip {
+    justify-content: center;
+    padding: 0.8rem 1.1rem;
+    font-size: 0.82rem;
+  }
+
+  /* How your rank works is its own page now, so a phone keeps the link (home.css hides the banner's). */
+  .pcard__strip .home-banner__standing-link {
+    display: inline;
+  }
 }
 
 /* ---------- panels ---------- */
@@ -1664,18 +1996,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 /* ---------- narrower screens ---------- */
 
 @media (max-width: 64rem) {
-  .pcard__main {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  /* A column a period: three, or four once the season's row is there. */
-  .pcard__ladder {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-  }
-
   .pbest {
     grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
   }
@@ -1706,145 +2026,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 @media (max-width: 36rem) {
   .pf {
     gap: 1.1rem;
-  }
-
-  /* On a phone the character and the tag share the top row; everything else runs full width under them. */
-  .pcard__main {
-    grid-template-columns: 5.5rem minmax(0, 1fr);
-    gap: 0.35rem 1rem;
-    padding: 1.25rem 1.1rem 1.2rem;
-  }
-
-  .pcard__art {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    align-self: center;
-  }
-
-  .pcard__tile {
-    width: 5.5rem;
-    height: 5.5rem;
-  }
-
-  .pcard__tile .player-avatar {
-    width: 3.9rem;
-    height: 3.9rem;
-  }
-
-  .pcard__tile .home-banner__glyph {
-    font-size: 2.6rem;
-  }
-
-  .pcard__edit {
-    right: -0.45rem;
-    bottom: -0.45rem;
-    width: 2.2rem;
-    height: 2.2rem;
-  }
-
-  .pcard__edit svg {
-    width: 0.9rem;
-    height: 0.9rem;
-  }
-
-  .pcard__text {
-    display: contents;
-  }
-
-  .pcard__text > .home-banner__kicker-row {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: end;
-  }
-
-  .pcard__name {
-    grid-column: 2;
-    grid-row: 2;
-    align-self: start;
-    margin: 0;
-    font-size: clamp(2rem, 11vw, 2.8rem);
-  }
-
-  .pcard__head,
-  .pcard__sub,
-  .pcard__race,
-  .pcard__acts {
-    grid-column: 1 / -1;
-  }
-
-  .pcard__head {
-    margin-top: 0.7rem;
-  }
-
-  .pcard__acts .home-banner__cta {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .pcard__ladder {
-    gap: 0.45rem;
-    margin-top: 0.5rem;
-  }
-
-  .pcard__period {
-    flex-direction: column-reverse;
-    align-items: flex-start;
-    justify-content: flex-end;
-    gap: 0.1rem;
-    min-height: 0;
-    padding: 0.6rem 0.7rem;
-  }
-
-  .pcard__period-sub {
-    display: none;
-  }
-
-  .pcard__period-figure {
-    font-size: 1.35rem;
-  }
-
-  .pcard__period--none .pcard__period-figure {
-    font-size: 0.85rem;
-    line-height: 1.6rem;
-  }
-
-  .pcard__strip {
-    gap: 0.35rem 1.1rem;
-    padding: 0.8rem 1.1rem;
-    font-size: 0.82rem;
-  }
-
-  .pcard-case {
-    gap: 0.6rem 0.9rem;
-    padding: 0 1.1rem 1.1rem;
-  }
-
-  .pcard-case__label {
-    flex-basis: 100%;
-  }
-
-  .pcard-case__row {
-    gap: 0.5rem;
-  }
-
-  .pcard-case__tile {
-    width: 2.75rem;
-    height: 2.75rem;
-    border-radius: 0.85rem;
-  }
-
-  .pcard-case__tile .trophy-art svg {
-    width: 1.95rem;
-    height: 1.95rem;
-  }
-
-  /* How your rank works is its own page now, so a phone keeps the link (home.css hides the banner's). */
-  .pcard__strip .home-banner__standing-link {
-    display: inline;
-  }
-
-  .pcard__fact-when {
-    display: none;
   }
 
   .pcard-panel {
@@ -1878,7 +2059,8 @@ html[data-theme='dark'] .pbest__flag--ten {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pcard__tile {
+  .pcard__tile,
+  .pcard-shelf__skin a {
     transition: none;
   }
 }
@@ -1890,11 +2072,10 @@ html[data-theme='dark'] .pbest__flag--ten {
   box-sizing: border-box;
 }
 
-/* Where the race line or the trophy case goes on the card (PlayerCard.tsx): no room of its own when empty, but
+/* Where the shelves go on the card (PlayerCard.tsx): no room of its own when empty, but
    the room held for it (an inline min-height) while what fills it loads. */
 .pcard__slot {
   align-self: stretch;
-  /* Full width, where the card's words are a grid (a phone): as the race line itself is (.pcard__race). */
   grid-column: 1 / -1;
 }
 

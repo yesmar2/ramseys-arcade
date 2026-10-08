@@ -5,7 +5,7 @@ import { PlayerName } from './PlayerName'
 import { PlusMark } from './PlusMark'
 import { CardBackdrop } from './prizes/PrizeArt'
 import { SignArt } from './prizes/SignArt'
-import { navigate, plusHref, rankHref } from '../hooks/useHashRoute'
+import { gameHref, navigate, plusHref, rankHref } from '../hooks/useHashRoute'
 import { usePlusMember } from '../lib/plus'
 import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
 import { inkOn } from '../lib/color'
@@ -17,7 +17,11 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { ordinal, periodWord, talksInPlaces } from '../lib/profileMath'
-import { metalTone, summarizeTrophies, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
+import { getGame } from '../data/games'
+import { chosenSkin, SKINS, type Skin } from '../lib/skins'
+import { useHangarSkins } from './Hangar'
+import { RewardArt } from './season/RewardArt'
+import { metalTone, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { BackChevronIcon } from './PageBackLink'
 import { useHeldHeight } from '../lib/heldShape'
 import { useSeason } from '../lib/season'
@@ -27,82 +31,6 @@ import { secretByNumber, SECRETS } from '../lib/secrets'
 
 function Skel({ w }: { w: string }) {
   return <span className="skel-line pcard__skel" style={{ '--skel-w': w } as CSSProperties} aria-hidden="true" />
-}
-
-function Flag() {
-  return (
-    <svg className="hero-race__flag" viewBox="0 0 12 12" aria-hidden="true">
-      <path d="M2.5 11V1.5" />
-      <path d="M2.5 2h6.8L7.6 4.4l1.7 2.4H2.5z" />
-    </svg>
-  )
-}
-
-type Mark = { name: string; score: number; rank: number; me: boolean }
-
-/**
- * The players around a place in the top ten, on the site's race line: the
- * top of the three on the right, and the stretch between the middle and the
- * top lit in the player's colour. Chasing, the player is the middle; on top,
- * the player is the right end, with second and third behind. The dots sit by
- * the points between them, but only the names are written: the points are on
- * How your rank works.
- */
-function PlacesLine({ name, isSelf, data }: { name: string; isSelf: boolean; data: GlobalRankResult }) {
-  const rank = data.rank
-  if (rank == null) return null
-  const around = neighboursOf(data)
-  const me: Mark = { name, score: data.score, rank, me: true }
-  const at = (r: number): Mark | null => {
-    const n = around.find((x) => x.rank === r)
-    return n ? { name: n.name, score: n.score, rank: n.rank, me: false } : null
-  }
-  const hi = rank === 1 ? me : at(rank - 1)
-  const mid = rank === 1 ? at(2) : me
-  const lo = rank === 1 ? at(3) : at(rank + 1)
-  if (!hi || !mid) return null
-
-  const span = lo ? hi.score - lo.score : 0
-  const raw = lo && span > 0 ? 8 + (84 * (mid.score - lo.score)) / span : 50
-  const x = lo ? { lo: 8, mid: Math.min(60, Math.max(34, raw)), hi: 92 } : { lo: 0, mid: 22, hi: 88 }
-  const gap = hi.score - mid.score
-  const you = isSelf ? 'you' : name
-  const said = hi.me
-    ? gap > 0
-      ? `${isSelf ? 'You lead' : `${name} leads`}, with ${mid.name} second${lo ? ` and ${lo.name} third` : ''}`
-      : `${isSelf ? 'You' : name} and ${mid.name} are tied at the top${lo ? `, with ${lo.name} third` : ''}`
-    : `${gap > 0 ? `${hi.name} is just ahead of ${you}` : `${hi.name} is tied with ${you}`}${lo ? `, ${lo.name} just behind` : ''}`
-
-  const dot = (m: Mark, left: number, slot: 'hi' | 'mid' | 'lo', edge: string) => {
-    const who = m.me ? 'you' : slot === 'lo' ? 'trail' : 'rival'
-    return (
-      <>
-        <span className={`hero-race__dot hero-race__dot--${who}`} style={{ left: `${left}%` }} />
-        <span
-          className={`hero-race__label hero-race__label--${slot === 'mid' ? 'under' : 'over'} hero-race__label--${who}${edge}`}
-          style={{ left: `${left}%` }}
-        >
-          {slot === 'hi' && m.rank === 1 ? <Flag /> : null}
-          {m.name}
-        </span>
-      </>
-    )
-  }
-
-  return (
-    <div className="hero-race pcard__race" role="img" aria-label={`${said}.`}>
-      <span className="hero-race__track" />
-      {gap > 0 ? <span className="hero-race__lit" style={{ left: `${x.mid}%`, width: `${x.hi - x.mid}%` }} /> : null}
-      {lo ? dot(lo, x.lo, 'lo', ' hero-race__label--start') : null}
-      {dot(hi, x.hi, 'hi', ' hero-race__label--end')}
-      {dot(mid, x.mid, 'mid', lo ? ' hero-race__label--end' : '')}
-      {gap > 0 ? (
-        <span className="hero-race__label hero-race__label--under hero-race__label--gap" style={{ left: `${(x.mid + x.hi) / 2}%` }}>
-          {hi.me ? (isSelf ? 'You lead' : `${name} leads`) : `Next: ${hi.name}`}
-        </span>
-      ) : null}
-    </div>
-  )
 }
 
 /** A kind of trophy as the case draws it, in the shelf's line art. */
@@ -135,11 +63,11 @@ function caseWords(kind: TrophyCaseKind, isSelf: boolean): string {
 }
 
 /**
- * The trophy case along the foot of the card: every kind of trophy the player has won, a tile each in its
- * own colour with how many, the proudest first, and the way down to the shelf that has them all. On your
- * own card, a question mark for the secrets you haven't found (lib/secrets.ts).
+ * The trophy shelf along the card's foot: the proudest few kinds of trophy, each a tile in its own colour
+ * with how many, the secrets found as one tile, in a word or two, and the way down to the shelf that has
+ * them all. On your own card with nothing won yet, a question mark for the secrets still to find.
  */
-function TrophyCase({
+function TrophyShelf({
   trophies,
   isSelf,
   href,
@@ -151,15 +79,27 @@ function TrophyCase({
   onOpen: (e: MouseEvent<HTMLAnchorElement>) => void
 }) {
   const kinds = trophyCase(trophies)
-  const hidden = isSelf ? SECRETS.length - kinds.filter((k) => k.period === 'secret').length : 0
-  if (!kinds.length && hidden <= 0) return null
-  const total = trophies.length
-  const hiddenWords = hidden === 1 ? 'A secret still hidden' : `${hidden} secrets still hidden`
+  const won = kinds.filter((k) => k.period !== 'secret')
+  const secrets = kinds.filter((k) => k.period === 'secret')
+  const shown = won.slice(0, 3)
+  const secretWords = isSelf
+    ? `${secrets.length} of ${SECRETS.length} secrets`
+    : secrets.length === 1
+      ? 'A secret trophy'
+      : `${secrets.length} secret trophies`
+  const lead = shown[0] ? caseWords(shown[0], isSelf) : null
   return (
-    <div className="pcard-case">
-      <span className="pcard-case__label">Trophy case</span>
-      <ul className="pcard-case__row">
-        {kinds.map((kind) => {
+    <div className="pcard-shelf">
+      <div className="pcard-shelf__head">
+        <span className="pcard-shelf__title">
+          Trophies<span className="pcard-shelf__count"> · {trophies.length}</span>
+        </span>
+        <a className="pcard-shelf__all" href={href} onClick={onOpen}>
+          See all<span className="pcard-shelf__all-long"> trophies</span> ›
+        </a>
+      </div>
+      <ul className="pcard-shelf__row">
+        {shown.map((kind) => {
           const words = caseWords(kind, isSelf)
           return (
             <li key={kind.key} className={`pcard-case__tile trophy-tone--${trophyTone(kind.period, kind.rank)}`} title={words}>
@@ -173,21 +113,92 @@ function TrophyCase({
             </li>
           )
         })}
-        {hidden > 0 ? (
-          <li className="pcard-case__tile pcard-case__tile--hidden trophy-tone--hidden" title={hiddenWords}>
-            <SecretUnknown size="md" />
-            {hidden > 1 ? (
+        {secrets.length ? (
+          <li className={`pcard-case__tile trophy-tone--${trophyTone('secret', 0)}`} title={secretWords}>
+            <CaseArt kind={secrets[0]} />
+            {secrets.length > 1 ? (
               <span className="pcard-case__count" aria-hidden="true">
-                ×{hidden}
+                ×{secrets.length}
               </span>
             ) : null}
-            <span className="visually-hidden">{hiddenWords}</span>
+            <span className="visually-hidden">{secretWords}</span>
+          </li>
+        ) : null}
+        {!kinds.length ? (
+          <li className="pcard-case__tile pcard-case__tile--hidden trophy-tone--hidden" title={`${SECRETS.length} secrets to find`}>
+            <SecretUnknown size="md" />
+          </li>
+        ) : null}
+        <li className="pcard-shelf__words" aria-hidden="true">
+          {kinds.length ? (
+            <>
+              {lead ? <span>{lead}</span> : null}
+              {secrets.length ? <span>{secretWords}</span> : null}
+            </>
+          ) : (
+            <span>No trophies yet</span>
+          )}
+        </li>
+      </ul>
+    </div>
+  )
+}
+
+/** How many skins the hangar shelf shows before its "+N": six, five on a phone (the sixth hides there). */
+const SHELF_SKINS = 6
+
+/**
+ * The hangar shelf beside it: the skins the player has won, the ones they play in first (your own card's
+ * picks, lib/skins.ts), then the newest, and the way down to the hangar's bays (components/Hangar.tsx).
+ */
+function HangarShelf({ skins, isSelf }: { skins: readonly string[]; isSelf: boolean }) {
+  const order = (s: Skin) => (isSelf && chosenSkin(s.game) === s.id ? -1000 : 0) - SKINS.indexOf(s)
+  const owned = SKINS.filter((s) => skins.includes(s.id)).sort((a, b) => order(a) - order(b))
+  const shown = owned.slice(0, SHELF_SKINS)
+  const rest = owned.length - shown.length
+  // On a phone the sixth is hidden, so it counts among the rest there.
+  const restNarrow = owned.length - Math.min(owned.length, SHELF_SKINS - 1)
+  const toHangar = (e: MouseEvent<HTMLAnchorElement>) => {
+    const hangar = document.getElementById('hangar')
+    if (!hangar) return
+    e.preventDefault()
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    hangar.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+  }
+  return (
+    <div className="pcard-shelf pcard-shelf--hangar">
+      <div className="pcard-shelf__head">
+        <span className="pcard-shelf__title">
+          Hangar
+          <span className="pcard-shelf__count">
+            {' '}
+            · {owned.length}
+            <span className="pcard-shelf__all-long"> {owned.length === 1 ? 'skin' : 'skins'}</span>
+          </span>
+        </span>
+        <a className="pcard-shelf__all" href="#hangar" onClick={toHangar}>
+          See all<span className="pcard-shelf__all-long"> skins</span> ›
+        </a>
+      </div>
+      <ul className="pcard-shelf__row">
+        {shown.map((skin) => {
+          const game = getGame(skin.game)
+          const label = `${skin.name}${game ? `, ${game.name}` : ''}`
+          return (
+            <li key={skin.id} className="pcard-shelf__skin">
+              <a href={gameHref(skin.game)} title={label} aria-label={label}>
+                <RewardArt reward={{ kind: 'skin', id: skin.id, name: skin.name }} size={52} />
+              </a>
+            </li>
+          )
+        })}
+        {restNarrow > 0 ? (
+          <li className={`pcard-shelf__more${rest > 0 ? '' : ' pcard-shelf__more--narrow'}`} aria-label={`${restNarrow} more`}>
+            <span className="pcard-shelf__more-wide">+{rest}</span>
+            <span className="pcard-shelf__more-narrow">+{restNarrow}</span>
           </li>
         ) : null}
       </ul>
-      <a className="pcard-case__all" href={href} onClick={onOpen}>
-        {total === 0 ? 'See the shelf' : total === 1 ? 'See the trophy' : `See all ${total} trophies`} ›
-      </a>
     </div>
   )
 }
@@ -277,13 +288,12 @@ function standing({
 }
 
 /**
- * The top of a player's page: the card. The character big on the left, the
- * tag, where they stand this period and what's next, on a line; the week, the
- * month and all time down the right; and along the bottom what they've
- * collected. In the top ten it talks about the players around them by name;
- * below it, about the place and how many are behind it. The points behind a
- * rank are one link away, on How your rank works. Washed in the character's
- * colour, like every banner on the site.
+ * The top of a player's page: the card. Their card theme from the prize counter in a band across the top
+ * (or their colour, without one), the character over it, and beside it the tag with what they wear and
+ * where they stand. Under them a tile a period, lit for the one on screen, how many games they've played
+ * and, on your own card, your dailies streak; along the foot two shelves, the trophies and the hangar, a
+ * few of each and the way down to them all. The points behind a rank are one link away, on How your rank
+ * works.
  */
 export function PlayerCard({
   name,
@@ -300,7 +310,7 @@ export function PlayerCard({
   actions,
   backHref,
   howHref,
-  extra,
+  stats,
   avatarId,
 }: {
   name: string
@@ -321,8 +331,8 @@ export function PlayerCard({
   backHref?: string
   /** How this player's rank works: their own page of the points behind it. */
   howHref: string
-  /** One more fact along the card's foot: on your own, the way to your stats. */
-  extra?: ReactNode
+  /** On your own card: your dailies streak, and the way to your stats. */
+  stats?: { streak: number; href: string } | null
   /** The player's avatar string, which carries what they wear from the prize counter: a card theme, a title, a name style, the neon sign. */
   avatarId?: string | null
 }) {
@@ -335,19 +345,18 @@ export function PlayerCard({
   const title = prizeById(wornPrize(look, 'title'))
   const sign = wornPrize(look, 'sign')
   const member = usePlusMember(name)
+  const skins = useHangarSkins(name, isSelf)
   const word = periodWord(period)
-  // A Season row under all time while the season has standings (and whenever the card is the season's).
+  // A Season tile after all time while the season has standings (and whenever the card is the season's).
   const withSeason = seasonHasStandings(useSeason().season) || period === 'season'
   const periods: readonly LeaderboardPeriod[] = withSeason ? [...VISIBLE_LEADERBOARD_PERIODS, 'season'] : VISIBLE_LEADERBOARD_PERIODS
   const said = loading ? null : standing({ name, isSelf, period, periods, ranks, data, where })
-  const rank = data.rank
   const placed = Object.keys(data.byGame).length
-  const inPlaces = rank != null && talksInPlaces(rank, data.totalPlayers)
-  const summary = trophies ? summarizeTrophies(trophies) : null
-  // The race line (a top-ten player's) and the trophy case come with their asks, each the player's own: their
-  // room is held while those load when this device saw them on this card before (lib/heldShape.ts).
-  const raceHeld = useHeldHeight<HTMLDivElement>(`pcard-race-${name}`, loading)
-  const caseHeld = useHeldHeight<HTMLDivElement>(`pcard-case-${name}`, trophies === null)
+  // The shelves come with their asks: their room is held while those load when this device saw them on this
+  // card before (lib/heldShape.ts).
+  const shelvesHeld = useHeldHeight<HTMLDivElement>(`pcard-shelves-${name}`, trophies === null || skins === null)
+  const trophyShelf = trophies && (trophies.length || isSelf)
+  const hangarShelf = skins && skins.some((id) => SKINS.some((s) => s.id === id))
 
   const hrefFor = (p: LeaderboardPeriod) => rankHref(isSelf ? undefined : name, p)
   const go = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -383,11 +392,14 @@ export function PlayerCard({
       style={style}
       aria-label={isSelf ? 'Your player card' : `${name}'s player card`}
     >
-      {theme ? (
-        <>
-          <CardBackdrop className="pcard__theme" theme={theme} width={1600} height={720} scale={1.7} />
-          <span className="pcard__theme-shade" aria-hidden="true" />
-        </>
+      <div className="pcard__band" aria-hidden="true">
+        {theme ? <CardBackdrop className="pcard__theme" theme={theme} width={1600} height={480} scale={1.4} /> : null}
+      </div>
+      {backHref ? (
+        <a className="pcard__back" href={backHref}>
+          <BackChevronIcon size={16} />
+          Standings
+        </a>
       ) : null}
       <div className="pcard__main">
         {onArtClick ? (
@@ -399,16 +411,7 @@ export function PlayerCard({
             {tile}
           </span>
         )}
-        <div className="pcard__text">
-          <div className="home-banner__kicker-row">
-            {backHref ? (
-              <a className="pcard__back" href={backHref}>
-                <BackChevronIcon size={16} />
-                Standings
-              </a>
-            ) : null}
-            <p className="home-banner__kicker">{isSelf ? 'Your player card' : 'Player card'}</p>
-          </div>
+        <div className="pcard__id">
           {sign ? (
             <h1 className="pcard__name pcard__name--sign" aria-label={name}>
               <SignArt sign={sign} name={name} width={340} wires={false} />
@@ -418,74 +421,79 @@ export function PlayerCard({
               <PlayerName name={name} style={wornPrize(look, 'name')} />
             </h1>
           )}
-          {title ? <span className={`prize-plate prize-plate--${plateTier(title)} pcard__title`}>{title.name}</span> : null}
-          {member ? (
-            // A member's card says so, and where Plus is: the way someone hears of it from a player they look up.
-            <a className="pcard-plus" href={plusHref()}>
-              <PlusMark name={name} />
-              {isSelf ? 'You’re on Plus' : 'Plus member'}
-            </a>
-          ) : null}
-          <p className="pcard__head">{said ? said.head : <Skel w="16ch" />}</p>
-          <p className="pcard__sub">{said ? said.sub : <Skel w="24ch" />}</p>
-          {/* Past the top ten there is no line: the whole-board bar is on How your rank works. */}
-          <div className="pcard__slot" ref={raceHeld.ref} style={raceHeld.style}>
-            {!loading && inPlaces ? <PlacesLine name={name} isSelf={isSelf} data={data} /> : null}
-          </div>
-          {actions ? <div className="home-banner__acts pcard__acts">{actions}</div> : null}
-        </div>
-        <nav className="pcard__ladder" aria-label={isSelf ? 'Your rank by period' : `${name}'s rank by period`}>
-          {periods.map((p) => {
-            const row = ranks[p] ?? (p === period && !loading ? data : null)
-            const on = p === period
-            const ranked = row?.rank != null
-            return (
-              <a
-                key={p}
-                className={`pcard__period${on ? ' pcard__period--on' : ''}${row && !ranked ? ' pcard__period--none' : ''}`}
-                href={hrefFor(p)}
-                aria-current={on ? 'true' : undefined}
-                onClick={(e) => go(e, hrefFor(p))}
-              >
-                <span className="pcard__period-text">
-                  <span className="pcard__period-label">{PERIOD_LABELS[p]}</span>
-                  {/* Just the place, on the right; a word under the label only when there isn't one. */}
-                  {row && !ranked ? (
-                    <span className="pcard__period-sub">{p === 'all' ? 'No runs yet' : `No runs ${periodWord(p)}`}</span>
-                  ) : null}
-                </span>
-                <span className="pcard__period-figure">
-                  {!row ? <Skel w="3ch" /> : ranked ? `#${row.rank!.toLocaleString()}` : 'Not yet'}
-                </span>
+          <div className="pcard__chips">
+            {title ? <span className={`prize-plate prize-plate--${plateTier(title)} pcard__title`}>{title.name}</span> : null}
+            {member ? (
+              // A member's card says so, and where Plus is: the way someone hears of it from a player they look up.
+              <a className="pcard-plus" href={plusHref()}>
+                <PlusMark name={name} />
+                {isSelf ? 'You’re on Plus' : 'Plus member'}
               </a>
-            )
-          })}
-        </nav>
-      </div>
-      <div className="pcard__slot" ref={caseHeld.ref} style={caseHeld.style}>
-        {trophies && (trophies.length || isSelf) ? (
-          <TrophyCase trophies={trophies} isSelf={isSelf} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
-        ) : null}
+            ) : null}
+            <span className="pcard__head">{said ? said.head : <Skel w="16ch" />}</span>
+          </div>
+          {said && data.rank == null ? <p className="pcard__sub">{said.sub}</p> : null}
+        </div>
+        {actions ? <div className="home-banner__acts pcard__acts">{actions}</div> : null}
+        <div className="pcard__tiles" style={{ '--pcard-tiles': periods.length + 1 + (stats ? 1 : 0) } as CSSProperties}>
+          <nav className="pcard__ranks" aria-label={isSelf ? 'Your rank by period' : `${name}'s rank by period`}>
+            {periods.map((p) => {
+              const row = ranks[p] ?? (p === period && !loading ? data : null)
+              const on = p === period
+              const ranked = row?.rank != null
+              return (
+                <a
+                  key={p}
+                  className={`pcard__stat pcard__stat--link${on ? ' pcard__stat--on' : ''}${row && !ranked ? ' pcard__stat--none' : ''}`}
+                  href={hrefFor(p)}
+                  aria-current={on ? 'true' : undefined}
+                  onClick={(e) => go(e, hrefFor(p))}
+                >
+                  <span className="pcard__stat-label">{PERIOD_LABELS[p]}</span>
+                  <b className="pcard__stat-figure">
+                    {!row ? <Skel w="3ch" /> : ranked ? `#${row.rank!.toLocaleString()}` : 'Not yet'}
+                  </b>
+                </a>
+              )
+            })}
+          </nav>
+          <div className="pcard__more">
+            <span className="pcard__stat">
+              <span className="pcard__stat-label">Played {word}</span>
+              <b className="pcard__stat-figure">
+                {loading ? (
+                  <Skel w="4ch" />
+                ) : (
+                  <>
+                    {placed} <small>of {standingsGames(period).length}</small>
+                  </>
+                )}
+              </b>
+            </span>
+            {stats ? (
+              <a className="pcard__stat pcard__stat--link" href={stats.href}>
+                <span className="pcard__stat-label">{stats.streak > 0 ? 'Dailies streak' : 'Your stats'}</span>
+                <b className="pcard__stat-figure">
+                  {stats.streak > 0 ? (
+                    <>
+                      {stats.streak} <small>{stats.streak === 1 ? 'day' : 'days'}</small>
+                    </>
+                  ) : (
+                    <small>See them ›</small>
+                  )}
+                </b>
+              </a>
+            ) : null}
+          </div>
+        </div>
+        <div className="pcard__slot pcard__shelves" ref={shelvesHeld.ref} style={shelvesHeld.style}>
+          {trophyShelf ? (
+            <TrophyShelf trophies={trophies} isSelf={isSelf} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
+          ) : null}
+          {hangarShelf ? <HangarShelf skins={skins} isSelf={isSelf} /> : null}
+        </div>
       </div>
       <div className="home-banner__strip pcard__strip">
-        <span className="pcard__fact">
-          {loading ? (
-            <Skel w="12ch" />
-          ) : (
-            <>
-              Played <b>{placed}</b> of {standingsGames(period).length} games<span className="pcard__fact-when"> {word}</span>
-            </>
-          )}
-        </span>
-        {/* Once there are trophies, the case above has them all. */}
-        {!summary ? (
-          <span className="pcard__fact">
-            <Skel w="10ch" />
-          </span>
-        ) : summary.total === 0 ? (
-          <span className="pcard__fact">No trophies yet</span>
-        ) : null}
-        {extra}
         <a className="home-banner__standing-link" href={howHref}>
           {isSelf ? 'How your rank works' : `How ${name}’s rank works`} ›
         </a>
@@ -493,3 +501,4 @@ export function PlayerCard({
     </section>
   )
 }
+

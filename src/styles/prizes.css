@@ -758,14 +758,8 @@ a.run-tix__total {
   pointer-events: none;
 }
 
-.pcard__theme-shade {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(10, 8, 20, 0.86) 0%, rgba(10, 8, 20, 0.62) 55%, rgba(10, 8, 20, 0.38) 100%);
-}
-
-.pcard--themed > :not(.pcard__theme):not(.pcard__theme-shade) {
+.pcard--themed > .pcard__main,
+.pcard--themed > .pcard__strip {
   position: relative;
   z-index: 1;
 }

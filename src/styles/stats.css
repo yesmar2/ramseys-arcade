@@ -74,34 +74,6 @@ html[data-theme='dark'] .pviews__view--on {
   height: 0.75rem;
 }
 
-/* ---------- the card's ways into your stats ---------- */
-
-/* Its baseline is its words', so it sits on the line with the other facts. */
-.pcard__stats {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  padding: 0.25rem 0.7rem 0.25rem 0.55rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--banner-ink, var(--ink)) 9%, transparent);
-  color: var(--banner-ink, var(--ink));
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.pcard__stats:hover,
-.pcard__stats:focus-visible {
-  background: color-mix(in srgb, var(--banner-ink, var(--ink)) 15%, transparent);
-  outline: none;
-}
-
-.pcard__stats svg {
-  align-self: center;
-  width: 1rem;
-  height: 1rem;
-  flex: none;
-}
-
 .pgames__progress {
   margin-left: auto;
   font-size: 0.88rem;

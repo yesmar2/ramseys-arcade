@@ -54,7 +54,7 @@ function Waiting({ skin, level }: { skin: Skin; level: number }) {
  * The skins a player has won: your own from what you own (lib/tickets.ts), anyone else's from the API.
  * Null while they're asked for.
  */
-function useHangarSkins(name: string, isSelf: boolean): string[] | null {
+export function useHangarSkins(name: string, isSelf: boolean): string[] | null {
   const { owned, loaded } = useTickets()
   const [theirs, setTheirs] = useState<{ name: string; skins: string[] } | null>(null)
   useEffect(() => {

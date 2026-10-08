@@ -20,7 +20,6 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { EMPTY_RANK, useGameBests, usePeriodRanks, useRankFor } from '../hooks/useProfileBoards'
 import { AVATARS_ENABLED, AVATAR_EVENT, avatarWashColor, getLocalAvatarId, resolveAvatar } from '../lib/avatars'
 import { AvatarStudio } from '../components/AvatarStudio'
-import { FlameIcon, StatsIcon } from '../components/chromeIcons'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
@@ -154,17 +153,9 @@ export function RankPage({
   // Someone else's page measures the viewer against them.
   const viewerData = useRankFor(!isSelf ? myName : '', period, groupId)
 
-  // Your own card leads to your stats with your streak, when you have one.
+  // Your own card has your streak, and the way to your stats.
   const mine = useMyStats(period, isSelf && signedIn)
   const streak = mine.data?.stats?.streak.current ?? 0
-  const statsLink =
-    isSelf && signedIn ? (
-      <a className="pcard__fact pcard__stats" href={statsHref()}>
-        {streak > 0 ? <FlameIcon /> : <StatsIcon />}
-        {streak > 0 ? `${streak}-day streak` : 'Your stats'}
-        <span aria-hidden="true">›</span>
-      </a>
-    ) : null
 
   const where = scopeWhere(groupId)
 
@@ -273,7 +264,7 @@ export function RankPage({
               actions={actions}
               backHref={isSelf ? undefined : standingsHref(period)}
               howHref={rankHowHref(isSelf ? undefined : viewedName, period)}
-              extra={statsLink}
+              stats={isSelf && signedIn ? { streak, href: statsHref() } : null}
               avatarId={avatarId}
             />
             </div>
