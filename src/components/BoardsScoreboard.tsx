@@ -1,15 +1,14 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { type CSSProperties } from 'react'
 import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame } from '../data/games'
 import { useScoreboard } from '../hooks/useScoreboard'
 import {
-  focusFromUrl,
   gameBoardHref,
   gamePlayHref,
   leaderboardHref,
   rankHowHref,
   rankHref,
-  ROUTE_EVENT,
+  seasonStandingsHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -33,15 +32,15 @@ import {
   type BoardLine,
   type BoardTop,
   type PeriodCopy,
-  type Standing,
   type YouStanding,
 } from '../lib/scoreboard'
+import { useSeason } from '../lib/season'
+import { seasonFeed, seasonHasStandings, seasonLines, seasonWords, useSeasonStandings } from '../lib/seasonStandings'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
-import { PlayerMark } from './PlayerMark'
-import { PlayerName } from './PlayerName'
 import { SkinMark } from './season/SkinMark'
+import { StandingsList, TrophyIcon, type StandingsFeed } from './StandingsList'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
@@ -51,10 +50,10 @@ import { SkinMark } from './season/SkinMark'
  * place and the score that takes a higher one; then the boards nobody has
  * played yet. It says places and names: how the points add up is on How your
  * rank works, linked beside the standings. The cards under the standings,
- * yours and Where to climb, went at Ramsey's word (2026-09-30).
+ * yours and Where to climb, went at Ramsey's word (2026-09-30). While a
+ * season is on, a Season tab beside the periods shows its standings
+ * (SeasonScoreboard).
  */
-
-const MEDALS = ['gold', 'silver', 'bronze'] as const
 
 function accentOf(slug: string) {
   return resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
@@ -62,18 +61,6 @@ function accentOf(slug: string) {
 
 function nameOf(slug: string) {
   return getGame(slug)?.name ?? slug
-}
-
-function TrophyIcon() {
-  return (
-    <svg className="sb-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M8 21h8" />
-      <path d="M12 17v4" />
-      <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
-      <path d="M17 5h3v1a3 3 0 0 1-3 3" />
-      <path d="M7 5H4v1a3 3 0 0 0 3 3" />
-    </svg>
-  )
 }
 
 function CrownIcon() {
@@ -94,358 +81,65 @@ function ChevronIcon() {
 
 /* ---------- the race ---------- */
 
-function PeriodTabs({ period }: { period: LeaderboardPeriod }) {
+/** The periods' short names, for a phone, where four tabs share the row once the Season's is there. */
+const SHORT_LABELS: Partial<Record<LeaderboardPeriod, string>> = { weekly: 'Week', monthly: 'Month' }
+
+/** The periods, and while a season has standings, the Season tab after them. */
+function PeriodTabs({ active, season }: { active: LeaderboardPeriod | 'season'; season: boolean }) {
+  const label = (p: LeaderboardPeriod) => {
+    const short = season ? SHORT_LABELS[p] : undefined
+    if (!short) return PERIOD_LABELS[p]
+    return (
+      <>
+        <span className="seg__long">{PERIOD_LABELS[p]}</span>
+        <span className="seg__short">{short}</span>
+      </>
+    )
+  }
   return (
     <div
-      className="seg sb-periods"
+      className={`seg sb-periods${season ? ' sb-periods--season' : ''}`}
       role="tablist"
       aria-label="Period"
-      style={{ '--seg-count': VISIBLE_LEADERBOARD_PERIODS.length } as CSSProperties}
+      style={{ '--seg-count': VISIBLE_LEADERBOARD_PERIODS.length + (season ? 1 : 0) } as CSSProperties}
     >
       {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
         <a
           key={p}
           role="tab"
-          aria-selected={p === period}
-          className={`seg__item${p === period ? ' seg__item--active' : ''}`}
+          aria-selected={p === active}
+          className={`seg__item${p === active ? ' seg__item--active' : ''}`}
           href={leaderboardHref(p)}
         >
-          {PERIOD_LABELS[p]}
+          {label(p)}
         </a>
       ))}
-    </div>
-  )
-}
-
-type RowData = { rank: number; name: string; score: number; games: number; avatarId?: string }
-
-function StandingRow({
-  row,
-  leaderScore,
-  you,
-  period,
-  deep = false,
-}: {
-  row: RowData
-  leaderScore: number
-  you: string
-  period: LeaderboardPeriod
-  /** Past the fifth: a phone shows the top five and your own row, not the rest. */
-  deep?: boolean
-}) {
-  const mine = Boolean(you) && row.name === you
-  const medal = MEDALS[row.rank - 1]
-  const width = leaderScore > 0 ? Math.max(2, (row.score / leaderScore) * 100) : 0
-  const cls = [
-    'sb-row',
-    medal ? `sb-row--${medal}` : '',
-    mine ? 'sb-row--you' : '',
-    deep && !mine ? 'sb-row--deep' : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-  return (
-    <li className={cls}>
-      <a className="sb-row__link" href={rankHref(row.name, period)}>
-        <span className="sb-row__ord">{ordinal(row.rank).toUpperCase()}</span>
-        <PlayerMark name={row.name} avatarId={row.avatarId} className="sb-row__mark" />
-        <span className="sb-row__who">
-          <PlayerName className="sb-row__name" name={row.name} avatarId={row.avatarId} />
-          <span className="sb-row__boards">
-            {row.games} {row.games === 1 ? 'game' : 'games'}
-            {mine ? <span className="sb-row__you">You</span> : null}
-          </span>
-        </span>
-        <span className="sb-row__bar" aria-hidden="true">
-          <span style={{ width: `${width}%` }} />
-        </span>
-        <span className="sb-row__pts">
-          {row.score.toLocaleString()}
-          <small> pts</small>
-        </span>
-      </a>
-    </li>
-  )
-}
-
-function OpenRow({ rank }: { rank: number }) {
-  return (
-    <li className="sb-row sb-row--open">
-      <span className="sb-row__link">
-        <span className="sb-row__ord">{ordinal(rank).toUpperCase()}</span>
-        <span className="sb-row__mark sb-row__mark--open" aria-hidden="true" />
-        <span className="sb-row__who">
-          <span className="sb-row__name">Open</span>
-          <span className="sb-row__boards">One run gets you here</span>
-        </span>
-        <span className="sb-row__bar sb-row__bar--open" aria-hidden="true" />
-        <span className="sb-row__pts">–</span>
-      </span>
-    </li>
-  )
-}
-
-/** Players added to the standings each time Show more is pressed. */
-const MORE_STANDINGS = 25
-
-/**
- * The standings: the top ten, and everyone below them a press at a time, in
- * place. There used to be a Rankings page for the rest; this is it now, so a
- * link that asks for the standings (`?focus=standings`) lands here, opened.
- */
-function Standings({
-  period,
-  copy,
-  data,
-  you,
-}: {
-  period: LeaderboardPeriod
-  copy: PeriodCopy
-  data: ReturnType<typeof useScoreboard>
-  you: string
-}) {
-  const { standings, totalPlayers, last, loading } = data
-  const ref = useRef<HTMLDivElement>(null)
-  const [more, setMore] = useState<Standing[]>([])
-  const [loadingMore, setLoadingMore] = useState(false)
-  // A phone shows the top five until asked for more; a link to the standings is asking.
-  const [opened, setOpened] = useState(() => focusFromUrl() === 'standings')
-  // Find a player: what's typed, and who it found (null while nothing is typed).
-  const [find, setFind] = useState('')
-  const [found, setFound] = useState<Standing[] | null>(null)
-
-  // A new period or group is a new list.
-  useEffect(() => {
-    setMore([])
-    setFind('')
-    setFound(null)
-  }, [standings])
-
-  // Asked once typing stops.
-  useEffect(() => {
-    const q = find.trim()
-    if (!q) {
-      setFound(null)
-      return
-    }
-    let cancelled = false
-    const timer = window.setTimeout(() => {
-      findInStandings(q, period)
-        .then((rows) => {
-          if (!cancelled) setFound(rows.map((r) => ({ ...r, games: r.games ?? Object.keys(r.byGame ?? {}).length })))
-        })
-        .catch(() => {
-          if (!cancelled) setFound([])
-        })
-    }, 250)
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-    }
-  }, [find, period])
-
-  // Brought into view once they're in, and again whenever a link asks while the page is open.
-  useEffect(() => {
-    if (loading) return
-    const focus = () => {
-      if (focusFromUrl() !== 'standings') return
-      setOpened(true)
-      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-    focus()
-    window.addEventListener(ROUTE_EVENT, focus)
-    return () => window.removeEventListener(ROUTE_EVENT, focus)
-  }, [loading])
-
-  const rows = [...standings, ...more]
-  const left = Math.max(0, totalPlayers - rows.length)
-  const showMore = async () => {
-    setOpened(true)
-    if (loadingMore || left === 0) return
-    setLoadingMore(true)
-    try {
-      const page = await fetchGlobalBoard(MORE_STANDINGS, period, rows.length)
-      const have = new Set(rows.map((row) => row.name))
-      setMore((prev) => [...prev, ...page.entries.filter((row) => !have.has(row.name))])
-    } catch {
-      // The button stays; another press tries again.
-    } finally {
-      setLoadingMore(false)
-    }
-  }
-
-  const leaderScore = standings[0]?.score ?? 0
-  const standing = data.you
-  const below = standing && standing.rank != null && standing.rank > rows.length ? standing : null
-  const lastTop = last?.[0]?.score ?? 0
-  const hasFoot = left > 0 || (!opened && rows.length > 5)
-  const lastRows = last && copy.last ? Math.min(5, last.length) : 0
-  // While they load, the room they took last time on this device (lib/heldShape.ts): the rows, the gap and
-  // you below them, Show more, and last time's top five.
-  const heldRows = useHeldShape(`standings-rows-${period}`, loading ? undefined : Math.max(3, rows.length) + (below ? 2 : 0), 10)
-  const heldFoot = useHeldShape(`standings-foot-${period}`, loading ? undefined : hasFoot ? 1 : 0, 1)
-  const heldLast = useHeldShape(`standings-last-${period}`, loading ? undefined : lastRows, copy.last ? 5 : 0)
-  return (
-    <div ref={ref} id="standings" className="sb-card sb-standings" data-hunt="boards-standings">
-      <div className="sb-standings__head">
-        <h2 className="sb-card__title">Standings</h2>
-        <span className="sb-standings__count">
-          {loading ? (
-            <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
-          ) : (
-            `${totalPlayers.toLocaleString()} ${totalPlayers === 1 ? 'player' : 'players'}`
-          )}
-        </span>
-        {/* The points beside each name are the one figure this page keeps; what makes them is there. */}
-        <a className="sb-standings__how" href={rankHowHref(undefined, period)}>
-          How your rank works ›
+      {season ? (
+        <a
+          role="tab"
+          aria-selected={active === 'season'}
+          className={`seg__item${active === 'season' ? ' seg__item--active' : ''}`}
+          href={seasonStandingsHref()}
+        >
+          Season
         </a>
-      </div>
-      {/* Held while the list loads too, so it doesn't push the rows down when it comes. */}
-      {loading || totalPlayers > 10 ? (
-        <div className="gb-find sb-standings__find">
-          <label className="gb-find__box" htmlFor={`sb-find-${period}`}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <span className="visually-hidden">Find a player</span>
-            <input
-              id={`sb-find-${period}`}
-              type="search"
-              placeholder="Find a player"
-              autoComplete="off"
-              spellCheck={false}
-              maxLength={12}
-              value={find}
-              disabled={loading}
-              onChange={(e) => setFind(e.target.value)}
-            />
-          </label>
-        </div>
-      ) : null}
-      {loading ? (
-        <ol className="sb-rows" aria-busy="true">
-          {Array.from({ length: heldRows }, (_, i) => (
-            // Past the fifth, a phone hides them till asked, as it hides the rows themselves.
-            <li key={i} className={`sb-row sb-row--skel${!opened && i >= 5 ? ' sb-row--deep' : ''}`}>
-              <span className="sb-row__link">
-                <span className="skel-line" style={{ '--skel-w': '2rem' } as CSSProperties} />
-                <span className="sb-row__mark sb-row__mark--open" />
-                <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
-                <span className="sb-row__bar" />
-                <span className="skel-line" style={{ '--skel-w': '2.5rem' } as CSSProperties} />
-              </span>
-            </li>
-          ))}
-        </ol>
-      ) : found ? (
-        found.length ? (
-          <ol className="sb-rows" aria-label={`Players matching ${find.trim()}`}>
-            {found.map((row) => (
-              <StandingRow key={row.name} row={row} leaderScore={leaderScore} you={you} period={period} />
-            ))}
-          </ol>
-        ) : (
-          <p className="gb-board__note gb-find__none">Nobody on the Standings goes by “{find.trim().toUpperCase()}”.</p>
-        )
-      ) : (
-        <ol className="sb-rows">
-          {rows.map((row) => (
-            <StandingRow
-              key={row.name}
-              row={row}
-              leaderScore={leaderScore}
-              you={you}
-              period={period}
-              deep={!opened && row.rank > 5}
-            />
-          ))}
-          {Array.from({ length: Math.max(0, 3 - rows.length) }, (_, i) => (
-            <OpenRow key={`open-${i}`} rank={rows.length + i + 1} />
-          ))}
-          {below ? (
-            <>
-              <li className="sb-row sb-row--gap" aria-hidden="true">
-                ⋯
-              </li>
-              <StandingRow
-                row={{
-                  rank: below.rank ?? 0,
-                  name: below.name,
-                  score: below.score,
-                  games: Object.keys(below.byGame).length,
-                  avatarId: below.avatarId,
-                }}
-                leaderScore={leaderScore}
-                you={you}
-                period={period}
-              />
-            </>
-          ) : null}
-        </ol>
-      )}
-      {loading && heldFoot ? (
-        <div className="sb-standings__foot" aria-hidden="true">
-          <span className="sb-ghost sb-standings__more skel-btn">Show more</span>
-        </div>
-      ) : null}
-      {loading && heldLast ? (
-        <div className="sb-last" aria-hidden="true">
-          <div className="sb-last__head">
-            <h3 className="sb-last__title">
-              <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
-            </h3>
-          </div>
-          <ol className="sb-rows sb-rows--last">
-            {Array.from({ length: heldLast }, (_, i) => (
-              <li key={i} className="sb-row sb-row--skel">
-                <span className="sb-row__link">
-                  <span className="skel-line" style={{ '--skel-w': '2rem' } as CSSProperties} />
-                  <span className="sb-row__mark sb-row__mark--open" />
-                  <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
-                  <span className="sb-row__bar" />
-                  <span className="skel-line" style={{ '--skel-w': '2.5rem' } as CSSProperties} />
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
-      {!loading && hasFoot && !found ? (
-        <div className="sb-standings__foot">
-          {/* With nobody left to fetch, it is only a phone's hidden sixth to tenth still to show. */}
-          <button
-            type="button"
-            className={`sb-ghost sb-standings__more${left > 0 ? '' : ' sb-standings__more--phone'}`}
-            onClick={() => void showMore()}
-            disabled={loadingMore}
-          >
-            {loadingMore ? 'Loading…' : 'Show more'}
-          </button>
-        </div>
-      ) : null}
-      {last && copy.last ? (
-        <div className="sb-last">
-          <div className="sb-last__head">
-            <h3 className="sb-last__title">{copy.last.title}</h3>
-            <span className="sb-last__note">{copy.last.note}</span>
-          </div>
-          <ol className="sb-rows sb-rows--last">
-            {last.slice(0, 5).map((row) => (
-              <StandingRow
-                key={row.name}
-                row={row}
-                leaderScore={lastTop}
-                you={you}
-                period={copy.last?.period ?? period}
-              />
-            ))}
-          </ol>
-        </div>
       ) : null}
     </div>
   )
+}
+
+/** The Standings list's feed of a period's standings. */
+function periodFeed(period: LeaderboardPeriod, data: ReturnType<typeof useScoreboard>): StandingsFeed {
+  return {
+    key: period,
+    loading: data.loading,
+    standings: data.standings,
+    totalPlayers: data.totalPlayers,
+    you: data.you,
+    more: async (offset, limit) => (await fetchGlobalBoard(limit, period, offset)).entries,
+    find: (q) => findInStandings(q, period),
+    rowHref: (name) => rankHref(name, period),
+  }
 }
 
 /* ---------- every board ---------- */
@@ -696,12 +390,17 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useScoreboard(period, you, groupId)
+  const seasonTab = seasonHasStandings(useSeason().season)
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
   const head = headline(copy, data.standings, data.totalPlayers)
   // The headline and its line wrap as the names in them do: held at last time's height while they load.
   const title = useHeldHeight<HTMLHeadingElement>(`boards-title-${period}`, data.loading)
   const ledeHeld = useHeldHeight<HTMLParagraphElement>(`boards-lede-${period}`, data.loading)
+  const closed = copy.last
+  const last = closed
+    ? { expected: true, rows: data.last, title: closed.title, note: closed.note, rowHref: (name: string) => rankHref(name, closed.period) }
+    : null
 
   if (data.error) {
     return (
@@ -738,18 +437,92 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
             )}
           </p>
           <div className="sb-hero__row">
-            <PeriodTabs period={period} />
+            <PeriodTabs active={period} season={seasonTab} />
             <p className="sb-closes">
               <TrophyIcon />
               <span>{copy.closes}</span>
             </p>
           </div>
         </div>
-        <Standings period={period} copy={copy} data={data} you={you} />
+        <StandingsList
+          id="standings"
+          hunt="boards-standings"
+          feed={periodFeed(period, data)}
+          you={you}
+          how={rankHowHref(undefined, period)}
+          last={last}
+          focusable
+        />
       </section>
 
       <EveryBoard period={period} copy={copy} data={data} you={you} />
       <UpForGrabs period={period} copy={copy} boards={data.boards} loading={data.loading} />
+    </div>
+  )
+}
+
+/**
+ * The boards page's Season tab: the season's standings, the same sums as a month's over the season's days,
+ * with a line under the places that win its cup and under the ones that win a trophy. No game has a board of
+ * its own for the season, so the standings are all there is under the words.
+ */
+export function SeasonScoreboard() {
+  const you = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
+  const known = useSeason().season
+  const data = useSeasonStandings(you, groupId)
+  // While the standings load, the season the header already knows says which it is and when it ends.
+  const provisional =
+    data.loading && !data.season && known && seasonHasStandings(known)
+      ? { id: known.id, slug: known.slug, name: known.name, status: known.status as 'live' | 'over', startsAt: known.startsAt, endsAt: known.endsAt }
+      : data.season
+  const words = seasonWords({ ...data, season: provisional }, known?.status === 'upcoming' ? known : null)
+  const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const title = useHeldHeight<HTMLHeadingElement>('boards-title-season', data.loading)
+  const ledeHeld = useHeldHeight<HTMLParagraphElement>('boards-lede-season', data.loading)
+
+  if (data.error) {
+    return (
+      <div className="sb">
+        <BoardEmpty title="Couldn’t load the season’s standings" detail="Check your connection and try again." />
+      </div>
+    )
+  }
+
+  return (
+    <div className="sb">
+      <section className="sb-hero" aria-labelledby="sb-title">
+        <div className="sb-hero__text">
+          <p className="sb-kicker">
+            {words.live ? <span className="sb-kicker__dot" aria-hidden="true" /> : null}
+            {words.kicker}
+            {group ? ` · ${group}` : ''}
+          </p>
+          <h1 id="sb-title" className="sb-title" ref={title.ref} style={title.style}>
+            {data.loading ? (
+              <span className="skel-line sb-title__skel" style={{ '--skel-w': '14ch' } as CSSProperties} />
+            ) : (
+              <>
+                {words.title.name ? <span className="sb-title__lead">{words.title.name}</span> : null}
+                {words.title.rest}
+              </>
+            )}
+          </h1>
+          <p className="sb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
+            {data.loading ? <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} /> : words.lede}
+          </p>
+          <div className="sb-hero__row">
+            <PeriodTabs active="season" season />
+            {words.closes ? (
+              <p className="sb-closes">
+                <TrophyIcon />
+                <span>{words.closes}</span>
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {data.loading || data.season ? <StandingsList feed={seasonFeed(data)} you={you} lines={seasonLines(data)} /> : null}
+      </section>
     </div>
   )
 }

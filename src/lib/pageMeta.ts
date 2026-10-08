@@ -423,6 +423,14 @@ export function pageMeta(route: Route): PageMeta {
       }
     // Boards carry the period in the URL; the page is known by the URL without one.
     case 'leaderboards':
+      if (route.season) {
+        return {
+          ...site,
+          title: titled('Season standings'),
+          description: `The season's standings on ${APP_NAME}: points from each player's ten best games over the season, and who's in line for its cup.`,
+          path: '/leaderboards/season',
+        }
+      }
       return {
         ...site,
         title: titled('Leaderboards'),

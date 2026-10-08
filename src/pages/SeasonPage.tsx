@@ -8,12 +8,10 @@ import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { gameHref, plusHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { PlayerAvatar } from '../components/PlayerAvatar'
 import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { fetchPlus, freeWeekFor, money, perSeason, seasonWeeks, type PlusInfo } from '../lib/plus'
-import { ordinal } from '../lib/profileMath'
 import {
   confirmPlusCheckout,
   daysLeftLabel,
@@ -29,9 +27,10 @@ import {
   type SeasonInfo,
   type SeasonPlus,
   type SeasonReward,
-  type SeasonStandings,
 } from '../lib/season'
 import { starTile } from '../lib/seasonArt'
+import { seasonFeed, seasonLines, useSeasonStandings } from '../lib/seasonStandings'
+import { StandingsList } from '../components/StandingsList'
 import { askForSeasonFont } from '../components/season/SeasonDressing'
 import { useTickets } from '../lib/tickets'
 import '../styles/season.css'
@@ -454,45 +453,29 @@ function PassPlus({
   )
 }
 
-/** The season's standings: the top five by place and name, and you; the points stay on the full Standings. */
-function StandingsCard({ season, standings }: { season: SeasonInfo; standings: SeasonStandings }) {
-  const youIn = standings.you && standings.top.some((row) => row.rank === standings.you!.rank)
+/**
+ * The season's standings, listed as the Standings page lists them (its Season tab): find a player, your own
+ * row, Show more, and the lines under the places that win. Everyone's, whatever group the header has on: the
+ * season's cup is everyone's.
+ */
+function SeasonStandingsCard({ season }: { season: SeasonInfo }) {
+  const you = normalizePlayerName(usePlayerName())
+  const data = useSeasonStandings(you, null)
   return (
-    <section className="season-card" aria-labelledby="season-standings-title">
-      <h2 id="season-standings-title">Season standings</h2>
-      <p className="season-card__sub">Points from your ten best games, this season only</p>
-      {standings.top.length ? (
-        <ol className="season-standings">
-          {standings.top.map((row) => (
-            <li key={row.rank} className={standings.you?.rank === row.rank ? 'season-standings__you' : undefined}>
-              <span className="season-standings__place">{ordinal(row.rank)}</span>
-              <PlayerAvatar avatarId={row.avatarId} name={row.name} size="sm" />
-              <span className="season-standings__name">{row.name}</span>
-              {standings.you?.rank === row.rank ? <span className="season-standings__tag">You</span> : null}
-            </li>
-          ))}
-          {standings.you && !youIn ? (
-            <>
-              <li className="season-standings__gap" aria-hidden="true">
-                ···
-              </li>
-              <li className="season-standings__you">
-                <span className="season-standings__place">{ordinal(standings.you.rank)}</span>
-                <span className="season-standings__name">{standings.you.name}</span>
-                <span className="season-standings__tag">You</span>
-              </li>
-            </>
-          ) : null}
-        </ol>
-      ) : (
-        <p className="season-card__sub">Nobody on them yet. Any run puts you there.</p>
-      )}
-      <p className="season-card__foot">
-        {season.status === 'over'
-          ? `${season.name} is over: its cups and trophies are on their shelves.`
-          : `When the season ends, the top ${standings.cupPlaces} take the Season ${season.id} cup and the top ${standings.trophyPlaces} a trophy.`}
-      </p>
-    </section>
+    <div className="season-standings-list sb-scope">
+      <StandingsList
+        feed={seasonFeed(data)}
+        you={you}
+        title="Season standings"
+        sub="Points from your ten best games, this season only"
+        lines={seasonLines(data)}
+        foot={
+          season.status === 'over'
+            ? `${season.name} is over: its cups and trophies are on their shelves.`
+            : `When the season ends, the top ${data.prizes?.cupPlaces ?? 3} take the Season ${season.id} cup and the top ${data.prizes?.trophyPlaces ?? 10} a trophy.`
+        }
+      />
+    </div>
   )
 }
 
@@ -647,7 +630,7 @@ export function SeasonPage() {
       ) : null}
 
       <div className="season-cards">
-        {store.standings ? <StandingsCard season={season} standings={store.standings} /> : null}
+        {season.status !== 'upcoming' ? <SeasonStandingsCard season={season} /> : null}
         {store.goals?.length ? <GoalsCard goals={store.goals} /> : null}
         <section className="season-card" aria-labelledby="season-how-title">
           <h2 id="season-how-title">How the pass works</h2>

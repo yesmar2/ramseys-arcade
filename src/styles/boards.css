@@ -68,7 +68,9 @@
    the boards nobody has played, and how the points add up.
    ========================================================================== */
 
-.sb {
+/* The boards' colours: the page's, and a Standings list's anywhere else (`sb-scope`: the Season page's). */
+.sb,
+.sb-scope {
   --sb-gold: #e8b23c;
   --sb-silver: #b9c4cf;
   --sb-bronze: #cd8b5c;
@@ -79,13 +81,16 @@
   --sb-brand-soft: color-mix(in srgb, var(--accent) 13%, transparent);
   --sb-line: rgba(var(--ink-rgb), 0.08);
   --sb-line-2: rgba(var(--ink-rgb), 0.16);
+}
+
+.sb {
   display: flex;
   flex-direction: column;
   gap: 3.5rem;
   padding: 0.75rem 0 1rem;
 }
 
-html[data-theme="dark"] .sb {
+html[data-theme="dark"] :is(.sb, .sb-scope) {
   --sb-gold-ink: color-mix(in srgb, var(--sb-gold) 85%, var(--ink));
   --sb-silver-ink: color-mix(in srgb, var(--sb-silver) 80%, var(--ink));
   --sb-bronze-ink: color-mix(in srgb, var(--sb-bronze) 85%, var(--ink));
@@ -240,6 +245,19 @@ html[data-theme="dark"] .sb {
   margin-top: 2rem;
 }
 
+/* With the Season tab, four share the row: a little wider, and on a phone the periods' short names. */
+.seg.sb-periods--season {
+  width: min(100%, 31rem);
+}
+
+.sb-periods--season .seg__item {
+  white-space: nowrap;
+}
+
+.sb-periods--season .seg__short {
+  display: none;
+}
+
 .sb-closes {
   display: flex;
   align-items: flex-start;
@@ -275,6 +293,21 @@ html[data-theme="dark"] .sb {
   font-weight: 700;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Under the title, what the points are; under the list, what its places win (the Season page's). */
+.sb-standings__sub,
+.sb-standings__note {
+  margin: 0.3rem 0 0;
+  padding: 0 0.6rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.sb-standings__note {
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
 }
 
 /* What makes the points beside each name: one quiet link, over on the right. */
@@ -480,6 +513,42 @@ a.sb-row__link:focus-visible {
   font-size: 0.7rem;
   font-weight: 650;
   color: var(--muted);
+}
+
+/* A season's lines: under the last place that takes its cup, and under the last that takes a trophy. */
+.sb-line {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.25rem 0.75rem;
+  color: var(--sb-prize-ink);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sb-line .sb-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.sb-line span {
+  white-space: nowrap;
+}
+
+.sb-line::after {
+  content: '';
+  flex: 1;
+  border-top: 1.5px dashed color-mix(in srgb, var(--sb-prize-ink) 45%, transparent);
+}
+
+.sb-line--cup {
+  --sb-prize-ink: var(--sb-gold-ink);
+}
+
+.sb-line--trophy {
+  --sb-prize-ink: color-mix(in srgb, var(--space-orange, var(--sb-bronze)) 80%, var(--ink));
 }
 
 .sb-row--open .sb-row__name,
@@ -1171,6 +1240,14 @@ a.sb-board__link:hover .sb-board__go {
   .seg.sb-periods {
     width: 100%;
     margin-top: 1.5rem;
+  }
+
+  .sb-periods--season .seg__long {
+    display: none;
+  }
+
+  .sb-periods--season .seg__short {
+    display: inline;
   }
 
   .sb-standings {

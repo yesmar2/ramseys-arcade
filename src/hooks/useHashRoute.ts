@@ -35,8 +35,11 @@ import {
 
 export type Route =
   | { name: 'home' }
-  /** `global` is an old /leaderboards/global link; its URL becomes the standings' own (`standingsHref`). */
-  | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod }
+  /**
+   * `global` is an old /leaderboards/global link; its URL becomes the standings' own (`standingsHref`).
+   * `season`: the Season tab, the season's standings (/leaderboards/season).
+   */
+  | { name: 'leaderboards'; global?: boolean; period?: LeaderboardPeriod; season?: boolean }
   /**
    * One game's own board. `day`: a daily's board on that day, YYYY-MM-DD (dayBoardHref), with `period`
    * 'daily'; the page sends a day that isn't past yet to today's.
@@ -140,6 +143,11 @@ export function homeHref() {
 /** Leaderboards overview hub (top scores). */
 export function leaderboardHref(period: LeaderboardPeriod = defaultPeriod()) {
   return `/leaderboards/${period}`
+}
+
+/** The boards page's Season tab: the season's standings. */
+export function seasonStandingsHref() {
+  return '/leaderboards/season'
 }
 
 /** Full board for one game. A daily has no board for all time: asked for it, its month's (lib/allTime.ts). */
@@ -505,6 +513,8 @@ export function hrefForRoute(
       return appendGroupQuery(gameBoardHref(route.game, period))
     case 'leaderboards':
       if (route.global) return appendGroupQuery(standingsHref(period))
+      // The season is its own stretch: the site's period changes nothing on it.
+      if (route.season) return appendGroupQuery(seasonStandingsHref())
       return appendGroupQuery(leaderboardHref(period))
     case 'rank':
       return appendGroupQuery(rankHref(route.player, period))
@@ -710,6 +720,7 @@ export function parseUrl(pathname: string, search: string): Route {
         periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod()
       return { name: 'leaderboards', global: true, period }
     }
+    if (segment === 'season' && !periodRaw) return { name: 'leaderboards', season: true }
     if (isLeaderboardPeriod(segment) && !periodRaw) {
       return { name: 'leaderboards', period: segment }
     }

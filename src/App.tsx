@@ -324,7 +324,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
     return <RankHowPage player={route.player} period={route.period ?? defaultPeriod()} />
   }
   if (route.name === 'leaderboards') {
-    return <LeaderboardsPage period={route.period ?? defaultPeriod()} />
+    return <LeaderboardsPage period={route.period ?? defaultPeriod()} season={route.season} />
   }
   if (route.name === 'gameLeaderboard') {
     if (isGameHidden(route.game)) {

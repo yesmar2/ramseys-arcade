@@ -1533,50 +1533,10 @@ html[data-theme='dark'] .season-tile__got {
   color: var(--muted);
 }
 
-.season-standings {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.season-standings li {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-height: 2.5rem;
-  padding: 0 0.6rem;
-  border-radius: 0.6rem;
-}
-
-.season-standings__place {
-  width: 2.4rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.season-standings__name {
-  font-weight: 700;
-}
-
-.season-standings__you {
-  background: var(--season-soft);
-}
-
-.season-standings__tag {
-  margin-left: auto;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: color-mix(in srgb, var(--space-violet) 70%, var(--ink));
-}
-
-.season-standings li.season-standings__gap {
-  min-height: 1rem;
-  justify-content: center;
-  letter-spacing: 0.3em;
-  color: var(--muted);
+/* The season's standings, listed as the Standings page lists them (StandingsList), across the cards' row. */
+.season-standings-list {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .season-goals {

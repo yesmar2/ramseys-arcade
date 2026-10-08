@@ -111,8 +111,8 @@ export function boardToday(now: number): number {
   return Date.UTC(part('year'), part('month') - 1, part('day'))
 }
 
-/** Sun, Sep 27 */
-function dayLabel(day: number): string {
+/** Sun, Sep 27, from a day as boardToday gives it. */
+export function dayLabel(day: number): string {
   const d = new Date(day)
   return `${DAYS[d.getUTCDay()]}, ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
