@@ -849,8 +849,8 @@ function dailyPage(route: Route) {
  * period still, so all time stays the site's.
  */
 function keepsSitePeriod(route: Route, period: LeaderboardPeriod) {
-  // A Season tab is the season's own stretch: it never becomes the site's period.
-  if (period === 'daily' || period === 'season' || route.name === 'records' || dailyPage(route)) return true
+  // The season is a site period like the others (the header's Season, while a season has standings).
+  if (period === 'daily' || route.name === 'records' || dailyPage(route)) return true
   return route.name === 'gameLeaderboard' && !route.day && boardPeriodFor(route.game, defaultPeriod()) === period
 }
 

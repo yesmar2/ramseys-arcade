@@ -62,7 +62,8 @@ export const RANKED_LEADERBOARD_GAMES = VISIBLE_LEADERBOARD_GAMES.filter((slug) 
 /**
  * The boards' stretches. `season` is the live season's days (the API's store.ts PERIODS), counted as a week's
  * or a month's: it's a tab of its own on the Standings page, a game's board and How your rank works while a
- * season has standings (lib/seasonStandings.ts seasonHasStandings), never the site's period.
+ * season has standings (lib/seasonStandings.ts seasonHasStandings), and the site's period when it's picked in the
+ * header (SiteScopeControl), which puts the week back once no season has standings.
  */
 export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'monthly', 'all', 'season'] as const
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number]

@@ -20,6 +20,8 @@ import { ordinal, periodWord, talksInPlaces } from '../lib/profileMath'
 import { metalTone, summarizeTrophies, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { BackChevronIcon } from './PageBackLink'
 import { useHeldHeight } from '../lib/heldShape'
+import { useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import { secretByNumber, SECRETS } from '../lib/secrets'
 
@@ -203,6 +205,7 @@ function standing({
   name,
   isSelf,
   period,
+  periods,
   ranks,
   data,
   where,
@@ -210,6 +213,8 @@ function standing({
   name: string
   isSelf: boolean
   period: LeaderboardPeriod
+  /** The card's periods: the week, the month and all time, and the season while it has standings. */
+  periods: readonly LeaderboardPeriod[]
   ranks: PeriodRanks
   data: GlobalRankResult
   where: string
@@ -219,10 +224,10 @@ function standing({
   const you = isSelf ? 'you' : name
 
   if (rank == null) {
-    const other = VISIBLE_LEADERBOARD_PERIODS.find((p) => p !== period && ranks[p]?.rank != null)
+    const other = periods.find((p) => p !== period && ranks[p]?.rank != null)
     const otherRank = other ? ranks[other]?.rank : null
     // Nowhere in any period. All time isn't the widest: a daily counts toward the week and the month only (lib/allTime.ts).
-    const never = VISIBLE_LEADERBOARD_PERIODS.every((p) => p === period || (ranks[p] != null && ranks[p]?.rank == null))
+    const never = periods.every((p) => p === period || (ranks[p] != null && ranks[p]?.rank == null))
     return {
       head: never ? 'Not on the boards yet' : `Not on the board ${word} yet`,
       sub:
@@ -331,7 +336,10 @@ export function PlayerCard({
   const sign = wornPrize(look, 'sign')
   const member = usePlusMember(name)
   const word = periodWord(period)
-  const said = loading ? null : standing({ name, isSelf, period, ranks, data, where })
+  // A Season row under all time while the season has standings (and whenever the card is the season's).
+  const withSeason = seasonHasStandings(useSeason().season) || period === 'season'
+  const periods: readonly LeaderboardPeriod[] = withSeason ? [...VISIBLE_LEADERBOARD_PERIODS, 'season'] : VISIBLE_LEADERBOARD_PERIODS
+  const said = loading ? null : standing({ name, isSelf, period, periods, ranks, data, where })
   const rank = data.rank
   const placed = Object.keys(data.byGame).length
   const inPlaces = rank != null && talksInPlaces(rank, data.totalPlayers)
@@ -427,7 +435,7 @@ export function PlayerCard({
           {actions ? <div className="home-banner__acts pcard__acts">{actions}</div> : null}
         </div>
         <nav className="pcard__ladder" aria-label={isSelf ? 'Your rank by period' : `${name}'s rank by period`}>
-          {VISIBLE_LEADERBOARD_PERIODS.map((p) => {
+          {periods.map((p) => {
             const row = ranks[p] ?? (p === period && !loading ? data : null)
             const on = p === period
             const ranked = row?.rank != null

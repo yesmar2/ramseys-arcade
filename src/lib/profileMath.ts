@@ -44,6 +44,8 @@ export function gainWith(byGame: ByGame, slug: string, points: number): number {
 
 /** "this week" / "this month" / "all time", mid-sentence. */
 export function periodWord(period: LeaderboardPeriod): string {
+  // "Season" alone reads badly after a place ("#3 season"): it's this season.
+  if (period === 'season') return 'this season'
   return PERIOD_LABELS[period].toLowerCase()
 }
 

@@ -15,11 +15,11 @@ import {
   getLeaderboard,
   getPlayerBoard,
   normalizePlayerName,
-  PERIOD_LABELS,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
+import { periodWord } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
 import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -413,8 +413,8 @@ export function HomeHero() {
 
   const accent = game.accent
   const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
-  const periodWord = PERIOD_LABELS[period].toLowerCase()
-  const boardWord = PERIOD_LABELS[boardPeriod].toLowerCase()
+  const when = periodWord(period)
+  const boardWord = periodWord(boardPeriod)
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
   const acts = (
     <div className="home-banner__acts">
@@ -560,7 +560,7 @@ export function HomeHero() {
             <span className="home-banner__stat">
               <span className="home-banner__stat-k">Standings</span>
               <b className="home-banner__stat-rank">#{standing.rank}</b>
-              <span className="home-banner__stat-v">{periodWord}</span>
+              <span className="home-banner__stat-v">{when}</span>
             </span>
             {/* Who is either side, by name: the points between you stay on the full Standings list. */}
             {ahead ? (

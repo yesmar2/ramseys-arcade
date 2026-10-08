@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   fetchGlobalBoard,
   fetchGlobalRank,
@@ -10,6 +10,8 @@ import {
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+import { useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 
 /*
  * What a player's card is drawn from, beyond the rank the header already has:
@@ -44,6 +46,10 @@ export function rivalOf(result: GlobalRankResult): Neighbour | null {
 export function usePeriodRanks(name: string, groupId: string | null): PeriodRanks {
   const key = `${groupId ?? ''}|${name}`
   const [state, setState] = useState<{ key: string; ranks: PeriodRanks }>({ key: '', ranks: {} })
+  // The season's rank too while a season has standings: its row on the card, and the card itself when the
+  // site's period is the season. Asked on its own, so the season's arriving later doesn't ask the rest again.
+  const withSeason = seasonHasStandings(useSeason().season)
+  const [season, setSeason] = useState<{ key: string; rank: GlobalRankResult | null }>({ key: '', rank: null })
 
   useEffect(() => {
     if (!name) return
@@ -62,8 +68,25 @@ export function usePeriodRanks(name: string, groupId: string | null): PeriodRank
     }
   }, [key, name])
 
-  return state.key === key ? state.ranks : {}
+  useEffect(() => {
+    if (!name || !withSeason) return
+    let cancelled = false
+    fetchGlobalRank(name, 'season')
+      .catch(() => EMPTY_RANK)
+      .then((rank) => {
+        if (!cancelled) setSeason({ key, rank })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [key, name, withSeason])
+
+  const base = state.key === key ? state.ranks : EMPTY_RANKS
+  const seasonRank = withSeason && season.key === key ? season.rank : null
+  return useMemo(() => (seasonRank ? { ...base, season: seasonRank } : base), [base, seasonRank])
 }
+
+const EMPTY_RANKS: PeriodRanks = {}
 
 /** One player's rank for one period, or null until it lands. */
 export function useRankFor(name: string, period: LeaderboardPeriod, groupId: string | null): GlobalRankResult | null {

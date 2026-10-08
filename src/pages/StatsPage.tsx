@@ -11,7 +11,9 @@ import { AVATARS_ENABLED, avatarWashColor, getLocalAvatarId, resolveAvatar } fro
 import { inkOn } from '../lib/color'
 import { setDefaultPeriod, useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank } from '../lib/globalRank'
-import { normalizePlayerName, PERIOD_LABELS, VISIBLE_LEADERBOARD_PERIODS } from '../lib/leaderboard'
+import { normalizePlayerName, PERIOD_LABELS, VISIBLE_LEADERBOARD_PERIODS, type LeaderboardPeriod } from '../lib/leaderboard'
+import { useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 import { boardDayKey } from '../lib/statsView'
 
 /**
@@ -32,6 +34,9 @@ export function StatsPage() {
   const avatar = AVATARS_ENABLED && name ? resolveAvatar(getLocalAvatarId(name) ?? rankAvatarId, name) : null
   const accent = avatar ? avatarWashColor(avatar) : undefined
   const stats = mine.data?.stats ?? null
+  // The season's own figures too while it has standings, as the header offers it.
+  const withSeason = seasonHasStandings(useSeason().season) || period === 'season'
+  const periods: readonly LeaderboardPeriod[] = withSeason ? [...VISIBLE_LEADERBOARD_PERIODS, 'season'] : VISIBLE_LEADERBOARD_PERIODS
   const busy = authLoading || (signedIn && mine.loading && !stats)
 
   return (
@@ -41,7 +46,7 @@ export function StatsPage() {
           <ProfileViews on="stats" />
           {stats ? (
             <div className="sv-seg" role="group" aria-label="Period">
-              {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+              {periods.map((p) => (
                 <button key={p} type="button" aria-pressed={p === period} onClick={() => setDefaultPeriod(p)}>
                   {PERIOD_LABELS[p]}
                 </button>

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { applySitePeriod, applySiteGroup, periodFromRoute, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useFriends } from '../hooks/useFriends'
+import { useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   cachedMyGroups,
@@ -19,6 +21,9 @@ import {
   VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
+
+/** Four choices share the popover's row once the season's is there: Week · Month · All time · Season. */
+const SHORT_PERIODS: Partial<Record<LeaderboardPeriod, string>> = { weekly: 'Week', monthly: 'Month' }
 
 function BarsIcon() {
   return (
@@ -130,6 +135,16 @@ export function SiteScopeControl() {
   const among = onFriends ? 'Friends' : activeId ? (active?.name ?? 'Your group') : 'Everyone'
   const friendCount = friends.length
   const periodLabel = PERIOD_LABELS[period]
+  // The season is a period of the site's too while it has standings: the fourth choice, short words to fit.
+  const season = useSeason()
+  const hasSeason = seasonHasStandings(season.season)
+  const periods: readonly LeaderboardPeriod[] = hasSeason ? [...VISIBLE_LEADERBOARD_PERIODS, 'season'] : VISIBLE_LEADERBOARD_PERIODS
+  const short = periods.length > 3
+
+  // Between seasons there's no season to show: the boards go back to the week.
+  useEffect(() => {
+    if (season.loaded && !hasSeason && period === 'season') applySitePeriod('weekly', route)
+  }, [season.loaded, hasSeason, period, route])
 
   const pickPeriod = (next: LeaderboardPeriod) => {
     applySitePeriod(next, route)
@@ -166,9 +181,15 @@ export function SiteScopeControl() {
         <div className="site-scope__pop" role="dialog" aria-label="What the boards show">
           <p className="site-scope__cap">Boards show</p>
           <div className="site-seg" role="group" aria-label="Period">
-            {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
-              <button key={p} type="button" aria-pressed={p === period} onClick={() => pickPeriod(p)}>
-                {PERIOD_LABELS[p]}
+            {periods.map((p) => (
+              <button
+                key={p}
+                type="button"
+                aria-pressed={p === period}
+                aria-label={PERIOD_LABELS[p]}
+                onClick={() => pickPeriod(p)}
+              >
+                {short ? SHORT_PERIODS[p] ?? PERIOD_LABELS[p] : PERIOD_LABELS[p]}
               </button>
             ))}
           </div>

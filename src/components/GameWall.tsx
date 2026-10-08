@@ -10,6 +10,7 @@ import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace } from '../lib/leaderboard'
+import { periodWord } from '../lib/profileMath'
 import { formatBoardScore, formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { isSpotlight, liveSeason, useSeason } from '../lib/season'
@@ -311,7 +312,7 @@ export function WallTile({
   const fmtBest = (score: number) => formatBoardScore(game.slug, score, period)
   const place = standing?.place ?? null
   const total = standing?.total ?? null
-  const periodWord = PERIOD_LABELS[period].toLowerCase()
+  const when = periodWord(period)
   const rows = top ? (top.entries.length > 0 ? top.entries : [top.entry]) : []
   const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
   const label = [
@@ -320,7 +321,7 @@ export function WallTile({
     top
       ? `high score ${fmt(top.entry.score)} by ${top.entry.name}${top.period === 'all' ? ', all time' : ''}`
       : 'no high score yet',
-    place ? `you are #${place}${total ? ` of ${total}` : ''} ${periodWord}` : null,
+    place ? `you are #${place}${total ? ` of ${total}` : ''} ${when}` : null,
     best ? `your best ${fmtBest(best)}` : null,
   ]
     .filter(Boolean)
@@ -390,7 +391,7 @@ export function WallTile({
                   {place ? (
                     <>
                       #{place}
-                      <span className="wall-tile__roomy"> {periodWord}</span>
+                      <span className="wall-tile__roomy"> {when}</span>
                     </>
                   ) : null}
                   {place && best ? ' · ' : null}

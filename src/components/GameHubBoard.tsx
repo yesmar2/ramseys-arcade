@@ -12,6 +12,8 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { useSeason } from '../lib/season'
+import { periodTabs, seasonHasStandings } from '../lib/seasonStandings'
 import { BoardEmpty } from './BoardChrome'
 import { ChevronRightIcon, PlusIcon, SparkleIcon } from './chromeIcons'
 import { PlayerAvatar } from './PlayerAvatar'
@@ -39,6 +41,9 @@ const AIM_WORDS: Record<LeaderboardPeriod, string> = {
   season: 'this season’s best',
 }
 
+/** The periods' short names, for four tabs in the card's narrow row. */
+const SHORT_PERIODS: Partial<Record<LeaderboardPeriod, string>> = { weekly: 'Week', monthly: 'Month' }
+
 /** The board beside the banner: the leaders, and you among your neighbours when you are further down. */
 export function GameHubBoard({
   slug,
@@ -59,6 +64,8 @@ export function GameHubBoard({
   // A daily's board is the day's whatever the period, so it's called today's and has no periods to pick.
   const daily = isDailyGame(slug)
   const periodLabel = PERIOD_LABELS[daily ? 'daily' : period]
+  // The season's tab too while it has standings, as the header offers it.
+  const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, seasonHasStandings(useSeason().season) || period === 'season')
   const open = OPEN_WORDS[daily ? 'daily' : period]
 
   // The top five, then, when you are further down, a gap and you between the players either side of you.
@@ -92,17 +99,19 @@ export function GameHubBoard({
 
       {daily ? null : (
         <nav className="gh-seg" aria-label="Period">
-          {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+          {periods.map((p) => (
             <a
               key={p}
               href={gameHubHref(slug, p)}
               aria-current={p === period ? 'true' : undefined}
+              aria-label={PERIOD_LABELS[p]}
               onClick={(e) => {
                 e.preventDefault()
                 applySitePeriod(p, route)
               }}
             >
-              {PERIOD_LABELS[p]}
+              {/* Four share the card's row once the season's is there: Week · Month · All time · Season. */}
+              {periods.length > 3 ? (SHORT_PERIODS[p] ?? PERIOD_LABELS[p]) : PERIOD_LABELS[p]}
             </a>
           ))}
         </nav>
