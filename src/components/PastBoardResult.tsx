@@ -6,7 +6,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useSaveWait } from '../hooks/useSaveWait'
 import { linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
 import { inArchive } from '../lib/archive'
-import { archivedWhy, capitalWord, verbDone } from '../lib/dailyPast'
+import { archivedWhy, capitalWord, verbDone, verbHasDone } from '../lib/dailyPast'
 import { bestWord, BOARD_NAMES, dailyWords, type PastKind } from '../lib/dailyWords'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { allTimeBoardName, playersWords, RECORD_TICKETS } from '../lib/pastBoards'
@@ -268,7 +268,7 @@ export function PastBoardResult({
   } else if (result && result.best === score) {
     const before = beforeRef.current
     headline = placed(result.place)
-    if (result.tookRecord) line = `${capitalWord(words.course)} record! Nobody has ${verbDone(slug)} ${courseName} faster. ${pace}`
+    if (result.tookRecord) line = `${capitalWord(words.course)} record! Nobody has ${verbHasDone(slug)} ${courseName} faster. ${pace}`
     else if (before && before.score < score) {
       line = (
         <>

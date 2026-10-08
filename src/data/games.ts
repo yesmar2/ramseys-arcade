@@ -303,6 +303,17 @@ export const games: Game[] = [
     inDevelopment: true,
     daily: true,
   },
+  {
+    name: 'Wobble Run',
+    slug: 'wobblerun',
+    tags: ['arcade', 'quick'],
+    description:
+      'A new gauntlet every day, the same for everyone, in 3D. Run, jump and dive your bean past doors, hammers, see-saws and falling tiles to the crown against the clock: fall off and you’re back at the last checkpoint. Beat the blue bean.',
+    accent: PALETTE.pink,
+    playable: true,
+    inDevelopment: true,
+    daily: true,
+  },
 ]
 
 export function getGame(slug: string) {

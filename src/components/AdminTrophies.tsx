@@ -291,8 +291,8 @@ export function AdminTrophies() {
         </div>
         <p className="adm-card__sub">
           Today’s ticket, on the Dailies page: since 6 October 2026 a streak day is one with any two of the day’s races
-          done (a run saved on Today’s Track, Course, Cave or Hills), on the boards’ New York day, and all four is a
-          Full ticket: a gold mark in the week and “Full” on the header chip, with no reward of its own. Before
+          done (a run saved on Today’s Track, Course, Cave, Hills or, from 9 October, Gauntlet), on the boards’ New
+          York day, and all of them (four, five since the Gauntlet joined) is a Full ticket: a gold mark in the week and “Full” on the header chip, with no reward of its own. Before
           then the puzzles (Today’s Hole, Wanted and Pour) were on it too and any three kept the day; now they’re
           under the ticket as Also today, just for fun. Today’s event, the One Shot and the bug hunt are bonus
           punches and don’t count. Signed-in players with a tag see the streak in the header too. Each reward comes

@@ -163,6 +163,17 @@ const LOADERS: Record<string, () => Promise<DayCourse>> = {
       board: trackBoardOf('swoop', hillsNumber),
     }
   },
+  async wobblerun() {
+    const { FIRST_DAY, gauntletDay, gauntletNumber, dailyGauntlet } = await import('../games/wobblerun/daily')
+    return {
+      first: FIRST_DAY,
+      today: () => gauntletDay(),
+      title: (day) => `#${gauntletNumber(day)} ${dailyGauntlet(day).name}`,
+      anchor: (day) => day,
+      playHref: (day) => `${gamePlayHref('wobblerun')}?day=${day}`,
+      board: trackBoardOf('wobblerun', gauntletNumber),
+    }
+  },
 }
 
 const loaded = new Map<string, Promise<DayCourse>>()

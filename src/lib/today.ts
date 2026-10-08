@@ -4,6 +4,7 @@ import { TODAY_FROM as PLATES_FROM } from '../games/dead-center/daily'
 import { TODAY_FROM as CAVE_FROM } from '../games/lander/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
 import { TODAY_FROM as HILLS_FROM } from '../games/swoop/daily'
+import { TODAY_FROM as GAUNTLET_FROM } from '../games/wobblerun/daily'
 import { ROUTE_EVENT } from '../hooks/useHashRoute'
 import { sessionFingerprint, subscribeAccountId } from './auth'
 import { api, ApiError, type LeaderboardGame } from './leaderboard'
@@ -14,8 +15,8 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * (components/TodayCard.tsx, on the Dailies page at /dailies, pages/TodayPage.tsx, with a row of it on the
  * home page, HomeToday.tsx), and a streak of days kept, shown in the header too (components/TodayChip.tsx,
  * the way to the page). Since 2026-10-06 the dailies on it are the races: Hot Lap's Today's Track, Marble
- * Run's Today's Course, Lander's Today's Cave and Swoop's Today's Hills. Any two of them keep the streak, and
- * all four is a Full ticket. The puzzles (Ace Chase's Today's Hole, Find the Bug's Today's Wanted, Half Full's
+ * Run's Today's Course, Lander's Today's Cave and Swoop's Today's Hills, and from 2026-10-09 Wobble Run's
+ * Today's Gauntlet. Any two of them keep the streak, and all of them is a Full ticket. The puzzles (Ace Chase's Today's Hole, Find the Bug's Today's Wanted, Half Full's
  * Today's Pour) were on it until then, when any three of a day's dailies kept it; now they're under the ticket
  * as "Also today", just for fun (TODAY_DAILIES, alsoDailies). Today's event, the One Shot and the bug hunt are
  * bonus punches that don't count.
@@ -28,7 +29,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * punches at once and works signed out.
  */
 
-export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave' | 'hills' | 'plates'
+export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave' | 'hills' | 'gauntlet' | 'plates'
 
 /** One of the Today set's dailies. */
 export type TodayDaily = {
@@ -51,8 +52,8 @@ export type TodayDaily = {
 
 /**
  * The last day the puzzles (Ace Chase's hole, Find the Bug's Wanted, Half Full's pour) were on the ticket. From
- * the next, the Dailies are the four races and the puzzles are under the ticket as "Also today", just for fun
- * and off the streak (Ramsey, 2026-10-06, picking B from the "Dailies: races only?" canvas). The API's today.ts
+ * the next, the Dailies are the races (four, then five once Wobble Run's gauntlet joined) and the puzzles are
+ * under the ticket as "Also today", just for fun and off the streak (Ramsey, 2026-10-06, picking B from the "Dailies: races only?" canvas). The API's today.ts
  * PUZZLES_UNTIL says the same.
  */
 export const PUZZLES_UNTIL = '2026-10-05'
@@ -72,6 +73,8 @@ export const TODAY_DAILIES: readonly TodayDaily[] = [
   { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
   { key: 'cave', slug: 'lander', label: 'Cave', emoji: '🚀', better: 'higher', from: CAVE_FROM },
   { key: 'hills', slug: 'swoop', label: 'Hills', emoji: '🐦', better: 'higher', from: HILLS_FROM },
+  // Wobble Run's gauntlet joined the races the day the game came, the fifth (the API's today.ts says the same).
+  { key: 'gauntlet', slug: 'wobblerun', label: 'Wobble', emoji: '👑', better: 'higher', from: GAUNTLET_FROM },
   { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '', until: PUZZLES_UNTIL },
   { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '', until: PUZZLES_UNTIL },
   { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM, until: PUZZLES_UNTIL },
@@ -114,11 +117,18 @@ export const TODAY_SINCE_FALLBACK = '2026-09-27'
 export type TodayServer = {
   /** The boards' day, YYYY-MM-DD. */
   day: string
-  /** Whether each is done today. An API from before Today's Pour, Course, Cave or Hills leaves them out. */
-  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave' | 'hills' | 'plates'>, boolean> & { pour?: boolean; course?: boolean; cave?: boolean; hills?: boolean; plates?: boolean }
+  /** Whether each is done today. An API from before Today's Pour, Course, Cave, Hills or Gauntlet leaves them out. */
+  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave' | 'hills' | 'gauntlet' | 'plates'>, boolean> & {
+    pour?: boolean
+    course?: boolean
+    cave?: boolean
+    hills?: boolean
+    gauntlet?: boolean
+    plates?: boolean
+  }
   /**
    * Today's results as the boards keep them: tries, and board scores for the lap, the bug run, the pour, the
-   * marble's run, the ship's and the bird's.
+   * marble's run, the ship's, the bird's and the bean's.
    */
   results: {
     hole: { tries: number } | null
@@ -129,6 +139,7 @@ export type TodayServer = {
     course?: { score: number } | null
     cave?: { score: number } | null
     hills?: { score: number } | null
+    gauntlet?: { score: number } | null
   }
   streak: { current: number; best: number }
   /** Streak freezes held, and the next one's way off; an older API leaves them out. */
@@ -322,6 +333,7 @@ const STILL: Record<TodayKey, string> = {
   course: 'still to roll',
   cave: 'still to fly',
   hills: 'still to swoop',
+  gauntlet: 'still to run',
   plates: 'still to balance',
 }
 
@@ -354,8 +366,8 @@ export type TodayRival = {
   me: boolean
   /**
    * Tries on today's hole, the best lap's board score, the bug run's board score, the pour's, the best marble
-   * run's, the best cave run's and the best run over the hills; null if not yet. An API from before Today's
-   * Pour, Course, Cave or Hills leaves them out.
+   * run's, the best cave run's, the best run over the hills and the best run through the gauntlet; null if not
+   * yet. An API from before Today's Pour, Course, Cave, Hills or Gauntlet leaves them out.
    */
   hole: number | null
   track: number | null
@@ -364,6 +376,7 @@ export type TodayRival = {
   course?: number | null
   cave?: number | null
   hills?: number | null
+  gauntlet?: number | null
   plates?: number | null
   streak: number
   avatarId: string

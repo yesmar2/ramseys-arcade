@@ -9,10 +9,17 @@
   width: min(100%, 46rem);
 }
 
+/* On a phone the tabs go three to a row, every one in view on a line of its own, not squeezed into one row. */
 @media (max-width: 36rem) {
+  .adm-tabs.seg {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-radius: 1.2rem;
+  }
+
   .adm-tabs .seg__item {
     padding: 0.4rem 0.3rem;
     font-size: 0.78rem;
+    white-space: nowrap;
   }
 }
 

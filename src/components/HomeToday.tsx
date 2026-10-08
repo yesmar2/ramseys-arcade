@@ -44,6 +44,7 @@ const ACCENT: Record<TodayKey, string> = {
   course: '#d774f0',
   cave: '#a48af0',
   hills: '#f2706a',
+  gauntlet: '#f27bb0',
   plates: '#4aa8e8',
 }
 
@@ -56,6 +57,7 @@ const GO: Record<TodayKey, string> = {
   course: 'Roll it',
   cave: 'Fly it',
   hills: 'Swoop it',
+  gauntlet: 'Run it',
   plates: 'Balance',
 }
 

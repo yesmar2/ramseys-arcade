@@ -4,7 +4,7 @@ import { dailyWords } from '../lib/dailyWords'
 import '../styles/dailyPast.css'
 
 /*
- * A daily's past tab (/games/<slug>/past): Past tracks, Past holes, Past days, Past courses or Past caves. Every course
+ * A daily's past tab (/games/<slug>/past): Past tracks, Past holes, Past days, Past courses, Past caves, Past hills or Past gauntlets. Every course
  * before today's as a card, with how its day went and its boards, each to play again
  * (components/archive/PastCourses.tsx). Each game's cards come in a chunk of their own, with its plan.
  */
@@ -16,6 +16,7 @@ const PourArchive = lazyPage(() => import('./archive/PourArchive').then((m) => m
 const CourseArchive = lazyPage(() => import('./archive/CourseArchive').then((m) => m.CourseArchive))
 const CaveArchive = lazyPage(() => import('./archive/CaveArchive').then((m) => m.CaveArchive))
 const HillsArchive = lazyPage(() => import('./archive/HillsArchive').then((m) => m.HillsArchive))
+const GauntletArchive = lazyPage(() => import('./archive/GauntletArchive').then((m) => m.GauntletArchive))
 const PlatesArchive = lazyPage(() => import('./archive/PlatesArchive').then((m) => m.PlatesArchive))
 
 /** Each daily's cards of its past courses. */
@@ -28,6 +29,7 @@ const LISTS: Record<string, typeof TrackArchive> = {
   marblerun: CourseArchive,
   lander: CaveArchive,
   swoop: HillsArchive,
+  wobblerun: GauntletArchive,
 }
 
 /** While a game's cards are on their way: the tab's title and a row of cards' shapes, so nothing jumps when they come. */

@@ -120,7 +120,7 @@ export type HistoryRow = {
 const RUN_ORDER = ['run', 'best', 'pickup', 'first', 'streak']
 
 /** What a past course of a daily is called, by its number. */
-const COURSE_NOUN: Record<string, string> = { hotlap: 'track', marblerun: 'course', lander: 'cave', acechase: 'hole' }
+const COURSE_NOUN: Record<string, string> = { hotlap: 'track', marblerun: 'course', lander: 'cave', acechase: 'hole', wobblerun: 'gauntlet' }
 
 function capital(words: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)

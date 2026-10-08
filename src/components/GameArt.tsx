@@ -1746,6 +1746,94 @@ function Swoop({ id }: { id: Id }) {
   )
 }
 
+/**
+ * Wobble Run's bean, 20 tall about its middle (y down), as the day's pictures draw it (wobblerun/gauntletPicture.ts
+ * beanMarks): a jelly bean, its visor and eyes, arms up, legs tucked for a jump. The blue bean is the same,
+ * lighter and see-through.
+ */
+function Bean({ x, y, s, rot = 0, fill, edge, opacity = 1 }: { x: number; y: number; s: number; rot?: number; fill: string; edge: string; opacity?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`} opacity={opacity}>
+      <path d="M-4.6 -0.6 L-8.2 -4.8 M4.6 -0.6 L8.2 -4.8" {...line(fill, 2)} />
+      <path d="M-2.6 6.6 L-3.8 8.6 M2.6 6.6 L3.8 8.6" {...line(fill, 2.4)} />
+      <rect x="-5.4" y="-9.6" width="10.8" height="17.6" rx="5.4" fill={fill} stroke={edge} strokeWidth="1" />
+      <ellipse cx="-2.6" cy="-2.4" rx="1.2" ry="3" fill="#fff" opacity="0.28" />
+      <ellipse cx="1.2" cy="-4.8" rx="3.7" ry="2.6" fill="#fff0f6" />
+      <circle cx="-0.1" cy="-4.8" r="0.85" fill="#1a1033" />
+      <circle cx="2.5" cy="-4.8" r="0.85" fill="#1a1033" />
+    </g>
+  )
+}
+
+/**
+ * Wobble Run: your pink bean mid-jump over Spin Club's orange bar as it sweeps round from its teal hub, on a
+ * candy platform over the pink goo at dusk, its shadow under it; the blue bean waiting its turn behind, and
+ * the gold crown up ahead, where every gauntlet ends. The colours are the game's code: orange to jump, teal
+ * to bounce, indigo for the way it turns.
+ */
+function WobbleRun({ id }: { id: Id }) {
+  const top = 20.4
+  return (
+    <>
+      <Backdrop
+        id={id}
+        stops={[
+          [0, '#140d38'],
+          [0.7, '#4a2470'],
+          [1, '#7a2f7e'],
+        ]}
+      />
+      <Stars
+        points={[
+          [2.6, 2.6, 0.16],
+          [8.4, 5.2, 0.13, 0.5],
+          [13.6, 1.8, 0.15],
+          [21.4, 3.6, 0.13, 0.5],
+          [37.6, 2.4, 0.16],
+          [38.4, 12.6, 0.13, 0.5],
+          [1.6, 11.2, 0.13, 0.45],
+        ]}
+      />
+      {/* The goo below, glowing, and its surface. */}
+      <rect x="-1" y="26.6" width="42" height="5" fill="#ff5fae" opacity="0.32" />
+      <path d="M-1 26.8 Q4 26 9 26.8 T19 26.8 T29 26.8 T41 26.8" {...line('#ff9dd0', 0.35, 0.8)} />
+      {/* The candy platform: its pastel top, its body, the frosting along its edge. */}
+      <path d={`M1.4 ${top} H38.6 L39.6 23 H0.4 Z`} fill="#ffd3ea" stroke="#fff3f9" strokeWidth="0.3" strokeLinejoin="round" />
+      <path d="M0.4 23 H39.6 V25.2 Q39.6 26 38.8 26 H1.2 Q0.4 26 0.4 25.2 Z" fill="#b0508a" />
+      {Array.from({ length: 13 }, (_, i) => 1.6 + i * 3.06).map((x) => (
+        <path key={x} d={`M${x.toFixed(2)} 23 a1.1 1.1 0 0 0 2.2 0`} fill="#fff3f9" />
+      ))}
+      {/* The crown up ahead, floating, with its glow and twinkles. */}
+      <Glow id={id} name="crown" cx={30.6} cy={7.2} r={5.6} colour="#f4c53e" strength={0.5} />
+      <g transform="translate(30.6 7.4) scale(0.27)">
+        <path d="M-8 5 L-9.2 -4.6 L-4.2 -0.4 L0 -7.6 L4.2 -0.4 L9.2 -4.6 L8 5 Z" fill="#f4c53e" stroke="#fff1b0" strokeWidth="1" strokeLinejoin="round" />
+        <rect x="-8.2" y="4.4" width="16.4" height="3.2" rx="1" fill="#e0a92a" stroke="#fff1b0" strokeWidth="0.8" />
+        <circle cx="0" cy="1.6" r="1.4" fill="#e85d9a" />
+        <circle cx="-4.6" cy="2.4" r="0.9" fill="#3ec8cf" />
+        <circle cx="4.6" cy="2.4" r="0.9" fill="#3ec8cf" />
+      </g>
+      <path d={sparkle(26.4, 4.2, 0.7)} fill="#fff6cf" />
+      <path d={sparkle(34.6, 9.8, 0.55)} fill="#fff6cf" />
+      {/* The blue bean behind, waiting for the bar to pass. */}
+      <ellipse cx="6.8" cy={top + 0.5} rx="1.7" ry="0.4" fill="#000" opacity="0.25" />
+      <Bean x={6.8} y={top - 3.7} s={0.36} fill="#4cb8f0" edge="#a9dcf7" opacity={0.55} />
+      {/* The hub and its sweeping bar, orange to jump, its stripes the colour code's up-chevrons; over the hub, the way it turns. */}
+      <rect x="29.6" y="14.6" width="3.2" height={top - 14.2} rx="0.5" {...wash(184, 59, 53, 0.5, 0.35)} />
+      <ellipse cx="31.2" cy="14.6" rx="1.6" ry="0.55" fill="#3ec8cf" />
+      <rect x="10.8" y="16" width="20.4" height="1.7" rx="0.85" fill="#f2813a" stroke="#ffd0ad" strokeWidth="0.25" />
+      {[13.4, 16.6, 19.8, 23, 26.2].map((x) => (
+        <path key={x} d={`M${x - 0.7} 17.3 L${x} 16.4 L${x + 0.7} 17.3`} {...line('#ffd0ad', 0.22)} />
+      ))}
+      <path d="M27.2 13.4 Q31.2 11.2 35.2 13.4" {...line('#6b74e8', 0.42)} />
+      <path d="M34.1 12.4 L35.3 13.5 L34 14.4" {...line('#6b74e8', 0.42)} />
+      {/* Your bean, over the bar, its shadow on the platform and the whoosh of the jump. */}
+      <ellipse cx="17.8" cy={top + 0.6} rx="2.4" ry="0.5" fill="#000" opacity="0.28" />
+      <path d="M13.6 15 Q14.6 12.8 15.6 11.6 M12.6 13 Q13.2 11.6 14 10.8" {...line('#ffffff', 0.3, 0.55)} />
+      <Bean x={18.2} y={9.6} s={0.46} rot={-8} fill="#e85d9a" edge="#ffb3d6" />
+    </>
+  )
+}
+
 /*
  * Pileup's pieces, as its renderer draws them in the dark theme: a soft wash
  * of the piece's colour against the well, its outline the colour lifted
@@ -1908,6 +1996,7 @@ const SCENES: Record<string, Scene> = {
   lander: Lander,
   pileup: Pileup,
   swoop: Swoop,
+  wobblerun: WobbleRun,
 }
 
 /** Whether a game has a picture yet. */

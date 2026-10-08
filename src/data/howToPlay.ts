@@ -467,6 +467,35 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       },
     ],
   },
+  wobblerun: {
+    goal: 'Run your bean through today’s gauntlet and grab the crown at the top, fastest. A new gauntlet comes every day at midnight, New York time.',
+    controls: [
+      { does: 'Run', touch: 'Drag on the left: the bean runs the way you drag', keys: 'WASD or ← → ↑ ↓' },
+      { does: 'Jump', touch: 'JUMP, bottom right', keys: 'Space' },
+      { does: 'Dive', touch: 'DIVE, beside JUMP', keys: 'Shift or E' },
+      { does: 'Start the run again', touch: '↻', keys: 'R' },
+    ],
+    scores: [
+      { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
+      { what: 'Fall off', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
+      { what: 'Knocked over', pts: 'a moment', sub: 'a bar or hammer stuns you for half a second; fruit or a wall throws you back, about a second' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bean, then every 12% faster' },
+    ],
+    ends: 'Grab the crown. Run it as often as you like.',
+    tip: 'Jump the orange, dive under the purple, and keep away from the red. Everything moves on the same clock for everyone, so a short wait for a gap often beats a knock. Gold edges are risky shortcuts: quicker if you make them, slower if you don’t. A dive is a lunge forward, for a far edge or to get going again.',
+    counts: [
+      {
+        what: 'Today’s gauntlet',
+        kind: 'counts',
+        sub: 'Your best run today goes on today’s board, your week and your rank.',
+      },
+      {
+        what: 'A past gauntlet',
+        kind: 'board',
+        sub: `Your best run goes on that gauntlet’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
+      },
+    ],
+  },
 }
 
 export function howToPlayFor(slug: string): HowToPlay | null {

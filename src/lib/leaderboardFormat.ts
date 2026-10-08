@@ -8,10 +8,19 @@ import { formatLanderBoardScore } from '../games/lander/score'
 import { formatMarblerunBoardScore } from '../games/marblerun/score'
 import { formatSpotterBoardScore } from '../games/spotter/score'
 import { formatSwoopBoardScore } from '../games/swoop/score'
+import { formatWobblerunBoardScore } from '../games/wobblerun/score'
 
 /** Boards that store inverted time rather than points — they read as a clock. */
 export function isTimeBoard(slug: string): boolean {
-  return slug === 'spotter' || slug === 'findbug' || slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop'
+  return (
+    slug === 'spotter' ||
+    slug === 'findbug' ||
+    slug === 'hotlap' ||
+    slug === 'marblerun' ||
+    slug === 'lander' ||
+    slug === 'swoop' ||
+    slug === 'wobblerun'
+  )
 }
 
 /** Boards that store inverted tries rather than points: Ace Chase's, the tries a day's first bullseye took. */
@@ -41,6 +50,7 @@ export function formatLeaderboardScore(slug: string, score: number): string {
   if (slug === 'marblerun') return formatMarblerunBoardScore(score)
   if (slug === 'lander') return formatLanderBoardScore(score)
   if (slug === 'swoop') return formatSwoopBoardScore(score)
+  if (slug === 'wobblerun') return formatWobblerunBoardScore(score)
   if (slug === 'halffull') return formatBoard(score)
   // Centroid's daily since 2026-10-06, its days in hundredths of a point (dead-center/score.ts).
   if (slug === 'centroid') return formatPlatesBoard(score)
@@ -49,7 +59,8 @@ export function formatLeaderboardScore(slug: string, score: number): string {
 
 /** The gap between two times on a time board: in tenths, or thousandths for a lap or a run, as their boards show them. */
 export function formatTimeGap(slug: string, ms: number): string {
-  return `${(ms / 1000).toFixed(slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop' ? 3 : 1)}s`
+  const fine = slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop' || slug === 'wobblerun'
+  return `${(ms / 1000).toFixed(fine ? 3 : 1)}s`
 }
 
 /**

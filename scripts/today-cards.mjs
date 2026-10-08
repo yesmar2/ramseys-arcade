@@ -11,16 +11,19 @@ import { OUTFIT } from '../api/_og/fonts.js'
  *
  * Every daily's Share sends that day's link. Its page is the site's shell with the day's title, words and
  * card stamped in (the app opens the Today page, useHashRoute.ts), and its card is a picture of the
- * day's ticket, the same for everyone that day: since 2026-10-06 the four races (the track, the marble's
- * course, the cave and the hills), and before then the hole, the bugs wanted and the glasses (empty) too, as
- * each joined. Both are made here, at build, for the days either side of it (a link is sent the day it's
+ * day's ticket, the same for everyone that day: since 2026-10-06 the races (the track, the marble's course,
+ * the cave and the hills, and from 2026-10-09 the gauntlet), and before then the hole, the bugs wanted and the
+ * glasses (empty) too, as each joined. Both are made here, at build, for the days either side of it (a link is sent the day it's
  * played, and unfurled then), so a link costs
  * nothing to open: no function, no API, nothing to wake. A day outside the window falls back to the shell
  * and the site's own card.
  */
 
-/** The first day all three dailies ran: Find the Bug's Today's Wanted #1. */
-const FIRST_DAY = '2026-09-27'
+/**
+ * The first day with a card: Today's Pour's first, the first day with three dailies on the ticket now that Ace
+ * Chase is on deck (the 27th has only the track and the bugs wanted, a count the card has no size for).
+ */
+const FIRST_DAY = '2026-09-28'
 /** Days kept behind the build's, and made ahead of it. */
 const BEHIND = 14
 const AHEAD = 30
@@ -39,7 +42,8 @@ const H = 630
  * The card's measures: three dailies across it, four from the day Today's Pour joins the ticket (Half
  * Full's TODAY_FROM), five from the day Today's Course does (Marble Run's), six from the day Today's Cave
  * does (Lander's), seven from the day Today's Hills do (Swoop's), each picture narrower and its words
- * smaller, to fit the same width. Each has its picture's box, its kicker's size and spacing, its name's size,
+ * smaller, to fit the same width. Since the puzzles came off (2026-10-06) the card is the races: four, then
+ * five from the day Today's Gauntlet joins (Wobble Run's). Each has its picture's box, its kicker's size and spacing, its name's size,
  * and the wanted faces' size and gap.
  */
 const THREE = { picW: 344, picH: 206, kicker: 18, spacing: 3, name: 29, face: 58, faceGap: 7 }
@@ -57,6 +61,7 @@ const POUR_ACCENT = '#f5b942'
 const COURSE_ACCENT = '#d774f0'
 const CAVE_ACCENT = '#a48af0'
 const HILLS_ACCENT = '#f2706a'
+const GAUNTLET_ACCENT = '#f27bb0'
 
 /* ---------- a PNG from pixels, for the hole's shaded green ---------- */
 
@@ -423,6 +428,16 @@ function card(day, size) {
       }),
     )
   }
+  if (day.gauntlet) {
+    panels.push(
+      panel(size, {
+        kicker: `WOBBLE RUN · GAUNTLET #${day.gauntlet.n}`,
+        accent: GAUNTLET_ACCENT,
+        name: day.gauntlet.name,
+        picture: h('img', { src: day.gauntlet.picture, width: size.picW, height: size.picH }),
+      }),
+    )
+  }
   const count = COUNT_WORDS[panels.length]
   const mark = wordmark(38)
   return h(
@@ -477,10 +492,13 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { plannedCave } = await server.ssrLoadModule('/src/games/lander/sim.ts')
   const { dailyHills, laidNumber: hillsLaid } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
   const { heightAt, hillsSpan, plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
+  // The gauntlet's picture is its rounds to the crown, from the plan's round code: no engine needed.
+  const { dailyGauntlet } = await server.ssrLoadModule('/src/games/wobblerun/daily.ts')
+  const { gauntletSvg } = await server.ssrLoadModule('/src/games/wobblerun/gauntletPicture.ts')
   const { mixColor } = await server.ssrLoadModule('/src/lib/color.ts')
   const { gamePlayHref } = await server.ssrLoadModule('/src/hooks/useHashRoute.ts')
   // A day's card is that day's ticket (lib/today.ts liveDailies): each daily from the day it joined, while its
-  // game is listed, and the puzzles until they came off it, when the Dailies became the four races.
+  // game is listed, and the puzzles until they came off it, when the Dailies became the races.
   const { liveDailies } = await server.ssrLoadModule('/src/lib/today.ts')
 
   const fonts = OUTFIT.map(({ weight, base64 }) => ({ name: 'Outfit', data: Buffer.from(base64, 'base64'), weight, style: 'normal' }))
@@ -499,95 +517,113 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   let made = 0
   let drawn = 0
   for (let day = from; day <= to; day = addDays(day, 1)) {
-    const live = new Set(liveDailies(day).map((d) => d.key))
-    const size = SIZES[live.size]
-    const info = { words: dayWords(day) }
-    if (live.has('hole')) {
-      const hole = todaysHole(day)
-      info.hole = { n: hole.n, name: hole.def.name, layers: holePlanLayers(hole.def, hole.def.spots[0], size.picW, size.picH, pngDataUrl) }
-    }
-    if (live.has('track')) {
-      const track = dailyTrack(day)
-      info.track = { n: track.n, name: track.name, picture: svgUrl(trackSvg(trackPlan(buildTrack(track.pieces, { heading: track.shape.heading })), size)) }
-    }
-    if (live.has('wanted')) {
-      const wanted = dayWanted(day)
-      info.wanted = { n: dayNumber(day), names: wantedNames(wanted), faces: wanted.map((w) => face(w.id)) }
-    }
-    if (live.has('pour')) {
-      // The day's glasses, empty: nothing on the card shows where half is.
-      const plan = dayPlan(day)
-      info.pour = { n: pourNumber(day), names: glassNames(plan), picture: svgUrl(pourPlanSvg(plan, size.picW, size.picH)) }
-    }
-    if (live.has('course')) {
-      const daily = dailyCourse(day)
-      const course = plannedCourse(laidNumber(daily), daily.attempt)
-      info.course = { n: daily.n, name: daily.name, picture: svgUrl(courseSvg(course, point, size)) }
-    }
-    if (live.has('cave')) {
-      const daily = dailyCave(day)
-      const cave = plannedCave(caveLaid(daily), daily.attempt)
-      info.cave = { n: daily.n, name: daily.name, picture: svgUrl(caveSvg(cave, size)) }
-    }
-    if (live.has('hills')) {
-      const daily = dailyHills(day)
-      const hills = plannedHills(hillsLaid(daily), daily.attempt)
-      info.hills = { n: daily.n, name: daily.name, picture: svgUrl(hillsSvg(hills, heightAt, hillsSpan, mixColor, size)) }
-    }
-    const tree = card(info, size)
-    const kept = join(CACHE, `${createHash('sha256').update(JSON.stringify(tree)).digest('hex').slice(0, 24)}.png`)
-    let png
-    if (existsSync(kept)) {
-      png = readFileSync(kept)
-    } else {
-      png = Buffer.from(await new ImageResponse(tree, { width: W, height: H, fonts }).arrayBuffer())
-      writeFileSync(kept, png)
-      drawn++
-    }
-    writeFileSync(join(dist, 'og/today', `${day}.png`), png)
+    // One day that can't be drawn (a count of dailies with no card size, a picture that throws) loses its own
+    // card and page only, never the rest of the window's (prerender.mjs's catch would drop every one).
+    try {
+      const live = new Set(liveDailies(day).map((d) => d.key))
+      const size = SIZES[live.size]
+      if (!size) {
+        console.warn(`today-cards: no card size for ${live.size} dailies on ${day}`)
+        continue
+      }
+      const info = { words: dayWords(day) }
+      if (live.has('hole')) {
+        const hole = todaysHole(day)
+        info.hole = { n: hole.n, name: hole.def.name, layers: holePlanLayers(hole.def, hole.def.spots[0], size.picW, size.picH, pngDataUrl) }
+      }
+      if (live.has('track')) {
+        const track = dailyTrack(day)
+        info.track = { n: track.n, name: track.name, picture: svgUrl(trackSvg(trackPlan(buildTrack(track.pieces, { heading: track.shape.heading })), size)) }
+      }
+      if (live.has('wanted')) {
+        const wanted = dayWanted(day)
+        info.wanted = { n: dayNumber(day), names: wantedNames(wanted), faces: wanted.map((w) => face(w.id)) }
+      }
+      if (live.has('pour')) {
+        // The day's glasses, empty: nothing on the card shows where half is.
+        const plan = dayPlan(day)
+        info.pour = { n: pourNumber(day), names: glassNames(plan), picture: svgUrl(pourPlanSvg(plan, size.picW, size.picH)) }
+      }
+      if (live.has('course')) {
+        const daily = dailyCourse(day)
+        const course = plannedCourse(laidNumber(daily), daily.attempt)
+        info.course = { n: daily.n, name: daily.name, picture: svgUrl(courseSvg(course, point, size)) }
+      }
+      if (live.has('cave')) {
+        const daily = dailyCave(day)
+        const cave = plannedCave(caveLaid(daily), daily.attempt)
+        info.cave = { n: daily.n, name: daily.name, picture: svgUrl(caveSvg(cave, size)) }
+      }
+      if (live.has('hills')) {
+        const daily = dailyHills(day)
+        const hills = plannedHills(hillsLaid(daily), daily.attempt)
+        info.hills = { n: daily.n, name: daily.name, picture: svgUrl(hillsSvg(hills, heightAt, hillsSpan, mixColor, size)) }
+      }
+      if (live.has('gauntlet')) {
+        const daily = dailyGauntlet(day)
+        info.gauntlet = { n: daily.n, name: daily.name, picture: svgUrl(gauntletSvg(daily, size.picW, size.picH)) }
+      }
+      const tree = card(info, size)
+      const kept = join(CACHE, `${createHash('sha256').update(JSON.stringify(tree)).digest('hex').slice(0, 24)}.png`)
+      let png
+      if (existsSync(kept)) {
+        png = readFileSync(kept)
+      } else {
+        png = Buffer.from(await new ImageResponse(tree, { width: W, height: H, fonts }).arrayBuffer())
+        writeFileSync(kept, png)
+        drawn++
+      }
+      writeFileSync(join(dist, 'og/today', `${day}.png`), png)
 
-    const title = `Today on ${appName} · ${info.words}`
-    const dailies = []
-    const links = []
-    if (info.hole) {
-      dailies.push(`Today’s Hole #${info.hole.n}, ${info.hole.name}`)
-      links.push({ href: gamePlayHref('acechase'), label: `Play Today’s Hole #${info.hole.n}` })
+      const title = `Today on ${appName} · ${info.words}`
+      const dailies = []
+      const links = []
+      if (info.hole) {
+        dailies.push(`Today’s Hole #${info.hole.n}, ${info.hole.name}`)
+        links.push({ href: gamePlayHref('acechase'), label: `Play Today’s Hole #${info.hole.n}` })
+      }
+      if (info.track) {
+        dailies.push(`Today’s Track #${info.track.n}, ${info.track.name}`)
+        links.push({ href: gamePlayHref('hotlap'), label: `Race Today’s Track #${info.track.n}` })
+      }
+      if (info.wanted) {
+        dailies.push(`Today’s Wanted #${info.wanted.n}: ${info.wanted.names}`)
+        links.push({ href: gamePlayHref('findbug'), label: `Find Today’s Wanted #${info.wanted.n}` })
+      }
+      if (info.pour) {
+        dailies.push(`Today’s Pour #${info.pour.n}: ${info.pour.names}`)
+        links.push({ href: gamePlayHref('halffull'), label: `Pour Today’s Pour #${info.pour.n}` })
+      }
+      if (info.course) {
+        dailies.push(`Today’s Course #${info.course.n}, ${info.course.name}`)
+        links.push({ href: gamePlayHref('marblerun'), label: `Roll Today’s Course #${info.course.n}` })
+      }
+      if (info.cave) {
+        dailies.push(`Today’s Cave #${info.cave.n}, ${info.cave.name}`)
+        links.push({ href: gamePlayHref('lander'), label: `Fly Today’s Cave #${info.cave.n}` })
+      }
+      if (info.hills) {
+        dailies.push(`Today’s Hills #${info.hills.n}, ${info.hills.name}`)
+        links.push({ href: gamePlayHref('swoop'), label: `Swoop Today’s Hills #${info.hills.n}` })
+      }
+      if (info.gauntlet) {
+        dailies.push(`Today’s Gauntlet #${info.gauntlet.n}, ${info.gauntlet.name}`)
+        links.push({ href: gamePlayHref('wobblerun'), label: `Run Today’s Gauntlet #${info.gauntlet.n}` })
+      }
+      const count = COUNT_WORDS[dailies.length]
+      const description =
+        `${dailies.slice(0, -1).join('; ')}; and ${dailies[dailies.length - 1]}. ` +
+        `${count.charAt(0).toUpperCase()}${count.slice(1)} quick games, the same for everyone, free in your browser with no ads.`
+      const meta = { path: `/today/${day}`, title, description, image: `/og/today/${day}.png` }
+      const content = { heading: title, paragraphs: [description], links }
+      const file = outFile(meta.path)
+      mkdirSync(dirname(file), { recursive: true })
+      // Somebody's link to somebody, never a search result.
+      writeFileSync(file, pageHtml(meta, content).replace('</head>', '  <meta name="robots" content="noindex" />\n  </head>'))
+      made++
+    } catch (err) {
+      console.warn(`today-cards: skipped ${day}:`, err instanceof Error ? err.message : err)
     }
-    if (info.track) {
-      dailies.push(`Today’s Track #${info.track.n}, ${info.track.name}`)
-      links.push({ href: gamePlayHref('hotlap'), label: `Race Today’s Track #${info.track.n}` })
-    }
-    if (info.wanted) {
-      dailies.push(`Today’s Wanted #${info.wanted.n}: ${info.wanted.names}`)
-      links.push({ href: gamePlayHref('findbug'), label: `Find Today’s Wanted #${info.wanted.n}` })
-    }
-    if (info.pour) {
-      dailies.push(`Today’s Pour #${info.pour.n}: ${info.pour.names}`)
-      links.push({ href: gamePlayHref('halffull'), label: `Pour Today’s Pour #${info.pour.n}` })
-    }
-    if (info.course) {
-      dailies.push(`Today’s Course #${info.course.n}, ${info.course.name}`)
-      links.push({ href: gamePlayHref('marblerun'), label: `Roll Today’s Course #${info.course.n}` })
-    }
-    if (info.cave) {
-      dailies.push(`Today’s Cave #${info.cave.n}, ${info.cave.name}`)
-      links.push({ href: gamePlayHref('lander'), label: `Fly Today’s Cave #${info.cave.n}` })
-    }
-    if (info.hills) {
-      dailies.push(`Today’s Hills #${info.hills.n}, ${info.hills.name}`)
-      links.push({ href: gamePlayHref('swoop'), label: `Swoop Today’s Hills #${info.hills.n}` })
-    }
-    const count = COUNT_WORDS[dailies.length]
-    const description =
-      `${dailies.slice(0, -1).join('; ')}; and ${dailies[dailies.length - 1]}. ` +
-      `${count.charAt(0).toUpperCase()}${count.slice(1)} quick games, the same for everyone, free in your browser with no ads.`
-    const meta = { path: `/today/${day}`, title, description, image: `/og/today/${day}.png` }
-    const content = { heading: title, paragraphs: [description], links }
-    const file = outFile(meta.path)
-    mkdirSync(dirname(file), { recursive: true })
-    // Somebody's link to somebody, never a search result.
-    writeFileSync(file, pageHtml(meta, content).replace('</head>', '  <meta name="robots" content="noindex" />\n  </head>'))
-    made++
   }
   return { made, drawn, from, to }
 }

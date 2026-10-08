@@ -42,6 +42,7 @@ const TodaysPourCard = lazyPage(() => import('../components/TodaysPourCard').the
 const TodaysCourseCard = lazyPage(() => import('../components/TodaysCourseCard').then((m) => m.TodaysCourseCard))
 const TodaysCaveCard = lazyPage(() => import('../components/TodaysCaveCard').then((m) => m.TodaysCaveCard))
 const TodaysHillsCard = lazyPage(() => import('../components/TodaysHillsCard').then((m) => m.TodaysHillsCard))
+const TodaysGauntletCard = lazyPage(() => import('../components/TodaysGauntletCard').then((m) => m.TodaysGauntletCard))
 /** Centroid's Today's Plates, the same way. */
 const TodaysPlatesCard = lazyPage(() => import('../components/TodaysPlatesCard').then((m) => m.TodaysPlatesCard))
 
@@ -55,6 +56,7 @@ const TODAY_CARDS: Partial<Record<string, typeof TodaysHoleCard>> = {
   marblerun: TodaysCourseCard,
   lander: TodaysCaveCard,
   swoop: TodaysHillsCard,
+  wobblerun: TodaysGauntletCard,
 }
 
 /**

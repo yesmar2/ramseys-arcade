@@ -5,9 +5,9 @@ import { isRankedGame } from '../data/games'
  * the game's page and its tabs, the past days, the start and result cards, and the labels that say what
  * a run counts toward (components/RunLabel.tsx).
  *
- * Only today's course counts toward your rank, on a daily that's ranked (Hot Lap, Marble Run, Lander); on one just
- * for fun (Ace Chase, Find the Bug, Half Full: data/games.ts Game.ranked) it's only yours. A past course is
- * one of two things: a board of its own that isn't ranked (the ranked dailies' tracks, courses and caves),
+ * Only today's course counts toward your rank, on a daily that's ranked (Hot Lap, Marble Run, Lander, Swoop, Wobble
+ * Run); on one just for fun (Ace Chase, Find the Bug, Half Full: data/games.ts Game.ranked) it's only yours. A past
+ * course is one of two things: a board of its own that isn't ranked (the ranked dailies' tracks, courses, caves, hills and gauntlets),
  * or practice that saves nothing (the just-for-fun dailies').
  */
 
@@ -105,6 +105,16 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     playToday: 'Swoop today’s hills',
     past: 'board',
     hudPast: 'Past hills · not ranked',
+  },
+  // Wobble Run's day is a gauntlet of rounds to the crown: "gauntlet" names it and counts it, and you run it.
+  wobblerun: {
+    course: 'gauntlet',
+    today: 'Today’s gauntlet',
+    pastTab: 'Past gauntlets',
+    verb: 'Run',
+    playToday: 'Run today’s gauntlet',
+    past: 'board',
+    hudPast: 'Past gauntlet · not ranked',
   },
 }
 

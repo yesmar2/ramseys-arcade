@@ -9,6 +9,8 @@ import { CAVE_COLOURS, caveView } from '../games/lander/cavePicture'
 import { landerDay } from '../games/lander/runs'
 import { HillsPostcard } from '../games/swoop/HillsPostcard'
 import { swoopDay } from '../games/swoop/runs'
+import { dailyGauntlet } from '../games/wobblerun/daily'
+import { GauntletDrawing } from '../games/wobblerun/GauntletDrawing'
 import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
 import { todaysHole } from '../lib/dailyHole'
@@ -21,8 +23,8 @@ import { GameArt } from './GameArt'
  * Each daily's own picture of the day, for the home page's Today row (HomeToday.tsx): the hole from above, the
  * track in its neon, who's wanted and the glasses on the shelf (empty: nothing gives half away), drawn as the
  * day's share card draws them (scripts/today-cards.mjs); the cave's landing room as Lander draws a cave, with
- * the ship coming down; and Marble Run's own picture, the marble on its glowing road, which Ramsey liked best
- * (2026-10-04). Each fills a 4:3 box. They come in a chunk of their own, with the plans and sims they're drawn
+ * the ship coming down; the hills' biggest top close in; the gauntlet's rounds to the crown; and Marble Run's own
+ * picture, the marble on its glowing road, which Ramsey liked best (2026-10-04). Each fills a 4:3 box. They come in a chunk of their own, with the plans and sims they're drawn
  * from, after the row.
  */
 
@@ -229,6 +231,12 @@ function HillsPicture({ day }: { day: string }) {
   return <HillsPostcard hills={swoopDay(day).hills} w={W} h={H} />
 }
 
+/** The day's rounds to the crown as a trail of badges, your bean at the start (wobblerun/GauntletDrawing.tsx). */
+function GauntletPicture({ day }: { day: string }) {
+  const gauntlet = dailyGauntlet(day)
+  return <GauntletDrawing gauntlet={gauntlet} name={gauntlet.name} w={W} h={H} />
+}
+
 /** A daily's picture of the day. */
 export function DayPicture({ daily, day }: { daily: TodayKey; day: string }) {
   if (daily === 'hole') return <HolePicture day={day} />
@@ -237,6 +245,7 @@ export function DayPicture({ daily, day }: { daily: TodayKey; day: string }) {
   if (daily === 'pour') return <PourPicture day={day} />
   if (daily === 'cave') return <CavePicture day={day} />
   if (daily === 'hills') return <HillsPicture day={day} />
+  if (daily === 'gauntlet') return <GauntletPicture day={day} />
   if (daily === 'plates') return <PlatesPicture plan={platePlan(day)} width={W} height={H} className="day-picture__plates" />
   return <CoursePicture />
 }

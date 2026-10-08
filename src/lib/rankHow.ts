@@ -458,6 +458,7 @@ const DAYS_COUNT_FROM: Partial<Record<string, string>> = {
   marblerun: '2026-09-29',
   lander: '2026-09-30',
   swoop: '2026-10-06',
+  wobblerun: '2026-10-09',
 }
 
 /**
@@ -491,6 +492,7 @@ export const RESULT_WORD: Record<string, string> = {
   marblerun: 'Run',
   lander: 'Run',
   swoop: 'Run',
+  wobblerun: 'Run',
 }
 
 /** A daily's today, as the site names it. */
@@ -503,6 +505,7 @@ export const TODAY_NAME: Record<string, string> = {
   marblerun: 'Today’s Course',
   lander: 'Today’s Cave',
   swoop: 'Today’s Hills',
+  wobblerun: 'Today’s Gauntlet',
 }
 
 /** A day's result in the game's own terms: a lap, a time, tries, a pour. */
