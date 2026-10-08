@@ -150,9 +150,9 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
   {
     key: 'shatter',
     name: 'Breaking the glass',
-    how: 'In Centroid, balance a plate on its pin, then tap or click the plate again while it’s still sitting there, before it’s lifted away.',
-    does: 'The plate shatters: the pieces fly off the pin, bounce on the table and fade, with a crash and a tinkle. The run goes on as if it had been lifted away, its points and streak kept, and the next plate comes no sooner.',
-    clue: 'A balanced plate shows a faint hairline crack or two running out from its pin while it sits there, till that device has broken one. Players who tap twice by habit find it on their own.',
+    how: 'In Centroid, pin a plate, then tap or click the plate again while its pins are in, before it’s lifted away.',
+    does: 'The plate shatters: the pieces fly, bounce on the table and fade, with a crash and a tinkle. The day goes on as if it had been lifted away, its points kept, and the next plate comes no sooner.',
+    clue: 'A pinned plate shows a faint hairline crack or two running out from its pin while its pins are in, till that device has broken one. Players who tap twice by habit find it on their own.',
     secret: 'Smashing',
   },
   {

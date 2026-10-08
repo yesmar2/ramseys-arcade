@@ -605,7 +605,10 @@ function fracture(points: Point[], hit: Point): Point[][] {
 export function shatter(state: GameState, at: Point): boolean {
   const o = state.outcome
   const plate = state.plate
-  if (state.phase !== 'settling' || (state.stage !== 'wobble' && state.stage !== 'mark') || !o?.balanced || !o.pin || !plate) return false
+  // A day's plate doesn't balance any more, so any of them breaks while its pins are in (Ramsey, 2026-10-08:
+  // "the glass isn't breaking anymore, still need that secret in there"); the arcade's only while it balances.
+  const ready = state.stage === 'mark' || (state.stage === 'wobble' && o?.balanced)
+  if (state.phase !== 'settling' || !ready || !o?.pin || !plate) return false
   const edge = nearestOnEdge(plate.points, at)
   const inside = onPlate(plate.points, at)
   if (!inside && edge.d > 0.02) return false
