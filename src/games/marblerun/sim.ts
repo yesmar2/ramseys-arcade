@@ -869,16 +869,17 @@ export function respawn(course: Course, b: Ball, at = b.cp): Ball {
  *
  * On a course with the new pieces (Course `extras`) it also rides slabs and loops, and meets bumpers, hammers
  * and arms where they are this moment of the run; on any course, boost pads, mud and ice change how it rolls.
- * A course without them steps exactly as it always has.
+ * A course without them steps exactly as it always has. `most` is the steepest the world may tilt for it: a
+ * player's hands can tilt it further than the pace ball's (PLAYER_TILT_MAX).
  */
-export function step(course: Course, b: Ball, tilt: Tilt): Ball {
+export function step(course: Course, b: Ball, tilt: Tilt, most = TILT_MAX): Ball {
   if (b.lost) return b
   let tx = tilt.x
   let tz = tilt.z
   const tl = Math.hypot(tx, tz)
-  if (tl > TILT_MAX) {
-    tx *= TILT_MAX / tl
-    tz *= TILT_MAX / tl
+  if (tl > most) {
+    tx *= most / tl
+    tz *= most / tl
   }
   const gx = G * tx
   const gz = G * tz
@@ -2217,16 +2218,32 @@ function clampTilt(x: number, z: number): Tilt {
 
 /* ------------------------------------------------------------ a player's hands --- */
 
-/** How much of a curve's pull toward its middle a player's marble gets by itself: the rest is theirs. */
-export const TURN_HELP = 0.5
+/**
+ * How much of a curve's pull toward its middle a player's marble gets by itself: the rest is theirs. It was half
+ * until Ramsey found "turning and slowing down is too hard" (2026-10-08), along with PLAYER_TILT_MAX and PLAYER_BRAKE.
+ */
+export const TURN_HELP = 0.7
 
 /**
- * The steadying a thumb on the stick gets (handsTilt `steady`), as Ramsey found the marble "kinda hard on a
- * phone" (2026-10-07). A stand-in phone player, a moment late and a little unsteady, mostly fell weaving off the
- * narrows: with this it fell 2.6 times a run instead of 6.3, and never on a narrow, while a quick one's times were
- * the same. The keys keep none.
+ * A player's hands tilt the world further than the pace ball's (TILT_MAX, about 21°): about 27° for turning and
+ * pushing on, about 37° held back, so the marble turns and slows harder for them (Ramsey, 2026-10-08: "needs to be
+ * easier to turn and easier to slow down so we can control ball more"). On a steep drop, where the slope takes most
+ * of a 21° brake, the marble now slows about four times as hard. Stand-in players fell off curves and narrows less
+ * than half as often: a hand on the keys half a second late 0.08 times a run (0.28 before), a slow thumb 0.13 (0.36).
+ * A quick one's times went from 0.95× the blue ball's to 0.91×, under half a medal step. The blue ball, the plan and
+ * the courses are as they were.
  */
-export const PHONE_STEADY = 1
+export const PLAYER_TILT_MAX = 0.45
+export const PLAYER_BRAKE = 0.6
+
+/**
+ * The steadying a player's hands get (handsTilt `steady`), on a phone's stick and on the keys alike: Ramsey found
+ * the marble "kinda hard on a phone", then "the controlling of the marble should be easier on both" (2026-10-07).
+ * Stand-in players a moment late mostly fell weaving off the narrows and out of curves. With this a slow thumb fell
+ * 2.6 times a run instead of 6.3, never on a narrow; a slow hand on the keys fell outside the hammers and platforms
+ * 0.28 times instead of 0.94, and took 1.04× the blue ball's time instead of 1.29×. A quick player's times stayed.
+ */
+export const STEADY = 1
 
 /** The piece `d` metres down the course, and how far along it: the last piece's end, past the course's. */
 export function pieceAt(course: Course, d: number): { p: Piece; u: number } {
@@ -2244,7 +2261,16 @@ export function pieceAt(course: Course, d: number): { p: Piece; u: number } {
  * the line, and can lean against the help. `camera` is the way forward while there's no track under the
  * marble yet. The blue ball never uses this: its runs, and the plan's times, are as they were.
  */
-export function handsTilt(course: Course, b: Ball, hands: { x: number; y: number }, camera: number, help = TURN_HELP, steady = 0): Tilt {
+export function handsTilt(
+  course: Course,
+  b: Ball,
+  hands: { x: number; y: number },
+  camera: number,
+  help = TURN_HELP,
+  steady = 0,
+  most = TILT_MAX,
+  brake = most,
+): Tilt {
   const s = b.support
   const sp = Math.hypot(b.vx, b.vz)
   let h = camera
@@ -2282,10 +2308,12 @@ export function handsTilt(course: Course, b: Ball, hands: { x: number; y: number
     hx += k * nx
     hz += k * nz
   }
-  // Across first, the hands' and the help's; then along, with what's left.
-  const across = clamp(hands.x * TILT_MAX + hx * rx + hz * rz, -TILT_MAX, TILT_MAX)
-  const room = Math.sqrt(TILT_MAX * TILT_MAX - across * across)
-  const along = clamp(hands.y * TILT_MAX + hx * fx + hz * fz, -room, room)
+  // Across first, the hands' and the help's; then along, with what's left. Hands all the way over tilt it `most`,
+  // and all the way back `brake` (step's `most` must allow it).
+  const across = clamp(hands.x * most + hx * rx + hz * rz, -most, most)
+  const room = Math.sqrt(most * most - across * across)
+  const back = Math.sqrt(brake * brake - across * across)
+  const along = clamp((hands.y < 0 ? hands.y * brake : hands.y * most) + hx * fx + hz * fz, -back, room)
   return { x: along * fx + across * rx, z: along * fz + across * rz }
 }
 

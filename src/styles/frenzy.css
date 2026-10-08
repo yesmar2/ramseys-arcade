@@ -26,6 +26,38 @@
   display: block;
 }
 
+/*
+ * A touch screen's stick, wherever a thumb lands, in the sea's own light blue. It follows the thumb
+ * (FrenzyGame.tsx STICK_LEASH): the knob never sits more than 36px from the ring's centre.
+ */
+.frenzy__stick {
+  position: absolute;
+  z-index: 9;
+  width: 116px;
+  height: 116px;
+  margin: -58px 0 0 -58px;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(120, 214, 255, 0.12), rgba(4, 22, 40, 0.35) 70%);
+  pointer-events: none;
+}
+
+.frenzy__stick[hidden] {
+  display: none;
+}
+
+.frenzy__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  border-radius: 50%;
+  background: rgba(150, 224, 255, 0.55);
+  box-shadow: 0 0 20px rgba(120, 214, 255, 0.5);
+}
+
 .frenzy__overlay {
   position: fixed;
   inset: 0;

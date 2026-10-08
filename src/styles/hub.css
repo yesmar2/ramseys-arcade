@@ -89,14 +89,15 @@
 /* ---------- the hero: the game, across the page ---------- */
 
 /*
- * The words, 28.6rem across, and the game across the rest of the card, out to its edges (.gh-screen). Across the
- * page on every game's, as a daily's is (Ramsey, 2026-10-07: "the hero on the game hubs for non-daily games should
- * be full width now"); its board went under it, beside where you stand (.gh-band).
+ * The words, a little over half the card, and the game across the rest of it, out to its edges (.gh-screen), as on
+ * a daily's page. Across the page on every game's (Ramsey, 2026-10-07: "the hero on the game hubs for non-daily games
+ * should be full width now"); its board went under it, beside where you stand (.gh-band). The words had 28.6rem,
+ * where only three skins showed: "the left side should be wider, and the preview not as wide".
  */
 .gh-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 28.6rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   align-items: stretch;
   min-height: 32rem;
   box-sizing: border-box;
@@ -1266,6 +1267,11 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   .gh .gh-shelf__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  /* A narrower desk gives the words more of the card, so Play and the rest keep to a line and the skins show. */
+  .gh-hero {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
 }
 
 /* The game goes across the top, out to the card's edges, fading into the words and Play under it. */
@@ -1398,7 +1404,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
  * screen of its own inside the card, which he found small, then "still kinda small" at 44% of the hero.
  */
 .gh-hero.gh-hero--daily {
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -1458,13 +1463,6 @@ html[data-theme='dark'] .gh-seg a[aria-current] {
   min-height: 24rem;
   border-radius: 1.5rem;
   background: rgba(var(--ink-rgb), 0.03);
-}
-
-/* A narrower desk gives the words more of the card, so Play, How to play and share keep to one line. */
-@media (max-width: 72rem) {
-  .gh-hero.gh-hero--daily {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  }
 }
 
 /*

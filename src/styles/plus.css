@@ -1,0 +1,849 @@
+/*
+ * The Plus page (pages/PlusPage.tsx): A of the "Plus page redesign" canvas, Ramsey's pick on 2026-10-07. The
+ * price beside a member card, what Plus adds as six tiles, what stays free, questions, and the button again.
+ * In the site's own colours, so the light theme reads as well as the dark; the member card is a gold card in
+ * either, as a card in a wallet is whatever the room.
+ */
+
+.plus {
+  --plus-gold: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+  --plus-teal: color-mix(in srgb, var(--accent) 62%, var(--ink));
+  --plus-line: rgba(var(--ink-rgb), 0.09);
+  --plus-well: rgba(var(--ink-rgb), 0.045);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.75rem, 4vw, 2.75rem);
+  padding-bottom: 1rem;
+}
+
+/* ---------- the top: the price, and a member card with your tag ---------- */
+
+.plus-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  align-items: center;
+  padding: clamp(1.25rem, 4vw, 3.5rem);
+  border-radius: 1.75rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 30%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.plus-hero__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+.plus-crumb {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.plus-crumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.plus-crumb a:hover {
+  color: var(--ink);
+}
+
+.plus-crumb [aria-current] {
+  color: var(--ink);
+}
+
+.plus-kicker {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--plus-gold);
+}
+
+.plus-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 4.4vw, 3.6rem);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.plus-hero__blurb {
+  margin: 0;
+  max-width: 34em;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.plus-buy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem 1.1rem;
+}
+
+/* Monthly or yearly. */
+.plus-every {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.07);
+}
+
+.plus-every button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.6rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plus-every button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.plus-every__save {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--plus-teal);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.plus-every button[aria-pressed='true'] .plus-every__save {
+  background: var(--accent);
+  color: #03211b;
+}
+
+.plus-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.plus-price strong {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.plus-go {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.plus-go__after {
+  max-width: 24em;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.plus-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0 1.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.15);
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: not-allowed;
+}
+
+.plus-btn--go {
+  border: 0;
+  background: linear-gradient(135deg, #f5b942, #f2813a);
+  color: #1a0e05;
+  cursor: pointer;
+}
+
+.plus-btn--go:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.plus-btn--go:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.plus-btn--go:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.plus-hero__founder {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--plus-gold);
+}
+
+/* The renewal line: plain, small, and never hidden. */
+.plus-fine {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.plus-fine a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* A member's top: on Plus, when it renews, and the way to change it. */
+.plus-have {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.plus-have__tag {
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-2) 20%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
+  font-weight: 800;
+  color: var(--plus-gold);
+}
+
+.plus-have__line {
+  flex-basis: 100%;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.plus-hero__card {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.5rem 0;
+}
+
+.plus-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 29rem;
+  aspect-ratio: 1.58;
+  margin: 0;
+  padding: clamp(1.1rem, 3vw, 1.75rem);
+  border-radius: 1.5rem;
+  background: linear-gradient(150deg, #2b2214 0%, #17130d 58%, #101a15 100%);
+  border: 1px solid rgba(245, 185, 66, 0.55);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.45);
+  color: #f3e6cc;
+  transform: rotate(-2deg);
+}
+
+/* The card is dark gold in either theme, so its stars keep the bright gold. */
+html[data-theme='light'] .plus-card .plus-mark svg {
+  fill: #f5b942;
+  stroke: none;
+}
+
+.plus-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.plus-card__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f5d08a;
+}
+
+.plus-card__kind {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c9a96a;
+}
+
+.plus-card__who {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.plus-card__name {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  color: #fff7e8;
+  overflow-wrap: anywhere;
+}
+
+.plus-card__title {
+  align-self: flex-start;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 185, 66, 0.8);
+  color: #f5d08a;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.plus-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.plus-card__line {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #c9b28a;
+}
+
+.plus-card__line b {
+  font-size: 0.9rem;
+  color: #f3e6cc;
+}
+
+.plus-card__skins {
+  display: flex;
+  flex: none;
+  gap: 0.4rem;
+}
+
+.plus-card__skin {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: #1a2252;
+}
+
+.plus-note {
+  margin: 0;
+  padding: 0.8rem 1.1rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, #8a6ad4 14%, var(--surface));
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.plus-note--bad {
+  background: color-mix(in srgb, #e8564f 14%, var(--surface));
+}
+
+/* ---------- what Plus adds: six tiles, each showing its thing ---------- */
+
+.plus-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.plus-head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.plus-perks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+  gap: 1rem;
+}
+
+.plus-perk {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border-radius: 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--plus-line);
+}
+
+/* Every tile's picture is the same height, so nothing moves as the looks and the pass come in. */
+.plus-perk__show {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 9.75rem;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  background: var(--plus-well);
+  border: 1px solid var(--plus-line);
+  overflow: hidden;
+}
+
+.plus-perk__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.plus-perk__text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.plus-perk__text a {
+  color: var(--plus-gold);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* The archive: the week free before today, and the week before that, which Plus opens. */
+.plus-days {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.plus-days__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.plus-day {
+  display: grid;
+  place-items: center;
+  height: 2.2rem;
+  border-radius: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.plus-day--plus {
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
+  color: var(--plus-gold);
+}
+
+.plus-day--free {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--plus-teal);
+}
+
+.plus-days__key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.plus-days__key-plus {
+  color: var(--plus-gold);
+}
+
+.plus-days__key-free {
+  color: var(--plus-teal);
+}
+
+/* The season's three headliners. */
+.plus-heads {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.plus-heads__one {
+  display: grid;
+  place-items: center;
+  max-height: 8rem;
+  aspect-ratio: 1;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background: #1a2252;
+}
+
+.plus-passplus {
+  align-self: center;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--plus-gold);
+}
+
+/* The members' looks, a month at a time. */
+.plus-looks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  height: 100%;
+}
+
+.plus-looks__one {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+  min-width: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.7rem;
+  background: var(--surface);
+}
+
+.plus-looks__when {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+
+.plus-looks__art {
+  display: grid;
+  place-items: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.plus-looks__name {
+  overflow: hidden;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+/* A week early, then everyone. */
+.plus-early {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 0.4rem;
+}
+
+.plus-early__bar {
+  display: flex;
+  height: 0.875rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.plus-early__plus {
+  flex: 1;
+  background: linear-gradient(90deg, #f5b942, #f2813a);
+}
+
+.plus-early__all {
+  flex: 2.2;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.plus-early__labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.plus-early__label-plus {
+  color: var(--plus-gold);
+}
+
+.plus-early__label-all {
+  color: var(--plus-teal);
+}
+
+.plus-early__note {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Hosting: Plus's numbers over the free ones. */
+.plus-host {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  height: 100%;
+}
+
+.plus-host__one {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.6rem;
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.plus-host__one b {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--plus-gold);
+}
+
+.plus-host__one span {
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.plus-host__one small {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* Your name on a board, with the mark beside it. */
+.plus-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.plus-row__place {
+  width: 1.1rem;
+  font-weight: 800;
+  color: var(--plus-gold);
+}
+
+.plus-row__name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.plus-row__note {
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+/* ---------- what stays free, questions, and the button again ---------- */
+
+.plus-free {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border-radius: 1.5rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.plus-free .plus-head__title {
+  font-size: 1.5rem;
+}
+
+.plus-free__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plus-free__list li {
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.plus-free__line {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.plus-faq {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.plus-faq__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: 0.9rem;
+}
+
+.plus-faq__one {
+  padding: 1.1rem 1.25rem;
+  border-radius: 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--plus-line);
+}
+
+.plus-faq__one h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.plus-faq__one p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.plus-faq__one a {
+  font-weight: 700;
+  color: var(--plus-gold);
+}
+
+.plus-close {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.1rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border-radius: 1.5rem;
+  background: color-mix(in srgb, var(--accent-2) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 35%, transparent);
+}
+
+.plus-close__text {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.plus-close__text > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.plus-close__title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.plus-close__line {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.plus-close + .plus-fine {
+  margin-top: -1.25rem;
+  text-align: center;
+}
+
+@media (max-width: 40rem) {
+  .plus-hero {
+    border-radius: 1.25rem;
+  }
+
+  .plus-card {
+    transform: rotate(-1.5deg);
+  }
+
+  .plus-price strong {
+    font-size: 2.1rem;
+  }
+
+  .plus-go .plus-btn,
+  .plus-close .plus-btn {
+    width: 100%;
+  }
+}

@@ -41,6 +41,8 @@ export type PlusInfo = {
   buyable: boolean
   /** This month's members' looks; none from an API before them. */
   looks?: MembersLook[]
+  /** The looks to come from this month's on, each in the month it's first given (YYYYMM); missing from an older API. */
+  ahead?: (MembersLook & { month: number })[]
   you: PlusYou | null
 }
 

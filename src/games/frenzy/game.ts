@@ -205,6 +205,8 @@ export type GameState = {
   frenzy: number
   /** Where the fish is heading, in world units; null to coast to a stop. */
   target: { x: number; y: number } | null
+  /** A thumb on the stick: which way, and how hard, each −1 to 1, no longer than 1 all told; null with no thumb down. */
+  steer: { x: number; y: number } | null
   keys: Keys
   particles: Particle[]
   floaters: Floater[]
@@ -282,6 +284,7 @@ export function createInitialState(w = 960, h = 540): GameState {
     boat: freshBoat(),
     frenzy: 0,
     target: null,
+    steer: null,
     keys: { up: false, down: false, left: false, right: false },
     particles: [],
     floaters: [],
@@ -349,6 +352,7 @@ export function startGame(s: GameState): GameState {
     boat: freshBoat(),
     frenzy: 0,
     target: null,
+    steer: null,
     particles: [],
     floaters: [],
     deathCause: '',
@@ -380,12 +384,23 @@ export function clearTarget(s: GameState): GameState {
   return s.target ? { ...s, target: null } : s
 }
 
+/** A thumb on the stick: swim that way, as hard as it's pushed, for as long as it's held. */
+export function setSteer(s: GameState, x: number, y: number): GameState {
+  const l = Math.hypot(x, y)
+  const k = l > 1 ? 1 / l : 1
+  return { ...s, steer: { x: x * k, y: y * k }, target: null }
+}
+
+export function clearSteer(s: GameState): GameState {
+  return s.steer ? { ...s, steer: null } : s
+}
+
 export function setKey(s: GameState, key: keyof Keys, down: boolean): GameState {
   return s.keys[key] === down ? s : { ...s, keys: { ...s.keys, [key]: down } }
 }
 
 export function releaseInput(s: GameState): GameState {
-  return { ...s, target: null, keys: { up: false, down: false, left: false, right: false } }
+  return { ...s, target: null, steer: null, keys: { up: false, down: false, left: false, right: false } }
 }
 
 /** What swims in at a depth: mostly food, some your size and up, and more of the big ones deeper down. */
@@ -393,7 +408,7 @@ function pickTier(s: GameState, y: number, calm: boolean): number {
   const size = s.player.size
   const deep = clamp(y / FLOOR, 0, 1)
   const roll = Math.random()
-  const threat = calm ? 0 : Math.min(0.45, 0.1 + deep * 0.28 + Math.min(0.08, s.elapsed / 900))
+  const threat = calm ? 0 : Math.min(0.45, 0.1 + deep * 0.28 + Math.min(0.08, s.elapsed / 900)) * threatShare(s)
   if (roll < threat) return clamp(size + 2 + (Math.random() < 0.15 + deep * 0.35 ? 1 : 0), 0, TIERS.length - 1)
   // Big meals, more of them deeper.
   if (roll < threat + 0.22 + deep * 0.18) return clamp(size + 1, 0, TIERS.length - 1)
@@ -484,7 +499,7 @@ const NAMES: Partial<Record<SpeciesId, string>> = {
   lanternfish: 'a lanternfish',
 }
 
-/** One step of the player: toward the target, or the way the keys say; in the air, a leap's arc. */
+/** One step of the player: the way the keys or the stick say, or toward the target; in the air, a leap's arc. */
 function movePlayer(s: GameState, dt: number) {
   const p = s.player
   const r = playerRadius(s)
@@ -493,6 +508,7 @@ function movePlayer(s: GameState, dt: number) {
     let ax = 0
     const kx = (s.keys.right ? 1 : 0) - (s.keys.left ? 1 : 0)
     if (kx) ax = kx * 260
+    else if (s.steer) ax = s.steer.x * 260
     else if (s.target) ax = clamp((s.target.x - p.x) * 3, -260, 260)
     p.vx += ax * dt
     p.vy += GRAVITY * dt
@@ -513,6 +529,10 @@ function movePlayer(s: GameState, dt: number) {
       const l = Math.hypot(kx, ky)
       tvx = (kx / l) * speed
       tvy = (ky / l) * speed
+    } else if (s.steer) {
+      // The stick: its way, and as fast as it's pushed; held still, the fish keeps swimming.
+      tvx = s.steer.x * speed
+      tvy = s.steer.y * speed
     } else if (s.target) {
       const dx = s.target.x - p.x
       const dy = s.target.y - p.y
@@ -889,10 +909,25 @@ function stepEffects(s: GameState, dt: number) {
   s.floaters = s.floaters.filter((f) => f.t < (f.tone === 'grow' ? 1.6 : 0.9))
 }
 
-/** How many fish swim around you: more on a wider screen, never a crowd. */
+/**
+ * How many fish swim around you: by the water in view across and down, so a phone's tall, narrow view has
+ * as many to chase as a wide screen (Ramsey, 2026-10-08: "we need more fish in the water to catch"). It was
+ * by the width alone, which left a phone with three fish to eat in view where a desk had eleven.
+ */
 function crowd(s: GameState) {
   const half = viewHalf(s)
-  return Math.round(clamp((half.w * 2) / 30, 10, 26) + Math.min(6, s.elapsed / 40))
+  return Math.round(clamp(((half.w + half.h) * 2) / 30, 16, 34) + Math.min(6, s.elapsed / 40))
+}
+
+/**
+ * The share of what swims in that can eat you, scaled down as the count goes up so about as many hunters are in
+ * view as when the water held the width's count: the fish added are food, not danger. A square root, as a
+ * fuller sea turns over faster: the plain ratio left a phone with a third fewer hunters than before.
+ */
+function threatShare(s: GameState) {
+  const half = viewHalf(s)
+  const before = clamp((half.w * 2) / 30, 10, 26) + Math.min(6, s.elapsed / 40)
+  return Math.min(1, Math.sqrt(before / crowd(s)))
 }
 
 export function tick(state: GameState, dt: number): GameState {

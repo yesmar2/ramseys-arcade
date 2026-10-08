@@ -279,6 +279,28 @@ export function useSeason(): Store {
 }
 
 /**
+ * Each season's Pass+ headliners, left, middle and right: the skins its stage shows big (he picked A of the
+ * Pass+ showpiece, 2026-10-06), and the Plus page's member card and Pass+ tile. A season not here shows its
+ * three highest-level Pass+ skins.
+ */
+const HEADLINERS: Record<number, readonly [string, string, string]> = {
+  1: ['asteroids-orbiter', 'hotlap-midnight', 'lander-starhopper'],
+  2: ['swoop-penguin', 'hotlap-borealis', 'swoop-aurora-phoenix'],
+}
+
+export function headlinersOf(season: SeasonInfo, plus: SeasonPlus): SeasonReward[] {
+  const skins = plus.rewards.filter((r) => r.kind === 'skin')
+  const named = HEADLINERS[season.id]
+  if (named) {
+    const found = named.map((id) => skins.find((r) => r.id === id)).filter((r): r is SeasonReward => r != null)
+    if (found.length === 3) return found
+  }
+  // The three latest, the latest in the middle.
+  const top = [...skins].sort((a, b) => b.level - a.level).slice(0, 3)
+  return top.length === 3 ? [top[1]!, top[0]!, top[2]!] : top
+}
+
+/**
  * The season, when one is live (or previewed); null otherwise, and the site shows nothing of it. One whose last
  * day is over isn't live, even before the API has said what comes next (the turnover above asks it).
  */

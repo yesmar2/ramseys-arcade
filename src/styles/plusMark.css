@@ -1,6 +1,7 @@
 /*
- * A Plus member's mark beside their tag (components/PlusMark.tsx). It sits inside the name's own span, so it
- * undoes whatever a name style puts on its letters: gradient fills, outlines, glows, animations.
+ * A Plus member's mark beside their tag (components/PlusMark.tsx): a gold four-point star, no box. It sits
+ * inside the name's own span, so it undoes whatever a name style puts on its letters: gradient fills,
+ * outlines, glows, animations.
  */
 .plus-mark {
   display: inline-grid;
@@ -8,15 +9,13 @@
   /* Sized by the name, but never big beside a big one. */
   width: min(0.95em, 1.15rem);
   height: min(0.95em, 1.15rem);
-  margin-left: min(0.32em, 0.4rem);
+  margin-left: min(0.28em, 0.35rem);
   vertical-align: middle;
-  border-radius: 0.28em;
-  background: linear-gradient(140deg, #f5b942, #f2813a);
+  background: none;
   background-clip: border-box;
   -webkit-background-clip: border-box;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
-  color: #fff;
-  -webkit-text-fill-color: #fff;
+  color: #f5b942;
+  -webkit-text-fill-color: currentColor;
   -webkit-text-stroke: 0;
   text-shadow: none;
   filter: none;
@@ -27,12 +26,24 @@
 
 .plus-mark svg {
   display: block;
-  width: 72%;
-  height: 72%;
-  fill: none;
-  stroke: #fff;
-  stroke-width: 2.4;
-  stroke-linecap: round;
+  width: 100%;
+  height: 100%;
+  fill: #f5b942;
+  stroke: none;
+}
+
+/* On a light page the gold goes deeper, with an edge, so the star holds against white. */
+html[data-theme='light'] .plus-mark svg {
+  fill: #e09a1c;
+  stroke: #b06f08;
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+}
+
+/* A card in a theme from the prize counter is dark whatever the page: the bright gold. */
+html[data-theme='light'] .pcard--themed .plus-mark svg {
+  fill: #f5b942;
+  stroke: none;
 }
 
 /* A player card's big name goes without it: the card says "Plus member" under it instead. */
@@ -72,13 +83,12 @@ html[data-theme='dark'] .pcard-plus,
   color: #ffd27a;
 }
 
-/* As an icon: the menu's Plus row (components/SiteMenu.tsx). */
+/* As an icon: the menu's Plus row (components/SiteMenu.tsx), and the Plus page's at its own size. */
 .plus-mark--icon {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: var(--plus-mark-size, 1.25rem);
+  height: var(--plus-mark-size, 1.25rem);
   margin: 0;
   font-size: 1rem;
-  border-radius: 0.38rem;
 }
 
 /* The menu's "Free week": Plus's own colours, not the red of something waiting on you. */

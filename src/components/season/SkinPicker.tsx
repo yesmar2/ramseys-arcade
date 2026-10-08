@@ -18,7 +18,7 @@ import '../../styles/season.css'
  */
 
 /** How many still-to-win skins the row shows after the player's own; the rest wait in the garage. */
-const ROW_TO_WIN = 3
+const ROW_TO_WIN = 5
 
 type Tile =
   | { kind: 'usual' }

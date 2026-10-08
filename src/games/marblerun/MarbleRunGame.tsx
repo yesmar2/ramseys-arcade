@@ -46,7 +46,7 @@ import { MedalRow } from '../../components/RaceMedal'
 import { paceMsOf } from '../../lib/raceMedals'
 import { TomorrowCourse } from './TomorrowCourse'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
-import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, PHONE_STEADY, racingPlan, respawn, step, TURN_HELP, zoneUnder, type Ball, type Tilt } from './sim'
+import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, PLAYER_BRAKE, PLAYER_TILT_MAX, racingPlan, respawn, STEADY, step, TURN_HELP, zoneUnder, type Ball, type Tilt } from './sim'
 
 const SLUG = 'marblerun'
 
@@ -404,8 +404,6 @@ function MarbleRunDay({
   const keysRef = useRef<Held>({ ...NONE })
   /** The thumb on the stick: where it came down, and where it is now. */
   const stickAt = useRef<{ id: number; x0: number; y0: number; x: number; y: number } | null>(null)
-  /** Played with a thumb on the stick (sim.ts PHONE_STEADY), as a touch screen is at first, until the keys steer. */
-  const thumbPlay = useRef(touch)
   const previousBestRef = useRef(getPersonalBest(SLUG))
   const startGrace = useRef(0)
   const autopilot = useRef<((b: Ball) => Tilt) | null>(null)
@@ -684,7 +682,7 @@ function MarbleRunDay({
      */
     const tiltFor = (g: Game): Tilt => {
       if (autopilot.current) return autopilot.current(g.ball)
-      return handsTilt(marble.course, g.ball, g.input, scene.heading(), TURN_HELP, thumbPlay.current ? PHONE_STEADY : 0)
+      return handsTilt(marble.course, g.ball, g.input, scene.heading(), TURN_HELP, STEADY, PLAYER_TILT_MAX, PLAYER_BRAKE)
     }
 
     const splitShown = (g: Game, k: number) => {
@@ -788,7 +786,8 @@ function MarbleRunDay({
           }
           g.tilt = g.phase === 'rolling' ? tiltFor(g) : { x: 0, z: 0 }
           const rode = b.loop !== null
-          step(marble.course, b, g.tilt)
+          // As far as a player's hands tilt it (sim.ts PLAYER_BRAKE, the furthest, held back).
+          step(marble.course, b, g.tilt, PLAYER_BRAKE)
           if (b.landed > 2.5) sfx('place')
           if (b.hit > 1.2) {
             sfx('plink', 2)
@@ -931,7 +930,6 @@ function MarbleRunDay({
         e.preventDefault()
         if (document.activeElement instanceof HTMLButtonElement) document.activeElement.blur()
         keysRef.current[held] = true
-        thumbPlay.current = false
       } else if (e.code === 'KeyR' && !e.repeat) {
         e.preventDefault()
         restart()
@@ -1021,7 +1019,6 @@ function MarbleRunDay({
     const x = e.clientX - box.left
     const y = e.clientY - box.top
     stickAt.current = { id: e.pointerId, x0: x, y0: y, x, y }
-    thumbPlay.current = true
     const stick = stickRef.current
     if (stick) {
       stick.style.left = `${x}px`

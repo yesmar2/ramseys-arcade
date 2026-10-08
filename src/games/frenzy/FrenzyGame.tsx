@@ -13,12 +13,14 @@ import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { getPersonalBest } from '../../lib/personalBest'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
+  clearSteer,
   clearTarget,
   createInitialState,
   jumpToSize,
   releaseInput,
   resizeState,
   setKey,
+  setSteer,
   setTarget,
   startGame,
   tick,
@@ -51,9 +53,27 @@ const START_KEYS = new Set(['Space', 'Enter'])
 const MOUSE_WAKE_PX = 24
 
 /**
+ * How far the knob can sit from the stick's centre, in CSS pixels. Past it the centre follows the thumb, so the
+ * stick is always a short push from any way: turning is a flick, never a trip back across where the thumb landed.
+ * Long enough that a thumb's wobble hardly turns the fish (2026-10-08, "it's hard to just go straight" at 22).
+ */
+const STICK_LEASH = 36
+
+/** Under this, in CSS pixels, the fish doesn't swim, so a resting thumb never drifts it. */
+const STICK_DEAD = 5
+
+/** From this push on, in CSS pixels, the fish swims at full speed: nearly always, whichever way it's going. */
+const STICK_FULL = 14
+
+/**
  * Frenzy, the food chain in an open ocean (game.ts). The mouse steers by
- * pointing: the fish swims toward it, and the camera follows. A finger steers like a trackpad, anywhere on the screen: the
- * fish moves the way the finger moves, so it's never under your thumb. The
+ * pointing: the fish swims toward it, and the camera follows. A finger is a
+ * stick wherever it lands: push the way to swim and the fish swims there at
+ * full speed for as long as the thumb is held, so it's never under your thumb
+ * and never needs a swipe after swipe (Ramsey, 2026-10-07: "you have to keep
+ * swiping for it to move"). The stick follows the thumb, so the speed holds
+ * through a turn (2026-10-08: "sometimes it doesn't go as fast when you
+ * turn", when speed grew with the push from where the thumb landed). The
  * arrow keys or WASD swim too. Swimming up hard through the surface leaps out.
  */
 export function FrenzyGame() {
@@ -62,8 +82,10 @@ export function FrenzyGame() {
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
-  /** A finger down: where it landed, and where the fish was then, in world units. */
-  const touchRef = useRef<{ id: number; x: number; y: number; fx: number; fy: number } | null>(null)
+  /** The thumb on the stick: the stick's centre, which follows the thumb, in pixels from the play area's top left. */
+  const stickAt = useRef<{ id: number; cx: number; cy: number } | null>(null)
+  const stickRef = useRef<HTMLDivElement>(null)
+  const knobRef = useRef<HTMLDivElement>(null)
   const mouseRef = useRef<{ awake: boolean; from: { x: number; y: number } | null }>({ awake: false, from: null })
   const [ui, setUi] = useState<Snapshot>(() => toSnapshot(stateRef.current))
   const [saveOpen, setSaveOpen] = useState(false)
@@ -159,12 +181,60 @@ export function FrenzyGame() {
     stateRef.current = setTarget(stateRef.current, at.x, at.y)
   }
 
-  /** A finger: the fish goes where it was when the finger landed, plus how far the finger has moved. */
-  const dragTo = (e: ReactPointerEvent<HTMLElement>) => {
-    const t = touchRef.current
-    if (!t || t.id !== e.pointerId) return
-    const s = stateRef.current
-    stateRef.current = setTarget(s, t.fx + (e.clientX - t.x) / s.ppu, t.fy + (e.clientY - t.y) / s.ppu)
+  /** Where the stick's centre is: the ring sits there. */
+  const placeStick = (cx: number, cy: number) => {
+    const stick = stickRef.current
+    if (!stick) return
+    stick.style.left = `${cx}px`
+    stick.style.top = `${cy}px`
+  }
+
+  /** A thumb comes down: the stick is there, centred under it, not yet pushed. */
+  const takeStick = (e: ReactPointerEvent<HTMLElement>) => {
+    const box = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - box.left
+    const y = e.clientY - box.top
+    stickAt.current = { id: e.pointerId, cx: x, cy: y }
+    placeStick(x, y)
+    if (stickRef.current) stickRef.current.hidden = false
+    if (knobRef.current) knobRef.current.style.transform = ''
+  }
+
+  /**
+   * The thumb moves: the fish swims the way the knob sits from the stick's centre, at full speed past a small
+   * push. Pushed past the leash, the centre comes along behind the thumb, so the next turn is a short move.
+   */
+  const pushStick = (e: ReactPointerEvent<HTMLElement>) => {
+    const s = stickAt.current
+    if (!s || s.id !== e.pointerId) return
+    const box = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - box.left
+    const y = e.clientY - box.top
+    let dx = x - s.cx
+    let dy = y - s.cy
+    let l = Math.hypot(dx, dy)
+    if (l > STICK_LEASH) {
+      s.cx = x - (dx / l) * STICK_LEASH
+      s.cy = y - (dy / l) * STICK_LEASH
+      placeStick(s.cx, s.cy)
+      dx = x - s.cx
+      dy = y - s.cy
+      l = STICK_LEASH
+    }
+    if (knobRef.current) knobRef.current.style.transform = `translate(${dx}px, ${dy}px)`
+    if (l < STICK_DEAD) {
+      stateRef.current = clearSteer(stateRef.current)
+      return
+    }
+    const amount = Math.min(1, (l - STICK_DEAD) / (STICK_FULL - STICK_DEAD))
+    stateRef.current = setSteer(stateRef.current, (dx / l) * amount, (dy / l) * amount)
+  }
+
+  /** The thumb lifts: the stick goes, and the fish coasts to a stop. */
+  const letGoStick = () => {
+    stickAt.current = null
+    if (stickRef.current) stickRef.current.hidden = true
+    stateRef.current = clearSteer(stateRef.current)
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
@@ -181,9 +251,8 @@ export function FrenzyGame() {
     if (e.pointerType === 'mouse') {
       mouseRef.current = { awake: true, from: null }
       pointTo(e)
-    } else {
-      const p = stateRef.current.player
-      touchRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, fx: p.x, fy: p.y }
+    } else if (!stickAt.current) {
+      takeStick(e)
     }
   }
 
@@ -191,7 +260,7 @@ export function FrenzyGame() {
     if (saveOpen || pausedRef.current) return
     if (stateRef.current.phase !== 'playing') return
     if (e.pointerType !== 'mouse') {
-      dragTo(e)
+      pushStick(e)
       return
     }
     if (!mouseRef.current.awake) {
@@ -214,12 +283,11 @@ export function FrenzyGame() {
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
-    if (touchRef.current?.id === e.pointerId) touchRef.current = null
-    if (e.pointerType !== 'mouse') stateRef.current = clearTarget(stateRef.current)
+    if (stickAt.current?.id === e.pointerId) letGoStick()
   }
 
   const onPointerCancel = () => {
-    touchRef.current = null
+    letGoStick()
     stateRef.current = clearTarget(stateRef.current)
   }
 
@@ -363,6 +431,9 @@ export function FrenzyGame() {
             )}
           </div>
         </GameStage>
+        <div ref={stickRef} className="frenzy__stick" hidden>
+          <div ref={knobRef} className="frenzy__knob" />
+        </div>
       </div>
     </section>
   )

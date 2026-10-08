@@ -35,6 +35,16 @@ export const FREE_LIMITS: PlanLimits = {
   multiGameRounds: false,
 }
 
+/** Plus's, as the API's plans.ts has them: what the Plus page puts beside the free set. */
+export const PLUS_LIMITS: PlanLimits = {
+  activeEvents: 5,
+  groups: 5,
+  groupMembers: 100,
+  maxDraw: 64,
+  doubleElimination: true,
+  multiGameRounds: true,
+}
+
 export const PLUS_PRICE = '$2.99/mo'
 
 /** A 402 from any write that a plan does not cover. */
