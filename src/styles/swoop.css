@@ -256,6 +256,11 @@ html[data-theme='dark'] .swoop--fullscreen {
   }
 }
 
+/* An admin's test run's card after a run (TestCards.tsx) takes the pointer, as past hills' does: the overlay lets presses through to the hills. */
+.game-card.swoop-test:not(.game-card--start) {
+  pointer-events: auto;
+}
+
 /* An admin's test run (TestCards.tsx): the hills either side and the way back to the Hills Book, under Start. */
 .swoop-test__nav {
   display: grid;

@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { GamePanelBody } from '../../components/PauseControls'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
-import { adminHref } from '../../hooks/useHashRoute'
+import { adminHref, gamePlayHref } from '../../hooks/useHashRoute'
 import { fitCardToSpace } from '../../lib/cardFit'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { dayOfHills, hillsDay, PLANNED_HILLS } from './daily'
@@ -54,6 +54,28 @@ function HillsNav({ n }: { n: number }) {
   )
 }
 
+/** Under the test hills' Start: the way back to the book, and new test hills (laid afresh as the page loads again). */
+function LabNav() {
+  return (
+    <nav className="swoop-test__nav" aria-label="Other hills">
+      <span />
+      <a href={adminHref('hills')} onPointerDown={holdPress}>
+        Hills Book
+      </a>
+      <a
+        href={`${gamePlayHref(SLUG)}?lab=1`}
+        onPointerDown={holdPress}
+        onClick={(e) => {
+          e.preventDefault()
+          window.location.reload()
+        }}
+      >
+        New hills ›
+      </a>
+    </nav>
+  )
+}
+
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="game-pause-meta__row">
@@ -89,7 +111,7 @@ export function TestStartCard({ swoop, best }: { swoop: SwoopDay; best: number |
       <button type="button" className="panel__btn game-card__start">
         Start
       </button>
-      {swoop.day === LAB_DAY ? null : <HillsNav n={swoop.n} />}
+      {swoop.day === LAB_DAY ? <LabNav /> : <HillsNav n={swoop.n} />}
     </div>
   )
 }

@@ -261,6 +261,11 @@ html[data-theme='dark'] .marblerun--fullscreen {
   pointer-events: auto;
 }
 
+/* An admin's test run's card after a run, the test track's too (TestCards.tsx), takes the pointer itself. */
+.game-card.marblerun-test:not(.game-card--start) {
+  pointer-events: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marblerun__toast {
     animation: none;
