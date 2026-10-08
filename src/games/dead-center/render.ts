@@ -348,7 +348,7 @@ function drawPin(g: Gfx, at: Point, height: number, down: number, away: Point, a
  * ring round it as wide as the margin for a balance, the red dimple where the
  * pin went in, and, for a miss, a line from one to the other.
  */
-function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: number, lift = 0, alpha = 1, standing = false) {
+function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: number, lift = 0, alpha = 1, standing = false, age = 1) {
   const { ctx, v, dark } = g
   if (reveal <= 0 || alpha <= 0.01) return
   const c = plate.centroid
@@ -391,8 +391,8 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: n
   // A day's plate lies flat with its pins standing in it, on top (Ramsey, 2026-10-08: "the pins look like they
   // are underneith and not on top"): yours in red, and the see-through gold one where it should have gone.
   if (standing) {
-    topPin(g, onTop(pose, c, lift), GOLD, true, pop)
-    if (pin) topPin(g, onTop(pose, pin, lift), PIN_HUE, false, 1)
+    topPin(g, onTop(pose, c, lift), GOLD, true, pop, age)
+    if (pin) topPin(g, onTop(pose, pin, lift), PIN_HUE, false, 1, age)
   }
   ctx.restore()
 }
@@ -658,38 +658,60 @@ function drawDayRow(g: Gfx, s: GameState, cx: number, cy: number) {
 /** How tall a pin stands out of a day's plate, in table units. */
 const TOP_PIN = 0.075
 
-/** A pin standing up out of the plate's face at `base`: a thin steel stem and a bead on top; a ghost is see-through gold. */
-function topPin(g: Gfx, base: Vec3, hue: number, ghost: boolean, pop: number) {
+/**
+ * A needle standing up out of the plate's face at `base`, with a ring rippling out on the plate where it went
+ * in (Ramsey picked F · Needle and ripple from the "Centroid pin styles", 2026-10-08): a fine stem and a small
+ * oval head, in red for yours and see-through gold for where it should have gone. The ripple runs out from the
+ * needle and fades, and a faint ring stays.
+ */
+function topPin(g: Gfx, base: Vec3, hue: number, ghost: boolean, pop: number, age: number) {
   const { ctx, v, dark } = g
-  const head = 0.011 * (ghost ? pop : 1)
+  const k = v.k
   const b = project(v, base)
   const t = project(v, { x: base.x, y: base.y, z: base.z + TOP_PIN })
-  const r = head * v.k
   ctx.save()
-  if (ghost) ctx.globalAlpha *= 0.75
+  if (ghost) ctx.globalAlpha *= 0.85
+  // The ripple on the plate: a ring that runs out and fades, over a faint one that stays.
+  const ring = (r: number, alpha: number, width: number) => {
+    if (alpha <= 0.01) return
+    ctx.strokeStyle = hsla(hue, 85, dark ? 62 : 50, alpha)
+    ctx.lineWidth = width
+    ctx.beginPath()
+    for (let i = 0; i <= 32; i++) {
+      const a = (i / 32) * TAU
+      const p = project(v, { x: base.x + Math.cos(a) * r, y: base.y + Math.sin(a) * r, z: base.z })
+      if (i === 0) ctx.moveTo(p.x, p.y)
+      else ctx.lineTo(p.x, p.y)
+    }
+    ctx.stroke()
+  }
+  const run = clamp01(age / 0.6)
+  ring(0.012 + run * 0.016, 0.8 * (1 - run), Math.max(1, k * 0.0028))
+  ring(0.013, 0.7, Math.max(1, k * 0.0026))
+  // The needle.
   ctx.lineCap = 'round'
   if (!ghost) {
-    ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.8)' : 'rgba(40, 50, 60, 0.55)'
-    ctx.lineWidth = Math.max(1.3, v.k * 0.0048)
+    ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.7)' : 'rgba(40, 50, 60, 0.5)'
+    ctx.lineWidth = Math.max(1.1, k * 0.0038)
     ctx.beginPath()
     ctx.moveTo(b.x, b.y)
     ctx.lineTo(t.x, t.y)
     ctx.stroke()
   }
-  ctx.strokeStyle = ghost ? hsla(GOLD, 90, 62, 0.95) : '#e4ebf1'
-  ctx.lineWidth = Math.max(0.8, v.k * (ghost ? 0.0028 : 0.0025))
+  ctx.strokeStyle = ghost ? hsla(GOLD, 90, 62, 0.95) : '#eef3f6'
+  ctx.lineWidth = Math.max(0.8, k * 0.0022)
   ctx.beginPath()
   ctx.moveTo(b.x, b.y)
   ctx.lineTo(t.x, t.y)
   ctx.stroke()
-  const bead = ctx.createRadialGradient(t.x - r * 0.35, t.y - r * 0.4, r * 0.1, t.x, t.y, r)
-  bead.addColorStop(0, hsla(hue, 95, 85))
-  bead.addColorStop(0.5, hsla(hue, 85, 60))
-  bead.addColorStop(1, hsla(hue, 75, 40))
-  ctx.fillStyle = bead
+  // Its head: a small upright oval.
+  ctx.fillStyle = hsla(hue, 88, dark ? 60 : 52)
+  ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.8)' : 'rgba(255, 255, 255, 0.9)'
+  ctx.lineWidth = Math.max(0.7, k * 0.0015)
   ctx.beginPath()
-  ctx.arc(t.x, t.y, r, 0, TAU)
+  ctx.ellipse(t.x, t.y, Math.max(1.6, k * 0.0055) * pop, Math.max(2.6, k * 0.009) * pop, 0, 0, TAU)
   ctx.fill()
+  ctx.stroke()
   ctx.restore()
 }
 
@@ -835,12 +857,12 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     drawPlate(g, leaving.plate, leavingSolid)
     const lift = leaving.lift ? clamp01(leaving.t / LEAVE_TIME) ** 2 * 0.35 : 0
     if (leaving.outcome) {
-      drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, 1, lift, leavingSolid.alpha, Boolean(s.day))
+      drawMarks(g, leaving.plate, leaving.pose, leaving.outcome, 1, lift, leavingSolid.alpha, Boolean(s.day), 1)
     }
   }
   if (plate && solid) {
     drawPlate(g, plate, solid)
-    if (o) drawMarks(g, plate, s.pose, o, revealOf(s), 0, 1, Boolean(s.day))
+    if (o) drawMarks(g, plate, s.pose, o, revealOf(s), 0, 1, Boolean(s.day), s.phase === 'settling' ? s.settleT : 1)
     drawCrack(g, s)
   }
   drawShards(g, s)
