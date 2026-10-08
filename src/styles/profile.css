@@ -185,10 +185,10 @@ html[data-theme='dark'] .pf {
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
     'art id acts'
-    'tiles tiles tiles'
+    'art id coins'
     'shelves shelves shelves';
-  align-items: end;
-  gap: 1.5rem;
+  align-items: start;
+  gap: 1rem 1.5rem;
   padding: calc(var(--pcard-band) - 4.5rem) 2rem 1.4rem;
 }
 
@@ -217,8 +217,8 @@ html[data-theme='dark'] .pf {
   position: relative;
   display: grid;
   place-items: center;
-  width: 9.5rem;
-  height: 9.5rem;
+  width: 9rem;
+  height: 9rem;
   border-radius: 28%;
   background: linear-gradient(160deg, var(--banner-card-a), var(--banner-card-b));
   border: 1px solid var(--banner-card-border);
@@ -270,14 +270,27 @@ html[data-theme='dark'] .pf {
   height: 1rem;
 }
 
+/* As tall as the avatar: the name level with its top, the chips with its foot. */
 .pcard__id {
   grid-area: id;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 0.6rem;
   min-width: 0;
-  padding-bottom: 0.2rem;
+  min-height: 9rem;
+}
+
+.pcard .pcard__name--sign {
+  margin: 0;
+}
+
+.pcard .pcard__name--sign svg {
+  display: block;
+  width: auto;
+  height: 6.25rem;
+  max-width: 100%;
 }
 
 .pcard__name {
@@ -331,8 +344,8 @@ html[data-theme='dark'] .pf {
 
 .pcard__acts {
   grid-area: acts;
+  justify-self: end;
   margin: 0;
-  padding-bottom: 0.3rem;
   flex-wrap: nowrap;
 }
 
@@ -342,83 +355,107 @@ html[data-theme='dark'] .pf {
   margin-left: 0.45rem;
 }
 
-/* A tile a period, then the games played and the streak: one row on a desk. */
-.pcard__tiles {
-  grid-area: tiles;
-  display: grid;
-  grid-template-columns: repeat(var(--pcard-tiles, 5), minmax(0, 1fr));
-  gap: 0.75rem;
-  align-self: stretch;
+/*
+ * The places as coins under the buttons, one a period: dark glass with a thin rim, gold for a top-three
+ * place, grey for any other, the board on screen ringed in the player's colour. Each is the way to its board.
+ */
+.pcard__coins {
+  grid-area: coins;
+  align-self: end;
+  justify-self: end;
+  display: flex;
+  gap: 0.85rem;
 }
 
-.pcard__ranks,
-.pcard__more {
-  display: contents;
-}
-
-.pcard__stat {
+.pcard-coin {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.4rem;
-  min-width: 0;
-  padding: 0.75rem 0.9rem;
-  border-radius: 0.9rem;
-  background: var(--banner-chip-bg);
-  border: 1px solid var(--banner-chip-border);
+  min-width: 3.4rem;
   color: var(--banner-ink);
   text-decoration: none;
-  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.pcard__stat--link:hover,
-.pcard__stat--link:focus-visible {
-  background: var(--banner-chip-hover);
+.pcard-coin__face {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 50%;
+  background: var(--banner-chip-bg);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--banner-ink) 16%, transparent);
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pcard-coin--gold .pcard-coin__face {
+  box-shadow: inset 0 0 0 2px rgba(245, 185, 66, 0.75);
+}
+
+.pcard-coin--none .pcard-coin__face {
+  color: var(--banner-faint);
+}
+
+.pcard-coin--wait .pcard-coin__face {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--banner-ink) 8%, transparent);
+}
+
+.pcard-coin--on .pcard-coin__face {
+  background: color-mix(in srgb, var(--hero-accent) 22%, var(--banner-chip-bg));
+  box-shadow: inset 0 0 0 2px var(--hero-accent);
+}
+
+.pcard-coin:hover .pcard-coin__face,
+.pcard-coin:focus-visible .pcard-coin__face {
+  transform: translateY(-2px);
+}
+
+.pcard-coin:focus-visible {
   outline: none;
 }
 
-.pcard__stat--on {
-  background: color-mix(in srgb, var(--hero-accent) 24%, var(--banner-chip-bg));
-  border-color: color-mix(in srgb, var(--hero-accent) 62%, transparent);
+.pcard-coin:focus-visible .pcard-coin__face {
+  outline: 2px solid var(--banner-ink);
+  outline-offset: 3px;
 }
 
-.pcard__stat-label {
-  font-size: 0.68rem;
+.pcard-coin__label {
+  font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--banner-faint);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--banner-faint);
 }
 
-.pcard__stat--on .pcard__stat-label {
+.pcard-coin--on .pcard-coin__label {
   color: var(--banner-accent-ink);
 }
 
-.pcard__stat-figure {
+/* Games played and the streak, along the foot. */
+.pcard__fact b {
   font-family: var(--font-display);
-  font-size: 1.75rem;
   font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  color: var(--banner-ink);
 }
 
-.pcard__stat-figure small {
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  color: var(--banner-muted);
+.pcard__fact--link {
+  color: inherit;
+  text-decoration: none;
 }
 
-.pcard__stat--none .pcard__stat-figure {
-  font-size: 1rem;
-  font-weight: 750;
-  letter-spacing: 0;
-  line-height: 1.75rem;
-  color: var(--banner-faint);
+.pcard__fact--link:hover,
+.pcard__fact--link:focus-visible {
+  color: var(--banner-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  outline: none;
 }
 
 /* The trophies and the hangar, side by side along the foot. */
@@ -549,8 +586,11 @@ html[data-theme='dark'] .pf {
 
 .pcard__strip {
   align-items: center;
-  justify-content: flex-end;
   gap: 0.5rem 1.8rem;
+}
+
+.pcard__strip .home-banner__standing-link {
+  margin-left: auto;
 }
 
 /* A trophy's tile, tinted to its own colour as the shelf's plinths are, with how many on a tag at its corner. */
@@ -596,20 +636,21 @@ html[data-theme='dark'] .pf {
   font-variant-numeric: tabular-nums;
 }
 
-/* A narrower desk: the actions under the tag; the tiles in two rows past five. */
+/* A narrower desk: the coins and the buttons in a row under the tag. */
 @media (max-width: 64rem) {
   .pcard__main {
-    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      'art id'
-      'art acts'
-      'tiles tiles'
-      'shelves shelves';
-    row-gap: 0.9rem;
+      'art id id'
+      'coins coins acts'
+      'shelves shelves shelves';
+  }
+
+  .pcard__coins {
+    justify-self: start;
   }
 
   .pcard__acts {
-    padding: 0;
+    align-self: center;
   }
 }
 
@@ -617,119 +658,95 @@ html[data-theme='dark'] .pf {
   .pcard__shelves {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .pcard__tiles {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .pcard__ranks,
-  .pcard__more {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    gap: 0.6rem;
-  }
 }
 
-/* A phone: one centred column. */
+/* A phone: the avatar beside the sign, then everything full width under them. */
 @media (max-width: 36rem) {
   .home-banner.pcard {
     --pcard-band: 7.4rem;
   }
 
   .pcard__main {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 6.1rem minmax(0, 1fr);
     grid-template-areas:
-      'art'
-      'id'
-      'tiles'
-      'shelves'
-      'acts';
-    justify-items: center;
-    gap: 0.75rem;
-    padding: calc(var(--pcard-band) - 4rem) 1rem 1.1rem;
+      'art id'
+      'coins coins'
+      'shelves shelves'
+      'acts acts';
+    gap: 0.9rem;
+    padding: calc(var(--pcard-band) - 4.5rem) 1rem 1.1rem;
   }
 
   .pcard__tile {
-    width: 6.75rem;
-    height: 6.75rem;
+    width: 6.1rem;
+    height: 6.1rem;
   }
 
   .pcard__tile .player-avatar {
-    width: 4.8rem;
-    height: 4.8rem;
+    width: 4.3rem;
+    height: 4.3rem;
   }
 
   .pcard__tile .home-banner__glyph {
-    font-size: 3rem;
+    font-size: 2.7rem;
   }
 
   .pcard__edit {
     right: -0.4rem;
     bottom: -0.4rem;
-    width: 2.1rem;
-    height: 2.1rem;
+    width: 2rem;
+    height: 2rem;
   }
 
   .pcard__edit svg {
-    width: 0.85rem;
-    height: 0.85rem;
+    width: 0.8rem;
+    height: 0.8rem;
   }
 
   .pcard__id {
-    align-items: center;
-    text-align: center;
-    width: 100%;
+    min-height: 6.1rem;
+    gap: 0.4rem;
   }
 
   .pcard__name {
-    font-size: clamp(2rem, 11vw, 2.8rem);
+    font-size: clamp(1.8rem, 9vw, 2.4rem);
   }
 
-  .pcard__name--sign svg {
-    display: block;
-    margin-inline: auto;
+  .pcard .pcard__name--sign svg {
+    height: 3.6rem;
   }
 
   .pcard__chips {
-    justify-content: center;
+    gap: 0.35rem 0.45rem;
   }
 
-  .pcard__tiles,
-  .pcard__shelves,
+  .pcard__chips .pcard__title,
+  .pcard__chips .pcard-plus {
+    font-size: 0.72rem;
+  }
+
+  .pcard-plus__long {
+    display: none;
+  }
+
+  /* The coins say the places. */
+  .pcard__chips .pcard__head {
+    display: none;
+  }
+
+  .pcard__sub {
+    grid-column: 1 / -1;
+  }
+
+  .pcard__coins {
+    justify-self: stretch;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0 0.4rem;
+  }
+
   .pcard__acts {
     justify-self: stretch;
-  }
-
-  .pcard__ranks,
-  .pcard__more {
-    gap: 0.45rem;
-  }
-
-  .pcard__stat {
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.6rem 0.4rem;
-    text-align: center;
-  }
-
-  .pcard__stat-label {
-    font-size: 0.6rem;
-    letter-spacing: 0.08em;
-  }
-
-  .pcard__stat-figure {
-    font-size: 1.35rem;
-  }
-
-  .pcard__stat-figure small {
-    font-size: 0.8rem;
-  }
-
-  .pcard__stat--none .pcard__stat-figure {
-    font-size: 0.85rem;
-    line-height: 1.35rem;
   }
 
   .pcard-shelf {
@@ -784,9 +801,12 @@ html[data-theme='dark'] .pf {
   }
 
   .pcard__strip {
-    justify-content: center;
     padding: 0.8rem 1.1rem;
     font-size: 0.82rem;
+  }
+
+  .pcard__fact-when {
+    display: none;
   }
 
   /* How your rank works is its own page now, so a phone keeps the link (home.css hides the banner's). */
@@ -2060,7 +2080,8 @@ html[data-theme='dark'] .pbest__flag--ten {
 
 @media (prefers-reduced-motion: reduce) {
   .pcard__tile,
-  .pcard-shelf__skin a {
+  .pcard-shelf__skin a,
+  .pcard-coin__face {
     transition: none;
   }
 }

@@ -290,9 +290,9 @@ function standing({
 /**
  * The top of a player's page: the card. Their card theme from the prize counter in a band across the top
  * (or their colour, without one), the character over it, and beside it the tag with what they wear and
- * where they stand. Under them a tile a period, lit for the one on screen, how many games they've played
- * and, on your own card, your dailies streak; along the foot two shelves, the trophies and the hangar, a
- * few of each and the way down to them all. The points behind a rank are one link away, on How your rank
+ * where they stand. On the right the buttons, and under them a coin a period, the place in it and the one on
+ * screen ringed; along the foot two shelves, the trophies and the hangar, a few of each and the way down to
+ * them all, and under those the games played and, on your own card, your dailies streak. The points behind a rank are one link away, on How your rank
  * works.
  */
 export function PlayerCard({
@@ -427,7 +427,10 @@ export function PlayerCard({
               // A member's card says so, and where Plus is: the way someone hears of it from a player they look up.
               <a className="pcard-plus" href={plusHref()}>
                 <PlusMark name={name} />
-                {isSelf ? 'You’re on Plus' : 'Plus member'}
+                {/* Just "Plus" beside the avatar on a phone. */}
+                {isSelf ? <span className="pcard-plus__long">You’re on </span> : null}
+                Plus
+                {isSelf ? null : <span className="pcard-plus__long"> member</span>}
               </a>
             ) : null}
             <span className="pcard__head">{said ? said.head : <Skel w="16ch" />}</span>
@@ -435,57 +438,34 @@ export function PlayerCard({
           {said && data.rank == null ? <p className="pcard__sub">{said.sub}</p> : null}
         </div>
         {actions ? <div className="home-banner__acts pcard__acts">{actions}</div> : null}
-        <div className="pcard__tiles" style={{ '--pcard-tiles': periods.length + 1 + (stats ? 1 : 0) } as CSSProperties}>
-          <nav className="pcard__ranks" aria-label={isSelf ? 'Your rank by period' : `${name}'s rank by period`}>
-            {periods.map((p) => {
-              const row = ranks[p] ?? (p === period && !loading ? data : null)
-              const on = p === period
-              const ranked = row?.rank != null
-              return (
-                <a
-                  key={p}
-                  className={`pcard__stat pcard__stat--link${on ? ' pcard__stat--on' : ''}${row && !ranked ? ' pcard__stat--none' : ''}`}
-                  href={hrefFor(p)}
-                  aria-current={on ? 'true' : undefined}
-                  onClick={(e) => go(e, hrefFor(p))}
-                >
-                  <span className="pcard__stat-label">{PERIOD_LABELS[p]}</span>
-                  <b className="pcard__stat-figure">
-                    {!row ? <Skel w="3ch" /> : ranked ? `#${row.rank!.toLocaleString()}` : 'Not yet'}
-                  </b>
-                </a>
-              )
-            })}
-          </nav>
-          <div className="pcard__more">
-            <span className="pcard__stat">
-              <span className="pcard__stat-label">Played {word}</span>
-              <b className="pcard__stat-figure">
-                {loading ? (
-                  <Skel w="4ch" />
-                ) : (
-                  <>
-                    {placed} <small>of {standingsGames(period).length}</small>
-                  </>
-                )}
-              </b>
-            </span>
-            {stats ? (
-              <a className="pcard__stat pcard__stat--link" href={stats.href}>
-                <span className="pcard__stat-label">{stats.streak > 0 ? 'Dailies streak' : 'Your stats'}</span>
-                <b className="pcard__stat-figure">
-                  {stats.streak > 0 ? (
-                    <>
-                      {stats.streak} <small>{stats.streak === 1 ? 'day' : 'days'}</small>
-                    </>
-                  ) : (
-                    <small>See them ›</small>
-                  )}
-                </b>
+        <nav className="pcard__coins" aria-label={isSelf ? 'Your rank by period' : `${name}'s rank by period`}>
+          {periods.map((p) => {
+            const row = ranks[p] ?? (p === period && !loading ? data : null)
+            const on = p === period
+            const r = row?.rank ?? null
+            // A gold rim for a top-three place, grey for any other, an empty coin where there's none yet.
+            const tone = !row ? 'wait' : r == null ? 'none' : r <= 3 ? 'gold' : 'plain'
+            const said = r != null ? `#${r.toLocaleString()} ${periodWord(p)}` : row ? `Not on the board ${periodWord(p)} yet` : PERIOD_LABELS[p]
+            return (
+              <a
+                key={p}
+                className={`pcard-coin pcard-coin--${tone}${on ? ' pcard-coin--on' : ''}`}
+                href={hrefFor(p)}
+                aria-current={on ? 'true' : undefined}
+                aria-label={said}
+                title={said}
+                onClick={(e) => go(e, hrefFor(p))}
+              >
+                <span className="pcard-coin__face" aria-hidden="true">
+                  {r != null ? `#${r > 999 ? `${Math.floor(r / 1000)}k` : r}` : row ? '–' : ''}
+                </span>
+                <span className="pcard-coin__label" aria-hidden="true">
+                  {PERIOD_LABELS[p]}
+                </span>
               </a>
-            ) : null}
-          </div>
-        </div>
+            )
+          })}
+        </nav>
         <div className="pcard__slot pcard__shelves" ref={shelvesHeld.ref} style={shelvesHeld.style}>
           {trophyShelf ? (
             <TrophyShelf trophies={trophies} isSelf={isSelf} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
@@ -494,6 +474,27 @@ export function PlayerCard({
         </div>
       </div>
       <div className="home-banner__strip pcard__strip">
+        <span className="pcard__fact">
+          {loading ? (
+            <Skel w="12ch" />
+          ) : (
+            <>
+              Played <b>{placed}</b> of {standingsGames(period).length} games<span className="pcard__fact-when"> {word}</span>
+            </>
+          )}
+        </span>
+        {stats ? (
+          <a className="pcard__fact pcard__fact--link" href={stats.href}>
+            {stats.streak > 0 ? (
+              <>
+                <b>{stats.streak}</b>-day streak
+              </>
+            ) : (
+              'Your stats'
+            )}{' '}
+            ›
+          </a>
+        ) : null}
         <a className="home-banner__standing-link" href={howHref}>
           {isSelf ? 'How your rank works' : `How ${name}’s rank works`} ›
         </a>
