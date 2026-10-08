@@ -283,7 +283,8 @@ function drawPlate(g: Gfx, plate: Plate, solid: Solid) {
 function drawPin(g: Gfx, at: Point, height: number, down: number, away: Point, alpha: number) {
   const { ctx, v, dark } = g
   if (alpha <= 0.01) return
-  const head = 0.014
+  // Thin, so where it touches the plate is a point (Ramsey, 2026-10-08: "the pins should be thinner").
+  const head = 0.011
   const lean = down * (Math.PI / 2 - 0.06)
   // From the middle of its head to its point, which is where the plate sits.
   const len = Math.max(0, (down > 0 ? PIN_H : height) - head)
@@ -309,7 +310,7 @@ function drawPin(g: Gfx, at: Point, height: number, down: number, away: Point, a
   if (len > 0.002) {
     ctx.lineCap = 'round'
     ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.8)' : 'rgba(40, 50, 60, 0.55)'
-    ctx.lineWidth = Math.max(1.8, v.k * 0.0075)
+    ctx.lineWidth = Math.max(1.3, v.k * 0.0048)
     ctx.beginPath()
     ctx.moveTo(b.x, b.y)
     ctx.lineTo(t.x, t.y)
@@ -319,7 +320,7 @@ function drawPin(g: Gfx, at: Point, height: number, down: number, away: Point, a
     steel.addColorStop(0.5, '#f4f8fb')
     steel.addColorStop(1, dark ? '#7d8e9b' : '#6f7e8a')
     ctx.strokeStyle = steel
-    ctx.lineWidth = Math.max(1, v.k * 0.004)
+    ctx.lineWidth = Math.max(0.8, v.k * 0.0025)
     ctx.stroke()
     // The point catches the light.
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
@@ -364,8 +365,8 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: n
   if (pin && !outcome.balanced) {
     // From where the pin went in to where it should have.
     const pp = at(pin)
-    ctx.strokeStyle = hsla(GOLD, 85, lineL(dark), 0.85)
-    ctx.lineWidth = Math.max(1, k * 0.004)
+    ctx.strokeStyle = hsla(GOLD, 85, lineL(dark), 0.75)
+    ctx.lineWidth = Math.max(1, k * 0.0028)
     ctx.setLineDash([Math.max(2, k * 0.008), Math.max(2, k * 0.01)])
     ctx.beginPath()
     ctx.moveTo(pp.x, pp.y)
@@ -373,46 +374,20 @@ function drawMarks(g: Gfx, plate: Plate, pose: Pose, outcome: Outcome, reveal: n
     ctx.stroke()
     ctx.setLineDash([])
   }
-  if (pin) {
-    // Exactly where the pin went in: a small red dot, and a thin ring well clear of it to find it by
-    // (Ramsey, 2026-10-07: "smaller to show exactly where you placed the pin ... the circle around it is too close").
-    const pp = at(pin)
-    ctx.fillStyle = hsla(PIN_HUE, 85, dark ? 64 : 48)
+  // Where the pin went in and where it should have: a small dot each, red and gold, exact points; the
+  // ghost pin under the plate (drawGhostPin) stands at the gold one (Ramsey, 2026-10-08, picking B · Ghost
+  // pin from the "Centroid pin and center" mocks: "maybe the pins should be thinner along with the dot").
+  const spot = (p: { x: number; y: number }, hue: number) => {
+    ctx.fillStyle = hsla(hue, 90, dark ? 62 : 52)
     ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.9)' : 'rgba(255, 255, 255, 0.95)'
-    ctx.lineWidth = Math.max(1, k * 0.0022)
+    ctx.lineWidth = Math.max(0.8, k * 0.0018)
     ctx.beginPath()
-    ctx.arc(pp.x, pp.y, Math.max(1.8, k * 0.0042), 0, TAU)
+    ctx.arc(p.x, p.y, Math.max(1.4, k * 0.0032) * (hue === GOLD ? pop : 1), 0, TAU)
     ctx.fill()
     ctx.stroke()
-    ctx.strokeStyle = hsla(PIN_HUE, 80, dark ? 62 : 46, 0.75)
-    ctx.lineWidth = Math.max(1, k * 0.0025)
-    ctx.beginPath()
-    ctx.arc(pp.x, pp.y, Math.max(14, k * 0.045), 0, TAU)
-    ctx.stroke()
   }
-
-  // The balance point: fine gold crosshairs with a gap at the middle, meeting at a tiny dot, so it reads as an
-  // exact point (Ramsey, 2026-10-07: "maybe we should do the crosshair actually", option B of the
-  // "Centroid center marks").
-  const gap = Math.max(4, k * 0.012) * pop
-  const arm = Math.max(13, k * 0.04) * pop
-  ctx.lineCap = 'round'
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-    // A dark edge under each arm, so it reads on a light plate and a dark one.
-    ctx.strokeStyle = dark ? 'rgba(10, 16, 22, 0.75)' : 'rgba(255, 255, 255, 0.85)'
-    ctx.lineWidth = Math.max(2.6, k * 0.0075)
-    ctx.beginPath()
-    ctx.moveTo(gp.x + dx * gap, gp.y + dy * gap)
-    ctx.lineTo(gp.x + dx * arm, gp.y + dy * arm)
-    ctx.stroke()
-    ctx.strokeStyle = hsla(GOLD, 95, 58)
-    ctx.lineWidth = Math.max(1.3, k * 0.0038)
-    ctx.stroke()
-  }
-  ctx.fillStyle = hsla(GOLD, 95, 58)
-  ctx.beginPath()
-  ctx.arc(gp.x, gp.y, Math.max(1.5, k * 0.0035) * pop, 0, TAU)
-  ctx.fill()
+  if (pin) spot(at(pin), PIN_HUE)
+  spot(gp, GOLD)
   ctx.restore()
 }
 
@@ -674,6 +649,39 @@ function drawDayRow(g: Gfx, s: GameState, cx: number, cy: number) {
   ctx.restore()
 }
 
+/**
+ * Where the pin should have gone: a see-through gold pin standing on the table at the plate's balance point,
+ * up to the plate's underside there, beside the real one, so the miss reads as two pins.
+ */
+function drawGhostPin(g: Gfx, plate: Plate, pose: Pose, reveal: number) {
+  const { ctx, v } = g
+  if (reveal <= 0.01) return
+  const c = plate.centroid
+  const head = 0.011
+  const top = Math.max(head, poseWorld(pose, c).z)
+  const b = project(v, { x: c.x, y: c.y, z: head })
+  const t = project(v, { x: c.x, y: c.y, z: top })
+  const r = head * v.k
+  ctx.save()
+  ctx.globalAlpha = 0.7 * clamp01(reveal * 1.5)
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = hsla(GOLD, 90, 62, 0.9)
+  ctx.lineWidth = Math.max(0.9, v.k * 0.0028)
+  ctx.beginPath()
+  ctx.moveTo(b.x, b.y)
+  ctx.lineTo(t.x, t.y)
+  ctx.stroke()
+  const bead = ctx.createRadialGradient(b.x - r * 0.35, b.y - r * 0.4, r * 0.1, b.x, b.y, r)
+  bead.addColorStop(0, hsla(GOLD, 95, 85))
+  bead.addColorStop(0.5, hsla(GOLD, 90, 60))
+  bead.addColorStop(1, hsla(GOLD, 80, 40))
+  ctx.fillStyle = bead
+  ctx.beginPath()
+  ctx.arc(b.x, b.y, r, 0, TAU)
+  ctx.fill()
+  ctx.restore()
+}
+
 /** The keyboard's crosshair, on the plate's face. */
 function drawCursor(g: Gfx, s: GameState) {
   const { ctx, v, dark } = g
@@ -809,7 +817,10 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   if (solid) drawShadow(g, solid)
   drawShardShadows(g, s)
   const o = s.outcome
-  if (plate && o?.pin && s.phase !== 'aiming') drawPin(g, o.pin, s.pinH, s.pinDown, o.dir, 1)
+  if (plate && o?.pin && s.phase !== 'aiming') {
+    drawPin(g, o.pin, s.pinH, s.pinDown, o.dir, 1)
+    drawGhostPin(g, plate, s.pose, revealOf(s))
+  }
 
   if (leaving && leavingSolid) {
     drawPlate(g, leaving.plate, leavingSolid)
