@@ -16,7 +16,7 @@ import { announceSecrets, SECRETS, type SecretFound } from './secrets'
  *   corner in the end (components/BlipSaver.tsx). It shows itself.
  * - A page that isn't there is a Game Over screen with a coin slot (pages/GameOverPage.tsx). A faint
  *   "Level 256" in the footer leads to one.
- * - In Centroid, a balanced plate tapped again while it sits on its pin shatters (games/dead-center).
+ * - In Centroid, a plate tapped again while its pins are in shatters (games/dead-center).
  *   Till a device has broken one, a balanced plate shows a faint hairline crack round its pin.
  * - Nine more live in their games, each with its clue in its own files (the admin page's Trophies tab
  *   says each one in full): Crosswalk's crossing button that does nothing; Bop's lever pulled down to the

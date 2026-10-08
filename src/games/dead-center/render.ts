@@ -493,7 +493,7 @@ function drawShards(g: Gfx, s: GameState) {
  */
 function drawCrack(g: Gfx, s: GameState) {
   const o = s.outcome
-  if (!s.crackHint || s.phase !== 'settling' || (s.stage !== 'wobble' && s.stage !== 'mark') || !o?.balanced || !o.pin || !s.plate) return
+  if (!s.crackHint || s.phase !== 'settling' || !(s.stage === 'mark' || (s.stage === 'wobble' && o?.balanced)) || !o?.pin || !s.plate) return
   const { ctx, v, dark } = g
   const pin = o.pin
   let seed = Math.floor(pin.x * 99991 + pin.y * 77933) >>> 0
