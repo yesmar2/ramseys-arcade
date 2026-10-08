@@ -226,6 +226,79 @@ export function layHills(n: number, attempt = 0): Hills {
   }
 }
 
+/**
+ * Hills the way Tiny Wings lays them, which Swoop comes from: every hill its own, a little bump, a long roller, a
+ * big one to fly off, now and then a giant, in no set rhythm, so each has to be read as it comes; and bigger on
+ * the whole the further along, gentle at the start and tall by the end. Ramsey (2026-10-08) found the stretches
+ * of near-identical hills (layHills) too easy, "hills are too consistantly the same", and wanted it "similar to
+ * how the game we got this idea from is". Seeded by `seed` and `attempt`, about as long as layHills', the ground
+ * drifting the same way, down onto the same long flat at the end.
+ */
+export function layWildHills(seed: number, attempt = 0): Hills {
+  const rnd = mulberry32((Math.imul(seed + 101, 2246822519) ^ 0x7a11 ^ Math.imul(attempt, 0x85ebca6b)) >>> 0)
+  const between = (a: number, b: number) => a + rnd() * (b - a)
+  const pts: [number, number][] = [
+    [-60, 60],
+    [0, 60],
+  ]
+  const length = between(1050, 1250) * LENGTH
+  const wave1 = between(0, Math.PI * 2)
+  const wave2 = between(0, Math.PI * 2)
+  const len1 = between(260, 420)
+  const len2 = between(110, 180)
+  const lift = between(8, 16)
+  const base = (x: number) => 60 - x * FALL + Math.sin(x / len1 + wave1) * lift + Math.sin(x / len2 + wave2) * lift * 0.35
+  let x = 0
+  let y = 60
+  /** Lays one more top or bottom, never steeper than a skier would ski: wider rather than steeper. */
+  const to = (dx: number, ny: number) => {
+    const need = (Math.abs(ny - y) * Math.PI) / 2 / MAX_SLOPE
+    x += Math.max(dx, need)
+    y = ny
+    pts.push([x, y])
+  }
+  let last = -1
+  while (x < length) {
+    // Bigger the further along: two thirds the size at the start, half again by the end.
+    const grow = 0.65 + 0.85 * Math.min(1, x / length)
+    // Each hill its own: what kind, then its own width and depth within the kind, never two giants running.
+    let kind = rnd()
+    if (kind >= 0.92 && last === 3) kind = 0.7
+    const k = kind < 0.22 ? 0 : kind < 0.55 ? 1 : kind < 0.92 ? 2 : 3
+    last = k
+    const [w, d] =
+      k === 0 ? [between(14, 24), between(3, 7)] : k === 1 ? [between(26, 42), between(8, 15)] : k === 2 ? [between(42, 66), between(14, 24)] : [between(64, 92), between(24, 36)]
+    const width = w * between(0.8, 1.25)
+    const depth = d * grow
+    // Down into its foot, part of the way across, then up to its top: some lean forward, some back.
+    const lean = between(0.4, 0.62)
+    to(width * lean, base(x + width * lean) - depth * 0.5)
+    to(width * (1 - lean), base(x + width * (1 - lean)) + depth * between(0.35, 0.65))
+  }
+  // The finish: down the last hill onto a long flat, the line just past its foot.
+  const footX = x + 34
+  const footY = Math.min(y, base(x)) - 18
+  pts.push([footX, footY])
+  pts.push([footX + 400, footY])
+  const finish = footX + 22
+  const name = `${FIRST[Math.floor(rnd() * FIRST.length)]} ${SECOND[Math.floor(rnd() * SECOND.length)]}`
+  const xs = pts.map((p) => p[0])
+  const ys = pts.map((p) => p[1])
+  let tops = 0
+  for (let i = 1; i < pts.length - 1; i++) if (ys[i]! > ys[i - 1]! && ys[i]! > ys[i + 1]!) tops++
+  return {
+    n: seed,
+    attempt,
+    name,
+    hue: HILL_HUES[(((seed - 1) % HILL_HUES.length) + HILL_HUES.length) % HILL_HUES.length]!,
+    xs,
+    ys,
+    finish,
+    flags: FLAG_AT.map((f) => finish * f),
+    tops,
+  }
+}
+
 /** The segment of the hills a spot is on. */
 function seg(h: Hills, x: number): number {
   const xs = h.xs

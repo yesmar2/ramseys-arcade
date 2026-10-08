@@ -16,10 +16,12 @@ export function SwoopPage() {
   const asked = route.name === 'gamePlay' ? route.day : undefined
   const day = isDay(asked) && asked >= FIRST_DAY && asked < hillsDay() ? asked : null
   const test = testRunDay(asked)
+  // ?lab=1: the test hills, an admin's (runs.ts LAB_DAY).
+  const lab = !day && !test && route.name === 'gamePlay' && route.lab === true
   return (
     <main className="game-page game-page--fullscreen">
       <ArchiveGate slug="swoop" day={day}>
-        <SwoopGame key={day ?? 'today'} practiceDay={day} testDay={test} />
+        <SwoopGame key={day ?? (lab ? 'lab' : 'today')} practiceDay={day} testDay={test} lab={lab} />
       </ArchiveGate>
     </main>
   )

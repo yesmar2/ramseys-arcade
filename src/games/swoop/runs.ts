@@ -1,7 +1,7 @@
 import { standIn } from './boardGhost'
 import { dailyHills, laidNumber, type DailyHills } from './daily'
 import type { GhostRun } from './runStore'
-import { GHOST_RATE, GHOST_STRIDE, HOLD, paceRun, plannedHills, type Hills } from './sim'
+import { BLUE_PACE, GHOST_RATE, GHOST_STRIDE, HOLD, layWildHills, PACE_FROM, PACE_TO, paceRun, plannedHills, type Hills } from './sim'
 
 export * from './runStore'
 
@@ -16,9 +16,31 @@ export type SwoopDay = DailyHills & { hills: Hills }
 const laidDays = new Map<string, SwoopDay>()
 const paces = new Map<string, GhostRun>()
 
+/** The test hills' day, an admin's (SwoopGame `lab`): not a date, so nothing about it goes on a board. */
+export const LAB_DAY = 'lab'
+
+/**
+ * The test hills, laid Tiny Wings' way (sim.ts layWildHills) to try before any day's are: new ones each time the
+ * page loads, the first try at a seed the blue bird flies in a fair time.
+ */
+function labHills(): SwoopDay {
+  const seed = 1 + Math.floor(Math.random() * 1_000_000)
+  for (let attempt = 0; ; attempt++) {
+    const hills = layWildHills(seed, attempt)
+    const pace = paceRun(hills)
+    if (attempt >= 20 || (pace.finished && pace.time >= PACE_FROM && pace.time <= PACE_TO)) {
+      return { day: LAB_DAY, n: 0, name: hills.name, attempt, pace: pace.time * BLUE_PACE, hills }
+    }
+  }
+}
+
 /** The day's hills, laid once a day: the same try the plan kept, so the same hills on every device. */
 export function swoopDay(day: string): SwoopDay {
   let found = laidDays.get(day)
+  if (!found && day === LAB_DAY) {
+    found = labHills()
+    laidDays.set(day, found)
+  }
   if (!found) {
     const daily = dailyHills(day)
     found = { ...daily, hills: plannedHills(laidNumber(daily), daily.attempt) }

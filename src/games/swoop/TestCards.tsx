@@ -6,7 +6,7 @@ import { fitCardToSpace } from '../../lib/cardFit'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { dayOfHills, hillsDay, PLANNED_HILLS } from './daily'
 import { hillsRunHref } from './links'
-import type { SwoopDay } from './runs'
+import { LAB_DAY, type SwoopDay } from './runs'
 import { cleanWords, formatRun } from './score'
 
 /*
@@ -23,6 +23,7 @@ const holdPress = (e: ReactPointerEvent) => e.stopPropagation()
 
 /** "Today's hills", "Come Thu, Oct 8". */
 function whenWords(day: string) {
+  if (day === LAB_DAY) return 'Test hills, laid the new way: new ones each time you load the page'
   if (day === hillsDay()) return 'Today’s hills'
   const date = new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
   return `Come ${date}`
@@ -67,9 +68,7 @@ export function TestStartCard({ swoop, best }: { swoop: SwoopDay; best: number |
   return (
     <div ref={fitCardToSpace} className="game-card game-card--start swoop-test" style={gameAccentStyle(SLUG)}>
       <div className="game-card__head">
-        <span className="game-card__kicker">
-          Test run · hills {swoop.n} of {PLANNED_HILLS}
-        </span>
+        <span className="game-card__kicker">{swoop.day === LAB_DAY ? 'Test hills' : `Test run · hills ${swoop.n} of ${PLANNED_HILLS}`}</span>
         <h2 className="game-card__title game-card__title--big">{swoop.name}</h2>
         <p className="game-card__blurb">
           {whenWords(swoop.day)}. Runs here aren’t saved: they go on no board, and your best here is gone when you close the tab.
@@ -90,7 +89,7 @@ export function TestStartCard({ swoop, best }: { swoop: SwoopDay; best: number |
       <button type="button" className="panel__btn game-card__start">
         Start
       </button>
-      <HillsNav n={swoop.n} />
+      {swoop.day === LAB_DAY ? null : <HillsNav n={swoop.n} />}
     </div>
   )
 }
@@ -127,9 +126,7 @@ export function TestResultCard({
       onPointerDown={holdPress}
     >
       <div className="game-card__head">
-        <span className="game-card__kicker">
-          Test run · #{swoop.n} {swoop.name}
-        </span>
+        <span className="game-card__kicker">{swoop.day === LAB_DAY ? `Test hills · ${swoop.name}` : `Test run · #${swoop.n} ${swoop.name}`}</span>
         <h2 className="game-card__title game-card__title--big">{formatRun(time)}</h2>
         <p className="game-card__blurb">
           {against}, with {cleanWords(clean)}.

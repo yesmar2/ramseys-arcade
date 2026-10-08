@@ -80,6 +80,14 @@ export function AdminHillsBook() {
           run goes on no board. Past ones fly as practice.
           {last ? ` The plan runs to #${last.n} on ${dayWords(last.day)}, ${last.day.slice(0, 4)}; after that the days go round again from #1.` : ''}
         </p>
+        <div className="tb-feature__acts" style={{ marginTop: '0.8rem', alignItems: 'center' }}>
+          <a className="panel__btn panel__btn--ghost adm-small" href={`${gamePlayHref(SLUG)}?lab=1`}>
+            Test hills: the new way →
+          </a>
+          <p className="tb-feature__next">
+            Hills laid like Tiny Wings’: every hill its own size, bigger toward the end, now and then a giant. New ones each load. Not in any day’s hills yet.
+          </p>
+        </div>
         {todays ? (
           <div className="tb-feature">
             <HillsDrawing hills={todays.hills} className="hlb-map" />

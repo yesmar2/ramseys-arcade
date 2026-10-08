@@ -46,6 +46,7 @@ import {
   keepBestRun,
   keepPracticeRun,
   keptRun,
+  LAB_DAY,
   paceIfFlown,
   paceOf,
   practiceBest,
@@ -1242,16 +1243,19 @@ function PastSwoop({ day }: { day: string }) {
  * come, test flown from the admin's Hills Book. A test run is only an admin's: anyone else is sent to today's
  * hills, with a word about why when the hills' day hasn't come.
  */
-export function SwoopGame({ practiceDay, testDay }: { practiceDay?: string | null; testDay?: string | null }) {
+export function SwoopGame({ practiceDay, testDay, lab = false }: { practiceDay?: string | null; testDay?: string | null; lab?: boolean }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? hillsDay() }))
   const admin = useAdminState()
   const { loading } = useAuth()
   // Sent away only once we know: signed in (or not), and the API has said this account isn't an admin.
-  const shut = Boolean(testDay) && admin === false && !loading
+  const shut = (Boolean(testDay) || lab) && admin === false && !loading
   useEffect(() => {
     if (shut) navigate(gamePlayHref(SLUG), { replace: true })
   }, [shut])
   if (practiceDay) return <PastSwoop key={`practice-${practiceDay}`} day={practiceDay} />
+  // The test hills (runs.ts LAB_DAY): new hills laid Tiny Wings' way, run as a test run, kept nowhere.
+  if (lab && admin === true) return <SwoopDayGame key="lab" day={LAB_DAY} practice test onNewDay={() => {}} />
+  if (lab && !shut) return null
   if (testDay && admin === true) return <SwoopDayGame key={`test-${testDay}`} day={testDay} practice test onNewDay={() => {}} />
   // Still signing in, or still asking the API whether this account is an admin.
   if (testDay && !shut) return null
