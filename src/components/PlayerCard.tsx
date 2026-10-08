@@ -393,7 +393,7 @@ export function PlayerCard({
       aria-label={isSelf ? 'Your player card' : `${name}'s player card`}
     >
       <div className="pcard__band" aria-hidden="true">
-        {theme ? <CardBackdrop className="pcard__theme" theme={theme} width={1600} height={480} scale={1.4} /> : null}
+        {theme ? <CardBackdrop className="pcard__theme" theme={theme} width={1600} height={640} scale={1.5} /> : null}
       </div>
       {backHref ? (
         <a className="pcard__back" href={backHref}>

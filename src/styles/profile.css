@@ -121,7 +121,7 @@ html[data-theme='dark'] .pf {
  * player's colour; the character over its foot with the tag beside it; a row of tiles; two shelves.
  */
 .home-banner.pcard {
-  --pcard-band: 10.5rem;
+  --pcard-band: 12.5rem;
   --pcard-bg: transparent;
   display: flex;
   flex-direction: column;
@@ -148,11 +148,22 @@ html[data-theme='dark'] .pf {
   background: none;
 }
 
+/* The theme runs the card's whole height: clear across the top, then a shade over it under the words and the
+   shelves, so it still shows through to the foot. */
+.pcard--themed .pcard__band {
+  height: 100%;
+}
+
 .pcard--themed .pcard__band::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 30%, var(--pcard-bg) 100%);
+  background: linear-gradient(
+    180deg,
+    transparent calc(var(--pcard-band) - 4rem),
+    color-mix(in srgb, var(--pcard-bg) 55%, transparent) calc(var(--pcard-band) + 4rem),
+    color-mix(in srgb, var(--pcard-bg) 78%, transparent) 100%
+  );
 }
 
 .pcard__back {
@@ -364,15 +375,15 @@ html[data-theme='dark'] .pf {
   align-self: end;
   justify-self: end;
   display: flex;
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .pcard-coin {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  min-width: 3.4rem;
+  gap: 0.45rem;
+  min-width: 4.2rem;
   color: var(--banner-ink);
   text-decoration: none;
 }
@@ -380,13 +391,13 @@ html[data-theme='dark'] .pf {
 .pcard-coin__face {
   display: grid;
   place-items: center;
-  width: 2.9rem;
-  height: 2.9rem;
+  width: 3.8rem;
+  height: 3.8rem;
   border-radius: 50%;
   background: var(--banner-chip-bg);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--banner-ink) 16%, transparent);
   font-family: var(--font-display);
-  font-size: 0.98rem;
+  font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -394,7 +405,7 @@ html[data-theme='dark'] .pf {
 }
 
 .pcard-coin--gold .pcard-coin__face {
-  box-shadow: inset 0 0 0 2px rgba(245, 185, 66, 0.75);
+  box-shadow: inset 0 0 0 2.5px rgba(245, 185, 66, 0.8);
 }
 
 .pcard-coin--none .pcard-coin__face {
@@ -407,7 +418,7 @@ html[data-theme='dark'] .pf {
 
 .pcard-coin--on .pcard-coin__face {
   background: color-mix(in srgb, var(--hero-accent) 22%, var(--banner-chip-bg));
-  box-shadow: inset 0 0 0 2px var(--hero-accent);
+  box-shadow: inset 0 0 0 2.5px var(--hero-accent);
 }
 
 .pcard-coin:hover .pcard-coin__face,
@@ -425,7 +436,7 @@ html[data-theme='dark'] .pf {
 }
 
 .pcard-coin__label {
-  font-size: 0.6rem;
+  font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -663,7 +674,7 @@ html[data-theme='dark'] .pf {
 /* A phone: the avatar beside the sign, then everything full width under them. */
 @media (max-width: 36rem) {
   .home-banner.pcard {
-    --pcard-band: 7.4rem;
+    --pcard-band: 9rem;
   }
 
   .pcard__main {
@@ -741,8 +752,22 @@ html[data-theme='dark'] .pf {
   .pcard__coins {
     justify-self: stretch;
     justify-content: space-between;
-    gap: 0.4rem;
-    padding: 0 0.4rem;
+    gap: 0.3rem;
+    padding: 0 0.2rem;
+  }
+
+  .pcard-coin {
+    min-width: 0;
+  }
+
+  .pcard-coin__face {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.15rem;
+  }
+
+  .pcard-coin__label {
+    font-size: 0.6rem;
   }
 
   .pcard__acts {
