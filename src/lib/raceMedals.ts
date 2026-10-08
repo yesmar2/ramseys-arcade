@@ -36,9 +36,12 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * its steps to 10% (platinum 30%), where that run is gold, 0.24s off platinum. On the longer hills his best
  * runs then landed 35 to 38% under the quicker bird, platinum every time, and he found the medals still needed
  * to be "a little more difficult" (2026-10-07): 12% a step puts platinum at 36%, where his 35% run that day is
- * gold, 0.9s off it, and his 38% run on #1 still takes it.
+ * gold, 0.9s off it, and his 38% run on #1 still takes it. Marble Run went to 12% too when he asked for its
+ * medals to be harder (2026-10-08), right after its marble got easier to turn and slow down (marblerun sim.ts
+ * PLAYER_TILT_MAX, PLAYER_BRAKE): his runs had landed 27 to 32% under the blue ball, platinum both times, and
+ * the easier marble takes about 4% more off a quick player's time, so platinum at 36% is just past his best.
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.09, lander: 0.08, swoop: 0.12 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.12, lander: 0.08, swoop: 0.12 }
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in

@@ -374,7 +374,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Off the edge', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue ball, then every 9% faster' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue ball, then every 12% faster' },
     ],
     ends: 'At the goal. Roll it as often as you like.',
     tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. Each course has a few of these too: boost pads and mud, bumpers, swinging hammers, a windmill, a moving platform, ice, a fork, a loop (hit its boost pad or you won’t make the top). The ghost is the run to beat.',
