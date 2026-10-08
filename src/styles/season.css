@@ -558,17 +558,32 @@ html[data-theme='dark'] .skin-tile__note--price {
   height: 5.25rem;
 }
 
-/* A run's skin beside a name on a board (SkinMark): on a dark chip, so a white ship shows on a light page. */
+/*
+ * A run's skin beside a name on a board (SkinMark): the skin itself, in its own shape, about the size of the Plus
+ * star beside the tag (Ramsey, 2026-10-08: "it should have a transparent background, and a size similar to the
+ * plus member icon"). It was a picture on a dark chip. A little bigger than the star, as most skins are wider
+ * than they're tall.
+ */
 .skin-mark {
   display: inline-grid;
   place-items: center;
   flex: none;
-  margin-left: 0.35rem;
-  padding: 1px;
-  border-radius: 0.4rem;
-  background: var(--space-deep);
+  width: min(1.25em, 1.5rem);
+  height: min(1.25em, 1.5rem);
+  /* The rows it sits in space their parts (a flex gap), so it brings no margin of its own. */
+  margin: 0;
   vertical-align: middle;
   line-height: 0;
+}
+
+.skin-mark svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* On a light page a white skin needs an edge to show: a hairline round its own shape, not a box. */
+html[data-theme='light'] .skin-mark svg {
+  filter: drop-shadow(0 0 0.5px rgba(14, 22, 38, 0.75)) drop-shadow(0 1px 1px rgba(14, 22, 38, 0.25));
 }
 
 .skin-use {
