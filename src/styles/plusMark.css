@@ -10,7 +10,14 @@
   width: min(0.95em, 1.15rem);
   height: min(0.95em, 1.15rem);
   margin-left: min(0.28em, 0.35rem);
+  /*
+   * Middle is a lowercase letter's middle, and a tag is capitals, whose middle is higher: up by the difference,
+   * so the star is level with the tag (Ramsey, 2026-10-08: "almost doesn't seem vertically aligned with the
+   * gamertag"; it sat 0.12em low).
+   */
   vertical-align: middle;
+  position: relative;
+  top: -0.12em;
   background: none;
   background-clip: border-box;
   -webkit-background-clip: border-box;
@@ -69,6 +76,7 @@ html[data-theme='light'] .pcard--themed .plus-mark svg {
 }
 
 .pcard-plus .plus-mark {
+  top: 0;
   margin-left: 0;
 }
 
@@ -85,6 +93,7 @@ html[data-theme='dark'] .pcard-plus,
 
 /* As an icon: the menu's Plus row (components/SiteMenu.tsx), and the Plus page's at its own size. */
 .plus-mark--icon {
+  top: 0;
   width: var(--plus-mark-size, 1.25rem);
   height: var(--plus-mark-size, 1.25rem);
   margin: 0;
