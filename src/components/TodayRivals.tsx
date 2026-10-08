@@ -168,9 +168,9 @@ export function TodayRivals({
         <p className="today-rivals__empty">
           {data.scope.kind === 'group'
             ? 'Nobody else in this group has a tag yet.'
-            : 'Race your friends on today’s dailies. Add a friend from their player card, or '}
-          {data.scope.kind === 'group' ? null : <a href={groupsIndexHref()}>start a group</a>}
-          {data.scope.kind === 'group' ? null : ' and send them the invite.'}
+            : 'Race your friends on today’s dailies. Add one on '}
+          {data.scope.kind === 'group' ? null : <a href={groupsIndexHref()}>Friends &amp; groups</a>}
+          {data.scope.kind === 'group' ? null : ', or from their player card.'}
         </p>
       )}
     </section>

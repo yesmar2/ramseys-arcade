@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import type { Friend } from './friends'
 import {
   api,
   getClaimToken,
@@ -317,4 +318,51 @@ export function groupHref(id: string, invite?: string) {
 
 export function groupsIndexHref() {
   return '/groups'
+}
+
+/**
+ * You and your friends, as the boards' scope: a group the API makes from who you've added (its
+ * friendsBoardScope), with a page of its own on the Friends & groups page. No group's id is it.
+ */
+export const FRIENDS_SCOPE = 'friends'
+
+/** Your friends' page, among your groups. */
+export function friendsHref() {
+  return groupHref(FRIENDS_SCOPE)
+}
+
+/**
+ * You and your friends as a group, for the group pages' parts (its standings, its records) and an event's
+ * invites: you first, then each friend from when you became friends.
+ */
+export function friendsGroup(me: string, friends: readonly Friend[]): GroupPublic {
+  const you = normalizePlayerName(me)
+  const members: GroupMember[] = [
+    ...(you ? [{ name: you, joinedAt: 0 }] : []),
+    ...friends.map((f) => ({ name: normalizePlayerName(f.name), joinedAt: f.since, avatarId: f.avatarId })),
+  ]
+  return {
+    id: FRIENDS_SCOPE,
+    name: 'Friends',
+    memberCount: members.length,
+    members,
+    isOwner: false,
+    isMember: true,
+    ownerName: null,
+    inviteCode: null,
+  }
+}
+
+/** What the boards show, by name: "Friends", or a group's own name; nothing for everyone. */
+export function scopeName(id: string | null): string | undefined {
+  if (!id) return undefined
+  if (id === FRIENDS_SCOPE) return 'Friends'
+  return cachedMyGroups().find((g) => g.id === id)?.name
+}
+
+/** Where a place on the boards is: "among your friends", "in FAMILY", "in the arcade". */
+export function scopeWhere(id: string | null): string {
+  if (id === FRIENDS_SCOPE) return 'among your friends'
+  const name = scopeName(id)
+  return name ? `in ${name}` : 'in the arcade'
 }

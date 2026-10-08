@@ -10,7 +10,9 @@ import {
   type FriendRequest,
   type SendFriendRequestResult,
 } from '../lib/friends'
+import { FRIENDS_SCOPE } from '../lib/groups'
 import { useAuth } from './useAuth'
+import { forgetGroupBoard } from './useGroupBoard'
 
 /*
  * One shared copy of the friends list. The header wants the request count
@@ -93,10 +95,11 @@ export function refreshFriends(force = false): Promise<void> {
   return inFlight
 }
 
-/** Forget everything — on sign-out, the list belongs to nobody. */
+/** Forget everything — on sign-out, the list belongs to nobody, and nor do its boards. */
 export function resetFriends() {
   fetchedAt = 0
   emit({ ...empty })
+  forgetGroupBoard(FRIENDS_SCOPE)
 }
 
 function ensureListeners() {
@@ -122,12 +125,13 @@ export function useFriends() {
     void refreshFriends()
   }, [signedIn])
 
-  /** Run one request action, then reload the list so every consumer agrees. */
+  /** Run one request action, then reload the list so every consumer agrees, and your friends' boards with it. */
   const act = useCallback(async (id: string, fn: () => Promise<unknown>, fallback: string) => {
     patch({ busyId: id, error: null })
     try {
       await fn()
       await refreshFriends(true)
+      forgetGroupBoard(FRIENDS_SCOPE)
       return true
     } catch (err) {
       patch({ error: err instanceof Error ? err.message : fallback })
@@ -140,6 +144,8 @@ export function useFriends() {
   const send = useCallback(async (name: string): Promise<SendFriendRequestResult> => {
     const result = await sendFriendRequest(name)
     await refreshFriends(true)
+    // Asking someone who had asked you is a yes: they're on your friends' boards at once.
+    if (result.status === 'accepted') forgetGroupBoard(FRIENDS_SCOPE)
     return result
   }, [])
 

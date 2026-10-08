@@ -11,12 +11,14 @@ import {
   GroupStandings,
   NewestRecords,
 } from '../components/GroupDetail'
+import { AddFriendCard, FriendsGroupCard } from '../components/FriendsCircle'
 import { GroupCard, GroupsPitch, HowGroupsWork, LinkCard, StartGroupCard } from '../components/GroupsHome'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { openSiteMenu } from '../components/siteNav'
 import { navigate, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
+import { useFriends } from '../hooks/useFriends'
 import { useGroupBoard } from '../hooks/useGroupBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -25,6 +27,7 @@ import {
   createGroup,
   deleteGroup,
   fetchGroupDetail,
+  FRIENDS_SCOPE,
   getGroupInvite,
   groupHref,
   groupsIndexHref,
@@ -50,14 +53,15 @@ function inviteUrl(id: string, code: string) {
 }
 
 /**
- * The groups page: each of your groups as a card with its month so far and
- * its records, starting one, and opening one from a link. With no group yet,
- * what a group is.
+ * The Friends & groups page: your friends first, as a group made from who you've added, then each of your
+ * groups as a card with its month so far and its records; adding a friend, starting a group, and opening
+ * one from a link. With no group yet, what a group is.
  */
 export function GroupsPage() {
   const { account, loading: authLoading } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const activeId = useActiveGroup()
+  const { friends, loaded: friendsLoaded } = useFriends()
   const [groups, setGroups] = useState<GroupPublic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -104,12 +108,12 @@ export function GroupsPage() {
       <div className="grp">
         <header className="grp-head">
           <div>
-            <h1 className="grp-head__title">Groups</h1>
+            <h1 className="grp-head__title">Friends &amp; groups</h1>
             <p className="grp-head__lede">The same boards, with just your people on them.</p>
           </div>
-          {groups.length ? (
+          {account && friendsLoaded ? (
             <p className="grp-cap">
-              {groups.length} of {GROUP_LIMIT} groups
+              {friends.length} {friends.length === 1 ? 'friend' : 'friends'} · {groups.length} of {GROUP_LIMIT} groups
             </p>
           ) : null}
         </header>
@@ -119,8 +123,15 @@ export function GroupsPage() {
         ) : (
           <>
             <PendingInvitesStrip kind="group" />
-            <div className="grp-index">
+            <div className="grp-index frd-index">
               <div className="grp-index__main">
+                {account ? (
+                  <FriendsGroupCard
+                    me={playerName}
+                    onBoards={activeId === FRIENDS_SCOPE}
+                    onToggleBoards={() => setActiveGroup(activeId === FRIENDS_SCOPE ? null : FRIENDS_SCOPE)}
+                  />
+                ) : null}
                 {groups.length ? (
                   groups.map((g) => (
                     <GroupCard
@@ -136,6 +147,7 @@ export function GroupsPage() {
                 )}
               </div>
               <div className="grp-index__side">
+                <AddFriendCard me={playerName} />
                 <StartGroupCard
                   signedIn={Boolean(account)}
                   full={groups.length >= GROUP_LIMIT}
@@ -444,7 +456,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
             <p className="grp-copy">{error ?? 'Its invite link may have been replaced by a new one.'}</p>
             <div className="grp-acts">
               <a className="grp-btn grp-btn--ghost" href={groupsIndexHref()}>
-                Your groups
+                Friends &amp; groups
               </a>
             </div>
           </section>

@@ -10,7 +10,7 @@ import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
-import { cachedMyGroups, groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { groupBoardEmptyTitle, scopeName, useActiveGroup } from '../lib/groups'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
@@ -635,7 +635,7 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
   if (!meta) return null
   const accent = resolveGameAccent(game, meta.accent)
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
-  const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const group = scopeName(groupId)
   const { record, entries, total } = data
 
   if (data.error) {

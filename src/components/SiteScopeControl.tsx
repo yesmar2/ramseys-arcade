@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { applySitePeriod, applySiteGroup, periodFromRoute, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
+import { useFriends } from '../hooks/useFriends'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   cachedMyGroups,
+  FRIENDS_SCOPE,
   groupsIndexHref,
   listMyGroups,
   setActiveGroup,
@@ -65,9 +67,9 @@ function PlusIcon() {
 }
 
 /**
- * What every board on the site shows: which period, and whether everyone or
- * one of your groups. One control in the header rather than two unlabelled
- * pills, so it says what it is, and a popover with both choices in it.
+ * What every board on the site shows: which period, and whether everyone, your
+ * friends or one of your groups. One control in the header rather than two
+ * unlabelled pills, so it says what it is, and a popover with both choices in it.
  *
  * It's in the header on every page, as Ramsey asked ("We need the time frame
  * and group selector on header of all pages"). A page whose boards are its
@@ -80,6 +82,7 @@ export function SiteScopeControl() {
   const storedPeriod = useDefaultPeriod()
   const period: LeaderboardPeriod = coerceVisiblePeriod(periodFromRoute(route) ?? storedPeriod)
   const { account } = useAuth()
+  const { friends, loaded: friendsLoaded } = useFriends()
   const activeId = useActiveGroup()
   const [groups, setGroups] = useState<GroupPublic[]>(() => cachedMyGroups())
   const [loaded, setLoaded] = useState(false)
@@ -93,9 +96,9 @@ export function SiteScopeControl() {
         if (cancelled) return
         setGroups(list)
         setLoaded(true)
-        // A group you have left is no longer one the boards can show.
+        // A group you have left is no longer one the boards can show. Your friends aren't one of the list.
         const current = storedActiveGroup()
-        if (current && !list.some((g) => g.id === current)) setActiveGroup(null)
+        if (current && current !== FRIENDS_SCOPE && !list.some((g) => g.id === current)) setActiveGroup(null)
       })
       .catch(() => {
         if (!cancelled) setGroups([])
@@ -122,8 +125,10 @@ export function SiteScopeControl() {
   }, [open])
 
   const active = groups.find((g) => g.id === activeId) ?? null
-  const pending = Boolean(activeId) && !active && !loaded
-  const among = activeId ? (active?.name ?? 'Your group') : 'Everyone'
+  const onFriends = activeId === FRIENDS_SCOPE
+  const pending = Boolean(activeId) && !onFriends && !active && !loaded
+  const among = onFriends ? 'Friends' : activeId ? (active?.name ?? 'Your group') : 'Everyone'
+  const friendCount = friends.length
   const periodLabel = PERIOD_LABELS[period]
 
   const pickPeriod = (next: LeaderboardPeriod) => {
@@ -190,6 +195,44 @@ export function SiteScopeControl() {
                 ) : null}
               </button>
             </li>
+            {/* Your friends, a group made from who you've added: there to pick once there's someone in it. */}
+            {account ? (
+              <li>
+                {friendsLoaded && friendCount === 0 && !onFriends ? (
+                  <a className="site-scope__option" href={groupsIndexHref()} onClick={() => setOpen(false)}>
+                    <span className="site-scope__option-mark site-scope__option-mark--friends">
+                      <PeopleIcon />
+                    </span>
+                    <span className="site-scope__option-text">
+                      <span className="site-scope__option-name">Friends</span>
+                      <span className="site-scope__option-sub">Add a friend, and the boards can show just you two</span>
+                    </span>
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="site-scope__option"
+                    aria-pressed={onFriends}
+                    onClick={() => pickGroup(FRIENDS_SCOPE)}
+                  >
+                    <span className="site-scope__option-mark site-scope__option-mark--friends">
+                      <PeopleIcon />
+                    </span>
+                    <span className="site-scope__option-text">
+                      <span className="site-scope__option-name">Friends</span>
+                      <span className="site-scope__option-sub">
+                        {friendsLoaded ? `You and ${friendCount} ${friendCount === 1 ? 'friend' : 'friends'}` : 'You and your friends'}
+                      </span>
+                    </span>
+                    {onFriends ? (
+                      <span className="site-scope__check">
+                        <Check />
+                      </span>
+                    ) : null}
+                  </button>
+                )}
+              </li>
+            ) : null}
             {groups.map((g) => (
               <li key={g.id}>
                 <button
@@ -220,7 +263,7 @@ export function SiteScopeControl() {
                 <span className="site-scope__option-mark">
                   <PlusIcon />
                 </span>
-                {groups.length > 0 ? 'Start or manage a group' : 'Start a group, and the boards can show just it'}
+                {groups.length > 0 ? 'Add friends, or start or manage a group' : 'Add friends, or start a group the boards can show'}
               </a>
             </li>
           </ul>

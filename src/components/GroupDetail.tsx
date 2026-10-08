@@ -127,7 +127,7 @@ export function GroupBanner({
     <section className="grp-banner" aria-labelledby="grp-title">
       <div className="grp-banner__bar">
         <nav className="grp-crumbs" aria-label="Breadcrumb">
-          <a href={groupsIndexHref()}>Groups</a>
+          <a href={groupsIndexHref()}>Friends &amp; groups</a>
           <span aria-hidden="true">›</span>
           <span aria-current="page">{group.name}</span>
         </nav>
@@ -347,8 +347,23 @@ export function GroupStandings({
 
 /* ---------- the records ---------- */
 
-/** The best anyone in the group has done on each game, yours lit, and the games nobody has a record on yet. */
-export function GroupRecords({ group, me, records }: { group: GroupPublic; me: string; records: GroupRecord[] | null }) {
+/**
+ * The best anyone in the group has done on each game, yours lit, and the games nobody has a record on yet.
+ * Your friends' page names them its own way (`title`, `who`).
+ */
+export function GroupRecords({
+  group,
+  me,
+  records,
+  title,
+  who = 'anyone in the group',
+}: {
+  group: GroupPublic
+  me: string
+  records: GroupRecord[] | null
+  title?: string
+  who?: string
+}) {
   const you = normalizePlayerName(me)
   const holders = records ? recordHolders(records) : []
   const open = records ? openRecords(records) : []
@@ -356,10 +371,10 @@ export function GroupRecords({ group, me, records }: { group: GroupPublic; me: s
     <section className="grp-card grp-records" aria-labelledby="grp-records-title">
       <div>
         <h2 id="grp-records-title" className="grp-h2">
-          {group.name}’s records
+          {title ?? `${group.name}’s records`}
         </h2>
         <p className="grp-copy">
-          The best anyone in the group has done on each game.
+          The best {who} has done on each game.
           {open.length
             ? ` ${nameList(open.map(gameName))} ${open.length === 1 ? 'is' : 'are'} still open: one run takes ${open.length === 1 ? 'it' : 'each'}.`
             : ''}
@@ -750,7 +765,7 @@ export function GroupGate({
     <>
       <section className="grp-banner grp-banner--plain" aria-labelledby="grp-gate-title">
         <nav className="grp-crumbs" aria-label="Breadcrumb">
-          <a href={groupsIndexHref()}>Groups</a>
+          <a href={groupsIndexHref()}>Friends &amp; groups</a>
           <span aria-hidden="true">›</span>
           <span aria-current="page">Private group</span>
         </nav>

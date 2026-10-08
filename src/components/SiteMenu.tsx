@@ -455,15 +455,15 @@ export function SiteMenu({
                   </span>
                 </a>
               </li>
+              {/* Your friends are your first group now, so one row for both (the Friends & groups page). */}
               {row(
                 <FriendIcon />,
-                'Friends',
+                'Friends & groups',
+                friends != null && friends > 0 ? `${friends} ${friends === 1 ? 'friend' : 'friends'}` : 'Boards of just your people',
+                groupsIndexHref(),
                 null,
-                rankHref(undefined, undefined, 'friends'),
-                friends != null && friends > 0 ? String(friends) : null,
                 friendRequests > 0 ? `${friendRequests} ${friendRequests === 1 ? 'request' : 'requests'}` : null,
               )}
-              {row(<GroupsIcon />, 'Groups', null, groupsIndexHref())}
             </ul>
           ) : (
             <ul className="site-menu__rows site-menu__rows--plain" aria-label="What an account adds">

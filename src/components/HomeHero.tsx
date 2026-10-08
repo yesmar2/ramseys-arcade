@@ -8,7 +8,7 @@ import { useDeviceType } from '../lib/device'
 import { gapBetween, gapFigure } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
-import { cachedMyGroups, useActiveGroup } from '../lib/groups'
+import { scopeName, useActiveGroup } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import {
@@ -503,7 +503,7 @@ export function HomeHero() {
       : daily
         ? 'Your place'
         : 'Your record'
-    const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+    const group = scopeName(groupId)
     const ahead = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! - 1) : undefined
     const trailing = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! + 1) : undefined
 

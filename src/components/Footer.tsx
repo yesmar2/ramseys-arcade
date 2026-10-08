@@ -95,9 +95,6 @@ export function Footer() {
               <li>
                 <a href={tournamentCreateHref()}>Create an event</a>
               </li>
-              <li>
-                <a href={groupsIndexHref()}>Groups</a>
-              </li>
             </ul>
           </div>
 
@@ -114,7 +111,7 @@ export function Footer() {
                 <a href={prizesHref()}>Prize counter</a>
               </li>
               <li>
-                <a href={rankHref(undefined, undefined, 'friends')}>Friends</a>
+                <a href={groupsIndexHref()}>Friends &amp; groups</a>
               </li>
               <li>
                 <a href={plusHref()}>Plus</a>

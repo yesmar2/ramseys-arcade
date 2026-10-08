@@ -9,7 +9,7 @@ import {
   type LeaderboardEntry,
   type LeaderboardPeriod,
 } from './leaderboard'
-import { applyBoardScope, type GroupPublic } from './groups'
+import { applyBoardScope, FRIENDS_SCOPE, type GroupPublic } from './groups'
 
 /*
  * The groups pages, worked out: a group's table for a period, the record it
@@ -20,9 +20,12 @@ import { applyBoardScope, type GroupPublic } from './groups'
  */
 
 const GROUP_ACCENTS = ['#2eb8a0', '#e85d4c', '#5b7cfa', '#e2a12b', '#9b6bff'] as const
+/** Your friends wear the site's sky blue, so they never look like one of your groups. */
+const FRIENDS_ACCENT = '#4aa8e8'
 
 /** A group's colour, fixed by its id so it is the same on every page. */
 export function groupAccent(id: string): string {
+  if (id === FRIENDS_SCOPE) return FRIENDS_ACCENT
   let n = 0
   for (const ch of id) n = (n + ch.charCodeAt(0)) % GROUP_ACCENTS.length
   return GROUP_ACCENTS[n] ?? GROUP_ACCENTS[0]

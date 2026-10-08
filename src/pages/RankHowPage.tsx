@@ -11,7 +11,7 @@ import { useScoresAt } from '../hooks/useProfileBoards'
 import { useDailyDays, useStandingsAbove } from '../hooks/useRankHow'
 import { useScoreboard, type ScoreboardData } from '../hooks/useScoreboard'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { cachedMyGroups, useActiveGroup } from '../lib/groups'
+import { scopeName, scopeWhere, useActiveGroup } from '../lib/groups'
 import {
   coerceVisiblePeriod,
   normalizePlayerName,
@@ -1484,7 +1484,7 @@ function PlayerHow({
   const days = useDailyDays(dailySlugs, name, groupId)
   const above = useStandingsAbove(period, rank, groupId)
   const words = periodWords(period)
-  const where = groupName ? `in ${groupName}` : 'in the arcade'
+  const where = scopeWhere(groupId)
   const today = boardDay()
   const player = self ? undefined : name
   const kicker = self ? `How your rank works · ${name}` : `How ${name}’s rank works`
@@ -1597,7 +1597,7 @@ export function RankHowPage({ player, period: routePeriod }: { player?: string; 
   const name = asked || myName
   const self = !asked || asked === myName
   const groupId = useActiveGroup()
-  const groupName = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const groupName = scopeName(groupId)
   return (
     <PageShell innerClassName="lb-page__inner rh-page">
       {name ? (

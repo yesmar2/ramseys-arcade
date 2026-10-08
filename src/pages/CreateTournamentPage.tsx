@@ -37,7 +37,8 @@ import {
 } from '../lib/tournaments'
 import { resolveGameAccent } from '../lib/theme'
 import { inkOn } from '../lib/color'
-import { fetchGroupDetail, type GroupPublic } from '../lib/groups'
+import { listFriends } from '../lib/friends'
+import { fetchGroupDetail, FRIENDS_SCOPE, friendsGroup, type GroupPublic } from '../lib/groups'
 import { sendInvite } from '../lib/invites'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { openSiteMenu } from '../components/siteNav'
@@ -292,6 +293,8 @@ export function CreateTournamentPage() {
   /** Made from a group's page: its members are invited once the event exists. */
   const groupId = useMemo(() => new URLSearchParams(window.location.search).get('group'), [])
   const [forGroup, setForGroup] = useState<GroupPublic | null>(null)
+  const forFriends = forGroup?.id === FRIENDS_SCOPE
+  const forWhom = forFriends ? 'your friends' : forGroup?.name
   const [inviting, setInviting] = useState(false)
   const [durationHours, setDurationHours] = useState(24)
   const [roundPlayHours, setRoundPlayHours] = useState(24)
@@ -477,7 +480,12 @@ export function CreateTournamentPage() {
   useEffect(() => {
     if (!groupId || !account) return
     let cancelled = false
-    fetchGroupDetail(groupId)
+    // Made from your friends' page: the roster is you and them.
+    const load =
+      groupId === FRIENDS_SCOPE
+        ? listFriends().then(({ friends }) => friendsGroup(getLastPlayerName(), friends))
+        : fetchGroupDetail(groupId)
+    load
       .then((g) => {
         if (cancelled || !(g.isMember || g.isOwner)) return
         setForGroup(g)
@@ -591,10 +599,14 @@ export function CreateTournamentPage() {
             <span aria-hidden="true">›</span>
             <span aria-current="page">Make one</span>
           </nav>
-          <h1 className="evp-create__title">{forGroup ? `Make an event for ${forGroup.name}` : 'Make an event'}</h1>
+          <h1 className="evp-create__title">{forGroup ? `Make an event for ${forWhom}` : 'Make an event'}</h1>
           <p className="evp-create__lede">
             {forGroup
-              ? `Pick the games and the rules. Once it’s made, the other ${forGroup.memberCount - 1} in ${forGroup.name} get the invite${
+              ? `Pick the games and the rules. Once it’s made, ${
+                  forFriends
+                    ? `your ${forGroup.memberCount - 1} ${forGroup.memberCount === 2 ? 'friend gets' : 'friends get'}`
+                    : `the other ${forGroup.memberCount - 1} in ${forGroup.name} get`
+                } the invite${
                   forGroup.memberCount > limits.maxDraw
                     ? `, and the first ${limits.maxDraw} to join are in: that’s as many as an event holds on your plan`
                     : ''
@@ -940,7 +952,7 @@ export function CreateTournamentPage() {
                 disabled={busy || title.trim().length < 3 || games.length === 0}
               >
                 {inviting && forGroup
-                  ? `Inviting ${forGroup.name}…`
+                  ? `Inviting ${forWhom}…`
                   : busy
                     ? 'Creating…'
                     : `Create ${title.trim().length >= 3 ? title.trim() : 'the event'}`}

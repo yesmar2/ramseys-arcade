@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { useHeldHeight } from '../lib/heldShape'
-import { FriendsCard } from '../components/FriendsPanel'
+import { FriendButton } from '../components/FriendsCircle'
 import { PlayerHangar } from '../components/Hangar'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
@@ -12,10 +12,9 @@ import { ProfileGames } from '../components/ProfileGames'
 import { ProfileRival } from '../components/ProfileRival'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { TrophyShelf } from '../components/TrophyShelf'
-import { focusFromUrl, rankHowHref, rankHref, standingsHref, statsHref } from '../hooks/useHashRoute'
+import { focusFromUrl, navigate, rankHowHref, rankHref, standingsHref, statsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
-import { refreshFriends } from '../hooks/useFriends'
 import { useMyStats } from '../hooks/useMyStats'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { EMPTY_RANK, useGameBests, usePeriodRanks, useRankFor } from '../hooks/useProfileBoards'
@@ -24,12 +23,10 @@ import { AvatarStudio } from '../components/AvatarStudio'
 import { FlameIcon, StatsIcon } from '../components/chromeIcons'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { sendFriendRequest } from '../lib/friends'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { cachedMyGroups, useActiveGroup } from '../lib/groups'
+import { friendsHref, scopeWhere, useActiveGroup } from '../lib/groups'
 import { dailiesPlayed, standingsGames } from '../lib/allTime'
 import {
-  ApiError,
   RANKED_LEADERBOARD_GAMES,
   normalizePlayerName,
   type LeaderboardPeriod,
@@ -37,45 +34,6 @@ import {
 import { talksInPlaces } from '../lib/profileMath'
 import { scrollToPlace } from '../lib/scrollToPlace'
 import { fetchTrophies, type TrophyAward } from '../lib/trophies'
-
-function AddFriendButton({ name }: { name: string }) {
-  const [status, setStatus] = useState<'idle' | 'busy' | 'sent' | 'error'>('idle')
-  const [error, setError] = useState<string | null>(null)
-
-  const send = async () => {
-    if (status === 'busy' || status === 'sent') return
-    setStatus('busy')
-    setError(null)
-    try {
-      const result = await sendFriendRequest(name)
-      setStatus('sent')
-      if (result.status === 'accepted') setError(null)
-      void refreshFriends(true)
-    } catch (err) {
-      setStatus('error')
-      if (err instanceof ApiError && (err.code === 'NOT_A_PLAYER' || /hasn't signed in yet/i.test(err.message))) {
-        setError(`Huh — ${name} doesn’t exist in this arcade`)
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Could not send request')
-      }
-    }
-  }
-
-  return (
-    <span className="pfh__friend">
-      <button
-        type="button"
-        className="home-banner__cta"
-        disabled={status === 'busy' || status === 'sent'}
-        onClick={() => void send()}
-        aria-label={status === 'sent' ? `Friend request sent to ${name}` : `Add ${name} as a friend`}
-      >
-        {status === 'sent' ? 'Request sent' : status === 'busy' ? '…' : 'Add friend'}
-      </button>
-      {error ? <span className="pfh__friend-error">{error}</span> : null}
-    </span>
-  )
-}
 
 /** Down to a part of the page, gliding unless motion is turned down, without touching the address. */
 function jumpTo(id: string) {
@@ -119,14 +77,19 @@ export function RankPage({
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
 
   /*
-   * Arriving from the drawer's Friends row or a trophy in the inbox, which ask
-   * for a section rather than the top of a long page. The profile fills in over
-   * a few requests, so it waits for the section to exist and keeps it in view
-   * while the boards above it fill in (on a phone they pushed it 400 px down).
+   * Arriving from a trophy in the inbox, which asks for a section rather than
+   * the top of a long page. The profile fills in over a few requests, so it
+   * waits for the section to exist and keeps it in view while the boards above
+   * it fill in (on a phone they pushed it 400 px down). Friends used to be a
+   * section here too: an old link to it goes to their page now.
    */
   const focus = focusFromUrl()
   useEffect(() => {
-    if (focus !== 'friends' && focus !== 'trophies') return
+    if (focus === 'friends') {
+      navigate(friendsHref(), { replace: true })
+      return
+    }
+    if (focus !== 'trophies') return
     return scrollToPlace(() => document.getElementById(focus))
   }, [focus, viewedName])
 
@@ -203,8 +166,7 @@ export function RankPage({
       </a>
     ) : null
 
-  const groupName = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
-  const where = groupName ? `in ${groupName}` : 'in the arcade'
+  const where = scopeWhere(groupId)
 
   const shareUrl = rankHref(viewedName || undefined, period)
   const shareLabel =
@@ -254,7 +216,7 @@ export function RankPage({
     </>
   ) : (
     <>
-      {signedIn && myName ? <AddFriendButton name={viewedName} /> : null}
+      {signedIn && myName ? <FriendButton name={viewedName} /> : null}
       <ShareBoardButton className="home-banner__ghost" text="Share" label={shareLabel} url={shareUrl} />
     </>
   )
@@ -360,8 +322,6 @@ export function RankPage({
             </div>
 
             <PlayerHangar name={viewedName} isSelf={isSelf} />
-
-            {isSelf && signedIn ? <FriendsCard /> : null}
               </>
             ) : null}
           </>

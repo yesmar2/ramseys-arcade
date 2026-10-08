@@ -15,7 +15,7 @@ import { dateOf, dayAfter, timeOfDay, type DayCourse } from '../lib/dayBoard'
 import { useDeviceType } from '../lib/device'
 import { FIRST_RUN_DAILIES, firstResultWord, firstRunWord, gapBetween } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
-import { cachedMyGroups, groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { groupBoardEmptyTitle, scopeName, useActiveGroup } from '../lib/groups'
 import { useHeldHeight } from '../lib/heldShape'
 import { ApiError, getDayBoard, normalizePlayerName, type DayBoardEntry, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -760,7 +760,7 @@ function OtherDays({
 export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) {
   const name = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const group = scopeName(groupId)
   const { course, failed: courseFailed } = useDayCourse(slug)
   const [shown, setShown] = useState({ day: FIRST_ROWS, course: FIRST_ROWS })
 

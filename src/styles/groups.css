@@ -1499,3 +1499,118 @@ html[data-theme='dark'] .grp-menu__danger {
     animation: none;
   }
 }
+
+/* ---------- your friends: your first group (FriendsCircle.tsx) ---------- */
+
+/* They wear their sky blue as --g, from groupStyle('friends'), wherever they are. */
+.frd-card {
+  border-color: color-mix(in srgb, var(--g) 32%, transparent);
+}
+
+.frd-mark svg {
+  width: 55%;
+  height: 55%;
+}
+
+.frd-side-mark {
+  background: color-mix(in srgb, var(--g) 22%, var(--surface));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--g) 50%, transparent);
+  color: color-mix(in srgb, var(--g) 72%, var(--ink));
+}
+
+.frd-alert {
+  font-weight: 800;
+  color: color-mix(in srgb, var(--g) 72%, var(--ink));
+}
+
+.frd-requests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.frd-request {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--g) 11%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--g) 38%, transparent);
+}
+
+.frd-request__text {
+  flex: 1 1 11rem;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.frd-request__acts {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.frd-add__link {
+  align-self: flex-start;
+}
+
+.frd-asked .player-avatar {
+  opacity: 0.75;
+}
+
+@media (max-width: 560px) {
+  .frd-request__acts {
+    width: 100%;
+  }
+
+  .frd-request__acts .grp-btn {
+    flex: 1;
+  }
+}
+
+/*
+ * On a phone the page is one column, so what's beside the boards would come after all of them: on the
+ * Friends & groups page, Add a friend straight after your friends' card; on your friends' page, your
+ * friends and Add a friend straight after the standings, before the long grid of records.
+ */
+@media (max-width: 900px) {
+  .frd-index > .grp-index__main,
+  .frd-index > .grp-index__side,
+  .frd-split > .grp-split__main,
+  .frd-split > .grp-split__side {
+    display: contents;
+  }
+
+  .frd-index {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .frd-index > * > *,
+  .frd-split > * > * {
+    order: 5;
+  }
+
+  .frd-index .frd-card,
+  .frd-split .grp-table {
+    order: 1;
+  }
+
+  .frd-index .frd-add,
+  .frd-split .frd-list {
+    order: 2;
+  }
+
+  .frd-split .frd-add {
+    order: 3;
+  }
+
+  .frd-split .grp-records {
+    order: 4;
+  }
+}

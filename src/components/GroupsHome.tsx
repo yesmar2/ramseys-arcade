@@ -114,7 +114,7 @@ export function GroupFaces({ group, shown = 6, size = 'md' }: { group: GroupPubl
 }
 
 /* Places and names: the points are on the group's own Standings table. */
-function MiniRow({ entry, you }: { entry: GlobalBoardEntry; you: boolean }) {
+export function MiniRow({ entry, you }: { entry: GlobalBoardEntry; you: boolean }) {
   return (
     <li className={`grp-mini__row${you ? ' grp-mini__row--you' : ''}`}>
       <span className={`grp-place${entry.rank <= 3 ? ` grp-place--${entry.rank}` : ''}`}>{entry.rank}</span>
@@ -188,9 +188,12 @@ export function GroupCard({
                 ))}
                 {mine && !top.includes(mine) ? (
                   <>
-                    <li className="grp-mini__gap" aria-hidden="true">
-                      ···
-                    </li>
+                    {/* A gap only where places are skipped: 4th follows 3rd straight on. */}
+                    {mine.rank > top.length + 1 ? (
+                      <li className="grp-mini__gap" aria-hidden="true">
+                        ···
+                      </li>
+                    ) : null}
                     <MiniRow entry={mine} you />
                   </>
                 ) : null}

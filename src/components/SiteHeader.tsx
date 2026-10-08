@@ -13,7 +13,7 @@ import { AVATAR_EVENT, AVATARS_ENABLED, getLocalAvatarId } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { cachedMyGroups, useActiveGroup } from '../lib/groups'
+import { scopeWhere, useActiveGroup } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { lockScroll, unlockScroll } from '../lib/scrollLock'
 import { currentTheme, THEME_EVENT, type Theme } from '../lib/theme'
@@ -202,8 +202,7 @@ export function SiteHeader() {
   // Your own player card is where You leads, so You shows as the current place there.
   const onOwnCard =
     tagged && route.name === 'rank' && (!route.player || normalizePlayerName(route.player) === playerName)
-  const groupName = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
-  const where = groupName ? `in ${groupName}` : 'in the arcade'
+  const where = scopeWhere(groupId)
   const alert = notes.unread > 0 || friendRequests > 0 || inviteCount > 0
 
   const youLabel = !signedIn

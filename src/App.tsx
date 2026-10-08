@@ -33,6 +33,7 @@ import { RecordsPage } from './pages/RecordsPage'
 
 import { GAME_PAGES, preloadGameFromHref } from './pages/gamePages'
 import { lazyPage } from './lib/lazyPage'
+import { FRIENDS_SCOPE } from './lib/groups'
 
 /*
  * A page arrives with its route. The first load carries the shell, the home
@@ -57,6 +58,7 @@ const ChallengeLandingPage = lazyPage(() =>
 )
 const GroupDetailPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupDetailPage))
 const GroupsPage = lazyPage(() => import('./pages/GroupsPage').then((m) => m.GroupsPage))
+const FriendsGroupPage = lazyPage(() => import('./pages/FriendsGroupPage').then((m) => m.FriendsGroupPage))
 const PlusPage = lazyPage(() => import('./pages/PlusPage').then((m) => m.PlusPage))
 const AdminPage = lazyPage(() => import('./pages/AdminPage').then((m) => m.AdminPage))
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage))
@@ -298,6 +300,8 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (challenge) return <ChallengeLandingPage slug={challenge.slug} id={challenge.id} />
   if (route.name === 'groups') return <GroupsPage />
   if (route.name === 'group') {
+    // Your friends are a group made from who you've added, with a page of their own.
+    if (route.id === FRIENDS_SCOPE) return <FriendsGroupPage />
     return <GroupDetailPage id={route.id} invite={route.invite} />
   }
 

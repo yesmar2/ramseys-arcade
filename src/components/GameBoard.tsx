@@ -26,7 +26,7 @@ import {
 } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { lazyPage } from '../lib/lazyPage'
-import { cachedMyGroups, groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { groupBoardEmptyTitle, scopeName, useActiveGroup } from '../lib/groups'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
@@ -804,7 +804,7 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   const groupId = useActiveGroup()
   const data = useGameBoard(slug, period, you, groupId)
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
-  const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const group = scopeName(groupId)
   const players = data.top
   const standing = data.you
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')

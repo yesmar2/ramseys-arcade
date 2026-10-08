@@ -310,6 +310,12 @@ html[data-theme='dark'] .brand-mark__dark {
   height: 1.05rem;
 }
 
+/* Your friends wear the site's sky blue, as on the Friends & groups page. */
+.site-scope__option-mark--friends {
+  background: color-mix(in srgb, var(--accent-sky) 18%, transparent);
+  color: color-mix(in srgb, var(--accent-sky) 75%, var(--ink));
+}
+
 .site-scope__option-text {
   flex: 1;
   min-width: 0;

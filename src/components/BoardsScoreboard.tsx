@@ -12,7 +12,7 @@ import {
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
-import { cachedMyGroups, useActiveGroup } from '../lib/groups'
+import { scopeName, useActiveGroup } from '../lib/groups'
 import {
   fetchGlobalBoard,
   findInStandings,
@@ -393,7 +393,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const data = useScoreboard(period, you, groupId)
   const seasonTab = seasonHasStandings(useSeason().season)
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
-  const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const group = scopeName(groupId)
   const head = headline(copy, data.standings, data.totalPlayers)
   // The headline and its line wrap as the names in them do: held at last time's height while they load.
   const title = useHeldHeight<HTMLHeadingElement>(`boards-title-${period}`, data.loading)
@@ -478,7 +478,7 @@ export function SeasonScoreboard() {
       ? { id: known.id, slug: known.slug, name: known.name, status: known.status as 'live' | 'over', startsAt: known.startsAt, endsAt: known.endsAt }
       : data.season
   const words = seasonWords({ ...data, season: provisional }, known?.status === 'upcoming' ? known : null)
-  const group = groupId ? cachedMyGroups().find((g) => g.id === groupId)?.name : undefined
+  const group = scopeName(groupId)
   const title = useHeldHeight<HTMLHeadingElement>('boards-title-season', data.loading)
   const ledeHeld = useHeldHeight<HTMLParagraphElement>('boards-lede-season', data.loading)
 

@@ -31,7 +31,7 @@ import { archiveDayWords } from './archive'
 import { seasonOn } from './seasonCalendar'
 import { APP_NAME, SITE_LINE } from './brand'
 import { BOARD_NAMES, dailyWords } from './dailyWords'
-import { groupHref, groupsIndexHref } from './groups'
+import { FRIENDS_SCOPE, groupHref, groupsIndexHref } from './groups'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
 import { gameHasRecords } from './records'
 
@@ -492,9 +492,9 @@ export function pageMeta(route: Route): PageMeta {
         noindex: true,
       }
     case 'groups':
-      return { ...site, title: titled('Groups'), path: groupsIndexHref(), noindex: true }
+      return { ...site, title: titled('Friends & groups'), path: groupsIndexHref(), noindex: true }
     case 'group':
-      return { ...site, title: titled('Group'), path: groupHref(route.id), noindex: true }
+      return { ...site, title: titled(route.id === FRIENDS_SCOPE ? 'Friends' : 'Group'), path: groupHref(route.id), noindex: true }
     case 'tournaments':
       return {
         ...site,
