@@ -1613,90 +1613,181 @@ html[data-theme='light'] .season-tile.season-tile--sought {
   font-weight: 700;
 }
 
-.season-skins {
+/* Every skin this season, the free pass's and then Pass+'s, as small chips that open their games (SkinsCard). */
+.season-card--wide {
+  grid-column: 1 / -1;
+}
+
+/* How the pass works across the page: its points in two columns. */
+.season-card--wide .season-how {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
+  gap: 0.8rem 2.2rem;
+}
+
+.season-skincard__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.9rem;
+}
+
+.season-skincard__head .season-card__sub {
+  margin: 0;
+}
+
+.season-skincard__grouprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+
+.season-skincard__group {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--space-violet) 70%, var(--ink));
+}
+
+.season-skincard__grouprow .season-skincard__group {
+  margin: 0;
+}
+
+.season-skincard__group--plus {
+  color: color-mix(in srgb, var(--space-orange) 70%, var(--ink));
+}
+
+.season-skincard__see {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  min-height: 2.75rem;
+  padding: 0 0.3rem 0 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: color-mix(in srgb, var(--space-orange) 60%, var(--ink));
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.season-skincard__see svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.season-skincard__see:hover,
+.season-skincard__see:focus-visible {
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.season-skinchips {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.season-skin {
+.season-skinchip__in {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.season-skin__art {
-  display: grid;
-  place-items: center;
-  height: 6rem;
+  align-items: center;
+  gap: 0.7rem;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.7rem;
   border-radius: 0.9rem;
+  border: 1px solid transparent;
   background-color: var(--space-night);
   background-image: var(--season-stars-dark);
   background-size: 260px 260px;
-  margin-bottom: 0.25rem;
-}
-
-.season-skin__name {
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
-.season-skin__what {
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.season-skin--yours .season-skin__what {
-  font-weight: 700;
-  color: color-mix(in srgb, var(--space-violet) 70%, var(--ink));
-}
-
-a.season-skin__art {
-  transition: transform 0.15s ease;
-}
-
-a.season-skin__art:hover {
-  transform: translateY(-2px);
-}
-
-.season-skin__acts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.35rem;
-}
-
-.season-skin__acts .skin-use {
-  margin-top: 0;
-}
-
-.season-skin__go {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.1rem;
-  min-height: 2.2rem;
-  padding: 0 0.5rem 0 0.85rem;
-  border-radius: 999px;
-  border: 1.5px solid rgba(var(--ink-rgb), 0.18);
-  color: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
+  color: #eef1ff;
   text-decoration: none;
+}
+
+.season-skinchip--plus .season-skinchip__in {
+  border-color: color-mix(in srgb, var(--space-orange) 40%, transparent);
+}
+
+a.season-skinchip__in {
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+a.season-skinchip__in:hover,
+a.season-skinchip__in:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--space-violet) 70%, transparent);
+}
+
+.season-skinchip__art {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.season-skinchip__art svg {
+  width: 100%;
+  height: 100%;
+}
+
+.season-skinchip__words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.05rem;
+}
+
+.season-skinchip__words b {
+  overflow: hidden;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.season-skin__go svg {
-  width: 15px;
-  height: 15px;
+.season-skinchip__words span {
+  font-size: 0.76rem;
+  color: #a9b1d6;
+  white-space: nowrap;
 }
 
-.season-skin__go:hover,
-.season-skin__go:focus-visible {
-  background: rgba(var(--ink-rgb), 0.06);
+.season-skinchip--yours .season-skinchip__words span {
+  font-weight: 700;
+  color: #c9b8ff;
+}
+
+@media (max-width: 64rem) {
+  .season-skinchips {
+    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  }
+}
+
+@media (max-width: 40rem) {
+  .season-card--wide .season-how {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .season-skinchips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .season-skinchip__in {
+    padding: 0.4rem 0.55rem;
+    gap: 0.5rem;
+  }
+
+  .season-skinchip__art {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
 }
 
 .season-empty {

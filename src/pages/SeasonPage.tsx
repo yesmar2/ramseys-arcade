@@ -548,6 +548,80 @@ function GoalsCard({ goals }: { goals: SeasonGoal[] }) {
   )
 }
 
+/** One skin on the skins card: its picture, name, game and level, the whole of it a way into its game. */
+function SkinChip({ skin, yours, plus }: { skin: SeasonReward; yours: boolean; plus?: boolean }) {
+  const game = skin.game ? getGame(skin.game) : null
+  const inner = (
+    <>
+      <span className="season-skinchip__art" aria-hidden="true">
+        <RewardArt reward={skin} size={44} />
+      </span>
+      <span className="season-skinchip__words">
+        <b>{skin.name}</b>
+        <span>
+          {game?.name ?? skin.what} · {yours ? 'yours' : `Lv ${skin.level}`}
+        </span>
+      </span>
+    </>
+  )
+  return (
+    <li className={`season-skinchip${plus ? ' season-skinchip--plus' : ''}${yours ? ' season-skinchip--yours' : ''}`}>
+      {game ? (
+        <a className="season-skinchip__in" href={gameHref(game.slug)} aria-label={`${skin.name}, ${game.name}: play ${game.name}`}>
+          {inner}
+        </a>
+      ) : (
+        <span className="season-skinchip__in">{inner}</span>
+      )}
+    </li>
+  )
+}
+
+/**
+ * Every skin this season in one card, the free pass's and then Pass+'s, each a small chip that opens its game.
+ * Ramsey picked B from the "Season skins card" canvas (2026-10-08): the card had only the free pass's skins, in
+ * tall tiles three rows deep beside a short card, and none of Pass+'s.
+ */
+function SkinsCard({ free, plus, level, owned, plusOwned }: { free: SeasonReward[]; plus: SeasonReward[]; level: number; owned: string[]; plusOwned: boolean }) {
+  const toPlus = () => document.querySelector('.season-plus')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  return (
+    <section className="season-card season-card--wide season-skincard" aria-labelledby="season-skins-title">
+      <div className="season-skincard__head">
+        <h2 id="season-skins-title">Skins this season</h2>
+        <p className="season-card__sub">
+          {free.length + plus.length} in all · looks only: same speed, same size
+        </p>
+      </div>
+      {free.length ? (
+        <>
+          <h3 className="season-skincard__group">Free pass · {free.length}</h3>
+          <ul className="season-skinchips">
+            {free.map((skin) => (
+              <SkinChip key={skin.id} skin={skin} yours={level >= skin.level || owned.includes(skin.id)} />
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {plus.length ? (
+        <>
+          <div className="season-skincard__grouprow">
+            <h3 className="season-skincard__group season-skincard__group--plus">Pass+ · {plus.length}</h3>
+            <button type="button" className="season-skincard__see" onClick={toPlus}>
+              See Pass+
+              <Chevron />
+            </button>
+          </div>
+          <ul className="season-skinchips">
+            {plus.map((skin) => (
+              <SkinChip key={skin.id} skin={skin} plus yours={owned.includes(skin.id) || (plusOwned && level >= skin.level)} />
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  )
+}
+
 export function SeasonPage() {
   const store = useSeason()
   const { owned } = useTickets()
@@ -607,6 +681,7 @@ export function SeasonPage() {
   }
 
   const skins = store.rewards.filter((r) => r.kind === 'skin')
+  const plusSkins = store.plus?.rewards.filter((r) => r.kind === 'skin') ?? []
   const spotlight = season.spotlight.map((slug) => getGame(slug)).filter((g): g is NonNullable<typeof g> => g != null)
 
   // What a won level's tile lets you do with it: put a look on (in the studio), or play a game in its skin.
@@ -686,7 +761,7 @@ export function SeasonPage() {
       <div className="season-cards">
         {season.status !== 'upcoming' ? <SeasonStandingsCard season={season} /> : null}
         {store.goals?.length ? <GoalsCard goals={store.goals} /> : null}
-        <section className="season-card" aria-labelledby="season-how-title">
+        <section className={`season-card${store.goals?.length ? '' : ' season-card--wide'}`} aria-labelledby="season-how-title">
           <h2 id="season-how-title">How the pass works</h2>
           <ul className="season-how">
             <li>
@@ -712,43 +787,8 @@ export function SeasonPage() {
             ) : null}
           </ul>
         </section>
-        {skins.length ? (
-          <section className="season-card" aria-labelledby="season-skins-title">
-            <h2 id="season-skins-title">Skins this season</h2>
-            <p className="season-card__sub">Looks only: same speed, same size.</p>
-            <ul className="season-skins">
-              {skins.map((skin) => {
-                const game = skin.game ? getGame(skin.game) : null
-                const yours = level >= skin.level || owned.includes(skin.id)
-                return (
-                  <li key={skin.id} className={yours ? 'season-skin season-skin--yours' : 'season-skin'}>
-                    {game ? (
-                      <a className="season-skin__art" href={gameHref(game.slug)} tabIndex={-1} aria-hidden="true">
-                        <RewardArt reward={skin} size={72} />
-                      </a>
-                    ) : (
-                      <span className="season-skin__art">
-                        <RewardArt reward={skin} size={72} />
-                      </span>
-                    )}
-                    <span className="season-skin__name">{skin.name}</span>
-                    <span className="season-skin__what">
-                      {game?.name ?? skin.what} · {yours ? 'yours' : `Lv ${skin.level}`}
-                    </span>
-                    <span className="season-skin__acts">
-                      {yours && skin.game ? <UseSkin game={skin.game} id={skin.id} /> : null}
-                      {game ? (
-                        <a className="season-skin__go" href={gameHref(game.slug)}>
-                          Play {game.name}
-                          <Chevron />
-                        </a>
-                      ) : null}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
+        {skins.length || plusSkins.length ? (
+          <SkinsCard free={skins} plus={plusSkins} level={level} owned={owned} plusOwned={Boolean(store.plus?.owned)} />
         ) : null}
       </div>
     </PageShell>
