@@ -610,9 +610,15 @@ export function paceRun(h: Hills): Flight {
 export const PACE_FROM = 42 * LENGTH
 export const PACE_TO = 72 * LENGTH
 
+/**
+ * The first day whose hills are laid Tiny Wings' way (layWildHills): Ramsey flew the test hills and said "this felt
+ * better, i like it" (2026-10-08). The days before keep the hills they were played on (layHills).
+ */
+export const WILD_FROM = 4
+
 /** Hills `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): laid the same on every device. */
 export function plannedHills(n: number, attempt: number): Hills {
-  return layHills(n, attempt)
+  return n >= WILD_FROM ? layWildHills(n, attempt) : layHills(n, attempt)
 }
 
 /** Hills more than this much big rollers (a drop of 12 m or more) and less than this much quick bumps (under 6 m) are one-note. */
@@ -640,14 +646,17 @@ export function hillsMix(h: Hills): { rollers: number; bumps: number } {
 }
 
 /**
- * Hills `n` from scratch: the first try that isn't one-note rollers (hillsMix) and that the blue bird flies in a
- * fair time. The plan script keeps which try that was, and the blue bird's time.
+ * Hills `n` from scratch: the first try the blue bird flies in a fair time (and, laid the old way, that isn't
+ * one-note rollers: hillsMix). The plan script keeps which try that was, and the blue bird's time.
  */
 export function firstGoodHills(n: number): { hills: Hills; attempt: number; pace: Flight } {
   for (let attempt = 0; attempt < 60; attempt++) {
-    const hills = layHills(n, attempt)
-    const mix = hillsMix(hills)
-    if (mix.rollers > MOST_ROLLERS && mix.bumps < LEAST_BUMPS) continue
+    const hills = plannedHills(n, attempt)
+    // The old way's runs of rollers needed weeding out; the new way never lays one-note hills.
+    if (n < WILD_FROM) {
+      const mix = hillsMix(hills)
+      if (mix.rollers > MOST_ROLLERS && mix.bumps < LEAST_BUMPS) continue
+    }
     const pace = paceRun(hills)
     if (pace.finished && pace.time >= PACE_FROM && pace.time <= PACE_TO) return { hills, attempt, pace }
   }
