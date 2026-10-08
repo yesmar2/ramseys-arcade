@@ -408,7 +408,7 @@ function pickTier(s: GameState, y: number, calm: boolean): number {
   const size = s.player.size
   const deep = clamp(y / FLOOR, 0, 1)
   const roll = Math.random()
-  const threat = calm ? 0 : Math.min(0.45, 0.1 + deep * 0.28 + Math.min(0.08, s.elapsed / 900))
+  const threat = calm ? 0 : Math.min(0.45, 0.1 + deep * 0.28 + Math.min(0.08, s.elapsed / 900)) * threatShare(s)
   if (roll < threat) return clamp(size + 2 + (Math.random() < 0.15 + deep * 0.35 ? 1 : 0), 0, TIERS.length - 1)
   // Big meals, more of them deeper.
   if (roll < threat + 0.22 + deep * 0.18) return clamp(size + 1, 0, TIERS.length - 1)
@@ -909,10 +909,25 @@ function stepEffects(s: GameState, dt: number) {
   s.floaters = s.floaters.filter((f) => f.t < (f.tone === 'grow' ? 1.6 : 0.9))
 }
 
-/** How many fish swim around you: more on a wider screen, never a crowd. */
+/**
+ * How many fish swim around you: by the water in view across and down, so a phone's tall, narrow view has
+ * as many to chase as a wide screen (Ramsey, 2026-10-08: "we need more fish in the water to catch"). It was
+ * by the width alone, which left a phone with three fish to eat in view where a desk had eleven.
+ */
 function crowd(s: GameState) {
   const half = viewHalf(s)
-  return Math.round(clamp((half.w * 2) / 30, 10, 26) + Math.min(6, s.elapsed / 40))
+  return Math.round(clamp(((half.w + half.h) * 2) / 30, 16, 34) + Math.min(6, s.elapsed / 40))
+}
+
+/**
+ * The share of what swims in that can eat you, scaled down as the count goes up so about as many hunters are in
+ * view as when the water held the width's count: the fish added are food, not danger. A square root, as a
+ * fuller sea turns over faster: the plain ratio left a phone with a third fewer hunters than before.
+ */
+function threatShare(s: GameState) {
+  const half = viewHalf(s)
+  const before = clamp((half.w * 2) / 30, 10, 26) + Math.min(6, s.elapsed / 40)
+  return Math.min(1, Math.sqrt(before / crowd(s)))
 }
 
 export function tick(state: GameState, dt: number): GameState {
