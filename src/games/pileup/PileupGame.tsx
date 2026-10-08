@@ -35,6 +35,7 @@ import {
   rotate,
   setSoftDrop,
   shake,
+  slamDown,
   softDropBy,
   startGame,
   tick,
@@ -77,7 +78,9 @@ type Held = 'left' | 'right'
 /*
  * A finger: drag across and the piece follows it, a column for each DRAG_STEP
  * cells the finger travels; drag down and it follows down. A quick touch that
- * barely moves is a turn. A flick down drops it; a flick up holds it.
+ * barely moves is a turn. A flick down slams it to the pile without locking it
+ * (game.ts slamDown), so it can still be slid in, and a second flick locks it;
+ * a flick up holds it.
  *
  * Each touch goes one way at a time. A swipe down is never quite straight, and
  * its drift across used to move the piece a column on the way (Ramsey,
@@ -586,7 +589,8 @@ export function PileupGame() {
     const vx = ((at.x - first.x) / span) * (1000 / cell)
     const steep = Math.abs(vy) > Math.abs(vx) * 1.4
     if (steep && vy > FLICK_DOWN && at.y - d.y0 > cell * 1.2) {
-      if (hardDrop(s)) {
+      // Down to the pile, not locked: a drag across or a tap still tucks it in its half second; another flick locks it.
+      if (slamDown(s)) {
         haptic('hit')
         sync()
       }
