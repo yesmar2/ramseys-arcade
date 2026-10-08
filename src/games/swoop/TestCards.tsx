@@ -179,6 +179,8 @@ export function TestResultCard({
           Done
         </button>
       </div>
+      {/* On to the next one, or back, without going through the start card. */}
+      {swoop.day === LAB_DAY ? <LabNav /> : <HillsNav n={swoop.n} />}
     </div>
   )
 }

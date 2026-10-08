@@ -255,6 +255,8 @@ export function TestResultCard({
           Done
         </button>
       </div>
+      {/* On to the next one, or back, without going through the start card. */}
+      <CaveNav n={lander.n} />
     </div>
   )
 }

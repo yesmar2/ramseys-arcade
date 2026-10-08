@@ -270,6 +270,8 @@ export function TestResultCard({
           Done
         </button>
       </div>
+      {/* On to the next one, or back, without going through the start card. */}
+      <CourseNav n={marble.n} />
     </div>
   )
 }
