@@ -9,6 +9,7 @@ import {
   type LeaderboardPeriod,
 } from './leaderboard'
 import { formatDayPoints, formatLeaderboardScore } from './leaderboardFormat'
+import { currentSeason } from './season'
 import type { TrophyAward } from './trophies'
 
 /*
@@ -136,6 +137,10 @@ export type PeriodCopy = {
   closes: string
   /** The period before, whose final standings its trophies keep. */
   last: { period: 'weekly' | 'monthly'; key: number; title: string; note: string } | null
+  /** A season's own name (Space Race), said in the headline in place of "the season". */
+  title?: string
+  /** A season that's over: whoever leads it won it. */
+  over?: boolean
 }
 
 /**
@@ -191,6 +196,24 @@ export function periodCopy(period: LeaderboardPeriod, now = Date.now(), group = 
       live: true,
       closes: 'Closes tonight at 11:59 pm ET.',
       last: null,
+    }
+  }
+  if (period === 'season') {
+    // The season the site has fetched (lib/season.ts); what its places win is the API's seasons.ts SEASON_PRIZES.
+    const season = currentSeason()
+    if (!season) return { noun: 'season', phrase: 'this season', kicker: 'Season', live: false, closes: '', last: null }
+    const over = season.status === 'over'
+    const lastDay = dayLabel(boardToday(season.endsAt - 1))
+    const prizes = group ? '' : over ? ' Its cups and trophies are on their shelves.' : ` The top 3 take the Season ${season.id} cup, the top 10 a trophy.`
+    return {
+      noun: 'season',
+      phrase: 'this season',
+      kicker: over ? `Season ${season.id} · ${season.name} · Final` : `Live · Season ${season.id} · ${season.name}`,
+      live: !over,
+      closes: over ? `Ended ${lastDay}.${prizes}` : `Ends ${lastDay} at 11:59 pm ET.${prizes}`,
+      last: null,
+      title: season.name,
+      ...(over ? { over: true } : {}),
     }
   }
   return {
@@ -314,14 +337,17 @@ export function headline(
   totalPlayers: number,
 ): { name: string; rest: string } {
   const [first, second] = standings
+  // A season goes by its own name: "GHOSTRUN leads Space Race."
+  const it = copy.title ?? (copy.noun ? `the ${copy.noun}` : null)
   if (totalPlayers < 2 || !first || !second) {
+    if (copy.title) return { name: '', rest: `${copy.title} is ${copy.over ? 'over' : 'wide open'}.` }
     return { name: '', rest: copy.noun ? `The ${copy.noun} is wide open.` : 'The boards are wide open.' }
   }
   if (first.score - second.score <= 0) {
-    const where = copy.noun ? ` of the ${copy.noun}` : ''
-    return { name: '', rest: `${first.name} and ${second.name} are tied at the top${where}.` }
+    const where = it ? ` of ${it}` : ''
+    return { name: '', rest: `${first.name} and ${second.name} ${copy.over ? 'tied' : 'are tied'} at the top${where}.` }
   }
-  return { name: first.name, rest: ` leads ${copy.noun ? `the ${copy.noun}` : 'all time'}.` }
+  return { name: first.name, rest: ` ${copy.over ? 'won' : 'leads'} ${it ?? 'all time'}.` }
 }
 
 /** The line under the headline: how many are playing, and how to climb. */

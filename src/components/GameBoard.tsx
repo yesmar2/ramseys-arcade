@@ -39,11 +39,14 @@ import { formatBoardScore, formatDayPoints, formatLeaderboardScore, isDayPointsB
 import { numberWord } from '../lib/numberWord'
 import { gameHasRecords } from '../lib/records'
 import { ordinal, periodCopy, type PeriodCopy, type Stat } from '../lib/scoreboard'
+import { useSeason } from '../lib/season'
+import { periodTabs, seasonHasStandings } from '../lib/seasonStandings'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { DeviceIcon } from './DeviceIcon'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
+import { PeriodLabel } from './PeriodLabel'
 import { BoardPlayers, BoardRuns } from './BoardPlayers'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
@@ -136,15 +139,17 @@ function Stats({ stats }: { stats: Stat[] }) {
 const DAILY_PERIODS: readonly LeaderboardPeriod[] = ['daily', 'weekly', 'monthly']
 
 /**
- * The board's periods, as links. With no `period` none is on, and they're plain links, not tabs: a daily's
- * board on a past day, whose Today is today's.
+ * The board's periods, as links, and while a season has standings, its Season tab after them. With no
+ * `period` none is on, and they're plain links, not tabs: a daily's board on a past day, whose Today is today's.
  */
 export function PeriodTabs({ slug, period }: { slug: LeaderboardGame; period?: LeaderboardPeriod }) {
-  const periods = isDailyGame(slug) ? DAILY_PERIODS : VISIBLE_LEADERBOARD_PERIODS
+  const season = seasonHasStandings(useSeason().season) || period === 'season'
+  const periods = periodTabs(isDailyGame(slug) ? DAILY_PERIODS : VISIBLE_LEADERBOARD_PERIODS, season)
+  const four = periods.length > 3
   const tabs = period != null
   return (
     <div
-      className="seg sb-periods gb-periods"
+      className={`seg sb-periods gb-periods${four ? ' seg--four' : ''}`}
       role={tabs ? 'tablist' : 'group'}
       aria-label={tabs ? 'Period' : 'Today’s boards'}
       style={{ '--seg-count': periods.length } as CSSProperties}
@@ -157,7 +162,7 @@ export function PeriodTabs({ slug, period }: { slug: LeaderboardGame; period?: L
           className={`seg__item${p === period ? ' seg__item--active' : ''}`}
           href={gameBoardHref(slug, p)}
         >
-          {PERIOD_LABELS[p]}
+          <PeriodLabel period={p} four={four} />
         </a>
       ))}
     </div>
@@ -803,6 +808,8 @@ function PeriodBoard({ slug, period }: { slug: LeaderboardGame; period: Leaderbo
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useGameBoard(slug, period, you, groupId)
+  // The Season tab's words name the season (lib/scoreboard.ts periodCopy): drawn again when it comes.
+  useSeason()
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   const group = scopeName(groupId)
   const players = data.top

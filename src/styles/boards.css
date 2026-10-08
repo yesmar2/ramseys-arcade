@@ -245,16 +245,19 @@ html[data-theme="dark"] :is(.sb, .sb-scope) {
   margin-top: 2rem;
 }
 
-/* With the Season tab, four share the row: a little wider, and on a phone the periods' short names. */
-.seg.sb-periods--season {
+/*
+ * With the Season tab, four periods share a row (the boards page's, a game's board's, How your rank works'):
+ * a little wider, and on a phone the periods' short names (components/PeriodLabel.tsx).
+ */
+.seg.sb-periods.seg--four {
   width: min(100%, 31rem);
 }
 
-.sb-periods--season .seg__item {
+.seg--four .seg__item {
   white-space: nowrap;
 }
 
-.sb-periods--season .seg__short {
+.seg--four .seg__short {
   display: none;
 }
 
@@ -1260,11 +1263,15 @@ a.sb-board__name::after {
     margin-top: 1.5rem;
   }
 
-  .sb-periods--season .seg__long {
+  .seg.sb-periods.seg--four {
+    width: 100%;
+  }
+
+  .seg--four .seg__long {
     display: none;
   }
 
-  .sb-periods--season .seg__short {
+  .seg--four .seg__short {
     display: inline;
   }
 
@@ -1406,6 +1413,11 @@ a.sb-board__name::after {
   margin-top: 0.35rem;
   background: var(--banner-chip-bg);
   border-color: var(--banner-chip-border);
+}
+
+/* With the Season tab's four. */
+.gb-banner .seg.sb-periods.seg--four {
+  width: min(100%, 31rem);
 }
 
 .gb-banner .seg__item {

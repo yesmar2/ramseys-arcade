@@ -3,6 +3,7 @@ import type { GlobalGamePlace, LeaderboardPeriod } from './leaderboard'
 import { formatLeaderboardScore } from './leaderboardFormat'
 import { numberWord } from './numberWord'
 import { COUNTED_GAMES, gainWith, ordinal, placePoints, shareLines, type ShareLine } from './profileMath'
+import { currentSeason } from './season'
 import { resolveGameAccent } from './theme'
 
 /*
@@ -49,20 +50,27 @@ export function gamesWord(n: number): string {
 /* ---------- the period ---------- */
 
 export type PeriodWords = {
-  /** week, month; null for all time. */
-  noun: 'week' | 'month' | null
-  /** this week, this month, all time */
+  /** week, month, season; null for all time. */
+  noun: 'week' | 'month' | 'season' | null
+  /** this week, this month, this season, all time */
   phrase: string
-  /** Its days added up, on a daily: Week so far, Month so far, All time. */
+  /** Its days added up, on a daily: Week so far, Month so far, Season so far, All time. */
   total: string
-  /** A daily's board for it, after "Your place": on the week, on the month, all time. */
+  /** A daily's board for it, after "Your place": on the week, on the month, on the season, all time. */
   board: string
 }
 
 export function periodWords(period: LeaderboardPeriod): PeriodWords {
   if (period === 'monthly') return { noun: 'month', phrase: 'this month', total: 'Month so far', board: 'on the month' }
+  if (period === 'season') return { noun: 'season', phrase: 'this season', total: 'Season so far', board: 'on the season' }
   if (period === 'all') return { noun: null, phrase: 'all time', total: 'All time', board: 'all time' }
   return { noun: 'week', phrase: 'this week', total: 'Week so far', board: 'on the week' }
+}
+
+/** The season's first day and its last, YYYY-MM-DD (the early preview's start, when it's on); null without one. */
+function seasonDays(): { first: string; last: string } | null {
+  const season = currentSeason()
+  return season ? { first: boardDay(season.startsAt), last: boardDay(season.endsAt - 1) } : null
 }
 
 const DAY_MS = 86_400_000
@@ -119,13 +127,17 @@ export function dateOf(day: string): number {
 }
 
 /**
- * The days a period draws as circles: the whole week, Monday to Sunday, or the month's days so far.
- * All time has none: too many to draw, so it's told as a count.
+ * The days a period draws as circles: the whole week, Monday to Sunday, or the month's or the season's days so
+ * far. All time has none: too many to draw, so it's told as a count.
  */
 export function periodDays(period: LeaderboardPeriod, today: string): string[] {
-  if (period === 'monthly') {
+  if (period === 'monthly' || period === 'season') {
+    const season = period === 'season' ? seasonDays() : null
+    if (period === 'season' && !season) return []
+    const from = season ? season.first : `${today.slice(0, 8)}01`
+    const to = season && season.last < today ? season.last : today
     const days: string[] = []
-    for (let day = `${today.slice(0, 8)}01`; day <= today; day = addDays(day, 1)) days.push(day)
+    for (let day = from; day <= to; day = addDays(day, 1)) days.push(day)
     return days
   }
   if (period === 'all') return []
@@ -137,6 +149,10 @@ export function periodDays(period: LeaderboardPeriod, today: string): string[] {
 export function inPeriod(day: string, period: LeaderboardPeriod, today: string): boolean {
   if (day > today) return false
   if (period === 'monthly') return day.slice(0, 7) === today.slice(0, 7)
+  if (period === 'season') {
+    const season = seasonDays()
+    return season != null && day >= season.first && day <= season.last
+  }
   if (period === 'all') return true
   return day >= weekStart(today)
 }
@@ -450,12 +466,12 @@ const DAYS_COUNT_FROM: Partial<Record<string, string>> = {
  */
 export type DayMark = { day: string; state: 'played' | 'today' | 'missed' | 'ahead' | 'before'; played?: PlayedDay }
 
-/** The period's days for one daily: the whole week, or the month's days since the daily began. */
+/** The period's days for one daily: the whole week, or the month's or the season's days since the daily began. */
 export function dayMarks(slug: string, played: PlayedDay[], period: LeaderboardPeriod, today: string): DayMark[] {
   const byDay = new Map(played.map((d) => [d.day, d]))
   const from = DAYS_COUNT_FROM[slug] ?? ''
   return periodDays(period, today)
-    .filter((day) => period !== 'monthly' || day >= from)
+    .filter((day) => (period !== 'monthly' && period !== 'season') || day >= from)
     .map((day): DayMark => {
       const hit = byDay.get(day)
       if (hit) return { day, state: 'played', played: hit }

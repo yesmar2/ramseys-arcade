@@ -27,6 +27,7 @@ const OPEN_WORDS: Record<LeaderboardPeriod, { title: string; when: string }> = {
   weekly: { title: 'The week is open', when: 'this week' },
   monthly: { title: 'The month is open', when: 'this month' },
   all: { title: 'The board is open', when: 'yet' },
+  season: { title: 'The season is open', when: 'this season' },
 }
 
 /** Whose best an empty board points at instead. */
@@ -35,6 +36,7 @@ const AIM_WORDS: Record<LeaderboardPeriod, string> = {
   weekly: 'this week’s best',
   monthly: 'this month’s best',
   all: 'the best of all time',
+  season: 'this season’s best',
 }
 
 /** The board beside the banner: the leaders, and you among your neighbours when you are further down. */

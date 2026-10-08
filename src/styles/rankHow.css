@@ -114,6 +114,11 @@
   flex: 0 1 25rem;
 }
 
+/* With the Season tab's four (boards.css .seg--four). */
+.seg.rh-periods.seg--four {
+  flex-basis: 31rem;
+}
+
 .rh-chips {
   display: flex;
   flex-wrap: wrap;

@@ -2,6 +2,7 @@ import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
 import { announceSecrets, type SecretFound } from './secrets'
 import type { RunTickets } from './tickets'
 import type { SeasonRun } from './season'
+import type { SeasonPrizes } from './seasonStandings'
 import { runIdFor } from './runSession'
 import type { DeviceType } from './device'
 import { isDailyGame, isGameListed, isRankedGame } from '../data/games'
@@ -58,7 +59,12 @@ export const VISIBLE_LEADERBOARD_GAMES = LEADERBOARD_GAMES.filter((slug) => isGa
 /** The boards that place players: every listed game but the dailies just for fun (data/games.ts isRankedGame). */
 export const RANKED_LEADERBOARD_GAMES = VISIBLE_LEADERBOARD_GAMES.filter((slug) => isRankedGame(slug))
 
-export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'monthly', 'all'] as const
+/**
+ * The boards' stretches. `season` is the live season's days (the API's store.ts PERIODS), counted as a week's
+ * or a month's: it's a tab of its own on the Standings page, a game's board and How your rank works while a
+ * season has standings (lib/seasonStandings.ts seasonHasStandings), never the site's period.
+ */
+export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'monthly', 'all', 'season'] as const
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number]
 
 export const PERIOD_LABELS: Record<LeaderboardPeriod, string> = {
@@ -66,6 +72,7 @@ export const PERIOD_LABELS: Record<LeaderboardPeriod, string> = {
   weekly: 'This week',
   monthly: 'This month',
   all: 'All time',
+  season: 'Season',
 }
 
 /**
@@ -74,11 +81,10 @@ export const PERIOD_LABELS: Record<LeaderboardPeriod, string> = {
  */
 export const DAILY_PERIOD_ENABLED = false
 
-/** Periods shown in switchers, dropdowns, and celebrations. */
-export const VISIBLE_LEADERBOARD_PERIODS: readonly LeaderboardPeriod[] =
-  DAILY_PERIOD_ENABLED
-    ? LEADERBOARD_PERIODS
-    : LEADERBOARD_PERIODS.filter((p) => p !== 'daily')
+/** Periods shown in switchers, dropdowns, and celebrations. The season's tab is added where it's shown. */
+export const VISIBLE_LEADERBOARD_PERIODS: readonly LeaderboardPeriod[] = LEADERBOARD_PERIODS.filter(
+  (p) => p !== 'season' && (DAILY_PERIOD_ENABLED || p !== 'daily'),
+)
 
 /** Map a stored/routed period onto one that is currently offered in the UI. */
 export function coerceVisiblePeriod(period: LeaderboardPeriod): LeaderboardPeriod {
@@ -715,6 +721,8 @@ export type GlobalBoardEntry = {
 export type GlobalBoardResult = {
   totalPlayers: number
   entries: GlobalBoardEntry[]
+  /** The season's standings say what its places win (lib/seasonStandings.ts), for the lines under them. */
+  prizes?: SeasonPrizes | null
 }
 
 /** Global points board for a period (top 100). */
@@ -736,6 +744,7 @@ export async function fetchGlobalBoard(
         return {
           totalPlayers: data.totalPlayers ?? 0,
           entries: data.entries ?? [],
+          ...(data.prizes ? { prizes: data.prizes } : {}),
         }
       }),
   )

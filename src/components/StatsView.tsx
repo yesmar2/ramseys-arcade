@@ -59,6 +59,7 @@ const PERIOD_CAPS: Record<LeaderboardPeriod, string> = {
   weekly: 'Your week so far',
   monthly: 'Your month so far',
   all: 'All time',
+  season: 'Your season so far',
 }
 
 export function StatsHero({

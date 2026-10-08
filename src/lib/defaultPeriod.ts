@@ -27,7 +27,8 @@ export function storedDefaultPeriod(): LeaderboardPeriod {
         }
       }
     }
-    if (value && isPeriod(value)) return coerceVisiblePeriod(value)
+    // The season is a tab of its own, never the site's period.
+    if (value && isPeriod(value) && value !== 'season') return coerceVisiblePeriod(value)
   } catch {
     /* ignore quota / private mode */
   }
@@ -40,6 +41,8 @@ export function defaultPeriod(): LeaderboardPeriod {
 }
 
 export function setDefaultPeriod(period: LeaderboardPeriod) {
+  // Opening a Season tab leaves the site's period as it was.
+  if (period === 'season') return
   const next = coerceVisiblePeriod(period)
   try {
     localStorage.setItem(DEFAULT_PERIOD_KEY, next)

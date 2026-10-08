@@ -6,7 +6,7 @@ import { UseSkin } from '../components/season/SkinPicker'
 import { openAvatarStudio, openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
-import { gameHref, plusHref } from '../hooks/useHashRoute'
+import { gameHref, plusHref, rankHowHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
 import { useGlobalRank } from '../lib/globalRank'
@@ -513,6 +513,7 @@ function SeasonStandingsCard({ season }: { season: SeasonInfo }) {
         you={you}
         title="Season standings"
         sub="Points from your ten best games, this season only"
+        how={rankHowHref(undefined, 'season')}
         lines={seasonLines(data)}
         foot={
           season.status === 'over'

@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react'
 import type { StandingsFeed, StandingsLines } from '../components/StandingsList'
 import { rankHref } from '../hooks/useHashRoute'
 import { applyBoardScope, withGroupFallback } from './groups'
-import { api, normalizePlayerName, type GlobalBoardEntry, type GlobalRankResult } from './leaderboard'
-import { boardToday, dayLabel, type Standing, type YouStanding } from './scoreboard'
+import { api, normalizePlayerName, type GlobalBoardEntry, type GlobalRankResult, type LeaderboardPeriod } from './leaderboard'
+import type { Standing, YouStanding } from './scoreboard'
 import type { SeasonInfo } from './season'
 
 /*
- * The season's standings (the API's /leaderboards/rank?period=season): the same sums as a week's or a month's
- * standings, over the season's days, counted at most every five minutes. The Standings page's Season tab and
- * the Season page show them in the Standings list (components/StandingsList.tsx), with a line under the places
- * that win its cup and under the ones that win a trophy. The Season tab follows the header's group, as the
- * other tabs do; the Season page is everyone's, as the season's cup is.
+ * The season's standings: the `season` period (the API's store.ts PERIODS), the same sums as a week's or a
+ * month's over the season's days. The Standings page, a game's board and How your rank works each have a
+ * Season tab while a season has standings, following the header's group as their other tabs do; the Season
+ * page lists them too, always everyone's, as the season's cup is. Either way the list draws a line under the
+ * places that win its cup and under the ones that win a trophy.
  */
 
 /** The season a page of its standings is about. */
@@ -34,6 +34,38 @@ export type SeasonBoardResult = {
   season: StandingsSeason | null
   prizes: SeasonPrizes | null
 }
+
+/** Whether a season has standings to show: it's live, or it's over and they're final. */
+export function seasonHasStandings(season: SeasonInfo | null | undefined): boolean {
+  return season?.status === 'live' || season?.status === 'over'
+}
+
+/** A page's period tabs: its own, and the Season tab after them while a season has standings. */
+export function periodTabs(periods: readonly LeaderboardPeriod[], season: boolean): LeaderboardPeriod[] {
+  const own = periods.filter((p) => p !== 'season')
+  return season ? [...own, 'season'] : own
+}
+
+/**
+ * The lines under the places that win when the season ends, once enough are playing for each to be given
+ * (the API's settleSeasons). A group's standings have none: the cup and the trophies go to everyone's.
+ */
+export function prizeLines(
+  prizes: SeasonPrizes | null | undefined,
+  totalPlayers: number,
+  seasonId: number | null,
+  group: boolean,
+): StandingsLines | null {
+  if (!prizes || seasonId == null || group) return null
+  return {
+    cup: totalPlayers >= prizes.cupField ? prizes.cupPlaces : null,
+    trophy: totalPlayers >= prizes.trophyField ? prizes.trophyPlaces : null,
+    cupLabel: `The top ${prizes.cupPlaces} take the Season ${seasonId} cup`,
+    trophyLabel: `The top ${prizes.trophyPlaces} take a trophy`,
+  }
+}
+
+/* ---------- the Season page's list: everyone's ---------- */
 
 /** A page of the season's standings from place `offset + 1`: inside `group`, or everyone's. */
 export async function fetchSeasonBoard(limit: number, offset: number, group: string | null): Promise<SeasonBoardResult> {
@@ -138,7 +170,7 @@ export function useSeasonStandings(playerName: string, group: string | null): Se
 /** The Standings list's feed of the season's standings. */
 export function seasonFeed(data: SeasonStandingsData): StandingsFeed {
   return {
-    key: data.group ? 'season-group' : 'season',
+    key: data.group ? 'season-group' : 'season-everyone',
     loading: data.loading,
     standings: data.standings,
     totalPlayers: data.totalPlayers,
@@ -149,82 +181,7 @@ export function seasonFeed(data: SeasonStandingsData): StandingsFeed {
   }
 }
 
-/**
- * The lines under the places that win when the season ends, once enough are playing for each to be given
- * (the API's settleSeasons). A group's standings have none: the cup and the trophies go to everyone's.
- */
+/** The lines under the season's places that win, for its standings as useSeasonStandings has them. */
 export function seasonLines(data: SeasonStandingsData): StandingsLines | null {
-  const { prizes, season } = data
-  if (!prizes || !season || data.group) return null
-  return {
-    cup: data.totalPlayers >= prizes.cupField ? prizes.cupPlaces : null,
-    trophy: data.totalPlayers >= prizes.trophyField ? prizes.trophyPlaces : null,
-    cupLabel: `The top ${prizes.cupPlaces} take the Season ${season.id} cup`,
-    trophyLabel: `The top ${prizes.trophyPlaces} take a trophy`,
-  }
-}
-
-/** Whether a season has standings to show: it's live, or it's over and they're final. */
-export function seasonHasStandings(season: SeasonInfo | null): boolean {
-  return season?.status === 'live' || season?.status === 'over'
-}
-
-/* ---------- the Season tab's words ---------- */
-
-export type SeasonWords = {
-  kicker: string
-  /** Whether it's running, and so gets the live dot. */
-  live: boolean
-  /** The headline, with the leader's name apart so it can wear the gold. */
-  title: { name: string; rest: string }
-  lede: string
-  /** When it ends and what it hands out; empty before it starts. */
-  closes: string
-}
-
-function players(n: number): string {
-  return `${n.toLocaleString()} ${n === 1 ? 'player' : 'players'}`
-}
-
-/**
- * What the Season tab says over its standings: which season, who leads it, and when it ends and what that
- * hands out. Before the first season, `upcoming` (the season to come, from the Season page's feed) says when
- * it starts. Inside a group there's nothing to hand out: the cup and the trophies go to everyone's top places.
- */
-export function seasonWords(data: SeasonStandingsData, upcoming: SeasonInfo | null): SeasonWords {
-  const { season, standings, totalPlayers } = data
-  if (!season) {
-    if (upcoming) {
-      return {
-        kicker: `Season ${upcoming.id} · ${upcoming.name}`,
-        live: false,
-        title: { name: '', rest: `${upcoming.name} starts ${dayLabel(boardToday(upcoming.startsAt))}.` },
-        lede: 'Its standings start with its first day.',
-        closes: '',
-      }
-    }
-    return { kicker: 'Seasons', live: false, title: { name: '', rest: 'No season is on right now.' }, lede: '', closes: '' }
-  }
-  const over = season.status === 'over'
-  const lastDay = dayLabel(boardToday(season.endsAt - 1))
-  const cup = data.prizes?.cupPlaces ?? 3
-  const trophy = data.prizes?.trophyPlaces ?? 10
-  const [first, second] = standings
-  let title: SeasonWords['title']
-  if (totalPlayers < 2 || !first || !second) title = { name: '', rest: over ? `${season.name} is over.` : `${season.name} is wide open.` }
-  else if (first.score - second.score <= 0) title = { name: '', rest: `${first.name} and ${second.name} ${over ? 'tied' : 'are tied'} at the top of ${season.name}.` }
-  else title = { name: first.name, rest: over ? ` won ${season.name}.` : ` leads ${season.name}.` }
-  let lede: string
-  if (over) lede = `${players(totalPlayers)} played in it.`
-  else if (totalPlayers === 0 || !first) lede = 'Nobody has played this season yet. Your first run puts you on top.'
-  else if (totalPlayers === 1) lede = `${first.name}’s the only name up so far.`
-  else lede = `${players(totalPlayers)} this season. Play more games and finish higher to climb.`
-  const prizes = data.group ? '' : over ? ' Its cups and trophies are on their shelves.' : ` The top ${cup} take the Season ${season.id} cup, the top ${trophy} a trophy.`
-  return {
-    kicker: over ? `Season ${season.id} · ${season.name} · Final` : `Live · Season ${season.id} · ${season.name}`,
-    live: !over,
-    title,
-    lede,
-    closes: over ? `Ended ${lastDay}.${prizes}` : `Ends ${lastDay} at 11:59 pm ET.${prizes}`,
-  }
+  return prizeLines(data.prizes, data.totalPlayers, data.season?.id ?? null, Boolean(data.group))
 }

@@ -8,7 +8,6 @@ import {
   leaderboardHref,
   rankHowHref,
   rankHref,
-  seasonStandingsHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -17,7 +16,6 @@ import {
   fetchGlobalBoard,
   findInStandings,
   normalizePlayerName,
-  PERIOD_LABELS,
   VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
@@ -35,10 +33,11 @@ import {
   type YouStanding,
 } from '../lib/scoreboard'
 import { useSeason } from '../lib/season'
-import { seasonFeed, seasonHasStandings, seasonLines, seasonWords, useSeasonStandings } from '../lib/seasonStandings'
+import { periodTabs, prizeLines, seasonHasStandings } from '../lib/seasonStandings'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
+import { PeriodLabel } from './PeriodLabel'
 import { SkinMark } from './season/SkinMark'
 import { StandingsList, TrophyIcon, type StandingsFeed } from './StandingsList'
 
@@ -51,8 +50,8 @@ import { StandingsList, TrophyIcon, type StandingsFeed } from './StandingsList'
  * played yet. It says places and names: how the points add up is on How your
  * rank works, linked beside the standings. The cards under the standings,
  * yours and Where to climb, went at Ramsey's word (2026-09-30). While a
- * season is on, a Season tab beside the periods shows its standings
- * (SeasonScoreboard).
+ * season has standings, a Season tab follows the periods: the `season`
+ * period, with a line under the places that win its cup and its trophies.
  */
 
 function accentOf(slug: string) {
@@ -81,29 +80,18 @@ function ChevronIcon() {
 
 /* ---------- the race ---------- */
 
-/** The periods' short names, for a phone, where four tabs share the row once the Season's is there. */
-const SHORT_LABELS: Partial<Record<LeaderboardPeriod, string>> = { weekly: 'Week', monthly: 'Month' }
-
 /** The periods, and while a season has standings, the Season tab after them. */
-function PeriodTabs({ active, season }: { active: LeaderboardPeriod | 'season'; season: boolean }) {
-  const label = (p: LeaderboardPeriod) => {
-    const short = season ? SHORT_LABELS[p] : undefined
-    if (!short) return PERIOD_LABELS[p]
-    return (
-      <>
-        <span className="seg__long">{PERIOD_LABELS[p]}</span>
-        <span className="seg__short">{short}</span>
-      </>
-    )
-  }
+function PeriodTabs({ active, season }: { active: LeaderboardPeriod; season: boolean }) {
+  const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, season || active === 'season')
+  const four = periods.length > 3
   return (
     <div
-      className={`seg sb-periods${season ? ' sb-periods--season' : ''}`}
+      className={`seg sb-periods${four ? ' seg--four' : ''}`}
       role="tablist"
       aria-label="Period"
-      style={{ '--seg-count': VISIBLE_LEADERBOARD_PERIODS.length + (season ? 1 : 0) } as CSSProperties}
+      style={{ '--seg-count': periods.length } as CSSProperties}
     >
-      {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+      {periods.map((p) => (
         <a
           key={p}
           role="tab"
@@ -111,19 +99,9 @@ function PeriodTabs({ active, season }: { active: LeaderboardPeriod | 'season'; 
           className={`seg__item${p === active ? ' seg__item--active' : ''}`}
           href={leaderboardHref(p)}
         >
-          {label(p)}
+          <PeriodLabel period={p} four={four} />
         </a>
       ))}
-      {season ? (
-        <a
-          role="tab"
-          aria-selected={active === 'season'}
-          className={`seg__item${active === 'season' ? ' seg__item--active' : ''}`}
-          href={seasonStandingsHref()}
-        >
-          Season
-        </a>
-      ) : null}
     </div>
   )
 }
@@ -391,8 +369,11 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useScoreboard(period, you, groupId)
-  const seasonTab = seasonHasStandings(useSeason().season)
+  const season = useSeason().season
+  const seasonTab = seasonHasStandings(season)
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
+  // The season's standings draw a line under the places that win its cup, and under the ones that win a trophy.
+  const lines = period === 'season' ? prizeLines(data.prizes, data.totalPlayers, season?.id ?? null, Boolean(groupId)) : null
   const group = scopeName(groupId)
   const head = headline(copy, data.standings, data.totalPlayers)
   // The headline and its line wrap as the names in them do: held at last time's height while they load.
@@ -452,78 +433,13 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
           you={you}
           how={rankHowHref(undefined, period)}
           last={last}
+          lines={lines}
           focusable
         />
       </section>
 
       <EveryBoard period={period} copy={copy} data={data} you={you} />
       <UpForGrabs period={period} copy={copy} boards={data.boards} loading={data.loading} />
-    </div>
-  )
-}
-
-/**
- * The boards page's Season tab: the season's standings, the same sums as a month's over the season's days,
- * with a line under the places that win its cup and under the ones that win a trophy. No game has a board of
- * its own for the season, so the standings are all there is under the words.
- */
-export function SeasonScoreboard() {
-  const you = normalizePlayerName(usePlayerName())
-  const groupId = useActiveGroup()
-  const known = useSeason().season
-  const data = useSeasonStandings(you, groupId)
-  // While the standings load, the season the header already knows says which it is and when it ends.
-  const provisional =
-    data.loading && !data.season && known && seasonHasStandings(known)
-      ? { id: known.id, slug: known.slug, name: known.name, status: known.status as 'live' | 'over', startsAt: known.startsAt, endsAt: known.endsAt }
-      : data.season
-  const words = seasonWords({ ...data, season: provisional }, known?.status === 'upcoming' ? known : null)
-  const group = scopeName(groupId)
-  const title = useHeldHeight<HTMLHeadingElement>('boards-title-season', data.loading)
-  const ledeHeld = useHeldHeight<HTMLParagraphElement>('boards-lede-season', data.loading)
-
-  if (data.error) {
-    return (
-      <div className="sb">
-        <BoardEmpty title="Couldn’t load the season’s standings" detail="Check your connection and try again." />
-      </div>
-    )
-  }
-
-  return (
-    <div className="sb">
-      <section className="sb-hero" aria-labelledby="sb-title">
-        <div className="sb-hero__text">
-          <p className="sb-kicker">
-            {words.live ? <span className="sb-kicker__dot" aria-hidden="true" /> : null}
-            {words.kicker}
-            {group ? ` · ${group}` : ''}
-          </p>
-          <h1 id="sb-title" className="sb-title" ref={title.ref} style={title.style}>
-            {data.loading ? (
-              <span className="skel-line sb-title__skel" style={{ '--skel-w': '14ch' } as CSSProperties} />
-            ) : (
-              <>
-                {words.title.name ? <span className="sb-title__lead">{words.title.name}</span> : null}
-                {words.title.rest}
-              </>
-            )}
-          </h1>
-          <p className="sb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
-            {data.loading ? <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} /> : words.lede}
-          </p>
-          <div className="sb-hero__row">
-            <PeriodTabs active="season" season />
-            {words.closes ? (
-              <p className="sb-closes">
-                <TrophyIcon />
-                <span>{words.closes}</span>
-              </p>
-            ) : null}
-          </div>
-        </div>
-        {data.loading || data.season ? <StandingsList feed={seasonFeed(data)} you={you} lines={seasonLines(data)} /> : null}
-      </section>
     </div>
   )
 }

@@ -211,6 +211,14 @@ function getSnapshot() {
 }
 
 /**
+ * The season as last fetched, for words worked out outside a component (lib/scoreboard.ts periodCopy, lib/rankHow.ts):
+ * a page that shows them reads useSeason too, so it draws again when the season comes.
+ */
+export function currentSeason(): SeasonInfo | null {
+  return snapshot.season ?? null
+}
+
+/**
  * Read the season again when it's stale, or when who's asking has changed. `catchUp` (the Season page)
  * also asks the API to give any reward up to the player's level that a later release brought.
  */

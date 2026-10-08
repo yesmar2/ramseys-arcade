@@ -19,6 +19,7 @@ const PERIOD_SHORT: Record<LeaderboardPeriod, string> = {
   weekly: 'week',
   monthly: 'month',
   all: 'all time',
+  season: 'season',
 }
 
 /** A daily's other period, beside the one shown: the month under the week, the week under the month. */

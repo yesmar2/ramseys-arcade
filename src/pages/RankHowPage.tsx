@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageShell } from '../components/PageShell'
+import { PeriodLabel } from '../components/PeriodLabel'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { openSiteMenu } from '../components/siteNav'
 import { isDailyGame, isRankedGame, PALETTE } from '../data/games'
@@ -15,7 +16,6 @@ import { scopeName, scopeWhere, useActiveGroup } from '../lib/groups'
 import {
   coerceVisiblePeriod,
   normalizePlayerName,
-  PERIOD_LABELS,
   RANKED_LEADERBOARD_GAMES,
   VISIBLE_LEADERBOARD_GAMES,
   VISIBLE_LEADERBOARD_PERIODS,
@@ -66,6 +66,8 @@ import {
   type RankDay,
   type Standing,
 } from '../lib/rankHow'
+import { currentSeason, useSeason } from '../lib/season'
+import { periodTabs, seasonHasStandings } from '../lib/seasonStandings'
 import '../styles/rankHow.css'
 
 /*
@@ -145,18 +147,23 @@ function Crumbs({ who, period }: { who: Who; period: LeaderboardPeriod }) {
   )
 }
 
-/** This week, This month, All time: each one this page at that period, as the header's control makes it. */
+/**
+ * This week, This month, All time: each one this page at that period, as the header's control makes it; and
+ * while a season has standings, the Season after them.
+ */
 function PeriodTabs({ period, player }: { period: LeaderboardPeriod; player?: string }) {
+  const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, seasonHasStandings(useSeason().season) || period === 'season')
+  const four = periods.length > 3
   return (
-    <nav className="seg rh-periods" aria-label="Period" style={{ '--seg-count': VISIBLE_LEADERBOARD_PERIODS.length } as CSSProperties}>
-      {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
+    <nav className={`seg rh-periods${four ? ' seg--four' : ''}`} aria-label="Period" style={{ '--seg-count': periods.length } as CSSProperties}>
+      {periods.map((p) => (
         <a
           key={p}
           className={`seg__item${p === period ? ' seg__item--active' : ''}`}
           href={rankHowHref(player, p)}
           aria-current={p === period ? 'page' : undefined}
         >
-          {PERIOD_LABELS[p]}
+          <PeriodLabel period={p} four={four} />
         </a>
       ))}
     </nav>
@@ -582,7 +589,8 @@ function markWords(mark: DayMark, who: Who): string {
 /** The period's days as circles: a week's seven with place and points, a month's so far with the place. */
 function DayCircles({ work, period, today, who }: { work: DailyWork; period: LeaderboardPeriod; today: string; who: Who }) {
   const marks = dayMarks(work.slug, work.played ?? [], period, today)
-  const compact = period === 'monthly'
+  // A month's days, or a season's, are too many for a point under each.
+  const compact = period === 'monthly' || period === 'season'
   return (
     <ol className={`rh-days${compact ? ' rh-days--month' : ''}`} aria-label={`${gameName(work.slug)}, day by day`}>
       {marks.map((m) => {
@@ -664,7 +672,9 @@ function DayTable({
   const when =
     period === 'weekly'
       ? `week of ${monthDay(weekStart(today))}`
-      : new Date(`${today}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
+      : period === 'season'
+        ? (currentSeason()?.name ?? 'this season')
+        : new Date(`${today}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
   const dayLabel = (day: string) => (period === 'weekly' ? weekdayWord(day) : `${weekdayWord(day)}, ${monthDay(day)}`)
   const board = `${name}’s ${words.noun ?? 'month'}`
   const id = `rh-dt-${work.slug}`
@@ -1344,7 +1354,10 @@ function FinePrint({ words, tie }: { words: PeriodWords; tie?: string | null }) 
           <b>100 × (players − your place + 1) ÷ players</b>, rounded, never below 1. Your rank adds up the ten ranked games
           that pay you most{words.noun ? ` ${words.phrase}` : ', leaving out the dailies'}. Any more don’t count.
         </p>
-        <p>The dailies score each day this way, then add up the week’s days and the month’s. They don’t count all time.</p>
+        <p>
+          The dailies score each day this way, then add up the week’s days
+          {seasonHasStandings(currentSeason()) ? ', the month’s and the season’s' : ' and the month’s'}. They don’t count all time.
+        </p>
         <p>Events work the same way on a small scale: 1st on a game pays 10, last pays 1.</p>
       </section>
       <section className="rh-card rh-note" aria-labelledby="rh-ties-h">
@@ -1477,6 +1490,8 @@ function PlayerHow({
 }) {
   const who: Who = { self, name }
   const data = useScoreboard(period, name, groupId)
+  // The season's words and days come from it (lib/rankHow.ts): drawn again when it comes.
+  useSeason()
   const you = data.you
   const rank = !data.loading ? (you?.rank ?? null) : null
   const byGame: ByGame = you?.byGame ?? {}

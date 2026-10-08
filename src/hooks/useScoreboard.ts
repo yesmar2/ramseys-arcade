@@ -23,6 +23,7 @@ import {
   type YouStanding,
 } from '../lib/scoreboard'
 import { isDayPointsBoard } from '../lib/leaderboardFormat'
+import type { SeasonPrizes } from '../lib/seasonStandings'
 import { fetchRecentTrophies } from '../lib/trophies'
 
 export type ScoreboardData = {
@@ -41,6 +42,8 @@ export type ScoreboardData = {
   nexts: Partial<Record<string, BoardTop | null>>
   /** How the period before finished, shown while this one is still thin. */
   last: LastFinal | null
+  /** The season's: what its places win, for the lines under them (lib/seasonStandings.ts prizeLines). */
+  prizes: SeasonPrizes | null
 }
 
 const LOADING: ScoreboardData = {
@@ -53,6 +56,7 @@ const LOADING: ScoreboardData = {
   bests: {},
   nexts: {},
   last: null,
+  prizes: null,
 }
 
 /** The summary's most runs per board: enough to find three players on all but the lopsided boards. */
@@ -153,6 +157,7 @@ export function useScoreboard(
           bests,
           nexts: {},
           last: null,
+          prizes: board.prizes ?? null,
         })
 
         // Last period's final, while this one is thin. Trophies are everyone's, so not inside a group.
