@@ -31,7 +31,7 @@ import {
   weekdayShort,
   type DayRun,
 } from './daily'
-import { PIN_H, THICK, createInitialState, moveCursor, pinAtCursor, setPin, shatter, startDaily, tick, type GameState } from './game'
+import { THICK, createInitialState, moveCursor, pinAtCursor, setPin, shatter, startDaily, tick, type GameState } from './game'
 import { dayPlan, PLATES, type DayPlan } from './plan'
 import { formatPoints, judgeTaps, markFor } from './score'
 import { renderGame, tablePointAt } from './render'
@@ -269,7 +269,8 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
     const rect = canvas.getBoundingClientRect()
     if (s.phase === 'settling') {
       // The easter egg: a balanced plate, tapped again on its pin, shatters.
-      const on = tablePointAt(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height, PIN_H + THICK)
+      // On the plate's face, wherever it is now (flat on the table, once its pins are in).
+      const on = tablePointAt(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height, s.pose.at.z + THICK)
       if (shatter(s, on)) {
         e.preventDefault()
         haptic('crash')

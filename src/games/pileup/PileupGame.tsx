@@ -35,6 +35,7 @@ import {
   rotate,
   setSoftDrop,
   shake,
+  slamDown,
   softDropBy,
   startGame,
   tick,
@@ -77,7 +78,20 @@ type Held = 'left' | 'right'
 /*
  * A finger: drag across and the piece follows it, a column for each DRAG_STEP
  * cells the finger travels; drag down and it follows down. A quick touch that
- * barely moves is a turn. A flick down drops it; a flick up holds it.
+ * barely moves is a turn. A flick down slams it to the pile without locking it
+ * (game.ts slamDown), so it can still be slid in, and a second flick locks it;
+ * a flick up holds it.
+ *
+ * Each touch goes one way at a time. A swipe down is never quite straight, and
+ * its drift across used to move the piece a column on the way (Ramsey,
+ * 2026-10-08: "a lot of the time it moves over one, which isn't where i wanted
+ * it to go"). So until the finger has clearly gone across, nothing moves across;
+ * once it's going up, drift across is ignored until it lets go. Going across,
+ * then down, still drops it where it was steered. Going down, a clear turn
+ * across (a cell, at twice the slope of any drift) steers it again, so a piece
+ * swiped down can be tucked in before it locks, as the arrows can (Ramsey,
+ * 2026-10-08: "give the mobile experience the opportunity to shift real quick
+ * after a swipe down? like you can on desktop").
  */
 const DRAG_STEP = 0.85
 const TAP_MS = 260
@@ -85,6 +99,18 @@ const TAP_SLOP = 0.35
 /** Cells a second, over the last moment of a touch, that make a flick. */
 const FLICK_DOWN = 16
 const FLICK_UP = 12
+/** Cells down, and more than across, that turn a touch into a drop; up, a little further, into a hold. */
+const GO_DOWN = 0.6
+const GO_UP = 1
+/** Cells across, and this many times more than down, that make a touch steer across. */
+const GO_ACROSS = 0.5
+const ACROSS_OVER_DOWN = 1.2
+/** Steered across, then this many cells down, and this many times more than across since: it drops from there. */
+const TURN_DOWN = 0.8
+const TURN_STEEP = 1.5
+/** Going down, then this many cells across, and this many times more than down since its last row: it steers across again. */
+const TURN_ACROSS = 1
+const TURN_FLAT = 2
 
 type Drag = {
   id: number
@@ -93,6 +119,14 @@ type Drag = {
   /** Where the finger was the last time the piece moved a column, or a row. */
   ax: number
   ay: number
+  /** Which way the touch is going: not yet clear, across (columns), down (rows), or up (to hold). */
+  way: 'none' | 'across' | 'down' | 'up'
+  /**
+   * Where the finger was when the touch last moved the piece across (or down a row), or took its way: where a
+   * turn down (or across) is measured from.
+   */
+  sx: number
+  sy: number
   t0: number
   moved: boolean
   /** The piece it's steering; a new one under the same finger starts from where the finger is. */
@@ -445,6 +479,9 @@ export function PileupGame() {
       y0: at.y,
       ax: at.x,
       ay: at.y,
+      way: 'none',
+      sx: at.x,
+      sy: at.y,
       t0: now,
       moved: false,
       serial: s.serial,
@@ -469,31 +506,66 @@ export function PileupGame() {
     const cell = layoutRef.current.cell
     if (!d.moved && Math.hypot(at.x - d.x0, at.y - d.y0) > cell * TAP_SLOP) d.moved = true
     if (s.serial !== d.serial) {
+      // A new piece under the same finger: it starts from here, and the touch's way is open again.
       d.serial = s.serial
-      d.ax = at.x
-      d.ay = at.y
+      d.ax = d.sx = at.x
+      d.ay = d.sy = at.y
+      d.way = 'none'
       return
     }
-    const step = cell * DRAG_STEP
-    let n = Math.trunc((at.x - d.ax) / step)
-    while (n !== 0) {
-      const dir = n > 0 ? 1 : -1
-      // Against a wall, or the pile: the finger's place becomes the new start, so it comes straight back.
-      if (!move(s, dir)) {
-        d.ax = at.x
-        break
+    // Which way the touch is going, from where it last went across or took its way.
+    const dx = at.x - d.sx
+    const dy = at.y - d.sy
+    if (d.way === 'none') {
+      if (dy > cell * GO_DOWN && dy > Math.abs(dx)) {
+        d.way = 'down'
+        d.ay = d.sy
+      } else if (-dy > cell * GO_UP && -dy > Math.abs(dx)) {
+        d.way = 'up'
+      } else if (Math.abs(dx) > cell * GO_ACROSS && Math.abs(dx) > Math.abs(dy) * ACROSS_OVER_DOWN) {
+        d.way = 'across'
       }
-      d.ax += dir * step
-      n -= dir
+    } else if (d.way === 'across' && dy > cell * TURN_DOWN && dy > Math.abs(dx) * TURN_STEEP) {
+      // Steered across, now going down: it drops from the column it's in, and drift across no longer moves it.
+      d.way = 'down'
+      d.ay = d.sy
+    } else if (d.way === 'down' && Math.abs(dx) > cell * TURN_ACROSS && Math.abs(dx) > Math.max(0, dy) * TURN_FLAT) {
+      // Going down, then a clear turn across: it steers again, to tuck the piece in before it locks. A swipe
+      // down's drift never gets here: it goes down a row, and starts over, before it's gone a cell across.
+      d.way = 'across'
+      d.ax = d.sx
     }
-    // Down, when the finger is going down more than across: the piece follows it.
-    const down = at.y - d.ay
-    if (down > cell && Math.abs(at.y - d.y0) > Math.abs(at.x - d.x0) * 0.8) {
-      const rows = Math.trunc(down / cell)
-      softDropBy(s, rows)
-      d.ay += rows * cell
-    } else if (down < 0) {
-      d.ay = at.y
+    if (d.way === 'across') {
+      const step = cell * DRAG_STEP
+      let n = Math.trunc((at.x - d.ax) / step)
+      while (n !== 0) {
+        const dir = n > 0 ? 1 : -1
+        // Against a wall, or the pile: the finger's place becomes the new start, so it comes straight back.
+        if (!move(s, dir)) {
+          d.ax = at.x
+          break
+        }
+        d.ax += dir * step
+        n -= dir
+        d.sx = at.x
+        d.sy = at.y
+      }
+      // Down is measured from the last column it moved, or from the highest the finger has been since.
+      if (at.y < d.sy) d.sy = at.y
+    }
+    // Going down: the piece follows the finger down.
+    if (d.way === 'down') {
+      const down = at.y - d.ay
+      if (down > cell) {
+        const rows = Math.trunc(down / cell)
+        softDropBy(s, rows)
+        d.ay += rows * cell
+        // Still going down (landed or not): a turn across is measured from here.
+        d.sx = at.x
+        d.sy = at.y
+      } else if (down < 0) {
+        d.ay = at.y
+      }
     }
   }
 
@@ -517,7 +589,8 @@ export function PileupGame() {
     const vx = ((at.x - first.x) / span) * (1000 / cell)
     const steep = Math.abs(vy) > Math.abs(vx) * 1.4
     if (steep && vy > FLICK_DOWN && at.y - d.y0 > cell * 1.2) {
-      if (hardDrop(s)) {
+      // Down to the pile, not locked: a drag across or a tap still tucks it in its half second; another flick locks it.
+      if (slamDown(s)) {
         haptic('hit')
         sync()
       }

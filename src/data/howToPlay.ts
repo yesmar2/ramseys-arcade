@@ -374,7 +374,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Off the edge', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue ball, then every 9% faster' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue ball, then every 12% faster' },
     ],
     ends: 'At the goal. Roll it as often as you like.',
     tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. Each course has a few of these too: boost pads and mud, bumpers, swinging hammers, a windmill, a moving platform, ice, a fork, a loop (hit its boost pad or you won’t make the top). The ghost is the run to beat.',
@@ -425,6 +425,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { does: 'Move', touch: 'Drag', keys: '← →' },
       { does: 'Turn', touch: 'Tap', keys: '↑ · Z the other way' },
       { does: 'Drop', touch: 'Flick down · drag down', keys: 'Space · hold ↓' },
+      { does: 'Lock it in now', touch: 'Flick down again', keys: 'Space' },
       { does: 'Hold for later', touch: 'Flick up · the Hold box', keys: 'C' },
       { does: 'Shake, when charged', touch: 'Shake', keys: 'S' },
     ],
@@ -435,7 +436,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'A row a Shake clears', pts: '+10 × level' },
     ],
     ends: 'The pile reaches the top.',
-    tip: 'Every 12 rows you clear charges a Shake: every block drops straight down into the gaps under it, and any row that fills clears. The piece you’re dropping waits at the top meanwhile.',
+    tip: 'Every 12 rows you clear charges a Shake: every block drops straight down into the gaps under it, and any row that fills clears. The piece you’re dropping waits at the top meanwhile. A piece on the pile locks after half a second: drag or turn it quickly to tuck it in under a ledge.',
   },
   swoop: {
     goal: 'Fly the bird over today’s hills to the finish, fastest. New hills come every day at midnight, New York time.',

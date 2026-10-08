@@ -583,6 +583,28 @@ export function setSoftDrop(s: GameState, on: boolean) {
 export function hardDrop(s: GameState): boolean {
   const p = s.piece
   if (!canAct(s) || !p) return false
+  slam(s, p)
+  lock(s)
+  return true
+}
+
+/**
+ * All the way down at once, but not locked: it lies on the pile its half second, as a soft drop's piece does, so a
+ * finger can still slide it or turn it in. A phone's flick down (Ramsey, 2026-10-08: "when i swipe down that's it,
+ * i can't move it anymore"); the keyboard's space is still hardDrop. Already down, it locks now: a second flick.
+ */
+export function slamDown(s: GameState): boolean {
+  const p = s.piece
+  if (!canAct(s) || !p) return false
+  if (grounded(s)) return hardDrop(s)
+  slam(s, p)
+  s.fall = 0
+  reachedRow(s)
+  return true
+}
+
+/** The piece straight down to where it lands, with its streak, a bump, a whoosh and dust off its feet. */
+function slam(s: GameState, p: Piece) {
   const to = landingY(s, p)
   const rows = to - p.y
   if (rows > 0) {
@@ -614,8 +636,6 @@ export function hardDrop(s: GameState): boolean {
     if (SHAPES[p.kind]![p.rot]!.some(([ox, oy]) => ox === cx && oy === below)) continue
     puff(s, p.x + cx + 0.5, to + cy + 1, p.kind, 3)
   }
-  lock(s)
-  return true
 }
 
 /** Put the piece aside and take the one set aside, or the next one; once a piece. */
