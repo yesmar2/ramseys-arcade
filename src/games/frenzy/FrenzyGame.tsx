@@ -55,14 +55,15 @@ const MOUSE_WAKE_PX = 24
 /**
  * How far the knob can sit from the stick's centre, in CSS pixels. Past it the centre follows the thumb, so the
  * stick is always a short push from any way: turning is a flick, never a trip back across where the thumb landed.
+ * Long enough that a thumb's wobble hardly turns the fish (2026-10-08, "it's hard to just go straight" at 22).
  */
-const STICK_LEASH = 22
+const STICK_LEASH = 36
 
 /** Under this, in CSS pixels, the fish doesn't swim, so a resting thumb never drifts it. */
-const STICK_DEAD = 4
+const STICK_DEAD = 5
 
 /** From this push on, in CSS pixels, the fish swims at full speed: nearly always, whichever way it's going. */
-const STICK_FULL = 12
+const STICK_FULL = 14
 
 /**
  * Frenzy, the food chain in an open ocean (game.ts). The mouse steers by
