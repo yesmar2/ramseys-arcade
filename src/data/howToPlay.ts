@@ -273,7 +273,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'A flying fish or gull caught in a leap', pts: '25 · 50' },
     ],
     ends: 'When the last of your three lives is eaten, or reeled in.',
-    tip: 'Red eyes can eat you, and nothing can follow you into the air. A red ! at the edge means a shark is coming across at that depth. Stay off the fisherman’s worm.',
+    tip: 'Red eyes can eat you, and nothing can follow you into the air. A red ! at the edge means a shark is coming across at that depth. Stay off the fisherman’s worm, and clear of the jellyfish: a sting stuns you for a moment, and hunters close in.',
   },
   fireflies: {
     goal: 'Sing their tunes back. Light five lanterns a night.',

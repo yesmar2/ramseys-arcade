@@ -20,7 +20,10 @@ import type { SpeciesId } from './species'
  * you land. Every so often a shark crosses at your depth, after a red "!" at the edge it comes from, and eats
  * whatever is in its lane (unless you're in the air). A fisherman's boat is always on the surface, sailing
  * to a spot near you and casting a worm on a hook below: touch the hook and you're reeled in ("can we add a
- * fisherman with a hook to avoid too?"). Three lives; bites in quick succession chain up to ×5.
+ * fisherman with a hook to avoid too?"). Jellyfish drift below the shallows, and nobody can eat them: touch one
+ * and it stings, leaving you stunned, drifting and unable to steer for a moment, while whatever's hunting
+ * you closes in ("maybe we can also add jelly fish that sting and stun"). Three lives; bites in quick
+ * succession chain up to ×5.
  *
  * Everything here is in world units, y down from the surface (above it is negative); the renderer scales.
  */
@@ -94,24 +97,38 @@ const SHARK_R = 56
 /** The fisherman: how long he waits before his first cast of a run, his speed between spots. */
 const BOAT_FIRST = 5
 const BOAT_SPEED = 110
-const HOOK_R = 8
+const HOOK_R = 10
 /**
  * Harder since Ramsey's "i think the fisherman needs to be a little harder" (2026-10-06): he fishes close to
  * you and at your depth, follows you with the boat while he waits (faster as you grow), sways his hook, and
  * rests only a moment between casts. Harder again on 2026-10-09 ("can the fisherman fish all the way down?
  * also make him a harder"): his line reaches the sea floor, so the bottom is no hiding place, his hook drops
- * and comes after your depth faster, he sails and follows quicker, and he rests less.
+ * and comes after your depth faster, he sails and follows quicker, and he rests less. And again ("fisherman is still too easy"): his line swings sideways after you as well as
+ * up and down, he follows and tracks faster still, waits longer with the hook down, and barely rests.
  */
-const BOAT_FOLLOW = 40
-const BOAT_FOLLOW_PER_SIZE = 6
+const BOAT_FOLLOW = 55
+const BOAT_FOLLOW_PER_SIZE = 8
 /** How fast his hook drops on a cast, and how fast it comes up or down after your depth while he waits. */
 const HOOK_DROP = 340
-const HOOK_TRACK = 45
+const HOOK_TRACK = 70
+/** How far his line swings to either side of the rod, after you, and how fast. */
+const HOOK_SWING = 80
+const HOOK_SWING_SPEED = 60
+/** How long his hook stays down before he reels in. */
+const HOOK_WAIT = 10
 /** The deepest his hook goes: just off the sea floor, sway and all. */
 const HOOK_DEEPEST = FLOOR - 10
 /** Points for things caught in the air. */
 const FLYER_AIR_POINTS = 25
 const GULL_POINTS = 50
+/**
+ * Jellyfish: how long a sting leaves you stunned, how long before another can sting you, how far their
+ * tentacles hang below the bell (times its radius), and when the first of a run drifts in.
+ */
+const STUN_TIME = 1.4
+const STING_COOL = 2.4
+export const JELLY_REACH = 2.4
+const JELLY_FIRST = 6
 
 export type Fish = {
   id: number
@@ -137,6 +154,9 @@ export type Fish = {
 
 export type Gull = { id: number; x: number; y: number; vx: number; flap: number; dip: number }
 
+/** A jellyfish: its bell's radius, its colour, the beat of its pulse, and how far it has faded in. */
+export type Jelly = { id: number; x: number; y: number; vx: number; vy: number; r: number; hue: number; beat: number; seed: number; fade: number }
+
 export type Player = {
   x: number
   y: number
@@ -151,6 +171,10 @@ export type Player = {
   invuln: number
   /** Out of the water, in a leap. */
   air: boolean
+  /** Seconds left stunned by a jellyfish's sting: drifting, no steering. */
+  stun: number
+  /** Seconds before a jellyfish can sting again. */
+  stingCool: number
 }
 
 export type Shark = { stage: 'warn' | 'pass'; t: number; x: number; y: number; dir: 1 | -1; swim: number; left: number; r: number }
@@ -170,6 +194,8 @@ export type Boat = {
   to: number
   hookY: number
   depth: number
+  /** How far the line has swung from under the rod tip, after you. */
+  swing: number
   /** On the hook, being reeled up: a fish (its species and tier), or you. */
   caught: { species: SpeciesId; tier: number } | 'you' | null
 }
@@ -208,6 +234,8 @@ export type GameState = {
   shark: Shark | null
   sharkIn: number
   boat: Boat
+  jellies: Jelly[]
+  jellyIn: number
   /** Seconds of frenzy left (double points), at the top size. */
   frenzy: number
   /** Where the fish is heading, in world units; null to coast to a stop. */
@@ -244,6 +272,8 @@ export const barFill = (s: Pick<GameState, 'bar' | 'player' | 'frenzy'>) =>
 export const sharkRadius = (s: Pick<GameState, 'player' | 'bar'>) => Math.max(SHARK_R, playerRadius(s) * 1.7)
 /** Where the fisherman's rod tip is, and so where his line hangs from. */
 export const rodTip = (b: Pick<Boat, 'x' | 'dir'>) => ({ x: b.x + b.dir * 30, y: -38 })
+/** Where the hook hangs across: under the rod tip, swung after you. */
+export const hookX = (b: Pick<Boat, 'x' | 'dir' | 'swing'>) => rodTip(b).x + b.swing
 /** The chain's multiplier. */
 export const chainOf = (s: Pick<GameState, 'chain'>) => Math.max(1, Math.min(MAX_CHAIN, s.chain))
 
@@ -257,11 +287,11 @@ export function viewHalf(s: Pick<GameState, 'screenW' | 'screenH' | 'ppu'>) {
 /** The boat as a run finds it: resting on the surface just off to one side, in sight from the start. */
 function freshBoat(): Boat {
   const x = OCEAN_W / 2 + (Math.random() < 0.5 ? -1 : 1) * rand(90, 150)
-  return { x, dir: x > OCEAN_W / 2 ? -1 : 1, stage: 'rest', t: 0, rest: BOAT_FIRST, to: x, hookY: -28, depth: 200, caught: null }
+  return { x, dir: x > OCEAN_W / 2 ? -1 : 1, stage: 'rest', t: 0, rest: BOAT_FIRST, to: x, hookY: -28, depth: 200, swing: 0, caught: null }
 }
 
 function freshPlayer(): Player {
-  return { x: OCEAN_W / 2, y: 120, vx: 0, vy: 0, angle: 0, roll: 1, swim: 0, mouth: 0, size: 0, invuln: START_INVULN, air: false }
+  return { x: OCEAN_W / 2, y: 120, vx: 0, vy: 0, angle: 0, roll: 1, swim: 0, mouth: 0, size: 0, invuln: START_INVULN, air: false, stun: 0, stingCool: 0 }
 }
 
 export function createInitialState(w = 960, h = 540): GameState {
@@ -289,6 +319,8 @@ export function createInitialState(w = 960, h = 540): GameState {
     shark: null,
     sharkIn: 16,
     boat: freshBoat(),
+    jellies: [],
+    jellyIn: 0,
     frenzy: 0,
     target: null,
     steer: null,
@@ -357,6 +389,8 @@ export function startGame(s: GameState): GameState {
     shark: null,
     sharkIn: 18,
     boat: freshBoat(),
+    jellies: [],
+    jellyIn: JELLY_FIRST,
     frenzy: 0,
     target: null,
     steer: null,
@@ -377,7 +411,7 @@ export function startGame(s: GameState): GameState {
  */
 export function jumpToSize(s: GameState, size: number): GameState {
   const to = clamp(Math.round(size) - 1, 0, MAX_SIZE)
-  const next: GameState = { ...s, player: { ...s.player, size: to, invuln: 1.5 }, bar: 0, frenzy: 0, fishes: [], spawnIn: 0 }
+  const next: GameState = { ...s, player: { ...s.player, size: to, invuln: 1.5 }, bar: 0, frenzy: 0, fishes: [], jellies: [], spawnIn: 0 }
   next.floaters = [...s.floaters, { x: s.player.x, y: s.player.y - 34, text: `${STAGES[to]}!`, t: 0, tone: 'grow' }]
   frame(next, 1)
   return next
@@ -532,7 +566,9 @@ function movePlayer(s: GameState, dt: number) {
     let tvy = 0
     const kx = (s.keys.right ? 1 : 0) - (s.keys.left ? 1 : 0)
     const ky = (s.keys.down ? 1 : 0) - (s.keys.up ? 1 : 0)
-    if (kx || ky) {
+    if (p.stun > 0) {
+      // Stung: no steering, just drifting where the sting knocked you.
+    } else if (kx || ky) {
       const l = Math.hypot(kx, ky)
       tvx = (kx / l) * speed
       tvy = (ky / l) * speed
@@ -550,13 +586,13 @@ function movePlayer(s: GameState, dt: number) {
         tvy = (dy / d) * want
       }
     }
-    const k = Math.min(1, 9 * dt)
+    const k = Math.min(1, (p.stun > 0 ? 1.6 : 9) * dt)
     p.vx += (tvx - p.vx) * k
     p.vy += (tvy - p.vy) * k
     p.x = clamp(p.x + p.vx * dt, r, OCEAN_W - r)
     p.y = Math.min(FLOOR - r, p.y + p.vy * dt)
     if (p.y < 0) {
-      if (p.vy < -BREACH_SPEED) breach(s)
+      if (p.vy < -BREACH_SPEED && p.stun <= 0) breach(s)
       else p.y = 0
     }
     const sp = Math.hypot(p.vx, p.vy)
@@ -569,6 +605,8 @@ function movePlayer(s: GameState, dt: number) {
   }
   p.mouth = Math.max(0, p.mouth - dt * 5)
   p.invuln = Math.max(0, p.invuln - dt)
+  p.stun = Math.max(0, p.stun - dt)
+  p.stingCool = Math.max(0, p.stingCool - dt)
 }
 
 /** Up through the surface fast enough: out into the air. */
@@ -662,7 +700,7 @@ function hurt(s: GameState, cause: string) {
   sfx('hurt')
   s.floaters.push({ x: p.x, y: p.y - 26, text: `${s.lives} left`, t: 0, tone: 'bad' })
   // Back near the surface, out of harm's way for a moment.
-  Object.assign(p, { y: Math.min(p.y, 140), vx: 0, vy: 0, invuln: RESPAWN_INVULN, air: false })
+  Object.assign(p, { y: Math.min(p.y, 140), vx: 0, vy: 0, invuln: RESPAWN_INVULN, air: false, stun: 0 })
   s.target = null
 }
 
@@ -817,6 +855,76 @@ function moveShark(s: GameState, dt: number, playing: boolean) {
   }
 }
 
+/** A jellyfish drifting in, just out of sight (or in view, for the start card), below the shallows. */
+function spawnJelly(s: GameState, anywhere: boolean) {
+  const half = viewHalf(s)
+  const y = clamp(s.camY + rand(-half.h, half.h), 110, FLOOR - 70)
+  let x: number
+  if (anywhere) x = clamp(s.camX + rand(-half.w, half.w), 60, OCEAN_W - 60)
+  else {
+    const left = Math.random() < 0.5
+    x = left ? s.camX - half.w - 60 : s.camX + half.w + 60
+    if (x < 40 || x > OCEAN_W - 40) x = left ? s.camX + half.w + 60 : s.camX - half.w - 60
+  }
+  // Sized to you, so even a Leviathan has to mind them.
+  const r = (13 + s.player.size * 3.6) * rand(0.85, 1.15)
+  const hue = [190, 280, 320, 170][Math.floor(Math.random() * 4)]!
+  s.jellies.push({ id: s.nextId++, x: clamp(x, 40, OCEAN_W - 40), y, vx: 0, vy: 0, r, hue, beat: rand(0, 6.28), seed: Math.random(), fade: anywhere ? 1 : 0 })
+}
+
+/** Is a point (with a radius) touching a jellyfish: its bell, or the tentacles hanging under it? */
+export function touchesJelly(j: Pick<Jelly, 'x' | 'y' | 'r'>, x: number, y: number, r: number) {
+  if (Math.hypot(x - j.x, y - j.y) < j.r * 0.95 + r) return true
+  return Math.abs(x - j.x) < j.r * 0.7 + r * 0.6 && y > j.y && y < j.y + j.r * JELLY_REACH + r * 0.5
+}
+
+/**
+ * The jellyfish: a few drift near you, more as a run goes on and in the deep, each pulsing up and sinking
+ * back. Nothing eats them. Touch one and it stings: you're knocked back and stunned, drifting with no
+ * steering for STUN_TIME, your chain gone, and whatever hunts you can close in.
+ */
+function moveJellies(s: GameState, dt: number, playing: boolean) {
+  const half = viewHalf(s)
+  const p = s.player
+  const want = playing ? Math.min(6, 2 + Math.floor(s.elapsed / 40) + (p.y > FLOOR * 0.45 ? 1 : 0)) : s.phase === 'menu' ? 2 : 0
+  s.jellyIn -= dt
+  if (s.jellyIn <= 0 && s.jellies.length < want) {
+    spawnJelly(s, s.phase === 'menu')
+    s.jellyIn = rand(1.5, 3.5)
+  }
+  for (const j of s.jellies) {
+    j.beat += dt * (1.5 + j.seed * 0.6)
+    // A pulse lifts it; between pulses it sinks back.
+    const push = Math.max(0, Math.sin(j.beat)) ** 3
+    j.vy += (14 - push * 70 - j.vy) * Math.min(1, dt * 3)
+    j.vx += (Math.sin(s.time * 0.2 + j.seed * 9) * 12 - j.vx) * Math.min(1, dt)
+    j.x = clamp(j.x + j.vx * dt, j.r, OCEAN_W - j.r)
+    j.y += j.vy * dt
+    if (j.y < 90) j.y = 90
+    if (j.y > FLOOR - j.r * JELLY_REACH) j.y = FLOOR - j.r * JELLY_REACH
+    j.fade = Math.min(1, j.fade + dt * 2)
+    if (playing && p.invuln <= 0 && p.stingCool <= 0 && !p.air && touchesJelly(j, p.x, p.y, playerRadius(s) * 0.6)) sting(s, j)
+  }
+  s.jellies = s.jellies.filter((j) => Math.abs(j.x - s.camX) < half.w * 2.6 + 200 && Math.abs(j.y - s.camY) < half.h * 2.6 + 200)
+}
+
+/** Stung: knocked back off the jellyfish, stunned, the chain gone. */
+function sting(s: GameState, j: Jelly) {
+  const p = s.player
+  const dx = p.x - j.x
+  const dy = p.y - (j.y + j.r)
+  const d = Math.hypot(dx, dy) || 1
+  p.vx = (dx / d) * 170
+  p.vy = (dy / d) * 170
+  p.stun = STUN_TIME
+  p.stingCool = STING_COOL
+  s.chain = 0
+  s.chainTime = 0
+  s.floaters.push({ x: p.x, y: p.y - 26, text: 'Stung!', t: 0, tone: 'bad' })
+  burst(s, p.x, p.y, `hsl(${j.hue}, 90%, 75%)`, 16, 130)
+  sfx('hit')
+}
+
 /** The fisherman: rests, sails to a spot not far from you, casts, waits, reels in, rests again. */
 function moveBoat(s: GameState, dt: number, playing: boolean) {
   const half = viewHalf(s)
@@ -829,7 +937,7 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
     if (b.t >= b.rest) {
       // A spot near you, but never right overhead.
       const side = Math.random() < 0.5 ? -1 : 1
-      b.to = clamp(p.x + side * rand(90, Math.max(130, half.w * 0.4)), 120, OCEAN_W - 120)
+      b.to = clamp(p.x + side * rand(70, Math.max(110, half.w * 0.35)), 120, OCEAN_W - 120)
       b.stage = 'sail'
       b.t = 0
     }
@@ -844,6 +952,7 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
       // Down to where you are now, give or take.
       b.depth = clamp(p.y + rand(-30, 40), 60, HOOK_DEEPEST)
       b.hookY = 0
+      b.swing = 0
     }
   } else if (b.stage === 'cast') {
     b.hookY = Math.min(b.depth, b.hookY + HOOK_DROP * dt)
@@ -858,24 +967,29 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
       const follow = (BOAT_FOLLOW + p.size * BOAT_FOLLOW_PER_SIZE) * dt
       if (Math.abs(dx) > 4) b.x = clamp(b.x + Math.sign(dx) * Math.min(Math.abs(dx), follow), 60, OCEAN_W - 60)
       b.depth = clamp(b.depth + Math.sign(p.y - b.depth) * Math.min(Math.abs(p.y - b.depth), HOOK_TRACK * dt), 60, HOOK_DEEPEST)
+      // And the line swings across after you.
+      const want = clamp(p.x - tip.x, -HOOK_SWING, HOOK_SWING)
+      b.swing += Math.sign(want - b.swing) * Math.min(Math.abs(want - b.swing), HOOK_SWING_SPEED * dt)
     }
     b.hookY = Math.min(HOOK_DEEPEST, b.depth + Math.sin(b.t * 2.2) * 16)
-    if (b.t > 8) {
+    if (b.t > HOOK_WAIT) {
       b.stage = 'reel'
       b.t = 0
     }
   } else {
     b.hookY -= 300 * dt
+    b.swing *= Math.max(0, 1 - dt * 3)
     if (b.hookY <= tip.y + 10) {
       b.caught = null
       b.hookY = tip.y
+      b.swing = 0
       b.stage = 'rest'
-      b.rest = rand(0.5, 1.2)
+      b.rest = rand(0.3, 0.8)
       b.t = 0
     }
   }
   if (b.stage !== 'wait' && b.stage !== 'cast') return
-  const hx = rodTip(b).x
+  const hx = hookX(b)
   const hy = b.hookY
   // You, on the hook: reeled in.
   if (playing && !p.air && p.invuln <= 0 && Math.hypot(p.x - hx, p.y - hy) < playerRadius(s) * 0.65 + HOOK_R) {
@@ -944,6 +1058,7 @@ export function tick(state: GameState, dt: number): GameState {
   s.particles = state.particles.map((q) => ({ ...q }))
   s.floaters = state.floaters.map((f) => ({ ...f }))
   if (state.shark) s.shark = { ...state.shark }
+  s.jellies = state.jellies.map((j) => ({ ...j }))
   const playing = s.phase === 'playing'
   if (playing) s.elapsed += dt
   if (s.phase === 'dying' && s.phaseTime >= DYING_TIME) {
@@ -965,6 +1080,7 @@ export function tick(state: GameState, dt: number): GameState {
   moveGulls(s, dt, playing)
   if (playing || s.shark) moveShark(s, dt, playing)
   moveBoat(s, dt, playing)
+  moveJellies(s, dt, playing)
   if (s.frenzy > 0) {
     s.frenzy = Math.max(0, s.frenzy - dt)
     if (s.frenzy === 0) s.bar = 0

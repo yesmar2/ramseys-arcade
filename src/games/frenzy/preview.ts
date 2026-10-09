@@ -3,15 +3,18 @@ import {
   createInitialState,
   edible,
   fishRadius,
+  hookX,
+  JELLY_REACH,
   playerRadius,
   resizeState,
-  rodTip,
   setTarget,
   startGame,
   tick,
   type GameState,
 } from './game'
 import { renderGame } from './render'
+
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
 /*
  * Frenzy playing itself, for its tile on the home page. Everything on screen is the game's own engine and
@@ -51,13 +54,23 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
   // Keep clear of the fisherman's hook.
   const b = s.boat
   if (b.stage === 'cast' || b.stage === 'wait') {
-    const tip = rodTip(b)
-    const dx = p.x - tip.x
+    const dx = p.x - hookX(b)
     const dy = p.y - b.hookY
     const d = Math.hypot(dx, dy) || 1
     if (d < pr * 4 + 40) {
       ax += (dx / d) * 4
       ay += (dy / d) * 4
+    }
+  }
+  // And clear of the jellyfish, bell and tentacles.
+  for (const j of s.jellies) {
+    const dx = p.x - j.x
+    const dy = p.y - clamp(p.y, j.y, j.y + j.r * JELLY_REACH)
+    const d = Math.hypot(dx, dy) || 1
+    const range = j.r + pr * 3 + 30
+    if (d < range) {
+      ax += (dx / d) * (1 - d / range) * 5
+      ay += (dy / d) * (1 - d / range) * 5
     }
   }
   // Now and then, near the top, a leap.

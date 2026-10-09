@@ -3,6 +3,7 @@ import { isDarkTheme, playfieldColor } from '../../lib/theme'
 import { drawFish, type FishPaint, type Glow } from './fishArt'
 import {
   FLOOR,
+  JELLY_REACH,
   MAX_SIZE,
   OCEAN_W,
   STAGES,
@@ -11,6 +12,7 @@ import {
   chainOf,
   edible,
   fishRadius,
+  hookX,
   playerRadius,
   rodTip,
   viewHalf,
@@ -286,62 +288,55 @@ function drawPlankton(ctx: CanvasRenderingContext2D, v: View) {
 }
 
 /**
- * Jellyfish drifting in the deep, harmless: a few to a stretch of water, each bobbing on its own, its bell's
- * edge burning and its tentacles ending in points of light. Where they are comes from the water itself, so
- * they're the same on every swim.
+ * The jellyfish (game.ts moveJellies), which sting: each bobbing on its pulse, its bell's edge bright and its
+ * tentacles trailing, ending in points of light that glow in the deep. They used to be scenery, drifting
+ * harmless in the deep; since they sting (Ramsey, 2026-10-09: "maybe we can also add jelly fish that sting and
+ * stun") they're game things, and none are drawn that can't sting, so there's no telling the two apart.
  */
 function drawJellies(ctx: CanvasRenderingContext2D, v: View) {
   const s = v.s
-  const half = viewHalf(s)
-  const cell = 260
-  const x0 = Math.floor((s.camX - half.w) / cell) - 1
-  const x1 = Math.ceil((s.camX + half.w) / cell) + 1
-  const y0 = Math.max(2, Math.floor((s.camY - half.h) / cell) - 1)
-  const y1 = Math.min(Math.floor((FLOOR - 120) / cell), Math.ceil((s.camY + half.h) / cell) + 1)
-  for (let iy = y0; iy <= y1; iy++) {
-    for (let ix = x0; ix <= x1; ix++) {
-      const h = hash(ix * 17.3 + iy * 101.7)
-      if (h > 0.45) continue
-      const wx = ix * cell + hash(ix + iy * 3.1) * cell + Math.sin(s.time * 0.15 + h * 20) * 30
-      const wy = iy * cell + hash(ix * 2.2 - iy) * cell + Math.sin(s.time * 0.4 + h * 9) * 18
-      const lum = lumAt(wy)
-      if (lum < 0.05) continue
-      const R = (10 + h * 14) * v.ppu
-      const x = X(v, wx)
-      const y = Y(v, wy)
-      if (x < -R * 3 || x > v.w + R * 3 || y < -R * 3 || y > v.h + R * 4) continue
-      const hue = [190, 280, 320, 170][Math.floor(h * 40) % 4]!
-      const beat = Math.sin(s.time * 2 + h * 30)
-      const rx = R * (1 - 0.08 * beat)
-      const ry = R * 0.82 * (1 + 0.12 * beat)
-      ctx.save()
-      ctx.globalAlpha = Math.min(1, lum * 1.2)
-      ctx.lineCap = 'round'
-      ctx.strokeStyle = `hsla(${hue}, 70%, 66%, 0.5)`
-      ctx.lineWidth = Math.max(1, R * 0.05)
-      for (let i = 0; i < 6; i++) {
-        const bx = x + ((i / 5 - 0.5) * 1.5) * rx * 0.8
-        const len = R * (2 + (i % 3) * 0.35)
-        ctx.beginPath()
-        ctx.moveTo(bx, y)
-        for (let k = 1; k <= 6; k++) {
-          const t = k / 6
-          ctx.lineTo(bx + Math.sin(s.time * 2.4 + i * 1.3 + t * 5) * R * 0.16 * t, y + len * t)
-        }
-        ctx.stroke()
-        if (i % 2 === 0) lights.push({ x: bx + Math.sin(s.time * 2.4 + i * 1.3 + 5) * R * 0.16, y: y + len, r: R * 0.6, color: `hsl(${hue}, 92%, 76%)`, strength: 0.6 * lum })
-      }
+  for (const j of s.jellies) {
+    const R = j.r * v.ppu
+    const x = X(v, j.x)
+    const y = Y(v, j.y)
+    if (x < -R * 3 || x > v.w + R * 3 || y < -R * 4 || y > v.h + R * 2) continue
+    const lum = lumAt(j.y)
+    const hue = j.hue
+    const beat = Math.sin(j.beat)
+    const rx = R * (1 - 0.1 * beat)
+    const ry = R * 0.82 * (1 + 0.14 * beat)
+    ctx.save()
+    ctx.globalAlpha = j.fade
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = `hsla(${hue}, 75%, 70%, 0.8)`
+    ctx.lineWidth = Math.max(1.2, R * 0.07)
+    for (let i = 0; i < 7; i++) {
+      const bx = x + (i / 6 - 0.5) * 1.5 * rx * 0.8
+      const len = R * (JELLY_REACH - 0.35 + (i % 3) * 0.2)
       ctx.beginPath()
-      ctx.ellipse(x, y, rx, ry, 0, Math.PI, 0)
-      ctx.closePath()
-      ctx.fillStyle = `hsla(${hue}, 70%, 58%, 0.28)`
-      ctx.fill()
-      ctx.strokeStyle = `hsla(${hue}, 80%, 72%, 0.95)`
-      ctx.lineWidth = Math.max(1.3, R * 0.08)
+      ctx.moveTo(bx, y)
+      for (let k = 1; k <= 7; k++) {
+        const t = k / 7
+        ctx.lineTo(bx + Math.sin(s.time * 2.4 + i * 1.3 + j.seed * 9 + t * 5) * R * 0.18 * t, y + len * t)
+      }
       ctx.stroke()
-      ctx.restore()
-      lights.push({ x, y: y - ry * 0.2, r: R * 2.6, color: `hsl(${hue}, 85%, 72%)`, strength: 0.55 * lum })
+      if (i % 2 === 0) lights.push({ x: bx + Math.sin(s.time * 2.4 + i * 1.3 + j.seed * 9 + 5) * R * 0.18, y: y + len, r: R * 0.6, color: `hsl(${hue}, 92%, 76%)`, strength: 0.6 * lum })
     }
+    ctx.beginPath()
+    ctx.ellipse(x, y, rx, ry, 0, Math.PI, 0)
+    ctx.closePath()
+    ctx.fillStyle = `hsla(${hue}, 72%, 60%, 0.42)`
+    ctx.fill()
+    ctx.strokeStyle = `hsla(${hue}, 85%, 74%, 1)`
+    ctx.lineWidth = Math.max(1.5, R * 0.1)
+    ctx.stroke()
+    // A shine across the bell.
+    ctx.beginPath()
+    ctx.ellipse(x - rx * 0.3, y - ry * 0.55, rx * 0.28, ry * 0.14, -0.3, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+    ctx.fill()
+    ctx.restore()
+    lights.push({ x, y: y - ry * 0.2, r: R * 2.6, color: `hsl(${hue}, 85%, 72%)`, strength: 0.55 * lum })
   }
 }
 
@@ -618,23 +613,26 @@ function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   const b = v.s.boat
   if (b.stage === 'rest' || b.stage === 'sail') return
   const tip = rodTip(b)
-  const tx = X(v, tip.x)
+  const rx = X(v, tip.x)
+  // The hook hangs where the line has swung to, after you.
+  const hx = hookX(b)
+  const tx = X(v, hx)
   const hy = Y(v, b.hookY)
-  if (tx < -60 || tx > v.w + 60) return
+  if (Math.max(tx, rx) < -60 || Math.min(tx, rx) > v.w + 60) return
   const k = Math.max(0.8, v.ppu)
   ctx.save()
   ctx.strokeStyle = pal.dark ? 'rgba(230, 236, 242, 0.7)' : 'rgba(30, 40, 50, 0.6)'
   ctx.lineWidth = 1.2
   ctx.beginPath()
-  ctx.moveTo(tx, Y(v, tip.y))
-  ctx.quadraticCurveTo(tx + Math.sin(v.s.time * 1.3) * 6 * k, (Y(v, tip.y) + hy) / 2, tx, hy - 6 * k)
+  ctx.moveTo(rx, Y(v, tip.y))
+  ctx.quadraticCurveTo((rx + tx) / 2 + Math.sin(v.s.time * 1.3) * 6 * k, (Y(v, tip.y) + hy) / 2, tx, hy - 6 * k)
   ctx.stroke()
   const caught = b.caught
   if (caught && caught !== 'you') {
     const T = TIERS[caught.tier]!
-    drawOne(ctx, v, pal, SPECIES[caught.species].art, { x: tip.x, y: b.hookY + T.r * 1.1, angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 5 }, T.r, { amp: 1.6 })
+    drawOne(ctx, v, pal, SPECIES[caught.species].art, { x: hx, y: b.hookY + T.r * 1.1, angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 5 }, T.r, { amp: 1.6 })
   } else if (caught === 'you') {
-    drawOne(ctx, v, pal, playerArt(v.s.player.size), { x: tip.x, y: b.hookY + playerRadius(v.s), angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 7 }, playerRadius(v.s), { amp: 1.6, fill: 0.55 })
+    drawOne(ctx, v, pal, playerArt(v.s.player.size), { x: hx, y: b.hookY + playerRadius(v.s), angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 7 }, playerRadius(v.s), { amp: 1.6, fill: 0.55 })
   } else if (b.stage === 'cast' || b.stage === 'wait') {
     // The worm, wriggling.
     ctx.strokeStyle = '#e85d9a'
@@ -926,7 +924,40 @@ function drawPlayer(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
     ctx.arc(X(v, p.x), Y(v, p.y), r * 2.6 * v.ppu, 0, Math.PI * 2)
     ctx.fill()
   }
-  drawOne(ctx, v, pal, playerArt(p.size), { ...p, seed: 7 }, r, { amp: p.air ? 0.4 : 1.1, fill: 0.55 })
+  // Stung: it shakes, and sparks crackle round it while the stun lasts.
+  const stunned = p.stun > 0
+  const shake = stunned ? Math.sin(s.time * 60) * 0.18 * Math.min(1, p.stun) : 0
+  drawOne(ctx, v, pal, playerArt(p.size), { ...p, angle: p.angle + shake, seed: 7 }, r, { amp: p.air ? 0.4 : stunned ? 0.3 : 1.1, fill: 0.55 })
+  if (stunned) drawStun(ctx, v, r)
+}
+
+/** The sparks round a stung fish: three little bolts circling it, flickering. */
+function drawStun(ctx: CanvasRenderingContext2D, v: View, r: number) {
+  const s = v.s
+  const p = s.player
+  const cx = X(v, p.x)
+  const cy = Y(v, p.y)
+  const R = r * v.ppu
+  ctx.save()
+  ctx.globalAlpha = Math.min(1, p.stun * 2)
+  ctx.strokeStyle = '#ffe066'
+  ctx.lineWidth = Math.max(1.5, R * 0.1)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  for (let i = 0; i < 3; i++) {
+    if ((Math.floor(s.time * 20) + i) % 4 === 0) continue
+    const a = s.time * 5 + (i * Math.PI * 2) / 3
+    const bx = cx + Math.cos(a) * R * 1.35
+    const by = cy + Math.sin(a) * R * 1.0 - R * 0.2
+    const z = R * 0.32
+    ctx.beginPath()
+    ctx.moveTo(bx - z * 0.4, by - z)
+    ctx.lineTo(bx + z * 0.3, by - z * 0.15)
+    ctx.lineTo(bx - z * 0.2, by + z * 0.1)
+    ctx.lineTo(bx + z * 0.45, by + z)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 function drawShark(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
