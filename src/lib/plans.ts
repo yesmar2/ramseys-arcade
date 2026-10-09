@@ -15,7 +15,7 @@ export type PlanLimits = {
   maxDraw: number
   doubleElimination: boolean
   multiGameRounds: boolean
-  /** An event on any past course of a racing daily, not only today's or the last week's. */
+  /** An event on a past course of a racing daily, not only today's. */
   anyCourse: boolean
 }
 
@@ -72,5 +72,5 @@ export const PLAN_UPSELL: Record<PlanLimitKind, string> = {
   maxDraw: 'Draws of up to 64 players',
   doubleElimination: 'Double elimination, so one loss is not the end',
   multiGameRounds: 'A different game every round',
-  anyCourse: 'Events on any past track, not just the last week’s',
+  anyCourse: 'Events on any past track, not just today’s',
 }

@@ -10,9 +10,9 @@ import '../styles/eventCourses.css'
 /*
  * The event maker's racing dailies, each raced on one course (Ramsey picked A, a strip of track cards, from the
  * "Events on past courses" canvas, 2026-10-09): a row of the racing dailies under the other games, and once one
- * is picked, a strip of its courses, today's first, each with its picture, name and day. Today's and the last
- * week's are anyone's; with Plus (PlanLimits.anyCourse) every course back to the game's first is there too, and
- * without it a card at the end says so.
+ * is picked, a strip of its courses, today's first, each with its picture, name and day. Today's is anyone's;
+ * with Plus (PlanLimits.anyCourse) every past course back to the game's first is there too, and without it a
+ * card after today's says so.
  */
 
 /** "Wed, Oct 7", on the course's own day. */
@@ -125,7 +125,7 @@ export function EventCoursePicker({
               <li>
                 <a className="evc-card evc-card--plus" href={plusHref()}>
                   <b className="evc-card__name">
-                    {locked} older {locked === 1 ? 'course' : 'courses'}
+                    {locked} past {locked === 1 ? 'course' : 'courses'}
                   </b>
                   <span className="evc-card__day">Host on any past course with Plus</span>
                 </a>
@@ -133,7 +133,7 @@ export function EventCoursePicker({
             ) : null}
           </ul>
           <p className="evc__foot">
-            {anyCourse ? 'Any course, with Plus.' : 'Today’s course and the last 7 days.'} Joining is always free.
+            {anyCourse ? 'Any course, with Plus.' : 'Today’s course is free to host on; any past one is Plus.'} Joining is always free.
           </p>
         </div>
       ) : null}

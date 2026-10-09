@@ -40,9 +40,6 @@ export const EVENT_COURSES: Record<RaceEventGame, EventCourseSource> = {
   wobblerun: { today: () => gauntletDay(), first: WOBBLERUN_FIRST, numberOf: gauntletNumber, dayOf: dayOfGauntlet, title: gauntletTitle, art: gauntletArt },
 }
 
-/** How many past days are anyone's to host an event on: the week before today (the API's archive.ts OPEN_DAYS). */
-export const OPEN_COURSE_DAYS = 7
-
 /** A day, YYYY-MM-DD, `n` days before another. */
 export function daysBefore(day: string, n: number): string {
   const [y, m, d] = day.split('-').map(Number)
@@ -58,9 +55,12 @@ export function eventCourseDays(game: RaceEventGame): string[] {
   return out
 }
 
-/** Whether a course's day is free to host on: today's or one from the last week. */
+/**
+ * Whether a course's day is free to host on: today's alone. Every past one, the last week's included, is a Plus
+ * host's (Ramsey, 2026-10-09: "ok let's do it"); the last week's stay everyone's to play.
+ */
 export function courseOpenToAll(game: RaceEventGame, day: string): boolean {
-  return day >= daysBefore(EVENT_COURSES[game].today(), OPEN_COURSE_DAYS)
+  return day === EVENT_COURSES[game].today()
 }
 
 /** An event's course as words: "Hot Lap #12 Bramble Speedway"'s "#12 Bramble Speedway", or "#12" when it can't be named. */
