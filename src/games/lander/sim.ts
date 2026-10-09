@@ -30,7 +30,7 @@ export const DRAG2 = 0.003
 /** Hands off both controls, the nose eases back upright this fast, rad/s. */
 export const LEVEL_RATE = 1.4
 /** Rock met slower than this, m/s, straight into it, is a bump: the ship is knocked back off it. Faster is a crash. */
-export const BUMP_SPEED = 6
+export const BUMP_SPEED = 7
 /** A bump gives back this much of the speed it came into the rock with. */
 const BOUNCE = 0.35
 /** Sliding along rock loses speed this fast, a share a second. */
