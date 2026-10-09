@@ -422,11 +422,6 @@ export function CreateTournamentPage() {
 
   const selectKind = (next: TournamentKind) => {
     setKind(next)
-    // A bracket isn't raced on one course: back to the other games.
-    if (next === 'bracket' && raceGame) {
-      setGames(['stacker'])
-      setCourseDay(null)
-    }
     if (next === 'bracket') {
       setUnlimitedPlayers(false)
       setUnlimitedAttempts(false)
@@ -477,14 +472,18 @@ export function CreateTournamentPage() {
   const pickRaceGame = (slug: RaceEventGame) => {
     setGames([slug])
     setCourseDay(EVENT_COURSES[slug].today())
+    // A bracket on it plays every round on it, on the one course.
+    if (isBracket) setRoundGames((prev) => prev.map(() => [slug]))
   }
 
   const toggleGame = (slug: EventGame) => {
-    // From a racing daily back to the other games: this one alone, to add to.
+    // From a racing daily back to the other games: this one alone, to add to (a bracket takes it below).
     if (raceGame) {
-      setGames([slug])
       setCourseDay(null)
-      return
+      if (!isBracket) {
+        setGames([slug])
+        return
+      }
     }
     if (isBracket) {
       // The whole draw on this game: every round of it, whatever the plan was.
@@ -555,7 +554,7 @@ export function CreateTournamentPage() {
         maxPlayers: isBracket || !unlimitedPlayers ? maxPlayers : 0,
         durationHours: isBracket ? 0 : durationHours,
         ...(isBracket ? { roundPlayHours, elimination } : {}),
-        ...(!isBracket && raceGame && courseDay ? { course: EVENT_COURSES[raceGame].numberOf(courseDay) } : {}),
+        ...(raceGame && courseDay ? { course: EVENT_COURSES[raceGame].numberOf(courseDay) } : {}),
         kind,
       }
       const created = await createTournament(input)
@@ -771,16 +770,16 @@ export function CreateTournamentPage() {
                       )
                     })}
                   </div>
-                  {!isBracket ? (
-                    <EventCoursePicker
-                      picked={raceGame}
-                      day={courseDay}
-                      anyCourse={Boolean(limits?.anyCourse)}
-                      onPickGame={pickRaceGame}
-                      onPickDay={setCourseDay}
-                    />
-                  ) : null}
-                  {isBracket && limits.multiGameRounds ? (
+                  {/* A bracket too (Ramsey, 2026-10-09: "looks like the dailies aren't available for bracket"). */}
+                  <EventCoursePicker
+                    picked={raceGame}
+                    day={courseDay}
+                    anyCourse={Boolean(limits?.anyCourse)}
+                    onPickGame={pickRaceGame}
+                    onPickDay={setCourseDay}
+                  />
+                  {/* A racing daily's bracket is that game every round, on its one course. */}
+                  {isBracket && limits.multiGameRounds && !raceGame ? (
                     <>
                       {planDiverged ? (
                         <button
