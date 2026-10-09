@@ -36,5 +36,5 @@ export function formatWobblerunBoardScore(score: number): string {
   return formatRunMs(wobblerunMsFromBoardScore(score), 3)
 }
 
-/** "no splats", "1 splat", "3 splats": a run's falls into the goo. */
-export const splatWords = (splats: number) => (splats === 0 ? 'no splats' : splats === 1 ? '1 splat' : `${splats} splats`)
+/** "no splashes", "1 splash", "3 splashes": a run's falls into the soda sea (the engine counts them as splats). */
+export const splashWords = (splats: number) => (splats === 0 ? 'no splashes' : splats === 1 ? '1 splash' : `${splats} splashes`)

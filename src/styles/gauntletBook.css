@@ -1,6 +1,6 @@
 /*
  * The admin's Gauntlet Book (AdminGauntletBook.tsx), on the Track Book's layout (adminBooks.css): Wobble Run's
- * rounds to the crown at dusk (GauntletDrawing.tsx), the same in either theme, and each day's rounds as chips
+ * rounds to the Blip star at dusk (GauntletDrawing.tsx), the same in either theme, and each day's rounds as chips
  * with their tiers.
  */
 
@@ -16,7 +16,7 @@
   border-radius: 0.9rem;
 }
 
-/* Your bean waits at the top left of the picture: the day's number goes top right, out of its way. */
+/* Blip waits at the top left of the picture: the day's number goes top right, out of its way. */
 .gtb .tb-tag {
   left: auto;
   right: 0.45rem;

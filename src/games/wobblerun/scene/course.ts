@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { crownAt, hazardBodies, newBody, newPose, solidPose, teleOf } from '../engine/sim.ts'
 import type { Body, Course, Deco, Hazard, Role, Solid, Tele, Volume, World } from '../engine/types.ts'
-import { crownGeometry } from './bean.ts'
+import { blipStarGeometry } from './bean.ts'
 import { bake, boxSlab, discSlab, IDENT, Layer, merge, outline, setPoseMatrix, strip, xfOf, type SlabPaint, type Xf } from './geo.ts'
 import { CODE, CRACK_AMBER, CRACK_RED, LAMP, mix, patternOf, signPaint, type Painter, type PatternRole, type Tints } from './look.ts'
+import type { Tide } from './world.ts'
 
 /*
  * The course in 3D, from the engine's flat arrays (types.ts Course) by each thing's `look` (engine/README.md's
@@ -20,6 +21,8 @@ import { CODE, CRACK_AMBER, CRACK_RED, LAMP, mix, patternOf, signPaint, type Pai
  *     instanced mesh a look for the ones on paths (fruit, boulders, gumballs, Block Party's walls).
  *   - Telegraphs come from teleOf: door lamps, a glove's face flashing in its wind-up, a cannon's swell, a chute's
  *     light, a fan's blur, a pendulum's floor stripe; all the lamps are one instanced mesh and their glows another.
+ *   - The finish is the Blip star (the engine's `crown` volume), turning over its pedestal in a mint beacon; Tide
+ *     Tower's rising sea (the engine's `slime`) is the soda sea risen, with a light rim.
  *
  * Draw what's near: everything has the z it can reach, and what's out of the camera's stretch isn't drawn.
  */
@@ -57,7 +60,7 @@ type Mover = {
   lit?: THREE.MeshBasicMaterial
   /** A plank's glow strips, low side lit amber past 8°. */
   glow?: [THREE.MeshBasicMaterial, THREE.MeshBasicMaterial]
-  /** Jelly, its own material so it can fade when it's between the camera and the bean; and its frame's. */
+  /** Jelly, its own material so it can fade when it's between the camera and Blip; and its frame's. */
   jelly?: THREE.MeshBasicMaterial
   frame?: THREE.MeshBasicMaterial
   pulse: number
@@ -119,6 +122,8 @@ const S = new THREE.Vector3()
 const C = new THREE.Color()
 const UP = new THREE.Vector3(0, 1, 0)
 const CROWN_V = { x: 0, y: 0, z: 0 }
+/** The Blip star's mint: its glow, its pedestal's band, its beacon. */
+const STAR_GLOW = '#6ff0d2'
 
 export class CourseView {
   readonly group = new THREE.Group()
@@ -138,8 +143,10 @@ export class CourseView {
   private readonly decos: DecoView[] = []
   private readonly hoops: { v: Volume & { kind: 'hoop' }; i: number; obj: THREE.Object3D; glow: THREE.MeshBasicMaterial; pulse: number }[] = []
   private readonly winds: { v: Volume & { kind: 'wind' }; lines: THREE.LineSegments; mat: THREE.LineBasicMaterial; seeds: Float32Array }[] = []
-  private crown: { v: Volume & { kind: 'crown' }; obj: THREE.Object3D; taken: boolean } | null = null
-  private slime: { mesh: THREE.Mesh; z0: number; z1: number } | null = null
+  private crown: { v: Volume & { kind: 'crown' }; obj: THREE.Object3D; glow: THREE.SpriteMaterial; taken: boolean } | null = null
+  /** The pedestals' beacons, gone once the star is taken. */
+  private readonly beacons: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; z: number; stand: THREE.Mesh; y: number; h: number; sink: number }[] = []
+  private slime: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; tex: THREE.Texture; v: Volume & { kind: 'slime' } } | null = null
   private readonly lights: Light[] = []
   private lampMesh: THREE.InstancedMesh | null = null
   private glowMesh: THREE.InstancedMesh | null = null
@@ -152,7 +159,13 @@ export class CourseView {
   private readonly rnd: () => number
   private flagGreen = { amber: '#f5b942', green: '#3ecf8e' }
 
-  constructor(course: Course, painter: Painter, tints: Tints, tex: { floor: THREE.Texture; check: THREE.Texture; slide: THREE.Texture; dot: THREE.Texture; blur: THREE.Texture; gold: THREE.Texture; patterns: Record<PatternRole, THREE.Texture> }, rnd: () => number) {
+  constructor(
+    course: Course,
+    painter: Painter,
+    tints: Tints,
+    tex: { floor: THREE.Texture; check: THREE.Texture; slide: THREE.Texture; dot: THREE.Texture; blur: THREE.Texture; shine: THREE.Texture; soda: THREE.Texture; sodaRim: string; patterns: Record<PatternRole, THREE.Texture> },
+    rnd: () => number,
+  ) {
     this.course = course
     this.painter = painter
     this.tints = tints
@@ -183,7 +196,7 @@ export class CourseView {
     for (const d of course.decos) if (d.look === 'stripe' && d.ref?.kind === 'hazard') this.striped.add(d.ref.i)
     this.buildSolids()
     this.buildHazards()
-    this.buildVolumes(tex.gold)
+    this.buildVolumes(tex.shine, tex.dot, tex.soda, tex.sodaRim)
     this.buildDecos(tex.blur)
     this.buildLights(tex.dot)
   }
@@ -310,7 +323,7 @@ export class CourseView {
         return
       }
       if (!moving && !s.belt && !s.bounce?.lit && (s.look === 'frame' || s.look === 'header')) {
-        // Door frames and headers: over the track, so they fade when they're between the camera and the bean.
+        // Door frames and headers: over the track, so they fade when they're between the camera and Blip.
         this.slabInto(this.occLayer(s.z, s.round, s.y), xfOf(s.x, s.y, s.z, s.yaw, s.pitch, s.roll), s, depth, paint)
         if (s.gold) this.goldSpots.push({ x: s.x, y: s.y, z: s.z })
         return
@@ -670,7 +683,7 @@ export class CourseView {
 
   /* ------------------------------------------------------------ volumes --- */
 
-  private buildVolumes(goldMatcap: THREE.Texture) {
+  private buildVolumes(shine: THREE.Texture, dot: THREE.Texture, soda: THREE.Texture, sodaRim: string) {
     this.course.volumes.forEach((v, i) => {
       if (v.kind === 'hoop') {
         const obj = new THREE.Group()
@@ -699,22 +712,48 @@ export class CourseView {
         this.group.add(lines)
         this.winds.push({ v, lines, mat, seeds })
       } else if (v.kind === 'crown') {
+        // The Blip star: turning slowly as it bobs, a soft mint glow round it.
         const obj = new THREE.Group()
-        const crown = new THREE.Mesh(crownGeometry(1.25), new THREE.MeshMatcapMaterial({ matcap: goldMatcap, color: CODE.gold, vertexColors: true }))
-        crown.position.y = -0.35
-        obj.add(crown)
+        obj.add(new THREE.Mesh(blipStarGeometry(Math.max(0.6, v.r)), new THREE.MeshMatcapMaterial({ matcap: shine, vertexColors: true })))
+        const glow = new THREE.SpriteMaterial({ map: dot, color: STAR_GLOW, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending })
+        const halo = new THREE.Sprite(glow)
+        halo.scale.setScalar(Math.max(0.6, v.r) * 4)
+        halo.renderOrder = 2
+        obj.add(halo)
         this.group.add(obj)
-        this.crown = { v, obj, taken: false }
+        this.crown = { v, obj, glow, taken: false }
       } else if (v.kind === 'slime') {
-        const g = new THREE.PlaneGeometry(2 * v.hx + 2, v.z1 - v.z0 + 4)
+        // Tide Tower's rising sea: the soda risen up the tower, a light rim round its edges.
+        const w = 2 * v.hx + 2
+        const len = v.z1 - v.z0 + 4
+        const g = new THREE.PlaneGeometry(w, len)
         g.rotateX(-Math.PI / 2)
-        const mat = new THREE.MeshBasicMaterial({ color: '#ff62c8', transparent: true, opacity: 0.78, depthWrite: false })
+        const tex = this.painter.keep(soda.clone())
+        tex.repeat.set(w / 14, len / 14)
+        tex.needsUpdate = true
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.9, depthWrite: false })
         const mesh = new THREE.Mesh(g, mat)
         mesh.position.set(v.x, 0, (v.z0 + v.z1) / 2)
         mesh.visible = false
         mesh.renderOrder = 3
+        const rim: THREE.BufferGeometry[] = []
+        const band = 0.32
+        for (const [cx, cz, sx, sz] of [
+          [-w / 2 + band / 2, 0, band, len],
+          [w / 2 - band / 2, 0, band, len],
+          [0, -len / 2 + band / 2, w, band],
+          [0, len / 2 - band / 2, w, band],
+        ] as const) {
+          const strip = new THREE.PlaneGeometry(sx, sz)
+          strip.rotateX(-Math.PI / 2)
+          strip.translate(cx, 0.02, cz)
+          rim.push(bake(strip, cc('#ffffff')))
+        }
+        const edge = new THREE.Mesh(merge(rim), new THREE.MeshBasicMaterial({ color: sodaRim, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false }))
+        edge.renderOrder = 3
+        mesh.add(edge)
         this.group.add(mesh)
-        this.slime = { mesh, z0: v.z0, z1: v.z1 }
+        this.slime = { mesh, mat, tex, v }
       }
     })
   }
@@ -779,7 +818,7 @@ export class CourseView {
         if (d.ref) this.lampRefs.push({ light, kind: d.ref.kind, i: d.ref.i, look: 'lamp' })
       } else if (look === 'chute') {
         // A boulder chute: an arch in the dodge red and white over a dim mouth, its light amber before each
-        // release. Over the track, so it fades when it's between the camera and the bean.
+        // release. Over the track, so it fades when it's between the camera and Blip.
         const w = d.sx || 2.4
         const hgt = d.sy || 2.4
         const dep = d.sz || 1.4
@@ -907,12 +946,35 @@ export class CourseView {
         g.translate(d.x, d.y, d.z)
         this.mergeInto(this.layer(d.z, 'ink'), bake(g, cc('#ffd23f')))
       } else if (look === 'pedestal') {
+        // The Blip star's pedestal: white, a mint band round its top, and a mint beacon rising from it. A mesh of its
+        // own, so it can sink away once the star's taken (it would stand between Blip and the camera at the finish).
         const r = Math.max(0.4, (d.sx || 1.2) / 2)
-        const g = new THREE.CylinderGeometry(r, r * 1.15, Math.max(0.2, d.sy || 0.5), 20)
-        g.translate(d.x, d.y + Math.max(0.2, d.sy || 0.5) / 2, d.z)
+        const h = Math.max(0.2, d.sy || 0.5)
+        const g = new THREE.CylinderGeometry(r, r * 1.15, h, 20)
+        g.translate(0, h / 2, 0)
         const band = new THREE.CylinderGeometry(r * 1.02, r * 1.02, 0.08, 20, 1, true)
-        band.translate(d.x, d.y + Math.max(0.2, d.sy || 0.5) - 0.06, d.z)
-        this.mergeInto(plain(d.z), merge([bake(g, cc('#ffffff')), bake(band, cc(CODE.gold), [1, 1], 0.2)]))
+        band.translate(0, h - 0.06, 0)
+        const stand = new THREE.Mesh(merge([bake(g, cc('#ffffff')), bake(band, cc(STAR_GLOW), [1, 1], 0.3)]), this.mats.plain)
+        stand.position.set(d.x, d.y, d.z)
+        this.group.add(stand)
+        const tall = 7
+        const beam = new THREE.CylinderGeometry(r * 0.62, r * 0.8, tall, 20, 6, true)
+        const glow = cc(STAR_GLOW)
+        const pos = beam.attributes.position!
+        const cols = new Float32Array(pos.count * 3)
+        for (let k = 0; k < pos.count; k++) {
+          const f = Math.pow(Math.max(0, 0.5 - pos.getY(k) / tall), 1.6)
+          cols[k * 3] = glow.r * f
+          cols[k * 3 + 1] = glow.g * f
+          cols[k * 3 + 2] = glow.b * f
+        }
+        beam.setAttribute('color', new THREE.BufferAttribute(cols, 3))
+        beam.translate(d.x, d.y + h + tall / 2, d.z)
+        const mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })
+        const mesh = new THREE.Mesh(beam, mat)
+        mesh.renderOrder = 2
+        this.group.add(mesh)
+        this.beacons.push({ mesh, mat, z: d.z, stand, y: d.y, h, sink: 0 })
       } else {
         // Pillars, pylons, the slide's lip and anything new: a block of its size standing at its place.
         const g = new THREE.BoxGeometry(Math.max(0.05, d.sx), Math.max(0.05, d.sy), Math.max(0.05, d.sz))
@@ -1046,7 +1108,7 @@ export class CourseView {
     return this.decos.filter((d) => d.kind === 'flag' && d.d.params?.checkpoint === k).map((d) => new THREE.Vector3(d.d.x, d.d.y + (d.d.sy || 2.6), d.d.z))
   }
 
-  /** The crown's place now, and whether it's still there to take. */
+  /** The star's place now (the engine's crown), and whether it's still there to take. */
   crownAt(t: number, out: THREE.Vector3): boolean {
     if (!this.crown) return false
     crownAt(this.crown.v, t, CROWN_V)
@@ -1056,7 +1118,7 @@ export class CourseView {
 
   /* ------------------------------------------------------------ moments --- */
 
-  /** A pad threw the bean: it squashes and springs back. A hazard bonked it: it swells a moment. */
+  /** A pad threw Blip: it squashes and springs back. A hazard bonked Blip: it swells a moment. */
   pulseSolid(i: number) {
     const m = this.moverOf.get(i)
     if (m) m.pulse = 1
@@ -1073,13 +1135,30 @@ export class CourseView {
     if (this.crown) this.crown.taken = taken
   }
 
+  /** The risen tide now, if it's up and near (for its bubbles). */
+  tideAt(out: Tide): boolean {
+    const sl = this.slime
+    if (!sl || !sl.mesh.visible) return false
+    out.x = sl.v.x
+    out.hx = sl.v.hx
+    out.z0 = sl.v.z0
+    out.z1 = sl.v.z1
+    out.y = sl.mesh.position.y
+    return true
+  }
+
+  /** The look's shade for the soda (the risen tide's; the sea's own is the world's). */
+  setSea(shade: string) {
+    this.slime?.mat.color.set(shade)
+  }
+
   /* -------------------------------------------------------------- frame --- */
 
   private seen(z0: number, z1: number, cz: number) {
     return z1 > cz - BEHIND && z0 < cz + AHEAD
   }
 
-  /** How much something between the camera and the bean shows: 35% when it's in the way, else all. */
+  /** How much something between the camera and Blip shows: 35% when it's in the way, else all. */
   private fadeFor(z0: number, z1: number, top: number, f: CourseFrame): number {
     const cam = f.cam
     const bean = f.bean
@@ -1276,7 +1355,7 @@ export class CourseView {
       }
     }
 
-    // Volumes: hoops pulsing when passed, wind streaking while it blows, the crown bobbing, the slime rising.
+    // Volumes: hoops pulsing when passed, wind streaking while it blows, the star bobbing, the tide rising.
     for (const o of this.hoops) {
       o.obj.visible = this.seen(o.v.z0, o.v.z1, cz)
       if (!o.obj.visible) continue
@@ -1320,13 +1399,28 @@ export class CourseView {
       if (c.obj.visible) {
         crownAt(c.v, t, CROWN_V)
         c.obj.position.set(CROWN_V.x, CROWN_V.y, CROWN_V.z)
-        c.obj.rotation.y = t * 1.2
+        c.obj.rotation.y = t * 0.9
+        c.glow.opacity = 0.42 + 0.14 * Math.sin(t * 3.1)
       }
     }
+    const taken = this.crown?.taken ?? false
+    for (const b of this.beacons) {
+      const seen = this.seen(b.z - 3, b.z + 3, cz)
+      b.mesh.visible = !taken && seen
+      if (b.mesh.visible) b.mat.opacity = 0.5 + 0.1 * Math.sin(t * 2.2)
+      // The pedestal sinks into the summit once the star's taken (and is back up for a new run).
+      b.sink = taken ? Math.min(1, b.sink + f.dt * 2.2) : 0
+      b.stand.position.y = b.y - b.sink * b.sink * (b.h + 0.02)
+      b.stand.visible = seen && b.sink < 1
+    }
     if (this.slime) {
+      const sl = this.slime
       const y = f.slime
-      this.slime.mesh.visible = y === y && this.seen(this.slime.z0, this.slime.z1, cz)
-      if (this.slime.mesh.visible) this.slime.mesh.position.y = y
+      sl.mesh.visible = y === y && this.seen(sl.v.z0, sl.v.z1, cz)
+      if (sl.mesh.visible) {
+        sl.mesh.position.y = y
+        sl.tex.offset.set(Math.sin(t * 0.07) * 0.2, t * 0.02)
+      }
     }
 
     // Decos: flags, stripes, cannons, fans.

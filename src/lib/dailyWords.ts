@@ -106,7 +106,7 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     past: 'board',
     hudPast: 'Past hills · not ranked',
   },
-  // Wobble Run's day is a gauntlet of rounds to the crown: "gauntlet" names it and counts it, and you run it.
+  // Wobble Run's day is a gauntlet of rounds to the Blip star: "gauntlet" names it and counts it, and you run it.
   wobblerun: {
     course: 'gauntlet',
     today: 'Today’s gauntlet',

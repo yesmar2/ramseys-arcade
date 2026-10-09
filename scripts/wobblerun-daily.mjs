@@ -160,10 +160,10 @@ if (!isMainThread) {
       PLAN,
       `// Written by scripts/wobblerun-daily.mjs: each day's gauntlet, from the first day (daily.ts FIRST_DAY) on. \`a\` is
 // the try at the day's number that was kept (engine/course.ts plannedCourse), \`name\` its name, \`pace\` the blue
-// bean's time in milliseconds as it's raced, and \`k\` its rounds in course order, finale last: a letter and a tier
-// each (g Gate Crash, b Block Party, s Spin Club, h Hit Parade, f Fruit Chute, w See-Saw, x Hex Drop, l Lily
-// Leapers, r Roll On, n Big Fans; finales C Crown Peak, S Slime Climb). Don't edit it by hand, and don't change
-// the engine in a way that changes the gauntlets of days people have played.
+// blip's time in milliseconds as it's raced, and \`k\` its rounds in course order, finale last: a letter and a tier
+// each (g Slam Doors, b Wall Rush, s Sweeper Spin, h Bonk Alley, f Melon Hill, w Tippy Planks, x Crumble Tiles,
+// l Pad Hop, r Barrel Roll, n Gust Gaps; finales C Star Peak, S Tide Tower). Don't edit it by hand, and don't
+// change the engine in a way that changes the gauntlets of days people have played.
 
 export type PlannedGauntlet = { a: number; name: string; pace: number; k: string }
 
@@ -174,7 +174,7 @@ ${lines.join('\n')}
     )
     writeFileSync(
       ROUTES,
-      `// Written by scripts/wobblerun-daily.mjs: each planned day's blue bean, from the first day on, as the route its
+      `// Written by scripts/wobblerun-daily.mjs: each planned day's blue blip, from the first day on, as the route its
 // careful hands found over the day's gauntlet (engine/bots.ts encodeRoute): one step for each safe spot it set off
 // from, the way it took there (its index among the ways on from that spot, engine/bots.ts segmentsFrom, base 36),
 // and \`:wait\` if it stood there first (base 36, in 30ths of a second). "0,1,0:c,2" is way 0, way 1, a wait of 12/30 s
@@ -196,7 +196,7 @@ ${days.map((d) => `  '${d.route}',`).join('\n')}
     writeFileSync(
       API,
       `// Written by the site's scripts/wobblerun-daily.mjs from its src/games/wobblerun/dailyPlan.ts: each planned day's
-// blue bean (its run over the day's gauntlet, as it's raced), in milliseconds, from the first day on. Wobble Run's
+// blue blip (its run over the day's gauntlet, as it's raced), in milliseconds, from the first day on. Wobble Run's
 // ticket ladder goes by it (ticketLadders.ts), and so does the fastest run a day's board believes (routes.ts,
 // trackLaps.ts), whatever the site sends. Past the last planned day the days come round again, as the site's
 // dailyGauntlet has them. Don't edit it by hand: the script writes it again whenever the plan changes.
@@ -310,7 +310,7 @@ ${paces.join('\n')}
     console.log(`#${n} ${course.dayOfN(n)} ${day.name} (${c.theme.name}): ${day.k}, try ${day.a}, ${c.length.toFixed(0)} m`)
     console.log(`  rounds: ${c.rounds.map((r) => `${r.name} T${r.tier}`).join(' · ')}`)
     console.log(`  blue bean ${v.blue.finished ? `${raced.toFixed(3)} s` : 'FOUND NO WAY'}${v.blue.touched ? ', TOUCHED' : ''} (planned ${(day.pace / 1000).toFixed(3)} s), splits ${v.blue.splits.map((s) => s.toFixed(1)).join(' ')}`)
-    console.log(`  its route (${route ? route.length : 0} chars) replays ${replay ? `in ${replay.time.toFixed(3)} s${replay.finished ? '' : ', NOT TO THE CROWN'}` : '— no route kept'}`)
+    console.log(`  its route (${route ? route.length : 0} chars) replays ${replay ? `in ${replay.time.toFixed(3)} s${replay.finished ? '' : ', NOT TO THE STAR'}` : '— no route kept'}`)
     if (v.fast) console.log(`  fast hands ${v.fast.finished ? `${v.fast.time.toFixed(3)} s, ${(v.fast.time / raced).toFixed(3)} × the blue` : 'FOUND NO WAY'}`)
     if (v.phone) console.log(`  phone runs: median ${v.phone.median.toFixed(1)} s, slowest ${v.phone.worst.toFixed(1)} s (${(v.phone.worst / raced).toFixed(2)} × the blue); knocks ${v.phone.hits}, splats ${v.phone.splats}, bonks ${v.phone.bonks} at the median`)
     const fair = raced >= plan.PACE_FROM && raced <= plan.PACE_TO

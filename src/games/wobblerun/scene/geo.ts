@@ -327,8 +327,26 @@ export function bake(geo: THREE.BufferGeometry, colour: string | THREE.Color | (
   return geo
 }
 
-/** Shapes baked with `bake` into one (position, colour, uv, index), the parts let go. */
-export function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+/**
+ * Colours a three shape flat (no light baked in) and keeps its normals, for a matcap to shine on (Blip's face and
+ * the Blip star); merge them with `merge(parts, true)`.
+ */
+export function paint(geo: THREE.BufferGeometry, colour: string | THREE.Color): THREE.BufferGeometry {
+  const pos = geo.attributes.position!
+  const c = colour instanceof THREE.Color ? colour : new THREE.Color(colour)
+  const cols = new Float32Array(pos.count * 3)
+  for (let i = 0; i < pos.count; i++) {
+    cols[i * 3] = c.r
+    cols[i * 3 + 1] = c.g
+    cols[i * 3 + 2] = c.b
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3))
+  if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(pos.count * 2), 2))
+  return geo
+}
+
+/** Shapes baked with `bake` (or coloured with `paint`, keeping their normals) into one, the parts let go. */
+export function merge(parts: THREE.BufferGeometry[], normals = false): THREE.BufferGeometry {
   let verts = 0
   let tris = 0
   for (const g of parts) {
@@ -338,6 +356,7 @@ export function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const pos = new Float32Array(verts * 3)
   const col = new Float32Array(verts * 3)
   const uv = new Float32Array(verts * 2)
+  const nor = normals ? new Float32Array(verts * 3) : null
   const idx = new Uint32Array(tris)
   let v = 0
   let t = 0
@@ -346,6 +365,7 @@ export function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
     pos.set((g.attributes.position as THREE.BufferAttribute).array as Float32Array, v * 3)
     if (g.attributes.color) col.set((g.attributes.color as THREE.BufferAttribute).array as Float32Array, v * 3)
     else col.fill(1, v * 3, (v + n) * 3)
+    if (nor && g.attributes.normal) nor.set((g.attributes.normal as THREE.BufferAttribute).array as Float32Array, v * 3)
     if (g.attributes.uv) uv.set((g.attributes.uv as THREE.BufferAttribute).array as Float32Array, v * 2)
     if (g.index) {
       const src = g.index.array
@@ -362,6 +382,7 @@ export function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   out.setAttribute('position', new THREE.BufferAttribute(pos, 3))
   out.setAttribute('color', new THREE.BufferAttribute(col, 3))
   out.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+  if (nor) out.setAttribute('normal', new THREE.BufferAttribute(nor, 3))
   out.setIndex(new THREE.BufferAttribute(idx, 1))
   out.computeBoundingSphere()
   return out

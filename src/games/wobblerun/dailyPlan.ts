@@ -1,9 +1,9 @@
 // Written by scripts/wobblerun-daily.mjs: each day's gauntlet, from the first day (daily.ts FIRST_DAY) on. `a` is
 // the try at the day's number that was kept (engine/course.ts plannedCourse), `name` its name, `pace` the blue
-// bean's time in milliseconds as it's raced, and `k` its rounds in course order, finale last: a letter and a tier
-// each (g Gate Crash, b Block Party, s Spin Club, h Hit Parade, f Fruit Chute, w See-Saw, x Hex Drop, l Lily
-// Leapers, r Roll On, n Big Fans; finales C Crown Peak, S Slime Climb). Don't edit it by hand, and don't change
-// the engine in a way that changes the gauntlets of days people have played.
+// blip's time in milliseconds as it's raced, and `k` its rounds in course order, finale last: a letter and a tier
+// each (g Slam Doors, b Wall Rush, s Sweeper Spin, h Bonk Alley, f Melon Hill, w Tippy Planks, x Crumble Tiles,
+// l Pad Hop, r Barrel Roll, n Gust Gaps; finales C Star Peak, S Tide Tower). Don't edit it by hand, and don't
+// change the engine in a way that changes the gauntlets of days people have played.
 
 export type PlannedGauntlet = { a: number; name: string; pace: number; k: string }
 

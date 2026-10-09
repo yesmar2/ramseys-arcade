@@ -17,7 +17,7 @@ import '../styles/evp.css'
 import '../styles/todaysGauntlet.css'
 
 /*
- * Today's Gauntlet, off the gauntlet: Wobble Run's rounds of the day as a trail of badges to the crown, how the
+ * Today's Gauntlet, off the gauntlet: Wobble Run's rounds of the day as a trail of badges to the Blip star, how the
  * day's board stands, and the way in. The card sits on Wobble Run's own page, as Today's Hills does for Swoop.
  * It comes in a chunk of its own, with the gauntlets' plan.
  */
@@ -90,7 +90,7 @@ export function TodaysGauntletCard() {
         </h2>
         <TodayCounts slug={SLUG} />
         <p className="evp-card__copy">
-          Run, jump and dive your bean through a new gauntlet every day: four rounds and a climb to the crown, against
+          Run, jump and dive Blip through a new gauntlet every day: four rounds and a climb to the star, against
           the clock, the same gauntlet for everyone, and the fastest run tops the day. {standingWords(board)}
         </p>
       </div>

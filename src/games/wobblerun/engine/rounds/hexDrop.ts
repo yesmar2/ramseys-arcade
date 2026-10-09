@@ -274,7 +274,7 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 'x',
-  name: 'Hex Drop',
+  name: 'Crumble Tiles',
   hint: 'keep moving',
   family: 'F',
   phase: 1,

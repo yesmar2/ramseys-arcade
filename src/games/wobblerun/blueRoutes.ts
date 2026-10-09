@@ -1,4 +1,4 @@
-// Written by scripts/wobblerun-daily.mjs: each planned day's blue bean, from the first day on, as the route its
+// Written by scripts/wobblerun-daily.mjs: each planned day's blue blip, from the first day on, as the route its
 // careful hands found over the day's gauntlet (engine/bots.ts encodeRoute): one step for each safe spot it set off
 // from, the way it took there (its index among the ways on from that spot, engine/bots.ts segmentsFrom, base 36),
 // and `:wait` if it stood there first (base 36, in 30ths of a second). "0,1,0:c,2" is way 0, way 1, a wait of 12/30 s

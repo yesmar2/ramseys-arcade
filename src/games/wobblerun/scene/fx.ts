@@ -1,18 +1,19 @@
 import * as THREE from 'three'
 
 /*
- * The puffs and sparkles (design-final §6): dust off the feet, goo splashing up at a splat, sparkles for a close
- * call or a perfect bounce, confetti at the checkpoints and the crown, a firework now and then on Big Show days.
- * Three pools, 300 at most in all (the phone cut list), each drawn in one call. And the landing aids: a soft
- * shadow on whatever is under the bean (wider and fainter the higher it is) and, when nothing is, a bright ring on
- * the goo below.
+ * The puffs and sparkles (design-final §6): dust off the feet, soda splashing up and fizzing at a fall, bubbles
+ * rising off the sea, sparkles for a close call or a perfect bounce, confetti at the checkpoints and the star, a
+ * firework now and then on Big Show days. Four pools, 300 at most in all (the phone cut list), each drawn in one
+ * call. And the landing aids: a soft shadow on whatever is under Blip (wider and fainter the higher it is) and,
+ * when nothing is, a bright ring on the sea below.
  */
 
 type P = { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; age: number; r: number; g: number; b: number; drag: number; grav: number; spin: number; sx: number; sy: number }
 
-const SOFT_MOST = 120
-const SPARK_MOST = 100
-const CONFETTI_MOST = 80
+const SOFT_MOST = 100
+const SPARK_MOST = 90
+const CONFETTI_MOST = 70
+const FIZZ_MOST = 40
 
 const TMP_C = new THREE.Color()
 const M = new THREE.Matrix4()
@@ -99,21 +100,36 @@ export class Fx {
   readonly group = new THREE.Group()
   private readonly soft: Pool
   private readonly spark: Pool
+  /** The soda's bubbles: rings, rising. */
+  private readonly fizz: Pool
   private readonly confetti: THREE.InstancedMesh
   private readonly bits: P[] = []
+  /** A splash's ripples: two rings spreading out on the sea and fading, the second a beat behind. */
+  private readonly ripples: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; age: number; delay: number }[] = []
   private readonly rnd: () => number
   private calm = false
 
-  constructor(dot: THREE.Texture, rnd: () => number) {
+  constructor(dot: THREE.Texture, bubble: THREE.Texture, ring: THREE.Texture, rnd: () => number) {
     this.rnd = rnd
+    const flat = new THREE.PlaneGeometry(1, 1)
+    flat.rotateX(-Math.PI / 2)
+    for (let i = 0; i < 2; i++) {
+      const mat = new THREE.MeshBasicMaterial({ map: ring, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 })
+      const mesh = new THREE.Mesh(i ? flat.clone() : flat, mat)
+      mesh.visible = false
+      mesh.renderOrder = 2
+      this.group.add(mesh)
+      this.ripples.push({ mesh, mat, age: 9, delay: i * 0.16 })
+    }
     this.soft = new Pool(SOFT_MOST, dot, 0.42, false)
     this.spark = new Pool(SPARK_MOST, dot, 0.34, true)
+    this.fizz = new Pool(FIZZ_MOST, bubble, 0.5, false)
     this.confetti = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.16, 0.1), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), CONFETTI_MOST)
     this.confetti.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     this.confetti.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CONFETTI_MOST * 3), 3)
     this.confetti.count = 0
     this.confetti.frustumCulled = false
-    this.group.add(this.soft.points, this.spark.points, this.confetti)
+    this.group.add(this.soft.points, this.spark.points, this.fizz.points, this.confetti)
   }
 
   /** Reduced motion: fewer, gentler bits. */
@@ -135,16 +151,41 @@ export class Fx {
     }
   }
 
-  /** Goo thrown up where the bean went in. */
-  splash(x: number, y: number, z: number, colour: string) {
-    TMP_C.set(colour)
-    for (let i = 0; i < this.many(34); i++) {
+  /**
+   * Soda thrown up where Blip went in: teal droplets arcing out, a ring of white foam, and a burst of bubbles
+   * fizzing up off the surface and drifting down slow.
+   */
+  splash(x: number, y: number, z: number, drop: string, fizz: string) {
+    for (const r of this.ripples) {
+      r.age = -r.delay
+      r.mesh.position.set(x, y - 0.05, z)
+      r.mat.color.set(fizz)
+    }
+    TMP_C.set(drop)
+    for (let i = 0; i < this.many(30); i++) {
       const a = this.rnd() * Math.PI * 2
-      const s = 1 + this.rnd() * 3.2
-      const up = 4 + this.rnd() * 6
-      const l = 0.75 + this.rnd() * 0.25
+      const s = 1 + this.rnd() * 3.4
+      const up = 5 + this.rnd() * 6.5
+      const l = 0.85 + this.rnd() * 0.15
       this.soft.add({ x, y, z, vx: Math.cos(a) * s, vy: up, vz: Math.sin(a) * s, life: 0.7 + this.rnd() * 0.5, r: TMP_C.r * l, g: TMP_C.g * l, b: TMP_C.b * l, drag: 0.6, grav: 18, spin: 0, sx: 1, sy: 1 })
     }
+    for (let i = 0; i < this.many(18); i++) {
+      const a = (i / 18) * Math.PI * 2 + this.rnd() * 0.3
+      const s = 3.4 + this.rnd() * 1.8
+      this.soft.add({ x, y: y + 0.1, z, vx: Math.cos(a) * s, vy: 0.6 + this.rnd() * 0.8, vz: Math.sin(a) * s, life: 0.7 + this.rnd() * 0.4, r: 1, g: 1, b: 1, drag: 3.5, grav: 1, spin: 0, sx: 1, sy: 1 })
+    }
+    TMP_C.set(fizz)
+    for (let i = 0; i < this.many(24); i++) {
+      const a = this.rnd() * Math.PI * 2
+      const s = 0.5 + this.rnd() * 2.4
+      this.fizz.add({ x: x + Math.cos(a) * 0.4, y: y + 0.1, z: z + Math.sin(a) * 0.4, vx: Math.cos(a) * s, vy: 3.5 + this.rnd() * 5.5, vz: Math.sin(a) * s, life: 1 + this.rnd() * 0.8, r: TMP_C.r, g: TMP_C.g, b: TMP_C.b, drag: 2.2, grav: 2.4, spin: 0, sx: 1, sy: 1 })
+    }
+  }
+
+  /** One bubble of the sea's fizz, rising off the surface at (x, y, z) and popping. */
+  seaBubble(x: number, y: number, z: number, colour: string) {
+    TMP_C.set(colour)
+    this.fizz.add({ x, y, z, vx: (this.rnd() - 0.5) * 0.3, vy: 0.25 + this.rnd() * 0.3, vz: (this.rnd() - 0.5) * 0.3, life: 1.1 + this.rnd() * 1.1, r: TMP_C.r, g: TMP_C.g, b: TMP_C.b, drag: 0.8, grav: -0.9, spin: 0, sx: 1, sy: 1 })
   }
 
   /** A burst of sparkles (a close call, a perfect bounce, a hoop, the crown). */
@@ -202,6 +243,15 @@ export class Fx {
     if (dt <= 0) return
     this.soft.update(dt)
     this.spark.update(dt)
+    this.fizz.update(dt)
+    for (const r of this.ripples) {
+      r.age += dt
+      const k = r.age / 0.8
+      r.mesh.visible = k >= 0 && k < 1
+      if (!r.mesh.visible) continue
+      r.mesh.scale.setScalar(1 + (1 - (1 - k) * (1 - k)) * (r.delay > 0 ? 3.2 : 4.6))
+      r.mat.opacity = (1 - k) * 0.9
+    }
     // Confetti flutters down: falling slower than it would, turning over.
     const L = this.bits
     let n = 0
@@ -241,17 +291,24 @@ export class Fx {
   clear() {
     this.soft.list.length = 0
     this.spark.list.length = 0
+    this.fizz.list.length = 0
     this.bits.length = 0
     this.soft.update(1e-6)
     this.spark.update(1e-6)
+    this.fizz.update(1e-6)
     this.confetti.count = 0
     this.confetti.visible = false
+    for (const r of this.ripples) {
+      r.age = 9
+      r.mesh.visible = false
+    }
   }
 }
 
 /**
- * The landing aids: a soft dark blob on the surface under the bean, tipped to its slope, wider and fainter the
- * higher the bean is; and a bright ring on the goo when there's nothing under it at all.
+ * The landing aids: a soft dark blob on the surface under Blip, tipped to its slope, wider and fainter the higher
+ * it is; and a bright ring on the sea when there's nothing under it at all, over a darker spot so it stands out from
+ * the teal.
  */
 export class Shadow {
   readonly blob: THREE.Mesh
@@ -277,7 +334,7 @@ export class Shadow {
     this.strength = opacity
   }
 
-  /** On a surface at `y` sloping `gx`, `gz` (rise a metre), the bean `high` m above it. */
+  /** On a surface at `y` sloping `gx`, `gz` (rise a metre), Blip `high` m above it. */
   onSurface(x: number, y: number, z: number, gx: number, gz: number, high: number) {
     const h = Math.max(0, high)
     const size = 1.15 + Math.min(4, h) * 0.24
@@ -290,16 +347,20 @@ export class Shadow {
     this.ring.visible = false
   }
 
-  /** Over nothing: the ring on the goo at `gooY`, the bean `high` above it. */
-  overGoo(x: number, gooY: number, z: number, high: number, colour: string, clock: number) {
-    this.blob.visible = false
+  /** Over nothing: the ring on the sea at `seaY`, Blip `high` above it, a soft dark spot under the ring. */
+  overGoo(x: number, seaY: number, z: number, high: number, colour: string, clock: number) {
     const size = 1.3 + Math.min(10, Math.max(0, high)) * 0.08
     const pulse = 1 + 0.06 * Math.sin(clock * 9)
-    this.ring.position.set(x, gooY + 0.05, z)
+    this.ring.position.set(x, seaY + 0.05, z)
     this.ring.scale.set(size * pulse, 1, size * pulse)
     this.ringMat.color.set(colour)
     this.ringMat.opacity = 0.95
     this.ring.visible = true
+    this.blob.position.set(x, seaY + 0.03, z)
+    this.blob.quaternion.identity()
+    this.blob.scale.set(size * 0.95, 1, size * 0.95)
+    this.blobMat.opacity = Math.min(0.5, this.strength * 1.3)
+    this.blob.visible = true
   }
 
   hide() {

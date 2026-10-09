@@ -9,7 +9,7 @@ import '../styles/gauntletBook.css'
 
 /*
  * The admin's Gauntlet Book: every day of Wobble Run's gauntlet of the day that's planned (dailyPlan.ts), its
- * rounds to the crown as the players' cards draw them, with each round's tier and the blue bean's run. Today's
+ * rounds to the Blip star as the players' cards draw them, with each round's tier and the blue blip's run. Today's
  * and any still to come can be test run ahead of their day (?track=<n>, TestCards.tsx), past ones run as
  * practice; neither keeps a run. The test course (?lab=1) has every round at every tier in a row.
  */
@@ -20,7 +20,7 @@ type BookGauntlet = {
   n: number
   day: string
   name: string
-  /** The blue bean's run, in seconds. */
+  /** The blue blip's run, in seconds. */
   pace: number
   k: string
   rounds: GauntletRound[]
@@ -35,7 +35,7 @@ const dayWords = (day: string) => dayFormat.format(dateOf(day))
 /** Gauntlet `n` on the play page: a test run from today on, practice before (WobbleRunPage.tsx reads ?track=). */
 const runHref = (n: number) => `${gamePlayHref(SLUG)}?track=${n}`
 
-/** 86.0s, or 1:26.0 past a minute: the blue bean's run, to the tenth. */
+/** 86.0s, or 1:26.0 past a minute: the blue blip's run, to the tenth. */
 function paceWords(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds - m * 60
@@ -91,7 +91,7 @@ export function AdminGauntletBook() {
         </h2>
         <p className="adm-card__sub">
           Every day’s gauntlet planned, a new one each day at midnight New York time, the same for everyone: four rounds
-          and a finale to the crown. Each was kept once the blue bean ran it clean in a fair time. Test run today’s or
+          and a finale to the star. Each was kept once the blue blip ran it clean in a fair time. Test run today’s or
           any still to come, ahead of their day: a test run goes on no board. Past ones run as practice.
           {last ? ` The plan runs to #${last.n} on ${dayWords(last.day)}, ${last.day.slice(0, 4)}; after that the days go round again from #1.` : ''}
         </p>
@@ -108,7 +108,7 @@ export function AdminGauntletBook() {
               <span className="hb-badge">Today · #{todays.n}</span>
               <h3 className="tb-feature__name">{todays.name}</h3>
               <p className="tb-feature__facts">
-                {dayWords(todays.day)} · blue bean {paceWords(todays.pace)} · code {todays.k}
+                {dayWords(todays.day)} · blue blip {paceWords(todays.pace)} · code {todays.k}
               </p>
               <RoundChips rounds={todays.rounds} />
               <div className="tb-feature__acts">
@@ -211,7 +211,7 @@ function GauntletTile({ day, today }: { day: BookGauntlet; today: string }) {
         <p className="gtb-tile__rounds">{roundsWords(day.k)}</p>
         <dl className="tb-figs">
           <div>
-            <dt>Blue bean</dt>
+            <dt>Blue blip</dt>
             <dd>{paceWords(day.pace)}</dd>
           </div>
           <div>

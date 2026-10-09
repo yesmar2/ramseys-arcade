@@ -492,7 +492,7 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { plannedCave } = await server.ssrLoadModule('/src/games/lander/sim.ts')
   const { dailyHills, laidNumber: hillsLaid } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
   const { heightAt, hillsSpan, plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
-  // The gauntlet's picture is its rounds to the crown, from the plan's round code: no engine needed.
+  // The gauntlet's picture is its rounds to the Blip star, from the plan's round code: no engine needed.
   const { dailyGauntlet } = await server.ssrLoadModule('/src/games/wobblerun/daily.ts')
   const { gauntletSvg } = await server.ssrLoadModule('/src/games/wobblerun/gauntletPicture.ts')
   const { mixColor } = await server.ssrLoadModule('/src/lib/color.ts')

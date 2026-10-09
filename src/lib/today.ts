@@ -74,7 +74,7 @@ export const TODAY_DAILIES: readonly TodayDaily[] = [
   { key: 'cave', slug: 'lander', label: 'Cave', emoji: '🚀', better: 'higher', from: CAVE_FROM },
   { key: 'hills', slug: 'swoop', label: 'Hills', emoji: '🐦', better: 'higher', from: HILLS_FROM },
   // Wobble Run's gauntlet joined the races the day the game came, the fifth (the API's today.ts says the same).
-  { key: 'gauntlet', slug: 'wobblerun', label: 'Wobble', emoji: '👑', better: 'higher', from: GAUNTLET_FROM },
+  { key: 'gauntlet', slug: 'wobblerun', label: 'Wobble', emoji: '🌟', better: 'higher', from: GAUNTLET_FROM },
   { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '', until: PUZZLES_UNTIL },
   { key: 'wanted', slug: 'findbug', label: 'Bugs', emoji: '🐞', better: 'higher', from: '', until: PUZZLES_UNTIL },
   { key: 'pour', slug: 'halffull', label: 'Pour', emoji: '🥛', better: 'higher', from: TODAY_FROM, until: PUZZLES_UNTIL },
@@ -128,7 +128,7 @@ export type TodayServer = {
   }
   /**
    * Today's results as the boards keep them: tries, and board scores for the lap, the bug run, the pour, the
-   * marble's run, the ship's, the bird's and the bean's.
+   * marble's run, the ship's, the bird's and the blip's.
    */
   results: {
     hole: { tries: number } | null

@@ -8,34 +8,40 @@ import { BeanRig, beanLook, GhostBean, ghostGeometries, type BeanState, type Gho
 import { CourseView } from './scene/course.ts'
 import { Fx, Shadow } from './scene/fx.ts'
 import {
+  BLIP,
   CODE,
   LOOKS,
   mix,
   paintBlur,
+  paintBubble,
   paintCheck,
   paintDot,
+  paintFizz,
   paintFloor,
-  paintGoo,
   paintMatcap,
   paintPattern,
   paintRing,
   paintSlide,
+  paintSoda,
   Painter,
   PATTERN_ROLES,
   signPaint,
+  sodaOf,
   Tints,
   type PatternRole,
   type SkyLook,
 } from './scene/look.ts'
-import { centreAt, World } from './scene/world.ts'
+import { centreAt, World, type Tide } from './scene/world.ts'
 
 /*
- * Wobble Run in 3D: a candy obstacle course floating over goo, drawn with three.js from the engine's course
- * (engine/README.md "For the scene") and the run the shell steps. A theme-following world: an afternoon in the
- * site's light theme, dusk with stars and glowing trims in dark (and Neon Night's night in either), the colour
- * code the same in every theme. No lamps and no shadow maps: the light is baked into vertex colours, the bean has
- * a matcap, and a soft blob (or, over nothing, a bright ring on the goo) shows where it'll land. The static course
- * is merged into a few meshes a chunk, repeats are instanced, and only what's near the camera is drawn.
+ * Wobble Run in 3D: a candy obstacle course floating over a fizzing soda sea, run by Blip (the site's blip grown
+ * feet) to the Blip star at the top, drawn with three.js from the engine's course (engine/README.md "For the
+ * scene") and the run the shell steps. A theme-following world: an afternoon in the site's light theme, dusk with
+ * stars and glowing trims in dark (and Neon Night's night in either), the colour code the same in every theme. No
+ * lamps and no shadow maps: the light is baked into vertex colours, Blip has a matcap, and a soft blob (or, over
+ * nothing, a bright ring on the sea) shows where it'll land. The static course is merged into a few meshes a
+ * chunk, repeats are instanced, and only what's near the camera is drawn. (The engine's names stay: the runner is
+ * `bean` and the star its `crown` trigger.)
  *
  * ---------------------------------------------------------------------------------------------- the API ---
  *
@@ -46,20 +52,20 @@ import { centreAt, World } from './scene/world.ts'
  *   scene.events(run.ev, run)                       // squash, tumbles, splashes, confetti, pad squash, flashes
  *   // each frame:
  *   scene.frame({ mode, run, ghosts, doneFor, skin }, dt)   // dt 0 while paused: nothing moves but it draws
- *   scene.snap()                                    // a new run: the camera jumps behind the bean, puffs cleared
+ *   scene.snap()                                    // a new run: the camera jumps behind Blip, puffs cleared
  *   scene.dispose()                                 // lets go of everything; ends in forceContextLoss()
  *
- * - `mode`: 'menu' is the start card (a slow flyover of the gauntlet, from the start; with no run the bean waits
- *   on the start pad), 'play' a run from the countdown to the crown, 'done' after the crown (the camera swings
- *   round to the bean's front with the crown on its head; `doneFor` is the seconds since the touch, for the
- *   swing; for the spec's slow motion, step the run at 0.3× for the first second: the scene just draws).
- * - `run`: the run on screen. The clock things are posed at `t` (default run.t; give `t` and `at`, the bean's
- *   place, to draw between steps). Touch things come from run.world; the slime from slimeY(run).
- * - `ghosts`: up to three, each { kind: 'blue' | 'rival' | 'mine', x, y, z, state, tag, skin? }: the blue bean
+ * - `mode`: 'menu' is the start card (a slow flyover of the gauntlet, from the start; with no run Blip waits on
+ *   the start pad), 'play' a run from the countdown to the star, 'done' after the star (the camera swings round
+ *   to Blip's front with the star over its head; `doneFor` is the seconds since the touch, for the swing; for the
+ *   spec's slow motion, step the run at 0.3× for the first second: the scene just draws).
+ * - `run`: the run on screen. The clock things are posed at `t` (default run.t; give `t` and `at`, the runner's
+ *   place, to draw between steps). Touch things come from run.world; Tide Tower's sea from slimeY(run).
+ * - `ghosts`: up to three, each { kind: 'blue' | 'rival' | 'mine', x, y, z, state, tag, skin? }: the blue blip
  *   (translucent blue), someone else's run (cyan), your best (amber); `tag` is the name over the one you're
  *   chasing ('' for none); a skin the scene knows draws the ghost in it, lighter (none exist yet, so always the
  *   kind's colour). They fade as they come alongside you, and a jump of over 3 m (a respawn) doesn't spin one.
- * - `skin`: the player's chosen skin (lib/skins.ts chosenSkin('wobblerun')); unknown ids are the pink bean.
+ * - `skin`: the player's chosen skin (lib/skins.ts chosenSkin('wobblerun')); unknown ids are mint Blip.
  * - `calm`: reduced motion (default: the OS setting): no shake, no FOV kicks, no swing, fewer puffs.
  * - The scene watches the site theme itself (data-theme and THEME_EVENT); retheme() forces a re-read.
  * - `renderer` is public for the dev hook (__wobbleScene(): renderer.info.render.calls / triangles, and
@@ -86,7 +92,7 @@ export type GhostShow = {
 export type SceneFrame = {
   mode: 'menu' | 'play' | 'done'
   run: Run | null
-  /** The clock the course is posed at (default run.t), and the bean's place (default run.bean), between steps. */
+  /** The clock the course is posed at (default run.t), and the runner's place (default run.bean), between steps. */
   t?: number
   at?: { x: number; y: number; z: number } | null
   doneFor?: number
@@ -103,7 +109,7 @@ const CAMS: Record<CameraPreset, Cam> = {
   climb: { back: 10, up: 8, ahead: 9, lookY: 3.2, fov: 0 },
   slide: { back: 8, up: 4.5, ahead: 7, lookY: 0.2, fov: 6 },
 }
-/** A portrait phone sees about 8.2 m across at the bean (half the across view's angle, as a tangent). */
+/** A portrait phone sees about 8.2 m across at Blip (half the across view's angle, as a tangent). */
 const TAN_HALF = Math.tan((18.6 * Math.PI) / 180)
 /** On a portrait screen's start card, the flyover's horizon is kept this far down from the top (a sliver of sky). */
 const MENU_SKY = 0.05
@@ -146,6 +152,7 @@ export class WobbleScene {
   private held = false
   private wasDead = false
   private swing = 0
+  private swingSide = 1
   // Moments.
   private crowned = false
   private glintIn = 0.5
@@ -161,6 +168,7 @@ export class WobbleScene {
   private readonly eye = new THREE.Vector3()
   private readonly target = new THREE.Vector3()
   private readonly beanState: BeanState = { x: 0, y: 0, z: 0, yaw: 0, vy: 0, grounded: true, prone: false, stunned: false, dead: false, ledge: false }
+  private readonly tide: Tide = { x: 0, hx: 0, z0: 0, z1: 0, y: 0 }
 
   constructor(canvas: HTMLCanvasElement, course: Course, opts: { pixelRatio?: number; preview?: boolean } = {}) {
     this.course = course
@@ -178,26 +186,35 @@ export class WobbleScene {
     const patterns = {} as Record<PatternRole, THREE.Texture>
     for (const role of PATTERN_ROLES) patterns[role] = paintPattern(painter, role)
     const dot = paintDot(painter)
-    const matcap = paintMatcap(painter, { base: '#f1edf3', light: '#ffffff', dark: '#b1a2b6', spec: 0.8 })
-    const gold = paintMatcap(painter, { base: '#e2bc52', light: '#fff6c8', dark: '#8a6416' })
+    // Blip's painted light (cool, so its mint stays mint), shared with the Blip star.
+    const matcap = paintMatcap(painter, { base: '#fafdfc', light: '#ffffff', dark: '#a3bfbb', spec: 0.85 })
     const ghostMatcap = paintMatcap(painter, { base: '#f0f0f0', light: '#ffffff', dark: '#c4c4cc', spec: 0.6 })
+    const soda = sodaOf(course.theme.id)
+    const sodaTex = paintSoda(painter, soda)
 
-    this.world = new World(course, painter, this.tints, dot, paintGoo(painter), this.rnd)
+    this.world = new World(course, this.tints, dot, { soda, tex: sodaTex, fizz: paintFizz(painter) }, this.rnd)
     this.scene.add(this.world.group)
-    this.view = new CourseView(course, painter, this.tints, { floor: paintFloor(painter), check: paintCheck(painter), slide: paintSlide(painter), dot, blur: paintBlur(painter), gold, patterns }, this.rnd)
+    this.view = new CourseView(
+      course,
+      painter,
+      this.tints,
+      { floor: paintFloor(painter), check: paintCheck(painter), slide: paintSlide(painter), dot, blur: paintBlur(painter), shine: matcap, soda: sodaTex, sodaRim: soda.rim, patterns },
+      this.rnd,
+    )
     this.scene.add(this.view.group)
-    this.bean = new BeanRig(matcap, gold, this.rnd)
+    this.bean = new BeanRig(matcap, dot, this.rnd)
     this.scene.add(this.bean.root)
-    this.shadow = new Shadow(dot, paintRing(painter))
+    const ring = paintRing(painter)
+    this.shadow = new Shadow(dot, ring)
     this.scene.add(this.shadow.blob, this.shadow.ring)
-    this.fx = new Fx(dot, this.rnd)
+    this.fx = new Fx(dot, paintBubble(painter), ring, this.rnd)
     this.fx.setCalm(this.calm)
     this.scene.add(this.fx.group)
 
     // The ghosts, each with a tag over it (the same size near or far).
     const geo = ghostGeometries()
     for (let k = 0; k < MAX_GHOSTS; k++) {
-      const bean = new GhostBean(ghostMatcap, geo.body, geo.visor)
+      const bean = new GhostBean(ghostMatcap, geo.body, geo.face)
       const slot = { bean, tag: null as unknown as THREE.Sprite, tex: null as unknown as THREE.CanvasTexture, text: '', colour: '#46e4ff' }
       // The tag's colours are the ghost's, read when it's painted (paintTag).
       slot.tex = painter.paint(256, 64, (g, w, h) => signPaint(() => slot.text, { fill: this.look.tagFill, ink: slot.colour, edge: slot.colour }, 700)(g, w, h), { text: true })
@@ -238,7 +255,7 @@ export class WobbleScene {
     this.lost = false
   }
 
-  /** Read the site's theme again: the sky, the fog, the materials' dimming, the trims, the goo, the ghosts' colours. */
+  /** Read the site's theme again: the sky, the fog, the materials' dimming, the trims, the sea, the spark, the ghosts' colours. */
   retheme() {
     if (this.disposed) return
     const night = !!this.course.theme.night
@@ -251,6 +268,8 @@ export class WobbleScene {
     this.tints.apply(look, night)
     this.world.applyLook(look, night)
     this.view.setFlagColours(look.flag, look.passed)
+    this.view.setSea(look.sea)
+    this.bean.setDark(look.dark)
     this.shadow.setStrength(look.shadow)
     // The tags are painted again in the new look's colours next frame.
     for (const g of this.ghosts) g.colour = ''
@@ -269,7 +288,7 @@ export class WobbleScene {
     for (const g of this.ghosts) g.tag.scale.set(0.2 * k, 0.05 * k, 1)
   }
 
-  /** The next frame puts the camera straight behind the bean, and clears the puffs: a new run. */
+  /** The next frame puts the camera straight behind Blip, and clears the puffs: a new run. */
   snap() {
     this.snapNext = true
     this.fx.clear()
@@ -289,6 +308,7 @@ export class WobbleScene {
 
   /**
    * One step's events (run.ev, after step()): the juice. Call it every step, so nothing between frames is missed.
+   * (A fall's splash is fizz and teal droplets; the star's touch pops the star over Blip's head.)
    */
   events(ev: readonly SimEvent[], run: Run) {
     if (this.disposed) return
@@ -359,9 +379,11 @@ export class WobbleScene {
         case 'fall':
           this.held = true
           break
-        case 'splat':
-          this.fx.splash(e.x, this.course.gooY + 0.1, e.z, mix(this.world.goo(), '#ffffff', 0.35))
+        case 'splat': {
+          const soda = this.world.sodaColours()
+          this.fx.splash(e.x, this.course.gooY + 0.1, e.z, mix(soda.top, '#ffffff', 0.7), soda.fizz)
           break
+        }
         case 'respawn':
           this.bean.respawned()
           this.held = false
@@ -383,7 +405,8 @@ export class WobbleScene {
           this.crowned = true
           this.view.takeCrown(true)
           this.fx.confettiAt(e.x, e.y + 1.8, e.z, 60, PARTY)
-          this.fx.sparkle(e.x, e.y + 1.6, e.z, CODE.gold, 30, 4)
+          this.fx.sparkle(e.x, e.y + 1.4, e.z, BLIP.glow, 24, 4)
+          this.fx.sparkle(e.x, e.y + 1.4, e.z, '#ffffff', 10, 2.6)
           this.partyIn = 0.7
           break
         case 'go':
@@ -408,7 +431,7 @@ export class WobbleScene {
     const t = live ? (f.t ?? run.t) : this.idle - 600
     this.adapt(dt)
 
-    // The bean: the run's, or waiting on the start pad on a start card with no run.
+    // Blip: the run's, or waiting on the start pad on a start card with no run.
     const s = this.beanState
     if (run) {
       const b = run.bean
@@ -454,7 +477,7 @@ export class WobbleScene {
       calm,
     })
 
-    // The bean, its eyes on the nearest hazard; sunk out of sight once it's in the goo.
+    // Blip, its eyes on the nearest hazard; sunk out of sight once it's in the sea.
     const look = this.view.nearestHazard(s.x, s.y + 1.1, s.z, t, 4, this.vb) ? this.vb : null
     this.bean.update(s, look, dt, calm)
     if (s.dead && s.y <= course.gooY + 0.3) this.bean.root.visible = false
@@ -464,7 +487,7 @@ export class WobbleScene {
     else {
       const under = this.view.surfaceBelow(s.x, s.z, s.y + 0.05, t, run && live ? run.world : null)
       if (under) this.shadow.onSurface(s.x, under.y, s.z, under.gx, under.gz, s.y - under.y)
-      else this.shadow.overGoo(s.x, course.gooY, s.z, s.y - course.gooY, mix(this.world.goo(), '#ffffff', 0.55), this.idle + t)
+      else this.shadow.overGoo(s.x, course.gooY, s.z, s.y - course.gooY, mix(this.world.sodaColours().rim, '#ffffff', 0.6), this.idle + t)
     }
 
     // Ghosts, in their colours, fading as they come alongside; the chased one's name over it.
@@ -480,13 +503,13 @@ export class WobbleScene {
       const known = g.kind !== 'blue' && g.skin != null && beanLook(g.skin) !== beanLook(null) ? beanLook(g.skin) : null
       const colour = known ? mix(known.body, '#ffffff', 0.35) : g.kind === 'blue' ? this.look.blue : g.kind === 'mine' ? this.look.mine : this.look.ghost
       slot.bean.body.color.set(colour)
-      slot.bean.visor.color.set(known ? mix(known.visor, '#ffffff', 0.3) : mix(colour, '#ffffff', 0.55))
+      slot.bean.face.color.set(mix(colour, '#ffffff', 0.6))
       const d = Math.hypot(g.x - s.x, g.y - s.y, g.z - s.z)
       const base = g.kind === 'blue' ? 0.52 : 0.44
       const near = Math.max(0.42, Math.min(1, (d - 0.4) / 2.6))
       const fade = g.state === 2 ? 0.35 : 1
       slot.bean.body.opacity = base * near * fade
-      slot.bean.visor.opacity = base * near * fade
+      slot.bean.face.opacity = Math.min(1, base * near * fade * 1.25)
       const tag = g.tag ?? ''
       if (tag !== slot.text || colour !== slot.colour) {
         slot.text = tag
@@ -494,12 +517,12 @@ export class WobbleScene {
         this.paintTag(slot)
       }
       slot.tag.visible = !!tag
-      // Faded in with distance, and out once the ghost is behind the bean: the tag would sit over the bean's own body.
+      // Faded in with distance, and out once the ghost is behind Blip: the tag would sit over Blip itself.
       const behind = Math.max(0, Math.min(1, (g.z - s.z + 2) / 2))
       ;(slot.tag.material as THREE.SpriteMaterial).opacity = Math.max(0, Math.min(1, (d - 3) / 4)) * behind
     }
 
-    // Moments: glints off gold pieces, sparkles round the crown, confetti after the finish.
+    // Moments: glints off gold pieces, mint sparkles round the star, confetti after the finish.
     if (dt > 0 && !calm) {
       this.glintIn -= dt
       if (this.glintIn <= 0) {
@@ -509,7 +532,7 @@ export class WobbleScene {
       this.crownSparkIn -= dt
       if (this.crownSparkIn <= 0) {
         this.crownSparkIn = 0.18
-        if (this.view.crownAt(t, this.va) && Math.abs(this.va.z - s.z) < 45) this.fx.sparkle(this.va.x + (this.rnd() - 0.5), this.va.y + (this.rnd() - 0.3), this.va.z + (this.rnd() - 0.5), CODE.gold, 2, 0.7)
+        if (this.view.crownAt(t, this.va) && Math.abs(this.va.z - s.z) < 45) this.fx.sparkle(this.va.x + (this.rnd() - 0.5), this.va.y + (this.rnd() - 0.3), this.va.z + (this.rnd() - 0.5), this.rnd() < 0.3 ? '#ffffff' : BLIP.glow, 2, 0.7)
       }
       if (f.mode === 'done' && (f.doneFor ?? 0) < 4) {
         this.partyIn -= dt
@@ -521,7 +544,7 @@ export class WobbleScene {
       }
     }
 
-    this.world.update(this.idle + Math.max(0, t), this.camera.position, dt, this.fx, calm)
+    this.world.update(this.idle + Math.max(0, t), this.camera.position, dt, this.fx, calm, this.view.tideAt(this.tide) ? this.tide : null)
     this.fx.update(dt)
     if (!this.lost) this.renderer.render(this.scene, this.camera)
   }
@@ -531,16 +554,16 @@ export class WobbleScene {
   }
 
   /**
-   * The camera (design-final §6 #10): behind the bean, looking down the course, never turning; the round's preset
+   * The camera (design-final §6 #10): behind Blip, looking down the course, never turning; the round's preset
    * (default, wide, climb, slide) blended over 0.8 s; wider on a tall screen and nearer on a wide one. Its height
-   * follows the ground the bean last stood on, so hops don't shake it, rising with big flights and holding still
-   * while the bean falls. A splat holds it a moment; a respawn far away jumps it there.
+   * follows the ground Blip last stood on, so hops don't shake it, rising with big flights and holding still while
+   * it falls. A splash holds it a moment; a respawn far away jumps it there.
    */
   private placeCamera(f: SceneFrame, s: BeanState, dt: number, calm: boolean) {
     const course = this.course
     const cam = this.camera
     const aspect = cam.aspect || 1
-    // Portrait: a set view across (8.2 m at the bean); landscape: a set 50° up and down, from a little nearer.
+    // Portrait: a set view across (8.2 m at Blip); landscape: a set 50° up and down, from a little nearer.
     const across = aspect < 1 ? (2 * Math.atan(TAN_HALF / aspect) * 180) / Math.PI : 50
     const baseFov = Math.max(50, Math.min(76, across))
     const near = aspect <= 0.75 ? 1 : aspect >= 1.3 ? 0.82 : 1 - ((aspect - 0.75) / 0.55) * 0.18
@@ -577,13 +600,13 @@ export class WobbleScene {
     this.cam.lookY += (preset.lookY - this.cam.lookY) * k
     this.cam.fov += (preset.fov - this.cam.fov) * k
 
-    // Where it follows: across, mostly the bean, partly the track's middle; along, the bean; up, the ground.
+    // Where it follows: across, mostly Blip, partly the track's middle; along, Blip; up, the ground.
     const mid = centreAt(course, s.z)
     const wantX = mid + (s.x - mid) * 0.72
     if (s.grounded && !s.dead) this.groundY = s.y
     let wantY = this.groundY
     if (!s.grounded && s.y > this.groundY + 2.2) wantY = s.y - 2.2
-    // Back in from a splat: jump there if it's far, ease if it's near.
+    // Back in from a fall: jump there if it's far, ease if it's near.
     if (this.wasDead && !s.dead && Math.hypot(s.z - this.focus.z, s.y - this.focus.y) > 12) this.snapNext = true
     this.wasDead = s.dead
     if (this.snapNext) {
@@ -603,23 +626,28 @@ export class WobbleScene {
     this.eye.set(fx, fy + up, fz - back)
     this.target.set(fx, fy + this.cam.lookY, fz + this.cam.ahead)
 
-    // Falling: the camera stays where it was and looks down after the bean, to see the splash.
+    // Falling: the camera stays where it was and looks down after Blip, to see the splash.
     if (s.dead || (this.held && s.y < this.groundY - 1)) {
       this.vb.set(s.x, Math.max(s.y, course.gooY), s.z)
       this.target.lerp(this.vb, 0.55)
     }
 
-    // After the crown: round to the bean's front, looking at it with the crown on its head.
+    // After the star: round to Blip's front, looking at it with the star over its head (the pedestal in front of it
+    // sinks away as the star's taken), swinging round on the side of the pedestal Blip stands.
     if (f.mode === 'done') {
       const want = calm ? 0 : Math.min(1, (f.doneFor ?? 0) / 1.3)
+      if (this.swing < 0.002) {
+        this.view.crownAt(0, this.vb)
+        this.swingSide = s.x < this.vb.x - 0.05 ? -1 : 1
+      }
       this.swing += (want - this.swing) * (1 - Math.exp(-dt * 6))
       const e = this.swing * this.swing * (3 - 2 * this.swing)
       if (e > 0.001) {
         const a = e * Math.PI * 0.82
         const r = 6.2
-        this.va.set(s.x + Math.sin(a) * r * 0.55, s.y + 2.6 - e * 0.6, s.z - Math.cos(a) * r)
+        this.va.set(s.x + this.swingSide * Math.sin(a) * r * 0.55, s.y + 2.6 - e * 0.4, s.z - Math.cos(a) * r)
         this.eye.lerp(this.va, e)
-        this.vb.set(s.x, s.y + 1.2, s.z)
+        this.vb.set(s.x, s.y + 1.1, s.z)
         this.target.lerp(this.vb, e)
       }
     }

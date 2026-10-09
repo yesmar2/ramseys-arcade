@@ -11,7 +11,7 @@ import type { GhostRun } from './runStore'
 export * from './runStore'
 
 /*
- * What a run is measured against: the day's gauntlet and its blue bean, and the ghost that runs the run to beat.
+ * What a run is measured against: the day's gauntlet and its blue blip, and the ghost that runs the run to beat.
  * Your own best runs are kept by runStore.ts.
  */
 
@@ -41,7 +41,7 @@ let lab: WobbleDay | null = null
 /**
  * The test course (engine/lab.ts: every built round at T1, T2 and T3, a checkpoint pad before each, then the
  * finale), an admin's (WobbleRunGame `lab`), had as a day's gauntlet is but of no day: no plan, no board, no blue
- * bean (its `pace` is 0 and nothing shows it).
+ * blip (its `pace` is 0 and nothing shows it).
  */
 export function labDay(): WobbleDay {
   return (lab ??= { day: LAB_DAY, n: 0, name: 'Test Course', attempt: 0, pace: 0, k: labCode(), course: labCourse() })
@@ -54,7 +54,7 @@ export function waitingRun(course: Course, time: number): GhostRun {
 }
 
 /**
- * The blue bean's own hands run live, for a day the plan keeps no route for (a day past the routes, or a plan made
+ * The blue blip's own hands run live, for a day the plan keeps no route for (a day past the routes, or a plan made
  * before them): the same careful hands the plan's route was found with (engine/bots.ts BLUE_HANDS), choosing at
  * each safe spot as they go. Slower to work out than a replay, and only ever the fallback.
  */
@@ -66,7 +66,7 @@ function liveBlue(course: Course): GhostRun | null {
 }
 
 /**
- * The blue bean's run over the day's gauntlet, the ghost until you have a run of your own, and always alongside:
+ * The blue blip's run over the day's gauntlet, the ghost until you have a run of your own, and always alongside:
  * worked out once a day, when it's first wanted. The plan keeps the route its careful hands found (blueRoutes.ts),
  * and the engine replays it here in one pass (engine/bots.ts replayBlue); it's raced along that line in the plan's
  * time (standIn, as Swoop's blue bird is), which its medals, tickets and boards go by.
@@ -86,7 +86,7 @@ export function paceOf(day: string): GhostRun {
   return pace
 }
 
-/** The blue bean's run over a day's gauntlet if it has been worked out already, without working it out now. */
+/** The blue blip's run over a day's gauntlet if it has been worked out already, without working it out now. */
 export function paceIfRun(day: string): GhostRun | null {
   return paces.get(day) ?? null
 }

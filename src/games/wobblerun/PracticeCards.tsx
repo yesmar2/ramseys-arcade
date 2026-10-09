@@ -10,7 +10,7 @@ import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyGauntlet, FIRST_DAY, gauntletDay, gauntletNumber } from './daily'
 import { gauntletDayHref } from './links'
 import type { WobbleDay } from './runs'
-import { formatRun, formatWobblerunBoardScore, splatWords } from './score'
+import { formatRun, formatWobblerunBoardScore, splashWords } from './score'
 
 /*
  * The cards of a past day's gauntlet run again from the past tab (/games/wobblerun/play?day=YYYY-MM-DD), on the
@@ -43,7 +43,7 @@ const gapWords = (diff: number) => `${(diff / 1000).toFixed(2)}s`
 
 /**
  * A past gauntlet's start card: which gauntlet it was and when, that a run here goes on its All time board (or,
- * signed out, is practice), its Ranked and All time boards, the blue bean's run and your best here (`tiles`, as
+ * signed out, is practice), its Ranked and All time boards, the blue blip's run and your best here (`tiles`, as
  * the pause card has them). A tap anywhere starts, as on today's card.
  */
 export function PracticeStartCard({
@@ -90,11 +90,11 @@ export function PracticeStartCard({
   )
 }
 
-/** "You beat the blue bean by 1.20s, with no splats." */
-function beanWords(time: number, pace: number, splats: number): string {
+/** "You beat the blue blip by 1.20s, with no splashes." */
+function blipWords(time: number, pace: number, splats: number): string {
   const gap = time - pace
-  const against = Math.abs(gap) < 0.005 ? 'Tied with the blue bean' : gap < 0 ? `You beat the blue bean by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue bean`
-  return `${against}, with ${splatWords(splats)}.`
+  const against = Math.abs(gap) < 0.005 ? 'Tied with the blue blip' : gap < 0 ? `You beat the blue blip by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue blip`
+  return `${against}, with ${splashWords(splats)}.`
 }
 
 /**
@@ -136,7 +136,7 @@ export function PastGauntletResult({
       kicker={`Past gauntlet #${wobble.n} · ${wobble.name}`}
       figure={formatRun(time)}
       score={score}
-      pace={beanWords(time, pace, splats)}
+      pace={blipWords(time, pace, splats)}
       fmt={formatWobblerunBoardScore}
       gap={gapWords}
       run={run}

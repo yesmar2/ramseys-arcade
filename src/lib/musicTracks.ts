@@ -588,7 +588,7 @@ const GAME_MUSIC: Record<string, TrackId> = {
   crumbtrail: 'coinop',
   pellets: 'bonus',
   pop: 'bonus',
-  // A game show's bonus round for a bean on an obstacle course: quick and bouncy, and no other race's song.
+  // A game show's bonus round for Blip on an obstacle course: quick and bouncy, and no other race's song.
   wobblerun: 'bonus',
   stacker: 'puzzle',
   spotter: 'puzzle',
