@@ -92,16 +92,23 @@ const SHARK_WARN = 1.4
 const SHARK_SPEED = 360
 const SHARK_R = 56
 /** The fisherman: how long he waits before his first cast of a run, his speed between spots. */
-const BOAT_FIRST = 7
-const BOAT_SPEED = 75
+const BOAT_FIRST = 5
+const BOAT_SPEED = 110
 const HOOK_R = 8
 /**
  * Harder since Ramsey's "i think the fisherman needs to be a little harder" (2026-10-06): he fishes close to
  * you and at your depth, follows you with the boat while he waits (faster as you grow), sways his hook, and
- * rests only a moment between casts.
+ * rests only a moment between casts. Harder again on 2026-10-09 ("can the fisherman fish all the way down?
+ * also make him a harder"): his line reaches the sea floor, so the bottom is no hiding place, his hook drops
+ * and comes after your depth faster, he sails and follows quicker, and he rests less.
  */
-const BOAT_FOLLOW = 26
-const BOAT_FOLLOW_PER_SIZE = 4
+const BOAT_FOLLOW = 40
+const BOAT_FOLLOW_PER_SIZE = 6
+/** How fast his hook drops on a cast, and how fast it comes up or down after your depth while he waits. */
+const HOOK_DROP = 340
+const HOOK_TRACK = 45
+/** The deepest his hook goes: just off the sea floor, sway and all. */
+const HOOK_DEEPEST = FLOOR - 10
 /** Points for things caught in the air. */
 const FLYER_AIR_POINTS = 25
 const GULL_POINTS = 50
@@ -822,7 +829,7 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
     if (b.t >= b.rest) {
       // A spot near you, but never right overhead.
       const side = Math.random() < 0.5 ? -1 : 1
-      b.to = clamp(p.x + side * rand(110, Math.max(160, half.w * 0.5)), 120, OCEAN_W - 120)
+      b.to = clamp(p.x + side * rand(90, Math.max(130, half.w * 0.4)), 120, OCEAN_W - 120)
       b.stage = 'sail'
       b.t = 0
     }
@@ -835,11 +842,11 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
       b.stage = 'cast'
       b.t = 0
       // Down to where you are now, give or take.
-      b.depth = clamp(p.y + rand(-30, 40), 60, FLOOR - 80)
+      b.depth = clamp(p.y + rand(-30, 40), 60, HOOK_DEEPEST)
       b.hookY = 0
     }
   } else if (b.stage === 'cast') {
-    b.hookY = Math.min(b.depth, b.hookY + 240 * dt)
+    b.hookY = Math.min(b.depth, b.hookY + HOOK_DROP * dt)
     if (b.hookY >= b.depth) {
       b.stage = 'wait'
       b.t = 0
@@ -850,20 +857,20 @@ function moveBoat(s: GameState, dt: number, playing: boolean) {
       const dx = p.x - tip.x
       const follow = (BOAT_FOLLOW + p.size * BOAT_FOLLOW_PER_SIZE) * dt
       if (Math.abs(dx) > 4) b.x = clamp(b.x + Math.sign(dx) * Math.min(Math.abs(dx), follow), 60, OCEAN_W - 60)
-      b.depth = clamp(b.depth + Math.sign(p.y - b.depth) * Math.min(Math.abs(p.y - b.depth), 18 * dt), 60, FLOOR - 80)
+      b.depth = clamp(b.depth + Math.sign(p.y - b.depth) * Math.min(Math.abs(p.y - b.depth), HOOK_TRACK * dt), 60, HOOK_DEEPEST)
     }
-    b.hookY = b.depth + Math.sin(b.t * 2.2) * 16
+    b.hookY = Math.min(HOOK_DEEPEST, b.depth + Math.sin(b.t * 2.2) * 16)
     if (b.t > 8) {
       b.stage = 'reel'
       b.t = 0
     }
   } else {
-    b.hookY -= 230 * dt
+    b.hookY -= 300 * dt
     if (b.hookY <= tip.y + 10) {
       b.caught = null
       b.hookY = tip.y
       b.stage = 'rest'
-      b.rest = rand(0.8, 1.8)
+      b.rest = rand(0.5, 1.2)
       b.t = 0
     }
   }
