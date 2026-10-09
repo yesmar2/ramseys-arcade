@@ -192,3 +192,13 @@ html[data-theme='dark'] .adm {
   flex: 0 1 7rem;
   font-variant-numeric: tabular-nums;
 }
+
+/* Blip's questions (AdminBlipPolls.tsx): a row's editor goes under it, the row's width. */
+.adm-row--stack {
+  flex-wrap: wrap;
+}
+
+.adm-poll-edit {
+  flex-basis: 100%;
+  margin-top: 0.2rem;
+}

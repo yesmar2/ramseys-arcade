@@ -9,6 +9,7 @@ import { Footer } from './components/Footer'
 import { PageShell } from './components/PageShell'
 import { SiteHeader } from './components/SiteHeader'
 import { getGame, isGameHidden } from './data/games'
+import { BlipHello } from './components/BlipHello'
 import { homeHref, useRoute } from './hooks/useHashRoute'
 import { usePageMeta } from './hooks/usePageMeta'
 import {
@@ -228,6 +229,7 @@ function App() {
         <Screen route={route} />
       </Suspense>
       <EasterEggs />
+      <BlipHello onGameScreen={onGameScreen} />
       <PendingRunsSaver />
       <SeasonDressing />
       <LevelUpMoment />

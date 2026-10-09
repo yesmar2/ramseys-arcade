@@ -16,6 +16,7 @@ import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import type { TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
 import { AlsoToday } from './AlsoToday'
+import { BlipPoll } from './BlipPoll'
 import { DailyKindTag } from './DailyKindTag'
 import { GamePreview } from './GamePreview'
 import { FlameIcon, StarIcon } from './TodayChip'
@@ -272,6 +273,8 @@ export function HomeToday() {
           <ChevronIcon />
         </a>
       </div>
+      {/* The races, and Blip's question beside them as one more card (on a phone, under them): BlipPoll.tsx. */}
+      <div className="home-day__row" style={{ '--races': `${total}fr` } as CSSProperties}>
       <ul className="home-day__cards" style={{ '--n': total } as CSSProperties}>
         {punches.map((p) => (
           <li key={p.key}>
@@ -281,6 +284,8 @@ export function HomeToday() {
           </li>
         ))}
       </ul>
+      <BlipPoll />
+      </div>
       {/* The day's puzzles, just for fun, in a slim line under the races (AlsoToday.tsx). */}
       <AlsoToday punches={ticket.also} compact />
       {/* On a phone the time to the next dailies comes under the cards (homeToday.css), and the one over them goes. */}

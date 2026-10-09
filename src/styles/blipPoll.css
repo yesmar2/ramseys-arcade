@@ -1,0 +1,309 @@
+/*
+ * Blip's question of the day (components/BlipPoll.tsx) and his hello (BlipHello.tsx). Blip's own mint, a touch
+ * of it in the card, in light and dark alike.
+ */
+
+.blip-poll {
+  --blip: #34c6a8;
+  --blip-ink: #13715f;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1.25rem 1rem 1rem;
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--blip) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--blip) 40%, transparent);
+  color: var(--ink);
+}
+
+html[data-theme='dark'] .blip-poll {
+  --blip-ink: #7fe3c4;
+  background: color-mix(in srgb, var(--blip) 12%, var(--surface));
+}
+
+.blip-poll__blip {
+  position: absolute;
+  top: -1.6rem;
+  right: 0.9rem;
+  width: 3.2rem;
+  height: 3.35rem;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.18));
+}
+
+.blip-poll__who {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blip-ink);
+}
+
+.blip-poll__q {
+  margin: 0;
+  /* Clear of Blip, who sits over its right end. */
+  padding-right: 2.6rem;
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.blip-poll__opts,
+.blip-poll__res {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blip-poll__opt {
+  width: 100%;
+  min-height: 2.6rem;
+  box-sizing: border-box;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid rgba(var(--ink-rgb), 0.12);
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.blip-poll__opt:hover,
+.blip-poll__opt:focus-visible {
+  border-color: var(--blip);
+  background: color-mix(in srgb, var(--blip) 14%, transparent);
+  outline: none;
+}
+
+.blip-poll__opt:disabled {
+  cursor: default;
+}
+
+.blip-poll__opt[aria-busy='true'] {
+  border-color: var(--blip);
+  background: color-mix(in srgb, var(--blip) 22%, transparent);
+}
+
+.blip-poll__opt--skel {
+  display: block;
+  border-color: transparent;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.blip-poll__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.35rem;
+  padding: 0 0.75rem;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: rgba(var(--ink-rgb), 0.05);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.blip-poll__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: rgba(var(--ink-rgb), 0.09);
+  transition: width 0.6s ease;
+}
+
+.blip-poll__bar--mine .blip-poll__fill {
+  background: color-mix(in srgb, var(--blip) 55%, transparent);
+}
+
+.blip-poll__label,
+.blip-poll__pct {
+  position: relative;
+  min-width: 0;
+}
+
+.blip-poll__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blip-poll__you {
+  color: var(--blip-ink);
+}
+
+.blip-poll__pct {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.blip-poll__foot,
+.blip-poll__then,
+.blip-poll__next {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.blip-poll__foot b {
+  color: var(--blip-ink);
+}
+
+.blip-poll__then {
+  margin-top: auto;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.blip-poll__then b {
+  color: var(--ink);
+}
+
+.blip-poll__next {
+  color: var(--blip-ink);
+}
+
+.blip-poll__signin {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blip-ink);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+/* ---------- his hello, once a day, from the corner ---------- */
+
+.blip-hello {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  animation: blip-hello-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes blip-hello-in {
+  from {
+    transform: translateY(120%);
+    opacity: 0;
+  }
+}
+
+.blip-hello__bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 15rem;
+  margin-bottom: 3.2rem;
+  padding: 0.65rem 0.9rem;
+  border: 0;
+  border-radius: 1rem 1rem 0.3rem 1rem;
+  background: #f4fbf9;
+  color: #0e2a26;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.blip-hello__q {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #3b5d57;
+}
+
+.blip-hello__blip {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.blip-hello__blip svg {
+  display: block;
+  width: 4.6rem;
+  height: 4.8rem;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.3));
+}
+
+.blip-hello__blip .blip-figure__arm {
+  transform-box: fill-box;
+  transform-origin: 80% 90%;
+  animation: blip-wave 0.9s ease-in-out 3;
+}
+
+@keyframes blip-wave {
+  50% {
+    rotate: 40deg;
+  }
+}
+
+.blip-hello__close {
+  position: absolute;
+  top: -0.6rem;
+  right: -0.4rem;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.blip-hello__close svg {
+  width: 0.7rem;
+  height: 0.7rem;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* Over the phone's tab bar. */
+@media (max-width: 56rem) {
+  .blip-hello {
+    right: 0.8rem;
+    bottom: calc(5.8rem + env(safe-area-inset-bottom));
+  }
+
+  .blip-hello__bubble {
+    max-width: 12.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blip-hello,
+  .blip-hello__blip .blip-figure__arm,
+  .blip-poll__fill {
+    animation: none;
+    transition: none;
+  }
+}

@@ -52,6 +52,8 @@ const ICON_PATHS: Record<Exclude<LineIcon, 'ticket' | 'prize'>, string> = {
   bug: 'M12 7.5a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0v-4a4 4 0 0 1 4-4zM12 7.5V5.5M9.2 4l1.6 2M14.8 4l-1.6 2M8 12H4.5M19.5 12H16M8 16H5.5M18.5 16H16',
   calendar: 'M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v10a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5zM16 3v4M8 3v4M4 10h16',
   season: 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z',
+  // Blip: his round body and the spark over his head.
+  blip: 'M12 9a6 6 0 1 1 0 12 6 6 0 0 1 0-12zM12 3.5v2M10.2 14.5h.01M13.8 14.5h.01',
 }
 
 type Load = { days: HistoryDay[]; next: number | null; status: 'loading' | 'ready' | 'error'; more: 'idle' | 'loading' | 'error' }

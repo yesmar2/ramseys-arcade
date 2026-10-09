@@ -97,7 +97,7 @@ export function lineTime(at: number): string {
 /* ------------------------------------------------------------ lines --- */
 
 /** What stands beside a line: its game's picture, or one of these. */
-export type LineIcon = 'bug' | 'calendar' | 'season' | 'ticket' | 'prize'
+export type LineIcon = 'bug' | 'calendar' | 'season' | 'blip' | 'ticket' | 'prize'
 
 export type HistoryPart = { amount: number; words: string }
 
@@ -232,6 +232,10 @@ function otherRow(line: LedgerLine): HistoryRow {
         sub: level ? `Season ${level[1]}` : goal ? `Season ${goal[1]}` : null,
         words: level ? `Level ${level[2]}` : 'A season goal',
       }
+    }
+    case 'poll': {
+      const n = /^poll:(\d+)$/.exec(line.ref)?.[1]
+      return { ...row, game: null, icon: 'blip', title: 'Blip’s question', sub: n ? `#${n}` : null, words: 'Answered' }
     }
     case 'daily':
       return { ...row, sub: 'the day’s event', words: 'Played the event' }

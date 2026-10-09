@@ -40,6 +40,7 @@ const AdminCaveBook = lazyPage(() => import('../components/AdminCaveBook').then(
 const AdminHillsBook = lazyPage(() => import('../components/AdminHillsBook').then((m) => m.AdminHillsBook))
 const AdminGauntletBook = lazyPage(() => import('../components/AdminGauntletBook').then((m) => m.AdminGauntletBook))
 const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
+const AdminBlipPolls = lazyPage(() => import('../components/AdminBlipPolls').then((m) => m.AdminBlipPolls))
 
 const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: string }[] = [
   {
@@ -231,6 +232,7 @@ export function AdminPage({ section }: { section?: AdminSection }) {
                 <AdminSeasonPreview />
                 <DailyGamesCard />
                 <BugHuntCard />
+                <AdminBlipPolls />
                 <FeedbackCard />
                 <ErrorsCard />
                 <FlagsCard />
