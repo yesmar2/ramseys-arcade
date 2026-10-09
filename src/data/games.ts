@@ -1,5 +1,6 @@
 import type { DeviceType } from '../lib/device'
 import { formatDeviceList } from '../lib/device'
+import { LIVE_SITE } from '../lib/liveSite'
 
 /** What kind of game it is, for the home page's tabs. */
 export type GameTag = 'arcade' | 'puzzle' | 'quick' | 'sport'
@@ -313,6 +314,9 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
     daily: true,
+    // Held back on the live site only (Ramsey, 2026-10-09: "i want to hide wobble run on production for now"):
+    // off every listing and the Dailies there, while staging keeps it. The API's LIVE_ON_DECK_GAMES too.
+    onDeck: LIVE_SITE,
   },
 ]
 
