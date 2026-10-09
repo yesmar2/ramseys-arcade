@@ -13,10 +13,10 @@ const anchor = (day: string) => day
 const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
 
 // The name is the plan's, so a card has it without laying the course.
-const title = (day: string) => `#${gauntletNumber(day)} ${dailyGauntlet(day).name}`
+export const title = (day: string) => `#${gauntletNumber(day)} ${dailyGauntlet(day).name}`
 
 // The day's rounds to the Blip star cover the box, sky and all: the plan's round code is all it needs.
-const art = (day: string) => {
+export const art = (day: string) => {
   const gauntlet = dailyGauntlet(day)
   return <GauntletDrawing gauntlet={gauntlet} name={gauntlet.name} w={640} h={320} />
 }

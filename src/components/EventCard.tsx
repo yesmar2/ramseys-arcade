@@ -12,6 +12,7 @@ import {
   type PodiumEntry,
   type TournamentFormat,
   type TournamentSummary,
+  eventScoreText,
 } from '../lib/tournaments'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
@@ -219,8 +220,8 @@ export function EventKicker({
  * just names: its points only add up the places, and the event page has each
  * game's score.
  */
-function podiumValue(row: PodiumEntry): string | null {
-  return row.score != null ? row.score.toLocaleString() : null
+function podiumValue(row: PodiumEntry, games: readonly string[]): string | null {
+  return row.score != null ? eventScoreText(games, row.score) : null
 }
 
 function cardClock(t: TournamentSummary): ReactNode {
@@ -321,7 +322,7 @@ export function EventLiveCard({
         <ol className="evc__leaders">
           {podium.slice(0, 3).map((row) => {
             const medal = medalKind(row.place)
-            const value = podiumValue(row)
+            const value = podiumValue(row, t.games)
             return (
               <li key={row.name} className={`evc__leader evc__leader--${row.place}`}>
                 <span className="evc__pos">
@@ -356,7 +357,7 @@ export function EventResultRow({ t, href }: { t: TournamentSummary; href?: strin
   const podium = t.podium ?? []
   const top = podium[0]
   const winner = t.winner ?? top?.name ?? null
-  const value = top ? podiumValue(top) : null
+  const value = top ? podiumValue(top, t.games) : null
   const cadence = cadenceLabel(t.cadence)
   const meta = [
     eventDay(t),

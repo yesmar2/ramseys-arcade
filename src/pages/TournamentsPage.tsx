@@ -85,7 +85,9 @@ import {
   type StandingRow,
   type TournamentDetail,
   type TournamentSummary,
+  eventScoreText,
 } from '../lib/tournaments'
+import { eventCourseTitle } from '../lib/eventCourses'
 import '../styles/evp.css'
 
 async function fetchTournamentDetail(
@@ -149,7 +151,7 @@ function yourStandingScore(detail: TournamentDetail, displayName: string): strin
     const hit = scoredStandings(detail).find(
       ({ row }) => normalizePlayerName(row.name) === youName,
     )
-    return hit ? hit.score.toLocaleString() : null
+    return hit ? eventScoreText(detail.games, hit.score) : null
   }
   if (detail.format === 'place-points') return null
   const row = detail.standings.find((r) => normalizePlayerName(r.name) === youName)
@@ -389,7 +391,7 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
     const runnersUp = rows
       .filter((r) => r.cells.some((c) => c.score != null))
       .slice(1, 3)
-      .map((r) => (allRound ? r.name : `${r.name} on ${r.total.toLocaleString()}`))
+      .map((r) => (allRound ? r.name : `${r.name} on ${eventScoreText(detail.games, r.total)}`))
       .join(' and ')
     return (
       <div className="evp-banner__side">
@@ -397,6 +399,7 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
           winner={normalizePlayerName(winner)}
           avatarId={top?.avatarId ?? single?.row.avatarId}
           total={single ? single.score : top && !allRound ? top.total : null}
+          games={detail.games}
           mine={normalizePlayerName(winner) === normalizePlayerName(displayName)}
           runnersUp={runnersUp ? `Ahead of ${runnersUp}` : null}
         />
@@ -717,7 +720,7 @@ function SingleStandings({ detail, displayName }: { detail: TournamentDetail; di
         name={name}
         href={rankHref(name)}
         avatarId={row.avatarId}
-        score={score.toLocaleString()}
+        score={eventScoreText(detail.games, score)}
         mine={Boolean(youName) && name === youName}
         pinned={pin}
       />
@@ -1166,7 +1169,8 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
             const status =
               detail.status === 'upcoming' ? 'Not started yet' : playAttemptsLabel(detail, slug, joined, displayName)
             const locked = detail.status === 'upcoming' || (joined && status === 'No tries left')
-            return { slug, href: locked ? null : tournamentPlayHref(detail.id, slug, playInvite), status }
+            const course = detail.course != null ? eventCourseTitle(slug, detail.course) : undefined
+            return { slug, href: locked ? null : tournamentPlayHref(detail.id, slug, playInvite), status, course }
           })
     const lesson = ended ? skipLesson(detail) : previous ? skipLesson(previous) : null
     const next = ended

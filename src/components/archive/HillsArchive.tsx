@@ -14,10 +14,10 @@ const anchor = (day: string) => day
 const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
 
 // The name is the plan's, so a card has it without laying its hills.
-const title = (day: string) => `#${hillsNumber(day)} ${dailyHills(day).name}`
+export const title = (day: string) => `#${hillsNumber(day)} ${dailyHills(day).name}`
 
 // The day's postcard covers its box, sky and all.
-const art = (day: string) => <HillsPostcard hills={swoopDay(day).hills} w={640} h={320} />
+export const art = (day: string) => <HillsPostcard hills={swoopDay(day).hills} w={640} h={320} />
 
 /**
  * Swoop's past hills: every day's hills before today's, newest first. Each keeps an All time board of its own

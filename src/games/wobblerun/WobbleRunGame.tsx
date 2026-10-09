@@ -1622,6 +1622,9 @@ function WobbleRunDay({
                     onAgain={start}
                     onDone={toMenu}
                   />
+                ) : tournament ? (
+                  // In an event, its card: a past course's run counts for the event, not the course's board.
+                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={result.score} onDone={toMenu} />
                 ) : past ? (
                   <PastGauntletResult
                     wobble={wobble}
@@ -1638,8 +1641,6 @@ function WobbleRunDay({
                     }}
                     onAgain={start}
                   />
-                ) : tournament ? (
-                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={result.score} onDone={toMenu} />
                 ) : (
                   <ScoreSaveCard
                     gameSlug={SLUG}

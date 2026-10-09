@@ -21,6 +21,8 @@ import {
 } from '../lib/tournaments'
 import { tournamentHref } from '../hooks/useHashRoute'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
+import { EVENT_COURSES } from '../lib/eventCourses'
+import { isRaceEventGame, type RaceEventGame } from '../lib/tournaments'
 
 /*
  * Every game that can be played inside an event. Each of these reads the
@@ -33,6 +35,9 @@ import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
  * this page mounts, while the event detail is still on its way, so by the
  * time the gate opens the game is usually already here.
  */
+/** What a racing daily is handed to race a past course: Hot Lap's past tracks come in as testDay, the rest as practiceDay. */
+type CourseProps = { practiceDay?: string | null; testDay?: string | null }
+
 const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
   asteroids: lazyPage(() => import('../games/asteroids/AsteroidsGame').then((m) => m.AsteroidsGame)),
   barrage: lazyPage(() => import('../games/barrage/BarrageGame').then((m) => m.BarrageGame)),
@@ -43,7 +48,6 @@ const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
   putt: lazyPage(() => import('../games/putt/PuttGame').then((m) => m.PuttGame)),
   findbug: lazyPage(() => import('../games/findbug/FindBugGame').then((m) => m.FindBugGame)),
   fireflies: lazyPage(() => import('../games/fireflies/FirefliesGame').then((m) => m.FirefliesGame)),
-  hotlap: lazyPage(() => import('../games/hotlap/HotLapGame').then((m) => m.HotLapGame)),
   patriot: lazyPage(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
   pellets: lazyPage(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
   pileup: lazyPage(() => import('../games/pileup/PileupGame').then((m) => m.PileupGame)),
@@ -52,6 +56,15 @@ const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
   simon: lazyPage(() => import('../games/simon/SimonGame').then((m) => m.SimonGame)),
   snake: lazyPage(() => import('../games/snake/SnakeGame').then((m) => m.SnakeGame)),
   stacker: lazyPage(() => import('../games/stacker/StackerGame').then((m) => m.StackerGame)),
+}
+
+/** The racing dailies, for an event raced on one of their courses: each is handed the course's day to race. */
+const RACE_TOURNAMENT_GAMES: Record<RaceEventGame, LazyPage<CourseProps>> = {
+  hotlap: lazyPage(() => import('../games/hotlap/HotLapGame').then((m) => m.HotLapGame)),
+  marblerun: lazyPage(() => import('../games/marblerun/MarbleRunGame').then((m) => m.MarbleRunGame)),
+  lander: lazyPage(() => import('../games/lander/LanderGame').then((m) => m.LanderGame)),
+  swoop: lazyPage(() => import('../games/swoop/SwoopGame').then((m) => m.SwoopGame)),
+  wobblerun: lazyPage(() => import('../games/wobblerun/WobbleRunGame').then((m) => m.WobbleRunGame)),
 }
 
 export function TournamentPlayPage({
@@ -76,7 +89,8 @@ export function TournamentPlayPage({
   const [triesLeft, setTriesLeft] = useState<number | null>(null)
 
   const game = getGame(gameSlug)
-  const Game = TOURNAMENT_GAMES[gameSlug]
+  const RaceGame = isRaceEventGame(gameSlug) ? RACE_TOURNAMENT_GAMES[gameSlug] : null
+  const Game = RaceGame ?? TOURNAMENT_GAMES[gameSlug]
   const accentStyle = gameAccentStyle(gameSlug)
   const backHref = tournamentHref(tournamentId, invite ?? getTournamentInvite(tournamentId) ?? undefined)
 
@@ -175,6 +189,18 @@ export function TournamentPlayPage({
    */
   const tryName = normalizePlayerName(playerName)
   const countsAtStart = Boolean(ready && detail && triesCountAtStart(detail))
+  // A racing daily's event is raced on its course: a past one is handed to the game as the day to race, as the
+  // game's own past-course page hands it; today's needs nothing.
+  const courseNumber = detail?.course ?? null
+  const courseProps: CourseProps = {}
+  if (courseNumber != null && isRaceEventGame(gameSlug)) {
+    const src = EVENT_COURSES[gameSlug]
+    const day = src.dayOf(courseNumber)
+    if (day !== src.today()) {
+      if (gameSlug === 'hotlap') courseProps.testDay = day
+      else courseProps.practiceDay = day
+    }
+  }
   useEffect(() => {
     if (!countsAtStart || !tryName) return
     openRunsThrough(gameSlug, () =>
@@ -336,12 +362,13 @@ export function TournamentPlayPage({
           (countsAtStart ? (detail.rules.maxAttempts ?? null) : null),
         canPlay: detail.playerStatus?.canPlay ?? detail.kind !== 'bracket',
         triesAtStart: countsAtStart,
+        course: courseNumber,
       }}
     >
       <main className="game-page game-page--fullscreen tour-play">
         {Game ? (
           <Suspense fallback={<p className="tour-play__message">Loading {game?.name ?? gameSlug}…</p>}>
-            <Game />
+            {RaceGame ? <RaceGame {...courseProps} /> : <Game />}
           </Suspense>
         ) : null}
       </main>

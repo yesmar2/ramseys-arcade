@@ -11,6 +11,8 @@ export type TournamentPlayInfo = {
   canPlay: boolean
   /** The event spends a try the moment its run starts. */
   triesAtStart: boolean
+  /** A racing daily's event: the course it's raced on, sent with each run. */
+  course?: number | null
 }
 
 const TournamentPlayContext = createContext<TournamentPlayInfo | null>(null)

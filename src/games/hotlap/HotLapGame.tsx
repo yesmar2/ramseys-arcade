@@ -1186,7 +1186,10 @@ function HotLapDay({
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && lap ? (
-                pastTrack ? (
+                tournament ? (
+                  // In an event, its card: a past course's run counts for the event, not the course's board.
+                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={lap.score} onDone={toMenu} />
+                ) : pastTrack ? (
                   <PastTrackResult
                     course={course}
                     time={lap.time}
@@ -1211,8 +1214,6 @@ function HotLapDay({
                     onAgain={start}
                     onDone={toMenu}
                   />
-                ) : tournament ? (
-                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={lap.score} onDone={toMenu} />
                 ) : (
                   <ScoreSaveCard
                     gameSlug={SLUG}

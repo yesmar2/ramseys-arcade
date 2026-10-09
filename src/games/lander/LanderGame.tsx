@@ -1220,6 +1220,9 @@ function LanderDayGame({
                     onAgain={start}
                     onDone={toMenu}
                   />
+                ) : tournament ? (
+                  // In an event, its card: a past course's run counts for the event, not the course's board.
+                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={run.score} onDone={toMenu} />
                 ) : past ? (
                   <PastCaveResult
                     lander={lander}
@@ -1236,8 +1239,6 @@ function LanderDayGame({
                     }}
                     onAgain={start}
                   />
-                ) : tournament ? (
-                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={run.score} onDone={toMenu} />
                 ) : (
                   <ScoreSaveCard
                     gameSlug={SLUG}

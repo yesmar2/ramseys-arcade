@@ -14,10 +14,10 @@ const anchor = (day: string) => day
 const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
 
 // The name is the plan's, so a card has it without laying its course.
-const title = (day: string) => `#${courseNumber(day)} ${dailyCourse(day).name}`
+export const title = (day: string) => `#${courseNumber(day)} ${dailyCourse(day).name}`
 
 // The drawing is 16:10 on its own dark: its box wears that dark round it (dailyPast.css).
-const art = (day: string) => (
+export const art = (day: string) => (
   <span className="dp-art__ground dp-art__ground--marble">
     <CourseDrawing course={marbleDay(day).course} />
   </span>
