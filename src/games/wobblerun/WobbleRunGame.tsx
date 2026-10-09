@@ -1,4 +1,5 @@
 import '../../styles/wobblerun.css'
+import { noteCourseBest } from '../../lib/courseBests'
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -1018,6 +1019,8 @@ function WobbleRunDay({
         ...(skin ? { skin } : {}),
         runId: past ? runIdFor(SLUG) : null,
       }
+      // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
+      if (!lab && !test) noteCourseBest(SLUG, gauntletNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       splitShown(g, splits.length - 1)
       // The star's fanfare is the run's own sound (audio.ts, on the engine's `crown` event).
       haptic('boost')

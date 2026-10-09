@@ -1,4 +1,5 @@
 import '../../styles/hotlap.css'
+import { noteCourseBest } from '../../lib/courseBests'
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -701,6 +702,8 @@ function HotLapDay({
         keepBestLap(g.day, g.test, g.owner, { time, splits: [...run.splits], ghost: g.record, ...(skinRef.current ? { skin: skinRef.current } : {}) })
       }
       g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved, run: g.past ? runIdFor(SLUG) : null, path: g.record }
+      // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
+      if (!g.test) noteCourseBest(SLUG, trackNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
     }

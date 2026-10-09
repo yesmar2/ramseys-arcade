@@ -1,4 +1,5 @@
 import '../../styles/lander.css'
+import { noteCourseBest } from '../../lib/courseBests'
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -717,6 +718,8 @@ function LanderDayGame({
         path,
         runId: past ? runIdFor(SLUG) : null,
       }
+      // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
+      if (!lab && !test) noteCourseBest(SLUG, caveNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
     }

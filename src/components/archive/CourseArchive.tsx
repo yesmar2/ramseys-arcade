@@ -31,7 +31,7 @@ export function CourseArchive() {
   const today = courseDay()
   const viewer = usePastViewer()
   const boards = usePastBoards(SLUG, viewer.name, today, courseNumber)
-  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards, pace }), [today, boards])
+  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards, pace, courseNumber: courseNumber }), [today, boards])
   return <PastCourses source={source} />
 }
 

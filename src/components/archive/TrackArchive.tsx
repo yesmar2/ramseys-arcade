@@ -59,6 +59,7 @@ export function TrackArchive() {
       art,
       boards,
       pace,
+      courseNumber: trackNumber,
     }),
     [today, boards],
   )

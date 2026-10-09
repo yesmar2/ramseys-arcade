@@ -29,7 +29,7 @@ export function GauntletArchive() {
   const today = gauntletDay()
   const viewer = usePastViewer()
   const boards = usePastBoards(SLUG, viewer.name, today, gauntletNumber)
-  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards, pace }), [today, boards])
+  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards, pace, courseNumber: gauntletNumber }), [today, boards])
   return <PastCourses source={source} />
 }
 

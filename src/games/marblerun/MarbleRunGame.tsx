@@ -1,4 +1,5 @@
 import '../../styles/marblerun.css'
+import { noteCourseBest } from '../../lib/courseBests'
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -726,6 +727,8 @@ function MarbleRunDay({
         ...(skin ? { skin } : {}),
         runId: past ? runIdFor(SLUG) : null,
       }
+      // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
+      if (!lab && !test) noteCourseBest(SLUG, courseNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
     }
