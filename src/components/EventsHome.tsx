@@ -19,6 +19,7 @@ import {
   isUnlimitedDuration,
   type TournamentDetail,
   type TournamentSummary,
+  eventScoreText,
 } from '../lib/tournaments'
 import { EventArt, eventAccent } from './EventCard'
 import { EventScreen } from './EventScreen'
@@ -330,7 +331,7 @@ export function LastWeekCard({
                 <PlayerAvatar name={p!.name} avatarId={avatars.get(normalizePlayerName(p!.name))} size="md" />
                 <span className="evp-podium__name">{p!.name}</span>
                 {/* A one-game event's score; an all-round one's podium is names and places. */}
-                {p!.score != null ? <span className="evp-podium__pts">{p!.score.toLocaleString()}</span> : null}
+                {p!.score != null ? <span className="evp-podium__pts">{eventScoreText(t.games, p!.score)}</span> : null}
               </a>
               <span className="evp-podium__block">{ordinal(p!.place)}</span>
             </li>
@@ -549,7 +550,7 @@ export function ResultsList({
                     <TrophyIcon />
                     <b>{winner}</b>
                     {/* A one-game event's winning score; an all-round one's winner is enough. */}
-                    {top?.score != null ? <span className="evp-result__score">{top.score.toLocaleString()}</span> : null}
+                    {top?.score != null ? <span className="evp-result__score">{eventScoreText(t.games, top.score)}</span> : null}
                   </span>
                 ) : null}
               </a>

@@ -15,6 +15,8 @@ export type PlanLimits = {
   maxDraw: number
   doubleElimination: boolean
   multiGameRounds: boolean
+  /** An event on a past course of a racing daily, not only today's. */
+  anyCourse: boolean
 }
 
 /** Which allowance a refusal was about. */
@@ -33,6 +35,7 @@ export const FREE_LIMITS: PlanLimits = {
   maxDraw: 8,
   doubleElimination: false,
   multiGameRounds: false,
+  anyCourse: false,
 }
 
 /** Plus's, as the API's plans.ts has them: what the Plus page puts beside the free set. */
@@ -43,6 +46,7 @@ export const PLUS_LIMITS: PlanLimits = {
   maxDraw: 64,
   doubleElimination: true,
   multiGameRounds: true,
+  anyCourse: true,
 }
 
 export const PLUS_PRICE = '$2.99/mo'
@@ -68,4 +72,5 @@ export const PLAN_UPSELL: Record<PlanLimitKind, string> = {
   maxDraw: 'Draws of up to 64 players',
   doubleElimination: 'Double elimination, so one loss is not the end',
   multiGameRounds: 'A different game every round',
+  anyCourse: 'Events on any past track, not just today’s',
 }

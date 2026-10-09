@@ -112,6 +112,8 @@ export type PastSource = {
   resultHere?: (day: string) => boolean
   /** A racing daily's blue time that day, in seconds: its card shows your medal against it (lib/raceMedals.ts). */
   pace?: (day: string) => number
+  /** A racing daily's course number for a day, as its boards number it: your best on it (lib/courseBests.ts). */
+  courseNumber?: (day: string) => number
 }
 
 /** Cards are paged in this many at a time: three rows of four. */

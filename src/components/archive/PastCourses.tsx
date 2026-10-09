@@ -22,7 +22,9 @@ import { BOARD_NAMES, boardTip, dailyWords, type PastBoard, type PastKind } from
 import { formatLeaderboardScore } from '../../lib/leaderboardFormat'
 import { ordinal } from '../../lib/profileMath'
 import { isRaceGame, MEDAL_NAMES, medalFor, paceMsOf, type Medal } from '../../lib/raceMedals'
+import { useCourseBests } from '../../lib/courseBests'
 import { BoardEmpty } from '../BoardChrome'
+import { CardBadge, CardMedals, chaseWords, MedalShelf, medalFilterKeeps, type CourseMedal, type MedalFilter } from './MedalShelf'
 import { MedalIcon } from '../RaceMedal'
 import { BoardsIcon, LockIcon, PlayIcon } from '../chromeIcons'
 import { InfoTip } from '../InfoTip'
@@ -220,6 +222,7 @@ function PastCard({
   hunt,
   archiveOpen,
   onOpen,
+  courseMedal,
 }: {
   source: PastSource
   day: string
@@ -233,6 +236,8 @@ function PastCard({
   /** Whether the viewer may play archived days: Plus. Undefined while who's signed in isn't known. */
   archiveOpen: boolean | undefined
   onOpen: (day: string) => void
+  /** A racing daily's course: your best medal on it, from any run, and the next one (MedalShelf.tsx). */
+  courseMedal?: CourseMedal
 }) {
   const { slug, boards, art: drawArt } = source
   const words = dailyWords(slug)
@@ -245,6 +250,8 @@ function PastCard({
   const showYou = viewer.state === 'in'
   const kind = kindOf(source, day, entry, board, daysState, viewer)
   const locked = archiveOpen === false && inArchive(day, source.today)
+  // A medal still to chase on it: the way in says which.
+  const chase = courseMedal && isRaceGame(slug) ? chaseWords(slug, courseMedal) : null
 
   // Ranked: your place that day, or who was 1st. On a daily just for fun (data/games.ts Game.ranked), there's
   // no place and no 1st: only your own result, and the card opens no boards.
@@ -278,6 +285,7 @@ function PastCard({
     <li ref={ref} id={`course-${source.anchor(day)}`} tabIndex={-1} className={`pc${here ? ' pc--here' : ''}`} data-hunt={hunt}>
       <div className="pc-stage" aria-hidden="true">
         <span className="dp-art pc-art">{art}</span>
+        {courseMedal?.medal ? <CardBadge medal={courseMedal.medal} /> : null}
         {rankedGame ? (
           <span className="pc-boards">
             <BoardsIcon />
@@ -314,6 +322,7 @@ function PastCard({
           </div>
         ) : null}
       </dl>
+      {courseMedal && isRaceGame(slug) ? <CardMedals game={slug} slug={slug} medal={courseMedal} locked={locked} /> : null}
       <div className="pc-go">
         {locked ? (
           // Its play page says what the archive is, with the way to Plus.
@@ -322,9 +331,9 @@ function PastCard({
             Plus
           </a>
         ) : (
-          <a className="pc-play" href={source.playHref(day)} aria-label={`${words.verb} ${title}`}>
+          <a className="pc-play" href={source.playHref(day)} aria-label={`${chase ?? words.verb} ${title}`}>
             <PlayIcon />
-            {words.verb}
+            {chase ?? words.verb}
           </a>
         )}
         {kind === 'practice' && !locked ? (
@@ -347,7 +356,30 @@ export function PastCourses({ source }: { source: PastSource }) {
   const archiveOpen = useArchiveOpen()
   const daysState: DaysState = days ? 'ok' : failed ? 'failed' : 'wait'
   const byDay = useMemo(() => new Map((days ?? []).map((d) => [d.day, d])), [days])
-  const courses = useMemo(() => pastDays(today, first), [today, first])
+  const allCourses = useMemo(() => pastDays(today, first), [today, first])
+  // A racing daily's medals: your best on each course, from your best kept by the API (any run on it), the day's
+  // and the course's All time board, against its blue (lib/raceMedals.ts).
+  const race = isRaceGame(slug) && source.pace && source.courseNumber && viewer.state === 'in' ? slug : null
+  const bests = useCourseBests(race)
+  const medals = useMemo(() => {
+    if (!race || !source.pace || !source.courseNumber) return null
+    const out = new Map<string, CourseMedal>()
+    for (const day of allCourses) {
+      const fromScore = (score: number | undefined) => (score != null ? 1_000_000 - score : null)
+      const tries = [bests?.get(source.courseNumber(day)) ?? null, fromScore(byDay.get(day)?.you?.score), fromScore(boards?.rows?.get(day)?.you?.score)]
+      const ms = tries.reduce<number | null>((best, t) => (t != null && t > 0 && (best == null || t < best) ? t : best), null)
+      const paceMs = paceMsOf(source.pace(day))
+      out.set(day, { ms, medal: medalFor(race, paceMs, ms), paceMs })
+    }
+    return out
+  }, [race, source, allCourses, bests, byDay, boards?.rows])
+  const [filter, setFilter] = useState<MedalFilter>('all')
+  const courses = useMemo(
+    () => (medals && filter !== 'all' ? allCourses.filter((day) => medalFilterKeeps(filter, medals.get(day))) : allCourses),
+    [allCourses, medals, filter],
+  )
+  // Older courses aren't a free player's to race again: the shelf says how many, with the way to Plus.
+  const lockedCount = archiveOpen === false ? allCourses.filter((day) => inArchive(day, today)).length : 0
   const [shown, setShown] = useState(PAST_PAGE)
   const [target, setTarget] = useState<{ key: string } | null>(null)
   const [here, setHere] = useState<string | null>(null)
@@ -401,7 +433,7 @@ export function PastCourses({ source }: { source: PastSource }) {
     return () => window.clearTimeout(timer)
   }, [target, settled, shown, courses, today, anchorOf])
 
-  const count = courses.length
+  const count = allCourses.length
   const listed = courses.slice(0, shown)
   const howTitle = pastHowTitle(slug)
   const signedIn = viewer.state !== 'out'
@@ -443,6 +475,14 @@ export function PastCourses({ source }: { source: PastSource }) {
         </p>
       ) : null}
 
+      {medals && count ? (
+        <MedalShelf game={slug} courses={allCourses} medals={medals} filter={filter} onFilter={setFilter} locked={lockedCount} />
+      ) : null}
+
+      {count && !courses.length ? (
+        <p className="dp-oops">None here. <button type="button" className="dp-link-btn" onClick={() => setFilter('all')}>Show all</button></p>
+      ) : null}
+
       {count ? (
         <>
           <ol className="pc-grid">
@@ -462,16 +502,17 @@ export function PastCourses({ source }: { source: PastSource }) {
                 hunt={i === 0 && !isRankedGame(slug) ? `r-head-${slug}` : undefined}
                 archiveOpen={archiveOpen}
                 onOpen={setOpened}
+                courseMedal={medals?.get(day)}
               />
             ))}
           </ol>
-          {count > listed.length ? (
+          {courses.length > listed.length ? (
             <div className="dp-more">
               <button type="button" className="dp-more__btn" onClick={() => setShown((n) => n + PAST_PAGE)}>
                 Show more
               </button>
               <span className="dp-more__count">
-                Showing {listed.length.toLocaleString()} of {count.toLocaleString()} {coursesWord(slug)}
+                Showing {listed.length.toLocaleString()} of {courses.length.toLocaleString()} {coursesWord(slug)}
               </span>
             </div>
           ) : null}

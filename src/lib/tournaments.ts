@@ -1,4 +1,5 @@
 import { isGameListed } from '../data/games'
+import { formatLeaderboardScore, isTimeBoard } from './leaderboardFormat'
 import { noteTicketsPaid } from './tickets'
 import { isImpersonating } from './impersonate'
 import { runIdFor } from './runSession'
@@ -94,6 +95,8 @@ export type TournamentSummary = {
    * locks — a filling bracket has no pairings yet, by design.
    */
   openMatches?: { a: string; b: string }[]
+  /** A racing daily's event: the course it's raced on, numbered as the game's boards number them. */
+  course?: number | null
   /** Where the viewer stands, when they asked by name. */
   yourPlace?: number | null
   yourPoints?: number | null
@@ -124,10 +127,37 @@ export const EVENT_GAMES = [
   'fireflies',
   'pileup',
 ] as const
-export type EventGame = (typeof EVENT_GAMES)[number]
+/**
+ * The racing dailies, which an event can take on one course (Ramsey, 2026-10-09: "maybe for plus users we can
+ * allow them to choose from previous tracks and stuff?", then "go with a"): the game alone, raced on the course
+ * the host picks, today's or a past one, so every time in it is on the same track. Today's and the last week's
+ * are anyone's; older ones a Plus host's (PlanLimits.anyCourse). The API checks it all (tournaments.ts
+ * eventCourse).
+ */
+export const RACE_EVENT_GAMES = ['hotlap', 'marblerun', 'lander', 'swoop', 'wobblerun'] as const
+export type RaceEventGame = (typeof RACE_EVENT_GAMES)[number]
+
+export type EventGame = (typeof EVENT_GAMES)[number] | RaceEventGame
 
 /** The games a new event can be made with: the event games, less any hidden or on deck. */
 export const LISTED_EVENT_GAMES: EventGame[] = EVENT_GAMES.filter((g) => isGameListed(g))
+
+/** The racing dailies a new event can be raced on, less any hidden or on deck. */
+export const LISTED_RACE_EVENT_GAMES: RaceEventGame[] = RACE_EVENT_GAMES.filter((g) => isGameListed(g))
+
+export function isRaceEventGame(slug: string): slug is RaceEventGame {
+  return (RACE_EVENT_GAMES as readonly string[]).includes(slug)
+}
+
+/**
+ * An event's score as its page says it: a one-game event on a time-scored game (a racing daily's, raced on its
+ * course) as a time, the way its boards show it, rather than the inverted number it's kept as; any other as
+ * points.
+ */
+export function eventScoreText(games: readonly string[], score: number): string {
+  const only = games.length === 1 ? games[0]! : null
+  return only && isTimeBoard(only) ? formatLeaderboardScore(only, score) : score.toLocaleString()
+}
 
 export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   open: 'Open · Best score',
@@ -450,6 +480,8 @@ export type CreateTournamentInput = {
   /** Bracket: games per winners round, round 1 first. */
   roundGames?: EventGame[][]
   kind?: TournamentKind
+  /** A racing daily's event: the course to race it on. */
+  course?: number
 }
 
 export function seatsLeft(t: Pick<TournamentSummary, 'playerCount' | 'rules'>): number | null {
@@ -967,6 +999,8 @@ export async function submitTournamentScore(
   score: number,
   /** The run the score came from, asked for as it ended (see runIdFor). */
   run: Promise<string | undefined> = runIdFor(game),
+  /** A racing daily's run: the course it was on, for an event raced on one. */
+  course: number | null = null,
 ): Promise<{
   improved: boolean
   best: number
@@ -1003,6 +1037,7 @@ export async function submitTournamentScore(
       score,
       ...(token ? { token } : {}),
       ...(runId ? { runId } : {}),
+      ...(course != null ? { course } : {}),
       ...tournamentAccessQuery(id),
     }),
   })
@@ -1062,8 +1097,9 @@ export async function submitScoreToJoinedTournaments(
     return []
   }
 
-  // An event that spends a try as its run starts takes only runs begun from its own page.
-  const targets = active.filter((t) => joined.has(t.id) && !triesCountAtStart(t))
+  // An event that spends a try as its run starts takes only runs begun from its own page, and so does one raced
+  // on a course: the run has to be on its course, which only its own page plays.
+  const targets = active.filter((t) => joined.has(t.id) && !triesCountAtStart(t) && t.course == null)
   const results: { id: string; title: string; improved: boolean }[] = []
   for (const t of targets) {
     try {

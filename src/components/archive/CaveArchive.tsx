@@ -14,10 +14,10 @@ const anchor = (day: string) => day
 const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
 
 // The name is the plan's, so a card has it without digging its cave.
-const title = (day: string) => `#${caveNumber(day)} ${dailyCave(day).name}`
+export const title = (day: string) => `#${caveNumber(day)} ${dailyCave(day).name}`
 
 // A cave runs tall: the drawing keeps its shape on the dark of the rock round it (dailyPast.css).
-const art = (day: string) => (
+export const art = (day: string) => (
   <span className="dp-art__ground dp-art__ground--cave">
     <CaveDrawing cave={landerDay(day).cave} />
   </span>
@@ -31,7 +31,7 @@ export function CaveArchive() {
   const today = caveDay()
   const viewer = usePastViewer()
   const boards = usePastBoards(SLUG, viewer.name, today, caveNumber)
-  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards, pace }), [today, boards])
+  const source = useMemo<PastSource>(() => ({ slug: SLUG, today, first: FIRST_DAY, anchor, playHref, title, art, boards, pace, courseNumber: caveNumber }), [today, boards])
   return <PastCourses source={source} />
 }
 

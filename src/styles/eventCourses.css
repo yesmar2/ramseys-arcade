@@ -1,0 +1,138 @@
+/*
+ * The event maker's racing dailies and their course strip (EventCoursePicker.tsx): a row of the racing dailies
+ * under the other games, then the picked one's courses as cards, each its picture, name and day.
+ */
+
+.evc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+}
+
+.evc__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.8rem;
+}
+
+.evc__label {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+}
+
+.evc__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.evc__note,
+.evc__foot {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.evc__foot {
+  margin: 0;
+}
+
+.evc__courses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.evc__strip {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.15rem 0.1rem 0.5rem;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+}
+
+.evc__strip > li {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+.evc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 10.5rem;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.45rem 0.55rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--ev-line);
+  background: rgba(var(--surface-rgb), 0.6);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.evc-card:hover,
+.evc-card:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  outline: none;
+}
+
+.evc-card--on {
+  border: 2px solid var(--space-orange, #f2813a);
+  background: color-mix(in srgb, #f2813a 10%, var(--surface));
+}
+
+.evc-card__art {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border-radius: 0.6rem;
+  background: #0b1220;
+  margin-bottom: 0.2rem;
+}
+
+.evc-card__art > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.evc-card__name {
+  overflow: hidden;
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evc-card__day {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+/* The way to every older course: Plus's. */
+.evc-card--plus {
+  justify-content: center;
+  min-height: 9rem;
+  border: 1px dashed color-mix(in srgb, #f5b942 70%, transparent);
+  background: color-mix(in srgb, #f5b942 8%, var(--surface));
+}
+
+.evc-card--plus .evc-card__name {
+  white-space: normal;
+  color: color-mix(in srgb, #f5b942 60%, var(--ink));
+}

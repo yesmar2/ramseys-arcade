@@ -26,6 +26,7 @@ import { eventWinTakeover } from '../lib/winTakeover'
 import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction } from './RunReport'
 import { useLinkShare } from './ChallengeShare'
 import { WinTakeover } from './WinTakeover'
+import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { markWinsSeen } from '../lib/seenWins'
 import { isRunAssisted } from '../lib/runAchievements'
 import { runIdFor } from '../lib/runSession'
@@ -75,6 +76,8 @@ async function submitTournamentRun(
   gameSlug: string,
   name: string,
   score: number,
+  /** A racing daily's event: the course the run was on. */
+  course: number | null = null,
 ): Promise<SubmitSnapshot> {
   // A stage-jumped run is not a real attempt; report it like a zero so it
   // posts no score. (Where tries count as they start, its try is already spent.)
@@ -108,7 +111,7 @@ async function submitTournamentRun(
   const run = runIdFor(gameSlug)
   const promise = (async (): Promise<SubmitSnapshot> => {
     await joinTournament(tournamentId, name)
-    const result = await submitTournamentScore(tournamentId, name, gameSlug, score, run)
+    const result = await submitTournamentScore(tournamentId, name, gameSlug, score, run, course)
     const d = await getTournament(tournamentId, {
       playerName: name,
       game: gameSlug,
@@ -245,6 +248,8 @@ export function TournamentScoreCard({
   onDone,
 }: TournamentScoreCardProps) {
   const { signedIn, loading: authLoading } = useAuth()
+  // A racing daily's event: the course its runs are raced on.
+  const playing = useTournamentPlay()
   const impersonation = useImpersonation()
   // Saving needs an account, and acting as a tag (dev) doesn't give one: a borrowed tag left on a device
   // signed out showed "Signed in, no tag yet" and a tag box the API then refused.
@@ -296,7 +301,7 @@ export function TournamentScoreCard({
       setError(null)
 
       try {
-        const next = await submitTournamentRun(tournamentId, gameSlug, name, score)
+        const next = await submitTournamentRun(tournamentId, gameSlug, name, score, playing?.course ?? null)
         if (cancelled) return
         setSnapshot(next)
         setStatus('done')

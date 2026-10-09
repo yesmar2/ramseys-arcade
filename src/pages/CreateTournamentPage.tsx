@@ -12,7 +12,9 @@ import {
   type SetStateAction,
 } from 'react'
 import { EventArtBox } from '../components/EventsHome'
+import { EventCoursePicker } from '../components/EventCoursePicker'
 import { GameThumbArt } from '../components/GameThumbArt'
+import { EVENT_COURSES } from '../lib/eventCourses'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
 import { navigate, tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
@@ -28,6 +30,8 @@ import {
   createTournament,
   DOUBLE_ELIM_SIZES,
   LISTED_EVENT_GAMES,
+  isRaceEventGame,
+  type RaceEventGame,
   rememberTournamentInvite,
   snapToDoubleElimSize,
   type CreateTournamentInput,
@@ -286,6 +290,8 @@ export function CreateTournamentPage() {
   const [kind, setKind] = useState<TournamentKind>('scores')
   const [title, setTitle] = useState('')
   const [games, setGames] = useState<EventGame[]>(['stacker'])
+  /** A racing daily's event: the day of the course it's raced on. */
+  const [courseDay, setCourseDay] = useState<string | null>(null)
   const [maxAttempts, setMaxAttempts] = useState(3)
   const [unlimitedAttempts, setUnlimitedAttempts] = useState(false)
   const [maxPlayers, setMaxPlayers] = useState(4)
@@ -460,7 +466,25 @@ export function CreateTournamentPage() {
     closeRoundMenu(true)
   }
 
+  /** The racing daily picked, if one is: an event on one of its courses, the game on its own. */
+  const raceGame: RaceEventGame | null = games.find(isRaceEventGame) ?? null
+
+  const pickRaceGame = (slug: RaceEventGame) => {
+    setGames([slug])
+    setCourseDay(EVENT_COURSES[slug].today())
+    // A bracket on it plays every round on it, on the one course.
+    if (isBracket) setRoundGames((prev) => prev.map(() => [slug]))
+  }
+
   const toggleGame = (slug: EventGame) => {
+    // From a racing daily back to the other games: this one alone, to add to (a bracket takes it below).
+    if (raceGame) {
+      setCourseDay(null)
+      if (!isBracket) {
+        setGames([slug])
+        return
+      }
+    }
     if (isBracket) {
       // The whole draw on this game: every round of it, whatever the plan was.
       setGames([slug])
@@ -530,6 +554,7 @@ export function CreateTournamentPage() {
         maxPlayers: isBracket || !unlimitedPlayers ? maxPlayers : 0,
         durationHours: isBracket ? 0 : durationHours,
         ...(isBracket ? { roundPlayHours, elimination } : {}),
+        ...(raceGame && courseDay ? { course: EVENT_COURSES[raceGame].numberOf(courseDay) } : {}),
         kind,
       }
       const created = await createTournament(input)
@@ -745,7 +770,16 @@ export function CreateTournamentPage() {
                       )
                     })}
                   </div>
-                  {isBracket && limits.multiGameRounds ? (
+                  {/* A bracket too (Ramsey, 2026-10-09: "looks like the dailies aren't available for bracket"). */}
+                  <EventCoursePicker
+                    picked={raceGame}
+                    day={courseDay}
+                    anyCourse={Boolean(limits?.anyCourse)}
+                    onPickGame={pickRaceGame}
+                    onPickDay={setCourseDay}
+                  />
+                  {/* A racing daily's bracket is that game every round, on its one course. */}
+                  {isBracket && limits.multiGameRounds && !raceGame ? (
                     <>
                       {planDiverged ? (
                         <button

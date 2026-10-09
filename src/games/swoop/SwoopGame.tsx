@@ -1,4 +1,5 @@
 import '../../styles/swoop.css'
+import { noteCourseBest } from '../../lib/courseBests'
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -724,6 +725,8 @@ function SwoopDayGame({
         ...(skin ? { skin } : {}),
         runId: past ? runIdFor(SLUG) : null,
       }
+      // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
+      if (!test) noteCourseBest(SLUG, hillsNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       // On down the flat past the line, for looks.
       g.coast = { hills: { ...hills, finish: Infinity, flags: [] }, bird: { ...b, done: false, splits: [] } }
       sfx(improved ? 'perfect' : 'good')
@@ -1165,6 +1168,9 @@ function SwoopDayGame({
                     onAgain={start}
                     onDone={toMenu}
                   />
+                ) : tournament ? (
+                  // In an event, its card: a past course's run counts for the event, not the course's board.
+                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={run.score} onDone={toMenu} />
                 ) : past ? (
                   <PastHillsResult
                     swoop={swoop}
@@ -1181,8 +1187,6 @@ function SwoopDayGame({
                     }}
                     onAgain={start}
                   />
-                ) : tournament ? (
-                  <TournamentScoreCard tournamentId={tournament.tournamentId} gameSlug={SLUG} score={run.score} onDone={toMenu} />
                 ) : (
                   <ScoreSaveCard
                     gameSlug={SLUG}

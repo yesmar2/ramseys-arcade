@@ -1,4 +1,6 @@
 import {
+  createContext,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -10,6 +12,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import {
   bracketRoundLabel,
   eventKind,
+  eventScoreText,
   matchSide,
   slotFeedLabel,
   type BracketSide,
@@ -70,6 +73,9 @@ function flashMatch(el: HTMLElement) {
   el.classList.add('event-bracket__match--flash')
 }
 
+/** The bracket's games, so a racing daily's match scores read as times (eventScoreText). */
+const BracketGames = createContext<readonly string[]>([])
+
 function MatchCard({
   match,
   displayName,
@@ -79,6 +85,7 @@ function MatchCard({
   displayName: string
   isYours: boolean
 }) {
+  const games = useContext(BracketGames)
   const you = normalizePlayerName(displayName)
   return (
     <article
@@ -113,7 +120,7 @@ function MatchCard({
             </span>
             {vacant ? null : (
               <span className="event-bracket__score">
-                {side?.score != null ? side.score.toLocaleString() : '—'}
+                {side?.score != null ? eventScoreText(games, side.score) : '—'}
               </span>
             )}
           </div>
@@ -384,172 +391,174 @@ export function EventBracket({
   )
 
   return (
-    <section
-      className={[
-        className,
-        narrow && !showTree
-          ? 'event-bracket-wrap--rounds'
-          : 'event-bracket-wrap--tree',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      aria-label="Bracket"
-    >
-      <div className="event-bracket__heading">
-        <h2 className="event-detail__section-title">Bracket</h2>
-        <div className="event-bracket__heading-actions">
-          {!waiting && youPlaying ? (
-            <button type="button" className="event-bracket__jump" onClick={scrollToYou}>
-              Your match
-            </button>
-          ) : null}
-          {!waiting && (isDouble || maxRound >= 2) ? (
-            <button
-              type="button"
-              className="event-bracket__jump event-bracket__view-toggle"
-              onClick={() => setShowTree((open) => !open)}
-            >
-              {showTree ? 'Rounds' : 'Full bracket'}
-            </button>
-          ) : null}
+    <BracketGames.Provider value={detail.games}>
+      <section
+        className={[
+          className,
+          narrow && !showTree
+            ? 'event-bracket-wrap--rounds'
+            : 'event-bracket-wrap--tree',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        aria-label="Bracket"
+      >
+        <div className="event-bracket__heading">
+          <h2 className="event-detail__section-title">Bracket</h2>
+          <div className="event-bracket__heading-actions">
+            {!waiting && youPlaying ? (
+              <button type="button" className="event-bracket__jump" onClick={scrollToYou}>
+                Your match
+              </button>
+            ) : null}
+            {!waiting && (isDouble || maxRound >= 2) ? (
+              <button
+                type="button"
+                className="event-bracket__jump event-bracket__view-toggle"
+                onClick={() => setShowTree((open) => !open)}
+              >
+                {showTree ? 'Rounds' : 'Full bracket'}
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
-      {!locked ? (
-        <p className="event-bracket__note">
-          {cap > 0
-            ? `Preview — locks when ${Math.max(0, cap - detail.playerCount)} more join.`
-            : 'Preview — locks when the roster fills.'}
-        </p>
-      ) : null}
-      {waiting ? (
-        <p className="lb-empty">
-          {cap > 0
-            ? `Waiting for ${Math.max(0, cap - detail.playerCount)} more to draw the bracket.`
-            : 'Waiting for the roster to fill.'}
-        </p>
-      ) : narrow && !showTree ? (
-        <>
-          {isDouble && sideOptions.length > 1 ? (
-            <div
-              className="event-bracket-rounds ev-bracket-sides"
-              role="tablist"
-              aria-label="Bracket"
-            >
-              {sideOptions.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={narrowSide === opt.key}
-                  className={`event-bracket-rounds__tab${
-                    narrowSide === opt.key ? ' event-bracket-rounds__tab--on' : ''
-                  }`}
-                  onClick={() => setNarrowSide(opt.key)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {sideRounds.length > 1 ? (
-            <div className="event-bracket-rounds" role="tablist" aria-label="Rounds">
-              {sideRounds.map((round) => {
-                const selected = round === shownRound
-                return (
+        {!locked ? (
+          <p className="event-bracket__note">
+            {cap > 0
+              ? `Preview — locks when ${Math.max(0, cap - detail.playerCount)} more join.`
+              : 'Preview — locks when the roster fills.'}
+          </p>
+        ) : null}
+        {waiting ? (
+          <p className="lb-empty">
+            {cap > 0
+              ? `Waiting for ${Math.max(0, cap - detail.playerCount)} more to draw the bracket.`
+              : 'Waiting for the roster to fill.'}
+          </p>
+        ) : narrow && !showTree ? (
+          <>
+            {isDouble && sideOptions.length > 1 ? (
+              <div
+                className="event-bracket-rounds ev-bracket-sides"
+                role="tablist"
+                aria-label="Bracket"
+              >
+                {sideOptions.map((opt) => (
                   <button
-                    key={round}
+                    key={opt.key}
                     type="button"
                     role="tab"
-                    aria-selected={selected}
-                    aria-label={
-                      isDouble && narrowSide === 'lb'
-                        ? loserRoundLabel(round, sideMaxRound)
-                        : bracketRoundLabel(round, sideMaxRound)
-                    }
+                    aria-selected={narrowSide === opt.key}
                     className={`event-bracket-rounds__tab${
-                      selected ? ' event-bracket-rounds__tab--on' : ''
+                      narrowSide === opt.key ? ' event-bracket-rounds__tab--on' : ''
                     }`}
-                    onClick={() => {
-                      setActiveRound(round)
-                      setShowTree(false)
-                    }}
+                    onClick={() => setNarrowSide(opt.key)}
                   >
-                    {sideTabLabel(isDouble ? narrowSide : 'wb', round, sideMaxRound)}
+                    {opt.label}
                   </button>
-                )
-              })}
-            </div>
-          ) : null}
-          <ul className="event-bracket-list">
-            {playMatches.map((match) => (
-              <li key={match.id}>
-                <MatchCard
-                  match={match}
-                  displayName={displayName}
-                  isYours={currentYou?.id === match.id}
-                />
-              </li>
-            ))}
-            {byeMatches.length ? (
-              <li>
-                <details className="event-bracket-byes">
-                  <summary>
-                    {byeMatches.length} bye{byeMatches.length === 1 ? '' : 's'}
-                  </summary>
-                  <ul className="event-bracket-list event-bracket-list--byes">
-                    {byeMatches.map((match) => (
-                      <li key={match.id}>
-                        <MatchCard match={match} displayName={displayName} isYours={false} />
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </li>
+                ))}
+              </div>
             ) : null}
-          </ul>
-        </>
-      ) : isDouble ? (
-        <div className="ev-bracket-stack">
-          <section className="ev-bracket-half">
-            <h3 className="ev-bracket-half__title">Winners bracket</h3>
-            <p className="ev-bracket-half__note">
-              Lose once and you drop to the losers bracket. The grand final is the last
-              column, where the losers-side survivor climbs back in &mdash; often for a
-              rematch of the winners final.
-            </p>
-            <BracketTree
-              matches={winnersRun}
-              displayName={displayName}
-              currentYouId={currentYou?.id ?? null}
-              scrollerRef={scrollerRef}
-              labelFor={crownLabel}
-              dimRound={resetSeated ? null : deciderRound}
-            />
-          </section>
-          {losers.length ? (
+            {sideRounds.length > 1 ? (
+              <div className="event-bracket-rounds" role="tablist" aria-label="Rounds">
+                {sideRounds.map((round) => {
+                  const selected = round === shownRound
+                  return (
+                    <button
+                      key={round}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      aria-label={
+                        isDouble && narrowSide === 'lb'
+                          ? loserRoundLabel(round, sideMaxRound)
+                          : bracketRoundLabel(round, sideMaxRound)
+                      }
+                      className={`event-bracket-rounds__tab${
+                        selected ? ' event-bracket-rounds__tab--on' : ''
+                      }`}
+                      onClick={() => {
+                        setActiveRound(round)
+                        setShowTree(false)
+                      }}
+                    >
+                      {sideTabLabel(isDouble ? narrowSide : 'wb', round, sideMaxRound)}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
+            <ul className="event-bracket-list">
+              {playMatches.map((match) => (
+                <li key={match.id}>
+                  <MatchCard
+                    match={match}
+                    displayName={displayName}
+                    isYours={currentYou?.id === match.id}
+                  />
+                </li>
+              ))}
+              {byeMatches.length ? (
+                <li>
+                  <details className="event-bracket-byes">
+                    <summary>
+                      {byeMatches.length} bye{byeMatches.length === 1 ? '' : 's'}
+                    </summary>
+                    <ul className="event-bracket-list event-bracket-list--byes">
+                      {byeMatches.map((match) => (
+                        <li key={match.id}>
+                          <MatchCard match={match} displayName={displayName} isYours={false} />
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </li>
+              ) : null}
+            </ul>
+          </>
+        ) : isDouble ? (
+          <div className="ev-bracket-stack">
             <section className="ev-bracket-half">
-              <h3 className="ev-bracket-half__title">Losers bracket</h3>
+              <h3 className="ev-bracket-half__title">Winners bracket</h3>
               <p className="ev-bracket-half__note">
-                Second chance &mdash; one more loss and you&rsquo;re out. Empty seats name
-                the match they are waiting on.
+                Lose once and you drop to the losers bracket. The grand final is the last
+                column, where the losers-side survivor climbs back in &mdash; often for a
+                rematch of the winners final.
               </p>
               <BracketTree
-                matches={losers}
+                matches={winnersRun}
                 displayName={displayName}
                 currentYouId={currentYou?.id ?? null}
-                labelFor={loserRoundLabel}
+                scrollerRef={scrollerRef}
+                labelFor={crownLabel}
+                dimRound={resetSeated ? null : deciderRound}
               />
             </section>
-          ) : null}
-        </div>
-      ) : (
-        <BracketTree
-          matches={treeMatches}
-          displayName={displayName}
-          currentYouId={currentYou?.id ?? null}
-          scrollerRef={scrollerRef}
-        />
-      )}
-    </section>
+            {losers.length ? (
+              <section className="ev-bracket-half">
+                <h3 className="ev-bracket-half__title">Losers bracket</h3>
+                <p className="ev-bracket-half__note">
+                  Second chance &mdash; one more loss and you&rsquo;re out. Empty seats name
+                  the match they are waiting on.
+                </p>
+                <BracketTree
+                  matches={losers}
+                  displayName={displayName}
+                  currentYouId={currentYou?.id ?? null}
+                  labelFor={loserRoundLabel}
+                />
+              </section>
+            ) : null}
+          </div>
+        ) : (
+          <BracketTree
+            matches={treeMatches}
+            displayName={displayName}
+            currentYouId={currentYou?.id ?? null}
+            scrollerRef={scrollerRef}
+          />
+        )}
+      </section>
+    </BracketGames.Provider>
   )
 }

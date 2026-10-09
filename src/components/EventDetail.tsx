@@ -16,7 +16,7 @@ import {
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { resolveGameAccent } from '../lib/theme'
-import { formatEventCountdown, type TournamentDetail, type TournamentSummary } from '../lib/tournaments'
+import { eventScoreText, formatEventCountdown, type TournamentDetail, type TournamentSummary } from '../lib/tournaments'
 import { getGame } from '../data/games'
 import { eventAccent } from './EventCard'
 import { EventScreen } from './EventScreen'
@@ -31,20 +31,21 @@ function gameAccent(slug: string): string {
   return resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
 }
 
-export type GameCardState = { slug: string; href: string | null; status: string }
+/** A game on the event page; a racing daily's event names its course ("#12 Bramble Speedway"). */
+export type GameCardState = { slug: string; href: string | null; status: string; course?: string }
 
 /** Each game with its screen, what is left to do on it, and Play. */
 export function EventGames({ games }: { games: GameCardState[] }) {
   return (
     <ul className={`evp-games evp-games--${Math.min(games.length, 3)}`} aria-label="The games">
-      {games.map(({ slug, href, status }) => {
+      {games.map(({ slug, href, status, course }) => {
         const accent = gameAccent(slug)
         return (
           <li key={slug} className="evp-card evp-game" style={{ '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties}>
             <EventScreen slug={slug} href={href} />
             <div className="evp-game__foot">
               <span className="evp-game__text">
-                <span className="evp-game__name">{gameName(slug)}</span>
+                <span className="evp-game__name">{course ? `${gameName(slug)} · ${course}` : gameName(slug)}</span>
                 <span className="evp-game__status">{status}</span>
               </span>
               {href ? (
@@ -114,7 +115,7 @@ function StandingsRow({ row, allRound, cols, gap = false }: { row: TableRow; all
           <Cell {...cell} />
         </span>
       ))}
-      {allRound ? null : <span className="evp-table__total">{row.total.toLocaleString()}</span>}
+      {allRound ? null : <span className="evp-table__total">{eventScoreText(row.cells.map((c) => c.slug), row.total)}</span>}
     </li>
   )
 }
@@ -237,7 +238,7 @@ export function EventPodium({ rows, detail }: { rows: TableRow[]; detail: Tourna
               <PlayerAvatar name={row.name} avatarId={row.avatarId} size={row.place === 1 ? 'lg' : 'md'} />
               <span className="evp-podium__name">{row.name}</span>
               {/* An all-round podium is names and places; one where scores add up shows the total. */}
-              {allRound ? null : <span className="evp-podium__pts">{row.total.toLocaleString()}</span>}
+              {allRound ? null : <span className="evp-podium__pts">{eventScoreText(detail.games, row.total)}</span>}
             </a>
             <span className="evp-podium__block">{ordinal(row.place)}</span>
             {detail.games.length > 1 ? (
@@ -253,7 +254,7 @@ export function EventPodium({ rows, detail }: { rows: TableRow[]; detail: Tourna
       </ol>
       {level ? (
         <p className="evp-podium__tie">
-          {level.name} and {top[0].name} tied{allRound ? '' : ` on ${level.total.toLocaleString()}`}. The tie went to{' '}
+          {level.name} and {top[0].name} tied{allRound ? '' : ` on ${eventScoreText(level.cells.map((c) => c.slug), level.total)}`}. The tie went to{' '}
           {top[0].name}.
         </p>
       ) : null}
@@ -369,8 +370,23 @@ export function NextEventCard({ t }: { t: TournamentSummary }) {
 }
 
 /** The winner, in the banner of a finished event: with their score, when a score decided it. */
-export function WinnerCard({ winner, avatarId, total, mine, runnersUp }: { winner: string; avatarId?: string; total: number | null; mine: boolean; runnersUp: string | null }) {
-  const amount = total == null ? '' : `, with ${total.toLocaleString()}`
+export function WinnerCard({
+  winner,
+  avatarId,
+  total,
+  mine,
+  runnersUp,
+  games = [],
+}: {
+  winner: string
+  avatarId?: string
+  total: number | null
+  mine: boolean
+  runnersUp: string | null
+  /** The event's games, so a racing daily's winning time reads as a time. */
+  games?: readonly string[]
+}) {
+  const amount = total == null ? '' : `, with ${eventScoreText(games, total)}`
   return (
     <div className="evp-winner">
       <span className="evp-winner__mark">
