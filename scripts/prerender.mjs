@@ -136,6 +136,7 @@ try {
   const { MARBLERUN_SCORE_BASE } = await server.ssrLoadModule('/src/games/marblerun/score.ts')
   const { LANDER_SCORE_BASE } = await server.ssrLoadModule('/src/games/lander/score.ts')
   const { SWOOP_SCORE_BASE } = await server.ssrLoadModule('/src/games/swoop/score.ts')
+  const { WOBBLERUN_SCORE_BASE } = await server.ssrLoadModule('/src/games/wobblerun/score.ts')
   // The boards that keep a time, as each one prints it (leaderboardFormat.ts).
   const CLOCKS = {
     findbug: { clock: 'tenths', base: FINDBUG_SCORE_BASE },
@@ -144,6 +145,7 @@ try {
     marblerun: { clock: 'hundredths', base: MARBLERUN_SCORE_BASE },
     lander: { clock: 'hundredths', base: LANDER_SCORE_BASE },
     swoop: { clock: 'hundredths', base: SWOOP_SCORE_BASE },
+    wobblerun: { clock: 'hundredths', base: WOBBLERUN_SCORE_BASE },
   }
   // The boards that keep a percent, in hundredths of a point (Half Full's 9120 is 91.2%): the figure says its unit.
   const PERCENTS = new Set(['halffull', 'centroid'])

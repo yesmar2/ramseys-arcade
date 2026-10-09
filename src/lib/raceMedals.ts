@@ -1,6 +1,6 @@
 /*
- * Medals on the racing dailies (Hot Lap, Marble Run, Lander, Swoop): how a day's best went against that day's
- * blue car, ball, ship or bird, on the same steps its tickets are paid by (the API's ticketLadders.ts). Bronze
+ * Medals on the racing dailies (Hot Lap, Marble Run, Lander, Swoop, Wobble Run): how a day's best went against
+ * that day's blue car, ball, ship, bird or bean, on the same steps its tickets are paid by (the API's ticketLadders.ts). Bronze
  * beats the blue; silver, gold and platinum are one, two and three of the game's steps faster (MEDAL_STEP).
  * Ramsey picked them (2026-10-05) so every run has a goal in reach and "gold on all three" is one for the day.
  *
@@ -14,14 +14,14 @@
  * (RaceMedal MedalLadder), and nothing says "all four": platinum is "the top medal".
  */
 
-export type RaceGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop'
+export type RaceGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop' | 'wobblerun'
 export type Medal = 'bronze' | 'silver' | 'gold' | 'platinum'
 
 export const MEDALS: readonly Medal[] = ['bronze', 'silver', 'gold', 'platinum']
 
 export const MEDAL_NAMES: Record<Medal, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' }
 
-const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ball', lander: 'blue ship', swoop: 'blue bird' }
+const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ball', lander: 'blue ship', swoop: 'blue bird', wobblerun: 'blue bean' }
 
 /**
  * How much faster than the day's blue each medal past bronze is, in each game: silver one step, gold two,
@@ -40,8 +40,11 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * medals to be harder (2026-10-08), right after its marble got easier to turn and slow down (marblerun sim.ts
  * PLAYER_TILT_MAX, PLAYER_BRAKE): his runs had landed 27 to 32% under the blue ball, platinum both times, and
  * the easier marble takes about 4% more off a quick player's time, so platinum at 36% is just past his best.
+ * Wobble Run came at 12% from the start (2026-10-09), where the two newest settled: its blue bean waits out
+ * every gap and takes no shortcut, and its plan keeps a day only when a perfect run comes in at 48 to 60% of
+ * the bean's time, so platinum at 36% takes most of the gold lines in one run, short of perfect.
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.12, lander: 0.08, swoop: 0.12 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.12, lander: 0.08, swoop: 0.12, wobblerun: 0.12 }
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in
@@ -50,7 +53,7 @@ export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0
 export const MEDAL_TICKETS: Record<Medal, number> = { bronze: 5, silver: 8, gold: 11, platinum: 15 }
 
 export function isRaceGame(slug: string): slug is RaceGame {
-  return slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop'
+  return slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop' || slug === 'wobblerun'
 }
 
 /** The day's blue, as a run's report names it: "blue ship". */

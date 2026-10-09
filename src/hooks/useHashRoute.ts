@@ -62,7 +62,8 @@ export type Route =
   /**
    * `hole`: one of Ace Chase's days played as practice, `?hole=day:YYYY-MM-DD` on the play page, from the
    * archive or the admin's Hole Book. `track`: a test drive of one of Hot Lap's daily tracks,
-   * `?track=<number or day>`, from the archive or the admin's Track Book. `day`: a past day of Find the
+   * `?track=<number or day>`, from the archive or the admin's Track Book, and one of Wobble Run's gauntlets,
+   * `?track=<number>`, from the Gauntlet Book (a test run today or ahead, practice before). `day`: a past day of Find the
    * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive. `lab`: a racing daily's test
    * course, every new kind of obstacle in one, `?lab=1`, from the admin's Cave Book or Course Book.
    */
@@ -94,10 +95,11 @@ export type Route =
 
 /**
  * The admin's tabs past the overview: Ace Chase's planned holes, Hot Lap's planned tracks, Marble Run's planned
- * courses, Lander's planned caves, Swoop's planned hills, Half Full's days, and every trophy and egg.
+ * courses, Lander's planned caves, Swoop's planned hills, Wobble Run's planned gauntlets, Half Full's days, and
+ * every trophy and egg.
  */
-export type AdminSection = 'holes' | 'tracks' | 'courses' | 'caves' | 'hills' | 'pours' | 'trophies'
-const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', 'caves', 'hills', 'pours', 'trophies']
+export type AdminSection = 'holes' | 'tracks' | 'courses' | 'caves' | 'hills' | 'gauntlets' | 'pours' | 'trophies'
+const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', 'caves', 'hills', 'gauntlets', 'pours', 'trophies']
 
 /** Fired after in-app navigation has changed the URL. */
 export const ROUTE_EVENT = 'skermix:route'
@@ -108,6 +110,7 @@ const GAME_SLUG_ALIASES: Record<string, string> = {
   whack: 'pop',
   'whack-a-mole': 'pop',
   stride: 'crosswalk',
+  'wobble-run': 'wobblerun',
 }
 
 export function canonicalGameSlug(slug: string): string {

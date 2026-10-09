@@ -38,6 +38,7 @@ const AdminTrackBook = lazyPage(() => import('../components/AdminTrackBook').the
 const AdminCourseBook = lazyPage(() => import('../components/AdminCourseBook').then((m) => m.AdminCourseBook))
 const AdminCaveBook = lazyPage(() => import('../components/AdminCaveBook').then((m) => m.AdminCaveBook))
 const AdminHillsBook = lazyPage(() => import('../components/AdminHillsBook').then((m) => m.AdminHillsBook))
+const AdminGauntletBook = lazyPage(() => import('../components/AdminGauntletBook').then((m) => m.AdminGauntletBook))
 const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
 
 const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: string }[] = [
@@ -78,6 +79,12 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
     blurb: 'Every planned day of Swoop’s Today’s Hills, to test fly ahead of its day.',
   },
   {
+    section: 'gauntlets',
+    label: 'Gauntlet Book',
+    title: 'Gauntlet Book',
+    blurb: 'Every planned day of Wobble Run’s Today’s Gauntlet, its rounds and their tiers, to test run ahead of its day.',
+  },
+  {
     section: 'pours',
     label: 'Pour Book',
     title: 'Pour Book',
@@ -95,7 +102,7 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
  * The admin's page: what players sent, what broke in their browsers, scores
  * that looked wrong on the way in, tickets, and banned tags; and, a tab each,
  * the daily games' books of what's planned (/admin/holes, /admin/tracks,
- * /admin/courses, /admin/caves, /admin/pours) and every trophy, secret, easter egg and bit of flair there is
+ * /admin/courses, /admin/caves, /admin/hills, /admin/gauntlets, /admin/pours) and every trophy, secret, easter egg and bit of flair there is
  * (/admin/trophies). It opens for the emails in the API's ADMIN_EMAILS
  * (Render): the API is asked, and it's the API that answers every card.
  * Anyone else finds the Staff Only door (StaffOnlyDoor.tsx), an easter egg, and nothing of what's behind it.
@@ -207,6 +214,10 @@ export function AdminPage({ section }: { section?: AdminSection }) {
               <Suspense fallback={<p className="adm-note">Opening the Hills Book…</p>}>
                 <AdminHillsBook />
               </Suspense>
+            ) : section === 'gauntlets' ? (
+              <Suspense fallback={<p className="adm-note">Opening the Gauntlet Book…</p>}>
+                <AdminGauntletBook />
+              </Suspense>
             ) : section === 'pours' ? (
               <Suspense fallback={<p className="adm-note">Opening the Pour Book…</p>}>
                 <AdminPourBook />
@@ -304,6 +315,10 @@ function DailyGamesCard() {
           <b>Hills Book</b>
           <span>Swoop: every planned Today’s Hills, to test fly</span>
         </a>
+        <a className="adm-book" href={adminHref('gauntlets')}>
+          <b>Gauntlet Book</b>
+          <span>Wobble Run: every planned Today’s Gauntlet, to test run, and the test course</span>
+        </a>
         <a className="adm-book" href={adminHref('pours')}>
           <b>Pour Book</b>
           <span>Half Full: every day’s glasses, how hard each came out, and any day off its band</span>
@@ -329,6 +344,10 @@ function DailyGamesCard() {
         <li>
           <a href={gamePlayHref('swoop')}>Swoop · Today’s Hills</a>
           <span>the real one, where your best run today counts; the Hills Book test-flies any day ahead</span>
+        </li>
+        <li>
+          <a href={gamePlayHref('wobblerun')}>Wobble Run · Today’s Gauntlet</a>
+          <span>the real one, where your best run today counts; the Gauntlet Book test-runs any day ahead</span>
         </li>
         {HUNT_ANCHORS[0] ? (
           <li>

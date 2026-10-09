@@ -1,0 +1,82 @@
+/*
+ * The admin's Gauntlet Book (AdminGauntletBook.tsx), on the Track Book's layout (adminBooks.css): Wobble Run's
+ * rounds to the crown at dusk (GauntletDrawing.tsx), the same in either theme, and each day's rounds as chips
+ * with their tiers.
+ */
+
+.gtb-map {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 0.7rem;
+  background: #140d38;
+}
+
+.tb-feature .gtb-map {
+  border-radius: 0.9rem;
+}
+
+/* Your bean waits at the top left of the picture: the day's number goes top right, out of its way. */
+.gtb .tb-tag {
+  left: auto;
+  right: 0.45rem;
+}
+
+.gtb-rounds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gtb-round {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem 0.18rem 0.25rem;
+  border-radius: 999px;
+  background: #22164a;
+  color: #f6f1ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.gtb-round__icon {
+  flex: none;
+  display: block;
+}
+
+.gtb-round__tier {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #1a1033;
+}
+
+.gtb-round--t1 .gtb-round__tier {
+  background: #3ecf8e;
+}
+
+.gtb-round--t2 .gtb-round__tier {
+  background: #f5b942;
+}
+
+.gtb-round--t3 .gtb-round__tier {
+  background: #e8564f;
+  color: #fff;
+}
+
+.gtb-tile__rounds {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.gtb-note {
+  margin-top: 1rem;
+}

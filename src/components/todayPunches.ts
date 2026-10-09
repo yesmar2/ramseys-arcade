@@ -30,6 +30,9 @@ import { formatRun } from '../games/marblerun/score'
 import { dailyHills, hillsDay } from '../games/swoop/daily'
 import { keptRun as keptHillsRun } from '../games/swoop/runStore'
 import { formatRun as formatHillsRun } from '../games/swoop/score'
+import { dailyGauntlet, gauntletDay } from '../games/wobblerun/daily'
+import { keptRun as keptGauntletRun } from '../games/wobblerun/runStore'
+import { formatRun as formatGauntletRun } from '../games/wobblerun/score'
 import { todayShareHref } from '../hooks/useHashRoute'
 import { medalFor, paceMsOf, type Medal } from '../lib/raceMedals'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
@@ -319,6 +322,26 @@ function hillsPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   }
 }
 
+function gauntletPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
+  const vday = gauntletDay()
+  const gauntlet = dailyGauntlet(vday)
+  const serverRun = server?.results.gauntlet?.score ?? null
+  // The viewer's own best run on this device (never another player's, nor one run signed out while they're signed in).
+  const runTime = keptGauntletRun(vday, viewer)?.time ?? null
+  const runWords = serverRun != null ? formatLeaderboardScore('wobblerun', serverRun) : runTime != null ? formatGauntletRun(runTime) : null
+  const done = runWords != null || Boolean(server?.done.gauntlet)
+  return {
+    kicker: `Today’s Gauntlet #${gauntlet.n}`,
+    title: gauntlet.name,
+    done,
+    mine: runWords ? `${runWords} run` : done ? 'Done' : null,
+    short: runWords,
+    carry: null,
+    share: runWords ? `${gauntlet.name} ${runWords}` : null,
+    medal: medalFor('wobblerun', paceMsOf(gauntlet.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+  }
+}
+
 function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer: Viewer): PunchDay {
   if (key === 'hole') return holePunch(day, server, viewer)
   if (key === 'track') return trackPunch(server, viewer)
@@ -326,6 +349,7 @@ function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer
   if (key === 'course') return coursePunch(server, viewer)
   if (key === 'cave') return cavePunch(server, viewer)
   if (key === 'hills') return hillsPunch(server, viewer)
+  if (key === 'gauntlet') return gauntletPunch(server, viewer)
   if (key === 'plates') return platesPunch(server, viewer)
   return pourPunch(server, viewer)
 }

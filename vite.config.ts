@@ -83,8 +83,18 @@ export default defineConfig(({ mode }) => {
         injectManifest: {
           // Share images are for link unfurlers, not the offline shell. Ace Chase and Hot Lap are drawn with a
           // 3D engine (about a fifth of everything else put together, and its own chunk now two games share),
-          // so each downloads when someone opens it, not with the app.
-          globIgnores: ['**/node_modules/**/*', 'og.png', 'og/**', 'assets/AceChaseGame-*', 'assets/HotLapGame-*', 'assets/three.module-*'],
+          // so each downloads when someone opens it, not with the app. Wobble Run's page and its scene chunk
+          // (the renderer with the obstacle engine, rounds and bots its preview shares) wait to be opened too.
+          globIgnores: [
+            '**/node_modules/**/*',
+            'og.png',
+            'og/**',
+            'assets/AceChaseGame-*',
+            'assets/HotLapGame-*',
+            'assets/WobbleRunPage-*',
+            'assets/WobbleScene-*',
+            'assets/three.module-*',
+          ],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         },
         /*

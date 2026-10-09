@@ -52,7 +52,7 @@ function eventGame(t: TournamentSummary): string {
  * Ramsey picked medals to give every visit a goal (2026-10-05). Each opens its game, to go after the next one.
  */
 function MedalGoal({ punches }: { punches: Punch[] }) {
-  const racing = punches.filter((p) => p.key === 'track' || p.key === 'course' || p.key === 'cave' || p.key === 'hills')
+  const racing = punches.filter((p) => p.key === 'track' || p.key === 'course' || p.key === 'cave' || p.key === 'hills' || p.key === 'gauntlet')
   if (!racing.length) return null
   const golds = racing.filter((p) => p.medal === 'gold' || p.medal === 'platinum').length
   const all = numberWord(racing.length)

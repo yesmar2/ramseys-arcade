@@ -1,0 +1,15 @@
+/*
+ * Wobble Run's rounds on Today's Gauntlet (TodaysGauntletCard.tsx): the day's trail of round badges to the crown
+ * at dusk (GauntletDrawing.tsx), covering the screen. The same in either theme.
+ */
+.evp-screen.tcg__screen {
+  background: #140d38;
+}
+
+.tcg-plan {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}

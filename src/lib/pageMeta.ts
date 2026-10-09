@@ -1,4 +1,4 @@
-import { games, getGame, isDailyGame, isListedGame, isRankedGame, type Game } from '../data/games'
+import { games, getGame, isDailyGame, isGameListed, isListedGame, isRankedGame, type Game } from '../data/games'
 import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
@@ -33,6 +33,7 @@ import { APP_NAME, SITE_LINE } from './brand'
 import { BOARD_NAMES, dailyWords } from './dailyWords'
 import { FRIENDS_SCOPE, groupHref, groupsIndexHref } from './groups'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
+import { numberWord } from './numberWord'
 import { gameHasRecords } from './records'
 
 /**
@@ -156,6 +157,26 @@ function dailyMeta(slug: string): PageMeta | null {
 
 function gameName(slug: string) {
   return getGame(slug)?.name ?? 'Game'
+}
+
+/** Each race on the Dailies ticket in a few words, in the ticket's order (lib/today.ts TODAY_DAILIES). */
+const RACE_WORDS: readonly [string, string][] = [
+  ['hotlap', 'a lap'],
+  ['marblerun', 'a marble course'],
+  ['lander', 'a cave to fly down'],
+  ['swoop', 'a run over the hills'],
+  ['wobblerun', 'a gauntlet to the crown'],
+]
+
+/**
+ * The Dailies page's description, counting the races it has: the ranked dailies that are listed, which are the
+ * ticket's races (a just-for-fun daily is under the ticket). "Four races … all four" became five with Wobble Run.
+ */
+function dailiesDescription(): string {
+  const races = RACE_WORDS.filter(([slug]) => isDailyGame(slug) && isRankedGame(slug) && isGameListed(slug)).map(([, words]) => words)
+  const count = numberWord(races.length)
+  const list = races.length > 1 ? `${races.slice(0, -1).join(', ')} and ${races.at(-1)}` : (races[0] ?? '')
+  return `The Dailies: ${count} races, new every day and the same for everyone. ${list.charAt(0).toUpperCase()}${list.slice(1)}. Play any two to keep your streak going, all ${count} for a Full ticket, and three daily puzzles just for fun.`
 }
 
 /**
@@ -401,8 +422,7 @@ export function pageMeta(route: Route): PageMeta {
         ...site,
         // A past day picked on the page is known by its day: "Dailies · Mon, Sep 28".
         title: titled(route.day ? `Dailies · ${archiveDayWords(route.day)}` : 'Dailies'),
-        description:
-          'The Dailies: four races, new every day and the same for everyone. A lap, a marble course, a cave to fly down and a run over the hills. Play any two to keep your streak going, all four for a Full ticket, and three daily puzzles just for fun.',
+        description: dailiesDescription(),
         path: todayHref(route.day),
         // A past day's ticket is the viewer's own: only the page itself is for search.
         ...(route.day ? { noindex: true } : {}),
