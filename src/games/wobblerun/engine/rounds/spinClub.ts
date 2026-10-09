@@ -351,7 +351,7 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 's',
-  name: 'Spin Club',
+  name: 'Sweeper Spin',
   hint: 'hop the bars',
   family: 'T',
   phase: 1,

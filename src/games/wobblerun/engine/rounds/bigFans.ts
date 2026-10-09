@@ -257,8 +257,8 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 'n',
-  name: 'Big Fans',
-  hint: 'mind the wind',
+  name: 'Gust Gaps',
+  hint: 'wait out the wind',
   family: 'A',
   phase: 1,
   build,

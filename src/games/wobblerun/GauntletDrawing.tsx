@@ -12,7 +12,7 @@ function draw(m: Mark, key: number): ReactNode {
 
 /**
  * A day's gauntlet as a picture: its rounds as a trail of badges at dusk, each with its drawing in the colour
- * code and its tier as pips, ending in the crown, your bean at the start (gauntletPicture.ts). It's every
+ * code and its tier as pips, ending in the Blip star over the soda sea, Blip at the start (gauntletPicture.ts). It's every
  * gauntlet picture on the site: the home row's, Today's Gauntlet's, the past gauntlets', the tomorrow tease's
  * and the Gauntlet Book's. `w` by `h` is its own shape; it covers any box it's put in.
  */
@@ -28,8 +28,8 @@ export function GauntletDrawing({ gauntlet, name, w = 480, h = 360, className }:
   )
 }
 
-/** One round's drawing on its own, for a chip: `size` across. */
-export function RoundIcon({ letter, size = 20, className }: { letter: RoundLetter | 'crown'; size?: number; className?: string }) {
+/** One round's drawing on its own, for a chip, or the Blip star's (`star`): `size` across. */
+export function RoundIcon({ letter, size = 20, className }: { letter: RoundLetter | 'star'; size?: number; className?: string }) {
   return (
     <svg className={className} width={size} height={size} viewBox="-11 -11 22 22" aria-hidden="true" focusable="false">
       {roundMarks(letter).map(draw)}

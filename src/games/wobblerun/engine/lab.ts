@@ -37,7 +37,7 @@ export function labCourse(o: LabOptions = {}): Course {
   return courseFromCode(labCode(o), o.seed ?? 'lab', 'Test Course')
 }
 
-/** The rounds the lab has in it, by name, for its start card ("Gate Crash, Lily Leapers and Crown Peak"). */
+/** The rounds the lab has in it, by name, for its start card ("Slam Doors, Pad Hop and Star Peak"). */
 export function labRoundNames(o: LabOptions = {}): string[] {
   const code = labCode(o)
   const seen: string[] = []

@@ -192,8 +192,8 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 }
 export const ROUND: RoundDef = {
   letter: 'C',
-  name: 'Crown Peak',
-  hint: 'grab the crown',
+  name: 'Star Peak',
+  hint: 'grab the star',
   family: 'finale',
   phase: 1,
   build,

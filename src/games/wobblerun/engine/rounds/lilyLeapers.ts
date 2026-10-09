@@ -160,7 +160,7 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 'l',
-  name: 'Lily Leapers',
+  name: 'Pad Hop',
   hint: 'hop the pads',
   family: 'A',
   phase: 1,

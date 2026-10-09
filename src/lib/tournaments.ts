@@ -101,14 +101,26 @@ export type TournamentSummary = {
   joined?: boolean
 }
 
-/** Games eligible for private hosted events (matches API). */
+/**
+ * Games an event can be made with, as the API has them (its tournaments.ts EVENT_GAMES): every game but the
+ * dailies, Crosswalk and the retired ones. A daily is each day's own course, hole or plates, the same for
+ * everyone that day with its own day's board, so a run on one isn't a run on the next: no event takes one.
+ * This list had fallen behind the API's, leaving Pellets, Barrage, Frenzy, Crumbtrail, Bop and Putt out of the
+ * event maker and Centroid in it after it became a daily (Ramsey, 2026-10-09: "when creating an event, not all
+ * the games are selectable"). A new game that isn't a daily goes here too.
+ */
 export const EVENT_GAMES = [
   'asteroids',
   'patriot',
   'snake',
-  'pop',
   'stacker',
-  'centroid',
+  'pop',
+  'pellets',
+  'barrage',
+  'crumbtrail',
+  'bop',
+  'putt',
+  'frenzy',
   'fireflies',
   'pileup',
 ] as const

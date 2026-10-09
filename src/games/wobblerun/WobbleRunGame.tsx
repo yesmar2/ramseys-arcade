@@ -35,7 +35,7 @@ import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { RunSound } from './audio'
 import { fetchBoardGhost, fetchNextGhost, fitsCourse, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
-import { CrownMark } from './CrownMark'
+import { StarMark } from './StarMark'
 import { gauntletDay, gauntletNumber, msUntilNextGauntlet, untilWords } from './daily'
 import { BLUE_HANDS, FAST_HANDS, liveHands } from './engine/bots'
 import { labRoundNames } from './engine/lab'
@@ -63,7 +63,7 @@ import {
   type WobbleDay,
 } from './runs'
 import { WobbleScene, type GhostShow } from './WobbleScene'
-import { formatRun, formatWobblerunBoardScore, splatWords, wobblerunBoardScore, wobblerunMsFromBoardScore } from './score'
+import { formatRun, formatWobblerunBoardScore, splashWords, wobblerunBoardScore, wobblerunMsFromBoardScore } from './score'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
 import { TomorrowGauntlet } from './TomorrowGauntlet'
 
@@ -75,8 +75,8 @@ const IN_RUN = new Set<Phase>(['countdown', 'running'])
 const COUNT_FROM = 3
 const COUNT_STEP = 0.8
 /**
- * The crown's touch stops the clock; then, for looks only, the world runs this slow for this long (real seconds)
- * while the camera swings round and the crown pops onto your bean's head (design-final §6 #7). The card comes
+ * The star's touch stops the clock (the engine's `crown` trigger, drawn as the Blip star); then, for looks only, the
+ * world runs this slow for this long (real seconds) while the camera swings round to Blip (design-final §6 #7). The card comes
  * after CARD_AFTER.
  */
 const SLOW = 0.3
@@ -89,7 +89,7 @@ const STICK_SIDE = 0.55
 /** The first few runs on a device, a word at the bottom says how to run, jump and dive, and what the colours mean. */
 const COACH_RUNS = 3
 const COACH_KEY = 'skermix-wobblerun-coach'
-/** The first word stays until the bean has run and jumped, or this long into the run. */
+/** The first word stays until Blip has run and jumped, or this long into the run. */
 const FIRST_WORD_FOR = 7
 
 type Held = { up: boolean; down: boolean; left: boolean; right: boolean }
@@ -112,8 +112,8 @@ type Button = 'jump' | 'dive'
 
 /**
  * Whose run the ghost runs: the player one place above you today (`next`, for their place); the board's #1, under
- * their tag; your own best; or the blue bean's. `skin`, the season skin the run was made in, which its ghost wears
- * (lib/skins.ts); the blue bean is always blue.
+ * their tag; your own best; or the blue blip's. `skin`, the season skin the run was made in, which its ghost wears
+ * (lib/skins.ts); the blue blip is always blue.
  */
 type Chasing =
   | { who: 'next'; name: string; place: number; skin?: string }
@@ -123,13 +123,13 @@ type Chasing =
 
 /** The name over the ghost: whose run it runs. */
 function ghostTag(chasing: Chasing): string {
-  return chasing.who === 'rival' || chasing.who === 'next' ? chasing.name : chasing.who === 'you' ? 'Your best' : 'Blue bean'
+  return chasing.who === 'rival' || chasing.who === 'next' ? chasing.name : chasing.who === 'you' ? 'Your best' : 'Blue blip'
 }
 
-/** The ghost's tile on the start card: "Beat PILOT for 13th", "Ghost · DAD", "Ghost · Your best", "Blue bean". */
+/** The ghost's tile on the start card: "Beat PILOT for 13th", "Ghost · DAD", "Ghost · Your best", "Blue blip". */
 function chasingLabel(chasing: Chasing): string {
   if (chasing.who === 'next') return `Beat ${chasing.name} for ${ordinal(chasing.place)}`
-  return chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue bean'
+  return chasing.who === 'rival' ? `Ghost · ${chasing.name}` : chasing.who === 'you' ? 'Ghost · Your best' : 'Blue blip'
 }
 
 /** Everything a run is, held outside React: the loop changes it 120 times a second. */
@@ -143,22 +143,22 @@ type Game = {
   owner: string | undefined
   /** The engine's run (engine/sim.ts): the bean, the touch things, the clock, the splits, the ghost path. */
   run: Run
-  /** Real seconds since the crown's touch. */
+  /** Real seconds since the star's touch. */
   clock: number
   /** Simulation owed to the clock, less than a step. */
   carry: number
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
-  /** Shown alongside: the blue bean (always, but on the test course), and your own best in amber when it isn't the one chased. */
+  /** Shown alongside: the blue blip (always, but on the test course), and your own best in amber when it isn't the one chased. */
   blue: Ghost | null
   best: { ghost: Ghost; skin?: string } | null
-  /** Splats in each round this run, for the coach's word after two in one. */
+  /** Falls into the soda sea in each round this run (the engine's splats), for the coach's word after two in one. */
   splatsIn: number[]
   /** The last round whose name has swept in this run (−1: none yet). */
   named: number
   /**
-   * The run's result, once it has the crown, and your best here before it. `runId`: a past gauntlet's run, asked
+   * The run's result, once it has the star, and your best here before it. `runId`: a past gauntlet's run, asked
    * for as it ended (runSession runIdFor), which its All time board needs.
    */
   result: {
@@ -183,7 +183,7 @@ type Ui = {
   phase: Phase
   /** 3, 2, 1 while counting; 0 for Go (a moment into the run); −1 for nothing. */
   count: number
-  /** Splits so far: checkpoints, then the crown. */
+  /** Splits so far: checkpoints, then the star. */
   passed: number
   splats: number
   /** Where the bean is along the gauntlet: 2i before round i (on the start, a pad or a slide), 2i + 1 in it. */
@@ -222,7 +222,7 @@ function bestOf(day: string, practice: boolean, viewer: string | null | undefine
   return tab && (!kept || tab.time < kept.time) ? tab : kept
 }
 
-/** The run to chase and whose it is, the blue bean's, and your best when it's shown beside them. */
+/** The run to chase and whose it is, the blue blip's, and your best when it's shown beside them. */
 type Chase = { ghost: Ghost; chasing: Chasing; blue: Ghost | null; best: { ghost: Ghost; skin?: string } | null }
 
 /** Whose the #1's run is: yours, when it's your tag at the top. In the skin it was run in. */
@@ -237,7 +237,7 @@ const yourSkin = (mine: GhostRun, top: BoardGhost | null, me: string) =>
   mine.skin ?? (top && top.name === me && Math.abs(top.time - mine.time) < 0.0005 ? top.skin : undefined)
 
 /**
- * Your first run of a gauntlet is against the blue bean (Ramsey, 2026-10-06, of the racing dailies: "the first time
+ * Your first run of a gauntlet is against the blue blip (Ramsey, 2026-10-06, of the racing dailies: "the first time
  * you play it should be against blue and not the top score"): no run of yours here yet, none on the board, and the
  * #1 isn't you.
  */
@@ -245,11 +245,11 @@ const firstRun = (mine: GhostRun | null, top: BoardGhost | null, me: string, nex
   !mine && !next && top?.name !== me
 
 /**
- * The run to beat. Your first here, the blue bean's. On today's gauntlet, once you've a run on the board, the
+ * The run to beat. Your first here, the blue blip's. On today's gauntlet, once you've a run on the board, the
  * player's one place above you, for their place: pass them and the next one lines up (as the other racing dailies
- * have it). Else the board's #1, on their own line, or on the blue bean's at their time when theirs isn't known
+ * have it). Else the board's #1, on their own line, or on the blue blip's at their time when theirs isn't known
  * (boardGhost.ts standIn); unless your own best here is faster. With nobody on the board, your best here when it
- * beats the blue bean, else the blue bean's. Your own is the one of whoever is signed in now. The blue bean runs
+ * beats the blue blip, else the blue blip's. Your own is the one of whoever is signed in now. The blue blip runs
  * alongside whoever is chased, and your best too (in amber) when it isn't the one.
  */
 function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null): Chase {
@@ -270,7 +270,7 @@ function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: st
 }
 
 /**
- * The run to chase at the start card, where the blue bean's run may not be worked out yet (paceOf warms it while
+ * The run to chase at the start card, where the blue blip's run may not be worked out yet (paceOf warms it while
  * the card is up): the card needs only the time to beat and whose it is, and nobody runs until the count.
  */
 function cardChase(wobble: WobbleDay, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null): Chase {
@@ -290,7 +290,7 @@ function cardChase(wobble: WobbleDay, practice: boolean, top: BoardGhost | null,
   return { ghost: blue, chasing: { who: 'pace' }, blue, best }
 }
 
-/** The test course has no run to chase and no blue bean: a ghost that never leaves the start, which isn't shown. */
+/** The test course has no run to chase and no blue blip: a ghost that never leaves the start, which isn't shown. */
 function labChase(wobble: WobbleDay): Chase {
   return { ghost: new Ghost(waitingRun(wobble.course, 0)), chasing: { who: 'pace' }, blue: null, best: null }
 }
@@ -342,19 +342,19 @@ function gapText(d: number) {
 }
 const gapTone = (d: number | null) => (d == null || Math.abs(d) < 0.005 ? '' : d < 0 ? 'good' : 'bad')
 
-/** A run to send on: the day's gauntlet, the time against the blue bean, and the way to today's gauntlet. */
-function runShareLine(wobble: WobbleDay, time: number, pace: number, splats: number): string {
+/** A run to send on: the day's gauntlet, the time against the blue blip, and the way to today's gauntlet. */
+function runShareLine(wobble: WobbleDay, time: number, pace: number, splashes: number): string {
   const gap = Math.abs(time - pace)
-  const against = gap < 0.005 ? 'tied with the blue bean' : time < pace ? `beat the blue bean by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue bean`
-  return [`Wobble Run · Today’s Gauntlet #${wobble.n} 👑`, `${wobble.name}: ${formatRun(time)}, ${against}, ${splatWords(splats)}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join(
+  const against = gap < 0.005 ? 'tied with the blue blip' : time < pace ? `beat the blue blip by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue blip`
+  return [`Wobble Run · Today’s Gauntlet #${wobble.n} 🌟`, `${wobble.name}: ${formatRun(time)}, ${against}, ${splashWords(splashes)}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join(
     '\n',
   )
 }
 
-/** Where the bean comes back after a splat, in words. */
+/** Where Blip comes back after a fall into the soda sea, in words. */
 const backWords = (kind: string) => (kind === 'start' ? 'back to the start' : kind === 'flag' ? 'back to the flag' : 'back to the checkpoint')
 
-/** The day's rounds in order, finale last, then the crown: a chip each, a pepper on a spicy (tier 3) one. */
+/** The day's rounds in order, finale last, then the Blip star: a chip each, a pepper on a spicy (tier 3) one. */
 function RoundList({ k }: { k: string }) {
   return (
     <ol className="wobblerun-rounds__list" aria-label="Rounds">
@@ -369,8 +369,8 @@ function RoundList({ k }: { k: string }) {
           ) : null}
         </li>
       ))}
-      <li className="wobblerun-rounds__crown" title="The crown: touch it and the clock stops">
-        <CrownMark size={16} />
+      <li className="wobblerun-rounds__star" title="The star: touch it and the clock stops">
+        <StarMark size={16} />
       </li>
     </ol>
   )
@@ -386,7 +386,7 @@ function RoundChips({ k }: { k: string }) {
   )
 }
 
-/** Today's gauntlet and its number and rounds, the run its ghost runs (the #1's, your best, or the blue bean's), and when the next gauntlet comes. */
+/** Today's gauntlet and its number and rounds, the run its ghost runs (the #1's, your best, or the blue blip's), and when the next gauntlet comes. */
 function GauntletTiles({ wobble, ghost, chasing, bestMs }: { wobble: WobbleDay; ghost: number; chasing: Chasing; bestMs: number | null }) {
   const [left, setLeft] = useState(() => msUntilNextGauntlet())
   useEffect(() => {
@@ -414,8 +414,8 @@ function GauntletTiles({ wobble, ghost, chasing, bestMs }: { wobble: WobbleDay; 
 }
 
 /**
- * The rounds to the crown, under the chrome where another race keeps its map: a pip a round (green behind you, your
- * colour where you are), the crown last, the round you're in or the one coming by name, and on today's gauntlet the
+ * The rounds to the star, under the chrome where another race keeps its map: a pip a round (green behind you, your
+ * colour where you are), the Blip star last, the round you're in or the one coming by name, and on today's gauntlet the
  * medal your best is chasing.
  */
 function CourseStrip({ course, stage, passed, done, target }: { course: Course; stage: number; passed: number; done: boolean; target: ReactNode }) {
@@ -431,7 +431,7 @@ function CourseStrip({ course, stage, passed, done, target }: { course: Course; 
           {rounds.map((r, i) => (
             <span key={i} className={`wobblerun__pip${passed > i || (done && i === rounds.length - 1) ? ' is-done' : inIt && i === at ? ' is-on' : ''}`} title={r.name} />
           ))}
-          <CrownMark className="wobblerun__crown-pip" size={15} dim={!done} />
+          <StarMark className="wobblerun__star-pip" size={15} dim={!done} />
         </div>
       ) : null}
       {round ? (
@@ -446,10 +446,11 @@ function CourseStrip({ course, stage, passed, done, target }: { course: Course; 
 }
 
 /**
- * Wobble Run: a jelly bean against the clock over a day's gauntlet of rounds, Fall Guys' way, in 3D. Doors slam,
- * walls slide, bars sweep, hammers swing, fruit rolls, planks tip and tiles drop; run, jump and dive past them to the
- * crown at the top of the finale, and touch it to stop the clock. Fall in the goo and you're back at the last
- * checkpoint with the clock still running: a splat costs the time it takes, never a penalty on top. Everything moves
+ * Wobble Run: Blip, a round mint runner with a spark over its head, against the clock over a day's gauntlet of
+ * rounds, in 3D. Doors slam, walls slide, bars sweep, hammers swing, melons roll, planks tip and tiles crumble; run,
+ * jump and dive past them to the Blip star at the top of the finale, and touch it to stop the clock. Fall in the soda
+ * sea and you're back at the last checkpoint with the clock still running: a fall costs the time it takes, never a
+ * penalty on top. Everything moves
  * on the run's clock, the same for everyone, so knowing the gauntlet is knowing a line, and hands win the day.
  *
  * It's a daily: a new gauntlet every day, the same for everyone (daily.ts), run as often as you like, and the board
@@ -457,8 +458,8 @@ function CourseStrip({ course, stage, passed, done, target }: { course: Course; 
  * for today; when midnight has brought a new gauntlet by the next start, it asks for the new day with `onNewDay`,
  * which mounts it again, with `notice` to say why when a run was lost to it.
  *
- * The blue bean runs alongside every run, and the ghost is the run to beat with whose it is over it: your first
- * run, the blue bean's; then the player one place above you today, or the board's #1 (on a past gauntlet its All
+ * The blue blip runs alongside every run, and the ghost is the run to beat with whose it is over it: your first
+ * run, the blue blip's; then the player one place above you today, or the board's #1 (on a past gauntlet its All
  * time #1: boardGhost.ts), unless your own best here is faster. Your own best runs alongside too, in amber.
  *
  * Keys: WASD or the arrows run, Space jumps, Shift or E dives, R starts again, P or Escape pauses. On a touch
@@ -488,7 +489,7 @@ function WobbleRunDay({
   test?: boolean
   /**
    * The test course of every round (runs.ts labDay), an admin's, with `practice`: kept nowhere, not even the tab
-   * (your best here lasts while it's open), with no ghost, no blue bean and no call to the API, on cards of its own
+   * (your best here lasts while it's open), with no ghost, no blue blip and no call to the API, on cards of its own
    * (TestCards.tsx LabStartCard).
    */
   lab?: boolean
@@ -524,7 +525,7 @@ function WobbleRunDay({
   const saveOpenRef = useRef(false)
   const [noGl, setNoGl] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  /** The round's name sweeping in as a checkpoint is crossed ("Round 3 · Lily Leapers"); `key` starts it again. */
+  /** The round's name sweeping in as a checkpoint is crossed ("Round 3 · Pad Hop"); `key` starts it again. */
   const [banner, setBanner] = useState<{ key: number; small: string; big: string } | null>(null)
   const [touch] = useState(touchScreen)
   /** The right thumb's buttons held down, for how they're drawn. */
@@ -539,7 +540,7 @@ function WobbleRunDay({
   const diveRef = useRef<HTMLSpanElement>(null)
   const sceneRef = useRef<WobbleScene | null>(null)
   const soundRef = useRef<RunSound | null>(null)
-  // The player's own skin, if they chose one (lib/skins.ts): looks only, and only on their bean.
+  // The player's own skin, if they chose one (lib/skins.ts): looks only, and only on their Blip.
   const skinRef = useRef<string | null>(null)
   useSkinInto(SLUG, skinRef)
   const keysRef = useRef<Held>({ ...NONE })
@@ -719,7 +720,7 @@ function WobbleRunDay({
 
   /** The board's fastest run, as it's known: at the start card, the ghost to race changes to it at once. */
   const takeTop = (next: BoardGhost | null) => {
-    // A path run over this gauntlet before it was laid again runs on air: their time on the blue bean's line instead.
+    // A path run over this gauntlet before it was laid again runs on air: their time on the blue blip's line instead.
     topRef.current = next?.run && !fitsCourse(wobble.course, next.run) ? { ...next, run: null } : next
     rechase()
   }
@@ -826,7 +827,7 @@ function WobbleRunDay({
     // A canvas of the scene's own: when it goes, its GL context goes with it, and a remount starts clean.
     const canvas = document.createElement('canvas')
     canvas.className = 'wobblerun__view'
-    canvas.setAttribute('aria-label', 'The gauntlet, seen from behind your bean')
+    canvas.setAttribute('aria-label', 'The gauntlet, seen from behind Blip')
     holder.append(canvas)
     let scene: WobbleScene
     try {
@@ -928,7 +929,7 @@ function WobbleRunDay({
         case 'splat': {
           haptic('crash')
           const sp = course.spawns[run.bean.spawn]
-          sayRef.current(`Splat! · ${backWords(sp?.kind ?? 'check')}`, 1.4)
+          sayRef.current(`Fizz! · ${backWords(sp?.kind ?? 'check')}`, 1.4)
           // Twice in one round: the safe way is slower, and sure (design-final §6 #14). The course doesn't change.
           const r = Math.max(0, Math.min(course.rounds.length - 1, Math.floor(stageOf(course, e.z) / 2)))
           g.splatsIn[r] = (g.splatsIn[r] ?? 0) + 1
@@ -956,7 +957,7 @@ function WobbleRunDay({
     }
 
     /**
-     * The coach, the first few runs on a device: the first word until the bean has run and jumped; what the colours
+     * The coach, the first few runs on a device: the first word until Blip has run and jumped; what the colours
      * mean as the first round comes; and the gold edges, the first time one is near.
      */
     const coach = (g: Game, dt: number) => {
@@ -1018,7 +1019,7 @@ function WobbleRunDay({
         runId: past ? runIdFor(SLUG) : null,
       }
       splitShown(g, splits.length - 1)
-      // The crown's fanfare is the run's own sound (audio.ts, on the crown's event).
+      // The star's fanfare is the run's own sound (audio.ts, on the engine's `crown` event).
       haptic('boost')
       coachSays('')
       coachRef.current.showFor = 0
@@ -1067,7 +1068,7 @@ function WobbleRunDay({
             if (run.t >= 0) g.phase = 'running'
             else if (countOf(g) !== before) sound.count(countOf(g))
           } else if (run.done) {
-            // The crown: the clock stopped at its touch, inside the step (engine/sim.ts).
+            // The star (the engine's crown): the clock stopped at its touch, inside the step (engine/sim.ts).
             g.phase = 'crowned'
             g.clock = 0
             finishRun(g)
@@ -1075,7 +1076,7 @@ function WobbleRunDay({
         }
         coach(g, dt)
       } else if (live && (g.phase === 'crowned' || g.phase === 'gameover')) {
-        // The run goes on past the crown for looks (input is ignored once it's done), slowed at first.
+        // The run goes on past the star for looks (input is ignored once it's done), slowed at first.
         g.carry += dt * (g.phase === 'crowned' && g.clock < SLOW_FOR && !calm ? SLOW : 1)
         while (g.carry >= STEP) {
           g.carry -= STEP
@@ -1110,13 +1111,13 @@ function WobbleRunDay({
       at.z = jumped ? b.z : from.z + (b.z - from.z) * f
       const drawT = run.t - (1 - f) * STEP
 
-      // The ghosts at the run's moment: the blue bean, the run chased (its name over it), your best. Not before a
+      // The ghosts at the run's moment: the blue blip, the run chased (its name over it), your best. Not before a
       // run, nor on the test course.
       const t = Math.max(0, drawT)
       ghosts.length = 0
       if (g.phase !== 'menu' && !lab) {
         const chased = g.chasing.who
-        if (g.blue) ghosts.push(show('blue', chased === 'pace' ? 'Blue bean' : '', g.blue.at(t), null))
+        if (g.blue) ghosts.push(show('blue', chased === 'pace' ? 'Blue blip' : '', g.blue.at(t), null))
         if (chased !== 'pace') ghosts.push(show(chased === 'you' ? 'mine' : 'rival', ghostTag(g.chasing), g.ghost.at(t), g.chasing.skin ?? null))
         if (g.best && chased !== 'you') ghosts.push(show('mine', '', g.best.ghost.at(t), g.best.skin ?? null))
       }
@@ -1167,7 +1168,7 @@ function WobbleRunDay({
       }
     }
     raf = requestAnimationFrame(loop)
-    // The blue bean's run, worked out now while the card is up, so the start doesn't wait on it. The test course has none.
+    // The blue blip's run, worked out now while the card is up, so the start doesn't wait on it. The test course has none.
     const warm = lab
       ? 0
       : window.setTimeout(() => {
@@ -1258,7 +1259,7 @@ function WobbleRunDay({
   }, [])
 
   // Dev only: read the run, or let the engine's hands take over (the fast hands, gold lines and all, or the blue
-  // bean's careful ones), for a play-test.
+  // blip's careful ones), for a play-test.
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const w = window as unknown as {
@@ -1427,7 +1428,7 @@ function WobbleRunDay({
   const practiceTiles = (
     <>
       <div className="game-pause-meta__row">
-        <span>Blue bean</span>
+        <span>Blue blip</span>
         <strong>{formatRun(pace)}</strong>
       </div>
       <div className="game-pause-meta__row">
@@ -1467,7 +1468,7 @@ function WobbleRunDay({
     [
       wobble.name,
       ...r.splits.slice(0, -1).map((at, k) => `CP${k + 1} ${formatRun(at)}`),
-      splatWords(r.splats),
+      splashWords(r.splats),
       r.knocks === 0 ? 'never knocked over' : r.knocks === 1 ? 'knocked over once' : `knocked over ${r.knocks} times`,
     ].join(' · ')
   const splitCount = wobble.course.splitCount
@@ -1520,7 +1521,7 @@ function WobbleRunDay({
                 <PlayReadoutStats>
                   <PlayStat label="Best" value={bestText} />
                   <PlayStat label={ui.passed > 0 && ui.passed < splitCount ? `CP ${ui.passed}` : 'Split'} value={<span ref={splitRef}>–</span>} />
-                  <PlayStat label="Splats" value={String(ui.splats)} />
+                  <PlayStat label="Splashes" value={String(ui.splats)} />
                 </PlayReadoutStats>
               </PlayReadout>
             ) : null}
@@ -1541,8 +1542,8 @@ function WobbleRunDay({
             ) : null}
 
             {ui.phase === 'crowned' && result && !paused ? (
-              <div className="wobblerun__crown" role="status" aria-label={`Crown! ${formatRun(result.time)}`}>
-                <CrownMark size={56} />
+              <div className="wobblerun__star" role="status" aria-label={`Star! ${formatRun(result.time)}`}>
+                <StarMark size={56} />
                 {formatRun(result.time)}
               </div>
             ) : null}
@@ -1643,7 +1644,7 @@ function WobbleRunDay({
                   <ScoreSaveCard
                     gameSlug={SLUG}
                     score={result.score}
-                    title="Crowned"
+                    title="Got the star"
                     subtitle={splitsText(result)}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace * 1000)}

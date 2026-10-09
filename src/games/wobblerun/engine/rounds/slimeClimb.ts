@@ -337,8 +337,8 @@ function chimney(k: Kit, side: number, t1: Step, t2: Step, H: number, zJ: number
 
 export const ROUND: RoundDef = {
   letter: 'S',
-  name: 'Slime Climb',
-  hint: 'outclimb the slime',
+  name: 'Tide Tower',
+  hint: 'beat the rising sea',
   family: 'finale',
   phase: 2,
   build,

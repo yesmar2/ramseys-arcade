@@ -2,16 +2,19 @@ import * as THREE from 'three'
 import type { Course, Theme } from '../engine/types.ts'
 import { bake, merge } from './geo.ts'
 import type { Fx } from './fx.ts'
-import { mix, type Painter, type SkyLook, type Tints } from './look.ts'
+import { BLIP, mix, type SkyLook, type Soda, type Tints } from './look.ts'
 
 /*
  * Everything round the course: the sky (an afternoon in light, dusk with stars in dark, Neon Night's night in
- * either), the sun or the moon, the goo the course floats over, and the day's scenery (design-final §4.5):
- * instanced, 12–40 m off the track, standing in the goo or floating over it, a draw call or two a kind. Set
- * dressing only: nothing out here is ever within reach of the track.
+ * either), the sun or the moon, the soda sea the course floats over (teal, fizzing, bubbles rising off it), and the
+ * day's scenery (design-final §4.5): instanced, 12–40 m off the track, standing in the sea or floating over it, a
+ * draw call or two a kind. Set dressing only: nothing out here is ever within reach of the track.
  */
 
-type Placement = 'goo' | 'air' | 'sky'
+/** A stretch of the sea risen up the course (Tide Tower's), for its bubbles: its middle and half width, its ends, its height. */
+export type Tide = { x: number; hx: number; z0: number; z1: number; y: number }
+
+type Placement = 'sea' | 'air' | 'sky'
 type Motion = 'bob' | 'drift' | 'rise' | 'spin' | 'sway' | 'none'
 type Part = { geo: THREE.BufferGeometry; tint: boolean; opacity?: number; additive?: boolean }
 type Kind = {
@@ -193,15 +196,21 @@ function post(): Part[] {
   return [{ geo: bake(p, col('#d9d2ff')), tint: false }]
 }
 
+/** A little Blip in the stands: a round body in the day's colours and two dark eyes on its front (−z, which the stands turn to the track). */
 function spectator(): Part[] {
-  const body = new THREE.CapsuleGeometry(0.3, 0.45, 4, 8)
-  body.translate(0, 0.55, 0)
-  const visor = new THREE.SphereGeometry(0.2, 8, 6)
-  visor.scale(1, 0.8, 0.5)
-  visor.translate(0, 0.78, -0.25)
+  const body = new THREE.SphereGeometry(0.36, 12, 9)
+  body.scale(1, 0.94, 1)
+  body.translate(0, 0.4, 0)
+  const eyes: THREE.BufferGeometry[] = []
+  for (const side of [-1, 1]) {
+    const eye = new THREE.SphereGeometry(0.05, 8, 6)
+    eye.scale(0.8, 1.3, 0.5)
+    eye.translate(side * 0.1, 0.43, -0.335)
+    eyes.push(bake(eye, col(BLIP.ink)))
+  }
   return [
-    { geo: bake(body, col('#ffffff')), tint: true },
-    { geo: bake(visor, col('#fff4f8')), tint: false },
+    { geo: bake(body, col('#ffffff'), [1, 1], 0.05), tint: true },
+    { geo: merge(eyes), tint: false },
   ]
 }
 
@@ -222,7 +231,7 @@ function kindsFor(theme: Theme): Kind[] {
   for (const name of theme.scenery) {
     switch (name) {
       case 'daisies':
-        out.push({ parts: daisy(), place: 'goo', size: [3.5, 6.5], density: 1.1, motion: 'sway', reach: 0.4 })
+        out.push({ parts: daisy(), place: 'sea', size: [3.5, 6.5], density: 1.1, motion: 'sway', reach: 0.4 })
         break
       case 'kites':
         out.push({ parts: kite(), place: 'sky', size: [2, 3.2], density: 0.35, motion: 'sway', colours: ['#ff6f91', '#ffd23f', '#9b7bff', '#3ec8cf'] })
@@ -234,28 +243,28 @@ function kindsFor(theme: Theme): Kind[] {
         out.push({ parts: bubble(), place: 'air', size: [0.8, 2.4], density: 1.2, motion: 'rise' })
         break
       case 'lighthouse':
-        out.push({ parts: lighthouse(), place: 'goo', size: [3.2, 3.2], density: 0.05, motion: 'none', off: [34, 40], most: 2 })
+        out.push({ parts: lighthouse(), place: 'sea', size: [3.2, 3.2], density: 0.05, motion: 'none', off: [34, 40], most: 2 })
         break
       case 'lemon slices':
-        out.push({ parts: lemon(), place: 'goo', size: [2, 3.6], density: 0.8, motion: 'bob', reach: 1 })
+        out.push({ parts: lemon(), place: 'sea', size: [2, 3.6], density: 0.8, motion: 'bob', reach: 1 })
         break
       case 'beach balls':
-        out.push({ parts: beachBall(), place: 'goo', size: [1.2, 2.2], density: 0.7, motion: 'bob', reach: 1 })
+        out.push({ parts: beachBall(), place: 'sea', size: [1.2, 2.2], density: 0.7, motion: 'bob', reach: 1 })
         break
       case 'gumdrop hills':
-        out.push({ parts: gumdrop(), place: 'goo', size: [3.5, 7.5], density: 0.7, motion: 'none', colours: ['#b9a6ff', '#f3a6e6', '#8f7fe8', '#ffb3d9'], reach: 1 })
+        out.push({ parts: gumdrop(), place: 'sea', size: [3.5, 7.5], density: 0.7, motion: 'none', colours: ['#b9a6ff', '#f3a6e6', '#8f7fe8', '#ffb3d9'], reach: 1 })
         break
       case 'jelly cubes':
         out.push({ parts: jellyCube(), place: 'air', size: [1.2, 2.6], density: 0.6, motion: 'spin', colours: ['#c58cff', '#ff8fd0', '#9d86ff'], reach: 0.9 })
         break
       case 'ice-cream cones':
-        out.push({ parts: iceCream(), place: 'goo', size: [2.6, 4.6], density: 0.9, motion: 'none', colours: ['#ffb3cf', '#c9f5df', '#fff0a8', '#e2d4ff'], reach: 0.5 })
+        out.push({ parts: iceCream(), place: 'sea', size: [2.6, 4.6], density: 0.9, motion: 'none', colours: ['#ffb3cf', '#c9f5df', '#fff0a8', '#e2d4ff'], reach: 0.5 })
         break
       case 'light strings':
-        out.push({ parts: post(), place: 'goo', size: [1, 1], density: 0, motion: 'none', fill: 'strings' })
+        out.push({ parts: post(), place: 'sea', size: [1, 1], density: 0, motion: 'none', fill: 'strings' })
         break
       case 'spectator stands':
-        out.push({ parts: spectator(), place: 'goo', size: [1, 1], density: 0, motion: 'bob', colours: theme.bodies, fill: 'stands' })
+        out.push({ parts: spectator(), place: 'sea', size: [1, 1], density: 0, motion: 'bob', colours: theme.bodies, fill: 'stands' })
         break
       default:
         break
@@ -287,12 +296,16 @@ export class World {
   private readonly starMat: THREE.PointsMaterial
   private readonly sun: THREE.Sprite
   private readonly glow: THREE.Sprite
-  private readonly gooMesh: THREE.Mesh
-  private readonly gooMat: THREE.MeshBasicMaterial
-  private readonly sheen: THREE.Mesh
-  private readonly sheenMat: THREE.MeshBasicMaterial
-  private readonly gooTex: THREE.Texture
-  private readonly sheenTex: THREE.Texture
+  private readonly sea: THREE.Mesh
+  private readonly seaMat: THREE.MeshBasicMaterial
+  private readonly fizz: THREE.Mesh
+  private readonly fizzMat: THREE.MeshBasicMaterial
+  private readonly seaTex: THREE.Texture
+  private readonly fizzTex: THREE.Texture
+  private readonly soda: Soda
+  /** When the next bubble rises off the sea, and off a risen tide. */
+  private bubbleIn = 0
+  private tideBubbleIn = 0
   private readonly built: Built[] = []
   private bulbs: THREE.Points | null = null
   private bulbMat: THREE.PointsMaterial | null = null
@@ -302,11 +315,11 @@ export class World {
   private fireworkIn = 1.5
   private readonly rnd: () => number
   private look: SkyLook | null = null
-  private gooColour = '#ff62c8'
 
-  constructor(course: Course, painter: Painter, tints: Tints, dot: THREE.Texture, gooTex: THREE.Texture, rnd: () => number) {
+  constructor(course: Course, tints: Tints, dot: THREE.Texture, sea: { soda: Soda; tex: THREE.Texture; fizz: THREE.Texture }, rnd: () => number) {
     this.course = course
     this.rnd = rnd
+    this.soda = sea.soda
     const theme = course.theme
     this.lowSun = theme.scenery.includes('low sun')
     this.fireworks = theme.scenery.includes('fireworks')
@@ -339,25 +352,25 @@ export class World {
     this.sun.renderOrder = this.glow.renderOrder = -8
     this.group.add(this.glow, this.sun)
 
-    // The goo: a wide sheet under everything, with a sheen drifting over it (glowing at dusk).
+    // The soda sea: a wide teal sheet under everything, its fizz glinting as it drifts over it (brighter at dusk).
     const zA = -90
     const zB = course.length + 160
     const W = 320
     const plane = new THREE.PlaneGeometry(W, zB - zA)
     plane.rotateX(-Math.PI / 2)
-    this.gooTex = gooTex
-    gooTex.repeat.set(W / 14, (zB - zA) / 14)
-    this.gooMat = new THREE.MeshBasicMaterial({ map: gooTex, color: theme.goo })
-    this.gooMesh = new THREE.Mesh(plane, this.gooMat)
-    this.gooMesh.position.set(0, course.gooY, (zA + zB) / 2)
-    this.group.add(this.gooMesh)
-    this.sheenTex = painter.keep(gooTex.clone())
-    this.sheenTex.repeat.set(W / 23, (zB - zA) / 23)
-    this.sheenMat = new THREE.MeshBasicMaterial({ map: this.sheenTex, color: '#ffffff', transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false })
-    this.sheen = new THREE.Mesh(plane.clone(), this.sheenMat)
-    this.sheen.position.set(0, course.gooY + 0.04, (zA + zB) / 2)
-    this.sheen.renderOrder = 1
-    this.group.add(this.sheen)
+    this.seaTex = sea.tex
+    this.seaTex.repeat.set(W / 18, (zB - zA) / 18)
+    this.seaMat = new THREE.MeshBasicMaterial({ map: this.seaTex })
+    this.sea = new THREE.Mesh(plane, this.seaMat)
+    this.sea.position.set(0, course.gooY, (zA + zB) / 2)
+    this.group.add(this.sea)
+    this.fizzTex = sea.fizz
+    this.fizzTex.repeat.set(W / 11, (zB - zA) / 11)
+    this.fizzMat = new THREE.MeshBasicMaterial({ map: this.fizzTex, color: this.soda.rim, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })
+    this.fizz = new THREE.Mesh(plane.clone(), this.fizzMat)
+    this.fizz.position.set(0, course.gooY + 0.04, (zA + zB) / 2)
+    this.fizz.renderOrder = 1
+    this.group.add(this.fizz)
 
     this.buildScenery(theme, tints)
   }
@@ -381,7 +394,7 @@ export class World {
                 const s = kind.size[0] + rnd() * (kind.size[1] - kind.size[0])
                 const dx = off[0] + (kind.reach ?? 0.5) * s + rnd() * (off[1] - off[0])
                 const y =
-                  kind.place === 'goo'
+                  kind.place === 'sea'
                     ? course.gooY - 0.3
                     : kind.place === 'air'
                       ? course.gooY + 2 + rnd() * (course.maxY - course.gooY + 10)
@@ -454,7 +467,7 @@ export class World {
     this.group.add(this.bulbs)
   }
 
-  /** Big Show's stands of spectator beans beside each checkpoint pad and the finale. */
+  /** Big Show's stands of little Blips beside each checkpoint pad and the finale. */
   private stands(beans: Item[], tints: Tints) {
     const course = this.course
     const spots = course.spawns.filter((s) => s.kind === 'check').map((s) => ({ x: s.x, y: s.y, z: s.z }))
@@ -465,7 +478,7 @@ export class World {
       for (const side of [-1, 1]) {
         const x0 = spot.x + side * 14
         blocks.push({ x: x0, y: spot.y - 0.6, z: spot.z, s: 1, yaw: 0, tilt: 0, ph: 0, c: side })
-        // Three rows of beans on the steps, facing the track.
+        // Three rows of them on the steps, facing the track.
         for (let row = 0; row < 3; row++) {
           for (let k = 0; k < 6; k++) {
             if (this.rnd() < 0.2) continue
@@ -527,17 +540,16 @@ export class World {
     for (const m of b.meshes) m.instanceMatrix.needsUpdate = true
   }
 
-  /** The look: the sky's colours, the sun or the moon, the stars, the goo's colour and glow. */
+  /** The look: the sky's colours, the sun or the moon, the stars, the soda's shade and fizz. */
   applyLook(look: SkyLook, night: boolean) {
     this.look = look
-    const theme = this.course.theme
     const geo = this.sky.geometry
     const pos = geo.attributes.position!
     const colours = geo.attributes.color!
     const top = new THREE.Color(look.skyTop)
     const midC = new THREE.Color(look.skyMid)
     const hor = new THREE.Color(this.lowSun && !look.dark ? mix(look.horizon, '#ffc59a', 0.5) : look.horizon)
-    // At and below the horizon the sky is the fog's colour, so the far goo melts into it with no band between.
+    // At and below the horizon the sky is the fog's colour, so the far sea melts into it with no band between.
     const fog = new THREE.Color(look.fog)
     for (let i = 0; i < pos.count; i++) {
       const up = pos.getY(i) / 900
@@ -565,23 +577,22 @@ export class World {
       glowMat.color.set(this.lowSun ? '#ff9f6b' : look.sunGlow)
       glowMat.opacity = this.lowSun ? 0.32 : 0.55
     }
-    // The goo: the day's colour, lifted in the afternoon; at dusk glowing, its sheen brighter.
-    this.gooColour = theme.goo
-    this.gooMat.color.set(look.dark ? mix(theme.goo, '#000000', 0.12) : mix(theme.goo, '#ffffff', look.gooLift))
-    this.sheenMat.color.set(mix(theme.goo, '#ffffff', 0.5))
-    this.sheenMat.opacity = look.gooSheen * (night ? 1.3 : 1)
+    // The soda: its own teal in the afternoon, dimmer and bluer at dusk with its fizz glinting brighter.
+    this.seaMat.color.set(look.sea)
+    this.fizzMat.color.set(look.dark ? this.soda.rim : mix(this.soda.rim, '#ffffff', 0.5))
+    this.fizzMat.opacity = look.seaFizz * (night ? 1.3 : 1)
   }
 
-  /** The goo's colour today, for the splashes and the ring. */
-  goo(): string {
-    return this.gooColour
+  /** Today's soda, for the splashes, the bubbles and the ring. */
+  sodaColours(): Soda {
+    return this.soda
   }
 
   /**
-   * Each frame: the sky and the stars round the camera, the sun ahead of it, the goo drifting, the moving
-   * scenery, and Big Show's fireworks.
+   * Each frame: the sky and the stars round the camera, the sun ahead of it, the soda drifting and bubbles rising
+   * off it ahead of the camera (and off a risen tide), the moving scenery, and Big Show's fireworks.
    */
-  update(t: number, cam: THREE.Vector3, dt: number, fx: Fx, calm: boolean) {
+  update(t: number, cam: THREE.Vector3, dt: number, fx: Fx, calm: boolean, tide: Tide | null = null) {
     this.sky.position.copy(cam)
     this.stars.position.copy(cam)
     const dark = this.look?.dark ?? true
@@ -593,8 +604,9 @@ export class World {
     const r = low ? 110 : dark ? 46 : 70
     this.sun.scale.setScalar(r)
     this.glow.scale.setScalar(r * (low ? 2.2 : 3.4))
-    this.gooTex.offset.set(Math.sin(t * 0.05) * 0.3, t * 0.012)
-    this.sheenTex.offset.set(t * 0.02, -t * 0.017)
+    this.seaTex.offset.set(Math.sin(t * 0.05) * 0.3, t * 0.012)
+    this.fizzTex.offset.set(t * 0.021, -t * 0.03)
+    if (dt > 0) this.bubbles(cam, dt, fx, calm, tide)
     for (const b of this.built) if (!calm || b.kind.motion === 'none') this.pose(b, t, false)
     if (this.fireworks && !calm && dt > 0) {
       this.fireworkIn -= dt
@@ -602,6 +614,34 @@ export class World {
         this.fireworkIn = 1.2 + this.rnd() * 1.6
         fx.firework(cam.x + (this.rnd() - 0.5) * 40, cam.y + 14 + this.rnd() * 12, cam.z + 45 + this.rnd() * 30, this.fireworkColours)
       }
+    }
+  }
+
+  /**
+   * The soda's fizz: bubbles rising off the sea where the camera sees it (either side of the track, from a little
+   * ahead to well down the course), and off a risen tide's surface while it's near. Fewer with reduced motion.
+   */
+  private bubbles(cam: THREE.Vector3, dt: number, fx: Fx, calm: boolean, tide: Tide | null) {
+    const course = this.course
+    const rnd = this.rnd
+    const k = calm ? 0.4 : 1
+    this.bubbleIn -= dt * k
+    while (this.bubbleIn <= 0) {
+      this.bubbleIn += 0.075
+      // Mostly where a phone sees the sea, beside the track a little ahead; now and then further out.
+      const near = rnd() < 0.75
+      const z = cam.z + 7 + rnd() * (near ? 26 : 50)
+      const side = rnd() < 0.5 ? -1 : 1
+      fx.seaBubble(centreAt(course, z) + side * (4.5 + rnd() * (near ? 8 : 20)), course.gooY + 0.05, z, this.soda.fizz)
+    }
+    if (!tide) return
+    this.tideBubbleIn -= dt * k
+    while (this.tideBubbleIn <= 0) {
+      this.tideBubbleIn += 0.12
+      const z0 = Math.max(tide.z0, cam.z + 2)
+      const z1 = Math.min(tide.z1, cam.z + 30)
+      if (z1 <= z0) continue
+      fx.seaBubble(tide.x + (rnd() - 0.5) * 2 * tide.hx, tide.y + 0.05, z0 + rnd() * (z1 - z0), this.soda.fizz)
     }
   }
 }

@@ -165,7 +165,7 @@ const RACE_WORDS: readonly [string, string][] = [
   ['marblerun', 'a marble course'],
   ['lander', 'a cave to fly down'],
   ['swoop', 'a run over the hills'],
-  ['wobblerun', 'a gauntlet to the crown'],
+  ['wobblerun', 'a gauntlet to the star'],
 ]
 
 /**

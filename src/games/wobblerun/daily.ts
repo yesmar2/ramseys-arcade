@@ -1,7 +1,7 @@
 /*
  * Wobble Run's gauntlet of the day: the same for everyone, a new one at midnight on the boards' clock (New York),
  * as Swoop's hills and Lander's cave are. Each day's is in the plan (dailyPlan.ts, written and checked by
- * scripts/wobblerun-daily.mjs): its rounds, the try the course is laid from and the blue bean's time, so every
+ * scripts/wobblerun-daily.mjs): its rounds, the try the course is laid from and the blue blip's time, so every
  * device lays the same gauntlet. Past the end of the plan, which runs months ahead, the days go round again
  * rather than make some nobody checked.
  */
@@ -82,7 +82,7 @@ export type DailyGauntlet = {
   name: string
   /** The try at the gauntlet's number the plan kept (engine/course.ts plannedCourse). */
   attempt: number
-  /** The blue bean's time when the day was planned, in seconds. */
+  /** The blue blip's time when the day was planned, in seconds. */
   pace: number
   /** Its rounds in course order, finale last, as the plan's code: a letter and a tier each ("g1w2h2l2C2"). */
   k: string

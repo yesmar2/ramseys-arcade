@@ -273,7 +273,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'A flying fish or gull caught in a leap', pts: '25 · 50' },
     ],
     ends: 'When the last of your three lives is eaten, or reeled in.',
-    tip: 'Red eyes can eat you, and nothing can follow you into the air. A red ! at the edge means a shark is coming across at that depth. Stay off the fisherman’s worm.',
+    tip: 'Red eyes can eat you, and nothing can follow you into the air. A red ! at the edge means a shark is coming across at that depth. Stay off the fisherman’s worm, and clear of the jellyfish: a sting stuns you for a moment, and hunters close in.',
   },
   fireflies: {
     goal: 'Sing their tunes back. Light five lanterns a night.',
@@ -468,20 +468,20 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
   },
   wobblerun: {
-    goal: 'Run your bean through today’s gauntlet and grab the crown at the top, fastest. A new gauntlet comes every day at midnight, New York time.',
+    goal: 'Run Blip through today’s gauntlet and grab the star at the top, fastest. A new gauntlet comes every day at midnight, New York time.',
     controls: [
-      { does: 'Run', touch: 'Drag on the left: the bean runs the way you drag', keys: 'WASD or ← → ↑ ↓' },
+      { does: 'Run', touch: 'Drag on the left: Blip runs the way you drag', keys: 'WASD or ← → ↑ ↓' },
       { does: 'Jump', touch: 'JUMP, bottom right', keys: 'Space' },
       { does: 'Dive', touch: 'DIVE, beside JUMP', keys: 'Shift or E' },
       { does: 'Start the run again', touch: '↻', keys: 'R' },
     ],
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
-      { what: 'Fall off', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
+      { what: 'Fall in the soda', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
       { what: 'Knocked over', pts: 'a moment', sub: 'a bar or hammer stuns you for half a second; fruit or a wall throws you back, about a second' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue bean, then every 12% faster' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'beat the blue blip, then every 12% faster' },
     ],
-    ends: 'Grab the crown. Run it as often as you like.',
+    ends: 'Grab the star. Run it as often as you like.',
     tip: 'Jump the orange, dive under the purple, and keep away from the red. Everything moves on the same clock for everyone, so a short wait for a gap often beats a knock. Gold edges are risky shortcuts: quicker if you make them, slower if you don’t. A dive is a lunge forward, for a far edge or to get going again.',
     counts: [
       {

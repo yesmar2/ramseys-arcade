@@ -1,7 +1,7 @@
 /*
- * Wobble Run: the gauntlet fills the screen in 3D, seen from behind your bean, on every device, edge to edge. Over
- * it, the site's play readout (the clock, your best, the last checkpoint against the ghost, and the splats), the
- * rounds to the crown under the chrome where another race keeps its map, the countdown, the round's name sweeping
+ * Wobble Run: the gauntlet fills the screen in 3D, seen from behind Blip, on every device, edge to edge. Over
+ * it, the site's play readout (the clock, your best, the last checkpoint against the ghost, and the splashes), the
+ * rounds to the Blip star under the chrome where another race keeps its map, the countdown, the round's name sweeping
  * in at each checkpoint, and on a touch screen a stick wherever the left thumb lands with Jump and Dive under the
  * right. Before a run the camera tours the gauntlet; the start card stands clear of it.
  */
@@ -68,7 +68,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
     0 0 14px rgba(var(--surface-rgb), 0.75);
 }
 
-/* The clock stops at the crown's touch, and says so. */
+/* The clock stops at the star's touch, and says so. */
 .wobblerun__clock.is-done {
   color: var(--wobblerun-good);
 }
@@ -81,14 +81,14 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   color: var(--wobblerun-bad);
 }
 
-/* A small screen keeps the clock, your best and the split: the splats go. */
+/* A small screen keeps the clock, your best and the split: the splashes go. */
 @media (max-width: 420px) {
   .wobblerun .play-stats .play-stat:nth-child(3) {
     display: none;
   }
 }
 
-/* ---------- the rounds to the crown, where another race keeps its map ---------- */
+/* ---------- the rounds to the star, where another race keeps its map ---------- */
 
 .wobblerun__course {
   position: absolute;
@@ -131,14 +131,14 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   background: var(--wobblerun-good);
 }
 
-/* The round you're in: your bean's colour. */
+/* The round you're in: the game's colour. */
 .wobblerun__pip.is-on {
   border-color: var(--wobblerun-accent);
   background: color-mix(in srgb, var(--wobblerun-accent) 35%, transparent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--wobblerun-accent) 70%, transparent);
 }
 
-.wobblerun__pips .wobblerun__crown-pip {
+.wobblerun__pips .wobblerun__star-pip {
   display: block;
   margin-left: 0.08rem;
 }
@@ -183,7 +183,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   }
 }
 
-/* ---------- the countdown, the round's name, the crown, the notices ---------- */
+/* ---------- the countdown, the round's name, the star, the notices ---------- */
 
 .wobblerun__count {
   position: absolute;
@@ -210,14 +210,14 @@ html[data-theme='dark'] .wobblerun--fullscreen {
     0 0 3px rgba(7, 5, 15, 0.9);
 }
 
-/* On a wide screen the start arch's name sign sits about where 26% is: the count goes under it, above the bean. */
+/* On a wide screen the start arch's name sign sits about where 26% is: the count goes under it, above Blip. */
 @media (orientation: landscape) {
   .wobblerun__count {
     top: 38%;
   }
 }
 
-/* "Round 3 · Lily Leapers", sweeping in across the middle as you cross a checkpoint. The clock never stops for it. */
+/* "Round 3 · Pad Hop", sweeping in across the middle as you cross a checkpoint. The clock never stops for it. */
 .wobblerun__banner {
   position: absolute;
   top: 34%;
@@ -267,8 +267,8 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   }
 }
 
-/* The crown's touch: the time, frozen, with the crown, while the world slows to watch your bean take it. */
-.wobblerun__crown {
+/* The star's touch: the time, frozen, with the Blip star and its mint glow, while the world slows to watch Blip take it. */
+.wobblerun__star {
   position: absolute;
   top: 30%;
   left: 50%;
@@ -286,7 +286,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   color: #fff;
   font-variant-numeric: tabular-nums;
   text-shadow:
-    0 0 26px rgba(244, 197, 62, 0.85),
+    0 0 26px rgba(111, 240, 210, 0.85),
     0 0 3px rgba(7, 5, 15, 0.9);
   pointer-events: none;
   animation: wobblerun-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
@@ -424,7 +424,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   height: 24px;
 }
 
-/* Jump: the big one, bottom right, in your bean's colour. */
+/* Jump: the big one, bottom right, in the game's colour. */
 .wobblerun__btn--jump {
   right: max(18px, calc(env(safe-area-inset-right, 0px) + 10px));
   bottom: max(22px, calc(env(safe-area-inset-bottom, 0px) + 14px));
@@ -486,7 +486,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
 
 /*
  * A phone on its side has the buttons at the right edge (Dive's left edge about 10.75rem in), and lifted that high
- * the word would cover the track just ahead of the bean: back at the bottom like the other dailies, clear of them.
+ * the word would cover the track just ahead of Blip: back at the bottom like the other dailies, clear of them.
  */
 @media (max-height: 500px) and (orientation: landscape) {
   .wobblerun--touch .wobblerun__hint {
@@ -531,7 +531,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   grid-column: 1 / -1;
 }
 
-/* The rounds in order, finale last, then the crown: a chip each, the spicy ones with a pepper. */
+/* The rounds in order, finale last, then the Blip star: a chip each, the spicy ones with a pepper. */
 .wobblerun-rounds__list {
   display: flex;
   flex-wrap: wrap;
@@ -608,7 +608,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   }
 }
 
-.wobblerun-rounds__crown {
+.wobblerun-rounds__star {
   display: inline-flex;
   align-items: center;
   padding: 0 0.15rem;
@@ -629,7 +629,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
 
 @media (prefers-reduced-motion: reduce) {
   .wobblerun__toast,
-  .wobblerun__crown {
+  .wobblerun__star {
     animation: none;
   }
 

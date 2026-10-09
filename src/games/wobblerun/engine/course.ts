@@ -379,7 +379,7 @@ export function courseFromCode(k: string, seed: string | number = 'lab', name = 
   })
 }
 
-/** The round the bean is in at z (−1 on the start, a pad or a slide), for the HUD's "Round 2 · Lily Leapers". */
+/** The round the bean is in at z (−1 on the start, a pad or a slide), for the HUD's "Round 2 · Pad Hop". */
 export function roundAt(course: Course, z: number): number {
   for (const r of course.rounds) if (z >= r.z0 && z < r.z1) return r.i
   return -1

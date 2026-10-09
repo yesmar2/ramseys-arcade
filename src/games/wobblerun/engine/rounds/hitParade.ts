@@ -263,7 +263,7 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 'h',
-  name: 'Hit Parade',
+  name: 'Bonk Alley',
   hint: 'dodge the swings',
   family: 'D',
   phase: 1,

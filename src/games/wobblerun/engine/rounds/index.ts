@@ -1,7 +1,10 @@
 /**
- * Every round, by its letter in a gauntlet's code (dailyPlan.ts `k`): g Gate Crash, b Block Party, s Spin Club,
- * h Hit Parade, f Fruit Chute, w See-Saw, x Hex Drop, l Lily Leapers, r Roll On, n Big Fans; the finales C Crown
- * Peak and S Slime Climb. A round still `stub` lays a safe stand-in (stub.ts) so a course with it in still runs.
+ * Every round, by its letter in a gauntlet's code (dailyPlan.ts `k`), its module, and the name players see (its
+ * ROUND's `name` and `hint`, display only: nothing that lays or runs a course reads them): g gateCrash Slam Doors,
+ * b blockParty Wall Rush, s spinClub Sweeper Spin, h hitParade Bonk Alley, f fruitChute Melon Hill, w seeSaw Tippy
+ * Planks, x hexDrop Crumble Tiles, l lilyLeapers Pad Hop, r rollOn Barrel Roll, n bigFans Gust Gaps; the finales
+ * C crownPeak Star Peak and S slimeClimb Tide Tower. The modules keep the names they were built under. A round
+ * still `stub` lays a safe stand-in (stub.ts) so a course with it in still runs.
  */
 import type { RoundDef } from '../types.ts'
 import { ROUND as bigFans } from './bigFans.ts'

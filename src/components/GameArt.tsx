@@ -1746,30 +1746,73 @@ function Swoop({ id }: { id: Id }) {
   )
 }
 
+/** Blip's colours, and the blue blip's: its body, the shade under its belly, its feet and its spark's glow. */
+const BLIP_MINT = { body: '#34c6a8', shade: '#1f9b84', feet: '#167a69', glow: '#9ff7e2' }
+const BLIP_BLUE = { body: '#4cb8f0', shade: '#2f8fc6', feet: '#236f9c', glow: '#bfe6fb' }
+
 /**
- * Wobble Run's bean, 20 tall about its middle (y down), as the day's pictures draw it (wobblerun/gauntletPicture.ts
- * beanMarks): a jelly bean, its visor and eyes, arms up, legs tucked for a jump. The blue bean is the same,
- * lighter and see-through.
+ * Blip, Wobble Run's runner, 20 tall about its middle (y down) from its spark to its feet, as the day's pictures
+ * draw it (wobblerun/gauntletPicture.ts blipMarks): round and mint, two tall dark eyes with their glints, pink
+ * cheeks and a small smile, two round feet, and the glowing spark (the blip) floating over its head. `tall`
+ * stretches it, as a jump does. The blue blip is the same in blue, see-through. `name` names its spark's glow.
  */
-function Bean({ x, y, s, rot = 0, fill, edge, opacity = 1 }: { x: number; y: number; s: number; rot?: number; fill: string; edge: string; opacity?: number }) {
+function Blip({
+  id,
+  name,
+  x,
+  y,
+  s,
+  tall = 1,
+  rot = 0,
+  c,
+  opacity = 1,
+}: {
+  id: Id
+  name: string
+  x: number
+  y: number
+  s: number
+  tall?: number
+  rot?: number
+  c: typeof BLIP_MINT
+  opacity?: number
+}) {
   return (
-    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`} opacity={opacity}>
-      <path d="M-4.6 -0.6 L-8.2 -4.8 M4.6 -0.6 L8.2 -4.8" {...line(fill, 2)} />
-      <path d="M-2.6 6.6 L-3.8 8.6 M2.6 6.6 L3.8 8.6" {...line(fill, 2.4)} />
-      <rect x="-5.4" y="-9.6" width="10.8" height="17.6" rx="5.4" fill={fill} stroke={edge} strokeWidth="1" />
-      <ellipse cx="-2.6" cy="-2.4" rx="1.2" ry="3" fill="#fff" opacity="0.28" />
-      <ellipse cx="1.2" cy="-4.8" rx="3.7" ry="2.6" fill="#fff0f6" />
-      <circle cx="-0.1" cy="-4.8" r="0.85" fill="#1a1033" />
-      <circle cx="2.5" cy="-4.8" r="0.85" fill="#1a1033" />
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s} ${s * tall})`} opacity={opacity}>
+      <Glow id={id} name={name} cx={0} cy={-7.98} r={2.7} colour={c.glow} strength={0.9} />
+      <circle cx="0" cy="-7.98" r="0.85" fill="#f2fffb" />
+      <ellipse cx="-2.31" cy="8.82" rx="1.79" ry="0.95" fill={c.feet} />
+      <ellipse cx="2.31" cy="8.82" rx="1.79" ry="0.95" fill={c.feet} />
+      <circle cx="0" cy="1.26" r="7.35" fill={c.body} />
+      <path d="M-5.88 4.2 A7.35 7.35 0 0 0 5.88 4.2 A8.4 6.3 0 0 1 -5.88 4.2 Z" fill={c.shade} />
+      <ellipse cx="-2.52" cy="-2.94" rx="2.52" ry="1.26" fill="#fff" opacity="0.35" transform="rotate(-24 -2.52 -2.94)" />
+      <ellipse cx="-1.89" cy="1.05" rx="0.95" ry="1.58" fill="#0f2f2a" />
+      <ellipse cx="1.89" cy="1.05" rx="0.95" ry="1.58" fill="#0f2f2a" />
+      <circle cx="-1.58" cy="0.32" r="0.36" fill="#fff" />
+      <circle cx="2.2" cy="0.32" r="0.36" fill="#fff" />
+      <ellipse cx="-3.57" cy="3.15" rx="0.95" ry="0.53" fill="#ff8fb3" opacity="0.7" />
+      <ellipse cx="3.57" cy="3.15" rx="0.95" ry="0.53" fill="#ff8fb3" opacity="0.7" />
+      <path d="M-1.26 3.57 Q0 4.73 1.26 3.57" {...line('#0f2f2a', 0.47)} />
     </g>
   )
 }
 
+/** The soda sea's bubbles: x, y, radius. */
+const SODA_BUBBLES = [
+  [2.8, 28.3, 0.42],
+  [9.6, 29.6, 0.3],
+  [15.4, 28.1, 0.26],
+  [21.8, 29.3, 0.38],
+  [28.2, 28.4, 0.3],
+  [34.6, 29.5, 0.4],
+  [38.4, 28.2, 0.26],
+] as const
+
 /**
- * Wobble Run: your pink bean mid-jump over Spin Club's orange bar as it sweeps round from its teal hub, on a
- * candy platform over the pink goo at dusk, its shadow under it; the blue bean waiting its turn behind, and
- * the gold crown up ahead, where every gauntlet ends. The colours are the game's code: orange to jump, teal
- * to bounce, indigo for the way it turns.
+ * Wobble Run: Blip mid-jump over the sweeper's orange bar as it sweeps round from its teal hub, stretched tall,
+ * on a candy platform over the teal soda sea at dusk, its shadow under it; the blue blip waiting its turn
+ * behind, and the Blip star up ahead, where every gauntlet ends. The colours are the game's code: orange to
+ * jump, teal to bounce, indigo for the way it turns.
  */
 function WobbleRun({ id }: { id: Id }) {
   const top = 20.4
@@ -1794,29 +1837,38 @@ function WobbleRun({ id }: { id: Id }) {
           [1.6, 11.2, 0.13, 0.45],
         ]}
       />
-      {/* The goo below, glowing, and its surface. */}
-      <rect x="-1" y="26.6" width="42" height="5" fill="#ff5fae" opacity="0.32" />
-      <path d="M-1 26.8 Q4 26 9 26.8 T19 26.8 T29 26.8 T41 26.8" {...line('#ff9dd0', 0.35, 0.8)} />
+      {/* The soda sea below: teal, deeper further down, its bubbles and its light rim. */}
+      <path d="M-1 26.8 Q4 26 9 26.8 T19 26.8 T29 26.8 T41 26.8 V31 H-1 Z" fill="#1fa6a0" />
+      <rect x="-1" y="29" width="42" height="2" fill="#178a86" />
+      {SODA_BUBBLES.map(([x, y, r]) => (
+        <circle key={x} cx={x} cy={y} r={r} {...line('#dffbf6', 0.14, 0.85)} />
+      ))}
+      <path d="M-1 26.8 Q4 26 9 26.8 T19 26.8 T29 26.8 T41 26.8" {...line('#bff7ee', 0.35, 0.8)} />
       {/* The candy platform: its pastel top, its body, the frosting along its edge. */}
       <path d={`M1.4 ${top} H38.6 L39.6 23 H0.4 Z`} fill="#ffd3ea" stroke="#fff3f9" strokeWidth="0.3" strokeLinejoin="round" />
       <path d="M0.4 23 H39.6 V25.2 Q39.6 26 38.8 26 H1.2 Q0.4 26 0.4 25.2 Z" fill="#b0508a" />
       {Array.from({ length: 13 }, (_, i) => 1.6 + i * 3.06).map((x) => (
         <path key={x} d={`M${x.toFixed(2)} 23 a1.1 1.1 0 0 0 2.2 0`} fill="#fff3f9" />
       ))}
-      {/* The crown up ahead, floating, with its glow and twinkles. */}
-      <Glow id={id} name="crown" cx={30.6} cy={7.2} r={5.6} colour="#f4c53e" strength={0.5} />
-      <g transform="translate(30.6 7.4) scale(0.27)">
-        <path d="M-8 5 L-9.2 -4.6 L-4.2 -0.4 L0 -7.6 L4.2 -0.4 L9.2 -4.6 L8 5 Z" fill="#f4c53e" stroke="#fff1b0" strokeWidth="1" strokeLinejoin="round" />
-        <rect x="-8.2" y="4.4" width="16.4" height="3.2" rx="1" fill="#e0a92a" stroke="#fff1b0" strokeWidth="0.8" />
-        <circle cx="0" cy="1.6" r="1.4" fill="#e85d9a" />
-        <circle cx="-4.6" cy="2.4" r="0.9" fill="#3ec8cf" />
-        <circle cx="4.6" cy="2.4" r="0.9" fill="#3ec8cf" />
+      {/* The Blip star up ahead, floating, with its glow and twinkles: mint, a lighter star inside, the blip at its centre. */}
+      <Glow id={id} name="star" cx={30.6} cy={7.2} r={5.6} colour="#6ff0d2" strength={0.5} />
+      <g transform="translate(30.6 7.3) scale(0.3)">
+        <path
+          d="M0 -8.58 L2.42 -2.42 L9.02 -2.2 L3.74 1.76 L5.72 8.36 L0 4.62 L-5.72 8.36 L-3.74 1.76 L-9.02 -2.2 L-2.42 -2.42 Z"
+          fill="#34c6a8"
+          stroke="#bff7ee"
+          strokeWidth="0.8"
+          strokeLinejoin="round"
+        />
+        <path d="M0 -5.94 L1.54 -1.98 L5.72 -1.76 L2.42 0.66 L3.52 4.84 L0 2.42 L-3.52 4.84 L-2.42 0.66 L-5.72 -1.76 L-1.54 -1.98 Z" fill="#7ff0d6" />
+        <circle r="2.6" fill="#f2fffb" opacity="0.35" />
+        <circle r="1.55" fill="#f2fffb" />
       </g>
-      <path d={sparkle(26.4, 4.2, 0.7)} fill="#fff6cf" />
-      <path d={sparkle(34.6, 9.8, 0.55)} fill="#fff6cf" />
-      {/* The blue bean behind, waiting for the bar to pass. */}
-      <ellipse cx="6.8" cy={top + 0.5} rx="1.7" ry="0.4" fill="#000" opacity="0.25" />
-      <Bean x={6.8} y={top - 3.7} s={0.36} fill="#4cb8f0" edge="#a9dcf7" opacity={0.55} />
+      <path d={sparkle(26.4, 4.2, 0.7)} fill="#dffbf6" />
+      <path d={sparkle(34.6, 9.8, 0.55)} fill="#dffbf6" />
+      {/* The blue blip behind, waiting for the bar to pass. */}
+      <ellipse cx="6.8" cy={top + 0.5} rx="2" ry="0.4" fill="#000" opacity="0.25" />
+      <Blip id={id} name="blue-spark" x={6.8} y={top - 3.6} s={0.36} c={BLIP_BLUE} opacity={0.55} />
       {/* The hub and its sweeping bar, orange to jump, its stripes the colour code's up-chevrons; over the hub, the way it turns. */}
       <rect x="29.6" y="14.6" width="3.2" height={top - 14.2} rx="0.5" {...wash(184, 59, 53, 0.5, 0.35)} />
       <ellipse cx="31.2" cy="14.6" rx="1.6" ry="0.55" fill="#3ec8cf" />
@@ -1826,10 +1878,10 @@ function WobbleRun({ id }: { id: Id }) {
       ))}
       <path d="M27.2 13.4 Q31.2 11.2 35.2 13.4" {...line('#6b74e8', 0.42)} />
       <path d="M34.1 12.4 L35.3 13.5 L34 14.4" {...line('#6b74e8', 0.42)} />
-      {/* Your bean, over the bar, its shadow on the platform and the whoosh of the jump. */}
-      <ellipse cx="17.8" cy={top + 0.6} rx="2.4" ry="0.5" fill="#000" opacity="0.28" />
-      <path d="M13.6 15 Q14.6 12.8 15.6 11.6 M12.6 13 Q13.2 11.6 14 10.8" {...line('#ffffff', 0.3, 0.55)} />
-      <Bean x={18.2} y={9.6} s={0.46} rot={-8} fill="#e85d9a" edge="#ffb3d6" />
+      {/* Blip, over the bar, stretched tall for the jump, its shadow on the platform and the whoosh of the jump. */}
+      <ellipse cx="17.8" cy={top + 0.6} rx="2.6" ry="0.5" fill="#000" opacity="0.28" />
+      <path d="M12.8 15 Q13.8 12.8 14.8 11.6 M11.8 13 Q12.4 11.6 13.2 10.8" {...line('#ffffff', 0.3, 0.55)} />
+      <Blip id={id} name="spark" x={18.4} y={9.4} s={0.46} tall={1.14} rot={-10} c={BLIP_MINT} />
     </>
   )
 }

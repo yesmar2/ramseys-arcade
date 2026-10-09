@@ -252,8 +252,8 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 'b',
-  name: 'Block Party',
-  hint: 'through the walls',
+  name: 'Wall Rush',
+  hint: 'find the gap',
   family: 'T',
   phase: 1,
   build,

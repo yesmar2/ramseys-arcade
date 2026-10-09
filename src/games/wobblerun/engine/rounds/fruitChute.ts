@@ -292,8 +292,8 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 'f',
-  name: 'Fruit Chute',
-  hint: 'up the chute',
+  name: 'Melon Hill',
+  hint: 'climb the belt',
   family: 'D',
   phase: 1,
   build,

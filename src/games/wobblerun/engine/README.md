@@ -70,7 +70,7 @@ A `Course` (types.ts) is flat arrays the scene builds once and poses each frame:
   once `run.splits.length ≥ k`. `stripe` decos with the same param are the flag lines.
 - **Theme**: `course.theme` (weekday, design-final §4.5): `floors[tint]` / `bodies[tint]` for anything with
   `tint ≥ 0`, `goo`, `night` (Neon Night: night in either site theme), `perRound` (Big Show), `scenery`.
-  `course.gooY` is where the goo plane goes (9 m below the lowest floor).
+  `course.gooY` is where the goo plane goes (9 m below the lowest floor), drawn as the teal soda sea.
 - **Camera**: `cameraAt(course, z)` → 'default' | 'wide' | 'climb' | 'slide' (blend over 0.8 s).
 
 ### Looks
@@ -110,8 +110,8 @@ role, so a round can use a new look before the scene has one; tell the scene eng
 | `wind` | volume | streaks while duty > 0 | duty |
 | `fan` | deco (ref wind) | fan on a pylon, blades blur in the spin-up | ref tele |
 | `hoop` | volume | green boost ring | r, dir |
-| `crown` | volume | the golden crown, bobbing | crownAt |
-| `slime` | volume | rising pink slime plane | slimeY(run) |
+| `crown` | volume | the Blip star (players never see a crown: the trigger keeps the name), bobbing: a mint five-point star, a lighter star inside, the glowing white blip at its centre, a soft mint glow | crownAt |
+| `slime` | volume | the soda sea rising up Tide Tower: teal, fizzing | slimeY(run) |
 | `flag` | deco | checkpoint / start flag (amber → green) | params.checkpoint / start |
 | `stripe` | deco | painted floor line (a checkpoint's flag line) | params |
 | `gold-edge`, `gold-flag` | deco | gold strip; crown flag at a gold line's entry | — |
@@ -141,7 +141,7 @@ for (const e of run.ev) …                                 // this step's event
   `yeet`, `dead` (> 0 while splatted), `ledge` (a ledge catch's pop-up), `air`, `landV` (the last landing's
   speed, for squash), `spawn`. `prone(bean)` says it's 0.84 m tall (diving or belly sliding).
 - **Where it is**: `course.spawns[run.bean.spawn]` is the last checkpoint or flag reached; `roundAt(course, z)`
-  is the round index (−1 on the start, a pad or a slide) for "Round 2 · Lily Leapers" (`course.rounds[i].name`).
+  is the round index (−1 on the start, a pad or a slide) for "Round 2 · Pad Hop" (`course.rounds[i].name`).
 - **Splits and finish**: `run.splits` gets each checkpoint's flag-line crossing (interpolated inside the step),
   then the crown's touch; `course.splitCount` is how many a finished run has (5 on a day). `run.done` and
   `run.time` (the crown's touch, interpolated inside the step) end the run; keep stepping for the celebration
@@ -221,10 +221,38 @@ A round module exports `ROUND: RoundDef`:
 
 ```ts
 export const ROUND: RoundDef = {
-  letter: 'b', name: 'Block Party', hint: 'through the walls', family: 'T', phase: 1,
+  letter: 'b', name: 'Wall Rush', hint: 'find the gap', family: 'T', phase: 1,
   build(slot, rng, tier, base) { const k = kit(slot, tier); …; return k.done({ x: 0, y: 0, z: len }) },
 }
 ```
+
+### Names players see
+
+`name` and `hint` are display only: `assemble` copies them onto `course.rounds[i]` for the HUD, the cards and the
+lab's start card, and nothing that lays, runs, seeds or plans a course reads them (seeds are the day, the try and the
+slot; plan.ts works from letters). The modules keep the names they were built under (`gateCrash.ts` and so on, and
+the names in this file's notes); players see their own names. The site's pictures and chips name them from
+`gauntletPicture.ts ROUNDS`, which says the same.
+
+| Letter | Module | Name | Hint |
+|---|---|---|---|
+| `g` | `gateCrash.ts` | Slam Doors | time the doors |
+| `b` | `blockParty.ts` | Wall Rush | find the gap |
+| `s` | `spinClub.ts` | Sweeper Spin | hop the bars |
+| `h` | `hitParade.ts` | Bonk Alley | dodge the swings |
+| `f` | `fruitChute.ts` | Melon Hill | climb the belt |
+| `w` | `seeSaw.ts` | Tippy Planks | stay on the stripe |
+| `x` | `hexDrop.ts` | Crumble Tiles | keep moving |
+| `l` | `lilyLeapers.ts` | Pad Hop | hop the pads |
+| `r` | `rollOn.ts` | Barrel Roll | run the barrels |
+| `n` | `bigFans.ts` | Gust Gaps | wait out the wind |
+| `C` | `crownPeak.ts` | Star Peak (finale) | grab the star |
+| `S` | `slimeClimb.ts` | Tide Tower (finale) | beat the rising sea |
+
+The runner players see is Blip (the engine's `run.bean`), the pace runner is "the blue blip", the `crown` trigger
+at the top of a finale is drawn and named as the Blip star ("Star!", "Got the star"), and what you fall into (the
+goo plane, and the `slime` volume rising up Tide Tower) is the teal soda sea, where a fall says "Fizz!". The engine
+keeps its identifiers (`crown`, `slime`, `goo`, `splat`, `bean`) as they are.
 
 Drop `stub: true` when it's built and the lab picks it up. Who builds what: Gate Crash (`gateCrash.ts`), Lily
 Leapers (`lilyLeapers.ts`) and Crown Peak (`crownPeak.ts`) are the references, built; `blockParty.ts`,

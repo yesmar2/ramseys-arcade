@@ -7,7 +7,7 @@ import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { gauntletDay, PLANNED_GAUNTLETS } from './daily'
 import { gauntletRunHref } from './links'
 import type { WobbleDay } from './runs'
-import { formatRun, splatWords } from './score'
+import { formatRun, splashWords } from './score'
 
 /*
  * The cards of an admin's test run (/games/wobblerun/play?track=<n>, or ?day=YYYY-MM-DD, for today's gauntlet or
@@ -34,10 +34,10 @@ function whenWords(day: string) {
   return `Comes ${date}`
 }
 
-/** "Beat the blue bean by 1.20s", "Tied with the blue bean", "3.04s behind the blue bean". */
+/** "Beat the blue blip by 1.20s", "Tied with the blue blip", "3.04s behind the blue blip". */
 function againstBlue(time: number, pace: number) {
   const gap = time - pace
-  return Math.abs(gap) < 0.005 ? 'Tied with the blue bean' : gap < 0 ? `Beat the blue bean by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue bean`
+  return Math.abs(gap) < 0.005 ? 'Tied with the blue blip' : gap < 0 ? `Beat the blue blip by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue blip`
 }
 
 /** The gauntlets either side, and the way back to the book. A tap here isn't a tap to start. */
@@ -108,7 +108,7 @@ export function TestStartCard({ wobble, best, chips }: { wobble: WobbleDay; best
         extraMeta={
           <>
             {chips}
-            <Row label="Blue bean">{formatRun(wobble.pace)}</Row>
+            <Row label="Blue blip">{formatRun(wobble.pace)}</Row>
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
           </>
         }
@@ -121,7 +121,7 @@ export function TestStartCard({ wobble, best, chips }: { wobble: WobbleDay; best
   )
 }
 
-/** After a test run: its time, against your best here and the blue bean's. */
+/** After a test run: its time, against your best here and the blue blip's. */
 export function TestResultCard({
   wobble,
   time,
@@ -156,12 +156,12 @@ export function TestResultCard({
         </span>
         <h2 className="game-card__title game-card__title--big">{formatRun(time)}</h2>
         <p className="game-card__blurb">
-          {againstBlue(time, wobble.pace)}, with {splatWords(splats)}.
+          {againstBlue(time, wobble.pace)}, with {splashWords(splats)}.
         </p>
       </div>
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
-        <Row label="Blue bean">{formatRun(wobble.pace)}</Row>
+        <Row label="Blue blip">{formatRun(wobble.pace)}</Row>
       </div>
       <p className="game-card__hint">A test run: not saved.</p>
       <div className="game-card__actions">
@@ -192,7 +192,7 @@ export function TestResultCard({
 
 /**
  * The test course's start card (?lab=1, an admin's, from the Gauntlet Book): every built round at T1, T2 and T3 in
- * a row, to play on a phone before any goes into a day's gauntlet. Nothing here is saved, and there's no blue bean
+ * a row, to play on a phone before any goes into a day's gauntlet. Nothing here is saved, and there's no blue blip
  * to race.
  */
 export function LabStartCard({ rounds, best }: { rounds: readonly string[]; best: number | null }) {
@@ -203,7 +203,7 @@ export function LabStartCard({ rounds, best }: { rounds: readonly string[]; best
         <span className="game-card__kicker">Test course · every round</span>
         <h2 className="game-card__title game-card__title--big">Test Course</h2>
         <p className="game-card__blurb">
-          {names}, each at all three tiers, gentle to spicy. A checkpoint before each, so a splat costs only that round. Runs here aren’t
+          {names}, each at all three tiers, gentle to spicy. A checkpoint before each, so a fall costs only that round. Runs here aren’t
           saved anywhere.
         </p>
       </div>
@@ -227,7 +227,7 @@ export function LabStartCard({ rounds, best }: { rounds: readonly string[]; best
   )
 }
 
-/** After a run of the test course: its time and splats, and your best here. Not saved. */
+/** After a run of the test course: its time and splashes, and your best here. Not saved. */
 export function LabResultCard({
   time,
   splats,
@@ -257,7 +257,7 @@ export function LabResultCard({
       <div className="game-card__head">
         <span className="game-card__kicker">Test course · every round</span>
         <h2 className="game-card__title game-card__title--big">{formatRun(time)}</h2>
-        <p className="game-card__blurb">All the way to the crown, with {splatWords(splats)}.</p>
+        <p className="game-card__blurb">All the way to the star, with {splashWords(splats)}.</p>
       </div>
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>

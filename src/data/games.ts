@@ -308,7 +308,7 @@ export const games: Game[] = [
     slug: 'wobblerun',
     tags: ['arcade', 'quick'],
     description:
-      'A new gauntlet every day, the same for everyone, in 3D. Run, jump and dive your bean past doors, hammers, see-saws and falling tiles to the crown against the clock: fall off and you’re back at the last checkpoint. Beat the blue bean.',
+      'A new gauntlet every day, the same for everyone, in 3D. Run, jump and dive Blip past doors, hammers, tippy planks and crumbling tiles to the star against the clock: fall in the soda sea and you’re back at the last checkpoint. Beat the blue blip.',
     accent: PALETTE.pink,
     playable: true,
     inDevelopment: true,

@@ -10,7 +10,7 @@ import type { Course } from './engine/types'
  * race: on today's gauntlet, today's #1; on a past one, its All time #1. A run saved on the board sends where the
  * bean went after it, ten times a second, and the API keeps it when it's the tag's run on the board and the
  * gauntlet's fastest yet. The #1 is always told, path or not: a run saved on a card closed too soon has none, and
- * then the ghost runs the blue bean's line at the #1's time (standIn).
+ * then the ghost runs the blue blip's line at the #1's time (standIn).
  */
 
 /** A gauntlet's #1: whose run, its time in seconds, the run itself when its path is known, and the skin it was run in. */
@@ -112,7 +112,7 @@ const NEAR_PLANK = 1.1
 /**
  * Whether a ghost's path was run over this gauntlet: nearly every moment it was on the ground, there was a floor
  * under it then (moving ones where they were at that moment). A gauntlet laid again after a run was made on it
- * (before launch, re-plans are free) leaves a path running on air, and the ghost runs the blue bean's line at the
+ * (before launch, re-plans are free) leaves a path running on air, and the ghost runs the blue blip's line at the
  * #1's time instead (standIn).
  */
 export function fitsCourse(course: Course, run: GhostRun): boolean {
@@ -157,9 +157,9 @@ export function fitsCourse(course: Course, run: GhostRun): boolean {
 }
 
 /**
- * A run of `time` seconds along another run's line: the blue bean's, off the start as it went and then run faster
+ * A run of `time` seconds along another run's line: the blue blip's, off the start as it went and then run faster
  * or slower to make the difference up by the crown (lib/ghostWarp.ts), crossing each checkpoint when that clock
- * does. For a player whose path isn't known: their time, on the blue bean's line. The blue bean itself is its own
+ * does. For a player whose path isn't known: their time, on the blue blip's line. The blue blip itself is its own
  * hands' line at the plan's time (runs.ts paceOf).
  */
 export function standIn(line: GhostRun, time: number): GhostRun {

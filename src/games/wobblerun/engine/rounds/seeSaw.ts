@@ -87,8 +87,8 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
 
 export const ROUND: RoundDef = {
   letter: 'w',
-  name: 'See-Saw',
-  hint: 'walk the middle',
+  name: 'Tippy Planks',
+  hint: 'stay on the stripe',
   family: 'F',
   phase: 1,
   build,

@@ -1,8 +1,9 @@
 /*
  * A day's gauntlet as a picture: its rounds in order as a trail of round badges at dusk, each badge with the
  * round's own small drawing in the game's colour code (jump the orange, dive under the purple, red bonks,
- * teal bounces, green helps, indigo pushes), its tier as pips under it, and the trail ending in the gold crown.
- * Your pink bean waits at the start. It needs only the plan's row (dailyPlan.ts: the round code `k`), no
+ * teal bounces, green helps, indigo pushes), its tier as pips under it, and the trail ending in the Blip star,
+ * mint with the glowing blip at its centre, over the teal soda sea. Blip, your mint runner with its spark, waits
+ * at the start. It needs only the plan's row (dailyPlan.ts: the round code `k`), no
  * engine, so the home row, Today's Gauntlet, the past gauntlets, the Gauntlet Book, the tomorrow tease and the
  * day's share card (scripts/today-cards.mjs, at build) all draw it from the same few letters.
  *
@@ -16,29 +17,30 @@ export type RoundLetter = 'g' | 'b' | 's' | 'h' | 'f' | 'w' | 'x' | 'l' | 'r' | 
 
 export type RoundInfo = {
   name: string
-  /** Two or three words on what you do in it, for a chip: "Lily Leapers · hop the pads". Never an answer. */
+  /** Two or three words on what you do in it, for a chip: "Pad Hop · hop the pads". Never an answer. */
   hint: string
   finale: boolean
 }
 
+/** The names players see, the same as the engine's rounds (engine/rounds/*.ts ROUND name and hint). */
 export const ROUNDS: Record<RoundLetter, RoundInfo> = {
-  g: { name: 'Gate Crash', hint: 'time the doors', finale: false },
-  b: { name: 'Block Party', hint: 'beat the walls', finale: false },
-  s: { name: 'Spin Club', hint: 'jump the sweep', finale: false },
-  h: { name: 'Hit Parade', hint: 'dodge the swings', finale: false },
-  f: { name: 'Fruit Chute', hint: 'dodge the fruit', finale: false },
-  w: { name: 'See-Saw', hint: 'keep your balance', finale: false },
-  x: { name: 'Hex Drop', hint: 'keep moving', finale: false },
-  l: { name: 'Lily Leapers', hint: 'hop the pads', finale: false },
-  r: { name: 'Roll On', hint: 'ride the drums', finale: false },
-  n: { name: 'Big Fans', hint: 'ride the wind', finale: false },
-  C: { name: 'Crown Peak', hint: 'climb to the crown', finale: true },
-  S: { name: 'Slime Climb', hint: 'outrun the slime', finale: true },
+  g: { name: 'Slam Doors', hint: 'time the doors', finale: false },
+  b: { name: 'Wall Rush', hint: 'find the gap', finale: false },
+  s: { name: 'Sweeper Spin', hint: 'hop the bars', finale: false },
+  h: { name: 'Bonk Alley', hint: 'dodge the swings', finale: false },
+  f: { name: 'Melon Hill', hint: 'climb the belt', finale: false },
+  w: { name: 'Tippy Planks', hint: 'stay on the stripe', finale: false },
+  x: { name: 'Crumble Tiles', hint: 'keep moving', finale: false },
+  l: { name: 'Pad Hop', hint: 'hop the pads', finale: false },
+  r: { name: 'Barrel Roll', hint: 'run the barrels', finale: false },
+  n: { name: 'Gust Gaps', hint: 'wait out the wind', finale: false },
+  C: { name: 'Star Peak', hint: 'grab the star', finale: true },
+  S: { name: 'Tide Tower', hint: 'beat the rising sea', finale: true },
 }
 
 export type GauntletRound = RoundInfo & { letter: RoundLetter; tier: number }
 
-/** A round code's rounds in course order, finale last: "g1w2h2l2C2" → Gate Crash T1, See-Saw T2, … */
+/** A round code's rounds in course order, finale last: "g1w2h2l2C2" → Slam Doors T1, Tippy Planks T2, … */
 export function gauntletRounds(k: string): GauntletRound[] {
   const rounds: GauntletRound[] = []
   for (const [, letter, tier] of k.matchAll(/([a-zA-Z])(\d)/g)) {
@@ -48,7 +50,7 @@ export function gauntletRounds(k: string): GauntletRound[] {
   return rounds
 }
 
-/** "Gate Crash · See-Saw · Hit Parade · Lily Leapers · Crown Peak". */
+/** "Slam Doors · Tippy Planks · Bonk Alley · Pad Hop · Star Peak". */
 export const roundsWords = (k: string) =>
   gauntletRounds(k)
     .map((r) => r.name)
@@ -86,7 +88,7 @@ const stroke = (colour: string, width: number, opacity = 1): Attrs => ({
   ...(opacity < 1 ? { opacity } : {}),
 })
 
-/** The colour code, the same in every theme and every day (design-final §1.5), and the bean's own. */
+/** The colour code, the same in every theme and every day (design-final §1.5), and Blip's, the star's and the sea's. */
 export const GAUNTLET_COLOURS = {
   jump: '#f2813a',
   dive: '#8a6ad4',
@@ -97,18 +99,49 @@ export const GAUNTLET_COLOURS = {
   amber: '#f5b942',
   gold: '#f4c53e',
   white: '#f6f1ff',
-  bean: '#e85d9a',
-  beanEdge: '#ffb3d6',
   blue: '#4cb8f0',
   /** Floors: the candy pastels. */
   pink: '#ffd3ea',
   lemon: '#fff1b8',
   mint: '#c8f3e1',
   jelly: '#ff9ccc',
-  goo: '#ff5fae',
+  /** The Blip star at the top: mint, a lighter star inside, the glowing white blip at its centre. */
+  star: '#34c6a8',
+  starInner: '#7ff0d6',
+  starEdge: '#bff7ee',
+  starGlow: '#6ff0d2',
+  spark: '#f2fffb',
+  /** The soda sea below: teal, deeper further down, a light rim and its bubbles. */
+  sea: '#1fa6a0',
+  seaDeep: '#178a86',
+  seaRim: '#bff7ee',
+  bubble: '#dffbf6',
   ink: '#1a1033',
 }
 const K = GAUNTLET_COLOURS
+
+/** Blip's colours: its body, the shade under its belly, its feet and its spark's glow. */
+export type BlipColours = { body: string; shade: string; feet: string; glow: string }
+export const BLIP: BlipColours = { body: '#34c6a8', shade: '#1f9b84', feet: '#167a69', glow: '#9ff7e2' }
+
+/** A five-point star about (cx, cy), `r` to its points, as a path. */
+function starPath(cx: number, cy: number, r: number, inner = 0.42): string {
+  const pts = Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (Math.PI / 5) * i
+    const at = i % 2 === 0 ? r : r * inner
+    return `${n2(cx + at * Math.cos(a))} ${n2(cy + at * Math.sin(a))}`
+  })
+  return `M${pts.join(' L')} Z`
+}
+
+/** A small Blip star, for a finale's summit: its glow, the mint star and the blip at its centre. */
+function smallStar(cx: number, cy: number, r: number): Mark[] {
+  return [
+    circle(cx, cy, r * 1.45, { fill: K.starGlow, 'fill-opacity': 0.16 }),
+    path(starPath(cx, cy, r), solid(K.star, K.starEdge, Math.max(0.3, r * 0.22))),
+    circle(cx, cy, r * 0.3, solid(K.spark)),
+  ]
+}
 
 /** A pointy-topped hexagon. */
 function hex(cx: number, cy: number, r: number): string {
@@ -132,10 +165,10 @@ function chevron(x: number, y: number, deg: number, s: number): string {
 
 /**
  * Each round's drawing, in a box 20 across centred on 0 (y down): what you see first as it comes into view,
- * in its colours. The finales too, and the crown at the end.
+ * in its colours. The finales too, and the Blip star at the end.
  */
-const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
-  // Gate Crash: a white door frame, its pink jelly door slid up into the header, the lamp over it green, and a
+const ICONS: Record<RoundLetter | 'star', () => Mark[]> = {
+  // Slam Doors: a white door frame, its pink jelly door slid up into the header, the lamp over it green, and a
   // green chevron through it: the way is open.
   g: () => [
     circle(0, -9.4, 3.2, { fill: K.helps, 'fill-opacity': 0.25 }),
@@ -144,7 +177,7 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     circle(0, -9.4, 1.8, solid(K.helps)),
     path(chevron(0, 4.2, -90, 4.6), stroke(K.helps, 1.7)),
   ],
-  // Block Party: a jelly wall coming at you with a gold-edged cut-out, an orange hurdle across it to jump.
+  // Wall Rush: a jelly wall coming at you with a gold-edged cut-out, an orange hurdle across it to jump.
   b: () => [
     rect(-9, -8.4, 18, 16.8, { ...wash(K.jelly, 0.42, 1.2), rx: 2 }),
     rect(-4.2, -2.2, 8.4, 10.6, { fill: '#22164a', stroke: K.gold, 'stroke-width': 1.1, rx: 1 }),
@@ -153,7 +186,7 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     path(chevron(-6.6, -4.4, 90, 2.4), stroke(K.white, 0.9, 0.7)),
     path(chevron(6.6, -4.4, 90, 2.4), stroke(K.white, 0.9, 0.7)),
   ],
-  // Spin Club: a candy stage, a teal hub and its long orange bar sweeping round, the way it turns in indigo.
+  // Sweeper Spin: a candy stage, a teal hub and its long orange bar sweeping round, the way it turns in indigo.
   s: () => [
     ellipse(0, 5.2, 9.4, 3.6, wash(K.pink, 0.8, 1.1)),
     rect(-1.6, -3.4, 3.2, 8.6, { ...wash(K.bouncy, 0.6, 1), rx: 1.6 }),
@@ -161,7 +194,7 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     path('M-6.4 -6.4 Q0 -10.4 6.4 -6.4', stroke(K.pushes, 1.4)),
     path(chevron(6.2, -6.6, 30, 2.8), stroke(K.pushes, 1.4)),
   ],
-  // Hit Parade: a wrecking ball swinging from its gantry, red with white bands: keep away.
+  // Bonk Alley: a wrecking ball swinging from its gantry, red with white bands: keep away.
   h: () => [
     path('M-8.4 -8.8 H8.4', stroke(K.white, 1.8)),
     path('M-0.6 -8.8 L3.4 -0.4', stroke(K.white, 1)),
@@ -169,7 +202,7 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     circle(4.2, 3.4, 5.4, solid(K.dodge, '#ffb0ab', 0.8)),
     path('M-0.4 1.6 Q4.2 3 8.8 1.6 M-0.4 5.4 Q4.2 6.8 8.8 5.4', stroke('#ffffff', 1)),
   ],
-  // Fruit Chute: the belt running down at you in indigo, and a big red melon rolling down it.
+  // Melon Hill: the belt running down at you in indigo, and a big red melon rolling down it.
   f: () => {
     // Down the belt, and a point on its middle line `u` of the way up it.
     const down = (Math.atan2(9.6, -19.2) * 180) / Math.PI
@@ -182,9 +215,10 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
       path('M-0.4 -7.8 Q1.6 -10 3.6 -9', { ...stroke(K.helps, 1.2), fill: K.helps }),
     ]
   },
-  // See-Saw: a long mint plank tipped on its pivot, the bright stripe on the pivot line, over pink goo.
+  // Tippy Planks: a long mint plank tipped on its pivot, the bright stripe on the pivot line, over the soda sea.
   w: () => [
-    path('M-10 9.4 Q-5 7.8 0 9.4 T10 9.4', stroke(K.goo, 1.4)),
+    path('M-10 9.4 Q-5 7.8 0 9.4 T10 9.4', stroke(K.sea, 1.4)),
+    circle(-6.4, 6.2, 0.8, stroke(K.bubble, 0.5, 0.8)),
     path('M-3.2 8.4 L0 2.4 L3.2 8.4 Z', wash(K.white, 0.8, 1)),
     group({ transform: 'rotate(-16 0 1.6)' }, [
       rect(-10, 0, 20, 3.2, { ...wash(K.mint, 0.85, 1.2), rx: 1.4 }),
@@ -193,7 +227,7 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     path('M5.2 -6.6 Q8 -5 8.4 -2', stroke(K.pushes, 1.2)),
     path(chevron(8.3, -2.6, 95, 2.4), stroke(K.pushes, 1.2)),
   ],
-  // Hex Drop: pastel tiles, a white star tile that never drops, and one gone red, dropping, shaking.
+  // Crumble Tiles: pastel tiles, a white star tile that never drops, and one gone red, dropping, shaking.
   x: () => [
     path(hex(-4.8, -3, 4.4), wash(K.lemon, 0.85, 1.1)),
     path(hex(4.8, -3, 4.4), wash(K.white, 0.85, 1.1)),
@@ -201,15 +235,15 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     path(hex(0, 6, 4.4), solid(K.dodge, '#ffb0ab', 1)),
     path('M-6.4 4.4 L-5.4 5.6 M-6.6 7.6 L-5.4 7.8 M6.4 4.4 L5.4 5.6 M6.6 7.6 L5.4 7.8', stroke(K.white, 0.9, 0.8)),
   ],
-  // Lily Leapers: lily pads on the goo and the hop between them, a little gold-rimmed pad of the Lily Line.
+  // Pad Hop: lily pads on the soda sea and the hop between them, a little gold-rimmed pad of the gold line.
   l: () => [
-    path('M-10 9.2 Q-7 8.2 -4 9.2 M3 9.4 Q6 8.4 9.6 9.4', stroke(K.goo, 1.1, 0.8)),
+    path('M-10 9.2 Q-7 8.2 -4 9.2 M3 9.4 Q6 8.4 9.6 9.4', stroke(K.sea, 1.1)),
     path('M-9.6 5.4 A4.6 2.3 0 1 0 -5 3.1 L-5 5.4 Z', wash(K.helps, 0.6, 1.1)),
     path('M1.4 0.8 A4.2 2.1 0 1 0 5.6 -1.3 L5.6 0.8 Z', wash(K.helps, 0.6, 1.1)),
     ellipse(1.4, 7.6, 2, 0.9, { fill: K.helps, 'fill-opacity': 0.5, stroke: K.gold, 'stroke-width': 0.9 }),
     path('M-4.6 2.2 Q-0.6 -9.6 4.8 -2.4', { ...stroke(K.white, 1.1), 'stroke-dasharray': '1.2 1.5' }),
   ],
-  // Roll On: a striped drum lying across the way, turning, the way it turns in indigo.
+  // Barrel Roll: a striped barrel lying across the way, turning, the way it turns in indigo.
   r: () => [
     path('M-7 -4.6 H7 A2.4 4.6 0 0 1 7 4.6 H-7 Z', wash(K.pushes, 0.5, 1.1)),
     ellipse(-7, 0, 2.4, 4.6, wash(K.white, 0.4, 1.1)),
@@ -218,7 +252,7 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     path(chevron(6.2, -7.2, 40, 2.6), stroke(K.pushes, 1.3)),
     path('M-9.6 8.6 H9.6', stroke(K.jump, 1.6)),
   ],
-  // Big Fans: a fan on its pylon, its indigo blades, and the wind it blows across the gap.
+  // Gust Gaps: a fan on its pylon, its indigo blades, and the wind it blows across the gap.
   n: () => [
     circle(-4.2, -1, 6.2, wash(K.white, 0.18, 1.2)),
     ...[0, 120, 240].map((deg) =>
@@ -229,54 +263,67 @@ const ICONS: Record<RoundLetter | 'crown', () => Mark[]> = {
     path('M3.6 -5 H8.6 M4.4 -1 H9.8 M3.6 3 H8.2', stroke(K.pushes, 1.3)),
     path(chevron(8.9, -1, 0, 2.2), stroke(K.pushes, 1.3)),
   ],
-  // Crown Peak: the candy mountain, a red striped boulder rolling down it, the gold flag on the summit pad.
+  // Star Peak: the candy mountain, a red striped boulder rolling down it, the Blip star over the summit pad.
   C: () => [
     path('M-10 9.2 L-1.4 -6.6 H1.4 L10 9.2 Z', wash(K.pink, 0.8, 1.2)),
     path('M-5.4 3 H5.4', stroke(K.white, 0.8, 0.6)),
     ellipse(0, -6.6, 2.4, 0.8, solid(K.bouncy)),
-    path('M0 -6.8 V-10.4', stroke(K.white, 0.8)),
-    path('M0 -10.4 L3 -9.5 L0 -8.6 Z', solid(K.gold)),
+    ...smallStar(0, -9.05, 1.95),
     circle(-3.6, 5.6, 2.8, solid(K.dodge, '#ffb0ab', 0.6)),
     path('M-6 5.2 Q-3.6 6.3 -1.2 5.2', stroke('#ffffff', 0.8)),
   ],
-  // Slime Climb: the tower of candy steps, pink slime rising up it behind you.
+  // Tide Tower: the tower of candy steps, the soda sea rising up it behind you, fizzing, the Blip star at the top.
   S: () => [
-    path('M-9.6 9.4 V4.6 H-4.8 V0.4 H0 V-3.8 H4.8 V-8 H9.6 V9.4 Z', wash(K.mint, 0.85, 1.1)),
-    path('M-10 9.6 V5.8 Q-7.2 4.2 -4.4 5.8 T1.2 5.6 T6.4 6.2 Q8.4 5 10 5.6 V9.6 Z', solid(K.goo, '#ff9dd0', 0.7)),
-    path('M7.2 -8 V-10.6', stroke(K.white, 0.8)),
-    path('M7.2 -10.6 L9.8 -9.8 L7.2 -9 Z', solid(K.gold)),
+    path('M-9.6 9.4 V5.2 H-4.8 V1.4 H0 V-2.4 H4.8 V-6.2 H9.6 V9.4 Z', wash(K.mint, 0.85, 1.1)),
+    path('M-10 9.6 V5.8 Q-7.2 4.2 -4.4 5.8 T1.2 5.6 T6.4 6.2 Q8.4 5 10 5.6 V9.6 Z', solid(K.sea, K.seaRim, 0.7)),
+    circle(-6, 7.8, 0.75, stroke(K.bubble, 0.45)),
+    circle(1.8, 8, 0.55, stroke(K.bubble, 0.45)),
+    circle(-1.6, 3.6, 0.5, stroke(K.bubble, 0.4, 0.8)),
+    ...smallStar(7.2, -8.5, 1.9),
   ],
-  // The crown, gold with its jewels.
-  crown: () => [
-    path('M-8 5 L-9.2 -4.6 L-4.2 -0.4 L0 -7.6 L4.2 -0.4 L9.2 -4.6 L8 5 Z', solid(K.gold, '#fff1b0', 1)),
-    rect(-8.2, 4.4, 16.4, 3.2, { ...solid('#e0a92a', '#fff1b0', 0.8), rx: 1 }),
-    circle(0, 1.6, 1.4, solid(K.bean)),
-    circle(-4.6, 2.4, 0.9, solid(K.bouncy)),
-    circle(4.6, 2.4, 0.9, solid(K.bouncy)),
-    circle(-9.2, -4.6, 1.1, solid(K.gold)),
-    circle(0, -7.6, 1.2, solid(K.gold)),
-    circle(9.2, -4.6, 1.1, solid(K.gold)),
+  // The Blip star: a mint five-point star, a lighter star inside, the glowing white blip at its centre, its glow.
+  star: () => [
+    circle(0, 0, 9.7, { fill: K.starGlow, 'fill-opacity': 0.18 }),
+    path('M0 -8.58 L2.42 -2.42 L9.02 -2.2 L3.74 1.76 L5.72 8.36 L0 4.62 L-5.72 8.36 L-3.74 1.76 L-9.02 -2.2 L-2.42 -2.42 Z', solid(K.star, K.starEdge, 0.7)),
+    path('M0 -5.94 L1.54 -1.98 L5.72 -1.76 L2.42 0.66 L3.52 4.84 L0 2.42 L-3.52 4.84 L-2.42 0.66 L-5.72 -1.76 L-1.54 -1.98 Z', solid(K.starInner)),
+    circle(0, 0, 2.6, { fill: K.spark, 'fill-opacity': 0.35 }),
+    circle(0, 0, 1.55, solid(K.spark)),
   ],
 }
 
-/** A round's drawing alone, in its 20-across box centred on 0, for a chip. */
-export function roundMarks(letter: RoundLetter | 'crown'): Mark[] {
+/** A round's drawing alone, in its 20-across box centred on 0, for a chip; `star`, the Blip star. */
+export function roundMarks(letter: RoundLetter | 'star'): Mark[] {
   return ICONS[letter]()
 }
 
+/** Blip's eyes and smile. */
+const BLIP_INK = '#0f2f2a'
+
 /**
- * Your bean, 20 tall centred on 0 (y down): the pink jelly bean, its visor and eyes, arms up mid-hop. `fill`
- * and `edge` draw another bean: the blue bean, lighter.
+ * Blip, 20 tall centred on 0 (y down), from its spark to its feet: a round mint creature, the shade under its
+ * belly, two tall dark eyes with their glints, pink cheeks and a small smile, two round feet, and the glowing
+ * white spark (the blip) floating over its head. `c` draws another: the blue blip, lighter. `glow`, a radial
+ * gradient's fill for the spark's glow where the picture has one (gauntletMarks' `-spark`); else two soft rings.
  */
-export function beanMarks(fill = K.bean, edge = K.beanEdge): Mark[] {
+export function blipMarks(c: BlipColours = BLIP, glow?: string): Mark[] {
+  const cheek = { fill: '#ff8fb3', 'fill-opacity': 0.7 }
   return [
-    path('M-4.6 -0.6 L-8.2 -4.8 M4.6 -0.6 L8.2 -4.8', stroke(fill, 2)),
-    path('M-2.4 7 L-3 9.6 M2.4 7 L3 9.6', stroke(fill, 2.4)),
-    rect(-5.4, -9.6, 10.8, 17.6, { ...solid(fill, edge, 1), rx: 5.4 }),
-    ellipse(-2.6, -2.4, 1.2, 3, { fill: '#ffffff', 'fill-opacity': 0.28 }),
-    ellipse(1.2, -4.8, 3.7, 2.6, solid('#fff0f6')),
-    circle(-0.1, -4.8, 0.85, solid(K.ink)),
-    circle(2.5, -4.8, 0.85, solid(K.ink)),
+    ...(glow
+      ? [circle(0, -7.98, 2.7, { fill: glow })]
+      : [circle(0, -7.98, 1.9, { fill: c.glow, 'fill-opacity': 0.28 }), circle(0, -7.98, 1.3, { fill: c.glow, 'fill-opacity': 0.5 })]),
+    circle(0, -7.98, 0.85, solid(K.spark)),
+    ellipse(-2.31, 8.82, 1.79, 0.95, solid(c.feet)),
+    ellipse(2.31, 8.82, 1.79, 0.95, solid(c.feet)),
+    circle(0, 1.26, 7.35, solid(c.body)),
+    path('M-5.88 4.2 A7.35 7.35 0 0 0 5.88 4.2 A8.4 6.3 0 0 1 -5.88 4.2 Z', solid(c.shade)),
+    ellipse(-2.52, -2.94, 2.52, 1.26, { fill: '#ffffff', 'fill-opacity': 0.35, transform: 'rotate(-24 -2.52 -2.94)' }),
+    ellipse(-1.89, 1.05, 0.95, 1.58, solid(BLIP_INK)),
+    ellipse(1.89, 1.05, 0.95, 1.58, solid(BLIP_INK)),
+    circle(-1.58, 0.32, 0.36, solid('#ffffff')),
+    circle(2.2, 0.32, 0.36, solid('#ffffff')),
+    ellipse(-3.57, 3.15, 0.95, 0.53, cheek),
+    ellipse(3.57, 3.15, 0.95, 0.53, cheek),
+    path('M-1.26 3.57 Q0 4.73 1.26 3.57', stroke(BLIP_INK, 0.47)),
   ]
 }
 
@@ -316,14 +363,14 @@ export type GauntletLike = { n: number; k: string }
 /**
  * The picture's marks in a `w` by `h` box: its gradients (`defs`, named from `uid` so two on a page don't
  * share) and what's drawn. It lays the badges in one row in a very wide box, otherwise in two rows that turn
- * at the right, the second coming back to the crown, so a 4:3 card, a 2:1 strip and the share card's near
+ * at the right, the second coming back to the star, so a 4:3 card, a 2:1 strip and the share card's near
  * square all show every round big enough to read.
  */
 export function gauntletMarks(g: GauntletLike, w: number, h: number, uid = 'wr'): { defs: Mark[]; marks: Mark[] } {
   const rounds = gauntletRounds(g.k)
-  const items: Array<RoundLetter | 'crown'> = [...rounds.map((r) => r.letter), 'crown']
+  const items: Array<RoundLetter | 'star'> = [...rounds.map((r) => r.letter), 'star']
   const count = items.length
-  // Gaps between neighbours: four rounds, a finale and the crown make five.
+  // Gaps between neighbours: four rounds, a finale and the star make five.
   const gaps = Math.max(1, count - 1)
   const wide = w / h >= 2.4
   let R: number
@@ -333,15 +380,15 @@ export function gauntletMarks(g: GauntletLike, w: number, h: number, uid = 'wr')
   if (wide) {
     const x0 = w * 0.2
     R = Math.min(((w * 0.74) / gaps) * 0.4, h * 0.22)
-    // The crown's badge is a little bigger, with its glow: room for it at the right.
+    // The star's badge is a little bigger, with its glow: room for it at the right.
     const step = (w - R * 1.45 - x0) / gaps
     for (let i = 0; i < count; i++) at.push([x0 + step * i, h * 0.5 + (i % 2 === 0 ? 1 : -1) * h * 0.07])
     start = [w * 0.07, h * 0.56]
     way.push([-w * 0.02, h * 0.58], start, ...at)
   } else {
-    // Two rows: three across the top (half the badges, rounded up), then back along the bottom to the crown.
+    // Two rows: three across the top (half the badges, rounded up), then back along the bottom to the star.
     const top = Math.ceil(count / 2)
-    // Small enough that the first row's pips clear the crown's glow under them.
+    // Small enough that the first row's pips clear the star's glow under them.
     R = Math.min(h * 0.145, (w * 0.3) / top)
     const cols = Array.from({ length: top }, (_, c) => w * (0.34 + (top > 1 ? (0.48 * c) / (top - 1) : 0)))
     const y1 = h * 0.31
@@ -361,35 +408,43 @@ export function gauntletMarks(g: GauntletLike, w: number, h: number, uid = 'wr')
   for (let i = 0; i < 26; i++) {
     stars.push(circle(rnd() * w, rnd() * h * 0.9, Math.max(0.6, h * 0.004) * (0.6 + rnd() * 0.9), { fill: '#ffffff', opacity: n2(0.2 + rnd() * 0.5) }))
   }
-  const gooY = h * 0.92
-  const goo = `M0 ${n2(gooY)} Q${n2(w * 0.125)} ${n2(gooY - h * 0.02)} ${n2(w * 0.25)} ${n2(gooY)} T${n2(w * 0.5)} ${n2(gooY)} T${n2(w * 0.75)} ${n2(gooY)} T${n2(w)} ${n2(gooY)}`
+  // The soda sea along the bottom: teal, deeper lower down, its light rim, and bubbles rising in it.
+  const seaY = h * 0.92
+  const sea = `M0 ${n2(seaY)} Q${n2(w * 0.125)} ${n2(seaY - h * 0.02)} ${n2(w * 0.25)} ${n2(seaY)} T${n2(w * 0.5)} ${n2(seaY)} T${n2(w * 0.75)} ${n2(seaY)} T${n2(w)} ${n2(seaY)}`
+  const bubbles: Mark[] = []
+  for (let i = 0; i < 9; i++) {
+    const r = Math.max(0.9, h * 0.007) * (0.6 + rnd() * 0.8)
+    bubbles.push(circle(rnd() * w, seaY + r + 1 + rnd() * Math.max(0, h - seaY - r * 2 - 2), r, stroke(K.bubble, Math.max(0.6, h * 0.0028), 0.75)))
+  }
   const icon = R * 0.064
   const marks: Mark[] = [
     rect(0, 0, w, h, { fill: `url(#${uid}-sky)` }),
     ...stars,
-    path(`${goo} V${n2(h)} H0 Z`, { fill: K.goo, 'fill-opacity': 0.28 }),
-    path(goo, stroke('#ff9dd0', Math.max(1, h * 0.006), 0.7)),
+    path(`${sea} V${n2(h)} H0 Z`, { fill: K.sea }),
+    rect(0, seaY + (h - seaY) * 0.55, w, (h - seaY) * 0.45, { fill: K.seaDeep }),
+    ...bubbles,
+    path(sea, stroke(K.seaRim, Math.max(1, h * 0.006), 0.7)),
     // The trail: its candy body, its pastel top and the dashes down its middle.
     path(track, { ...stroke('#6a3384', R * 0.62), transform: `translate(0 ${n2(R * 0.16)})` }),
     path(track, stroke(K.pink, R * 0.5)),
     path(track, { ...stroke('#ffffff', Math.max(0.8, R * 0.05), 0.8), 'stroke-dasharray': `${n2(R * 0.14)} ${n2(R * 0.18)}` }),
   ]
-  // Your bean at the start, on the trail.
-  const bean = R * 1.2
+  // Blip at the start, on the trail.
+  const blip = R * 1.25
   marks.push(
-    ellipse(start[0], start[1] + R * 0.1, bean * 0.3, bean * 0.08, { fill: '#000000', 'fill-opacity': 0.25 }),
-    group({ transform: `translate(${n2(start[0])} ${n2(start[1] - bean * 0.48)}) rotate(-8) scale(${n2(bean / 20)})` }, beanMarks()),
+    ellipse(start[0], start[1] + R * 0.1, blip * 0.34, blip * 0.08, { fill: '#000000', 'fill-opacity': 0.25 }),
+    group({ transform: `translate(${n2(start[0])} ${n2(start[1] - blip * 0.48)}) rotate(-6) scale(${n2(blip / 20)})` }, blipMarks(BLIP, `url(#${uid}-spark)`)),
   )
   items.forEach((letter, i) => {
     const [x, y] = at[i]!
-    const crown = letter === 'crown'
-    const r = crown ? R * 1.12 : R
+    const star = letter === 'star'
+    const r = star ? R * 1.12 : R
     marks.push(
-      circle(x, y, r * 1.22, { fill: crown ? `url(#${uid}-crown)` : `url(#${uid}-halo)` }),
-      circle(x, y, r, { fill: crown ? '#3a2350' : '#22164a', stroke: crown ? K.gold : '#ffe1f0', 'stroke-width': n2(r * 0.1) }),
-      group({ transform: `translate(${n2(x)} ${n2(y)}) scale(${n2(crown ? icon * 1.12 : icon)})` }, ICONS[letter]()),
+      circle(x, y, r * 1.22, { fill: star ? `url(#${uid}-star)` : `url(#${uid}-halo)` }),
+      circle(x, y, r, { fill: star ? '#163a3a' : '#22164a', stroke: star ? K.starGlow : '#ffe1f0', 'stroke-width': n2(r * 0.1) }),
+      group({ transform: `translate(${n2(x)} ${n2(y)}) scale(${n2(star ? icon * 1.12 : icon)})` }, ICONS[letter]()),
     )
-    if (crown) {
+    if (star) {
       const s = r * 0.16
       for (const [dx, dy, k] of [
         [-1.05, -0.95, 1],
@@ -399,7 +454,7 @@ export function gauntletMarks(g: GauntletLike, w: number, h: number, uid = 'wr')
         const cx = x + dx * r
         const cy = y + dy * r
         const q = s * k
-        marks.push(path(`M${n2(cx)} ${n2(cy - q)} Q${n2(cx)} ${n2(cy)} ${n2(cx + q)} ${n2(cy)} Q${n2(cx)} ${n2(cy)} ${n2(cx)} ${n2(cy + q)} Q${n2(cx)} ${n2(cy)} ${n2(cx - q)} ${n2(cy)} Q${n2(cx)} ${n2(cy)} ${n2(cx)} ${n2(cy - q)} Z`, solid('#fff6cf')))
+        marks.push(path(`M${n2(cx)} ${n2(cy - q)} Q${n2(cx)} ${n2(cy)} ${n2(cx + q)} ${n2(cy)} Q${n2(cx)} ${n2(cy)} ${n2(cx)} ${n2(cy + q)} Q${n2(cx)} ${n2(cy)} ${n2(cx - q)} ${n2(cy)} Q${n2(cx)} ${n2(cy)} ${n2(cx)} ${n2(cy - q)} Z`, solid(K.bubble)))
       }
     } else {
       const tier = rounds[i]!.tier
@@ -429,10 +484,20 @@ export function gauntletMarks(g: GauntletLike, w: number, h: number, uid = 'wr')
     },
     {
       t: 'radialGradient',
-      a: { id: `${uid}-crown` },
+      a: { id: `${uid}-star` },
       c: [
-        { t: 'stop', a: { offset: 0.6, 'stop-color': K.gold, 'stop-opacity': 0.55 } },
-        { t: 'stop', a: { offset: 1, 'stop-color': K.gold, 'stop-opacity': 0 } },
+        { t: 'stop', a: { offset: 0.6, 'stop-color': K.starGlow, 'stop-opacity': 0.55 } },
+        { t: 'stop', a: { offset: 1, 'stop-color': K.starGlow, 'stop-opacity': 0 } },
+      ],
+    },
+    // Blip's spark: a soft glow round the blip.
+    {
+      t: 'radialGradient',
+      a: { id: `${uid}-spark` },
+      c: [
+        { t: 'stop', a: { offset: 0, 'stop-color': BLIP.glow, 'stop-opacity': 0.9 } },
+        { t: 'stop', a: { offset: 0.45, 'stop-color': BLIP.glow, 'stop-opacity': 0.45 } },
+        { t: 'stop', a: { offset: 1, 'stop-color': BLIP.glow, 'stop-opacity': 0 } },
       ],
     },
   ]

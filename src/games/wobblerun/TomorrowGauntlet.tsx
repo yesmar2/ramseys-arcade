@@ -4,7 +4,7 @@ import { GauntletDrawing } from './GauntletDrawing'
 import { dailyGauntlet, gauntletDay, msUntilNextGauntlet, untilWords } from './daily'
 
 /**
- * Tomorrow's gauntlet on a run's report, its rounds to the crown as its Past card draws them; none once it's out
+ * Tomorrow's gauntlet on a run's report, its rounds to the Blip star as its Past card draws them; none once it's out
  * already. Knowing tomorrow's rounds tells nobody how to run them.
  */
 export function TomorrowGauntlet({ day }: { day: string }) {
