@@ -31,7 +31,7 @@ import { SiteTabs } from './SiteTabs'
 import { navActive, OPEN_MENU_EVENT, OPEN_STUDIO_EVENT, SITE_NAV_LINKS } from './siteNav'
 import { BugHuntHost } from './BugHunt'
 import { FeedbackHost } from './FeedbackPanel'
-import { SeasonYouRing } from './season/SeasonChip'
+import { SeasonYouLevel } from './season/SeasonChip'
 import { TodayChip } from './TodayChip'
 import { PlayerName } from './PlayerName'
 
@@ -275,14 +275,12 @@ export function SiteHeader() {
                 aria-haspopup="dialog"
                 onClick={toggleMenu}
               >
-                {/* The season's ring goes round you here, as on the phone's tab bar: your tickets are in your menu. */}
                 <span className="site-you__mark">
                   {AVATARS_ENABLED ? (
                     <PlayerAvatar avatarId={avatarId} name={playerName} size="md" />
                   ) : (
                     playerName.charAt(0)
                   )}
-                  <SeasonYouRing />
                 </span>
                 {impersonation ? (
                   <span className="site-you__act" aria-hidden="true">
@@ -290,6 +288,8 @@ export function SiteHeader() {
                   </span>
                 ) : null}
                 <PlayerName className="site-you__name" name={playerName} avatarId={avatarId} />
+                {/* The season's level, beside your rank: your tickets are in your menu. */}
+                <SeasonYouLevel />
                 {rankLoading ? (
                   <span className="skel-line site-you__skel" aria-hidden="true" />
                 ) : rank != null ? (

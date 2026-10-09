@@ -434,7 +434,7 @@ html[data-theme='dark'] .site-seg > button[aria-pressed='true'] {
   align-items: center;
   gap: 0.55rem;
   min-width: 0;
-  max-width: 15rem;
+  max-width: 18rem;
   min-height: 2.85rem;
   box-sizing: border-box;
   padding: 0.2rem 0.85rem 0.2rem 0.22rem;
@@ -473,18 +473,6 @@ html[data-theme='dark'] .site-seg > button[aria-pressed='true'] {
   height: 1.8rem;
 }
 
-/* The season's ring round you (season.css .season-tabring): the mark makes room inside it, and lets its level tag out. */
-.site-you__mark:has(.season-tabring) {
-  position: relative;
-  overflow: visible;
-  background: none;
-}
-
-.site-you__mark:has(.season-tabring) .player-avatar {
-  width: 1.65rem;
-  height: 1.65rem;
-}
-
 .site-you__name {
   min-width: 0;
   overflow: hidden;
@@ -521,10 +509,11 @@ html[data-theme='dark'] .site-seg > button[aria-pressed='true'] {
   letter-spacing: 0.08em;
 }
 
+/* On the button's corner, off the avatar. */
 .site-you__dot {
   position: absolute;
-  top: 0.15rem;
-  left: 2rem;
+  top: -0.15rem;
+  right: 0.4rem;
   width: 0.6rem;
   height: 0.6rem;
   border-radius: 50%;
