@@ -6,7 +6,8 @@
 // What to expect (2026-09-26): the pace car, the ghost a new player chases, round in 53.36s with no time
 // on the grass; a driver cornering at the very limit down the middle of the road in about 51.3s (a player
 // using the whole road goes well under: DAD's 47.25s on the first day); braking from 112 mph at 1.27 g, in
-// 93 m; and a driver who never brakes some 14 seconds slower than the pace car (67.5s).
+// 93 m; and a driver who never brakes some 16 seconds slower than the pace car (69.0s since the grass got
+// slower on 2026-10-09; 67.5s before).
 const sim = await import(new URL('../src/games/hotlap/sim.ts', import.meta.url))
 
 const track = sim.buildTrack()

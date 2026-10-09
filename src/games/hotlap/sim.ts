@@ -35,7 +35,7 @@ export const CAR = {
   steerMax: 0.6, // rad of lock at a crawl
   steerRate: 3.2, // rad/s the front wheels turn
   assist: 0.9, // stability and traction control: 0 none, 1 firm
-  grassSlow: 21, // m/s the grass lets you keep
+  grassSlow: 17, // m/s the grass lets you keep (about 38 mph)
   barrier: 38, // m from the middle of the road to the fence
 }
 export const WHEELBASE = CAR.a + CAR.b
@@ -593,7 +593,7 @@ export function stepRun(run: Run, input: Controls, track: Track): Run {
     const cd = Math.cos(d)
     const sd = Math.sin(d)
     let ax = fxR + fxF * cd - fyF * sd - CAR.drag * u * u - (u > 0.1 ? CAR.rolling : 0) + slopeX
-    if (run.onGrass) ax -= 2 + Math.max(0, u - CAR.grassSlow) * 0.7
+    if (run.onGrass) ax -= 2 + Math.max(0, u - CAR.grassSlow) * 0.8
     const ay = fyR + fyF * cd + fxF * sd + slopeY
     let spin = (CAR.a * (fyF * cd + fxF * sd) - CAR.b * fyR) / k2
 
