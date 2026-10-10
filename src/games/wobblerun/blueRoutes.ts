@@ -3,8 +3,8 @@
 // from, the way it took there (its index among the ways on from that spot, engine/bots.ts segmentsFrom, base 36),
 // and `:wait` if it stood there first (base 36, in 30ths of a second). "0,1,0:c,2" is way 0, way 1, a wait of 12/30 s
 // and then way 0, then way 2. The game replays it (runs.ts paceOf, engine/bots.ts replayBlue), so no search runs in
-// the browser; it means something only on the gauntlet it was found on (dailyPlan.ts's row for the day). Only the
-// game's chunk imports it.
+// the browser; it means something only on the gauntlet it was found on (dailyPlan.ts's row for the day, laid by the
+// day's generation, engine/course.ts genOfDay). Only the game's chunk imports it.
 
 export const BLUE_ROUTES: readonly string[] = [
   '0,1:c,0:c,1:c,0:c,0:c,0:c,0:c,0:c,1:c,0:c,0:c,0:c,0:c,0:c,0:c,0:c,1:c,0:c,0:c,2:c,2:10,1:c,0:c,0:c,0:c,0:c,4:c,1:c,0:c,0:c,0:c,0:c,0:1d,0:14,0:12,0:v,0:c,0:c,0:c,0:c,0:c,1:c,0:c,2:c,2:c,2:c,2:c,2:c,0:w,1:c,0:c,0:c,1:c,0:c,2:c,0:c,1:c,0:c',

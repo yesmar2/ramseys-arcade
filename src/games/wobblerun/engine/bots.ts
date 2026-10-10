@@ -17,10 +17,15 @@
  *
  * FAST_HANDS take the gold lines too with a small margin and no reaction time: the floor the medals are checked
  * against. PHONE_HANDS react 0.55 s late, steer ±8° off and press up to 0.08 s late: the fairness check.
+ *
+ * NAIVE_HANDS (naiveHands, naiveRun) never plan or wait: they run the main route at full stick, set off at once
+ * whatever a window says, and only react to what's in front of them by the colour code (jump the orange and the gaps,
+ * dive under the violet). The difficulty report (scripts/wobblerun-difficulty.mjs) races them against a well-timed
+ * run to see whether a round's timing matters.
  */
-import { ACC_GROUND, AIR_DIVE_VY, DIVE, DIVE_ADD, G, newPose, newRun, restore, RUN, snapshot, solidPose, STEP, step, windLift, type Snapshot } from './sim.ts'
+import { ACC_GROUND, AIR_DIVE_VY, DIVE, DIVE_ADD, G, H, hazardBodies, newBody, newPose, newRun, R, restore, RUN, snapshot, solidPose, STEP, STEP_UP, step, windLift, type Snapshot } from './sim.ts'
 import { makeRng } from './rng.ts'
-import type { Counts, Course, GraphEdge, GraphNode, Input, Point, Rng, Run } from './types.ts'
+import type { Body, Counts, Course, GraphEdge, GraphNode, Hazard, Input, Point, Rng, Role, Run } from './types.ts'
 
 /** How a pair of hands plays. */
 export type Hands = {
@@ -44,6 +49,11 @@ export type Hands = {
   /** Steering this many degrees off, and presses up to this much late, s (the phone check). */
   noise?: number
   late?: number
+  /**
+   * Running, steers against what carries it (a belt, a turning floor, the wind), so it goes just where it means to
+   * (true when left out). NAIVE's false: it points the stick straight at where it's going and corrects as it drifts.
+   */
+  allowCarry?: boolean
 }
 
 /**
@@ -284,6 +294,7 @@ export function drive(run: Run, d: Driver, h: Hands, rng: Rng | null, into: Inpu
       tz = PZ
     }
   }
+  const allow = h.allowCarry !== false
   const ground = (x: number, z: number, arrive: boolean) => {
     let dx = x - b.x
     let dz = z - b.z
@@ -298,7 +309,12 @@ export function drive(run: Run, d: Driver, h: Hands, rng: Rng | null, into: Inpu
     }
     let speed = most * RUN
     if (arrive) speed = Math.min(speed, Math.sqrt(2 * ACC_GROUND * 0.7 * Math.max(0, dist - 0.1)))
-    stickFor(run, (dx / dist) * speed, (dz / dist) * speed, most, into)
+    if (allow) stickFor(run, (dx / dist) * speed, (dz / dist) * speed, most, into)
+    else {
+      // The stick straight at the spot, whatever carries it.
+      into.x = (-dx / dist) * (speed / RUN)
+      into.y = (dz / dist) * (speed / RUN)
+    }
   }
   const air = (x: number, y: number, z: number) => {
     // The speed over the ground that lands it on the spot; its own part (less what the wind carries) can't be over
@@ -500,13 +516,17 @@ export function holdInput(run: Run, id: string, h: Hands, into: Input): Input {
 
 const IN: Input = { x: 0, y: 0, jump: false, dive: false }
 
-/** Runs segment `seg` from the run as it is. Strict: any touch (with the margin) fails it. Returns whether it got there. */
-export function runSegment(run: Run, seg: Segment, h: Hands, strict: boolean, rng: Rng | null = null): boolean {
+/**
+ * Runs segment `seg` from the run as it is. Strict: any touch (with the margin) fails it. Returns whether it got
+ * there. `onStep` is called after every step (a script watching the run; it must not change it).
+ */
+export function runSegment(run: Run, seg: Segment, h: Hands, strict: boolean, rng: Rng | null = null, onStep?: (run: Run) => void): boolean {
   const d = newDriver(seg, run)
   run.touched = false
   run.near = false
   for (let n = 0; n < 120 * 60; n++) {
     step(run, drive(run, d, h, rng, IN))
+    onStep?.(run)
     const r = after(run, d, strict)
     if (r !== 0) return r > 0
   }
@@ -702,8 +722,11 @@ export function planRoute(course: Course, h: Hands, log?: (line: string) => void
   return null
 }
 
-/** Runs a route from the start, as planned: the same executor, the same waits, so the same run. */
-export function runRoute(course: Course, steps: readonly RouteStep[], h: Hands, opts: { ghost?: boolean } = {}): BotRun {
+/**
+ * Runs a route from the start, as planned: the same executor, the same waits, so the same run. `onStep` is called
+ * after every step (a script timing the run; it must not change it).
+ */
+export function runRoute(course: Course, steps: readonly RouteStep[], h: Hands, opts: { ghost?: boolean; onStep?: (run: Run) => void } = {}): BotRun {
   const run = newRun(course, { countdown: 0, quiet: true, ghost: opts.ghost })
   run.inflate = h.inflate
   let node = course.graph.start
@@ -717,9 +740,12 @@ export function runRoute(course: Course, steps: readonly RouteStep[], h: Hands, 
     }
     run.touched = false
     run.near = false
-    for (let i = 0; i < s.wait; i++) step(run, holdInput(run, node, h, IN))
+    for (let i = 0; i < s.wait; i++) {
+      step(run, holdInput(run, node, h, IN))
+      opts.onStep?.(run)
+    }
     touched ||= run.touched
-    if (!runSegment(run, seg, h, false)) {
+    if (!runSegment(run, seg, h, false, null, opts.onStep)) {
       ok = false
       touched = true
       break
@@ -908,15 +934,386 @@ export function liveHands(course: Course, h: Hands, seed?: number) {
   }
 }
 
-/** A live run of the course by these hands, to the crown or `limit` s: what the phone check counts. */
-export function liveRun(course: Course, h: Hands, seed?: number, limit = 300): BotRun {
+/**
+ * A live run of the course by these hands, to the crown or `limit` s: what the phone check counts. `onStep` is called
+ * after every step (a script timing the run; it must not change it).
+ */
+export function liveRun(course: Course, h: Hands, seed?: number, limit = 300, onStep?: (run: Run) => void): BotRun {
   const run = newRun(course, { countdown: 0, quiet: true })
   const hands = liveHands(course, h, seed)
-  while (!run.done && run.t < limit) step(run, hands.input(run))
+  while (!run.done && run.t < limit) {
+    step(run, hands.input(run))
+    onStep?.(run)
+  }
   return { finished: run.done, time: run.done ? run.time : Infinity, splits: run.splits.slice(), ghost: [], route: '', steps: [], touched: run.touched, counts: { ...run.counts } }
 }
 
 /** The phone check: PHONE_HANDS with seeds 1..n. */
 export function phoneRuns(course: Course, n = 20): BotRun[] {
   return Array.from({ length: n }, (_, i) => liveRun(course, PHONE_HANDS, i + 1))
+}
+
+/* ------------------------------------------------------------ naive hands --- */
+
+/**
+ * NAIVE: a player who just runs, for measuring whether a round makes timing matter (the difficulty report). It
+ * follows the main route at full stick (the stick straight at each spot, allowing for nothing that carries it),
+ * never stops at a safe spot, sets off along every way at once whatever its window says, and reacts only to what's
+ * right in front of it, as a player who knows the colour code would: JUMP when the edge of a gap, or an orange
+ * (`jump`) thing about to touch it, comes up; DIVE when a violet (`dive`) thing is about to. It commits to every
+ * jump, as a player on a phone does: in the air it keeps to the line it jumped along, easing off or pushing on along
+ * it to land on the spot, and never steers across it, so a sideways push (a crosswind, a drum's roll) drifts it all
+ * the way down. With the bots' perfect mid-air steering a crosswind is nothing, and Gust Gaps, the round Ramsey found
+ * hard, measured as easy. Everything else it meets as it comes: a red thing knocks it, a shut door bonks it, a pad
+ * that isn't there yet drops it in the goo. A round it gets through clean and quick can be run straight through.
+ */
+export const NAIVE_HANDS: Hands = { name: 'naive', gold: false, inflate: 0, react: 0, stick: 1, brake: false, maxWait: 0, allowCarry: false }
+
+/**
+ * Its reflexes: JUMP when an orange thing would touch it within NAIVE_JUMP_LEAD s if it ran on as it's going (a
+ * running jump is clear of a 0.65 m bar from 0.07 s to 0.68 s after it), DIVE within NAIVE_DIVE_LEAD s of a violet
+ * one (prone at once, for about 0.65 s), looking NAIVE_LOOK s ahead. It jumps a gap when the edge is NAIVE_EDGE m
+ * off (the route's take-offs are 0.35–0.45 m in): a gap is no ground past the edge, or none within GAP_DROP below.
+ */
+const NAIVE_JUMP_LEAD = 0.12
+const NAIVE_DIVE_LEAD = 0.15
+const NAIVE_LOOK = 0.4
+const NAIVE_EDGE = 0.4
+const GAP_DROP = 1.0
+/** What it looks past an edge for ground at, m. */
+const GAP_PROBES = [0.3, 0.7, 1.2] as const
+/** After a splat it stands up to this long (drawn) before it goes on, s: a person's moment to get going. */
+const NAIVE_GETUP = 0.5
+
+const clampTo = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v)
+
+/** How far a bean capsule (at px, pz, its sphere centres from lo to hi) is from a box: negative inside it. */
+function boxGap(px: number, pz: number, lo: number, hi: number, bx: number, by: number, bz: number, yaw: number, hx: number, hy: number, hz: number): number {
+  const dx = px - bx
+  const dz = pz - bz
+  const c = Math.cos(yaw)
+  const s = Math.sin(yaw)
+  const lx = dx * c - dz * s
+  const lz = dx * s + dz * c
+  const qy = clampTo(clampTo(by, lo, hi), by - hy, by + hy)
+  const py = clampTo(qy, lo, hi)
+  return Math.hypot(lx - clampTo(lx, -hx, hx), py - qy, lz - clampTo(lz, -hz, hz)) - R
+}
+
+/** How far a bean capsule is from touching hazard body bd: negative when they overlap (sim.ts contact's distance). */
+function hazardGap(h: Hazard, bd: Body, px: number, pz: number, lo: number, hi: number): number {
+  if (h.shape === 'sphere') return Math.hypot(px - bd.x, clampTo(bd.y, lo, hi) - bd.y, pz - bd.z) - h.r - R
+  if (h.shape === 'post') {
+    const flat = Math.hypot(px - bd.x, pz - bd.z) - h.r - R
+    const vg = Math.max(bd.y - (hi + R), lo - R - (bd.y + h.h), 0)
+    return vg > 0 ? Math.max(flat, vg) : flat
+  }
+  if (h.shape === 'box') return boxGap(px, pz, lo, hi, bd.x, bd.y, bd.z, bd.yaw, h.hx, bd.hy >= 0 ? bd.hy : h.hy, h.hz)
+  const ax = Math.cos(bd.yaw)
+  const az = -Math.sin(bd.yaw)
+  const s = clampTo((px - bd.x) * ax + (pz - bd.z) * az, -h.len, h.len)
+  return Math.hypot(px - (bd.x + s * ax), clampTo(bd.y, lo, hi) - bd.y, pz - (bd.z + s * az)) - h.r - R
+}
+
+const NAIVE_BODIES: Body[] = [newBody(), newBody(), newBody(), newBody()]
+const NAIVE_POSE = newPose()
+
+/**
+ * How soon a thing of colour `role` (an orange `jump` or violet `dive` hazard, or a solid of that colour in the way:
+ * Roll On's hurdle teeth) would touch the bean, standing, if it ran on as it's going: within NAIVE_LOOK s, or
+ * Infinity.
+ */
+function threatIn(run: Run, role: Role): number {
+  const c = run.course
+  const g = c.grid
+  const b = run.bean
+  const wx = b.vx + (b.ground >= 0 ? b.gcx : 0) + b.acx
+  const wz = b.vz + (b.ground >= 0 ? b.gcz : 0) + b.acz
+  const lo = b.y + R
+  const hi = b.y + H - R
+  const cellAt = (z: number) => clampTo(Math.floor((z - g.z0) / g.cell), 0, g.hazards.length - 1)
+  const z1 = b.z + wz * NAIVE_LOOK
+  const c0 = cellAt(Math.min(b.z, z1))
+  const c1 = cellAt(Math.max(b.z, z1))
+  let best = Infinity
+  for (let cell = c0; cell <= c1; cell++) {
+    const hl = g.hazards[cell]!
+    for (let n = 0; n < hl.length; n++) {
+      const h = c.hazards[hl[n]!]!
+      if (h.role !== role) continue
+      for (let tau = 0; tau <= NAIVE_LOOK && tau < best; tau += 2 * STEP) {
+        const px = b.x + wx * tau
+        const pz = b.z + wz * tau
+        const m = hazardBodies(h, run.t + tau, NAIVE_BODIES)
+        let hit = false
+        for (let k = 0; k < m && !hit; k++) {
+          const bd = NAIVE_BODIES[k]!
+          hit = bd.on && hazardGap(h, bd, px, pz, lo, hi) < 0.02
+        }
+        if (hit) best = tau
+      }
+    }
+    const sl = g.solids[cell]!
+    for (let n = 0; n < sl.length; n++) {
+      const i = sl[n]!
+      const s = c.solids[i]!
+      if (s.role !== role || !(s.noGround || s.duck)) continue
+      for (let tau = 0; tau <= NAIVE_LOOK && tau < best; tau += 2 * STEP) {
+        solidPose(c, run.world, i, run.t + tau, NAIVE_POSE)
+        if (!NAIVE_POSE.on) continue
+        const half = s.shape === 'box' ? s.hx : s.r
+        const deep = s.shape === 'box' ? s.hz : s.r
+        if (boxGap(b.x + wx * tau, b.z + wz * tau, lo, hi, NAIVE_POSE.x, NAIVE_POSE.y - NAIVE_POSE.hy, NAIVE_POSE.z, NAIVE_POSE.yaw, half, NAIVE_POSE.hy, deep) < 0.02) best = tau
+      }
+    }
+  }
+  return best
+}
+
+/** Whether there's ground to stand on at (x, z) with its top between lo and hi, now. */
+function groundAt(run: Run, x: number, z: number, lo: number, hi: number): boolean {
+  const c = run.course
+  const g = c.grid
+  const list = g.solids[clampTo(Math.floor((z - g.z0) / g.cell), 0, g.solids.length - 1)]!
+  for (let n = 0; n < list.length; n++) {
+    const i = list[n]!
+    const s = c.solids[i]!
+    if (s.noGround || s.door) continue
+    solidPose(c, run.world, i, run.t, NAIVE_POSE)
+    if (!NAIVE_POSE.on) continue
+    const dx = x - NAIVE_POSE.x
+    const dz = z - NAIVE_POSE.z
+    const cs = Math.cos(NAIVE_POSE.yaw)
+    const sn = Math.sin(NAIVE_POSE.yaw)
+    const lx = dx * cs - dz * sn
+    const lz = dx * sn + dz * cs
+    if (s.shape === 'box' ? Math.abs(lx) > s.hx || Math.abs(lz) > s.hz : Math.hypot(lx, lz) > s.r) continue
+    const top = NAIVE_POSE.y + lz * Math.tan(NAIVE_POSE.pitch) + lx * Math.tan(NAIVE_POSE.roll)
+    if (top >= lo && top <= hi) return true
+  }
+  return false
+}
+
+/**
+ * NAIVE's reflexes, on top of the route's input: while it's running on its feet (a run, or down again after a jump
+ * the route asked for), a dive under a violet thing about to touch it, a jump over an orange one, or a jump at the
+ * edge of a gap.
+ */
+function naiveReflexes(run: Run, d: Driver, into: Input): void {
+  const b = run.bean
+  if (b.ground < 0 || b.stun > 0 || b.diving || b.slide > 0 || b.ledge > 0 || b.dead > 0) return
+  const e = d.seg.edges[d.ei]!
+  if (!(e.move === 'run' || e.move === 'ride' || d.stage === 2)) return
+  const dive = threatIn(run, 'dive')
+  const jump = threatIn(run, 'jump')
+  if (dive <= NAIVE_DIVE_LEAD && dive <= jump) {
+    into.dive = true
+    return
+  }
+  if (jump <= NAIVE_JUMP_LEAD) {
+    into.jump = true
+    return
+  }
+  const wx = b.vx + b.gcx + b.acx
+  const wz = b.vz + b.gcz + b.acz
+  const sp = Math.hypot(wx, wz)
+  if (sp < 2) return
+  const ux = wx / sp
+  const uz = wz / sp
+  const left = edgeLeft(run, ux, uz)
+  if (left > NAIVE_EDGE + sp * STEP) return
+  for (const p of GAP_PROBES) if (groundAt(run, b.x + ux * (left + p), b.z + uz * (left + p), b.y - GAP_DROP, b.y + STEP_UP)) return
+  into.jump = true
+}
+
+const NAIVE_SEGS = new WeakMap<Course, Map<string, Segment | null>>()
+
+/**
+ * The way NAIVE takes on from safe node `id`: the main way out that's shortest to the crown (straight on, where lanes
+ * are alike), its edges stripped of their own stick (it runs everything at full stick).
+ */
+function naiveSegment(course: Course, id: string): Segment | null {
+  let byNode = NAIVE_SEGS.get(course)
+  if (!byNode) NAIVE_SEGS.set(course, (byNode = new Map()))
+  const known = byNode.get(id)
+  if (known !== undefined) return known
+  const left = goalDistance(course, false)
+  const ix = indexOf(course)
+  let best: Segment | null = null
+  let bestD = Infinity
+  for (const seg of segmentsFrom(course, id, false)) {
+    const rest = left.get(seg.to)
+    if (rest === undefined) continue
+    let d = rest
+    for (const e of seg.edges) {
+      const a = ix.nodes.get(e.from)!
+      const z = ix.nodes.get(e.to)!
+      d += Math.hypot(a.x - z.x, a.z - z.z, a.y - z.y)
+    }
+    if (d < bestD - 1e-9) {
+      bestD = d
+      best = seg
+    }
+  }
+  const picked: Segment | null = best && {
+    to: best.to,
+    edges: best.edges.map((e) => {
+      const own = { ...e }
+      delete own.stick
+      return own
+    }),
+  }
+  byNode.set(id, picked)
+  return picked
+}
+
+export type NaiveOptions = {
+  /**
+   * How long it stands before each round, s (pauses[i] before round i: on the start pad after GO for round 0, on the
+   * checkpoint pad before it for the others; the first time it's there only). Its departure phase into the round.
+   */
+  pauses?: readonly number[]
+  /** Draws each pause it isn't given, 0 to its round's period; with no seed those are 0. */
+  seed?: number
+}
+
+/**
+ * NAIVE's hands for a live run (as liveHands): the main route at full stick, no waits but the pauses before rounds
+ * (`o`), a jump or dive only where the route says or its reflexes do; after a splat, on again from where it drops in,
+ * after a moment (0 to NAIVE_GETUP s, drawn from the seed) to get going.
+ */
+export function naiveHands(course: Course, o: NaiveOptions = {}) {
+  const h = NAIVE_HANDS
+  const rng = makeRng(`naive:${o.seed ?? 0}`)
+  // Every round's draw is made, given or not, so giving one pause never moves the others.
+  const pauses = course.rounds.map((r, i) => {
+    const drawn = rng() * r.period
+    return o.pauses?.[i] ?? (o.seed === undefined ? 0 : drawn)
+  })
+  const before = new Map<string, number>([[course.graph.start, 0]])
+  for (const s of course.spawns) if (s.kind === 'check') before.set(s.node, s.round)
+  const left = goalDistance(course, false)
+  const paused = new Set<string>()
+  let node = course.graph.start
+  let mode: 'pick' | 'pause' | 'go' | 'down' = 'pick'
+  let holdLeft = 0
+  let driver: Driver | null = null
+  // The stick it last had on the ground, and the line (a world direction) it keeps to through the jump it's in.
+  let heldX = 0
+  let heldY = 0
+  let lined = false
+  let lineX = 0
+  let lineZ = 1
+  const into: Input = { x: 0, y: 0, jump: false, dive: false }
+  const still = () => {
+    into.x = into.y = 0
+    into.jump = into.dive = false
+    return into
+  }
+  // The nearest safe spot on the main route (after a way it gave up on).
+  const nearest = (run: Run) => {
+    let best = node
+    let bd = Infinity
+    for (const n of course.graph.nodes) {
+      if (n.wait !== 'safe' || !Number.isFinite(left.get(n.id) ?? Infinity)) continue
+      resolve(run, n)
+      const d = Math.hypot(PX - run.bean.x, PZ - run.bean.z) + Math.abs(PY - run.bean.y) * 2
+      if (d < bd) {
+        bd = d
+        best = n.id
+      }
+    }
+    return best
+  }
+  return {
+    /** The input for this step of `run` (call before step(run, input)). */
+    input(run: Run): Input {
+      const b = run.bean
+      if (run.done || run.t < 0) return still()
+      if (b.dead > 0) {
+        mode = 'down'
+        return still()
+      }
+      if (mode === 'down') {
+        const sp = course.spawns[b.spawn]!
+        if (b.ground < 0) return holdInput(run, sp.node, h, into)
+        node = sp.node
+        mode = 'pick'
+        // A moment to get going again, drawn: without it a run that fell in a fan's blow can come back in step with
+        // the same blow every time.
+        holdLeft = Math.round((rng() * NAIVE_GETUP) / STEP)
+      }
+      if (mode === 'go' && driver) {
+        const r = after(run, driver, false)
+        if (r > 0) {
+          node = driver.seg.to
+          mode = 'pick'
+        } else if (r < 0) {
+          node = nearest(run)
+          mode = 'pick'
+        }
+      }
+      if (mode === 'pick') {
+        if (node === course.graph.goal) return still()
+        const r = before.get(node)
+        if (r !== undefined && !paused.has(node)) {
+          paused.add(node)
+          holdLeft = Math.round((pauses[r] ?? 0) / STEP)
+        }
+        if (holdLeft > 0) mode = 'pause'
+        else {
+          const seg = naiveSegment(course, node)
+          if (!seg) return still()
+          driver = newDriver(seg, run)
+          mode = 'go'
+        }
+      }
+      if (mode === 'pause') {
+        holdInput(run, node, h, into)
+        if (--holdLeft <= 0) mode = 'pick'
+        return into
+      }
+      drive(run, driver!, h, null, into)
+      if (b.ground < 0 && !b.diving && b.slide <= 0 && b.flingX === 0 && b.flingZ === 0) {
+        // In the air it keeps to the line it jumped along (its stick as it left the ground), easing off or pushing on
+        // along it to come down on the spot, and never steers across it: a sideways push (the wind's, a belt's) drifts
+        // it all the way down, as it does a player who has committed to a jump.
+        if (!lined) {
+          lined = true
+          const m = Math.hypot(heldX, heldY)
+          resolve(run, nodeOf(course, driver!.seg.edges[driver!.ei]!.to))
+          const tx = PX - b.x
+          const tz = PZ - b.z
+          const tm = Math.hypot(tx, tz) || 1
+          lineX = m > 0.3 ? -heldX / m : tx / tm
+          lineZ = m > 0.3 ? heldY / m : tz / tm
+        }
+        resolve(run, nodeOf(course, driver!.seg.edges[driver!.ei]!.to))
+        const tf = timeToFall(run, PY)
+        const along = clampTo(((PX - b.x) * lineX + (PZ - b.z) * lineZ) / tf, -RUN, RUN)
+        into.x = (-lineX * along) / RUN
+        into.y = (lineZ * along) / RUN
+      } else {
+        lined = false
+        heldX = into.x
+        heldY = into.y
+      }
+      naiveReflexes(run, driver!, into)
+      return into
+    },
+  }
+}
+
+/**
+ * A live run of the course by NAIVE's hands, to the crown or `limit` s. `onStep` is called after every step (a script
+ * timing the run; it must not change it).
+ */
+export function naiveRun(course: Course, o: NaiveOptions = {}, limit = 300, onStep?: (run: Run) => void): BotRun {
+  const run = newRun(course, { countdown: 0, quiet: true })
+  const hands = naiveHands(course, o)
+  while (!run.done && run.t < limit) {
+    step(run, hands.input(run))
+    onStep?.(run)
+  }
+  return { finished: run.done, time: run.done ? run.time : Infinity, splits: run.splits.slice(), ghost: [], route: '', steps: [], touched: run.touched, counts: { ...run.counts } }
 }

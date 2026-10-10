@@ -3,8 +3,8 @@ import * as THREE from 'three'
 /*
  * The puffs and sparkles (design-final §6): dust off the feet, soda splashing up and fizzing at a fall, bubbles
  * rising off the sea, sparkles for a close call or a perfect bounce, confetti at the checkpoints and the star, a
- * firework now and then on Big Show days. Four pools, 300 at most in all (the phone cut list), each drawn in one
- * call. And the landing aids: a soft shadow on whatever is under Blip (wider and fainter the higher it is) and,
+ * firework now and then on Big Show days, spray off a geyser. Four pools, 300 at most in all (the phone cut list),
+ * each drawn in one call. And the landing aids: a soft shadow on whatever is under Blip (wider and fainter the higher it is) and,
  * when nothing is, a bright ring on the sea below.
  */
 
@@ -179,6 +179,17 @@ export class Fx {
       const a = this.rnd() * Math.PI * 2
       const s = 0.5 + this.rnd() * 2.4
       this.fizz.add({ x: x + Math.cos(a) * 0.4, y: y + 0.1, z: z + Math.sin(a) * 0.4, vx: Math.cos(a) * s, vy: 3.5 + this.rnd() * 5.5, vz: Math.sin(a) * s, life: 1 + this.rnd() * 0.8, r: TMP_C.r, g: TMP_C.g, b: TMP_C.b, drag: 2.2, grav: 2.4, spin: 0, sx: 1, sy: 1 })
+    }
+  }
+
+  /** Spray thrown up off (x, y, z) and falling: a geyser's top, `up` m/s up, spreading `out` m/s. */
+  spray(x: number, y: number, z: number, n: number, colour: string, up = 4, out = 1.6) {
+    TMP_C.set(colour)
+    for (let i = 0; i < this.many(n); i++) {
+      const a = this.rnd() * Math.PI * 2
+      const s = out * (0.4 + this.rnd() * 0.8)
+      const l = 0.9 + this.rnd() * 0.1
+      this.soft.add({ x: x + Math.cos(a) * 0.25, y, z: z + Math.sin(a) * 0.25, vx: Math.cos(a) * s, vy: up * (0.6 + this.rnd() * 0.6), vz: Math.sin(a) * s, life: 0.45 + this.rnd() * 0.4, r: TMP_C.r * l, g: TMP_C.g * l, b: TMP_C.b * l, drag: 1.2, grav: 14, spin: 0, sx: 1, sy: 1 })
     }
   }
 

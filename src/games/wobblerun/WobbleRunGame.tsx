@@ -39,7 +39,6 @@ import { fetchBoardGhost, fetchNextGhost, fitsCourse, sendBoardGhost, standIn, t
 import { StarMark } from './StarMark'
 import { gauntletDay, gauntletNumber, msUntilNextGauntlet, untilWords } from './daily'
 import { BLUE_HANDS, FAST_HANDS, liveHands } from './engine/bots'
-import { labRoundNames } from './engine/lab'
 import { newRun, step, STEP } from './engine/sim'
 import type { Course, Input, Run, SimEvent } from './engine/types'
 import { RoundIcon } from './GauntletDrawing'
@@ -50,17 +49,21 @@ import {
   claimRun,
   Ghost,
   keepBestRun,
+  keepLabPick,
   keepPracticeRun,
   keptRun,
   LAB_DAY,
   labDay,
+  labPickKey,
   paceIfRun,
   paceOf,
   practiceBest,
+  readLabPick,
   waitingRun,
   wobbleDay,
   type GhostPose,
   type GhostRun,
+  type LabPick,
   type WobbleDay,
 } from './runs'
 import { WobbleScene, type GhostShow } from './WobbleScene'
@@ -472,6 +475,8 @@ function WobbleRunDay({
   practice = false,
   test = false,
   lab = false,
+  labPick = { kind: 'all' },
+  onLabPick,
   itsDay,
   pastBoard = null,
   onNewDay,
@@ -489,11 +494,14 @@ function WobbleRunDay({
    */
   test?: boolean
   /**
-   * The test course of every round (runs.ts labDay), an admin's, with `practice`: kept nowhere, not even the tab
-   * (your best here lasts while it's open), with no ghost, no blue blip and no call to the API, on cards of its own
-   * (TestCards.tsx LabStartCard).
+   * The test lab (runs.ts labDay), an admin's, with `practice`: kept nowhere, not even the tab (your best here lasts
+   * while it's open), with no ghost, no blue blip and no call to the API, on cards of its own (TestCards.tsx
+   * LabStartCard, its picker). `labPick` is what it lays (one round, a test gauntlet, every round); a new pick comes
+   * back through `onLabPick`, and the page mounts the game again for it.
    */
   lab?: boolean
+  labPick?: LabPick
+  onLabPick?: (pick: LabPick) => void
   /** A past gauntlet's day as the API has it, for its cards: who was 1st, and you. */
   itsDay?: ItsDay
   /** A past gauntlet's All time board: signed in, a run on it goes there, under a run of its own. */
@@ -506,7 +514,7 @@ function WobbleRunDay({
   const viewer = useAccountId()
   const { signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
-  const wobble = lab ? labDay() : wobbleDay(day)
+  const wobble = lab ? labDay(labPick) : wobbleDay(day)
   const pace = wobble.pace
   /** The test course's best run while it's open: kept nowhere else. */
   const labBest = useRef<number | null>(null)
@@ -1202,6 +1210,8 @@ function WobbleRunDay({
       const g = gameRef.current!
       if (g.phase === 'menu') {
         if (e.code !== 'Space' && e.code !== 'Enter') return
+        // The lab's picker has buttons of its own: Space or Enter on one presses it, never starts a run under it.
+        if (e.target instanceof Element && e.target.closest('.wobblerun-lab')) return
         e.preventDefault()
         // The Space that starts the run is never a jump: presses are let go at the start, and the bean can't move till GO.
         if (!e.repeat && performance.now() >= startGrace.current) start()
@@ -1425,7 +1435,13 @@ function WobbleRunDay({
         facts: [onItsDayFact(day, went), allTimeFact(SLUG, board, viewer !== null, formatWobblerunBoardScore)],
       }
     : null
-  const chips = lab ? null : <RoundChips k={wobble.k} />
+  // The lab's test gauntlet has its rounds on its card too; a round alone, or every round, needs none.
+  const chips = !lab || labPick.kind === 'gauntlet' ? <RoundChips k={wobble.k} /> : null
+  /** The lab's Start (its card takes its own presses): not in the moment after a card closed. */
+  const startLab = () => {
+    if (performance.now() >= startGrace.current) start()
+  }
+  const pickLab = (next: LabPick) => onLabPick?.(next)
   // A past gauntlet's start card has its tiles without the rounds (its title names the gauntlet), so it fits as
   // Swoop's does: the card passes taps through to start, so it can't be scrolled. The pause card has the rounds.
   const practiceTiles = (
@@ -1603,7 +1619,7 @@ function WobbleRunDay({
               />
               {showroom && !saveOpen && !paused && !noGl ? (
                 lab ? (
-                  <LabStartCard rounds={labRoundNames()} best={practiceBestTime} />
+                  <LabStartCard pick={labPick} wobble={wobble} best={practiceBestTime} chips={chips} onPick={pickLab} onStart={startLab} />
                 ) : test ? (
                   <TestStartCard wobble={wobble} best={practiceBestTime} chips={chips} />
                 ) : pastPlay ? (
@@ -1614,7 +1630,16 @@ function WobbleRunDay({
               ) : null}
               {ui.phase === 'gameover' && saveOpen && result ? (
                 lab ? (
-                  <LabResultCard time={result.time} splats={result.splats} best={practiceBestTime ?? result.time} improved={result.improved} onAgain={start} onDone={toMenu} />
+                  <LabResultCard
+                    pick={labPick}
+                    time={result.time}
+                    splats={result.splats}
+                    best={practiceBestTime ?? result.time}
+                    improved={result.improved}
+                    onAgain={start}
+                    onPick={pickLab}
+                    onDone={toMenu}
+                  />
                 ) : test ? (
                   <TestResultCard
                     wobble={wobble}
@@ -1699,11 +1724,26 @@ function PastWobbleRun({ day }: { day: string }) {
 }
 
 /**
+ * The test lab (?lab=1), an admin's: what it lays is picked on its start card (TestCards.tsx LabStartCard) and kept
+ * here, and on this device for next time (runs.ts readLabPick). Each pick is a course of its own, so the game is
+ * mounted afresh for it, as for a new day.
+ */
+function LabWobbleRun() {
+  const [pick, setPick] = useState<LabPick>(readLabPick)
+  const choose = useCallback((next: LabPick) => {
+    keepLabPick(next)
+    setPick(next)
+  }, [])
+  return <WobbleRunDay key={`lab:${labPickKey(pick)}`} day={LAB_DAY} practice lab labPick={pick} onLabPick={choose} onNewDay={() => {}} />
+}
+
+/**
  * Wobble Run on today's gauntlet, mounted again for the next when midnight brings it; with `practiceDay`, a past
  * day's gauntlet from the past tab, onto its All time board; with `testDay`, today's gauntlet or one still to come,
- * test run from the admin's Gauntlet Book (?track=<n> or ?day=); with `lab`, the test course of every round
- * (runs.ts labDay), from the Gauntlet Book too. A test run and the test course are only an admin's: anyone else is
- * sent to today's gauntlet, with a word about why when the gauntlet's day hasn't come, or when it was the test course.
+ * test run from the admin's Gauntlet Book (?track=<n> or ?day=); with `lab`, the test lab (one round, a test
+ * gauntlet or every round, picked on its card: LabWobbleRun), from the Gauntlet Book too. A test run and the test lab
+ * are only an admin's: anyone else is sent to today's gauntlet, with a word about why when the gauntlet's day hasn't
+ * come, or when it was the test lab.
  */
 export function WobbleRunGame({ practiceDay, testDay, lab = false }: { practiceDay?: string | null; testDay?: string | null; lab?: boolean }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? gauntletDay() }))
@@ -1716,12 +1756,12 @@ export function WobbleRunGame({ practiceDay, testDay, lab = false }: { practiceD
     if (shut) navigate(gamePlayHref(SLUG), { replace: true })
   }, [shut])
   if (practiceDay) return <PastWobbleRun key={`practice-${practiceDay}`} day={practiceDay} />
-  if (lab && admin === true) return <WobbleRunDay key="lab" day={LAB_DAY} practice lab onNewDay={() => {}} />
+  if (lab && admin === true) return <LabWobbleRun />
   if (testDay && admin === true) return <WobbleRunDay key={`test-${testDay}`} day={testDay} practice test onNewDay={() => {}} />
   // Still signing in, or still asking the API whether this account is an admin.
   if (adminOnly && !shut) return null
   const notice = lab
-    ? 'The test course is for admins. Here’s today’s gauntlet.'
+    ? 'The test lab is for admins. Here’s today’s gauntlet.'
     : testDay && testDay !== gauntletDay()
       ? `Gauntlet #${gauntletNumber(testDay)}’s day hasn’t come yet. Here’s today’s.`
       : today.notice

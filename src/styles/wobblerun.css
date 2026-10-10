@@ -661,14 +661,189 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   pointer-events: auto;
 }
 
-.wobblerun-test__nav a {
+.wobblerun-test__nav a,
+.wobblerun-test__nav button {
   padding: 0.3rem 0.15rem;
+  border: 0;
+  background: none;
   color: var(--panel-accent-ink);
+  font: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.wobblerun-test__nav a:hover {
+.wobblerun-test__nav a:hover,
+.wobblerun-test__nav button:hover {
   text-decoration: underline;
+}
+
+/*
+ * The test lab's picker (TestCards.tsx LabStartCard): what to test (one round, a test gauntlet, every round) as a
+ * segmented control, the rounds as tiles with their hints, the tier as another segmented control, then Start. It
+ * takes its own presses (a tap on it never starts a run) and is a little wider than a start card, for the tiles.
+ */
+.game-card.wobblerun-lab {
+  width: min(25rem, calc(100% - 1.5rem));
+  gap: 0.85rem;
+}
+
+.wobblerun-lab__seg {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--panel-fill);
+  border: 1px solid var(--panel-line);
+}
+
+.wobblerun-lab__seg-btn {
+  min-height: 2.5rem;
+  padding: 0 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.wobblerun-lab__seg-btn:hover {
+  color: var(--ink);
+}
+
+.wobblerun-lab__seg-btn[aria-pressed='true'] {
+  background: var(--panel-accent);
+  color: var(--panel-on-accent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--panel-accent) 28%, transparent);
+}
+
+.wobblerun-lab__seg-btn:focus-visible,
+.wobblerun-lab__round:focus-visible {
+  outline: 2px solid var(--panel-accent-ink);
+  outline-offset: 2px;
+}
+
+.wobblerun-lab__tier-word {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.wobblerun-lab__rounds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.wobblerun-lab__round {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.45rem;
+  row-gap: 0.05rem;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--panel-line);
+  border-radius: 0.85rem;
+  background: var(--panel-fill);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.wobblerun-lab__round svg {
+  grid-row: 1 / span 2;
+}
+
+.wobblerun-lab__round:hover {
+  border-color: rgba(var(--ink-rgb), 0.26);
+}
+
+.wobblerun-lab__round[aria-pressed='true'] {
+  border-color: var(--panel-accent);
+  background: color-mix(in srgb, var(--panel-accent) 18%, transparent);
+}
+
+.wobblerun-lab__round-name,
+.wobblerun-lab__round-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wobblerun-lab__round-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.wobblerun-lab__round-hint {
+  font-size: 0.72rem;
+  line-height: 1.15;
+  color: var(--muted);
+}
+
+.wobblerun-lab__best {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* "New gauntlet ›" on one line: its side of the strip has room, the other side being empty. */
+.wobblerun-test__nav .wobblerun-lab__new {
+  white-space: nowrap;
+}
+
+.wobblerun-lab__best strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tightened (lib/cardFit), the tiles and the controls give up a little air before the card has to scroll. */
+.game-card.wobblerun-lab[data-fit='1'],
+.game-card.wobblerun-lab[data-fit='2'] {
+  gap: 0.6rem;
+}
+
+.game-card.wobblerun-lab[data-fit='2'] .wobblerun-lab__round {
+  min-height: 2.45rem;
+  padding-block: 0.25rem;
+}
+
+/*
+ * Still too tall (a phone, and more rounds built every week): the tiles scroll in a box of their own, so the tier and
+ * Start stay in view rather than the whole card scrolling. Its height is the screen less what the rest of the card
+ * and the overlay's padding take.
+ */
+.game-card.wobblerun-lab[data-fit='2'] .wobblerun-lab__rounds {
+  max-height: max(8rem, calc(100vh - 29rem));
+  max-height: max(8rem, calc(100dvh - 29rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.1rem;
+}
+
+.game-card.wobblerun-lab[data-fit='2'] .wobblerun-lab__seg-btn {
+  min-height: 2.25rem;
+}
+
+/* A narrow phone: the tier's word goes, T1 T2 T3 stay (the blurb says how hot the one picked is). */
+@media (max-width: 360px) {
+  .wobblerun-lab__tier-word {
+    display: none;
+  }
 }
 
 .wobblerun-test__nav > :first-child {

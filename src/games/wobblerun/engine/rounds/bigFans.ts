@@ -8,6 +8,13 @@
  * The reference round for wind: kit.wind volumes on sim.ts fanDuty / fanTele (OFF, a 0.7 s spin-up with no wind
  * yet, BLOW, a 0.4 s spin-down), `up` for the tail wind's lift, fan decos tied to their volumes, and route windows
  * worked out from a clock thing's cycle (the blue jumps a gap only while its fan stays calm for the whole hop).
+ *
+ * Generation 2 (the round Ramsey found hard, so it changes least): the islands go up and down. Every gap is a hop up
+ * (0.6–0.9 m) or a drop, and the fans still blow across them: hopping up you're in the air a little less, dropping a
+ * little longer, so a drop across a blowing fan is the one to wait for. T1 drops 1.3–1.5 m and its fans blow 3.0 m/s
+ * (gen 1's 2.4 never made a player who jumps into the wind fall: now about one run in ten does); T2 hops up onto its
+ * first island, drops twice across the fans and hops up onto the tail island, at 3.1 m/s; T3 (unchanged at 3.4 m/s)
+ * drops 0.7–0.9 m. The rest is gen 1's: the fans and their windows, the cushions, the Tail Wind and its detour.
  */
 import { fanDuty, fanPeriod, fanTele, type FanSpec } from '../sim.ts'
 import type { RoundDef, RoundOut, RoundSlot, Rng, Tier } from '../types.ts'
@@ -76,10 +83,37 @@ function fanSpec(rng: Rng, T: number, ph: number, offLo = 1.2, onLo = 1.6): FanS
   return { off, on: both - off, ph: ((ph % T) + T) % T }
 }
 
+/** Generation 2: a running hop's flight, down to dy over its take-off (10.5 m/s up, 28 m/s² down), s. */
+function flightTo(dy: number): number {
+  return (10.5 + Math.sqrt(Math.max(0, 10.5 * 10.5 - 2 * 28 * dy))) / 28
+}
+
+/**
+ * Generation 2: the main islands' heights. T2: up onto the first (from the pad before, no fan), then two drops across
+ * the fans (and the hop up onto the tail island, at the base). T1 and T3: up or down onto the first, then from a high
+ * island a drop (T1 1.3–1.5 m, T3 0.7–0.9) and from a low one a hop up (0.6–0.9), between −0.9 and +1.8.
+ */
+function heights2(rng: Rng, tier: Tier, n: number): number[] {
+  const ys: number[] = []
+  if (tier === 2) {
+    ys.push(rng.between(0.8, 1.0))
+    for (let i = 1; i < n; i++) ys.push(ys[i - 1]! - rng.between(0.7, 0.9))
+    return ys
+  }
+  const [dLo, dHi] = tier === 1 ? [1.3, 1.5] : [0.7, 0.9]
+  let y = rng.chance(0.5) ? rng.between(0.6, 0.9) : -rng.between(0.4, 0.6)
+  for (let i = 0; i < n; i++) {
+    if (i > 0) y = y > 0.3 ? Math.max(-0.9, y - rng.between(dLo, dHi)) : Math.min(1.8, y + rng.between(0.6, 0.9))
+    ys.push(y)
+  }
+  return ys
+}
+
 function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
   const k = kit(slot, tier)
+  const g2 = k.gen >= 2
   k.camera('wide')
-  const w = byTier(tier, [2.4, 3.0, 3.4])
+  const w = g2 ? byTier(tier, [3.0, 3.1, 3.4]) : byTier(tier, [2.4, 3.0, 3.4])
   const tail = tier >= 2
   // Islands before the tail island (T2 and up) or all of them (T1): 5; 3, the tail island and 2 side; 4, the tail
   // island and 2 side.
@@ -105,15 +139,16 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
   const tailX = sd * (-tailWidth / 2 + TAIL_ISLAND_HX)
   const sideX = sd * (tailWidth / 2 - SIDE_HX)
 
-  // The main line of islands: zig-zagging up to 1.5 m either side, steps of up to 0.5 m within 0.4 of the base. The
-  // last before the tail island leans its way, so the hop onto it is straight ahead.
+  // The main line of islands: zig-zagging up to 1.5 m either side, steps of up to 0.5 m within 0.4 of the base (gen 2:
+  // heights2's ups and downs). The last before the tail island leans its way, so the hop onto it is straight ahead.
   const islands: Island[] = []
   const s0 = tail ? -sd * (n % 2 === 0 ? -1 : 1) : rng.sign()
   let z = rng.between(gLo, gHi)
+  const ys = g2 ? heights2(rng, tier, n) : null
   let y = 0
   for (let i = 0; i < n; i++) {
     const len = rng.between(lLo, lHi)
-    y = Math.max(-0.4, Math.min(0.4, y + rng.between(-0.5, 0.5)))
+    y = ys ? ys[i]! : Math.max(-0.4, Math.min(0.4, y + rng.between(-0.5, 0.5)))
     const x = s0 * (i % 2 === 0 ? 1 : -1) * rng.between(0.5, 1.5)
     islands.push({ x, y, z0: z, z1: z + len, hx: rng.between(2.2, 2.75) })
     z += len + rng.between(gLo, gHi)
@@ -132,9 +167,10 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
     const Q = islands[j + 1]!
     const dz = spot(Q) - spot(P)
     const run = ((P.z1 - spot(P)) * Math.hypot(Q.x - P.x, dz)) / dz - INSET
+    const flight = g2 ? flightTo(Q.y - P.y) : FLIGHT
     takeoff.push(RUN_UP_T + Math.max(0, run - RUN_UP_D) / BLUE_SPEED)
-    const lands = P.z1 - INSET + BLUE_SPEED * FLIGHT
-    travel.push(takeoff[j]! + FLIGHT + Math.max(0, spot(Q) - THERE - lands) / BLUE_SPEED + 0.05)
+    const lands = P.z1 - INSET + BLUE_SPEED * flight
+    travel.push(takeoff[j]! + flight + Math.max(0, spot(Q) - THERE - lands) / BLUE_SPEED + 0.05)
   }
 
   // The fans: one across each gap between the main islands, neighbours on alternate sides. T1's are chained (the
@@ -158,20 +194,25 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
     const side = f0 * (j % 2 === 0 ? 1 : -1)
     const za = P.z1 - BAND_ON
     const zb = Q.z0 + BAND_ON
+    // The band reaches from under the lower island to over the higher one (gen 1's islands are near the base).
+    const lo = g2 ? Math.min(P.y, Q.y) + BAND_LO : BAND_LO
+    const hi = g2 ? Math.max(P.y, Q.y) + BAND_HI : BAND_HI
     const vol = k.wind({
       x: 0,
-      y: (BAND_LO + BAND_HI) / 2,
+      y: (lo + hi) / 2,
       z: (za + zb) / 2,
       hx: BAND_HX,
-      hy: (BAND_HI - BAND_LO) / 2,
+      hy: (hi - lo) / 2,
       hz: (zb - za) / 2,
       carry: { x: -side * w, z: 0 },
       duty: fanDuty(spec),
       tele: fanTele(spec),
     })
     const gz = (P.z1 + Q.z0) / 2
-    // The fan (sx its housing's width, sy its pylon's height below it), facing the way it blows.
-    k.deco({ look: 'fan', x: side * FAN_X, y: 2.4, z: gz, yaw: (-side * Math.PI) / 2, sx: 3.6, sy: 6, sz: 1.0, ref: { kind: 'volume', i: vol } })
+    // The fan (sx its housing's width, sy its pylon's height below it), facing the way it blows; over the higher of
+    // the two islands.
+    const up = g2 ? Math.max(P.y, Q.y) : 0
+    k.deco({ look: 'fan', x: side * FAN_X, y: 2.4 + up, z: gz, yaw: (-side * Math.PI) / 2, sx: 3.6, sy: 6 + up, sz: 1.0, ref: { kind: 'volume', i: vol } })
     // Cushions on both islands' downwind edges, inside the wind; arrows painted on the edges, the way it blows
     // (`dir`, yaw sense).
     for (const [I, a, b] of [

@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import { crownAt, hazardBodies, newBody, newPose, solidPose, teleOf } from '../engine/sim.ts'
 import type { Body, Course, Deco, Hazard, Role, Solid, Tele, Volume, World } from '../engine/types.ts'
 import { blipStarGeometry } from './bean.ts'
+import type { Fx } from './fx.ts'
+import { Gen2View } from './gen2.ts'
 import { bake, boxSlab, discSlab, IDENT, Layer, merge, outline, setPoseMatrix, strip, xfOf, type SlabPaint, type Xf } from './geo.ts'
 import { CODE, CRACK_AMBER, CRACK_RED, LAMP, mix, patternOf, signPaint, type Painter, type PatternRole, type Tints } from './look.ts'
 import type { Tide } from './world.ts'
@@ -23,6 +25,8 @@ import type { Tide } from './world.ts'
  *     light, a fan's blur, a pendulum's floor stripe; all the lamps are one instanced mesh and their glows another.
  *   - The finish is the Blip star (the engine's `crown` volume), turning over its pedestal in a mint beacon; Tide
  *     Tower's rising sea (the engine's `slime`) is the soda sea risen, with a light rim.
+ *   - Gen 2's looks (mallets, plungers, geysers, piano keys, the pinball table, lifts, trampolines, sprinkles) are
+ *     gen2.ts's: it says which things it draws, and this leaves them to it.
  *
  * Draw what's near: everything has the z it can reach, and what's out of the camera's stretch isn't drawn.
  */
@@ -47,8 +51,11 @@ const grey = (k: number) => new THREE.Color(k, k, k)
 const FLOORISH = new Set(['floor', 'pad', 'terrace', 'island', 'summit', 'basement', 'drum', 'disc', 'pad-lily', 'pad-gold', 'plank', 'tile'])
 const WALLISH = new Set(['rail', 'fence', 'divider'])
 
-/** A light: a lamp's bulb and its glow, one slot each in the two instanced meshes. */
-type Light = { x: number; y: number; z: number; size: number; colour: THREE.Color; on: number }
+/**
+ * A light: a lamp's bulb and its glow, one slot each in the two instanced meshes; lit within `reach` m ahead of the
+ * camera, if it says, and (`keep`) still lit once Blip has passed it (a lamp set in the floor).
+ */
+type Light = { x: number; y: number; z: number; size: number; colour: THREE.Color; on: number; reach?: number; keep?: boolean }
 
 type Mover = {
   i: number
@@ -109,6 +116,8 @@ export type CourseFrame = {
   bean: THREE.Vector3
   dt: number
   calm: boolean
+  /** The puffs, for the things that throw some (a mallet's smash, a geyser's spray, a vent's bubbles). */
+  fx?: Fx | null
 }
 
 const P = newPose()
@@ -158,6 +167,7 @@ export class CourseView {
   private readonly striped = new Set<number>()
   private readonly rnd: () => number
   private flagGreen = { amber: '#f5b942', green: '#3ecf8e' }
+  private readonly gen2: Gen2View
 
   constructor(
     course: Course,
@@ -194,6 +204,26 @@ export class CourseView {
     }
     // Hazards whose floor stripe the round lays itself (a deco with a ref), so the scene doesn't add another.
     for (const d of course.decos) if (d.look === 'stripe' && d.ref?.kind === 'hazard') this.striped.add(d.ref.i)
+    // Gen 2's looks first: what they draw is left out below, and their static parts join the chunks built next.
+    this.gen2 = new Gen2View({
+      course,
+      group: this.group,
+      painter,
+      tints,
+      rnd,
+      mats: { ink: this.mats.ink, bouncy: this.mats.bouncy, floor: this.mats.floor },
+      tex: { dot: tex.dot, soda: tex.soda },
+      layer: (z, mat) => this.layer(z, mat),
+      lamp: (x, y, z, size) => {
+        // Gen 2's lamps are small: past 60 m they'd be a pixel, so they're left out.
+        const L: Light = { x, y, z, size, colour: new THREE.Color('#8f86b8'), on: 0, reach: 60 }
+        this.lights.push(L)
+        return L
+      },
+      surfaceBelow: (x, z, top, t, world) => this.surfaceBelow(x, z, top, t, world),
+      floorOf: (s) => this.floorOf(s),
+      seen: (z0, z1, cz) => this.seen(z0, z1, cz),
+    })
     this.buildSolids()
     this.buildHazards()
     this.buildVolumes(tex.shine, tex.dot, tex.soda, tex.sodaRim)
@@ -314,6 +344,7 @@ export class CourseView {
     const course = this.course
     const tileList: { i: number; s: Solid; base: THREE.Color }[] = []
     course.solids.forEach((s, i) => {
+      if (this.gen2.claims('solid', i)) return
       const dropTile = s.touch?.kind === 'tile' && !s.touch.star
       const moving = !!s.move || (!!s.touch && !dropTile && s.touch.kind !== 'tile')
       const { mat, paint, trim } = this.paintOf(s)
@@ -474,6 +505,7 @@ export class CourseView {
     const course = this.course
     const pathGroups = new Map<string, PathGroup>()
     course.hazards.forEach((h, i) => {
+      if (this.gen2.claims('hazard', i)) return
       if (h.path) {
         const key = `${h.look}:${h.shape}`
         let g = pathGroups.get(key)
@@ -685,6 +717,7 @@ export class CourseView {
 
   private buildVolumes(shine: THREE.Texture, dot: THREE.Texture, soda: THREE.Texture, sodaRim: string) {
     this.course.volumes.forEach((v, i) => {
+      if (this.gen2.claims('volume', i)) return
       if (v.kind === 'hoop') {
         const obj = new THREE.Group()
         obj.position.set(v.x, v.y, v.z)
@@ -766,7 +799,10 @@ export class CourseView {
   }
 
   private buildDecos(blurTex: THREE.Texture) {
+    let di = -1
     for (const d of this.course.decos) {
+      di++
+      if (this.gen2.claims('deco', di)) continue
       const look = d.look
       const plain = (z: number) => this.layer(z, 'plain')
       if (look === 'flag' || look === 'gold-flag') {
@@ -1118,14 +1154,23 @@ export class CourseView {
 
   /* ------------------------------------------------------------ moments --- */
 
-  /** A pad threw Blip: it squashes and springs back. A hazard bonked Blip: it swells a moment. */
-  pulseSolid(i: number) {
+  /**
+   * A pad threw Blip: it squashes and springs back (a trampoline's mat dips, deeper at `strength` over 1: a perfect
+   * bounce). A hazard bonked Blip: it swells a moment (a pinball bumper's lamps flash).
+   */
+  pulseSolid(i: number, strength = 1) {
+    if (this.gen2.pulseSolid(i, strength)) return
     const m = this.moverOf.get(i)
     if (m) m.pulse = 1
   }
   pulseHazard(i: number) {
     const h = this.hazardOf.get(i)
     if (h) h.pulse = 1
+    this.gen2.pulseHazard(i)
+  }
+  /** Blip landed on solid i (a piano key sends up its note). */
+  landed(i: number, x: number, y: number, z: number) {
+    this.gen2.landed(i, x, y, z)
   }
   pulseHoop(i: number) {
     const h = this.hoops.find((o) => o.i === i)
@@ -1454,28 +1499,33 @@ export class CourseView {
       }
     }
 
+    // Gen 2's things (before the lights: their lamps are among them).
+    this.gen2.update({ t, world: f.world, cam: f.cam, bean: f.bean, dt: f.dt, calm: f.calm, fx: f.fx })
+
     // Lights: door lamps, chute and cannon lights, from their things' telegraphs.
     if (this.lampMesh && this.glowMesh) {
       // Passed lights go dark: they warn of what's ahead, and a bulb by the camera would fill the screen.
-      const lit = (L: Light) => this.seen(L.z - 1, L.z + 1, cz) && L.z > f.bean.z - 0.6
+      const lit = (L: Light) => this.seen(L.z - 1, L.z + 1, cz) && (L.keep || L.z > f.bean.z - 0.6) && (L.reach === undefined || L.z < cz + L.reach)
       for (const r of this.lampRefs) {
         const L = this.lights[r.light]!
         if (lit(L)) this.lightFor(r.look, teleOf(this.thing(r.kind, r.i), t), t, L)
       }
+      // Only the lit ones are drawn (packed at the front), so a course of many lamps costs what's near.
       let shown = 0
       for (let k = 0; k < this.lights.length; k++) {
         const L = this.lights[k]!
-        const vis = lit(L)
-        if (vis) shown++
-        const s = vis ? L.size : 0
+        if (!lit(L)) continue
+        const s = L.size
         M.compose(V.set(L.x, L.y, L.z), Q.identity(), S.setScalar(s * (0.55 + 0.45 * L.on)))
-        this.lampMesh.setMatrixAt(k, M)
-        this.lampMesh.setColorAt(k, C.copy(L.colour).multiplyScalar(0.45 + 0.55 * L.on))
-        M.compose(V.set(L.x, L.y, L.z - 0.05), Q, S.setScalar(vis ? s * 2.6 * (0.5 + 0.5 * L.on) : 0))
-        this.glowMesh.setMatrixAt(k, M)
-        this.glowMesh.setColorAt(k, C.copy(L.colour).multiplyScalar(0.12 + 0.5 * L.on))
+        this.lampMesh.setMatrixAt(shown, M)
+        this.lampMesh.setColorAt(shown, C.copy(L.colour).multiplyScalar(0.45 + 0.55 * L.on))
+        M.compose(V.set(L.x, L.y, L.z - 0.05), Q, S.setScalar(s * 2.6 * (0.5 + 0.5 * L.on)))
+        this.glowMesh.setMatrixAt(shown, M)
+        this.glowMesh.setColorAt(shown, C.copy(L.colour).multiplyScalar(0.12 + 0.5 * L.on))
+        shown++
       }
       for (const m of [this.lampMesh, this.glowMesh]) {
+        m.count = shown
         m.visible = shown > 0
         m.instanceMatrix.needsUpdate = true
         if (m.instanceColor) m.instanceColor.needsUpdate = true

@@ -3,9 +3,9 @@ import { BLUE_ROUTES } from './blueRoutes'
 import { dailyGauntlet, laidNumber, type DailyGauntlet } from './daily'
 import { BLUE_HANDS, liveHands, replayBlue } from './engine/bots'
 import { plannedCourse } from './engine/course'
-import { labCode, labCourse } from './engine/lab'
+import { labCode, labCourse, labRounds, soloCourse, testGauntlet } from './engine/lab'
 import { AIRBORNE, GHOST_RATE, GHOST_STRIDE, GROUNDED, newRun, step } from './engine/sim'
-import type { Course } from './engine/types'
+import type { Course, Tier } from './engine/types'
 import type { GhostRun } from './runStore'
 
 export * from './runStore'
@@ -36,15 +36,83 @@ export function wobbleDay(day: string): WobbleDay {
   return found
 }
 
-let lab: WobbleDay | null = null
+/**
+ * What the test course lays (WobbleRunGame's lab, an admin's, picked on its start card): one round at a tier, alone
+ * (engine/lab.ts soloCourse: the start pad and its slide, the round, a checkpoint pad and the star); a test gauntlet,
+ * a day-style gauntlet by the newest rules whose `seed` is the day number it's picked and laid as (lab.ts
+ * testGauntlet); or every round (lab.ts labCourse: each built round at T1, T2 and T3, then the finale).
+ */
+export type LabPick = { kind: 'round'; letter: string; tier: Tier } | { kind: 'gauntlet'; seed: number } | { kind: 'all' }
+
+/** The device remembers the last pick (a per-device convenience: nothing else reads it). */
+const LAB_PICK_KEY = 'skermix-wobblerun-lab-pick'
+
+/** What the picker starts on, with nothing remembered: the round Ramsey found hard, at its spiciest. */
+const FIRST_PICK: LabPick = { kind: 'round', letter: 'n', tier: 3 }
+
+const isTier = (t: unknown): t is Tier => t === 1 || t === 2 || t === 3
+
+/** The pick this device last made (FIRST_PICK if none, or if it names a round there isn't any more). */
+export function readLabPick(): LabPick {
+  try {
+    const p = JSON.parse(localStorage.getItem(LAB_PICK_KEY) ?? 'null') as Partial<{ kind: string; letter: string; tier: number; seed: number }> | null
+    if (p?.kind === 'all') return { kind: 'all' }
+    if (p?.kind === 'gauntlet' && Number.isInteger(p.seed) && p.seed! > 0) return { kind: 'gauntlet', seed: p.seed! }
+    if (p?.kind === 'round' && isTier(p.tier) && labRounds().some((r) => r.letter === p.letter)) return { kind: 'round', letter: p.letter!, tier: p.tier }
+  } catch {
+    /* a private window keeps nothing: the first pick */
+  }
+  return FIRST_PICK
+}
+
+export function keepLabPick(pick: LabPick): void {
+  try {
+    localStorage.setItem(LAB_PICK_KEY, JSON.stringify(pick))
+  } catch {
+    /* not kept: the picker starts on the first pick next time */
+  }
+}
+
+/** A pick as a word, for the course it lays (and the game's key, so a new pick mounts the game afresh). */
+export function labPickKey(pick: LabPick): string {
+  return pick.kind === 'round' ? `round:${pick.letter}${pick.tier}` : pick.kind === 'gauntlet' ? `gauntlet:${pick.seed}` : 'all'
+}
+
+/** A test gauntlet's seed: a day number well past the plan's, new each time (the shell's randomness, not the engine's). */
+export function freshGauntletSeed(): number {
+  return 1000 + Math.floor(Math.random() * 9000)
+}
+
+/** The round before or after a round pick's (`step` −1 or 1), at its tier, round the picker's list. */
+export function labRoundAfter(pick: LabPick & { kind: 'round' }, step: 1 | -1): LabPick & { kind: 'round' } {
+  const list = labRounds()
+  const at = Math.max(0, list.findIndex((r) => r.letter === pick.letter))
+  const next = list[(at + step + list.length) % list.length]!
+  return { kind: 'round', letter: next.letter, tier: pick.tier }
+}
+
+const labDays = new Map<string, WobbleDay>()
 
 /**
- * The test course (engine/lab.ts: every built round at T1, T2 and T3, a checkpoint pad before each, then the
- * finale), an admin's (WobbleRunGame `lab`), had as a day's gauntlet is but of no day: no plan, no board, no blue
- * blip (its `pace` is 0 and nothing shows it).
+ * The test course for a pick, an admin's (WobbleRunGame `lab`), had as a day's gauntlet is but of no day: no plan, no
+ * board, no blue blip (its `pace` is 0 and nothing shows it). Every pick is laid by the newest generation's rules
+ * (engine/course.ts LATEST_GEN), so the lab shows what's coming before any day has it.
  */
-export function labDay(): WobbleDay {
-  return (lab ??= { day: LAB_DAY, n: 0, name: 'Test Course', attempt: 0, pace: 0, k: labCode(), course: labCourse() })
+export function labDay(pick: LabPick = { kind: 'all' }): WobbleDay {
+  const key = labPickKey(pick)
+  let found = labDays.get(key)
+  if (!found) {
+    if (pick.kind === 'round') {
+      const name = labRounds().find((r) => r.letter === pick.letter)?.name ?? pick.letter
+      found = { day: LAB_DAY, n: 0, name, attempt: 0, pace: 0, k: `${pick.letter}${pick.tier}`, course: soloCourse(pick.letter, pick.tier) }
+    } else if (pick.kind === 'gauntlet') {
+      const course = testGauntlet(pick.seed)
+      found = { day: LAB_DAY, n: 0, name: course.name, attempt: 0, pace: 0, k: course.key, course }
+    } else found = { day: LAB_DAY, n: 0, name: 'Test Course', attempt: 0, pace: 0, k: labCode(), course: labCourse() }
+    if (labDays.size > 3) labDays.clear()
+    labDays.set(key, found)
+  }
+  return found
 }
 
 /** A run that waits at the start for `time` seconds: the ghost of a run whose path isn't known, before anything is. */

@@ -7,15 +7,19 @@
  * variety rules over the days before it. firstGoodCourse lays tries of those rounds until one passes the checks
  * (validate): the blue bean runs it untouched in a fair time, the fast hands leave the medals room without going
  * under the API's floor, and the phone's noisy hands all get to the crown in fair time without being knocked about.
+ *
+ * A day is picked and laid by its generation (course.ts genOfDay: gen 1 before GEN2_FROM, gen 2 from it): its heat
+ * comes from HEAT (gen 1) or HEAT2 (gen 2), and its rounds are laid by that generation's rules. The `gen` options
+ * are for trials (a day picked and laid by rules it isn't planned with); left out, every day takes its own.
  */
 import { BLUE_PACE, blueRun, fastRun, phoneRuns, type BotRun } from './bots.ts'
-import { codeOf, courseName, dayOfN, plannedCourse, weekdayOf, type RoundSpec } from './course.ts'
+import { codeOf, courseName, dayOfN, genOfDay, plannedCourse, weekdayOf, type RoundSpec } from './course.ts'
 import { gauntletName } from './names.ts'
 import { makeRng } from './rng.ts'
 import { ROUNDS } from './rounds/index.ts'
-import type { Course, RoundDef, Tier } from './types.ts'
+import type { Course, Gen, RoundDef, Tier } from './types.ts'
 
-/** Each slot's heat by weekday, Sunday first (opener · R2 · R3 · R4 · finale). */
+/** Each slot's heat by weekday, Sunday first (opener · R2 · R3 · R4 · finale): gen 1's days. */
 export const HEAT: readonly (readonly Tier[])[] = [
   [1, 1, 2, 2, 2],
   [1, 2, 2, 2, 2],
@@ -25,6 +29,26 @@ export const HEAT: readonly (readonly Tier[])[] = [
   [1, 2, 2, 3, 2],
   [1, 2, 3, 3, 3],
 ]
+
+/**
+ * Gen 2's heat (the harder rounds with ups and downs), the same shape: a copy of HEAT until the gen-2 rounds are
+ * tuned. It's what gen-2 days (course.ts GEN2_FROM on) and gen-2 trials pick their tiers from; gen 1's days keep
+ * HEAT, so changing this never touches a day already planned at gen 1.
+ */
+export const HEAT2: readonly (readonly Tier[])[] = [
+  [1, 1, 2, 2, 2],
+  [1, 2, 2, 2, 2],
+  [1, 2, 2, 2, 2],
+  [1, 2, 2, 2, 2],
+  [1, 2, 2, 2, 2],
+  [1, 2, 2, 3, 2],
+  [1, 2, 3, 3, 3],
+]
+
+/** A generation's heat table. */
+export function heatOf(gen: Gen): readonly (readonly Tier[])[] {
+  return gen >= 2 ? HEAT2 : HEAT
+}
 
 /** The rounds that can open a gauntlet: the time-it rounds and Fruit Chute (no goo on the main way). */
 const OPENERS = 'gbsf'
@@ -69,13 +93,21 @@ export type PickOptions = {
   /** The phase 2 rounds, once they're built and wanted: Roll On in the deck; Slime Climb the finale on Tuesday, Thursday and Saturday (Crown Peak every day otherwise). */
   roll?: boolean
   slime?: boolean
+  /** The rounds of our own (OURS, phase 2 until Ramsey approves them) in the deck too: the lab's test gauntlets. */
+  ours?: boolean
   /** Rounds not to give, in any order (codes of a day whose every try of them failed its checks). */
   avoid?: readonly string[]
+  /** The generation whose heat the tiers come from (the day's own, course.ts genOfDay, by default): for trials. */
+  gen?: Gen
 }
+
+/** The rounds of our own (2026-10-09): Fizz Geysers, Piano Steps, Pinball Table, Candy Lifts, Blip Bounce, Sprinkle Drop. */
+const OURS = 'vpketd'
 
 /** A round may be picked once it's built (a phase 2 one only when asked for), or (with `stubs`) while it's a phase 1 stand-in. */
 const pickable = (r: RoundDef, o: PickOptions) =>
-  (r.phase === 1 || (r.letter === 'r' && !!o.roll) || (r.letter === 'S' && !!o.slime)) && (!r.stub || (!!o.stubs && r.phase === 1))
+  (r.phase === 1 || (r.letter === 'r' && !!o.roll) || (r.letter === 'S' && !!o.slime) || (OURS.includes(r.letter) && !!o.ours)) &&
+  (!r.stub || (!!o.stubs && r.phase === 1))
 
 function pool(letters: string, o: PickOptions): RoundDef[] {
   return ROUNDS.filter((r) => letters.includes(r.letter) && pickable(r, o))
@@ -109,16 +141,16 @@ function slotOrders(o: PickOptions): Order[] {
 }
 
 /**
- * Day n's rounds, by the slot rules, the weekday's heat and the variety rules over `history` (the codes of the
- * days before it, oldest first). Every order the slot rules allow is weighed as likely as drawing it slot by slot,
- * the ones the rules rule out are dropped, and the day's own seed draws one of the rest, preferring an order not
- * seen for ORDER_DAYS days, else the one seen longest ago. Deterministic: the same day and history give the same
- * rounds.
+ * Day n's rounds, by the slot rules, the weekday's heat (its generation's: HEAT or HEAT2) and the variety rules over
+ * `history` (the codes of the days before it, oldest first). Every order the slot rules allow is weighed as likely
+ * as drawing it slot by slot, the ones the rules rule out are dropped, and the day's own seed draws one of the rest,
+ * preferring an order not seen for ORDER_DAYS days, else the one seen longest ago. Deterministic: the same day and
+ * history give the same rounds.
  */
 export function pickRounds(n: number, history: readonly string[], o: PickOptions = {}): string {
   const day = dayOfN(n)
   const wk = weekdayOf(day)
-  const heat = HEAT[wk]!
+  const heat = heatOf(o.gen ?? genOfDay(n))[wk]!
   const rng = makeRng(`wobble:pick:${day}`)
   const lettersOf = (k: string) => [...k.matchAll(/([A-Za-z])[123]/g)].map((m) => m[1]!)
   const week = history.slice(-6).map(lettersOf)
@@ -242,16 +274,18 @@ const PACE_GIVE_UP = 10
 
 /**
  * Day n's gauntlet with rounds `k`: the first try that passes the checks, or why the last one didn't (`unpaced`:
- * no try had the blue in a fair time, so these rounds at these tiers are no good on any day).
+ * no try had the blue in a fair time, so these rounds at these tiers are no good on any day). Each try is laid by
+ * the day's own generation (course.ts genOfDay), or `gen` for a trial.
  */
-export function firstGoodCourse(n: number, k: string, o: CheckOptions & { tries?: number } = {}): GoodCourse | { why: string; tried: number; unpaced: boolean } {
+export function firstGoodCourse(n: number, k: string, o: CheckOptions & { tries?: number; gen?: Gen } = {}): GoodCourse | { why: string; tried: number; unpaced: boolean } {
   let last = ''
   let paced = false
   const tries = o.tries ?? 40
   const from = o.from ?? PACE_FROM
   const to = o.to ?? PACE_TO
+  const gen = o.gen ?? genOfDay(n)
   for (let attempt = 0; attempt < tries; attempt++) {
-    const course = plannedCourse(n, attempt, k)
+    const course = plannedCourse(n, attempt, k, undefined, gen)
     const v = validate(course, o)
     if (v.ok) return { ...v, course, attempt }
     last = v.why

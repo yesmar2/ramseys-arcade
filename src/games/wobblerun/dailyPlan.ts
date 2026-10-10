@@ -2,8 +2,10 @@
 // the try at the day's number that was kept (engine/course.ts plannedCourse), `name` its name, `pace` the blue
 // blip's time in milliseconds as it's raced, and `k` its rounds in course order, finale last: a letter and a tier
 // each (g Slam Doors, b Wall Rush, s Sweeper Spin, h Bonk Alley, f Melon Hill, w Tippy Planks, x Crumble Tiles,
-// l Pad Hop, r Barrel Roll, n Gust Gaps; finales C Star Peak, S Tide Tower). Don't edit it by hand, and don't
-// change the engine in a way that changes the gauntlets of days people have played.
+// l Pad Hop, r Barrel Roll, n Gust Gaps; finales C Star Peak, S Tide Tower). A day is laid by the generation its
+// number gives it (engine/course.ts genOfDay: gen 1 before GEN2_FROM, gen 2 from it), so new rules come in behind
+// a later generation. Don't edit it by hand, and don't change the engine in a way that changes the gauntlets of
+// days people have played.
 
 export type PlannedGauntlet = { a: number; name: string; pace: number; k: string }
 

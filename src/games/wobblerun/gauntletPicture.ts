@@ -1,9 +1,9 @@
 /*
  * A day's gauntlet as a picture: its rounds in order as a trail of round badges at dusk, each badge with the
  * round's own small drawing in the game's colour code (jump the orange, dive under the purple, red bonks,
- * teal bounces, green helps, indigo pushes), its tier as pips under it, and the trail ending in the Blip star,
- * mint with the glowing blip at its centre, over the teal soda sea. Blip, your mint runner with its spark, waits
- * at the start. It needs only the plan's row (dailyPlan.ts: the round code `k`), no
+ * teal bounces, green helps, indigo pushes, gold the shortcut), its tier as pips under it, and the trail ending
+ * in the Blip star, mint with the glowing blip at its centre, over the teal soda sea. Blip, your mint runner with
+ * its spark, waits at the start. It needs only the plan's row (dailyPlan.ts: the round code `k`), no
  * engine, so the home row, Today's Gauntlet, the past gauntlets, the Gauntlet Book, the tomorrow tease and the
  * day's share card (scripts/today-cards.mjs, at build) all draw it from the same few letters.
  *
@@ -13,7 +13,7 @@
  */
 
 /** The plan's round letters (contract: dailyPlan.ts `k`): the rounds, then the finales in capitals. */
-export type RoundLetter = 'g' | 'b' | 's' | 'h' | 'f' | 'w' | 'x' | 'l' | 'r' | 'n' | 'C' | 'S'
+export type RoundLetter = 'g' | 'b' | 's' | 'h' | 'f' | 'w' | 'x' | 'l' | 'r' | 'n' | 'v' | 'p' | 'k' | 'e' | 't' | 'd' | 'C' | 'S'
 
 export type RoundInfo = {
   name: string
@@ -22,7 +22,12 @@ export type RoundInfo = {
   finale: boolean
 }
 
-/** The names players see, the same as the engine's rounds (engine/rounds/*.ts ROUND name and hint). */
+/**
+ * The names players see, the same as the engine's rounds (engine/rounds/*.ts ROUND name and hint, listed in
+ * engine/rounds/index.ts). A copy kept by hand, not an import: this module stays engine-free on purpose so the main
+ * bundle and the share cards can draw a gauntlet without loading the engine. A new round, or a renamed one, goes in
+ * both places, and its drawing in ICONS below; a letter missing here is left out of every picture and chip.
+ */
 export const ROUNDS: Record<RoundLetter, RoundInfo> = {
   g: { name: 'Slam Doors', hint: 'time the doors', finale: false },
   b: { name: 'Wall Rush', hint: 'find the gap', finale: false },
@@ -34,6 +39,12 @@ export const ROUNDS: Record<RoundLetter, RoundInfo> = {
   l: { name: 'Pad Hop', hint: 'hop the pads', finale: false },
   r: { name: 'Barrel Roll', hint: 'run the barrels', finale: false },
   n: { name: 'Gust Gaps', hint: 'wait out the wind', finale: false },
+  v: { name: 'Fizz Geysers', hint: 'ride the fizz up', finale: false },
+  p: { name: 'Piano Steps', hint: 'hop the keys that are up', finale: false },
+  k: { name: 'Pinball Table', hint: 'ride the flippers up', finale: false },
+  e: { name: 'Candy Lifts', hint: 'hop lift to lift', finale: false },
+  t: { name: 'Blip Bounce', hint: 'bounce to the high road', finale: false },
+  d: { name: 'Sprinkle Drop', hint: 'watch for the rings', finale: false },
   C: { name: 'Star Peak', hint: 'grab the star', finale: true },
   S: { name: 'Tide Tower', hint: 'beat the rising sea', finale: true },
 }
@@ -194,13 +205,20 @@ const ICONS: Record<RoundLetter | 'star', () => Mark[]> = {
     path('M-6.4 -6.4 Q0 -10.4 6.4 -6.4', stroke(K.pushes, 1.4)),
     path(chevron(6.2, -6.6, 30, 2.8), stroke(K.pushes, 1.4)),
   ],
-  // Bonk Alley: a wrecking ball swinging from its gantry, red with white bands: keep away.
+  // Bonk Alley: a whack mallet smashed down onto the path from its post at the side, its red head banded in gold,
+  // the way it swung down and the bonk where it lands: keep away. (Its wrecking balls gave way to mallets; every
+  // day's badge draws the mallet.)
   h: () => [
-    path('M-8.4 -8.8 H8.4', stroke(K.white, 1.8)),
-    path('M-0.6 -8.8 L3.4 -0.4', stroke(K.white, 1)),
-    path('M-8.6 -1.6 Q-7.2 2 -4 4.4 M-9.2 2.6 Q-7.8 5.4 -5.4 6.8', stroke(K.white, 0.9, 0.55)),
-    circle(4.2, 3.4, 5.4, solid(K.dodge, '#ffb0ab', 0.8)),
-    path('M-0.4 1.6 Q4.2 3 8.8 1.6 M-0.4 5.4 Q4.2 6.8 8.8 5.4', stroke('#ffffff', 1)),
+    rect(-10, 8.4, 20, 1.6, { ...wash(K.pink, 0.8, 1), rx: 0.8 }),
+    path('M-6.8 -6.6 Q0.4 -10.6 4.6 -4.4', stroke(K.white, 1.1, 0.6)),
+    path(chevron(4.5, -5, 64, 2.4), stroke(K.white, 1.1, 0.6)),
+    rect(-10, 1.4, 2.4, 7.2, { ...wash(K.white, 0.55, 1), rx: 0.8 }),
+    path('M-8.8 2.4 L1 3.2', stroke('#c8955a', 2.2)),
+    circle(-8.8, 2.4, 1.4, solid(K.dive, '#c9b8ff', 0.6)),
+    rect(0.6, -2.2, 8.2, 10.6, { ...solid(K.dodge, '#ffb0ab', 0.8), rx: 2 }),
+    rect(0.6, 0, 8.2, 1.6, solid(K.gold)),
+    rect(0.6, 4.6, 8.2, 1.6, solid(K.gold)),
+    path('M-0.4 7.6 L-2.6 6 M9.8 7.6 L11.2 6.4', stroke(K.white, 1.1)),
   ],
   // Melon Hill: the belt running down at you in indigo, and a big red melon rolling down it.
   f: () => {
@@ -262,6 +280,96 @@ const ICONS: Record<RoundLetter | 'star', () => Mark[]> = {
     path('M-4.2 5.2 V9.4', stroke(K.white, 1.4)),
     path('M3.6 -5 H8.6 M4.4 -1 H9.8 M3.6 3 H8.2', stroke(K.pushes, 1.3)),
     path(chevron(8.9, -1, 0, 2.2), stroke(K.pushes, 1.3)),
+  ],
+  // Fizz Geysers: a soda geyser shooting up out of the sea between a low ledge and a high one, fizzing, its spray
+  // falling either side, and the green way up over it: it carries you up.
+  v: () => [
+    path('M-10 9.4 Q-8.4 8.4 -6.8 9.4 M1.2 9.4 Q2.6 8.6 4 9.4', stroke(K.sea, 1.2)),
+    rect(-10, 4.8, 3.4, 4.6, { ...wash(K.lemon, 0.85, 1.1), rx: 0.8 }),
+    rect(4.4, -1.6, 5.6, 11, { ...wash(K.lemon, 0.85, 1.1), rx: 0.8 }),
+    path('M-2.6 -5.4 Q-5.7 -7.6 -6.6 -1.6 M-1.4 -5.4 Q1.7 -7.6 2.6 -1.6', stroke(K.bouncy, 1.2)),
+    circle(-6.6, 0.2, 0.75, solid(K.bouncy)),
+    circle(2.6, 0.2, 0.75, solid(K.bouncy)),
+    path('M-4 9.4 L-3.5 -4.2 Q-2 -6.4 -0.5 -4.2 L0 9.4 Z', { fill: K.seaRim, 'fill-opacity': 0.92, stroke: K.bouncy, 'stroke-width': 1.1, 'stroke-linejoin': 'round' }),
+    circle(-2.5, 6.4, 0.65, stroke(K.sea, 0.5)),
+    circle(-1.6, 3, 0.75, stroke(K.sea, 0.5)),
+    circle(-2.4, -0.6, 0.85, stroke(K.sea, 0.5)),
+    path(chevron(-2, -8.8, -90, 2.8), stroke(K.helps, 1.4)),
+  ],
+  // Piano Steps: a giant keyboard climbing uphill, seen from the front, the black keys between its white ones, one
+  // key sunk in the tune with the orange warning over it, and a gold note over the keys that are up.
+  p: () => {
+    // The keyboard's top edge, climbing to the right; a white key from x0 to x1, `drop` below it if it's sunk.
+    const top = (x: number) => 3.6 - 0.5 * (x + 9.6)
+    const edge = { 'stroke-width': 0.9, 'stroke-linejoin': 'round' }
+    const key = (x0: number, x1: number, drop: number, a: Attrs) => path(`M${x0} ${n2(top(x0) + drop)} L${x1} ${n2(top(x1) + drop)} V9.4 H${x0} Z`, a)
+    const black = (x: number) =>
+      path(`M${n2(x - 1.2)} ${n2(top(x - 1.2) - 0.2)} L${n2(x + 1.2)} ${n2(top(x + 1.2) - 0.2)} V${n2(top(x + 1.2) + 5.4)} L${n2(x - 1.2)} ${n2(top(x - 1.2) + 5.4)} Z`, {
+        fill: '#2b2f45',
+        stroke: '#545a7a',
+        'stroke-width': 0.6,
+        'stroke-linejoin': 'round',
+      })
+    const white = { fill: K.white, stroke: '#c9c2e6', ...edge }
+    return [
+      key(-9.6, -5.2, 0, white),
+      key(-4.8, -0.4, 0, white),
+      key(0, 4.4, 2.8, { fill: '#b8b0d8', stroke: '#9a92c0', ...edge }),
+      key(4.8, 9.2, 0, white),
+      ...[-5, -0.2, 4.6].map(black),
+      path(chevron(2.2, top(2.2) - 0.4, 90, 2.4), stroke(K.jump, 1.4)),
+      ellipse(-7.4, -4.4, 1.5, 1.1, { ...solid(K.gold), transform: 'rotate(-20 -7.4 -4.4)' }),
+      path('M-6.05 -4.7 V-9.8 Q-4 -9 -4.2 -7', stroke(K.gold, 0.9)),
+    ]
+  },
+  // Pinball Table: the tilted table, three teal bumpers to bounce off, the steel ball, and the orange flippers
+  // that fire you up it to the green way out at the top.
+  k: () => [
+    path('M-9.8 9.4 L-6.4 -9.2 H6.4 L9.8 9.4 Z', { fill: '#3a2f6b', stroke: K.dive, 'stroke-width': 1.2, 'stroke-linejoin': 'round' }),
+    path(chevron(0, -7.2, -90, 2.6), stroke(K.helps, 1.4)),
+    ...(
+      [
+        [-3.1, -3.6],
+        [3.1, -3.6],
+        [0, 1],
+      ] as const
+    ).flatMap(([x, y]) => [circle(x, y, 2.3, solid(K.bouncy)), circle(x, y, 1.1, stroke('#ffffff', 0.8))]),
+    circle(-4.4, 3.4, 1.3, { fill: '#d4d8ec', stroke: '#ffffff', 'stroke-width': 0.4 }),
+    circle(-4.8, 3, 0.4, solid('#ffffff')),
+    path('M-6.6 7 L-1.8 5.4 M6.6 7 L1.8 5.4', stroke(K.jump, 2.3)),
+  ],
+  // Candy Lifts: two amber lifts on their rails up the cliff, one rising and one sinking (indigo), and the clifftop.
+  e: () => [
+    path('M-5.6 -9.6 V9.6 M1.6 -9.6 V9.6', { ...stroke(K.white, 0.7, 0.4), 'stroke-dasharray': '1.1 1.4' }),
+    rect(6.8, -6.4, 3.4, 15.8, { ...wash(K.mint, 0.85, 1.1), rx: 0.8 }),
+    rect(-9.3, 4.2, 7.4, 3, { ...solid(K.amber, '#ffe2a6', 0.7), rx: 1.4 }),
+    rect(-2.1, -2.4, 7.4, 3, { ...solid(K.amber, '#ffe2a6', 0.7), rx: 1.4 }),
+    path('M-5.6 -0.6 L-7.36 2.04 H-3.84 Z M1.6 7 L-0.16 4.36 H3.36 Z', solid(K.pushes)),
+  ],
+  // Blip Bounce: a teal trampoline, a low road and the high road over it, and the gold bounce that reaches the high
+  // road (a plain one drops you to the low road).
+  t: () => [
+    rect(2.6, 5, 3.6, 4.4, { ...wash(K.pink, 0.8, 1.1), rx: 0.8 }),
+    rect(6.2, -4.6, 3.8, 14, { ...wash(K.pink, 0.8, 1.1), rx: 0.8 }),
+    path('M-4.4 4.6 Q-0.4 -1.6 3.6 4', { ...stroke(K.white, 0.8, 0.5), 'stroke-dasharray': '1 1.3' }),
+    path('M-5.4 4.4 Q-2.6 -12.4 7.6 -6.2', { ...stroke(K.gold, 1.3), 'stroke-dasharray': '1.8 1.3' }),
+    path(chevron(7.6, -6, 40, 2.4), stroke(K.gold, 1.3)),
+    path('M-9 7.2 L-9.8 9.6 M-1.8 7.2 L-1 9.6', stroke('#d9d2ea', 1.3)),
+    ellipse(-5.4, 6.6, 5, 1.6, { fill: '#22164a', 'fill-opacity': 0.5, stroke: '#d9d2ea', 'stroke-width': 1.1 }),
+    ellipse(-5.4, 6.5, 3.8, 1, solid(K.bouncy)),
+    path('M-7.6 3.4 Q-7.2 2.2 -6.4 1.8 M-3.2 3.4 Q-3.6 2.2 -4.4 1.8', stroke(K.bouncy, 0.9, 0.8)),
+  ],
+  // Sprinkle Drop: giant sprinkles falling on the deck, and the red rings on it where they're about to land.
+  d: () => [
+    rect(-10, 5.2, 20, 4.4, { ...wash(K.lemon, 0.85, 1.1), rx: 1 }),
+    ellipse(2.2, 7.4, 4.8, 1.6, { fill: K.dodge, 'fill-opacity': 0.3, stroke: K.dodge, 'stroke-width': 1.2 }),
+    ellipse(-6.6, 7.4, 2.6, 1, { fill: K.dodge, 'fill-opacity': 0.3, stroke: K.dodge, 'stroke-width': 1 }),
+    path('M-0.2 -9.8 L-1 -7.6 M3.8 -10 L3 -7.8 M-7.4 -10.2 L-8 -8.6', stroke(K.white, 0.9, 0.6)),
+    group({ transform: 'rotate(-28 2 -2.6)' }, [
+      rect(-2.6, -4.2, 9.2, 3.2, { fill: '#ff7ab6', stroke: '#ffc2dc', 'stroke-width': 0.6, rx: 1.6 }),
+      path('M-1.2 -3.4 H5', stroke('#ffffff', 0.7, 0.55)),
+    ]),
+    group({ transform: 'rotate(34 -6.4 -5)' }, [rect(-9, -6.1, 5.2, 2.2, { fill: '#ffe066', stroke: '#fff4c2', 'stroke-width': 0.5, rx: 1.1 })]),
   ],
   // Star Peak: the candy mountain, a red striped boulder rolling down it, the Blip star over the summit pad.
   C: () => [
