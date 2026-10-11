@@ -48,7 +48,7 @@ export function ArchiveGate({
           Anyone can play a daily’s last {OPEN_DAYS} days. Older days are for Plus members, as practice: nothing is saved,
           and they never count toward your rank.
         </p>
-        <p className="archive-gate__also">Plus is {PLUS_PRICE}, with every season’s Pass+ too.</p>
+        <p className="archive-gate__also">Plus is {PLUS_PRICE}, with every season’s Gold Pass too.</p>
         <div className="game-card__actions">
           <a className="panel__btn game-card__start" href={plusHref()}>
             See Plus
