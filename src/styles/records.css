@@ -160,10 +160,14 @@
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-  padding: 1.2rem;
-  border-radius: 1.3rem;
-  background: var(--surface);
-  border: 1px solid var(--sb-line);
+  padding: 1.1rem 1.1rem 1.1rem 1.5rem;
+  border-radius: 0.7rem 1.2rem 1.2rem 0.7rem;
+  /* A book's spine down its left edge, in brass. */
+  background:
+    linear-gradient(90deg, var(--brass-spine) 0 0.55rem, transparent 0.55rem),
+    var(--brass-bg);
+  border: 1px solid var(--brass-edge);
+  box-shadow: var(--brass-shadow);
   color: inherit;
   text-decoration: none;
   transition: transform 0.2s ease, border-color 0.2s ease;
@@ -172,7 +176,7 @@
 .rbk-book:hover,
 .rbk-book:focus-visible {
   transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--book-accent) 45%, transparent);
+  border-color: var(--brass-strong);
   outline: none;
 }
 
@@ -200,8 +204,9 @@
 .rbk-book__name {
   margin-top: 0.9rem;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 800;
+  color: var(--brass-title);
 }
 
 .rbk-book__meta {
@@ -221,7 +226,7 @@
 
 .rbk-book__label {
   padding-top: 0.8rem;
-  border-top: 1px solid var(--sb-line);
+  border-top: 1px solid var(--brass-line);
   font-size: 0.78rem;
   font-weight: 650;
   color: var(--muted);
@@ -442,175 +447,6 @@ html[data-theme="dark"] .rbk-book__value b {
   color: var(--muted);
 }
 
-.rbk-group__cols,
-.rbk-rec__link {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 0.9fr);
-  align-items: center;
-  column-gap: 1rem;
-}
-
-.rbk-group__cols {
-  margin-top: 1rem;
-  padding: 0 1rem 0.6rem;
-  border-bottom: 1px solid var(--sb-line);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.rbk-group__you {
-  text-align: right;
-}
-
-.rbk-recs {
-  list-style: none;
-  margin: 0.4rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.rbk-rec__link {
-  min-height: 3.8rem;
-  padding: 0.4rem 1rem;
-  border-radius: 0.9rem;
-  color: inherit;
-  text-decoration: none;
-  transition: background-color 0.15s ease;
-}
-
-.rbk-rec__link:hover,
-.rbk-rec__link:focus-visible {
-  background: rgba(var(--ink-rgb), 0.045);
-  outline: none;
-}
-
-.rbk-rec--you .rbk-rec__link {
-  background: var(--sb-brand-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent);
-}
-
-.rbk-rec__what {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.rbk-rec__label {
-  font-weight: 800;
-}
-
-.rbk-rec__set {
-  font-size: 0.76rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.rbk-rec__value {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 800;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.rbk-rec--empty .rbk-rec__value,
-.rbk-rec--empty .rbk-rec__name {
-  color: var(--muted);
-}
-
-.rbk-rec__holder {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-}
-
-.rbk-rec__mark {
-  --pmark: 1.9rem;
-}
-
-.rbk-rec__mark--open {
-  width: 1.9rem;
-  height: 1.9rem;
-  flex: none;
-  border-radius: 50%;
-  border: 1.5px dashed var(--sb-line-2);
-  box-sizing: border-box;
-}
-
-.rbk-rec__name {
-  overflow: hidden;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.rbk-rec--you .rbk-rec__name {
-  color: var(--sb-brand-ink);
-}
-
-/* An open record's holder cell is an invitation, not a tag. */
-.rbk-rec--empty .rbk-rec__name {
-  font-weight: 650;
-  letter-spacing: 0;
-}
-
-.rbk-rec__you {
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-align: right;
-}
-
-.rbk-rec__you--on {
-  color: var(--sb-brand-ink);
-}
-
-/* No run on it yet: said quietly, so the column never sits blank. */
-.rbk-rec__you--none {
-  font-weight: 600;
-  color: var(--muted);
-}
-
-/* Too narrow for the columns: what and how much on a line, then who holds it and where you stand. */
-@media (max-width: 56rem) {
-  .rbk-group__cols {
-    display: none;
-  }
-
-  .rbk-rec__link {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'what value'
-      'holder you';
-    row-gap: 0.3rem;
-    padding: 0.7rem 0.6rem;
-  }
-
-  .rbk-rec__what {
-    grid-area: what;
-  }
-
-  .rbk-rec__value {
-    grid-area: value;
-    text-align: right;
-  }
-
-  .rbk-rec__holder {
-    grid-area: holder;
-  }
-
-  .rbk-rec__you {
-    grid-area: you;
-  }
-}
-
 @media (max-width: 42rem) {
   .rbk-card {
     padding: 1.25rem 1.1rem;
@@ -648,7 +484,7 @@ html[data-theme="dark"] .rbk-book__value b {
 
 @media (prefers-reduced-motion: reduce) {
   .rbk-book,
-  .rbk-rec__link {
+  .rbk-plq {
     transition: none;
   }
 }
@@ -1440,5 +1276,461 @@ html[data-theme="dark"] .rbk-book__value b {
 @media (prefers-reduced-motion: reduce) {
   .hbk-art__wall {
     transition: none;
+  }
+}
+
+/* ---------- brass: the plaques and the books (RecordPlaque.tsx, RecordBooksIndex.tsx) ---------- */
+
+.rbk {
+  --brass-bg: linear-gradient(160deg, #fff8e6, #f7ecd0 60%, #f3e5c2);
+  --brass-spine: #c99a3c;
+  --brass-edge: rgba(176, 128, 30, 0.4);
+  --brass-strong: rgba(176, 128, 30, 0.75);
+  --brass-line: rgba(176, 128, 30, 0.25);
+  --brass-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 6px 16px rgba(120, 84, 10, 0.12);
+  --brass-name: #8a6514;
+  --brass-value: #3b2a06;
+  --brass-title: #7a5a12;
+  --brass-quiet: #8f7a4a;
+  --brass-rivet: radial-gradient(circle at 35% 35%, #fff1c7, #a87d22);
+  --brass-big: linear-gradient(160deg, #ffefc2, #f5dc9c 60%, #eccd7f);
+}
+
+html[data-theme='dark'] .rbk {
+  --brass-bg: linear-gradient(160deg, #2a2416, #1b1a14 60%, #16150f);
+  --brass-spine: #6e5422;
+  --brass-edge: rgba(245, 185, 66, 0.32);
+  --brass-strong: rgba(245, 185, 66, 0.65);
+  --brass-line: rgba(245, 185, 66, 0.18);
+  --brass-shadow: 0 1px 0 rgba(255, 236, 190, 0.1) inset, 0 6px 16px rgba(0, 0, 0, 0.35);
+  --brass-name: #d9b768;
+  --brass-value: #fff3d6;
+  --brass-title: #ffd77a;
+  --brass-quiet: #a8946a;
+  --brass-rivet: radial-gradient(circle at 35% 35%, #f8e1a4, #9a7424);
+  --brass-big: linear-gradient(160deg, #3a2f14, #22200f 60%, #18160d);
+}
+
+/* A group of plaques: a wall, no card behind it. */
+.rbk-wall {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.rbk-wall .rbk-group__head,
+.rbk-wall .rbk-group__sub {
+  padding: 0;
+}
+
+.rbk-plqs {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.8rem;
+}
+
+.rbk-plq {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 1rem 1.1rem 0.95rem;
+  border-radius: 0.95rem;
+  background: var(--brass-bg);
+  border: 1px solid var(--brass-edge);
+  box-shadow: var(--brass-shadow);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+/* Its two rivets. */
+.rbk-plq::before,
+.rbk-plq::after {
+  content: '';
+  position: absolute;
+  top: 0.55rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--brass-rivet);
+}
+
+.rbk-plq::before {
+  left: 0.55rem;
+}
+
+.rbk-plq::after {
+  right: 0.55rem;
+}
+
+.rbk-plq:hover,
+.rbk-plq:focus-within {
+  transform: translateY(-2px);
+  border-color: var(--brass-strong);
+}
+
+/* The whole plaque opens the record; its button sits over that. */
+.rbk-plq__link {
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+}
+
+.rbk-plq__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.rbk-plq__link:focus-visible::after {
+  outline: 2px solid var(--brass-strong);
+  outline-offset: 2px;
+}
+
+.rbk-plq__name {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass-name);
+}
+
+.rbk-plq__value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--brass-value);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.rbk-plq__plate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--brass-line);
+}
+
+.rbk-plq__holder {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.rbk-plq__mark {
+  --pmark: 1.5rem;
+}
+
+.rbk-plq__who {
+  overflow: hidden;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.rbk-plq__when {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--brass-quiet);
+}
+
+.rbk-plq__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: 0.15rem;
+}
+
+.rbk-plq__you {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.rbk-plq__you b {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.rbk-plq__rank {
+  color: var(--muted);
+}
+
+.rbk-plq__you--mine {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--sb-gold-ink, var(--brass-title));
+}
+
+.rbk-plq__you--quiet {
+  color: var(--brass-quiet);
+}
+
+.rbk-plq__bar {
+  display: block;
+  height: 0.32rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.1);
+  overflow: hidden;
+}
+
+.rbk-plq__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.rbk-plq__act {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--brass-edge);
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.rbk-plq__act:hover,
+.rbk-plq__act:focus-visible {
+  border-color: var(--brass-strong);
+  background: rgba(var(--ink-rgb), 0.1);
+  outline: none;
+}
+
+.rbk-plq__act--go {
+  border-color: transparent;
+  background: var(--accent);
+  color: #03211b;
+}
+
+.rbk-plq__act--go:hover,
+.rbk-plq__act--go:focus-visible {
+  background: color-mix(in srgb, var(--accent) 85%, #fff);
+}
+
+/* You hold it: the gold. */
+.rbk-plq--mine {
+  border-color: var(--brass-strong);
+  box-shadow: var(--brass-shadow), inset 0 0 0 1px var(--brass-strong);
+}
+
+/* The book's headline record: two wide, and bigger. */
+.rbk-plq--big {
+  grid-column: span 2;
+  background: var(--brass-big);
+  border-color: var(--brass-strong);
+}
+
+.rbk-plq--big .rbk-plq__value {
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  color: var(--brass-title);
+}
+
+/* Nobody's name on it yet: an empty outline. */
+.rbk-plq--open {
+  background: none;
+  border: 1.5px dashed var(--brass-edge);
+  box-shadow: none;
+}
+
+.rbk-plq--open::before,
+.rbk-plq--open::after {
+  display: none;
+}
+
+.rbk-plq--open .rbk-plq__value {
+  font-size: 1.2rem;
+  color: var(--brass-quiet);
+}
+
+/* ---------- a book at a glance: what's up for grabs, and you ---------- */
+
+.rbk-sum {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.8rem;
+}
+
+.rbk-sum__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid var(--sb-line);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+button.rbk-sum__tile {
+  cursor: pointer;
+}
+
+a.rbk-sum__tile:hover,
+a.rbk-sum__tile:focus-visible,
+button.rbk-sum__tile:hover,
+button.rbk-sum__tile:focus-visible {
+  border-color: var(--brass-strong);
+  outline: none;
+}
+
+.rbk-sum__tile--open {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+
+.rbk-sum__tile--you {
+  border-color: var(--brass-edge);
+}
+
+.rbk-sum__kicker {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rbk-sum__tile--open .rbk-sum__kicker {
+  color: var(--sb-brand-ink, var(--accent));
+}
+
+.rbk-sum__tile--you .rbk-sum__kicker {
+  color: var(--brass-name);
+}
+
+.rbk-sum__line {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+/* ---------- the Records home: records up for grabs ---------- */
+
+.rbk-grabs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* Three a row on a desk, so six make two full rows. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+@media (max-width: 64rem) {
+  .rbk-grabs__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 42rem) {
+  .rbk-grabs__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rbk-grab {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.95rem;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: inherit;
+  text-decoration: none;
+}
+
+.rbk-grab:hover,
+.rbk-grab:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.rbk-grab__thumb {
+  --inline-thumb-size: 2.6rem;
+  flex: none;
+}
+
+.rbk-grab__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.rbk-grab__label {
+  overflow: hidden;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rbk-grab__sub {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--sb-brand-ink, var(--accent));
+}
+
+@media (max-width: 42rem) {
+  .rbk-plqs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .rbk-plq {
+    padding: 0.85rem 0.8rem 0.8rem;
+  }
+
+  .rbk-plq__value {
+    font-size: 1.35rem;
+  }
+
+  .rbk-plq--big {
+    grid-column: 1 / -1;
+  }
+
+  .rbk-plq__when {
+    display: none;
+  }
+
+  .rbk-plq__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rbk-plq__act {
+    text-align: center;
   }
 }

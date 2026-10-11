@@ -22,24 +22,27 @@ import {
   bookRecords,
   closestToInk,
   coverRecord,
+  lowerIsBetter,
   recordGroups,
   recordValue,
   type RecordGroup,
 } from '../lib/recordBook'
 import type { RecordSummary } from '../lib/records'
-import { ordinal } from '../lib/scoreboard'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
-import { PlayerMark } from './PlayerMark'
+import { RecordPlaque, shareOf, type PlaqueYou } from './RecordPlaque'
 import { ShareBoardButton } from './ShareBoardButton'
+import { openSiteMenu } from './siteNav'
 
 /*
  * One game's record book: its banner, with the game playing on the screen and
- * its best record over it; what you hold here and what you're nearest to
- * taking; then its records in three groups, each with its holder, when it was
- * set, and where you stand.
+ * its best record over it; a line on what's up for grabs and what you're
+ * nearest to; then the records nobody holds yet, and the rest in their groups,
+ * each a brass plaque with its holder, when it was set, how close you are, and
+ * the way to go and beat it (RecordPlaque.tsx; Ramsey picked "C with A's
+ * plaques" from the "Record books, redesigned" canvas, 2026-10-11).
  */
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
@@ -94,47 +97,50 @@ function PeriodTabs({ game, period }: { game: string; period: LeaderboardPeriod 
   )
 }
 
-function RecordRow({
+/** Where you stand on a record, for its plaque: undefined when there's nobody to ask about, or the API didn't say. */
+function plaqueYou(record: RecordSummary, you: string): PlaqueYou | undefined {
+  if (!you || record.you === undefined) return undefined
+  const top = record.top
+  if (top && normalizePlayerName(top.name) === you) return { kind: 'mine' }
+  const standing = record.you
+  if (!top || !standing) return { kind: 'none' }
+  return {
+    kind: 'on',
+    value: recordValue(record, standing.score),
+    share: shareOf(lowerIsBetter(record), standing.score, top.score),
+    rank: standing.rank,
+  }
+}
+
+function Plaque({
   game,
   group,
   record,
   period,
   you,
+  big,
+  playHref,
 }: {
   game: string
   group: RecordGroup
   record: RecordSummary
   period: LeaderboardPeriod
   you: string
+  big: boolean
+  playHref: string | null
 }) {
   const top = record.top
-  const holder = top ? normalizePlayerName(top.name) : ''
-  const mine = Boolean(you) && holder === you
-  const standing = record.you
-  // With no run on it yet, the column says so rather than sitting blank (Ramsey, 2026-09-30).
-  const none = Boolean(you) && (!top || !standing)
-  const youLine = !you ? '' : none ? 'No run yet' : standing!.rank === 1 ? 'Yours' : `You’re ${ordinal(standing!.rank)}`
   return (
-    <li className={`rbk-rec${mine ? ' rbk-rec--you' : ''}${top ? '' : ' rbk-rec--empty'}`}>
-      <a className="rbk-rec__link" href={recordHref(game, record.id, period)}>
-        <span className="rbk-rec__what">
-          <span className="rbk-rec__label">{group.short(record.label)}</span>
-          <span className="rbk-rec__set">{top ? `set ${dayOf(top.at)}` : 'no holder yet'}</span>
-        </span>
-        <span className="rbk-rec__value">{top ? recordValue(record, top.score) : '–'}</span>
-        <span className="rbk-rec__holder">
-          {top ? (
-            <PlayerMark name={holder} avatarId={top.avatarId} className="rbk-rec__mark" />
-          ) : (
-            <span className="rbk-rec__mark rbk-rec__mark--open" aria-hidden="true" />
-          )}
-          <span className="rbk-rec__name">{top ? holder : 'Be the first to set it'}</span>
-        </span>
-        <span className={`rbk-rec__you${standing?.rank === 1 ? ' rbk-rec__you--on' : ''}${none ? ' rbk-rec__you--none' : ''}`}>
-          {youLine}
-        </span>
-      </a>
-    </li>
+    <RecordPlaque
+      label={group.short(record.label)}
+      value={top ? recordValue(record, top.score) : null}
+      holder={top ? { name: normalizePlayerName(top.name), avatarId: top.avatarId } : null}
+      when={top ? `set ${dayOf(top.at)}` : undefined}
+      href={recordHref(game, record.id, period)}
+      you={plaqueYou(record, you)}
+      big={big}
+      action={playHref ? { href: playHref, label: top ? 'Beat it' : 'Set it' } : null}
+    />
   )
 }
 
@@ -152,6 +158,10 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
   const head = bookHeadline(game, records)
   const cover = coverRecord(records)
   const groups = recordGroups(game, records)
+  // Nobody's name on these yet: they lead the book, and come out of their groups.
+  const open = groups.flatMap((group) => group.records.filter((r) => !r.top).map((record) => ({ group, record })))
+  const heldGroups = groups.map((group) => ({ ...group, records: group.records.filter((r) => r.top) })).filter((g) => g.records.length)
+  const playHref = canPlay ? gamePlayHref(game) : null
   const held = records.filter((r) => you && r.top && normalizePlayerName(r.top.name) === you)
   const knowsYou = records.some((r) => r.you !== undefined)
   const close = knowsYou ? closestToInk([{ game, records }]) : []
@@ -234,54 +244,38 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
         </a>
       </section>
 
-      {you && !data.loading && (held.length || close.length) ? (
-        <section className="sb-you" aria-label="You in this book">
-          <div className="sb-card rbk-card">
-            <div className="rbk-card__head">
-              <PlayerMark name={you} className="rbk-card__mark" />
-              <h2 className="sb-card__title">
-                {held.length ? `You hold ${held.length} here` : 'None in your name here yet'}
-              </h2>
-            </div>
-            {held.length ? (
-              <ul className="rbk-list">
-                {held.map((record) => (
-                  <li key={record.id}>
-                    <a className="rbk-item rbk-item--plain" href={recordHref(game, record.id, period)}>
-                      <span className="rbk-item__text">
-                        <span className="rbk-item__label">{record.label}</span>
-                        <span className="rbk-item__sub">set {dayOf(record.top!.at)}</span>
-                      </span>
-                      <span className="rbk-item__figure">{recordValue(record, record.top!.score)}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="rbk-card__note">You’re on {close.length === 1 ? 'one' : 'some'} of them, though.</p>
-            )}
-          </div>
-          {close.length ? (
-            <div className="sb-card rbk-card">
-              <h2 className="sb-card__title">Closest to ink</h2>
-              <p className="rbk-card__sub">The records here you are nearest to taking.</p>
-              <ul className="rbk-list">
-                {close.map(({ record, off }) => (
-                  <li key={record.id}>
-                    <a className="rbk-item rbk-item--plain" href={recordHref(game, record.id, period)}>
-                      <span className="rbk-item__text">
-                        <span className="rbk-item__label">{record.label}</span>
-                        <span className="rbk-item__sub">
-                          You’re #{record.you!.rank} with {recordValue(record, record.you!.score)}
-                        </span>
-                      </span>
-                      <span className="rbk-item__figure rbk-item__figure--quiet">{off}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {!data.loading && records.length ? (
+        <section className="rbk-sum" aria-label="This book at a glance">
+          {open.length ? (
+            <a className="rbk-sum__tile rbk-sum__tile--open" href="#up-for-grabs">
+              <span className="rbk-sum__kicker">Up for grabs</span>
+              <span className="rbk-sum__line">
+                {open.length === 1 ? 'A record nobody holds yet' : `${open.length} records nobody holds yet`}
+              </span>
+            </a>
           ) : null}
+          {you ? (
+            held.length ? (
+              <div className="rbk-sum__tile rbk-sum__tile--you">
+                <span className="rbk-sum__kicker">Yours</span>
+                <span className="rbk-sum__line">
+                  You hold {held.length} {held.length === 1 ? 'record' : 'records'} here
+                </span>
+              </div>
+            ) : close.length ? (
+              <a className="rbk-sum__tile rbk-sum__tile--you" href={recordHref(game, close[0]!.record.id, period)}>
+                <span className="rbk-sum__kicker">Closest for you</span>
+                <span className="rbk-sum__line">
+                  {close[0]!.record.label}: {close[0]!.off}
+                </span>
+              </a>
+            ) : null
+          ) : (
+            <button type="button" className="rbk-sum__tile rbk-sum__tile--you" onClick={openSiteMenu}>
+              <span className="rbk-sum__kicker">How close are you?</span>
+              <span className="rbk-sum__line">Sign in to see your best beside every record</span>
+            </button>
+          )}
         </section>
       ) : null}
 
@@ -294,30 +288,54 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
       ) : !records.length ? (
         <BoardEmpty title={groupBoardEmptyTitle('No records yet')} />
       ) : (
-        groups.map((group) => (
-          <section key={group.kind} className="sb-card rbk-group" aria-labelledby={`rbk-${group.kind}`}>
-            <div className="rbk-group__head">
-              <h2 id={`rbk-${group.kind}`} className="rbk-group__title">
-                {group.title}
-              </h2>
-              <span className="rbk-group__count">
-                {group.records.length} {group.records.length === 1 ? 'record' : 'records'}
-              </span>
-            </div>
-            <p className="rbk-group__sub">{group.sub}</p>
-            <div className="rbk-group__cols" aria-hidden="true">
-              <span>Record</span>
-              <span>Best</span>
-              <span>Held by</span>
-              <span className="rbk-group__you">{you ? 'You' : ''}</span>
-            </div>
-            <ol className="rbk-recs">
-              {group.records.map((record) => (
-                <RecordRow key={record.id} game={game} group={group} record={record} period={period} you={you} />
-              ))}
-            </ol>
-          </section>
-        ))
+        <>
+          {open.length ? (
+            <section id="up-for-grabs" className="rbk-wall rbk-wall--open" aria-labelledby="rbk-open">
+              <div className="rbk-group__head">
+                <h2 id="rbk-open" className="rbk-group__title">
+                  Up for grabs
+                </h2>
+                <span className="rbk-group__count">
+                  {open.length} {open.length === 1 ? 'record' : 'records'}
+                </span>
+              </div>
+              <p className="rbk-group__sub">Nobody holds these yet: the first to do it puts their name in the book.</p>
+              <ol className="rbk-plqs">
+                {open.map(({ group, record }) => (
+                  <Plaque key={record.id} game={game} group={group} record={record} period={period} you={you} big={false} playHref={playHref} />
+                ))}
+              </ol>
+            </section>
+          ) : null}
+          {heldGroups.map((group) => (
+            <section key={group.kind} className="rbk-wall" aria-labelledby={`rbk-${group.kind}`}>
+              <div className="rbk-group__head">
+                <h2 id={`rbk-${group.kind}`} className="rbk-group__title">
+                  {group.title}
+                </h2>
+                <span className="rbk-group__count">
+                  {group.records.length} {group.records.length === 1 ? 'record' : 'records'}
+                </span>
+              </div>
+              <p className="rbk-group__sub">{group.sub}</p>
+              <ol className="rbk-plqs">
+                {group.records.map((record, i) => (
+                  <Plaque
+                    key={record.id}
+                    game={game}
+                    group={group}
+                    record={record}
+                    period={period}
+                    you={you}
+                    // The best single run is the book's headline: its plaque is two wide.
+                    big={group.kind === 'run' && i === 0}
+                    playHref={playHref}
+                  />
+                ))}
+              </ol>
+            </section>
+          ))}
+        </>
       )}
     </div>
   )

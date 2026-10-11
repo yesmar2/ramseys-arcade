@@ -3,6 +3,7 @@ import { BoardEmpty, BoardSkeleton } from '../components/BoardChrome'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { PageShell } from '../components/PageShell'
 import { PlayerMark } from '../components/PlayerMark'
+import { RecordPlaque, shareOf, type PlaqueYou } from '../components/RecordPlaque'
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, PALETTE } from '../data/games'
 import { homeHref, rankHref, recordsIndexHref, siteRecordsHref, type Route } from '../hooks/useHashRoute'
@@ -21,7 +22,6 @@ import {
   houseHeld,
   houseValue,
   houseWhen,
-  houseYouLine,
 } from '../lib/houseBook'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { ordinal } from '../lib/profileMath'
@@ -71,34 +71,30 @@ function BookIcon() {
 
 type Standing = SiteRecordStanding[SiteRecordId]
 
-/** A record in its group's table: it, its holder, and you. The row goes to its top ten. */
-function HouseRow({ board, you, standing }: { board: SiteRecordBoard; you: string; standing: Standing }) {
+/** A house record as a brass plaque (RecordPlaque.tsx): it, its holder, and how close you are. It goes to its top ten. */
+function HousePlaque({ board, you, standing }: { board: SiteRecordBoard; you: string; standing: Standing }) {
   const top = board.entries[0]
   const holder = top ? normalizePlayerName(top.name) : ''
-  const mine = Boolean(you) && holder === you
+  // Every house record is the most of something: a share of the holder's.
+  const mark: PlaqueYou | undefined = !you
+    ? undefined
+    : top && holder === you
+      ? { kind: 'mine' }
+      : top && standing && standing.value > 0
+        ? { kind: 'on', value: houseValue(board, standing.value), share: shareOf(false, standing.value, top.value), rank: standing.rank ?? 0 }
+        : { kind: 'none' }
   return (
-    <li className={`rbk-rec${mine ? ' rbk-rec--you' : ''}${top ? '' : ' rbk-rec--empty'}`}>
-      <a className="rbk-rec__link" href={`#house-${board.id}`}>
-        <span className="rbk-rec__what">
-          <span className="rbk-rec__label">{board.label}</span>
-          <span className="rbk-rec__set">{top ? houseWhen(board, top.at) : 'no holder yet'}</span>
-        </span>
-        <span className="rbk-rec__value">{top ? houseValue(board, top.value) : '–'}</span>
-        <span className="rbk-rec__holder">
-          {top ? (
-            <PlayerMark name={holder} avatarId={top.avatarId} className="rbk-rec__mark" />
-          ) : (
-            <span className="rbk-rec__mark rbk-rec__mark--open" aria-hidden="true" />
-          )}
-          <span className="rbk-rec__name">{top ? holder : 'Be the first to set it'}</span>
-        </span>
-        <span className={`rbk-rec__you${standing?.rank === 1 ? ' rbk-rec__you--on' : ''}`}>{houseYouLine(board, standing)}</span>
-      </a>
-    </li>
+    <RecordPlaque
+      label={board.label}
+      value={top ? houseValue(board, top.value) : null}
+      holder={top ? { name: holder, avatarId: top.avatarId } : null}
+      when={top ? houseWhen(board, top.at) : undefined}
+      href={`#house-${board.id}`}
+      you={mark}
+    />
   )
 }
 
-/** One record's top ten, with you under it when you're on it but not in it. */
 function TopTen({ board, you, standing }: { board: SiteRecordBoard; you: string; standing: Standing }) {
   const listed = board.entries.some((e) => normalizePlayerName(e.name) === you)
   const last = board.entries[board.entries.length - 1]
@@ -302,7 +298,7 @@ export function SiteRecordsPage() {
         ) : (
           <>
             {groups.map((group) => (
-              <section key={group.key} className="sb-card rbk-group" aria-labelledby={`hbk-${group.key}`}>
+              <section key={group.key} className="rbk-wall" aria-labelledby={`hbk-${group.key}`}>
                 <div className="rbk-group__head">
                   <h2 id={`hbk-${group.key}`} className="rbk-group__title">
                     {group.title}
@@ -312,15 +308,9 @@ export function SiteRecordsPage() {
                   </span>
                 </div>
                 <p className="rbk-group__sub">{group.sub}</p>
-                <div className="rbk-group__cols" aria-hidden="true">
-                  <span>Record</span>
-                  <span>Best</span>
-                  <span>Held by</span>
-                  <span className="rbk-group__you">{you ? 'You' : ''}</span>
-                </div>
-                <ol className="rbk-recs">
+                <ol className="rbk-plqs">
                   {group.boards.map((board) => (
-                    <HouseRow key={board.id} board={board} you={you} standing={data?.you?.[board.id]} />
+                    <HousePlaque key={board.id} board={board} you={you} standing={data?.you?.[board.id]} />
                   ))}
                 </ol>
               </section>

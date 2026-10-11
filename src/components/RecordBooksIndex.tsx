@@ -30,9 +30,11 @@ import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
 
 /*
- * The record books' front page: who holds the most records, the ones you hold
- * and the ones you're nearest to taking, every book with its best record on
- * the cover, what was set lately, and the house book's records. A daily's
+ * The record books' front page: how many records nobody holds yet, and a few
+ * of them to go and take (Ramsey picked "C with A's plaques" from the "Record
+ * books, redesigned" canvas, 2026-10-11); who holds the most; the ones you hold
+ * and the ones you're nearest to taking; every book with its best record on
+ * the cover; what was set lately; and the house book's records. A daily's
  * track, hole and day records aren't here (recordBook bookRecords): its book
  * is its Days played in a row, and its tile opens its page's Records tab.
  */
@@ -116,6 +118,13 @@ export function RecordBooksIndex() {
   const topCount = holders[0]?.count ?? 0
   const avatars = new Map(all.filter((r) => r.top).map((r) => [normalizePlayerName(r.top!.name), r.top!.avatarId]))
   const held = all.filter((r) => r.top).length
+  // The records nobody holds yet, one game at a time, so the few shown aren't all one book's.
+  const openByGame = books.map(({ game, records }) => records.filter((r) => !r.top).map((record) => ({ game, record })))
+  const openCount = openByGame.reduce((n, list) => n + list.length, 0)
+  const openPicks: { game: string; record: RecordSummary }[] = []
+  for (let round = 0; openPicks.length < 6 && openByGame.some((list) => list.length > round); round++) {
+    for (const list of openByGame) if (list[round] && openPicks.length < 6) openPicks.push(list[round]!)
+  }
 
   const mine = books.flatMap(({ game, records }) =>
     records.filter((r) => me && r.top && normalizePlayerName(r.top.name) === me).map((record) => ({ game, record })),
@@ -154,6 +163,11 @@ export function RecordBooksIndex() {
           <h1 id="rbk-title" className="sb-title" ref={title.ref} style={title.style}>
             {data.loading ? (
               <span className="skel-line sb-title__skel" style={{ '--skel-w': '14ch' } as CSSProperties} />
+            ) : openCount ? (
+              // Something to go and take leads; who holds the most is beside it.
+              <>
+                <span className="sb-title__lead">{openCount}</span> {openCount === 1 ? 'record is' : 'records are'} up for grabs
+              </>
             ) : (
               <>
                 {head.name ? <span className="sb-title__lead">{head.name}</span> : null}
@@ -170,14 +184,22 @@ export function RecordBooksIndex() {
                 best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each
                 until someone beats it.
               </>
+            ) : openCount ? (
+              `Nobody holds them yet: the first to do it puts their name in the book. ${held} more have a name in ink already, across ${books.length} games, each until someone beats it.`
             ) : (
               `${held} of them have a name in ink, across ${books.length} games. The books keep the best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each until someone beats it.`
             )}
           </p>
           <div className="rbk-acts">
-            <a className="sb-cta" href="#books">
-              Open a book
-            </a>
+            {openPicks.length ? (
+              <a className="sb-cta" href={`${recordBookHref(openPicks[0]!.game)}#up-for-grabs`}>
+                Show me one
+              </a>
+            ) : (
+              <a className="sb-cta" href="#books">
+                Open a book
+              </a>
+            )}
             <a className="sb-ghost" href={siteRecordsHref()}>
               The house book
             </a>
@@ -243,6 +265,29 @@ export function RecordBooksIndex() {
           )}
         </div>
       </section>
+
+      {!loading && openPicks.length ? (
+        <section className="rbk-grabs" aria-labelledby="rbk-grabs-title">
+          <h2 id="rbk-grabs-title" className="visually-hidden">
+            Records up for grabs
+          </h2>
+          <ul className="rbk-grabs__list">
+            {openPicks.map(({ game, record }) => (
+              <li key={`${game}-${record.id}`}>
+                <a className="rbk-grab" href={bookRecordHref(game, record.id)}>
+                  <GameThumbArt slug={game} accent={accentOf(game)} className="rbk-grab__thumb" />
+                  <span className="rbk-grab__text">
+                    <span className="rbk-grab__label">
+                      {nameOf(game)}: {record.label}
+                    </span>
+                    <span className="rbk-grab__sub">Up for grabs</span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {me && data.loading ? (
         // Your records' room, as they were last time: the cards come in it.
