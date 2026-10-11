@@ -149,12 +149,23 @@ export function catchWindow(night: number) {
   return Math.max(0.5, 0.95 - 0.11 * (night - 1))
 }
 
-/** How many trades a Follow makes, and how quick each is: more and quicker every night. */
+/**
+ * How many trades a Follow makes, and how quick each is: more and quicker every night. Ramsey found it "too
+ * easy" (2026-10-11) at 3 trades of a second each the first night: now 4 of 0.85 s, down to 0.45 s.
+ */
 function followTrades(night: number) {
-  return Math.min(7, 2 + night)
+  return Math.min(9, 3 + night)
 }
 function followTradeTime(night: number) {
-  return Math.max(0.55, 1.05 - 0.1 * (night - 1))
+  return Math.max(0.45, 0.85 - 0.08 * (night - 1))
+}
+
+/** How many pairs trade at once in a Follow: from the second night often two, from the fourth now and then three. */
+function followPairs(night: number, flies: number) {
+  const r = Math.random()
+  if (night >= 4 && flies >= 6 && r < 0.3) return 3
+  if (night >= 2 && flies >= 4 && r < 0.6) return 2
+  return 1
 }
 
 /** Pairs that trade places before a tune: none the first night, one a tune after, two from the fourth. */
@@ -637,7 +648,8 @@ function tradePlaces(s: GameState, flies: Fly[], pairs: number, dur: number, kee
     return free.splice(at, 1)[0]!
   }
   for (let i = 0; i < pairs && free.length >= 2; i++) {
-    const a = take(i === 0 && keep >= 0 && Math.random() < 0.65 ? keep : -1)
+    // The one being followed is in most trades, so it moves rather than waits for the others to.
+    const a = take(i === 0 && keep >= 0 && Math.random() < 0.75 ? keep : -1)
     const b = take()
     tradePair(s, a, b, dur)
   }
@@ -859,9 +871,8 @@ export function tick(state: GameState, dt: number): GameState {
       if (s.trades <= 0) return { ...s, phase: 'pick', message: 'Which one was it?' }
       const flies = s.flies.map((f) => ({ ...f }))
       const dur = followTradeTime(s.night)
-      // From the third night, now and then two pairs trade at once.
-      const pairs = s.night >= 3 && flies.length >= 4 && Math.random() < 0.5 ? 2 : 1
-      tradePlaces(s, flies, pairs, dur, s.target)
+      // From the second night, often two pairs trade at once (followPairs).
+      tradePlaces(s, flies, followPairs(s.night, flies.length), dur, s.target)
       if (s.trades === followTrades(s.night)) sfx('whoosh')
       return { ...s, flies, trades: s.trades - 1, timer: dur + 0.06 }
     }
