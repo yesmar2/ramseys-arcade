@@ -13,15 +13,15 @@ import '../styles/blipPoll.css'
  * after the first page of the day opens, he waves from the corner with today's question for you. Tap him and
  * the question opens right there, a sheet up from the bottom on a phone and a card over him on a desk, to
  * answer without leaving the page (Ramsey, 2026-10-11: "should it be a modal on mobile so it doesn't take you
- * to a different part of the page when you click on the blip?"). The cross, or a while untouched, sends him
- * off till tomorrow. Not on a game's screen, on /admin, once today's question is answered, or on anyone's very
+ * to a different part of the page when you click on the blip?"). He waits until you tap him, answer or press
+ * the cross, page to page and through a reload (he'd gone after 14 untouched seconds, which was easy to miss);
+ * the cross sends him off till tomorrow. Not on a game's screen, on /admin, once today's question is answered, or on anyone's very
  * first visit (the welcome is enough that day).
  */
 
 const SEEN_KEY = 'skermix-blip-hello'
-/** How long after the page opens he comes out, and how long he waits to be tapped. */
+/** How long after the page opens he comes out. */
 const COME_OUT_MS = 2500
-const WAIT_MS = 14_000
 
 function seenDay(): string | null | undefined {
   try {
@@ -61,16 +61,6 @@ export function BlipHello({ onGameScreen }: { onGameScreen: boolean }) {
     const come = window.setTimeout(() => setOut(true), COME_OUT_MS)
     return () => window.clearTimeout(come)
   }, [due, today])
-
-  // Untouched a while, he goes; not while his question is open.
-  useEffect(() => {
-    if (!out || open || !today) return
-    const go = window.setTimeout(() => {
-      markSeen(today.day)
-      setOut(false)
-    }, WAIT_MS)
-    return () => window.clearTimeout(go)
-  }, [out, open, today])
 
   // Escape closes the question, as any sheet does.
   useEffect(() => {
