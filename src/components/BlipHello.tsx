@@ -16,10 +16,21 @@ import '../styles/blipPoll.css'
  * to a different part of the page when you click on the blip?"). He waits until you tap him, answer or press
  * the cross, page to page and through a reload (he'd gone after 14 untouched seconds, which was easy to miss);
  * the cross sends him off till tomorrow. Not on a game's screen, on /admin, once today's question is answered, or on anyone's very
- * first visit (the welcome is enough that day).
+ * first visit (the welcome is enough that day). `?blip=hi` on any page brings him out at once, whatever this
+ * browser has seen, to see him again (Ramsey, 2026-10-11: "i want to see it on my phone on staging but it isn't
+ * popping up").
  */
 
 const SEEN_KEY = 'skermix-blip-hello'
+/** Whether the address asks for him: `?blip=hi`. */
+function askedFor(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get('blip') === 'hi'
+  } catch {
+    return false
+  }
+}
+
 /** How long after the page opens he comes out. */
 const COME_OUT_MS = 2500
 
@@ -50,6 +61,10 @@ export function BlipHello({ onGameScreen }: { onGameScreen: boolean }) {
 
   useEffect(() => {
     if (!due || !today) return
+    if (askedFor()) {
+      setOut(true)
+      return
+    }
     const seen = seenDay()
     // Storage that can't be read, or a first visit: no hello today (and the first visit marks the day).
     if (seen === undefined) return
