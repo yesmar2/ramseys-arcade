@@ -10,7 +10,19 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
+import {
+  FRENZY_CHAIN_ID,
+  FRENZY_FISH_ID,
+  FRENZY_FRENZIES_ID,
+  FRENZY_LEVIATHAN_ID,
+  formatRecordMs,
+  shouldCelebrateRecordSubmit,
+  submitFrenzyBook,
+} from '../../lib/records'
+import { clearRunAchievements, pushRunAchievement } from '../../lib/runAchievements'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   clearSteer,
@@ -79,6 +91,9 @@ const STICK_FULL = 14
 export function FrenzyGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('frenzy')
+  const playerName = normalizePlayerName(usePlayerName())
+  /** The run whose books have gone, so a re-render never posts them twice. */
+  const booksKey = useRef('')
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
@@ -145,6 +160,43 @@ export function FrenzyGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  /*
+   * Its books are a run's figures, so they post once the run is over, one after another; any that places goes on
+   * the run's card. Not from an event's run, which is the event's alone.
+   */
+  useEffect(() => {
+    if (tournament || !playerName || ui.phase !== 'gameover') return
+    const key = `${playerName}:${ui.serial}:${ui.score}`
+    if (booksKey.current === key) return
+    booksKey.current = key
+    const books: [string, number | null, string, string][] = [
+      [FRENZY_FISH_ID, ui.eaten, 'Fish eaten in a run', `${ui.eaten} fish`],
+      [FRENZY_CHAIN_ID, ui.bestChain, 'Longest chain', String(ui.bestChain)],
+      [FRENZY_FRENZIES_ID, ui.frenzies, 'Frenzies in a run', String(ui.frenzies)],
+      [FRENZY_LEVIATHAN_ID, ui.leviathanMs, 'Fastest to Leviathan', ui.leviathanMs == null ? '' : formatRecordMs(ui.leviathanMs)],
+    ]
+    void (async () => {
+      for (const [id, value, label, shown] of books) {
+        if (value == null) continue
+        const result = await submitFrenzyBook(id, value, playerName)
+        if (shouldCelebrateRecordSubmit(result)) pushRunAchievement({ id: `frenzy:${id}`, label, value: shown, rank: result.rank })
+      }
+    })()
+  }, [ui.phase, ui.serial, ui.score, ui.eaten, ui.bestChain, ui.frenzies, ui.leviathanMs, playerName, tournament])
+
+  // Dev only: lets a script read and steer the run for a play-test (as Pileup's __pileup): with a patch, it's applied.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as unknown as { __frenzy?: (patch?: Partial<GameState>) => GameState }
+    w.__frenzy = (patch) => {
+      if (patch) stateRef.current = { ...stateRef.current, ...patch }
+      return stateRef.current
+    }
+    return () => {
+      delete w.__frenzy
+    }
+  }, [])
+
   const sleepMouse = () => {
     mouseRef.current = { awake: false, from: null }
   }
@@ -152,6 +204,7 @@ export function FrenzyGame() {
   const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
+    clearRunAchievements()
     sleepMouse()
     if (!intoMenu) beginRun('frenzy')
     stateRef.current = startGame(stateRef.current)

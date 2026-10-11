@@ -277,6 +277,14 @@ export type GameState = {
   deathCause: string
   /** Leaps made this run. */
   leaps: number
+  /** For the record books (FrenzyGame.tsx): fish eaten this run, its longest chain, frenzies set off, and when it reached the top size. */
+  eaten: number
+  bestChain: number
+  frenzies: number
+  /** Seconds into the run it became a Leviathan; null until it does. */
+  leviathanAt: number | null
+  /** Runs started, so a run's books post once. */
+  serial: number
 }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
@@ -361,6 +369,11 @@ export function createInitialState(w = 960, h = 540): GameState {
     nextId: 1,
     deathCause: '',
     leaps: 0,
+    eaten: 0,
+    bestChain: 0,
+    frenzies: 0,
+    leviathanAt: null,
+    serial: 0,
   }
   const sized = resizeState(s, w, h)
   // The start card sits over a few fish already swimming.
@@ -432,6 +445,11 @@ export function startGame(s: GameState): GameState {
     floaters: [],
     deathCause: '',
     leaps: 0,
+    eaten: 0,
+    bestChain: 0,
+    frenzies: 0,
+    leviathanAt: null,
+    serial: s.serial + 1,
   }
   frame(next, 1)
   for (let i = 0; i < 6; i++) spawn(next, true)
@@ -676,6 +694,7 @@ function splash(s: GameState) {
 
 function eatPoints(s: GameState, x: number, y: number, base: number) {
   s.chain = s.chainTime > 0 ? s.chain + 1 : 1
+  s.bestChain = Math.max(s.bestChain, s.chain)
   s.chainTime = CHAIN_WINDOW
   const mult = chainOf(s)
   const pts = base * mult * (s.frenzy > 0 ? 2 : 1)
@@ -690,6 +709,7 @@ function eat(s: GameState, f: Fish) {
   p.mouth = 1
   const inAir = f.flyer !== undefined && f.y < 0
   eatPoints(s, f.x, f.y, inAir ? FLYER_AIR_POINTS : TIERS[f.tier]!.points)
+  s.eaten += 1
   burst(s, f.x, f.y, '#ffffff', 7, 70)
   // A fish your size or bigger counts in full toward growing; smaller ones a third.
   grow(s, f.tier >= p.size ? 1 : 0.34)
@@ -704,12 +724,14 @@ function grow(s: GameState, by: number) {
   s.bar = 0
   if (p.size >= MAX_SIZE) {
     s.frenzy = FRENZY_TIME
+    s.frenzies += 1
     s.floaters.push({ x: p.x, y: p.y - 40, text: 'FRENZY! ×2', t: 0, tone: 'grow' })
     burst(s, p.x, p.y, '#f5b942', 26, 170)
     sfx('perfect')
     return
   }
   p.size += 1
+  if (p.size >= MAX_SIZE && s.leviathanAt === null) s.leviathanAt = s.elapsed
   const bonus = GROW_BONUS * p.size
   s.score += bonus
   s.floaters.push({ x: p.x, y: p.y - 34, text: `${STAGES[p.size]}! +${bonus}`, t: 0, tone: 'grow' })
@@ -1245,8 +1267,27 @@ export type Snapshot = {
   stage: string
   lives: number
   deathCause: string
+  /** The run's figures for the record books, and which run it is. */
+  eaten: number
+  bestChain: number
+  frenzies: number
+  /** Milliseconds into the run it became a Leviathan; null if it never did. */
+  leviathanMs: number | null
+  serial: number
 }
 
 export function toSnapshot(s: GameState): Snapshot {
-  return { phase: s.phase, score: Math.round(s.score), size: s.player.size + 1, stage: STAGES[s.player.size]!, lives: s.lives, deathCause: s.deathCause }
+  return {
+    phase: s.phase,
+    score: Math.round(s.score),
+    size: s.player.size + 1,
+    stage: STAGES[s.player.size]!,
+    lives: s.lives,
+    deathCause: s.deathCause,
+    eaten: s.eaten,
+    bestChain: s.bestChain,
+    frenzies: s.frenzies,
+    leviathanMs: s.leviathanAt === null ? null : Math.round(s.leviathanAt * 1000),
+    serial: s.serial,
+  }
 }

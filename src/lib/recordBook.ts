@@ -206,6 +206,8 @@ const COUNT_WORDS: Record<string, [string, string]> = {
   fours: ['four', 'fours'],
   'rows-cleared': ['row', 'rows'],
   'biggest-shake': ['row', 'rows'],
+  'fish-eaten': ['fish', 'fish'],
+  frenzies: ['frenzy', 'frenzies'],
 }
 
 /** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 tickets, a lap's 45.18s, 2 tries, a pour's 91.2%. */
