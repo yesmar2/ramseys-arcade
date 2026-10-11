@@ -133,19 +133,21 @@ export const JELLY_REACH = 2.4
 const JELLY_FIRST = 6
 /**
  * Sea mines, back from the old open-ocean Frenzy (Ramsey, 2026-10-11: "maybe we should have the bombs too like
- * we had before, make it a little harder"), sized to you. Come within MINE_NEAR of its radius (plus yours) and
- * it ticks for MINE_FUSE, then goes off; touch it and it goes off at once. Its blast reaches MINE_BLAST times
- * its radius: a life if you're in it, and every fish and jellyfish in it gone, and a mine in it goes off too.
- * Fish keep clear of them, but one hunting you can blunder into one. They're moored below MINE_TOP, so the
- * shallows stay clear, and the first of a run comes after MINE_FIRST.
+ * we had before, make it a little harder"), sized to you, and harder again that day ("i think the bombs need to
+ * be harder"). Come within MINE_NEAR of its radius (plus yours) and it ticks for MINE_FUSE, then goes off; touch
+ * it and it goes off at once. Its blast reaches MINE_BLAST times its radius, well past where it starts ticking,
+ * so swimming by at speed gets clear and lingering doesn't: a life if you're in it, every fish and jellyfish in
+ * it gone, and a mine in it goes off too. Fish keep clear of them, unless they're hunting you or running from
+ * you: then they can blunder into one. They're moored below MINE_TOP, so only the top of the water is clear,
+ * and the first of a run comes after MINE_FIRST.
  */
-const MINE_FUSE = 0.85
+const MINE_FUSE = 0.6
 const MINE_TOUCH_FUSE = 0.06
 const MINE_CHAIN_FUSE = 0.14
 export const MINE_NEAR = 3
-export const MINE_BLAST = 4.6
-const MINE_TOP = 170
-const MINE_FIRST = 8
+export const MINE_BLAST = 6.5
+const MINE_TOP = 110
+const MINE_FIRST = 6
 /** How long a blast's flash lasts. */
 const BLAST_TIME = 0.6
 
@@ -772,6 +774,7 @@ function moveFishes(s: GameState, dt: number, playing: boolean) {
     const d = Math.hypot(dx, dy) || 1
     const bigger = !edible(f.tier, p.size)
     const inAir = f.flyer !== undefined && f.y < 0
+    const fleeing = playing && !bigger && d < (s.frenzy > 0 ? 150 : 90) + fr
     if (inAir) {
       f.vy += GRAVITY * dt
     } else if (playing && bigger && !p.air && d < 160 + fr && p.invuln <= 0) {
@@ -780,7 +783,7 @@ function moveFishes(s: GameState, dt: number, playing: boolean) {
       const sp = (110 + f.tier * 5) * pace
       f.vx += ((dx / d) * sp - f.vx) * dt * 2.2
       f.vy += ((dy / d) * sp - f.vy) * dt * 2.2
-    } else if (playing && !bigger && d < (s.frenzy > 0 ? 150 : 90) + fr) {
+    } else if (fleeing) {
       // Runs from you, but not fast enough to get away from a chase.
       f.vx -= (dx / d) * 170 * dt
       f.vy -= (dy / d) * 170 * dt
@@ -791,8 +794,9 @@ function moveFishes(s: GameState, dt: number, playing: boolean) {
       const cruise = (40 + f.tier * 4) * pace
       if (Math.abs(f.vx) < cruise * 0.6) f.vx += dir * cruise * dt
     }
-    // Round the mines, unless it's hunting you: then it can blunder into one.
-    if (!inAir && f.hunt < 0.5) {
+    // Round the mines, unless it's hunting you or running from you: then it can blunder into one, and a chase
+    // through a minefield can end in a blast.
+    if (!inAir && f.hunt < 0.5 && !fleeing) {
       for (const m of s.mines) {
         const mx = f.x - m.x
         const my = f.y - m.y
@@ -1015,14 +1019,14 @@ function spawnMine(s: GameState, anywhere: boolean) {
 }
 
 /**
- * The mines: a couple near you, more as a run goes on and in the deep. Each waits until you come near (or a
- * fish bumps one in view), ticks for MINE_FUSE, and goes off; touch one and it goes off at once.
+ * The mines: three near you, one more every half minute and one more in the deep. Each waits until you come
+ * near (or a fish bumps one in view), ticks for MINE_FUSE, and goes off; touch one and it goes off at once.
  */
 function moveMines(s: GameState, dt: number, playing: boolean) {
   const half = viewHalf(s)
   const p = s.player
   const pr = playerRadius(s)
-  const want = playing ? Math.min(6, 2 + Math.floor(s.elapsed / 45) + (p.y > FLOOR * 0.45 ? 1 : 0)) : s.phase === 'menu' ? 1 : 0
+  const want = playing ? Math.min(8, 3 + Math.floor(s.elapsed / 30) + (p.y > FLOOR * 0.45 ? 1 : 0)) : s.phase === 'menu' ? 1 : 0
   s.mineIn -= dt
   if (s.mineIn <= 0 && s.mines.length < want) {
     spawnMine(s, s.phase === 'menu')
