@@ -290,16 +290,8 @@ function preloadPageFromHref(href: string) {
   if (hit) void hit.page.preload()
 }
 
-/** A friend's challenge link, `/c/<game>/<id>`, read from the address itself. */
-function challengeLink(): { slug: string; id: string } | null {
-  if (typeof window === 'undefined') return null
-  const match = /^\/c\/([^/]+)\/([^/]+)\/?$/.exec(window.location.pathname)
-  return match ? { slug: decodeURIComponent(match[1]!), id: decodeURIComponent(match[2]!) } : null
-}
-
 function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
-  const challenge = challengeLink()
-  if (challenge) return <ChallengeLandingPage slug={challenge.slug} id={challenge.id} />
+  if (route.name === 'challenge') return <ChallengeLandingPage slug={route.slug} id={route.id} />
   if (route.name === 'groups') return <GroupsPage />
   if (route.name === 'group') {
     // Your friends are a group made from who you've added, with a page of their own.

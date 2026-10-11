@@ -28,6 +28,7 @@ import {
   type Route,
 } from '../hooks/useHashRoute'
 import { archiveDayWords } from './archive'
+import { challengeHref } from './challenges'
 import { seasonOn } from './seasonCalendar'
 import { APP_NAME, SITE_LINE } from './brand'
 import { BOARD_NAMES, dailyWords } from './dailyWords'
@@ -542,6 +543,20 @@ export function pageMeta(route: Route): PageMeta {
         return { ...gameMeta(route.slug, gamePlayHref(route.slug), 'Play'), noindex: true }
       }
       return dailyMeta(route.slug) ?? gameMeta(route.slug, gamePlayHref(route.slug), 'Play')
+    // A friend's challenge link, in the words of its prerendered page (scripts/prerender.mjs), hidden games too.
+    // Somebody's link to somebody, never a search result.
+    case 'challenge': {
+      const game = getGame(route.slug)
+      return {
+        title: titled(game ? `Can you beat it? A challenge on ${game.name}` : 'A challenge'),
+        description: game
+          ? `A friend has a score for you to beat on ${game.name}. It plays right here in your browser, no account needed.`
+          : SITE_DESCRIPTION,
+        path: challengeHref(route.slug, route.id),
+        image: gameImagePath(route.slug),
+        noindex: true,
+      }
+    }
     case 'authVerify':
     case 'authDiscord':
       return { ...site, title: titled('Signing in'), path: homeHref(), noindex: true }

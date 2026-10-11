@@ -68,6 +68,8 @@ export type Route =
    * course, every new kind of obstacle in one, `?lab=1`, from the admin's Cave Book or Course Book.
    */
   | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean }
+  /** A friend's challenge link, `/c/<game>/<id>` (lib/challenges.ts): it opens the challenge, then its game. */
+  | { name: 'challenge'; slug: string; id: string }
   | { name: 'authVerify'; token: string }
   /** Where Discord sends a player back after signing in (pages/DiscordReturnPage). */
   | { name: 'authDiscord' }
@@ -784,6 +786,12 @@ export function parseUrl(pathname: string, search: string): Route {
       return { name: 'game', slug, period: segment }
     }
     return { name: 'game', slug }
+  }
+
+  // The game is the link's as it was sent: the challenge itself says which game it's on.
+  const challengeMatch = /^c\/([^/]+)\/([^/]+)$/.exec(path)
+  if (challengeMatch) {
+    return { name: 'challenge', slug: decodeURIComponent(challengeMatch[1]!), id: decodeURIComponent(challengeMatch[2]!) }
   }
 
   // Game Over for a place the site has never had. Anything under one of its own sections still comes
