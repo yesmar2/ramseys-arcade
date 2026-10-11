@@ -6,31 +6,26 @@ import type { RecordSummary } from '../lib/records'
 import { ChevronRightIcon, EventsIcon, FlameIcon, SparkleIcon, TimerIcon } from './chromeIcons'
 
 /**
- * The game's record book, from the viewer's side: the records they are tied
- * with (one better takes them), the ones they hold, the nearest, and one that
- * nobody has set. Someone not in the book sees the unset ones and the best.
- * A daily has none here: its page's Records tab (DailyRecordsTab) is its book.
+ * The game's record book: one record nobody has set yet, then the ones held and who holds them, the same for
+ * everyone (Ramsey, 2026-10-11: the page needs the records, not "Your record books"; a player's own are in the
+ * book itself). A daily has none here: its page's Records tab (DailyRecordsTab) is its book.
  */
 export function GameHubRecords({
   slug,
-  gameName,
   records,
-  me,
 }: {
   slug: string
-  gameName: string
   /** Null while the book loads. */
   records: RecordSummary[] | null
-  me: string
 }) {
   if (isDailyGame(slug) || (records && records.length === 0)) return null
-  const { rows, yours } = records ? recordRows(records, me) : { rows: [], yours: false }
+  const rows = records ? recordRows(records, '').rows : []
 
   return (
     <section className="gh-card gh-records" aria-labelledby="gh-records-title">
       <div className="gh-card__head">
         <h2 id="gh-records-title" className="gh-cap">
-          {yours ? 'Your record books' : `${gameName}’s record books`}
+          Records
         </h2>
         {records ? (
           <a className="gh-more" href={recordsHref(slug)}>
