@@ -287,6 +287,82 @@ html[data-theme='dark'] .blip-poll {
   stroke-linecap: round;
 }
 
+/* ---------- his question, opened where you are (BlipHello.tsx) ---------- */
+
+.blip-sheet__dim {
+  position: fixed;
+  inset: 0;
+  /* Over the phone's tab bar (chrome.css, 85), as a sheet is. */
+  z-index: 90;
+  background: rgba(4, 8, 12, 0.35);
+  animation: blip-dim-in 0.2s ease both;
+}
+
+@keyframes blip-dim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* On a desk, a card over the corner Blip came out of. */
+.blip-sheet {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 91;
+  width: min(22rem, calc(100vw - 2rem));
+  animation: blip-sheet-in 0.3s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+@keyframes blip-sheet-in {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+}
+
+.blip-poll--sheet {
+  margin: 0;
+  padding-top: 1.5rem;
+  background: var(--surface);
+  background-image: linear-gradient(color-mix(in srgb, var(--blip) 10%, transparent), color-mix(in srgb, var(--blip) 10%, transparent));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+}
+
+/* The close sits at the card's top right, so Blip moves over to its left. */
+.blip-poll--sheet .blip-poll__blip {
+  right: auto;
+  left: 1rem;
+}
+
+.blip-poll--sheet .blip-poll__who {
+  padding-left: 3.2rem;
+}
+
+.blip-sheet__close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.blip-sheet__close svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 /* Over the phone's tab bar. */
 @media (max-width: 56rem) {
   .blip-hello {
@@ -297,10 +373,42 @@ html[data-theme='dark'] .blip-poll {
   .blip-hello__bubble {
     max-width: 12.5rem;
   }
+
+  /* On a phone, a sheet up from the bottom, over the tab bar. */
+  .blip-sheet {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    animation-name: blip-sheet-up;
+  }
+
+  .blip-sheet .blip-poll--sheet {
+    border-radius: 1.4rem 1.4rem 0 0;
+    border-bottom: 0;
+    padding: 1.6rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom));
+  }
+
+  .blip-sheet .blip-poll__q {
+    font-size: 1.3rem;
+  }
+
+  .blip-sheet .blip-poll__opt {
+    min-height: 3rem;
+    font-size: 1rem;
+  }
+}
+
+@keyframes blip-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .blip-hello,
+  .blip-sheet,
+  .blip-sheet__dim,
   .blip-hello__blip .blip-figure__arm,
   .blip-poll__fill {
     animation: none;

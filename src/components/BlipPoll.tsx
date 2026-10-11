@@ -9,9 +9,10 @@ import '../styles/blipPoll.css'
  * Blip's question of the day on the home page, beside the day's races (A on the "Blip's daily poll" canvas,
  * 2026-10-09): Blip perched on the card, the question, its answers. A signed-in player answers once, for a few
  * tickets, and then sees how everyone answered with theirs lit; a visitor sees the question and the way to sign
- * in. Yesterday's result under it, and once you've answered, a hint of tomorrow's.
+ * in. Yesterday's result under it, and once you've answered, a hint of tomorrow's. `inSheet`: the same card in
+ * Blip's hello (BlipHello.tsx), answered where you are rather than on the home page.
  */
-export function BlipPoll() {
+export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
   const { signedIn } = useAuth()
   const { view, status, earned } = usePoll(signedIn)
   const [sending, setSending] = useState<number | null>(null)
@@ -36,13 +37,19 @@ export function BlipPoll() {
       .finally(() => setSending(null))
   }
 
+  // Its own heading id in the sheet, which can open over the home page's card.
+  const headingId = inSheet ? 'blip-sheet-q' : 'blip-poll-q'
   const top = yesterday && yesterday.total ? yesterday.counts.indexOf(Math.max(...yesterday.counts)) : -1
 
   return (
-    <section id="blip-poll" className={`blip-poll${voted ? ' blip-poll--voted' : ''}`} aria-labelledby="blip-poll-q">
+    <section
+      id={inSheet ? undefined : 'blip-poll'}
+      className={`blip-poll${voted ? ' blip-poll--voted' : ''}${inSheet ? ' blip-poll--sheet' : ''}`}
+      aria-labelledby={headingId}
+    >
       <BlipFigure className="blip-poll__blip" mood={voted ? 'happy' : 'hi'} />
       <p className="blip-poll__who">{today ? `Blip asks · #${today.n}` : 'Blip asks'}</p>
-      <h3 id="blip-poll-q" className="blip-poll__q">
+      <h3 id={headingId} className="blip-poll__q">
         {today ? today.q : <span className="skel-line" style={{ '--skel-w': '80%' } as React.CSSProperties} aria-hidden="true" />}
       </h3>
       {!today ? (
