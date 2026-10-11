@@ -44,7 +44,19 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * every gap and takes no shortcut, and its plan keeps a day only when a perfect run comes in at 48 to 60% of
  * the blue blip's time, so platinum at 36% takes most of the gold lines in one run, short of perfect.
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.12, lander: 0.08, swoop: 0.12, wobblerun: 0.12 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.12, lander: 0.1, swoop: 0.13, wobblerun: 0.12 }
+
+/**
+ * How many of the game's steps faster than the blue each medal is. Platinum stays three, where it was tuned to
+ * his best runs; the others sit closer under it, bronze no longer just beating the blue (Ramsey, 2026-10-11:
+ * "the medals on the dailies should be closer together in times, bronze is too easy"). Hot Lap's are 7, 11, 14
+ * and 18% now (they were 0, 6, 12, 18); Marble Run's and Wobble Run's 14, 22, 29, 36. Lander's step went to 10%
+ * and Swoop's to 13% the same day, when he found their platinum "a little too easy": his best Lander days had
+ * landed 27 to 28% under the blue ship (platinum was 24%), his best Swoop days 36 to 38% under the blue bird
+ * (platinum was 36%). Lander's are 12, 18, 24, 30 now; Swoop's 16, 23, 31, 39. The API's ticketLadders.ts
+ * RACE_MEDAL_RUNGS and RACE_MEDAL_STEP are the same.
+ */
+export const MEDAL_RUNGS: Record<Medal, number> = { bronze: 1.2, silver: 1.8, gold: 2.4, platinum: 3 }
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in
@@ -61,9 +73,9 @@ export function blueOf(game: RaceGame): string {
   return BLUE[game]
 }
 
-/** A medal's lead on the blue, in percent: 0 for bronze, 8 for Lander's silver, 24 for its platinum. */
+/** A medal's lead on the blue, in percent: 10 for Lander's bronze, 14 for its silver, 24 for its platinum. */
 export function medalPercent(game: RaceGame, medal: Medal): number {
-  return Math.round(MEDALS.indexOf(medal) * MEDAL_STEP[game] * 100)
+  return Math.round(MEDAL_RUNGS[medal] * MEDAL_STEP[game] * 100)
 }
 
 /**
@@ -92,10 +104,10 @@ export function paceMsOf(paceSeconds: number): number {
 export function medalTimes(game: RaceGame, paceMs: number): Record<Medal, number> {
   const step = MEDAL_STEP[game]
   return {
-    bronze: paceMs - 1,
-    silver: Math.round(paceMs * (1 - step)),
-    gold: Math.round(paceMs * (1 - 2 * step)),
-    platinum: Math.round(paceMs * (1 - 3 * step)),
+    bronze: Math.round(paceMs * (1 - MEDAL_RUNGS.bronze * step)),
+    silver: Math.round(paceMs * (1 - MEDAL_RUNGS.silver * step)),
+    gold: Math.round(paceMs * (1 - MEDAL_RUNGS.gold * step)),
+    platinum: Math.round(paceMs * (1 - MEDAL_RUNGS.platinum * step)),
   }
 }
 
