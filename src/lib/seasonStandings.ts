@@ -167,8 +167,8 @@ export function useSeasonStandings(playerName: string, group: string | null): Se
   return data
 }
 
-/** The Standings list's feed of the season's standings. */
-export function seasonFeed(data: SeasonStandingsData): StandingsFeed {
+/** The Standings list's feed of the season's standings, its rows opening a player's card at `period`. */
+export function seasonFeed(data: SeasonStandingsData, period: LeaderboardPeriod): StandingsFeed {
   return {
     key: data.group ? 'season-group' : 'season-everyone',
     loading: data.loading,
@@ -177,7 +177,7 @@ export function seasonFeed(data: SeasonStandingsData): StandingsFeed {
     you: data.you,
     more: async (offset, limit) => (await fetchSeasonBoard(limit, offset, data.group)).entries,
     find: (q) => findInSeason(q, data.group),
-    rowHref: (name) => rankHref(name),
+    rowHref: (name) => rankHref(name, period),
   }
 }
 

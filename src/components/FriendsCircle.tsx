@@ -3,6 +3,7 @@ import { useFriends } from '../hooks/useFriends'
 import { useGroupBoard } from '../hooks/useGroupBoard'
 import { rankHref, tournamentCreateHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import type { Friend, FriendRequest } from '../lib/friends'
 import {
   gameName,
@@ -100,6 +101,8 @@ export function FriendsMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
 /** People who've asked to be friends: yes, or not now (which says no, quietly). */
 export function FriendRequests({ requests }: { requests: readonly FriendRequest[] }) {
   const { accept, decline, busyId } = useFriends()
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <ul className="frd-requests" aria-label="Friend requests">
       {requests.map((r) => {
@@ -108,7 +111,7 @@ export function FriendRequests({ requests }: { requests: readonly FriendRequest[
           <li key={r.id} className="frd-request">
             <PlayerAvatar name={r.name} size="md" />
             <span className="frd-request__text">
-              <a className="grp-name" href={rankHref(r.name)}>
+              <a className="grp-name" href={rankHref(r.name, period)}>
                 {r.name}
               </a>{' '}
               wants to be friends
@@ -391,6 +394,8 @@ function sinceDay(ts: number) {
  */
 export function FriendsList({ onRemove }: { onRemove: (friend: Friend) => void }) {
   const { friends, outgoing, loaded, busyId, cancel } = useFriends()
+  // A friend's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <section className="grp-card grp-side frd-list" aria-labelledby="frd-list-title">
       <div className="grp-card__head">
@@ -410,7 +415,7 @@ export function FriendsList({ onRemove }: { onRemove: (friend: Friend) => void }
                 <PlayerAvatar name={name} avatarId={f.avatarId} size="md" />
                 <span className="grp-member__text">
                   <span className="grp-member__name">
-                    <a className="grp-name" href={rankHref(name)}>
+                    <a className="grp-name" href={rankHref(name, period)}>
                       {name}
                     </a>
                   </span>
@@ -450,7 +455,7 @@ export function FriendsList({ onRemove }: { onRemove: (friend: Friend) => void }
                 <PlayerAvatar name={r.name} size="md" />
                 <span className="grp-member__text">
                   <span className="grp-member__name">
-                    <a className="grp-name" href={rankHref(r.name)}>
+                    <a className="grp-name" href={rankHref(r.name, period)}>
                       {r.name}
                     </a>
                   </span>

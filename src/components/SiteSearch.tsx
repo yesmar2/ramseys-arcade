@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 import { games, isListedGame, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, navigate, rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { eggDone } from '../lib/eggs'
 import { eggWordFor, playEggWord } from '../lib/eggWords'
 import {
@@ -95,6 +96,8 @@ export function SiteSearch() {
   const [players, setPlayers] = useState<FoundPlayer[] | null>(null)
   const [player, setPlayer] = useState<string | null>(null)
   const ownTag = normalizePlayerName(usePlayerName())
+  // A player's card opens at the period you picked, even one picked after you typed.
+  const period = useDefaultPeriod()
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listId = useId()
@@ -200,7 +203,7 @@ export function SiteSearch() {
         out.push({
           kind: 'player',
           key: `player:${p.name}`,
-          href: rankHref(p.name),
+          href: rankHref(p.name, period),
           label: p.name,
           hint: `Player · #${p.rank} ${p.when}`,
         })
@@ -210,13 +213,13 @@ export function SiteSearch() {
       out.push({
         kind: 'player',
         key: `player:${player}`,
-        href: rankHref(player),
+        href: rankHref(player, period),
         label: player,
         hint: 'Player',
       })
     }
     return out
-  }, [query, events, players, player])
+  }, [query, events, players, player, period])
 
   useEffect(() => {
     setActive(0)

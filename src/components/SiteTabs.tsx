@@ -1,9 +1,10 @@
 import { createPortal } from 'react-dom'
 import { currentPath } from '../hooks/useHashRoute'
 import { AVATARS_ENABLED } from '../lib/avatars'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { BoardsIcon, EventsIcon, GamesIcon, RecordsIcon, UserIcon } from './chromeIcons'
 import { PlayerAvatar } from './PlayerAvatar'
-import { navActive, SITE_TABS, type SiteNavItem } from './siteNav'
+import { navActive, siteTabs, type SiteNavItem } from './siteNav'
 
 const TAB_ICON: Partial<Record<SiteNavItem['match'], typeof GamesIcon>> = {
   games: GamesIcon,
@@ -40,12 +41,14 @@ export function SiteTabs({
   alert: boolean
   youLabel: string
 }) {
+  // Boards opens at the period you picked, so the tab is built with it.
+  const period = useDefaultPeriod()
   if (typeof document === 'undefined') return null
   const path = currentPath()
 
   return createPortal(
     <nav className="site-tabs" aria-label="Primary">
-      {SITE_TABS.map((tab) => {
+      {siteTabs(period).map((tab) => {
         const on = !menuOpen && navActive(tab.match, path)
         const Icon = TAB_ICON[tab.match]
         return (

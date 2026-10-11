@@ -46,6 +46,7 @@ import {
 } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   endsWords,
   eventSpan,
@@ -708,6 +709,8 @@ function inviteAge(at: number): string {
 function SingleStandings({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
   const ended = detail.status === 'ended'
   const youName = normalizePlayerName(displayName)
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   const rows = useMemo(
     () => scoredStandings(detail).map((entry, index) => ({ ...entry, rank: entry.row.place ?? index + 1 })),
     [detail],
@@ -726,7 +729,7 @@ function SingleStandings({ detail, displayName }: { detail: TournamentDetail; di
         key={`${row.playerId}${pin ? '-pin' : ''}`}
         rank={rank}
         name={name}
-        href={rankHref(name)}
+        href={rankHref(name, period)}
         avatarId={row.avatarId}
         score={eventScoreText(detail.games, score)}
         mine={Boolean(youName) && name === youName}

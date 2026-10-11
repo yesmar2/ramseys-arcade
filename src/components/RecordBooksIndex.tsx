@@ -4,6 +4,7 @@ import { getGame, isDailyGame } from '../data/games'
 import { useRecordBooks } from '../hooks/useRecordBooks'
 import { rankHref, siteRecordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useActiveGroup } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import {
@@ -104,6 +105,8 @@ export function RecordBooksIndex() {
   const me = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useRecordBooks(me, groupId)
+  // A holder's card opens at the period you picked.
+  const period = useDefaultPeriod()
   // Every count, list and cover here is of the books' own records, so a daily's courses weigh in nowhere.
   const books = data.books.map(({ game, records }) => ({ game, records: bookRecords(game, records) }))
   const all = books.flatMap((b) => b.records)
@@ -218,7 +221,7 @@ export function RecordBooksIndex() {
                     key={h.name}
                     className={`sb-row${medal ? ` sb-row--${medal}` : ''}${mineRow ? ' sb-row--you' : ''}`}
                   >
-                    <a className="sb-row__link" href={rankHref(h.name)}>
+                    <a className="sb-row__link" href={rankHref(h.name, period)}>
                       <span className="sb-row__ord">{ordinal(i + 1).toUpperCase()}</span>
                       <PlayerMark name={h.name} avatarId={avatars.get(h.name)} className="sb-row__mark" />
                       <span className="sb-row__who">

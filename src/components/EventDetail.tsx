@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   bestScore,
   fieldByGame,
@@ -91,6 +92,8 @@ function cellTitle(cell: TableRow['cells'][number]): string {
  * up, and the order already says it. Scores that add up keep theirs.
  */
 function StandingsRow({ row, allRound, cols, gap = false }: { row: TableRow; allRound: boolean; cols: CSSProperties; gap?: boolean }) {
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   const cls = [
     'evp-table__row',
     row.you ? 'evp-table__row--you' : '',
@@ -102,7 +105,7 @@ function StandingsRow({ row, allRound, cols, gap = false }: { row: TableRow; all
   return (
     <li className={cls} style={cols}>
       <span className="evp-table__place">{row.place}</span>
-      <a className="evp-table__who" href={rankHref(row.name)}>
+      <a className="evp-table__who" href={rankHref(row.name, period)}>
         <PlayerAvatar name={row.name} avatarId={row.avatarId} size="md" />
         <PlayerName className="evp-table__name" name={row.name} avatarId={row.avatarId} />
         {row.you ? <span className="evp-you">You</span> : null}
@@ -224,6 +227,7 @@ export function StandingsEmpty({ detail }: { detail: TournamentDetail }) {
 
 /** The top three on their steps, with where each placed on every game. */
 export function EventPodium({ rows, detail }: { rows: TableRow[]; detail: TournamentDetail }) {
+  const period = useDefaultPeriod()
   const top = rows.filter((r) => r.place <= 3).slice(0, 3)
   if (top.length === 0) return null
   const order = [top[1], top[0], top[2]].filter(Boolean) as TableRow[]
@@ -234,7 +238,7 @@ export function EventPodium({ rows, detail }: { rows: TableRow[]; detail: Tourna
       <ol className="evp-podium">
         {order.map((row) => (
           <li key={row.name} className={`evp-podium__step evp-podium__step--${row.place}`}>
-            <a className="evp-podium__who" href={rankHref(row.name)}>
+            <a className="evp-podium__who" href={rankHref(row.name, period)}>
               <PlayerAvatar name={row.name} avatarId={row.avatarId} size={row.place === 1 ? 'lg' : 'md'} />
               <span className="evp-podium__name">{row.name}</span>
               {/* An all-round podium is names and places; one where scores add up shows the total. */}
@@ -387,6 +391,7 @@ export function WinnerCard({
   games?: readonly string[]
 }) {
   const amount = total == null ? '' : `, with ${eventScoreText(games, total)}`
+  const period = useDefaultPeriod()
   return (
     <div className="evp-winner">
       <span className="evp-winner__mark">
@@ -398,7 +403,7 @@ export function WinnerCard({
       <span className="evp-winner__text">
         <b>{mine ? `You won${amount}` : `${winner} won${amount}`}</b>
         {mine ? (
-          <a className="evp-more" href={rankHref()}>
+          <a className="evp-more" href={rankHref(undefined, period)}>
             The trophy is on your player card
           </a>
         ) : runnersUp ? (

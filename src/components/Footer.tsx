@@ -17,6 +17,7 @@ import {
   levelHref,
 } from '../hooks/useHashRoute'
 import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
 import { BrandMark } from './BrandMark'
@@ -32,6 +33,8 @@ export function Footer() {
   const shelf = games.filter((g) => isListedGame(g) && !g.comingSoon).slice(0, 6)
   // The arcade's own events can be paused (/admin, Site events): then none is listed, and no link offers them.
   const { official } = useLiveEvents('')
+  // Standings and Profile open at the period you picked: a stale one in their address would switch the site back.
+  const period = useDefaultPeriod()
 
   return (
     <footer className="site-footer">
@@ -76,7 +79,7 @@ export function Footer() {
                 <a href={leaderboardHref('all')}>{PERIOD_LABELS.all}</a>
               </li>
               <li>
-                <a href={standingsHref()}>Standings</a>
+                <a href={standingsHref(period)}>Standings</a>
               </li>
               <li>
                 <a href={recordsIndexHref()}>Record books</a>
@@ -102,7 +105,7 @@ export function Footer() {
             <h3 className="site-footer__head">You</h3>
             <ul className="site-footer__list">
               <li>
-                <a href={rankHref()}>Profile</a>
+                <a href={rankHref(undefined, period)}>Profile</a>
               </li>
               <li>
                 <a href={statsHref()}>Stats</a>

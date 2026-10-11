@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 import { gameHref, plusHref, rankHowHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { fetchPlus, freeWeekFor, money, perSeason, seasonWeeks, type PlusInfo } from '../lib/plus'
@@ -506,10 +507,12 @@ function PassPlus({
 function SeasonStandingsCard({ season }: { season: SeasonInfo }) {
   const you = normalizePlayerName(usePlayerName())
   const data = useSeasonStandings(you, null)
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <div className="season-standings-list sb-scope">
       <StandingsList
-        feed={seasonFeed(data)}
+        feed={seasonFeed(data, period)}
         you={you}
         title="Season standings"
         sub="Points from your ten best games, this season only"

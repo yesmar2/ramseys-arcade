@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { rankHref } from '../hooks/useHashRoute'
 import { useGroupBoard } from '../hooks/useGroupBoard'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   gameName,
   GROUP_LIMIT,
@@ -115,10 +116,12 @@ export function GroupFaces({ group, shown = 6, size = 'md' }: { group: GroupPubl
 
 /* Places and names: the points are on the group's own Standings table. */
 export function MiniRow({ entry, you }: { entry: GlobalBoardEntry; you: boolean }) {
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <li className={`grp-mini__row${you ? ' grp-mini__row--you' : ''}`}>
       <span className={`grp-place${entry.rank <= 3 ? ` grp-place--${entry.rank}` : ''}`}>{entry.rank}</span>
-      <a className="grp-mini__who" href={rankHref(entry.name)}>
+      <a className="grp-mini__who" href={rankHref(entry.name, period)}>
         <PlayerAvatar name={entry.name} avatarId={entry.avatarId} size="sm" />
         <span className="grp-name">{entry.name}</span>
         {you ? <span className="grp-tag grp-tag--you">You</span> : null}

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { rankHref, tournamentCreateHref, tournamentHref, tournamentPlayHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   eventDay,
   eventSpan,
@@ -307,6 +308,8 @@ export function LastWeekCard({
   const avatars = new Map((detail ? standingsTable(detail, '') : []).map((r) => [r.name, r.avatarId]))
   const podium = (t.podium ?? []).slice(0, 3)
   const order = [podium[1], podium[0], podium[2]].filter(Boolean)
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <section className="evp-card evp-last" style={accentStyle(t.games)} aria-labelledby="evp-last-title">
       <div className="evp-last__head">
@@ -327,7 +330,7 @@ export function LastWeekCard({
         <ol className="evp-podium evp-podium--small" aria-label="Podium">
           {order.map((p) => (
             <li key={p!.name} className={`evp-podium__step evp-podium__step--${p!.place}`}>
-              <a className="evp-podium__who" href={rankHref(p!.name)}>
+              <a className="evp-podium__who" href={rankHref(p!.name, period)}>
                 <PlayerAvatar name={p!.name} avatarId={avatars.get(normalizePlayerName(p!.name))} size="md" />
                 <span className="evp-podium__name">{p!.name}</span>
                 {/* A one-game event's score; an all-round one's podium is names and places. */}
