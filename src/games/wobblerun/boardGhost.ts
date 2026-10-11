@@ -1,4 +1,4 @@
-import { api } from '../../lib/leaderboard'
+import { api, ApiError } from '../../lib/leaderboard'
 import { launchWarp } from '../../lib/ghostWarp'
 import { chosenSkin } from '../../lib/skins'
 import type { GhostRun } from './runStore'
@@ -100,6 +100,20 @@ export async function fetchNextGhost(gauntlet: number, tag: string): Promise<Nex
     return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
   } catch {
     return null
+  }
+}
+
+/**
+ * Any player's run on a gauntlet (race any ghost, lib/raceGhost.ts), with the place it holds: the #1's for anyone,
+ * anyone else's for a Plus member. 'plus' when it's Plus's and you aren't on it; null when they've no run here.
+ */
+export async function fetchPlayerGhost(gauntlet: number, tag: string): Promise<NextGhost | 'plus' | null> {
+  try {
+    const reply = await api<GhostReply & { place?: number }>(`/tracks/wobblerun/${gauntlet}/ghost?of=${encodeURIComponent(tag)}`, { cache: 'no-cache' })
+    const ghost = toGhost(reply)
+    return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
+  } catch (e) {
+    return e instanceof ApiError && e.status === 402 ? 'plus' : null
   }
 }
 

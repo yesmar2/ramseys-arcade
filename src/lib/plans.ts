@@ -17,6 +17,8 @@ export type PlanLimits = {
   multiGameRounds: boolean
   /** An event on a past course of a racing daily, not only today's. */
   anyCourse: boolean
+  /** Race any player's ghost on a racing daily's course, not only the #1's and the next place up. */
+  anyGhost: boolean
 }
 
 /** Which allowance a refusal was about. */
@@ -36,6 +38,7 @@ export const FREE_LIMITS: PlanLimits = {
   doubleElimination: false,
   multiGameRounds: false,
   anyCourse: false,
+  anyGhost: false,
 }
 
 /** Plus's, as the API's plans.ts has them: what the Plus page puts beside the free set. */
@@ -47,6 +50,7 @@ export const PLUS_LIMITS: PlanLimits = {
   doubleElimination: true,
   multiGameRounds: true,
   anyCourse: true,
+  anyGhost: true,
 }
 
 export const PLUS_PRICE = '$2.99/mo'
@@ -73,4 +77,5 @@ export const PLAN_UPSELL: Record<PlanLimitKind, string> = {
   doubleElimination: 'Double elimination, so one loss is not the end',
   multiGameRounds: 'A different game every round',
   anyCourse: 'Events on any past track, not just today’s',
+  anyGhost: 'Race anyone’s ghost on a daily’s board, not just the #1',
 }

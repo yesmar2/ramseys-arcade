@@ -35,7 +35,9 @@ import { useSkinInto } from '../../lib/skins'
 import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { RunSound } from './audio'
-import { fetchBoardGhost, fetchNextGhost, fitsCourse, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
+import { GhostPicker } from '../../components/GhostPicker'
+import { useRaceTag } from '../../lib/raceGhost'
+import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, fitsCourse, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
 import { StarMark } from './StarMark'
 import { gauntletDay, gauntletNumber, msUntilNextGauntlet, untilWords } from './daily'
 import { BLUE_HANDS, FAST_HANDS, liveHands } from './engine/bots'
@@ -256,11 +258,13 @@ const firstRun = (mine: GhostRun | null, top: BoardGhost | null, me: string, nex
  * beats the blue blip, else the blue blip's. Your own is the one of whoever is signed in now. The blue blip runs
  * alongside whoever is chased, and your best too (in amber) when it isn't the one.
  */
-function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null): Chase {
+function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null, picked: NextGhost | null = null): Chase {
   const pace = paceOf(day)
   const blue = new Ghost(pace)
   const mine = bestOf(day, practice, currentAccountId())
   const best = mine ? { ghost: new Ghost(mine), skin: yourSkin(mine, top, me) } : null
+  // A ghost picked to race (race any ghost, lib/raceGhost.ts): theirs, whoever is faster.
+  if (picked) return { ghost: new Ghost(picked.run ?? standIn(pace, picked.time)), chasing: topChasing(picked, me), blue, best }
   if (firstRun(mine, top, me, next)) return { ghost: blue, chasing: { who: 'pace' }, blue, best }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
     return { ghost: new Ghost(next.run ?? standIn(pace, next.time)), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin }, blue, best }
@@ -277,12 +281,14 @@ function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: st
  * The run to chase at the start card, where the blue blip's run may not be worked out yet (paceOf warms it while
  * the card is up): the card needs only the time to beat and whose it is, and nobody runs until the count.
  */
-function cardChase(wobble: WobbleDay, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null): Chase {
+function cardChase(wobble: WobbleDay, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null, picked: NextGhost | null = null): Chase {
   const mine = bestOf(wobble.day, practice, currentAccountId())
   const known = paceIfRun(wobble.day)
   const blue = new Ghost(known ?? waitingRun(wobble.course, wobble.pace))
   const best = mine ? { ghost: new Ghost(mine), skin: yourSkin(mine, top, me) } : null
   const waiting = (time: number) => new Ghost(known ? standIn(known, time) : waitingRun(wobble.course, time))
+  // A ghost picked to race (race any ghost, lib/raceGhost.ts): theirs, whoever is faster.
+  if (picked) return { ghost: picked.run ? new Ghost(picked.run) : waiting(picked.time), chasing: topChasing(picked, me), blue, best }
   if (firstRun(mine, top, me, next)) return { ghost: blue, chasing: { who: 'pace' }, blue, best }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
     return { ghost: next.run ? new Ghost(next.run) : waiting(next.time), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin }, blue, best }
@@ -524,6 +530,8 @@ function WobbleRunDay({
   const topRef = useRef<BoardGhost | null>(null)
   // On today's gauntlet, the player one place above you, once you've a run on the board (boardGhost.ts fetchNextGhost).
   const nextRef = useRef<NextGhost | null>(null)
+  // A ghost picked to race: on a board row's Race, or the start card's "Who do you race?" (lib/raceGhost.ts).
+  const pickedRef = useRef<NextGhost | null>(null)
   const nameRef = useRef(playerName)
   nameRef.current = playerName
 
@@ -659,7 +667,7 @@ function WobbleRunDay({
       beginRun(SLUG)
     } else if (past) beginRun(SLUG)
     previousBestRef.current = getPersonalBest(SLUG)
-    const g = freshGame(wobble, lab ? labChase(wobble) : chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
+    const g = freshGame(wobble, lab ? labChase(wobble) : chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     g.phase = 'countdown'
     g.owner = owner
     gameRef.current = g
@@ -703,7 +711,7 @@ function WobbleRunDay({
     if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
-    gameRef.current = freshGame(wobble, lab ? labChase(wobble) : chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
+    gameRef.current = freshGame(wobble, lab ? labChase(wobble) : chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 300
     sceneRef.current?.snap()
@@ -721,7 +729,7 @@ function WobbleRunDay({
   /** At the start card, the run to beat worked out again: it changes at once. Mid-run, a run keeps the ghost it began with. */
   const rechase = () => {
     if (gameRef.current!.phase !== 'menu' || lab) return
-    gameRef.current = freshGame(wobble, cardChase(wobble, practice, topRef.current, nameRef.current, nextRef.current))
+    gameRef.current = freshGame(wobble, cardChase(wobble, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     setUi(snapshot(gameRef.current))
   }
   const rechaseRef = useRef(rechase)
@@ -749,14 +757,12 @@ function WobbleRunDay({
    * A run saved on the board sends where the bean went: the API keeps it if it's the tag's run on the board and the
    * fastest there, and then it's everyone's ghost, yours included from your next run. On today's gauntlet every run
    * goes, as the API keeps each player's best for whoever is one place below them to race; then the player above
-   * you is asked for again, as you may have passed them. On a past gauntlet only one that could be its fastest goes:
-   * the #1 is faster, or their line is known and at least as fast, and it stays home.
+   * you is asked for again, as you may have passed them.
+   * On a past one too: any player's best there can be raced (race any ghost, lib/raceGhost.ts).
    */
   const sendGhost = (run: { time: number; score: number; splits: number[]; path: number[]; skin?: string }, name: string) => {
     if ((practice && !past) || !signedIn || !name) return
-    const known = topRef.current
     const today = !practice
-    if (!today && known && (known.time < run.time - 0.0005 || (known.run && known.run.time <= run.time + 0.0005))) return
     void sendBoardGhost(wobble.n, name, run).then(async (kept) => {
       if (kept) {
         const fresh = await fetchBoardGhost(wobble.n, true)
@@ -787,6 +793,31 @@ function WobbleRunDay({
   }
   const askNextRef = useRef(askNext)
   askNextRef.current = askNext
+
+  /** The tag picked to race here, and why it isn't the ghost when it can't be: Plus's, or no run here. */
+  const raceTag = useRaceTag(SLUG, wobble.n)
+  const [raceNote, setRaceNote] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    if (!raceTag || lab || Boolean(test)) {
+      setRaceNote(null)
+      if (pickedRef.current) {
+        pickedRef.current = null
+        rechaseRef.current()
+      }
+      return
+    }
+    void fetchPlayerGhost(wobble.n, raceTag).then((got) => {
+      if (!live) return
+      const next = got === 'plus' ? null : got
+      pickedRef.current = next?.run && !fitsCourse(wobble.course, next.run) ? { ...next, run: null } : next
+      setRaceNote(got === 'plus' ? `Racing ${raceTag}’s ghost is with Plus` : got ? null : `${raceTag} has no run here`)
+      rechaseRef.current()
+    })
+    return () => {
+      live = false
+    }
+  }, [raceTag, wobble.n])
   useEffect(() => {
     askNextRef.current()
   }, [signedIn, playerName, wobble.n, practice])
@@ -1456,6 +1487,9 @@ function WobbleRunDay({
       </div>
     </>
   )
+  const ghostPick = lab || Boolean(test) ? null : (
+    <GhostPicker game={SLUG} course={wobble.n} racing={ghostTag(g.chasing)} picked={raceTag} note={raceNote} />
+  )
   const extra = lab ? (
     <div className="game-pause-meta__row">
       <span>Your best here</span>
@@ -1623,9 +1657,9 @@ function WobbleRunDay({
                 ) : test ? (
                   <TestStartCard wobble={wobble} best={practiceBestTime} chips={chips} />
                 ) : pastPlay ? (
-                  <PracticeStartCard wobble={wobble} kind={pastKind} facts={pastPlay.facts ?? []} tiles={practiceTiles} board={board} />
+                  <PracticeStartCard wobble={wobble} kind={pastKind} facts={pastPlay.facts ?? []} tiles={<>{practiceTiles}{ghostPick}</>} board={board} />
                 ) : (
-                  <GameStartCard title="Wobble Run" slug={SLUG} extraMeta={extra} />
+                  <GameStartCard title="Wobble Run" slug={SLUG} extraMeta={<>{extra}{ghostPick}</>} />
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && result ? (
