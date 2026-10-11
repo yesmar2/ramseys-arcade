@@ -1866,8 +1866,23 @@ a.season-skinchip__in:focus-visible {
 
 /* ---------- a level reached off a run's report (LevelUpMoment.tsx) ---------- */
 
+/* The card and its buttons keep off the panel's edges; on a phone's sheet, off the home bar too. */
+.panel.levelup-panel {
+  padding: 1rem;
+}
+
 .levelup-panel .run-levelup {
   margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .panel.levelup-panel {
+    padding: 0 1rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .levelup-panel .run-levelup {
+    margin-top: 0.75rem;
+  }
 }
 
 .levelup-panel__acts {
