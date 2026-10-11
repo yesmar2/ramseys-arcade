@@ -951,7 +951,7 @@ export function CreateTournamentPage() {
                   </div>
                   <p className="ev-field__hint">
                     {isBracket
-                      ? 'A match’s clock starts once both players are seated, and the event ends when the final has a winner.'
+                      ? 'It draws once every seat is taken, or closes with no draw if they aren’t all taken in 7 days. A match’s clock starts once both players are seated, and the event ends when the final has a winner.'
                       : durationHours === 0
                         ? `It ends once every seat is taken and everyone has used all their tries, or after 7 days, whichever comes first.${
                             unlimitedAttempts ? ' Pick a number of tries for this one.' : ''

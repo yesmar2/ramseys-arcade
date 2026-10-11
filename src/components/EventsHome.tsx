@@ -18,6 +18,8 @@ import {
   eventKind,
   formatEventCountdown,
   hasNoEnd,
+  joinedRosterLabel,
+  lobbyClosed,
   type TournamentDetail,
   type TournamentSummary,
   eventScoreText,
@@ -436,6 +438,7 @@ export function OwnEventsCard({
 }
 
 function ownStatus(t: TournamentSummary): string {
+  if (lobbyClosed(t)) return `Didn’t fill: ${joinedRosterLabel(t)} joined`
   if (t.status === 'ended') return t.winner ? `${t.winner} won` : 'Ended'
   if (eventKind(t) === 'bracket' && t.status === 'upcoming') {
     const cap = t.rules.maxPlayers ?? 0
@@ -543,8 +546,14 @@ export function ResultsList({
                 <span className="evp-result__text">
                   <span className="evp-result__title">{t.title}</span>
                   <span className="evp-result__sub">
-                    {eventSpan(t)} · {t.playerCount} played
-                    {placed ? ` · ${placed}` : ''}
+                    {lobbyClosed(t) ? (
+                      `${eventSpan(t)} · ${joinedRosterLabel(t)} joined · didn’t fill`
+                    ) : (
+                      <>
+                        {eventSpan(t)} · {t.playerCount} played
+                        {placed ? ` · ${placed}` : ''}
+                      </>
+                    )}
                   </span>
                 </span>
                 {mine ? <span className="evp-won">You won</span> : null}

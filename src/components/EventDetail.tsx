@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { rankHref, tournamentHref } from '../hooks/useHashRoute'
+import { rankHref, tournamentCreateHref, tournamentHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
@@ -220,6 +220,45 @@ export function StandingsEmpty({ detail }: { detail: TournamentDetail }) {
               ? `Post a run on any of the ${detail.games.length} and you lead.`
               : 'The first run posted leads, whatever it scores.'}
         </p>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * A bracket whose lobby closed a week after it was made, its seats not all taken: no draw, so the card says
+ * who was in, and offers its host another go.
+ */
+export function LobbyClosedCard({ detail }: { detail: TournamentDetail }) {
+  const cap = detail.rules.maxPlayers
+  const names = detail.players.map((p) => p.name)
+  const who =
+    names.length > 6
+      ? `${names.slice(0, 5).join(', ')} and ${names.length - 5} more`
+      : names.length > 1
+        ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+        : (names[0] ?? 'Nobody')
+  return (
+    <section className="evp-card evp-table" aria-labelledby="evp-closed-title">
+      <div className="evp-card__head">
+        <h2 id="evp-closed-title" className="evp-card__title">
+          Bracket
+          <span className="evp-card__count">no draw</span>
+        </h2>
+      </div>
+      <div className="evp-empty">
+        <span className="evp-empty__mark" aria-hidden="true">
+          <TrophyIcon />
+        </span>
+        <p className="evp-empty__title">It didn’t fill</p>
+        <p className="evp-empty__copy">
+          {who} joined in its week{cap ? `, but it needed ${cap}` : ''}, so it closed with no draw.
+        </p>
+        {detail.isHost ? (
+          <a className="evp-btn evp-btn--small" href={tournamentCreateHref()}>
+            Make another
+          </a>
+        ) : null}
       </div>
     </section>
   )

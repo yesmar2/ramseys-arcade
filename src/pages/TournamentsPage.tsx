@@ -8,6 +8,7 @@ import {
   EventPodium,
   GameBests,
   HowItScores,
+  LobbyClosedCard,
   NextEventCard,
   StandingsEmpty,
   StandingsTable,
@@ -78,6 +79,7 @@ import {
   isUnlimitedDuration,
   joinTournament,
   listTournaments,
+  lobbyClosed,
   matchOpponent,
   rememberTournamentInvite,
   seatsLeft,
@@ -374,6 +376,20 @@ function currentRoundName(detail: TournamentDetail): string | null {
 /** The right side of the banner: the clock while it runs, the winner once it's over. */
 function BannerSide({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
   const bracket = eventKind(detail) === 'bracket'
+  if (lobbyClosed(detail)) {
+    const cap = detail.rules.maxPlayers
+    return (
+      <div className="evp-banner__side">
+        <p className="evp-cap">Closed</p>
+        <p className="evp-banner__state">It didn’t fill</p>
+        {cap ? (
+          <p className="evp-banner__side-note">
+            {detail.playerCount} of {cap} seats taken
+          </p>
+        ) : null}
+      </div>
+    )
+  }
   if (detail.status === 'ended') {
     const winner = eventWinner(detail)
     if (!winner) {
@@ -421,6 +437,10 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
             <p className="evp-banner__side-note">
               {detail.playerCount} of {cap} seats taken
             </p>
+          ) : null}
+          {/* The API closes a lobby a week after it was made, so one empty seat can't hold it open. */}
+          {left && detail.lobbyClosesAt != null ? (
+            <p className="evp-banner__side-note">{endsWords(detail.lobbyClosesAt, true, 'Closes')} unless it fills</p>
           ) : null}
         </div>
       )
@@ -652,7 +672,8 @@ function SentInvites({ tournamentId, roster }: { tournamentId: string; roster: n
 function EventRoster({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
   const you = normalizePlayerName(displayName)
   const seated = [...detail.players].sort((a, b) => a.joinedAt - b.joinedAt)
-  const open = seatsLeft(detail) ?? 0
+  // Over (a bracket's lobby closes unfilled a week on), there are no seats left to take.
+  const open = detail.status === 'ended' ? 0 : (seatsLeft(detail) ?? 0)
   const cap = detail.rules.maxPlayers
 
   return (
@@ -1236,7 +1257,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
 
         <div className="evp-split">
           <div className="evp-split__main">
-            {bracket ? (
+            {bracket && lobbyClosed(detail) ? (
+              <LobbyClosedCard detail={detail} />
+            ) : bracket ? (
               <EventBracket detail={detail} displayName={displayName} className="ev-card ev-card--bracket" />
             ) : multi ? (
               rows.length ? (

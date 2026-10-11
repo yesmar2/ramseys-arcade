@@ -49,6 +49,8 @@ export type NotificationMeta = {
   /** An event finished below first. */
   place?: number
   field?: number
+  /** A bracket's lobby closed a week on without filling: there's no board, only the event. */
+  unfilled?: boolean
   /** A friend request still waiting for an answer. */
   requestId?: string
   /** A record-lost note's record: track-4, hole-2, play-days-streak. */
