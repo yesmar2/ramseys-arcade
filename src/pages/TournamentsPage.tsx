@@ -70,6 +70,7 @@ import {
   getJoinedTournamentIds,
   getTournament,
   getTournamentInvite,
+  hasNoEnd,
   hasPerRoundGames,
   isPlayerInTournament,
   isRosterFull,
@@ -445,10 +446,17 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
     )
   }
   if (isUnlimitedDuration(detail.rules)) {
+    // Every seat counts, filled or not, so "everyone" alone would read as done once all who joined have played.
+    const cap = detail.rules.maxPlayers
+    const done = (attemptsPerGameMax(detail) ?? 1) > 1 ? 'used their tries' : 'played'
     return (
       <div className="evp-banner__side">
         <p className="evp-cap">Runs</p>
-        <p className="evp-banner__state">Until everyone has played</p>
+        <p className="evp-banner__state">
+          {!cap ? `Until everyone has ${done}` : cap === 2 ? `Until both have ${done}` : `Until all ${cap} have ${done}`}
+        </p>
+        {/* The API stops it a week after it starts, so an empty seat can't hold it open. */}
+        {hasNoEnd(detail) ? null : <p className="evp-banner__side-note">{endsWords(detail.endsAt, true)} at the latest</p>}
       </div>
     )
   }

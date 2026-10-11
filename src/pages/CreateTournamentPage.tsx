@@ -321,6 +321,8 @@ export function CreateTournamentPage() {
   const isDouble = isBracket && elimination === 'double'
   const bracketByes = isBracket && !isDouble ? bracketDrawSize(maxPlayers) - maxPlayers : 0
   const rounds = isBracket ? bracketRoundCount(maxPlayers) : 0
+  /** Until everyone finishes with unlimited tries: nobody ever finishes, so the API refuses it. */
+  const needsTries = !isBracket && durationHours === 0 && unlimitedAttempts
   /** Rounds differ from one another, or some round stacks more than one game. */
   const planDiverged =
     new Set(roundGames.map((r) => r.join('+'))).size > 1 ||
@@ -542,7 +544,7 @@ export function CreateTournamentPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (busy || !account || games.length === 0) return
+    if (busy || !account || games.length === 0 || needsTries) return
     setBusy(true)
     setError(null)
     try {
@@ -951,7 +953,7 @@ export function CreateTournamentPage() {
                     {isBracket
                       ? 'A match’s clock starts once both players are seated, and the event ends when the final has a winner.'
                       : durationHours === 0
-                        ? `It ends when every player has used all their tries.${
+                        ? `It ends once every seat is taken and everyone has used all their tries, or after 7 days, whichever comes first.${
                             unlimitedAttempts ? ' Pick a number of tries for this one.' : ''
                           }`
                         : `It starts as soon as you make it, and ends ${durationLabel.toLowerCase()} later.`}
@@ -979,11 +981,18 @@ export function CreateTournamentPage() {
 
               {error ? <p className="ev-note ev-note--error">{error}</p> : null}
               <PlanLimitNotice error={planError} />
+              {/* Said again by the button: the duration's hint is steps above it, off a phone's screen. */}
+              {needsTries ? (
+                <p className="ev-note" id="create-needs-tries">
+                  Pick a number of tries to run it until everyone finishes. With unlimited tries, nobody ever finishes.
+                </p>
+              ) : null}
 
               <button
                 type="submit"
                 className="evp-btn evp-btn--big evp-create__submit"
-                disabled={busy || title.trim().length < 3 || games.length === 0}
+                disabled={busy || title.trim().length < 3 || games.length === 0 || needsTries}
+                aria-describedby={needsTries ? 'create-needs-tries' : undefined}
               >
                 {inviting && forGroup
                   ? `Inviting ${forWhom}…`

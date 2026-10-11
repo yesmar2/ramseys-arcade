@@ -113,15 +113,21 @@ export function eventSpan(t: Pick<TournamentSummary, 'startsAt' | 'endsAt'>): st
   return `${from} to ${arcadeDate(end, sameMonth ? { day: 'numeric' } : { month: 'short', day: 'numeric' })}`
 }
 
-/** "Ends Sunday at 11:59 pm ET", or "Ends tonight at 11:59 pm ET": the last minute an event runs, in the arcade's own time. */
-export function endsWords(endsAt: number): string {
+/**
+ * "Ends Sunday at 11:59 pm ET", or "Ends tonight at 11:59 pm ET": the last minute an event runs, in the arcade's own time.
+ * Dated ("Ends Sun, Oct 18 at …", "Ends today at …") where no clock sits beside it: a week out, the weekday alone reads as today.
+ */
+export function endsWords(endsAt: number, dated = false): string {
   const last = new Date(endsAt - 60_000)
   const zone = ARCADE_ZONE
   try {
     const day = (d: Date) => d.toLocaleDateString('en-US', { timeZone: zone })
     const when = day(last) === day(new Date())
-      ? 'tonight'
-      : last.toLocaleDateString('en-US', { timeZone: zone, weekday: 'long' })
+      ? dated ? 'today' : 'tonight'
+      : last.toLocaleDateString(
+          'en-US',
+          dated ? { timeZone: zone, weekday: 'short', month: 'short', day: 'numeric' } : { timeZone: zone, weekday: 'long' },
+        )
     const time = last
       .toLocaleTimeString('en-US', { timeZone: zone, hour: 'numeric', minute: '2-digit' })
       .toLowerCase()

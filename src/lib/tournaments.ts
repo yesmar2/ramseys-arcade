@@ -302,6 +302,14 @@ export function isUnlimitedDuration(rules: TournamentRules | undefined): boolean
   return Boolean(rules?.unlimitedDuration)
 }
 
+/**
+ * No end at all: a bracket, or an until-done event from an API older than its one-week cap (its start was its
+ * end). With the cap, an until-done event counts down like a timed one, which also ends early once all are done.
+ */
+export function hasNoEnd(t: Pick<TournamentSummary, 'rules' | 'startsAt' | 'endsAt'>): boolean {
+  return isUnlimitedDuration(t.rules) && t.endsAt <= t.startsAt
+}
+
 export function maxPlayersLabel(rules: TournamentRules | undefined): string | null {
   const n = rules?.maxPlayers
   if (n == null || n <= 0) return null

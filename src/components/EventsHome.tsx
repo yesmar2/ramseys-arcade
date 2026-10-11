@@ -16,7 +16,7 @@ import type { PlanLimits } from '../lib/plans'
 import {
   eventKind,
   formatEventCountdown,
-  isUnlimitedDuration,
+  hasNoEnd,
   type TournamentDetail,
   type TournamentSummary,
   eventScoreText,
@@ -438,7 +438,7 @@ function ownStatus(t: TournamentSummary): string {
     const cap = t.rules.maxPlayers ?? 0
     return cap ? `${t.playerCount} of ${cap} seats taken` : 'Filling'
   }
-  if (isUnlimitedDuration(t.rules)) return `${t.playerCount} in · until everyone finishes`
+  if (hasNoEnd(t)) return `${t.playerCount} in · until everyone finishes`
   return `${t.playerCount} in · ${formatEventCountdown(t.endsAt)}`
 }
 
