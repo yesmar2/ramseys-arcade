@@ -16,6 +16,15 @@ export type XZ = { x: number; z: number }
 /** A round's tier: 1 gentle, 2 the usual, 3 spicy. */
 export type Tier = 1 | 2 | 3
 
+/**
+ * A course's generation: the rules it's laid by. 1 is every round, pad and connector as the first planned days
+ * were laid; 2 the harder rounds with ups and downs. A day keeps the generation it was planned with (course.ts
+ * GEN2_FROM says which days are 2); the lab and test courses take the latest. Builders read it from their slot
+ * (`slot.gen`, or the kit's `k.gen`), and one that never reads it lays the same at every generation, so new rules
+ * arrive without touching a played day. A new generation is a new number here and a GEN<n>_FROM in course.ts.
+ */
+export type Gen = 1 | 2
+
 /** T time it · D dodge it · F keep your footing · A fly it, then the finales and the connectors. */
 export type Family = 'T' | 'D' | 'F' | 'A' | 'finale' | 'connector'
 
@@ -466,6 +475,12 @@ export type RoundSlot = {
   finale: boolean
   /** The seed its rng was made from. */
   seed: string
+  /**
+   * The course's generation (types.ts Gen): 1 lays the round exactly as the first planned days have it, 2 by the
+   * harder rules with ups and downs. Gate every new rule on it (`if (slot.gen >= 2) …`, kit.ts byGen), and never
+   * change what gen 1 lays: played days are laid from it.
+   */
+  gen: Gen
 }
 
 export type Rng = {
@@ -530,8 +545,11 @@ export type CourseRound = {
   gold: GoldLine[]
 }
 
-/** A stretch of course that isn't a round (the start, a checkpoint pad, a slide), for the camera and the map. */
-export type CoursePiece = { kind: 'start' | 'slide' | 'check' | 'bounce-up'; z0: number; z1: number; x: number; y: number; camera: CameraPreset }
+/**
+ * A stretch of course that isn't a round (the start, a checkpoint pad, a slide; gen 2's ramps, stairs, drops and
+ * lifts), for the camera and the map. `y` is the height it starts at.
+ */
+export type CoursePiece = { kind: 'start' | 'slide' | 'check' | 'bounce-up' | 'ramp' | 'stairs' | 'drop' | 'lift'; z0: number; z1: number; x: number; y: number; camera: CameraPreset }
 
 /**
  * Where a bean comes back after a splat. The start, each checkpoint pad (`split`: crossing its `line` is a split)
@@ -557,6 +575,8 @@ export type Course = {
   name: string
   n: number
   attempt: number
+  /** The generation it was laid by (types.ts Gen): a day's is fixed by its number (course.ts genOfDay). */
+  gen: Gen
   theme: Theme
   solids: Solid[]
   hazards: Hazard[]

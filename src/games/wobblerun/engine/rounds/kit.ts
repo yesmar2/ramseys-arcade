@@ -14,12 +14,16 @@
  *
  * Every motion is closed form in the clock (sim.ts wave, spin, orbit, doorMove, gloveMove, pendulumMove,
  * fanDuty, path specs), written as an offset from the thing's static pose. engine/README.md has the rules.
+ *
+ * New rules go in behind the course's generation (`k.gen`, `slot.gen`; byGen): gen 1 must lay exactly what it
+ * always has, since played days are laid from it (README "Generations").
  */
 import type {
   Bounce,
   CameraPreset,
   Deco,
   EdgeMove,
+  Gen,
   GraphEdge,
   GraphNode,
   Hazard,
@@ -102,6 +106,14 @@ const roleOf = (look: Look, role?: Role): Role => role ?? ROLE_OF[look] ?? 'deco
 /** The tier's value from a list of three (T1, T2, T3). */
 export function byTier<T>(tier: Tier, values: readonly [T, T, T]): T {
   return values[tier - 1]!
+}
+
+/**
+ * The generation's value from a list (gen 1's first): `byGen(k.gen, [6, 8])`. A generation past the end of the list
+ * takes its last, so a list written for gen 2 holds for later ones until they say otherwise.
+ */
+export function byGen<T>(gen: Gen, values: readonly [T, ...T[]]): T {
+  return values[Math.min(gen, values.length) - 1]!
 }
 
 /** What every solid can be given; `top` is its top's height at its centre, `hy` half its thickness (0.6). */
@@ -231,6 +243,11 @@ export function kit(slot: RoundSlot, tier: Tier) {
     out,
     slot,
     tier,
+    /**
+     * The course's generation (types.ts Gen; 1 for a slot made by hand without one): gate every new rule on it
+     * (`if (k.gen >= 2) …`, byGen) and leave what gen 1 lays exactly as it is.
+     */
+    gen: (slot.gen ?? 1) as Gen,
     /** A box solid; returns its index (for nodes' `on`, decos' refs). */
     box: (o: BoxOpts) => solid('box', o),
     /** A disc solid (a hex tile with `sides: 6`). */

@@ -12,12 +12,12 @@ differ.
 | `course.ts` | Laying a gauntlet: `plannedCourse(n, a, k)`, `courseFromCode(k, seed)`, `assemble`, themes, day numbers. |
 | `rounds/index.ts` | The round registry, by letter. |
 | `rounds/kit.ts` | The builders' kit. |
-| `rounds/pads.ts` | Start pad + start slide, checkpoint pads, the slide down, the bounce-up. |
+| `rounds/pads.ts` | Start pad + start slide, checkpoint pads, the slide down, the bounce-up; gen 2's connectors (ramp, stairs, slide down, drop, lift, bounce-up). |
 | `rounds/<round>.ts` | One module per round (see "Rounds" for who owns which). |
 | `rounds/stub.ts` | The safe stand-in a round lays until it's built. |
-| `bots.ts` | Route graph walking: the edge executor, BLUE / FAST / PHONE hands, route strings, the autopilot. |
-| `plan.ts` | The plan script's helpers: `pickRounds`, `validate`, `firstGoodCourse`. Never runs in the browser. |
-| `lab.ts` | The admin test course: every built round at T1, T2, T3. |
+| `bots.ts` | Route graph walking: the edge executor, BLUE / FAST / PHONE / NAIVE hands, route strings, the autopilot. |
+| `plan.ts` | The plan script's helpers: `pickRounds`, `validate`, `firstGoodCourse`, `HEAT` / `HEAT2`. Never runs in the browser. |
+| `lab.ts` | The admin test lab's courses: every built round at T1, T2, T3 (`labCourse`), one round alone (`soloCourse`, timed by `roundTimer`), a day-style test gauntlet (`testGauntlet`), the picker's rounds (`labRounds`). |
 | `rng.ts`, `names.ts` | Seeded randomness (string seeds); gauntlet names (ADJ + NOUN). |
 
 Node runs any of it directly: `import { plannedCourse } from '../src/games/wobblerun/engine/course.ts'`.
@@ -37,8 +37,92 @@ Node runs any of it directly: `import { plannedCourse } from '../src/games/wobbl
 - **Pushes are carries** (design-final §3.0): platforms, belts, see-saw slides, wind, hoops and bounce-pad
   throws move the bean as carries, never as accelerations, so the 62 m/s² run controller can't cancel them.
 - **Never change anything a played day depends on.** A course is laid from its code, its day and its try, through
-  every builder and every physics constant here. Gate changes by day number (`WOBBLE_*_FROM`) once days are
-  played. Before launch, re-plan and re-pace together.
+  every builder and every physics constant here. New rules go in behind a generation (below), which a day's number
+  fixes; a planned day's stored blue route must keep replaying to the millisecond.
+
+## Generations
+
+A course's generation (`types.ts Gen`) is the set of rules it's laid by: **1** is every round, pad and connector as
+the first planned days were laid; **2** is the harder rounds with ups and downs. It reaches every builder in its slot
+(`slot.gen`, also `k.gen` on the kit; a slot made by hand without one counts as 1), the pads and connectors in their
+kits (`startPiece(rng, gen)`, `checkPiece(i, gen)`, `slidePiece(drop, rng, gen)`, `bounceUpPiece(gen)`), and the
+course keeps it (`course.gen`).
+
+| Who lays | Generation |
+|---|---|
+| `plannedCourse(n, a, k)` (the game, the plan) | the day's own, `genOfDay(n)`: 2 from `GEN2_FROM` on, else 1 (`GEN2_FROM` is null: every day is 1) |
+| `courseFromCode(k, seed, name, gen?)`, `labCourse({ gen })`, `soloCourse(l, t, { gen })`, `testGauntlet(n, gen?)` | `gen`, the newest (`LATEST_GEN`, 2) when left out, so the lab and test courses show the new rules |
+| `scripts/wobblerun-daily.mjs` | each day by its own; `trial <n> [days] [gen]` and `show <n> <gen>` by another, writing nothing |
+
+From gen 2 a gauntlet also has ups and downs between its rounds (below), laid by `assemble` (`AssembleOpts.ups`, on
+from gen 2); a solo course keeps gen 1's joins at any generation, so it differs between generations only where its
+round does.
+
+Writing a gen-2 rule:
+
+```ts
+build(slot, rng, tier) {
+  const k = kit(slot, tier)
+  const gaps = byGen(k.gen, [2.4, 3.0])        // kit.ts byGen: gen 1's value first; a later gen takes the last
+  if (k.gen >= 2) { /* ramps, steps, a new hazard … */ }
+}
+```
+
+- **Gen 1 lays exactly what it always has**, bit for bit: the same solids, hazards, route graph and rng draws in the
+  same order. Put every new `rng` draw inside a `gen >= 2` branch (or after all of gen 1's), and never change a
+  shared helper, a kit default or a sim.ts constant in a way gen 1 would see. Check with the scratchpad's
+  `replay-all.mjs`: `replayed 180, bad 0, worst diff 0 ms`.
+- A builder that never reads `gen` lays the same at every generation.
+- Turning it on: once Ramsey says yes, set `course.ts GEN2_FROM` to a day nobody has played and run
+  `node scripts/wobblerun-daily.mjs replan <GEN2_FROM>`: the days from it are picked with `plan.ts HEAT2` (gen 2's
+  heat, a copy of `HEAT` for now) and laid at gen 2, and every day before it stays as it is. Before then,
+  `trial <n> [days]` picks and checks gen-2 days without writing anything.
+- A third generation is a new number in `Gen`, a `GEN3_FROM` and a line in `genOfDay`.
+
+## Ups and downs (gen 2)
+
+Gen 1 is flat between rounds (a slide only after a round ending 3 m up, a bounce-up when one would start 2 m down).
+From gen 2 every gauntlet has an elevation profile, Fall Guys style: it climbs toward its finale with a big way down
+in the middle. `assemble` lays it (course.ts `profileOf`, `connectorFor`), from the course's own stream
+(`seed + ':ups'` for the plan, `seed + ':ups:' + g` for each gap's pieces), and only inside gen ≥ 2 branches.
+
+- **Where**: between each round and the next, one connector, straight after the round (its `out` node stands on the
+  connector's 2 m lead), then the checkpoint pad as ever: the checkpoint is always the next round's flat pad before,
+  at the next round's height, and the centreline shift across it is gen 1's. Nothing a connector does can lose you
+  anything: walls the whole way, no gap anywhere, at worst a wait (a fall is impossible, so where the respawn is
+  doesn't matter).
+- **The plan** (`profileOf`): most gaps climb 2–3.5 m from the round before's base; one in a day's middle (the gap
+  before round 2 or 3, drawn; every third on a longer course; never the gap into the finale) is the **plunge**, 3–5 m
+  down from wherever the round ended, a slide (60%) or a 3 m drop (40%). So a day goes 0 → up → up → down → up into
+  the finale, or 0 → up → down → up → up.
+- **Any exit height**: a round can end higher or lower than it starts (`k.done({ x, y, z })`; gen 2's Wall Rush,
+  Melon Hill, Piano Steps and Pinball Table end 2–6 m up). The connector takes the course from the round's exit to
+  the height wanted: a round ending 4 m up before a 2.5 m climb gets a 1.5 m drop after it; one that overshot by less
+  than 1.4 m keeps its height (no stairs down straight after a climb).
+- **The band**: a round's base stays within −1.5 … 6.5 m (7.5 for the finale's; Star Peak climbs ~10 m on from
+  there), a connector climbs at most 4 m and comes down at most 6, and within 0.6 m the rounds just meet. The soda sea
+  stays 9 m under the lowest solid (`course.gooY`), as ever; every connector's own landing has its own splat height
+  6 m under it.
+
+| Connector (pads.ts) | When | What | Route |
+|---|---|---|---|
+| `rampPiece(rise, rng)` | 1.6–3.4 m up (or down) | TILT floor at 14–16° (6–12 m), a 2 m lead, a short landing, white lines at its foot and brow; a long one going up (≥ 8 m) has a boost hoop off to one side half way up | `a`, `b` (passed through); gold: through the hoop (`via`) |
+| `stairsPiece(rise, rng)` | up to 4 m up; 0.6–1.4 m down | steps ≤ 0.42 m up (the step-up is 0.5) or ≤ 0.3 m down (within the 0.3 m the bean keeps to the floor by), treads 0.8–1.0 m, every step's body down below the lowest floor | none: the way on runs straight up them |
+| `slideDownPiece(drop, rng)` | 2.5–6 m down, and the slide plunge | gen 1's slick chute at 15–18° (steeper the further), 1 hoop or 2 on a long one, a 2 m landing at the top, straight onto the pad below | `top` (passed through); the way on runs or (gold) belly slides |
+| `dropPiece(drop)` | 1.4–2.5 m down, and the drop plunge (3 m) | a 2.5 m deck ending in a cliff face, a white line at its edge, the full-width pad below 5 m long before the checkpoint pad's 6 (a run off lands 2–3 m out, a jump 6–7 m); from the deck the camera sees the pad's far end and the checkpoint's flags, not its foot | none: the way on runs off the edge |
+| `bouncePiece(rise)` | 2.5–3.5 m up | gen 1's teal pad (vy 15, aimed) after a 2 m lead, onto a 3.5 m pad; floor up to the upper pad's face (gen 1's leaves a gap there), so walking past the pad meets a wall | `low`, `high` (both passed through), a `bounce` edge |
+| `liftPiece(rise, rng)` | 2.8–3.5 m up, never into the finale | twin lifts, each 4.25 m wide with a tall rail between them, half a turn apart (one is down or on its way while the other is up): platform columns (look `lift`: Candy Lifts' candy lift) rising on the clock (`liftAt`: 1 s at the bottom, 1.8 s up, 1.2 s at the top, 1.6 s down, eased; 2.9 m/s at most, ledge off) with a telegraph (`liftTele`: warn 0.6 s before one moves off); tall rails up the shaft | `low` (passed), `left` / `right` (on a lift: a bot waits there), `top`; gold: jump on early from a take-off spot, jump off early |
+
+Climbs are weighed ramp 3 : stairs 3 : bounce-up 2 : lift 1 (where each fits), never the last climb's kind again
+when there's another. Each piece is laid in its own frame and placed as a round is; the course joins its route in at
+its first node and on from the one furthest along (none: the way on crosses it). `course.pieces` gets its kind
+(`ramp`, `stairs`, `slide`, `drop`, `bounce-up`, `lift`), z range, start height and camera (`climb` on lifts, `slide`
+on a slide).
+
+What it costs (planned days' rounds at gen 2, with and without ups and downs, 2026-10-09): the blue +4.1 s a day,
+the fast hands +4.4 s, fast ÷ blue 0.550 → 0.574. Each connector costs the blue 1.1–2.8 s (lifts 2.4–4.7), the fast
+hands 0.7–2.3 (lifts 1.4–4.0). It's less than the connectors' own time because gen 1's joins at gen 2 already slide
+all the way down after every round that ends high. See the gen-2 requests for the pace window.
 
 ## For the scene
 
@@ -268,7 +352,8 @@ rounds need is in it (below); ask the engine owner for anything missing.
   never need moving.
 - `slot.period` is the round's base period (one of 2.9, 3.2, 3.4, 3.7, 4.1, 4.4 s, never shared within a course):
   time the round's main rhythm by it. `slot.i` is its place (0 the opener), `slot.finale` whether it ends at the
-  crown, `rng` its own seeded randomness (only `rng`, never `Math.random`), `tier` 1–3. `base` is where the
+  crown, `rng` its own seeded randomness (only `rng`, never `Math.random`), `tier` 1–3, `slot.gen` (or `k.gen`)
+  the course's generation: gate every new rule on it and leave gen 1 as it is ("Generations"). `base` is where the
   round's origin sits in the course (for interest only).
 - Refer to solids by the index `k.box` / `k.cyl` return (nodes' and points' `on`, decos' refs); the course renumbers.
 
@@ -355,19 +440,70 @@ node shell.mjs g2l2C2          # a shell-style run: countdown, ghost, cues, auto
 ```
 
 `courseFromCode('b2', seed)` lays a round on its own (with Crown Peak after it); `labCourse({ letters: 'b' })`
-lays it at all three tiers; a `RoundSpec` can carry a `def` to lay a round module before it's registered.
+lays it at all three tiers; a `RoundSpec` can carry a `def` to lay a round module before it's registered. All of
+them lay the newest generation unless given `gen`.
+
+To measure a round alone, `soloCourse(letter, tier, { seed, gen, def })` (lab.ts) lays the start pad and slide, the
+round, a checkpoint pad and a plain finish (a finale gets a plain lead-in and its checkpoint pad first, so its slime
+starts), nothing else that can touch a bean; the round under test is `course.rounds[soloIndex(course)]` and is laid
+exactly as `courseFromCode(letter + tier, seed)` lays its first round. `roundTimer(course)` times any run through it
+(`tick` it after each step: the bots' `onStep`):
+
+```ts
+const course = soloCourse('n', 3, { seed: 4, gen: 2 })
+const tm = roundTimer(course)
+runRoute(course, planRoute(course, BLUE_HANDS)!, BLUE_HANDS, { onStep: tm.tick })
+console.log(tm.exit - tm.enter)                          // the blue's time in Gust Gaps T3, s
+const tn = roundTimer(course)
+const naive = naiveRun(course, { pauses: [1.2] }, 120, tn.tick)   // NAIVE held 1.2 s at the start
+console.log(tn.exit - tn.enter, naive.counts.splats)     // its time in the round (∞ if it never got out), its falls
+```
+
+### How hard is it? (`scripts/wobblerun-difficulty.mjs`)
+
+```
+node scripts/wobblerun-difficulty.mjs [--round n] [--tier 3] [--gen 2] [--seeds 12] [--phases 6] [--json]
+```
+
+Every round and tier (gen 1, then gen 2 wherever a builder lays it differently) laid alone from 12 seeds: the
+blue's time in it, FAST ÷ blue, a perfectly timed main-route run (MAIN), one phone run a seed (got through, knocks,
+falls), and NAIVE from 6 start phases a seed: the share that fell, the share knocked, the time lost to FAST and to
+MAIN, and **timing**: the share of NAIVE runs that fell or lost 2 s or more to MAIN. A round you can run straight
+through scores near 0. Every row is set against Gust Gaps T3 at gen 1, the one round Ramsey found hard.
+
+NAIVE (`bots.ts NAIVE_HANDS`, `naiveHands`, `naiveRun`) is a player who just runs: the main route at full stick (the
+stick straight at each spot, allowing for no carry), never waiting, every window ignored, reacting only by the colour
+code (JUMP 0.12 s before an orange thing would touch it and at a gap's edge, DIVE 0.15 s before a violet one), and
+committed to every jump: in the air it keeps to the line it jumped along (easing off or pushing on to land on the
+spot) and never steers across it. That last is what makes Gust Gaps hard for it, as for a person: with the bots'
+perfect mid-air steering, a crosswind gap is no harder than a still one. It never dodges a red thing (that's not
+timing, but it costs it time: rounds of red dodge-it hazards score high on "timing" though a person dodges them by
+eye, so read their fall share too). After a splat it takes a drawn moment (up to 0.5 s) to get going again.
 
 ## The lab
 
-`labCourse(options?)`: every built round (not stubs) at T1, T2, T3 in registry order, a checkpoint pad before
-each, then the first built finale at T2. `labCode()` is its code, `labRoundNames()` the names for its card. Its
-splits can be more than the API's 12 and it can be longer than 900 m: the lab never saves or sends a ghost.
+The test lab (`?lab=1` on the play page, an admin's; in DEV any signed-in account) opens on a picker (TestCards.tsx
+`LabStartCard`): what it lays is the shell's `LabPick` (runs.ts), remembered on the device
+(`skermix-wobblerun-lab-pick`), and the game mounts afresh for each pick. Everything is laid by the newest generation.
+
+- **One round** at T1, T2 or T3: `soloCourse(letter, tier)` (the start pad and slide, the round, a checkpoint pad, the
+  star; a finale gets a lead-in), named as players know it ("Gust Gaps T3", on the start arch). The picker lists
+  `labRounds()`: every built round, then the finales, by `name` and `hint`.
+- **Test gauntlet**: `testGauntlet(n)`: day n's rounds picked as the plan picks a day's (`plan.ts pickRounds`, gen 2's
+  heat, no history), laid as the plan's first try at day n would be, ups and downs and all; the shell draws a new n
+  (1000–9999) each time. Nothing checks it: it's a look at what a gen-2 day comes to.
+- **Every round**: `labCourse(options?)`: every built round (not stubs) at T1, T2, T3 in registry order, a checkpoint
+  pad before each, then the first built finale at T2. `labCode()` is its code, `labRoundNames()` the names in it. Its
+  splits can be more than the API's 12 and it can be longer than 900 m: the lab never saves or sends a ghost.
 
 ## For the plan script
 
-`scripts/wobblerun-daily.mjs plan [days] | replan <n> [days] | repace | show <n>` writes dailyPlan.ts,
-blueRoutes.ts, the API's wobblerunPace.ts (`API_DIR`) and its courseNames.ts. It runs on several cores (`JOBS`);
-180 days take about half an hour.
+`scripts/wobblerun-daily.mjs plan [days] | replan <n> [days] | repace | show <n> [gen]` writes dailyPlan.ts,
+blueRoutes.ts, the API's wobblerunPace.ts (`API_DIR`) and its courseNames.ts; `trial <n> [days] [gen]` picks and
+checks test gauntlets by another generation (the newest by default) and writes nothing. It runs on several cores
+(`JOBS`); 180 days take about half an hour. Every day is picked (heat) and laid by its own generation (`genOfDay`).
+
+- The heat by weekday is `HEAT` for gen-1 days and `HEAT2` for gen-2 days and trials (`heatOf(gen)`).
 
 - `pickRounds(n, history, { roll?, slime?, avoid?, stubs? })` → the day's code. It weighs every order the slot rules
   allow as likely as drawing it slot by slot, drops the ones the variety rules rule out (yesterday's opener, two

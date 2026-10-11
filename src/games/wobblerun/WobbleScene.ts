@@ -323,6 +323,7 @@ export class WobbleScene {
           break
         case 'land':
           this.bean.landed(e.v)
+          this.view.landed(e.i, e.x, e.y, e.z)
           if (e.v > 6) this.fx.dust(e.x, e.y, e.z, Math.min(14, Math.round(e.v)), dust, 1 + e.v * 0.12)
           break
         case 'dive':
@@ -360,7 +361,7 @@ export class WobbleScene {
           break
         case 'bounce':
         case 'perfectBounce':
-          this.view.pulseSolid(e.i)
+          this.view.pulseSolid(e.i, e.k === 'perfectBounce' ? 1.45 : 1)
           this.bean.jumped()
           if (!this.calm) this.kick = e.k === 'perfectBounce' ? 1 : 0.6
           this.fx.sparkle(e.x, e.y + 0.3, e.z, e.k === 'perfectBounce' ? CODE.gold : CODE.bouncy, e.k === 'perfectBounce' ? 18 : 8, 2.6)
@@ -475,6 +476,7 @@ export class WobbleScene {
       bean: this.va.set(s.x, s.y, s.z),
       dt,
       calm,
+      fx: this.fx,
     })
 
     // Blip, its eyes on the nearest hazard; sunk out of sight once it's in the sea.

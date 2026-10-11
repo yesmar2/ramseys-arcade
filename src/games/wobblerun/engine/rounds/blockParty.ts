@@ -131,6 +131,7 @@ function piecePath(P: number, ph: number, birth: number, v: number, y0: number, 
 }
 
 function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
+  if ((slot.gen ?? 1) >= 2) return build2(slot, rng, tier)
   const k = kit(slot, tier)
   const L = rng.between(48, 60)
   const v = byTier(tier, [4.0, 4.8, 5.5])
@@ -248,6 +249,214 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
     }
   }
   return k.done({ x: 0, y: 0, z: L })
+}
+
+/* ------------------------------------------------------------------ gen 2 --- */
+
+/**
+ * Gen 2 (README "Generations"): the runway climbs (CLIMB_LO–CLIMB_HI) from the lead-in to the arch in two ramps with
+ * a level shelf between them, so the walls slide down the hill at you, and from T2 it's cut by trenches (TRENCHES,
+ * a hop wide) between the route's rows: hop one when the next wall's door is coming your way, or with time to
+ * spare, because a wall that catches you over a trench, or just past one, yeets you back into it. The walls are
+ * quicker and the doors narrower; the rails stop at the first trench from T2. The round ends at the top, 3–6 m up
+ * (the course's ups and downs take it on from there). Gen 1 above is untouched.
+ */
+/** The climb's slope, from CLIMB_FROM (the lead-in is flat) to the level top under the arch (TOP long). */
+const CLIMB_LO = (6.5 * Math.PI) / 180
+const CLIMB_HI = (8.5 * Math.PI) / 180
+const CLIMB_FROM = 4.2
+const TOP = 3.0
+/** The shelf between the ramps: how long, and where (a share of the climb before it). */
+const SHELF_LO = 7
+const SHELF_HI = 10
+/** The rows' spacing (room for a trench between two of them). */
+const ROW2 = 5.0
+/**
+ * Trenches per tier (at most: as many as fit with a row or more between them, none by the lead-in or the last row),
+ * how wide, and how far below its near lip a bean in one splats.
+ */
+const TRENCHES = [0, 2, 4] as const
+const TRENCH_LO = [0, 1.9, 2.3] as const
+const TRENCH_HI = [0, 2.4, 2.8] as const
+const TRENCH_DEATH = 4
+/** A hop over a trench takes off this far short of its lip. */
+const HOP_INSET = 0.4
+
+/** piecePath, with the wall riding the floor line `f` down the hill (anchored at the arch's height). */
+function piecePath2(P: number, ph: number, birth: number, v: number, y0: number, y1: number, f: (z: number) => number): PathSpec {
+  const yc = (y0 + y1) / 2
+  const fb = f(birth)
+  return {
+    P,
+    ph,
+    life: (birth - WALL_HZ - SINK_TO) / v,
+    at: (tau: number, _k: number, o: Offset) => {
+      const front = birth - WALL_HZ - v * tau
+      const s = Math.max(0, Math.min(1, (v * tau) / RISE, (front - SINK_TO) / (SINK_FROM - SINK_TO)))
+      const drop = WALL_H * (1 - s)
+      const top = y1 - drop
+      const bottom = Math.max(0, y0 - drop)
+      o.z = -v * tau
+      if (top - bottom < 0.02) {
+        o.on = false
+        return
+      }
+      o.y = (top + bottom) / 2 - yc + f(birth - v * tau) - fb
+      o.hy = (top - bottom) / 2
+    },
+  }
+}
+
+function build2(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
+  const k = kit(slot, tier)
+  const L = rng.between(46, 54)
+  const v = byTier(tier, [4.2, 5.0, 5.8])
+  const doorW = byTier(tier, [3.0, 2.3, 1.9])
+  const least = Math.max(3.6, (1.5 * (7.2 + v)) / v)
+  const P = least + (0.8 * (slot.period - 2.9)) / 1.5
+  const n = rng.int(6, 8)
+  const t0 = rng.between(0, P)
+  const birth = L - WALL_HZ
+  // The profile: the lead-in, ramp A, the shelf, ramp B, the level top.
+  const shelf = rng.between(SHELF_LO, SHELF_HI)
+  const climb = L - CLIMB_FROM - shelf - TOP
+  const aEnd = CLIMB_FROM + climb * rng.between(0.4, 0.6)
+  const bFrom = aEnd + shelf
+  const grade = Math.tan(rng.between(CLIMB_LO, CLIMB_HI))
+  const knots = [0, CLIMB_FROM, aEnd, bFrom, L - TOP, L]
+  /** The floor line (trenches are cut out of it). */
+  const f = (z: number) => (Math.max(0, Math.min(z, aEnd) - CLIMB_FROM) + Math.max(0, Math.min(z, L - TOP) - bFrom)) * grade
+
+  // The route's rows (as gen 1's, a little further apart), and the trenches between some of them: none next to the
+  // lead-in or the last row, at least one row apart.
+  const rows = Math.max(2, Math.round((L - LAST_BACK - ROW0) / ROW2) + 1)
+  const dz = (L - LAST_BACK - ROW0) / (rows - 1)
+  const rowZ = (r: number) => ROW0 + r * dz
+  const want = TRENCHES[tier - 1]!
+  const slots: number[] = []
+  for (let r = 1; r < rows - 2; r++) slots.push(r)
+  const trenchAfter = new Set<number>()
+  for (const r of rng.shuffle(slots)) {
+    if (trenchAfter.size >= want) break
+    if (trenchAfter.has(r - 1) || trenchAfter.has(r + 1)) continue
+    trenchAfter.add(r)
+  }
+  const trenches = [...trenchAfter]
+    .sort((a, b) => a - b)
+    .map((r) => {
+      const g = rng.between(TRENCH_LO[tier - 1]!, TRENCH_HI[tier - 1]!)
+      const mid = (rowZ(r) + rowZ(r + 1)) / 2
+      return { r, z0: mid - g / 2, z1: mid + g / 2 }
+    })
+
+  // The floor: a piece between each two of the profile's knots and the trenches' lips (none in a trench). Rails on T1
+  // all the way; from T2 only up to the first trench.
+  const marks = [...knots, ...trenches.flatMap((t) => [t.z0, t.z1])].sort((a, b) => a - b)
+  const firstTrench = trenches.length ? trenches[0]!.z0 : Infinity
+  for (let m = 0; m < marks.length - 1; m++) {
+    const a = marks[m]!
+    const b = marks[m + 1]!
+    if (b - a < 0.01 || trenches.some((t) => a >= t.z0 - 1e-9 && b <= t.z1 + 1e-9)) continue
+    const rise = f(b) - f(a)
+    if (Math.abs(rise) < 1e-9) k.floor(a, b, { top: f(a), look: a < CLIMB_FROM ? 'floor' : 'terrace', hy: 0.6 + f(a) / 2 })
+    else k.ramp(a, b, f(a), rise, { look: 'terrace', hy: 0.6 + f(a) / 2 })
+    if (tier === 1 || b <= firstTrench + 1e-9) k.walls(a, b, { y: f(a), rise })
+  }
+  for (const t of trenches) k.death(t.z0 - 0.3, t.z1 + 0.3, f(t.z0) - TRENCH_DEATH)
+
+  // The layouts, as gen 1's.
+  const lanes = doorLanes(rng, n)
+  const count = lanes.length
+  let tele = -1
+  const has = { hurdle: false, slot: false, full: false }
+  lanes.forEach((lane, j) => {
+    const extras: ('hurdle' | 'slot')[] =
+      tier === 1 ? (rng.chance(0.5) ? ['hurdle'] : []) : tier === 2 ? [rng.pick(['hurdle', 'slot'] as const)] : [rng.pick(['hurdle', 'slot'] as const), rng.pick(['hurdle', 'slot'] as const)]
+    for (const p of layout(rng, lane, doorW, extras)) {
+      has[p.kind] = true
+      const i = k.hazard({
+        shape: 'box',
+        x: (p.x0 + p.x1) / 2,
+        y: (p.y0 + p.y1) / 2 + f(birth),
+        z: birth,
+        hx: (p.x1 - p.x0) / 2,
+        hy: (p.y1 - p.y0) / 2,
+        hz: WALL_HZ,
+        hit: yeet({ x: 0, y: 10, z: 0 }, 0.6),
+        look: 'wall-jelly',
+        role: p.kind === 'hurdle' ? 'jump' : p.kind === 'slot' ? 'dive' : 'jelly',
+        path: piecePath2(count * P, t0 + j * P, birth, v, p.y0, p.y1, f),
+        tele: tele < 0 ? releaseTele(P, t0, 0.8) : undefined,
+      })
+      if (tele < 0) tele = i
+    }
+  })
+  k.deco({ look: 'arch', x: 0, y: f(L - WALL_HZ), z: L - WALL_HZ, sx: 10, sy: 4, sz: 1.4, params: { stripes: true }, ref: { kind: 'hazard', i: tele } })
+
+  // The route's windows, as gen 1's (walls are where they are in z, whatever the hill).
+  const centre = (kk: number, tau: number) => birth - v * (tau - t0 - kk * P)
+  const doorOf = (kk: number) => lanes[((kk % count) + count) % count]!
+  const worth = (z: number, j: number, tau: number) => {
+    if (z < SINK_TO) return true
+    const kk = Math.ceil((z - R - WALL_HZ - birth + v * (tau - t0)) / (v * P))
+    return doorOf(kk) === j || (centre(kk, tau) - WALL_HZ - z - R) / v >= MOVE_ON
+  }
+  const half = doorW / 2 - R + WAY_TOL
+  const clear = (xa: number, za: number, xb: number, zb: number, t: number) => {
+    const ddx = xb - xa
+    const ddz = zb - za
+    const T = Math.hypot(ddx, ddz) / WAY_V
+    const ts = t + WAY_LAG
+    const g1 = ddz + v * T
+    if (g1 <= 1e-6) return true
+    const k0 = Math.ceil((Math.min(za, zb) - R - WALL_HZ - birth + v * (ts - t0)) / (v * P))
+    const k1 = Math.floor((Math.max(za, zb) + R + WALL_HZ - birth + v * (ts + T - t0)) / (v * P))
+    for (let kk = k0; kk <= k1; kk++) {
+      const g0 = za - centre(kk, ts)
+      const slack = (WAY_SLACK * v) / g1
+      const f0 = Math.max(0, (-WALL_HZ - R - g0) / g1 - slack)
+      const f1 = Math.min(1, (WALL_HZ + R - g0) / g1 + slack)
+      if (f0 > f1) continue
+      const zm = centre(kk, ts + (T * (f0 + f1)) / 2)
+      if (zm < SINK_FROM + WALL_HZ || zm > birth - RISE) continue
+      const xd = LANES[doorOf(kk)]!
+      const x0 = xa + ddx * f0
+      const x1 = xa + ddx * f1
+      if (Math.max(x0, x1) < xd - half || Math.min(x0, x1) > xd + half) return false
+    }
+    return true
+  }
+
+  // The route: gen 1's lane grid, on the hill; a way on over a trench is a hop from a spot just short of its lip, on
+  // the line (a spot, not "the edge": a bean already over the trench just hops on to where it's going).
+  const id = (r: number, j: number) => `n${r}_${j}`
+  const over = (r: number) => trenchAfter.has(r)
+  const step = (r: number, j: number, r2: number, j2: number) => {
+    const [xa, za, xb, zb] = [LANES[j]!, rowZ(r), LANES[j2]!, rowZ(r2)]
+    const travel = WAY_LAG + Math.hypot(xb - xa, zb - za) / WAY_V + WAY_STOP
+    const window = (t: number) => clear(xa, za, xb, zb, t) && worth(zb, j2, t + travel)
+    const t = r2 > r && over(r) ? trenches.find((q) => q.r === r) : undefined
+    if (t) {
+      const zt = t.z0 - HOP_INSET
+      k.edge(id(r, j), id(r2, j2), 'jump', { takeoff: k.at(xa + ((xb - xa) * (zt - za)) / (zb - za), f(zt), zt), window })
+    } else k.edge(id(r, j), id(r2, j2), 'run', { window })
+  }
+  k.node('in', 0, -1.5)
+  for (let r = 0; r < rows; r++) for (let j = 0; j < LANES.length; j++) k.node(id(r, j), LANES[j]!, rowZ(r), { y: f(rowZ(r)) })
+  k.node('out', 0, L + 1.5, { y: f(L) })
+  for (let j = 0; j < LANES.length; j++) {
+    k.edge('in', id(0, j))
+    k.edge(id(rows - 1, j), 'out')
+  }
+  for (let r = 0; r < rows; r++) {
+    for (let j = 0; j < LANES.length; j++) {
+      if (r < rows - 1) for (const j2 of [j, j - 1, j + 1]) if (j2 >= 0 && j2 < LANES.length) step(r, j, r + 1, j2)
+      for (let j2 = 0; j2 < LANES.length; j2++) if (j2 !== j && Math.abs(j2 - j) <= 3) step(r, j, r, j2)
+      if (r < rows - 1 && has.hurdle) k.edge(id(r, j), id(r + 1, j), 'jump', { tier: 'gold' })
+      if (r < rows - 1 && has.slot && !over(r)) k.edge(id(r, j), id(r + 1, j), 'dive', { tier: 'gold' })
+    }
+  }
+  return k.done({ x: 0, y: f(L), z: L })
 }
 
 export const ROUND: RoundDef = {

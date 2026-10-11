@@ -4,6 +4,15 @@
 //   node scripts/wobblerun-daily.mjs replan <n> [days]  lay every day from #n on again (only days nobody has played)
 //   node scripts/wobblerun-daily.mjs repace             run every day's blue bean again, each day's gauntlet as it is
 //   node scripts/wobblerun-daily.mjs show <n>           lay gauntlet #n from the plan and say how the bots do
+//   node scripts/wobblerun-daily.mjs trial <n> [days] [gen]
+//                                                       test gauntlets: pick and check `days` days (14) from #n as a
+//                                                       replan would, laid by generation `gen` (the newest, 2), and
+//                                                       say how they did; writes nothing
+//
+// Generations (engine/course.ts): each day is picked and laid by its own, gen 1 before GEN2_FROM and gen 2 from it
+// (genOfDay): its tiers come from plan.ts HEAT or HEAT2 and its rounds are laid by that generation's rules. So once
+// GEN2_FROM is set to a day nobody has played, `replan <GEN2_FROM>` lays the days from it at gen 2 and keeps the
+// ones before it as they are. `trial` shows what gen-2 days would come to before then.
 //
 // A day's rounds are picked by the slot, heat and variety rules (src/games/wobblerun/engine/plan.ts pickRounds),
 // and a try of them is kept only once it passes the checks (plan.ts validate): the blue bean runs it untouched in a
@@ -46,11 +55,12 @@ const course = await import(new URL('course.ts', ENGINE).href)
 const bots = await import(new URL('bots.ts', ENGINE).href)
 
 if (!isMainThread) {
-  // A worker: a day to find a good try for, or a planned day's blue bean to run again.
+  // A worker: a day to find a good try for, or a planned day's blue bean to run again, each laid by the job's
+  // generation (the day's own, but in a trial).
   parentPort.on('message', (job) => {
     const t0 = Date.now()
     if (job.kind === 'day') {
-      const good = plan.firstGoodCourse(job.n, job.k)
+      const good = plan.firstGoodCourse(job.n, job.k, { gen: job.gen })
       if (!good.course) {
         parentPort.postMessage({ ...job, ok: false, why: good.why, unpaced: good.unpaced, secs: (Date.now() - t0) / 1000 })
         return
@@ -66,7 +76,7 @@ if (!isMainThread) {
         secs: (Date.now() - t0) / 1000,
       })
     } else {
-      const c = course.plannedCourse(job.n, job.a, job.k, job.name)
+      const c = course.plannedCourse(job.n, job.a, job.k, job.name, job.gen)
       const blue = bots.blueRun(c)
       parentPort.postMessage({ ...job, ok: blue.finished && !blue.touched, pace: Math.round(blue.time * bots.BLUE_PACE * 1000), route: bots.encodeRoute(blue.steps) })
     }
@@ -74,7 +84,7 @@ if (!isMainThread) {
 } else {
   const jobs = Math.max(1, Number(process.env.JOBS ?? Math.min(8, os.availableParallelism() - 2)))
 
-  const keyOf = (job) => `${job.kind}:${job.n}:${job.k}`
+  const keyOf = (job) => `${job.kind}:${job.n}:${job.k}:${job.gen}`
 
   /**
    * The workers: jobs in, each job's result by its key (get) once it's done. A job `wanted` says no to by the time
@@ -162,8 +172,10 @@ if (!isMainThread) {
 // the try at the day's number that was kept (engine/course.ts plannedCourse), \`name\` its name, \`pace\` the blue
 // blip's time in milliseconds as it's raced, and \`k\` its rounds in course order, finale last: a letter and a tier
 // each (g Slam Doors, b Wall Rush, s Sweeper Spin, h Bonk Alley, f Melon Hill, w Tippy Planks, x Crumble Tiles,
-// l Pad Hop, r Barrel Roll, n Gust Gaps; finales C Star Peak, S Tide Tower). Don't edit it by hand, and don't
-// change the engine in a way that changes the gauntlets of days people have played.
+// l Pad Hop, r Barrel Roll, n Gust Gaps; finales C Star Peak, S Tide Tower). A day is laid by the generation its
+// number gives it (engine/course.ts genOfDay: gen 1 before GEN2_FROM, gen 2 from it), so new rules come in behind
+// a later generation. Don't edit it by hand, and don't change the engine in a way that changes the gauntlets of
+// days people have played.
 
 export type PlannedGauntlet = { a: number; name: string; pace: number; k: string }
 
@@ -179,8 +191,8 @@ ${lines.join('\n')}
 // from, the way it took there (its index among the ways on from that spot, engine/bots.ts segmentsFrom, base 36),
 // and \`:wait\` if it stood there first (base 36, in 30ths of a second). "0,1,0:c,2" is way 0, way 1, a wait of 12/30 s
 // and then way 0, then way 2. The game replays it (runs.ts paceOf, engine/bots.ts replayBlue), so no search runs in
-// the browser; it means something only on the gauntlet it was found on (dailyPlan.ts's row for the day). Only the
-// game's chunk imports it.
+// the browser; it means something only on the gauntlet it was found on (dailyPlan.ts's row for the day, laid by the
+// day's generation, engine/course.ts genOfDay). Only the game's chunk imports it.
 
 export const BLUE_ROUTES: readonly string[] = [
 ${days.map((d) => `  '${d.route}',`).join('\n')}
@@ -232,25 +244,14 @@ ${paces.join('\n')}
     console.log(`rounds: ${[...count].sort((a, b) => b[1] - a[1]).map(([l, c]) => `${l} ${c}`).join(', ')}`)
   }
 
-  const [cmd = 'plan', arg, arg2] = process.argv.slice(2)
-  if (cmd === 'plan' || cmd === 'replan') {
-    const want = Number((cmd === 'replan' ? arg2 : arg) ?? 180)
-    // replan keeps the days before #n as they were played and lays the rest again.
-    const read = readPlan()
-    const kept = cmd === 'replan' ? read.slice(0, Math.max(0, Number(arg) - 1)) : read
-    const t0 = Date.now()
-    // The kept days' routes (any missing are found again).
-    const routes = readRoutes()
-    const lost = kept.map((d, i) => ({ kind: 'pace', n: i + 1, a: d.a, k: d.k, name: d.name })).filter((j) => !routes[j.n - 1])
-    for (const r of await runAll(lost)) {
-      if (r.pace !== kept[r.n - 1].pace) console.log(`#${r.n}: its blue bean runs ${r.pace} ms now, not the planned ${kept[r.n - 1].pace} (repace?)`)
-      routes[r.n - 1] = r.route
-    }
-    const days = kept.map((d, i) => ({ ...d, route: routes[i] }))
-    // A day's rounds are picked over the days before it, so the days are settled in order, the next few checked
-    // ahead at once on the rounds picked so far. A day none of whose tries passes gets other rounds, and the days
-    // ahead of it are picked (and checked) again. Rounds that never had the blue in a fair time are given to no
-    // later day either (at the same tiers, in any order).
+  /**
+   * Lays days after the ones in `days` (which it adds to) until there are `want`, each picked and laid by generation
+   * genFor(n). A day's rounds are picked over the days before it, so the days are settled in order, the next few
+   * checked ahead at once on the rounds picked so far. A day none of whose tries passes gets other rounds, and the
+   * days ahead of it are picked (and checked) again. Rounds that never had the blue in a fair time are given to no
+   * later day either (at the same tiers, in any order). Returns what each new day's checks found.
+   */
+  async function layDays(days, want, genFor, t0) {
     const avoid = new Map()
     const unpaced = []
     const ahead = []
@@ -261,11 +262,11 @@ ${paces.join('\n')}
       const n = days.length + 1
       while (ahead.length < Math.min(jobs * 2, want - days.length)) {
         const m = n + ahead.length
-        const k = plan.pickRounds(m, [...days.map((d) => d.k), ...ahead], { ...PICK, avoid: [...(avoid.get(m) ?? []), ...unpaced] })
+        const k = plan.pickRounds(m, [...days.map((d) => d.k), ...ahead], { ...PICK, avoid: [...(avoid.get(m) ?? []), ...unpaced], gen: genFor(m) })
         ahead.push(k)
-        p.add({ kind: 'day', n: m, k })
+        p.add({ kind: 'day', n: m, k, gen: genFor(m) })
       }
-      const r = await p.get(keyOf({ kind: 'day', n, k: ahead[0] }))
+      const r = await p.get(keyOf({ kind: 'day', n, k: ahead[0], gen: genFor(n) }))
       if (!r.ok) {
         console.log(`#${n}: no try of ${r.k} passed (${r.why}); other rounds`)
         avoid.set(n, [...(avoid.get(n) ?? []), r.k])
@@ -280,6 +281,26 @@ ${paces.join('\n')}
       if (fresh.length % 20 === 0) console.log(`#${n} ${name} (${r.k}, try ${r.a}) ${(r.pace / 1000).toFixed(2)} s · ${((Date.now() - t0) / 1000).toFixed(0)} s so far`)
     }
     p.close()
+    return fresh
+  }
+
+  const [cmd = 'plan', arg, arg2, arg3] = process.argv.slice(2)
+  if (cmd === 'plan' || cmd === 'replan') {
+    const want = Number((cmd === 'replan' ? arg2 : arg) ?? 180)
+    // replan keeps the days before #n as they were played and lays the rest again.
+    const read = readPlan()
+    const kept = cmd === 'replan' ? read.slice(0, Math.max(0, Number(arg) - 1)) : read
+    const t0 = Date.now()
+    // The kept days' routes (any missing are found again).
+    const routes = readRoutes()
+    const lost = kept.map((d, i) => ({ kind: 'pace', n: i + 1, a: d.a, k: d.k, name: d.name, gen: course.genOfDay(i + 1) })).filter((j) => !routes[j.n - 1])
+    for (const r of await runAll(lost)) {
+      if (r.pace !== kept[r.n - 1].pace) console.log(`#${r.n}: its blue bean runs ${r.pace} ms now, not the planned ${kept[r.n - 1].pace} (repace?)`)
+      routes[r.n - 1] = r.route
+    }
+    const days = kept.map((d, i) => ({ ...d, route: routes[i] }))
+    // Each new day by its own generation, as the game will lay it.
+    const fresh = await layDays(days, want, course.genOfDay, t0)
     writePlan(days)
     const tries = fresh.filter((d) => d.a > 0).length
     console.log(`${days.length} days planned (${fresh.length} new, ${tries} of them on a second try or later) in ${((Date.now() - t0) / 1000).toFixed(0)} s`)
@@ -290,7 +311,7 @@ ${paces.join('\n')}
     // Every planned day keeps its rounds, its try and its name; only its blue bean is run again (as after a change
     // to the blue's hands, engine/bots.ts BLUE_HANDS or BLUE_PACE), and its route and time kept.
     const days = readPlan()
-    const again = await runAll(days.map((d, i) => ({ kind: 'pace', n: i + 1, a: d.a, k: d.k, name: d.name })))
+    const again = await runAll(days.map((d, i) => ({ kind: 'pace', n: i + 1, a: d.a, k: d.k, name: d.name, gen: course.genOfDay(i + 1) })))
     const out = days.map((d, i) => ({ ...d, pace: again[i].pace, route: again[i].route }))
     for (const r of again) if (!r.ok) console.log(`#${r.n}: the blue bean no longer runs it untouched (replan from here?)`)
     writePlan(out)
@@ -302,12 +323,15 @@ ${paces.join('\n')}
     const n = Number(arg)
     const day = readPlan()[n - 1]
     if (!day) throw new Error(`#${n} isn't planned`)
-    const c = course.plannedCourse(n, day.a, day.k, day.name)
-    const route = readRoutes()[n - 1]
+    // `show <n> <gen>` lays the day's rounds by another generation's rules, to look at (its kept route is the day's own).
+    const own = course.genOfDay(n)
+    const gen = arg2 ? Number(arg2) : own
+    const c = course.plannedCourse(n, day.a, day.k, day.name, gen)
+    const route = gen === own ? readRoutes()[n - 1] : undefined
     const replay = route ? bots.replayBlue(c, route) : null
     const v = plan.validate(c, { from: 0, to: Infinity })
     const raced = v.pace / 1000
-    console.log(`#${n} ${course.dayOfN(n)} ${day.name} (${c.theme.name}): ${day.k}, try ${day.a}, ${c.length.toFixed(0)} m`)
+    console.log(`#${n} ${course.dayOfN(n)} ${day.name} (${c.theme.name}): ${day.k}, try ${day.a}, ${c.length.toFixed(0)} m, gen ${c.gen}${gen === own ? '' : ` (a trial: the plan lays it at gen ${own})`}`)
     console.log(`  rounds: ${c.rounds.map((r) => `${r.name} T${r.tier}`).join(' · ')}`)
     console.log(`  blue bean ${v.blue.finished ? `${raced.toFixed(3)} s` : 'FOUND NO WAY'}${v.blue.touched ? ', TOUCHED' : ''} (planned ${(day.pace / 1000).toFixed(3)} s), splits ${v.blue.splits.map((s) => s.toFixed(1)).join(' ')}`)
     console.log(`  its route (${route ? route.length : 0} chars) replays ${replay ? `in ${replay.time.toFixed(3)} s${replay.finished ? '' : ', NOT TO THE STAR'}` : '— no route kept'}`)
@@ -315,7 +339,26 @@ ${paces.join('\n')}
     if (v.phone) console.log(`  phone runs: median ${v.phone.median.toFixed(1)} s, slowest ${v.phone.worst.toFixed(1)} s (${(v.phone.worst / raced).toFixed(2)} × the blue); knocks ${v.phone.hits}, splats ${v.phone.splats}, bonks ${v.phone.bonks} at the median`)
     const fair = raced >= plan.PACE_FROM && raced <= plan.PACE_TO
     console.log(`  ${!fair ? `the blue's raced time is outside ${plan.PACE_FROM}–${plan.PACE_TO} s` : v.ok ? 'passes every check' : v.why}`)
+  } else if (cmd === 'trial') {
+    // Test gauntlets: the days from #n picked and checked as a replan from #n would, but by generation `gen` whatever
+    // their own is, and nothing written. The days before #n (as planned) are the variety rules' history.
+    const read = readPlan()
+    const from = Math.min(Math.max(1, Number(arg) || 1), read.length + 1)
+    const count = Math.max(1, Number(arg2 ?? 14))
+    const gen = Number(arg3 ?? course.LATEST_GEN)
+    const t0 = Date.now()
+    const days = read.slice(0, from - 1).map((d) => ({ ...d, route: '' }))
+    const fresh = await layDays(days, from - 1 + count, () => gen, t0)
+    for (const r of fresh) {
+      const raced = r.pace / 1000
+      console.log(
+        `#${r.n} ${course.dayOfN(r.n)} ${r.k} try ${r.a}: blue ${raced.toFixed(2)} s, fast ${(r.fast / raced).toFixed(3)} × it, phone median ${(r.phone.median / raced).toFixed(2)} × (slowest ${(r.phone.worst / raced).toFixed(2)}), knocks ${r.phone.hits}, splats ${r.phone.splats}`,
+      )
+    }
+    console.log(`${fresh.length} test gauntlets from #${from} at gen ${gen} in ${((Date.now() - t0) / 1000).toFixed(0)} s (${fresh.filter((d) => d.a > 0).length} on a second try or later)`)
+    summary(fresh)
+    console.log('a trial: nothing was written')
   } else {
-    console.log('node scripts/wobblerun-daily.mjs plan [days] | replan <n> [days] | repace | show <n>')
+    console.log('node scripts/wobblerun-daily.mjs plan [days] | replan <n> [days] | repace | show <n> [gen] | trial <n> [days] [gen]')
   }
 }

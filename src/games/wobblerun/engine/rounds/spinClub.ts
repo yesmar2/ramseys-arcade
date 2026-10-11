@@ -103,9 +103,9 @@ function barTele(w: number, ph: number, entry: number): TeleFn {
 
 /**
  * A stage's rim fence: pieces round it, leaving the walkways' openings and any other arcs `open` gives (as
- * [from, to] in ψ) unfenced.
+ * [from, to] in ψ) unfenced, standing on the stage's top at `y` (0 but on gen 2's raised stages).
  */
-function fence(k: Kit, s: Stage, open: readonly (readonly [number, number])[]): void {
+function fence(k: Kit, s: Stage, open: readonly (readonly [number, number])[], y = 0): void {
   const rf = s.r + FENCE_T / 2
   const half = Math.asin(OPENING / 2 / rf)
   const gaps: (readonly [number, number])[] = [[s.psiIn - half, s.psiIn + half], [s.psiOut - half, s.psiOut + half], ...open]
@@ -136,13 +136,14 @@ function fence(k: Kit, s: Stage, open: readonly (readonly [number, number])[]): 
     for (let p = 0; p < pieces; p++) {
       const psi = a + d * (p + 0.5)
       const rc = rf * Math.cos(d / 2)
-      k.box({ x: px(s, rc, psi), z: pz(s, rc, psi), hx: rf * Math.sin(d / 2) + 0.04, hz: FENCE_T / 2, top: FENCE_H, hy: (FENCE_H + 0.6) / 2, yaw: -psi, look: 'fence', noGround: true })
+      k.box({ x: px(s, rc, psi), z: pz(s, rc, psi), hx: rf * Math.sin(d / 2) + 0.04, hz: FENCE_T / 2, top: y + FENCE_H, hy: (FENCE_H + 0.6) / 2, yaw: -psi, look: 'fence', noGround: true })
     }
     i += n
   }
 }
 
 function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
+  if ((slot.gen ?? 1) >= 2) return build2(slot, rng, tier)
   const k = kit(slot, tier)
   k.camera('wide')
   const kinds: Kind[] = tier === 1 ? ['sweep'] : tier === 2 ? rng.shuffle<Kind>(['sweep', 'turn']) : rng.shuffle<Kind>(['sweep', 'sweep', 'turn'])
@@ -347,6 +348,267 @@ function build(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
     }
   })
   return k.done({ x: xs[kinds.length]!, y: 0, z: exitZ })
+}
+
+/* ------------------------------------------------------------------ gen 2 --- */
+
+/**
+ * Gen 2 (README "Generations"): the stages stand at different heights (the way on climbs; T3's last stage is a drop
+ * back down; the last walkway runs down to the exit). Walkways ramp from stage to stage, but a sweeper is reached by
+ * a hop: its walkway stops short of the rim, level, and you jump the gap up (or, T3's last, down) onto the turning
+ * stage, so the bars sweeping its rim have to be timed: one that catches you mid-hop knocks you into the soda. T1's
+ * hop is a short one onto a fenced stage with its one low bar. From T2 the sweepers are smaller (SWEEP_R2) and
+ * quicker, nothing is fenced but the half of a turntable turning against the way out, and a sweeper's low and high
+ * bars come round together (BAR_PAIR apart: a hop, then a duck straight after, or the other way round) with a wide
+ * gap behind them: wait for the pair to go by and cross in the gap. A bar knock off an unfenced stage is a fall.
+ * Gen 1 above is untouched.
+ */
+/** The angle between a sweeper's low and high bars from T2 (gen 1: a quarter turn). */
+const BAR_PAIR = Math.PI / 4
+/** Each stage this much higher than the one before (T3's last this much lower); the exit walkway no steeper than EXIT_GRADE. */
+const STAGE_RISE_LO = 0.6
+const STAGE_RISE_HI = 0.9
+const EXIT_GRADE = 0.3
+/** A sweeper's hop: the gap from its walkway's end to its rim (T1's shorter), and how much higher the stage stands. */
+const HOP_GAP_T1_LO = 0.9
+const HOP_GAP_T1_HI = 1.3
+const HOP_GAP_LO = 1.2
+const HOP_GAP_HI = 1.8
+const HOP_RISE_LO = 0.5
+const HOP_RISE_HI = 0.8
+/**
+ * The hop lands about HOP_DEEP inside the rim (its first route spot), taking off HOP_INSET short of the walkway's
+ * end (a spot, not "the edge": a bean that's already past it, thrown by the launch pad or knocked, just hops on).
+ */
+const HOP_DEEP = 2.2
+const HOP_INSET = 0.4
+/** From T2 a sweeper stage is this big (its bars this much shorter), so a knock near its edge is a fall. */
+const SWEEP_R2 = 6.0
+
+function build2(slot: RoundSlot, rng: Rng, tier: Tier): RoundOut {
+  const k = kit(slot, tier)
+  k.camera('wide')
+  const kinds: Kind[] = tier === 1 ? ['sweep'] : tier === 2 ? rng.shuffle<Kind>(['sweep', 'turn']) : rng.shuffle<Kind>(['sweep', 'sweep', 'turn'])
+  const n = kinds.length
+  const w0 = byTier(tier, [0.95, 1.3, 1.33]) * (0.94 + (0.12 * (4.4 - slot.period)) / 1.5)
+  const fenced = tier === 1
+  const sweepR = tier === 1 ? SWEEP_R : SWEEP_R2
+  // The sweeper's bars reach its rim, and its route spots keep their distances from it.
+  const barLen = sweepR - (SWEEP_R - BAR_LEN)
+  const inRho = sweepR - (SWEEP_R - IN_RHO)
+  const rimRho = sweepR - (SWEEP_R - RIM_RHO)
+
+  // Walkway centres across, as gen 1's.
+  const xs = [rng.between(-1, 1)]
+  for (let i = 0; i < n; i++) {
+    const prev = xs[i]!
+    let sign = Math.abs(prev) > 1 ? -Math.sign(prev) : rng.sign()
+    let next = prev + sign * rng.between(1.5, 3)
+    if (Math.abs(next) > 2.5) {
+      sign = -sign
+      next = prev + sign * rng.between(1.5, 3)
+    }
+    xs.push(Math.max(-2.5, Math.min(2.5, next)))
+  }
+  // The stages' heights: each higher than the last (a hop's rise, or a ramp's), but T3's last, a drop back down.
+  // Every sweeper is reached by a hop (T1's a short one, onto a fenced stage).
+  const hop = (i: number) => i < n && kinds[i] === 'sweep'
+  const hs: number[] = []
+  const gaps: number[] = []
+  for (let i = 0; i < n; i++) {
+    const prev = i ? hs[i - 1]! : 0
+    const down = tier === 3 && i === n - 1
+    const d = hop(i) ? rng.between(HOP_RISE_LO, HOP_RISE_HI) : rng.between(STAGE_RISE_LO, STAGE_RISE_HI)
+    hs.push(down ? Math.max(0.3, prev - d) : prev + d)
+    gaps.push(!hop(i) ? 0 : tier === 1 ? rng.between(HOP_GAP_T1_LO, HOP_GAP_T1_HI) : rng.between(HOP_GAP_LO, HOP_GAP_HI))
+  }
+  // Walkway i runs from the height before it (the pad's, 0, or stage i − 1's) to stage i's (or the exit's, 0), or
+  // stays level to a hop's gap; the exit walkway is long enough not to be too steep.
+  const yA = (i: number) => (i === 0 ? 0 : hs[i - 1]!)
+  const yB = (i: number) => (i === n ? 0 : hs[i]!)
+  const yE = (i: number) => (hop(i) ? yA(i) : yB(i))
+  const solidLen = (i: number) => (i === n ? Math.max(WALK_LEN, yA(i) / EXIT_GRADE) : WALK_LEN)
+  const walkLen = (i: number) => solidLen(i) + (i < n ? gaps[i]! : 0)
+
+  const stages: Stage[] = []
+  const walkZ: number[] = [0]
+  let lastDir = 0
+  for (let i = 0; i < n; i++) {
+    const kind = kinds[i]!
+    const r = kind === 'sweep' ? sweepR : TURN_R
+    const cx = (xs[i]! + xs[i + 1]!) / 2 + rng.between(-0.4, 0.4)
+    const e = xs[i]! - cx
+    const f = xs[i + 1]! - cx
+    const cz = walkZ[i]! + walkLen(i) + Math.sqrt(r * r - e * e)
+    const dir = lastDir ? -lastDir : rng.sign()
+    lastDir = dir
+    const w = kind === 'sweep' ? dir * w0 : dir * Math.min(rng.between(0.4, 0.45), RIM_MOST / r)
+    stages.push({ kind, r, cx, cz, psiIn: Math.asin(e / r), psiOut: Math.PI - Math.asin(f / r), w })
+    walkZ.push(cz + Math.sqrt(r * r - f * f))
+  }
+  /** The walkway's height at z (on its ramp). */
+  const walkY = (i: number, z: number) => {
+    const u = Math.max(0, Math.min(1, (z - walkZ[i]!) / solidLen(i)))
+    return yA(i) + (yE(i) - yA(i)) * u
+  }
+  const cover = (r: number, off: number) => Math.sqrt(r * r - off * off) - Math.sqrt(r * r - (Math.abs(off) + WALK_HW) ** 2) + 0.15
+  for (let i = 0; i <= n; i++) {
+    const before = stages[i - 1]
+    const after = stages[i]
+    const za = walkZ[i]!
+    const zb = walkZ[i]! + solidLen(i)
+    const z0 = za - (before ? cover(before.r, xs[i]! - before.cx) : 0)
+    const z1 = zb + (after && !hop(i) ? cover(after.r, xs[i]! - after.cx) : 0)
+    // Flat under each stage's rim, a ramp between the rims (or level to a hop's gap).
+    if (za - z0 > 0.01) k.box({ x: xs[i]!, z: (z0 + za) / 2, hx: WALK_HW, hz: (za - z0) / 2, top: yA(i), hy: 0.6 + yA(i) / 2 })
+    k.ramp(za, zb, yA(i), yE(i) - yA(i), { x: xs[i]!, hx: WALK_HW, hy: 0.6 + Math.min(yA(i), yE(i)) / 2 })
+    if (z1 - zb > 0.01) k.box({ x: xs[i]!, z: (zb + z1) / 2, hx: WALK_HW, hz: (z1 - zb) / 2, top: yB(i), hy: 0.6 + yB(i) / 2 })
+    // T1: a walkway at a sweeper is fenced both sides, from rim fence to rim fence (or to a hop's gap).
+    if (fenced && (before?.kind === 'sweep' || after?.kind === 'sweep')) {
+      const ring = (s: Stage, x: number) => Math.sqrt(Math.max(0, (s.r + FENCE_T / 2) ** 2 - (x - s.cx) ** 2))
+      for (const side of [-1, 1] as const) {
+        const x = xs[i]! + side * (WALK_HW + FENCE_T / 2)
+        const fa = before ? before.cz + ring(before, x) : z0
+        const fb = after && !hop(i) ? after.cz - ring(after, x) : z1
+        const post = (p: number, q: number, y: number) => {
+          if (q - p > 0.05) k.box({ x, z: (p + q) / 2, hx: FENCE_T / 2, hz: (q - p) / 2, top: y + FENCE_H, hy: (FENCE_H + 0.6) / 2, look: 'fence', noGround: true })
+        }
+        post(fa, za, yA(i))
+        k.walls(za, zb, { x: xs[i]!, hx: WALK_HW, thick: FENCE_T, h: FENCE_H, y: yA(i), rise: yE(i) - yA(i), sides: [side], look: 'fence' })
+        post(zb, fb, yB(i))
+      }
+    }
+  }
+  const exitZ = walkZ[n]! + walkLen(n)
+
+  // The route's walkway spots (safe: past the bars' and bumpers' reach), then each stage's way across.
+  k.node('in', 0, -1.5)
+  const walkSpot = walkZ.map((z, i) => z + (i === 0 ? 2.2 : solidLen(i) / 2))
+  const walk = xs.map((x, i) => k.node(`w${i}`, x, walkSpot[i]!, { y: walkY(i, walkSpot[i]!) }))
+  k.node('out', xs[n]!, exitZ + 1.5)
+  k.edge('in', walk[0]!)
+  k.edge(walk[n]!, 'out')
+
+  stages.forEach((s, i) => {
+    const from = walk[i]!
+    const to = walk[i + 1]!
+    const y = hs[i]!
+    if (s.kind === 'sweep') {
+      k.cyl({ x: s.cx, z: s.cz, r: s.r, top: y, hy: 0.6 + y / 2, look: 'disc' })
+      k.hazard({ shape: 'post', x: s.cx, y, z: s.cz, r: HUB_R, h: HUB_H, hit: bonk(6), look: 'hub' })
+      const ph = rng.between(0, TAU)
+      const entry = Math.PI / 2 - s.psiIn
+      k.hazard({ shape: 'bar', x: s.cx, y: y + LOW_Y, z: s.cz, r: BAR_R, len: barLen, hit: knock(5.5, 0.6, 5.5), look: 'bar-low', move: spin(s.w, ph), tele: barTele(s.w, ph, entry) })
+      // From T2 the high bar comes round with the low one, BAR_PAIR ahead of it or behind it.
+      if (tier >= 2) {
+        const ph2 = ph + rng.sign() * BAR_PAIR
+        k.hazard({ shape: 'bar', x: s.cx, y: y + HIGH_Y, z: s.cz, r: BAR_R, len: barLen, hit: knock(5.5, 0.6, 5.5), look: 'bar-high', move: spin(s.w, ph2), tele: barTele(s.w, ph2, entry) })
+      }
+      if (fenced) fence(k, s, [], y)
+
+      const side = s.w > 0 ? -1 : 1
+      // A hop lands further in than a walk on starts; it takes off from a spot just short of the walkway's end.
+      const rhoIn = hop(i) ? s.r - HOP_DEEP : inRho
+      const nin = k.node(`s${i}in`, px(s, rhoIn, s.psiIn), pz(s, rhoIn, s.psiIn), { y, wait: 'no' })
+      const nout = k.node(`s${i}out`, px(s, inRho, s.psiOut), pz(s, inRho, s.psiOut), { y, wait: 'no' })
+      if (hop(i)) k.edge(from, nin, 'jump', { takeoff: k.at(xs[i]!, yA(i), walkZ[i]! + solidLen(i) - HOP_INSET) })
+      else k.edge(from, nin)
+      k.edge(nout, to)
+      const end = side > 0 ? s.psiOut : s.psiOut - TAU
+      let prev = nin
+      for (let q = 1; q < RIM_STEPS; q++) {
+        const psi = s.psiIn + ((end - s.psiIn) * q) / RIM_STEPS
+        const id = k.node(`s${i}r${q}`, px(s, rimRho, psi), pz(s, rimRho, psi), { y, wait: 'no' })
+        k.edge(prev, id)
+        prev = id
+      }
+      k.edge(prev, nout)
+      const hub = k.node(`s${i}h`, s.cx + side * HUB_SIDE, s.cz, { y, wait: 'no' })
+      k.edge(nin, hub)
+      k.edge(hub, nout)
+      for (const move of tier === 1 ? (['jump'] as const) : (['jump', 'dive'] as const)) {
+        k.edge(nin, hub, move, { tier: 'gold' })
+        k.edge(hub, nout, move, { tier: 'gold' })
+      }
+    } else {
+      k.cyl({ x: s.cx, z: s.cz, r: s.r, top: y, hy: 0.6 + y / 2, look: 'turntable', move: spin(s.w), ledge: false })
+      k.hazard({ shape: 'post', x: s.cx, y, z: s.cz, r: TT_HUB_R, h: BUMP_H, hit: bonk(7), look: 'bumper', move: spin(s.w) })
+      const nb = tier === 2 ? rng.int(4, 5) : rng.int(5, 6)
+      const a0 = rng.between(0, TAU)
+      const angles: number[] = []
+      for (let b = 0; b < nb; b++) {
+        const a = a0 + (b * TAU) / nb + rng.between(-0.25, 0.25)
+        const r = rng.between(0.6, 0.9)
+        const rho = rng.between(BUMP_IN + r, 6.0)
+        angles.push(a)
+        k.hazard({ shape: 'post', x: s.cx, y, z: s.cz, r, h: BUMP_H, hit: bonk(7), look: 'bumper', move: orbit(rho, a, s.w) })
+      }
+      // The half turning with the way out has no fence (the quick side, and the risky one).
+      fence(k, s, [s.w > 0 ? [Math.PI + 0.01, TAU - 0.01] : [0.01, Math.PI - 0.01]], y)
+
+      const nin = k.node(`t${i}in`, px(s, TT_IN_RHO, s.psiIn), pz(s, TT_IN_RHO, s.psiIn), { y, wait: 'no' })
+      const nout = k.node(`t${i}out`, px(s, TT_IN_RHO, s.psiOut), pz(s, TT_IN_RHO, s.psiOut), { y, wait: 'no' })
+      k.edge(from, nin)
+      k.edge(nout, to)
+      const hubs: { id: string; x: number; z: number }[] = [{ id: from, x: xs[i]!, z: walkSpot[i]! }]
+      for (const side of [1, -1]) {
+        const hub = k.node(`t${i}h${side > 0 ? 'l' : 'r'}`, s.cx + side * TT_HUB_SIDE, s.cz, { y })
+        hubs.push({ id: hub, x: s.cx + side * TT_HUB_SIDE, z: s.cz })
+        k.edge(nin, hub)
+        k.edge(hub, nout)
+        const wide = k.node(`t${i}s${side > 0 ? 'l' : 'r'}`, s.cx + side * TT_SIDE, s.cz, { y, wait: 'no' })
+        k.edge(nin, wide)
+        k.edge(wide, nout)
+      }
+
+      // The launch pad (gold), when a sweeper follows: it throws you over that sweeper, up onto the walkway after it.
+      if (i === stages.length - 1) return
+      const sorted = angles.map((a) => mod(a, TAU)).sort((p, q) => p - q)
+      let padA = 0
+      let widest = -1
+      sorted.forEach((a, b) => {
+        const next = b + 1 < sorted.length ? sorted[b + 1]! : sorted[0]! + TAU
+        if (next - a > widest) {
+          widest = next - a
+          padA = (a + next) / 2
+        }
+      })
+      const az = walkSpot[i + 2]! - PAD_SHORT
+      const aim = { x: xs[i + 2]!, y: walkY(i + 2, az), z: az }
+      const cosLit = Math.cos(LIT)
+      const w = s.w
+      const lit = (t: number) => -Math.sin(padA + w * t) >= cosLit
+      const pad = k.cyl({
+        x: s.cx,
+        z: s.cz,
+        r: PAD_R,
+        top: y + 0.04,
+        hy: 0.3,
+        yaw: padA,
+        look: 'launch-pad',
+        gold: true,
+        ledge: false,
+        move: orbit(PAD_RHO, padA, w),
+        bounce: { vy: 15, aim, lit },
+      })
+      const target = walk[i + 2]!
+      for (const at of hubs) {
+        const window = (t: number) => {
+          let ta = t + PAD_LAG
+          for (let it = 0; it < 3; it++) {
+            const a = padA + w * ta
+            ta = t + PAD_LAG + Math.hypot(s.cx + PAD_RHO * Math.cos(a) - at.x, s.cz - PAD_RHO * Math.sin(a) - at.z) / PAD_V
+          }
+          for (let u = ta - PAD_EARLY; u <= ta + PAD_RIDE; u += 0.05) if (lit(u)) return true
+          return false
+        }
+        k.edge(at.id, target, 'bounce', { tier: 'gold', via: [k.at(s.cx, y + 0.04, s.cz, pad)], window, maxT: PAD_MAXT })
+      }
+      k.deco({ look: 'gold-flag', x: xs[i]! + 1.4, y: walkY(i, walkZ[i]! + WALK_LEN - 0.6), z: walkZ[i]! + WALK_LEN - 0.6, sy: 1.8 })
+      k.gold('Launch pad', walkZ[i]! + WALK_LEN, walkSpot[i + 2]!, s.cx)
+    }
+  })
+  return k.done({ x: xs[n]!, y: 0, z: exitZ })
 }
 
 export const ROUND: RoundDef = {
