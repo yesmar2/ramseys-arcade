@@ -290,12 +290,12 @@ const SAMPLE_PUNCHES = [
  */
 const PACE_MS = 60_000
 const shipAt = (ms: number) => 1_000_000 - ms
-// Lander's medals go every 8% (raceMedals.ts MEDAL_STEP): bronze 59.99s, silver 55.20s, gold 50.40s, platinum 45.60s.
+// Lander's medals (raceMedals.ts MEDAL_STEP and MEDAL_RUNGS): bronze 52.80s, silver 49.20s, gold 45.60s, platinum 42.00s.
 const LANDER_STEPS = {
-  bronze: { at: shipAt(PACE_MS) + 1, tickets: 5, label: 'beating the blue ship' },
-  silver: { at: shipAt(55_200), tickets: 8, label: 'beating the blue ship by 8%' },
-  gold: { at: shipAt(50_400), tickets: 11, label: 'beating the blue ship by 16%' },
-  platinum: { at: shipAt(45_600), tickets: 15, label: 'beating the blue ship by 24%' },
+  bronze: { at: shipAt(52_800), tickets: 5, label: 'beating the blue ship by 12%' },
+  silver: { at: shipAt(49_200), tickets: 8, label: 'beating the blue ship by 18%' },
+  gold: { at: shipAt(45_600), tickets: 11, label: 'beating the blue ship by 24%' },
+  platinum: { at: shipAt(42_000), tickets: 15, label: 'beating the blue ship by 30%' },
 }
 
 const LANDER_SEASON: SeasonRun = { id: 1, name: 'Space Race', earned: 290, added: 3, level: 2, levels: 30, nextAt: 300, next: null, levelUp: [] }
@@ -474,8 +474,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     landerSample(
       'medal',
       'A racing daily’s run that paid: the medal ladder lights Silver, new, and dashes Gold; the tickets and the season in one row; the place.',
-      55_000,
-      58_000,
+      49_000,
+      52_000,
       {
         tickets: (
           <RunTicketsLine
@@ -502,8 +502,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     landerSample(
       'medal-none',
       'A racing daily’s slower run: the day’s best keeps Silver, one quiet line for the tickets.',
-      57_000,
-      55_000,
+      52_000,
+      49_000,
       {
         tickets: (
           <RunTicketsLine
@@ -530,8 +530,8 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
     landerSample(
       'medal-top',
       'A racing daily’s run to the top medal: Platinum, and nothing past it.',
+      41_000,
       45_000,
-      50_000,
       {
         tickets: (
           <RunTicketsLine
@@ -583,14 +583,14 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
         place: landerPlace('#9', '0.40s behind NOVA for 8th', 'plain'),
       },
     ),
-    landerSample('medal-signin', 'A racing daily’s run, signed out: the ladder, and the tickets a sign-in pays.', 55_000, null, {
+    landerSample('medal-signin', 'A racing daily’s run, signed out: the ladder, and the tickets a sign-in pays.', 49_000, null, {
       tickets: <RunTicketsWaiting />,
       signedOut: true,
     }),
-    landerSample('medal-saving', 'A racing daily’s run while the save answers: the ladder at once, the rows’ room held.', 55_000, 58_000, {
+    landerSample('medal-saving', 'A racing daily’s run while the save answers: the ladder at once, the rows’ room held.', 49_000, 52_000, {
       pending: true,
     }),
-    landerSample('tomorrow', 'The last of today’s dailies: all done, and tomorrow’s cave under it.', 57_000, 55_000, {
+    landerSample('tomorrow', 'The last of today’s dailies: all done, and tomorrow’s cave under it.', 52_000, 49_000, {
       place: landerPlace('#4', '0.31s behind PILOT for 3rd', 'plain'),
       children: (
         <NextDailyView
