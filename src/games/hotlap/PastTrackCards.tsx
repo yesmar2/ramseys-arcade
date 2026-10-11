@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { PastBoardResult } from '../../components/PastBoardResult'
 import { PastCourseStart } from '../../components/PastCourseCards'
 import { useIsAdmin } from '../../lib/admin'
@@ -60,11 +60,14 @@ export function PastTrackStart({
   kind,
   figures,
   board,
+  ghostPick,
 }: {
   course: Course
   kind: PastKind
   figures: PastTrackFigures
   board: TrackBoard | null
+  /** "Who do you race?" (components/GhostPicker.tsx). */
+  ghostPick?: ReactNode
 }) {
   const admin = useIsAdmin()
   const { n, name } = course
@@ -110,6 +113,7 @@ export function PastTrackStart({
           {inArchive(course.day) ? archivedWhy(SLUG) : `Sign in and your laps here go on its ${BOARD_NAMES.allTime} board.`}
         </p>
       ) : null}
+      {ghostPick}
     </PastCourseStart>
   )
 }

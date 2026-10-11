@@ -1,0 +1,268 @@
+/*
+ * Race any ghost: a board row's Race button and its Plus card (RaceGhostButton.tsx), and the start card's
+ * "Who do you race?" picker (GhostPicker.tsx).
+ */
+
+/* A board whose rows can be raced gets a sixth column for the button. */
+.gb-board--five:has(.gb-row__race) .gb-row__link,
+.gb-board--five:has(.gb-row__race) .gb-board__cols {
+  grid-template-columns: 3.2rem 2.2rem minmax(0, 1fr) 7rem 7.5rem 4.6rem;
+}
+
+.gb-board__race {
+  text-align: right;
+}
+
+.gb-row__race {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Open, its card sits over the rows below and their buttons. */
+.gb-row:has(.rg-pop) {
+  position: relative;
+  z-index: 6;
+}
+
+.gb-row__race:has(.rg-pop) {
+  z-index: 6;
+}
+
+.rg-btn {
+  display: inline-grid;
+  place-items: center;
+  min-height: 2.2rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rg-btn--plus {
+  border-color: color-mix(in srgb, #f5b942 45%, transparent);
+  color: color-mix(in srgb, #f5b942 70%, var(--ink));
+}
+
+.rg-btn:hover,
+.rg-btn:focus-visible {
+  background: rgba(var(--ink-rgb), 0.07);
+  outline: none;
+}
+
+.rg-pop {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 17.5rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, #f5b942 55%, transparent);
+  box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.35);
+  text-align: left;
+}
+
+.rg-pop__title {
+  font-size: 1rem;
+}
+
+.rg-pop__words,
+.rg-pop__free {
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: normal;
+}
+
+.rg-pop__go {
+  display: grid;
+  place-items: center;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  background: #f5b942;
+  color: #1a1205;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (max-width: 42rem) {
+  .gb-board--five:has(.gb-row__race) .gb-row__link {
+    grid-template-columns: 2.4rem 1.9rem minmax(0, 1fr) auto auto;
+  }
+
+  .rg-btn {
+    min-height: 2.75rem;
+    padding: 0 0.7rem;
+  }
+}
+
+/* ---------- the start card's picker ---------- */
+
+.gp {
+  position: relative;
+  z-index: 20;
+  /* A row of its own in the start card's tiles. */
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  pointer-events: auto;
+}
+
+.gp-note {
+  font-size: 0.78rem;
+  color: #f5d27a;
+}
+
+.gp-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.75rem;
+  padding: 0 0.6rem 0 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(10, 14, 20, 0.78);
+  color: #eef3f7;
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.gp-now__label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(238, 243, 247, 0.65);
+}
+
+.gp-now__who {
+  white-space: nowrap;
+}
+
+.gp-now__change {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.gp-menu {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 21rem;
+  box-sizing: border-box;
+  padding: 0.9rem;
+  border-radius: 1.1rem;
+  background: #0e151c;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.45);
+  color: #eef3f7;
+  text-align: left;
+}
+
+.gp-menu__title {
+  font-size: 1rem;
+}
+
+.gp-menu__group {
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(238, 243, 247, 0.6);
+}
+
+.gp-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gp-menu__list--scroll {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.gp-menu__wait,
+.gp-menu__free {
+  font-size: 0.8rem;
+  color: rgba(238, 243, 247, 0.6);
+}
+
+.gp-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  padding: 0 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gp-opt--on {
+  border: 2px solid #f2813a;
+  background: rgba(242, 129, 58, 0.12);
+}
+
+.gp-opt--plus {
+  border-style: dashed;
+  border-color: rgba(245, 185, 66, 0.45);
+}
+
+.gp-opt__who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-opt__time {
+  font-size: 0.8rem;
+  color: rgba(238, 243, 247, 0.7);
+}
+
+.gp-opt__plus {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 185, 66, 0.5);
+  color: #f5d27a;
+  font-size: 0.72rem;
+  font-weight: 800;
+}

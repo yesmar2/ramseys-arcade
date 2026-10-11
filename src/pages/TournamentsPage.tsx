@@ -8,6 +8,7 @@ import {
   EventPodium,
   GameBests,
   HowItScores,
+  LobbyClosedCard,
   NextEventCard,
   StandingsEmpty,
   StandingsTable,
@@ -46,6 +47,7 @@ import {
 } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   endsWords,
   eventSpan,
@@ -70,12 +72,14 @@ import {
   getJoinedTournamentIds,
   getTournament,
   getTournamentInvite,
+  hasNoEnd,
   hasPerRoundGames,
   isPlayerInTournament,
   isRosterFull,
   isUnlimitedDuration,
   joinTournament,
   listTournaments,
+  lobbyClosed,
   matchOpponent,
   rememberTournamentInvite,
   seatsLeft,
@@ -372,6 +376,20 @@ function currentRoundName(detail: TournamentDetail): string | null {
 /** The right side of the banner: the clock while it runs, the winner once it's over. */
 function BannerSide({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
   const bracket = eventKind(detail) === 'bracket'
+  if (lobbyClosed(detail)) {
+    const cap = detail.rules.maxPlayers
+    return (
+      <div className="evp-banner__side">
+        <p className="evp-cap">Closed</p>
+        <p className="evp-banner__state">It didn’t fill</p>
+        {cap ? (
+          <p className="evp-banner__side-note">
+            {detail.playerCount} of {cap} seats taken
+          </p>
+        ) : null}
+      </div>
+    )
+  }
   if (detail.status === 'ended') {
     const winner = eventWinner(detail)
     if (!winner) {
@@ -420,6 +438,10 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
               {detail.playerCount} of {cap} seats taken
             </p>
           ) : null}
+          {/* The API closes a lobby a week after it was made, so one empty seat can't hold it open. */}
+          {left && detail.lobbyClosesAt != null ? (
+            <p className="evp-banner__side-note">{endsWords(detail.lobbyClosesAt, true, 'Closes')} unless it fills</p>
+          ) : null}
         </div>
       )
     }
@@ -445,10 +467,17 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
     )
   }
   if (isUnlimitedDuration(detail.rules)) {
+    // Every seat counts, filled or not, so "everyone" alone would read as done once all who joined have played.
+    const cap = detail.rules.maxPlayers
+    const done = (attemptsPerGameMax(detail) ?? 1) > 1 ? 'used their tries' : 'played'
     return (
       <div className="evp-banner__side">
         <p className="evp-cap">Runs</p>
-        <p className="evp-banner__state">Until everyone has played</p>
+        <p className="evp-banner__state">
+          {!cap ? `Until everyone has ${done}` : cap === 2 ? `Until both have ${done}` : `Until all ${cap} have ${done}`}
+        </p>
+        {/* The API stops it a week after it starts, so an empty seat can't hold it open. */}
+        {hasNoEnd(detail) ? null : <p className="evp-banner__side-note">{endsWords(detail.endsAt, true)} at the latest</p>}
       </div>
     )
   }
@@ -643,7 +672,8 @@ function SentInvites({ tournamentId, roster }: { tournamentId: string; roster: n
 function EventRoster({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
   const you = normalizePlayerName(displayName)
   const seated = [...detail.players].sort((a, b) => a.joinedAt - b.joinedAt)
-  const open = seatsLeft(detail) ?? 0
+  // Over (a bracket's lobby closes unfilled a week on), there are no seats left to take.
+  const open = detail.status === 'ended' ? 0 : (seatsLeft(detail) ?? 0)
   const cap = detail.rules.maxPlayers
 
   return (
@@ -700,6 +730,8 @@ function inviteAge(at: number): string {
 function SingleStandings({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
   const ended = detail.status === 'ended'
   const youName = normalizePlayerName(displayName)
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   const rows = useMemo(
     () => scoredStandings(detail).map((entry, index) => ({ ...entry, rank: entry.row.place ?? index + 1 })),
     [detail],
@@ -718,7 +750,7 @@ function SingleStandings({ detail, displayName }: { detail: TournamentDetail; di
         key={`${row.playerId}${pin ? '-pin' : ''}`}
         rank={rank}
         name={name}
-        href={rankHref(name)}
+        href={rankHref(name, period)}
         avatarId={row.avatarId}
         score={eventScoreText(detail.games, score)}
         mine={Boolean(youName) && name === youName}
@@ -1225,7 +1257,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
 
         <div className="evp-split">
           <div className="evp-split__main">
-            {bracket ? (
+            {bracket && lobbyClosed(detail) ? (
+              <LobbyClosedCard detail={detail} />
+            ) : bracket ? (
               <EventBracket detail={detail} displayName={displayName} className="ev-card ev-card--bracket" />
             ) : multi ? (
               rows.length ? (

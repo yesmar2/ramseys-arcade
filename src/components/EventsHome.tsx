@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { rankHref, tournamentCreateHref, tournamentHref, tournamentPlayHref } from '../hooks/useHashRoute'
 import { inkOn } from '../lib/color'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   eventDay,
   eventSpan,
@@ -16,7 +17,9 @@ import type { PlanLimits } from '../lib/plans'
 import {
   eventKind,
   formatEventCountdown,
-  isUnlimitedDuration,
+  hasNoEnd,
+  joinedRosterLabel,
+  lobbyClosed,
   type TournamentDetail,
   type TournamentSummary,
   eventScoreText,
@@ -307,6 +310,8 @@ export function LastWeekCard({
   const avatars = new Map((detail ? standingsTable(detail, '') : []).map((r) => [r.name, r.avatarId]))
   const podium = (t.podium ?? []).slice(0, 3)
   const order = [podium[1], podium[0], podium[2]].filter(Boolean)
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <section className="evp-card evp-last" style={accentStyle(t.games)} aria-labelledby="evp-last-title">
       <div className="evp-last__head">
@@ -327,7 +332,7 @@ export function LastWeekCard({
         <ol className="evp-podium evp-podium--small" aria-label="Podium">
           {order.map((p) => (
             <li key={p!.name} className={`evp-podium__step evp-podium__step--${p!.place}`}>
-              <a className="evp-podium__who" href={rankHref(p!.name)}>
+              <a className="evp-podium__who" href={rankHref(p!.name, period)}>
                 <PlayerAvatar name={p!.name} avatarId={avatars.get(normalizePlayerName(p!.name))} size="md" />
                 <span className="evp-podium__name">{p!.name}</span>
                 {/* A one-game event's score; an all-round one's podium is names and places. */}
@@ -433,12 +438,13 @@ export function OwnEventsCard({
 }
 
 function ownStatus(t: TournamentSummary): string {
+  if (lobbyClosed(t)) return `Didn’t fill: ${joinedRosterLabel(t)} joined`
   if (t.status === 'ended') return t.winner ? `${t.winner} won` : 'Ended'
   if (eventKind(t) === 'bracket' && t.status === 'upcoming') {
     const cap = t.rules.maxPlayers ?? 0
     return cap ? `${t.playerCount} of ${cap} seats taken` : 'Filling'
   }
-  if (isUnlimitedDuration(t.rules)) return `${t.playerCount} in · until everyone finishes`
+  if (hasNoEnd(t)) return `${t.playerCount} in · until everyone finishes`
   return `${t.playerCount} in · ${formatEventCountdown(t.endsAt)}`
 }
 
@@ -540,8 +546,14 @@ export function ResultsList({
                 <span className="evp-result__text">
                   <span className="evp-result__title">{t.title}</span>
                   <span className="evp-result__sub">
-                    {eventSpan(t)} · {t.playerCount} played
-                    {placed ? ` · ${placed}` : ''}
+                    {lobbyClosed(t) ? (
+                      `${eventSpan(t)} · ${joinedRosterLabel(t)} joined · didn’t fill`
+                    ) : (
+                      <>
+                        {eventSpan(t)} · {t.playerCount} played
+                        {placed ? ` · ${placed}` : ''}
+                      </>
+                    )}
                   </span>
                 </span>
                 {mine ? <span className="evp-won">You won</span> : null}

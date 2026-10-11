@@ -95,6 +95,11 @@ export type TournamentSummary = {
    * locks — a filling bracket has no pairings yet, by design.
    */
   openMatches?: { a: string; b: string }[]
+  /**
+   * Bracket only, until the draw: when its lobby closes if its seats aren't all taken, a week after it was
+   * made. Past it the event is over with no draw and no winner (lobbyClosed).
+   */
+  lobbyClosesAt?: number | null
   /** A racing daily's event: the course it's raced on, numbered as the game's boards number them. */
   course?: number | null
   /** Where the viewer stands, when they asked by name. */
@@ -300,6 +305,19 @@ export function eventDurationLabel(
 
 export function isUnlimitedDuration(rules: TournamentRules | undefined): boolean {
   return Boolean(rules?.unlimitedDuration)
+}
+
+/**
+ * No end at all: a bracket, or an until-done event from an API older than its one-week cap (its start was its
+ * end). With the cap, an until-done event counts down like a timed one, which also ends early once all are done.
+ */
+export function hasNoEnd(t: Pick<TournamentSummary, 'rules' | 'startsAt' | 'endsAt'>): boolean {
+  return isUnlimitedDuration(t.rules) && t.endsAt <= t.startsAt
+}
+
+/** A bracket whose seats weren't all taken in the week its lobby was open: over, with no draw and no winner. */
+export function lobbyClosed(t: Pick<TournamentSummary, 'status' | 'lobbyClosesAt'>): boolean {
+  return t.status === 'ended' && t.lobbyClosesAt != null
 }
 
 export function maxPlayersLabel(rules: TournamentRules | undefined): string | null {

@@ -7,8 +7,8 @@ import {
   formatEventCountdown,
   getJoinedTournamentIds,
   getTournamentInvite,
+  hasNoEnd,
   howItWins,
-  isUnlimitedDuration,
   type TournamentSummary,
 } from '../lib/tournaments'
 import { ChevronRightIcon, TimerIcon } from './chromeIcons'
@@ -17,7 +17,7 @@ import { EventCountdown } from './EventCountdown'
 
 /** When an event ends, as a day and a time: the minute before midnight, not the midnight after. */
 function endsLine(t: TournamentSummary): string {
-  if (isUnlimitedDuration(t.rules)) return 'No end set'
+  if (hasNoEnd(t)) return 'No end set'
   try {
     const at = new Date(t.endsAt - 60_000)
     const day = at.toLocaleDateString(undefined, { weekday: 'long' })
@@ -85,7 +85,7 @@ function EventBlock({ t, joined }: { t: TournamentSummary; joined: boolean }) {
             {upcoming ? (
               `Starts in ${formatEventCountdown(t.startsAt).replace(/ left$/, '')}`
             ) : (
-              <EventCountdown endsAt={t.endsAt} unlimitedDuration={isUnlimitedDuration(t.rules)} />
+              <EventCountdown endsAt={t.endsAt} unlimitedDuration={hasNoEnd(t)} />
             )}
           </b>
           {!upcoming ? <small>{endsLine(t)}</small> : null}

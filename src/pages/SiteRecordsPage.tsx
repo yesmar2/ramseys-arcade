@@ -10,6 +10,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import {
   HOUSE_LEDE,
@@ -101,6 +102,8 @@ function HouseRow({ board, you, standing }: { board: SiteRecordBoard; you: strin
 function TopTen({ board, you, standing }: { board: SiteRecordBoard; you: string; standing: Standing }) {
   const listed = board.entries.some((e) => normalizePlayerName(e.name) === you)
   const last = board.entries[board.entries.length - 1]
+  // A holder's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <section id={`house-${board.id}`} className="sb-card hbk-top" aria-labelledby={`hbk-top-${board.id}`}>
       <h3 id={`hbk-top-${board.id}`} className="hbk-top__title">
@@ -115,7 +118,7 @@ function TopTen({ board, you, standing }: { board: SiteRecordBoard; you: string;
             const medal = MEDALS[i]
             return (
               <li key={name} className={`hbk-row${medal ? ` hbk-row--${medal}` : ''}${mine ? ' hbk-row--you' : ''}`}>
-                <a className="hbk-row__link" href={rankHref(name)}>
+                <a className="hbk-row__link" href={rankHref(name, period)}>
                   <span className="hbk-row__ord">{ordinal(i + 1).toUpperCase()}</span>
                   <PlayerMark name={name} avatarId={entry.avatarId} className="hbk-row__mark" />
                   <span className="hbk-row__who">

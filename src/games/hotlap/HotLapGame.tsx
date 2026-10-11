@@ -31,7 +31,9 @@ import { sfx } from '../../lib/sound'
 import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { CarSound } from './audio'
-import { fetchBoardGhost, fetchNextGhost, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
+import { GhostPicker } from '../../components/GhostPicker'
+import { useRaceTag } from '../../lib/raceGhost'
+import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
 import { ordinal } from '../../lib/scoreboard'
 import { paceNotes, type PaceCall } from './calls'
 import { dayWords, msUntilNextTrack, trackDay, trackNumber, trackState, untilWords } from './daily'
@@ -389,6 +391,8 @@ function HotLapDay({
   const topRef = useRef<BoardGhost | null>(null)
   // On today's track, the player one place above you, once you've a lap on the board (boardGhost.ts fetchNextGhost).
   const nextRef = useRef<NextGhost | null>(null)
+  // A ghost picked to race: on a board row's Race, or the start card's "Who do you race?" (lib/raceGhost.ts).
+  const pickedRef = useRef<NextGhost | null>(null)
   // The player's own skin, if they chose one (lib/skins.ts): looks only.
   const skinRef = useRef<string | null>(null)
   useSkinInto(SLUG, skinRef)
@@ -408,6 +412,14 @@ function HotLapDay({
   const chase = (): Chase => {
     const mine = bestLapOf(day, test, currentAccountId())
     const next = nextRef.current
+    // A ghost picked to race (race any ghost, lib/raceGhost.ts): theirs, whoever is faster.
+    const picked = pickedRef.current
+    if (picked) {
+      return {
+        lap: picked.lap ?? standIn(pace, picked.time),
+        chasing: picked.name === nameRef.current ? { who: 'you', skin: picked.skin } : { who: 'rival', name: picked.name, skin: picked.skin },
+      }
+    }
     if (!mine && !next && topRef.current?.name !== nameRef.current) return { lap: pace, chasing: { who: 'pace' } }
     if (next && !test && !past && (!mine || next.time < mine.time - 0.0005)) {
       return { lap: next.lap ?? standIn(pace, next.time), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
@@ -571,14 +583,12 @@ function HotLapDay({
    * A lap saved on the board sends where the car went: the API keeps it if it's the tag's lap on the board and
    * the fastest there, and then it's everyone's ghost, yours included from your next lap. On today's track
    * every lap goes, as the API keeps each player's best for whoever is one place below them to race; then the
-   * player above you is asked for again, as you may have passed them. On a past track only one that could be
-   * its fastest goes: the #1 is faster, or their line is known and at least as fast, and it stays home.
+   * player above you is asked for again, as you may have passed them. On a past track too: any player's best
+   * there can be raced (race any ghost, lib/raceGhost.ts).
    */
   const sendGhost = (lap: { time: number; score: number; splits: number[]; path: GhostPath }, name: string) => {
     if (!onBoard || !signedIn || !name) return
-    const top = topRef.current
     const today = !test && !past
-    if (!today && top && (top.time < lap.time - 0.0005 || (top.lap && top.lap.time <= lap.time + 0.0005))) return
     void sendBoardGhost(course.n, name, { score: lap.score, splits: lap.splits, path: lap.path }).then(async (kept) => {
       if (kept) {
         const fresh = await fetchBoardGhost(course.n, true)
@@ -609,6 +619,30 @@ function HotLapDay({
   }
   const askNextRef = useRef(askNext)
   askNextRef.current = askNext
+
+  /** The tag picked to race here, and why it isn't the ghost when it can't be: Plus's, or no lap here. */
+  const raceTag = useRaceTag(SLUG, course.n)
+  const [raceNote, setRaceNote] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    if (!raceTag || !onBoard) {
+      setRaceNote(null)
+      if (pickedRef.current) {
+        pickedRef.current = null
+        rechaseRef.current()
+      }
+      return
+    }
+    void fetchPlayerGhost(course.n, raceTag).then((got) => {
+      if (!live) return
+      pickedRef.current = got === 'plus' ? null : got
+      setRaceNote(got === 'plus' ? `Racing ${raceTag}’s ghost is with Plus` : got ? null : `${raceTag} has no lap here`)
+      rechaseRef.current()
+    })
+    return () => {
+      live = false
+    }
+  }, [raceTag, course.n, onBoard])
   useEffect(() => {
     askNextRef.current()
   }, [signedIn, playerName, course.n, test, past])
@@ -1024,6 +1058,9 @@ function HotLapDay({
   // Whose the lap is, for its card: an account's lap waits for that account; one driven signed out goes to whoever signs in.
   const lapOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
   const bestMs = test ? (testBest < Infinity ? Math.round(testBest * 1000) : null) : best > 0 ? hotlapMsFromBoardScore(best) : null
+  const ghostPick = onBoard ? (
+    <GhostPicker game={SLUG} course={course.n} racing={ghostTag(g.chasing)} picked={raceTag} note={raceNote} />
+  ) : null
   const extra = <TrackTiles course={course} ghost={g.ghost.lap.time} chasing={g.chasing} test={test} past={past} bestMs={bestMs} />
   // A past track, signed in: a lap goes on its board. Signed out it's practice, and so is a lap driven
   // signed out, for good: signing in on its card is for the laps after it.
@@ -1181,11 +1218,11 @@ function HotLapDay({
               />
               {showroom && !saveOpen && !paused && !noGl ? (
                 pastTrack ? (
-                  <PastTrackStart course={course} kind={pastKind} figures={pastTrack.figures} board={board} />
+                  <PastTrackStart course={course} kind={pastKind} figures={pastTrack.figures} board={board} ghostPick={ghostPick} />
                 ) : test ? (
                   <TestStartCard course={course} ghost={g.ghost.lap.time} />
                 ) : (
-                  <GameStartCard title="Hot Lap" slug={SLUG} extraMeta={extra} />
+                  <GameStartCard title="Hot Lap" slug={SLUG} extraMeta={<>{extra}{ghostPick}</>} />
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && lap ? (

@@ -9,7 +9,9 @@ import { AUTH_EVENT } from '../lib/auth'
 import { dayBefore, OPEN_DAYS } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
 import { homeHref, seasonHref, termsHref } from '../hooks/useHashRoute'
-import { normalizePlayerName } from '../lib/leaderboard'
+import { listFriends } from '../lib/friends'
+import { api, normalizePlayerName } from '../lib/leaderboard'
+import { RACE_GHOST_GAMES } from '../lib/raceGhost'
 import { FREE_LIMITS, PLUS_LIMITS } from '../lib/plans'
 import {
   confirmPlusMembership,
@@ -33,10 +35,13 @@ import '../styles/plus.css'
  * Plus, the Dailies + Seasons membership (Ramsey's pick, 2026-10-04): every past day of every daily, every
  * season's Pass+, a members' look each month, new games a week before launch, and room to host.
  *
- * Laid out as A of the "Plus page redesign" canvas (2026-10-07): the price beside a member card with your
- * own tag on it, then what Plus adds as six tiles that each show their thing, then what stays free, the
- * questions people ask, and the button again. Everything about playing stays free, and the page says so
- * before it asks for anything. Nor are places sold: archive days and early games are practice, on no board.
+ * Laid out as A of the "Plus page redesign" canvas (2026-10-07), reshuffled as A of the "Race any ghost + Plus
+ * page" canvas with B's lines for you (Ramsey, 2026-10-11: "go with your recommendations"): Pass+ leads, the
+ * price beside a member card with your own tag on it, then the season's Pass+ headliners big. Signed in, what
+ * Plus would give you today, worked out from your level, friends and medals. Then the rest of Plus as smaller
+ * tiles, what stays free, the questions people ask, and the button again. Everything about playing stays free,
+ * and the page says so before it asks for anything. Nor are places sold: archive days, early games and ghosts
+ * are practice, on no board.
  */
 
 function day(ms: number): string {
@@ -92,13 +97,16 @@ const ALWAYS_FREE = [
 ]
 
 /** One thing Plus adds: a picture of it, its name and a line on it. */
-function Perk({ title, show, children }: { title: string; show: ReactNode; children: ReactNode }) {
+function Perk({ title, show, fresh = false, children }: { title: string; show: ReactNode; fresh?: boolean; children: ReactNode }) {
   return (
     <article className="plus-perk">
       <div className="plus-perk__show" aria-hidden="true">
         {show}
       </div>
-      <h3 className="plus-perk__title">{title}</h3>
+      <h3 className="plus-perk__title">
+        {title}
+        {fresh ? <span className="plus-perk__new">New</span> : null}
+      </h3>
       <div className="plus-perk__text">{children}</div>
     </article>
   )
@@ -151,6 +159,35 @@ function MemberCard({
       </div>
     </figure>
   )
+}
+
+/** What Plus would give a signed-in player today: a friend whose ghost to race, and how many tracks they've medals on. */
+function useForYou(ask: boolean): { friend: string | null; tracks: number } | null {
+  const [found, setFound] = useState<{ friend: string | null; tracks: number } | null>(null)
+  useEffect(() => {
+    if (!ask) {
+      setFound(null)
+      return
+    }
+    let live = true
+    const friend = listFriends()
+      .then((f) => f.friends[0]?.name ?? null)
+      .catch(() => null)
+    const tracks = Promise.all(
+      [...RACE_GHOST_GAMES].map((game) =>
+        api<{ bests: unknown[] }>(`/course-bests/${game}`)
+          .then((res) => res.bests.length)
+          .catch(() => 0),
+      ),
+    ).then((counts) => counts.reduce((a, b) => a + b, 0))
+    void Promise.all([friend, tracks]).then(([f, t]) => {
+      if (live) setFound({ friend: f, tracks: t })
+    })
+    return () => {
+      live = false
+    }
+  }, [ask])
+  return found
 }
 
 export function PlusPage() {
@@ -242,6 +279,11 @@ export function PlusPage() {
   const thisMonth = Number(today.slice(0, 4)) * 100 + Number(today.slice(5, 7))
   const looks: (MembersLook & { month: number })[] = info?.ahead ?? (info?.looks ?? []).slice(0, 1).map((look) => ({ ...look, month: thisMonth }))
   const days = archiveDays(today)
+  // Pass+ rewards at or under your level: given the moment you join.
+  const yourLevel = seasonStore.you?.level ?? 0
+  const passRewards = pass?.rewards ?? []
+  const yoursOnJoin = passRewards.filter((r) => r.level <= yourLevel).length
+  const forYou = useForYou(signedIn && !member)
 
   const after = freeWeek
     ? `Free for ${trialDays} days, then ${price} a ${unit}.`
@@ -297,13 +339,13 @@ export function PlusPage() {
               {APP_NAME} Plus
             </p>
             <h1 className="plus-hero__title" id="plus-title">
-              Every past daily.
+              {season && pass ? `${season.name}’s Pass+.` : 'Every season’s Pass+.'}
               <br />
-              Every season’s Pass+.
+              And every one after.
             </h1>
             <p className="plus-hero__blurb">
-              Playing stays free for everyone. Plus opens the archive, gives you each season’s Pass+ and a members’ look every
-              month, and lets you play new games early and host bigger events.
+              Playing stays free for everyone. Plus gives you each season’s Pass+ while you’re a member, and with it every past
+              daily, any ghost to race, a members’ look every month, new games early and bigger events.
             </p>
             {member ? (
               <div className="plus-have">
@@ -365,13 +407,119 @@ export function PlusPage() {
           </p>
         ) : null}
 
+        {season && pass ? (
+          <section className="plus-pass" aria-labelledby="plus-pass-title">
+            <div className="plus-head">
+              <h2 className="plus-head__title" id="plus-pass-title">
+                {season.name}’s Pass+
+              </h2>
+              <a className="plus-pass__all" href={seasonHref()}>
+                See the whole pass ›
+              </a>
+            </div>
+            {headliners.length ? (
+              <div className="plus-pass__heads">
+                {headliners.map((reward) => (
+                  <figure key={reward.id} className="plus-pass__one">
+                    <span className="plus-pass__art">
+                      <RewardArt reward={reward} size={128} />
+                    </span>
+                    <figcaption>
+                      <b>{reward.name}</b>
+                      <span>
+                        {reward.what} · Level {reward.level}
+                      </span>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            ) : null}
+            <p className="plus-pass__line">
+              {passRewards.length} rewards, {skinCount} of them skins
+              {pass.bonus ? `, and ${pass.bonus} bonus levels past ${season.levels}` : ''}. Every season after it comes with Plus
+              too, for as long as you’re a member.
+              {member
+                ? ''
+                : yoursOnJoin > 0
+                  ? ` You’re level ${yourLevel}: ${yoursOnJoin} of them are yours the moment you join.`
+                  : ''}
+            </p>
+          </section>
+        ) : null}
+
+        {forYou ? (
+          <section className="plus-you" aria-labelledby="plus-you-title">
+            <h2 className="plus-head__title" id="plus-you-title">
+              What Plus gives you, {yourName || 'you'}, today
+            </h2>
+            <ul className="plus-you__list">
+              {season && pass ? (
+                <li>
+                  <b>{yoursOnJoin > 0 ? `${yoursOnJoin} Pass+ rewards at once` : 'The Pass+ row'}</b>
+                  <span>
+                    {yoursOnJoin > 0
+                      ? `You’re level ${yourLevel} of ${season.name}, so they’re in your hangar the moment you join.`
+                      : `Every Pass+ reward of ${season.name}, as you reach its level.`}
+                  </span>
+                </li>
+              ) : null}
+              <li>
+                <b>{forYou.friend ? `${forYou.friend}’s ghost` : 'Anyone’s ghost'}</b>
+                <span>
+                  {forYou.friend
+                    ? `Race ${forYou.friend}’s run, or anyone’s, on every racing daily: see where they’re quicker.`
+                    : 'Race anyone’s run on every racing daily, not just the #1’s: see where they’re quicker.'}
+                </span>
+              </li>
+              <li>
+                <b>{forYou.tracks > 0 ? `${forYou.tracks} tracks to better` : 'Every past track'}</b>
+                <span>
+                  {forYou.tracks > 0
+                    ? `You’ve a medal time on ${forYou.tracks} ${forYou.tracks === 1 ? 'track' : 'tracks'}. Go back to any of them, however old, for a better one.`
+                    : `Every daily’s days before the last ${OPEN_DAYS}, back to its first.`}
+                </span>
+              </li>
+              {looks[0] ? (
+                <li>
+                  <b>{looks[0].name}</b>
+                  <span>This month’s members’ look, a {looks[0].what.toLowerCase()}, yours to keep.</span>
+                </li>
+              ) : null}
+            </ul>
+          </section>
+        ) : null}
+
         <section className="plus-adds" aria-labelledby="plus-adds-title">
           <div className="plus-head">
             <h2 className="plus-head__title" id="plus-adds-title">
-              {member ? 'What Plus gives you' : 'What Plus adds'}
+              And with Plus
             </h2>
           </div>
           <div className="plus-perks">
+            <Perk
+              title="Race any ghost"
+              fresh
+              show={
+                <div className="plus-ghost">
+                  {[
+                    { place: 1, name: 'DAD', time: '47.61s', free: true },
+                    { place: 2, name: 'ACE', time: '48.55s', free: false },
+                    { place: 3, name: 'NOVA', time: '49.12s', free: false },
+                  ].map((r) => (
+                    <span key={r.name} className="plus-ghost__row">
+                      <b>{r.place}</b>
+                      <span className="plus-ghost__name">{r.name}</span>
+                      <span className="plus-ghost__time">{r.time}</span>
+                      <span className={r.free ? 'plus-ghost__race' : 'plus-ghost__race plus-ghost__race--plus'}>Race</span>
+                    </span>
+                  ))}
+                </div>
+              }
+            >
+              On a racing daily’s board, race anyone’s run as a ghost beside you: a friend’s, the place above, anyone’s. The #1
+              and your next place up are free for everyone. Ghosts are only for racing: no time or place moves.
+            </Perk>
+
             <Perk
               title="Every past daily"
               show={
@@ -399,32 +547,11 @@ export function PlusPage() {
               days are practice: they never count toward your rank.
             </Perk>
 
-            <Perk
-              title="Every season’s Pass+"
-              show={
-                headliners.length === 3 ? (
-                  <div className="plus-heads">
-                    {headliners.map((reward) => (
-                      <span key={reward.id} className="plus-heads__one">
-                        <RewardArt reward={reward} size={84} />
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="plus-passplus">Pass+</span>
-                )
-              }
-            >
-              {season && pass ? (
-                <>
-                  {season.name}’s Pass+ row has {pass.rewards.length} rewards, {skinCount} of them skins
-                  {pass.bonus ? `, and ${pass.bonus} bonus levels past ${season.levels}` : ''}. Every season after it comes with Plus too.{' '}
-                  <a href={seasonHref()}>See the whole pass ›</a>
-                </>
-              ) : (
-                'Each season’s Pass+ row of skins and looks, for every season while you’re a member.'
-              )}
-            </Perk>
+            {season && pass ? null : (
+              <Perk title="Every season’s Pass+" show={<span className="plus-passplus">Pass+</span>}>
+                Each season’s Pass+ row of skins and looks, for every season while you’re a member.
+              </Perk>
+            )}
 
             <Perk
               title="A members’ look every month"
@@ -546,7 +673,7 @@ export function PlusPage() {
             </div>
             <div className="plus-faq__one">
               <h3>Does Plus help my rank?</h3>
-              <p>No. Archive days and early games are practice, and every board is the same for everyone.</p>
+              <p>No. Archive days, early games and ghosts are practice, and every board is the same for everyone.</p>
             </div>
             {season && pass ? (
               <div className="plus-faq__one">

@@ -34,7 +34,9 @@ import { useTrackBoard, type TrackBoard } from '../../lib/trackBoards'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { breachOf, breakSound, crackSound, smallStepSound } from './breakout'
 import { EngineSound } from './audio'
-import { fetchBoardGhost, fetchNextGhost, fitsCave, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
+import { GhostPicker } from '../../components/GhostPicker'
+import { useRaceTag } from '../../lib/raceGhost'
+import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, fitsCave, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
 import { ordinal } from '../../lib/scoreboard'
 import { caveDay, caveNumber, msUntilNextCave, untilWords } from './daily'
 import { CaveMap } from './map'
@@ -236,9 +238,11 @@ const firstRun = (mine: GhostRun | null, top: BoardGhost | null, me: string, nex
  * your best here when it beats the blue ship, else the blue ship's. Your own is the one of whoever is signed in
  * now.
  */
-function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null): Chase {
+function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null, picked: NextGhost | null = null): Chase {
   const pace = paceOf(day)
   const mine = bestOf(day, practice, currentAccountId())
+  // A ghost picked to race (race any ghost, lib/raceGhost.ts): theirs, whoever is faster.
+  if (picked) return { ghost: new Ghost(picked.run ?? standIn(pace, picked.time)), chasing: topChasing(picked, me) }
   if (firstRun(mine, top, me, next)) return { ghost: new Ghost(pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
     return { ghost: new Ghost(next.run ?? standIn(pace, next.time)), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
@@ -254,12 +258,14 @@ function chaseFor(day: string, practice: boolean, top: BoardGhost | null, me: st
  * card is up): the card needs only the time to beat and whose it is. Until the blue ship has flown, a run
  * whose path isn't known waits on the start pad; once it has, the card's camera rides along with it.
  */
-function cardChase(lander: LanderDay, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null): Chase {
+function cardChase(lander: LanderDay, practice: boolean, top: BoardGhost | null, me: string, next: NextGhost | null, picked: NextGhost | null = null): Chase {
   const mine = bestOf(lander.day, practice, currentAccountId())
   const flown = paceIfFlown(lander.day)
   const { x, y } = lander.cave.spawn
   const waiting = (time: number) =>
     new Ghost(flown ? standIn(flown, time) : { time, splits: [], ghost: [x, y, 0, ENGINE_OFF, x, y, 0, ENGINE_OFF] })
+  // A ghost picked to race (race any ghost, lib/raceGhost.ts): theirs, whoever is faster.
+  if (picked) return { ghost: picked.run ? new Ghost(picked.run) : waiting(picked.time), chasing: topChasing(picked, me) }
   if (firstRun(mine, top, me, next)) return { ghost: flown ? new Ghost(flown) : waiting(lander.pace), chasing: { who: 'pace' } }
   if (next && !practice && (!mine || next.time < mine.time - 0.0005)) {
     return { ghost: next.run ? new Ghost(next.run) : waiting(next.time), chasing: { who: 'next', name: next.name, place: next.place, skin: next.skin } }
@@ -409,6 +415,8 @@ function LanderDayGame({
   const topRef = useRef<BoardGhost | null>(null)
   // In today's cave, the player one place above you, once you've a run on the board (boardGhost.ts fetchNextGhost).
   const nextRef = useRef<NextGhost | null>(null)
+  // A ghost picked to race: on a board row's Race, or the start card's "Who do you race?" (lib/raceGhost.ts).
+  const pickedRef = useRef<NextGhost | null>(null)
   // The player's own skin, if they chose one (lib/skins.ts): looks only.
   const skinRef = useRef<string | null>(null)
   useSkinInto(SLUG, skinRef)
@@ -491,7 +499,7 @@ function LanderDayGame({
       beginRun(SLUG)
     } else if (past) beginRun(SLUG)
     previousBestRef.current = getPersonalBest(SLUG)
-    const g = freshGame(lander, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
+    const g = freshGame(lander, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     g.phase = 'countdown'
     g.owner = owner
     gameRef.current = g
@@ -508,7 +516,7 @@ function LanderDayGame({
     if (newDay()) return
     saveOpenRef.current = false
     setSaveOpen(false)
-    gameRef.current = freshGame(lander, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current))
+    gameRef.current = freshGame(lander, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     previousBestRef.current = getPersonalBest(SLUG)
     startGrace.current = performance.now() + 300
     letGoStick()
@@ -525,7 +533,7 @@ function LanderDayGame({
   /** At the start card, the run to beat worked out again: it changes at once. Mid-run, a run keeps the ghost it began with. */
   const rechase = () => {
     if (gameRef.current!.phase !== 'menu') return
-    gameRef.current = freshGame(lander, cardChase(lander, practice, topRef.current, nameRef.current, nextRef.current))
+    gameRef.current = freshGame(lander, cardChase(lander, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     setUi(snapshot(gameRef.current))
   }
   const rechaseRef = useRef(rechase)
@@ -553,14 +561,12 @@ function LanderDayGame({
    * A run saved on the board sends where the ship went: the API keeps it if it's the tag's run on the board and
    * the fastest there, and then it's everyone's ghost, yours included from your next run. In today's cave every
    * run goes, as the API keeps each player's best for whoever is one place below them to race; then the player
-   * above you is asked for again, as you may have passed them. In a past cave only one that could be its fastest
-   * goes: the #1 is faster, or their line is known and at least as fast, and it stays home.
+   * above you is asked for again, as you may have passed them.
+   * On a past one too: any player's best there can be raced (race any ghost, lib/raceGhost.ts).
    */
   const sendGhost = (run: { time: number; score: number; splits: number[]; path: number[] }, name: string) => {
     if ((practice && !past) || !signedIn || !name) return
-    const known = topRef.current
     const today = !practice
-    if (!today && known && (known.time < run.time - 0.0005 || (known.run && known.run.time <= run.time + 0.0005))) return
     void sendBoardGhost(lander.n, name, run).then(async (kept) => {
       if (kept) {
         const fresh = await fetchBoardGhost(lander.n, true)
@@ -592,6 +598,31 @@ function LanderDayGame({
   }
   const askNextRef = useRef(askNext)
   askNextRef.current = askNext
+
+  /** The tag picked to race here, and why it isn't the ghost when it can't be: Plus's, or no run here. */
+  const raceTag = useRaceTag(SLUG, lander.n)
+  const [raceNote, setRaceNote] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    if (!raceTag || Boolean(test)) {
+      setRaceNote(null)
+      if (pickedRef.current) {
+        pickedRef.current = null
+        rechaseRef.current()
+      }
+      return
+    }
+    void fetchPlayerGhost(lander.n, raceTag).then((got) => {
+      if (!live) return
+      const next = got === 'plus' ? null : got
+      pickedRef.current = next?.run && !fitsCave(lander.cave, next.run, breachOf(lander.cave, paceOf(lander.day).ghost)) ? { ...next, run: null } : next
+      setRaceNote(got === 'plus' ? `Racing ${raceTag}’s ghost is with Plus` : got ? null : `${raceTag} has no run here`)
+      rechaseRef.current()
+    })
+    return () => {
+      live = false
+    }
+  }, [raceTag, lander.n])
   useEffect(() => {
     askNextRef.current()
   }, [signedIn, playerName, lander.n, practice])
@@ -1088,6 +1119,9 @@ function LanderDayGame({
         facts: [onItsDayFact(day, went), allTimeFact(SLUG, board, viewer !== null, formatLanderBoardScore)],
       }
     : null
+  const ghostPick = Boolean(test) ? null : (
+    <GhostPicker game={SLUG} course={lander.n} racing={ghostTag(g.chasing)} picked={raceTag} note={raceNote} />
+  )
   const extra = practice ? (
     <>
       <div className="game-pause-meta__row">
@@ -1198,9 +1232,9 @@ function LanderDayGame({
                 ) : test ? (
                   <TestStartCard lander={lander} best={practiceBestTime} />
                 ) : pastPlay ? (
-                  <PracticeStartCard lander={lander} kind={pastKind} facts={pastPlay.facts ?? []} tiles={extra} board={board} />
+                  <PracticeStartCard lander={lander} kind={pastKind} facts={pastPlay.facts ?? []} tiles={<>{extra}{ghostPick}</>} board={board} />
                 ) : (
-                  <GameStartCard title="Lander" slug={SLUG} extraMeta={extra} />
+                  <GameStartCard title="Lander" slug={SLUG} extraMeta={<>{extra}{ghostPick}</>} />
                 )
               ) : null}
               {ui.phase === 'gameover' && saveOpen && run ? (

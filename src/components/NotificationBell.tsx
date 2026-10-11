@@ -388,7 +388,7 @@ function Actions({
       break
     }
     case 'event-result':
-      out = link(n.href, 'Final board ›')
+      out = link(n.href, n.meta?.unfilled ? 'See the event ›' : 'Final board ›')
       break
     default:
       break

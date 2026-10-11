@@ -28,7 +28,7 @@ import { SiteMenu } from './SiteMenu'
 import { SiteScopeControl } from './SiteScopeControl'
 import { SiteSearch } from './SiteSearch'
 import { SiteTabs } from './SiteTabs'
-import { navActive, OPEN_MENU_EVENT, OPEN_STUDIO_EVENT, SITE_NAV_LINKS } from './siteNav'
+import { navActive, OPEN_MENU_EVENT, OPEN_STUDIO_EVENT, siteNavLinks } from './siteNav'
 import { BugHuntHost } from './BugHunt'
 import { FeedbackHost } from './FeedbackPanel'
 import { SeasonYouLevel } from './season/SeasonChip'
@@ -220,11 +220,11 @@ export function SiteHeader() {
           <BrandMark ping />
         </a>
         <div className="site-bar__links">
-          {SITE_NAV_LINKS.map((item) => {
+          {siteNavLinks(period).map((item) => {
             const on = navActive(item.match, path)
             return (
               <a
-                key={item.href}
+                key={item.match}
                 className={`site-bar__link${on ? ' site-bar__link--on' : ''}`}
                 href={item.href}
                 aria-current={on ? 'page' : undefined}

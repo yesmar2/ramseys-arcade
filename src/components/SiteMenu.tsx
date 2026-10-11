@@ -213,7 +213,7 @@ export function SiteMenu({
             )}
           </span>
           {!impersonating && !standing.loading && standing.rank != null ? (
-            <a className="site-menu__card-how" href={rankHowHref()} onClick={onClose}>
+            <a className="site-menu__card-how" href={rankHowHref(undefined, standing.period)} onClick={onClose}>
               How your rank works ›
             </a>
           ) : null}
@@ -221,7 +221,7 @@ export function SiteMenu({
         </div>
       </div>
       <div className="site-menu__card-acts">
-        <a className="site-menu__card-cta" href={rankHref()} onClick={onClose}>
+        <a className="site-menu__card-cta" href={rankHref(undefined, standing.period)} onClick={onClose}>
           Your player card
         </a>
         {onEditAvatar ? (

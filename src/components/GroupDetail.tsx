@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { gameHref, rankHowHref, rankHref, tournamentCreateHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   gameName,
   gamesLed,
@@ -217,10 +218,12 @@ function StandingRow({ entry, top, me, host }: { entry: GlobalBoardEntry; top: n
   const name = normalizePlayerName(entry.name)
   const you = Boolean(me) && name === me
   const led = gamesLed(entry)
+  // A player's card opens at the period you picked in the header, not the table's.
+  const period = useDefaultPeriod()
   return (
     <li className={`grp-row${you ? ' grp-row--you' : ''}`}>
       <span className={`grp-place${entry.rank <= 3 ? ` grp-place--${entry.rank}` : ''}`}>{entry.rank}</span>
-      <a className="grp-row__who" href={rankHref(name)}>
+      <a className="grp-row__who" href={rankHref(name, period)}>
         <PlayerAvatar name={name} avatarId={entry.avatarId} size="md" />
         <span className="grp-name">{name}</span>
         {you ? <span className="grp-tag grp-tag--you">You</span> : null}
@@ -367,6 +370,8 @@ export function GroupRecords({
   const you = normalizePlayerName(me)
   const holders = records ? recordHolders(records) : []
   const open = records ? openRecords(records) : []
+  // A holder's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <section className="grp-card grp-records" aria-labelledby="grp-records-title">
       <div>
@@ -423,7 +428,7 @@ export function GroupRecords({
                 <li key={r.slug} className={`grp-rec${mine ? ' grp-rec--you' : ''}`}>
                   {game}
                   {mine ? <span className="grp-tag grp-tag--you grp-rec__yours">Yours</span> : null}
-                  <a className="grp-rec__who" href={rankHref(holder)}>
+                  <a className="grp-rec__who" href={rankHref(holder, period)}>
                     <PlayerAvatar name={holder} avatarId={r.best.avatarId} size="sm" />
                     <span className="grp-name">{holder}</span>
                   </a>
@@ -496,12 +501,14 @@ function MemberRow({
   const name = normalizePlayerName(member.name)
   const you = Boolean(me) && name === me
   const since = new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // A member's card opens at the period you picked.
+  const period = useDefaultPeriod()
   return (
     <li className="grp-member">
       <PlayerAvatar name={name} avatarId={member.avatarId} size="md" />
       <span className="grp-member__text">
         <span className="grp-member__name">
-          <a className="grp-name" href={rankHref(name)}>
+          <a className="grp-name" href={rankHref(name, period)}>
             {name}
           </a>
           {host === name ? <span className="grp-tag grp-tag--host">Host</span> : null}

@@ -67,7 +67,9 @@ export type Route =
    * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive. `lab`: a racing daily's test
    * course, every new kind of obstacle in one, `?lab=1`, from the admin's Cave Book or Course Book.
    */
-  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean }
+  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean; race?: string }
+  /** A friend's challenge link, `/c/<game>/<id>` (lib/challenges.ts): it opens the challenge, then its game. */
+  | { name: 'challenge'; slug: string; id: string }
   | { name: 'authVerify'; token: string }
   /** Where Discord sends a player back after signing in (pages/DiscordReturnPage). */
   | { name: 'authDiscord' }
@@ -525,11 +527,18 @@ export function hrefForRoute(
         return appendGroupQuery(gameHref(route.slug, 'records'))
       }
       return appendGroupQuery(gameHubHref(route.slug, period))
-    case 'gamePlay':
-      if (route.track) return `${gamePlayHref(route.slug)}?track=${encodeURIComponent(route.track)}`
-      if (route.day) return `${gamePlayHref(route.slug)}?day=${encodeURIComponent(route.day)}`
-      if (route.lab) return `${gamePlayHref(route.slug)}?lab=1`
-      return route.hole ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}` : gamePlayHref(route.slug)
+    case 'gamePlay': {
+      const play = route.track
+        ? `${gamePlayHref(route.slug)}?track=${encodeURIComponent(route.track)}`
+        : route.day
+          ? `${gamePlayHref(route.slug)}?day=${encodeURIComponent(route.day)}`
+          : route.lab
+            ? `${gamePlayHref(route.slug)}?lab=1`
+            : route.hole
+              ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}`
+              : gamePlayHref(route.slug)
+      return route.race ? `${play}${play.includes('?') ? '&' : '?'}race=${encodeURIComponent(route.race)}` : play
+    }
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
     case 'groups':
@@ -755,6 +764,8 @@ export function parseUrl(pathname: string, search: string): Route {
     const track = params.get('track')?.trim()
     const day = params.get('day')?.trim()
     const lab = params.get('lab') === '1'
+    // A racing daily's ghost to race: a board row's Race (lib/raceGhost.ts).
+    const race = params.get('race')?.trim()
     return {
       name: 'gamePlay',
       slug: canonicalGameSlug(decodeURIComponent(gamePlayMatch[1])),
@@ -762,6 +773,7 @@ export function parseUrl(pathname: string, search: string): Route {
       ...(track ? { track } : {}),
       ...(day ? { day } : {}),
       ...(lab ? { lab } : {}),
+      ...(race ? { race } : {}),
     }
   }
 
@@ -784,6 +796,12 @@ export function parseUrl(pathname: string, search: string): Route {
       return { name: 'game', slug, period: segment }
     }
     return { name: 'game', slug }
+  }
+
+  // The game is the link's as it was sent: the challenge itself says which game it's on.
+  const challengeMatch = /^c\/([^/]+)\/([^/]+)$/.exec(path)
+  if (challengeMatch) {
+    return { name: 'challenge', slug: decodeURIComponent(challengeMatch[1]!), id: decodeURIComponent(challengeMatch[2]!) }
   }
 
   // Game Over for a place the site has never had. Anything under one of its own sections still comes

@@ -18,6 +18,7 @@ import {
   boardLede,
   boardYouStats,
   firstResultWord,
+  gapFigure,
   oneRunBoard,
   playersNote,
   runsChart,
@@ -51,6 +52,9 @@ import { BoardPlayers, BoardRuns } from './BoardPlayers'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
 import { PlayerName } from './PlayerName'
+import { RaceGhostButton } from './RaceGhostButton'
+import { useAuth } from '../hooks/useAuth'
+import { RACE_GHOST_GAMES } from '../lib/raceGhost'
 
 /*
  * One game's own board. The banner is the game at the scale of the page, its
@@ -493,7 +497,20 @@ function OtherBoardsWaiting({ count }: { count: number }) {
 
 /* ---------- the board ---------- */
 
-function PlayerRow({ slug, player, you, period }: { slug: string; player: BoardPlayer; you: string; period: LeaderboardPeriod }) {
+function PlayerRow({
+  slug,
+  player,
+  you,
+  period,
+  race,
+}: {
+  slug: string
+  player: BoardPlayer
+  you: string
+  period: LeaderboardPeriod
+  /** Today's board of a racing daily: its rows can be raced (race any ghost); `free` is the #1's, for anyone. */
+  race?: { free: (place: number) => boolean; yourScore: number | null }
+}) {
   const mine = Boolean(you) && player.name === you
   const medal = MEDALS[player.place - 1]
   return (
@@ -519,6 +536,16 @@ function PlayerRow({ slug, player, you, period }: { slug: string; player: BoardP
           <DeviceIcon device={player.best.device} />
           {dayOf(player.best.at)}
         </span>
+        {race ? (
+          <RaceGhostButton
+            playHref={gamePlayHref(slug)}
+            name={player.name}
+            time={formatLeaderboardScore(slug, player.best.score)}
+            gap={race.yourScore != null && player.best.score > race.yourScore ? gapFigure(slug, player.best.score, race.yourScore) : null}
+            needsPlus={!race.free(player.place)}
+            mine={mine}
+          />
+        ) : null}
       </div>
     </li>
   )
@@ -540,6 +567,15 @@ function Board({
   const [view, setView] = useState<'players' | 'runs'>('players')
   const byPlayer = view === 'players'
   const game = getGame(slug)!
+  const { isPlus } = useAuth()
+  const groupId = useActiveGroup()
+  // Today's board of a racing daily: each row's run can be raced as a ghost. A group's top needn't be the
+  // course's #1, so there only Plus races.
+  const yourRow = data.top.find((p) => p.name === you) ?? data.around?.find((p) => p.name === you)
+  const race =
+    period === 'daily' && RACE_GHOST_GAMES.has(slug)
+      ? { free: (place: number) => isPlus || (!groupId && place === 1), yourScore: yourRow?.best.score ?? null }
+      : undefined
   return (
     <section className="sb-card gb-board gb-board--five" aria-labelledby="gb-board-title" data-hunt={`b-board-${slug}`}>
       <div className="gb-board__head">
@@ -588,6 +624,7 @@ function Board({
                 {/* A first-result daily's today board keeps each player's first result, which needn't be their best. */}
                 <span className="gb-board__num">{oneRunBoard(slug, period) ? 'Result' : 'Best'}</span>
                 <span className="gb-board__set">Set</span>
+                {race ? <span className="gb-board__race">Ghost</span> : null}
               </div>
             }
             slug={slug}
@@ -597,7 +634,7 @@ function Board({
             field={data.field}
             you={data.you ? you : ''}
             bandLine={data.bandLine}
-            row={(p) => <PlayerRow key={p.name} slug={slug} player={p} you={you} period={period} />}
+            row={(p) => <PlayerRow key={p.name} slug={slug} player={p} you={you} period={period} race={race} />}
           />
         </>
       ) : (

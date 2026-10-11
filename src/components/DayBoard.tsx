@@ -2,6 +2,7 @@ import { SkinMark } from './season/SkinMark'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
+import { useAuth } from '../hooks/useAuth'
 import { useDayCourse, usePagedBoard, type PagedBoard } from '../hooks/useDayBoard'
 import { dailyTabHref, dayBoardHref, gameBoardHref, leaderboardHref, navigate, plusHref, rankHref } from '../hooks/useHashRoute'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
@@ -13,7 +14,7 @@ import { archivedWhy, archiveTip, capitalWord, COURSE_BOARD_ANCHOR, pastKindFor,
 import { BOARD_NAMES, boardTip, dailyWords } from '../lib/dailyWords'
 import { dateOf, dayAfter, timeOfDay, type DayCourse } from '../lib/dayBoard'
 import { useDeviceType } from '../lib/device'
-import { FIRST_RUN_DAILIES, firstResultWord, firstRunWord, gapBetween } from '../lib/gameBoard'
+import { FIRST_RUN_DAILIES, firstResultWord, firstRunWord, gapBetween, gapFigure } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { groupBoardEmptyTitle, scopeName, useActiveGroup } from '../lib/groups'
 import { useHeldHeight } from '../lib/heldShape'
@@ -28,6 +29,7 @@ import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
+import { RaceGhostButton } from './RaceGhostButton'
 import { RunLabel } from './RunLabel'
 import { ShareBoardButton } from './ShareBoardButton'
 import { openSiteMenu } from './siteNav'
@@ -497,6 +499,7 @@ function DayRow({
   when,
   sub,
   gap = false,
+  race,
 }: {
   slug: string
   row: Row
@@ -505,6 +508,8 @@ function DayRow({
   when: string
   sub?: string
   gap?: boolean
+  /** A racing daily's row: its Race button (race any ghost). */
+  race?: { playHref: string; needsPlus: boolean; gap: string | null }
 }) {
   const medal = MEDALS[row.place - 1]
   return (
@@ -528,6 +533,16 @@ function DayRow({
           {row.device ? <DeviceIcon device={row.device} /> : null}
           {when}
         </span>
+        {race ? (
+          <RaceGhostButton
+            playHref={race.playHref}
+            name={row.name}
+            time={formatLeaderboardScore(slug, row.score)}
+            gap={race.gap}
+            needsPlus={race.needsPlus}
+            mine={mine}
+          />
+        ) : null}
       </div>
     </li>
   )
@@ -559,6 +574,7 @@ function Board({
     window.location.hash === `#${COURSE_BOARD_ANCHOR}` ? 'course' : 'day',
   )
   const myAvatar = useMyAvatarId(name)
+  const { isPlus } = useAuth()
   const words = dailyWords(slug)
   const keepsBoard = Boolean(course?.board)
   const onCourse = tab === 'course' && keepsBoard
@@ -579,6 +595,21 @@ function Board({
         !counted ? 'It came before the daily’s days counted.' : group ? 'Places over everyone counted toward rank.' : 'It counted toward rank.'
       }`
   const waiting = board.more && rows.length < Math.min(limit, board.total)
+  /*
+   * A racing daily's rows can be raced (race any ghost): the course's #1 by anyone, everyone else with Plus.
+   * The ghost is their best on the course, whichever side of the board is on show.
+   */
+  const raceable = keepsBoard && course != null
+  const courseTop = courseBoard.rows[0]?.name ?? null
+  const raceFor = (r: Row) =>
+    raceable
+      ? {
+          playHref: course.playHref(day),
+          // A group's board: its top needn't be the course's #1, so the API is left to say.
+          needsPlus: !isPlus && (Boolean(group) || r.name !== courseTop),
+          gap: you && r.score > you.score ? gapFigure(slug, r.score, you.score) : null,
+        }
+      : undefined
   return (
     <section id={COURSE_BOARD_ANCHOR} className="sb-card gb-board gb-board--five db-board" aria-labelledby="gb-board-title">
       <div className="gb-board__head">
@@ -627,10 +658,12 @@ function Board({
             <span>Player</span>
             <span className="gb-board__num">{firstOnly ? 'Result' : 'Best'}</span>
             <span className="gb-board__set">Set</span>
+            {raceable ? <span className="gb-board__race">Ghost</span> : null}
           </div>
           <ol className="gb-rows">
             {rows.map((r) => (
               <DayRow
+                race={raceFor(r)}
                 key={r.name}
                 slug={slug}
                 row={r}
@@ -647,6 +680,7 @@ function Board({
                 mine
                 when=""
                 gap={you.place > rows.length + 1}
+                race={raceFor({ place: you.place, name, score: you.score })}
               />
             ) : null}
           </ol>

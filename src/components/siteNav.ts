@@ -7,6 +7,7 @@ import {
   recordsIndexHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
+import type { LeaderboardPeriod } from '../lib/leaderboard'
 import type { AvatarWear } from './AvatarStudio'
 
 export type SiteNavItem = {
@@ -20,16 +21,19 @@ export type SiteNavItem = {
  * Primary destinations: the desktop header's links, and the phone's tab bar before You, the same four
  * places under the same names (Global lives under Boards). Games first: it is the shelf. Groups are yours,
  * so they live in the You menu on a desk as on a phone, since Ramsey picked the lighter bar (2026-10-06).
+ * Built as the bar renders, at the period you picked: Boards at a stale one would switch the site back to it.
  */
-export const SITE_NAV_LINKS: readonly SiteNavItem[] = [
-  { href: homeHref(), label: 'Games', match: 'games' },
-  { href: leaderboardHref(), label: 'Boards', match: 'boards' },
-  { href: tournamentsHref(), label: 'Events', match: 'events' },
-  { href: recordsIndexHref(), label: 'Records', match: 'records' },
-] as const
+export function siteNavLinks(period: LeaderboardPeriod): readonly SiteNavItem[] {
+  return [
+    { href: homeHref(), label: 'Games', match: 'games' },
+    { href: leaderboardHref(period), label: 'Boards', match: 'boards' },
+    { href: tournamentsHref(), label: 'Events', match: 'events' },
+    { href: recordsIndexHref(), label: 'Records', match: 'records' },
+  ]
+}
 
 /** The phone's tab bar, before You: the header's places. */
-export const SITE_TABS: readonly SiteNavItem[] = SITE_NAV_LINKS
+export const siteTabs = siteNavLinks
 
 /** Fired on window to open the header's menu from anywhere on the page: where signing in lives. */
 export const OPEN_MENU_EVENT = 'skermix:open-menu'

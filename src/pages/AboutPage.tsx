@@ -9,6 +9,7 @@ import {
   termsHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 
 const HIGHLIGHTS = [
   {
@@ -30,6 +31,8 @@ const HIGHLIGHTS = [
 ] as const
 
 export function AboutPage() {
+  // The links open at the period you picked: a stale one in their address would switch the site back to it.
+  const period = useDefaultPeriod()
   return (
     <PageShell innerClassName="lb-page__inner">
       <div className="page-stack">
@@ -62,12 +65,12 @@ export function AboutPage() {
         <h3 className="home-about__subtitle">Rank up and compete</h3>
         <p>
           Post a score and climb the{' '}
-          <a href={leaderboardHref()}>leaderboards</a>. Track personal bests, chase record
+          <a href={leaderboardHref(period)}>leaderboards</a>. Track personal bests, chase record
           books on select games, and jump into rotating{' '}
           <a href={tournamentsHref()}>events</a> when you want a little extra pressure. Your
           player name is your identity on the board — pick something you’re proud to see in
           the top ten. Your ten best ranked games count toward your overall rank, and{' '}
-          <a href={rankHowHref()}>How your rank works</a> shows yours, game by game.
+          <a href={rankHowHref(undefined, period)}>How your rank works</a> shows yours, game by game.
         </p>
 
         <h3 className="home-about__subtitle">Classic inspiration, original games</h3>

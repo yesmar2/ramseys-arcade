@@ -6,7 +6,7 @@ import {
   cadenceLabel,
   eventKind,
   formatEventCountdown,
-  isUnlimitedDuration,
+  hasNoEnd,
   joinedRosterLabel,
   seatsLeft,
   type PodiumEntry,
@@ -245,7 +245,7 @@ function cardClock(t: TournamentSummary): ReactNode {
   if (t.status === 'upcoming') {
     return `Starts in ${formatEventCountdown(t.startsAt).replace(/ left$/, '')}`
   }
-  return <EventCountdown endsAt={t.endsAt} unlimitedDuration={isUnlimitedDuration(t.rules)} />
+  return <EventCountdown endsAt={t.endsAt} unlimitedDuration={hasNoEnd(t)} />
 }
 
 function emptyLine(t: TournamentSummary): string {
