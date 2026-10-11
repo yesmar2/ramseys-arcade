@@ -43,7 +43,7 @@ export function EarlyGate({ slug, children }: { slug: string; children: ReactNod
           </div>
           <p className="archive-gate__lead">{lead}</p>
           {isPlus ? null : (
-            <p className="archive-gate__also">Plus is {PLUS_PRICE}, with every season’s Pass+ and every past daily too.</p>
+            <p className="archive-gate__also">Plus is {PLUS_PRICE}, with every season’s Gold Pass and every past daily too.</p>
           )}
           <div className="game-card__actions">
             {isPlus ? null : (

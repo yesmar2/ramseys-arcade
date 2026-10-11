@@ -5,6 +5,7 @@ import {
   FLOOR,
   JELLY_REACH,
   MAX_SIZE,
+  MINE_BLAST,
   OCEAN_W,
   STAGES,
   TIERS,
@@ -23,8 +24,9 @@ import { SPECIES, playerArt, type FishArt } from './species'
 /*
  * The open ocean, drawn back to front through the camera: the sky and its sun, the water deepening down
  * to the sea floor with its sand, kelp and rocks, light from above and drifting specks, the rock walls at
- * the ocean's ends, the fisherman's line and hook, the fish smaller than you, you, the ones that can eat you
- * (so a threat is never hidden behind a meal), the shark and its warning, the surface's waves, the
+ * the ocean's ends, the jellyfish and the sea mines, the fisherman's line and hook, the fish smaller than you,
+ * you, the ones that can eat you (so a threat is never hidden behind a meal), the shark and its warning, a
+ * mine's blast, the surface's waves, the
  * fisherman's boat and gulls above them, splashes and bubbles, the words that float up, and last the bar
  * along the bottom with what you are and your lives.
  *
@@ -337,6 +339,113 @@ function drawJellies(ctx: CanvasRenderingContext2D, v: View) {
     ctx.fill()
     ctx.restore()
     lights.push({ x, y: y - ry * 0.2, r: R * 2.6, color: `hsl(${hue}, 85%, 72%)`, strength: 0.55 * lum })
+  }
+}
+
+/**
+ * The sea mines (game.ts moveMines), drawn as the old open-ocean Frenzy drew them: a dark ball on a chain into
+ * the deep, six horns and a band round its middle, and a red light on top that blinks slowly while it waits and
+ * fast once it ticks, when the reach of its blast shows as a dashed red ring. In the dark a red glow keeps it in
+ * sight.
+ */
+function drawMines(ctx: CanvasRenderingContext2D, v: View) {
+  const s = v.s
+  const hot = PALETTE.red
+  for (const m of s.mines) {
+    const R = m.r * v.ppu
+    const x = X(v, m.x)
+    const y = Y(v, m.y + Math.sin(m.bob * 1.3) * m.r * 0.15)
+    const armed = m.fuse >= 0
+    const reach = armed ? m.r * MINE_BLAST * v.ppu : R * 1.4
+    if (x < -reach - 10 || x > v.w + reach + 10 || y < -reach - 10 || y > v.h + reach + R * 5) continue
+    const lum = lumAt(m.y)
+    ctx.save()
+    ctx.globalAlpha = m.fade
+    ctx.lineCap = 'round'
+    // Its chain, down into the dark.
+    ctx.lineWidth = Math.max(1, R * 0.08)
+    for (let i = 0; i < 9; i++) {
+      ctx.strokeStyle = `rgba(206, 214, 224, ${0.4 * (1 - i / 9)})`
+      ctx.beginPath()
+      ctx.ellipse(x, y + R * 1.05 + i * R * 0.42, R * (i % 2 ? 0.05 : 0.1), R * 0.2, 0, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    // Six horns.
+    ctx.strokeStyle = hot
+    ctx.lineWidth = Math.min(3.5, Math.max(1.5, R * 0.16))
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.PI / 6
+      ctx.beginPath()
+      ctx.moveTo(x + Math.cos(a) * R * 0.8, y + Math.sin(a) * R * 0.8)
+      ctx.lineTo(x + Math.cos(a) * R * 1.3, y + Math.sin(a) * R * 1.3)
+      ctx.stroke()
+    }
+    // The ball, lit from above, and the band round it.
+    const shade = ctx.createRadialGradient(x - R * 0.35, y - R * 0.4, R * 0.1, x, y, R)
+    shade.addColorStop(0, '#6b5866')
+    shade.addColorStop(1, '#251b24')
+    ctx.beginPath()
+    ctx.arc(x, y, R, 0, Math.PI * 2)
+    ctx.fillStyle = shade
+    ctx.fill()
+    ctx.lineWidth = Math.min(3, Math.max(1.5, R * 0.1))
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(232, 86, 79, 0.45)'
+    ctx.lineWidth = Math.max(1, R * 0.06)
+    ctx.beginPath()
+    ctx.ellipse(x, y, R * 0.98, R * 0.3, 0, 0, Math.PI * 2)
+    ctx.stroke()
+    // Its light: a slow blink while it waits, a fast one once it ticks.
+    const on = armed ? Math.sin(s.time * 10 * Math.PI * 2) > 0 : (s.time * 0.9 + m.id * 0.37) % 1 < 0.14
+    ctx.fillStyle = on ? '#ff4d6d' : 'rgba(120, 40, 52, 0.9)'
+    ctx.beginPath()
+    ctx.arc(x, y - R * 0.45, R * 0.17, 0, Math.PI * 2)
+    ctx.fill()
+    if (on) lights.push({ x, y: y - R * 0.45, r: R * (armed ? 2.4 : 1.4), color: '#ff4d6d', strength: armed ? 0.9 : 0.55 })
+    if (armed) {
+      // How far it will reach, dashed and pulsing.
+      ctx.globalAlpha = m.fade * (0.5 + 0.25 * Math.sin(s.time * 20))
+      ctx.strokeStyle = hot
+      ctx.lineWidth = 2
+      ctx.lineCap = 'butt'
+      ctx.setLineDash([8, 7])
+      ctx.beginPath()
+      ctx.arc(x, y, reach, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.globalAlpha = m.fade * 0.1
+      ctx.fillStyle = hot
+      ctx.fill()
+    }
+    ctx.restore()
+    lights.push({ x, y, r: R * 2.2, color: '#ff4d6d', strength: 0.3 * lum * m.fade })
+  }
+}
+
+/** A mine going off: a hot flash swelling out to its reach, and a white ring running ahead of it. */
+function drawBlasts(ctx: CanvasRenderingContext2D, v: View) {
+  for (const b of v.s.blasts) {
+    const x = X(v, b.x)
+    const y = Y(v, b.y)
+    const R = b.r * v.ppu
+    const t = 1 - b.life
+    const core = R * (0.3 + 0.7 * t)
+    ctx.save()
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, core)
+    grad.addColorStop(0, `rgba(255, 250, 225, ${0.95 * b.life})`)
+    grad.addColorStop(0.4, `rgba(255, 196, 92, ${0.7 * b.life})`)
+    grad.addColorStop(1, 'rgba(255, 110, 50, 0)')
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.arc(x, y, core, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.85 * b.life})`
+    ctx.lineWidth = Math.max(1, R * 0.08 * b.life)
+    ctx.beginPath()
+    ctx.arc(x, y, R * (0.2 + 0.95 * t), 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
+    lights.push({ x, y, r: R * 1.3, color: '#ffb347', strength: b.life })
   }
 }
 
@@ -1105,12 +1214,14 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   drawFloor(ctx, v, pal)
   drawWalls(ctx, v, pal)
   drawJellies(ctx, v)
+  drawMines(ctx, v)
   drawLine(ctx, v, pal)
   drawFishes(ctx, v, pal, false)
   drawGulls(ctx, v)
   drawPlayer(ctx, v, pal)
   drawFishes(ctx, v, pal, true)
   drawShark(ctx, v, pal)
+  drawBlasts(ctx, v)
   drawSurface(ctx, v, pal)
   drawBoat(ctx, v)
   drawDark(ctx, v)

@@ -259,7 +259,7 @@ function Tick() {
 }
 
 function PlusChip() {
-  return <span className="skin-card__plus">Pass+</span>
+  return <span className="skin-card__plus">Gold</span>
 }
 
 /** What's in the card: the skin, where it's from, and the one thing to do about it. */
@@ -276,7 +276,7 @@ function SkinCardBody({ skin, nameId }: { skin: Skin; nameId: string }) {
   let note: string | null = null
   let act: ReactNode = null
   if (mine) {
-    const source = skin.price != null ? 'the Hangar' : skin.plus ? `${seasonName} Pass+` : `the ${seasonName} pass`
+    const source = skin.price != null ? 'the Hangar' : skin.plus ? `the ${seasonName} Gold Pass` : `the ${seasonName} pass`
     from = (
       <>
         <Tick />

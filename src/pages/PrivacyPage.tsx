@@ -57,7 +57,7 @@ export function PrivacyPage() {
           you’re saving for.
         </li>
         <li>
-          <strong>Purchases.</strong> If you buy Pass+ or join Plus, payment is handled by Stripe,
+          <strong>Purchases.</strong> If you buy the Gold Pass or join Plus, payment is handled by Stripe,
           which collects your card and billing details under its own privacy policy. We never see
           or store your full card number. We keep what you bought, Stripe’s identifiers for you
           and your membership, the membership’s status, and when it renews or ends.
@@ -113,7 +113,7 @@ export function PrivacyPage() {
           email delivery service (Resend), which receives your email address to deliver it.
         </li>
         <li>
-          <strong>Stripe</strong> — handles payments for Pass+ and Plus; governed by Stripe’s
+          <strong>Stripe</strong> — handles payments for the Gold Pass and Plus; governed by Stripe’s
           privacy policy. Stripe receives your payment details and email address directly.
         </li>
         <li>

@@ -5,7 +5,6 @@ import { hubMarks, type BoardSample } from '../lib/gameHub'
 import { applyBoardScope, withGroupFallback } from '../lib/groups'
 import {
   api,
-  fetchGlobalRank,
   getLeaderboard,
   getPlayerBoard,
   normalizePlayerName,
@@ -25,21 +24,6 @@ import { getActiveTournamentsForGame, type TournamentSummary } from '../lib/tour
 
 /** One day the viewer played a daily: its board day, how many played it, and the place they took. */
 export type HubDay = { day: string; players: number; place: number | null; points: number | null }
-
-/**
- * A daily's viewer beyond today, over the period the header picks (a week, a month or all time): their
- * place on the daily's board for it (its day points, which is what their rank takes from it) and their
- * place across every game. The page says places, never the points.
- */
-export type HubBeyond = {
-  /** The period it's over: the header's, or a week when the header says today (today is the page's own board). */
-  period: LeaderboardPeriod
-  loading: boolean
-  /** Their place on the daily's board for the period, of how many; null when they aren't on it. */
-  place: { place: number; field: number | null } | null
-  /** Their place across all games for the period; null when they aren't on it, or it didn't load. */
-  rank: { place: number; field: number } | null
-}
 
 export type HubBoard = {
   loading: boolean
@@ -182,51 +166,6 @@ export function useHubBoard(
       cancelled = true
     }
   }, [slug, period, playerName, groupId])
-
-  return data
-}
-
-/**
- * A daily's viewer beyond today over the header's period (HubBeyond), asked apart from today's board so a
- * new period doesn't reload it. The standings read the header's group themselves: `groupId` only asks again
- * when it changes.
- */
-export function useDailyBeyond(
-  slug: LeaderboardGame | null,
-  playerName: string,
-  groupId: string | null,
-  period: LeaderboardPeriod,
-): HubBeyond {
-  const over: LeaderboardPeriod = period === 'daily' ? 'weekly' : period
-  const me = normalizePlayerName(playerName)
-  const daily = Boolean(slug && isDailyGame(slug))
-  const [data, setData] = useState<HubBeyond>({ period: over, loading: daily && Boolean(me), place: null, rank: null })
-
-  useEffect(() => {
-    if (!slug || !daily || !me) {
-      setData({ period: over, loading: false, place: null, rank: null })
-      return
-    }
-    let cancelled = false
-    setData({ period: over, loading: true, place: null, rank: null })
-    fetchGlobalRank(me, over)
-      .then((standings) => {
-        if (cancelled) return
-        const onGame = standings.byGame[slug]
-        setData({
-          period: over,
-          loading: false,
-          place: onGame ? { place: onGame.place, field: onGame.total ?? null } : null,
-          rank: standings.rank != null && standings.totalPlayers ? { place: standings.rank, field: standings.totalPlayers } : null,
-        })
-      })
-      .catch(() => {
-        if (!cancelled) setData({ period: over, loading: false, place: null, rank: null })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [slug, daily, me, over, groupId])
 
   return data
 }

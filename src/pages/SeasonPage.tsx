@@ -163,7 +163,7 @@ function Tile({
       id={reward.kind === 'skin' ? `skin-${reward.id}` : undefined}
       className={`season-tile season-tile--${state}${reward.plus ? ' season-tile--plus' : ''}${sought ? ' season-tile--sought' : ''}`}
       data-level={reward.level}
-      title={state === 'locked' ? `Level ${reward.level}, at ${at} season tickets${reward.plus ? ', with Pass+' : ''}` : undefined}
+      title={state === 'locked' ? `Level ${reward.level}, at ${at} season tickets${reward.plus ? ', with the Gold Pass' : ''}` : undefined}
     >
       <span className="season-tile__top">
         <span className="season-tile__lv">LV {reward.level}</span>
@@ -176,7 +176,7 @@ function Tile({
             <LockGlyph />
           </span>
         ) : state === 'waiting' ? (
-          <span className="season-tile__plusmark">Pass+</span>
+          <span className="season-tile__plusmark">Gold</span>
         ) : (
           <span className="season-tile__next">Next</span>
         )}
@@ -186,7 +186,7 @@ function Tile({
       </span>
       <span className="season-tile__name">{rewardTitle(reward)}</span>
       <span className="season-tile__what">{foot}</span>
-      {state === 'waiting' ? <span className="season-tile__with">Yours with Pass+</span> : null}
+      {state === 'waiting' ? <span className="season-tile__with">Yours with the Gold Pass</span> : null}
       {action ? <span className="season-tile__act">{action}</span> : null}
     </li>
   )
@@ -277,7 +277,7 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
 function HeadlinerStage({ headliners, owned, level }: { headliners: SeasonReward[]; owned: boolean; level: number }) {
   if (headliners.length < 3) return null
   return (
-    <div className="pass-stage" role="group" aria-label="Pass+ headliners">
+    <div className="pass-stage" role="group" aria-label="Gold Pass headliners">
       <span className="pass-stage__kick">The headliners</span>
       <ul className="pass-stage__row">
         {headliners.map((reward, i) => {
@@ -286,7 +286,7 @@ function HeadlinerStage({ headliners, owned, level }: { headliners: SeasonReward
           const yours = owned && reward.level <= level
           return (
             <li key={reward.id} className={`pass-stage__spot${middle ? ' pass-stage__spot--star' : ''}`}>
-              {middle ? <span className="pass-stage__only">Pass+ only</span> : null}
+              {middle ? <span className="pass-stage__only">Gold Pass only</span> : null}
               <span className="pass-stage__art" aria-hidden="true">
                 <RewardArt reward={reward} size={middle ? 230 : 160} />
               </span>
@@ -371,7 +371,7 @@ function PassPlus({
     const session = query.get('session')
     window.history.replaceState(window.history.state, '', window.location.pathname)
     if (back === 'cancelled') {
-      setNote({ tone: 'plain', text: `No charge. Pass+ is here all season, whenever you want it.` })
+      setNote({ tone: 'plain', text: `No charge. The Gold Pass is here all season, whenever you want it.` })
       return
     }
     if (back !== 'done' || !session) return
@@ -381,11 +381,11 @@ function PassPlus({
         await refreshSeason({ force: true, signedIn: true, catchUp: true })
         setNote(
           paid
-            ? { tone: 'good', text: 'Pass+ is yours. What your level has reached is in your hangar and your avatar’s Prizes now.' }
-            : { tone: 'plain', text: 'The payment is still going through. Pass+ arrives as soon as it does.' },
+            ? { tone: 'good', text: 'The Gold Pass is yours. What your level has reached is in your hangar and your avatar’s Prizes now.' }
+            : { tone: 'plain', text: 'The payment is still going through. The Gold Pass arrives as soon as it does.' },
         )
       })
-      .catch(() => setNote({ tone: 'bad', text: 'Couldn’t check the payment just now. If it went through, Pass+ arrives shortly.' }))
+      .catch(() => setNote({ tone: 'bad', text: 'Couldn’t check the payment just now. If it went through, the Gold Pass arrives shortly.' }))
   }, [])
 
   const buy = async () => {
@@ -411,11 +411,11 @@ function PassPlus({
       <div className="season-plus__head">
         <div className="season-plus__words">
           <h2 id="season-plus-title">
-            Pass+ <span className="season-plus__season">Season {season.id}</span>
+            Gold Pass <span className="season-plus__season">Season {season.id}</span>
           </h2>
           <p>
             {plus.rewards.length} more: {skins.length} skins, new ships and cars to play in for {gameList}, and {looks} looks for your card and
-            name{plus.bonus ? `, with ${plus.bonus} bonus levels past ${season.levels} that only Pass+ climbs` : ''}. Yours to keep. Looks only,
+            name{plus.bonus ? `, with ${plus.bonus} bonus levels past ${season.levels} that only the Gold Pass climbs` : ''}. Yours to keep. Looks only,
             never score.
           </p>
         </div>
@@ -431,7 +431,7 @@ function PassPlus({
             <div className="season-plus__ways">
               {plus.buyable ? (
                 <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || authLoading}>
-                  <b>{busy ? 'Opening…' : signedIn ? `Get Pass+ · ${price}` : `Sign in to get Pass+`}</b>
+                  <b>{busy ? 'Opening…' : signedIn ? `Get the Gold Pass · ${price}` : `Sign in to get the Gold Pass`}</b>
                   <small>Once, for the whole season ({seasonWeeks(season)} weeks). Yours to keep.</small>
                 </button>
               ) : (
@@ -442,7 +442,7 @@ function PassPlus({
                   <>
                     <b>Or try Plus free for a week</b>
                     <small>
-                      Then {money(plusInfo.price, plusInfo.currency)}/month, with every season’s Pass+ and every past daily. Pass+ comes with
+                      Then {money(plusInfo.price, plusInfo.currency)}/month, with every season’s Gold Pass and every past daily. The Gold Pass comes with
                       the first payment.
                     </small>
                   </>
@@ -450,7 +450,7 @@ function PassPlus({
                   <>
                     <b>Or join Plus{plusInfo ? ` · ${money(plusInfo.price, plusInfo.currency)}/month` : ''}</b>
                     <small>
-                      {plusInfo ? `About ${perSeason(plusInfo.price, season, plusInfo.currency)} a season, with` : 'With'} every season’s Pass+, and
+                      {plusInfo ? `About ${perSeason(plusInfo.price, season, plusInfo.currency)} a season, with` : 'With'} every season’s Gold Pass, and
                       every past daily.
                     </small>
                   </>
@@ -474,7 +474,7 @@ function PassPlus({
           return (
             <Fragment key={reward.id}>
               {reward.id === firstBonus ? (
-                <li className="season-track__bonus" aria-label={`Bonus levels, ${season.levels + 1} on: Pass+ only`}>
+                <li className="season-track__bonus" aria-label={`Bonus levels, ${season.levels + 1} on: Gold Pass only`}>
                   <span>Bonus levels</span>
                 </li>
               ) : null}
@@ -608,9 +608,9 @@ function SkinsCard({ free, plus, level, owned, plusOwned }: { free: SeasonReward
       {plus.length ? (
         <>
           <div className="season-skincard__grouprow">
-            <h3 className="season-skincard__group season-skincard__group--plus">Pass+ · {plus.length}</h3>
+            <h3 className="season-skincard__group season-skincard__group--plus">Gold Pass · {plus.length}</h3>
             <button type="button" className="season-skincard__see" onClick={toPlus}>
-              See Pass+
+              See the Gold Pass
               <Chevron />
             </button>
           </div>

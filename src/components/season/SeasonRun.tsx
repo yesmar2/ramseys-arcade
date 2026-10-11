@@ -104,7 +104,7 @@ export function SeasonLevelUp({ run }: { run: SeasonRun }) {
             <span className="run-levelup__what">
               <b>
                 {reward.kind === 'tickets' ? `+${reward.amount ?? 0} tickets` : reward.name}
-                {reward.plus ? <span className="run-levelup__plus">Pass+</span> : null}
+                {reward.plus ? <span className="run-levelup__plus">Gold</span> : null}
               </b>
               <small>{reward.ready ? (reward.kind === 'tickets' ? 'Added to your tickets' : `${reward.what} · it’s yours`) : `${reward.what} · on its way`}</small>
               {reward.kind === 'skin' && reward.game && reward.ready ? <UseSkin game={reward.game} id={reward.id} /> : null}
@@ -119,18 +119,18 @@ export function SeasonLevelUp({ run }: { run: SeasonRun }) {
           </span>
           <span>
             <b>
-              Pass+ had {rewardPhrase(plus.missed[0]!)} here
+              The Gold Pass had {rewardPhrase(plus.missed[0]!)} here
               {plus.missed.length > 1 ? ` and ${plus.missed.length - 1} more` : ''}.
             </b>
             <small>
-              {plus.waiting === 1 ? '1 Pass+ reward is' : `${plus.waiting} Pass+ rewards are`} waiting for you: Pass+ or Plus gives{' '}
+              {plus.waiting === 1 ? '1 Gold Pass reward is' : `${plus.waiting} Gold Pass rewards are`} waiting for you: the Gold Pass or Plus gives{' '}
               {plus.waiting === 1 ? 'it' : 'them all'} at once.
             </small>
           </span>
         </p>
       ) : null}
       <a className="run-levelup__go" href={seasonHref()}>
-        {plus ? 'See Pass+' : 'See the pass'}
+        {plus ? 'See the Gold Pass' : 'See the pass'}
       </a>
     </div>
   )

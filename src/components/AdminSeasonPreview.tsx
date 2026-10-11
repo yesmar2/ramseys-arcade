@@ -38,10 +38,10 @@ export function AdminSeasonPreview() {
     try {
       if (membership) {
         const done = await setPlusMembership(name, on)
-        setPlusNote({ ok: true, text: done.plan === 'plus' ? `${done.name} is on Plus now, with every season’s Pass+.` : `${done.name} is off Plus. What it gave stays theirs.` })
+        setPlusNote({ ok: true, text: done.plan === 'plus' ? `${done.name} is on Plus now, with every season’s Gold Pass.` : `${done.name} is off Plus. What it gave stays theirs.` })
       } else {
         const done = await setSeasonPlus(name, on)
-        setPlusNote({ ok: true, text: done.plus ? `${done.name} has Season ${done.season}’s Pass+ now.` : `${done.name}’s Pass+ is taken back. What it gave stays theirs.` })
+        setPlusNote({ ok: true, text: done.plus ? `${done.name} has Season ${done.season}’s Gold Pass now.` : `${done.name}’s Gold Pass is taken back. What it gave stays theirs.` })
       }
       void refreshSeason({ force: true })
       void refreshTickets(true)
@@ -54,7 +54,7 @@ export function AdminSeasonPreview() {
             : err instanceof ApiError && err.code === 'PAID_MEMBER'
               ? `${name} pays for Plus: only they can cancel it.`
             : err instanceof ApiError && err.code === 'NO_PLUS'
-              ? 'No season with a Pass+ right now.'
+              ? 'No season with a Gold Pass right now.'
               : 'That didn’t go through. Try again.',
       })
     } finally {
@@ -129,18 +129,18 @@ export function AdminSeasonPreview() {
       {error ? <p className="adm-fail">{error}</p> : null}
       {season?.status === 'live' ? (
         <>
-          <p className="adm-card__sub">Pass+, or Plus (which includes every season’s Pass+): give it to a tag to try it without paying, or take it back.</p>
+          <p className="adm-card__sub">The Gold Pass, or Plus (which includes every season’s Gold Pass): give it to a tag to try it without paying, or take it back.</p>
           <form className="adm-form" onSubmit={(event) => void plus(true, event)}>
             <input
               className="panel__input adm-input adm-input--tag"
               value={tag}
               maxLength={12}
               placeholder="TAG"
-              aria-label="Tag to give Pass+ to"
+              aria-label="Tag to give the Gold Pass to"
               onChange={(event) => setTag(event.target.value.toUpperCase())}
             />
             <button type="submit" className="panel__btn adm-small" disabled={plusBusy || !tag.trim()}>
-              {plusBusy ? 'Saving…' : 'Give Pass+'}
+              {plusBusy ? 'Saving…' : 'Give the Gold Pass'}
             </button>
             <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={plusBusy || !tag.trim()} onClick={() => void plus(false)}>
               Take it back

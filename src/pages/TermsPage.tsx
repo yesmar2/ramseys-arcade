@@ -77,7 +77,7 @@ export function TermsPage() {
           <strong>Free week.</strong> An account’s first membership may start with a free week.
           A payment method is needed to start it. If you don’t cancel before the free week ends,
           it becomes a paid membership and you are charged then. Each account gets one free week.
-          Rewards that are yours to keep (the season’s Pass+ rewards and the month’s members’
+          Rewards that are yours to keep (the season’s Gold Pass rewards and the month’s members’
           look) arrive with the first payment, not during the free week.
         </li>
         <li>
@@ -96,9 +96,9 @@ export function TermsPage() {
         </li>
       </ul>
 
-      <h2>Pass+</h2>
+      <h2>Gold Pass</h2>
       <p>
-        Pass+ is a one-time payment for one season’s extra rewards. It does not renew. Its
+        The Gold Pass is a one-time payment for one season’s extra rewards. It does not renew. Its
         rewards are given level by level as you play that season (or up to your level at once
         when you buy it), and they stay yours after the season ends.
       </p>

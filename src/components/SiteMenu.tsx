@@ -446,7 +446,7 @@ export function SiteMenu({
                     <span className="site-menu__row-label">Plus</span>
                     <span className="site-menu__row-sub">
                       {/* One line, so the menu fits a phone's screen. */}
-                      {isPlus ? (plusInfo?.you?.status === 'trialing' ? 'Your free week' : 'Your membership') : 'Every past daily, and Pass+'}
+                      {isPlus ? (plusInfo?.you?.status === 'trialing' ? 'Your free week' : 'Your membership') : 'Every past daily, Gold Pass'}
                     </span>
                   </span>
                   {!isPlus && freeWeekFor(plusInfo) ? <span className="site-menu__badge site-menu__badge--plus">Free week</span> : null}

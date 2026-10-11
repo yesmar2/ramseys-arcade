@@ -50,7 +50,7 @@ function useTiles(game: string) {
         .sort((a, b) => a.level - b.level)
         .flatMap((r): Tile[] => {
           const skin = all.find((s) => s.id === r.id)
-          return skin ? [{ kind: 'pass', skin, note: skin.plus ? `Pass+ · Lv ${r.level}` : `Level ${r.level}` }] : []
+          return skin ? [{ kind: 'pass', skin, note: skin.plus ? `Gold · Lv ${r.level}` : `Level ${r.level}` }] : []
         })
     : []
   const inShop = all

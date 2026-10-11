@@ -91,6 +91,7 @@ function milestone(game: string, label: string): string {
   if (game === 'asteroids') return `wave ${n}`
   if (game === 'snake') return `length ${n}`
   if (game === 'crosswalk') return `${n} rows`
+  if (game === 'frenzy') return 'Leviathan'
   return label.toLowerCase()
 }
 
@@ -110,6 +111,8 @@ const RUN_SUBJECTS: Partial<Record<string, string>> = {
   fours: 'The most fours anyone has cleared in a single run, four rows at once each',
   'rows-cleared': 'The most rows anyone has cleared in a single run',
   'biggest-shake': 'The most rows anyone has cleared with a single Shake',
+  'fish-eaten': 'The most fish anyone has eaten in a single run',
+  frenzies: 'The most frenzies anyone has set off in a single run',
 }
 
 /**

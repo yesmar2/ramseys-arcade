@@ -7,17 +7,14 @@ import { GameHubBoard } from '../components/GameHubBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
 import { GameHubHero } from '../components/GameHubHero'
 import { GameHubRecords } from '../components/GameHubRecords'
-import { GameHubStanding } from '../components/GameHubStanding'
 import { WallTile } from '../components/GameWall'
 import { PageShell } from '../components/PageShell'
 import { gamePlayableOn, getGame, isRankedGame, wallGames } from '../data/games'
-import { useAuth } from '../hooks/useAuth'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
-import { useDailyBeyond, useHubBoard, useHubEvents, useHubHighScore, useHubRecords } from '../hooks/useGameHub'
+import { useHubBoard, useHubEvents, useHubHighScore, useHubRecords } from '../hooks/useGameHub'
 import { currentHref, dailyTabHref, homeHref, navigate, periodFromRoute, recordsHref, useRoute } from '../hooks/useHashRoute'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { boardPeriodFor } from '../lib/allTime'
 import { inkOn } from '../lib/color'
 import type { DailyTab } from '../lib/dailyWords'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -92,13 +89,13 @@ type GameHubPageProps = {
 
 /**
  * A game's page. Up top and across the page, its name and Play beside its
- * screen, where it plays itself under the high score. Then, side by side,
- * where you stand on it and the one run that moves you, the period's board,
- * your side of its record book, and any event it is in; how to play it and
- * what scores; and the games most like it.
+ * screen, where it plays itself under the high score. Then, side by side, the
+ * period's board, its records, and any event it is in; and the games most like
+ * it. (Ramsey, 2026-10-11: just the hero, the board and maybe the records: no
+ * "Where you stand" and no "Your record books".)
  *
  * A daily's page is today's, with tabs under its hero: Today (today's card
- * across the page, then where you stand and its board), its past courses,
+ * across the page, then its board), its past courses,
  * and its records. One just for fun (data/games.ts Game.ranked) places
  * nobody: under its Today card are your days and today part by part, and it
  * has no records tab.
@@ -114,20 +111,16 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   // A daily's board is the day's whatever period is picked (the API keeps it so): its page says today.
   const period: LeaderboardPeriod = daily ? 'daily' : (periodFromRoute(route) ?? storedPeriod)
   const device = useDeviceType()
-  const { signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const boardSlug = isBoardGame(slug) ? slug : null
   // A daily just for fun has no board to ask for.
   const board = useHubBoard(ranked ? boardSlug : null, period, playerName, groupId)
-  // A daily's board is today's; where you stand beyond it follows the header's period, with its month for all
-  // time, which leaves the dailies out (lib/allTime.ts).
-  const beyond = useDailyBeyond(daily && ranked ? boardSlug : null, playerName, groupId, boardPeriodFor(slug, storedPeriod))
   const highScore = useHubHighScore(ranked ? boardSlug : null, groupId)
   // A daily's records are its Records tab, not a card of the book.
   const records = useHubRecords(daily ? '' : slug, playerName, groupId)
-  // While the board and the records load, the cards under the hero (where you stand, the board, its records) hold
-  // the height they had last time this device was here (lib/heldShape.ts).
+  // While the board and the records load, the cards under the hero (the board, its records) hold the height they
+  // had last time this device was here (lib/heldShape.ts).
   const settling = board.loading || (gameHasRecords(slug) && !daily && records === null)
   const bandHeld = useHeldHeight<HTMLDivElement>(`gh-cards-${slug}`, settling)
   const events = useHubEvents(slug)
@@ -221,17 +214,6 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const boardCard = boardSlug ? (
     <GameHubBoard slug={boardSlug} gameName={game.name} period={period} board={board} me={playerName} />
   ) : null
-  const standing = boardSlug ? (
-    <GameHubStanding
-      slug={boardSlug}
-      gameName={game.name}
-      period={period}
-      board={board}
-      beyond={beyond}
-      me={playerName}
-      signedIn={signedIn}
-    />
-  ) : null
   const eventsCard = events.length > 0 ? <GameHubEvents gameName={game.name} events={events} /> : null
   const shelfSection =
     more.length > 0 ? (
@@ -283,7 +265,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
             </Suspense>
           ) : (
             <>
-              {/* Today's card across the page, then where you stand and the board side by side under it (hub.css). */}
+              {/* Today's card across the page, then the board across under it (hub.css). */}
               <div className="gh-today">
                 {/* A daily just for fun's card is a bug hunt hiding place, where a ranked one's board panel was (lib/bugHunt.ts). */}
                 <div className="gh-today__main" data-hunt={ranked ? undefined : `b-head-${game.slug}`}>
@@ -294,12 +276,9 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                     </Suspense>
                   ) : null}
                 </div>
-                <div className="gh-today__below">
+                <div className={`gh-today__below${ranked ? ' gh-today__below--board' : ''}`}>
                   {ranked ? (
-                    <>
-                      {standing}
-                      {boardCard}
-                    </>
+                    boardCard
                   ) : (
                     // Just for fun: your days, then today part by part (YourDays.tsx).
                     <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
@@ -318,16 +297,15 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     )
   }
 
-  const recordsCard = hasRecords ? <GameHubRecords slug={game.slug} gameName={game.name} records={records} me={playerName} /> : null
+  const recordsCard = hasRecords ? <GameHubRecords slug={game.slug} records={records} /> : null
   return (
     <PageShell innerClassName="gh-rail">
       <div className="gh" style={style}>
         {/* The hero across the page, as a daily's is; then the cards side by side under it (hub.css .gh-band). */}
         {hero}
 
-        {standing || boardCard || recordsCard || eventsCard ? (
+        {boardCard || recordsCard || eventsCard ? (
           <div className="gh-band" ref={bandHeld.ref} style={bandHeld.style}>
-            {standing}
             {boardCard}
             {recordsCard}
             {eventsCard}

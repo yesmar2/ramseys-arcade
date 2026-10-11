@@ -170,7 +170,7 @@ export const PRIZES: readonly Prize[] = [
       price: 0,
       blurb,
       // Past the pass's 30 levels are Pass+'s bonus levels.
-      earned: { by: `Season 1’s Pass+, ${level > 30 ? 'bonus ' : ''}level ${level}`, short: 'Pass+' },
+      earned: { by: `Season 1’s Gold Pass, ${level > 30 ? 'bonus ' : ''}level ${level}`, short: 'Gold' },
     }),
   ),
   {
@@ -239,7 +239,7 @@ export const PRIZES: readonly Prize[] = [
       name,
       price: 0,
       blurb,
-      earned: { by: `Season 2’s Pass+, ${level > 30 ? 'bonus ' : ''}level ${level}`, short: 'Pass+' },
+      earned: { by: `Season 2’s Gold Pass, ${level > 30 ? 'bonus ' : ''}level ${level}`, short: 'Gold' },
     }),
   ),
   {

@@ -204,6 +204,9 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === PILEUP_FOURS_ID) return 'Fours'
   if (row.id === PILEUP_ROWS_ID) return 'Rows'
   if (row.id === PILEUP_SHAKE_ID) return 'Shake'
+  if (row.id === FRENZY_FISH_ID) return 'Fish'
+  if (row.id === FRENZY_FRENZIES_ID) return 'Frenzies'
+  if (row.id === FRENZY_LEVIATHAN_ID) return 'Leviathan'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -286,10 +289,28 @@ export const PILEUP_BOOK_MIN: Record<string, number> = {
   [PILEUP_COMBO_ID]: 3,
   [PILEUP_SHAKE_ID]: 2,
 }
+/*
+ * Frenzy's books (Ramsey, 2026-10-11: "can we add records for frenzy now"): fish eaten in a run, its longest
+ * chain of bites, frenzies set off, and the fastest to Leviathan, the top size.
+ */
+export const FRENZY_FISH_ID = 'fish-eaten'
+/** The same book id as Crosswalk's chain, so it reads and is called the same way. */
+export const FRENZY_CHAIN_ID = 'longest-chain'
+export const FRENZY_FRENZIES_ID = 'frenzies'
+export const FRENZY_LEVIATHAN_ID = 'fastest-leviathan'
+/** Below these a run's figure is noise, not a go at the book: a few bites aren't a chain. */
+export const FRENZY_BOOK_MIN: Record<string, number> = {
+  [FRENZY_FISH_ID]: 20,
+  [FRENZY_CHAIN_ID]: 5,
+  [FRENZY_FRENZIES_ID]: 1,
+  [FRENZY_LEVIATHAN_ID]: 1,
+}
 const PLAIN_COUNT_RECORD_IDS = new Set<string>([
   PILEUP_FOURS_ID,
   PILEUP_ROWS_ID,
   PILEUP_SHAKE_ID,
+  FRENZY_FISH_ID,
+  FRENZY_FRENZIES_ID,
   CROSSWALK_MOST_COINS_ID,
   CROSSWALK_LONGEST_CHAIN_ID,
   CROSSWALK_NEAR_MISSES_ID,
@@ -868,6 +889,22 @@ export async function submitSnakeLongest(
   }
 }
 
+/** Best-effort Frenzy book submit: one of its run's figures (a time in ms for Leviathan), once it's past the book's floor. */
+export async function submitFrenzyBook(
+  recordId: string,
+  value: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const v = Math.floor(value)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(v >= (FRENZY_BOOK_MIN[recordId] ?? 1))) return null
+  try {
+    return toRecordSubmitOutcome(await submitRecord('frenzy', recordId, cleaned, v))
+  } catch {
+    return null
+  }
+}
+
 /** Best-effort Pileup book submit: one of its run's figures, once it's past the book's floor. */
 export async function submitPileupBook(
   recordId: string,
@@ -897,6 +934,7 @@ export const GAMES_WITH_RECORDS = [
   'crumbtrail',
   'fireflies',
   'pileup',
+  'frenzy',
   // The dailies: each track's, hole's and day's record (the API's records.ts COURSES).
   'hotlap',
   'acechase',
