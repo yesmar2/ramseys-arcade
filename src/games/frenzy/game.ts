@@ -22,8 +22,10 @@ import type { SpeciesId } from './species'
  * to a spot near you and casting a worm on a hook below: touch the hook and you're reeled in ("can we add a
  * fisherman with a hook to avoid too?"). Jellyfish drift below the shallows, and nobody can eat them: touch one
  * and it stings, leaving you stunned, drifting and unable to steer for a moment, while whatever's hunting
- * you closes in ("maybe we can also add jelly fish that sting and stun"). Three lives; bites in quick
- * succession chain up to ×5.
+ * you closes in ("maybe we can also add jelly fish that sting and stun"). Sea mines are moored below the
+ * shallows, as the old open-ocean Frenzy had them ("maybe we should have the bombs too like we had before"):
+ * come near one and it ticks, then blows, taking a life if you're still in reach and everything else in it.
+ * Three lives; bites in quick succession chain up to ×5.
  *
  * Everything here is in world units, y down from the surface (above it is negative); the renderer scales.
  */
@@ -129,6 +131,23 @@ const STUN_TIME = 1.4
 const STING_COOL = 2.4
 export const JELLY_REACH = 2.4
 const JELLY_FIRST = 6
+/**
+ * Sea mines, back from the old open-ocean Frenzy (Ramsey, 2026-10-11: "maybe we should have the bombs too like
+ * we had before, make it a little harder"), sized to you. Come within MINE_NEAR of its radius (plus yours) and
+ * it ticks for MINE_FUSE, then goes off; touch it and it goes off at once. Its blast reaches MINE_BLAST times
+ * its radius: a life if you're in it, and every fish and jellyfish in it gone, and a mine in it goes off too.
+ * Fish keep clear of them, but one hunting you can blunder into one. They're moored below MINE_TOP, so the
+ * shallows stay clear, and the first of a run comes after MINE_FIRST.
+ */
+const MINE_FUSE = 0.85
+const MINE_TOUCH_FUSE = 0.06
+const MINE_CHAIN_FUSE = 0.14
+export const MINE_NEAR = 3
+export const MINE_BLAST = 4.6
+const MINE_TOP = 170
+const MINE_FIRST = 8
+/** How long a blast's flash lasts. */
+const BLAST_TIME = 0.6
 
 export type Fish = {
   id: number
@@ -156,6 +175,12 @@ export type Gull = { id: number; x: number; y: number; vx: number; flap: number;
 
 /** A jellyfish: its bell's radius, its colour, the beat of its pulse, and how far it has faded in. */
 export type Jelly = { id: number; x: number; y: number; vx: number; vy: number; r: number; hue: number; beat: number; seed: number; fade: number }
+
+/** A sea mine: its radius, its bob, and its fuse (seconds left once it ticks; -1 while it waits, -2 once it's gone). */
+export type Mine = { id: number; x: number; y: number; r: number; bob: number; fuse: number; fade: number }
+
+/** A mine going off: where, how far it reaches, and how much of its flash is left, 1 to 0. */
+export type Blast = { id: number; x: number; y: number; r: number; life: number }
 
 export type Player = {
   x: number
@@ -236,6 +261,9 @@ export type GameState = {
   boat: Boat
   jellies: Jelly[]
   jellyIn: number
+  mines: Mine[]
+  mineIn: number
+  blasts: Blast[]
   /** Seconds of frenzy left (double points), at the top size. */
   frenzy: number
   /** Where the fish is heading, in world units; null to coast to a stop. */
@@ -321,6 +349,9 @@ export function createInitialState(w = 960, h = 540): GameState {
     boat: freshBoat(),
     jellies: [],
     jellyIn: 0,
+    mines: [],
+    mineIn: 0,
+    blasts: [],
     frenzy: 0,
     target: null,
     steer: null,
@@ -391,6 +422,9 @@ export function startGame(s: GameState): GameState {
     boat: freshBoat(),
     jellies: [],
     jellyIn: JELLY_FIRST,
+    mines: [],
+    mineIn: MINE_FIRST,
+    blasts: [],
     frenzy: 0,
     target: null,
     steer: null,
@@ -411,7 +445,7 @@ export function startGame(s: GameState): GameState {
  */
 export function jumpToSize(s: GameState, size: number): GameState {
   const to = clamp(Math.round(size) - 1, 0, MAX_SIZE)
-  const next: GameState = { ...s, player: { ...s.player, size: to, invuln: 1.5 }, bar: 0, frenzy: 0, fishes: [], jellies: [], spawnIn: 0 }
+  const next: GameState = { ...s, player: { ...s.player, size: to, invuln: 1.5 }, bar: 0, frenzy: 0, fishes: [], jellies: [], mines: [], blasts: [], spawnIn: 0 }
   next.floaters = [...s.floaters, { x: s.player.x, y: s.player.y - 34, text: `${STAGES[to]}!`, t: 0, tone: 'grow' }]
   frame(next, 1)
   return next
@@ -735,6 +769,20 @@ function moveFishes(s: GameState, dt: number, playing: boolean) {
       const cruise = (40 + f.tier * 4) * pace
       if (Math.abs(f.vx) < cruise * 0.6) f.vx += dir * cruise * dt
     }
+    // Round the mines, unless it's hunting you: then it can blunder into one.
+    if (!inAir && f.hunt < 0.5) {
+      for (const m of s.mines) {
+        const mx = f.x - m.x
+        const my = f.y - m.y
+        const md = Math.hypot(mx, my) || 1
+        const gap = md - m.r * 1.6 - fr
+        if (gap < 60) {
+          const w = Math.min(1.5, 1 - gap / 60) * 160 * dt
+          f.vx += (mx / md) * w
+          f.vy += (my / md) * w
+        }
+      }
+    }
     // A flying fish leaps now and then.
     if (f.flyer !== undefined && !inAir && f.y < 90) {
       f.flyer -= dt
@@ -925,6 +973,99 @@ function sting(s: GameState, j: Jelly) {
   sfx('hit')
 }
 
+/** A mine moored just out of sight (or in view, for the start card), below the shallows, away from the others. */
+function spawnMine(s: GameState, anywhere: boolean) {
+  const half = viewHalf(s)
+  const y = clamp(s.camY + rand(-half.h, half.h), MINE_TOP, FLOOR - 70)
+  let x: number
+  if (anywhere) x = clamp(s.camX + rand(-half.w, half.w), 60, OCEAN_W - 60)
+  else {
+    const left = Math.random() < 0.5
+    x = left ? s.camX - half.w - 60 : s.camX + half.w + 60
+    if (x < 40 || x > OCEAN_W - 40) x = left ? s.camX + half.w + 60 : s.camX - half.w - 60
+  }
+  x = clamp(x, 40, OCEAN_W - 40)
+  // Sized to you, so it's never a speck and never a wall.
+  const r = (10 + s.player.size * 3.2) * rand(0.9, 1.1)
+  for (const m of s.mines) if (Math.hypot(m.x - x, m.y - y) < (m.r + r) * 3) return
+  if (Math.hypot(s.player.x - x, s.player.y - y) < r * MINE_BLAST + 120) return
+  s.mines.push({ id: s.nextId++, x, y, r, bob: rand(0, 6.28), fuse: -1, fade: anywhere ? 1 : 0 })
+}
+
+/**
+ * The mines: a couple near you, more as a run goes on and in the deep. Each waits until you come near (or a
+ * fish bumps one in view), ticks for MINE_FUSE, and goes off; touch one and it goes off at once.
+ */
+function moveMines(s: GameState, dt: number, playing: boolean) {
+  const half = viewHalf(s)
+  const p = s.player
+  const pr = playerRadius(s)
+  const want = playing ? Math.min(6, 2 + Math.floor(s.elapsed / 45) + (p.y > FLOOR * 0.45 ? 1 : 0)) : s.phase === 'menu' ? 1 : 0
+  s.mineIn -= dt
+  if (s.mineIn <= 0 && s.mines.length < want) {
+    spawnMine(s, s.phase === 'menu')
+    s.mineIn = rand(1.5, 3.5)
+  }
+  const going: Mine[] = []
+  for (const m of s.mines) {
+    m.bob += dt
+    m.fade = Math.min(1, m.fade + dt * 2)
+    if (m.fuse < 0) {
+      if (!playing) continue
+      const d = Math.hypot(p.x - m.x, p.y - m.y)
+      if (!p.air && d < pr + m.r) m.fuse = MINE_TOUCH_FUSE
+      else if (!p.air && d < m.r * MINE_NEAR + pr) {
+        m.fuse = MINE_FUSE
+        sfx('tap')
+      } else if (Math.abs(m.x - s.camX) < half.w + m.r && Math.abs(m.y - s.camY) < half.h + m.r) {
+        // A fish bumping one in view sets it off too.
+        for (const f of s.fishes) {
+          if (Math.hypot(f.x - m.x, f.y - m.y) < fishRadius(f) + m.r) {
+            m.fuse = MINE_FUSE
+            sfx('tap')
+            break
+          }
+        }
+      }
+    } else {
+      const before = m.fuse
+      m.fuse -= dt
+      if (before > MINE_FUSE / 2 && m.fuse <= MINE_FUSE / 2) sfx('tap', 3)
+      if (m.fuse <= 0) going.push(m)
+    }
+  }
+  for (const m of going) explode(s, m)
+  s.mines = s.mines.filter((m) => m.fuse !== -2 && Math.abs(m.x - s.camX) < half.w * 2.6 + 200 && Math.abs(m.y - s.camY) < half.h * 2.6 + 200)
+  for (const b of s.blasts) b.life -= dt / BLAST_TIME
+  s.blasts = s.blasts.filter((b) => b.life > 0)
+}
+
+/** A mine going off: a life if you're in its reach, every fish and jellyfish in it gone, and any mine in it set off. */
+function explode(s: GameState, m: Mine) {
+  m.fuse = -2
+  const R = m.r * MINE_BLAST
+  s.blasts.push({ id: s.nextId++, x: m.x, y: m.y, r: R, life: 1 })
+  sfx('boom')
+  burst(s, m.x, m.y, '#ffcf6a', 26, 260)
+  burst(s, m.x, m.y, '#ff7a3d', 14, 200)
+  const p = s.player
+  if (s.phase === 'playing' && !p.air && p.invuln <= 0 && Math.hypot(p.x - m.x, p.y - m.y) < R * 0.85 + playerRadius(s) * 0.5) {
+    hurt(s, 'Caught in a mine blast')
+  }
+  for (const f of s.fishes) {
+    if (Math.hypot(f.x - m.x, f.y - m.y) < R + fishRadius(f) * 0.5) {
+      burst(s, f.x, f.y, '#ffffff', 4, 80)
+      f.tier = -1
+    }
+  }
+  s.fishes = s.fishes.filter((f) => f.tier >= 0)
+  s.jellies = s.jellies.filter((j) => Math.hypot(j.x - m.x, j.y - m.y) >= R + j.r * 0.5)
+  for (const o of s.mines) {
+    if (o === m || o.fuse === -2 || Math.hypot(o.x - m.x, o.y - m.y) >= R * 1.1) continue
+    o.fuse = o.fuse < 0 ? MINE_CHAIN_FUSE : Math.min(o.fuse, MINE_CHAIN_FUSE)
+  }
+}
+
 /** The fisherman: rests, sails to a spot not far from you, casts, waits, reels in, rests again. */
 function moveBoat(s: GameState, dt: number, playing: boolean) {
   const half = viewHalf(s)
@@ -1059,6 +1200,8 @@ export function tick(state: GameState, dt: number): GameState {
   s.floaters = state.floaters.map((f) => ({ ...f }))
   if (state.shark) s.shark = { ...state.shark }
   s.jellies = state.jellies.map((j) => ({ ...j }))
+  s.mines = state.mines.map((m) => ({ ...m }))
+  s.blasts = state.blasts.map((b) => ({ ...b }))
   const playing = s.phase === 'playing'
   if (playing) s.elapsed += dt
   if (s.phase === 'dying' && s.phaseTime >= DYING_TIME) {
@@ -1081,6 +1224,7 @@ export function tick(state: GameState, dt: number): GameState {
   if (playing || s.shark) moveShark(s, dt, playing)
   moveBoat(s, dt, playing)
   moveJellies(s, dt, playing)
+  moveMines(s, dt, playing)
   if (s.frenzy > 0) {
     s.frenzy = Math.max(0, s.frenzy - dt)
     if (s.frenzy === 0) s.bar = 0

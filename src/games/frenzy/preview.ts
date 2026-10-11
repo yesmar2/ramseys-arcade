@@ -5,6 +5,8 @@ import {
   fishRadius,
   hookX,
   JELLY_REACH,
+  MINE_BLAST,
+  MINE_NEAR,
   playerRadius,
   resizeState,
   setTarget,
@@ -20,9 +22,8 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
  * Frenzy playing itself, for its tile on the home page. Everything on screen is the game's own engine and
  * renderer, so the preview changes whenever the game does. The only thing added is a pilot that plays the
  * way a person would: it goes after the nearest fish it can eat, swims away from anything that can eat it,
- * gets out of the shark's lane when the warning shows, keeps off the fisherman's hook, and now and then
- * leaps out of the water. When it's
- * eaten, a new run starts.
+ * gets out of the shark's lane when the warning shows, keeps off the fisherman's hook, the jellyfish and the
+ * mines, and now and then leaps out of the water. When it's eaten, a new run starts.
  */
 
 /** A tile is small: drawn at the game's own scale the little fish would be a few pixels long. */
@@ -71,6 +72,17 @@ function pilot(s: GameState, m: Pilot, dt: number): GameState {
     if (d < range) {
       ax += (dx / d) * (1 - d / range) * 5
       ay += (dy / d) * (1 - d / range) * 5
+    }
+  }
+  // And the mines: never near enough to set one ticking, and out of a ticking one's reach.
+  for (const mine of s.mines) {
+    const dx = p.x - mine.x
+    const dy = p.y - mine.y
+    const d = Math.hypot(dx, dy) || 1
+    const range = mine.fuse >= 0 ? mine.r * MINE_BLAST + pr + 40 : mine.r * MINE_NEAR + pr * 2 + 40
+    if (d < range) {
+      ax += (dx / d) * (1 - d / range) * 6
+      ay += (dy / d) * (1 - d / range) * 6
     }
   }
   // Now and then, near the top, a leap.
