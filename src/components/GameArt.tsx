@@ -135,7 +135,7 @@ function GhostEyes({ cx, cy, r, look = [0, 0] }: { cx: number; cy: number; r: nu
   )
 }
 
-/** Round white eyes with dark pupils, the arcade's own (Snake's, the hopper's). */
+/** Round white eyes with dark pupils, the arcade's own (Snake's). */
 function Eyes({ at, r, look = [0, -1], ring }: { at: Array<[number, number]>; r: number; look?: [number, number]; ring?: string }) {
   return (
     <>
@@ -326,7 +326,7 @@ function Snake({ id }: { id: Id }) {
   )
 }
 
-/** The game's rows: the hopper on the grass, a bus down the road, logs and a prize ticket on the river. */
+/** The game's rows: Blip on the grass, an amber bus down the road, logs and a prize ticket on the river. */
 function Crosswalk({ id }: { id: Id }) {
   const tree = (cx: number, cy: number) => (
     <g key={`${cx}`}>
@@ -375,10 +375,10 @@ function Crosswalk({ id }: { id: Id }) {
         <rect x="24" y="10.4" width="2.4" height="0.9" rx="0.3" fill="#10151b" />
         <rect x="14.2" y="17.3" width="2.4" height="0.9" rx="0.3" fill="#10151b" />
         <rect x="24" y="17.3" width="2.4" height="0.9" rx="0.3" fill="#10151b" />
-        <rect x="12.4" y="11.1" width="16.4" height="6.4" rx="1.6" {...wash(168, 56, 58, 0.3, 0.55)} />
-        <rect x="13.9" y="12.5" width="9.4" height="3.6" rx="0.6" {...wash(168, 56, 58, 0.18, 0.3)} />
-        <path d="M16.3 12.5 V16.1 M18.6 12.5 V16.1 M20.9 12.5 V16.1" {...line(hsl(168, 56, 58), 0.25, 0.8)} />
-        <rect x="24.6" y="12.5" width="2.6" height="3.6" rx="0.6" {...wash(168, 56, 58, 0.18, 0.3)} />
+        <rect x="12.4" y="11.1" width="16.4" height="6.4" rx="1.6" {...wash(42, 56, 58, 0.3, 0.55)} />
+        <rect x="13.9" y="12.5" width="9.4" height="3.6" rx="0.6" {...wash(42, 56, 58, 0.18, 0.3)} />
+        <path d="M16.3 12.5 V16.1 M18.6 12.5 V16.1 M20.9 12.5 V16.1" {...line(hsl(42, 56, 58), 0.25, 0.8)} />
+        <rect x="24.6" y="12.5" width="2.6" height="3.6" rx="0.6" {...wash(42, 56, 58, 0.18, 0.3)} />
         <circle cx="28.4" cy="12.4" r="0.38" fill="#ffe28a" />
         <circle cx="28.4" cy="16.2" r="0.38" fill="#ffe28a" />
         <circle cx="12.8" cy="12.4" r="0.32" fill="#e8564f" />
@@ -386,9 +386,8 @@ function Crosswalk({ id }: { id: Id }) {
       </g>
       {tree(7.6, 24.2)}
       {tree(33, 24.6)}
-      <Glow id={id} name="hop" cx={20} cy={24.2} r={5.4} colour="#f5c542" strength={0.4} />
-      <circle cx="20" cy="24.2" r="3.4" {...wash(45, 90, 60, 0.42, 0.6)} />
-      <Eyes at={[[18.75, 23.4], [21.25, 23.4]]} r={1.05} ring={INK} />
+      <ellipse cx="20.3" cy="28.3" rx="2.9" ry="0.7" fill="#000" opacity="0.22" />
+      <Blip id={id} name="crosswalk-spark" x={20} y={23.7} s={0.47} c={BLIP_MINT} />
     </>
   )
 }

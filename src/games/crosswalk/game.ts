@@ -108,7 +108,7 @@ export type GameState = {
   /** Smooth camera position (only moves up with the player). */
   cameraY: number
   hop: HopAnim | null
-  /** The way the last hop went, or tried to go: where the hopper is looking. */
+  /** The way the last hop went, or tried to go: where Blip is looking. */
   facing: Dir
   hopCooldown: number
   /** Buffered input so fast swipes during a hop aren't dropped. */
@@ -277,13 +277,14 @@ const LOG_SNAP = 0.7
 /** Target water between logs, in tiles. */
 const LOG_GAP = 1.05
 /**
- * Traffic paint. Amber was one of these, the hopper's own colour, so a car
- * could wear the face of the thing you steer: indigo took its place. Orange
- * (18) went the same way when coins became prize tickets, which are that
- * orange, and magenta took it. Only the values moved, so every lane still
- * rolls the same numbers.
+ * Traffic paint. No car wears the colour of the thing you steer: amber went
+ * while the old hopper was amber, and indigo took its place; teal (168) went
+ * when Blip, who is that mint, took over from the hopper, and amber came back.
+ * Orange (18) went when coins became prize tickets, which are that orange, and
+ * magenta took it. Only the values moved, so every lane still rolls the same
+ * numbers.
  */
-const CAR_HUES = [300, 348, 272, 198, 236, 128, 168]
+const CAR_HUES = [300, 348, 272, 198, 236, 128, 42]
 /** Lorries are the long ones; the renderer gives them a cab and a trailer. */
 const LORRY_W = 2.0
 const CAR_W = 1.4
@@ -292,7 +293,7 @@ export const CLOSE_CALL_SHOW = 0.75
 /** How long a landing's dust, or its ring on the water, stays. */
 export const PUFF_LIFE = 0.36
 const LOG_HUE = 32
-/** Matches the circular hopper sprite. */
+/** Matches Blip's round body. */
 const PLAYER_HALF = 0.26
 /** Cars collide on their drawn bounds; just a sliver of mercy. */
 const CAR_INSET = 0.02
@@ -349,7 +350,7 @@ const LANE_SPEED_SPREAD = 0.36
  * visual reason was missed, and it bites hardest on a log.
  *
  * Where the board is wider than the screen — every phone — the view pans
- * sideways to keep the hopper in frame. Riding a log, that means you are pinned
+ * sideways to keep Blip in frame. Riding a log, that means you are pinned
  * to the middle of the screen while the world slides past. A car in the next
  * row travelling at the log's speed is pinned too, and with the only big object
  * nearby sitting perfectly still the eye takes *it* for the fixed thing and
@@ -1131,7 +1132,7 @@ function collectTicket(state: GameState): GameState {
  * exactly as it was.
  *
  * It stands on the line between two tiles, so it never takes one anyone hops
- * onto, a little to one side of the middle the hopper starts in, and never
+ * onto, a little to one side of the middle Blip starts in, and never
  * against a tree.
  */
 

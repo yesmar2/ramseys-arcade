@@ -17,9 +17,7 @@ import {
   kerbButton,
   laneSpan,
 } from './game'
-import { drawEyes } from '../eyes'
 import {
-  inkColor,
   isDarkTheme,
   isFlatTheme,
   playfieldColor,
@@ -29,7 +27,6 @@ import {
 
 const GRASS_A = 142
 const TREE = 158
-const HOPPER = 42
 
 const TAU = Math.PI * 2
 /** Canvas text cannot read the page's font variable, so the face is named here. */
@@ -46,7 +43,7 @@ const FACING: Record<Dir, { x: number; y: number }> = {
 /**
  * Where the pupils go for each facing. Up is only a lean: the eyes already sit
  * high on the body, and pupils pushed to the top of them read as an eye-roll
- * rather than a hopper looking where it is going.
+ * rather than Blip looking where he is going.
  */
 const LOOK: Record<Dir, { x: number; y: number }> = {
   up: { x: 0, y: -0.35 },
@@ -98,7 +95,7 @@ function tileNoise(row: number, col: number, salt: number) {
 /**
  * The ground changes as you get deeper, so a long run has somewhere to arrive.
  *
- * Only the ground: grass, trees, water. Cars, logs, tickets and the hopper keep
+ * Only the ground: grass, trees, water. Cars, logs, tickets and Blip keep
  * their hues everywhere, because those are the things a player reads to stay
  * alive and a palette is not worth making a hazard harder to pick out.
  *
@@ -186,7 +183,7 @@ export function computeLayout(
 ): CrosswalkLayout {
   const { cell: widthCell, availH, hudTop } = cellMetrics(w, h, cols)
   // Tall phones would otherwise show a dozen+ tiny rows. Cap the row budget so
-  // tiles grow (sides crop) and pan horizontally to keep the hopper in frame.
+  // tiles grow (sides crop) and pan horizontally to keep Blip in frame.
   // Desktop stays tight too — seeing too many lanes ahead makes traffic too readable.
   const maxRows = w < 560 ? 8 : w < 900 ? 8 : 7
   const cell = availH / widthCell > maxRows ? availH / maxRows : widthCell
@@ -471,7 +468,7 @@ function drawTree(
   const stroke = fill(hue, sat(48), lit(dark ? 58 : 36), 0.9)
   const tw = size * 0.22
 
-  // A shadow where it stands, the same one the hopper throws.
+  // A shadow where it stands, the same one Blip throws.
   ctx.fillStyle = dark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(30, 40, 60, 0.09)'
   ctx.beginPath()
   ctx.ellipse(cx, cy + size * 0.42, size * 0.24, size * 0.07, 0, 0, TAU)
@@ -500,7 +497,6 @@ function drawTree(
 
 type HopperPose = {
   pulse: number
-  dark: boolean
   dying: boolean
   deathT: number
   /** Forward-hop squeeze: 0 = round, 1 = max skinny. */
@@ -508,20 +504,42 @@ type HopperPose = {
   cause: GameState['cause']
   /** Rows taken back to back right now. */
   chain: number
-  /** Where the last hop went, or tried to: the pupils look that way. */
+  /** Where the last hop went, or tried to: his eyes look that way. */
   facing: Dir
   /** Shut for a blink. */
   blink: boolean
 }
 
-function drawHopper(
+/** Blip's colours, as BlipFigure.tsx and GameArt draw him. */
+const BLIP = {
+  body: '#34c6a8',
+  shade: '#1f9b84',
+  feet: '#167a69',
+  /** His spark's glow, as r, g, b for its fade. */
+  glow: '159, 247, 226',
+  core: '#f2fffb',
+  ink: '#0f2f2a',
+}
+
+/**
+ * Blip, the site's mascot, is the one crossing (Ramsey picked "Blip, as he is" over the old hopper on
+ * 2026-10-11): solid mint with his belly shade, shine, cheeks and spark, as he's drawn everywhere else. Solid on a
+ * board of washes, he stands apart from the trees and cars, which are drawn see-through.
+ *
+ * He moves as the hopper did: the same squash and stretch, the same landing thud, the same falls. His body is
+ * drawn in his own units (BlipFigure's: body radius 7.35 about (0, 1.26), y down) scaled to the hop's ellipse, so
+ * every squeeze squeezes him. His spark floats over him in screen space, so it never squashes, and goes out when
+ * he's hit. His face looks the way the last hop went and blinks now and then; a car crosses his eyes out, the
+ * river shuts them, and the clock running out leaves them wide open, looking up at what took him.
+ */
+function drawBlip(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   size: number,
   pose: HopperPose,
 ) {
-  const { pulse, dark, dying, deathT, squeeze, cause, chain } = pose
+  const { pulse, dying, deathT, squeeze, cause, chain } = pose
   let drawX = cx
   let drawY = cy
   let deathScale = 1
@@ -549,28 +567,17 @@ function drawHopper(
   }
 
   const scale = (1 + pulse * 0.06) * deathScale
-  // Land thud: briefly fat and short when hopPulse is high and we're not mid-squeeze.
+  // Land thud: briefly fat and short when hopPulse is high and he's not mid-squeeze.
   const land = !dying && pulse > 0.08 ? Math.min(1, pulse / 0.32) : 0
-  const r = size * 0.3 * scale
-  const rx = r * (1 - squeeze * 0.32) * squashX * (1 + land * 0.22)
-  const ry = r * (1 + squeeze * 0.18) * squashY * (1 - land * 0.28)
+  const r = size * 0.29 * scale
+  const rx = r * (1 - squeeze * 0.26) * squashX * (1 + land * 0.2)
+  const ry = r * (1 + squeeze * 0.16) * squashY * (1 - land * 0.24)
   const fade = dying ? 1 - deathT * 0.35 : 1
-  const bodyHue = dying ? 4 : HOPPER
-  const bodySat = dying ? 72 : 62
-  /*
-   * Translucent, like the cars on the same road and the beads in Snake.
-   *
-   * This was the one solid fill on the field — alpha 1 where everything else
-   * is a soft wash behind a saturated outline — which is what made it sit on
-   * top of the board rather than in it.
-   */
-  const body = fill(bodyHue, bodySat, dark ? 58 : 54, softFillAlpha(dark ? 0.32 : 0.26) * fade)
-  const stroke = fill(bodyHue, bodySat, dark ? 48 : 36, 0.95 * fade)
 
   /*
-   * A chain shows as warmth gathering under the hopper — the same amber Snake
-   * burns for boost, so momentum reads as one idea across the arcade. It lights
-   * at the same count the readout starts at, so nothing glows that the HUD is
+   * A chain shows as warmth gathering under him — the same amber Snake burns
+   * for boost, so momentum reads as one idea across the arcade. It lights at
+   * the same count the readout starts at, so nothing glows that the HUD is
    * not also counting.
    */
   if (!dying && chain >= MOMENTUM_SHOW) {
@@ -581,42 +588,135 @@ function drawHopper(
     glow.addColorStop(1, 'rgba(245, 185, 66, 0)')
     ctx.fillStyle = glow
     ctx.beginPath()
-    ctx.arc(drawX, drawY, glowR, 0, Math.PI * 2)
+    ctx.arc(drawX, drawY, glowR, 0, TAU)
+    ctx.fill()
+  }
+
+  ctx.save()
+  ctx.translate(drawX, drawY)
+  ctx.scale(rx / 7.35, ry / 7.35)
+  ctx.translate(0, -1.26)
+  ctx.globalAlpha = fade
+  /** Screen pixels in his units, for line widths. */
+  const unit = 7.35 / r
+
+  // Feet: tucked up a little in the air, splayed on a landing.
+  const lift = squeeze * 1.2
+  const splay = land * 0.6
+  ctx.fillStyle = BLIP.feet
+  for (const side of [-1, 1]) {
+    ctx.beginPath()
+    ctx.ellipse(side * (2.31 + splay), 8.82 - lift, 1.79, 0.95, 0, 0, TAU)
     ctx.fill()
   }
 
   ctx.beginPath()
-  ctx.ellipse(drawX, drawY, rx, ry, 0, 0, Math.PI * 2)
-  ctx.fillStyle = body
+  ctx.arc(0, 1.26, 7.35, 0, TAU)
+  ctx.fillStyle = BLIP.body
   ctx.fill()
-  ctx.strokeStyle = stroke
-  ctx.lineWidth = Math.max(2, size * 0.06)
-  strokeOutlined(ctx)
+  // His belly shade: the body below BlipFigure's wide curve, an ellipse 8.4 by 6.3 about (0, -0.3).
+  ctx.save()
+  ctx.clip()
+  ctx.beginPath()
+  ctx.rect(-8, -0.3, 16, 10)
+  ctx.ellipse(0, -0.3, 8.4, 6.3, 0, 0, TAU)
+  ctx.fillStyle = BLIP.shade
+  ctx.fill('evenodd')
+  ctx.restore()
+  // A thin dark edge, so he sits on the board rather than floating over it.
+  ctx.beginPath()
+  ctx.arc(0, 1.26, 7.35, 0, TAU)
+  ctx.strokeStyle = 'rgba(15, 47, 42, 0.55)'
+  ctx.lineWidth = Math.max(1.2, size * 0.03) * unit
+  ctx.stroke()
+  // His shine.
+  ctx.save()
+  ctx.translate(-2.52, -2.94)
+  ctx.rotate((-24 * Math.PI) / 180)
+  ctx.beginPath()
+  ctx.ellipse(0, 0, 2.52, 1.26, 0, 0, TAU)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+  ctx.fill()
+  ctx.restore()
 
-  /*
-   * Snake's eyes, at Snake's proportions. The radius comes off `r` rather than
-   * `rx`, so a hopper mid-squeeze keeps round pupils while they ride along with
-   * the body the squeeze gave it.
-   *
-   * They look the way the last hop went, and blink now and then. A crash
-   * crosses them out, as Snake's are when it hits something, where this used
-   * to scrawl a red X over the whole body; the river shuts them; the clock
-   * running out leaves them wide open, looking up at what took it.
-   */
-  const eyes = { x: drawX, y: drawY, rx, ry, radius: r * 0.26 }
-  // The ring only where the body is pale enough to lose a white eye against it.
-  const ring = dark ? undefined : stroke
-  if (dying) {
-    if (cause === 'car' || cause === 'train') {
-      drawEyes(ctx, { ...eyes, dead: inkColor() })
-    } else if (cause === 'water' || cause === 'edge') {
-      drawEyes(ctx, { ...eyes, line: stroke, closed: true })
+  // His face, turned the way the last hop went.
+  const toward = LOOK[pose.facing]
+  const fx = toward.x * 1.15
+  const fy = toward.y * 0.75
+  const crashed = dying && (cause === 'car' || cause === 'train')
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = BLIP.ink
+  for (const side of [-1, 1]) {
+    const ex = side * 1.89 + fx
+    const ey = 1.05 + fy
+    ctx.beginPath()
+    if (crashed) {
+      ctx.lineWidth = 0.62
+      ctx.moveTo(ex - 0.9, ey - 0.9)
+      ctx.lineTo(ex + 0.9, ey + 0.9)
+      ctx.moveTo(ex + 0.9, ey - 0.9)
+      ctx.lineTo(ex - 0.9, ey + 0.9)
+      ctx.stroke()
+    } else if (pose.blink || (dying && (cause === 'water' || cause === 'edge'))) {
+      ctx.lineWidth = 0.55
+      ctx.moveTo(ex - 0.95, ey + 0.1)
+      ctx.quadraticCurveTo(ex, ey + 0.75, ex + 0.95, ey + 0.1)
+      ctx.stroke()
     } else {
-      drawEyes(ctx, { ...eyes, line: ring, look: FACING.up })
+      // Wide open and looking up when the clock takes him; else where he's going.
+      const up = dying ? -0.6 : 0
+      ctx.ellipse(ex, ey + up * 0.3, 0.95, 1.58, 0, 0, TAU)
+      ctx.fillStyle = BLIP.ink
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(ex + 0.31 + toward.x * 0.25, ey - 0.73 + up * 0.5 + toward.y * 0.3, 0.36, 0, TAU)
+      ctx.fillStyle = '#fff'
+      ctx.fill()
     }
-    return
   }
-  drawEyes(ctx, { ...eyes, line: pose.blink ? stroke : ring, look: LOOK[pose.facing], closed: pose.blink })
+  ctx.fillStyle = 'rgba(255, 143, 179, 0.7)'
+  for (const side of [-1, 1]) {
+    ctx.beginPath()
+    ctx.ellipse(side * 3.57 + fx * 0.7, 3.15 + fy, 0.95, 0.53, 0, 0, TAU)
+    ctx.fill()
+  }
+  if (!crashed) {
+    ctx.beginPath()
+    if (dying) {
+      // A small "oh".
+      ctx.ellipse(fx * 0.8, 3.95 + fy, 0.7, 0.55, 0, 0, TAU)
+      ctx.fillStyle = BLIP.ink
+      ctx.fill()
+    } else {
+      ctx.moveTo(-1.26 + fx * 0.8, 3.57 + fy)
+      ctx.quadraticCurveTo(fx * 0.8, 4.73 + fy, 1.26 + fx * 0.8, 3.57 + fy)
+      ctx.lineWidth = 0.47
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
+
+  // His spark, over his head: it bobs, and goes out when he's hit.
+  const spark = dying ? Math.max(0, 1 - deathT * 2.2) : 1
+  if (spark > 0) {
+    const bob = Math.sin(performance.now() / 380) * r * 0.05
+    const sx = drawX + toward.x * r * 0.08
+    const sy = drawY - ry * 1.3 + bob
+    const glowR = r * 0.46
+    const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR)
+    glow.addColorStop(0, `rgba(${BLIP.glow}, ${0.9 * spark})`)
+    glow.addColorStop(1, `rgba(${BLIP.glow}, 0)`)
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(sx, sy, glowR, 0, TAU)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(sx, sy, Math.max(1.2, r * 0.13), 0, TAU)
+    ctx.fillStyle = BLIP.core
+    ctx.globalAlpha = spark
+    ctx.fill()
+    ctx.globalAlpha = 1
+  }
 }
 
 /** The prize ticket's orange, the one the prize counter pays out in. */
@@ -698,13 +798,13 @@ function drawTicket(
 
 /** Brief shadow, then a fast Crossy-style snatch. */
 /**
- * Time running out, drawn as pressure closing on the hopper.
+ * Time running out, drawn as pressure closing on Blip.
  *
  * This used to be a hawk: a body, a head, a beak, two curved wings and three
  * talons, all at about a third of a tile and all inside four tenths of a
  * second. At that size and that speed it read as a dark smudge, and nothing in
  * this game is drawn that way — cars are rounded rectangles, trees are circles,
- * the hopper is an ellipse. So it is a ring and a shadow now, which is the same
+ * Blip is round. So it is a ring and a shadow now, which is the same
  * vocabulary as the rest of the board and legible at a glance.
  *
  * The ring is the clock: it starts wide and amber and closes to a tight red
@@ -1054,7 +1154,7 @@ function seasonAt(row: number) {
   return Math.floor((Math.max(0, row) + BIOME_BLEND / 2) / BIOME_ROWS) % BIOMES.length
 }
 
-/** Palette hues for meadow flowers. No yellows or oranges, so nothing on the grass looks like the hopper or a ticket. */
+/** Palette hues for meadow flowers. No yellows, oranges or mints, so nothing on the grass looks like a ticket or Blip. */
 const FLOWER_HUES = [330, 262, 205]
 
 /**
@@ -1243,7 +1343,7 @@ function drawRow(
   const row = getRow(state, worldRow)
   const span = laneSpan(state.cols)
   // Each row takes the biome at its own depth, so a change sweeps down the
-  // board ahead of the hopper instead of the screen flipping all at once.
+  // board ahead of Blip instead of the screen flipping all at once.
   const biome = biomeAt(worldRow)
   const grassHue = worldRow % 2 === 0 ? biome.grass : biome.grass + 10
   const sat = (base: number) => Math.max(0, Math.min(100, base * biome.satMul))
@@ -1340,7 +1440,7 @@ function drawRow(
      *
      * A line spans the viewport, so without this the dash pattern starts at
      * screen x=0 and the markings are welded to the window: when the view pans
-     * sideways every car, tree, log and the hopper move with the world and the
+     * sideways every car, tree, log and Blip move with the world and the
      * lane markings alone stay put. They are the most road-like thing on the
      * row, so the eye takes them for the fixed ground, and then the ground is
      * the one thing not moving while everything else slides — which is what
@@ -1488,7 +1588,7 @@ function drawPuff(
   ctx.fill()
 }
 
-/** Going under: rings spreading from where the hopper went in. */
+/** Going under: rings spreading from where Blip went in. */
 function drawSplash(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -1628,9 +1728,8 @@ export function renderGame(
     // A hop that met a tree or the edge shoves out toward it and back.
     const shove = state.bump > 0 && !dying ? Math.sin((1 - state.bump / BUMP) * Math.PI) * cell * 0.08 : 0
     const toward = FACING[state.facing]
-    drawHopper(ctx, px + toward.x * shove, py - air * cell * 0.28 + toward.y * shove, cell, {
+    drawBlip(ctx, px + toward.x * shove, py - air * cell * 0.28 + toward.y * shove, cell, {
       pulse: state.hopPulse,
-      dark,
       dying,
       deathT,
       squeeze,

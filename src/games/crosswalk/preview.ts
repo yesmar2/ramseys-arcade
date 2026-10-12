@@ -42,7 +42,7 @@ const STUCK_HORIZON = 66
 /** Seconds without a new row before it counts itself stuck. */
 const STUCK = 4
 
-/** Half the hopper's width, as the engine collides it. */
+/** Half Blip's width, as the engine collides it. */
 const HALF = 0.26
 /** Landing this close to a seat on a log pulls you onto it. */
 const LOG_SNAP = 0.7
@@ -77,7 +77,7 @@ function wrap(x: number, span: number) {
 /** How careful it is being: extra width kept from a bumper, and extra time either side of a gap. */
 type Care = { room: number; pad: number }
 
-/** Nothing on this road overlaps the hopper at `col` at any moment from `t0` to `t1`. */
+/** Nothing on this road overlaps Blip at `col` at any moment from `t0` to `t1`. */
 function roadClear(row: Row, span: number, col: number, t0: number, t1: number, care: Care) {
   const v = row.dir * row.speed
   const a = col + 0.5 - HALF - care.room
@@ -425,7 +425,7 @@ export function makeSim(): Sim<GameState> {
           closeCall: 0,
           ticketPops: [],
           runTickets: 0,
-          // Once a run is over the game draws the hopper whole again under its score card; hold
+          // Once a run is over the game draws Blip whole again under its score card; hold
           // on the end of the fall instead.
           ...(s.phase === 'gameover' ? { phase: 'dying' as const, deathAnim: 0 } : null),
         },
@@ -438,7 +438,7 @@ export function makeSim(): Sim<GameState> {
       m = freshPilot()
       return newRun(w, h)
     },
-    // The still: a river of logs and stones ahead with a ticket on it, a road behind, the hopper between.
+    // The still: a river of logs and stones ahead with a ticket on it, a road behind, Blip between.
     poster: { seed: 3, at: 36 },
     // Its renderer times its twinkles and pulses by the page's clock; the run's own keeps the still the same.
     runClock: true,
