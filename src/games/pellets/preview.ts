@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { runPreview, type Sim } from '../previewKit'
 import {
   CLEAR_FLASH,
@@ -391,7 +392,8 @@ export function makeSim(): Sim<GameState> {
       return next
     },
     over: (s) => s.phase === 'gameover',
-    render: (ctx, s, w, h) => renderGame(ctx, shown(s), w, h),
+    // In the player's own skin, as their run would be.
+    render: (ctx, s, w, h) => renderGame(ctx, shown(s), w, h, chosenSkin('pellets')),
     // The maze does not depend on the screen, so a resize keeps the run.
     resize: (s) => s,
     // The still: the chasers turned blue and the player running them down, trail and all. A maze on end

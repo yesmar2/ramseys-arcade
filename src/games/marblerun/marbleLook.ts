@@ -4,7 +4,8 @@ import { mulberry32 } from './sim'
 /*
  * How the player's marble looks: the painted light it shines by (a matcap), the pattern on it that turns as it
  * rolls, and the colour of its glow and the pool of light under it. Marble Run's own is white glass with a
- * magenta swirl; a skin (lib/skins.ts) swaps all three. Skins are looks only: the marble's size and its roll
+ * magenta swirl; a skin (lib/skins.ts) swaps all three, and may add light over the marble, a face it turns to
+ * you, and a spark floating over it (Blip's). Skins are looks only: the marble's size and its roll
  * are the same in every one. A ghost wears the skin its run was rolled in, lighter (scene.ts dressGhost); the
  * blue ball, the previews and the course pictures always show Marble Run's own.
  */
@@ -18,6 +19,19 @@ export type MarbleLook = {
   map: Paint
   /** The glow round the marble and the pool of light under it. */
   glow: string
+  /**
+   * Light added over the marble, painted as the matcap is (256 square, the middle facing the camera), black adding
+   * nothing: a glint that shows over a coloured pattern, which the painted light, multiplying the pattern, can't.
+   */
+  shine?: Paint
+  /**
+   * The pattern has a face in its middle, the right way up (on the marble, the half round its own +x, the top of
+   * the face toward its +y). The marble turns it to the camera as a run starts (scene.ts), so it looks back at you
+   * before it rolls, and as it rolls straight on it comes round the right way up.
+   */
+  face?: boolean
+  /** A spark floating over the marble, which doesn't roll with it: its core and its glow. */
+  spark?: { core: string; glow: string }
 }
 
 const TAU = Math.PI * 2
@@ -275,10 +289,199 @@ const POLAR: MarbleLook = {
   glow: '#5cf2b0',
 }
 
+/** Blip, the site's mascot, in his own colours (components/BlipFigure.tsx). */
+const BLIP_COLOURS = { body: '#34c6a8', glow: '#9ff7e2', spark: '#f2fffb', ink: '#0f2f2a', cheek: '#ff8fb3' } as const
+
+/**
+ * A drawing of the marble seen straight on from one side, made `n` pixels square with the marble's edge the circle
+ * round it (x across, y down, each -1 to 1), its colours kept multiplied by how solid they are, to look spots up in.
+ */
+function view(n: number, draw: (g: CanvasRenderingContext2D) => void): Float32Array {
+  const c = document.createElement('canvas')
+  c.width = n
+  c.height = n
+  const g = c.getContext('2d', { willReadFrequently: true })!
+  g.setTransform(n / 2, 0, 0, n / 2, n / 2, n / 2)
+  draw(g)
+  const px = g.getImageData(0, 0, n, n).data
+  const out = new Float32Array(px.length)
+  for (let i = 0; i < px.length; i += 4) {
+    const a = px[i + 3]! / 255
+    out[i] = (px[i]! / 255) * a
+    out[i + 1] = (px[i + 1]! / 255) * a
+    out[i + 2] = (px[i + 2]! / 255) * a
+    out[i + 3] = a
+  }
+  return out
+}
+
+/** The colour at (x, y) on a view `n` square, blended from the four pixels round it, over what's in `under`. */
+function over(px: Float32Array, n: number, x: number, y: number, under: Float32Array) {
+  const fx = Math.min(n - 1.001, Math.max(0, ((x + 1) * n) / 2 - 0.5))
+  const fy = Math.min(n - 1.001, Math.max(0, ((y + 1) * n) / 2 - 0.5))
+  const ix = Math.floor(fx)
+  const iy = Math.floor(fy)
+  const tx = fx - ix
+  const ty = fy - iy
+  const a = (iy * n + ix) * 4
+  const c = a + n * 4
+  const wa = (1 - tx) * (1 - ty)
+  const wb = tx * (1 - ty)
+  const wc = (1 - tx) * ty
+  const wd = tx * ty
+  const alpha = px[a + 3]! * wa + px[a + 7]! * wb + px[c + 3]! * wc + px[c + 7]! * wd
+  if (alpha <= 0) return
+  for (let k = 0; k < 3; k++) {
+    under[k] = px[a + k]! * wa + px[a + 4 + k]! * wb + px[c + k]! * wc + px[c + 4 + k]! * wd + under[k]! * (1 - alpha)
+  }
+}
+
+/**
+ * Blip curled up into the marble: his mint all over, and on one half his face as his figure has it (BlipFigure.tsx),
+ * so the marble seen from straight in front is his figure, its edge his body's. The face is drawn flat, as the
+ * marble looks from in front, then laid on by finding every texel's spot on the ball in it, so nothing stretches
+ * toward the top or bottom. (His belly's deeper mint and his feet were tried, tucked in under him: as the marble
+ * rolled, the belly's edge came round as a second, wider mouth, and the feet as a second pair of eyes over it.
+ * The painted light rounds him, as the belly does on the page.)
+ */
+function blipMap(g: CanvasRenderingContext2D, w: number, h: number) {
+  const B = BLIP_COLOURS
+  const n = 512
+  const face = view(n, (c) => {
+    // His figure's own units: his body a circle 7.35 round (0, 1.26), its edge the marble's.
+    c.scale(1 / 7.35, 1 / 7.35)
+    c.translate(0, -1.26)
+    c.fillStyle = B.ink
+    for (const x of [-1.89, 1.89]) {
+      c.beginPath()
+      c.ellipse(x, 1.05, 0.95, 1.58, 0, 0, TAU)
+      c.fill()
+    }
+    c.fillStyle = '#ffffff'
+    for (const x of [-1.58, 2.2]) {
+      c.beginPath()
+      c.arc(x, 0.32, 0.36, 0, TAU)
+      c.fill()
+    }
+    c.strokeStyle = B.ink
+    c.lineWidth = 0.47
+    c.lineCap = 'round'
+    c.stroke(new Path2D('M-1.26 3.57 Q0 4.73 1.26 3.57'))
+    c.globalAlpha = 0.7
+    c.fillStyle = B.cheek
+    for (const x of [-3.57, 3.57]) {
+      c.beginPath()
+      c.ellipse(x, 3.15, 0.95, 0.53, 0, 0, TAU)
+      c.fill()
+    }
+  })
+  // Each texel: the way out from the marble's middle there (three.js SphereGeometry's, so the map's middle faces
+  // +x and its top +y), seen from in front. Most of the marble is his plain mint; only a texel near his face is
+  // looked up, from four spots in it.
+  const S = 2
+  const cosRound = new Float32Array(w * S)
+  const sinRound = new Float32Array(w * S)
+  const cosDown = new Float32Array(h * S)
+  const sinDown = new Float32Array(h * S)
+  for (let i = 0; i < w * S; i++) {
+    const phi = ((i + 0.5) / (w * S)) * TAU
+    cosRound[i] = Math.cos(phi)
+    sinRound[i] = Math.sin(phi)
+  }
+  for (let j = 0; j < h * S; j++) {
+    const theta = ((j + 0.5) / (h * S)) * Math.PI
+    cosDown[j] = Math.cos(theta)
+    sinDown[j] = Math.sin(theta)
+  }
+  const hex = parseInt(B.body.slice(1), 16)
+  const body = [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255] as const
+  const img = g.createImageData(w, h)
+  const out = img.data
+  const spot = new Float32Array(3)
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const k = (py * w + px) * 4
+      out[k + 3] = 255
+      // Where the texel is, near enough: his face lies within 0.62 across the marble's front, from 0.25 up to 0.51 down.
+      const dx = -cosRound[px * S]! * sinDown[py * S]!
+      const dy = cosDown[py * S]!
+      const dz = sinRound[px * S]! * sinDown[py * S]!
+      if (!(dx > 0 && dz > -0.66 && dz < 0.66 && dy > -0.55 && dy < 0.29)) {
+        out[k] = body[0] * 255
+        out[k + 1] = body[1] * 255
+        out[k + 2] = body[2] * 255
+        continue
+      }
+      let r = 0
+      let gr = 0
+      let b = 0
+      for (let sy = 0; sy < S; sy++) {
+        const j = py * S + sy
+        for (let sx = 0; sx < S; sx++) {
+          const i = px * S + sx
+          spot[0] = body[0]
+          spot[1] = body[1]
+          spot[2] = body[2]
+          if (-cosRound[i]! * sinDown[j]! > 0) over(face, n, -sinRound[i]! * sinDown[j]!, -cosDown[j]!, spot)
+          r += spot[0]!
+          gr += spot[1]!
+          b += spot[2]!
+        }
+      }
+      out[k] = (r / (S * S)) * 255
+      out[k + 1] = (gr / (S * S)) * 255
+      out[k + 2] = (b / (S * S)) * 255
+    }
+  }
+  g.putImageData(img, 0, 0)
+}
+
+/**
+ * Blip's highlight as his figure has it, white at 35% over his mint up and to his left, as light added to the
+ * marble: the matcap's circle is the marble's edge (0.495 of it across from its middle), as his body's is his.
+ */
+function blipShine(g: CanvasRenderingContext2D, w: number, h: number) {
+  g.fillStyle = '#000000'
+  g.fillRect(0, 0, w, h)
+  g.translate(w / 2, h / 2)
+  g.scale((0.495 * w) / 7.35, (0.495 * h) / 7.35)
+  g.translate(0, -1.26)
+  // About what white at 35% adds to his mint (#34c6a8 to #7bdac6), a little greyer, so an eye rolling under it
+  // lightens rather than going brown.
+  g.fillStyle = 'rgb(66,30,38)'
+  g.beginPath()
+  g.ellipse(-2.52, -2.94, 2.52, 1.26, (-24 * Math.PI) / 180, 0, TAU)
+  g.fill()
+}
+
+/**
+ * Blip (the site's mascot, as a skin): Blip curled up into the marble, his face tumbling round as it rolls, his
+ * highlight, a soft mint glow, and his spark floating over it. A light that's near white, so his colours show as
+ * they are.
+ */
+const BLIP: MarbleLook = {
+  matcap: lit(
+    [
+      [0, '#ffffff'],
+      [0.6, '#fbfefd'],
+      [0.88, '#cde1dc'],
+      [1, '#86a9a1'],
+    ],
+    '159,247,226',
+    0.85,
+  ),
+  map: blipMap,
+  glow: BLIP_COLOURS.glow,
+  shine: blipShine,
+  face: true,
+  spark: { core: BLIP_COLOURS.spark, glow: BLIP_COLOURS.glow },
+}
+
 const LOOKS: Record<string, MarbleLook> = {
   'marblerun-snowball': SNOWBALL,
   'marblerun-ice-marble': ICE,
   'marblerun-polar-night': POLAR,
+  'marblerun-blip': BLIP,
 }
 
 /** The marble's look in a skin; Marble Run's own for none, or a skin it doesn't know. */
@@ -300,4 +503,38 @@ function paint(w: number, h: number, draw: Paint, anisotropy: number) {
 /** The marble's two textures in a look, painted fresh: whoever takes them disposes of them. */
 export function marbleMaps(look: MarbleLook, anisotropy = 1) {
   return { matcap: paint(256, 256, look.matcap, anisotropy), map: paint(512, 256, look.map, anisotropy) }
+}
+
+/** A look's added light, painted fresh (null for a look without one): whoever takes it disposes of it. */
+export function shineMap(look: MarbleLook, anisotropy = 1) {
+  return look.shine ? paint(256, 256, look.shine, anisotropy) : null
+}
+
+/** A colour such as #34c6a8 at alpha `a`, as CSS. */
+function rgba(hex: string, a: number) {
+  const v = parseInt(hex.slice(1), 16)
+  return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`
+}
+
+/**
+ * A look's spark, painted fresh, 64 square, as Blip's is drawn: a glow fading out to the edge, and the core in the
+ * middle, 0.85 of the glow's 2.7 across. Whoever takes it disposes of it.
+ */
+export function sparkMap(spark: NonNullable<MarbleLook['spark']>) {
+  return paint(
+    64,
+    64,
+    (g, w, h) => {
+      const glow = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2)
+      glow.addColorStop(0, rgba(spark.glow, 0.9))
+      glow.addColorStop(1, rgba(spark.glow, 0))
+      g.fillStyle = glow
+      g.fillRect(0, 0, w, h)
+      g.fillStyle = spark.core
+      g.beginPath()
+      g.arc(w / 2, h / 2, (w / 2) * (0.85 / 2.7), 0, TAU)
+      g.fill()
+    },
+    1,
+  )
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useRoute } from '../hooks/useHashRoute'
-import { usePoll } from '../lib/poll'
+import { OPEN_BLIP_EVENT, usePoll } from '../lib/poll'
 import { BlipFigure } from './BlipFigure'
 import { BlipPoll } from './BlipPoll'
 import { OPEN_MENU_EVENT } from './siteNav'
@@ -18,7 +18,8 @@ import '../styles/blipPoll.css'
  * the cross sends him off till tomorrow. Not on a game's screen, on /admin, once today's question is answered, or on anyone's very
  * first visit (the welcome is enough that day). `?blip=hi` on any page brings him out at once, whatever this
  * browser has seen, to see him again (Ramsey, 2026-10-11: "i want to see it on my phone on staging but it isn't
- * popping up").
+ * popping up"). A skin of Blip's set still to win (a game's skin picker, a board's skin card) opens the question
+ * here too (lib/poll.ts openBlipPoll), answered or not, to answer it or see how far the next skin is.
  */
 
 const SEEN_KEY = 'skermix-blip-hello'
@@ -76,6 +77,13 @@ export function BlipHello({ onGameScreen }: { onGameScreen: boolean }) {
     const come = window.setTimeout(() => setOut(true), COME_OUT_MS)
     return () => window.clearTimeout(come)
   }, [due, today])
+
+  // A skin of his set still to win asks for his question: it opens here, whatever the day's hello did.
+  useEffect(() => {
+    const onAsk = () => setOpen(true)
+    window.addEventListener(OPEN_BLIP_EVENT, onAsk)
+    return () => window.removeEventListener(OPEN_BLIP_EVENT, onAsk)
+  }, [])
 
   // Escape closes the question, as any sheet does.
   useEffect(() => {

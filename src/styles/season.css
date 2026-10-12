@@ -534,6 +534,21 @@ html[data-theme='dark'] .skin-tile__note--price {
   color: #ffab85;
 }
 
+/* One of Blip's set: his mint, and a button that opens his question rather than a link away. */
+.skin-tile--blip {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.skin-tile__note--blip {
+  color: #13715f;
+}
+
+html[data-theme='dark'] .skin-tile__note--blip {
+  color: #7fe3c4;
+}
+
 /* The whole garage, from See all. */
 .skin-garage__group + .skin-garage__group {
   margin-top: 1.1rem;

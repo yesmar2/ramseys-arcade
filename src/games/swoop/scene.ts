@@ -2,7 +2,7 @@ import { mixColor, withAlpha } from '../../lib/color'
 import { isDarkTheme } from '../../lib/theme'
 import type { GhostPose } from './runs'
 import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BODY, SWIFT_EYE, SWIFT_LIFT, SWIFT_WING_FOLDED, SWIFT_WING_ROOT, SWIFT_WING_UP, SWIFT_BEAT } from './birdShape'
-import { frostColour, frostSparkle, SNOW_SWIFT, skinPainter } from './birdSkins'
+import { BLIP, BLIP_SPARK_R, blipGlitter, blipSparkOffset, frostColour, frostSparkle, SNOW_SWIFT, skinPainter } from './birdSkins'
 import { heightAt, mulberry32, STREAK_ON, streakLift, type Hills } from './sim'
 
 /** How much bigger than the bird's size the swift is drawn in a run. */
@@ -124,8 +124,11 @@ export type SceneFrame = {
 type Bit = { x: number; y: number; vx: number; vy: number; life: number; max: number; spark: boolean }
 /** A word over a landing; `row` 1 sits a line above another said at once. */
 type Floater = { x: number; y: number; text: string; life: number; good: boolean; row?: number }
-/** A dot of the trail behind a bird in the air: gold, laid on a streak; `seed` scatters a snow swift's frost. */
-type Dot = { x: number; y: number; life: number; gold: boolean; seed: number }
+/**
+ * A dot of the trail behind a bird in the air: gold, laid on a streak; `seed` scatters a snow swift's frost.
+ * Blip's carry where his spark was, from the bird's point, in its drawn size (birdSkins.ts blipSparkOffset).
+ */
+type Dot = { x: number; y: number; life: number; gold: boolean; seed: number; spark?: readonly [number, number] }
 
 /** Where the camera keeps the bird across the screen, and down it. */
 const LEAD = 0.32
@@ -152,6 +155,8 @@ export class HillsScene {
   private floaters: Floater[] = []
   private trail: Dot[] = []
   private trailAt = 0
+  /** How your bird's last landing went, for a skin whose face shows it (Blip's grin, his wince), for a moment. */
+  private mood: { kind: 'happy' | 'ouch'; life: number } | null = null
   /** The run to beat a frame ago, for which way it's headed when the camera rides with it. */
   private lastGhost: { x: number; y: number } | null = null
 
@@ -191,6 +196,7 @@ export class HillsScene {
     this.bits.length = 0
     this.floaters.length = 0
     this.trail.length = 0
+    this.mood = null
   }
 
   /**
@@ -198,6 +204,7 @@ export class HillsScene {
    * a thump kicks up dirt, any landing squashes the bird a little.
    */
   landed(kind: 'clean' | 'thump' | 'land', x: number, y: number, vx: number, streak: number) {
+    this.mood = kind === 'clean' ? { kind: 'happy', life: 0.8 } : kind === 'thump' ? { kind: 'ouch', life: 0.55 } : null
     if (kind === 'clean') {
       this.squash = 1
       const text = streak === STREAK_ON ? `Clean ×${streak} · faster` : streak > 1 ? `Clean ×${streak}` : 'Clean!'
@@ -243,9 +250,11 @@ export class HillsScene {
     const lift = f.mode === 'play' ? streakLift(f.streak ?? 0) : 0
     if (f.mode === 'play' && !f.bird.ground) {
       this.trailAt += dt
+      // Blip's glitter comes off his spark: where it is this frame, from the bird's point.
+      const spark = f.skin === BLIP ? blipSparkOffset(Math.atan2(f.bird.vy, Math.max(0.01, f.bird.vx)), f.hold, this.time) : undefined
       while (this.trailAt > 1 / 40) {
         this.trailAt -= 1 / 40
-        this.trail.push({ x: f.bird.x, y: f.bird.y, life: 1, gold: lift > 0, seed: Math.random() })
+        this.trail.push({ x: f.bird.x, y: f.bird.y, life: 1, gold: lift > 0, seed: Math.random(), spark })
       }
     }
 
@@ -271,10 +280,12 @@ export class HillsScene {
         dive: f.mode === 'play' && f.hold,
         squish: this.squash,
         skin: f.skin,
+        mood: this.mood?.kind ?? null,
       })
       if (f.mode !== 'menu' && !f.calm) this.drawSpeedLines(Math.hypot(b.vx, b.vy))
     }
     this.squash = Math.max(0, this.squash - dt * 5)
+    if (this.mood && (this.mood.life -= dt) <= 0) this.mood = null
     this.drawBits(dt)
     this.drawFloaters(dt)
   }
@@ -556,7 +567,17 @@ export class HillsScene {
       alpha = 1,
       ghost = false,
       skin = null,
-    }: { flap?: number; dive?: boolean; folded?: boolean; squish?: number; alpha?: number; ghost?: boolean; skin?: string | null } = {},
+      mood = null,
+    }: {
+      flap?: number
+      dive?: boolean
+      folded?: boolean
+      squish?: number
+      alpha?: number
+      ghost?: boolean
+      skin?: string | null
+      mood?: 'happy' | 'ouch' | null
+    } = {},
   ) {
     const { ctx, C } = this
     const SHAPE = SHAPE_OF()
@@ -576,7 +597,7 @@ export class HillsScene {
     // A skin draws the whole bird itself, in the same frame (birdSkins.ts).
     const paint = ghost ? null : skinPainter(skin)
     if (paint) {
-      paint(ctx, { flap, dive, ground: folded, time: this.time, px1: 1 / size })
+      paint(ctx, { flap, dive, ground: folded, time: this.time, px1: 1 / size, dark: C.dark, mood })
       ctx.restore()
       return
     }
@@ -672,19 +693,41 @@ export class HillsScene {
 
   /* ---------- trails, bits, words, rushing air ---------- */
 
-  /** The dots behind your bird; a snow swift leaves frost instead, twinkling, scattered a little. */
+  /**
+   * The dots behind your bird; a snow swift leaves frost instead, twinkling, scattered a little; Blip's spark a
+   * short wake of glitter, tiny blips that twinkle, drift down and go.
+   */
   private drawTrail(dt: number, skin: string | null | undefined) {
     const { ctx, C, cam, trail } = this
     const frost = skin === SNOW_SWIFT
+    const blip = skin === BLIP
     if (!trail.length) return
     const lift = this.birdSize() * SWIFT_LIFT
     const plain = C.dark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(26, 43, 60, 0.35)'
     const r = Math.max(1.2, 0.18 * cam.k)
+    // The bird as drawBird draws it, for where Blip's spark was.
+    const size = this.birdSize() * SWIFT_SCALE
     for (let i = trail.length - 1; i >= 0; i--) {
       const p = trail[i]!
       p.life -= dt * 0.9
       if (p.life <= 0) {
         trail.splice(i, 1)
+        continue
+      }
+      if (blip && p.spark && !p.gold) {
+        // Most of the dots, each gone in a little over half a second: a short wake, not a line.
+        const young = (p.life - 0.4) / 0.6
+        if (young <= 0 || p.seed < 0.3) continue
+        const twinkle = 0.7 + 0.3 * Math.sin(this.time * 13 + p.seed * 40)
+        const scatter = ((p.seed * 9.7) % 1) - 0.5
+        ctx.globalAlpha = Math.min(1, young * 1.4)
+        blipGlitter(
+          ctx,
+          this.sx(p.x) + p.spark[0] * size + (p.seed - 0.65) * 0.5 * size,
+          this.sy(p.y) + p.spark[1] * size + scatter * 0.5 * size + (1 - young) * 0.35 * size,
+          BLIP_SPARK_R * size * (0.45 + 0.55 * p.seed) * twinkle * (0.6 + 0.4 * young),
+          C.dark,
+        )
         continue
       }
       if (frost && !p.gold) {

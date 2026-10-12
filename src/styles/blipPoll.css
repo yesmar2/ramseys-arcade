@@ -179,6 +179,164 @@ html[data-theme='dark'] .blip-poll {
   color: var(--blip-ink);
 }
 
+/* Blip's set (BlipSet.tsx): the four skins his answers win, the next one's ring filling. */
+.blip-set {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem 0.7rem 0.6rem;
+  border-radius: 0.85rem;
+  background: rgba(var(--ink-rgb), 0.04);
+  container-type: inline-size;
+}
+.blip-set__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.blip-set__title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.blip-set__count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.blip-set__row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.blip-set__skin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.blip-set__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* As big as fits: four across a narrow card on a desk's Today row. */
+  width: 100%;
+  max-width: 2.75rem;
+  aspect-ratio: 1;
+  border-radius: 0.75rem;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+.blip-set__art img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+  opacity: 0.32;
+  filter: grayscale(0.7);
+}
+.blip-set__skin--next .blip-set__art img {
+  opacity: 0.62;
+  filter: none;
+}
+.blip-set__skin--won .blip-set__art {
+  background: color-mix(in srgb, var(--blip) 16%, transparent);
+  box-shadow: 0 0 0 2px var(--blip);
+}
+.blip-set__skin--won .blip-set__art img {
+  opacity: 1;
+  filter: none;
+}
+.blip-set__tick {
+  position: absolute;
+  right: -0.3rem;
+  bottom: -0.3rem;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--blip);
+}
+.blip-set__tick svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  fill: none;
+  stroke: #06201b;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.blip-set__ring {
+  position: absolute;
+  inset: -0.22rem;
+  width: calc(100% + 0.44rem);
+  height: calc(100% + 0.44rem);
+  transform: rotate(-90deg);
+  fill: none;
+  stroke: rgba(var(--ink-rgb), 0.14);
+  stroke-width: 3;
+}
+.blip-set__ring-on {
+  stroke: var(--blip);
+  stroke-linecap: round;
+}
+.blip-set__game {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.blip-set__skin--won .blip-set__game {
+  color: var(--ink);
+}
+.blip-set__skin--next .blip-set__game {
+  color: var(--blip-ink);
+}
+/* Too narrow for the games' names (a desk's Today row): the pictures say it, and the line under them names the next. */
+@container (max-width: 15rem) {
+  .blip-set__game {
+    display: none;
+  }
+}
+.blip-set__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.blip-set__line b {
+  color: var(--blip-ink);
+}
+.blip-set__wear {
+  min-height: 2rem;
+  padding: 0.2rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--blip);
+  color: #06201b;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.blip-set__wear--on {
+  background: transparent;
+  color: var(--blip-ink);
+  box-shadow: inset 0 0 0 1.5px var(--blip);
+}
+
 .blip-poll__signin {
   padding: 0;
   border: 0;

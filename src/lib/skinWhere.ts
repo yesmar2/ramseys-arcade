@@ -5,19 +5,22 @@ import type { Skin } from './skins'
 
 /*
  * Where a skin comes from, for its card on a board (components/season/SkinCard.tsx), and the way there: the live
- * season's pass at its level (the free row or Pass+), the Hangar at its price, or a season that isn't on now, over
- * or still to come, which the card can only name. The game page's skin picker leads the same ways.
+ * season's pass at its level (the free row or Pass+), the Hangar at its price, Blip's set at the answers to his
+ * daily question it takes, or a season that isn't on now, over or still to come, which the card can only name. The
+ * game page's skin picker leads the same ways.
  */
 
 export type SkinWhere =
   | { kind: 'pass'; season: SeasonInfo; level: number; plus: boolean }
   | { kind: 'hangar'; price: number }
+  | { kind: 'blip'; answers: number }
   | { kind: 'season'; season: SeasonDates | null; when: 'over' | 'soon' | null }
 
 type SeasonStore = { season: SeasonInfo | null; rewards: SeasonReward[]; plus?: SeasonPlus | null }
 
 export function skinWhere(skin: Skin, store: SeasonStore, now = Date.now()): SkinWhere {
   if (skin.price != null) return { kind: 'hangar', price: skin.price }
+  if (skin.poll != null) return { kind: 'blip', answers: skin.poll }
   const live = liveSeason(store)
   if (live && skin.season === live.id) {
     const onPlus = store.plus?.rewards.find((r) => r.id === skin.id)

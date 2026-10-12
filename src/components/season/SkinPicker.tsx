@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { openBlipPoll } from '../../lib/poll'
 import { liveSeason, useSeason } from '../../lib/season'
 import { SEASON_CALENDAR } from '../../lib/seasonCalendar'
 import { chooseSkin, skinsFor, useChosenSkin, type Skin } from '../../lib/skins'
@@ -13,8 +14,9 @@ import '../../styles/season.css'
  * On a game's page: "Your car" (or bird, ship, snake…), a row of pictures to choose from, as Ramsey picked (A,
  * Garage row, 2026-10-07: "there needs to be a better way of selecting skins"). The usual look and the skins the
  * player owns, newest season first, chosen here and kept on this device (lib/skins.ts); then a few still to win,
- * dimmed, saying where: the live season's pass, at its level, or the Hangar, at its price. The row stays one line
- * however many there are (he expects "a ton of skins"), scrolling sideways; See all opens the whole garage.
+ * dimmed, saying where: the live season's pass, at its level, Blip's set, at the answers to his daily question it
+ * takes (tapped, it opens his question), or the Hangar, at its price. The row stays one line however many there are
+ * (he expects "a ton of skins"), scrolling sideways; See all opens the whole garage.
  */
 
 /** How many still-to-win skins the row shows after the player's own; the rest wait in the garage. */
@@ -24,6 +26,7 @@ type Tile =
   | { kind: 'usual' }
   | { kind: 'mine'; skin: Skin }
   | { kind: 'pass'; skin: Skin; note: string }
+  | { kind: 'blip'; skin: Skin; note: string }
   | { kind: 'shop'; skin: Skin; note: string }
 
 /** "car", "bird", "ship": what a game's skins are, from their own description ("Hot Lap car"). */
@@ -36,7 +39,7 @@ function seasonName(id: number | undefined): string {
   return SEASON_CALENDAR.find((s) => s.id === id)?.name ?? 'Season'
 }
 
-/** The game's skins as tiles: the usual look, the player's own, then those to win on the live pass and in the Hangar. */
+/** The game's skins as tiles: the usual look, the player's own, then those to win on the live pass, from Blip and in the Hangar. */
 function useTiles(game: string) {
   const { owned } = useTickets()
   const store = useSeason()
@@ -53,11 +56,14 @@ function useTiles(game: string) {
           return skin ? [{ kind: 'pass', skin, note: skin.plus ? `Gold · Lv ${r.level}` : `Level ${r.level}` }] : []
         })
     : []
+  const fromBlip = all
+    .filter((s) => s.poll != null && !owned.includes(s.id))
+    .map((skin): Tile => ({ kind: 'blip', skin, note: `${skin.poll} Blip answers` }))
   const inShop = all
     .filter((s) => s.price != null && !owned.includes(s.id))
     .map((skin): Tile => ({ kind: 'shop', skin, note: `${(skin.price ?? 0).toLocaleString()} tickets` }))
   const yours: Tile[] = [{ kind: 'usual' }, ...mine.map((skin): Tile => ({ kind: 'mine', skin }))]
-  return { yours, onPass, inShop, season, noun: nounOf(all), any: all.length > 0 }
+  return { yours, onPass, fromBlip, inShop, season, noun: nounOf(all), any: all.length > 0 }
 }
 
 /** "Use it" for one skin the player owns: on the Season page's skins and a level-up that gave it. */
@@ -85,7 +91,21 @@ function SkinTile({ game, tile, chosen, big = false }: { game: string; tile: Til
           {tile.kind === 'mine' ? <RewardArt reward={{ kind: 'skin', id: tile.skin.id, name: tile.skin.name }} size={size} /> : <GameThumbArt slug={game} />}
         </span>
         <span className="skin-tile__name">{tile.kind === 'mine' ? tile.skin.name : 'Usual'}</span>
-        <span className="skin-tile__note">{on ? 'In use' : tile.kind === 'mine' ? (tile.skin.season ? seasonName(tile.skin.season) : 'Hangar') : 'Everyone’s'}</span>
+        <span className="skin-tile__note">
+          {on ? 'In use' : tile.kind === 'mine' ? (tile.skin.season ? seasonName(tile.skin.season) : tile.skin.poll ? 'Blip’s set' : 'Hangar') : 'Everyone’s'}
+        </span>
+      </button>
+    )
+  }
+  if (tile.kind === 'blip') {
+    // Won by answering Blip's question: his question opens here, to answer it or see how near this one is.
+    return (
+      <button type="button" className="skin-tile skin-tile--locked skin-tile--blip" onClick={openBlipPoll}>
+        <span className="skin-tile__art" aria-hidden="true">
+          <RewardArt reward={{ kind: 'skin', id: tile.skin.id, name: tile.skin.name }} size={size} />
+        </span>
+        <span className="skin-tile__name">{tile.skin.name}</span>
+        <span className="skin-tile__note skin-tile__note--blip">{tile.note}</span>
       </button>
     )
   }
@@ -103,12 +123,12 @@ function SkinTile({ game, tile, chosen, big = false }: { game: string; tile: Til
 
 export function SkinPicker({ game }: { game: string }) {
   const chosen = useChosenSkin(game)
-  const { yours, onPass, inShop, season, noun, any } = useTiles(game)
+  const { yours, onPass, fromBlip, inShop, season, noun, any } = useTiles(game)
   const [open, setOpen] = useState(false)
   const rowRef = useRef<HTMLDivElement>(null)
   const [more, setMore] = useState(false)
   const labelId = useId()
-  const toWin = [...onPass, ...inShop]
+  const toWin = [...onPass, ...fromBlip, ...inShop]
   const row = [...yours, ...toWin.slice(0, ROW_TO_WIN)]
   const total = yours.length + toWin.length
 
@@ -156,7 +176,17 @@ export function SkinPicker({ game }: { game: string }) {
         ) : null}
       </div>
       {open ? (
-        <Garage game={game} title={title} yours={yours} onPass={onPass} inShop={inShop} seasonName={season?.name ?? null} chosen={chosen} onClose={() => setOpen(false)} />
+        <Garage
+          game={game}
+          title={title}
+          yours={yours}
+          onPass={onPass}
+          fromBlip={fromBlip}
+          inShop={inShop}
+          seasonName={season?.name ?? null}
+          chosen={chosen}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </div>
   )
@@ -168,6 +198,7 @@ function Garage({
   title,
   yours,
   onPass,
+  fromBlip,
   inShop,
   seasonName: live,
   chosen,
@@ -177,6 +208,7 @@ function Garage({
   title: string
   yours: Tile[]
   onPass: Tile[]
+  fromBlip: Tile[]
   inShop: Tile[]
   seasonName: string | null
   chosen: string | null
@@ -186,6 +218,7 @@ function Garage({
   const groups: [string, Tile[]][] = [
     ['Yours', yours],
     [`On the ${live ?? 'season'}’s pass`, onPass],
+    ['From Blip’s question', fromBlip],
     ['In the Hangar', inShop],
   ]
   return (

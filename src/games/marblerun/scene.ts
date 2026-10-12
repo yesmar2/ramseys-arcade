@@ -29,7 +29,7 @@ import {
   type Tilt,
   type Zone,
 } from './sim'
-import { marbleLook, marbleMaps } from './marbleLook'
+import { marbleLook, marbleMaps, shineMap, sparkMap, type MarbleLook } from './marbleLook'
 
 /*
  * Marble Run in 3D: a course of dark glass drawn in light, hanging over a floor of light far below, and
@@ -132,6 +132,12 @@ const POOL_GRID = 6
  */
 const GHOST_SKIN_SHOWS = 0.62
 const GHOST_SKIN_VEIL = 'rgba(255,255,255,0.28)'
+/**
+ * A look's spark (marbleLook.ts spark): how far over the marble's middle it floats, and how big it is across, as
+ * Blip's figure has them for a body the marble's size (his spark 9.24 over his middle, its glow 2.7 round, his body 7.35).
+ */
+const SPARK_UP = (9.24 / 7.35) * BALL_R
+const SPARK_SIZE = ((2 * 2.7) / 7.35) * BALL_R
 const angleTo = (a: number, b: number) => Math.atan2(Math.sin(b - a), Math.cos(b - a))
 
 type At = (u: number, j: number) => [number, number, number, THREE.Color, number?, number?]
@@ -190,6 +196,16 @@ export class MarbleScene {
   private readonly poolAt: Float32Array
   /** The skin the marble is in now (lib/skins.ts); null, Marble Run's own glass. */
   private skinShown: string | null = null
+  /** That skin's look (marbleLook.ts). */
+  private lookShown: MarbleLook = marbleLook(null)
+  /** Light a look adds over the marble (marbleLook.ts shine), on a shell the marble's shape; hidden in a look without. */
+  private readonly shine: THREE.Mesh
+  /** A look's spark, floating over the marble without rolling (marbleLook.ts spark); hidden in a look without one. */
+  private readonly spark: THREE.Sprite
+  /** The spark's own clock, for its bob. */
+  private sparkClock = 0
+  /** The camera came round behind the marble this frame (placeCamera): a look's face turns to it (greet). */
+  private snapped = false
   private readonly ghost = new THREE.Group()
   /** The ghost's ball, which rolls; its tag stays upright over it. */
   private readonly ghostBall = new THREE.Group()
@@ -232,6 +248,11 @@ export class MarbleScene {
   private readonly camUp = new THREE.Vector3()
   private readonly axis = new THREE.Vector3()
   private readonly roll = new THREE.Vector3()
+  private readonly toEye = new THREE.Vector3()
+  private readonly faceUp = new THREE.Vector3()
+  private readonly faceSide = new THREE.Vector3()
+  private readonly basis = new THREE.Matrix4()
+  private readonly sparkUp = new THREE.Vector3()
 
   /*
    * The new pieces (sim.ts labCourse), moved each frame to where the run's clock has them, the clock the ball's
@@ -269,6 +290,22 @@ export class MarbleScene {
     // The marble: white glass with a swirl, lit by a painted light so it shines without lamps, or the player's
     // skin (marbleLook.ts); it's dressed in its look below (wear).
     this.ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 48, 32), new THREE.MeshMatcapMaterial())
+    // Light a look adds over the marble (a glint white over any colour), on a shell of the marble's own shape.
+    this.shine = new THREE.Mesh(
+      this.ball.geometry,
+      new THREE.MeshMatcapMaterial({
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
+        // Over the marble's surface, never flickering behind it.
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+      }),
+    )
+    this.shine.visible = false
+    this.ball.add(this.shine)
     const dot = this.dotTexture()
     this.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: dot, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }))
     this.glow.scale.setScalar(BALL_R * 4.2)
@@ -283,7 +320,11 @@ export class MarbleScene {
     )
     this.pool.frustumCulled = false
     this.pool.renderOrder = 3
-    this.scene.add(this.ball, this.glow, this.pool)
+    // A look's spark, over the marble; it floats there as the marble rolls under it (frame).
+    this.spark = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }))
+    this.spark.scale.setScalar(SPARK_SIZE)
+    this.spark.visible = false
+    this.scene.add(this.ball, this.glow, this.pool, this.spark)
     this.wear(null)
 
     // The ghost: a ball of cyan wire, or a run's skin seen through (dressGhost), with whose run it is over it.
@@ -346,20 +387,46 @@ export class MarbleScene {
 
   /**
    * Dress the marble in a skin's look (marbleLook.ts), or Marble Run's own for null: its painted light, its pattern,
-   * and the colour of its glow and the pool of light under it. The textures it had are let go.
+   * the colour of its glow and the pool of light under it, and the light it adds and its spark, if it has them. The
+   * textures it had are let go.
    */
   private wear(skin: string | null) {
     this.skinShown = skin
     const look = marbleLook(skin)
-    const { matcap, map } = marbleMaps(look, Math.min(8, this.renderer.capabilities.getMaxAnisotropy()))
+    this.lookShown = look
+    const anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
+    const { matcap, map } = marbleMaps(look, anisotropy)
     const mat = this.ball.material as THREE.MeshMatcapMaterial
     mat.matcap?.dispose()
     mat.map?.dispose()
     mat.matcap = matcap
     mat.map = map
     mat.needsUpdate = true
+    const shine = this.shine.material as THREE.MeshMatcapMaterial
+    shine.matcap?.dispose()
+    shine.matcap = shineMap(look, anisotropy)
+    shine.needsUpdate = true
+    this.shine.visible = shine.matcap != null
     ;(this.glow.material as THREE.SpriteMaterial).color.set(look.glow)
     ;(this.pool.material as THREE.MeshBasicMaterial).color.set(look.glow)
+    const spark = this.spark.material
+    spark.map?.dispose()
+    spark.map = look.spark ? sparkMap(look.spark) : null
+    spark.needsUpdate = true
+    this.spark.visible = !!look.spark
+  }
+
+  /**
+   * Turn a marble's face (a look with one: marbleLook.ts face, its +x) to the camera, the right way up: `ball`,
+   * at `at`, unturned by anything it's in.
+   */
+  private greet(ball: THREE.Object3D, at: THREE.Vector3) {
+    const toEye = this.toEye.copy(this.camera.position).sub(at).normalize()
+    const up = this.faceUp.copy(UP).addScaledVector(toEye, -UP.dot(toEye))
+    if (up.lengthSq() < 1e-6) return
+    up.normalize()
+    this.faceSide.crossVectors(toEye, up)
+    ball.quaternion.setFromRotationMatrix(this.basis.makeBasis(toEye, up, this.faceSide))
   }
 
   /**
@@ -1137,6 +1204,9 @@ export class MarbleScene {
     // rather than all at once.
     this.ball.position.set(b.x, b.y, b.z)
     this.glow.position.copy(this.ball.position)
+    // A face turns to the camera as it comes round behind the marble: a run starting, or starting again.
+    if (this.snapped && this.lookShown.face) this.greet(this.ball, this.ball.position)
+    this.snapped = false
     if (dt > 0) {
       if (b.loop) {
         // Round a loop it rolls on the loop's track, about the line across it: the way in toward the loop's middle,
@@ -1163,6 +1233,17 @@ export class MarbleScene {
         this.spin.setFromAxisAngle(this.axis, rate * dt)
         this.ball.quaternion.premultiply(this.spin)
       }
+    }
+    // The spark floats over it, bobbing a little: up, or round a loop toward the loop's middle, off the track.
+    if (this.spark.visible) {
+      if (dt > 0) this.sparkClock += dt
+      const up = this.sparkUp
+      if (b.loop) {
+        const th = loopTheta(b.loop.p, b.loop.u)
+        up.set(-Math.sin(th) * Math.cos(b.loop.p.h0), Math.cos(th), -Math.sin(th) * Math.sin(b.loop.p.h0))
+      } else up.copy(UP)
+      const bob = this.calm ? 0 : Math.sin(this.sparkClock * 3.6) * 0.035
+      this.spark.position.copy(this.ball.position).addScaledVector(up, SPARK_UP + bob)
     }
     // The pool of light on the track below it, laid on the track's own shape, wider and fainter the higher it flies.
     // On a slab it's on the slab; round a loop there's none.
@@ -1201,6 +1282,8 @@ export class MarbleScene {
         this.ghostBall.quaternion.premultiply(this.spin)
       }
       at.set(f.ghost.x, f.ghost.y, f.ghost.z)
+      // A ghost whose look has a face turns it to the camera as it comes into view, as your marble does.
+      if (!this.ghostShown && this.ghostSkinShown && marbleLook(this.ghostSkinShown).face) this.greet(this.ghostBall, at)
       this.ghostShown = true
       this.ghost.visible = true
       const shows = Math.min(0.9, 0.2 + this.ghost.position.distanceTo(this.ball.position) * 0.18)
@@ -1254,6 +1337,7 @@ export class MarbleScene {
       this.followY = b.y
       this.shownTilt.set(0, 0)
       this.snapNext = false
+      this.snapped = true
     }
     const falling = f.mode === 'fallen'
     if (!falling) {
@@ -1332,6 +1416,8 @@ export class MarbleScene {
     const marble = this.ball.material as THREE.MeshMatcapMaterial
     marble.matcap?.dispose()
     marble.map?.dispose()
+    ;(this.shine.material as THREE.MeshMatcapMaterial).matcap?.dispose()
+    this.spark.material.map?.dispose()
     this.scene.traverse((o) => {
       const mesh = o as THREE.Mesh
       mesh.geometry?.dispose()

@@ -3,16 +3,20 @@ import { ownedNow, subscribeTickets, useTickets } from './tickets'
 
 /*
  * Skins: a different look for the player's own ship, car or snake in a game, won on a season's pass (the
- * API's seasons.ts gives them) or traded for tickets in the Hangar at the prize counter (the API's prizes.ts,
- * `price`); either way owned like prizes, in the tickets' `owned`. Looks only: a skin
+ * API's seasons.ts gives them), traded for tickets in the Hangar at the prize counter (the API's prizes.ts,
+ * `price`) or won by answering Blip's daily question (the API's poll.ts, `poll`); any way, owned like prizes,
+ * in the tickets' `owned`. Looks only: a skin
  * never changes speed, size, hitbox or score. Chosen per game on its page and kept on this device; a
  * choice the signed-in player doesn't own is ignored, so another account on the device plays in the usual
  * look. A ghost wears the skin its own run was played in. A game's preview (its preview.ts) plays in the
  * player's own choice, as their run would.
  */
 
-/** A skin: a season's (`season`, its pass gives it) or the Hangar's (`price` in tickets, for good). */
-export type Skin = { id: string; game: string; name: string; season?: number; price?: number; what: string; plus?: boolean }
+/**
+ * A skin: a season's (`season`, its pass gives it), the Hangar's (`price` in tickets, for good) or one of Blip's
+ * (`poll`: how many answers to his daily question win it, for good).
+ */
+export type Skin = { id: string; game: string; name: string; season?: number; price?: number; poll?: number; what: string; plus?: boolean }
 
 export const SKINS: readonly Skin[] = [
   { id: 'lander-moonhopper', game: 'lander', name: 'Moonhopper', season: 1, what: 'Lander ship' },
@@ -55,10 +59,20 @@ export const SKINS: readonly Skin[] = [
   { id: 'asteroids-retro', game: 'asteroids', name: 'Retro Wedge', price: 800, what: 'Asteroids ship' },
   { id: 'barrage-paper-plane', game: 'barrage', name: 'Paper Plane', price: 1200, what: 'Barrage ship' },
   { id: 'snake-candy-stripe', game: 'snake', name: 'Candy Stripe', price: 800, what: 'Snake skin' },
+  // Blip's set (Ramsey, 2026-10-11: "i like A, daily question 7 times"): the site's mascot in four games, won one
+  // at a time by answering his daily question, every 7 answers the next, in this order (the API's poll.ts gives
+  // them). Never a season's, never for tickets.
+  { id: 'pellets-blip', game: 'pellets', name: 'Gulping Blip', poll: 7, what: 'Pellets chomper' },
+  { id: 'swoop-blip', game: 'swoop', name: 'Winged Blip', poll: 14, what: 'Swoop bird' },
+  { id: 'frenzy-blip', game: 'frenzy', name: 'Blip fish', poll: 21, what: 'Frenzy fish' },
+  { id: 'marblerun-blip', game: 'marblerun', name: 'Blip marble', poll: 28, what: 'Marble Run marble' },
 ]
 
 /** The Hangar's skins, cheapest first. */
 export const HANGAR_SKINS: readonly Skin[] = SKINS.filter((s) => s.price != null).sort((a, b) => a.price! - b.price!)
+
+/** Blip's set, in the order his answers win them. */
+export const BLIP_SKINS: readonly Skin[] = SKINS.filter((s) => s.poll != null).sort((a, b) => a.poll! - b.poll!)
 
 const KEY = 'skermix-skins'
 const EVENT = 'arcade-skins'

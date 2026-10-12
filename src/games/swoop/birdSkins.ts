@@ -1,20 +1,21 @@
-import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BEAT, SWIFT_BODY, SWIFT_EYE, SWIFT_WING_FOLDED, SWIFT_WING_ROOT, SWIFT_WING_UP } from './birdShape'
+import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BEAT, SWIFT_BODY, SWIFT_EYE, SWIFT_LIFT, SWIFT_WING_FOLDED, SWIFT_WING_ROOT, SWIFT_WING_UP } from './birdShape'
 
 /*
  * Swoop's season skins (lib/skins.ts): Season 2's snow swift on the free pass, and the penguin and the aurora
- * phoenix on Pass+, as Ramsey approved them from the season's skin mocks. Your own bird wears yours, and a ghost
- * the one its run was flown in, lighter (scene.ts drawGhost); the blue bird and the pictures keep the usual
- * look. Looks only, like every skin: each is drawn in the
- * swift's unit frame (birdShape.ts), facing right with the body's middle at the origin, the same size and the
- * same height off the hill, so it flies, dives and lands exactly as the red swift does.
+ * phoenix on Pass+, as Ramsey approved them from the season's skin mocks; and Blip, the site's mascot, with
+ * wings. Your own bird wears yours, and a ghost the one its run was flown in, lighter (scene.ts drawGhost); the
+ * blue bird and the pictures keep the usual look. Looks only, like every skin: each is drawn in the swift's unit
+ * frame (birdShape.ts), facing right with the body's middle at the origin, the same size and the same height off
+ * the hill, so it flies, dives and lands exactly as the red swift does.
  *
  * Like the rest of scene.ts they're fills and strokes only, never shadowBlur: the phoenix's glow is wide,
- * faint strokes of its own outline.
+ * faint strokes of its own outline; Blip's spark is a gradient's fade.
  */
 
 export const SNOW_SWIFT = 'swoop-snow-swift'
 export const PENGUIN = 'swoop-penguin'
 export const AURORA_PHOENIX = 'swoop-aurora-phoenix'
+export const BLIP = 'swoop-blip'
 
 /** How a skinned bird is posed this frame, as scene.ts drawBird has it. */
 export type SkinPose = {
@@ -30,6 +31,10 @@ export type SkinPose = {
   px1: number
   /** The outline's width in the unit frame, for a picture drawn far bigger than the game's bird; else the game's. */
   line?: number
+  /** The sky's dusk (the dark theme): a glow that adds light at dusk is a deeper colour on the afternoon's pale sky. */
+  dark?: boolean
+  /** How the last landing went, for a face that shows it: clean, or a thump. Your own bird's, for a moment. */
+  mood?: 'happy' | 'ouch' | null
 }
 
 type Painter = (ctx: CanvasRenderingContext2D, pose: SkinPose) => void
@@ -421,10 +426,306 @@ const auroraPhoenix: Painter = (ctx, p) => {
   )
 }
 
+/* ---------- Blip, with wings ---------- */
+
+/** Blip's colours, as BlipFigure.tsx draws him; glows as `r, g, b`, for their fades. */
+const BLIP_LOOK = {
+  body: '#34c6a8',
+  shade: '#1f9b84',
+  feet: '#167a69',
+  ink: '#0f2f2a',
+  core: '#f2fffb',
+  cheek: '255, 143, 179',
+  /** His spark's glow at dusk; on the afternoon's pale sky a deeper mint, so it shows (as Wobble Run's does). */
+  glow: '159, 247, 226',
+  glowDay: '64, 204, 174',
+  /** His wings: his mint a shade lighter, the far one a shade deeper, behind him. */
+  wing: '#74dac5',
+  wingFar: '#28ab91',
+  /** Swoop's outline, round his own flat colours: a deep teal. */
+  line: '#0e4a40',
+}
+
+/**
+ * Blip is drawn in BlipFigure's own units (his body a circle of 7.35 about (0, 1.26), y down, his feet's soles at
+ * 9.77), this many of the swift's units to one: rounder than the swift, and big enough that his face reads at the
+ * game's size.
+ */
+const BLIP_K = 0.9 / 7.35
+/** Where BlipFigure's origin sits in the swift's frame: his soles on the hill, where the swift's belly is. */
+const BLIP_Y = SWIFT_LIFT - 9.77 * BLIP_K
+/** His face, turned to look where he's going: this far forward. */
+const BLIP_FACE = 2.4
+
+/**
+ * A wing, from its root, pointing straight back, as ellipses [x, y, rx, ry, turn]: its arm, and three feathers
+ * fanned out behind it, the top one the longest. Filled as one, and outlined round the outside only.
+ */
+const WING_PARTS = [
+  [-2.9, -0.7, 3.5, 2.35, -0.05],
+  [-6.4, -1.45, 3.9, 1.3, -0.08],
+  [-6.0, 0.55, 3.4, 1.25, 0.12],
+  [-4.9, 2.15, 2.8, 1.15, 0.34],
+] as const
+
+/**
+ * His parts as paths, made the first time he's drawn: his body, its belly shade (BlipFigure's own), a wing, and
+ * its leading edge, for the soft white edge along it.
+ */
+let blipPaths: { body: Path2D; belly: Path2D; wing: Path2D; lead: Path2D } | null = null
+const BLIP_PATHS = () => {
+  if (blipPaths) return blipPaths
+  const wing = new Path2D()
+  for (const [x, y, rx, ry, a] of WING_PARTS) {
+    wing.moveTo(x + rx * Math.cos(a), y + rx * Math.sin(a))
+    wing.ellipse(x, y, rx, ry, a, 0, TAU)
+  }
+  return (blipPaths = {
+    body: new Path2D('M7.35 1.26 A7.35 7.35 0 1 1 -7.35 1.26 A7.35 7.35 0 1 1 7.35 1.26 Z'),
+    belly: new Path2D('M-5.88 4.2 A7.35 7.35 0 0 0 5.88 4.2 A8.4 6.3 0 0 1 -5.88 4.2 Z'),
+    wing,
+    lead: new Path2D('M0.6 -2.6 Q-2.9 -3.75 -6.4 -2.85 Q-9.0 -2.5 -10.4 -1.6'),
+  })
+}
+
+/**
+ * Where each wing turns from, how big it's drawn, and how much higher it's turned: on his back, clear of his face,
+ * the near one over his side, the far one behind him, fanned a little higher, so both show as they beat.
+ */
+const NEAR_WING = { x: -5.3, y: 1.4, s: 0.8, up: 0 }
+const FAR_WING = { x: -4.4, y: -0.4, s: 0.74, up: 0.32 }
+
+/** His feet, [x, y, turn]: on the hill, tucked back in the air, tighter in a dive. */
+const FEET_DOWN = [
+  [-1.7, 8.82, 0],
+  [2.9, 8.82, 0],
+] as const
+const FEET_UP = [
+  [-3.0, 8.1, 0.5],
+  [-0.7, 8.55, 0.35],
+] as const
+const FEET_DIVE = [
+  [-3.7, 7.5, 0.7],
+  [-1.7, 8.1, 0.55],
+] as const
+
+/**
+ * Where his spark floats, in his units: over his head, bobbing, and swept back by the wind the faster he goes,
+ * streaming behind him in a dive.
+ */
+export function blipSparkAt(dive: boolean, ground: boolean, time: number): [number, number] {
+  const bob = Math.sin(time * 5.3) * 0.45
+  if (ground) return [-0.9, -7.98 + bob]
+  return dive ? [-3.9, -7.1 + bob * 0.5] : [-2.4, -7.7 + bob]
+}
+
+/**
+ * Where his spark is from the bird's point on the hill (scene.ts's x, y), on the screen in the bird's drawn size,
+ * for a bird headed at `angle` (radians, up positive; drawBird turns the canvas by −angle): so the glitter he leaves
+ * flying comes off the spark itself (scene.ts drawTrail).
+ */
+export function blipSparkOffset(angle: number, dive: boolean, time: number): [number, number] {
+  const [bx, by] = blipSparkAt(dive, false, time)
+  const stretch = dive ? 1.12 : 1
+  const x = bx * BLIP_K * stretch
+  const y = (BLIP_Y + by * BLIP_K) / stretch - SWIFT_LIFT
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  return [x * c + y * s, -x * s + y * c]
+}
+
+/**
+ * A speck of the glitter his spark leaves as he flies (scene.ts drawTrail): a tiny blip, the glow `r` across, at a
+ * screen point, fading out in steps so it's soft without a gradient a speck. Its core is white at dusk; on the
+ * afternoon's pale sky a white core would vanish and leave a ring, so it's his belly's deeper mint.
+ */
+export function blipGlitter(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, dark: boolean) {
+  const glow = dark ? BLIP_LOOK.glow : BLIP_LOOK.glowDay
+  for (const [k, a] of [
+    [1, 0.18],
+    [0.68, 0.3],
+    [0.45, 0.45],
+  ] as const) {
+    ctx.fillStyle = `rgba(${glow}, ${a})`
+    ctx.beginPath()
+    ctx.arc(x, y, r * k, 0, TAU)
+    ctx.fill()
+  }
+  ctx.fillStyle = dark ? BLIP_LOOK.core : BLIP_LOOK.shade
+  ctx.beginPath()
+  ctx.arc(x, y, r * (dark ? 0.26 : 0.3), 0, TAU)
+  ctx.fill()
+}
+
+/** His spark's glow's radius, in the swift's units: for the glitter, a fraction of it. */
+export const BLIP_SPARK_R = 2.7 * BLIP_K
+
+/** One wing, beating as the swift's does: raised and lowered in the air, folded along his side in a dive and on the hill. */
+function blipWing(ctx: CanvasRenderingContext2D, p: SkinPose, at: { x: number; y: number; s: number; up: number }, fill: string, line: number) {
+  const W = BLIP_PATHS()
+  const folded = p.dive || p.ground
+  // Straight back is 0; up turns it clockwise on the canvas. Little wings, so a quicker beat than the swift's, as
+  // the penguin's flipper; folded, it lies back and down along his side.
+  const turn = folded ? (p.dive ? -0.42 : -0.5) : 0.24 + 0.74 * Math.sin(p.flap * 1.4) + at.up
+  ctx.save()
+  ctx.translate(at.x, at.y)
+  ctx.rotate(turn)
+  const s = at.s * (folded ? 0.78 : 1)
+  ctx.scale(s, s)
+  // The outline at twice its width under the fill, so only its outer half shows: round the wing, not each part.
+  ctx.lineWidth = (line * 2) / s
+  ctx.stroke(W.wing)
+  ctx.fillStyle = fill
+  ctx.fill(W.wing)
+  ctx.save()
+  ctx.clip(W.wing)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)'
+  ctx.lineWidth = 1.8
+  ctx.stroke(W.lead)
+  ctx.restore()
+  ctx.restore()
+}
+
+/** His face, as BlipFigure has it, turned forward and looking down the slope in a dive; grinning after a clean landing. */
+function blipFace(ctx: CanvasRenderingContext2D, p: SkinPose) {
+  const L = BLIP_LOOK
+  // Never thinner than a pixel, so it reads at the game's size.
+  const px = p.px1 / BLIP_K
+  ctx.save()
+  ctx.translate(BLIP_FACE, p.dive ? 0.55 : 0)
+  ctx.strokeStyle = L.ink
+  ctx.fillStyle = L.ink
+  if (p.mood === 'happy') {
+    ctx.lineWidth = Math.max(0.55, px * 1.1)
+    ctx.beginPath()
+    ctx.moveTo(-2.9, 1.1)
+    ctx.quadraticCurveTo(-1.9, -0.2, -0.9, 1.1)
+    ctx.moveTo(0.9, 1.1)
+    ctx.quadraticCurveTo(1.9, -0.2, 2.9, 1.1)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(-1.6, 3.4)
+    ctx.quadraticCurveTo(0, 5.3, 1.6, 3.4)
+    ctx.closePath()
+    ctx.fill()
+  } else if (p.mood === 'ouch') {
+    // Screwed shut, and an "o".
+    ctx.lineWidth = Math.max(0.55, px * 1.1)
+    ctx.beginPath()
+    ctx.moveTo(-2.7, 0.1)
+    ctx.lineTo(-1.4, 1.05)
+    ctx.lineTo(-2.7, 2.0)
+    ctx.moveTo(2.7, 0.1)
+    ctx.lineTo(1.4, 1.05)
+    ctx.lineTo(2.7, 2.0)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.ellipse(0, 3.95, 0.7, 0.8, 0, 0, TAU)
+    ctx.fill()
+  } else {
+    // The far eye a touch narrower, turned away a little.
+    for (const [x, rx] of [
+      [-1.89, 0.95],
+      [1.89, 0.86],
+    ] as const) {
+      ctx.beginPath()
+      ctx.ellipse(x, 1.05, rx, 1.58, 0, 0, TAU)
+      ctx.fill()
+    }
+    ctx.fillStyle = '#ffffff'
+    for (const x of [-1.58, 2.15]) {
+      ctx.beginPath()
+      ctx.arc(x, 0.32, 0.36, 0, TAU)
+      ctx.fill()
+    }
+    ctx.lineWidth = Math.max(0.47, px)
+    ctx.beginPath()
+    ctx.moveTo(-1.26, 3.57)
+    ctx.quadraticCurveTo(0, 4.73, 1.26, 3.57)
+    ctx.stroke()
+  }
+  ctx.fillStyle = `rgba(${L.cheek}, ${p.mood === 'happy' ? 0.85 : 0.7})`
+  for (const [x, rx] of [
+    [-3.57, 0.95],
+    [3.57, 0.82],
+  ] as const) {
+    ctx.beginPath()
+    ctx.ellipse(x, 3.15, rx, 0.53, 0, 0, TAU)
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
+/** His spark: a white dot in its glow, which breathes. */
+function blipSpark(ctx: CanvasRenderingContext2D, p: SkinPose) {
+  const [x, y] = blipSparkAt(p.dive, p.ground, p.time)
+  const r = 2.7 * (1 + 0.08 * Math.sin(p.time * 5.3))
+  const glow = p.dark === false ? BLIP_LOOK.glowDay : BLIP_LOOK.glow
+  const fade = ctx.createRadialGradient(x, y, 0, x, y, r)
+  fade.addColorStop(0, `rgba(${glow}, 0.9)`)
+  fade.addColorStop(1, `rgba(${glow}, 0)`)
+  ctx.fillStyle = fade
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, TAU)
+  ctx.fill()
+  ctx.fillStyle = BLIP_LOOK.core
+  ctx.beginPath()
+  ctx.arc(x, y, 0.85, 0, TAU)
+  ctx.fill()
+}
+
+/**
+ * Blip, the site's mascot, with wings: his round mint body, belly shade and shine, his face turned to look where
+ * he's going, two little wings beating (the far one peeking over his back), his feet on the hill or tucked back in
+ * the air, and his spark floating over his head, swept back as he flies. Swoop's outline goes round him, a deep
+ * teal, so he sits in its drawing. Mint and teal, never the blue bird's blue.
+ */
+const blip: Painter = (ctx, p) => {
+  const L = BLIP_LOOK
+  ctx.save()
+  ctx.translate(0, BLIP_Y)
+  ctx.scale(BLIP_K, BLIP_K)
+  const line = lineOf(p) / BLIP_K
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = L.line
+  // The far wing, behind him: tucked out of sight in a dive and on the hill.
+  if (!p.dive && !p.ground) blipWing(ctx, p, FAR_WING, L.wingFar, line)
+  ctx.fillStyle = L.feet
+  ctx.lineWidth = line * 0.7
+  for (const [x, y, a] of p.ground ? FEET_DOWN : p.dive ? FEET_DIVE : FEET_UP) {
+    ctx.beginPath()
+    ctx.ellipse(x, y, 1.79, 0.95, a, 0, TAU)
+    ctx.fill()
+    ctx.stroke()
+  }
+  const P = BLIP_PATHS()
+  ctx.fillStyle = L.body
+  ctx.fill(P.body)
+  ctx.fillStyle = L.shade
+  ctx.fill(P.belly)
+  ctx.save()
+  ctx.translate(-2.52, -2.94)
+  ctx.rotate((-24 * Math.PI) / 180)
+  ctx.beginPath()
+  ctx.ellipse(0, 0, 2.52, 1.26, 0, 0, TAU)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+  ctx.fill()
+  ctx.restore()
+  ctx.lineWidth = line
+  ctx.stroke(P.body)
+  blipFace(ctx, p)
+  ctx.strokeStyle = L.line
+  blipWing(ctx, p, NEAR_WING, L.wing, line)
+  blipSpark(ctx, p)
+  ctx.restore()
+}
+
 const PAINTERS: Record<string, Painter> = {
   [SNOW_SWIFT]: snowSwift,
   [PENGUIN]: penguin,
   [AURORA_PHOENIX]: auroraPhoenix,
+  [BLIP]: blip,
 }
 
 /** How a skin draws the bird, in its unit frame, or null for a skin Swoop doesn't know: the usual red swift. */

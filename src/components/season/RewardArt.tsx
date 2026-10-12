@@ -51,6 +51,7 @@ import {
   type SkinArt,
   type SnakeTail,
 } from '../../lib/skinArt'
+import { BLIP_SKIN_PICTURES } from '../../lib/blipSkinPictures'
 import { FrostPatch } from './ColdSnapArt'
 import { ArtShapes, MissionPatch, Moonhopper, Rocket } from './SeasonArt'
 import { SeasonPatch } from './SeasonLook'
@@ -557,6 +558,17 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
     <Board size={size}>
       <RenderedSkin picture={knittedPicture} />
     </Board>
+  ),
+  // Blip's set, won by answering his daily question: renders of each game's own drawing (lib/blipSkinPictures.ts).
+  ...Object.fromEntries(
+    Object.entries(BLIP_SKIN_PICTURES).map(([id, picture]) => [
+      id,
+      (size: number) => (
+        <Board size={size}>
+          <RenderedSkin picture={picture} />
+        </Board>
+      ),
+    ]),
   ),
   'pileup-northern-lights': (size) => (
     <Board size={size}>

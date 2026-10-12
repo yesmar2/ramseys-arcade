@@ -1,3 +1,4 @@
+import { chosenSkin } from '../../lib/skins'
 import { runPreview, type Sim } from '../previewKit'
 import {
   createInitialState,
@@ -133,8 +134,8 @@ export function makeSim(): Sim<GameState> {
     },
     step: (s, dt) => tick(s.phase === 'playing' ? pilot(s, m, dt) : s, dt),
     over: (s) => s.phase === 'gameover',
-    // The water as the game draws it, without the words written over it for a player.
-    render: (ctx, s, w, h) => renderGame(ctx, { ...s, floaters: [] }, w, h),
+    // The water as the game draws it, without the words written over it for a player; the fish in the player's own skin.
+    render: (ctx, s, w, h) => renderGame(ctx, { ...s, floaters: [] }, w, h, chosenSkin('frenzy')),
     resize: (s, w, h) => sized(s, w, h),
     // The still: a few bites in, with something bigger about.
     poster: { seed: 3, at: 14 },

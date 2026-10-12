@@ -144,7 +144,7 @@ function bodyPath(ctx: CanvasRenderingContext2D, H: number) {
   ctx.closePath()
 }
 
-function tailPath(ctx: CanvasRenderingContext2D, kind: TailKind, T: number, h1: number, flow: number) {
+export function tailPath(ctx: CanvasRenderingContext2D, kind: TailKind, T: number, h1: number, flow: number) {
   ctx.beginPath()
   ctx.moveTo(-1, -h1)
   if (kind === 'fork') {
@@ -170,9 +170,10 @@ function tailPath(ctx: CanvasRenderingContext2D, kind: TailKind, T: number, h1: 
   ctx.closePath()
 }
 
-type FinShape = { a: number; b: number; height: (t: number) => number; sweep: number }
+/** A fin along the body from `a` to `b` (0 nose … 1 tail base): its height `t` of the way along, and how far it sweeps back. */
+export type FinShape = { a: number; b: number; height: (t: number) => number; sweep: number }
 
-function finShapes(kind: FinKind, size: number, side: -1 | 1, H: number, time: number): FinShape[] {
+export function finShapes(kind: FinKind, size: number, side: -1 | 1, H: number, time: number): FinShape[] {
   const flutter = (t: number) => 1 + 0.07 * Math.sin(time * 6 + t * 4)
   const h = H * size
   switch (kind) {

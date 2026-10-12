@@ -12,6 +12,7 @@ import {
 import { createPortal } from 'react-dom'
 import { getGame } from '../../data/games'
 import { seasonHref } from '../../hooks/useHashRoute'
+import { openBlipPoll } from '../../lib/poll'
 import { liveSeason, useSeason } from '../../lib/season'
 import { SEASON_CALENDAR } from '../../lib/seasonCalendar'
 import { chooseSkin, useChosenSkin, type Skin } from '../../lib/skins'
@@ -276,7 +277,8 @@ function SkinCardBody({ skin, nameId }: { skin: Skin; nameId: string }) {
   let note: string | null = null
   let act: ReactNode = null
   if (mine) {
-    const source = skin.price != null ? 'the Hangar' : skin.plus ? `the ${seasonName} Gold Pass` : `the ${seasonName} pass`
+    const source =
+      skin.price != null ? 'the Hangar' : skin.poll != null ? 'Blip’s set' : skin.plus ? `the ${seasonName} Gold Pass` : `the ${seasonName} pass`
     from = (
       <>
         <Tick />
@@ -309,6 +311,14 @@ function SkinCardBody({ skin, nameId }: { skin: Skin; nameId: string }) {
         See it on the Season page
         <Chevron />
       </a>
+    )
+  } else if (where.kind === 'blip') {
+    from = <span>Blip’s set · {where.answers} answers to his daily question</span>
+    act = (
+      <button type="button" className="skin-card__go" onClick={openBlipPoll}>
+        Answer Blip’s question
+        <Chevron />
+      </button>
     )
   } else if (where.kind === 'hangar') {
     from = (

@@ -1,6 +1,7 @@
 import { paintFruit } from '../fruitArt'
 import { playHeader } from '../playHeader'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
+import { BLIP_HUE, BLIP_SKIN, drawBlip, drawBlipCaught } from './blip'
 import {
   CLEAR_FLASH,
   CLEAR_TIME,
@@ -90,6 +91,8 @@ type Gfx = {
   gridW: number
   gridH: number
   t: number
+  /** The player's skin (lib/skins.ts), or null for the usual look. */
+  skin: string | null
   /** Tile coordinates to canvas px. */
   X: (v: number) => number
   Y: (v: number) => number
@@ -497,11 +500,17 @@ function drawPlayer(g: Gfx) {
   const line = hsla(PLAYER_HUE, 85, dark ? 70 : 40, 0.98)
   const fill = hsla(PLAYER_HUE, 92, 60, dark ? 0.42 : 0.5)
   const lw = Math.max(1.3, cell * 0.075)
+  // Blip (blip.ts), the Gulping Blip skin, in place of the usual chomper.
+  const blip = g.skin === BLIP_SKIN
 
   if (s.phase === 'dying') {
     // Folds away from the mouth outward, then it is gone.
     const k = clamp01(1 - s.deathAnim / (DEATH_TIME * 0.72))
     if (k >= 1) return
+    if (blip) {
+      drawBlipCaught(ctx, { x: cx, y: cy, r, k, dark, lw })
+      return
+    }
     const open = 0.2 + k * (Math.PI - 0.2)
     ctx.save()
     ctx.translate(cx, cy)
@@ -531,9 +540,11 @@ function drawPlayer(g: Gfx) {
   // hidden on the safe spot, the lamp is out and you keep to the shadow.
   const hidden = isHidden(s)
   if (!hidden) {
+    // Blip's is his own mint, but a surge lights everyone's gold.
+    const hue = surging ? CRUMB_HUE : blip ? BLIP_HUE : PLAYER_HUE
     const lamp = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * (surging ? 3 : 2.4))
-    lamp.addColorStop(0, hsla(surging ? CRUMB_HUE : PLAYER_HUE, 90, 60, dark ? 0.24 : 0.2))
-    lamp.addColorStop(1, hsla(surging ? CRUMB_HUE : PLAYER_HUE, 90, 60, 0))
+    lamp.addColorStop(0, hsla(hue, 90, 60, dark ? 0.24 : 0.2))
+    lamp.addColorStop(1, hsla(hue, 90, 60, 0))
     ctx.fillStyle = lamp
     ctx.beginPath()
     ctx.arc(cx, cy, r * 3, 0, TAU)
@@ -545,6 +556,13 @@ function drawPlayer(g: Gfx) {
 
   // The mouth works while you move and rests where it stopped.
   const open = 0.08 + 0.62 * (0.5 - 0.5 * Math.cos(s.mouth * Math.PI))
+  if (blip) {
+    // Grinning through the beat after a chaser is eaten, and over a cleared maze.
+    const happy = s.freeze > 0 || s.phase === 'clearing'
+    drawBlip(ctx, { x: cx, y: cy, r, dir: s.player.dir, open: (open - 0.08) / 0.62, stride: s.mouth, dark, lw, t: s.time, happy, power: s.fright > 0 })
+    ctx.globalAlpha = 1
+    return
+  }
   ctx.save()
   ctx.translate(cx, cy)
   faceLocal(ctx, s.player.dir)
@@ -702,13 +720,15 @@ function drawGhost(g: Gfx, ghost: Ghost) {
 
 function drawBits(g: Gfx) {
   const { ctx, s, dark, cell, X, Y } = g
+  // The puff a caught player goes out in is in the player's colour: Blip's is his mint.
+  const puff = g.skin === BLIP_SKIN ? BLIP_HUE : PLAYER_HUE
   for (const b of s.bits) {
     const a = clamp01(b.life / b.maxLife)
     const x = X(b.x)
     const y = Y(b.y)
     if (b.kind === 'spark') {
       ctx.globalAlpha = a
-      ctx.strokeStyle = hsla(b.hue, 92, dark ? 70 : 50)
+      ctx.strokeStyle = hsla(b.hue === PLAYER_HUE ? puff : b.hue, 92, dark ? 70 : 50)
       ctx.lineWidth = Math.max(1.2, cell * b.size * 0.6)
       ctx.lineCap = 'round'
       ctx.beginPath()
@@ -856,11 +876,13 @@ function drawBanners(g: Gfx) {
 
 // ——————————————————————————————————————————————————————— render
 
+/** Draw a frame. `skin`: the player's chosen skin (lib/skins.ts), or null for the usual look. */
 export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
   w: number,
   h: number,
+  skin: string | null = null,
 ) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   // Only realloc when the board size changes — resetting width every frame
@@ -885,6 +907,7 @@ export function renderGame(
     gridW,
     gridH,
     t: state.time,
+    skin,
     X: (v) => ox + v * cell,
     Y: (v) => oy + v * cell,
   }

@@ -23,6 +23,7 @@ import {
   submitFrenzyBook,
 } from '../../lib/records'
 import { clearRunAchievements, pushRunAchievement } from '../../lib/runAchievements'
+import { useSkinInto } from '../../lib/skins'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   clearSteer,
@@ -110,6 +111,9 @@ export function FrenzyGame() {
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto('frenzy', skinRef)
 
   useEffect(() => {
     let raf = 0
@@ -146,7 +150,7 @@ export function FrenzyGame() {
 
       if (canvas && w > 0 && h > 0) {
         const ctx = canvas.getContext('2d')
-        if (ctx) renderGame(ctx, stateRef.current, w, h)
+        if (ctx) renderGame(ctx, stateRef.current, w, h, skinRef.current)
       }
 
       raf = requestAnimationFrame(loop)

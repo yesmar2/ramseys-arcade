@@ -16,6 +16,7 @@ import { usePlayerName } from '../../hooks/usePlayerName'
 import { eggDone, reportEgg } from '../../lib/eggs'
 import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
+import { useSkinInto } from '../../lib/skins'
 import {
   clearRunAchievements,
   isRunAssisted,
@@ -62,6 +63,9 @@ export function PelletsGame() {
   const draggedRef = useRef(false)
   const startGrace = useRef(0)
   const streakRecordKey = useRef<string | null>(null)
+  // The player's own skin, if they chose one (lib/skins.ts): looks only.
+  const skinRef = useRef<string | null>(null)
+  useSkinInto('pellets', skinRef)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
@@ -100,7 +104,7 @@ export function PelletsGame() {
         const h = parent?.clientHeight || 0
         if (w > 0 && h > 0) {
           const ctx = canvas.getContext('2d')
-          if (ctx) renderGame(ctx, stateRef.current, w, h)
+          if (ctx) renderGame(ctx, stateRef.current, w, h, skinRef.current)
         }
       }
 

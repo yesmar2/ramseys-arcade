@@ -1,5 +1,6 @@
 import { PALETTE, type Swatch } from '../../data/games'
 import { isDarkTheme, playfieldColor } from '../../lib/theme'
+import { BLIP_BODY, BLIP_FISH, blipTilt, drawBlipFish, drawBlipShine, type BlipPaint } from './blipFish'
 import { drawFish, type FishPaint, type Glow } from './fishArt'
 import {
   FLOOR,
@@ -152,6 +153,31 @@ function paintFor(art: FishArt, pal: Palette, fill = 0.42, threat = false): Fish
   }
   paints.set(key, made)
   return made
+}
+
+let blipPaint: { key: string; paint: BlipPaint } | null = null
+
+/**
+ * Blip's colours (the skin frenzy-blip, blipFish.ts): his own mints from BlipFigure, sunk a touch into the water as
+ * everything in it is, his fins a thinner wash, and the sea's outline in his hue, light on the dark water as every
+ * fish's is and dark on the pale.
+ */
+function blipPaintFor(pal: Palette): BlipPaint {
+  if (blipPaint?.key === pal.key) return blipPaint.paint
+  const under = mix(pal.shallow, pal.deep, 0.35)
+  const paint: BlipPaint = {
+    body: css(mix(under, [52, 198, 168], 0.92)),
+    shade: css(mix(under, [31, 155, 132], 0.92)),
+    fin: css(mix(under, [31, 155, 132], 0.78)),
+    feet: css(mix(under, [22, 122, 105], 0.94)),
+    line: pal.dark ? 'hsla(166, 70%, 72%, 0.95)' : 'hsla(168, 78%, 24%, 0.95)',
+    glow: pal.dark ? '159, 247, 226' : '52, 198, 168',
+    core: '#f2fffb',
+    ring: pal.dark ? null : 'rgba(22, 122, 105, 0.9)',
+    light: '#9ff7e2',
+  }
+  blipPaint = { key: pal.key, paint }
+  return paint
 }
 
 const rollScale = (roll: number) => (Math.sign(roll) || 1) * Math.max(0.18, Math.abs(roll))
@@ -718,7 +744,7 @@ function drawGulls(ctx: CanvasRenderingContext2D, v: View) {
 }
 
 /** Under the surface: the fisherman's line, his hook, and the worm on it (or whatever bit). */
-function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette, skin: string | null) {
   const b = v.s.boat
   if (b.stage === 'rest' || b.stage === 'sail') return
   const tip = rodTip(b)
@@ -741,7 +767,11 @@ function drawLine(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
     const T = TIERS[caught.tier]!
     drawOne(ctx, v, pal, SPECIES[caught.species].art, { x: hx, y: b.hookY + T.r * 1.1, angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 5 }, T.r, { amp: 1.6 })
   } else if (caught === 'you') {
-    drawOne(ctx, v, pal, playerArt(v.s.player.size), { x: hx, y: b.hookY + playerRadius(v.s), angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1, seed: 7 }, playerRadius(v.s), { amp: 1.6, fill: 0.55 })
+    const r = playerRadius(v.s)
+    const at = { x: hx, y: b.hookY + r, angle: -Math.PI / 2, roll: 1, swim: v.s.time * 9, mouth: 1 }
+    // Blip's mouth is low on his face, so he hangs leaning back, the hook in his mouth.
+    if (skin === BLIP_FISH) drawBlip(ctx, v, pal, playerArt(v.s.player.size), { ...at, x: hx - r * 0.17, y: b.hookY + r * 0.57, angle: -Math.PI / 2 - 0.35 }, r, { amp: 1.6, hooked: true })
+    else drawOne(ctx, v, pal, playerArt(v.s.player.size), { ...at, seed: 7 }, r, { amp: 1.6, fill: 0.55 })
   } else if (b.stage === 'cast' || b.stage === 'wait') {
     // The worm, wriggling.
     ctx.strokeStyle = '#e85d9a'
@@ -1017,7 +1047,59 @@ function drawAlerts(ctx: CanvasRenderingContext2D, v: View) {
   ctx.restore()
 }
 
-function drawPlayer(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+/**
+ * You as Blip (the skin frenzy-blip, blipFish.ts): where the usual fish would be and as big as it is, turning,
+ * gulping and swimming as it does. He leans toward where he's going rather than pointing at it, so his face stays
+ * his face, and through a turn his face comes round to you. His spark, out ahead on its lure, lights the dark round
+ * him in the deep. On the hook he hangs by his mouth, wincing.
+ */
+function drawBlip(
+  ctx: CanvasRenderingContext2D,
+  v: View,
+  pal: Palette,
+  art: FishArt,
+  at: { x: number; y: number; angle: number; roll: number; swim: number; mouth: number },
+  r: number,
+  o: { amp: number; dazed?: boolean; shake?: number; hooked?: boolean },
+) {
+  const x = X(v, at.x)
+  const y = Y(v, at.y)
+  // A gulp puffs him up a little.
+  const R = r * BLIP_BODY * v.ppu * (1 + 0.06 * at.mouth)
+  if (x < -R * 4 || x > v.w + R * 4 || y < -R * 4 || y > v.h + R * 4) return
+  const rot = (o.hooked ? at.angle : blipTilt(at.angle, at.roll)) + (o.shake ?? 0)
+  const flip = !o.hooked && at.roll < 0 ? -1 : 1
+  const local: Glow[] = []
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(rot)
+  ctx.scale(flip, 1)
+  drawBlipFish(
+    ctx,
+    {
+      radius: R,
+      swim: at.swim,
+      amp: o.amp,
+      mouth: at.mouth,
+      time: v.s.time,
+      turn: o.hooked ? 1 : Math.abs(at.roll),
+      biolume: lumAt(at.y),
+      dazed: !!(o.dazed || o.hooked),
+      art,
+      spark: true,
+    },
+    blipPaintFor(pal),
+    local,
+  )
+  ctx.restore()
+  drawBlipShine(ctx, x, y, R)
+  // His spark's light, from his frame to the screen's.
+  const c = Math.cos(rot)
+  const sn = Math.sin(rot)
+  for (const g of local) lights.push({ ...g, x: x + c * g.x * flip - sn * g.y, y: y + sn * g.x * flip + c * g.y })
+}
+
+function drawPlayer(ctx: CanvasRenderingContext2D, v: View, pal: Palette, skin: string | null) {
   const s = v.s
   const p = s.player
   if (s.phase !== 'playing') return
@@ -1036,7 +1118,9 @@ function drawPlayer(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   // Stung: it shakes, and sparks crackle round it while the stun lasts.
   const stunned = p.stun > 0
   const shake = stunned ? Math.sin(s.time * 60) * 0.18 * Math.min(1, p.stun) : 0
-  drawOne(ctx, v, pal, playerArt(p.size), { ...p, angle: p.angle + shake, seed: 7 }, r, { amp: p.air ? 0.4 : stunned ? 0.3 : 1.1, fill: 0.55 })
+  const amp = p.air ? 0.4 : stunned ? 0.3 : 1.1
+  if (skin === BLIP_FISH) drawBlip(ctx, v, pal, playerArt(p.size), p, r, { amp, dazed: stunned, shake })
+  else drawOne(ctx, v, pal, playerArt(p.size), { ...p, angle: p.angle + shake, seed: 7 }, r, { amp, fill: 0.55 })
   if (stunned) drawStun(ctx, v, r)
 }
 
@@ -1138,7 +1222,7 @@ function drawEffects(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
 }
 
 /** Along the bottom: your lives, the bar to your next size, and the chain. */
-function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
+function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette, skin: string | null) {
   const s = v.s
   if (s.phase === 'menu' || s.phase === 'gameover') return
   const bw = Math.min(240, v.w * 0.42)
@@ -1173,14 +1257,21 @@ function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   ctx.strokeStyle = 'rgba(8, 18, 28, 0.7)'
   ctx.strokeText(label.toUpperCase(), bx + bw / 2, by - 12)
   ctx.fillText(label.toUpperCase(), bx + bw / 2, by - 12)
-  // Lives: little fish to the left of the bar.
+  // Lives: little fish to the left of the bar (little Blips, in his skin).
   const art = playerArt(0)
+  const blip = skin === BLIP_FISH
   for (let i = 0; i < 3; i++) {
     const lx = bx - 22 - (2 - i) * 31
     ctx.save()
     ctx.globalAlpha = i < s.lives ? 1 : 0.25
     ctx.translate(lx, by + bh / 2)
-    drawFish(ctx, art, { length: 18, swim: s.time * 4 + i, amp: 0.6, mouth: 0, lookX: 1, lookY: 0, alarm: 0, puff: 0, time: s.time }, i, null, paintFor(art, pal, 0.55))
+    if (blip) {
+      const R = 6.4
+      drawBlipFish(ctx, { radius: R, swim: s.time * 4 + i, amp: 0.6, mouth: 0, time: s.time + i * 1.1, turn: 1, biolume: 0, dazed: false, art, spark: true }, blipPaintFor(pal))
+      drawBlipShine(ctx, 0, 0, R)
+    } else {
+      drawFish(ctx, art, { length: 18, swim: s.time * 4 + i, amp: 0.6, mouth: 0, lookX: 1, lookY: 0, alarm: 0, puff: 0, time: s.time }, i, null, paintFor(art, pal, 0.55))
+    }
     ctx.restore()
   }
   // The chain, to the right.
@@ -1193,7 +1284,11 @@ function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
   ctx.restore()
 }
 
-export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: number, height: number) {
+/**
+ * Draw a frame. `skin`: the player's chosen skin (lib/skins.ts), worn by their own fish only (frenzy-blip draws
+ * them as Blip); null for the usual look.
+ */
+export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: number, height: number, skin: string | null = null) {
   const dpr = Math.min(2, window.devicePixelRatio || 1)
   const canvas = ctx.canvas
   const cw = Math.floor(width * dpr)
@@ -1215,10 +1310,10 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   drawWalls(ctx, v, pal)
   drawJellies(ctx, v)
   drawMines(ctx, v)
-  drawLine(ctx, v, pal)
+  drawLine(ctx, v, pal, skin)
   drawFishes(ctx, v, pal, false)
   drawGulls(ctx, v)
-  drawPlayer(ctx, v, pal)
+  drawPlayer(ctx, v, pal, skin)
   drawFishes(ctx, v, pal, true)
   drawShark(ctx, v, pal)
   drawBlasts(ctx, v)
@@ -1228,5 +1323,5 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   drawLights(ctx)
   drawAlerts(ctx, v)
   drawEffects(ctx, v, pal)
-  drawBar(ctx, v, pal)
+  drawBar(ctx, v, pal, skin)
 }

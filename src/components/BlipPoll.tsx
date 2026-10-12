@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { answerPoll, share, usePoll } from '../lib/poll'
+import { answerPoll, blipSet, share, usePoll } from '../lib/poll'
 import { BlipFigure } from './BlipFigure'
+import { BlipSet } from './BlipSet'
 import { openSiteMenu } from './siteNav'
 import '../styles/blipPoll.css'
 
@@ -9,12 +10,13 @@ import '../styles/blipPoll.css'
  * Blip's question of the day on the home page, beside the day's races (A on the "Blip's daily poll" canvas,
  * 2026-10-09): Blip perched on the card, the question, its answers. A signed-in player answers once, for a few
  * tickets, and then sees how everyone answered with theirs lit; a visitor sees the question and the way to sign
- * in. Yesterday's result under it, and once you've answered, a hint of tomorrow's. `inSheet`: the same card in
- * Blip's hello (BlipHello.tsx), answered where you are rather than on the home page.
+ * in. Yesterday's result under it, and once you've answered, a hint of tomorrow's. Every 7 answers win the next
+ * skin of Blip's set (BlipSet.tsx): before answering, the card says how near the next is; after, it shows the set.
+ * `inSheet`: the same card in Blip's hello (BlipHello.tsx), answered where you are rather than on the home page.
  */
 export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
   const { signedIn } = useAuth()
-  const { view, status, earned } = usePoll(signedIn)
+  const { view, status, earned, won } = usePoll(signedIn)
   const [sending, setSending] = useState<number | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -40,6 +42,8 @@ export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
   // Its own heading id in the sheet, which can open over the home page's card.
   const headingId = inSheet ? 'blip-sheet-q' : 'blip-poll-q'
   const top = yesterday && yesterday.total ? yesterday.counts.indexOf(Math.max(...yesterday.counts)) : -1
+  const answers = signedIn ? (view?.answers ?? null) : null
+  const toward = answers != null ? blipSet(answers) : null
 
   return (
     <section
@@ -93,7 +97,14 @@ export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
           {failed ? (
             'That didn’t go through: try again.'
           ) : signedIn ? (
-            <>Answer for <b>{view?.tickets ?? 5} tickets</b></>
+            <>
+              Answer for <b>{view?.tickets ?? 5} tickets</b>
+              {toward?.next ? (
+                <>
+                  {' '}· {toward.more} more to the {toward.next.name}
+                </>
+              ) : null}
+            </>
           ) : (
             <button type="button" className="blip-poll__signin" onClick={openSiteMenu}>
               Sign in to answer, for {view?.tickets ?? 5} tickets
@@ -107,6 +118,7 @@ export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
           {earned > 0 ? <b> · +{earned} tickets</b> : null}
         </p>
       ) : null}
+      {voted && answers != null ? <BlipSet answers={answers} won={won} /> : null}
       {yesterday && top >= 0 ? (
         <p className="blip-poll__then">
           <b>Yesterday:</b> {yesterday.q} {yesterday.options[top]}, {share(yesterday.counts[top]!, yesterday.total)}.

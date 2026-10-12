@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { api } from './leaderboard'
+import { BLIP_SKINS, type Skin } from './skins'
 import { refreshTickets } from './tickets'
 
 /*
@@ -15,11 +16,20 @@ export type PollView = {
   yesterday: (PollQuestion & PollCounts) | null
   tomorrow: string | null
   tickets: number
+  /** How many of his questions the player has answered, ever, toward Blip's set; null for a visitor. */
+  answers?: number | null
 }
 
-type State = { view: PollView | null; status: 'idle' | 'loading' | 'ready' | 'error'; who: string | null; earned: number }
+type State = {
+  view: PollView | null
+  status: 'idle' | 'loading' | 'ready' | 'error'
+  who: string | null
+  earned: number
+  /** The skin of Blip's set the last answer here won (lib/skins.ts BLIP_SKINS), to show it off. */
+  won: string | null
+}
 
-let state: State = { view: null, status: 'idle', who: null, earned: 0 }
+let state: State = { view: null, status: 'idle', who: null, earned: 0, won: null }
 const listeners = new Set<() => void>()
 
 function set(next: Partial<State>) {
@@ -39,7 +49,7 @@ function session(): string {
 export function loadPoll(force = false) {
   const who = session()
   if (!force && state.who === who && (state.status === 'loading' || state.status === 'ready')) return
-  set({ status: 'loading', who, earned: 0 })
+  set({ status: 'loading', who, earned: 0, won: null })
   api<PollView>('/poll')
     .then((view) => {
       if (state.who === who) set({ view, status: 'ready' })
@@ -51,8 +61,8 @@ export function loadPoll(force = false) {
 
 /** Answer today's question: what it paid (0 if it was answered already). Throws the API's error. */
 export async function answerPoll(pick: number): Promise<number> {
-  const view = await api<PollView & { earned: number }>('/poll', { method: 'POST', body: JSON.stringify({ pick }) })
-  set({ view, status: 'ready', earned: view.earned })
+  const view = await api<PollView & { earned: number; won?: string | null }>('/poll', { method: 'POST', body: JSON.stringify({ pick }) })
+  set({ view, status: 'ready', earned: view.earned, won: view.won ?? null })
   if (view.earned > 0) void refreshTickets(true)
   return view.earned
 }
@@ -69,6 +79,22 @@ export function usePoll(signedIn: boolean): State {
     loadPoll()
   }, [signedIn])
   return now
+}
+
+/**
+ * Blip's set from a player's answers: how many of its skins they've won (one every 7, lib/skins.ts BLIP_SKINS),
+ * the next one, and how many answers more it takes.
+ */
+export function blipSet(answers: number): { won: number; next: Skin | null; more: number } {
+  const next = BLIP_SKINS.find((s) => (s.poll ?? 0) > answers) ?? null
+  return { won: BLIP_SKINS.filter((s) => (s.poll ?? 0) <= answers).length, next, more: next ? (next.poll ?? 0) - answers : 0 }
+}
+
+/** Opens Blip's question where the player is (BlipHello.tsx listens): from a skin of his set still to win. */
+export const OPEN_BLIP_EVENT = 'arcade-open-blip'
+
+export function openBlipPoll() {
+  window.dispatchEvent(new Event(OPEN_BLIP_EVENT))
 }
 
 /** "38%": a share of the answers, rounded. */
