@@ -89,7 +89,7 @@ type GameHubPageProps = {
 }
 
 /**
- * A game's page, and its only one (Ramsey picked B of the "Game page: board and records" canvas, 2026-10-12: no
+ * A game's page, and its only one (Ramsey picked B of the "Game page: board and records" canvas, 2026-10-11: no
  * board page and no record book of its own). Up top and across the page, its name and Play beside its screen,
  * where it plays itself under the high score. Then its tabs, Board and Records: the period's board in full, and
  * any event it is in; or its records, each a brass plaque. Then the games most like it. A game with no records

@@ -34,7 +34,7 @@ import { RACE_GHOST_GAMES } from '../lib/raceGhost'
 
 /*
  * One game's board, on its page (GameHubPage: a game's Board tab, a daily's Today tab). Ramsey picked B of the
- * "Game page: board and records" canvas (2026-10-12): a game has one page, with its board and its records under
+ * "Game page: board and records" canvas (2026-10-11): a game has one page, with its board and its records under
  * tabs, in place of a board page and a record book of their own. The board's top row is its periods; then one
  * row per player at their best run, and every run a tap away.
  *

@@ -259,7 +259,7 @@ export function publicRoutes(): Route[] {
       if (ranked) routes.push({ name: 'game', slug: game.slug, tab: 'records' })
     }
     // Another game's records are its page's Records tab; its board is the page itself (Ramsey picked B of the
-    // "Game page: board and records" canvas, 2026-10-12: no board page and no record book of its own).
+    // "Game page: board and records" canvas, 2026-10-11: no board page and no record book of its own).
     if (gameHasRecords(game.slug) && !game.daily && isBoardGame(game.slug)) routes.push({ name: 'game', slug: game.slug, board: 'records' })
   }
   return routes

@@ -149,7 +149,7 @@ export function leaderboardHref(period: LeaderboardPeriod = defaultPeriod()) {
 
 /**
  * One game's board for a period, on its own page (Ramsey picked B of the "Game page: board and records"
- * canvas, 2026-10-12): a game's Board tab, `/games/{slug}/{period}`; a daily's Today tab, today's board on the
+ * canvas, 2026-10-11): a game's Board tab, `/games/{slug}/{period}`; a daily's Today tab, today's board on the
  * page itself and its week or month as a segment of it. A daily has no board for all time: asked for it, its
  * month's (lib/allTime.ts).
  */
@@ -739,8 +739,9 @@ export function parseUrl(pathname: string, search: string): Route {
       return { name: 'leaderboards', period: segment }
     }
     if (isLeaderboardGame(segment)) {
+      // A daily's board with no period is today's, as its page opens on.
       const period =
-        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : defaultPeriod()
+        periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : isDailyGame(segment) ? 'daily' : defaultPeriod()
       return gameLeaderboardRoute(segment, period)
     }
   }

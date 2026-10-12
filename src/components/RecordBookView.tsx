@@ -24,7 +24,7 @@ import { openSiteMenu } from './siteNav'
 
 /*
  * One game's records: its page's Records tab (Ramsey picked B of the "Game page: board and records" canvas,
- * 2026-10-12, in place of a record book page of its own). Who holds most of them, with the period's tabs; a
+ * 2026-10-11, in place of a record book page of its own). Who holds most of them, with the period's tabs; a
  * line on what's up for grabs and what you're nearest to; then the records nobody holds yet, and the rest in
  * their groups, each a brass plaque with its holder, when it was set, how close you are, and the way to go and
  * beat it (RecordPlaque.tsx; Ramsey picked "C with A's plaques" from the "Record books, redesigned" canvas,

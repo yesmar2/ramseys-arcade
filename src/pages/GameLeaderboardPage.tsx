@@ -17,7 +17,7 @@ type GameLeaderboardPageProps = {
 /**
  * A daily's board on one past day, as it finished (`/leaderboards/{game}/day/{day}`). A game's board for a
  * period is on its own page now, its Board tab or a daily's Today tab (Ramsey picked B of the "Game page: board
- * and records" canvas, 2026-10-12), so an old link to one (`/leaderboards/{game}/{period}`) goes there. A daily
+ * and records" canvas, 2026-10-11), so an old link to one (`/leaderboards/{game}/{period}`) goes there. A daily
  * just for fun has no board (data/games.ts Game.ranked): an old link to one goes to its page, or to that day's
  * row on its past days.
  */

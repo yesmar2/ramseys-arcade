@@ -27,7 +27,7 @@ function dayRecordBoardHref(game: string, recordId: string | undefined, now = Da
 
 /**
  * One record of a game's (`/records/{game}/{id}/{period}`). A game's record book is its page's Records tab now
- * (Ramsey picked B of the "Game page: board and records" canvas, 2026-10-12), so an old link to the book
+ * (Ramsey picked B of the "Game page: board and records" canvas, 2026-10-11), so an old link to the book
  * (`/records/{game}`) goes there. A daily has no book of its own: its records are on its page's Records tab, a
  * track's or hole's on that course's row of its past tab, and a past day's of Find the Bug or Half Full on that
  * day's board, so an old link to any of them goes there, in place of this address.

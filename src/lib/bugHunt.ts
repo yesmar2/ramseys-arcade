@@ -198,7 +198,7 @@ const SITE_ANCHORS: HuntAnchor[] = ([
 
 /**
  * Each game's page, the panels on it the bug can hide behind: its top, its screen, its tabs, its board and its
- * records (since 2026-10-12 a game's board and records are on its page, under tabs: GameHubPage). The ids are
+ * records (since 2026-10-11 a game's board and records are on its page, under tabs: GameHubPage). The ids are
  * the ones they always were, in the same places in the list, so the days' shuffled order stays as it was.
  */
 function gameAnchors(): HuntAnchor[] {

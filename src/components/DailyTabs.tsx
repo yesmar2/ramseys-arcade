@@ -12,7 +12,7 @@ import '../styles/dailyTabs.css'
  * always today's.
  *
  * Every other game with records has the same bar with its Board and its Records (GameTabs; Ramsey picked B of
- * the "Game page: board and records" canvas, 2026-10-12), in place of a board page and a record book.
+ * the "Game page: board and records" canvas, 2026-10-11), in place of a board page and a record book.
  */
 
 const TodayIcon = () => (
