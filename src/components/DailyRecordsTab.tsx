@@ -1,44 +1,52 @@
-import { useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react'
 import { getGame, isGameListed } from '../data/games'
 import { dailyTrack, trackDay } from '../games/hotlap/daily'
 import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
 import { useAccountId } from '../hooks/useAccountId'
+import { useAuth } from '../hooks/useAuth'
 import { dailyTabHref, gameBoardHref, rankHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { archiveDayWords } from '../lib/archive'
+import { inkOn } from '../lib/color'
 import { dailyDay, todaysHole } from '../lib/dailyHole'
 import {
   courseResult,
-  coursesHeldCard,
-  daysWonCard,
+  coursesHeldRecord,
+  dayRecordsHead,
+  daysWonRecord,
   holeRecordRows,
+  nearestCourse,
   recordsIntro,
-  streakCard,
+  streakRecord,
   trackRecordRows,
   useDailyRecords,
   useStreakBook,
   type CourseRecordRow,
-  type RecordCard,
+  type DayRecord,
 } from '../lib/dailyRecords'
 import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
+import { useHeldHeight } from '../lib/heldShape'
 import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame } from '../lib/leaderboard'
 import { useHoleRecordsAsked } from '../lib/pastHoles'
 import { ordinal } from '../lib/scoreboard'
+import { resolveGameAccent } from '../lib/theme'
 import { useTrackRecordsAsked } from '../lib/trackBoards'
 import { ChevronRightIcon, FlameIcon } from './chromeIcons'
 import { PlayerMark } from './PlayerMark'
-import { RunLabel } from './RunLabel'
+import { PlayerName } from './PlayerName'
+import { openSiteMenu } from './siteNav'
 import { HolePlan } from './TodaysHoleCard'
 import '../styles/dailyRecords.css'
 import '../styles/todaysTrack.css'
 
 /*
- * A daily's Records tab: only the records its boards don't already show. Days played in a row, the most
- * days won, and on Hot Lap and Ace Chase the most track or hole records held, each with its holder (or
- * everyone tied for it), the first five and you; then each track's or hole's record, which is just the #1
- * on its All time board, a row apiece that opens that course's row on the past tab. What each card says is
- * worked out in lib/dailyRecords.ts.
+ * A daily's Records tab: only the records its boards don't already show. Since Ramsey said "yes match" (to the
+ * game Records tab's one list, the "Records, more ideas" canvas's A, 2026-10-12) it's that list: who holds the
+ * most and how you stand, in a line; then the records made over many days (Days played in a row, the most days
+ * won, and on Hot Lap and Ace Chase the most track or hole records held), a row apiece that opens its first
+ * five; then each track's or hole's record, which is just the #1 on its All time board, a row apiece that
+ * opens that course's row on the past tab. What each row says is worked out in lib/dailyRecords.ts.
  */
 
 /** Course rows before "Show all". */
@@ -48,7 +56,7 @@ type Viewer = { name: string; signedIn: boolean }
 
 function CrownIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M4 18.5h16M5 16l-1.2-9 5 4 3.2-6 3.2 6 5-4-1.2 9z" />
     </svg>
   )
@@ -62,6 +70,16 @@ function FlagIcon() {
   )
 }
 
+/** Days on a calendar: the records made over many days. */
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="5" width="16" height="15" rx="2.5" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </svg>
+  )
+}
+
 function InfoIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -71,126 +89,10 @@ function InfoIcon() {
   )
 }
 
-/** How near you are, in steps up to the holder's number; past ten steps, a bar. */
-function Meter({ have, of }: { have: number; of: number }) {
-  if (of > 10) {
-    return (
-      <span className="drt-meter drt-meter--bar" aria-hidden="true">
-        <span style={{ width: `${Math.min(100, (have / Math.max(1, of)) * 100)}%` }} />
-      </span>
-    )
-  }
-  const steps = Math.max(of, 3)
-  return (
-    <span className="drt-meter" aria-hidden="true">
-      {Array.from({ length: steps }, (_, i) => (
-        <i key={i} className={i < have ? 'drt-meter__on' : i === have && have < of ? 'drt-meter__next' : undefined} />
-      ))}
-    </span>
-  )
-}
-
-/** The courses' records wear the flag of the board label (RunLabel), since each is a board's #1. */
-const CARD_ICONS: Record<RecordCard['key'], ComponentType> = {
+const RECORD_ICONS: Record<DayRecord['key'], ComponentType> = {
   streak: FlameIcon,
   'days-won': CrownIcon,
   'courses-held': FlagIcon,
-}
-
-function CardShell({ title, icon, children }: { title: string; icon: RecordCard['key']; children: ReactNode }) {
-  const Icon = CARD_ICONS[icon]
-  return (
-    <section className="gh-card drt-card" aria-label={title}>
-      <div className="drt-card__top">
-        <span className="drt-card__icon">
-          <Icon />
-        </span>
-        <h3 className="drt-card__title">{title}</h3>
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function CardWaiting({ title, icon, failed }: { title: string; icon: RecordCard['key']; failed: boolean }) {
-  return (
-    <CardShell title={title} icon={icon}>
-      {failed ? (
-        <p className="drt-holder drt-holder--empty">Couldn’t load this one. Check your connection and try again.</p>
-      ) : (
-        <div className="drt-holder drt-holder--skel" aria-busy="true">
-          <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} />
-          <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
-        </div>
-      )}
-    </CardShell>
-  )
-}
-
-function RecordCardView({ card, slug, me }: { card: RecordCard; slug: string; me: string }) {
-  const { holder, rows, you } = card
-  return (
-    <CardShell title={card.title} icon={card.key}>
-      {holder ? (
-        <div className={`drt-holder${holder.marks.length > 1 ? ' drt-holder--tied' : ''}`}>
-          <span className={`drt-holder__marks${holder.marks.length > 1 ? ' drt-holder__marks--stack' : ''}`}>
-            {holder.marks.map((m) => (
-              <PlayerMark key={m.name} name={m.name} avatarId={m.avatarId} className="drt-holder__mark" />
-            ))}
-          </span>
-          <p className="drt-holder__who">
-            <b>{holder.line}</b>
-            {holder.sub ? <span>{holder.sub}</span> : null}
-          </p>
-          <p className="drt-holder__value">
-            {holder.value.toLocaleString()}
-            <small> {holder.unit}</small>
-          </p>
-        </div>
-      ) : (
-        <p className="drt-holder drt-holder--empty">{card.empty}</p>
-      )}
-
-      {rows.length > 1 ? (
-        <ol className="drt-top" aria-label={`${card.title}: the first ${rows.length}`}>
-          {rows.map((r) => (
-            <li key={r.name}>
-              <a className={`drt-top__row${r.you ? ' drt-top__row--you' : ''}`} href={rankHref(r.name)}>
-                <span className="drt-top__place">{ordinal(r.place)}</span>
-                <PlayerMark name={r.name} avatarId={r.avatarId} className="drt-top__mark" />
-                <span className="drt-top__name">
-                  {r.name}
-                  {r.you ? <span className="drt-top__you">You</span> : null}
-                </span>
-                <span className="drt-top__value">
-                  {r.value.toLocaleString()} {r.value === 1 ? card.unit[0] : card.unit[1]}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-
-      {you ? (
-        <div className="drt-you">
-          <p className="drt-you__head">
-            <PlayerMark name={me} className="drt-you__mark" />
-            <b>You: {you.value}</b>
-            {you.aside ? <span className="drt-you__aside">{you.aside}</span> : null}
-          </p>
-          <Meter have={you.have} of={you.of} />
-          <p className="drt-you__line">{you.line}</p>
-        </div>
-      ) : card.signIn ? (
-        <p className="drt-you__line drt-you__line--quiet">{card.signIn}</p>
-      ) : null}
-
-      <p className="drt-card__foot">
-        <RunLabel kind={card.foot.label} slug={slug} short />
-        <span>{card.foot.text}</span>
-      </p>
-    </CardShell>
-  )
 }
 
 /** A track from above, as its row on the past tab draws it. */
@@ -229,122 +131,266 @@ function done(verb: string): string {
   return v.endsWith('e') ? `${v}d` : `${v}ed`
 }
 
+/** Yours: the gold pill a game's Records tab gives a record you hold. */
+function Yours({ note }: { note?: string }) {
+  return (
+    <span className="rbl-you">
+      <span className="rbl-yours">
+        <CrownIcon />
+        Yours
+      </span>
+      {note ? <span className="rbl-you__gap">{note}</span> : null}
+    </span>
+  )
+}
+
+/**
+ * One of the records made over many days: a row, like a game Records tab's, that opens its first five in place
+ * (these have no page of their own). `failed`: it couldn't be had, and the row says so.
+ */
+function DayRow({ record, knowsYou, failed }: { record: DayRecord; knowsYou: boolean; failed: boolean }) {
+  const [open, setOpen] = useState(false)
+  const Icon = RECORD_ICONS[record.key]
+  const you = record.you
+  const mine = you?.kind === 'mine'
+  const listId = `drt-top-${record.key}`
+  const held = !failed && Boolean(record.holders)
+  const canOpen = held && record.top.length > 1
+  const tie = (record.holders?.marks.length ?? 0) > 1
+  const cells = (
+    <>
+      <span className="rbl-row__label drt-label">
+        <span className="drt-label__icon">
+          <Icon />
+        </span>
+        {record.title}
+        {/* A phone has no last column for the chevron: it sits by the name. */}
+        {canOpen ? (
+          <span className={`drt-label__more${open ? ' drt-toggle--open' : ''}`} aria-hidden="true">
+            <ChevronRightIcon />
+          </span>
+        ) : null}
+      </span>
+      {failed ? (
+        <span className="rbl-open">Couldn’t load this one. Check your connection and try again.</span>
+      ) : !record.holders ? (
+        <span className="rbl-open">{record.empty}</span>
+      ) : (
+        <>
+          <span className="rbl-row__best">{record.value}</span>
+          <span className="rbl-who">
+            {record.holders.marks.length > 1 ? (
+              <span className={`rbl-who__marks drt-marks drt-marks--${record.holders.marks.length}`}>
+                {record.holders.marks
+                  .slice()
+                  .reverse()
+                  .map((m, i) => (
+                    <PlayerMark
+                      key={m.name}
+                      name={m.name}
+                      avatarId={m.avatarId}
+                      className={`rbl-who__mark${i < record.holders!.marks.length - 1 ? ' rbl-who__mark--back' : ''}`}
+                      style={{ left: `${(record.holders!.marks.length - 1 - i) * 1.2}rem` } as CSSProperties}
+                    />
+                  ))}
+              </span>
+            ) : (
+              <PlayerMark name={record.holders.marks[0]!.name} avatarId={record.holders.marks[0]!.avatarId} className="rbl-who__mark" />
+            )}
+            <span className="rbl-who__text">
+              <span className="rbl-who__name">
+                <span className={`rbl-who__tag${record.holders.marks.length > 1 ? ' drt-names' : ''}`}>
+                  {record.holders.marks.length > 1 ? (
+                    record.holders.names
+                  ) : (
+                    <PlayerName name={record.holders.marks[0]!.name} avatarId={record.holders.marks[0]!.avatarId} />
+                  )}
+                </span>
+                {mine && !knowsYou ? <span className="sb-row__you">You</span> : null}
+              </span>
+              {record.holders.sub ? <span className="rbl-who__sub">{record.holders.sub}</span> : null}
+            </span>
+          </span>
+          {knowsYou ? (
+            mine ? (
+              <Yours note={you.note} />
+            ) : you?.kind === 'on' ? (
+              <span className="rbl-you">
+                <span className="rbl-you__best">
+                  <span className="rbl-you__pre">You </span>
+                  <b>{you.value}</b>
+                  {you.place ? <span className="rbl-you__place"> · {you.place}</span> : null}
+                </span>
+                {you.note ? <span className="rbl-you__gap">{you.note}</span> : null}
+              </span>
+            ) : you?.kind === 'none' ? (
+              <span className="rbl-you">
+                <span className="rbl-you__none">{you.text}</span>
+              </span>
+            ) : null
+          ) : null}
+        </>
+      )}
+      {/* An open row's words run to its end: no last column to push to a line of its own. */}
+      {held ? (
+        <span className={`rbl-row__go drt-toggle${open ? ' drt-toggle--open' : ''}`} aria-hidden="true">
+          {canOpen ? <ChevronRightIcon /> : null}
+        </span>
+      ) : null}
+    </>
+  )
+  return (
+    <li className={`rbl-row${mine ? ' rbl-row--mine' : ''}${held ? '' : ' rbl-row--open'}${tie ? ' drt-row--tie' : ''}`}>
+      {canOpen ? (
+        <button
+          type="button"
+          className="rbl-row__link drt-row-btn"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {cells}
+        </button>
+      ) : (
+        <div className="rbl-row__link">{cells}</div>
+      )}
+      {canOpen && open ? (
+        <ol id={listId} className="drt-top" aria-label={`${record.title}: the first ${record.top.length}`}>
+          {record.top.map((r) => (
+            <li key={r.name}>
+              <a className={`drt-top__row${r.you ? ' drt-top__row--you' : ''}`} href={rankHref(r.name)}>
+                <span className="drt-top__place">{ordinal(r.place)}</span>
+                <PlayerMark name={r.name} avatarId={r.avatarId} className="drt-top__mark" />
+                <span className="drt-top__name">
+                  {r.name}
+                  {r.you ? <span className="drt-top__you">You</span> : null}
+                </span>
+                <span className="drt-top__value">
+                  {r.value.toLocaleString()} {r.value === 1 ? record.unit[0] : record.unit[1]}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </li>
+  )
+}
+
 /**
  * Each track's or hole's record, newest first: its #1, when its day was, and your best and place on its
  * board. Today's #1 is only 1st today. Each row opens that course on the past tab (today's, the Today tab).
- * Signed out (`me` is '') the last column is how many are on each board instead.
  */
-function CourseRecords({
+function CourseGroup({
   slug,
   rows,
   failed,
   me,
+  knowsYou,
 }: {
   slug: string
   rows: CourseRecordRow[] | null
   failed: boolean
   me: string
+  knowsYou: boolean
 }) {
   const [all, setAll] = useState(false)
+  const listRef = useRef<HTMLOListElement | null>(null)
+  // "Show all" goes as it's pressed: keyboard focus moves to the first course it shows, not to the page.
+  const showAll = () => {
+    setAll(true)
+    requestAnimationFrame(() => listRef.current?.querySelectorAll<HTMLAnchorElement>('a.rbl-row__link')[FIRST_COURSES]?.focus())
+  }
   const words = dailyWords(slug)
   const course = words.course
   const shown = rows ? (all ? rows : rows.slice(0, FIRST_COURSES)) : []
   const title = `${course.charAt(0).toUpperCase()}${course.slice(1)} records`
+  const near = nearestCourse(slug, rows, me)
   return (
-    <section className="gh-card drt-courses" aria-labelledby="drt-courses-title">
-      <div className="drt-courses__head">
-        <h3 id="drt-courses-title" className="drt-courses__title">
-          {title}
-        </h3>
-        {rows ? (
-          <span className="drt-courses__count">
-            {rows.length} {rows.length === 1 ? course : `${course}s`}
-          </span>
-        ) : null}
-        <a className="gh-more drt-courses__all" href={dailyTabHref(slug, 'past')}>
-          All {words.pastTab.toLowerCase()}
-          <ChevronRightIcon />
-        </a>
-      </div>
-      <div className="drt-row drt-row--head" aria-hidden="true">
-        <span>{course}</span>
-        <span>Its day</span>
-        <span>Record</span>
-        <span>{me ? 'Your best' : BOARD_NAMES.allTime}</span>
-        <span />
-      </div>
+    <section className="rbl-group" aria-labelledby="drt-courses-title">
+      <h3 id="drt-courses-title" className="rbl-group__head">
+        <span className="rbl-group__icon">
+          <FlagIcon />
+        </span>
+        {title}
+        <span className="rbl-group__aside">
+          each {course}’s {BOARD_NAMES.allTime} #1{rows ? ` · ${counted(rows.length, course)}` : ''}
+        </span>
+      </h3>
       {rows === null ? (
-        failed ? (
-          <p className="drt-courses__empty">Couldn’t load the {course} records. Check your connection and try again.</p>
-        ) : (
-          <div className="drt-courses__skel" aria-busy="true">
-            <span className="skel-line" />
-            <span className="skel-line" />
-            <span className="skel-line" />
-          </div>
-        )
+        <p className="drt-empty">
+          {failed ? `Couldn’t load the ${course} records. Check your connection and try again.` : null}
+        </p>
       ) : rows.length === 0 ? (
-        <p className="drt-courses__empty">The first {course} is still to come.</p>
+        <p className="drt-empty">The first {course} is still to come.</p>
       ) : (
-        <ol className="drt-rows">
+        <ol ref={listRef} className="rbl-rows">
           {shown.map((row) => {
-            const mine = Boolean(me) && row.holder?.name === me
+            const holder = row.holder
+            const mine = Boolean(me) && holder?.name === me
+            const nearest = row.n === near
             return (
-              <li key={row.n}>
-                <a
-                  className={`drt-row${row.today ? ' drt-row--today' : ''}`}
-                  href={row.today ? dailyTabHref(slug) : dailyTabHref(slug, 'past', row.n)}
-                >
-                  <span className="drt-row__course">
-                    <span className="drt-row__art">
-                      {slug === 'hotlap' ? <TrackMap day={row.day} /> : <HoleMap day={row.day} />}
-                    </span>
-                    <b>
-                      #{row.n} {row.name}
-                    </b>
-                  </span>
-                  <span className="drt-row__day">
-                    {archiveDayWords(row.day)}
-                    {row.today ? <span className="drt-row__today">Today</span> : null}
-                  </span>
-                  <span className="drt-row__rec">
-                    {/* The table's heads are gone on a phone, so each figure says what it is. */}
-                    <span className="drt-row__cap">{row.today ? 'Today' : 'Record'}</span>
-                    {row.holder ? (
-                      <>
-                        <PlayerMark name={row.holder.name} avatarId={row.holder.avatarId} className="drt-row__mark" />
-                        <b className={mine ? 'drt-row__me' : undefined}>{row.holder.name}</b>
-                        {row.today ? <span className="drt-row__first">1st today</span> : null}
-                        <b className="drt-row__result">{courseResult(slug, row.holder.value)}</b>
-                        {row.holder.set && !row.today ? <span className="drt-row__set">{row.holder.set}</span> : null}
-                      </>
-                    ) : (
-                      <span className="drt-row__quiet">{row.today ? 'Nobody yet today' : 'Nobody on its board yet'}</span>
-                    )}
-                  </span>
-                  <span className="drt-row__you">
-                    <span className="drt-row__cap">{me ? 'You' : BOARD_NAMES.allTime}</span>
-                    {row.you ? (
-                      <>
-                        <b>{courseResult(slug, row.you.value)}</b>
-                        <span>
-                          {' '}
-                          · {ordinal(row.you.place)} of {row.players.toLocaleString()}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="drt-row__quiet">
-                        {/* Signed out there's no "you" to have played it, only how many are on it: the head and cap say "All time". */}
-                        {me
-                          ? `Not ${done(words.verb)} yet${row.players ? ` · ${counted(row.players, 'player')}` : ''}`
-                          : row.players
-                            ? counted(row.players, 'player')
-                            : 'Nobody on it yet'}
+              <li key={row.n} className={`rbl-row drt-course${mine ? ' rbl-row--mine' : ''}${row.today ? ' drt-course--today' : ''}`}>
+                <a className="rbl-row__link" href={row.today ? dailyTabHref(slug) : dailyTabHref(slug, 'past', row.n)}>
+                  <span className="rbl-row__label drt-course__label">
+                    <span className="drt-course__art">{slug === 'hotlap' ? <TrackMap day={row.day} /> : <HoleMap day={row.day} />}</span>
+                    <span className="drt-course__text">
+                      <span className="drt-course__name">
+                        #{row.n} {row.name}
                       </span>
-                    )}
+                      <span className="drt-course__day">
+                        {archiveDayWords(row.day)}
+                        {row.today ? <span className="drt-course__today">Today</span> : null}
+                      </span>
+                    </span>
                   </span>
-                  <span className={`drt-row__go${row.today ? ' drt-row__go--today' : ''}`}>
-                    <span className="drt-row__go-text">{row.today ? words.today : words.pastTab}</span>
+                  <span className="rbl-row__best">{holder ? courseResult(slug, holder.value) : '—'}</span>
+                  {holder ? (
+                    <span className="rbl-who">
+                      <PlayerMark name={holder.name} avatarId={holder.avatarId} className="rbl-who__mark" />
+                      <span className="rbl-who__text">
+                        <span className="rbl-who__name">
+                          <span className="rbl-who__tag">
+                            <PlayerName name={holder.name} avatarId={holder.avatarId} />
+                          </span>
+                          {mine && !knowsYou ? <span className="sb-row__you">You</span> : null}
+                        </span>
+                        {row.today || holder.set ? (
+                          <span className="rbl-who__sub">{row.today ? '1st today' : holder.set}</span>
+                        ) : null}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="rbl-who rbl-who--none">
+                      {row.today ? 'Nobody yet today' : 'Nobody on its board yet'}
+                    </span>
+                  )}
+                  {knowsYou ? (
+                    mine && !row.today ? (
+                      <Yours />
+                    ) : row.you ? (
+                      <span className="rbl-you">
+                        <span className="rbl-you__best">
+                          <span className="rbl-you__pre">You </span>
+                          <b>{courseResult(slug, row.you.value)}</b>
+                          <span className="rbl-you__place">
+                            {' '}
+                            · {ordinal(row.you.place)} of {row.players.toLocaleString()}
+                          </span>
+                        </span>
+                        {holder && !mine && row.you.value > holder.value ? (
+                          <span className={`rbl-you__gap${nearest ? ' rbl-you__gap--near' : ''}`}>
+                            {courseResult(slug, row.you.value - holder.value)} off{nearest ? ' · your nearest' : ''}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="rbl-you">
+                        <span className="rbl-you__none">Not {done(words.verb)} yet</span>
+                      </span>
+                    )
+                  ) : null}
+                  <span className="rbl-row__go" aria-hidden="true">
                     <ChevronRightIcon />
                   </span>
                 </a>
@@ -354,14 +400,58 @@ function CourseRecords({
         </ol>
       )}
       {rows && rows.length > FIRST_COURSES && !all ? (
-        <button type="button" className="drt-courses__more" onClick={() => setAll(true)}>
+        <button type="button" className="drt-more" onClick={showAll}>
           Show all {rows.length}
         </button>
       ) : null}
-      <p className="drt-courses__note">
-        Each is that {course}’s {BOARD_NAMES.allTime} #1.
-      </p>
     </section>
+  )
+}
+
+/** The list while it loads: its own rows, empty, as many as it had (the tab also holds its height, useHeldHeight). */
+function ListSkeleton({ rows, anon }: { rows: number[]; anon: boolean }) {
+  return (
+    <div className={`sb-card rbl rbl--skel${anon ? ' rbl--anon' : ''}`} aria-busy="true" aria-label="Loading records">
+      <div className="rbl-cols" aria-hidden="true">
+        <span>Record</span>
+        <span>Best</span>
+        <span>Held by</span>
+        {anon ? null : <span>You</span>}
+        <span />
+      </div>
+      {rows.map((n, g) => (
+        <div key={g} className="rbl-group" aria-hidden="true">
+          <div className="rbl-group__head">
+            <span className="rbl-group__icon" />
+            <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
+          </div>
+          <ol className="rbl-rows">
+            {Array.from({ length: n }, (_, i) => (
+              <li key={i} className="rbl-row">
+                <div className="rbl-row__link">
+                  <span className="rbl-row__label">
+                    <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} />
+                  </span>
+                  <span className="rbl-row__best">
+                    <span className="skel-line" style={{ '--skel-w': '4rem' } as CSSProperties} />
+                  </span>
+                  <span className="rbl-who">
+                    <span className="pmark pmark--empty rbl-who__mark" />
+                    <span className="skel-line" style={{ '--skel-w': '5rem' } as CSSProperties} />
+                  </span>
+                  {anon ? null : (
+                    <span className="rbl-you">
+                      <span className="skel-line" style={{ '--skel-w': '5.5rem' } as CSSProperties} />
+                    </span>
+                  )}
+                  <span />
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -374,56 +464,115 @@ function RecordsBody({
   slug: string
   viewer: Viewer
   courses?: CourseRecordRow[] | null
-  /** The course list couldn't be had: its table and the held card say so, not "no tracks". */
+  /** The course list couldn't be had: its group says so, not "no tracks". */
   coursesFailed?: boolean
 }) {
   const records = useDailyRecords(slug, viewer.name)
   const streak = useStreakBook(slug, viewer.name)
+  const { signedIn, signedOut } = useAuth()
   const words = dailyWords(slug)
   const intro = recordsIntro(slug)
+  const game = getGame(slug)
+  const name = game?.name ?? slug
+  const accent = resolveGameAccent(slug, game?.accent ?? '#2eb8a0')
   const hasCourses = courses !== undefined
-  const name = getGame(slug)?.name ?? slug
   const boards = (LEADERBOARD_GAMES as readonly string[]).includes(slug) && isGameListed(slug)
-  const heldTitle = `Most ${words.course} records held`
+  const knowsYou = viewer.signedIn && Boolean(viewer.name)
+  const loading =
+    (!streak.data && !streak.failed) || (!records.data && !records.failed) || (hasCourses && courses === null && !coursesFailed)
+  const held = useHeldHeight<HTMLDivElement>(`daily-records-${slug}-${knowsYou ? 'in' : 'out'}`, loading)
+
+  const rows: DayRecord[] = [
+    streakRecord(slug, streak.data, viewer),
+    daysWonRecord(records.data?.daysWon ?? null, viewer),
+    ...(hasCourses ? [coursesHeldRecord(slug, records.data?.courseRecords ?? null, viewer)] : []),
+  ]
+  const failedRow = (key: DayRecord['key']) => (key === 'streak' ? streak.failed : records.failed)
+  const head = dayRecordsHead(slug, rows, courses ?? null, viewer)
+  const anyFailed = streak.failed || records.failed || coursesFailed
+  const coursesShown = courses ? Math.min(courses.length, FIRST_COURSES) : FIRST_COURSES
 
   return (
-    <div className="drt">
-      <div className="drt-intro" data-hunt={`r-head-${slug}`}>
-        <div className="drt-intro__text">
-          <h2 className="drt-intro__title">Records that span the days</h2>
-          <p className="drt-intro__lede">{intro.lede}</p>
+    <div
+      ref={held.ref}
+      className="sb gb rbk rbk--tab drt"
+      style={{ '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), ...held.style } as CSSProperties}
+    >
+      {/* Who holds the most of them: a bug hunt hiding place (lib/bugHunt.ts). */}
+      <div className="rbk-tabhead" data-hunt={`r-head-${slug}`}>
+        <div className="rbk-tabhead__text">
+          {loading ? (
+            <>
+              <h2 className="rbk-tabhead__title rbk-tabhead__title--skel">
+                <span className="skel-line" style={{ '--skel-w': '16em' } as CSSProperties} />
+              </h2>
+              <p className="rbk-tabhead__line">
+                <span className="skel-line" style={{ '--skel-w': '14em' } as CSSProperties} />
+              </p>
+            </>
+          ) : anyFailed ? (
+            <h2 className="rbk-tabhead__title">{name} records</h2>
+          ) : (
+            <>
+              <h2 className="rbk-tabhead__title">
+                {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
+                {head.rest}
+              </h2>
+              {head.line.length ? (
+                <p className="rbk-tabhead__line">{head.line.join(' · ')}</p>
+              ) : signedOut ? (
+                <p className="rbk-tabhead__line">
+                  <button type="button" className="rbk-tabhead__signin" onClick={openSiteMenu}>
+                    Sign in
+                  </button>{' '}
+                  to see how close you are
+                </p>
+              ) : signedIn && !viewer.name ? (
+                <p className="rbk-tabhead__line">
+                  <button type="button" className="rbk-tabhead__signin" onClick={openSiteMenu}>
+                    Pick a gamer tag
+                  </button>{' '}
+                  to see how close you are
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
-        <a className="gh-more drt-intro__link" href={dailyTabHref(slug, 'past')}>
+        <a className="gh-more drt-head__link" href={dailyTabHref(slug, 'past')}>
           {intro.link}
           <ChevronRightIcon />
         </a>
       </div>
 
-      <div className={`drt-cards${hasCourses ? ' drt-cards--three' : ''}`}>
-        {streak.data ? (
-          <RecordCardView card={streakCard(slug, streak.data, viewer)} slug={slug} me={viewer.name} />
-        ) : (
-          <CardWaiting title="Days played in a row" icon="streak" failed={streak.failed} />
-        )}
-        {records.data ? (
-          <RecordCardView card={daysWonCard(slug, records.data.daysWon, viewer)} slug={slug} me={viewer.name} />
-        ) : (
-          <CardWaiting title="Most days won" icon="days-won" failed={records.failed} />
-        )}
-        {hasCourses ? (
-          records.data && courses !== null ? (
-            <RecordCardView
-              card={coursesHeldCard(slug, records.data.courseRecords, courses, viewer)}
-              slug={slug}
-              me={viewer.name}
-            />
-          ) : (
-            <CardWaiting title={heldTitle} icon="courses-held" failed={records.failed || coursesFailed} />
-          )
-        ) : null}
-      </div>
-
-      {hasCourses ? <CourseRecords slug={slug} rows={courses} failed={coursesFailed} me={viewer.name} /> : null}
+      {loading ? (
+        <ListSkeleton rows={hasCourses ? [3, coursesShown] : [2]} anon={!knowsYou} />
+      ) : (
+        <div className={`sb-card rbl${knowsYou ? '' : ' rbl--anon'}`}>
+          <div className="rbl-cols" aria-hidden="true">
+            <span>Record</span>
+            <span>Best</span>
+            <span>Held by</span>
+            {knowsYou ? <span>You</span> : null}
+            <span />
+          </div>
+          <section className="rbl-group" aria-labelledby="drt-days-title">
+            <h3 id="drt-days-title" className="rbl-group__head">
+              <span className="rbl-group__icon">
+                <CalendarIcon />
+              </span>
+              Across the days
+            </h3>
+            <ol className="rbl-rows">
+              {rows.map((record) => (
+                <DayRow key={record.key} record={record} knowsYou={knowsYou} failed={failedRow(record.key)} />
+              ))}
+            </ol>
+          </section>
+          {hasCourses ? (
+            <CourseGroup slug={slug} rows={courses} failed={coursesFailed} me={viewer.name} knowsYou={knowsYou} />
+          ) : null}
+        </div>
+      )}
 
       <p className="drt-aside">
         <InfoIcon />

@@ -8,9 +8,9 @@ import { todaysHole } from './dailyHole'
 import { BOARD_NAMES, dailyWords } from './dailyWords'
 import { FIRST_RUN_DAILIES } from './gameBoard'
 import { api, normalizePlayerName, type LeaderboardEntry } from './leaderboard'
-import { numberWord } from './numberWord'
 import type { HoleRecordRow } from './pastHoles'
 import { fetchBookGlance, PLAY_DAYS_STREAK_ID, type BookGlance } from './records'
+import { headOver } from './recordBook'
 import { boardToday, ordinal } from './scoreboard'
 import type { TrackRecordRow } from './trackBoards'
 
@@ -288,11 +288,6 @@ function counted(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
 
-/** A count said in a sentence: a day, 3 days. */
-function aCount(n: number, one: string, many = `${one}s`): string {
-  return n === 1 ? `a ${one}` : `${n.toLocaleString()} ${many}`
-}
-
 const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short' })
 const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
 
@@ -306,33 +301,50 @@ function dayName(day: number, today: number): string {
 export function streakSpan(at: number, days: number, now = Date.now()): string {
   const end = boardToday(at)
   const today = boardToday(now)
+  const start = end - (days - 1) * DAY_MS
   if (days <= 1) return dayName(end, today)
-  if (days <= 3) {
-    const names = Array.from({ length: days }, (_, i) => dayName(end - (days - 1 - i) * DAY_MS, today))
-    return namesLine(names)
+  // One way of naming the days in a span: all by name within the week (Sat, Sun and Mon), else by date, never
+  // a mix (Oct 5, Tue and Wed).
+  if (days <= 3 && today - start < 7 * DAY_MS) {
+    return namesLine(Array.from({ length: days }, (_, i) => dayName(start + i * DAY_MS, today)))
   }
-  return `${monthDay.format(new Date(end - (days - 1) * DAY_MS))} to ${end === today ? 'today' : monthDay.format(new Date(end))}`
+  const last = end === today ? 'today' : monthDay.format(new Date(end))
+  return `${monthDay.format(new Date(start))} ${days === 2 ? 'and' : 'to'} ${last}`
 }
 
-/* ---------- the cards ---------- */
+/* ---------- the list ---------- */
 
 export type RecordCardRow = TallyRow & { place: number; you: boolean }
 
-/** One of the tab's record cards, said: who holds it, the first five, and you. */
-export type RecordCard = {
+/** Where you stand on one of the records made over many days. */
+export type DayRecordYou =
+  /** You hold it, alone; `note` is how your run stands, for a streak. */
+  | { kind: 'mine'; note: string }
+  /** On it: your number, your place in words and as a number, and how far off or tied. */
+  | { kind: 'on'; value: string; place: string; rank: number; note: string }
+  /** Not on it yet. */
+  | { kind: 'none'; text: string }
+
+/**
+ * One of a daily's records made over many days (Days played in a row, Most days won, Most track records held),
+ * as a row of its Records tab's list (the "Records, more ideas" canvas's A, as a game's Records tab is).
+ */
+export type DayRecord = {
   key: 'streak' | 'days-won' | 'courses-held'
   title: string
-  /** The holder, or everyone tied for it. */
-  holder: { marks: TallyRow[]; line: string; sub: string; value: number; unit: string } | null
-  /** What the card says with nobody on it. */
+  /** The record in words, 5 days or 6 tracks; null with nobody on it. */
+  value: string | null
+  /** Who holds it, or everyone tied for it (three marks at most), and the line under their names. */
+  holders: { marks: TallyRow[]; names: string; sub: string } | null
+  /** Who holds it for the head's count: the one player, or null for a tie or nobody. */
+  heldBy: string | null
+  /** What its row says with nobody on it. */
   empty: string
-  /** The first five, places shared between equal numbers. */
-  rows: RecordCardRow[]
+  /** Null signed out. */
+  you: DayRecordYou | null
+  /** The first five, places shared between equal numbers: the row opens them. */
+  top: RecordCardRow[]
   unit: [string, string]
-  /** Null signed out, when `signIn` says why there's nothing. */
-  you: { value: string; aside: string; line: string; have: number; of: number } | null
-  signIn: string | null
-  foot: { label: 'counts' | 'board'; text: string }
 }
 
 type Viewer = { name: string; signedIn: boolean }
@@ -343,114 +355,96 @@ function cardRows(top: TallyRow[], me: string): RecordCardRow[] {
   return first.map((r, i) => ({ ...r, place: places[i]!, you: Boolean(me) && r.name === me }))
 }
 
-/** Your place in words: 19th of 20 players, tied 2nd, or tied with 3 others past the first ten. */
-function placeWords(you: TallyYou, rows: RecordCardRow[], players: number | null): string {
+/**
+ * Your place in words, a place shared between equal numbers: 14th, tied 2nd, 19th of 20 players, or tied with
+ * 3 others past the first ten. `shared` is your shared place when it's known.
+ */
+function placeWords(you: TallyYou, rows: RecordCardRow[], players: number | null, shared: number | null): string {
   const listed = rows.find((r) => r.you)
   if (listed) {
     const tied = rows.filter((r) => r.value === listed.value).length > 1
     return tied ? `tied ${ordinal(listed.place)}` : ordinal(listed.place)
   }
-  if (you.tied) return `tied with ${counted(you.tied, 'other')}`
-  return players ? `${ordinal(you.place)} of ${counted(players, 'player')}` : ordinal(you.place)
+  if (you.tied) return shared != null ? `tied ${ordinal(shared)}` : `tied with ${counted(you.tied, 'other')}`
+  const place = shared ?? you.place
+  return players ? `${ordinal(place)} of ${counted(players, 'player')}` : ordinal(place)
 }
 
-/**
- * Who holds a record, or everyone tied for it, with the line under their names. `total` is how many share
- * it when the API says, since `top` is only the first ten.
- */
-function holderOf(
-  top: TallyRow[],
-  sub: (value: number, tied: number) => string,
-  unit: [string, string],
-  total: number | null = null,
-): RecordCard['holder'] {
-  const first = top[0]
-  if (!first) return null
-  const leaders = top.filter((r) => r.value === first.value)
-  const count = Math.max(leaders.length, total ?? 0)
-  return {
-    marks: leaders.slice(0, 4),
-    line: namesLine(leaders.map((r) => r.name), 4, count),
-    sub: sub(first.value, count),
-    value: first.value,
-    unit: first.value === 1 ? unit[0] : unit[1],
-  }
+/** Everyone tied for a record by name, you as "you": GLITCH, STACKR and you. `total` counts past the first ten. */
+function holderNames(leaders: TallyRow[], me: string, total = leaders.length): string {
+  const names = leaders.map((r) => (me && r.name === me ? 'you' : r.name))
+  return capital(namesLine(names, 4, total))
 }
 
 /**
  * Days played in a row, from the game's record book: whoever got there first holds it, and a tie says so.
- * Your line knows whether your run is still going: a best set yesterday goes on with today's course, one
- * set today with tomorrow's.
+ * Your note says whether your run is still going: one played today goes on tomorrow, one played yesterday
+ * goes on only with today's course. Tied for it, your cell says no more than your number and your run: the
+ * holders' names already say you're among them.
  */
-export function streakCard(slug: string, glance: BookGlance | null, viewer: Viewer, now = Date.now()): RecordCard {
+export function streakRecord(slug: string, glance: BookGlance | null, viewer: Viewer, now = Date.now()): DayRecord {
   const words = dailyWords(slug)
-  const today = todayWords(slug)
   const entries: LeaderboardEntry[] = glance?.entries ?? []
   const top: TallyRow[] = entries.map((e) => ({ name: normalizePlayerName(e.name), value: e.score, avatarId: e.avatarId }))
   const rows = cardRows(top, viewer.name)
   const first = entries[0]
-  const holder = holderOf(
-    top,
-    (value, tied) =>
-      tied > 1
-        ? `tied at ${counted(value, 'day')}; ${normalizePlayerName(first!.name)} got there first`
-        : streakSpan(first!.at, value, now),
-    ['day', 'days'],
-  )
   const best = first?.score ?? 0
   const holderName = first ? normalizePlayerName(first.name) : ''
-  let you: RecordCard['you'] = null
+  const leaders = top.filter((r) => r.value === best)
+  let you: DayRecordYou | null = null
   if (viewer.signedIn && viewer.name) {
     const mine = glance?.you ?? null
-    if (!mine) {
-      you = {
-        value: 'none yet',
-        aside: '',
-        line: `${words.verb} ${today} two days running to get on it.`,
-        have: 0,
-        of: Math.max(best, 2),
-      }
-    } else {
+    if (!mine) you = { kind: 'none', text: 'Not on it yet' }
+    else {
       const n = mine.score
       const ago = Math.round((boardToday(now) - boardToday(mine.at)) / DAY_MS)
-      const holds = holderName === viewer.name
-      const then = (next: number) =>
-        holds
-          ? `your record goes to ${counted(next, 'day')}`
-          : next > best
-            ? `it’s yours at ${counted(next, 'day')}`
-            : next === best
-              ? `you’re tied with ${holderName} at ${next}`
-              : `you’re on ${counted(next, 'day')}`
-      const line =
-        ago === 1
-          ? `${words.verb} ${today} and ${then(n + 1)}.`
-          : ago === 0
-            ? `${holds ? 'It’s yours. ' : ''}Come back tomorrow and ${then(n + 1)}.`
-            : `Your best run ended ${dayName(boardToday(mine.at), boardToday(now))}. ${words.verb} ${today} to start another.`
-      // Everyone on it came back with it: then a shared place can be counted, not just the book's order.
-      const all = glance && glance.total <= entries.length
-      const tied = all ? entries.filter((e) => e.score === n).length - 1 : null
-      const place = all ? 1 + entries.filter((e) => e.score > n).length : mine.rank
-      you = {
-        value: counted(n, 'day'),
-        aside: placeWords({ value: n, place, tied }, rows, glance?.total ?? null),
-        line,
-        have: n,
-        of: best,
+      const ended = ago > 1
+      const live =
+        ago <= 0
+          ? 'still going'
+          : ago === 1
+            ? `${words.verb.toLowerCase()} today to keep it going`
+            : `ended ${dayName(boardToday(mine.at), boardToday(now))}`
+      // Your record's own days are under your name, so its note says only how it stands, never its last day again.
+      if (holderName === viewer.name) you = { kind: 'mine', note: ended ? '' : live }
+      else {
+        // A shared place, as the row's words have it: from everyone on the first page who's ahead, when you're on it.
+        const listed = entries.some((e) => normalizePlayerName(e.name) === viewer.name)
+        const rank = n >= best ? 1 : listed ? 1 + entries.filter((e) => e.score > n).length : mine.rank
+        const all = glance && glance.total <= entries.length
+        const tied = all ? entries.filter((e) => e.score === n).length - 1 : null
+        you =
+          n >= best
+            ? { kind: 'on', value: counted(n, 'day'), place: '', rank, note: live }
+            : {
+                kind: 'on',
+                value: counted(n, 'day'),
+                place: placeWords({ value: n, place: mine.rank, tied }, rows, glance?.total ?? null, listed ? rank : null),
+                rank,
+                note: `${counted(best - n, 'day')} short · ${live}`,
+              }
       }
     }
   }
   return {
     key: 'streak',
     title: 'Days played in a row',
-    holder,
-    empty: `Nobody yet. ${words.verb} ${today} two days running and it’s yours.`,
-    rows,
-    unit: ['day', 'days'],
+    value: first ? counted(best, 'day') : null,
+    holders: first
+      ? {
+          marks: leaders.slice(0, 3),
+          names: holderNames(leaders, viewer.name),
+          sub:
+            leaders.length > 1
+              ? `tied; ${holderName === viewer.name ? 'you' : holderName} got there first`
+              : streakSpan(first.at, best, now),
+        }
+      : null,
+    heldBy: first ? holderName : null,
+    empty: `Nobody yet: ${todayWordsVerb(slug)} two days running and it’s yours.`,
     you,
-    signIn: viewer.signedIn ? null : `Sign in and ${todayWordsVerb(slug)} to get on it.`,
-    foot: { label: 'counts', text: `Only ${today} keeps it going.` },
+    top: rows,
+    unit: ['day', 'days'],
   }
 }
 
@@ -459,138 +453,140 @@ function todayWordsVerb(slug: string): string {
   return `${dailyWords(slug).verb.toLowerCase()} ${todayWords(slug)}`
 }
 
-/** Most days won: 1st on a day's board when it ended. Only days that are over count, so never today. */
-export function daysWonCard(slug: string, tally: DailyRecordsResult['daysWon'] | null, viewer: Viewer): RecordCard {
-  const words = dailyWords(slug)
+/**
+ * A count-kept record (most days won, most course records held) as a row: whoever has the most holds it, and
+ * among players tied for the most, the first to get there (the API lists them that way), as Days played in a
+ * row does; and where you stand, at a place shared between equal numbers.
+ */
+function tallyRecord(
+  key: DayRecord['key'],
+  title: string,
+  tally: Tally | null,
+  unit: [string, string],
+  viewer: Viewer,
+  sub: (value: number) => string,
+  empty: string,
+  none: string,
+): DayRecord {
   const top = tally?.top ?? []
   const rows = cardRows(top, viewer.name)
-  const closed = tally?.closedDays ?? null
-  const holder = holderOf(
-    top,
-    (value, tied) =>
-      tied > 1
-        ? `tied, ${aCount(value, 'day')} each`
-        : !closed
-          ? ''
-          : value === closed
-            ? closed === 1
-              ? 'won the only day so far'
-              : `won all ${numberWord(closed)} days so far`
-            : `${value} of the ${counted(closed, 'day')} so far`,
-    ['day', 'days'],
-    tally?.leaders ?? null,
-  )
-  const most = holder?.value ?? 0
-  const leaders = top.filter((r) => r.value === most && most > 0)
+  const most = top[0]?.value ?? 0
+  const leaders = most > 0 ? top.filter((r) => r.value === most) : []
   const count = Math.max(leaders.length, tally?.leaders ?? 0)
-  const them = count === 1 ? leaders[0]!.name : count === 2 ? 'both' : `all ${numberWord(count)}`
-  let you: RecordCard['you'] = null
+  const holder = leaders[0]?.name ?? null
+  let you: DayRecordYou | null = null
   if (viewer.signedIn && viewer.name) {
     const mine = tally?.you ?? null
     const n = mine?.value ?? 0
-    const gap = most - n
-    const leading = n > 0 && gap === 0
-    const line = leading
-      ? count > 1
-        ? 'You’re tied for the most. One more day and it’s yours alone.'
-        : 'It’s yours: nobody has won more days.'
-      : n === 0
-        ? `Be 1st when a day ends to win it.${most > 0 && gap === 1 ? ` One win ties ${them}.` : ''}`
-        : `${capital(numberWord(gap))} more ${gap === 1 ? 'day ties' : 'days tie'} ${namesLine(leaders.map((r) => r.name), 4, count)}.`
-    you = {
-      value: n ? counted(n, 'day') : 'none yet',
-      aside: mine && n ? placeWords(mine, rows, tally?.players ?? null) : '',
-      line,
-      have: n,
-      of: Math.max(most, 1),
+    if (!mine || n <= 0) you = { kind: 'none', text: none }
+    else if (holder === viewer.name) you = { kind: 'mine', note: '' }
+    else if (n >= most) you = { kind: 'on', value: counted(n, unit[0], unit[1]), place: '', rank: 1, note: '' }
+    else {
+      const listed = top.some((r) => r.name === viewer.name)
+      const rank = listed ? 1 + top.filter((r) => r.value > n).length : mine.place
+      you = {
+        kind: 'on',
+        value: counted(n, unit[0], unit[1]),
+        place: placeWords(mine, rows, tally?.players ?? null, listed ? rank : null),
+        rank,
+        note: `${counted(most - n, unit[0], unit[1])} short`,
+      }
     }
   }
   return {
-    key: 'days-won',
-    title: 'Most days won',
-    holder,
-    empty: 'No day has ended yet. The first one does at midnight, New York time.',
-    rows,
-    unit: ['day', 'days'],
+    key,
+    title,
+    value: leaders.length ? counted(most, unit[0], unit[1]) : null,
+    holders: leaders.length
+      ? {
+          marks: leaders.slice(0, 3),
+          names: holderNames(leaders, viewer.name, count),
+          sub: count > 1 ? `tied; ${holder === viewer.name ? 'you' : holder} got there first` : sub(most),
+        }
+      : null,
+    heldBy: holder,
+    empty,
     you,
-    signIn: viewer.signedIn ? null : `Sign in and ${todayWordsVerb(slug)} to win a day.`,
-    foot: { label: 'counts', text: `Won on a day’s ${BOARD_NAMES.ranked} board only, never on a past ${words.course}.` },
+    top: rows,
+    unit,
   }
 }
 
-/**
- * Most track or hole records held: past courses whose All time board a player tops (today's #1 is only 1st today).
- * Your line points at what's still open to you: a Hot Lap track takes any lap, so your nearest one; an Ace
- * Chase hole takes only your first result, so the past holes you haven't played.
- */
-export function coursesHeldCard(
-  slug: string,
-  tally: DailyRecordsResult['courseRecords'],
-  courses: CourseRecordRow[] | null,
-  viewer: Viewer,
-): RecordCard {
-  const words = dailyWords(slug)
-  const course = words.course
-  const unit: [string, string] = [course, `${course}s`]
-  const top = tally?.top ?? []
-  const rows = cardRows(top, viewer.name)
-  const holder = holderOf(
-    top,
-    (value, tied) => {
-      if (tied > 1) return `tied, ${aCount(value, course)} each`
-      const held = tally?.courses.get(top[0]!.name)
+/** Most days won: 1st on a day's board when it ended. Only days that are over count, so never today. */
+export function daysWonRecord(tally: DailyRecordsResult['daysWon'] | null, viewer: Viewer): DayRecord {
+  const closed = tally?.closedDays ?? null
+  return tallyRecord(
+    'days-won',
+    'Most days won',
+    tally,
+    ['day', 'days'],
+    viewer,
+    // The number is in the row already: this is what it's out of.
+    (value) =>
+      !closed
+        ? ''
+        : value === closed
+          ? closed === 1
+            ? 'the only day so far'
+            : closed === 2
+              ? 'both days so far'
+              : `every day so far`
+          : `of the ${counted(closed, 'day')} so far`,
+    'No day has ended yet: the first does at midnight, New York time.',
+    'No days won yet',
+  )
+}
+
+/** Most track or hole records held: past courses whose All time board a player tops (today's #1 is only 1st today). */
+export function coursesHeldRecord(slug: string, tally: DailyRecordsResult['courseRecords'], viewer: Viewer): DayRecord {
+  const course = dailyWords(slug).course
+  return tallyRecord(
+    'courses-held',
+    `Most ${course} records held`,
+    tally,
+    [course, `${course}s`],
+    viewer,
+    (value) => {
+      const held = tally?.courses.get(tally.top[0]!.name)
       return held?.length === value ? namesLine(held.map((n) => courseTitle(slug, n)), 3) : ''
     },
-    unit,
-    tally?.leaders ?? null,
+    `Nobody holds a past ${course}’s record yet.`,
+    `No ${course} records yet`,
   )
-  const firstOnly = FIRST_RUN_DAILIES.has(slug)
+}
+
+/**
+ * The past course you're nearest to taking the record of, by its number: a Hot Lap track takes any lap, so
+ * the one where your best is closest to its #1. Null where a course takes only your first result (Ace Chase),
+ * or there's none to chase.
+ */
+export function nearestCourse(slug: string, courses: CourseRecordRow[] | null, me: string): number | null {
+  if (!me || FIRST_RUN_DAILIES.has(slug)) return null
+  const chase = (courses ?? [])
+    .filter((c) => !c.today && c.you && c.holder && c.holder.name !== me)
+    .map((c) => ({ n: c.n, off: (c.you!.value - c.holder!.value) / Math.max(1, c.holder!.value) }))
+    .sort((a, b) => a.off - b.off)[0]
+  return chase ? chase.n : null
+}
+
+/**
+ * The head of a daily's Records tab (recordBook headOver): its records made over many days and each past
+ * course's record, who holds the most of them, and how you stand. Today's course isn't a record yet: its #1
+ * is only 1st today.
+ */
+export function dayRecordsHead(slug: string, records: DayRecord[], courses: CourseRecordRow[] | null, viewer: Viewer) {
+  const name = getGame(slug)?.name ?? slug
   const past = (courses ?? []).filter((c) => !c.today)
-  let you: RecordCard['you'] = null
-  if (viewer.signedIn && viewer.name) {
-    const mine = tally?.you ?? null
-    const n = mine?.value ?? 0
-    const most = holder?.value ?? 0
-    let line: string
-    let aside = mine && n ? placeWords(mine, rows, tally?.players ?? null) : ''
-    if (firstOnly) {
-      const open = past.filter((c) => !c.you).length
-      line = open
-        ? `${capital(numberWord(open))} past ${open === 1 ? `${course} you haven’t played is` : `${course}s you haven’t played are`} open to you: your first bullseye on one goes on its ${BOARD_NAMES.allTime} board.`
-        : `You’ve played every past ${course}, and your first bullseye on each stands.`
-      if (!aside && open) aside = `${counted(open, course)} open to you`
-    } else {
-      const chase = past
-        .filter((c) => c.you && c.holder && c.holder.name !== viewer.name)
-        .map((c) => ({ c, off: c.you!.value - c.holder!.value }))
-        .sort((a, b) => a.off / Math.max(1, a.c.holder!.value) - b.off / Math.max(1, b.c.holder!.value))[0]
-      if (chase) {
-        const { c, off } = chase
-        line =
-          off === 0
-            ? `You’re tied on ${c.name} with ${c.holder!.name}, who got there first.`
-            : `Your closest is ${c.name}, ${courseResult(slug, off)} off ${c.holder!.name}’s ${courseResult(slug, c.holder!.value)}.`
-        if (!aside) aside = off === 0 ? 'tied on one' : `closest ${courseResult(slug, off)} off`
-      } else {
-        line = `${words.verb} any past ${course}: your best goes on its ${BOARD_NAMES.allTime} board.`
-      }
-    }
-    you = { value: n ? counted(n, course) : 'none yet', aside, line, have: n, of: Math.max(most, 1) }
-  }
-  return {
-    key: 'courses-held',
-    title: `Most ${course} records held`,
-    holder,
-    empty: `Nobody holds a past ${course}’s record yet.`,
-    rows,
-    unit,
-    you,
-    signIn: viewer.signedIn ? null : `Sign in and your results on past ${course}s go on their ${BOARD_NAMES.allTime} boards.`,
-    foot: {
-      label: 'board',
-      text: firstOnly ? `Your first bullseye on any ${course}, any day.` : `Any lap of any ${course}, any day.`,
-    },
-  }
+  const places = [
+    ...records.map((r) => (r.you?.kind === 'on' ? r.you.rank : r.you?.kind === 'mine' ? 1 : null)),
+    ...past.map((c) => (c.you ? c.you.place : null)),
+  ].filter((p): p is number => p != null)
+  return headOver(
+    name,
+    [...records.map((r) => r.heldBy), ...past.map((c) => c.holder?.name ?? null)],
+    viewer.signedIn ? viewer.name : '',
+    { knows: viewer.signedIn && Boolean(viewer.name), on: places.length, best: places.length ? Math.min(...places) : 0 },
+  )
 }
 
 /** The line over the tab: what its records are, and where each course's own best lives instead. */

@@ -265,7 +265,7 @@ function gameAnchors(): HuntAnchor[] {
               id: `r-head-${slug}`,
               href: dailyTabHref(slug, 'records'),
               page: `on ${possessive(game.name)} Records tab`,
-              thing: 'Records that span the days',
+              thing: 'the top of its records',
               lesson: DAILY_RECORDS_LESSON,
             }
           : {

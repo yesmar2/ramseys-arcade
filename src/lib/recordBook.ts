@@ -453,25 +453,31 @@ export function periodWords(period: LeaderboardPeriod): string {
   return ''
 }
 
+/** Where a viewer stands on a list of records: whether we know, how many they're on, and their best place. */
+export type HeadStanding = { knows: boolean; on: number; best: number }
+
 /**
- * The head of a game's Records tab: who holds the most of its records, or "You hold 2 of the 12" when you
- * hold some, and one line on how you stand. Players tied for the most are named together, never one of them
- * alone. Your nearest record isn't in it: its row says so ("your nearest"), and saying it twice is noise.
- * `you` is the viewer's tag ('' signed out). `where`, with a group's boards (lib/groups.ts scopeWhere): the
- * records are the group's, and the head says so, "… records in OFFICE", as does any "most" under it.
+ * The head of a list of records, from who holds each (a tag, or null for none nobody holds): who holds the
+ * most, or "You hold 2 of the 12" when you hold some, and one line on how you stand. Players tied for the most
+ * are named together, never one of them alone. Your nearest record isn't in it: its row says so, and saying it
+ * twice is noise. `you` is the viewer's tag ('' signed out); `where` names a group whose records these are.
  */
-export function bookHead(
-  game: string,
-  records: RecordSummary[],
+export function headOver(
+  name: string,
+  heldBy: (string | null)[],
   you: string,
+  standing: HeadStanding,
   period: LeaderboardPeriod = 'all',
   where?: string,
 ): BookHead {
-  const name = gameName(game)
-  const total = records.length
+  const total = heldBy.length
   const when = periodWords(period)
   const among = where ? ` ${where}` : ''
-  const holders = holderCounts(records)
+  const tally = new Map<string, number>()
+  for (const holder of heldBy) if (holder) tally.set(holder, (tally.get(holder) ?? 0) + 1)
+  const holders = [...tally.entries()]
+    .map(([holder, count]) => ({ name: holder, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   const [first] = holders
   const most = first ? holders.filter((h) => h.count === first.count) : []
   const mine = you ? (holders.find((h) => h.name === you)?.count ?? 0) : 0
@@ -489,7 +495,6 @@ export function bookHead(
   else head = { name: first.name, rest: ` holds ${first.count} of the ${book}${among}${when}` }
 
   const line: string[] = []
-  const knows = Boolean(you) && records.some((r) => r.you !== undefined)
   if (mine && first) {
     if (mine === first.count) {
       const others = most.filter((h) => h.name !== you).map((h) => h.name)
@@ -502,17 +507,36 @@ export function bookHead(
           : `${first.name} holds the most${among}, ${first.count}`,
       )
     }
-  } else if (knows) {
+  } else if (standing.knows) {
     if (!first) line.push('Be the first to set one')
-    else {
-      const on = records.filter((r) => r.top && r.you)
-      const best = Math.min(...on.map((r) => r.you!.rank))
-      if (!on.length) line.push('You’re not on any of them yet')
-      else if (best <= 1) line.push(`You’re on ${on.length} of them, tied for the top of one`)
-      else line.push(`You’re on ${on.length} of them, ${ordinal(best)} at best`)
-    }
+    else if (!standing.on) line.push('You’re not on any of them yet')
+    else if (standing.best <= 1) line.push(`You’re on ${standing.on} of them, tied for the top of one`)
+    else line.push(`You’re on ${standing.on} of them, ${ordinal(standing.best)} at best`)
   }
   return { ...head, line }
+}
+
+/** The head of a game's Records tab (headOver): its records' holders, and where you stand on them. */
+export function bookHead(
+  game: string,
+  records: RecordSummary[],
+  you: string,
+  period: LeaderboardPeriod = 'all',
+  where?: string,
+): BookHead {
+  const on = records.filter((r) => r.top && r.you)
+  return headOver(
+    gameName(game),
+    records.map((r) => (r.top ? normalizePlayerName(r.top.name) : null)),
+    you,
+    {
+      knows: Boolean(you) && records.some((r) => r.you !== undefined),
+      on: on.length,
+      best: on.length ? Math.min(...on.map((r) => r.you!.rank)) : 0,
+    },
+    period,
+    where,
+  )
 }
 
 /**
