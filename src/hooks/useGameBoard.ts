@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react'
-import { isDailyGame } from '../data/games'
-import { standingsGames } from '../lib/allTime'
 import { bandLine, boardPlayer, youFromBoard, type BoardPlayer, type BoardYou } from '../lib/gameBoard'
 import {
-  fetchGlobalRank,
-  fetchLeaderboardsSummary,
-  getLeaderboard,
   getPlayerBoard,
   normalizePlayerName,
   type LeaderboardEntry,
@@ -13,14 +8,6 @@ import {
   type LeaderboardPeriod,
   type PlayerBoard,
 } from '../lib/leaderboard'
-import { distinctTop, type BoardTop } from '../lib/scoreboard'
-
-export type OtherBoard = {
-  slug: LeaderboardGame
-  leader: BoardTop | null
-  /** The viewer's place on it this period, if they have one. */
-  place: number | null
-}
 
 export type GameBoardData = {
   loading: boolean
@@ -39,12 +26,6 @@ export type GameBoardData = {
   bandLine: string | null
   /** The viewer's best run, with their avatar, when they have one. */
   youRun: LeaderboardEntry | null
-  /** The viewer's best on this game over all time, for a period they have not played. */
-  allTimeBest: number | null
-  /** The other boards, the viewer's first; arrives after the rest. */
-  others: OtherBoard[]
-  /** Whether the other boards have come, or failed to: till then their card holds its room (GameBoard). */
-  othersReady: boolean
 }
 
 const LOADING: GameBoardData = {
@@ -57,17 +38,6 @@ const LOADING: GameBoardData = {
   around: [],
   bandLine: null,
   youRun: null,
-  allTimeBest: null,
-  others: [],
-  othersReady: false,
-}
-
-/**
- * The boards a board's More boards lists: every board of the period but its own. Only a daily has a board for
- * today, so today's way onward is the other dailies; a daily has none for all time.
- */
-export function otherBoardSlugs(slug: LeaderboardGame, period: LeaderboardPeriod): LeaderboardGame[] {
-  return standingsGames(period).filter((g) => g !== slug && (period !== 'daily' || isDailyGame(g)))
 }
 
 /** Players a board opens on. */
@@ -87,10 +57,9 @@ export function openingBoard(board: PlayerBoard, slug: string) {
 }
 
 /**
- * One game's board for a period, as it opens: its first players, the viewer's place with the players either
- * side, and their best over all time when they have not played this period, all counted by the API (one
- * small ask, however big the board). The rest are asked a page at a time as they're opened. The other
- * boards' leaders follow separately.
+ * One game's board for a period, as it opens on the game's page: its first players, and the viewer's place
+ * with the players either side, all counted by the API (one small ask, however big the board). The rest are
+ * asked a page at a time as they're opened.
  */
 export function useGameBoard(
   slug: LeaderboardGame,
@@ -108,47 +77,10 @@ export function useGameBoard(
     void (async () => {
       try {
         const first = await getPlayerBoard(slug, period, me || undefined, { limit: FIRST_PLAYERS, around: 2 })
-        let allTimeBest: number | null = null
-        // A daily's run on another day was on another track, hole or scenes: nothing to measure today's board by.
-        if (me && !first.you && period !== 'all' && !isDailyGame(slug)) {
-          try {
-            allTimeBest = (await getLeaderboard(slug, 'all', me, { limit: 1 })).you?.score ?? null
-          } catch {
-            /* the line falls back to how to get on */
-          }
-        }
         if (cancelled) return
-        setData({
-          loading: false,
-          error: false,
-          ...openingBoard(first, slug),
-          allTimeBest,
-          others: [],
-          othersReady: false,
-        })
+        setData({ loading: false, error: false, ...openingBoard(first, slug) })
       } catch {
         if (!cancelled) setData({ ...LOADING, loading: false, error: true })
-        return
-      }
-
-      // The way onward: the other boards' leaders, and the viewer's places on them. The board reads fine without it.
-      try {
-        const [summary, mine] = await Promise.all([
-          fetchLeaderboardsSummary(period, 3),
-          me ? fetchGlobalRank(me, period).catch(() => null) : Promise.resolve(null),
-        ])
-        if (cancelled) return
-        const leaders = new Map(summary.map((g) => [g.slug, distinctTop(g.entries, 1)[0] ?? null]))
-        const places = mine?.byGame ?? {}
-        const others = otherBoardSlugs(slug, period).map((g) => ({
-          slug: g,
-          leader: leaders.get(g) ?? null,
-          place: places[g]?.place ?? null,
-        }))
-        setData((prev) => ({ ...prev, others, othersReady: true }))
-      } catch {
-        // No list of other boards, then.
-        if (!cancelled) setData((prev) => ({ ...prev, othersReady: true }))
       }
     })()
 

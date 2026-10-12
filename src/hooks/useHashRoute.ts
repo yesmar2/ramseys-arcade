@@ -147,12 +147,19 @@ export function leaderboardHref(period: LeaderboardPeriod = defaultPeriod()) {
   return `/leaderboards/${period}`
 }
 
-/** Full board for one game. A daily has no board for all time: asked for it, its month's (lib/allTime.ts). */
+/**
+ * One game's board for a period, on its own page (Ramsey picked B of the "Game page: board and records"
+ * canvas, 2026-10-12): a game's Board tab, `/games/{slug}/{period}`; a daily's Today tab, today's board on the
+ * page itself and its week or month as a segment of it. A daily has no board for all time: asked for it, its
+ * month's (lib/allTime.ts).
+ */
 export function gameBoardHref(
   game: LeaderboardGame,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  return `/leaderboards/${encodeURIComponent(game)}/${boardPeriodFor(game, period)}`
+  const base = `/games/${encodeURIComponent(game)}`
+  const shown = boardPeriodFor(game, period)
+  return isDailyGame(game) && shown === 'daily' ? base : `${base}/${shown}`
 }
 
 /**
@@ -363,15 +370,16 @@ export function tournamentPlayHref(id: string, game: string, invite?: string) {
 }
 
 /**
- * Record books for one game (`/records/{game}/{period}`). Individual boards
- * use `recordHref`.
+ * One game's records: its page's Records tab (`/games/{slug}/records`, and `/records/{period}` after it for
+ * another period than all time). A daily's Records tab has no period. One record is `recordHref`.
  *
  * Records are lifetime achievements, not the rotating weekly competition —
- * a book win is judged against the all-time holder, so the book itself
+ * a record is judged against the all-time holder, so the tab
  * defaults to `all` rather than the site's general leaderboard period.
  */
 export function recordsHref(game: string, period: LeaderboardPeriod = 'all') {
-  return `/records/${encodeURIComponent(game)}/${period}`
+  const base = `/games/${encodeURIComponent(game)}/records`
+  return isDailyGame(game) || period === 'all' ? base : `${base}/${period}`
 }
 
 export function recordHref(
@@ -521,11 +529,16 @@ export function hrefForRoute(
       }
       return appendGroupQuery(recordsHref(route.game, period))
     case 'game':
-      // A daily's page is today's and its tabs: the site's period changes nothing on it.
-      if (isDailyGame(route.slug)) return dailyTabHref(route.slug, route.tab ?? 'today')
-      if (route.board === 'records') {
-        return appendGroupQuery(gameHref(route.slug, 'records'))
+      // A daily's page is today's and its tabs: the site's period changes nothing on it. Its board's week or
+      // month is a segment of its own (gameBoardHref).
+      if (isDailyGame(route.slug)) {
+        if (route.tab) return dailyTabHref(route.slug, route.tab)
+        return route.period && route.period !== 'daily' && isLeaderboardGame(route.slug)
+          ? gameBoardHref(route.slug, route.period)
+          : dailyTabHref(route.slug, 'today')
       }
+      // The Records tab keeps a period of its own, all time unless asked (recordsHref).
+      if (route.board === 'records') return appendGroupQuery(recordsHref(route.slug, route.period ?? 'all'))
       return appendGroupQuery(gameHubHref(route.slug, period))
     case 'gamePlay': {
       const play = route.track
@@ -777,10 +790,17 @@ export function parseUrl(pathname: string, search: string): Route {
     }
   }
 
-  const gameMatch = /^games\/([^/]+)(?:\/([^/]+))?$/.exec(path)
+  const gameMatch = /^games\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/.exec(path)
   if (gameMatch) {
     const slug = canonicalGameSlug(decodeURIComponent(gameMatch[1]))
     const segment = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
+    const third = gameMatch[3] ? decodeURIComponent(gameMatch[3]) : undefined
+    // A game's Records tab for another period than all time: `/games/{slug}/records/{period}`.
+    if (third !== undefined) {
+      return segment === 'records' && !isDailyGame(slug) && isLeaderboardPeriod(third)
+        ? { name: 'game', slug, board: 'records', period: third }
+        : { name: 'game', slug }
+    }
     // Where Today's Hole was before it was all of Ace Chase, and shared links still point: the play page.
     if (segment === 'daily') {
       return { name: 'gamePlay', slug }
@@ -871,7 +891,9 @@ function dailyPage(route: Route) {
  */
 function keepsSitePeriod(route: Route, period: LeaderboardPeriod) {
   // The season is a site period like the others (the header's Season, while a season has standings).
+  // A game's Records tab keeps its own period too, all time unless asked.
   if (period === 'daily' || route.name === 'records' || dailyPage(route)) return true
+  if (route.name === 'game' && route.board === 'records') return true
   return route.name === 'gameLeaderboard' && !route.day && boardPeriodFor(route.game, defaultPeriod()) === period
 }
 

@@ -1,9 +1,8 @@
 import { useLayoutEffect } from 'react'
 import { PageShell } from '../components/PageShell'
-import { RecordBookView } from '../components/RecordBookView'
 import { RecordView } from '../components/RecordView'
 import { getGame, isRankedGame } from '../data/games'
-import { dailyTabHref, dayBoardHref, navigate } from '../hooks/useHashRoute'
+import { dailyTabHref, dayBoardHref, navigate, recordsHref } from '../hooks/useHashRoute'
 import { coerceVisiblePeriod, type LeaderboardPeriod } from '../lib/leaderboard'
 import { courseKey, courseNumber, courseToday, dailyRecordHref } from '../lib/recordBook'
 
@@ -27,10 +26,11 @@ function dayRecordBoardHref(game: string, recordId: string | undefined, now = Da
 }
 
 /**
- * A game's record book (`/records/{game}`), or one record in it (`…/{id}/{period}`). A daily has no book
- * of its own: its records are on its page's Records tab, a track's or hole's on that course's row of its
- * past tab, and a past day's of Find the Bug or Half Full on that day's board, so an old link to any of
- * them goes there, in place of this address.
+ * One record of a game's (`/records/{game}/{id}/{period}`). A game's record book is its page's Records tab now
+ * (Ramsey picked B of the "Game page: board and records" canvas, 2026-10-12), so an old link to the book
+ * (`/records/{game}`) goes there. A daily has no book of its own: its records are on its page's Records tab, a
+ * track's or hole's on that course's row of its past tab, and a past day's of Find the Bug or Half Full on that
+ * day's board, so an old link to any of them goes there, in place of this address.
  */
 export function RecordsPage({ game, recordId, period = 'all' }: RecordsPageProps) {
   // A daily just for fun keeps no records (data/games.ts Game.ranked): an old link to one goes to its page.
@@ -38,7 +38,7 @@ export function RecordsPage({ game, recordId, period = 'all' }: RecordsPageProps
     ? null
     : !isRankedGame(game)
       ? dailyTabHref(game, 'today')
-      : (dayRecordBoardHref(game, recordId) ?? dailyRecordHref(game, recordId))
+      : (dayRecordBoardHref(game, recordId) ?? dailyRecordHref(game, recordId) ?? (recordId ? null : recordsHref(game, period)))
 
   // Before the first paint, so the book never shows on its way to the tab; in place of the old address, so
   // Back doesn't bounce here again. A course's row keeps its #course- part.
@@ -57,11 +57,7 @@ export function RecordsPage({ game, recordId, period = 'all' }: RecordsPageProps
 
   return (
     <PageShell innerClassName="lb-page__inner">
-      {recordId ? (
-        <RecordView game={game} recordId={recordId} period={coerceVisiblePeriod(period)} />
-      ) : (
-        <RecordBookView game={game} period={coerceVisiblePeriod(period)} />
-      )}
+      {recordId ? <RecordView game={game} recordId={recordId} period={coerceVisiblePeriod(period)} /> : null}
     </PageShell>
   )
 }

@@ -2257,3 +2257,12 @@ a.sb-board__name::after {
     transition: none;
   }
 }
+
+/* A game's board on its page (GameBoard.tsx GamePageBoard): its periods along its top row, where a title was. */
+.gb-board__head--page .seg.sb-periods {
+  margin-top: 0;
+}
+
+.gb-board__head--page .gb-board__title {
+  margin-right: 0.3rem;
+}

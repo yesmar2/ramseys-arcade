@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { deviceRequirementLabel, isRankedGame, TAG_LABELS, type Game } from '../data/games'
-import { gameHref, gamePlayHref, homeHref, recordsHref } from '../hooks/useHashRoute'
+import { gameHref, gamePlayHref, homeHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { dailyWords } from '../lib/dailyWords'
 import { hasDayPreview, hasGamePreview } from '../lib/gamePreviews'
-import type { LeaderboardEntry, LeaderboardPeriod } from '../lib/leaderboard'
+import type { LeaderboardEntry } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { boardDay } from '../lib/rankHow'
 import { DevicesIcon, PlayIcon } from './chromeIcons'
@@ -36,15 +36,11 @@ export function GameHubHero({
   game,
   accent,
   canPlay,
-  hasRecords,
-  period,
   highScore,
 }: {
   game: Game
   accent: string
   canPlay: boolean
-  hasRecords: boolean
-  period: LeaderboardPeriod
   /** The game's all-time best run, for its screen. */
   highScore: LeaderboardEntry | null
 }) {
@@ -110,11 +106,6 @@ export function GameHubHero({
               <a ref={ctaRef} className="gh-play" href={playHref}>
                 <PlayIcon />
                 {playLabel}
-              </a>
-            ) : null}
-            {hasRecords && !daily ? (
-              <a className="gh-ghost" href={recordsHref(game.slug, period)}>
-                Record books
               </a>
             ) : null}
             <GameHubHowTo game={game} className="gh-ghost" />

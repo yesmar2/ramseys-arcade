@@ -2,7 +2,7 @@ import { useLayoutEffect } from 'react'
 import { GameBoard } from '../components/GameBoard'
 import { PageShell } from '../components/PageShell'
 import { getGame, isDailyGame, isRankedGame } from '../data/games'
-import { dailyTabHref, navigate } from '../hooks/useHashRoute'
+import { dailyTabHref, gameBoardHref, navigate } from '../hooks/useHashRoute'
 import { boardPeriodFor } from '../lib/allTime'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { coerceVisiblePeriod, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
@@ -15,17 +15,25 @@ type GameLeaderboardPageProps = {
 }
 
 /**
- * One game's own board: its players at their best runs, and what each place pays. A daily's opens on
- * today's, and its week and month are its day points (leaderboardFormat isDayPointsBoard); it has no
- * board for all time (lib/allTime.ts), so asked for that it shows its month. With a `day`, it's that
- * day's board as it finished. A daily just for fun has no board (data/games.ts Game.ranked): an old link
- * to one goes to its page, or to that day's row on its past days.
+ * A daily's board on one past day, as it finished (`/leaderboards/{game}/day/{day}`). A game's board for a
+ * period is on its own page now, its Board tab or a daily's Today tab (Ramsey picked B of the "Game page: board
+ * and records" canvas, 2026-10-12), so an old link to one (`/leaderboards/{game}/{period}`) goes there. A daily
+ * just for fun has no board (data/games.ts Game.ranked): an old link to one goes to its page, or to that day's
+ * row on its past days.
  */
 export function GameLeaderboardPage({ game: gameSlug, period: periodFromRoute, day }: GameLeaderboardPageProps) {
   const period = isDailyGame(gameSlug)
     ? boardPeriodFor(gameSlug, periodFromRoute ?? 'daily')
     : coerceVisiblePeriod(periodFromRoute ?? defaultPeriod())
-  const moved = getGame(gameSlug) && !isRankedGame(gameSlug) ? (day ? dailyTabHref(gameSlug, 'past', day) : dailyTabHref(gameSlug, 'today')) : null
+  const moved = !getGame(gameSlug)
+    ? null
+    : !isRankedGame(gameSlug)
+      ? day
+        ? dailyTabHref(gameSlug, 'past', day)
+        : dailyTabHref(gameSlug, 'today')
+      : day
+        ? null
+        : gameBoardHref(gameSlug, period)
 
   // Before the first paint, in place of the old address, so Back doesn't bounce here again.
   useLayoutEffect(() => {
@@ -33,7 +41,7 @@ export function GameLeaderboardPage({ game: gameSlug, period: periodFromRoute, d
   }, [moved])
   if (moved) return null
 
-  if (!getGame(gameSlug)) {
+  if (!getGame(gameSlug) || !day) {
     return (
       <PageShell>
         <p className="lb-empty">That game isn’t on the board.</p>
@@ -43,7 +51,7 @@ export function GameLeaderboardPage({ game: gameSlug, period: periodFromRoute, d
 
   return (
     <PageShell innerClassName="lb-page__inner">
-      <GameBoard slug={gameSlug} period={period} day={isDailyGame(gameSlug) ? day : undefined} />
+      <GameBoard slug={gameSlug} day={day} />
     </PageShell>
   )
 }

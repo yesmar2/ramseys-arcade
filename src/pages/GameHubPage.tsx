@@ -1,18 +1,17 @@
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { useHeldHeight } from '../lib/heldShape'
 import { ChevronRightIcon } from '../components/chromeIcons'
 import { DailiesBar } from '../components/DailiesBar'
-import { DailyTabs } from '../components/DailyTabs'
-import { GameHubBoard } from '../components/GameHubBoard'
+import { DailyTabs, GameTabs } from '../components/DailyTabs'
+import { GamePageBoard } from '../components/GameBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
 import { GameHubHero } from '../components/GameHubHero'
-import { GameHubRecords } from '../components/GameHubRecords'
 import { WallTile } from '../components/GameWall'
 import { PageShell } from '../components/PageShell'
 import { gamePlayableOn, getGame, isRankedGame, wallGames } from '../data/games'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
-import { useHubBoard, useHubEvents, useHubHighScore, useHubRecords } from '../hooks/useGameHub'
-import { currentHref, dailyTabHref, homeHref, navigate, periodFromRoute, recordsHref, useRoute } from '../hooks/useHashRoute'
+import { useHubEvents, useHubHighScore } from '../hooks/useGameHub'
+import { dailyTabHref, homeHref, navigate, periodFromRoute, useRoute } from '../hooks/useHashRoute'
+import { boardPeriodFor } from '../lib/allTime'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -23,7 +22,7 @@ import { moreLike } from '../lib/gameHub'
 import { useGlobalRank } from '../lib/globalRank'
 import { useActiveGroup } from '../lib/groups'
 import { lazyPage } from '../lib/lazyPage'
-import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
+import { coerceVisiblePeriod, LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 import { gameHasRecords } from '../lib/records'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import { preloadGamePage } from './gamePages'
@@ -72,6 +71,8 @@ const TODAY_PARTS: Partial<Record<string, typeof TodaysHoleByTry>> = {
 /** A daily's other two tabs, each in a chunk of its own with the plans it reads. */
 const DailyPastTab = lazyPage(() => import('../components/DailyPastTab').then((m) => m.DailyPastTab))
 const DailyRecordsTab = lazyPage(() => import('../components/DailyRecordsTab').then((m) => m.DailyRecordsTab))
+/** Another game's Records tab, its record book, the same way. */
+const RecordsTab = lazyPage(() => import('../components/RecordBookView').then((m) => m.RecordBookView))
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -88,17 +89,17 @@ type GameHubPageProps = {
 }
 
 /**
- * A game's page. Up top and across the page, its name and Play beside its
- * screen, where it plays itself under the high score. Then, side by side, the
- * period's board, its records, and any event it is in; and the games most like
- * it. (Ramsey, 2026-10-11: just the hero, the board and maybe the records: no
- * "Where you stand" and no "Your record books".)
+ * A game's page, and its only one (Ramsey picked B of the "Game page: board and records" canvas, 2026-10-12: no
+ * board page and no record book of its own). Up top and across the page, its name and Play beside its screen,
+ * where it plays itself under the high score. Then its tabs, Board and Records: the period's board in full, and
+ * any event it is in; or its records, each a brass plaque. Then the games most like it. A game with no records
+ * has no tabs, just its board.
  *
  * A daily's page is today's, with tabs under its hero: Today (today's card
- * across the page, then its board), its past courses,
- * and its records. One just for fun (data/games.ts Game.ranked) places
- * nobody: under its Today card are your days and today part by part, and it
- * has no records tab.
+ * across the page, then its board in full, its week and month a tap away),
+ * its past courses, and its records. One just for fun (data/games.ts
+ * Game.ranked) places nobody: under its Today card are your days and today
+ * part by part, and it has no records tab.
  */
 export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: GameHubPageProps) {
   const route = useRoute()
@@ -108,21 +109,28 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const ranked = isRankedGame(slug)
   // A daily just for fun has no records tab: an old link to it is its Today tab.
   const tab: DailyTab = daily ? (tabFromRoute === 'records' && !ranked ? 'today' : (tabFromRoute ?? 'today')) : 'today'
-  // A daily's board is the day's whatever period is picked (the API keeps it so): its page says today.
-  const period: LeaderboardPeriod = daily ? 'daily' : (periodFromRoute(route) ?? storedPeriod)
+  const boardSlug = isBoardGame(slug) ? slug : null
+  // Another game's tabs, Board and Records, when it keeps records.
+  const gameTabs = !daily && boardSlug !== null && gameHasRecords(slug)
+  const gameTab: 'board' | 'records' = gameTabs && boardFromRoute === 'records' ? 'records' : 'board'
+  const routePeriod = periodFromRoute(route)
+  // The board's period: the site's, or the address's on the Board tab. A daily's board is today's on its page,
+  // its week or month when the address says (gameBoardHref), whatever the site's period.
+  const boardPeriod: LeaderboardPeriod = daily
+    ? routePeriod && routePeriod !== 'daily'
+      ? boardPeriodFor(slug, routePeriod)
+      : 'daily'
+    : gameTab === 'board'
+      ? (routePeriod ?? storedPeriod)
+      : storedPeriod
+  // The Records tab's period is its own: all time unless the address asks (recordsHref).
+  const recordsPeriod: LeaderboardPeriod = gameTab === 'records' && routePeriod ? coerceVisiblePeriod(routePeriod) : 'all'
+  // The games below show their bests and leaders for the day on a daily's page, else for the board's period.
+  const period: LeaderboardPeriod = daily ? 'daily' : boardPeriod
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const boardSlug = isBoardGame(slug) ? slug : null
-  // A daily just for fun has no board to ask for.
-  const board = useHubBoard(ranked ? boardSlug : null, period, playerName, groupId)
   const highScore = useHubHighScore(ranked ? boardSlug : null, groupId)
-  // A daily's records are its Records tab, not a card of the book.
-  const records = useHubRecords(daily ? '' : slug, playerName, groupId)
-  // While the board and the records load, the cards under the hero (the board, its records) hold the height they
-  // had last time this device was here (lib/heldShape.ts).
-  const settling = board.loading || (gameHasRecords(slug) && !daily && records === null)
-  const bandHeld = useHeldHeight<HTMLDivElement>(`gh-cards-${slug}`, settling)
   const events = useHubEvents(slug)
   // For the games below: your best on each, your place on its board, and who leads it, as the wall shows them.
   const bests = usePlayerBests(playerName, period)
@@ -130,7 +138,8 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const leaders = useBoardLeaders(period)
   const [, setThemeTick] = useState(0)
   const tabsRef = useRef<HTMLDivElement>(null)
-  const shownTab = useRef(tab)
+  const tabKey = daily ? tab : gameTab
+  const shownTab = useRef(tabKey)
 
   // The game's colour is picked for the theme, so a theme change repaints the page.
   useEffect(() => {
@@ -163,23 +172,16 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     navigate(dailyTabHref(slug, 'today'), { replace: true })
   }, [daily, ranked, tabFromRoute, slug])
 
-  // An old link to the game's records tab goes to its record book.
-  useEffect(() => {
-    if (boardFromRoute !== 'records' || !game || daily) return
-    const next = recordsHref(game.slug, period)
-    if (currentHref() !== next) navigate(next, { replace: true })
-  }, [boardFromRoute, game, daily, period])
-
   // A new tab keeps the hero and brings the tabs up to the top, unless they're already in the top half
   // of the screen with the tab under them in view. A past course's row, when one is named, lands itself.
   useEffect(() => {
-    if (shownTab.current === tab) return
-    shownTab.current = tab
+    if (shownTab.current === tabKey) return
+    shownTab.current = tabKey
     const bar = tabsRef.current
     if (!bar || window.location.hash.startsWith(COURSE_ANCHOR)) return
     const top = bar.getBoundingClientRect().top
     if (top < 0 || top > window.innerHeight * 0.5) bar.scrollIntoView({ block: 'start' })
-  }, [tab])
+  }, [tabKey])
 
   if (!game) {
     return (
@@ -190,7 +192,6 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   }
 
   const accent = resolveGameAccent(slug, game.accent)
-  const hasRecords = gameHasRecords(game.slug)
   const shelf = wallGames(device)
   const more = moreLike(game, shelf)
   const style = {
@@ -201,23 +202,14 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     '--thumb-accent': accent,
   } as CSSProperties
 
-  const hero = (
-    <GameHubHero
-      game={game}
-      accent={accent}
-      canPlay={canPlay}
-      hasRecords={hasRecords}
-      period={period}
-      highScore={highScore}
-    />
-  )
-  const boardCard = boardSlug ? (
-    <GameHubBoard slug={boardSlug} gameName={game.name} period={period} board={board} me={playerName} />
-  ) : null
+  const hero = <GameHubHero game={game} accent={accent} canPlay={canPlay} highScore={highScore} />
   const eventsCard = events.length > 0 ? <GameHubEvents gameName={game.name} events={events} /> : null
+  // Bug hunt hiding places (lib/bugHunt.ts): with tabs, they hold "its page's tabs" and the games like it hold
+  // the other; with none, the games like it hold the first and the line over the board the other.
+  const shelfHunt = daily ? (ranked ? `g-stand-${game.slug}` : undefined) : gameTabs ? `g-stand-${game.slug}` : `g-board-${game.slug}`
   const shelfSection =
     more.length > 0 ? (
-      <section className="gh-shelf" aria-labelledby="gh-shelf-title">
+      <section className="gh-shelf" aria-labelledby="gh-shelf-title" data-hunt={shelfHunt}>
         <div className="gh-shelf__head">
           <h2 id="gh-shelf-title" className="gh-shelf__title">
             More like {game.name}
@@ -277,8 +269,8 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                   ) : null}
                 </div>
                 <div className={`gh-today__below${ranked ? ' gh-today__below--board' : ''}`}>
-                  {ranked ? (
-                    boardCard
+                  {ranked && boardSlug ? (
+                    <GamePageBoard slug={boardSlug} period={boardPeriod} title="The board" />
                   ) : (
                     // Just for fun: your days, then today part by part (YourDays.tsx).
                     <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
@@ -297,20 +289,27 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     )
   }
 
-  const recordsCard = hasRecords ? <GameHubRecords slug={game.slug} records={records} /> : null
   return (
     <PageShell innerClassName="gh-rail">
       <div className="gh" style={style}>
-        {/* The hero across the page, as a daily's is; then the cards side by side under it (hub.css .gh-band). */}
+        {/* The hero across the page, as a daily's is; then the tabs, Board and Records, and the one that's open. */}
         {hero}
-
-        {boardCard || recordsCard || eventsCard ? (
-          <div className="gh-band" ref={bandHeld.ref} style={bandHeld.style}>
-            {boardCard}
-            {recordsCard}
-            {eventsCard}
-          </div>
+        {gameTabs && boardSlug ? (
+          <GameTabs slug={boardSlug} gameName={game.name} tab={gameTab} boardPeriod={boardPeriod} recordsPeriod={recordsPeriod} ref={tabsRef} />
         ) : null}
+
+        {gameTab === 'records' ? (
+          <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
+            <RecordsTab game={game.slug} period={recordsPeriod} />
+          </Suspense>
+        ) : (
+          <>
+            {boardSlug ? (
+              <GamePageBoard slug={boardSlug} period={boardPeriod} noteHunt={gameTabs ? undefined : `g-stand-${game.slug}`} />
+            ) : null}
+            {eventsCard}
+          </>
+        )}
 
         {shelfSection}
       </div>

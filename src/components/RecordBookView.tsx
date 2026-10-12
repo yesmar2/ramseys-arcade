@@ -1,27 +1,16 @@
 import type { CSSProperties } from 'react'
-import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
+import { gamePlayableOn, getGame } from '../data/games'
 import { useRecordBook } from '../hooks/useRecordBooks'
-import { gameBoardHref, gamePlayHref, recordHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
+import { gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { useDeviceType } from '../lib/device'
-import { hasGamePreview } from '../lib/gamePreviews'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
-import {
-  LEADERBOARD_GAMES,
-  normalizePlayerName,
-  PERIOD_LABELS,
-  VISIBLE_LEADERBOARD_PERIODS,
-  type LeaderboardGame,
-  type LeaderboardPeriod,
-} from '../lib/leaderboard'
+import { normalizePlayerName, PERIOD_LABELS, VISIBLE_LEADERBOARD_PERIODS, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   bookHeadline,
-  bookLede,
   bookRecords,
   closestToInk,
-  coverRecord,
   lowerIsBetter,
   recordGroups,
   recordValue,
@@ -30,24 +19,17 @@ import {
 import type { RecordSummary } from '../lib/records'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
-import { GamePreview } from './GamePreview'
-import { GameThumbArt } from './GameThumbArt'
 import { RecordPlaque, shareOf, type PlaqueYou } from './RecordPlaque'
-import { ShareBoardButton } from './ShareBoardButton'
 import { openSiteMenu } from './siteNav'
 
 /*
- * One game's record book: its banner, with the game playing on the screen and
- * its best record over it; a line on what's up for grabs and what you're
- * nearest to; then the records nobody holds yet, and the rest in their groups,
- * each a brass plaque with its holder, when it was set, how close you are, and
- * the way to go and beat it (RecordPlaque.tsx; Ramsey picked "C with A's
- * plaques" from the "Record books, redesigned" canvas, 2026-10-11).
+ * One game's records: its page's Records tab (Ramsey picked B of the "Game page: board and records" canvas,
+ * 2026-10-12, in place of a record book page of its own). Who holds most of them, with the period's tabs; a
+ * line on what's up for grabs and what you're nearest to; then the records nobody holds yet, and the rest in
+ * their groups, each a brass plaque with its holder, when it was set, how close you are, and the way to go and
+ * beat it (RecordPlaque.tsx; Ramsey picked "C with A's plaques" from the "Record books, redesigned" canvas,
+ * 2026-10-11).
  */
-
-function isBoardGame(slug: string): slug is LeaderboardGame {
-  return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
-}
 
 function dayOf(at: number) {
   try {
@@ -55,23 +37,6 @@ function dayOf(at: number) {
   } catch {
     return ''
   }
-}
-
-function BackIcon() {
-  return (
-    <svg className="sb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M15 6l-6 6 6 6" />
-    </svg>
-  )
-}
-
-function BookIcon() {
-  return (
-    <svg className="sb-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z" />
-      <path d="M4 19V5" />
-    </svg>
-  )
 }
 
 function PeriodTabs({ game, period }: { game: string; period: LeaderboardPeriod }) {
@@ -153,96 +118,34 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
   if (!meta) return null
   const accent = resolveGameAccent(game, meta.accent)
   const canPlay = gamePlayableOn(meta, device)
-  // A daily's page takes its book's place (RecordsPage), but should one get here its courses stay out.
+  // A daily's page has its own Records tab (DailyRecordsTab), but should one get here its courses stay out.
   const records = bookRecords(game, data.records)
   const head = bookHeadline(game, records)
-  const cover = coverRecord(records)
   const groups = recordGroups(game, records)
-  // Nobody's name on these yet: they lead the book, and come out of their groups.
+  // Nobody's name on these yet: they lead the tab, and come out of their groups.
   const open = groups.flatMap((group) => group.records.filter((r) => !r.top).map((record) => ({ group, record })))
   const heldGroups = groups.map((group) => ({ ...group, records: group.records.filter((r) => r.top) })).filter((g) => g.records.length)
   const playHref = canPlay ? gamePlayHref(game) : null
   const held = records.filter((r) => you && r.top && normalizePlayerName(r.top.name) === you)
   const knowsYou = records.some((r) => r.you !== undefined)
   const close = knowsYou ? closestToInk([{ game, records }]) : []
-  const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
-  const when = period === 'all' ? 'all time' : PERIOD_LABELS[period].toLowerCase()
 
   return (
-    <div className="sb gb rbk" style={{ '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties}>
-      <section className="home-banner gb-banner" style={style} aria-labelledby="rbk-book-title" data-hunt={`r-head-${game}`}>
-        <div className="home-banner__text gb-banner__text">
-          <nav className="gb-crumb" aria-label="Breadcrumb">
-            <a href={recordsIndexHref()}>
-              <BackIcon />
-              Record books
-            </a>
-            <span aria-hidden="true">/</span>
-            <span aria-current="page">{meta.name}</span>
-          </nav>
-          <p className="home-banner__kicker">
-            <BookIcon />
-            Record book · {when}
-          </p>
-          <h1 id="rbk-book-title" className="gb-title">
-            {data.loading ? (
-              <span className="skel-line" style={{ '--skel-w': '12ch' } as CSSProperties} />
-            ) : (
-              <>
-                {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
-                {head.rest}
-              </>
-            )}
-          </h1>
-          <p className="home-banner__blurb gb-lede">
-            {data.loading ? (
-              <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
-            ) : (
-              bookLede(game, records)
-            )}
-          </p>
-          <PeriodTabs game={game} period={period} />
-          <div className="home-banner__acts">
-            {canPlay ? (
-              <a className="home-banner__cta" href={gamePlayHref(game)}>
-                Play {meta.name}
-              </a>
-            ) : (
-              <p className="gb-device" role="note">
-                {deviceRequirementLabel(meta)}
-              </p>
-            )}
-            {isBoardGame(game) ? (
-              <a className="home-banner__ghost" href={gameBoardHref(game, period)}>
-                Top scores
-              </a>
-            ) : null}
-            <ShareBoardButton
-              className="home-banner__ghost"
-              text="Share"
-              label={`${meta.name} record book on ${APP_NAME}. Somebody's name is in ink.`}
-              url={recordsHref(game, period)}
-            />
-          </div>
-        </div>
-        <a className="home-banner__art gb-banner__art" href={gamePlayHref(game)} tabIndex={-1} aria-hidden="true">
-          <GameThumbArt slug={game} accent={accent} />
-          {hasGamePreview(game) ? (
+    <div className="sb gb rbk rbk--tab" style={{ '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties}>
+      {/* Who holds most of them, and the period's tabs: where the book's banner was, a bug hunt hiding place (lib/bugHunt.ts). */}
+      <div className="rbk-tabhead" data-hunt={`r-head-${game}`}>
+        <h2 className="rbk-tabhead__title">
+          {data.loading ? (
+            <span className="skel-line" style={{ '--skel-w': '16ch' } as CSSProperties} />
+          ) : (
             <>
-              <GamePreview slug={game} className="home-banner__screen" autoplay />
-              <span className="home-banner__fade" />
-              <span className="home-banner__start">Press start</span>
+              {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
+              {head.rest}
             </>
-          ) : null}
-          {cover?.top ? (
-            <span className="gb-marquee rbk-marquee">
-              <span>{cover.label}</span>
-              <b>{recordValue(cover, cover.top.score)}</b>
-              <span>{normalizePlayerName(cover.top.name)}</span>
-            </span>
-          ) : null}
-        </a>
-      </section>
+          )}
+        </h2>
+        <PeriodTabs game={game} period={period} />
+      </div>
 
       {!data.loading && records.length ? (
         <section className="rbk-sum" aria-label="This book at a glance">

@@ -215,12 +215,14 @@ function isBoardGame(slug: string): slug is LeaderboardGame {
 }
 
 /** Boards and record books carry a period in the app; the page is known without one. */
+/** A game's board: its page, the Board tab (a daily's, its Today tab). */
 function gameBoardPath(slug: string) {
-  return `/leaderboards/${encodeURIComponent(slug)}`
+  return gameHref(slug)
 }
 
+/** A game's records: its page's Records tab. */
 function gameRecordsPath(slug: string) {
-  return `/records/${encodeURIComponent(slug)}`
+  return gameHref(slug, 'records')
 }
 
 function visibleGames() {
@@ -256,8 +258,9 @@ export function publicRoutes(): Route[] {
       routes.push({ name: 'game', slug: game.slug, tab: 'past' })
       if (ranked) routes.push({ name: 'game', slug: game.slug, tab: 'records' })
     }
-    if (isBoardGame(game.slug) && ranked) routes.push({ name: 'gameLeaderboard', game: game.slug })
-    if (gameHasRecords(game.slug) && !game.daily) routes.push({ name: 'records', game: game.slug })
+    // Another game's records are its page's Records tab; its board is the page itself (Ramsey picked B of the
+    // "Game page: board and records" canvas, 2026-10-12: no board page and no record book of its own).
+    if (gameHasRecords(game.slug) && !game.daily && isBoardGame(game.slug)) routes.push({ name: 'game', slug: game.slug, board: 'records' })
   }
   return routes
 }
@@ -288,9 +291,6 @@ function gameContentLinks(game: Game): PageLink[] {
   const links: PageLink[] = [{ href: gamePlayHref(game.slug), label: `Play ${game.name}` }]
   // A daily just for fun has no board and no records (data/games.ts Game.ranked).
   const ranked = isRankedGame(game.slug)
-  if (isBoardGame(game.slug) && ranked) {
-    links.push({ href: gameBoardPath(game.slug), label: `${game.name} leaderboard` })
-  }
   if (game.daily) {
     links.push(
       { href: gameHref(game.slug), label: `${game.name} today` },
@@ -298,7 +298,7 @@ function gameContentLinks(game: Game): PageLink[] {
     )
     if (ranked) links.push({ href: dailyTabHref(game.slug, 'records'), label: `${game.name} records` })
   } else if (gameHasRecords(game.slug)) {
-    links.push({ href: gameRecordsPath(game.slug), label: `${game.name} record books` })
+    links.push({ href: gameRecordsPath(game.slug), label: `${game.name} records` })
   }
   links.push({ href: homeHref(), label: 'All games' })
   return links
@@ -320,7 +320,7 @@ export function pageContent(route: Route): PageContent {
       const game = getGame(route.slug)
       if (!game || game.hidden) break
       // A daily's other tabs say what they hold, and lead to the rest of its pages.
-      if (route.name === 'game' && route.tab && game.daily) {
+      if (route.name === 'game' && ((route.tab && game.daily) || route.board === 'records')) {
         return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
       }
       const [goal, ...rules] = howToPlaySentences(game.slug)
@@ -534,6 +534,14 @@ export function pageMeta(route: Route): PageMeta {
       }
     case 'game':
       if (route.tab && isDailyGame(route.slug)) return dailyTabMeta(route.slug, route.tab)
+      // A game's Records tab, known by its records.
+      if (route.board === 'records' && !isDailyGame(route.slug)) {
+        return {
+          ...gameMeta(route.slug, gameRecordsPath(route.slug)),
+          title: titled(`${gameName(route.slug)} records`),
+          description: `${gameName(route.slug)} records on ${APP_NAME}: the best runs ever set, and who set them.`,
+        }
+      }
       return gameMeta(route.slug, gameHref(route.slug))
     case 'gamePlay':
       // A daily asked for another day's course (?day=, ?hole=, ?track=): a plain title, since the page may still
