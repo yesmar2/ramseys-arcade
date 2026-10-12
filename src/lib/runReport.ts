@@ -4,14 +4,19 @@ import { noteTicketsPaid, type RunTickets } from './tickets'
 import { noteSeasonRun, type SeasonRun } from './season'
 import { boardPlayer, gapBetween, gapFigure, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
+import { getSessionToken } from './auth'
+import { FRIENDS_SCOPE } from './groups'
 import {
   addLeaderboardScore,
+  api,
   fetchGlobalRank,
+  getClaimToken,
   getPlayerBoard,
   normalizePlayerName,
   type GlobalRankResult,
   type LeaderboardEntry,
   type LeaderboardPeriod,
+  type PlayerBoardRow,
   type SavedPlates,
   type SavedPours,
 } from './leaderboard'
@@ -38,10 +43,14 @@ import { submitScoreToJoinedTournaments } from './tournaments'
  * those facts come the lines (your best, the board, the standings, the record
  * books), each in a tone, and one of three tiers: quiet for an ordinary run,
  * lit for a personal best or a top-ten place, big for the top of a board or a
- * new record, which also gets the race it won and confetti.
+ * new record, which also gets the race it won and confetti. A board's 2nd or
+ * 3rd, climbed to, and a record book's, is big too, in silver or bronze for
+ * the gold (Ramsey, 2026-10-11: "go with your picks").
  */
 
 export type ReportTier = 'quiet' | 'lit' | 'big'
+/** 2nd or 3rd: a big report's gold, in its medal's metal (report.css .report--silver, .report--bronze). */
+export type ReportMetal = 'silver' | 'bronze'
 export type ReportTone = 'plain' | 'accent' | 'gold'
 export type ReportIcon = 'up' | 'crown' | 'book' | 'board' | 'target' | 'sum' | 'flag'
 
@@ -54,7 +63,23 @@ export type ReportLine = {
   tone: ReportTone
 }
 
-export type ReportRibbon = { icon: ReportIcon; text: string; tone: 'accent' | 'gold' }
+export type ReportRibbon = {
+  icon: ReportIcon
+  text: string
+  tone: 'accent' | 'gold'
+  /** A friend passed: their face where the icon goes. */
+  face?: { name: string; avatarId?: string }
+}
+
+/** A friend a run went past on the period's board, face to face with the player (RunReport FriendDuel). */
+export type ReportFriend = {
+  you: { name: string; avatarId?: string; score: string }
+  them: { name: string; avatarId?: string; score: string }
+  /** How far ahead of them the run put you, as a figure: 68, 0.31s. */
+  gap: string
+  /** Who of your friends is next above, and by how much; null when you lead them. */
+  next: { name: string; gap: string } | null
+}
 
 export type ReportRaceRow = {
   place: number
@@ -71,11 +96,15 @@ export type ReportRace = { title: string; rows: ReportRaceRow[] }
 
 export type RunReportData = {
   tier: ReportTier
+  /** The metal a big report's gold is in, for a 2nd or a 3rd; null for gold. */
+  metal: ReportMetal | null
   ribbon: ReportRibbon | null
   /** The big figure: gold when it tops a board, the game's colour for a personal best. */
   scoreTone: ReportTone
   lines: ReportLine[]
   race: ReportRace | null
+  /** A friend this run went past: you and them, face to face, with a way to send them the run. */
+  friend: ReportFriend | null
   /** Took first in the period's standings from somebody: the whole screen, before the report. */
   standingsTop: boolean
   avatarId?: string
@@ -115,6 +144,18 @@ export type RunFacts = {
   tickets?: RunTickets | null
   /** What the run did on the season's pass, while a season is live. */
   season?: SeasonRun | null
+  /** The period's board among the player's friends, after the save (signed in only). */
+  friends?: FriendFacts | null
+}
+
+/**
+ * The period's board among the player and their friends (the API's `group=friends`), after the save: the
+ * player's own row, the friends the run went past, nearest first, and the friend just above now.
+ */
+export type FriendFacts = {
+  you: BoardPlayer
+  passed: BoardPlayer[]
+  next: BoardPlayer | null
 }
 
 /**
@@ -152,6 +193,8 @@ export function boardFacts(after: BoardPlayer[], before: BoardPlayer[], me: stri
 
 /** Players the report names among those passed; past them it counts (namesText). */
 const PASSED_NAMED = 2
+/** A board's 2nd or 3rd goes silver or bronze only among this many players: 2nd of two isn't a podium. */
+const PODIUM_FIELD = 5
 /** Record-book lines on one report, at most. */
 const MAX_BOOKS = 3
 const MAX_LINES = 5
@@ -374,12 +417,8 @@ export function composeReport(f: RunFacts): RunReportData {
   const ranked = isRankedGame(f.slug)
   const board = ranked ? boardLine(f, copy) : null
   const overall = ranked ? overallLine(f, periodCopy(f.standingsPeriod ?? f.period)) : null
-  const books = ranked
-    ? [...f.books]
-        .sort((a, b) => (a.hit.rank ?? 99) - (b.hit.rank ?? 99))
-        .slice(0, MAX_BOOKS)
-        .map((book, i) => bookLine(f, book, i))
-    : []
+  const shelf = ranked ? [...f.books].sort((a, b) => (a.hit.rank ?? 99) - (b.hit.rank ?? 99)).slice(0, MAX_BOOKS) : []
+  const books = shelf.map((book, i) => bookLine(f, book, i))
 
   const isBest = f.priorBest > 0 && f.score > f.priorBest
   // The best run anyone has played: first of every run, over somebody else's.
@@ -388,8 +427,76 @@ export function composeReport(f: RunFacts): RunReportData {
     f.allTimeRank === 1 &&
     (f.priorAllTimeRank != null ? f.priorAllTimeRank > 1 : (f.board?.field ?? 0) >= 2)
   const bookTop = books.some((line) => line.tone === 'gold')
+  // A board's 2nd or 3rd, climbed to among enough players to be a podium; or a record book's 2nd or 3rd.
+  const boardPodium =
+    board?.climbed && (board.place === 2 || board.place === 3) && (f.board?.field ?? 0) >= PODIUM_FIELD ? board.place : null
+  const bookRank = shelf[0]?.hit.rank ?? null
+  const bookPodium = bookRank === 2 || bookRank === 3 ? bookRank : null
+  // A friend gone past on the period's board: the nearest of them, face to face (Ramsey picked B, 2026-10-11).
+  const friends = ranked ? (f.friends ?? null) : null
+  const passedFriend = friends?.passed[0] ?? null
+  const racing = isRaceGame(f.slug)
+  const gapOf = (higher: number, lower: number) => (racing ? raceGapWords(higher - lower) : gapFigure(f.slug, higher, lower))
+  const friend: ReportFriend | null =
+    friends && passedFriend
+      ? {
+          you: { name: friends.you.name, avatarId: friends.you.best.avatarId, score: figure(f.slug, friends.you.best.score) },
+          them: { name: passedFriend.name, avatarId: passedFriend.best.avatarId, score: figure(f.slug, passedFriend.best.score) },
+          gap: gapOf(friends.you.best.score, passedFriend.best.score),
+          next: friends.next ? { name: friends.next.name, gap: gapOf(friends.next.best.score, friends.you.best.score) } : null,
+        }
+      : null
 
   const challenge = f.challenge ?? null
+  let tier: ReportTier = 'quiet'
+  let metal: ReportMetal | null = null
+  let ribbon: ReportRibbon | null = null
+  // The line that lit a silver or bronze report, said in its metal too.
+  let metalLine: string | null = null
+  if (challenge?.won) {
+    tier = 'big'
+    ribbon = CHALLENGE_WON
+  } else if (overall?.newTop) {
+    tier = 'big'
+    ribbon = { icon: 'crown', text: 'Top of the standings', tone: 'gold' }
+  } else if (highScore) {
+    tier = 'big'
+    ribbon = { icon: 'crown', text: 'The high score', tone: 'gold' }
+  } else if (board?.newTop) {
+    tier = 'big'
+    ribbon = { icon: 'crown', text: 'Top of the board', tone: 'gold' }
+  } else if (bookTop) {
+    tier = 'big'
+    ribbon = { icon: 'book', text: 'New record', tone: 'gold' }
+  } else if (boardPodium) {
+    tier = 'big'
+    metal = boardPodium === 2 ? 'silver' : 'bronze'
+    ribbon = { icon: 'up', text: `${ordinal(boardPodium)} on ${boardLabel(f.slug, copy)}`, tone: 'gold' }
+    metalLine = 'board'
+  } else if (bookPodium) {
+    tier = 'big'
+    metal = bookPodium === 2 ? 'silver' : 'bronze'
+    ribbon = { icon: 'book', text: `${ordinal(bookPodium)} in the record book`, tone: 'gold' }
+    metalLine = 'book-0'
+  } else if (passedFriend) {
+    tier = 'lit'
+    ribbon = {
+      icon: 'up',
+      text: `You passed ${passedFriend.name}`,
+      tone: 'accent',
+      face: { name: passedFriend.name, avatarId: passedFriend.best.avatarId },
+    }
+  } else if (isBest) {
+    tier = 'lit'
+    ribbon = { icon: 'up', text: 'New personal best', tone: 'accent' }
+  } else if (board?.climbed && board.place <= 10) {
+    tier = 'lit'
+    ribbon = { icon: 'up', text: `${ordinal(board.place)} ${copy.phrase}`, tone: 'accent' }
+  } else if (books.length) {
+    tier = 'lit'
+    ribbon = { icon: 'book', text: 'In the record book', tone: 'accent' }
+  }
+
   const lines: ReportLine[] = []
   // A friend's challenge is what the run was for, so it is said first.
   if (challenge) lines.push(challengeReportLine(f.slug, f.score, challenge))
@@ -409,41 +516,15 @@ export function composeReport(f: RunFacts): RunReportData {
   lines.push(...books)
   // Loudest first, each tone in reading order.
   const ordered = lines
+    .map((line) => (line.id === metalLine ? { ...line, tone: 'gold' as const } : line))
     .map((line, i) => ({ line, i }))
     .sort((a, b) => TONE_ORDER[a.line.tone] - TONE_ORDER[b.line.tone] || a.i - b.i)
     .map(({ line }) => line)
     .slice(0, MAX_LINES)
 
-  let tier: ReportTier = 'quiet'
-  let ribbon: ReportRibbon | null = null
-  if (challenge?.won) {
-    tier = 'big'
-    ribbon = CHALLENGE_WON
-  } else if (overall?.newTop) {
-    tier = 'big'
-    ribbon = { icon: 'crown', text: 'Top of the standings', tone: 'gold' }
-  } else if (highScore) {
-    tier = 'big'
-    ribbon = { icon: 'crown', text: 'The high score', tone: 'gold' }
-  } else if (board?.newTop) {
-    tier = 'big'
-    ribbon = { icon: 'crown', text: 'Top of the board', tone: 'gold' }
-  } else if (bookTop) {
-    tier = 'big'
-    ribbon = { icon: 'book', text: 'New record', tone: 'gold' }
-  } else if (isBest) {
-    tier = 'lit'
-    ribbon = { icon: 'up', text: 'New personal best', tone: 'accent' }
-  } else if (board?.climbed && board.place <= 10) {
-    tier = 'lit'
-    ribbon = { icon: 'up', text: `${ordinal(board.place)} ${copy.phrase}`, tone: 'accent' }
-  } else if (books.length) {
-    tier = 'lit'
-    ribbon = { icon: 'book', text: 'In the record book', tone: 'accent' }
-  }
-
+  // The top of the board, run to the top or onto its podium.
   const race: ReportRace | null =
-    board?.newTop && f.board
+    (board?.newTop || boardPodium) && board && f.board
       ? {
           title: `${gameName(f.slug)} · ${copy.phrase}`,
           rows: f.board.top.map((p) => ({
@@ -460,10 +541,12 @@ export function composeReport(f: RunFacts): RunReportData {
 
   return {
     tier,
+    metal,
     ribbon,
-    scoreTone: challenge?.won || highScore || board?.newTop ? 'gold' : isBest ? 'accent' : 'plain',
+    scoreTone: challenge?.won || highScore || board?.newTop || boardPodium ? 'gold' : isBest ? 'accent' : 'plain',
     lines: ordered,
     race,
+    friend,
     standingsTop: Boolean(overall?.newTop),
     avatarId: f.overall.after?.avatarId,
   }
@@ -524,6 +607,30 @@ async function readBoardFacts(slug: string, period: LeaderboardPeriod, me: strin
     below: you ? (near.find((p) => p.place === you.place + 1) ?? null) : null,
     before,
     passed,
+  }
+}
+
+/** A friends' board read this deep at most: past it, nobody's counting who went past whom. */
+const FRIENDS_READ = 50
+
+/**
+ * The period's board among the player and their friends (the API's `group=friends`), after the save: the
+ * friends the run went past, nearest first (now below the player, and at or above their best before it, or
+ * any below when they had none), and the friend now just above. The player's own other tags, claimed on this
+ * device, aren't friends. Read straight, not through the site's group scope, so a refusal never moves it.
+ */
+async function readFriendFacts(slug: string, period: LeaderboardPeriod, me: string, priorScore: number | null): Promise<FriendFacts | null> {
+  const params = new URLSearchParams({ period, players: '1', group: FRIENDS_SCOPE, name: me, playerName: me, limit: String(FRIENDS_READ) })
+  const data = await api<{ entries?: PlayerBoardRow[] }>(`/leaderboards/${slug}?${params.toString()}`)
+  const players = (data.entries ?? []).map(boardPlayer)
+  const at = players.findIndex((p) => p.name === me)
+  const you = players[at]
+  if (!you) return null
+  const friend = (p: BoardPlayer) => p.name !== me && !getClaimToken(p.name)
+  return {
+    you,
+    passed: players.slice(at + 1).filter((p) => friend(p) && (priorScore == null || p.best.score >= priorScore)),
+    next: players.slice(0, at).reverse().find(friend) ?? null,
   }
 }
 
@@ -593,15 +700,17 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   const me = normalizePlayerName(name)
   // A daily just for fun places nobody (data/games.ts Game.ranked): no standings or board to read around it.
   const ranked = isRankedGame(slug)
-  // Where they stood before this run, on the Standings and on the game's board.
-  const [priorOverall, priorPlace] = ranked
+  // Where they stood before this run, on the Standings and on the game's board: their place, and their best
+  // on it, which says which friends a run goes past (readFriendFacts). Null when the read failed.
+  const [priorOverall, prior] = ranked
     ? await Promise.all([
         fetchGlobalRank(me, standingsPeriod).catch(() => null),
         getPlayerBoard(slug, period, me, { limit: 1, around: 0 })
-          .then((b) => b.you?.place ?? null)
+          .then((b) => ({ place: b.you?.place ?? null, score: b.you?.score ?? null }))
           .catch(() => null),
       ])
     : [null, null]
+  const priorPlace = prior?.place ?? null
   // The skin the game drew the player in: the one chosen for it, if they own it (lib/skins.ts).
   const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours, plates, skin: chosenSkin(slug) })
   noteTicketsPaid(saved.tickets)
@@ -626,13 +735,15 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   await whenRunAchievementsSettled()
   const hits = takeRunAchievements()
 
-  const [board, overall, books] = ranked
+  const [board, overall, books, friends] = ranked
     ? await Promise.all([
         readBoardFacts(slug, period, me, priorPlace).catch(() => null),
         fetchGlobalRank(me, standingsPeriod).catch(() => null),
         readBookFacts(slug, me, hits),
+        // Friends are a signed-in player's; without the read before the save, who was passed can't be told.
+        getSessionToken() && prior ? readFriendFacts(slug, period, me, prior.score).catch(() => null) : Promise.resolve(null),
       ])
-    : [null, null, []]
+    : [null, null, [], null]
 
   return {
     slug,
@@ -649,6 +760,7 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
     runId: saved.entry?.id ?? null,
     tickets: saved.tickets ?? null,
     season: saved.season ?? null,
+    friends,
     // Your own challenge played back is just a run.
     challenge:
       saved.challenge && saved.challenge.outcome !== 'own'

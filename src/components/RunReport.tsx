@@ -12,8 +12,10 @@ import { getLocalAvatarId, wornPrizeOf } from '../lib/avatars'
 import { drawWinterPiece, isWinterConfetti, WINTER_CONFETTI, winterPieces } from '../lib/winterConfetti'
 import { getLastPlayerName, PLAYER_NAME_MAX } from '../lib/leaderboard'
 import type {
+  ReportFriend,
   ReportIcon,
   ReportLine,
+  ReportMetal,
   ReportRace,
   ReportRibbon,
   ReportTier,
@@ -30,7 +32,8 @@ import { PlayerName } from './PlayerName'
  * (your best, the board, the standings, the record books), the race when it took
  * first, whatever the moment asks (sign in, a tag), and Play again, which
  * never moves. It lights up as much as the run earned: quiet, lit in the
- * game's colour, or big in gold with confetti, once.
+ * game's colour, or big in gold with confetti, once; a 2nd or a 3rd is big in
+ * silver or bronze, its confetti too.
  */
 
 const ICON_PATHS: Record<ReportIcon, string> = {
@@ -281,7 +284,11 @@ export function RunReportBody({
         ) : null}
         {ribbon ? (
           <span className={`report__ribbon report__ribbon--${ribbon.tone}`}>
-            <ReportIconSvg icon={ribbon.icon} />
+            {ribbon.face ? (
+              <PlayerAvatar name={ribbon.face.name} avatarId={ribbon.face.avatarId} size="sm" className="report__ribbon-face" />
+            ) : (
+              <ReportIconSvg icon={ribbon.icon} />
+            )}
             {ribbon.text}
           </span>
         ) : (
@@ -408,6 +415,12 @@ function heartShape(ctx: CanvasRenderingContext2D, r: number) {
   ctx.bezierCurveTo(r * 0.32, -r * 1.48, r * 1.12, -r * 1.28, r * 1.12, -r * 0.68)
   ctx.bezierCurveTo(r * 1.12, -r * 0.08, r * 0.24, r * 0.52, 0, r * 0.72)
   ctx.closePath()
+}
+
+/** A 2nd's burst and a 3rd's: the metal's shades, with white for the glints. */
+const METAL_COLOURS: Record<ReportMetal, string[]> = {
+  silver: ['#ffffff', '#e9eef3', '#cdd7e1', '#aab6c2', '#8fa1b3'],
+  bronze: ['#fff3e6', '#f3c9a0', '#e7ac78', '#d99a63', '#b9733f'],
 }
 
 const KIND_COLOURS: Record<string, string[]> = {
@@ -666,9 +679,10 @@ function reducedMotion() {
  * then gone. A player who wears confetti from the prize counter gets theirs
  * instead: stars, bubbles, hearts, pixels, a shower of tickets, or fireworks
  * going off over the top of the screen. `kind` shows one on
- * purpose (the counter trying one on); left out, it's the player's own.
+ * purpose (the counter trying one on); left out, it's the player's own. A
+ * 2nd or a 3rd's plain burst is in its `metal`, silver or bronze.
  */
-export function ReportConfetti({ accent, kind }: { accent: string; kind?: string | null }) {
+export function ReportConfetti({ accent, kind, metal = null }: { accent: string; kind?: string | null; metal?: ReportMetal | null }) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -676,7 +690,7 @@ export function ReportConfetti({ accent, kind }: { accent: string; kind?: string
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx || reducedMotion()) return
     const style = kind === undefined ? ownConfetti() : kind
-    const colors = (style && KIND_COLOURS[style]) || [accent, '#f5b942', '#45d3ba', '#e85d75', '#7ab8e8', '#fff3cc']
+    const colors = (style && KIND_COLOURS[style]) || (metal ? METAL_COLOURS[metal] : null) || [accent, '#f5b942', '#45d3ba', '#e85d75', '#7ab8e8', '#fff3cc']
     const w = window.innerWidth
     const h = window.innerHeight
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -1040,12 +1054,14 @@ export type RunReportProps = RunReportBodyProps & {
   style?: CSSProperties
   /** The game's colour, for the confetti. */
   accent: string
+  /** A big report's gold in silver or bronze, for a 2nd or a 3rd (report.css), and its confetti. */
+  metal?: ReportMetal | null
   /** Esc: the way out this moment allows; nothing when it wants an answer. */
   onEscape?: () => void
   initialFocus?: RefObject<HTMLElement | null>
 }
 
-export function RunReport({ label, style, accent, onEscape, initialFocus, ...body }: RunReportProps) {
+export function RunReport({ label, style, accent, metal = null, onEscape, initialFocus, ...body }: RunReportProps) {
   const [burst, setBurst] = useState(false)
   // Confetti once, the first time the report goes big.
   useEffect(() => {
@@ -1058,12 +1074,42 @@ export function RunReport({ label, style, accent, onEscape, initialFocus, ...bod
       onClose={() => onEscape?.()}
       scrimCloses={false}
       initialFocus={initialFocus}
-      className={`report report--${body.tier}`}
+      className={`report report--${body.tier}${metal ? ` report--${metal}` : ''}`}
       style={style}
-      backdrop={burst ? <ReportConfetti accent={accent} /> : null}
+      backdrop={burst ? <ReportConfetti accent={accent} metal={metal} /> : null}
     >
       <RunReportBody {...body} />
     </Panel>
+  )
+}
+
+/* ---------- a friend passed ---------- */
+
+/**
+ * A friend this run went past (runReport.ts ReportFriend), face to face: you, lit, how far ahead, them, and
+ * who of your friends is next to pass (Ramsey picked B, "head to head", 2026-10-11). The report's way on
+ * sends them the run (ScoreSaveCard's Send <them> your run).
+ */
+export function FriendDuel({ friend }: { friend: ReportFriend }) {
+  const { you, them, gap, next } = friend
+  return (
+    <div className="report-duel" role="group" aria-label={`You passed ${them.name}: ${gap} ahead`}>
+      <span className="report-duel__side report-duel__side--you">
+        <PlayerAvatar name={you.name} avatarId={you.avatarId} size="lg" />
+        <span className="report-duel__name">{you.name} · You</span>
+        <span className="report-duel__score">{you.score}</span>
+      </span>
+      <span className="report-duel__gap">
+        +{gap}
+        <small>ahead</small>
+      </span>
+      <span className="report-duel__side report-duel__side--them">
+        <PlayerAvatar name={them.name} avatarId={them.avatarId} size="lg" />
+        <span className="report-duel__name">{them.name}</span>
+        <span className="report-duel__score">{them.score}</span>
+      </span>
+      <p className="report-duel__next">{next ? `Next friend up: ${next.name}, ${next.gap} ahead` : 'You lead your friends here'}</p>
+    </div>
   )
 }
 

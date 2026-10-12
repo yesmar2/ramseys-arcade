@@ -1,9 +1,11 @@
 import { getGame } from '../data/games'
 import { rankHowHref, rankHref } from '../hooks/useHashRoute'
 import { eventSpan, gameList, ordinal, standingsTable } from './eventPages'
+import type { FriendsWeek } from './friendsWeek'
 import { gapBetween } from './gameBoard'
 import { normalizePlayerName, type GlobalRankResult, type LeaderboardPeriod } from './leaderboard'
 import { formatLeaderboardScore } from './leaderboardFormat'
+import { addDays, monthDay } from './rankHow'
 import { periodCopy } from './scoreboard'
 import { resolveGameAccent } from './theme'
 import { eventKind, finalBracketMatch, type PublicBracketMatch, type TournamentDetail } from './tournaments'
@@ -217,5 +219,45 @@ export function standingsTakeover(after: GlobalRankResult, name: string, period:
     plate: null,
     note: copy.noun ? { text: copy.closes } : null,
     more: { text: 'How your rank works ›', href: rankHowHref(undefined, period) },
+  }
+}
+
+/** "Oct 5 – 11", "Sep 28 – Oct 4": a week from its Monday. */
+function weekSpan(monday: string): string {
+  const sunday = addDays(monday, 6)
+  const end = monday.slice(0, 7) === sunday.slice(0, 7) ? String(Number(sunday.slice(8))) : monthDay(sunday)
+  return `${monthDay(monday)} – ${end}`
+}
+
+/**
+ * Last week won among your friends (the API's GET /friends/week): first of three or more in the standings
+ * of the week that closed, among you and your friends. Names and places only, as the standings' own.
+ */
+export function friendsWeekTakeover(week: FriendsWeek): WinTakeoverData | null {
+  const you = week.you
+  if (!you || you.rank !== 1 || week.field < 3) return null
+  const second = week.podium.find((p) => p.rank === 2) ?? null
+  const games = week.games
+  // A long list of games reads as a count.
+  const on = games.length > 3 ? ` on ${games.length} games` : games.length ? ` on ${gameList(games.map((g) => g.game))}` : ''
+  const ahead = second ? `${second.name} and the rest of your friends` : 'the rest of your friends'
+  return {
+    kicker: `Your friends · ${weekSpan(week.week)}`,
+    lead: 'You won',
+    prize: 'the week.',
+    lede: `Your runs${on} put you ahead of ${ahead} last week.`,
+    rows: games.slice(0, 5).map((g) => ({
+      key: g.game,
+      color: gameColor(g.game),
+      name: gameName(g.game),
+      place: ordinal(g.place),
+      placeTone: placeTone(g.place),
+      value: '',
+    })),
+    podium: week.podium
+      .filter((p) => p.rank >= 1 && p.rank <= 3)
+      .map((p) => ({ place: p.rank as 1 | 2 | 3, name: p.name, value: '', avatarId: p.avatarId, mine: p.name === you.name })),
+    plate: `WEEK OF ${monthDay(week.week).toUpperCase()}`,
+    note: { text: 'A new week has started. It’s anyone’s again.' },
   }
 }

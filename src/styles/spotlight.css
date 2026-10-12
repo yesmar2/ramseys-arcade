@@ -1,0 +1,245 @@
+/*
+ * The whole screen for something of your own (Spotlight.tsx): a Dailies streak milestone. A stand lit from
+ * above in the dark, the thing on it glowing in its own colour (--spot-glow), the words under it, the chip of
+ * what it earned, and the buttons. Dark in both themes, like a stage. It's still a panel underneath, with the
+ * kit's keys and focus.
+ */
+
+.spotlight-layer {
+  padding: 0;
+}
+
+.spotlight-layer .panel-scrim,
+html[data-theme='light'] .spotlight-layer .panel-scrim {
+  background: rgba(6, 10, 14, 0.9);
+  animation: spotlight-fade 0.35s ease-out both;
+}
+
+.panel.spotlight {
+  --spot-ink: #e7eef3;
+  --spot-muted: #b8c6d1;
+  /* A page that scrolls if it must, not the kit's column. */
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: max(4.5rem, calc(env(safe-area-inset-top) + 4rem)) 1.25rem calc(2rem + env(safe-area-inset-bottom));
+  border: 0;
+  border-radius: 0;
+  background: radial-gradient(60% 55% at 50% 32%, color-mix(in srgb, var(--spot-glow) 24%, transparent), transparent 70%);
+  box-shadow: none;
+  color: var(--spot-ink);
+  text-align: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: spotlight-fade 0.4s ease-out both;
+}
+
+.panel.spotlight .panel__grab {
+  display: none;
+}
+
+/* The light falling on the stand from above. */
+.panel.spotlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(36rem, 92vw);
+  height: 72%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--spot-glow) 30%, transparent), transparent 85%);
+  clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.panel.spotlight .spotlight__close {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top));
+  right: 1rem;
+  z-index: 2;
+  margin: 0;
+  border-color: rgba(231, 238, 243, 0.16);
+  background: rgba(231, 238, 243, 0.06);
+  color: #dbe5ec;
+}
+
+.panel.spotlight .spotlight__close:hover,
+.panel.spotlight .spotlight__close:focus-visible {
+  color: #ffffff;
+  border-color: rgba(231, 238, 243, 0.34);
+}
+
+.spotlight__stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  width: min(32rem, 100%);
+}
+
+.spotlight__nook {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 12.5rem;
+  height: 12.5rem;
+  margin-bottom: 0.7rem;
+  border-radius: 1.6rem;
+  background:
+    radial-gradient(80% 70% at 50% 18%, color-mix(in srgb, var(--spot-glow) 34%, transparent), transparent 70%),
+    linear-gradient(180deg, #19222c, #0d1318);
+  border: 1px solid color-mix(in srgb, var(--spot-glow) 45%, #263540);
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--spot-glow) 10%, transparent),
+    0 30px 80px -20px color-mix(in srgb, var(--spot-glow) 55%, transparent);
+  animation: spotlight-rise 0.8s cubic-bezier(0.2, 1.2, 0.4, 1) 0.1s both;
+}
+
+/* The stand's floor: a soft shadow under the thing on it. */
+.spotlight__nook::after {
+  content: '';
+  position: absolute;
+  bottom: 1.4rem;
+  left: 50%;
+  width: 52%;
+  height: 0.7rem;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), transparent);
+}
+
+.spotlight__nook > svg {
+  position: relative;
+  z-index: 1;
+  width: 7.5rem;
+  height: 7.5rem;
+  color: var(--spot-glow);
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--spot-glow) 60%, transparent));
+}
+
+.spotlight__kicker {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--spot-glow) 80%, #ffffff);
+}
+
+.spotlight__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--spot-ink);
+  text-wrap: balance;
+}
+
+.spotlight__lede {
+  margin: 0;
+  max-width: 27rem;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--spot-muted);
+  text-wrap: pretty;
+}
+
+.spotlight__chip {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.3rem;
+  padding: 0.42rem 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--spot-glow) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--spot-glow) 40%, transparent);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--spot-glow) 80%, #ffffff);
+}
+
+.spotlight__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.spotlight__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0 1.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--spot-glow);
+  color: #1a1206;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--spot-glow) 30%, transparent);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.spotlight__btn:hover,
+.spotlight__btn:focus-visible {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.spotlight__btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.spotlight__btn--ghost {
+  border: 1px solid rgba(231, 238, 243, 0.2);
+  background: rgba(231, 238, 243, 0.08);
+  color: var(--spot-ink);
+  box-shadow: none;
+}
+
+.spotlight__btn--ghost:hover,
+.spotlight__btn--ghost:focus-visible {
+  filter: none;
+  background: rgba(231, 238, 243, 0.14);
+}
+
+.spotlight__note {
+  margin: 0.55rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #8fa0ad;
+}
+
+@keyframes spotlight-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes spotlight-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.2rem) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-layer .panel-scrim,
+  .panel.spotlight,
+  .spotlight__nook {
+    animation: none;
+  }
+}

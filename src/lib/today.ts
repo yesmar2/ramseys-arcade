@@ -156,6 +156,11 @@ export type TodayServer = {
    * An older API leaves it out.
    */
   since?: string
+  /**
+   * The streak milestones paid, and when (ms): the whole-screen moment for one shows while it's fresh
+   * (components/MilestoneMoment.tsx). An older API leaves them out.
+   */
+  reached?: { day: number; at: number }[]
   /*
    * Today's rule, as the API has it: the live dailies, how many keep the streak, how many are live, and
    * whether today is a Full ticket. An older API leaves them out; todayRule works them out instead.

@@ -42,6 +42,20 @@ html[data-theme='dark'] .report {
     0 24px 90px -20px color-mix(in srgb, var(--report-gold) 32%, transparent);
 }
 
+/*
+ * A 2nd or a 3rd (runReport.ts `metal`): the big report with its gold in silver or bronze, the ribbon, the
+ * score, its line and the glow alike. On a dark page the ink is the metal itself, as gold's is.
+ */
+.report--silver {
+  --report-gold: #c6d1dc;
+  --report-gold-ink: #5d6b78;
+}
+
+.report--bronze {
+  --report-gold: #d99a63;
+  --report-gold-ink: #9c5a26;
+}
+
 /* ---------- the band: kicker, score, how it ended ---------- */
 
 .report__head {
@@ -443,8 +457,13 @@ html[data-theme='dark'] .report {
   text-align: center;
 }
 
+/* 1st is gold whatever the card's metal: a silver or bronze card's race still has its gold at the top. */
 .report__race-row:first-child .report__race-place {
-  color: var(--report-gold-ink);
+  color: #9a6a06;
+}
+
+html[data-theme='dark'] .report__race-row:first-child .report__race-place {
+  color: #f5b942;
 }
 
 .report__race-name {
@@ -470,6 +489,98 @@ html[data-theme='dark'] .report {
 .report__race-score {
   font-weight: 600;
   color: var(--ink);
+}
+
+/* ---------- a friend passed (RunReport FriendDuel) ---------- */
+
+/* Their face in the ribbon, where its icon goes. */
+.report__ribbon .report__ribbon-face {
+  width: 1.3rem;
+  height: 1.3rem;
+  margin-left: -0.35rem;
+}
+
+.report__ribbon .report__ribbon-face svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* You and them, face to face: you lit in the game's colour, them a step back. */
+.report-duel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 0.75rem 0.8rem;
+  border-radius: 1rem;
+  background:
+    radial-gradient(120% 140% at 0% 50%, var(--report-accent-soft), transparent 60%),
+    rgba(var(--ink-rgb), 0.045);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.report-duel__side {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.report-duel__side--them {
+  opacity: 0.62;
+}
+
+.report-duel__side--you .player-avatar {
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 3px var(--panel-accent),
+    0 10px 28px -6px color-mix(in srgb, var(--panel-accent) 70%, transparent);
+}
+
+.report-duel__name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.report-duel__score {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-duel__gap {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--panel-accent-ink);
+}
+
+.report-duel__gap small {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.report-duel__next {
+  grid-column: 1 / -1;
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--muted);
 }
 
 /* ---------- what the moment asks ---------- */

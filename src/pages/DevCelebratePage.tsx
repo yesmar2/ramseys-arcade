@@ -13,17 +13,22 @@ import {
   ReportSignIn,
   ReportWho,
   RunReport,
+  FriendDuel,
   RunReportBody,
   TagSlots,
   type RunReportBodyProps,
 } from '../components/RunReport'
 import { WinTakeover } from '../components/WinTakeover'
+import { milestoneSpotlight, milestoneWear } from '../components/MilestoneMoment'
+import { Spotlight } from '../components/Spotlight'
+import type { FriendsWeek } from '../lib/friendsWeek'
+import type { TodayServer, TodayServerDay } from '../lib/today'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
-import { playersFromRuns } from '../lib/gameBoard'
+import { playersFromRuns, type BoardPlayer } from '../lib/gameBoard'
 import type { GlobalRankResult, LeaderboardEntry } from '../lib/leaderboard'
-import { boardFacts, composeReport, type ReportLine, type RunFacts } from '../lib/runReport'
+import { boardFacts, composeReport, type ReportLine, type ReportMetal, type RunFacts } from '../lib/runReport'
 import type { TournamentDetail } from '../lib/tournaments'
-import { eventWinTakeover, standingsTakeover, type WinTakeoverData } from '../lib/winTakeover'
+import { eventWinTakeover, friendsWeekTakeover, standingsTakeover, type WinTakeoverData } from '../lib/winTakeover'
 
 /**
  * Dev only (`/dev/celebrate`): the end of a run with made-up runs, so the
@@ -62,6 +67,26 @@ const BOARD = runs([
 /** The board before, and after a new run by VERA. */
 function withRun(score: number) {
   const after = runs([...BOARD.map((r) => [r.name, r.score] as [string, number]), ['VERA', score, 'new']])
+  return boardFacts(playersFromRuns(after), playersFromRuns(after.filter((r) => r.id !== 'new')), 'VERA')
+}
+
+/** VERA from the bottom of a board onto its podium: 2nd at 436, 3rd at 410. */
+const CLIMB_BOARD = runs([
+  ['WES', 441],
+  ['CHEF', 430],
+  ['IVY', 402],
+  ['HAWK', 388],
+  ['DAD', 372],
+  ['VERA', 350],
+])
+
+/** A row on VERA's friends' board, for the friend gone past. */
+function friendRow(place: number, name: string, score: number, avatarId?: string): BoardPlayer {
+  return { place, name, best: { id: `f-${name}`, name, score, at: NOW, avatarId }, runs: 3 }
+}
+
+function climbTo(score: number) {
+  const after = runs([...CLIMB_BOARD.map((r) => [r.name, r.score] as [string, number]), ['VERA', score, 'new']])
   return boardFacts(playersFromRuns(after), playersFromRuns(after.filter((r) => r.id !== 'new')), 'VERA')
 }
 
@@ -174,17 +199,67 @@ const TOP: GlobalRankResult = {
   ],
 }
 
+/** Last week among VERA's friends, as GET /friends/week answers: first of six. */
+const FRIENDS_WEEK: FriendsWeek = {
+  week: '2026-10-05',
+  field: 6,
+  you: { name: 'VERA', rank: 1, points: 412 },
+  podium: [
+    { name: 'VERA', rank: 1, points: 412, avatarId: 'a2:e:ufo:0:7:deep:none:none' },
+    { name: 'MAYA', rank: 2, points: 380, avatarId: 'a2:m:1:split:3:9:bold:none:none' },
+    { name: 'WES', rank: 3, points: 301, avatarId: 'a2:m:1:stripes:4:5:bold:none:none' },
+  ],
+  games: [
+    { game: 'hotlap', place: 1, field: 5 },
+    { game: 'swoop', place: 1, field: 4 },
+    { game: 'lander', place: 2, field: 5 },
+    { game: 'crosswalk', place: 3, field: 6 },
+  ],
+}
+
 function wins(): { key: string; label: string; data: WinTakeoverData | null; primary: string }[] {
   return [
     { key: 'triple', label: 'Event won · Weekly Triple', data: eventWinTakeover(TRIPLE, 'VERA'), primary: 'See the final standings' },
     { key: 'bracket', label: 'Bracket champion', data: eventWinTakeover(BRACKET, 'VERA'), primary: 'See the final standings' },
     { key: 'standings', label: 'First in the standings', data: standingsTakeover(TOP, 'VERA', 'monthly'), primary: 'See the standings' },
+    { key: 'friends', label: 'Won the week among friends', data: friendsWeekTakeover(FRIENDS_WEEK), primary: 'See your friends' },
+  ]
+}
+
+/** A Today whose streak is `kept` days ending today, with one day on a freeze `frozenAgo` days back if asked. */
+function streakToday(kept: number, frozenAgo: number | null = null): TodayServer {
+  const span = kept + (frozenAgo == null ? 0 : 1)
+  const end = Date.UTC(2026, 9, 11)
+  const days: TodayServerDay[] = Array.from({ length: 35 }, (_, n) => {
+    const ago = 34 - n
+    const day = new Date(end - ago * 86_400_000).toISOString().slice(0, 10)
+    return { day, kept: ago < span && ago !== frozenAgo, frozen: ago === frozenAgo }
+  })
+  return {
+    day: '2026-10-11',
+    done: { hole: false, track: true, wanted: false },
+    results: { hole: null, track: null, wanted: null },
+    streak: { current: kept, best: kept },
+    week: days.slice(-7),
+    days,
+  }
+}
+
+/** The Dailies streak milestones' spotlights (MilestoneMoment), from made-up streaks. */
+function spots(): { key: string; label: string; server: TodayServer; day: number }[] {
+  return [
+    { key: 'streak3', label: '3 days · tickets', server: streakToday(3), day: 3 },
+    { key: 'streak7', label: '7 days · the Dailies pin', server: streakToday(7), day: 7 },
+    { key: 'streak30', label: '30 days · gold finish, one freeze', server: streakToday(30, 12), day: 30 },
+    { key: 'streak100', label: '100 days · the title', server: streakToday(100), day: 100 },
   ]
 }
 
 type Sample = {
   key: string
   note: string
+  /** A 2nd's or a 3rd's metal, for the card and its confetti. */
+  metal?: ReportMetal | null
   body: Omit<RunReportBodyProps, 'titleId' | 'primary'> & { primary?: RunReportBodyProps['primary'] }
 }
 
@@ -254,6 +329,7 @@ function reportSample(key: string, note: string, f: RunFacts, title: string, sub
   return {
     key,
     note,
+    metal: r.metal,
     body: {
       tickets: paid ? <RunTicketsLine paid={paid} game="crosswalk" /> : null,
       tier: r.tier,
@@ -265,6 +341,10 @@ function reportSample(key: string, note: string, f: RunFacts, title: string, sub
       scoreTone: r.scoreTone,
       lines: r.lines,
       race: r.race,
+      // A friend gone past, face to face, and the run to send them (as ScoreSaveCard has it).
+      ...(r.friend
+        ? { children: <FriendDuel friend={r.friend} />, secondary: { label: `Send ${r.friend.them.name} your run`, icon: 'flag' as const } }
+        : {}),
       who: <ReportWho name="VERA" text="Saved as VERA" />,
       links: [
         { label: 'Crosswalk board', onClick: () => {} },
@@ -377,6 +457,33 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
             ['VERA', 2, 616],
             ['IVY', 3, 580],
           ]),
+        },
+      }),
+      'Run over',
+      'The train got you',
+    ),
+    reportSample(
+      'silver',
+      'Onto the podium, 2nd: big, in silver, the top three under it.',
+      facts(436, { board: climbTo(436), priorBest: 350 }),
+      'Run over',
+      'The train got you',
+    ),
+    reportSample(
+      'bronze',
+      'Onto the podium, 3rd: big, in bronze.',
+      facts(410, { board: climbTo(410), priorBest: 350 }),
+      'Run over',
+      'Swept off the edge',
+    ),
+    reportSample(
+      'friend',
+      'A friend gone past: their face in the ribbon, the two of you face to face, and the run to send them.',
+      facts(436, {
+        friends: {
+          you: friendRow(2, 'VERA', 436, 'a2:e:ufo:0:7:deep:none:none'),
+          passed: [friendRow(3, 'MAYA', 433, 'a2:m:1:split:3:9:bold:none:none')],
+          next: friendRow(1, 'WES', 441),
         },
       }),
       'Run over',
@@ -610,6 +717,7 @@ export function DevCelebratePage() {
   // ?open=top or ?win=triple opens one on load, for a screenshot of the first paint.
   const [open, setOpen] = useState<string | null>(() => new URLSearchParams(window.location.search).get('open'))
   const [win, setWin] = useState<string | null>(() => new URLSearchParams(window.location.search).get('win'))
+  const [spot, setSpot] = useState<string | null>(() => new URLSearchParams(window.location.search).get('spot'))
   const [tag, setTag] = useState('VERA')
   const tagId = useId()
   const style = gameAccentStyle('crosswalk')
@@ -650,7 +758,7 @@ export function DevCelebratePage() {
           <div className="dev-reports">
             {list.map((s) => (
               <figure key={s.key} className="dev-reports__item">
-                <div className={`panel report report--${s.body.tier} report--static`} style={style}>
+                <div className={`panel report report--${s.body.tier}${s.metal ? ` report--${s.metal}` : ''} report--static`} style={style}>
                   <RunReportBody
                     titleId={`dev-${s.key}`}
                     primary={{ label: 'Play again' }}
@@ -682,6 +790,20 @@ export function DevCelebratePage() {
           </div>
         </section>
 
+        <section className="lst-block" aria-label="The spotlight">
+          <div className="lst-block__head">
+            <h2 className="lst-block__title">The spotlight</h2>
+            <p className="lst-block__note">a Dailies streak milestone (?spot=streak30 opens one on load)</p>
+          </div>
+          <div className="hero__actions" style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {spots().map((sp) => (
+              <button key={sp.key} type="button" className="hero__ghost" onClick={() => setSpot(sp.key)}>
+                {sp.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {opened ? (
           <RunReport
             label={`${opened.body.ribbon?.text ?? opened.body.eyebrow}, ${opened.body.score} rows`}
@@ -691,9 +813,21 @@ export function DevCelebratePage() {
             onEscape={() => setOpen(null)}
             primary={{ label: 'Play again', onClick: () => setOpen(null) }}
             leave={{ label: 'Leave', onClick: () => setOpen(null) }}
+            metal={opened.metal}
             {...opened.body}
           />
         ) : null}
+        {(() => {
+          const shown = spots().find((sp) => sp.key === spot)
+          if (!shown) return null
+          return (
+            <Spotlight
+              data={milestoneSpotlight(shown.server, shown.day)}
+              primary={milestoneWear(shown.day) ? { label: 'Put it on', onClick: () => setSpot(null) } : null}
+              onClose={() => setSpot(null)}
+            />
+          )
+        })()}
         {(() => {
           const shown = wins().find((w) => w.key === win)
           if (!shown?.data) return null

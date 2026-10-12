@@ -63,7 +63,7 @@ import { PushAsk, StreakPushAsk } from './PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { RaceReport, raceSubWords } from './RaceReport'
 import { SeasonRunLine } from './season/SeasonRun'
-import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
+import { FriendDuel, ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
 import { useShare } from './SharePanel'
 import { WinTakeover } from './WinTakeover'
 
@@ -621,9 +621,11 @@ export function ScoreSaveCard({
     who = <ReportWho name={savedAs} avatarId={data?.avatarId} text={`Saved as ${savedAs}`} />
   }
 
-  // A saved run can go to a friend; one that beat a friend's goes straight back.
+  // A saved run can go to a friend; one that beat a friend's goes straight back, and one that went past a
+  // friend on the board goes to them.
   const runId = facts?.runId ?? null
   const reply = facts?.challenge?.won ? facts.challenge : null
+  const passedFriend = data?.friend ? (facts?.friends?.passed[0] ?? null) : null
   if (phase === 'saved' && signedIn && savedAs && runId && !(outcome && !outcome.won)) {
     if (reply?.replyId && facing) {
       const replyId = reply.replyId
@@ -640,6 +642,32 @@ export function ScoreSaveCard({
             title: `Send it back to ${facing.name}`,
           })
           setChallenged(true)
+        },
+      }
+    } else if (passedFriend) {
+      // A friend gone past: the run goes to them, to take it back (FriendDuel says who and by how much).
+      secondary = {
+        label: sending ? 'Making the link…' : challengeCopied ? 'Copied' : `Send ${passedFriend.name} your run`,
+        shortLabel: sending ? 'Wait…' : challengeCopied ? 'Copied' : `Send ${passedFriend.name}`,
+        icon: 'flag',
+        disabled: sending,
+        onClick: () => {
+          setSending(true)
+          setSendError(null)
+          createChallenge({ game: gameSlug, scoreId: runId, name: savedAs })
+            .then((made) => {
+              share({
+                game: gameSlug,
+                id: made.id,
+                score,
+                name: savedAs,
+                message: replyMessage(gameSlug, passedFriend.best.score, score),
+                title: `Send ${passedFriend.name} your run`,
+              })
+              setChallenged(true)
+            })
+            .catch(() => setSendError('Couldn’t make the link. Try again in a moment.'))
+            .finally(() => setSending(false))
         },
       }
     } else {
@@ -740,6 +768,7 @@ export function ScoreSaveCard({
         // Esc goes back to the start card, except while a tag is being typed.
         onEscape={phase === 'needName' ? undefined : onDone}
         tier={tier}
+        metal={data?.metal ?? null}
         ribbon={ribbon}
         eyebrow={race && kicker ? kicker : title}
         // A racing daily's time as its clock and its medals say it (59.00s); its boards keep the thousandths.
@@ -794,6 +823,8 @@ export function ScoreSaveCard({
         links={links}
         leave={{ label: 'Leave', onClick: () => leavePlayTo(gameHref(gameSlug)) }}
       >
+        {/* A friend gone past, face to face, before whatever else the moment asks. */}
+        {phase === 'saved' && data?.friend ? <FriendDuel friend={data.friend} /> : null}
         {block}
       </RunReport>
       {sharePanel}
