@@ -323,7 +323,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
     return <RankPage player={route.player} period={route.period ?? defaultPeriod()} />
   }
   if (route.name === 'rankHow') {
-    return <RankHowPage player={route.player} period={route.period ?? defaultPeriod()} />
+    return <RankHowPage player={route.player} period={route.period ?? defaultPeriod()} group={route.group} />
   }
   if (route.name === 'leaderboards') {
     return <LeaderboardsPage period={route.period ?? defaultPeriod()} />

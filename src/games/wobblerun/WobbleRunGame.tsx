@@ -72,6 +72,7 @@ import { WobbleScene, type GhostShow } from './WobbleScene'
 import { formatRun, formatWobblerunBoardScore, splashWords, wobblerunBoardScore, wobblerunMsFromBoardScore } from './score'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
 import { TomorrowGauntlet } from './TomorrowGauntlet'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 const SLUG = 'wobblerun'
 
@@ -1238,11 +1239,14 @@ function WobbleRunDay({
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const g = gameRef.current!
       if (g.phase === 'menu') {
         if (e.code !== 'Space' && e.code !== 'Enter') return
-        // The lab's picker has buttons of its own: Space or Enter on one presses it, never starts a run under it.
-        if (e.target instanceof Element && e.target.closest('.wobblerun-lab')) return
+        // A focused button or link on the start card, or on the lab's picker, answers the key itself: it never
+        // starts a run under it.
+        if (controlTakesKey(e)) return
         e.preventDefault()
         // The Space that starts the run is never a jump: presses are let go at the start, and the bean can't move till GO.
         if (!e.repeat && performance.now() >= startGrace.current) start()

@@ -19,7 +19,7 @@ import { numberWord } from '../lib/numberWord'
 import { andList, ordinal } from '../lib/profileMath'
 import { medalFor, paceMsOf, type Medal } from '../lib/raceMedals'
 import { doneOf, markOf, type DayMark } from '../lib/pastDays'
-import { liveDailies, TODAY_DAILIES, type TodayDaily, type TodayKey, type TodayServerDay } from '../lib/today'
+import { pastDailies, TODAY_DAILIES, type TodayDaily, type TodayKey, type TodayServerDay } from '../lib/today'
 import { DayTicket, DoneCount, type TicketTile } from './DayTicket'
 import { capital, dayParts, shortDate, WEEKDAY_NAMES } from './todayPunches'
 
@@ -96,18 +96,20 @@ function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServ
   // The account's word first (it counts every tag it owns); the board's, for the tag on show, besides.
   const done = Boolean(said?.done?.includes(daily.key)) || you != null
   const verb = dailyWords(slug).verb
+  // A game hidden since (on deck) still shows how it went, but its tile links nowhere.
+  const listed = isGameListed(slug)
   return {
     key: daily.key,
     slug,
     game,
     course: `${kicker} · ${title}`,
-    page,
+    page: listed ? page : null,
     done,
     result: you ? formatLeaderboardScore(slug, you.score) : done ? 'Done' : null,
     // "38th of 65", where the game had places that day.
     note: you?.place != null && entry ? `${ordinal(you.place)} of ${entry.players}` : null,
     medal: you ? medalOf(daily.key, day, you.score) : null,
-    play,
+    play: listed ? play : null,
     // A day in the archive, without Plus: its play page says what the archive is.
     go: locked ? 'Plus' : verb,
     goLabel: locked ? `${game}, ${kicker}: in the archive, with Plus` : `${verb} ${game}, ${kicker}`,
@@ -130,6 +132,7 @@ export function PastDayTicket({
   streak,
   name,
   signedIn,
+  signedOut,
 }: {
   day: string
   /** The account's word on the day, when it has one. */
@@ -139,6 +142,8 @@ export function PastDayTicket({
   /** The tag whose results are shown. */
   name: string
   signedIn: boolean
+  /** No session at all: the only time the ticket asks you to sign in. */
+  signedOut: boolean
 }) {
   // Each daily's days, every time and in the same order: a hook a game. Only the day's own show.
   const asked: Record<TodayKey, DailyDays> = {
@@ -152,7 +157,9 @@ export function PastDayTicket({
     gauntlet: useDailyDays('wobblerun', name),
     plates: useDailyDays('centroid', name),
   }
-  const card = said?.live ? TODAY_DAILIES.filter((d) => said.live!.includes(d.key) && isGameListed(d.slug)) : liveDailies(day)
+  // The day's card as the API counted it, a game hidden since too (Ace Chase's hole was on it until 2026-10-05): the
+  // tiles are what the count, Kept and Full are of. Without its word, the site's own list for the day, by the same rule.
+  const card = said?.live ? TODAY_DAILIES.filter((d) => said.live!.includes(d.key)) : pastDailies(day)
   const archiveOpen = useArchiveOpen()
   const locked = inArchive(day) && archiveOpen === false
   const tiles = card.map((d) => tileOf(d, day, asked[d.key], said, locked))
@@ -171,7 +178,7 @@ export function PastDayTicket({
       kicker={shortDate(day)}
       streak={mark ? streak : null}
       full={mark === 'full'}
-      line={mark ? markLine(mark, done, total) : signedIn ? null : 'Sign in, and each day you play is marked here.'}
+      line={mark ? markLine(mark, done, total) : signedOut ? 'Sign in, and each day you play is marked here.' : null}
       punched={signedIn ? { done, total } : null}
       tiles={tiles}
     >

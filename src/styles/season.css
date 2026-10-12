@@ -252,11 +252,16 @@ html[data-theme='dark'] .home-banner.home-banner--season {
   height: 100%;
 }
 
+/*
+ * Over the words, the banner's width. Past the height cap the scene is cropped (its svg slices), not narrowed;
+ * the cap rises with the width, so it's never wider than about 2.7 to 1 and keeps its moon.
+ */
 @media (max-width: 56rem) {
   .home-banner__art--season {
+    width: 100%;
     min-height: 0;
     aspect-ratio: 16 / 8.5;
-    max-height: 14rem;
+    max-height: max(14rem, 36vw);
   }
 }
 
@@ -322,7 +327,6 @@ html[data-theme] .gh-tag.season-tag {
 .season-spotcard:hover,
 .season-spotcard:focus-visible {
   transform: translateY(-1px);
-  outline: none;
 }
 
 .season-spotcard__art {
@@ -393,7 +397,8 @@ html[data-theme] .gh-tag.season-tag {
   padding: 0.3rem 0;
   border: 0;
   background: none;
-  color: color-mix(in srgb, var(--gh-accent, var(--space-orange)) 70%, var(--ink));
+  /* On a game's page, its colour for small words (hub.css); the season's orange elsewhere. */
+  color: var(--gh-accent-ink, color-mix(in srgb, var(--space-orange) 70%, var(--ink)));
   font: inherit;
   font-size: 0.82rem;
   font-weight: 800;
@@ -471,6 +476,16 @@ html[data-theme] .gh-tag.season-tag {
   border-color: rgba(var(--ink-rgb), 0.26);
 }
 
+/* The row scrolls, so it clips past its edge: the keyboard ring goes inside the tile, just in from its 2px border. */
+.skin-pick__row .skin-tile:focus-visible {
+  outline-offset: -4px;
+}
+
+/* While the fade and the › button lie over the row's end, a focused tile is scrolled clear of them (lib/focusReveal). */
+.skin-pick__wrap--more .skin-pick__row {
+  scroll-padding-inline-end: 3.5rem;
+}
+
 .skin-tile--on,
 .skin-tile--on:hover {
   border-color: var(--gh-accent, var(--space-orange));
@@ -509,7 +524,7 @@ html[data-theme] .gh-tag.season-tag {
 }
 
 .skin-tile--on .skin-tile__note {
-  color: color-mix(in srgb, var(--gh-accent, var(--space-orange)) 70%, var(--ink));
+  color: var(--gh-accent-ink, color-mix(in srgb, var(--space-orange) 70%, var(--ink)));
 }
 
 /* Still to win: dimmed, saying where; a Hangar one dashed, with its price. */
@@ -526,8 +541,9 @@ html[data-theme] .gh-tag.season-tag {
   border-style: dashed;
 }
 
+/* The ticket's words, a shade deeper: the tile sits on the game's tint, not white. */
 .skin-tile__note--price {
-  color: var(--ticket-text, #c2461d);
+  color: color-mix(in srgb, var(--ticket-text, #c2461d) 80%, #000);
 }
 
 html[data-theme='dark'] .skin-tile__note--price {
@@ -541,8 +557,9 @@ html[data-theme='dark'] .skin-tile__note--price {
   cursor: pointer;
 }
 
+/* A shade deeper than his card's mint: it sits on the game's tint here, and reads on the deepest (4.5:1). */
 .skin-tile__note--blip {
-  color: #13715f;
+  color: #0f6655;
 }
 
 html[data-theme='dark'] .skin-tile__note--blip {
@@ -859,6 +876,7 @@ html[data-theme='light'] .skin-mark svg {
   border: 1px solid rgba(var(--space-violet-rgb), 0.45);
   box-shadow: 0 16px 40px rgba(var(--space-night-rgb), 0.3);
   color: var(--space-star);
+  --focus-ring: var(--focus-ring-on-dark);
 }
 
 .season-hero--wait {
@@ -1024,6 +1042,11 @@ html[data-theme='light'] .skin-mark svg {
   cursor: pointer;
 }
 
+/* The level while a session's account is asked for: the card is night in both themes, so its own light. */
+.season-level .skel-line {
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
 /* The pass: a row of its levels that scrolls, the next one lit. */
 .season-pass {
   display: flex;
@@ -1078,7 +1101,6 @@ html[data-theme='light'] .skin-mark svg {
 .season-pass__nav button:hover,
 .season-pass__nav button:focus-visible {
   background: rgba(var(--ink-rgb), 0.06);
-  outline: none;
 }
 
 .season-track {
@@ -1321,7 +1343,6 @@ html[data-theme='dark'] .season-tile__got {
 .season-plus__member:hover,
 .season-plus__member:focus-visible {
   border-color: var(--space-violet);
-  outline: none;
 }
 
 .season-plus__buy b,
@@ -1361,10 +1382,14 @@ html[data-theme='dark'] .season-tile__got {
   color: color-mix(in srgb, var(--space-orange) 65%, var(--ink));
 }
 
+/* On the light page, the season colour's own ink, so the small caps read (4.5:1) on the strip's tint. */
+html[data-theme='light'] .season-track__bonus span {
+  color: var(--space-orange-ink);
+}
+
 .season-plus__buy:hover:not(:disabled),
 .season-plus__buy:focus-visible {
   filter: brightness(1.06);
-  outline: none;
 }
 
 .season-plus__buy:disabled {
@@ -1681,6 +1706,11 @@ html[data-theme='light'] .season-tile.season-tile--sought {
   color: color-mix(in srgb, var(--space-orange) 70%, var(--ink));
 }
 
+/* On the light page, the season colour's own ink, so the small caps read (4.5:1). */
+html[data-theme='light'] .season-skincard__group--plus {
+  color: var(--space-orange-ink);
+}
+
 .season-skincard__see {
   display: inline-flex;
   align-items: center;
@@ -1928,6 +1958,7 @@ a.season-skinchip__in:focus-visible {
   background-size: auto, 300px 300px;
   border: 1px solid rgba(var(--space-violet-rgb), 0.45);
   color: #ffffff;
+  --focus-ring: var(--focus-ring-on-dark);
 }
 
 .pass-stage__kick {
@@ -1964,7 +1995,8 @@ a.season-skinchip__in:focus-visible {
   padding: 0.25rem 0.7rem;
   border-radius: 999px;
   background: rgba(var(--space-orange-rgb), 0.18);
-  color: var(--space-orange);
+  /* The season's chip ink, a lighter orange, so the tiny caps read on the night (4.5:1). */
+  color: var(--space-chip-ink);
   font-family: var(--space-font);
   font-size: 0.62rem;
   font-weight: 700;

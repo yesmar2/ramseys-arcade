@@ -14,7 +14,7 @@ import { dailyTabHref, homeHref, navigate, periodFromRoute, useRoute } from '../
 import { boardPeriodFor } from '../lib/allTime'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
+import { inkOn, mixColor, readableFill, readableText } from '../lib/color'
 import type { DailyTab } from '../lib/dailyWords'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
@@ -203,8 +203,14 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const style = {
     '--gh-accent': accent,
     '--gh-ink': inkOn(accent),
+    '--gh-fill': readableFill(accent),
+    // The game's colour for small words (hub.css): on the light page as it reads on a tag over the hero (its
+    // deepest tint), on the dark one the usual light mix, lighter only where it has to be.
+    '--gh-text': readableText(accent, mixColor(accent, '#ffffff', 0.71)),
+    '--gh-text-dark': readableText(mixColor(accent, '#e7eef3', 0.3), mixColor(accent, '#18242e', 0.67), '#ffffff'),
     '--board-accent': accent,
     '--period-accent': accent,
+    '--period-text': readableText(accent, mixColor(accent, '#ffffff', 0.86)),
     '--thumb-accent': accent,
   } as CSSProperties
 

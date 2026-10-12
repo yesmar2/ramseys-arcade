@@ -5,14 +5,14 @@ import { PeriodLabel } from '../components/PeriodLabel'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { openSiteMenu } from '../components/siteNav'
 import { isDailyGame, isRankedGame, PALETTE } from '../data/games'
-import { gamePlayHref, rankHowHref, rankHref } from '../hooks/useHashRoute'
+import { gamePlayHref, rankHowHref, rankHref, standingsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { useScoresAt } from '../hooks/useProfileBoards'
+import { useIsPlayer, useScoresAt } from '../hooks/useProfileBoards'
 import { useDailyDays, useStandingsAbove } from '../hooks/useRankHow'
 import { useScoreboard, type ScoreboardData } from '../hooks/useScoreboard'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { scopeName, scopeWhere, useActiveGroup } from '../lib/groups'
+import { appendGroupQuery, scopeWhere, useActiveGroup, useScopeName } from '../lib/groups'
 import {
   coerceVisiblePeriod,
   normalizePlayerName,
@@ -148,10 +148,10 @@ function Crumbs({ who, period }: { who: Who; period: LeaderboardPeriod }) {
 }
 
 /**
- * This week, This month, All time: each one this page at that period, as the header's control makes it; and
- * while a season has standings, the Season after them.
+ * This week, This month, All time: each one this page at that period, the page's own (the header's stays as it
+ * is); and while a season has standings, the Season after them. A group of the page's own goes along.
  */
-function PeriodTabs({ period, player }: { period: LeaderboardPeriod; player?: string }) {
+function PeriodTabs({ period, player, group }: { period: LeaderboardPeriod; player?: string; group?: string }) {
   const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, seasonHasStandings(useSeason().season) || period === 'season')
   const four = periods.length > 3
   return (
@@ -160,7 +160,7 @@ function PeriodTabs({ period, player }: { period: LeaderboardPeriod; player?: st
         <a
           key={p}
           className={`seg__item${p === period ? ' seg__item--active' : ''}`}
-          href={rankHowHref(player, p)}
+          href={group ? appendGroupQuery(rankHowHref(player, p), group) : rankHowHref(player, p)}
           aria-current={p === period ? 'page' : undefined}
         >
           <PeriodLabel period={p} four={four} />
@@ -1183,6 +1183,7 @@ function WholeBoard({
   field,
   score,
   groupId,
+  pageGroup,
   who,
   words,
 }: {
@@ -1191,13 +1192,15 @@ function WholeBoard({
   field: number
   score: number
   groupId: string | null
+  /** `groupId` when it's the page's own, from its address. */
+  pageGroup?: string
   who: Who
   words: PeriodWords
 }) {
   const lines = boardLines(field)
   // The lines still ahead, loosest first: the first is the one to chase next.
   const ahead = lines.filter((l) => l.rank < rank)
-  const { scores } = useScoresAt(period, ahead.map((l) => l.rank), groupId)
+  const { scores } = useScoresAt(period, ahead.map((l) => l.rank), groupId, pageGroup)
   const next = ahead[0]
   const need = (rankAt: number) => {
     const at = scores[rankAt]
@@ -1457,7 +1460,7 @@ function General({ signedIn, loading, period }: { signedIn: boolean; loading: bo
 
 /* ---------- one player's ---------- */
 
-function Loading({ who, period }: { who: Who; period: LeaderboardPeriod }) {
+function Loading({ who, period, group }: { who: Who; period: LeaderboardPeriod; group?: string }) {
   return (
     <>
       <Crumbs who={who} period={period} />
@@ -1465,7 +1468,7 @@ function Loading({ who, period }: { who: Who; period: LeaderboardPeriod }) {
         kicker={who.self ? `How your rank works · ${who.name}` : `How ${who.name}’s rank works`}
         title={<span className="skel-line" style={{ '--skel-w': '9ch' } as CSSProperties} />}
         lede={<span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />}
-        tabs={<PeriodTabs period={period} player={who.self ? undefined : who.name} />}
+        tabs={<PeriodTabs period={period} player={who.self ? undefined : who.name} group={group} />}
       />
       <div className="rh-loading" aria-hidden="true">
         <span />
@@ -1480,32 +1483,55 @@ function PlayerHow({
   self,
   period,
   groupId,
+  pageGroup,
   groupName,
 }: {
   name: string
   self: boolean
   period: LeaderboardPeriod
   groupId: string | null
+  /** `groupId` when it's the page's own, from its address (a group's page links here with it), not the site's. */
+  pageGroup?: string
   groupName: string | undefined
 }) {
   const who: Who = { self, name }
-  const data = useScoreboard(period, name, groupId)
+  const data = useScoreboard(period, name, groupId, pageGroup)
+  // Someone else's tag, made up or from before a rename, may be nobody's: then there's no rank to work out. Runs
+  // this period settle it at once, whoever holds the tag.
+  const isPlayer = useIsPlayer(self ? '' : name, Object.keys(data.you?.byGame ?? {}).length > 0)
   // The season's words and days come from it (lib/rankHow.ts): drawn again when it comes.
   useSeason()
   const you = data.you
   const rank = !data.loading ? (you?.rank ?? null) : null
   const byGame: ByGame = you?.byGame ?? {}
   const dailySlugs = Object.keys(byGame).filter((slug) => isDailyGame(slug))
-  const days = useDailyDays(dailySlugs, name, groupId)
-  const above = useStandingsAbove(period, rank, groupId)
+  const days = useDailyDays(dailySlugs, name, groupId, pageGroup)
+  const above = useStandingsAbove(period, rank, groupId, pageGroup)
   const words = periodWords(period)
   const where = scopeWhere(groupId)
   const today = boardDay()
   const player = self ? undefined : name
   const kicker = self ? `How your rank works · ${name}` : `How ${name}’s rank works`
-  const tabs = <PeriodTabs period={period} player={player} />
+  const tabs = <PeriodTabs period={period} player={player} group={pageGroup} />
 
-  if (data.loading) return <Loading who={who} period={period} />
+  if (data.loading || isPlayer === null) return <Loading who={who} period={period} group={pageGroup} />
+
+  if (isPlayer === false) {
+    return (
+      <>
+        <Hero kicker="How ranks work" title={`No player called ${name}`} lede="Nobody has this gamer tag. It may have changed, or been mistyped." words />
+        <section className="rh-card rh-invite" aria-labelledby="rh-invite-h">
+          <h2 id="rh-invite-h">Looking for someone?</h2>
+          <p>Find them on the standings by any part of their tag.</p>
+          <a className="rh-invite__go" href={standingsHref(period)}>
+            Find a player
+          </a>
+        </section>
+        <GeneralSteps words={words} />
+        <FinePrint words={words} />
+      </>
+    )
+  }
 
   if (data.error || !you) {
     return (
@@ -1594,7 +1620,7 @@ function PlayerHow({
       />
       <WaysStep ways={ways} loading={!above} who={who} words={words}>
         {you.totalPlayers > 1 ? (
-          <WholeBoard period={period} rank={place} field={you.totalPlayers} score={you.score} groupId={groupId} who={who} words={words} />
+          <WholeBoard period={period} rank={place} field={you.totalPlayers} score={you.score} groupId={groupId} pageGroup={pageGroup} who={who} words={words} />
         ) : null}
       </WaysStep>
       <FinePrint words={words} tie={aboveRow ? tieLine(me, aboveRow, self) : null} />
@@ -1602,8 +1628,19 @@ function PlayerHow({
   )
 }
 
-/** How your rank works: yours, or `player`'s, at the route's period (the header's, when the address doesn't say). */
-export function RankHowPage({ player, period: routePeriod }: { player?: string; period?: LeaderboardPeriod }) {
+/**
+ * How your rank works: yours, or `player`'s, at the route's period (the header's, when the address doesn't say),
+ * among the route's `group` when its address has one (a group's page links here with it), else the site's.
+ */
+export function RankHowPage({
+  player,
+  period: routePeriod,
+  group,
+}: {
+  player?: string
+  period?: LeaderboardPeriod
+  group?: string
+}) {
   const globalPeriod = useDefaultPeriod()
   const period = coerceVisiblePeriod(routePeriod ?? globalPeriod)
   const { signedIn, loading } = useAuth()
@@ -1611,12 +1648,22 @@ export function RankHowPage({ player, period: routePeriod }: { player?: string; 
   const asked = normalizePlayerName(player ?? '')
   const name = asked || myName
   const self = !asked || asked === myName
-  const groupId = useActiveGroup()
-  const groupName = scopeName(groupId)
+  const siteGroup = useActiveGroup()
+  const groupId = group ?? siteGroup
+  // Said again once the list of your groups comes, and with it the name (and where, in PlayerHow).
+  const groupName = useScopeName(groupId)
   return (
     <PageShell innerClassName="lb-page__inner rh-page">
       {name ? (
-        <PlayerHow key={`${name}|${groupId ?? ''}`} name={name} self={self} period={period} groupId={groupId} groupName={groupName} />
+        <PlayerHow
+          key={`${name}|${groupId ?? ''}`}
+          name={name}
+          self={self}
+          period={period}
+          groupId={groupId}
+          pageGroup={group}
+          groupName={groupName}
+        />
       ) : (
         <General signedIn={signedIn} loading={loading} period={period} />
       )}

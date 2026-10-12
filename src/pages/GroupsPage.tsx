@@ -58,7 +58,7 @@ function inviteUrl(id: string, code: string) {
  * one from a link. With no group yet, what a group is.
  */
 export function GroupsPage() {
-  const { account, loading: authLoading } = useAuth()
+  const { account, signedOut, loading: authLoading } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const activeId = useActiveGroup()
   const { friends, loaded: friendsLoaded } = useFriends()
@@ -88,7 +88,8 @@ export function GroupsPage() {
 
   const onCreate = async (e: FormEvent) => {
     e.preventDefault()
-    if (busy || !account) return
+    // A session whose account couldn't be asked for starts one all the same: the API knows whose it is.
+    if (busy || signedOut) return
     setBusy(true)
     setError(null)
     try {
@@ -101,7 +102,9 @@ export function GroupsPage() {
     }
   }
 
-  const waiting = loading || (authLoading && !account && groups.length === 0)
+  // While a session's account is first asked for, the page waits rather than ask it to sign in. Not reached
+  // (anything but a 401), its groups are the session's all the same: only its friends' card waits for the account.
+  const waiting = loading || (authLoading && !account)
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
@@ -149,7 +152,7 @@ export function GroupsPage() {
               <div className="grp-index__side">
                 <AddFriendCard me={playerName} />
                 <StartGroupCard
-                  signedIn={Boolean(account)}
+                  signedIn={!signedOut}
                   full={groups.length >= GROUP_LIMIT}
                   name={name}
                   setName={setName}

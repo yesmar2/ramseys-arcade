@@ -37,7 +37,6 @@
 .pviews__view:hover,
 .pviews__view:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .pviews__view svg {
@@ -69,6 +68,11 @@ html[data-theme='dark'] .pviews__view--on {
   font-weight: 800;
 }
 
+/* Deeper on the light page, so the small words read on the tint (4.5:1). */
+html[data-theme='light'] .pviews__only {
+  color: color-mix(in srgb, var(--pv-accent) 45%, var(--ink));
+}
+
 .pviews__only svg {
   width: 0.75rem;
   height: 0.75rem;
@@ -86,7 +90,6 @@ html[data-theme='dark'] .pviews__view--on {
 .pgames__progress:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.2em;
-  outline: none;
 }
 
 .pgames__progress + .pgames__all {
@@ -148,7 +151,6 @@ html[data-theme='dark'] .sv {
 .sv-more:hover,
 .sv-more:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .sv-more svg {
@@ -184,7 +186,6 @@ html[data-theme='dark'] .sv {
 .sv-seg > button:hover,
 .sv-seg > button:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .sv-seg > button[aria-pressed='true'] {
@@ -483,7 +484,6 @@ html[data-theme='light'] .sv-hero {
 .sv-rec:hover,
 .sv-rec:focus-visible {
   background: rgba(var(--ink-rgb), 0.04);
-  outline: none;
 }
 
 .sv-rec__art .inline-thumb,
@@ -619,7 +619,6 @@ html[data-theme='light'] .sv-hero {
 .sv-game:hover,
 .sv-game:focus-visible {
   background: rgba(var(--ink-rgb), 0.04);
-  outline: none;
 }
 
 .sv-game__art .inline-thumb {

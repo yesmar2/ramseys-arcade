@@ -8,7 +8,7 @@ import { useDeviceType } from '../lib/device'
 import { gapBetween, gapFigure } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
-import { scopeName, useActiveGroup } from '../lib/groups'
+import { useActiveGroup, useScope } from '../lib/groups'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import {
@@ -23,7 +23,7 @@ import { periodWord } from '../lib/profileMath'
 import { resolveGameAccent } from '../lib/theme'
 import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
+import { bannerText, bannerTextDark, inkOn, readableFill } from '../lib/color'
 import { preloadGamePage } from '../pages/gamePages'
 import { liveSeason, useSeason, seasonTop } from '../lib/season'
 import { EventCountdown } from './EventCountdown'
@@ -323,6 +323,8 @@ export function HomeHero() {
   // Every figure below is group-scoped on the wire; switching group has to
   // refetch them or the banner keeps quoting the last group's board.
   const groupId = useActiveGroup()
+  // The group by name, for the rung's note: said again once the list of your groups comes with it.
+  const group = useScope().name
   const [scores, setScores] = useState<HeroScores | null>(null)
   const standing = useGlobalRank()
   const { official, loading: eventsLoading } = useLiveEvents(name)
@@ -412,7 +414,14 @@ export function HomeHero() {
   if (!game) return null
 
   const accent = game.accent
-  const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
+  const style = {
+    '--hero-accent': accent,
+    '--hero-ink': inkOn(accent),
+    '--hero-fill': readableFill(accent),
+    '--hero-text': bannerText(accent),
+    '--hero-text-dark': bannerTextDark(accent),
+    '--tile-accent': accent,
+  } as CSSProperties
   const when = periodWord(period)
   const boardWord = periodWord(boardPeriod)
   const fmt = (score: number) => formatLeaderboardScore(slug, score)
@@ -503,7 +512,6 @@ export function HomeHero() {
       : daily
         ? 'Your place'
         : 'Your record'
-    const group = scopeName(groupId)
     const ahead = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! - 1) : undefined
     const trailing = standing.rank != null ? standing.nearby?.find((n) => n.rank === standing.rank! + 1) : undefined
 

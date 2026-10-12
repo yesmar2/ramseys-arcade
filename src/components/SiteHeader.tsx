@@ -13,7 +13,7 @@ import { AVATAR_EVENT, AVATARS_ENABLED, getLocalAvatarId } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { scopeWhere, useActiveGroup } from '../lib/groups'
+import { useScope } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { lockScroll, unlockScroll } from '../lib/scrollLock'
 import { currentTheme, THEME_EVENT, type Theme } from '../lib/theme'
@@ -44,7 +44,7 @@ import { PlayerName } from './PlayerName'
 export function SiteHeader() {
   const route = useRoute()
   const routeKey = JSON.stringify(route)
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const { rank, avatarId: rankAvatarId } = useGlobalRank()
   const rankLoading = useGlobalRankLoading()
@@ -55,7 +55,8 @@ export function SiteHeader() {
   const friendRequests = friendsState.incoming.length
   const notes = useNotifications(signedIn)
   const period = useDefaultPeriod()
-  const groupId = useActiveGroup()
+  // "in OFFICE", for the menu's standing: said again once the list of your groups comes with the name.
+  const { where } = useScope()
   // Editing the avatar needs a session, or the dev impersonation which carries a claim token.
   const canEditAvatar = (signedIn || Boolean(impersonation)) && AVATARS_ENABLED && Boolean(playerName)
 
@@ -202,11 +203,14 @@ export function SiteHeader() {
   // Your own player card is where You leads, so You shows as the current place there.
   const onOwnCard =
     tagged && route.name === 'rank' && (!route.player || normalizePlayerName(route.player) === playerName)
-  const where = scopeWhere(groupId)
   const alert = notes.unread > 0 || friendRequests > 0 || inviteCount > 0
 
   const youLabel = !signedIn
-    ? 'Menu: sign in, theme and sounds'
+    ? signedOut
+      ? 'Menu: sign in, theme and sounds'
+      : authLoading
+        ? 'Your menu'
+        : 'Your menu: couldn’t reach your account'
     : !playerName
       ? 'Your menu: pick a gamer tag'
       : impersonation
@@ -301,6 +305,21 @@ export function SiteHeader() {
                     aria-hidden="true"
                   />
                 ) : null}
+              </button>
+            ) : !signedIn && !signedOut ? (
+              // A session whose account isn't known yet: You's shape, never Sign in.
+              <button
+                type="button"
+                className={`site-you${menuOpen ? ' site-you--open' : ''}`}
+                aria-label={youLabel}
+                title={youLabel}
+                aria-expanded={menuOpen}
+                aria-controls={menuId}
+                aria-haspopup="dialog"
+                onClick={toggleMenu}
+              >
+                <span className="site-you__mark" />
+                {authLoading ? <span className="skel-line" aria-hidden="true" /> : null}
               </button>
             ) : (
               <button

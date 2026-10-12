@@ -126,7 +126,6 @@
 .ms__chip:hover,
 .ms__chip:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  outline: none;
 }
 
 .ms__chip--on {

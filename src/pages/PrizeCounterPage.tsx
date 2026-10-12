@@ -66,7 +66,7 @@ function daysOfPlay(tickets: number) {
 }
 
 export function PrizeCounterPage() {
-  const { signedIn, loading: authLoading } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const name = normalizePlayerName(usePlayerName())
   const tickets = useTickets()
   const avatarId = useMyAvatarId(name)
@@ -205,12 +205,18 @@ export function PrizeCounterPage() {
                   </p>
                 )}
               </div>
-            ) : (
+            ) : signedOut ? (
               <div className="counter-hero__row">
-                <button type="button" className="counter-signin" onClick={openSiteMenu} disabled={authLoading}>
+                <button type="button" className="counter-signin" onClick={openSiteMenu}>
                   Sign in to collect tickets
                 </button>
                 <span className="counter-signin__note">Playing is free. Tickets are kept on your account, with your scores.</span>
+              </div>
+            ) : (
+              // A session whose account isn't known yet: the room your tickets and your goal take, and no Sign in.
+              <div className="counter-hero__row" aria-hidden="true">
+                <span className="counter-led skel-btn" style={{ width: '24.25rem', maxWidth: '100%' }} />
+                <span className="counter-goal skel-btn" />
               </div>
             )}
           </div>

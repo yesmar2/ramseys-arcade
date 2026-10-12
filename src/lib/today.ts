@@ -182,6 +182,18 @@ export function liveDailies(day: string, server?: Pick<TodayServer, 'day' | 'liv
   )
 }
 
+/**
+ * A past day's ticket as the API's todayRule judges it, for when the API hasn't said (signed out): as
+ * liveDailies, but one that has come off the ticket stays on the days it was on, hidden since or not (Ace
+ * Chase's hole, on deck after it left). Not liveDailies itself, which a day's share card (scripts/today-cards.mjs)
+ * draws too, with a link to play each one.
+ */
+export function pastDailies(day: string): TodayDaily[] {
+  return TODAY_DAILIES.filter(
+    (d) => d.from != null && d.from <= day && (d.until == null || day <= d.until) && (d.until != null || isGameListed(d.slug)),
+  )
+}
+
 /** A day's puzzles under the ticket ("Also today"): the dailies that have come off it, whose game is listed. */
 export function alsoDailies(day: string): TodayDaily[] {
   return TODAY_DAILIES.filter((d) => d.until != null && d.until < day && d.from != null && d.from <= day && isGameListed(d.slug))

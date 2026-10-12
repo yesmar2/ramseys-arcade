@@ -1270,6 +1270,12 @@ html[data-theme='light'] .rh-mark--next > span b {
   cursor: pointer;
 }
 
+/* As a link: Find a player, for a tag nobody has. */
+a.rh-invite__go {
+  display: inline-flex;
+  align-items: center;
+}
+
 .rh-loading {
   display: flex;
   flex-direction: column;

@@ -103,7 +103,6 @@
 .hero__back:focus-visible {
   color: var(--ink);
   background: rgba(var(--ink-rgb), 0.06);
-  outline: none;
 }
 
 .hero__tools {
@@ -130,7 +129,6 @@
 .hero__tool:focus-visible:not(:disabled) {
   border-color: color-mix(in srgb, var(--hero-accent) 45%, transparent);
   color: var(--hero-accent);
-  outline: none;
 }
 
 .hero__tool:disabled {
@@ -350,7 +348,6 @@
 .hero__cta:focus-visible:not(:disabled) {
   filter: brightness(1.06);
   transform: translateY(-1px);
-  outline: none;
 }
 
 .hero__cta:disabled {
@@ -377,7 +374,6 @@
 .hero__ghost:hover:not(:disabled),
 .hero__ghost:focus-visible:not(:disabled) {
   background: color-mix(in srgb, var(--hero-accent) 14%, var(--surface));
-  outline: none;
 }
 
 .hero__state {

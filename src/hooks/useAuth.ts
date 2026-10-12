@@ -17,12 +17,46 @@ let inflightGeneration = -1
 let lastMeFetchAt = 0
 const ME_CACHE_MS = 60_000
 
+/*
+ * /auth/me not reached (anything but a 401, which ends the session): while the session's account isn't known,
+ * it's asked again on its own, soon and then less often. Every useAuth hears how any asking went (ME_EVENT), not
+ * only the ones that asked: a menu just opened may be the one whose asking gets through.
+ */
+const ME_EVENT = 'arcade-auth-me'
+const RETRY_FIRST_MS = 2_000
+const RETRY_MOST_MS = 60_000
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+let retryWait = 0
+
+function stopRetrying() {
+  if (retryTimer) clearTimeout(retryTimer)
+  retryTimer = null
+  retryWait = 0
+}
+
+function retryLater() {
+  if (retryTimer || typeof window === 'undefined') return
+  retryWait = retryWait ? Math.min(retryWait * 2, RETRY_MOST_MS) : RETRY_FIRST_MS
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    void loadAuthMe(true)
+  }, retryWait)
+}
+
+/** Ask /auth/me again now (the menu's Try again), rather than at the next retry: every useAuth hears the answer. */
+export async function retryAuth(): Promise<void> {
+  if (retryTimer) clearTimeout(retryTimer)
+  retryTimer = null
+  await loadAuthMe(true)
+}
+
 async function loadAuthMe(force = false): Promise<Account | null> {
   if (!getSessionToken()) {
     cachedAccount = null
     cachedLimits = FREE_LIMITS
     inflightMe = null
     inflightGeneration = -1
+    stopRetrying()
     return null
   }
   const generation = getAuthGeneration()
@@ -49,13 +83,18 @@ async function loadAuthMe(force = false): Promise<Account | null> {
       cachedAccount = next
       cachedLimits = me?.limits ?? FREE_LIMITS
       lastMeFetchAt = Date.now()
+      // Answered: whose the session is, or (a 401) that it's over.
+      stopRetrying()
       return next
     } catch {
+      if (!cachedAccount) retryLater()
       return cachedAccount
     } finally {
       if (inflightGeneration === generation) {
         inflightMe = null
       }
+      // Whichever hook asked, every one takes the answer (or the failure) up.
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event(ME_EVENT))
     }
   })()
 
@@ -68,6 +107,9 @@ export function useAuth() {
   const [loading, setLoading] = useState(
     () => Boolean(getSessionToken()) && !cachedAccount,
   )
+  // Whether this device has a session: none is signed out, and one is signed in once /auth/me says whose it is.
+  // Until it answers, or when it fails with anything but a 401 (which ends the session), it's neither.
+  const [session, setSession] = useState(() => Boolean(getSessionToken()))
 
   useEffect(() => {
     let cancelled = false
@@ -77,15 +119,18 @@ export function useAuth() {
         cachedLimits = FREE_LIMITS
         inflightMe = null
         inflightGeneration = -1
+        stopRetrying()
         // A tag a session left behind isn't this signed-out viewer's.
         dropSignedOutIdentity()
         if (!cancelled) {
           setAccount(null)
           setLimits(FREE_LIMITS)
           setLoading(false)
+          setSession(false)
         }
         return
       }
+      setSession(true)
       if (!cachedAccount || force) setLoading(true)
       const next = await loadAuthMe(force)
       if (!cancelled) {
@@ -99,13 +144,22 @@ export function useAuth() {
     const onFocus = () => {
       if (getSessionToken()) void sync(false)
     }
+    // A retry, or the menu's Try again, answered: take its word, whichever hook asked (unless a newer asking is out).
+    const onMe = () => {
+      if (cancelled || inflightMe) return
+      setAccount(cachedAccount)
+      setLimits(cachedLimits)
+      setLoading(false)
+    }
     window.addEventListener(AUTH_EVENT, onAuth)
+    window.addEventListener(ME_EVENT, onMe)
     window.addEventListener('storage', onAuth)
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
     return () => {
       cancelled = true
       window.removeEventListener(AUTH_EVENT, onAuth)
+      window.removeEventListener(ME_EVENT, onMe)
       window.removeEventListener('storage', onAuth)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onFocus)
@@ -117,6 +171,8 @@ export function useAuth() {
     limits,
     loading,
     signedIn: Boolean(account),
+    /** No session on this device: the only time to ask anyone to sign in. Neither this nor signedIn while a session's account isn't known. */
+    signedOut: !account && !session,
     isPlus: account?.plan === 'plus',
   }
 }

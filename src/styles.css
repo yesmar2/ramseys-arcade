@@ -83,10 +83,17 @@
   --ink: #1a2b3c;
   --ink-rgb: 26, 43, 60;
   --shade-rgb: 26, 43, 60;
-  --muted: #5a6f82;
+  /* Dark enough for small words on the tinted panels as well as on white (4.5:1). */
+  --muted: #4f6377;
   --accent: #2eb8a0;
   --accent-2: #f5b942;
   --accent-sky: #4aa8e8;
+  /*
+   * Keyboard focus. Worked out against the ink, so it reads on the page in either theme; a panel that's dark in
+   * both themes (the trophy cabinet, the game over screen) takes the dark theme's ring.
+   */
+  --focus-ring: color-mix(in srgb, var(--accent) 55%, var(--ink));
+  --focus-ring-on-dark: color-mix(in srgb, var(--accent) 55%, #e7eef3);
   --dot: rgba(74, 168, 232, 0.22);
   --tile-radius: 1.1rem;
   --gap: 1.25rem;
@@ -130,7 +137,15 @@ html[data-theme="dark"] {
 
 /* Lists / stats: soft fill, no rings or hairlines. */
 
-/* Keep keyboard focus visible without decorative elevation rings. */
+/*
+ * Keep keyboard focus visible without decorative elevation rings: one ring, on whatever takes the keys, shown
+ * for the keyboard and not for a click. A part that would clip it pulls it inside (a negative outline-offset);
+ * a dark panel on the light page sets its own --focus-ring.
+ */
+:where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
 
 *,
 *::before,
@@ -344,7 +359,6 @@ img {
 .player-badge__edit:hover,
 .player-badge__edit:focus-visible {
   background: rgba(var(--ink-rgb), 0.1);
-  outline: none;
 }
 
 .player-badge__edit svg {
@@ -370,7 +384,6 @@ img {
 .player-badge__icon-btn:hover,
 .player-badge__icon-btn:focus-visible {
   background: rgba(var(--ink-rgb), 0.1);
-  outline: none;
 }
 
 .player-badge__icon-btn:disabled {
@@ -443,7 +456,6 @@ img {
 .player-badge--signin:hover,
 .player-badge--signin:focus-visible {
   background: color-mix(in srgb, var(--accent) 26%, var(--surface));
-  outline: none;
 }
 
 .player-badge__signin-label {
@@ -613,7 +625,6 @@ img {
 .google-signin__retry:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
-  outline: none;
 }
 
 @keyframes google-signin-in {
@@ -917,10 +928,15 @@ img {
 }
 
 .home-about__prose a {
-  color: var(--accent-sky);
+  /* The sky blue, deepened toward the ink so the links read on the light page (4.5:1). */
+  color: color-mix(in srgb, var(--accent-sky) 55%, var(--ink));
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+html[data-theme='dark'] .home-about__prose a {
+  color: var(--accent-sky);
 }
 
 .home-about__fine {
@@ -1454,7 +1470,6 @@ img {
 .site-drawer__pref:hover,
 .site-drawer__pref:focus-visible {
   background: rgba(var(--ink-rgb), 0.04);
-  outline: none;
 }
 
 .site-drawer__pref-label {
@@ -1498,7 +1513,6 @@ img {
 .site-header__invite-btn:hover,
 .site-header__invite-btn:focus-visible {
   background: color-mix(in srgb, var(--accent) 28%, var(--surface));
-  outline: none;
 }
 
 .site-header__invite-count {
@@ -1545,7 +1559,6 @@ img {
 .theme-toggle:focus-visible {
   background: var(--accent);
   color: #fff;
-  outline: none;
 }
 
 @media (max-height: 620px) {
@@ -2001,7 +2014,6 @@ html[data-theme='dark'] .music-level__note {
 .dev-impersonate__btn:hover,
 .dev-impersonate__btn:focus-visible {
   background: color-mix(in srgb, #d97706 16%, var(--surface));
-  outline: none;
 }
 
 .dev-impersonate__btn:disabled,
@@ -2147,7 +2159,7 @@ html[data-theme='dark'] .music-level__note {
 }
 
 .game-play-back:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 0.35rem;
 }
@@ -4003,7 +4015,6 @@ html[data-theme='dark'] .patriot__power {
 .page-back:focus-visible {
   color: var(--ink);
   background: rgba(var(--ink-rgb), 0.06);
-  outline: none;
 }
 
 .lb-game-board__identity {
@@ -4061,7 +4072,6 @@ html[data-theme='dark'] .patriot__power {
 .lb-game-board__play:hover,
 .lb-game-board__play:focus-visible {
   filter: brightness(1.06);
-  outline: none;
 }
 
 .lb-game-board__play:focus-visible {
@@ -4207,7 +4217,6 @@ html[data-theme='dark'] .patriot__power {
 .lb-share:focus-visible {
   border-color: color-mix(in srgb, var(--board-accent, var(--accent)) 45%, transparent);
   color: var(--board-accent, var(--accent));
-  outline: none;
 }
 
 a.lb-share:visited {
@@ -4292,7 +4301,6 @@ a.lb-share:visited:focus-visible {
 .lb-scorecard__gap-link:focus-visible {
   color: var(--accent);
   text-decoration-color: var(--accent);
-  outline: none;
 }
 
 .lb-row--flash {
@@ -4357,7 +4365,6 @@ a.lb-share:visited:focus-visible {
 .records-leaders__label:hover,
 .records-leaders__label:focus-visible {
   color: var(--tab-accent, var(--accent));
-  outline: none;
 }
 
 .records-leaders__holder {
@@ -4377,7 +4384,6 @@ a.lb-share:visited:focus-visible {
 .records-leaders__holder--link:hover,
 .records-leaders__holder--link:focus-visible {
   color: var(--tab-accent, var(--accent));
-  outline: none;
 }
 
 .records-leaders__name {
@@ -4400,7 +4406,6 @@ a.lb-share:visited:focus-visible {
 .records-leaders__time:hover,
 .records-leaders__time:focus-visible {
   color: var(--tab-accent, var(--accent));
-  outline: none;
 }
 
 .records-leaders__row--you .lb-row__you-tag {
@@ -4529,7 +4534,6 @@ a.lb-share:visited:focus-visible {
 .rank-page__boards:hover,
 .rank-page__boards:focus-visible {
   filter: brightness(1.05);
-  outline: none;
 }
 
 .lb-tabs {
@@ -4633,7 +4637,6 @@ a.lb-share:visited:focus-visible {
 .lb-hub-card:hover,
 .lb-hub-card:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  outline: none;
 }
 
 .lb-hub-card__eyebrow {
@@ -4694,7 +4697,7 @@ a.lb-share:visited:focus-visible {
 }
 
 .lb-picker__search input:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -4723,7 +4726,6 @@ a.lb-share:visited:focus-visible {
 .lb-picker__row:hover,
 .lb-picker__row:focus-visible {
   border-color: color-mix(in srgb, var(--tab-accent, var(--accent)) 42%, transparent);
-  outline: none;
 }
 
 .lb-picker__row--active {
@@ -4965,7 +4967,6 @@ a.lb-share:visited:focus-visible {
 .lb-summary__period-head:hover,
 .lb-summary__period-head:focus-visible {
   background: color-mix(in srgb, var(--tab-accent, var(--accent)) 18%, var(--playfield));
-  outline: none;
 }
 
 .lb-summary__period-label {
@@ -5728,7 +5729,12 @@ a.lb-share:visited:focus-visible {
 .site-footer__list a:hover,
 .site-footer__list a:focus-visible {
   color: var(--accent);
-  outline: none;
+}
+
+/* The teal, deepened so the word still reads on the light page (4.5:1). */
+html[data-theme='light'] .site-footer__list a:hover,
+html[data-theme='light'] .site-footer__list a:focus-visible {
+  color: color-mix(in srgb, var(--accent) 45%, var(--ink));
 }
 
 .site-footer__base {
@@ -6229,7 +6235,6 @@ a.lb-share:visited:focus-visible {
 .event-bracket__jump:hover,
 .event-bracket__jump:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .event-bracket__view-toggle,
@@ -7369,7 +7374,6 @@ a.lb-share:visited:focus-visible {
 .tour-standing__name--link:hover,
 .tour-standing__name--link:focus-visible {
   color: var(--board-accent, var(--accent));
-  outline: none;
 }
 
 .tour-standing__total {
@@ -8091,8 +8095,11 @@ a.lb-share:visited:focus-visible {
   min-width: 0;
 }
 
+/* A group's name may have no spaces: it breaks where it must rather than widening the page. */
 .pending-invites__name {
+  min-width: 0;
   font-size: 0.95rem;
+  overflow-wrap: anywhere;
 }
 
 .pending-invites__meta {
@@ -8129,7 +8136,6 @@ a.lb-share:visited:focus-visible {
 .group-text-btn:hover,
 .group-text-btn:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .group-text-btn--danger:hover,
@@ -8193,7 +8199,6 @@ a.lb-share:visited:focus-visible {
 .notif-bell:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
   color: var(--ink);
-  outline: none;
 }
 
 .notif-bell__shape {
@@ -8267,6 +8272,12 @@ a.lb-share:visited:focus-visible {
   background: var(--surface);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* The field itself draws no ring: the box round it takes the site's. */
+.site-search__form:has(.site-search__input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .site-search__icon {

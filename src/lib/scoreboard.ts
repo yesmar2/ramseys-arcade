@@ -307,9 +307,11 @@ export function fieldSizes(
 /**
  * The player directly above `me`, from a board's runs down to `me`'s best.
  * Runs come best first, so each player's first run is their best, and the
- * last new name before `me` is the next place up. A tie goes to whoever got
- * there first, so players on the same score sit one under another: beating
- * that score passes them all, and `reach` is the first place held at it.
+ * last new name before `me` is the next place up. A list that runs on past
+ * `me` (a place asked for that has since moved) stops there: everyone after
+ * is below. A tie goes to whoever got there first, so players on the same
+ * score sit one under another: beating that score passes them all, and
+ * `reach` is the first place held at it.
  */
 export function nextUp(runsAbove: LeaderboardEntry[], me: string): BoardTop | null {
   const seen = new Set<string>()
@@ -317,7 +319,8 @@ export function nextUp(runsAbove: LeaderboardEntry[], me: string): BoardTop | nu
   let last: BoardTop | null = null
   for (const entry of runsAbove) {
     const name = normalizePlayerName(entry.name ?? '')
-    if (!name || name === me || seen.has(name)) continue
+    if (name && name === me) break
+    if (!name || seen.has(name)) continue
     seen.add(name)
     if (!firstAt.has(entry.score)) firstAt.set(entry.score, seen.size)
     last = { name, score: entry.score, avatarId: entry.avatarId }

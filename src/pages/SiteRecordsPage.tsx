@@ -10,9 +10,9 @@ import { homeHref, rankHref, recordsIndexHref, siteRecordsHref, type Route } fro
 import { usePageMeta } from '../hooks/usePageMeta'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
-import { inkOn } from '../lib/color'
+import { bannerText, inkOn } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { groupBoardEmptyTitle, useActiveGroup, useScope } from '../lib/groups'
 import {
   HOUSE_LEDE,
   houseClosest,
@@ -146,6 +146,8 @@ function TopTen({ board, you, standing }: { board: SiteRecordBoard; you: string;
 export function SiteRecordsPage() {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
+  // The boards' group, when they show one: the house records are then the group's.
+  const group = useScope().name
   const [data, setData] = useState<{ boards: SiteRecordBoard[]; you: SiteRecordStanding | null } | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -176,7 +178,12 @@ export function SiteRecordsPage() {
   const yourAvatar = boards.flatMap((b) => b.entries).find((e) => normalizePlayerName(e.name) === you)?.avatarId
   const cover = boards.find((b) => b.id === 'day-streak') ?? boards[0]
   const coverTop = cover?.entries[0]
-  const style = { '--hero-accent': HOUSE_ACCENT, '--hero-ink': inkOn(HOUSE_ACCENT), '--tile-accent': HOUSE_ACCENT } as CSSProperties
+  const style = {
+    '--hero-accent': HOUSE_ACCENT,
+    '--hero-ink': inkOn(HOUSE_ACCENT),
+    '--hero-text': bannerText(HOUSE_ACCENT),
+    '--tile-accent': HOUSE_ACCENT,
+  } as CSSProperties
 
   return (
     <PageShell innerClassName="lb-page__inner">
@@ -193,7 +200,7 @@ export function SiteRecordsPage() {
             </nav>
             <p className="home-banner__kicker">
               <BookIcon />
-              House book · the whole arcade
+              House book · {group ?? 'the whole arcade'}
             </p>
             <h1 id="hbk-title" className="gb-title">
               {loading ? (

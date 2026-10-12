@@ -247,13 +247,19 @@ export function TournamentScoreCard({
   subtitle,
   onDone,
 }: TournamentScoreCardProps) {
-  const { signedIn, loading: authLoading } = useAuth()
+  const { signedOut, loading: authLoading } = useAuth()
   // A racing daily's event: the course its runs are raced on.
   const playing = useTournamentPlay()
   const impersonation = useImpersonation()
-  // Saving needs an account, and acting as a tag (dev) doesn't give one: a borrowed tag left on a device
-  // signed out showed "Signed in, no tag yet" and a tag box the API then refused.
-  const canSaveScores = signedIn
+  // Saving needs a session, and acting as a tag (dev) doesn't give one: a borrowed tag left on a device
+  // signed out showed "Signed in, no tag yet" and a tag box the API then refused. A session whose account
+  // couldn't be asked for posts all the same: the API knows whose it is, and its 401 would mean signed out.
+  const canSaveScores = !signedOut
+  // The post waits for the account's first answer only: asked again later, it never goes out a second time.
+  const [authAsked, setAuthAsked] = useState(!authLoading)
+  useEffect(() => {
+    if (!authLoading) setAuthAsked(true)
+  }, [authLoading])
   const playerName = usePlayerName()
   const knownName = (playerName || getLastPlayerName()).trim().toUpperCase()
   const [name, setName] = useState(knownName)
@@ -264,6 +270,19 @@ export function TournamentScoreCard({
   const [error, setError] = useState<string | null>(null)
   const [snapshot, setSnapshot] = useState<SubmitSnapshot | null>(null)
   const [takeoverDone, setTakeoverDone] = useState(false)
+  // The run's post: out now, or in. Never a second for the same run, whatever changes under the card, and its
+  // answer is the card's while the card is up.
+  const postRef = useRef<'out' | 'in' | null>(null)
+  const shownRef = useRef(true)
+  useEffect(() => {
+    shownRef.current = true
+    return () => {
+      shownRef.current = false
+    }
+  }, [])
+  // Signed in on the card: the run goes to the event again under the new session, though its name and the rest
+  // may not have changed (a session the post's 401 ended, replaced by another).
+  const [signIns, setSignIns] = useState(0)
   const playRef = useRef<HTMLButtonElement>(null)
   const tagRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
@@ -279,7 +298,7 @@ export function TournamentScoreCard({
   }, [status])
 
   useEffect(() => {
-    if (authLoading) return
+    if (!authAsked || postRef.current) return
     if (!canSaveScores) {
       setStatus('needAuth')
       setName('')
@@ -294,15 +313,15 @@ export function TournamentScoreCard({
       return
     }
 
-    let cancelled = false
-
     async function run() {
+      postRef.current = 'out'
       setStatus('saving')
       setError(null)
 
       try {
         const next = await submitTournamentRun(tournamentId, gameSlug, name, score, playing?.course ?? null)
-        if (cancelled) return
+        postRef.current = 'in'
+        if (!shownRef.current) return
         setSnapshot(next)
         setStatus('done')
         if (next.youWonTournament || next.youWonMatch) {
@@ -317,7 +336,9 @@ export function TournamentScoreCard({
           markWinsSeen(tournamentId, mine.map((m) => m.id))
         }
       } catch (err) {
-        if (cancelled) return
+        // Not in: a sign-in, or a new tag, may send it again.
+        postRef.current = null
+        if (!shownRef.current) return
         const code =
           err instanceof ApiError
             ? err.code
@@ -367,10 +388,7 @@ export function TournamentScoreCard({
     }
 
     void run()
-    return () => {
-      cancelled = true
-    }
-  }, [tournamentId, gameSlug, score, name, authLoading, canSaveScores, knownName])
+  }, [tournamentId, gameSlug, score, name, authAsked, canSaveScores, knownName, signIns])
 
   const submitName = async () => {
     const cleaned = normalizePlayerName(nameDraft)
@@ -434,6 +452,7 @@ export function TournamentScoreCard({
           setError(null)
           if (knownName) setName(knownName)
           else setStatus('needName')
+          setSignIns((n) => n + 1)
         }}
       />
     )

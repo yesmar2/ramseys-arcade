@@ -41,6 +41,7 @@ import {
 } from './game'
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 /**
  * The same four marks the blimps carry on their sides: two shells, a dome, an
@@ -303,6 +304,8 @@ export function PatriotGame() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpen || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const powerAt = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code)
       const padAt = ['Numpad1', 'Numpad2', 'Numpad3', 'Numpad4'].indexOf(e.code)
       const slot = powerAt >= 0 ? powerAt : padAt
@@ -312,6 +315,8 @@ export function PatriotGame() {
         return
       }
       if (e.code === 'Space' || e.code === 'Enter') {
+        // On the start card, a focused button or link answers the key itself.
+        if (stateRef.current.phase === 'menu' && controlTakesKey(e)) return
         e.preventDefault()
         act()
       }

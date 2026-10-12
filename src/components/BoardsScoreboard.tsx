@@ -10,8 +10,8 @@ import {
   rankHref,
 } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
-import { scopeName, useActiveGroup } from '../lib/groups'
+import { inkOn, readableFill, readableText } from '../lib/color'
+import { useActiveGroup, useScope } from '../lib/groups'
 import {
   fetchGlobalBoard,
   findInStandings,
@@ -344,7 +344,14 @@ function UpForGrabs({ period, copy, boards, loading }: { period: LeaderboardPeri
             <li
               key={b.slug}
               className="sb-grab"
-              style={{ '--grab-accent': accent, '--grab-ink': inkOn(accent) } as CSSProperties}
+              style={
+                {
+                  '--grab-accent': accent,
+                  '--grab-ink': inkOn(accent),
+                  '--grab-fill': readableFill(accent),
+                  '--grab-text': readableText(accent, '#ffffff'),
+                } as CSSProperties
+              }
             >
               <div className="sb-grab__top">
                 <GameThumbArt slug={b.slug} accent={accent} className="sb-grab__thumb" />
@@ -374,7 +381,8 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   // The season's standings draw a line under the places that win its cup, and under the ones that win a trophy.
   const lines = period === 'season' ? prizeLines(data.prizes, data.totalPlayers, season?.id ?? null, Boolean(groupId)) : null
-  const group = scopeName(groupId)
+  // The group by name, said again once the list of your groups comes with it.
+  const group = useScope().name
   const head = headline(copy, data.standings, data.totalPlayers)
   // The headline and its line wrap as the names in them do: held at last time's height while they load.
   const title = useHeldHeight<HTMLHeadingElement>(`boards-title-${period}`, data.loading)

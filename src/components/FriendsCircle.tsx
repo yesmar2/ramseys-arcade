@@ -23,6 +23,7 @@ import { getGame } from '../data/games'
 import { GameThumbArt } from './GameThumbArt'
 import { useConfirm } from './ConfirmPanel'
 import { CheckIcon, ChevronIcon, GroupFaces, MiniRow, UsersIcon } from './GroupsHome'
+import { MemberMenu } from './MemberMenu'
 import { PlayerAvatar } from './PlayerAvatar'
 import { absoluteShareUrl } from './ShareBoardButton'
 import { useShare } from './SharePanel'
@@ -65,13 +66,6 @@ const LinkIcon = () => (
   <Icon size={18}>
     <path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" />
     <path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" />
-  </Icon>
-)
-const DotsIcon = () => (
-  <Icon size={16}>
-    <circle cx="5" cy="12" r="1.2" fill="currentColor" />
-    <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-    <circle cx="19" cy="12" r="1.2" fill="currentColor" />
   </Icon>
 )
 
@@ -287,7 +281,7 @@ export function FriendsGroupCard({ me, onBoards, onToggleBoards }: { me: string;
  * Signed out, the way to sign in instead.
  */
 export function AddFriendCard({ me }: { me: string }) {
-  const { signedIn, send } = useFriends()
+  const { signedOut, send } = useFriends()
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -331,7 +325,8 @@ export function AddFriendCard({ me }: { me: string }) {
         </h2>
       </div>
       <p className="grp-copy">By their gamer tag, or send your link: it opens your card, with Add friend on it.</p>
-      {!signedIn ? (
+      {/* A session whose account isn't known yet can ask anyway: the API knows whose it is. */}
+      {signedOut ? (
         <button type="button" className="grp-btn" onClick={openSiteMenu}>
           Sign in to add friends
         </button>
@@ -421,24 +416,16 @@ export function FriendsList({ onRemove }: { onRemove: (friend: Friend) => void }
                   </span>
                   <span className="grp-fine">Friends since {sinceDay(f.since)}</span>
                 </span>
-                <details className="grp-menu">
-                  <summary aria-label={`${name}: remove`}>
-                    <DotsIcon />
-                  </summary>
-                  <div className="grp-menu__pop">
-                    <button
-                      type="button"
-                      className="grp-menu__danger"
-                      disabled={busyId === f.accountId}
-                      onClick={(e) => {
-                        e.currentTarget.closest('details')?.removeAttribute('open')
-                        onRemove(f)
-                      }}
-                    >
-                      Remove {name}
-                    </button>
-                  </div>
-                </details>
+                <MemberMenu label={`${name}: remove`}>
+                  <button
+                    type="button"
+                    className="grp-menu__danger"
+                    disabled={busyId === f.accountId}
+                    onClick={() => onRemove(f)}
+                  >
+                    Remove {name}
+                  </button>
+                </MemberMenu>
               </li>
             )
           })}

@@ -263,7 +263,8 @@ function PastCard({
   if (daysState === 'wait') ranked = <Waiting />
   else if (daysState === 'failed') ranked = <Unknown />
   else if (you) ranked = <Yours name={viewer.name} avatarId={avatarId} place={rankedGame ? you.place : null} of={entry?.players ?? 0} figure={fmt(you.score)} medal={medal} />
-  else if (!rankedGame) ranked = <span className="pc-val pc-val--none">{showYou ? 'Not played' : 'Sign in for yours'}</span>
+  // A session whose account isn't known yet waits for it: never Sign in.
+  else if (!rankedGame) ranked = viewer.state === 'pending' ? <Waiting /> : <span className="pc-val pc-val--none">{showYou ? 'Not played' : 'Sign in for yours'}</span>
   else if (!entry?.top) ranked = <span className="pc-val pc-val--none">Nobody {verbDone(slug)} it</span>
   else ranked = <Crowned who={entry.top} what="1st" figure={fmt(entry.top.score)} />
 

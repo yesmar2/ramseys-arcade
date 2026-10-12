@@ -113,3 +113,63 @@ export function contrastRatio(a: string, b: string): number {
 export function inkOn(background: string, dark = '#1a2b3c', light = '#ffffff'): string {
   return contrastRatio(background, dark) >= contrastRatio(background, light) ? dark : light
 }
+
+/**
+ * The fill for a button in this colour, with inkOn's ink on it.
+ *
+ * The middle of the range (indigo, violet, red, pink, magenta) holds neither
+ * ink at 4.5:1, so there the colour moves the least it must for its ink to
+ * read: darker under white, lighter under the dark ink. Every other colour
+ * comes back as it is.
+ */
+export function readableFill(background: string, dark = '#1a2b3c', light = '#ffffff'): string {
+  const ink = inkOn(background, dark, light)
+  const away = ink === light ? '#000000' : '#ffffff'
+  let fill = background
+  for (let t = 0.02; contrastRatio(fill, ink) < 4.5 && t <= 0.5; t += 0.02) fill = mixColor(background, away, t)
+  return fill
+}
+
+/**
+ * Words in a colour on a given background: the colour as it is where it reads
+ * there (4.5:1), else the nearest shade of it that does, darker on a light
+ * background and lighter on a dark one. It moves toward black or white, which
+ * keeps the colour's hue (toward the ink, the warm ones turn khaki), and only
+ * as far as it must. `toward` fixes the way: the dark theme's words only ever
+ * go lighter, whatever the colour under them.
+ */
+export function readableText(color: string, background: string, toward?: '#000000' | '#ffffff'): string {
+  const away = toward ?? (contrastRatio(background, '#000000') >= contrastRatio(background, '#ffffff') ? '#000000' : '#ffffff')
+  let text = color
+  for (let t = 0.02; contrastRatio(text, background) < 4.5 && t <= 1; t += 0.02) text = mixColor(color, away, t)
+  return text
+}
+
+/** A banner's words in its own colour on the light theme, read against its deepest wash (38% over white, home.css). */
+export function bannerText(accent: string): string {
+  return readableText(accent, mixColor(accent, '#ffffff', 0.62))
+}
+
+/** The dark banner's own light mix of a colour for its words (55% with white, home.css). */
+const darkBannerWords = (accent: string) => mixColor(accent, '#ffffff', 0.45)
+
+/**
+ * The same on the dark theme: the dark banner's mix, lightened (never darkened) only where it must be to read
+ * (4.5:1) on the banner's wash at its brightest, half the colour into the night. Most colours come back as the mix.
+ */
+export function bannerTextDark(accent: string): string {
+  return readableText(darkBannerWords(accent), mixColor(accent, '#0b1620', 0.5), '#ffffff')
+}
+
+/**
+ * A player card's See all links on the dark theme (PlayerCard.tsx): the same mix, lightened only as far as it must
+ * be to read on a shelf, whose panel (profile.css) lies over the card's wash mid-card or toward its teal end
+ * (home.css), whichever is lighter. The card's other words sit on the wash, where the mix reads as it is.
+ */
+export function shelfTextDark(accent: string): string {
+  const night = '#0b1620'
+  const shelf = (wash: string) => mixColor(wash, '#ffffff', 0.084)
+  const mid = shelf(mixColor(accent, night, 0.66))
+  const end = shelf(mixColor(accent, mixColor('#2eb8a0', night, 0.65), 0.76))
+  return readableText(darkBannerWords(accent), contrastRatio(mid, '#000000') > contrastRatio(end, '#000000') ? mid : end, '#ffffff')
+}

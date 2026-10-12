@@ -64,6 +64,7 @@ import { MedalRow } from '../../components/RaceMedal'
 import { paceMsOf } from '../../lib/raceMedals'
 import { TomorrowCave } from './TomorrowCave'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 import {
   CRASH_FOR,
   DT,
@@ -961,9 +962,13 @@ function LanderDayGame({
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const g = gameRef.current!
       if (g.phase === 'menu') {
         if (e.code !== 'Space' && e.code !== 'Enter') return
+        // A focused button or link on the start card answers the key itself.
+        if (controlTakesKey(e)) return
         e.preventDefault()
         if (!e.repeat && performance.now() >= startGrace.current) start()
         return

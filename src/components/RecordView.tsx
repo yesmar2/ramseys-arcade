@@ -7,10 +7,10 @@ import { BoardPlayers } from './BoardPlayers'
 import { gamePlayHref, rankHref, recordHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
-import { inkOn } from '../lib/color'
+import { bannerText, inkOn, readableFill } from '../lib/color'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
-import { groupBoardEmptyTitle, scopeName, useActiveGroup } from '../lib/groups'
+import { groupBoardEmptyTitle, useActiveGroup, useScope } from '../lib/groups'
 import {
   normalizePlayerName,
   PERIOD_LABELS,
@@ -161,7 +161,13 @@ function Banner({
   const head = recordHeadline(top, period)
   const label = record?.label ?? ''
   const play = playTarget(game, meta.name, record ?? { id: recordId })
-  const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
+  const style = {
+    '--hero-accent': accent,
+    '--hero-ink': inkOn(accent),
+    '--hero-fill': readableFill(accent),
+    '--hero-text': bannerText(accent),
+    '--tile-accent': accent,
+  } as CSSProperties
   return (
     <section className="home-banner gb-banner rcd-banner" style={style} aria-labelledby="rcd-title">
       <div className="home-banner__text gb-banner__text">
@@ -267,12 +273,12 @@ function ClosestCard({ record, entries }: { record: RecordDef; entries: Leaderbo
     <div className="sb-card gb-price rcd-takes">
       <h2 className="sb-card__title">Who’s closest</h2>
       <p className="gb-card__sub">The next three, and how far behind you they are.</p>
-      <ul className="gb-price__rows">
+      <ul className="rcd-closest__rows">
         {rest.slice(0, 3).map((e) => (
-          <li key={e.id} className="gb-price__row">
+          <li key={e.id} className="rcd-closest__row">
             <span className="rcd-closest">
               <PlayerMark name={e.name} avatarId={e.avatarId} className="rcd-closest__mark" />
-              <span className="gb-price__beat">
+              <span className="rcd-closest__who">
                 <b>{e.name}</b>
                 <span>set {recordDay(e.at)}</span>
               </span>
@@ -631,11 +637,12 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const data = useRecordPage(game, recordId, period, you, groupId)
+  // The boards' group by name, said again once the list of your groups comes.
+  const group = useScope().name
   const meta = getGame(game)
   if (!meta) return null
   const accent = resolveGameAccent(game, meta.accent)
-  const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
-  const group = scopeName(groupId)
+  const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), '--gb-fill': readableFill(accent) } as CSSProperties
   const { record, entries, total } = data
 
   if (data.error) {

@@ -55,6 +55,7 @@ import {
 import { renderGame } from './render'
 import { useSkinInto } from '../../lib/skins'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 type HoldKey = 'turnLeft' | 'turnRight' | 'thrust' | 'reverse'
 
@@ -584,6 +585,8 @@ export function AsteroidsGame() {
     const down = (e: KeyboardEvent) => {
       // The score card's tag field and buttons, and the pause screen, get their keys to themselves.
       if (saveOpenRef.current || pausedRef.current) return
+      // So do the play screen's own buttons, reached with Tab, in a run too.
+      if (chromeTakesKey(e)) return
       // Prefer e.code; also accept e.key for ArrowLeft (some layouts/hosts)
       const fromCode = KEY_MAP[e.code]
       const fromKey =
@@ -599,8 +602,10 @@ export function AsteroidsGame() {
       const key = fromCode ?? fromKey
       if (!key) {
         if (e.code === 'Enter' || e.key === 'Enter' || e.code === 'Space' || e.key === ' ') {
-          e.preventDefault()
           const s = stateRef.current
+          // On the start card, a focused button or link answers the key itself.
+          if (s.phase === 'menu' && controlTakesKey(e)) return
+          e.preventDefault()
           if (s.phase === 'waveClear') continueWave()
           // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
           else if (s.phase === 'menu') restart()

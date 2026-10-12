@@ -19,7 +19,7 @@ import { normalizePlayerName } from '../lib/leaderboard'
  * each. Signed out, the way to sign in.
  */
 export function FriendsGroupPage() {
-  const { signedIn, friends, incoming, loaded, remove } = useFriends()
+  const { signedIn, signedOut, friends, incoming, loaded, remove } = useFriends()
   const playerName = normalizePlayerName(usePlayerName())
   const activeId = useActiveGroup()
   const [period, setPeriod] = useState<GroupPeriod>('monthly')
@@ -47,7 +47,8 @@ export function FriendsGroupPage() {
     if (friends.length <= 1 && activeId === FRIENDS_SCOPE) setActiveGroup(null)
   }
 
-  if (!signedIn) {
+  // A session whose account isn't known yet gets the page as it loads, never Sign in.
+  if (signedOut) {
     return (
       <PageShell innerClassName="lb-page__inner lb-page__inner--events">
         <div className="grp" style={style}>

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { mixColor, readableText } from '../lib/color'
 import { gameHasRecords } from '../lib/records'
 
 export type BoardTab = 'scores' | 'records'
@@ -28,6 +29,7 @@ export function GameBoardSwitcher({
         {
           '--board-accent': accent,
           '--period-accent': accent,
+          '--period-text': readableText(accent, mixColor(accent, '#ffffff', 0.86)),
         } as CSSProperties
       }
     >

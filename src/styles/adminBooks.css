@@ -48,7 +48,6 @@
 .adm-book:focus-visible {
   border-color: color-mix(in srgb, var(--panel-accent) 55%, transparent);
   background: color-mix(in srgb, var(--panel-accent) 8%, var(--surface));
-  outline: none;
 }
 
 .adm-book b {
@@ -580,7 +579,6 @@ html[data-theme='dark'] .tb {
 .tb-tile:focus-visible {
   border-color: color-mix(in srgb, var(--panel-accent) 55%, var(--panel-line));
   transform: translateY(-2px);
-  outline: none;
 }
 
 .tb-tile--today {

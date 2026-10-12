@@ -148,7 +148,7 @@ function tileOf(p: Punch): TicketTile {
 }
 
 /** The ticket, for the viewer the page drew it for (todayPunches.ts's useTicket). */
-export function TodayCard({ ticket, signedIn }: { ticket: Ticket; signedIn: boolean }) {
+export function TodayCard({ ticket, signedIn, signedOut }: { ticket: Ticket; signedIn: boolean; signedOut: boolean }) {
   const { day, punches, server, done, total, all, rule, marks, current, shareText } = ticket
   if (!punches.length) return null
   const more = rule.count > rule.need
@@ -163,7 +163,7 @@ export function TodayCard({ ticket, signedIn }: { ticket: Ticket; signedIn: bool
       kicker="Your streak"
       streak={known ? current : null}
       full={marks.full}
-      line={known ? `${streakLine(ticket)}.` : signedIn ? null : `Sign in to keep a streak: ${more ? `any ${numberWord(rule.need)}` : `all ${numberWord(total)}`} a day.`}
+      line={known ? `${streakLine(ticket)}.` : signedOut ? `Sign in to keep a streak: ${more ? `any ${numberWord(rule.need)}` : `all ${numberWord(total)}`} a day.` : null}
       freezes={known ? server?.freezes : null}
       punched={{ done, total }}
       tiles={punches.map(tileOf)}

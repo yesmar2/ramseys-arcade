@@ -234,6 +234,11 @@ a.pds__day:focus-visible {
     scroll-snap-align: start;
   }
 
+  /* The strip scrolls, so it clips past its edges: the keyboard ring goes inside the day. */
+  .pds__days a.pds__day:focus-visible {
+    outline-offset: -3px;
+  }
+
   .pds__day {
     width: 4.4rem;
     grid-template-columns: minmax(0, 1fr);

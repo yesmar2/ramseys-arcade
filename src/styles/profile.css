@@ -25,10 +25,21 @@
   gap: 0.2rem;
 }
 
+/* On a chip of its own: the card is the player's colour, any colour, and red words alone vanished on some. */
 .pfh__friend-error {
-  font-size: 0.72rem;
-  font-weight: 650;
+  max-width: 17rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.6rem;
+  background: #fff;
   color: #b42318;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+html[data-theme='dark'] .pfh__friend-error {
+  background: #2b1114;
+  color: #ff9d94;
 }
 
 /* Accept and Not now, or Request sent and Cancel: side by side. */
@@ -106,12 +117,23 @@
 
 .pf {
   --pf-accent: var(--accent);
-  --pf-accent-ink: color-mix(in srgb, var(--pf-accent) 68%, var(--ink));
+  /*
+   * Small words in the player's colour: the shade of it that reads (4.5:1) on its deepest tint here, as the page
+   * works it out for each theme (--pf-text, --pf-text-dark: lib/color.ts readableText); else the teal's.
+   */
+  --pf-accent-ink: var(--pf-text, color-mix(in srgb, var(--pf-accent) 42%, var(--ink)));
   gap: 1.4rem;
 }
 
+/* The events' medal colours, which this page uses only for words: deeper on the light page, so they read. */
+html[data-theme='light'] .pf {
+  --ev-gold: color-mix(in srgb, #e0a91b 55%, #000);
+  --ev-silver: color-mix(in srgb, #8d99a8 50%, var(--ink));
+  --ev-bronze: color-mix(in srgb, #c07c3e 70%, #000);
+}
+
 html[data-theme='dark'] .pf {
-  --pf-accent-ink: color-mix(in srgb, var(--pf-accent) 72%, #fff);
+  --pf-accent-ink: var(--pf-text-dark, color-mix(in srgb, var(--pf-accent) 72%, #fff));
 }
 
 /* ---------- the card ---------- */
@@ -240,7 +262,6 @@ html[data-theme='dark'] .pf {
 .pcard__back:hover,
 .pcard__back:focus-visible {
   background: var(--banner-chip-hover);
-  outline: none;
 }
 
 .pcard__main {
@@ -520,7 +541,6 @@ html[data-theme='dark'] .pf {
   color: var(--banner-ink);
   text-decoration: underline;
   text-underline-offset: 0.2em;
-  outline: none;
 }
 
 /* The trophies and the hangar, side by side along the foot. */
@@ -572,11 +592,19 @@ html[data-theme='dark'] .pf {
   white-space: nowrap;
 }
 
+/*
+ * On the dark card the shelf's panel is lighter than the wash the card's other words sit on: the link takes the
+ * same shade lightened as far as it must be to read there (4.5:1, lib/color.ts shelfTextDark). A themed card's
+ * shelves are dark enough as they are.
+ */
+html[data-theme='dark'] .pcard:not(.pcard--themed) .pcard-shelf__all {
+  color: var(--hero-shelf-dark, var(--banner-accent-ink));
+}
+
 .pcard-shelf__all:hover,
 .pcard-shelf__all:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.2em;
-  outline: none;
 }
 
 .pcard-shelf__row {
@@ -1105,7 +1133,8 @@ html[data-theme='dark'] .pbest__flag--ten {
 }
 
 .pbest__play {
-  background: var(--tile-accent);
+  /* --tile-fill: the colour moved just far enough from its ink to read (lib/color.ts readableFill). */
+  background: var(--tile-fill, var(--tile-accent));
   color: var(--tile-ink, #fff);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--tile-accent) 40%, transparent);
 }
@@ -1113,7 +1142,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 .pbest__play:hover,
 .pbest__play:focus-visible {
   transform: translateY(-1px);
-  outline: none;
 }
 
 .pbest__board {
@@ -1124,7 +1152,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 .pbest__board:hover,
 .pbest__board:focus-visible {
   background: rgba(var(--ink-rgb), 0.05);
-  outline: none;
 }
 
 .pbest__runs {
@@ -1215,7 +1242,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 .pbest__who:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.2em;
-  outline: none;
 }
 
 .pbest__you {
@@ -1306,11 +1332,14 @@ html[data-theme='dark'] .pbest__flag--ten {
   text-decoration: none;
 }
 
+html[data-theme='light'] .pgames__all {
+  color: color-mix(in srgb, var(--accent) 45%, var(--ink));
+}
+
 .pgames__all:hover,
 .pgames__all:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.2em;
-  outline: none;
 }
 
 .wall-tile.pgame--idle .wall-tile__screen {
@@ -1514,7 +1543,6 @@ html[data-theme='dark'] .pbest__flag--ten {
   border-color: color-mix(in srgb, var(--tile-accent) 55%, transparent);
   background: var(--surface);
   color: var(--ink);
-  outline: none;
 }
 
 .pgames__try--elsewhere {
@@ -1610,6 +1638,7 @@ html[data-theme='dark'] .pbest__flag--ten {
   --tr-hunt: #86d77f;
   --tr-secret: #ff8cc8;
   --muted: #9bb0be;
+  --focus-ring: var(--focus-ring-on-dark);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -1867,7 +1896,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 .pshelf__link:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.2em;
-  outline: none;
 }
 
 .pshelf__more {
@@ -1972,7 +2000,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 .prival__row:hover,
 .prival__row:focus-visible {
   background: rgba(var(--ink-rgb), 0.05);
-  outline: none;
 }
 
 .prival__row--mine,
@@ -2100,7 +2127,6 @@ html[data-theme='dark'] .pbest__flag--ten {
 .prival__link:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.2em;
-  outline: none;
 }
 
 /* ---------- narrower screens ---------- */

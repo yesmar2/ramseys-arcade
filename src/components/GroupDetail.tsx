@@ -26,6 +26,7 @@ import { getGame } from '../data/games'
 import { GameThumbArt } from './GameThumbArt'
 import { GroupFaces, TicketIcon } from './GroupsHome'
 import { InviteByTagForm } from './InviteByTagForm'
+import { MemberMenu } from './MemberMenu'
 import { PlayerAvatar } from './PlayerAvatar'
 import { ShareBoardButton } from './ShareBoardButton'
 
@@ -72,13 +73,6 @@ const TrophyIcon = () => (
     <path d="M7 4h10v5a5 5 0 0 1-10 0Z" />
     <path d="M17 5h3v2a3 3 0 0 1-3 3" />
     <path d="M7 5H4v2a3 3 0 0 0 3 3" />
-  </Icon>
-)
-const DotsIcon = () => (
-  <Icon size={16}>
-    <circle cx="5" cy="12" r="1.2" fill="currentColor" />
-    <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-    <circle cx="19" cy="12" r="1.2" fill="currentColor" />
   </Icon>
 )
 const DownIcon = () => (
@@ -517,19 +511,14 @@ function MemberRow({
         <span className="grp-fine">Since {since}</span>
       </span>
       {canManage && !you ? (
-        <details className="grp-menu">
-          <summary aria-label={`${name}: make host or remove`}>
-            <DotsIcon />
-          </summary>
-          <div className="grp-menu__pop">
-            <button type="button" disabled={busy} onClick={() => onTransfer(name)}>
-              Make {name} the host
-            </button>
-            <button type="button" className="grp-menu__danger" disabled={busy} onClick={() => onKick(name)}>
-              Remove {name}
-            </button>
-          </div>
-        </details>
+        <MemberMenu label={`${name}: make host or remove`}>
+          <button type="button" disabled={busy} onClick={() => onTransfer(name)}>
+            Make {name} the host
+          </button>
+          <button type="button" className="grp-menu__danger" disabled={busy} onClick={() => onKick(name)}>
+            Remove {name}
+          </button>
+        </MemberMenu>
       ) : null}
     </li>
   )

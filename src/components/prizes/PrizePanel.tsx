@@ -102,7 +102,7 @@ export function PrizePanel({
   onClose: () => void
 }) {
   const titleId = useId()
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut, loading: authLoading } = useAuth()
   const tickets = useTickets()
   const standing = useGlobalRank()
   const views = viewsFor(prize)
@@ -173,13 +173,22 @@ export function PrizePanel({
   const days = Math.max(1, Math.ceil(toGo / TICKETS_A_DAY))
 
   let status: string
-  if (!signedIn) status = 'Sign in to collect tickets. Every saved run pays some.'
+  if (signedOut) status = 'Sign in to collect tickets. Every saved run pays some.'
+  // A session whose account isn't known yet: never Sign in.
+  else if (!signedIn) status = authLoading ? 'Checking your tickets…' : 'Couldn’t reach your account just now.'
   else if (owned) status = worn ? 'Yours, and you’re wearing it.' : 'Yours for good. Wear it any time.'
   else if (afford) status = `You have ${balance.toLocaleString()} tickets, so ${(balance - prize.price).toLocaleString()} left after.`
   else status = `You have ${balance.toLocaleString()}. ${toGo.toLocaleString()} to go, about ${days === 1 ? 'a day' : `${days} days`} of play.`
 
   const primary = (() => {
-    if (!signedIn) return <button type="button" className="panel__btn" onClick={openSiteMenu}>Sign in</button>
+    if (signedOut) return <button type="button" className="panel__btn" onClick={openSiteMenu}>Sign in</button>
+    if (!signedIn) {
+      return (
+        <span className="panel__btn skel-btn" aria-hidden="true">
+          Save for it
+        </span>
+      )
+    }
     if (owned) {
       if (!name) return <button type="button" className="panel__btn" onClick={openSiteMenu}>Pick a tag to wear it</button>
       if (worn) return <button type="button" className="panel__btn" disabled>Wearing it</button>

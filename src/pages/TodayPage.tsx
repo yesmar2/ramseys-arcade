@@ -119,7 +119,7 @@ function dayLine({ total, rule }: Ticket): string | null {
 }
 
 /** The page's head: the day, and where it stands, the streak with it once signed in. */
-function TodayHead({ ticket, signedIn, loading }: { ticket: Ticket; signedIn: boolean; loading: boolean }) {
+function TodayHead({ ticket, signedIn, signedOut }: { ticket: Ticket; signedIn: boolean; signedOut: boolean }) {
   const { day, done, total, marks, current, server } = ticket
   const line = dayLine(ticket)
   return (
@@ -147,12 +147,12 @@ function TodayHead({ ticket, signedIn, loading }: { ticket: Ticket; signedIn: bo
               </span>
             </div>
           ) : null
-        ) : loading ? null : (
+        ) : signedOut ? (
           <button type="button" className="today-head__signin" onClick={openSiteMenu}>
             <FlameIcon />
             Sign in to keep a streak
           </button>
-        )}
+        ) : null}
         {total ? (
           <div className="today-head__progress">
             <span className={`today-head__bar${marks.full ? ' today-head__bar--full' : ''}`} aria-hidden="true">
@@ -390,7 +390,7 @@ function KeepAStreak() {
 }
 
 export function TodayPage() {
-  const { signedIn, loading } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   // Who's looking: the ticket is theirs, and never another account's that played on this device.
   const viewer = useAccountId()
   const ticket = useTicket(viewer)
@@ -414,7 +414,7 @@ export function TodayPage() {
       {day ? (
         <PastHead day={day} said={said} streak={streak} signedIn={signedIn} />
       ) : (
-        <TodayHead ticket={ticket} signedIn={signedIn} loading={loading} />
+        <TodayHead ticket={ticket} signedIn={signedIn} signedOut={signedOut} />
       )}
       <DayStrip
         today={today}
@@ -427,10 +427,10 @@ export function TodayPage() {
       <div className={`today-page__grid${signedIn ? ' today-page__grid--side' : ''}`}>
         <div className="today-page__main">
           {day ? (
-            <PastDayTicket day={day} said={said} streak={streak} name={name} signedIn={signedIn} />
+            <PastDayTicket day={day} said={said} streak={streak} name={name} signedIn={signedIn} signedOut={signedOut} />
           ) : (
             <>
-              <TodayCard ticket={ticket} signedIn={signedIn} />
+              <TodayCard ticket={ticket} signedIn={signedIn} signedOut={signedOut} />
               {/* The day's puzzles, just for fun, off the ticket (AlsoToday.tsx). */}
               <AlsoToday punches={ticket.also} />
             </>
@@ -439,9 +439,9 @@ export function TodayPage() {
             day ? null : (
               <TodayRivals data={rivals.data} dailies={ticket.live} group={rivals.group} onPick={rivals.pick} />
             )
-          ) : loading ? null : (
+          ) : signedOut ? (
             <KeepAStreak />
-          )}
+          ) : null}
         </div>
         {signedIn ? (
           <div className="today-page__side">

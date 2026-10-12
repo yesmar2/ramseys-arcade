@@ -56,6 +56,7 @@ import {
 import { renderGame } from './render'
 import { useSkinInto } from '../../lib/skins'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 function currentLayout() {
   return snakeLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
@@ -350,6 +351,9 @@ export function SnakeGame() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpen || pausedRef.current) return
+      // On the start card, a focused button or link answers Space or Enter itself; in a run, the play screen's
+      // own buttons do, reached with Tab.
+      if ((stateRef.current.phase === 'menu' && controlTakesKey(e)) || chromeTakesKey(e)) return
       const map: Record<string, Dir> = {
         ArrowUp: 'up',
         ArrowDown: 'down',

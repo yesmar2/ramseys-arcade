@@ -226,12 +226,12 @@ function BoardTag() {
 }
 
 /** A run played as another account on this device, which waits for that account to sign in here again. */
-export function PlayedAs({ owner, signedIn }: { owner: string | null; signedIn: boolean }) {
+export function PlayedAs({ owner, signedOut }: { owner: string | null; signedOut: boolean }) {
   const tag = owner ? recallAccountTag(owner) : ''
   return (
     <div className="acechase-daily__signin">
       <p>{tag ? `Played as ${tag}. Sign in as ${tag} to put it on the board.` : 'Played as another account. Sign in as that account to put it on the board.'}</p>
-      {signedIn ? null : <SignInButton />}
+      {signedOut ? <SignInButton /> : null}
     </div>
   )
 }
@@ -390,7 +390,7 @@ export function DailyResultCard({
   onPractice: () => void
   onLeave: () => void
 }) {
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const viewer = useAccountId()
   const [taking, setTaking] = useState<'sending' | 'refused' | 'failed' | null>(null)
   const takenRef = useRef(onTakenUp)
@@ -455,7 +455,7 @@ export function DailyResultCard({
       {!practice && mine && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
       {!practice && mine && server?.season ? <SeasonRunLine run={server.season} /> : null}
       {mine && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
-      {theirs ? <PlayedAs owner={owner} signedIn={signedIn} /> : null}
+      {theirs ? <PlayedAs owner={owner} signedOut={signedOut} /> : null}
       {takeUp && taking === 'sending' ? <p className="game-card__hint">Saving it as today&rsquo;s result…</p> : null}
       {takeUp && taking === 'refused' ? (
         <p className="game-card__hint">
@@ -463,7 +463,8 @@ export function DailyResultCard({
         </p>
       ) : null}
       {takeUp && taking === 'failed' ? <p className="panel__error">That result didn&rsquo;t save. Save it from the start card.</p> : null}
-      {mine && !signedIn ? (
+      {/* Only with no session: one whose account couldn't be asked for has its result saved all the same. */}
+      {mine && signedOut ? (
         <div className="acechase-daily__signin">
           <p>Sign in to save today&rsquo;s result, earn its tickets, and keep a streak going.</p>
           <SignInButton />

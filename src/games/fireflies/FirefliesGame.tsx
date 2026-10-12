@@ -31,6 +31,7 @@ import {
   type Snapshot,
 } from './game'
 import { renderGame } from './render'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 /**
  * Where the page's own score and buttons end, measured from the top of the
@@ -178,7 +179,11 @@ export function FirefliesGame() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       if (e.code === 'Space' || e.code === 'Enter') {
+        // On the start card, a focused button or link answers the key itself.
+        if (stateRef.current.phase === 'menu' && controlTakesKey(e)) return
         e.preventDefault()
         if (stateRef.current.phase === 'menu' && performance.now() >= startGrace.current) restart()
         return

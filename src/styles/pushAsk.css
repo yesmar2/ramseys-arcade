@@ -6,6 +6,9 @@
 
 .push-ask {
   --ask-tone: var(--accent);
+  /* Its button: the tone, with words that read on it (4.5:1): the teal's dark ink, or white on a deeper orange. */
+  --ask-fill: var(--ask-tone);
+  --ask-on: #03211b;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;
@@ -20,6 +23,8 @@
 
 .push-ask--for-streak {
   --ask-tone: var(--ticket-deep, #e0602e);
+  --ask-fill: color-mix(in srgb, var(--ask-tone) 85%, #000);
+  --ask-on: #fff;
 }
 
 .push-ask__mark {
@@ -51,6 +56,16 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ask-tone);
+}
+
+/* Deeper on the light page, toward black so it keeps its hue, so the small caps read (4.5:1). */
+html[data-theme='light'] .push-ask__kicker {
+  color: color-mix(in srgb, var(--ask-tone) 62%, #000);
+}
+
+/* And the streak's orange a shade lighter on the dark page. */
+html[data-theme='dark'] .push-ask--for-streak .push-ask__kicker {
+  color: color-mix(in srgb, var(--ask-tone) 75%, #fff);
 }
 
 .push-ask__title {
@@ -92,8 +107,8 @@
 
 .push-ask .push-ask__btn:not(.panel__btn--ghost) {
   --panel-accent: var(--ask-tone);
-  background: var(--ask-tone);
-  color: #fff;
+  background: var(--ask-fill);
+  color: var(--ask-on);
   box-shadow: 0 6px 16px color-mix(in srgb, var(--ask-tone) 26%, transparent);
 }
 

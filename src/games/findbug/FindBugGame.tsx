@@ -91,6 +91,7 @@ import { SceneView, type Overlays } from './render'
 import { findbugBoardScore, formatFindbugMs } from './score'
 import { useTodayBoard } from './todayBoard'
 import { titleOf, type WantedBug } from './wanted'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 const SLUG = 'findbug'
 
@@ -909,6 +910,8 @@ function DayGame({ pastDay, itsDay }: { pastDay: string | null; itsDay: ItsDay |
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const s = stateRef.current!
       const field = fieldRef.current
 
@@ -922,6 +925,8 @@ function DayGame({ pastDay, itsDay }: { pastDay: string | null; itsDay: ItsDay |
       if (e.code === 'Space' || e.code === 'Enter') {
         // Tabbed to, the badge takes its own press, and so do the day's cards' buttons and a past day's.
         if (e.target instanceof Element && e.target.closest('.findbug__badge, .findbug-daily, .past-card')) return
+        // So does any button or link on the start card.
+        if (s.phase === 'menu' && controlTakesKey(e)) return
         e.preventDefault()
         if (s.phase === 'menu') {
           if (performance.now() < startGrace.current) return

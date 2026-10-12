@@ -2,7 +2,8 @@ import type { CSSProperties } from 'react'
 import { getGame, isDailyGame } from '../data/games'
 import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { useRunsAround, type BoardRow, type GameBest } from '../hooks/useProfileBoards'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { hasGamePreview } from '../lib/gamePreviews'
 import type { GlobalGamePlace, LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -84,6 +85,8 @@ export function ProfileBestBoard({
   const best = bests ? bestBoard(Object.fromEntries(Object.entries(bests).filter(([slug]) => !isDailyGame(slug)))) : null
   const line = best ? nextRunLine(best.rank, best.total) : null
   const runs = useRunsAround(best?.slug ?? null, best?.rank ?? 0, line && line.rank > 1 ? line.rank : null, groupId)
+  // A player's card opens at the period you picked: the board is all time's, the card needn't be.
+  const period = useDefaultPeriod()
 
   if (bests === null) {
     return <section className="pbest pbest--wait" aria-hidden="true" />
@@ -130,7 +133,7 @@ export function ProfileBestBoard({
         ? { text: 'Top 10 all time', tone: 'ten' }
         : { text: `#${place.toLocaleString()} all time`, tone: 'plain' }
   const rows = runs ? boardRows(best, runs.rows, line, runs.line) : null
-  const style = { '--tile-accent': accent, '--tile-ink': inkOn(accent) } as CSSProperties
+  const style = { '--tile-accent': accent, '--tile-ink': inkOn(accent), '--tile-fill': readableFill(accent) } as CSSProperties
 
   return (
     <section className="pbest" style={style} aria-labelledby="pbest-title">
@@ -181,7 +184,7 @@ export function ProfileBestBoard({
                 >
                   <span className="pbest__rank">{row.rank.toLocaleString()}</span>
                   <PlayerAvatar avatarId={row.avatarId} name={row.name} size="sm" />
-                  <a className="pbest__who" href={rankHref(row.name, 'all')}>
+                  <a className="pbest__who" href={rankHref(row.name, period)}>
                     <PlayerName name={row.name} avatarId={row.avatarId} />
                     {row.rank === best.rank && row.name === name && isSelf ? <span className="pbest__you">You</span> : null}
                     {!isSelf && viewer && row.name === viewer ? <span className="pbest__you pbest__you--viewer">You</span> : null}

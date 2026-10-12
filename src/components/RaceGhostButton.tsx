@@ -24,7 +24,8 @@ export function RaceGhostButton({
   time: string
   /** How much quicker than yours, in words, when you have a time: "5.85s". */
   gap?: string | null
-  needsPlus: boolean
+  /** Null while the account isn't known yet: a member's would be free, so it's neither raced nor sold till then. */
+  needsPlus: boolean | null
   mine?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -46,6 +47,13 @@ export function RaceGhostButton({
     }
   }, [open])
   if (mine) return <span className="gb-row__race" aria-hidden="true" />
+  if (needsPlus === null) {
+    return (
+      <span className="gb-row__race" aria-hidden="true">
+        <span className="rg-btn skel-btn">Race</span>
+      </span>
+    )
+  }
   if (!needsPlus) {
     return (
       <span className="gb-row__race">

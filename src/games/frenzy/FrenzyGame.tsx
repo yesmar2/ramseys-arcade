@@ -44,6 +44,7 @@ import {
 } from './game'
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
+import { controlTakesKey } from '../keys'
 
 const KEY_MAP: Record<string, 'up' | 'down' | 'left' | 'right'> = {
   ArrowUp: 'up',
@@ -361,7 +362,8 @@ export function FrenzyGame() {
         stateRef.current = clearTarget(setKey(stateRef.current, dir, true))
         return
       }
-      if (START_KEYS.has(e.code) && phase === 'menu') {
+      // A focused button or link on the start card answers the key itself.
+      if (START_KEYS.has(e.code) && phase === 'menu' && !controlTakesKey(e)) {
         e.preventDefault()
         restart()
       }

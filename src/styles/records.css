@@ -97,7 +97,6 @@
 .rbk-item:hover,
 .rbk-item:focus-visible {
   background: rgba(var(--ink-rgb), 0.045);
-  outline: none;
 }
 
 .rbk-item__thumb {
@@ -177,7 +176,6 @@
 .rbk-book:focus-visible {
   transform: translateY(-3px);
   border-color: var(--brass-strong);
-  outline: none;
 }
 
 .rbk-book__top {
@@ -244,12 +242,17 @@
   font-size: 1.15rem;
   font-weight: 800;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--book-accent) 70%, var(--ink));
+  /*
+   * The game's colour, as the shade of it that reads on the brass (4.5:1) in each theme (--book-text,
+   * --book-text-dark: lib/color.ts readableText): the colour itself where it can, else only as much darker or
+   * lighter as it needs, so it keeps its hue.
+   */
+  color: var(--book-text, color-mix(in srgb, var(--book-accent) 50%, #000));
   font-variant-numeric: tabular-nums;
 }
 
 html[data-theme="dark"] .rbk-book__value b {
-  color: var(--book-accent);
+  color: var(--book-text-dark, var(--book-accent));
 }
 
 .rbk-book__value span {
@@ -301,7 +304,6 @@ html[data-theme="dark"] .rbk-book__value b {
 .rbk-latest__row:hover,
 .rbk-latest__row:focus-visible {
   background: rgba(var(--ink-rgb), 0.045);
-  outline: none;
 }
 
 .rbk-latest__day {
@@ -533,6 +535,40 @@ html[data-theme="dark"] .rbk-book__value b {
   font-size: 0.92rem;
   font-weight: 650;
   line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Who's closest: a row each, the player and when they set it on the left, their number across from them. */
+.rcd-closest__rows {
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0;
+}
+
+.rcd-closest__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--sb-line);
+}
+
+.rcd-closest__who {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.rcd-closest__who b {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.rcd-closest__who span {
+  font-size: 0.82rem;
+  font-weight: 650;
   color: var(--muted);
 }
 
@@ -1224,6 +1260,11 @@ html[data-theme="dark"] .rbk-book__value b {
   color: var(--tr-gold);
 }
 
+/* The trophy gold is for its art; on the light page its small caps take the boards' deeper gold (4.5:1). */
+html[data-theme='light'] .hbk-row--gold .hbk-row__ord {
+  color: var(--sb-gold-ink);
+}
+
 .hbk-row--silver .hbk-row__ord {
   color: var(--tr-silver);
 }
@@ -1288,10 +1329,11 @@ html[data-theme="dark"] .rbk-book__value b {
   --brass-strong: rgba(176, 128, 30, 0.75);
   --brass-line: rgba(176, 128, 30, 0.25);
   --brass-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 6px 16px rgba(120, 84, 10, 0.12);
-  --brass-name: #8a6514;
+  /* The name and the quiet words deep enough to read (4.5:1) down on the brass, not only on its lightest part. */
+  --brass-name: #7c5b12;
   --brass-value: #3b2a06;
   --brass-title: #7a5a12;
-  --brass-quiet: #8f7a4a;
+  --brass-quiet: #6b5c38;
   --brass-rivet: radial-gradient(circle at 35% 35%, #fff1c7, #a87d22);
   --brass-big: linear-gradient(160deg, #ffefc2, #f5dc9c 60%, #eccd7f);
 }
@@ -1386,8 +1428,9 @@ html[data-theme='dark'] .rbk {
   border-radius: inherit;
 }
 
-.rbk-plq__link:focus-visible::after {
-  outline: 2px solid var(--brass-strong);
+/* The keyboard ring goes round the plaque itself, so it follows its corners, in the site's ring colour. */
+.rbk-plq:has(.rbk-plq__link:focus-visible) {
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -1520,7 +1563,6 @@ html[data-theme='dark'] .rbk {
 .rbk-plq__act:focus-visible {
   border-color: var(--brass-strong);
   background: rgba(var(--ink-rgb), 0.1);
-  outline: none;
 }
 
 .rbk-plq__act--go {
@@ -1608,7 +1650,6 @@ html[data-theme='dark'] .rbk {
 .rbk-grab:hover,
 .rbk-grab:focus-visible {
   border-color: var(--accent);
-  outline: none;
 }
 
 .rbk-grab__thumb {
@@ -1717,6 +1758,8 @@ html[data-theme='dark'] .rbk {
   line-height: 1.15;
   letter-spacing: -0.02em;
   text-wrap: balance;
+  /* A group's name can end it, and one with no spaces breaks anywhere rather than run off the page. */
+  overflow-wrap: anywhere;
 }
 
 .rbk-tabhead .seg.sb-periods {
@@ -1736,10 +1779,13 @@ html[data-theme='dark'] .rbk {
   padding: 0.35rem 0 0.7rem;
 }
 
-/* On a light page the game's colour and the gold need more ink to read as small text (4.5:1). */
+/*
+ * On a light page the game's colour and the gold go deeper to read as small text (4.5:1), toward black so they keep
+ * their hue (toward the ink the warm ones turn khaki): the game's as its page works it out (hub.css --gh-accent-ink).
+ */
 html:not([data-theme='dark']) .rbl {
-  --rbl-accent-ink: color-mix(in srgb, var(--gb-accent, var(--accent)) 48%, var(--ink));
-  --rbl-gold-ink: color-mix(in srgb, var(--sb-gold) 45%, var(--ink));
+  --rbl-accent-ink: var(--gh-accent-ink, color-mix(in srgb, var(--gb-accent, var(--accent)) 50%, #000));
+  --rbl-gold-ink: color-mix(in srgb, var(--sb-gold) 52%, #000);
   --rbl-near-ink: color-mix(in srgb, var(--accent) 55%, var(--ink));
 }
 

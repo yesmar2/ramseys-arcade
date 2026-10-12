@@ -9,6 +9,7 @@ import {
 import {
   ACTIVE_GROUP_EVENT,
   appendGroupQuery,
+  canUseGroup,
   groupHref,
   groupsIndexHref,
   parseGroupQuery,
@@ -46,8 +47,11 @@ export type Route =
   | { name: 'siteRecords' }
   | { name: 'records'; game: string; recordId?: string; period?: LeaderboardPeriod }
   | { name: 'rank'; player?: string; period?: LeaderboardPeriod }
-  /** How a player's rank is worked out, from their own numbers: yours, or `player`'s. */
-  | { name: 'rankHow'; player?: string; period?: LeaderboardPeriod }
+  /**
+   * How a player's rank is worked out, from their own numbers: yours, or `player`'s. `group`: one of the page's
+   * own from its address (a group's page links here with it), shown in place of the site's, which stays as it is.
+   */
+  | { name: 'rankHow'; player?: string; period?: LeaderboardPeriod; group?: string }
   | { name: 'groups' }
   | { name: 'group'; id: string; invite?: string }
   | { name: 'tournaments' }
@@ -127,6 +131,11 @@ function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
 }
 
+/** A period's short word as the period: inbox notes already sent link to /rank/<TAG>/week. */
+function periodAlias(value: string): string {
+  return value === 'week' ? 'weekly' : value === 'month' ? 'monthly' : value
+}
+
 /** A real day, as YYYY-MM-DD: not a month 13 or a Feb 30. */
 function isDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
@@ -202,6 +211,15 @@ export function rankHowHref(player?: string, period: LeaderboardPeriod = default
 }
 
 const RANK_HOW_PATH = 'how-ranks-work'
+
+/**
+ * A How page's group of its own, from its address, when this viewer can see it: one they can't (signed out, or
+ * not theirs) is dropped, and the page is the site's group's.
+ */
+function howGroup(search: string): { group?: string } {
+  const group = parseGroupQuery(search)
+  return group && canUseGroup(group) ? { group } : {}
+}
 
 /** Section the current URL asks to be scrolled to, if any. */
 export function focusFromUrl(): string | null {
@@ -352,9 +370,12 @@ export function tournamentsHref() {
   return '/tournaments'
 }
 
-/** Making an event; for a group, its members are invited once it is made. */
+/**
+ * Making an event; for a group, its members are invited once it is made. `?for=`, not `?group=`: that one
+ * sets every board on the site to the group.
+ */
 export function tournamentCreateHref(groupId?: string) {
-  return groupId ? `/tournaments/create?group=${encodeURIComponent(groupId)}` : '/tournaments/create'
+  return groupId ? `/tournaments/create?for=${encodeURIComponent(groupId)}` : '/tournaments/create'
 }
 
 export function tournamentHref(id: string, invite?: string) {
@@ -379,7 +400,8 @@ export function tournamentPlayHref(id: string, game: string, invite?: string) {
  */
 export function recordsHref(game: string, period: LeaderboardPeriod = 'all') {
   const base = `/games/${encodeURIComponent(game)}/records`
-  return isDailyGame(game) || period === 'all' ? base : `${base}/${period}`
+  const book = bookPeriod(period)
+  return isDailyGame(game) || book === 'all' ? base : `${base}/${book}`
 }
 
 export function recordHref(
@@ -387,7 +409,12 @@ export function recordHref(
   recordId: string,
   period: LeaderboardPeriod = 'all',
 ) {
-  return `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}/${period}`
+  return `/records/${encodeURIComponent(game)}/${encodeURIComponent(recordId)}/${bookPeriod(period)}`
+}
+
+/** The record books have no season of their own: asked for the season's, a book opens at all time. */
+function bookPeriod(period: LeaderboardPeriod): LeaderboardPeriod {
+  return period === 'season' ? 'all' : period
 }
 
 function gameLeaderboardRoute(
@@ -521,8 +548,9 @@ export function hrefForRoute(
       return appendGroupQuery(leaderboardHref(period))
     case 'rank':
       return appendGroupQuery(rankHref(route.player, period))
+    // Its group is its own, from its address, never the site's.
     case 'rankHow':
-      return appendGroupQuery(rankHowHref(route.player, period))
+      return route.group ? appendGroupQuery(rankHowHref(route.player, period), route.group) : rankHowHref(route.player, period)
     case 'records':
       if (route.recordId) {
         return appendGroupQuery(recordHref(route.game, route.recordId, period))
@@ -600,9 +628,10 @@ export function applySitePeriod(period: LeaderboardPeriod, route: Route = curren
 
 export function applySiteGroup(groupId: string | null, route: Route = currentRoute()) {
   setActiveGroup(groupId)
+  // The group's listener has put the address right (useRoute's syncGroupUrl); this is for a group already saved.
   const next = hrefForRoute(route, periodFromRoute(route) ?? defaultPeriod())
-  if (next && normalizeHref(currentHref()) !== normalizeHref(next)) {
-    navigate(next)
+  if (next && normalizeHref(currentHref()) !== normalizeHref(keepFocus(next))) {
+    navigate(keepFocus(next), { replace: true })
   }
 }
 
@@ -645,15 +674,15 @@ export function parseUrl(pathname: string, search: string): Route {
   }
   if (path === 'leaderboards') return { name: 'leaderboards', period: defaultPeriod() }
   if (path === 'rank') return { name: 'rank', period: defaultPeriod() }
-  if (path === RANK_HOW_PATH) return { name: 'rankHow', period: defaultPeriod() }
+  if (path === RANK_HOW_PATH) return { name: 'rankHow', period: defaultPeriod(), ...howGroup(search) }
   const rankHowMatch = new RegExp(`^${RANK_HOW_PATH}/([^/]+)(?:/([^/]+))?$`).exec(path)
   if (rankHowMatch) {
     const part1 = decodeURIComponent(rankHowMatch[1]!).trim()
     const part2 = rankHowMatch[2] ? decodeURIComponent(rankHowMatch[2]).trim() : undefined
-    if (!part2 && isLeaderboardPeriod(part1)) return { name: 'rankHow', period: part1 }
+    if (!part2 && isLeaderboardPeriod(part1)) return { name: 'rankHow', period: part1, ...howGroup(search) }
     const player = part1.toUpperCase().slice(0, 12)
     const period = part2 && isLeaderboardPeriod(part2) ? part2 : defaultPeriod()
-    return player ? { name: 'rankHow', player, period } : { name: 'rankHow', period }
+    return player ? { name: 'rankHow', player, period, ...howGroup(search) } : { name: 'rankHow', period, ...howGroup(search) }
   }
   if (path === 'records') return { name: 'recordsIndex' }
   // Before the game-record patterns below, which would read "site" as a slug.
@@ -662,19 +691,21 @@ export function parseUrl(pathname: string, search: string): Route {
   const rankMatch = /^rank\/([^/]+)(?:\/([^/]+))?$/.exec(path)
   if (rankMatch) {
     const part1 = decodeURIComponent(rankMatch[1]).trim()
-    const part2 = rankMatch[2] ? decodeURIComponent(rankMatch[2]).trim() : undefined
+    const part2 = rankMatch[2] ? periodAlias(decodeURIComponent(rankMatch[2]).trim()) : undefined
     if (part2 && isLeaderboardPeriod(part2)) {
       const player = part1.toUpperCase().slice(0, 12)
       return player
         ? { name: 'rank', player, period: part2 }
         : { name: 'rank', period: part2 }
     }
-    if (isLeaderboardPeriod(part1)) {
-      return { name: 'rank', period: part1 }
+    const own = periodAlias(part1)
+    if (isLeaderboardPeriod(own)) {
+      return { name: 'rank', period: own }
     }
+    // A card with no period of its own is at the site's.
     const player = part1.toUpperCase().slice(0, 12)
     return player
-      ? { name: 'rank', player, period: 'all' }
+      ? { name: 'rank', player, period: defaultPeriod() }
       : { name: 'rank', period: defaultPeriod() }
   }
 
@@ -687,7 +718,8 @@ export function parseUrl(pathname: string, search: string): Route {
       name: 'records',
       game,
       recordId,
-      period: isLeaderboardPeriod(periodRaw) ? periodRaw : 'all',
+      // A season's address is the all-time book's: the route sync puts the address right in place.
+      period: isLeaderboardPeriod(periodRaw) ? bookPeriod(periodRaw) : 'all',
     }
   }
 
@@ -696,7 +728,7 @@ export function parseUrl(pathname: string, search: string): Route {
     const game = canonicalGameSlug(decodeURIComponent(recordsGameMatch[1]))
     const second = decodeURIComponent(recordsGameMatch[2])
     if (isLeaderboardPeriod(second)) {
-      return { name: 'records', game, period: second }
+      return { name: 'records', game, period: bookPeriod(second) }
     }
     return {
       name: 'records',
@@ -799,7 +831,7 @@ export function parseUrl(pathname: string, search: string): Route {
     // A game's Records tab for another period than all time: `/games/{slug}/records/{period}`.
     if (third !== undefined) {
       return segment === 'records' && !isDailyGame(slug) && isLeaderboardPeriod(third)
-        ? { name: 'game', slug, board: 'records', period: third }
+        ? { name: 'game', slug, board: 'records', period: bookPeriod(third) }
         : { name: 'game', slug }
     }
     // Where Today's Hole was before it was all of Ace Chase, and shared links still point: the play page.
@@ -888,19 +920,29 @@ function dailyPage(route: Route) {
  * Whether landing on a route leaves the site's period as it is. Record books default to `all`, a period of
  * their own; a daily's board for today has a period only a daily's board has; a daily's page has no period
  * at all (its address has none); and a daily's month, shown for the site's all time (lib/allTime.ts), is that
- * period still, so all time stays the site's.
+ * period still, so all time stays the site's. Someone's card, and How your rank works (anyone's), show the period
+ * their address names, but a link to one (a friend's note, a shared card, a group's page) doesn't pick the period
+ * for the whole site, and nor do their own tabs.
  */
 function keepsSitePeriod(route: Route, period: LeaderboardPeriod) {
   // The season is a site period like the others (the header's Season, while a season has standings).
   // A game's Records tab keeps its own period too, all time unless asked.
   if (period === 'daily' || route.name === 'records' || dailyPage(route)) return true
   if (route.name === 'game' && route.board === 'records') return true
+  if (route.name === 'rankHow' || (route.name === 'rank' && route.player)) return true
   return route.name === 'gameLeaderboard' && !route.day && boardPeriodFor(route.game, defaultPeriod()) === period
 }
 
 /* ------------------------------------------------------------------ */
 /* Hook                                                                */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Set while the route sync saves the period and group its address asks for. The sync then puts the address
+ * right itself, in place. Left to the period's listener, it was pushed: a second history entry, which Back
+ * couldn't get past, and before the group was saved, one without the group.
+ */
+let syncingRoute = false
 
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => currentRoute())
@@ -916,11 +958,21 @@ export function useRoute(): Route {
     const syncRoute = () => {
       let next = currentRoute()
       const p = periodFromRoute(next)
-      // A daily's page setting the period would push /games/<daily> over an old /games/<daily>/weekly entry, and Back would land there again.
-      if (p && !keepsSitePeriod(next, p)) setDefaultPeriod(p)
-      const groupParams = new URLSearchParams(window.location.search)
-      if (groupParams.has('group')) {
-        setActiveGroup(parseGroupQuery(window.location.search))
+      syncingRoute = true
+      try {
+        // A daily's page setting the period would push /games/<daily> over an old /games/<daily>/weekly entry, and Back would land there again.
+        if (p && !keepsSitePeriod(next, p)) setDefaultPeriod(p)
+        const groupParams = new URLSearchParams(window.location.search)
+        const asked = parseGroupQuery(window.location.search)
+        // The event maker's ?group (an older link's) is who the event is for, and a How page's is its own: the boards
+        // stay as they are. So they do for a group this viewer can't see (signed out, or not theirs): the address is
+        // put right below, where saving it had the boards refuse it and drop it again, pushing past Back each time.
+        const ownGroup = next.name === 'tournamentCreate' || next.name === 'rankHow'
+        if (groupParams.has('group') && !ownGroup && (!asked || canUseGroup(asked))) {
+          setActiveGroup(asked)
+        }
+      } finally {
+        syncingRoute = false
       }
       const href = hrefForRoute(next, p ?? defaultPeriod())
       const canonical = href && keepFocus(href)
@@ -947,18 +999,31 @@ export function useRoute(): Route {
     // The period is set on every route change, changed or not. Only a real
     // change moves the URL, and that leaves any section it asked for behind.
     const syncPeriodUrl = () => {
+      // The route sync's own saves: it puts its address right itself.
+      if (syncingRoute) return
       const period = defaultPeriod()
       const next = hrefForRoute(currentRoute(), period)
       if (next && normalizeHref(currentHref()) !== normalizeHref(keepFocus(next))) {
         navigate(next)
       }
     }
+    // A group changes who a page counts, never its period: a page with a period of its own (a record's, someone's
+    // card, How your rank works) keeps it, as applySiteGroup does. The address is put right in place, so a group
+    // picked, or dropped by boards that refuse it, leaves no entry for Back to land on.
+    const syncGroupUrl = () => {
+      if (syncingRoute) return
+      const route = currentRoute()
+      const next = hrefForRoute(route, periodFromRoute(route) ?? defaultPeriod())
+      if (next && normalizeHref(currentHref()) !== normalizeHref(keepFocus(next))) {
+        navigate(keepFocus(next), { replace: true })
+      }
+    }
 
     window.addEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
-    window.addEventListener(ACTIVE_GROUP_EVENT, syncPeriodUrl)
+    window.addEventListener(ACTIVE_GROUP_EVENT, syncGroupUrl)
     return () => {
       window.removeEventListener(DEFAULT_PERIOD_EVENT, syncPeriodUrl)
-      window.removeEventListener(ACTIVE_GROUP_EVENT, syncPeriodUrl)
+      window.removeEventListener(ACTIVE_GROUP_EVENT, syncGroupUrl)
     }
   }, [])
 

@@ -170,7 +170,6 @@
 button.counter-goal:hover,
 button.counter-goal:focus-visible {
   border-color: color-mix(in srgb, var(--ticket) 60%, transparent);
-  outline: none;
 }
 
 .counter-goal--none {
@@ -265,6 +264,7 @@ button.counter-goal:focus-visible {
     #0d1319;
   border: 1px solid rgba(231, 238, 243, 0.1);
   color: #e7eef3;
+  --focus-ring: var(--focus-ring-on-dark);
 }
 
 .counter-wall__cap {
@@ -1253,14 +1253,21 @@ button.counter-goal:focus-visible {
     font-size: 1rem;
   }
 
+  /* No wider than the card: the digits give a little, and the link takes two lines. */
   .counter-led {
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 5.8rem;
   }
 
   .counter-led svg {
     width: 10.5rem;
+    min-width: 0;
     height: auto;
+  }
+
+  .counter-led__history {
+    white-space: normal;
   }
 
   .counter-wall {
@@ -1275,6 +1282,8 @@ button.counter-goal:focus-visible {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding: 0.85rem 1.1rem;
+    /* Room for a keyboard ring when a link is scrolled to the line's edge. */
+    scroll-padding-inline: 0.5rem;
     scrollbar-width: none;
   }
 
@@ -1296,6 +1305,11 @@ button.counter-goal:focus-visible {
 
   .counter-chip {
     flex: none;
+  }
+
+  /* The line scrolls, so it clips past its edges: the keyboard ring goes inside the chip. */
+  .counter-chip:focus-visible {
+    outline-offset: -2px;
   }
 
   .counter-case {
@@ -1323,6 +1337,11 @@ button.counter-goal:focus-visible {
 
   .counter-shelf--top .counter-item {
     flex-basis: 11rem;
+  }
+
+  /* A shelf's last prize sits on the case's edge, which clips: its ring goes a pixel further in. */
+  .counter-item__btn:focus-visible {
+    outline-offset: -3px;
   }
 
   .counter-shelf__head {

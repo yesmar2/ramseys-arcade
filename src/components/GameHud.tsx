@@ -156,6 +156,7 @@ export function GamePlayChrome({
   paused = false,
   past,
   leaveNote,
+  onLeaveAsk,
   children,
 }: {
   slug: string
@@ -170,6 +171,11 @@ export function GamePlayChrome({
    * won't be saved.
    */
   leaveNote?: string
+  /**
+   * Told as the leave confirm opens and closes, for a game with no pause to offer: its run holds still
+   * while the confirm asks, or the run's clock runs out under the question.
+   */
+  onLeaveAsk?: (asking: boolean) => void
   children?: ReactNode
 }) {
   usePastPlayTitle(slug, past?.title)
@@ -182,7 +188,7 @@ export function GamePlayChrome({
         className="game-play-chrome game-play-chrome--leave"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <PlayLeaveButton slug={slug} inRun={inRun} paused={paused} pastHref={past?.href} note={note} />
+        <PlayLeaveButton slug={slug} inRun={inRun} paused={paused} pastHref={past?.href} note={note} onLeaveAsk={onLeaveAsk} />
       </div>
       {past && past.chip !== false ? (
         <div className="play-past">
@@ -233,6 +239,7 @@ function PlayLeaveButton({
   paused,
   pastHref,
   note,
+  onLeaveAsk,
 }: {
   slug: string
   inRun: InRun
@@ -241,6 +248,8 @@ function PlayLeaveButton({
   pastHref?: string
   /** The confirm's line: what happens to the run if you leave. */
   note: string
+  /** Told as the confirm opens and closes (GamePlayChrome's onLeaveAsk). */
+  onLeaveAsk?: (asking: boolean) => void
 }) {
   const tournament = useTournamentPlay()
   const href = playLeaveHref(slug, tournament?.tournamentId, pastHref)
@@ -255,15 +264,48 @@ function PlayLeaveButton({
   const hrefRef = useRef(href)
   const armedRef = useRef(true)
   const stayRef = useRef<HTMLButtonElement>(null)
+  const onLeaveAskRef = useRef(onLeaveAsk)
+  /** The confirm is up over a live run that had no pause to offer. */
+  const overRunRef = useRef(false)
   inRunRef.current = inRun
   pausedRef.current = paused
   hrefRef.current = href
+  onLeaveAskRef.current = onLeaveAsk
 
   const goNow = () => {
     armedRef.current = false
     setConfirming(false)
     leaveTo(hrefRef.current)
   }
+
+  const askOverRun = () => {
+    overRunRef.current = true
+    setConfirming(true)
+  }
+
+  // A game with no pause holds its run while the confirm asks.
+  useEffect(() => {
+    onLeaveAskRef.current?.(confirming)
+    if (!confirming) overRunRef.current = false
+  }, [confirming])
+
+  // Should that run end anyway, there's nothing left to leave: the question goes with it.
+  useEffect(() => {
+    if (confirming && overRunRef.current && !resolveInRun(inRun)) setConfirming(false)
+  }, [confirming, inRun])
+
+  // Back to the live run from the confirm (Stay) or the pause card (Resume, Esc): a play-screen button that still
+  // has the focus (‹ Leave reached with Tab, or handed it back as the confirm closed) lets it go, or the next
+  // Space or Enter would ask or pause again rather than play.
+  const askedRef = useRef(false)
+  useEffect(() => {
+    const asked = confirming || paused
+    if (askedRef.current && !asked && resolveInRun(inRunRef.current)) {
+      const focused = document.activeElement
+      if (focused instanceof HTMLElement && focused.closest('.game-play-chrome')) focused.blur()
+    }
+    askedRef.current = asked
+  }, [confirming, paused])
 
   useEffect(() => {
     const onAsk = () => setConfirming(true)
@@ -287,7 +329,7 @@ function PlayLeaveButton({
         return
       }
       if (resolveInRun(inRunRef.current)) {
-        if (!askToPause()) setConfirming(true)
+        if (!askToPause()) askOverRun()
         return
       }
       armedRef.current = false
@@ -309,7 +351,7 @@ function PlayLeaveButton({
       goNow()
       return
     }
-    if (!askToPause()) setConfirming(true)
+    if (!askToPause()) askOverRun()
   }
 
   return (

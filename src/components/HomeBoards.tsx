@@ -4,7 +4,7 @@ import { recordsHref, siteRecordsHref, standingsHref } from '../hooks/useHashRou
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { useActiveGroup } from '../lib/groups'
+import { useActiveGroup, useScope } from '../lib/groups'
 import { dailyPick } from '../lib/homePicks'
 import {
   fetchGlobalBoard,
@@ -41,9 +41,11 @@ function Standings({
   you: string
 }) {
   const period = useDefaultPeriod()
+  const { nobody } = useScope()
   const { rank, score, nearby = [], avatarId } = useGlobalRank()
   const loading = useGlobalRankLoading()
   const entries = board?.entries ?? []
+  const empty = board != null && entries.length === 0
   const youOnList = Boolean(you) && entries.some((e) => e.name === you)
   // Ranked, but below the rows shown: your own row goes under them.
   const yourRow: GlobalBoardEntry | null =
@@ -82,8 +84,8 @@ function Standings({
             </li>
           ))}
         </ol>
-      ) : entries.length === 0 ? (
-        <p className="hb-empty">Nobody is on the board yet. The first score posted takes #1.</p>
+      ) : empty ? (
+        <p className="hb-empty">{nobody} is on the board yet. The first score posted takes #1.</p>
       ) : (
         <ol className="hb-rows">
           {entries.map(row)}
@@ -115,7 +117,8 @@ function Standings({
             </div>
           ) : null}
         </div>
-      ) : (
+      ) : empty && you ? null : (
+        // Not under an empty board as well: its own line already says the first score takes #1.
         <p className="hb-note">
           {/* All time leaves the dailies out (lib/allTime.ts). */}
           {you
@@ -207,6 +210,8 @@ function RecordBook({ slug, records }: { slug: string; records: RecordSummary[] 
 export function HomeBoards() {
   const period = useDefaultPeriod()
   const groupId = useActiveGroup()
+  // The boards' group, when they show one: all three panels are then the group's.
+  const group = useScope().name
   const you = normalizePlayerName(usePlayerName())
   const bookGame = spotlightGame()
   const [board, setBoard] = useState<GlobalBoardResult | null>(null)
@@ -264,6 +269,7 @@ export function HomeBoards() {
       <div className="home-section__bar">
         <h2 id="hboards-title" className="home-section__title">
           {PERIOD_LABELS[period]}
+          {group ? ` · ${group}` : ''}
         </h2>
         {board && players > 0 ? (
           <span className="home-section__count">

@@ -33,6 +33,7 @@ import {
 } from './StackerEngine'
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 function toSnapshot(s: GameState): StackerSnapshot {
   return {
@@ -175,8 +176,13 @@ export function StackerGame() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // The score card and the pause card get their keys to themselves.
+      if (saveOpen || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       if (e.code === 'Space' || e.code === 'Enter') {
-        if (saveOpen) return
+        // On the start card, a focused button or link answers the key itself.
+        if (stateRef.current.phase === 'menu' && controlTakesKey(e)) return
         e.preventDefault()
         act()
       }

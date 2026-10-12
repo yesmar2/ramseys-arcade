@@ -1,11 +1,12 @@
 import type { CSSProperties } from 'react'
+import { readableText } from '../lib/color'
 import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame, isDailyGame } from '../data/games'
 import { useRecordBooks } from '../hooks/useRecordBooks'
 import { rankHref, siteRecordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { useActiveGroup } from '../lib/groups'
+import { useActiveGroup, useScope } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import {
   bookHolders,
@@ -106,6 +107,8 @@ function RecordItem({
 export function RecordBooksIndex() {
   const me = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
+  // The boards' group, when they show one: every book here is then the group's, and so is who holds none.
+  const scope = useScope()
   const data = useRecordBooks(me, groupId)
   // A holder's card opens at the period you picked.
   const period = useDefaultPeriod()
@@ -159,6 +162,7 @@ export function RecordBooksIndex() {
           <p className="sb-kicker">
             <QuillIcon />
             Hall of fame · all time
+            {scope.name ? ` · ${scope.name}` : ''}
           </p>
           <h1 id="rbk-title" className="sb-title" ref={title.ref} style={title.style}>
             {data.loading ? (
@@ -185,7 +189,7 @@ export function RecordBooksIndex() {
                 until someone beats it.
               </>
             ) : openCount ? (
-              `Nobody holds them yet: the first to do it puts their name in the book. ${held} more have a name in ink already, across ${books.length} games, each until someone beats it.`
+              `${scope.nobody} holds them yet: the first to do it puts their name in the book. ${held} more have a name in ink already, across ${books.length} games, each until someone beats it.`
             ) : (
               `${held} of them have a name in ink, across ${books.length} games. The books keep the best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each until someone beats it.`
             )}
@@ -395,7 +399,14 @@ export function RecordBooksIndex() {
                 <a
                   className="rbk-book"
                   href={recordBookHref(game)}
-                  style={{ '--book-accent': accent } as CSSProperties}
+                  style={
+                    {
+                      '--book-accent': accent,
+                      // Its value's words on the brass (records.css): the light brass's deepest, the dark's lightest.
+                      '--book-text': readableText(accent, '#f3e5c2'),
+                      '--book-text-dark': readableText(accent, '#2a2416', '#ffffff'),
+                    } as CSSProperties
+                  }
                 >
                   <span className="rbk-book__top">
                     <GameThumbArt slug={game} accent={accent} className="rbk-book__thumb" />

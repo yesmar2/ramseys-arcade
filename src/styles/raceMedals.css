@@ -155,6 +155,11 @@
   opacity: 0.65;
 }
 
+/* A won step's tickets a shade deeper on the light page, so they read (4.5:1) on the medal's tint. */
+html[data-theme='light'] .medal-ladder__step--won .medal-ladder__tix {
+  color: color-mix(in srgb, var(--ticket-text) 90%, #000);
+}
+
 .medal-ladder__tag {
   position: absolute;
   top: -0.55rem;

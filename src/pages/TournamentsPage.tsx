@@ -803,7 +803,7 @@ function bannerGames(items: TournamentSummary[]): string[] {
 }
 
 export function TournamentsPage() {
-  const { account, limits } = useAuth()
+  const { account, limits, signedOut } = useAuth()
   const playerName = usePlayerName()
   const me = normalizePlayerName(playerName || getLastPlayerName())
   const [items, setItems] = useState<TournamentSummary[]>([])
@@ -927,7 +927,7 @@ export function TournamentsPage() {
               {lineup.lastWeekly ? (
                 <LastWeekCard t={lineup.lastWeekly} detail={lastDetail} lesson={lesson} me={me} />
               ) : null}
-              <OwnEventsCard signedIn={Boolean(account)} mine={mine} limits={limits} linkFor={linkFor} />
+              <OwnEventsCard signedIn={Boolean(account)} signedOut={signedOut} mine={mine} limits={limits} linkFor={linkFor} />
             </div>
 
             {others.length > 0 ? (

@@ -83,7 +83,6 @@ html[data-theme='light'] .inbox {
 .inbox__settings:focus-visible {
   color: var(--ink);
   background: rgba(var(--ink-rgb), 0.06);
-  outline: none;
 }
 
 .inbox__settings svg {
@@ -238,7 +237,7 @@ html[data-theme='light'] .inbox {
 }
 
 .inbox-row__title a:focus-visible::after {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
@@ -566,7 +565,7 @@ html[data-theme='light'] .inbox {
 }
 
 .inbox-switch:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

@@ -8,7 +8,7 @@ import { SignArt } from './prizes/SignArt'
 import { gameHref, navigate, plusHref, rankHref } from '../hooks/useHashRoute'
 import { usePlusMember } from '../lib/plus'
 import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
-import { inkOn } from '../lib/color'
+import { bannerText, inkOn, readableFill, shelfTextDark } from '../lib/color'
 import { standingsGames } from '../lib/allTime'
 import {
   PERIOD_LABELS,
@@ -352,7 +352,14 @@ export function PlayerCard({
   avatarId?: string | null
 }) {
   const style = accent
-    ? ({ '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties)
+    ? ({
+        '--hero-accent': accent,
+        '--hero-ink': inkOn(accent),
+        '--hero-fill': readableFill(accent),
+        '--hero-text': bannerText(accent),
+        '--hero-shelf-dark': shelfTextDark(accent),
+        '--tile-accent': accent,
+      } as CSSProperties)
     : undefined
   // What they wear from the prize counter.
   const look = parseAvatar(avatarId)

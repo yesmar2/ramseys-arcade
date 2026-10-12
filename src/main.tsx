@@ -26,6 +26,7 @@ import { bootPwaInstall } from './lib/pwaInstall'
 import { bootFeedSync } from './lib/feedSync'
 import { bootAnalytics } from './lib/analytics'
 import { bootErrorReports } from './lib/errorReports'
+import { bootFocusReveal } from './lib/focusReveal'
 import { SiteErrorBoundary } from './components/SiteErrorBoundary'
 
 bootErrorReports()
@@ -34,6 +35,7 @@ bootTheme()
 bootPwaInstall()
 bootFeedSync()
 bootAnalytics()
+bootFocusReveal()
 
 /*
  * Pages and games load as their own chunks (App.tsx). A release renames

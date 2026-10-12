@@ -5,11 +5,11 @@ import { gamePlayableOn, getGame, isDailyGame } from '../data/games'
 import { useGameBoard } from '../hooks/useGameBoard'
 import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { useDeviceType } from '../lib/device'
 import { gapFigure, oneRunBoard, playersNote, type BoardPlayer } from '../lib/gameBoard'
 import { lazyPage } from '../lib/lazyPage'
-import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { useActiveGroup, useScope } from '../lib/groups'
 import {
   normalizePlayerName,
   VISIBLE_LEADERBOARD_PERIODS,
@@ -181,8 +181,11 @@ function PlayerRow({
   player: BoardPlayer
   you: string
   period: LeaderboardPeriod
-  /** Today's board of a racing daily: its rows can be raced (race any ghost); `free` is the #1's, for anyone. */
-  race?: { free: (place: number) => boolean; yourScore: number | null }
+  /**
+   * Today's board of a racing daily: its rows can be raced (race any ghost); `free` is the #1's, for anyone.
+   * `known`: whether the account is, so a member's Plus is never mistaken for none while it's asked for.
+   */
+  race?: { free: (place: number) => boolean; known: boolean; yourScore: number | null }
 }) {
   const mine = Boolean(you) && player.name === you
   const medal = MEDALS[player.place - 1]
@@ -215,7 +218,7 @@ function PlayerRow({
             name={player.name}
             time={formatLeaderboardScore(slug, player.best.score)}
             gap={race.yourScore != null && player.best.score > race.yourScore ? gapFigure(slug, player.best.score, race.yourScore) : null}
-            needsPlus={!race.free(player.place)}
+            needsPlus={race.free(player.place) ? false : race.known ? true : null}
             mine={mine}
           />
         ) : null}
@@ -245,18 +248,20 @@ function Board({
   const [view, setView] = useState<'players' | 'runs'>('players')
   const byPlayer = view === 'players'
   const game = getGame(slug)!
-  const { isPlus } = useAuth()
+  const { isPlus, signedIn, signedOut } = useAuth()
   const groupId = useActiveGroup()
+  // With a group's boards the board is the group's, and says so: "5 players in OFFICE", "Nobody in OFFICE is on this board".
+  const scope = useScope()
   // Today's board of a racing daily: each row's run can be raced as a ghost. A group's top needn't be the
   // course's #1, so there only Plus races.
   const yourRow = data.top.find((p) => p.name === you) ?? data.around?.find((p) => p.name === you)
   const race =
     period === 'daily' && RACE_GHOST_GAMES.has(slug)
-      ? { free: (place: number) => isPlus || (!groupId && place === 1), yourScore: yourRow?.best.score ?? null }
+      ? { free: (place: number) => isPlus || (!groupId && place === 1), known: signedIn || signedOut, yourScore: yourRow?.best.score ?? null }
       : undefined
   const count =
     !data.loading && data.field
-      ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'} · ${data.runCount.toLocaleString()} ${data.runCount === 1 ? 'run' : 'runs'}`
+      ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'}${scope.id ? ` ${scope.where}` : ''} · ${data.runCount.toLocaleString()} ${data.runCount === 1 ? 'run' : 'runs'}`
       : null
   return (
     <section
@@ -288,7 +293,9 @@ function Board({
         <BoardSkeleton rows={FIRST_ROWS} />
       ) : !data.field ? (
         <div className="gb-board__empty">
-          <p className="gb-board__empty-title">{groupBoardEmptyTitle(`Nobody’s on this board ${copy.noun ? copy.phrase : 'yet'}.`)}</p>
+          <p className="gb-board__empty-title">
+            {scope.id ? `${scope.nobody} is` : 'Nobody’s'} on this board {copy.noun ? copy.phrase : 'yet'}.
+          </p>
           <p className="gb-board__empty-text">Any run takes first.</p>
           <PlayLink slug={slug} />
         </div>
@@ -380,7 +387,11 @@ function PointsBoard({
   title?: string
 }) {
   const game = getGame(slug)!
-  const count = !data.loading && data.field ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'}` : null
+  const scope = useScope()
+  const count =
+    !data.loading && data.field
+      ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'}${scope.id ? ` ${scope.where}` : ''}`
+      : null
   return (
     <section
       className="sb-card gb-board gb-board--five"
@@ -397,7 +408,9 @@ function PointsBoard({
         <BoardSkeleton rows={FIRST_ROWS} />
       ) : !data.field ? (
         <div className="gb-board__empty">
-          <p className="gb-board__empty-title">{groupBoardEmptyTitle(`Nobody’s played ${copy.noun ? `${copy.phrase} ` : ''}yet.`)}</p>
+          <p className="gb-board__empty-title">
+            {scope.id ? `${scope.nobody} has` : 'Nobody’s'} played {copy.noun ? `${copy.phrase} ` : ''}yet.
+          </p>
           <p className="gb-board__empty-text">Play today to be first.</p>
           <PlayLink slug={slug} />
         </div>
@@ -451,7 +464,7 @@ export function GamePageBoard({
   useSeason()
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
-  const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
+  const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), '--gb-fill': readableFill(accent) } as CSSProperties
   // While it loads it holds the height it had last time on this device, so nothing under it jumps (lib/heldShape.ts).
   const held = useHeldHeight<HTMLDivElement>(`gb-page-${slug}-${period}`, data.loading)
 

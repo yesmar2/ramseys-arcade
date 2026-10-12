@@ -42,7 +42,6 @@
 .db-step:hover,
 .db-step:focus-visible {
   background: var(--banner-chip-hover);
-  outline: none;
 }
 
 /* No day before the first: the arrow keeps its room, so the day stays put as you step. */
@@ -208,7 +207,6 @@
 .db-days__link:hover,
 .db-days__link:focus-visible {
   background: rgba(var(--ink-rgb), 0.045);
-  outline: none;
 }
 
 .db-days__link--here,

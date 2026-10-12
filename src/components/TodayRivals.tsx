@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { getGame, isRankedGame } from '../data/games'
 import { rankHref } from '../hooks/useHashRoute'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupsIndexHref } from '../lib/groups'
 import { resolveGameAccent } from '../lib/theme'
 import { betterFirst, rivalResult, rivalWords, type TodayDaily, type TodayKey, type TodayRival, type TodayRivals as Rivals } from '../lib/today'
@@ -54,6 +55,8 @@ export function TodayRivals({
   group: string | null
   onPick: (group: string | null) => void
 }) {
+  // A player's card opens at the period you picked.
+  const period = useDefaultPeriod()
   if (!data) return null
   const others = data.rivals.filter((r) => !r.me)
   const best = bests(data.rivals, dailies)
@@ -101,7 +104,7 @@ export function TodayRivals({
               {data.rivals.map((r) => (
                 <tr key={r.name} className={r.me ? 'today-rivals__me' : undefined}>
                   <th scope="row" className="today-rivals__who">
-                    <a href={rankHref(r.name, 'all')} className="today-rivals__player">
+                    <a href={rankHref(r.name, period)} className="today-rivals__player">
                       <PlayerAvatar avatarId={r.avatarId} name={r.name} size="sm" />
                       <span className="today-rivals__name">{r.me ? 'You' : r.name}</span>
                     </a>
@@ -134,7 +137,7 @@ export function TodayRivals({
             {data.rivals.map((r) => (
               <li key={r.name} className={`today-rival${r.me ? ' today-rival--me' : ''}`}>
                 <div className="today-rival__top">
-                  <a href={rankHref(r.name, 'all')} className="today-rivals__player">
+                  <a href={rankHref(r.name, period)} className="today-rivals__player">
                     <PlayerAvatar avatarId={r.avatarId} name={r.name} size="sm" />
                     <span className="today-rivals__name">{r.me ? 'You' : r.name}</span>
                   </a>

@@ -88,12 +88,10 @@ export function ProfileRival({
   const youWord = second ? 'you' : name
   const haveWord = second ? 'haven’t' : 'hasn’t'
 
-  // Columns run the player's first, in the page's colour.
-  const first = visiting ? them : you
-  const other = visiting ? you : them
-  const firstLabel = isSelf ? 'You' : first.name
-  const otherLabel = visiting ? 'You' : other.name
-  const shared = sharedGames(first.byGame, other.byGame)
+  // The columns and the score read as the title does, the side the card takes first, in the page's colour.
+  const firstLabel = second ? 'You' : you.name
+  const otherLabel = them.name
+  const shared = sharedGames(you.byGame, them.byGame)
   const score = headToHead(shared)
 
   const gap = them.score - you.score

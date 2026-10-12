@@ -428,6 +428,27 @@ export async function checkNameAvailable(name: string): Promise<boolean> {
   return data.available
 }
 
+/**
+ * Whether a tag is a player's: someone holds it, or it has runs on the boards (a tag can have runs and no
+ * holder). A player card for a tag that's neither (made up, or from before a rename) says so. Asked as
+ * nobody, in no group: the API calls a tag you hold "available" to you, and a group's boards leave out
+ * everyone else's runs.
+ */
+export async function isPlayerTag(name: string): Promise<boolean> {
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned) return false
+  const ask = async <T>(path: string): Promise<T> => {
+    const res = await fetch(`${API_BASE}${path}`)
+    if (!res.ok) throw new ApiError(`API error ${res.status}`, res.status)
+    return (await res.json()) as T
+  }
+  const tag = await ask<{ available?: boolean }>(`/names/${encodeURIComponent(cleaned)}`)
+  if (tag.available !== true) return true
+  // All time has every ranked game's runs but the dailies', and names the dailies played, any day.
+  const rank = await ask<GlobalRankResult & { dailies?: unknown[] }>(`/leaderboards/rank?name=${encodeURIComponent(cleaned)}`)
+  return rank.rank != null || Object.keys(rank.byGame ?? {}).length > 0 || (rank.dailies?.length ?? 0) > 0
+}
+
 export async function fetchNameAvatar(name: string): Promise<string | null> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) return null
@@ -483,6 +504,8 @@ export type GamePeriodSummary = {
 export async function fetchLeaderboardsSummary(
   period: LeaderboardPeriod = 'all',
   limit = 3,
+  /** A group of the page's own, in place of the site's (How your rank works from a group's page). */
+  group?: string | null,
 ): Promise<GameBoardPreview[]> {
   const capped = Math.min(10, Math.max(1, Math.floor(limit)))
   const params = applyBoardScope(
@@ -490,6 +513,7 @@ export async function fetchLeaderboardsSummary(
       limit: String(capped),
       period,
     }),
+    group,
   )
   return dedupeGet(`summary:${params.toString()}`, () =>
     withGroupFallback(async () => {
@@ -498,12 +522,13 @@ export async function fetchLeaderboardsSummary(
           limit: String(capped),
           period,
         }),
+        group,
       )
       const data = await api<{ games: GameBoardPreview[] }>(
         `/leaderboards/summary?${scoped.toString()}`,
       )
       return data.games ?? []
-    }),
+    }, group),
   )
 }
 
@@ -567,9 +592,11 @@ export async function getPlayerBoard(
   period: LeaderboardPeriod,
   name?: string,
   page?: { offset?: number; limit?: number; find?: string; around?: number; marks?: number[]; would?: number | null },
+  /** A group of the page's own, in place of the site's (How your rank works from a group's page). */
+  group?: string | null,
 ): Promise<PlayerBoard> {
   return withGroupFallback(async () => {
-    const params = applyBoardScope(new URLSearchParams({ period, players: '1' }))
+    const params = applyBoardScope(new URLSearchParams({ period, players: '1' }), group)
     const cleaned = normalizePlayerName(name ?? '')
     if (cleaned) params.set('name', cleaned)
     if (page?.offset) params.set('offset', String(Math.max(0, Math.floor(page.offset))))
@@ -592,7 +619,7 @@ export async function getPlayerBoard(
       marked: data.marked ?? [],
       wouldPlace: data.wouldPlace ?? null,
     }
-  })
+  }, group)
 }
 
 /** A player on a daily's board on one day: their run that counted, and their place among that day's players. */
@@ -654,19 +681,21 @@ export async function fetchTopScore(slug: string): Promise<number> {
 export async function fetchPlayerBests(
   name: string,
   period: LeaderboardPeriod = 'all',
+  /** A group of the page's own, in place of the site's (How your rank works from a group's page). */
+  group?: string | null,
 ): Promise<Record<string, number>> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) return {}
   return dedupeGet(
-    `bests:${cleaned}:${period}:${storedActiveGroup() ?? 'everyone'}`,
+    `bests:${cleaned}:${period}:${(group === undefined ? storedActiveGroup() : group) ?? 'everyone'}`,
     () =>
       withGroupFallback(async () => {
-        const params = applyBoardScope(new URLSearchParams({ name: cleaned, period }))
+        const params = applyBoardScope(new URLSearchParams({ name: cleaned, period }), group)
         const data = await api<{ bests?: Record<string, number> }>(
           `/leaderboards/bests?${params}`,
         )
         return data.bests ?? {}
-      }),
+      }, group),
   )
 }
 
@@ -696,17 +725,19 @@ export type GlobalRankResult = {
 export async function fetchGlobalRank(
   name: string,
   period: LeaderboardPeriod = 'all',
+  /** A group of the page's own, in place of the site's (How your rank works from a group's page). */
+  group?: string | null,
 ): Promise<GlobalRankResult> {
   const cleaned = normalizePlayerName(name)
   if (!cleaned) {
     return { rank: null, score: 0, totalPlayers: 0, byGame: {}, nearby: [] }
   }
-  return dedupeGet(`rank:${cleaned}:${period}:${storedActiveGroup() ?? 'everyone'}`, () =>
+  return dedupeGet(`rank:${cleaned}:${period}:${(group === undefined ? storedActiveGroup() : group) ?? 'everyone'}`, () =>
     withGroupFallback(async () => {
-      const qs = applyBoardScope(new URLSearchParams({ name: cleaned }))
+      const qs = applyBoardScope(new URLSearchParams({ name: cleaned }), group)
       if (period !== 'all') qs.set('period', period)
       return api<GlobalRankResult>(`/leaderboards/rank?${qs}`)
-    }),
+    }, group),
   )
 }
 
@@ -732,14 +763,16 @@ export async function fetchGlobalBoard(
   limit = 100,
   period: LeaderboardPeriod = 'all',
   offset = 0,
+  /** A group of the page's own, in place of the site's (How your rank works from a group's page). */
+  group?: string | null,
 ): Promise<GlobalBoardResult> {
   const capped = Math.min(500, Math.max(1, Math.floor(limit)))
   const from = Math.max(0, Math.floor(offset))
   return dedupeGet(
-    `rank-board:${capped}:${from}:${period}:${storedActiveGroup() ?? 'everyone'}`,
+    `rank-board:${capped}:${from}:${period}:${(group === undefined ? storedActiveGroup() : group) ?? 'everyone'}`,
     () =>
       withGroupFallback(async () => {
-        const qs = applyBoardScope(new URLSearchParams({ limit: String(capped) }))
+        const qs = applyBoardScope(new URLSearchParams({ limit: String(capped) }), group)
         if (from) qs.set('offset', String(from))
         if (period !== 'all') qs.set('period', period)
         const data = await api<GlobalBoardResult>(`/leaderboards/rank?${qs}`)
@@ -748,7 +781,7 @@ export async function fetchGlobalBoard(
           entries: data.entries ?? [],
           ...(data.prizes ? { prizes: data.prizes } : {}),
         }
-      }),
+      }, group),
   )
 }
 

@@ -128,29 +128,34 @@ function No() {
 }
 
 export function PlusPage() {
-  const { isPlus, signedIn, loading } = useAuth()
+  const { isPlus, signedIn, signedOut } = useAuth()
   const yourName = normalizePlayerName(usePlayerName())
   const seasonStore = useSeason()
   const season = liveSeason(seasonStore)
   const pass = seasonStore.plus ?? null
   const [info, setInfo] = useState<PlusInfo | null>(null)
+  // GET /plus didn't answer: nothing can be bought, so the button says so rather than waiting for good.
+  const [infoFailed, setInfoFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
   /** By the month or the year: the month unless asked. */
   const [every, setEvery] = useState<PlusInterval>('month')
 
+  // Asked at once, under whatever session this device has (the API says `you` for it): whether Plus is on sale
+  // waits for nobody's account. Asked again on a sign-in or out, and once Plus is yours.
   useEffect(() => {
-    if (loading) return
     let live = true
     fetchPlus()
       .then((next) => {
         if (live) setInfo(next)
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (live) setInfoFailed(true)
+      })
     return () => {
       live = false
     }
-  }, [loading, signedIn, isPlus])
+  }, [signedOut, isPlus])
 
   // Back from Stripe's page: the checkout's subscription makes you a member now (its webhook may be a moment behind).
   useEffect(() => {
@@ -230,12 +235,23 @@ export function PlusPage() {
         ? `About ${perSeason(monthly, season, currency)} a season, with every season’s Gold Pass in it.`
         : ''
 
+  // In order: not on sale (or Plus couldn't be asked) is nothing to join nor sign in for, whoever's looking; not
+  // known yet (Plus, or whose session this is) holds the button's room and never says Sign in to a signed-in
+  // player; then sign in, or join.
   const join = (small = false) =>
-    !signedIn ? (
-      <button type="button" className={`plus-btn plus-btn--go${small ? ' plus-btn--small' : ''}`} onClick={openSiteMenu} disabled={loading}>
+    (info ? !info.buyable : infoFailed) ? (
+      <button type="button" className={`plus-btn${small ? ' plus-btn--small' : ''}`} disabled>
+        On sale soon
+      </button>
+    ) : !info || (!signedIn && !signedOut) ? (
+      <span className={`plus-btn plus-btn--go skel-btn${small ? ' plus-btn--small' : ''}`} aria-hidden="true">
+        Join Plus
+      </span>
+    ) : signedOut ? (
+      <button type="button" className={`plus-btn plus-btn--go${small ? ' plus-btn--small' : ''}`} onClick={openSiteMenu}>
         {freeWeek ? 'Sign in to start a free week' : 'Sign in to join'}
       </button>
-    ) : info?.buyable ? (
+    ) : (
       <button
         type="button"
         className={`plus-btn plus-btn--go${small ? ' plus-btn--small' : ''}`}
@@ -243,10 +259,6 @@ export function PlusPage() {
         onClick={() => void go(() => startPlusMembership(every))}
       >
         {busy ? 'Opening…' : freeWeek ? 'Start your free week' : 'Join Plus'}
-      </button>
-    ) : (
-      <button type="button" className={`plus-btn${small ? ' plus-btn--small' : ''}`} disabled>
-        On sale soon
       </button>
     )
 
@@ -548,13 +560,16 @@ export function PlusPage() {
             Questions
           </h2>
           <div className="plus-faq__grid">
-            <div className="plus-faq__one">
-              <h3>What happens after the free week?</h3>
-              <p>
-                Your first payment, and with it this season’s Gold Pass and the month’s look. Cancel before the week ends and you pay
-                nothing.
-              </p>
-            </div>
+            {/* Only while there's a free week to have, or you're on one: not on sale, there's none. */}
+            {freeWeek || onFreeWeek ? (
+              <div className="plus-faq__one">
+                <h3>What happens after the free week?</h3>
+                <p>
+                  Your first payment, and with it this season’s Gold Pass and the month’s look. Cancel before the week ends and you pay
+                  nothing.
+                </p>
+              </div>
+            ) : null}
             <div className="plus-faq__one">
               <h3>Can I cancel?</h3>
               <p>Any time, from this page. Plus runs to the end of what you’ve paid for, and what you’ve won stays yours.</p>

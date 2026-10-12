@@ -17,13 +17,14 @@ import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { useMyStats } from '../hooks/useMyStats'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { EMPTY_RANK, useGameBests, usePeriodRanks, useRankFor } from '../hooks/useProfileBoards'
+import { EMPTY_RANK, useGameBests, useIsPlayer, usePeriodRanks, useRankFor } from '../hooks/useProfileBoards'
 import { AVATARS_ENABLED, AVATAR_EVENT, avatarWashColor, getLocalAvatarId, resolveAvatar } from '../lib/avatars'
 import { AvatarStudio } from '../components/AvatarStudio'
 import { APP_NAME } from '../lib/brand'
+import { mixColor, readableText } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
-import { friendsHref, scopeWhere, useActiveGroup } from '../lib/groups'
+import { friendsHref, useActiveGroup, useScope } from '../lib/groups'
 import { dailiesPlayed, standingsGames } from '../lib/allTime'
 import {
   RANKED_LEADERBOARD_GAMES,
@@ -105,6 +106,10 @@ export function RankPage({
   const groupId = useActiveGroup()
 
   const ranks = usePeriodRanks(viewedName, groupId)
+  // Someone else's tag, made up or from before a rename, may be nobody's: then there's no card to draw. Runs on
+  // any of the card's boards settle it at once, whoever holds the tag.
+  const played = Object.values(ranks).some((r) => r && (Object.keys(r.byGame).length > 0 || dailiesPlayed(r).length > 0))
+  const isPlayer = useIsPlayer(isSelf ? '' : viewedName, played)
 
   useEffect(() => {
     if (!viewedName) {
@@ -128,7 +133,8 @@ export function RankPage({
   // The cached self-rank paints the common case immediately; the fetches then fill in the rest.
   const cachedSelf = isSelf && period === globalPeriod && !myRankLoading ? myRank : null
   const data = ranks[period] ?? cachedSelf ?? EMPTY_RANK
-  const loading = !ranks[period] && !cachedSelf
+  // Held while the tag is checked too, so a tag that's nobody's never shows as a player first.
+  const loading = (!ranks[period] && !cachedSelf) || isPlayer === null
   const rank = data.rank
   const field = data.totalPlayers
   const outsideTopTen = !loading && rank != null && !talksInPlaces(rank, field)
@@ -157,7 +163,8 @@ export function RankPage({
   const mine = useMyStats(period, isSelf && signedIn)
   const streak = mine.data?.stats?.streak.current ?? 0
 
-  const where = scopeWhere(groupId)
+  // "in OFFICE": said again once the list of your groups comes with the name.
+  const { where } = useScope()
 
   const shareUrl = rankHref(viewedName || undefined, period)
   const shareLabel =
@@ -205,10 +212,23 @@ export function RankPage({
       ) : null}
       <ShareBoardButton className="home-banner__ghost" text="Share profile" label={shareLabel} url={shareUrl} />
     </>
-  ) : (
+  ) : isPlayer ? (
     <>
       {signedIn && myName ? <FriendButton name={viewedName} /> : null}
       <ShareBoardButton className="home-banner__ghost" text="Share" label={shareLabel} url={shareUrl} />
+    </>
+  ) : (
+    <>
+      {/* Their places while the tag is checked, in their shapes: a tag that's nobody's gets neither. */}
+      {signedIn && myName ? (
+        <span className="home-banner__cta skel-btn" aria-hidden="true">
+          Add friend
+        </span>
+      ) : null}
+      <span className="lb-share home-banner__ghost skel-btn" aria-hidden="true">
+        <svg className="lb-share__icon" viewBox="0 0 24 24" />
+        <span className="lb-share__text">Share</span>
+      </span>
     </>
   )
 
@@ -227,7 +247,20 @@ export function RankPage({
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <div className="ev pf" style={accent ? ({ '--pf-accent': accent } as CSSProperties) : undefined}>
+      <div
+        className="ev pf"
+        style={
+          accent
+            ? ({
+                '--pf-accent': accent,
+                // Its small words (profile.css): the shade that reads on its deepest tint here, a "You" chip on
+                // your row of a tinted card, about 40% of the colour.
+                '--pf-text': readableText(accent, mixColor(accent, '#ffffff', 0.58)),
+                '--pf-text-dark': readableText(mixColor(accent, '#ffffff', 0.28), mixColor(accent, '#18242e', 0.58), '#ffffff'),
+              } as CSSProperties)
+            : undefined
+        }
+      >
         {studioOpen && viewedName ? (
           <AvatarStudio
             name={viewedName}
@@ -239,7 +272,20 @@ export function RankPage({
             onClose={() => setStudioOpen(false)}
           />
         ) : null}
-        {viewedName ? (
+        {isPlayer === false ? (
+          <PageBanner
+            ariaLabel={`No player called ${viewedName}`}
+            kicker={<span className="ev-kicker__bit">Player card</span>}
+            title={`No player called ${viewedName}`}
+            blurb="Nobody has this gamer tag. It may have changed, or been mistyped."
+            actions={
+              <a className="home-banner__cta" href={standingsHref(period)}>
+                Find a player
+              </a>
+            }
+            art={<span className="home-banner__glyph home-banner__glyph--faint">?</span>}
+          />
+        ) : viewedName ? (
           <>
             {isSelf ? <ProfileViews on="card" /> : null}
             <div className="pf-hold" ref={cardHeld.ref} style={cardHeld.style}>

@@ -27,7 +27,7 @@ const CHOICES: readonly { level: NotificationLevel; label: string }[] = [
  * until then a kind set to push shows as the inbox, which is where it lands. Each change saves as it's made.
  */
 export function NotificationSettingsPage() {
-  const { signedIn, loading: authLoading } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const [levels, setLevels] = useState<NotificationLevels | null>(null)
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -94,7 +94,8 @@ export function NotificationSettingsPage() {
           ) : null}
         </header>
 
-        {authLoading ? (
+        {!signedIn && !signedOut ? (
+          // A session whose account isn't known yet, still asked or not to be had: never Sign in.
           <Loading />
         ) : !signedIn ? (
           <section className="ns-card ns-invite">

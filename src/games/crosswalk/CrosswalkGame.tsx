@@ -53,6 +53,7 @@ import {
 } from './game'
 import { buttonAt, renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 const DEATH_COPY: Record<DeathCause, string> = {
   car: 'Flattened by traffic',
@@ -316,6 +317,8 @@ export function CrosswalkGame() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpen || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const map: Record<string, Dir> = {
         ArrowUp: 'up',
         ArrowDown: 'down',
@@ -333,8 +336,10 @@ export function CrosswalkGame() {
         return
       }
       if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault()
         const s = stateRef.current!
+        // On the start card, a focused button or link answers the key itself.
+        if (s.phase === 'menu' && controlTakesKey(e)) return
+        e.preventDefault()
         // A run that has ended waits for its report: only the start card starts another, or a press as it ends throws the score away.
         if (s.phase === 'menu') restart()
       }

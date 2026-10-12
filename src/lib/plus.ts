@@ -62,9 +62,12 @@ export function heldPlus(signedIn: boolean): PlusInfo | null {
   return infoHeld && infoHeld.signedIn === signedIn && Date.now() - infoHeld.at < INFO_HOLD_MS ? infoHeld.info : null
 }
 
-/** Whether joining now starts with the free week: signed out, or an account that has never had Plus. */
+/**
+ * Whether joining now starts with the free week: Plus on sale, and signed out or an account that has never had
+ * Plus. Not on sale, there's no free week to start, signed in or out.
+ */
 export function freeWeekFor(info: PlusInfo | null): boolean {
-  if (!info?.trialDays) return false
+  if (!info?.trialDays || !info.buyable) return false
   return info.you ? info.you.trialEligible === true && info.you.plan !== 'plus' : true
 }
 

@@ -28,7 +28,7 @@
 }
 
 .hunt-peek:focus-visible {
-  outline: 2px dashed var(--accent);
+  outline: 2px dashed var(--focus-ring);
   outline-offset: -2px;
   border-radius: 10px;
 }
@@ -187,6 +187,11 @@
   font-size: 0.8rem;
   font-weight: 700;
   color: color-mix(in srgb, #e6ac39 70%, var(--ink));
+}
+
+/* On the light page the honey goes deeper, toward black so it stays honey, and reads (4.5:1). */
+html[data-theme='light'] .hunt-strip__count {
+  color: color-mix(in srgb, #e6ac39 58%, #000);
 }
 
 .hunt-strip__side {

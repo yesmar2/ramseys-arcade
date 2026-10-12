@@ -51,6 +51,11 @@
   color: color-mix(in srgb, var(--tt-tone) 70%, var(--ink));
 }
 
+/* Deeper on the light page, so the small caps read (4.5:1) on the tease's tint. */
+html[data-theme='light'] .tomorrow-tease__kicker {
+  color: color-mix(in srgb, var(--tt-tone) 55%, var(--ink));
+}
+
 .tomorrow-tease__title {
   overflow: hidden;
   font-family: var(--font-display);

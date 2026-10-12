@@ -750,6 +750,16 @@ a.run-tix__total {
   overflow: hidden;
 }
 
+/*
+ * The card is dark in both themes, so its colour's shades are the dark theme's in either: its words the light
+ * shade, and the deep one the trophy counts and the edit button are drawn in on their white. Weighty enough to win
+ * over both themes' banner shades (home.css), which are worked out for the banner's own washes.
+ */
+.home-banner.pcard.pcard--themed {
+  --banner-accent-ink: color-mix(in srgb, var(--hero-accent) 55%, #fff);
+  --banner-mid: color-mix(in srgb, var(--hero-accent) 34%, #0b1620);
+}
+
 .pcard__theme {
   position: absolute;
   inset: 0;

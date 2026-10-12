@@ -40,6 +40,7 @@
 
 /* Deep space, whichever theme the page is in, as the trophy cabinet is always dark. */
 .hangar__deck {
+  --focus-ring: var(--focus-ring-on-dark);
   padding: 1rem 1rem 1.1rem;
   border-radius: 1.1rem;
   background-color: #0d1230;
@@ -87,10 +88,13 @@
   transition: transform 0.15s ease;
 }
 
+/* Pointed at, it lifts and its gold edge lights; focused from the keys, it lifts in the site's ring instead, so the two read apart. */
 .hangar__nook:hover,
 .hangar__nook:focus-visible {
   transform: translateY(-2px);
-  outline: none;
+}
+
+.hangar__nook:hover {
   box-shadow:
     inset 0 9px 18px rgba(0, 0, 0, 0.5),
     inset 0 0 0 1.5px rgba(245, 185, 66, 0.7);

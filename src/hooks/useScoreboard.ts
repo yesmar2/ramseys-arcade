@@ -4,7 +4,7 @@ import {
   fetchGlobalRank,
   fetchLeaderboardsSummary,
   fetchPlayerBests,
-  getLeaderboard,
+  getPlayerBoard,
   normalizePlayerName,
   type LeaderboardEntry,
   type LeaderboardPeriod,
@@ -62,7 +62,7 @@ const LOADING: ScoreboardData = {
 /** The summary's most runs per board: enough to find three players on all but the lopsided boards. */
 const SUMMARY_RUNS = 10
 
-/** How far down a board to look for the player above you. Any further and the hint is left off. */
+/** How many players above you a board is read for the one just above. Any further down and the hint is left off. */
 const NEXT_DEPTH = 500
 
 /** Below this many players, the period before gets a look in under the standings. */
@@ -86,6 +86,8 @@ export function useScoreboard(
   period: LeaderboardPeriod,
   playerName: string,
   groupId: string | null,
+  /** `groupId` when it's the page's own, not the site's: How your rank works from a group's page. */
+  pageGroup?: string,
 ): ScoreboardData {
   const [data, setData] = useState<ScoreboardData>(LOADING)
 
@@ -97,10 +99,10 @@ export function useScoreboard(
     void (async () => {
       try {
         const [board, summary, mine, bests] = await Promise.all([
-          fetchGlobalBoard(10, period),
-          fetchLeaderboardsSummary(period, SUMMARY_RUNS),
-          me ? fetchGlobalRank(me, period) : Promise.resolve(null),
-          me ? fetchPlayerBests(me, period).catch(() => ({})) : Promise.resolve({}),
+          fetchGlobalBoard(10, period, 0, pageGroup),
+          fetchLeaderboardsSummary(period, SUMMARY_RUNS, pageGroup),
+          me ? fetchGlobalRank(me, period, pageGroup) : Promise.resolve(null),
+          me ? fetchPlayerBests(me, period, pageGroup).catch(() => ({})) : Promise.resolve({}),
         ])
         if (cancelled) return
 
@@ -123,24 +125,22 @@ export function useScoreboard(
         // The boards the period's standings add up: all time's leave the dailies out (lib/allTime.ts).
         const boards = await Promise.all(
           standingsGames(period).map(async (slug): Promise<BoardLine> => {
-            let runs: LeaderboardEntry[] = runsBySlug.get(slug) ?? []
-            let asked = SUMMARY_RUNS
+            const runs: LeaderboardEntry[] = runsBySlug.get(slug) ?? []
             let top = distinctTop(runs)
-            // Ten runs between one or two players: look further down for a third.
+            // A page that came back short is the whole board, so its names can be counted.
+            let players =
+              sizes[slug] ??
+              (runs.length < SUMMARY_RUNS ? new Set(runs.map((r) => normalizePlayerName(r.name ?? ''))).size : null)
+            // Ten runs between one or two players: the board as players has its top three, however many runs they hold.
             if (top.length < 3 && runs.length >= SUMMARY_RUNS) {
               try {
-                asked = 100
-                runs = (await getLeaderboard(slug, period, undefined, { limit: asked })).entries
-                top = distinctTop(runs)
+                const board = await getPlayerBoard(slug, period, undefined, { limit: 3 }, pageGroup)
+                top = distinctTop(board.entries)
+                players = sizes[slug] ?? board.total
               } catch {
                 /* keep the summary's */
               }
             }
-            // A page that came back short is the whole board, so its names can be counted.
-            const whole = runs.length < asked
-            const players =
-              sizes[slug] ??
-              (whole ? new Set(runs.map((r) => normalizePlayerName(r.name ?? ''))).size : null)
             // A daily's board for longer than a day is its day points (leaderboardFormat isDayPointsBoard).
             return { slug, top, players, points: isDayPointsBoard(slug, period) }
           }),
@@ -182,16 +182,11 @@ export function useScoreboard(
           const found = await Promise.all(
             places.map(async ([slug, place]) => {
               try {
-                const depth = Math.min(NEXT_DEPTH, Math.max(50, (place?.place ?? 1) * 3))
-                const page = await getLeaderboard(slug, period, me, { limit: depth })
-                const rank = page.you?.rank
-                if (!rank) return [slug, null] as const
-                let runs = page.entries
-                if (rank - 1 > runs.length) {
-                  if (rank - 1 > NEXT_DEPTH) return [slug, null] as const
-                  runs = (await getLeaderboard(slug, period, undefined, { limit: rank - 1 })).entries
-                }
-                return [slug, nextUp(runs.slice(0, rank - 1), me)] as const
+                // Every player above you, once each at their best, rather than every run of theirs above yours.
+                const above = (place?.place ?? 1) - 1
+                if (above > NEXT_DEPTH) return [slug, null] as const
+                const board = await getPlayerBoard(slug, period, undefined, { limit: above }, pageGroup)
+                return [slug, nextUp(board.entries, me)] as const
               } catch {
                 return [slug, null] as const
               }
@@ -207,7 +202,7 @@ export function useScoreboard(
     return () => {
       cancelled = true
     }
-  }, [period, playerName, groupId])
+  }, [period, playerName, groupId, pageGroup])
 
   return data
 }

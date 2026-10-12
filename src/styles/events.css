@@ -260,7 +260,6 @@
 .ev-join__btn:hover:not(:disabled),
 .ev-join__btn:focus-visible:not(:disabled) {
   filter: brightness(1.06);
-  outline: none;
 }
 
 .ev-join__btn:disabled {
@@ -324,7 +323,6 @@
 .ev-lineup__tile:focus-visible {
   transform: translateY(-1px);
   background: color-mix(in srgb, var(--row-accent) 16%, var(--surface));
-  outline: none;
 }
 
 .ev-lineup__tile--locked {
@@ -471,7 +469,6 @@
 .ev-form__cancel:hover,
 .ev-form__cancel:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .ev-facts {
@@ -525,7 +522,6 @@
 .ev-choice__opt:hover,
 .ev-choice__opt:focus-visible {
   border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 40%, transparent);
-  outline: none;
 }
 
 .ev-choice__opt--on {
@@ -662,7 +658,6 @@
 .ev-limit__btn:hover:not(:disabled),
 .ev-limit__btn:focus-visible:not(:disabled) {
   background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, transparent);
-  outline: none;
 }
 
 .ev-limit__btn:disabled {
@@ -691,7 +686,6 @@
 }
 
 .ev-limit__value:focus-visible {
-  outline: none;
   background: color-mix(in srgb, var(--event-accent, var(--accent)) 12%, transparent);
 }
 
@@ -714,7 +708,6 @@
 .ev-limit__any:focus-visible {
   background: color-mix(in srgb, var(--event-accent, var(--accent)) 12%, transparent);
   color: var(--ink);
-  outline: none;
 }
 
 .ev-limit__any--on {
@@ -834,7 +827,7 @@
 
 .ev-pick--menu:focus-visible,
 .ev-round__addbtn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -909,7 +902,6 @@
 .ev-gamemenu__opt:hover,
 .ev-gamemenu__opt:focus-visible {
   background: color-mix(in srgb, var(--game-accent) 12%, transparent);
-  outline: none;
 }
 
 .ev-gamemenu__opt:focus-visible {
@@ -969,7 +961,6 @@
 .ev-game:hover:not(:disabled),
 .ev-game:focus-visible:not(:disabled) {
   border-color: color-mix(in srgb, var(--game-accent, var(--accent)) 45%, transparent);
-  outline: none;
 }
 
 .ev-game:disabled {
@@ -1105,7 +1096,6 @@
 .ev-size:hover,
 .ev-size:focus-visible {
   border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 45%, transparent);
-  outline: none;
 }
 
 .ev-size--on {
@@ -1310,7 +1300,6 @@
 .evc:focus-visible {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
-  outline: none;
 }
 
 /*
@@ -1539,7 +1528,6 @@
 .evr:hover,
 .evr:focus-visible {
   background: color-mix(in srgb, var(--event-accent, var(--accent)) 8%, transparent);
-  outline: none;
 }
 
 .evr__main {
@@ -1715,7 +1703,6 @@
 .inv__chip:focus-visible:not(:disabled) {
   background: color-mix(in srgb, var(--event-accent, var(--accent)) 14%, var(--surface));
   border-color: color-mix(in srgb, var(--event-accent, var(--accent)) 50%, transparent);
-  outline: none;
 }
 
 .inv__chip:disabled {

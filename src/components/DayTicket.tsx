@@ -33,8 +33,8 @@ export type TicketTile = {
   game: string
   /** The day's course, the tip on the picture and the name: "Hole #7 · Meadow Flipper". */
   course: string
-  /** Where the picture and the name go: the game's page, or its Past tab at the day's course. */
-  page: string
+  /** Where the picture and the name go: the game's page, or its Past tab at the day's course; null for a game hidden since. */
+  page: string | null
   done: boolean
   /** How it went, once done: "3 tries", "55.80s"; "Done" where that isn't known. */
   result: string | null
@@ -43,7 +43,7 @@ export type TicketTile = {
   /** A racing daily's medal against the day's blue (lib/raceMedals.ts), beside the result. */
   medal?: Medal | null
   /** The way in while it's still to play: where, its word ("Race", "Carry on"), its name read aloud, and its tip. */
-  play: string
+  play: string | null
   go: string
   goLabel: string
   goTip: string | null
@@ -53,13 +53,14 @@ export type TicketTile = {
  * A daily's tile: its picture and name, then how it went or the way in. On a ticket with ranked and
  * just-for-fun dailies both (a day before the puzzles came off it), which it is is a mark on the picture's top
  * corner, with a tip of its own, so it sits beside the picture's link rather than in it; punched is a check
- * on the other corner, over the picture dimmed.
+ * on the other corner, over the picture dimmed. A game hidden since (a past day's) has no page to go to: its
+ * picture and name aren't links, and unplayed it just says so.
  */
 function Tile({ tile: t, marked }: { tile: TicketTile; marked: boolean }) {
   return (
     <li className={`today-tile${t.done ? ' today-tile--done' : ''}`}>
       <div className="today-tile__pic">
-        <a className="today-tile__art" href={t.page} title={t.course} tabIndex={-1} aria-hidden="true">
+        <a className="today-tile__art" href={t.page ?? undefined} title={t.course} tabIndex={-1} aria-hidden="true">
           <GameArt slug={t.slug} className="today-tile__scene" />
         </a>
         {marked ? <DailyKindTag slug={t.slug} look="badge" className="today-tile__kind" /> : null}
@@ -69,7 +70,7 @@ function Tile({ tile: t, marked }: { tile: TicketTile; marked: boolean }) {
           </span>
         ) : null}
       </div>
-      <a className="today-tile__game" href={t.page} title={t.course}>
+      <a className="today-tile__game" href={t.page ?? undefined} title={t.course}>
         {t.game}
       </a>
       {t.done ? (
@@ -87,11 +88,15 @@ function Tile({ tile: t, marked }: { tile: TicketTile; marked: boolean }) {
           </span>
           {t.note ? <span className="today-tile__note">{t.note}</span> : null}
         </span>
-      ) : (
+      ) : t.play ? (
         <a className="today-tile__go" href={t.play} title={t.goTip ?? undefined} aria-label={t.goLabel}>
           <PlayIcon />
           {t.go}
         </a>
+      ) : (
+        <span className="today-tile__result">
+          <span className="today-tile__score today-tile__score--none">Not played</span>
+        </span>
       )}
     </li>
   )

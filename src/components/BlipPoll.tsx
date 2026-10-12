@@ -15,7 +15,7 @@ import '../styles/blipPoll.css'
  * `inSheet`: the same card in Blip's hello (BlipHello.tsx), answered where you are rather than on the home page.
  */
 export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const { view, status, earned, won } = usePoll(signedIn)
   const [sending, setSending] = useState<number | null>(null)
   const [failed, setFailed] = useState(false)
@@ -27,7 +27,8 @@ export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
   const yesterday = view?.yesterday ?? null
 
   const pickAnswer = (i: number) => {
-    if (!signedIn) {
+    // A session whose account isn't known yet answers anyway: the API knows whose it is.
+    if (signedOut) {
       openSiteMenu()
       return
     }
@@ -96,7 +97,11 @@ export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
         <p className="blip-poll__foot">
           {failed ? (
             'That didn’t go through: try again.'
-          ) : signedIn ? (
+          ) : signedOut ? (
+            <button type="button" className="blip-poll__signin" onClick={openSiteMenu}>
+              Sign in to answer, for {view?.tickets ?? 5} tickets
+            </button>
+          ) : (
             <>
               Answer for <b>{view?.tickets ?? 5} tickets</b>
               {toward?.next ? (
@@ -105,10 +110,6 @@ export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
                 </>
               ) : null}
             </>
-          ) : (
-            <button type="button" className="blip-poll__signin" onClick={openSiteMenu}>
-              Sign in to answer, for {view?.tickets ?? 5} tickets
-            </button>
           )}
         </p>
       ) : null}

@@ -936,6 +936,10 @@ export const GAMES_WITH_RECORDS = [
   'fireflies',
   'pileup',
   'frenzy',
+  // Books of only the two streaks every game keeps (the API's records.ts buildCrossRunStreakRecords).
+  'barrage',
+  'bop',
+  'putt',
   // The dailies: each track's, hole's and day's record (the API's records.ts COURSES).
   'hotlap',
   'acechase',

@@ -20,7 +20,7 @@ import { useIsAdmin } from '../lib/admin'
 import { AVATARS_ENABLED, avatarWashColor, resolveAvatar } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
 import { openFeedback } from '../lib/feedback'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { groupsIndexHref } from '../lib/groups'
 import { ordinal, periodWord } from '../lib/profileMath'
 import { setTheme, themeLabel, type Theme } from '../lib/theme'
@@ -49,7 +49,7 @@ import { inboxSummary } from '../lib/notifications'
 import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { PlayerAvatar } from './PlayerAvatar'
 import { PlusGlyph } from './PlusMark'
-import { useAuth } from '../hooks/useAuth'
+import { retryAuth, useAuth } from '../hooks/useAuth'
 import { fetchPlus, freeWeekFor, heldPlus, type PlusInfo } from '../lib/plus'
 import { PlayerBadge, type PlayerBadgeHandle } from './PlayerBadge'
 import { MusicToggle } from './MusicToggle'
@@ -145,7 +145,9 @@ export function SiteMenu({
   const tickets = useTickets()
   const seasonStore = useSeason()
   const season = liveSeason(seasonStore)
-  const { isPlus } = useAuth()
+  const { isPlus, signedOut, loading: authLoading } = useAuth()
+  // The menu's Try again, while it's out.
+  const [retrying, setRetrying] = useState(false)
   // Plus as last asked (a minute), to say whether joining starts with the free week.
   const [plusInfo, setPlusInfo] = useState<PlusInfo | null>(() => heldPlus(signedIn))
   useEffect(() => {
@@ -176,7 +178,11 @@ export function SiteMenu({
   const card = tagged ? (
     <div
       className="site-menu__card"
-      style={accent ? ({ '--card-accent': accent, '--card-ink': inkOn(accent) } as CSSProperties) : undefined}
+      style={
+        accent
+          ? ({ '--card-accent': accent, '--card-ink': inkOn(accent), '--card-fill': readableFill(accent) } as CSSProperties)
+          : undefined
+      }
     >
       <div className="site-menu__card-head">
         <span className="site-menu__card-mark" aria-hidden="true">
@@ -240,6 +246,31 @@ export function SiteMenu({
       <span className="site-menu__pitch-title">Pick a gamer tag</span>
       <span className="site-menu__pitch-copy">Your tag is how the boards know your scores.</span>
     </div>
+  ) : !signedOut ? (
+    // A session whose account isn't known yet is never asked to sign in. Asked and not reached (anything but a
+    // 401), it says so, with the way to ask again or to sign out and back in.
+    authLoading ? null : (
+      <div className="site-menu__card site-menu__card--pitch">
+        <span className="site-menu__pitch-title">Couldn’t reach your account</span>
+        <span className="site-menu__pitch-copy">Playing still works. Try again, or sign out and back in.</span>
+        <div className="site-menu__card-acts">
+          <button
+            type="button"
+            className="site-menu__card-cta"
+            disabled={retrying}
+            onClick={() => {
+              setRetrying(true)
+              void retryAuth().finally(() => setRetrying(false))
+            }}
+          >
+            {retrying ? 'Trying…' : 'Try again'}
+          </button>
+          <button type="button" className="site-menu__card-ghost" disabled={signingOut} onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
+      </div>
+    )
   ) : (
     <div className="site-menu__card site-menu__card--pitch">
       <span className="site-menu__pitch-mark" aria-hidden="true">
@@ -465,7 +496,7 @@ export function SiteMenu({
                 friendRequests > 0 ? `${friendRequests} ${friendRequests === 1 ? 'request' : 'requests'}` : null,
               )}
             </ul>
-          ) : (
+          ) : !signedOut ? null : (
             <ul className="site-menu__rows site-menu__rows--plain" aria-label="What an account adds">
               <li className="site-menu__row">
                 <span className="site-menu__row-mark">

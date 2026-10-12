@@ -357,7 +357,6 @@ html[data-theme='dark'] .studio__letters button[aria-pressed='true'] {
   transform: translateY(-1px);
   border-color: rgba(var(--ink-rgb), 0.2);
   color: var(--ink);
-  outline: none;
 }
 
 .studio__tile[aria-pressed='true'],
@@ -390,7 +389,6 @@ html[data-theme='dark'] .studio__letters button[aria-pressed='true'] {
 .studio__swatch:hover,
 .studio__swatch:focus-visible {
   transform: scale(1.08);
-  outline: none;
 }
 
 .studio__swatch[aria-checked='true'] {
@@ -425,7 +423,6 @@ html[data-theme='dark'] .studio__letters button[aria-pressed='true'] {
 .studio__item:hover,
 .studio__item:focus-visible {
   border-color: rgba(var(--ink-rgb), 0.2);
-  outline: none;
 }
 
 .studio__item--locked .studio__item-art {

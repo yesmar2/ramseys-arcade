@@ -141,13 +141,27 @@ export function YourRow({ mark, name, fill, value, color }: { mark?: ReactNode; 
 /** The player's days on a daily just for fun: how many, in a row, their best, their average, and the last few. */
 export function YourDaysCard({ slug }: { slug: FunDaily }) {
   const kind = KINDS[slug]
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const name = normalizePlayerName(usePlayerName())
   const id = `yd-days-${slug}`
   return (
     <YourCard title={kind.title} labelledBy={id} hunt={`g-board-${slug}`}>
       {signedIn && name ? (
         <YourDaysBody slug={slug} kind={kind} name={name} />
+      ) : !signedIn && !signedOut ? (
+        // A session whose account isn't known yet: the days' room, never Sign in.
+        <div className="yd__skel" aria-busy="true">
+          <span className="skel-line" />
+          <span className="skel-line" />
+        </div>
+      ) : signedIn ? (
+        // Signed in without a tag: your days are your tag's, and the menu is where you pick one.
+        <p className="yd__note">
+          <button type="button" className="yd__link" onClick={openSiteMenu}>
+            Pick a gamer tag
+          </button>{' '}
+          to keep your days here: how many you've played, how many in a row, your best and your average.
+        </p>
       ) : (
         <p className="yd__note">
           Playing needs no account.{' '}

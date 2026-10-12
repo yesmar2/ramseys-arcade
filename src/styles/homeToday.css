@@ -155,7 +155,6 @@ html[data-theme='dark'] .home-day {
 .home-day__open:hover,
 .home-day__open:focus-visible {
   background: var(--ticket-deep, #e0602e);
-  outline: none;
 }
 
 .home-day__open svg {
@@ -233,6 +232,11 @@ html[data-theme='dark'] .home-day__card {
 .home-day__card:focus-visible {
   outline: 2px solid var(--ticket, #ff8552);
   outline-offset: 2px;
+}
+
+/* The ticket's deeper orange on the light page, so the ring holds 3:1 there. */
+html[data-theme='light'] .home-day__card:focus-visible {
+  outline-color: var(--ticket-deep, #e0602e);
 }
 
 /* The day's picture, 4:3, with the game's own picture in its place until it's drawn. */
@@ -542,6 +546,11 @@ html[data-theme='dark'] .home-day__card {
     flex: none;
     width: 12.5rem;
     scroll-snap-align: start;
+  }
+
+  /* The row scrolls, so it clips past its edges: the keyboard ring goes inside the card. */
+  .home-day__card:focus-visible {
+    outline-offset: -2px;
   }
 }
 

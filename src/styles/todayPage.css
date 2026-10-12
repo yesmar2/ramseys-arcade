@@ -168,7 +168,6 @@
 .today-head__signin:hover,
 .today-head__signin:focus-visible {
   border-color: var(--ticket, #ff8552);
-  outline: none;
 }
 
 .today-head__signin svg {
@@ -423,7 +422,6 @@
 .today-send__share:hover,
 .today-send__share:focus-visible {
   background: var(--ticket-deep, #e0602e);
-  outline: none;
 }
 
 .today-send__share svg {
@@ -484,7 +482,6 @@
 .today-invite__go:hover,
 .today-invite__go:focus-visible {
   background: var(--ticket-deep, #e0602e);
-  outline: none;
 }
 
 /* ---------- a phone: everything one under another ---------- */

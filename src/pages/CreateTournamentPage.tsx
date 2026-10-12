@@ -67,8 +67,7 @@ function attemptsSummary(maxAttempts: number, unlimited: boolean, gameCount: num
   return `${maxAttempts} attempts per ${gameWord}`
 }
 
-function playersSummary(maxPlayers: number, unlimited: boolean) {
-  if (unlimited) return 'Unlimited players'
+function playersSummary(maxPlayers: number) {
   return `${maxPlayers} player${maxPlayers === 1 ? '' : 's'} max`
 }
 
@@ -97,7 +96,7 @@ function LimitField({
   value: number
   min: number
   max: number
-  /** Omit to hide the Unlimited half entirely (brackets need a fixed size). */
+  /** Omit to hide the Unlimited half entirely: an event's players, and a bracket's tries, are always a number. */
   unlimited?: boolean
   onValue: Dispatch<SetStateAction<number>>
   onUnlimited?: (next: boolean) => void
@@ -286,7 +285,7 @@ function RoundGameMenu({
 }
 
 export function CreateTournamentPage() {
-  const { account, limits, loading: authLoading } = useAuth()
+  const { account, limits, signedOut } = useAuth()
   const [kind, setKind] = useState<TournamentKind>('scores')
   const [title, setTitle] = useState('')
   const [games, setGames] = useState<EventGame[]>(['stacker'])
@@ -294,10 +293,13 @@ export function CreateTournamentPage() {
   const [courseDay, setCourseDay] = useState<string | null>(null)
   const [maxAttempts, setMaxAttempts] = useState(3)
   const [unlimitedAttempts, setUnlimitedAttempts] = useState(false)
+  /** Never unlimited: the API holds every event to its plan's limits.maxDraw. */
   const [maxPlayers, setMaxPlayers] = useState(4)
-  const [unlimitedPlayers, setUnlimitedPlayers] = useState(false)
-  /** Made from a group's page: its members are invited once the event exists. */
-  const groupId = useMemo(() => new URLSearchParams(window.location.search).get('group'), [])
+  /** Made from a group's page: its members are invited once the event exists. Older links say ?group=. */
+  const groupId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('for') ?? params.get('group')
+  }, [])
   const [forGroup, setForGroup] = useState<GroupPublic | null>(null)
   const forFriends = forGroup?.id === FRIENDS_SCOPE
   const forWhom = forFriends ? 'your friends' : forGroup?.name
@@ -399,9 +401,7 @@ export function CreateTournamentPage() {
                   value={maxPlayers}
                   min={isBracket ? BRACKET_PLAYERS_MIN : 2}
                   max={Math.min(limits.maxDraw, isBracket ? BRACKET_PLAYERS_MAX : 99)}
-                  unlimited={isBracket ? undefined : unlimitedPlayers}
                   onValue={setMaxPlayers}
-                  onUnlimited={isBracket ? undefined : setUnlimitedPlayers}
                   hint={
                     isBracket
                       ? `Draws when the last seat fills.${
@@ -409,12 +409,13 @@ export function CreateTournamentPage() {
                             ? ` ${bracketByes} player${bracketByes === 1 ? '' : 's'} get a bye.`
                             : ''
                         }`
-                      : `${playersSummary(maxPlayers, unlimitedPlayers)}.`
+                      : `${playersSummary(maxPlayers)}.`
                   }
                 />
               )}</>
 
-  const waitingForAuth = authLoading && !account
+  // A session whose account isn't known yet, still asked or not to be had: the page waits, never asking it to sign in.
+  const waitingForAuth = !account && !signedOut
 
   const accent = useMemo(() => {
     const slug = games[0] ?? ''
@@ -425,7 +426,6 @@ export function CreateTournamentPage() {
   const selectKind = (next: TournamentKind) => {
     setKind(next)
     if (next === 'bracket') {
-      setUnlimitedPlayers(false)
       setUnlimitedAttempts(false)
       setMaxPlayers((n) =>
         elimination === 'double' ? snapToDoubleElimSize(n) : clampBracketPlayers(n),
@@ -515,8 +515,7 @@ export function CreateTournamentPage() {
       .then((g) => {
         if (cancelled || !(g.isMember || g.isOwner)) return
         setForGroup(g)
-        // Room for the whole group, as far as the plan allows: an event can't be unlimited.
-        setUnlimitedPlayers(false)
+        // Room for the whole group, as far as the plan allows.
         setMaxPlayers(Math.max(2, Math.min(g.memberCount, limits.maxDraw)))
       })
       .catch(() => {
@@ -553,7 +552,7 @@ export function CreateTournamentPage() {
         games: isBracket && roundGames.length ? [...new Set(roundGames.flat())] : games,
         ...(isBracket && roundGames.length ? { roundGames } : {}),
         maxAttempts: isBracket || !unlimitedAttempts ? Math.max(1, maxAttempts) : 0,
-        maxPlayers: isBracket || !unlimitedPlayers ? maxPlayers : 0,
+        maxPlayers,
         durationHours: isBracket ? 0 : durationHours,
         ...(isBracket ? { roundPlayHours, elimination } : {}),
         ...(raceGame && courseDay ? { course: EVENT_COURSES[raceGame].numberOf(courseDay) } : {}),
@@ -598,7 +597,7 @@ export function CreateTournamentPage() {
     : [
         durationHours === 0 ? 'Until everyone finishes' : `Ends in ${durationLabel}`,
         unlimitedAttempts ? 'Unlimited tries' : `${maxAttempts} ${maxAttempts === 1 ? 'try' : 'tries'} a game`,
-        unlimitedPlayers ? 'Any number of players' : `0 of ${maxPlayers} in`,
+        `0 of ${maxPlayers} in`,
       ]
 
   const step = (title: string, body: ReactNode, note?: ReactNode) => (

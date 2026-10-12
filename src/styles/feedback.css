@@ -106,7 +106,11 @@
 .site-footer__list .feedback-link:hover,
 .site-footer__list .feedback-link:focus-visible {
   color: var(--accent);
-  outline: none;
+}
+
+html[data-theme='light'] .site-footer__list .feedback-link:hover,
+html[data-theme='light'] .site-footer__list .feedback-link:focus-visible {
+  color: color-mix(in srgb, var(--accent) 45%, var(--ink));
 }
 
 /* The legal pages' way to reach us while no contact address is set (components/LegalDocument.tsx). */

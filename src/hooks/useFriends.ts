@@ -113,7 +113,7 @@ function ensureListeners() {
 }
 
 export function useFriends() {
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   useEffect(() => {
@@ -152,6 +152,7 @@ export function useFriends() {
   const requests = signedIn ? snap.requests : []
   return {
     signedIn,
+    signedOut,
     friends: signedIn ? snap.friends : [],
     incoming: requests.filter((r) => r.direction === 'incoming'),
     outgoing: requests.filter((r) => r.direction === 'outgoing'),

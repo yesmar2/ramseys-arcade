@@ -34,6 +34,7 @@ import {
 } from './game'
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 /** A streak starts to be worth showing here; the bonus it pays is in every pop's number. */
 const STREAK_SHOW = 3
@@ -208,9 +209,13 @@ export function WhackGame() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault()
         const s = stateRef.current
+        // On the start card, a focused button or link answers the key itself.
+        if (s.phase === 'menu' && controlTakesKey(e)) return
+        e.preventDefault()
         if (s.phase === 'menu') {
           if (performance.now() < startGrace.current) return
           restart()

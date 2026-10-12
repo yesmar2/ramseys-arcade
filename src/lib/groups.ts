@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { SESSION_KEY } from './accountEvents'
 import type { Friend } from './friends'
 import {
   api,
@@ -81,6 +82,22 @@ export function parseGroupQuery(queryString?: string): string | null {
   return value
 }
 
+/**
+ * Whether this viewer can have boards show a group: signed in, as nobody else has groups or friends to show,
+ * and one of their groups as this device last heard (before it has heard, the API says: withGroupFallback).
+ * An address asking for one they can't isn't taken up, so a link can't leave them on boards that refuse them.
+ */
+export function canUseGroup(id: string): boolean {
+  try {
+    if (!localStorage.getItem(SESSION_KEY)) return false
+  } catch {
+    return false
+  }
+  if (id === FRIENDS_SCOPE) return true
+  const heard = heardMyGroups()
+  return heard === null || heard.some((g) => g.id === id)
+}
+
 export function applyBoardScope(params: URLSearchParams, groupId: string | null = storedActiveGroup()) {
   if (groupId) params.set('group', groupId)
   const player = normalizePlayerName(getLastPlayerName())
@@ -100,12 +117,15 @@ export function isGroupScopeError(err: unknown): boolean {
   return code === 'GROUP_FORBIDDEN' || code === 'GROUP_NOT_FOUND'
 }
 
-/** Drop a forbidden/unknown group and retry as Everyone so scores never leak. */
-export async function withGroupFallback<T>(run: () => Promise<T>): Promise<T> {
+/**
+ * Drop a forbidden/unknown group and retry as Everyone so scores never leak. A request for a group of its
+ * page's own (`group`, How your rank works from a group's page) wasn't the site's group: that one stays.
+ */
+export async function withGroupFallback<T>(run: () => Promise<T>, group?: string | null): Promise<T> {
   try {
     return await run()
   } catch (err) {
-    if (isGroupScopeError(err) && storedActiveGroup()) {
+    if (group === undefined && isGroupScopeError(err) && storedActiveGroup()) {
       setActiveGroup(null)
       return run()
     }
@@ -164,16 +184,24 @@ let groupsInflight: { key: string; at: number; promise: Promise<GroupPublic[]> }
 
 /** The last list this device saw for the current player, for a first paint before the API answers. */
 export function cachedMyGroups(): GroupPublic[] {
+  return heardMyGroups() ?? []
+}
+
+/** The current player's groups as this device last heard them, or null before it has heard any. */
+function heardMyGroups(): GroupPublic[] | null {
   try {
     const raw = localStorage.getItem(GROUPS_CACHE_KEY)
-    if (!raw) return []
+    if (!raw) return null
     const parsed = JSON.parse(raw) as { player?: string; groups?: GroupPublic[] }
     const player = normalizePlayerName(getLastPlayerName())
-    return parsed.player === player && Array.isArray(parsed.groups) ? parsed.groups : []
+    return parsed.player === player && Array.isArray(parsed.groups) ? parsed.groups : null
   } catch {
-    return []
+    return null
   }
 }
+
+/** Fired when this device remembers a new list of your groups: the names a page calls the boards' group by (useScope). */
+export const MY_GROUPS_EVENT = 'arcade-my-groups'
 
 function rememberMyGroups(player: string, groups: GroupPublic[]) {
   try {
@@ -181,6 +209,7 @@ function rememberMyGroups(player: string, groups: GroupPublic[]) {
   } catch {
     /* ignore */
   }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(MY_GROUPS_EVENT))
 }
 
 /**
@@ -360,9 +389,76 @@ export function scopeName(id: string | null): string | undefined {
   return cachedMyGroups().find((g) => g.id === id)?.name
 }
 
+/**
+ * A group's name as a page says it: its own, or "your group" while this device hasn't the list it's on yet (a
+ * first visit, a ?group= link), so a group's board is never worded as the arcade's.
+ */
+function groupLabel(id: string): string {
+  return scopeName(id) ?? 'your group'
+}
+
 /** Where a place on the boards is: "among your friends", "in FAMILY", "in the arcade". */
 export function scopeWhere(id: string | null): string {
+  if (!id) return 'in the arcade'
   if (id === FRIENDS_SCOPE) return 'among your friends'
-  const name = scopeName(id)
-  return name ? `in ${name}` : 'in the arcade'
+  return `in ${groupLabel(id)}`
+}
+
+/** Who an empty board is empty of: "None of your friends", "Nobody in FAMILY", or "Nobody" for everyone. */
+export function scopeNobody(id: string | null): string {
+  if (!id) return 'Nobody'
+  if (id === FRIENDS_SCOPE) return 'None of your friends'
+  return `Nobody in ${groupLabel(id)}`
+}
+
+/** The boards' group as a page words it: by name, where a place on its boards is, and who an empty one has none of. */
+export type ScopeWords = {
+  /** The group's id, or Friends'; null for everyone. */
+  id: string | null
+  /** "Friends", a group's name, or "your group" until its name comes; nothing for everyone. */
+  name: string | undefined
+  /** As scopeWhere. */
+  where: string
+  /** As scopeNobody. */
+  nobody: string
+}
+
+const EVERYONE_WORDS: ScopeWords = { id: null, name: undefined, where: 'in the arcade', nobody: 'Nobody' }
+let lastWords: ScopeWords = EVERYONE_WORDS
+
+/** The words for the boards' group now: the same object while they're the same, as useSyncExternalStore needs. */
+function scopeWords(): ScopeWords {
+  const id = storedActiveGroup()
+  const name = id ? groupLabel(id) : undefined
+  if (lastWords.id !== id || lastWords.name !== name) {
+    lastWords = id ? { id, name, where: scopeWhere(id), nobody: scopeNobody(id) } : EVERYONE_WORDS
+  }
+  return lastWords
+}
+
+function subscribeScope(onChange: () => void) {
+  window.addEventListener(ACTIVE_GROUP_EVENT, onChange)
+  window.addEventListener(MY_GROUPS_EVENT, onChange)
+  window.addEventListener('storage', onChange)
+  return () => {
+    window.removeEventListener(ACTIVE_GROUP_EVENT, onChange)
+    window.removeEventListener(MY_GROUPS_EVENT, onChange)
+    window.removeEventListener('storage', onChange)
+  }
+}
+
+/**
+ * The boards' group as a page words it, kept current: a group's name comes with the list of your groups, which
+ * can land after the page's own data, and the page says it again then.
+ */
+export function useScope(): ScopeWords {
+  return useSyncExternalStore(subscribeScope, scopeWords, () => EVERYONE_WORDS)
+}
+
+/**
+ * One group's name (scopeName), kept current the same way, for a page whose group is its own, from its address,
+ * not the boards' (How your rank works from a group's page). Nothing until the list it's on comes.
+ */
+export function useScopeName(id: string | null): string | undefined {
+  return useSyncExternalStore(subscribeScope, () => scopeName(id), () => undefined)
 }

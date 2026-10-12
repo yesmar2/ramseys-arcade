@@ -84,7 +84,6 @@ html[data-theme='dark'] .blip-poll {
 .blip-poll__opt:focus-visible {
   border-color: var(--blip);
   background: color-mix(in srgb, var(--blip) 14%, transparent);
-  outline: none;
 }
 
 .blip-poll__opt:disabled {
@@ -129,6 +128,11 @@ html[data-theme='dark'] .blip-poll {
   background: color-mix(in srgb, var(--blip) 55%, transparent);
 }
 
+/* On the dark card your answer's bar is a deeper mint, so the words on it read (4.5:1). */
+html[data-theme='dark'] .blip-poll__bar--mine .blip-poll__fill {
+  background: color-mix(in srgb, var(--blip) 32%, transparent);
+}
+
 .blip-poll__label,
 .blip-poll__pct {
   position: relative;
@@ -143,6 +147,15 @@ html[data-theme='dark'] .blip-poll {
 
 .blip-poll__you {
   color: var(--blip-ink);
+}
+
+/* It sits on your answer's mint bar: a deeper mint there on the light card, a lighter one on the dark (4.5:1). */
+html[data-theme='light'] .blip-poll__bar--mine .blip-poll__you {
+  color: #0d5446;
+}
+
+html[data-theme='dark'] .blip-poll__bar--mine .blip-poll__you {
+  color: color-mix(in srgb, var(--blip-ink) 60%, #fff);
 }
 
 .blip-poll__pct {

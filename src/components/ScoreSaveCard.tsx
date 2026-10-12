@@ -172,11 +172,19 @@ export function ScoreSaveCard({
   onSettled,
   onSaved,
 }: ScoreSaveProps) {
-  const { signedIn, loading: authLoading } = useAuth()
+  const { signedIn, signedOut, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
-  // Saving needs an account, and acting as a tag (dev) doesn't give one: a borrowed tag left on a device
-  // signed out showed "Signed in, no tag yet" and a tag box the API then refused.
-  const canSaveScores = signedIn
+  // Saving needs a session, and acting as a tag (dev) doesn't give one: a borrowed tag left on a device
+  // signed out showed "Signed in, no tag yet" and a tag box the API then refused. A session whose account
+  // couldn't be asked for (/auth/me not reached) saves all the same: the API knows whose it is, and its 401
+  // would mean signed out after all. No run is lost to a hiccup there.
+  const canSaveScores = !signedOut
+  // The save waits for the account's first answer only: asked again later (the window coming back), it never
+  // goes out a second time.
+  const [authAsked, setAuthAsked] = useState(!authLoading)
+  useEffect(() => {
+    if (!authLoading) setAuthAsked(true)
+  }, [authLoading])
   const accountId = useAccountId()
   // Another account's run is saved only once that account is signed in, and looked at again whenever that changes.
   const ownerIn = typeof owner !== 'string' || accountId === owner
@@ -234,8 +242,20 @@ export function ScoreSaveCard({
   // Read as the save goes out: a run taken up by whoever saved it may be handed back stamped as theirs.
   const ownerRef = useRef(owner)
   ownerRef.current = owner
-  // A daily's run that has saved (one with an owner): it never goes out again, under anyone.
+  // A run that has saved: it never goes out again, under anyone.
   const landedRef = useRef(false)
+  // A save out now: none other goes while it is, whatever changes under the card, and its answer is the card's.
+  const sendingRef = useRef(false)
+  const shownRef = useRef(true)
+  useEffect(() => {
+    shownRef.current = true
+    return () => {
+      shownRef.current = false
+    }
+  }, [])
+  // Signed in on the card: the run goes out again under the new session, though nothing else may have changed
+  // (a session the save's 401 ended, replaced by another).
+  const [signIns, setSignIns] = useState(0)
   const titleId = useId()
   const tagId = useId()
 
@@ -257,11 +277,15 @@ export function ScoreSaveCard({
   }, [phase])
 
   useEffect(() => {
-    // Saved already: a later sign-in or switch leaves its report up and sends nothing.
-    if (ownerRef.current !== undefined && landedRef.current) return
+    // Saved already: a later sign-in or switch, or the account asked for again, leaves its report up and sends
+    // nothing. A save out now answers for the run itself: nothing else goes while it is.
+    if (landedRef.current || sendingRef.current) return
     const pass = ++savePass.current
     // Off the screen, or handed to a newer pass: stop telling, not saving.
     let closed = false
+    // This pass's save once it's out: its answer is the card's while the card is up, whatever changed meanwhile
+    // (a sign-out as it went said "Not saved yet" of a run that landed).
+    let sent = false
     // This run's, taken as it ends. Play again begins the next run, and a save
     // still waiting on the network must go out under this one.
     const run = runIdFor(gameSlug)
@@ -272,7 +296,7 @@ export function ScoreSaveCard({
     setReport(null)
 
     async function save() {
-      if (authLoading) return
+      if (!authAsked) return
       // Signed in as someone else: this run waits for its own player. Signed out, it asks for a sign-in below.
       if (canSaveScores && !ownerSignedIn(ownerRef.current)) {
         if (!closed) setPhase('otherAccount')
@@ -352,6 +376,8 @@ export function ScoreSaveCard({
         return
       }
       if (!closed) setPhase('saving')
+      sent = true
+      sendingRef.current = true
       const facts = await saveRunForReport({
         slug: gameSlug,
         name,
@@ -365,11 +391,13 @@ export function ScoreSaveCard({
         pace: paceRef.current,
         pours: poursRef.current,
         plates: platesRef.current,
+      }).finally(() => {
+        sendingRef.current = false
       })
       landedRef.current = true
       settledRef.current?.()
       savedRef.current?.()
-      if (closed) return
+      if (!shownRef.current) return
       setSavedAs(facts.name)
       setFacts(facts)
       setReport(composeReport(facts))
@@ -378,7 +406,7 @@ export function ScoreSaveCard({
 
     save().catch((err: unknown) => {
       settledRef.current?.()
-      if (closed) return
+      if (sent ? !shownRef.current : closed) return
       const next = afterFailure(err)
       setError(next.error)
       setPhase(next.phase)
@@ -386,7 +414,7 @@ export function ScoreSaveCard({
     return () => {
       closed = true
     }
-  }, [gameSlug, score, period, authLoading, canSaveScores, ownerIn])
+  }, [gameSlug, score, period, authAsked, canSaveScores, ownerIn, signIns])
 
   // A signed-out run is kept on this device until its player signs in, here or anywhere (lib/pendingRuns.ts).
   // Signing in here, this card saves it itself, so the saver holds off while the card is up. A daily's runs
@@ -441,7 +469,7 @@ export function ScoreSaveCard({
 
   const submitName = async () => {
     const name = normalizePlayerName(nameDraft)
-    if (!name || phase === 'saving') return
+    if (!name || phase === 'saving' || sendingRef.current || landedRef.current) return
     if (!canSaveScores) {
       setPhase('needAuth')
       return
@@ -453,11 +481,12 @@ export function ScoreSaveCard({
     setPhase('saving')
     setError(null)
     try {
-      if (signedIn && !impersonation) await linkCurrentNameToAccount(name)
+      if (!signedOut && !impersonation) await linkCurrentNameToAccount(name)
       if (!ownerSignedIn(ownerRef.current)) {
         setPhase('otherAccount')
         return
       }
+      sendingRef.current = true
       const facts = await saveRunForReport({
         slug: gameSlug,
         name,
@@ -471,6 +500,8 @@ export function ScoreSaveCard({
         pace: paceRef.current,
         pours: poursRef.current,
         plates: platesRef.current,
+      }).finally(() => {
+        sendingRef.current = false
       })
       landedRef.current = true
       settledRef.current?.()
@@ -547,6 +578,7 @@ export function ScoreSaveCard({
         onSignedIn={() => {
           setError(null)
           setPhase('checking')
+          setSignIns((n) => n + 1)
         }}
       />
     )
@@ -801,7 +833,7 @@ export function ScoreSaveCard({
                     race={{ medal: medalFor(race.game, race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms)), season: seasonMoved }}
                   />
                 ) : unsaved ? (
-                  <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
+                  <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} tag={phase === 'needName'} />
                 ) : null
               }
               levelUp={seasonMoved}
@@ -814,7 +846,7 @@ export function ScoreSaveCard({
               {seasonMoved ? <SeasonRunLine run={seasonMoved} /> : null}
             </>
           ) : unsaved && score > 0 ? (
-            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} />
+            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} tag={phase === 'needName'} />
           ) : null
         }
         primary={primary}

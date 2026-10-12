@@ -88,6 +88,7 @@ import { glassNames, pourPlan } from './planSvg'
 import { dragSpan, renderHalfFull, splitDragSpan, splitGlassAt, splitLevels, type View } from './render'
 import { boardScore, formatBoard, formatOff, formatPercent, formatPoints, judgeLevels, markFor, tierFor } from './score'
 import { useTodayBoard, type TodayBoard } from './todayBoard'
+import { controlTakesKey } from '../keys'
 
 /*
  * Half Full: fill four glasses exactly half full, by what they hold, then share a jug fairly between
@@ -210,6 +211,8 @@ function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay 
   const stamped = useRef(-1)
   const shownAt = useRef(0)
   const soundAt = useRef(0)
+  /** The leave confirm is up over the run. */
+  const asking = useRef(false)
   /**
    * A drag under way: the round it began in, where it began and last was, and on the split which glass it
    * began on and which way it goes (up and down or sideways, decided once it has gone a few pixels).
@@ -451,7 +454,8 @@ function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay 
   const nudge = useCallback(
     (steps: number) => {
       const s = stateRef.current
-      if (s.phase !== 'pour') return
+      // A nudge held as the leave confirm opens pours nothing under it.
+      if (s.phase !== 'pour' || asking.current) return
       stepLevel(s, steps)
       movedRef.current = true
       sfx('tap')
@@ -501,7 +505,9 @@ function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay 
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
       const s = stateRef.current
-      tick(s, dt)
+      // Half Full has no pause: while the leave confirm asks, no time passes, so the glass can't lock itself
+      // under it, and nothing can pour into it either (the confirm ends a drag, and holds the nudges).
+      tick(s, asking.current ? 0 : dt)
       settle()
       if (s.phase !== lastPhase) {
         if (s.phase === 'shown' && lastPhase === 'tip' && s.tipT >= 2.6) shownAt.current = now
@@ -510,8 +516,8 @@ function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay 
         lastPhase = s.phase
         uiAcc = 1
       }
-      // The glug as it fills, higher as it gets fuller; the count as the jug fills.
-      if (now - soundAt.current > 110) {
+      // The glug as it fills, higher as it gets fuller; the count as the jug fills. Neither while the confirm holds it.
+      if (!asking.current && now - soundAt.current > 110) {
         if (s.phase === 'pour' && s.flow > 60) {
           soundAt.current = now
           sfx('plink', Math.round((s.level / 1000) * 8))
@@ -565,7 +571,7 @@ function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay 
       const target = e.target instanceof Element ? e.target : null
       if (target?.closest('.game-card, [role="dialog"], input, select, textarea')) return
       // A focused button or link answers Enter and Space itself (the lock and Next included).
-      if (isGoKey(e) && target?.closest('button, a')) return
+      if (controlTakesKey(e)) return
       const s = stateRef.current
       if (s.phase === 'pour') {
         const split = isSplitRound(s.round)
@@ -730,6 +736,11 @@ function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay 
               }}
               past={past}
               leaveNote={leaveNote}
+              onLeaveAsk={(on) => {
+                asking.current = on
+                // A finger or mouse still down pours no more: the drag ends with the question.
+                if (on) drag.current = null
+              }}
             />
 
             {ui.phase === 'pour' || ui.phase === 'tip' || ui.phase === 'shown' ? (
@@ -774,6 +785,7 @@ function PourGame({ testDay, itsDay }: { testDay: string | null; itsDay: ItsDay 
                   waiting={viewer === undefined}
                   board={board}
                   saves={saves}
+                  quiet={lateSave != null}
                   onStart={() => begin(dayDone(run))}
                   onTakeUp={() => begin(false, true)}
                   onPractice={() => begin(true)}
@@ -1055,6 +1067,7 @@ function StartCard({
   waiting,
   board,
   saves,
+  quiet,
   onStart,
   onTakeUp,
   onPractice,
@@ -1073,6 +1086,8 @@ function StartCard({
   board: TodayBoard | null
   /** Whether a day goes on a board (not while the game is on deck). */
   saves: boolean
+  /** A save card is up over it: nothing here takes the focus from it. */
+  quiet: boolean
   onStart: () => void
   onTakeUp: () => void
   onPractice: () => void
@@ -1136,13 +1151,14 @@ function StartCard({
       <div className="game-card__actions">
         {done ? (
           <>
+            {/* Once the board says it isn't there, Save is the way on, and takes the focus as it comes. */}
             {offBoard ? (
-              <button type="button" className="panel__btn" onClick={onSave}>
+              <button type="button" className="panel__btn" onClick={onSave} autoFocus={!quiet}>
                 Save it as today’s pour
               </button>
             ) : null}
-            {sum ? <ShareButton plan={plan} results={kept} autoFocus={!offBoard} ghost={offBoard} /> : null}
-            <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice} autoFocus={!sum}>
+            {sum ? <ShareButton plan={plan} results={kept} autoFocus={!quiet && !offBoard} ghost={offBoard} /> : null}
+            <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice} autoFocus={!quiet && !sum}>
               Pour again · doesn’t count
             </button>
           </>
@@ -1155,21 +1171,22 @@ function StartCard({
                 Carry on
               </button>
             ) : claimOffBoard ? (
+              // Nor this one: an Enter mustn't put someone else's pour on the board as theirs.
               <button type="button" className="panel__btn" onClick={onSaveClaimable}>
                 Save it as today’s pour
               </button>
             ) : null}
+            {/* Nor this: Enter mustn't start a counted pour of their own before they've chosen. */}
             <button
               type="button"
               className={claimDone && !claimOffBoard ? 'panel__btn' : 'panel__btn panel__btn--ghost'}
               onClick={onStart}
-              autoFocus={claimDone && !claimOffBoard}
             >
               Pour your own
             </button>
           </>
         ) : (
-          <button type="button" className="panel__btn" onClick={onStart} autoFocus disabled={waiting}>
+          <button type="button" className="panel__btn" onClick={onStart} autoFocus={!quiet} disabled={waiting}>
             {started ? 'Carry on' : 'Start'}
           </button>
         )}

@@ -46,6 +46,7 @@ import {
 } from './game'
 import { pileLayout, type Box, type Layout } from './layout'
 import { renderGame } from './render'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 /**
  * Where the page's own score and buttons end, measured from the top of the
@@ -376,9 +377,12 @@ export function PileupGame() {
     }
     const down = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const s = stateRef.current
       if (s.phase === 'menu') {
-        if (e.code === 'Space' || e.code === 'Enter') {
+        // A focused button or link on the start card answers the key itself.
+        if ((e.code === 'Space' || e.code === 'Enter') && !controlTakesKey(e)) {
           e.preventDefault()
           if (performance.now() >= startGrace.current) restart()
         }

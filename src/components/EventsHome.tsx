@@ -360,11 +360,14 @@ export function LastWeekCard({
 /** Making your own: what it is, a way to start one, and the ones you already have. */
 export function OwnEventsCard({
   signedIn,
+  signedOut,
   mine,
   limits,
   linkFor,
 }: {
   signedIn: boolean
+  /** No session at all: a session whose account isn't known yet gets the way in, never Sign in. */
+  signedOut: boolean
   mine: TournamentSummary[]
   limits: PlanLimits
   linkFor: (t: TournamentSummary) => string
@@ -397,15 +400,15 @@ export function OwnEventsCard({
           Invite only, for an hour or a week
         </li>
       </ul>
-      {signedIn ? (
+      {signedOut ? (
+        <button type="button" className="evp-btn evp-btn--ink" onClick={openSiteMenu}>
+          Sign in to make one
+        </button>
+      ) : (
         <a className="evp-btn evp-btn--ink" href={tournamentCreateHref()}>
           <PlusIcon />
           Create an event
         </a>
-      ) : (
-        <button type="button" className="evp-btn evp-btn--ink" onClick={openSiteMenu}>
-          Sign in to make one
-        </button>
       )}
       {signedIn ? (
         <div className="evp-own__yours">

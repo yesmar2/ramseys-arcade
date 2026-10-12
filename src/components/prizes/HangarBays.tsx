@@ -27,7 +27,7 @@ function errorText(err: unknown): string {
 }
 
 function Bay({ skin, onTrade, busy }: { skin: Skin; onTrade: (skin: Skin) => void; busy: boolean }) {
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const { owned, balance, loaded } = useTickets()
   const chosen = useChosenSkin(skin.game)
   const game = getGame(skin.game)
@@ -71,12 +71,12 @@ function Bay({ skin, onTrade, busy }: { skin: Skin; onTrade: (skin: Skin) => voi
             <TicketGlyph size={16} />
             {price.toLocaleString()} tickets
           </span>
-          {!signedIn ? (
+          {signedOut ? (
             <button type="button" className="hbay__btn" onClick={openSiteMenu}>
               Sign in to trade
             </button>
-          ) : !loaded ? (
-            // Your tickets not in yet: the button's room, so the bay doesn't change shape when they come.
+          ) : !signedIn || !loaded ? (
+            // Your account or your tickets not in yet: the button's room, so the bay doesn't change shape when they come.
             <span className="hbay__btn skel-btn" aria-hidden="true">
               Roll it out
             </span>

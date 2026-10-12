@@ -26,6 +26,7 @@ import {
 import { renderGame } from './render'
 import { loadVoice } from './voice'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 /**
  * How far a drag has to travel, in the toy's units, before it counts as the
@@ -79,6 +80,8 @@ export function BopGame() {
   const offeredScore = useRef<number | null>(null)
   const previousBestRef = useRef(getPersonalBest('bop'))
   const startGrace = useRef(0)
+  /** The leave confirm is up over the run. */
+  const askingRef = useRef(false)
 
   useEffect(() => {
     let raf = 0
@@ -99,7 +102,8 @@ export function BopGame() {
       }
 
       const jackpotBefore = stateRef.current.jackpotDone
-      stateRef.current = tick(stateRef.current, dt)
+      // Bop has no pause: while the leave confirm asks, the toy holds still under it, the call's clock and all.
+      if (!askingRef.current) stateRef.current = tick(stateRef.current, dt)
       if (!jackpotBefore && stateRef.current.jackpotDone) void reportEgg('jackpot')
 
       uiAcc += dt
@@ -246,10 +250,14 @@ export function BopGame() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpen) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves: Enter on ‹ Leave asks to
+      // leave, never Bops.
+      if (chromeTakesKey(e)) return
       const s = stateRef.current
       if (s.phase === 'gameover') return
       if (s.phase === 'menu') {
-        if (e.code === 'Space' || e.code === 'Enter') {
+        // A focused button or link on the start card answers the key itself.
+        if ((e.code === 'Space' || e.code === 'Enter') && !controlTakesKey(e)) {
           e.preventDefault()
           restart()
         }
@@ -294,7 +302,15 @@ export function BopGame() {
             onPointerCancel={onPointerUp}
           >
             <canvas ref={canvasRef} className="bop__viewport" />
-            <GamePlayChrome slug="bop" inRun={() => stateRef.current.phase === 'call'} />
+            <GamePlayChrome
+              slug="bop"
+              inRun={() => stateRef.current.phase === 'call'}
+              onLeaveAsk={(asking) => {
+                askingRef.current = asking
+                // A drag under way ends with the question: nothing answers the call behind it.
+                if (asking) onPointerUp()
+              }}
+            />
             <PlayReadout>
               <PlayReadoutScore hot={inRun && ui.score > previousBestRef.current}>
                 {ui.score}

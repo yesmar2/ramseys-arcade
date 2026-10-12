@@ -9,12 +9,14 @@ import { useShare } from '../../components/SharePanel'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { currentAccountId } from '../../lib/auth'
 import { fitCardToSpace } from '../../lib/cardFit'
 import { ownerAccount, ownerOf, SIGNED_OUT } from '../../lib/deviceRuns'
 import { eggDone, reportEgg } from '../../lib/eggs'
 import { gameAccentStyle } from '../../lib/gameAccentStyle'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { beginRun, resumeRun, runIdFor } from '../../lib/runSession'
 import {
   claimDayRun,
@@ -35,6 +37,8 @@ import { THICK, createInitialState, moveCursor, pinAtCursor, setPin, shatter, st
 import { dayPlan, PLATES, type DayPlan } from './plan'
 import { formatPoints, judgeTaps, markFor } from './score'
 import { renderGame, tablePointAt } from './render'
+import { useTodayBoard, type TodayBoard } from './todayBoard'
+import { chromeTakesKey } from '../keys'
 
 /** The way on to the next of today's dailies, with the day's ticket it brings. */
 const NextDaily = lazy(() => import('../../components/NextDaily'))
@@ -82,22 +86,42 @@ type PageRun = { startedAt: number; owner: string }
 export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) {
   const apiBest = usePersonalBest(SLUG)
   const viewer = useAccountId()
-  // The day this visit plays: today as the page opened (a visit past midnight keeps its day), or a past one.
-  const [day] = useState(() => pastDay ?? plateDay())
+  // The day this visit plays: today, moved on at midnight between goes (a go under way finishes on its own
+  // day), or a past one.
+  const [day, setDay] = useState(() => pastDay ?? plateDay())
   const plan = useMemo(() => dayPlan(day), [day])
   const [, refreshDevice] = useState(0)
   useEffect(() => subscribePlateDay(() => refreshDevice((n) => n + 1)), [])
-  const { own: run } = viewerRuns(day, viewer)
+  // The player's own run of the day, and whose slot it's in; with none, one played signed out here, to take up or not.
+  const { own: run, owner: runOwner, claimable } = viewerRuns(day, viewer)
   const kept = useMemo(() => keptScores(plan, run), [plan, run])
+  const claimableKept = useMemo(() => keptScores(plan, claimable), [plan, claimable])
 
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ui, setUi] = useState<Ui>(() => uiOf(stateRef.current))
   const pageRun = useRef<PageRun | null>(null)
+  /** The counted run this page opened on the API, by when it began: its id may still be on the way. */
+  const openedRun = useRef<number | null>(null)
   const startGrace = useRef(0)
   const heldRef = useRef<Set<Arrow>>(new Set())
   const fineRef = useRef(false)
   const doneRef = useRef(false)
+  /**
+   * A finished first go put on the board late, from the day's card (played signed out, or its save never
+   * landed), and whose it is.
+   */
+  const [lateSave, setLateSave] = useState<{ run: DayRun; owner: string } | null>(null)
+  /** Saves that have had their answer: the day's card reads the board again after each. */
+  const [settledSaves, setSettledSaves] = useState(0)
+  const noteSaved = useCallback(() => setSettledSaves((n) => n + 1), [])
+  const me = normalizePlayerName(usePlayerName())
+  // Read for the day's card while the day is still today: again once the day's go has moved on, or gone on late.
+  const board = useTodayBoard(
+    pastDay || ui.phase !== 'menu' || day !== plateDay() ? null : day,
+    me,
+    `${run?.taps.length ?? 0}|${run?.board ?? ''}|${lateSave?.run.startedAt ?? ''}|${settledSaves}`,
+  )
 
   /** Each tap of the counted run, kept on the device as it lands. */
   const keepTap = useCallback(() => {
@@ -108,9 +132,18 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
     updateDayRun(day, counted.owner, (r) => (r && r.startedAt === counted.startedAt ? { ...r, taps } : r))
   }, [day])
 
-  /** Play the day's plates: as practice, or as the day's first run, the one that counts (carried on if begun). */
+  /**
+   * Play the day's plates: as practice, or as the day's first run, the one that counts (carried on if begun).
+   * With `takeUp`, the one played signed out here, carried on as the account signed in's.
+   */
   const begin = useCallback(
-    (practice: boolean) => {
+    (practice: boolean, takeUp = false) => {
+      // A card left up past midnight: show the new day's plates first.
+      const now = plateDay()
+      if (!pastDay && now !== day) {
+        setDay(now)
+        return
+      }
       const viewerNow = currentAccountId()
       const owner = ownerOf(viewerNow)
       doneRef.current = false
@@ -120,7 +153,13 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
       if (!practice && !pastDay) {
         // A counted run is its player's, so none starts until the account signed in is known.
         if (owner === undefined) return
-        const mine = viewerRuns(day, viewerNow).own
+        const runs = viewerRuns(day, viewerNow)
+        const mine = takeUp ? runs.claimable : runs.own
+        if (takeUp) {
+          if (!mine || dayDone(mine)) return
+          // Theirs from here on, under the run it was opened with.
+          claimDayRun(day, mine.startedAt, owner)
+        }
         if (mine && dayDone(mine)) {
           practice = true
         } else if (mine) {
@@ -128,6 +167,7 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
           pageRun.current = { startedAt: mine.startedAt, owner }
           if (mine.runId) resumeRun(SLUG, mine.runId)
           else {
+            openedRun.current = mine.startedAt
             beginRun(SLUG)
             void runIdFor(SLUG).then((id) => id && keepRunId(day, mine.startedAt, id))
           }
@@ -135,6 +175,7 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
           const startedAt = Date.now()
           updateDayRun(day, owner, () => ({ startedAt, taps: [] }))
           pageRun.current = { startedAt, owner }
+          openedRun.current = startedAt
           beginRun(SLUG)
           void runIdFor(SLUG).then((id) => id && keepRunId(day, startedAt, id))
         }
@@ -157,6 +198,32 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
     startGrace.current = performance.now() + 300
     setUi(uiOf(stateRef.current))
   }, [])
+
+  // Midnight with the start card up: it moves on to the new day's plates. A go under way finishes on its own day.
+  useEffect(() => {
+    if (pastDay) return
+    const t = window.setInterval(() => {
+      const now = plateDay()
+      if (now !== day && stateRef.current.phase === 'menu') setDay(now)
+    }, 30_000)
+    return () => window.clearInterval(t)
+  }, [day, pastDay])
+
+  /**
+   * A finished first go that isn't on the board: save it now, under the run it was opened with, as its
+   * owner's. The player's own, or, with `takeUp`, one played signed out here, saved as the account signed in's.
+   */
+  const saveLate = useCallback(
+    (takeUp: boolean) => {
+      const r = takeUp ? claimable : run
+      const owner = takeUp ? SIGNED_OUT : runOwner
+      if (!r || r.taps.length < PLATES || owner == null) return
+      // Its own run's id, kept on the device; one this page opened is the run still current here, its id maybe on the way.
+      if (r.runId || openedRun.current !== r.startedAt) resumeRun(SLUG, r.runId)
+      setLateSave({ run: r, owner })
+    },
+    [claimable, run, runOwner],
+  )
 
   useEffect(() => {
     let raf = 0
@@ -231,6 +298,9 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
     const down = (e: KeyboardEvent) => {
       const s = stateRef.current
       if (s.phase === 'menu' || s.phase === 'gameover') return
+      // The play screen's own buttons, reached with Tab, answer the key themselves: Enter on ‹ Leave asks to
+      // leave, never pins a plate.
+      if (chromeTakesKey(e)) return
       if (e.key === 'Shift') fineRef.current = true
       if (isGoKey(e)) {
         e.preventDefault()
@@ -328,9 +398,27 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
                   pastDay={pastDay}
                   run={run}
                   kept={kept}
+                  claimable={claimable}
+                  claimableKept={claimableKept}
+                  board={board}
                   waiting={viewer === undefined}
+                  quiet={lateSave != null}
                   onStart={() => begin(dayDone(run))}
+                  onTakeUp={() => begin(false, true)}
                   onPractice={() => begin(true)}
+                  onSave={() => saveLate(false)}
+                  onSaveClaimable={() => saveLate(true)}
+                />
+              ) : null}
+              {lateSave && ui.phase === 'menu' ? (
+                <DaySave
+                  plan={plan}
+                  scores={keptScores(plan, lateSave.run)}
+                  taps={lateSave.run.taps.slice(0, PLATES)}
+                  counted={{ startedAt: lateSave.run.startedAt, owner: lateSave.owner }}
+                  previousBest={apiBest}
+                  onDone={() => setLateSave(null)}
+                  onSettled={noteSaved}
                 />
               ) : null}
               {counted ? (
@@ -341,6 +429,7 @@ export function DeadCenterGame({ pastDay = null }: { pastDay?: string | null }) 
                   counted={counted}
                   previousBest={apiBest}
                   onDone={toMenu}
+                  onSettled={noteSaved}
                 />
               ) : finished ? (
                 <DayCard
@@ -389,28 +478,58 @@ function dayLine(plan: DayPlan) {
   return `${dayTag(plan.day)} · ${weekdayShort(plan.day)} · ${plan.label}`
 }
 
-/** Today's start card: the day, Start or Carry on, or how the day went. A past day's says it's practice. */
+/**
+ * Today's start card: the day, Start or Carry on, or how the day went. A past day's says it's practice.
+ * Signed in beside a go played signed out on this device, that go is offered to take up (Carry on, or
+ * save it) if it was theirs, and their own first go if it wasn't.
+ */
 function StartCard({
   plan,
   pastDay,
   run,
   kept,
+  claimable,
+  claimableKept,
+  board,
   waiting,
+  quiet,
   onStart,
+  onTakeUp,
   onPractice,
+  onSave,
+  onSaveClaimable,
 }: {
   plan: DayPlan
   pastDay: string | null
   run: DayRun | null
   kept: readonly number[]
+  /** With none of their own, a go played signed out on this device, which they may take up. */
+  claimable: DayRun | null
+  claimableKept: readonly number[]
+  /** Today's board, for whether a finished go is on it yet. */
+  board: TodayBoard | null
   waiting: boolean
+  /** A save card is up over it: nothing here takes the focus from it. */
+  quiet: boolean
   onStart: () => void
+  onTakeUp: () => void
   onPractice: () => void
+  onSave: () => void
+  onSaveClaimable: () => void
 }) {
   const allow = useDeliberatePress()
   const done = !pastDay && dayDone(run)
   const sum = done && kept.length >= PLATES ? summarize(kept) : null
   const carry = !pastDay && run && !done && run.taps.length > 0
+  // A finished first go the board hasn't got (played signed out, or its save never landed).
+  const offBoard = sum != null && board != null && !board.you
+  // Played here while signed out, by whoever it was, and the player signed in has no go of their own here:
+  // theirs to take up if it was them (it goes on the board as theirs), or to leave, playing their own first
+  // go. One begun with no plate played is nothing to take up.
+  const claim = pastDay || run || !claimable?.taps.length ? null : claimable
+  const claimDone = dayDone(claim)
+  const claimSum = claimDone && claimableKept.length >= PLATES ? summarize(claimableKept) : null
+  const claimOffBoard = claimSum != null && board != null && !board.you
   const go = (f: () => void) => (e: ReactMouseEvent) => {
     if (allow(e)) f()
   }
@@ -425,9 +544,13 @@ function StartCard({
           ? 'A past day’s six plates, to play again. It’s practice: nothing is kept.'
           : done
             ? 'That’s your day. New plates at midnight; play these again as much as you like: it’s practice, and your result stands.'
-            : 'Six plates, the same for everyone today. Tap where each one would balance: the closer to its true center, the more it scores. No clock. Your first go is your result.'}
+            : claim
+              ? claimDone
+                ? 'Today’s plates were played on this device while signed out. If that was you, save it as today’s result; if not, play your own.'
+                : `A go begun on this device while signed out is waiting at plate ${claim.taps.length + 1} of ${PLATES}. Carry it on if it’s yours, or play your own.`
+              : 'Six plates, the same for everyone today. Tap where each one would balance: the closer to its true center, the more it scores. No clock. Your first go is your result.'}
       </p>
-      {!pastDay ? <RunLabel kind={done ? 'practice' : 'fun'} slug={SLUG} /> : null}
+      {!pastDay && !claim ? <RunLabel kind={done ? 'practice' : 'fun'} slug={SLUG} /> : null}
       {sum ? (
         <div className="centroid-card__result">
           <strong>{sum.scoreText}</strong>
@@ -438,18 +561,63 @@ function StartCard({
           <strong>{(Math.floor(run.board / 10) / 10).toFixed(1)}%</strong>
           <span>played on another device</span>
         </div>
+      ) : claimSum ? (
+        <div className="centroid-card__result">
+          <strong>{claimSum.scoreText}</strong>
+          <span>{claimSum.tier} · played here signed out</span>
+        </div>
       ) : null}
-      {sum ? <Marks scores={kept} /> : carry ? <Marks scores={kept} label="Plates played so far" /> : null}
+      {sum ? (
+        <Marks scores={kept} />
+      ) : carry ? (
+        <Marks scores={kept} label="Plates played so far" />
+      ) : claimSum ? (
+        <Marks scores={claimableKept} label="The six plates played here signed out" />
+      ) : null}
       <div className="game-card__actions">
         {done ? (
           <>
+            {/* Once the board says it isn't there, Save is the way on, and takes the focus as it comes. */}
+            {offBoard ? (
+              <button type="button" className="panel__btn" onClick={go(onSave)} autoFocus={!quiet}>
+                Save it as today’s result
+              </button>
+            ) : null}
             {sum ? <ShareButton plan={plan} scores={kept} allow={allow} ghost /> : null}
-            <button type="button" className="panel__btn" onClick={go(onPractice)} autoFocus>
+            <button
+              type="button"
+              className={offBoard ? 'panel__btn panel__btn--ghost' : 'panel__btn'}
+              onClick={go(onPractice)}
+              autoFocus={!quiet && !offBoard}
+            >
               Play again (practice)
             </button>
           </>
+        ) : claim ? (
+          // Not shared from here: it's only theirs once they've taken it up.
+          <>
+            {!claimDone ? (
+              // Never focused first: the day's usual Space or Enter mustn't take up someone else's go.
+              <button type="button" className="panel__btn" onClick={go(onTakeUp)}>
+                Carry on
+              </button>
+            ) : claimOffBoard ? (
+              // Nor this one: an Enter mustn't put someone else's go on the board as theirs.
+              <button type="button" className="panel__btn" onClick={go(onSaveClaimable)}>
+                Save it as today’s result
+              </button>
+            ) : null}
+            {/* Nor this: Enter mustn't start a counted go of their own before they've chosen. */}
+            <button
+              type="button"
+              className={claimDone && !claimOffBoard ? 'panel__btn' : 'panel__btn panel__btn--ghost'}
+              onClick={go(onStart)}
+            >
+              Play your own
+            </button>
+          </>
         ) : (
-          <button type="button" className="panel__btn" disabled={waiting && !pastDay} onClick={go(onStart)} autoFocus>
+          <button type="button" className="panel__btn" disabled={waiting && !pastDay} onClick={go(onStart)} autoFocus={!quiet}>
             {pastDay ? 'Play' : carry ? `Carry on (plate ${run!.taps.length + 1} of ${PLATES})` : 'Play today’s plates'}
           </button>
         )}
@@ -466,6 +634,7 @@ function DaySave({
   counted,
   previousBest,
   onDone,
+  onSettled,
 }: {
   plan: DayPlan
   scores: readonly number[]
@@ -473,6 +642,8 @@ function DaySave({
   counted: PageRun
   previousBest: number
   onDone: () => void
+  /** Once the save has an answer: the day's card reads the board again. */
+  onSettled: () => void
 }) {
   // The day it was played on, kept: midnight moving the page on mustn't re-score it against new plates.
   const [{ fixedPlan, fixedScores, fixedTaps, fixedCounted }] = useState(() => ({ fixedPlan: plan, fixedScores: [...scores], fixedTaps: taps.map((t) => ({ ...t })), fixedCounted: counted }))
@@ -492,6 +663,7 @@ function DaySave({
       shareLine={shareText(fixedPlan, fixedScores, window.location.origin)}
       owner={ownerAccount(fixedCounted.owner)}
       onDone={onDone}
+      onSettled={onSettled}
       onSaved={onSaved}
     />
   )

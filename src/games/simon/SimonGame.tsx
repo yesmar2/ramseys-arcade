@@ -21,6 +21,7 @@ import {
 } from './game'
 import { renderGame } from './render'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 function currentLayout() {
   return simonLayout(typeof window !== 'undefined' && window.innerHeight > window.innerWidth)
@@ -141,9 +142,13 @@ export function SimonGame() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (saveOpen) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault()
         const s = stateRef.current
+        // On the start card, a focused button or link answers the key itself.
+        if ((s.phase === 'menu' || s.phase === 'gameover') && controlTakesKey(e)) return
+        e.preventDefault()
         if (s.phase === 'menu' || s.phase === 'gameover') restart()
         return
       }

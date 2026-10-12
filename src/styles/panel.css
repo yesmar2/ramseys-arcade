@@ -35,7 +35,8 @@ html[data-theme='light'] .panel-scrim {
 .panel {
   --panel-accent: var(--celeb-accent, var(--accent));
   --panel-on-accent: var(--hero-ink, #03211b);
-  --panel-accent-ink: color-mix(in srgb, var(--panel-accent) 62%, var(--ink));
+  /* A game's own words: the shade of its colour that reads here (--celeb-text, gameAccentStyle), else this mix. */
+  --panel-accent-ink: var(--celeb-text, color-mix(in srgb, var(--panel-accent) 62%, var(--ink)));
   --panel-line: rgba(var(--ink-rgb), 0.12);
   --panel-fill: rgba(var(--ink-rgb), 0.05);
   --panel-danger: #c42b3c;
@@ -549,7 +550,7 @@ html[data-theme='light'] .tour-play__gate {
 .game-card {
   --panel-accent: var(--celeb-accent, var(--accent));
   --panel-on-accent: var(--hero-ink, #03211b);
-  --panel-accent-ink: color-mix(in srgb, var(--panel-accent) 62%, var(--ink));
+  --panel-accent-ink: var(--celeb-text, color-mix(in srgb, var(--panel-accent) 62%, var(--ink)));
   --panel-line: rgba(var(--ink-rgb), 0.12);
   --panel-fill: rgba(var(--ink-rgb), 0.05);
   position: relative;
@@ -652,6 +653,11 @@ html[data-theme='dark'] .game-card {
   display: none;
 }
 
+/* A few pixels over after that, it closes up its top rather than cut off its last button. */
+.game-card[data-fit='2'][data-tight] {
+  padding-top: 0.6rem;
+}
+
 .game-card__head {
   display: flex;
   flex-direction: column;
@@ -744,7 +750,35 @@ html[data-theme='dark'] .game-card {
 .game-card .game-sound-row {
   align-self: center;
   flex-basis: 100%;
+  flex-wrap: wrap;
   justify-content: center;
+}
+
+/*
+ * Too wide for the card all the same (a 320px phone's, or a long sound set's
+ * name): the music slider gives way first, down to 3.5rem, then the set wraps.
+ */
+.game-card .game-sound-row .music-level--panel {
+  flex: 1 1 auto;
+  max-width: 8.7rem;
+}
+
+.game-card .game-sound-row .music-level__slider {
+  flex-basis: 3.5rem;
+  width: 3.5rem;
+}
+
+/*
+ * With vibration too, that line is wider than a small phone's card: its chips
+ * run on into the rules and boards' line instead of off the card's edges, and
+ * the music slider takes what room its line has left.
+ */
+.game-card .game-sound-row:has(> :nth-child(4)) {
+  display: contents;
+}
+
+.game-card .game-sound-row:has(> :nth-child(4)) .music-level--panel {
+  max-width: none;
 }
 
 .game-card .game-pause-btn,
@@ -767,7 +801,6 @@ html[data-theme='dark'] .game-card {
 .game-card .patriot__info:focus-visible {
   color: var(--ink);
   border-color: rgba(var(--ink-rgb), 0.26);
-  outline: none;
 }
 
 .game-card .sound-pack-btn {
@@ -815,6 +848,36 @@ html[data-theme='dark'] .game-card {
 .game-card--start .admin-wave-skip,
 .game-card--start .game-card__start {
   pointer-events: auto;
+}
+
+/*
+ * One that still doesn't fit takes the pointer, so a finger can scroll it;
+ * lib/cardFit keeps its presses off the playfield, and Start's until it's a
+ * tap. Start stays in sight at its foot, what passes under it fading out
+ * above it. A past course's Start leaves the actions it shares with the way
+ * back to do so; the way back scrolls with the rest.
+ */
+.game-card--start[data-scrolls] {
+  pointer-events: auto;
+  padding-bottom: 0.6rem;
+}
+
+/* So does one with a menu open in it (the ghost picker's): a tap beside the menu closes it, never starts the run. */
+.game-card--start:has([aria-expanded='true']) {
+  pointer-events: auto;
+}
+
+.game-card--start[data-scrolls] .game-card__actions {
+  display: contents;
+}
+
+.game-card--start[data-scrolls] .game-card__start {
+  position: sticky;
+  bottom: 0;
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--panel-accent) 28%, transparent),
+    0 0.4rem 0 0.4rem var(--surface),
+    0 -0.6rem 0.8rem 0.3rem var(--surface);
 }
 
 /* Paused: the game dimmed and softly blurred under the card. */

@@ -225,7 +225,7 @@ function ExtraTile({ season, level, toNext }: { season: SeasonInfo; level: numbe
   )
 }
 
-function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoading }: { season: SeasonInfo; level: number; top: number; fraction: number; toNext: number | null; earned: number; signedIn: boolean; authLoading: boolean }) {
+function Hero({ season, level, top, fraction, toNext, earned, signedIn, signedOut, authLoading }: { season: SeasonInfo; level: number; top: number; fraction: number; toNext: number | null; earned: number; signedIn: boolean; signedOut: boolean; authLoading: boolean }) {
   const sky = { backgroundImage: starTile('#f4f0ff', 13, { size: 360, stars: 44 }) } as CSSProperties
   const live = season.status === 'live'
   const when =
@@ -261,14 +261,32 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
                 {season.status === 'upcoming' ? 'Free for everyone, from its first day.' : 'What players won is theirs to keep.'}
               </span>
             </>
-          ) : !signedIn ? (
+          ) : signedOut ? (
             <>
               <span className="season-level__n">Climb the pass</span>
               <span className="season-level__sub">Sign in, then win tickets in any game.</span>
-              <button type="button" className="season-level__signin" onClick={openSiteMenu} disabled={authLoading}>
+              <button type="button" className="season-level__signin" onClick={openSiteMenu}>
                 Sign in
               </button>
             </>
+          ) : !signedIn ? (
+            // A session whose account isn't known yet: the level's shape while it's asked, and never Sign in.
+            authLoading ? (
+              <>
+                <span className="season-level__n">
+                  <span className="skel-line" style={{ '--skel-w': '7.5rem' } as CSSProperties} />
+                </span>
+                <span className="season-level__meter" aria-hidden="true" />
+                <span className="season-level__sub">
+                  <span className="skel-line" style={{ '--skel-w': '10rem' } as CSSProperties} />
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="season-level__n">Climb the pass</span>
+                <span className="season-level__sub">Couldn’t reach your account just now.</span>
+              </>
+            )
           ) : (
             <>
               <span className="season-level__n">
@@ -347,7 +365,7 @@ function PassPlus({
   level,
   toNext,
   signedIn,
-  authLoading,
+  signedOut,
   onPlus,
   actionFor,
   sought,
@@ -357,7 +375,7 @@ function PassPlus({
   level: number
   toNext: number | null
   signedIn: boolean
-  authLoading: boolean
+  signedOut: boolean
   /** On Plus without Pass+ yet: the free week, whose first payment brings it. */
   onPlus: boolean
   actionFor: (reward: SeasonReward) => ReactNode
@@ -462,8 +480,9 @@ function PassPlus({
           ) : (
             <div className="season-plus__ways">
               {plus.buyable ? (
-                <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || authLoading}>
-                  <b>{busy ? 'Opening…' : signedIn ? `Get the Gold Pass · ${price}` : `Sign in to get the Gold Pass`}</b>
+                // Until a session's account is known, neither buying nor signing in.
+                <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || (!signedIn && !signedOut)}>
+                  <b>{busy ? 'Opening…' : signedOut ? `Sign in to get the Gold Pass` : `Get the Gold Pass · ${price}`}</b>
                   <small>Once, for the whole season ({seasonWeeks(season)} weeks). Yours to keep.</small>
                 </button>
               ) : (
@@ -660,7 +679,7 @@ function SkinsCard({ free, plus, level, owned, plusOwned }: { free: SeasonReward
 export function SeasonPage() {
   const store = useSeason()
   const { owned } = useTickets()
-  const { signedIn, isPlus, loading: authLoading } = useAuth()
+  const { signedIn, signedOut, isPlus, loading: authLoading } = useAuth()
   const avatar = useOwnAvatar()
   const trackRef = useRef<HTMLOListElement>(null)
   const [sought] = useState(soughtSkin)
@@ -732,7 +751,7 @@ export function SeasonPage() {
 
   return (
     <PageShell innerClassName={`lb-page__inner season-page season-${season.slug}`}>
-      <Hero season={season} level={level} top={top || season.levels} fraction={p.fraction} toNext={p.toNext} earned={p.earned} signedIn={signedIn} authLoading={authLoading} />
+      <Hero season={season} level={level} top={top || season.levels} fraction={p.fraction} toNext={p.toNext} earned={p.earned} signedIn={signedIn} signedOut={signedOut} authLoading={authLoading} />
 
       <section className="season-pass" aria-labelledby="season-pass-title">
         <div className="season-pass__head">
@@ -795,7 +814,7 @@ export function SeasonPage() {
           level={level}
           toNext={p.toNext}
           signedIn={signedIn}
-          authLoading={authLoading}
+          signedOut={signedOut}
           onPlus={isPlus}
           actionFor={actionFor}
           sought={sought}

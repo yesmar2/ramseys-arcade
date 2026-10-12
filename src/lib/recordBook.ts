@@ -438,7 +438,8 @@ export type BookHead = {
   rest: string
   /**
    * The line under it: where you stand among the holders when you hold some, how many you're on when you
-   * don't, or how to set the first. Empty signed out (the tab asks you to sign in there).
+   * don't, or how to set the first. Empty signed out or with no tag (the tab asks you to sign in there, or to
+   * pick a tag).
    */
   line: string[]
 }
@@ -456,12 +457,20 @@ export function periodWords(period: LeaderboardPeriod): string {
  * The head of a game's Records tab: who holds the most of its records, or "You hold 2 of the 12" when you
  * hold some, and one line on how you stand. Players tied for the most are named together, never one of them
  * alone. Your nearest record isn't in it: its row says so ("your nearest"), and saying it twice is noise.
- * `you` is the viewer's tag ('' signed out).
+ * `you` is the viewer's tag ('' signed out). `where`, with a group's boards (lib/groups.ts scopeWhere): the
+ * records are the group's, and the head says so, "… records in OFFICE", as does any "most" under it.
  */
-export function bookHead(game: string, records: RecordSummary[], you: string, period: LeaderboardPeriod = 'all'): BookHead {
+export function bookHead(
+  game: string,
+  records: RecordSummary[],
+  you: string,
+  period: LeaderboardPeriod = 'all',
+  where?: string,
+): BookHead {
   const name = gameName(game)
   const total = records.length
   const when = periodWords(period)
+  const among = where ? ` ${where}` : ''
   const holders = holderCounts(records)
   const [first] = holders
   const most = first ? holders.filter((h) => h.count === first.count) : []
@@ -472,25 +481,25 @@ export function bookHead(game: string, records: RecordSummary[], you: string, pe
   const book = `${total} ${name} ${total === 1 ? 'record' : 'records'}`
 
   let head: { name: string; rest: string }
-  if (!first) head = { name: '', rest: `No ${name} records set${when || ' yet'}` }
-  else if (mine) head = { name: 'You', rest: ` hold ${mine === total ? all : `${mine} of the ${book}`}${when}` }
-  else if (first.count === total) head = { name: first.name, rest: ` holds ${all}${when}` }
-  else if (most.length === 2) head = { name: '', rest: `${most[0]!.name} and ${most[1]!.name} hold ${each} each of the ${book}${when}` }
-  else if (most.length > 2) head = { name: '', rest: `${capital(numberWord(most.length))} players hold ${each} each of the ${book}${when}` }
-  else head = { name: first.name, rest: ` holds ${first.count} of the ${book}${when}` }
+  if (!first) head = { name: '', rest: `No ${name} records set${among}${when || ' yet'}` }
+  else if (mine) head = { name: 'You', rest: ` hold ${mine === total ? all : `${mine} of the ${book}`}${among}${when}` }
+  else if (first.count === total) head = { name: first.name, rest: ` holds ${all}${among}${when}` }
+  else if (most.length === 2) head = { name: '', rest: `${most[0]!.name} and ${most[1]!.name} hold ${each} each of the ${book}${among}${when}` }
+  else if (most.length > 2) head = { name: '', rest: `${capital(numberWord(most.length))} players hold ${each} each of the ${book}${among}${when}` }
+  else head = { name: first.name, rest: ` holds ${first.count} of the ${book}${among}${when}` }
 
   const line: string[] = []
   const knows = Boolean(you) && records.some((r) => r.you !== undefined)
   if (mine && first) {
     if (mine === first.count) {
       const others = most.filter((h) => h.name !== you).map((h) => h.name)
-      if (others.length) line.push(`Tied for the most with ${nameList(others)}`)
-      else if (holders.length > 1) line.push('The most of anyone')
+      if (others.length) line.push(`Tied for the most${among} with ${nameList(others)}`)
+      else if (holders.length > 1) line.push(`The most of anyone${among}`)
     } else {
       line.push(
         most.length > 1
-          ? `${nameList(most.map((h) => h.name))} hold the most, ${each} each`
-          : `${first.name} holds the most, ${first.count}`,
+          ? `${nameList(most.map((h) => h.name))} hold the most${among}, ${each} each`
+          : `${first.name} holds the most${among}, ${first.count}`,
       )
     }
   } else if (knows) {
@@ -506,11 +515,14 @@ export function bookHead(game: string, records: RecordSummary[], you: string, pe
   return { ...head, line }
 }
 
-/** What a record nobody holds says for a period: nobody has got this far (a clock's), or nobody has set it. */
-export function openWords(kind: RecordKind, period: LeaderboardPeriod): string {
+/**
+ * What a record nobody holds says for a period: nobody has got this far (a clock's), or nobody has set it.
+ * `nobody` is a group's, with a group's boards (lib/groups.ts scopeNobody): "Nobody in OFFICE holds it yet."
+ */
+export function openWords(kind: RecordKind, period: LeaderboardPeriod, nobody = 'Nobody'): string {
   const when = periodWords(period)
-  if (kind === 'clock') return `Nobody has got this far${when || ' yet'}.`
-  return when ? `Nobody has set it${when}.` : 'Nobody holds it yet.'
+  if (kind === 'clock') return `${nobody} has got this far${when || ' yet'}.`
+  return when ? `${nobody} has set it${when}.` : `${nobody} holds it yet.`
 }
 
 /** A record on the list, or a run of them nobody holds yet, which the list folds into one line. */

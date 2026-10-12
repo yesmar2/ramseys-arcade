@@ -33,6 +33,7 @@ import {
 import { fieldPointAt, renderGame } from './render'
 import { useSkinInto } from '../../lib/skins'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 type HoldKey = 'left' | 'right' | 'up' | 'down' | 'slow'
 
@@ -274,9 +275,12 @@ export function BarrageGame() {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const s = stateRef.current
       if (s.phase === 'menu' || s.phase === 'gameover') {
-        if (isStartKey(e)) {
+        // A focused button or link on the start card answers the key itself.
+        if (isStartKey(e) && !controlTakesKey(e)) {
           e.preventDefault()
           if (performance.now() < startGrace.current) return
           restart()

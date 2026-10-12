@@ -54,7 +54,6 @@
 .rg-btn:hover,
 .rg-btn:focus-visible {
   background: rgba(var(--ink-rgb), 0.07);
-  outline: none;
 }
 
 .rg-pop {
@@ -122,6 +121,14 @@
   pointer-events: auto;
 }
 
+/*
+ * On a start card that scrolls, Start stays at its foot (panel.css): the picker passes under it like the rest,
+ * and its menu, raised on its own, still opens over it.
+ */
+.game-card--start[data-scrolls] .gp {
+  z-index: auto;
+}
+
 .gp-note {
   font-size: 0.78rem;
   color: #f5d27a;
@@ -181,6 +188,22 @@
   box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.45);
   color: #eef3f7;
   text-align: left;
+  /* No taller than its room in the card (GhostPicker.tsx sets the cap): a long board scrolls inside it. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The title, As usual and the #1 stay at the top while a long board scrolls under them. */
+.gp-menu__head {
+  position: sticky;
+  top: -0.9rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: -0.9rem -0.9rem 0;
+  padding: 0.9rem 0.9rem 0.3rem;
+  background: #0e151c;
 }
 
 .gp-menu__title {
@@ -203,11 +226,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.gp-menu__list--scroll {
-  max-height: 12rem;
-  overflow-y: auto;
 }
 
 .gp-menu__wait,

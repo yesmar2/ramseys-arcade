@@ -86,7 +86,6 @@
 .evc-card:hover,
 .evc-card:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  outline: none;
 }
 
 .evc-card--on {

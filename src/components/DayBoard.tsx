@@ -9,14 +9,14 @@ import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { archiveDayWords, dayBefore, inArchive, useArchiveOpen, useDailyDays } from '../lib/archive'
 import { APP_NAME } from '../lib/brand'
-import { inkOn } from '../lib/color'
+import { bannerText, inkOn, readableFill } from '../lib/color'
 import { archivedWhy, archiveTip, capitalWord, COURSE_BOARD_ANCHOR, pastKindFor, stripDayWords, usePastViewer, verbDone } from '../lib/dailyPast'
 import { BOARD_NAMES, boardTip, dailyWords } from '../lib/dailyWords'
 import { dateOf, dayAfter, timeOfDay, type DayCourse } from '../lib/dayBoard'
 import { useDeviceType } from '../lib/device'
 import { FIRST_RUN_DAILIES, firstResultWord, firstRunWord, gapBetween, gapFigure } from '../lib/gameBoard'
 import { hasGamePreview } from '../lib/gamePreviews'
-import { groupBoardEmptyTitle, scopeName, useActiveGroup } from '../lib/groups'
+import { groupBoardEmptyTitle, useActiveGroup, useScope } from '../lib/groups'
 import { useHeldHeight } from '../lib/heldShape'
 import { ApiError, getDayBoard, normalizePlayerName, type DayBoardEntry, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -187,7 +187,12 @@ function Banner({
   const leader = board.rows[0]
   const counted = board.meta?.counted !== false
   const dayWords = archiveDayWords(day)
-  const style = { '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties
+  const style = {
+    '--hero-accent': accent,
+    '--hero-ink': inkOn(accent),
+    '--hero-text': bannerText(accent),
+    '--tile-accent': accent,
+  } as CSSProperties
   // They wrap with the names and numbers in them: held at last time's height while those load (lib/heldShape.ts),
   // as the daily's other boards hold theirs (GameBoard), so the board under them doesn't move when they come.
   const titleHeld = useHeldHeight<HTMLHeadingElement>('db-title', loading)
@@ -509,7 +514,7 @@ function DayRow({
   sub?: string
   gap?: boolean
   /** A racing daily's row: its Race button (race any ghost). */
-  race?: { playHref: string; needsPlus: boolean; gap: string | null }
+  race?: { playHref: string; needsPlus: boolean | null; gap: string | null }
 }) {
   const medal = MEDALS[row.place - 1]
   return (
@@ -574,7 +579,7 @@ function Board({
     window.location.hash === `#${COURSE_BOARD_ANCHOR}` ? 'course' : 'day',
   )
   const myAvatar = useMyAvatarId(name)
-  const { isPlus } = useAuth()
+  const { isPlus, signedIn, signedOut } = useAuth()
   const words = dailyWords(slug)
   const keepsBoard = Boolean(course?.board)
   const onCourse = tab === 'course' && keepsBoard
@@ -605,8 +610,9 @@ function Board({
     raceable
       ? {
           playHref: course.playHref(day),
-          // A group's board: its top needn't be the course's #1, so the API is left to say.
-          needsPlus: !isPlus && (Boolean(group) || r.name !== courseTop),
+          // A group's board: its top needn't be the course's #1, so the API is left to say. Not yet known
+          // while the account isn't (null): a member's Plus is never mistaken for none.
+          needsPlus: isPlus || (!group && r.name === courseTop) ? false : signedIn || signedOut ? true : null,
           gap: you && r.score > you.score ? gapFigure(slug, r.score, you.score) : null,
         }
       : undefined
@@ -794,7 +800,8 @@ function OtherDays({
 export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) {
   const name = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const group = scopeName(groupId)
+  // The group by name, said again once the list of your groups comes with it.
+  const group = useScope().name
   const { course, failed: courseFailed } = useDayCourse(slug)
   const [shown, setShown] = useState({ day: FIRST_ROWS, course: FIRST_ROWS })
 
@@ -829,7 +836,7 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
   }, [ahead, slug])
 
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
-  const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties
+  const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), '--gb-fill': readableFill(accent) } as CSSProperties
 
   if (ahead) return null
 

@@ -1,5 +1,5 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
-import { inkOn } from '../lib/color'
+import { bannerText, inkOn, readableFill } from '../lib/color'
 import { BackChevronIcon } from './PageBackLink'
 
 export type Crumb = {
@@ -66,7 +66,13 @@ export function PageBanner({
   ariaLabel,
 }: PageBannerProps) {
   const style = accent
-    ? ({ '--hero-accent': accent, '--hero-ink': inkOn(accent), '--tile-accent': accent } as CSSProperties)
+    ? ({
+        '--hero-accent': accent,
+        '--hero-ink': inkOn(accent),
+        '--hero-fill': readableFill(accent),
+        '--hero-text': bannerText(accent),
+        '--tile-accent': accent,
+      } as CSSProperties)
     : undefined
   const hasCrumbs = Boolean(crumbs && crumbs.length > 0)
   const barred = Boolean(back || tools || hasCrumbs)

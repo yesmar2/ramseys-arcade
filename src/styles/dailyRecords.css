@@ -8,7 +8,8 @@
 .drt {
   --drt-line: rgba(var(--ink-rgb), 0.09);
   --drt-well: rgba(var(--ink-rgb), 0.04);
-  --drt-link: color-mix(in srgb, var(--gh-accent, var(--accent)) 70%, var(--ink));
+  /* The game page's own shade for its small words (hub.css), which reads in either theme; this mix elsewhere. */
+  --drt-link: var(--gh-accent-ink, color-mix(in srgb, var(--gh-accent, var(--accent)) 70%, var(--ink)));
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
@@ -591,6 +592,11 @@ a.drt-row:focus-visible {
 
 .drt-row__go--today {
   color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+/* The mint goes deeper on the light page, so the words read on white (4.5:1). */
+html[data-theme='light'] .drt-row__go--today {
+  color: color-mix(in srgb, var(--accent) 55%, var(--ink));
 }
 
 a.drt-row:hover .drt-row__go,

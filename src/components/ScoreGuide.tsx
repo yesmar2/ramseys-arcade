@@ -36,6 +36,10 @@ export function ScoreGuide({ slug, game, style }: ScoreGuideProps) {
           e.stopPropagation()
           setOpen((v) => !v)
         }}
+        // Enter or Space clicks it with no pointer down first: a pointer's click has opened it already.
+        onClick={(e) => {
+          if (e.detail === 0) setOpen((v) => !v)
+        }}
       >
         i
       </button>

@@ -3,6 +3,7 @@ import {
   fetchGlobalBoard,
   fetchGlobalRank,
   getLeaderboard,
+  isPlayerTag,
   VISIBLE_LEADERBOARD_PERIODS,
   type GlobalGamePlace,
   type GlobalRankNearby,
@@ -110,6 +111,32 @@ export function useRankFor(name: string, period: LeaderboardPeriod, groupId: str
 }
 
 /**
+ * Whether a tag is a player's, or null while that's asked (lib/leaderboard.ts isPlayerTag): someone else's
+ * card, for a tag that's nobody's, says so rather than drawing a player. Runs the page already has of theirs
+ * (`played`) settle it without the ask. No name asks nothing. A check that fails counts as a player, so a real
+ * one is never shown as missing.
+ */
+export function useIsPlayer(name: string, played: boolean): boolean | null {
+  const [state, setState] = useState<{ name: string; player: boolean }>({ name: '', player: true })
+
+  useEffect(() => {
+    if (!name || played) return
+    let cancelled = false
+    isPlayerTag(name)
+      .catch(() => true)
+      .then((player) => {
+        if (!cancelled) setState({ name, player })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [name, played])
+
+  if (!name || played) return true
+  return state.name === name ? state.player : null
+}
+
+/**
  * The points of whoever sits at each of these places on the arcade's board
  * for the period: what it takes to reach each share line. Keyed by place;
  * a place the board doesn't reach is left out.
@@ -118,6 +145,8 @@ export function useScoresAt(
   period: LeaderboardPeriod,
   places: number[],
   groupId: string | null,
+  /** `groupId` when it's the page's own, not the site's (useScoreboard). */
+  pageGroup?: string,
 ): { scores: Record<number, number>; ready: boolean } {
   const wanted = [...new Set(places.filter((p) => p >= 1))].sort((a, b) => a - b).join(',')
   const key = `${groupId ?? ''}|${period}|${wanted}`
@@ -128,7 +157,7 @@ export function useScoresAt(
     let cancelled = false
     void Promise.all(
       wanted.split(',').map(Number).map((place) =>
-        fetchGlobalBoard(1, period, place - 1)
+        fetchGlobalBoard(1, period, place - 1, pageGroup)
           .then(({ entries }) => [place, entries[0]?.score] as const)
           .catch(() => [place, undefined] as const),
       ),
@@ -141,7 +170,7 @@ export function useScoresAt(
     return () => {
       cancelled = true
     }
-  }, [key, period, wanted])
+  }, [key, period, wanted, pageGroup])
 
   if (!wanted) return { scores: {}, ready: true }
   return state.key === key ? { scores: state.scores, ready: true } : { scores: {}, ready: false }

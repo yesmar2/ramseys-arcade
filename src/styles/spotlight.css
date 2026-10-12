@@ -18,6 +18,8 @@ html[data-theme='light'] .spotlight-layer .panel-scrim {
 .panel.spotlight {
   --spot-ink: #e7eef3;
   --spot-muted: #b8c6d1;
+  /* Dark in both themes, so the keyboard ring is the dark theme's. */
+  --focus-ring: var(--focus-ring-on-dark);
   /* A page that scrolls if it must, not the kit's column. */
   display: grid;
   place-items: center;

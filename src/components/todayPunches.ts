@@ -445,7 +445,8 @@ export function useTicket(viewer: Viewer): Ticket {
     shareText: todayShareText({
       day,
       lines: punches.map((p) => ({ key: p.key, text: p.share })),
-      streak: current,
+      // A streak is an account's, said by the API: none signed out, nor before it answers. A Full ticket is the runs' own.
+      streak: server ? current : 0,
       full: marks.full,
     }),
     also: alsoDailies(day).map(punchOf),

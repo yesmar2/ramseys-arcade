@@ -17,6 +17,8 @@ export function useStandingsAbove(
   period: LeaderboardPeriod,
   rank: number | null,
   groupId: string | null,
+  /** `groupId` when it's the page's own, not the site's (useScoreboard). */
+  pageGroup?: string,
 ): { entries: Standing[]; offset: number; failed: boolean } | null {
   const offset = rank != null ? Math.max(0, rank - 1 - ABOVE) : 0
   const limit = rank != null ? rank - 1 - offset : 0
@@ -27,7 +29,7 @@ export function useStandingsAbove(
   useEffect(() => {
     if (limit < 1) return
     let cancelled = false
-    fetchGlobalBoard(limit, period, offset)
+    fetchGlobalBoard(limit, period, offset, pageGroup)
       .then((board): Standing[] | null => board.entries)
       .catch(() => null)
       .then((entries) => {
@@ -36,7 +38,7 @@ export function useStandingsAbove(
     return () => {
       cancelled = true
     }
-  }, [key, limit, offset, period])
+  }, [key, limit, offset, period, pageGroup])
 
   if (rank == null) return null
   if (limit < 1) return { entries: [], offset: 0, failed: false }
@@ -48,7 +50,13 @@ export function useStandingsAbove(
  * Each daily's days with `name`'s result, place and day points, in the header's group. Null until
  * they've all landed; a daily whose days didn't load is null in the map.
  */
-export function useDailyDays(slugs: string[], name: string, groupId: string | null): Record<string, RankDay[] | null> | null {
+export function useDailyDays(
+  slugs: string[],
+  name: string,
+  groupId: string | null,
+  /** `groupId` when it's the page's own, not the site's (useScoreboard). */
+  pageGroup?: string,
+): Record<string, RankDay[] | null> | null {
   const games = [...slugs].sort().join(',')
   const key = `${groupId ?? ''}|${name}|${games}`
   const [state, setState] = useState<{ key: string; days: Record<string, RankDay[] | null> } | null>(null)
@@ -62,7 +70,7 @@ export function useDailyDays(slugs: string[], name: string, groupId: string | nu
           const reply = await withGroupFallback(() => {
             const params = applyBoardScope(new URLSearchParams({ name }), groupId)
             return api<{ days?: RankDay[] }>(`/leaderboards/${encodeURIComponent(slug)}/days?${params}`)
-          })
+          }, pageGroup)
           return [slug, reply.days ?? []] as const
         } catch {
           return [slug, null] as const
@@ -74,7 +82,7 @@ export function useDailyDays(slugs: string[], name: string, groupId: string | nu
     return () => {
       cancelled = true
     }
-  }, [key, name, games, groupId])
+  }, [key, name, games, groupId, pageGroup])
 
   if (!name || !games) return {}
   return state?.key === key ? state.days : null

@@ -1,12 +1,13 @@
 import type { ComponentType, CSSProperties } from 'react'
 import { gamePlayableOn, getGame } from '../data/games'
+import { useAuth } from '../hooks/useAuth'
 import { useRecordBook } from '../hooks/useRecordBooks'
 import { gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
 import { useHeldHeight } from '../lib/heldShape'
 import { useDeviceType } from '../lib/device'
-import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
+import { groupBoardEmptyTitle, useActiveGroup, useScope } from '../lib/groups'
 import { normalizePlayerName, PERIOD_LABELS, VISIBLE_LEADERBOARD_PERIODS, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
   bookHead,
@@ -215,6 +216,8 @@ function Group({
 }) {
   const Icon = GROUP_ICONS[group.kind]
   const id = `rbl-${group.kind}`
+  // With a group's boards, an open record is one nobody in the group holds.
+  const { nobody } = useScope()
   return (
     <section className="rbl-group" aria-labelledby={id}>
       <h3 id={id} className="rbl-group__head">
@@ -234,7 +237,7 @@ function Group({
                   <span className="rbl-row__label">{item.label}</span>
                   <span className="rbl-open">
                     <SparkleIcon />
-                    <span>{openWords(group.kind, period)}</span>
+                    <span>{openWords(group.kind, period, nobody)}</span>
                     {playHref ? (
                       <a className="rbl-open__go" href={playHref}>
                         Be the first
@@ -339,6 +342,9 @@ function ListSkeleton({ shape, anon }: { shape: number[]; anon: boolean }) {
 export function RecordBookView({ game, period }: { game: string; period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
+  // With a group's boards the records are the group's, and the head says whose.
+  const scope = useScope()
+  const { signedIn, signedOut } = useAuth()
   const device = useDeviceType()
   const data = useRecordBook(game, period, you, groupId)
   const held = useHeldHeight<HTMLDivElement>(`records-${game}-${period}-${you ? 'in' : 'out'}`, data.loading)
@@ -348,7 +354,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
   const canPlay = gamePlayableOn(meta, device)
   // A daily's page has its own Records tab (DailyRecordsTab), but should one get here its courses stay out.
   const records = bookRecords(game, data.records)
-  const head = bookHead(game, records, you, period)
+  const head = bookHead(game, records, you, period, scope.id ? scope.where : undefined)
   const groups = recordGroups(game, records)
   const playHref = canPlay ? gamePlayHref(game) : null
   // The API says where you stand only when it was asked about you: signed out, there's no You column.
@@ -386,10 +392,18 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
               </h2>
               {head.line.length ? (
                 <p className="rbk-tabhead__line">{head.line.join(' · ')}</p>
-              ) : !you ? (
+              ) : signedOut ? (
                 <p className="rbk-tabhead__line">
                   <button type="button" className="rbk-tabhead__signin" onClick={openSiteMenu}>
                     Sign in
+                  </button>{' '}
+                  to see how close you are
+                </p>
+              ) : signedIn && !you ? (
+                // Signed in with no tag: the menu is where you pick one. Neither line while the account isn't known yet.
+                <p className="rbk-tabhead__line">
+                  <button type="button" className="rbk-tabhead__signin" onClick={openSiteMenu}>
+                    Pick a gamer tag
                   </button>{' '}
                   to see how close you are
                 </p>

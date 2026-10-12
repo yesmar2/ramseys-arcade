@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { applySitePeriod, applySiteGroup, periodFromRoute, useRoute } from '../hooks/useHashRoute'
+import { applySitePeriod, applySiteGroup, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useFriends } from '../hooks/useFriends'
 import { useSeason } from '../lib/season'
@@ -16,7 +16,6 @@ import {
   type GroupPublic,
 } from '../lib/groups'
 import {
-  coerceVisiblePeriod,
   PERIOD_LABELS,
   VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardPeriod,
@@ -84,8 +83,9 @@ function PlusIcon() {
  */
 export function SiteScopeControl() {
   const route = useRoute()
-  const storedPeriod = useDefaultPeriod()
-  const period: LeaderboardPeriod = coerceVisiblePeriod(periodFromRoute(route) ?? storedPeriod)
+  // Always the site's period, the one the rank beside it is for: a page with a period of its own (a record
+  // book's, a daily's day) says that one on the page.
+  const period: LeaderboardPeriod = useDefaultPeriod()
   const { account } = useAuth()
   const { friends, loaded: friendsLoaded } = useFriends()
   const activeId = useActiveGroup()

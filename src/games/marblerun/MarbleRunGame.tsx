@@ -50,6 +50,7 @@ import { paceMsOf } from '../../lib/raceMedals'
 import { TomorrowCourse } from './TomorrowCourse'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
 import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, PLAYER_BRAKE, PLAYER_TILT_MAX, racingPlan, respawn, STEADY, step, TURN_HELP, zoneUnder, type Ball, type Tilt } from './sim'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 const SLUG = 'marblerun'
 
@@ -951,9 +952,13 @@ function MarbleRunDay({
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (saveOpenRef.current || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const g = gameRef.current!
       if (g.phase === 'menu') {
         if (e.code !== 'Space' && e.code !== 'Enter') return
+        // A focused button or link on the start card answers the key itself.
+        if (controlTakesKey(e)) return
         e.preventDefault()
         if (!e.repeat && performance.now() >= startGrace.current) start()
         return

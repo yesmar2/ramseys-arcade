@@ -172,7 +172,7 @@ export function PastBoardResult({
   onSaved: (result: TrackLapResult) => void
   onAgain: () => void
 }) {
-  const { signedIn, loading } = useAuth()
+  const { signedIn, signedOut, loading } = useAuth()
   const accountId = useAccountId()
   const otherAccount = typeof owner === 'string' && accountId !== owner
   const name = normalizePlayerName(usePlayerName())
@@ -202,8 +202,9 @@ export function PastBoardResult({
       setSave({ phase: 'practice' })
       return
     }
-    // An account's run, signed out under it: signing in as them sends it.
-    if (!signedIn) {
+    // An account's run, signed out under it: signing in as them sends it. A session whose account couldn't be
+    // asked for sends it all the same: the API knows whose it is, and a 401 then is signed out.
+    if (signedOut) {
       setSave({ phase: 'signedOut' })
       return
     }
@@ -242,11 +243,11 @@ export function PastBoardResult({
         if (shown.current) setSave(next)
       },
     )
-  }, [loading, archived, otherAccount, owner, accountId, signedIn, name, known, score, run, slug, n, board])
+  }, [loading, archived, otherAccount, owner, accountId, signedOut, name, known, score, run, slug, n, board])
 
   const pending = save.phase === 'waiting' || save.phase === 'saving'
   const waited = useSaveWait(pending)
-  const holding = pending && signedIn && !waited
+  const holding = pending && !signedOut && !waited
 
   const result = save.phase === 'saved' ? save.result : null
   const kind: PastKind = save.phase === 'practice' ? 'practice' : 'board'
@@ -288,7 +289,7 @@ export function PastBoardResult({
   } else if (save.phase === 'practice') {
     // Its own headline says nothing was saved; signing in is for the runs to come, where the board is open.
     if (archived) status = <p className="past-save__line">{archivedWhy(slug)}</p>
-    else status = signedIn ? null : <ReportSignIn lead={`Sign in and your next ${runWord}s here go on ${boardName}.`} onSignedIn={() => undefined} />
+    else status = signedOut ? <ReportSignIn lead={`Sign in and your next ${runWord}s here go on ${boardName}.`} onSignedIn={() => undefined} /> : null
   } else {
     headline = `Not on its ${BOARD_NAMES.allTime} board yet`
     if (save.phase === 'signedOut') {

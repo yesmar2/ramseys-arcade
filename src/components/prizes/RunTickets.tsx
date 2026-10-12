@@ -323,15 +323,19 @@ function usePayout(earned: number, total: number, price: number | null) {
   return { stage, stripRef, slotRef, countRef, sumRef, meterRef, skip: () => skipRef.current() }
 }
 
-/** Signed out: a saved run pays tickets too, and so does each run kept on the device for the sign-in (lib/pendingRuns.ts). */
-export function RunTicketsWaiting({ runs = 1 }: { runs?: number }) {
+/**
+ * Signed out: a saved run pays tickets too, and so does each run kept on the device for the sign-in
+ * (lib/pendingRuns.ts). `tag`: signed in without a gamer tag yet, the run pays once one is on it.
+ */
+export function RunTicketsWaiting({ runs = 1, tag = false }: { runs?: number; tag?: boolean }) {
   return (
     <div className="run-tix run-tix--dim">
       <TicketStub label="?" dim width={78} />
       <div className="run-tix__body">
         <span className="run-tix__n">Tickets waiting</span>
         <span className="run-tix__why">
-          Sign in and {runs > 1 ? `these ${runs} runs pay` : 'this run pays'} tickets for the prize counter. They’re kept on your account.
+          {tag ? 'Put your tag on it and this run pays' : `Sign in and ${runs > 1 ? `these ${runs} runs pay` : 'this run pays'}`} tickets for
+          the prize counter. They’re kept on your account.
         </span>
       </div>
     </div>

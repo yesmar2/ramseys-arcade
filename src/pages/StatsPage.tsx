@@ -25,7 +25,7 @@ import { boardDayKey } from '../lib/statsView'
  * and all of it is free.
  */
 export function StatsPage() {
-  const { signedIn, loading: authLoading } = useAuth()
+  const { signedIn, signedOut, loading: authLoading } = useAuth()
   const period = useDefaultPeriod()
   const name = normalizePlayerName(usePlayerName())
   const { avatarId: rankAvatarId } = useGlobalRank()
@@ -61,14 +61,15 @@ export function StatsPage() {
             <span className="sv-loading__card" />
             <span className="sv-loading__card" />
           </div>
-        ) : !signedIn ? (
+        ) : signedOut ? (
           <Invite
             title="Your stats live here"
             copy="Sign in and this is where you’ll find every day you played, your streaks, the records within reach and how each game is going. Only you can see it."
             action="Sign in"
           />
         ) : !stats ? (
-          mine.error ? (
+          // A session whose account couldn't be asked for is a load that failed, never a reason to sign in.
+          !signedIn || mine.error ? (
             <Invite title="Your stats didn’t load" copy="Check your connection and try again in a moment." />
           ) : (
             <Invite

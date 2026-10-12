@@ -49,6 +49,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A shade deeper on the light page, where it sits on the chip's orange, not white (4.5:1). */
+html[data-theme='light'] .dbar__home b {
+  color: color-mix(in srgb, var(--ticket-text, #c2461d) 95%, #000);
+}
+
 .dbar__home:hover,
 .dbar__home:focus-visible {
   background: rgba(255, 133, 82, 0.22);

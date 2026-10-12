@@ -49,7 +49,6 @@ html[data-theme='dark'] {
 .today-chip:hover,
 .today-chip:focus-visible {
   border-color: color-mix(in srgb, var(--ticket, #ff8552) 80%, transparent);
-  outline: none;
 }
 
 .today-chip svg {
@@ -368,7 +367,6 @@ html[data-theme='dark'] {
 .today-card__share:hover,
 .today-card__share:focus-visible {
   border-color: var(--ticket, #ff8552);
-  outline: none;
 }
 
 .today-card__share svg {
@@ -488,7 +486,8 @@ html[data-theme='dark'] {
   transition: box-shadow 0.15s ease;
 }
 
-.today-tile__art:hover::after {
+/* Only a link lights up: a game hidden since has a past day's tile that isn't one (DayTicket.tsx). */
+.today-tile__art[href]:hover::after {
   box-shadow: inset 0 0 0 3px var(--ticket, #ff8552);
 }
 
@@ -549,7 +548,7 @@ html[data-theme='dark'] {
   text-decoration: none;
 }
 
-.today-tile__game:hover,
+.today-tile__game[href]:hover,
 .today-tile__game:focus-visible {
   text-decoration: underline;
   text-decoration-color: rgba(var(--ink-rgb), 0.35);
@@ -627,6 +626,12 @@ html[data-theme='dark'] {
   flex: none;
   width: 0.9rem;
   height: 0.9rem;
+}
+
+/* Not played, on a game hidden since: no way in to offer, so just the word, quietly. */
+.today-tile__score--none {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .today-tile__note {
@@ -759,7 +764,6 @@ html[data-theme='dark'] {
 .today-rivals__scope:hover,
 .today-rivals__scope:focus-visible {
   color: var(--ink);
-  outline: none;
   border-color: color-mix(in srgb, var(--ticket, #ff8552) 60%, transparent);
 }
 
@@ -935,9 +939,10 @@ html[data-theme='dark'] {
   color: var(--ticket, #ff8552);
 }
 
+/* A column a daily where each has room for a time (1:27.924), else as many as do, the rest on a line under. */
 .today-rival__results {
   display: grid;
-  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(5.4rem, 1fr));
   gap: 0.3rem;
   margin-top: 0.45rem;
 }

@@ -57,7 +57,6 @@ html[data-eightbit] body::after {
 .eightbit-off:focus-visible {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 var(--ink);
-  outline: none;
 }
 
 /* ---------- the logo: a wobble from the third tap, a blip on the seventh ---------- */
@@ -520,7 +519,6 @@ main.egg-roll {
 .secret-toast__close:focus-visible {
   background: rgba(var(--ink-rgb), 0.07);
   color: var(--ink);
-  outline: none;
 }
 
 /* Clear of the phone's tab bar (chrome.css). */

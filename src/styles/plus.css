@@ -16,6 +16,15 @@
   padding-bottom: 1rem;
 }
 
+/*
+ * On the light page the gold and teal words go deep enough to read (4.5:1) on white and on Plus's gold column:
+ * the gold toward black, which keeps it gold (toward the ink it turns khaki).
+ */
+html[data-theme='light'] .plus {
+  --plus-gold: color-mix(in srgb, var(--accent-2) 55%, #000);
+  --plus-teal: color-mix(in srgb, var(--accent) 40%, var(--ink));
+}
+
 /* ---------- the top: the price, and a member card with your tag ---------- */
 
 .plus-hero {

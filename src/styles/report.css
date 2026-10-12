@@ -18,7 +18,8 @@
 
 .report {
   --report-gold: #f5b942;
-  --report-gold-ink: #9a6a06;
+  /* Deep enough to read (4.5:1) on the gold ribbon over a 1st's lit band, not only on white. */
+  --report-gold-ink: #865c05;
   --report-gold-soft: color-mix(in srgb, var(--report-gold) 22%, transparent);
   --report-accent-soft: color-mix(in srgb, var(--panel-accent) 18%, transparent);
   width: min(27.5rem, 100%);
@@ -53,7 +54,7 @@ html[data-theme='dark'] .report {
 
 .report--bronze {
   --report-gold: #d99a63;
-  --report-gold-ink: #9c5a26;
+  --report-gold-ink: #905222;
 }
 
 /* ---------- the band: kicker, score, how it ended ---------- */
@@ -129,6 +130,14 @@ html[data-theme='dark'] .report {
   height: 1.15rem;
 }
 
+/*
+ * A shade lighter on the dark page, where the band behind it is lit in the game's colour (4.5:1). The theme sits in
+ * :where() so it adds no weight, and hover and focus still take the ink.
+ */
+:where(html[data-theme='dark']) .report__leave {
+  color: color-mix(in srgb, var(--muted) 85%, #fff);
+}
+
 .report__leave:hover,
 .report__leave:focus-visible {
   background: rgba(var(--ink-rgb), 0.08);
@@ -178,6 +187,11 @@ html[data-theme='dark'] .report {
 .report__ribbon--gold {
   background: var(--report-gold-soft);
   color: var(--report-gold-ink);
+}
+
+/* On the dark page the metal itself, a shade lighter, so it reads (4.5:1) on its ribbon over the lit band. */
+html[data-theme='dark'] .report__ribbon--gold {
+  color: color-mix(in srgb, var(--report-gold) 75%, #fff);
 }
 
 .report__score {
@@ -459,7 +473,7 @@ html[data-theme='dark'] .report {
 
 /* 1st is gold whatever the card's metal: a silver or bronze card's race still has its gold at the top. */
 .report__race-row:first-child .report__race-place {
-  color: #9a6a06;
+  color: #865c05;
 }
 
 html[data-theme='dark'] .report__race-row:first-child .report__race-place {
@@ -526,7 +540,12 @@ html[data-theme='dark'] .report__race-row:first-child .report__race-place {
   min-width: 0;
 }
 
+/* Them a step back: their mark dimmed, and their words in the quiet grey, which still reads (4.5:1). */
 .report-duel__side--them {
+  color: var(--muted);
+}
+
+.report-duel__side--them .player-avatar {
   opacity: 0.62;
 }
 
@@ -786,7 +805,6 @@ html[data-theme='dark'] .report__race-row:first-child .report__race-place {
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 3px;
-  outline: none;
 }
 
 /* Over the scrim and under the card, once. */

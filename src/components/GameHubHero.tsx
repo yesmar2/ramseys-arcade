@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom'
 import { deviceRequirementLabel, isRankedGame, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, gamePlayHref, homeHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { dailyWords } from '../lib/dailyWords'
 import { hasDayPreview, hasGamePreview } from '../lib/gamePreviews'
+import { useScope } from '../lib/groups'
 import type { LeaderboardEntry } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { boardDay } from '../lib/rankHow'
@@ -45,6 +46,8 @@ export function GameHubHero({
   highScore: LeaderboardEntry | null
 }) {
   const playHref = gamePlayHref(game.slug)
+  // The boards' group, when they show one: the high score on the screen is then the group's.
+  const group = useScope().name
   const ctaRef = useRef<HTMLAnchorElement>(null)
   const [pastPlay, setPastPlay] = useState(false)
 
@@ -152,6 +155,7 @@ export function GameHubHero({
           <span className="gh-screen__top">
             <span className="gh-screen__hi">
               {daily ? '1st today' : 'Hi score'}
+              {group ? ` · ${group}` : ''}
               <b>{highScore ? formatLeaderboardScore(game.slug, highScore.score) : 'Open'}</b>
             </span>
             {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}
@@ -167,7 +171,7 @@ export function GameHubHero({
               href={playHref}
               aria-hidden={!pastPlay}
               tabIndex={pastPlay ? undefined : -1}
-              style={{ '--gh-accent': accent, '--gh-ink': inkOn(accent) } as CSSProperties}
+              style={{ '--gh-accent': accent, '--gh-ink': inkOn(accent), '--gh-fill': readableFill(accent) } as CSSProperties}
             >
               <PlayIcon />
               {playLabel}

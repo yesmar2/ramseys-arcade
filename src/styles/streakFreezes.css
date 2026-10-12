@@ -41,8 +41,9 @@
   text-underline-offset: 3px;
 }
 
+/* The ice's darker shade on the light page (its word colour), so the ring holds 3:1 there too. */
 .sfz:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--today-freeze, #2f8fc4) 70%, transparent);
+  outline: 2px solid var(--today-freeze-text, #1d6a96);
   outline-offset: 2px;
 }
 

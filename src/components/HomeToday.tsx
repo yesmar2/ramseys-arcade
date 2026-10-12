@@ -221,7 +221,7 @@ function DayCard({
 }
 
 export function HomeToday() {
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   // Who's looking: each punch is theirs, and never another account's that played on this device.
   const viewer = useAccountId()
   const ticket = useTicket(viewer)
@@ -237,8 +237,9 @@ export function HomeToday() {
   if (!total) return null
   // Ranked or just for fun, on each card only while the row has both (a day before the puzzles came off the ticket).
   const mixed = punches.some((p) => isRankedGame(p.slug)) && punches.some((p) => !isRankedGame(p.slug))
-  // The streak is the API's, once it has answered; before then it isn't said, as on the chip.
-  const said = signedIn && !ticket.server ? null : streakWords(ticket, signedIn)
+  // The streak is the API's, once it has answered; before then it isn't said, as on the chip. Nor is signing in,
+  // to a session whose account isn't known yet.
+  const said = signedOut || (signedIn && ticket.server) ? streakWords(ticket, signedIn) : null
   const next = (
     <>
       <ClockIcon />

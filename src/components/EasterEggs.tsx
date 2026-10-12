@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { rankHref } from '../hooks/useHashRoute'
+import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { applyEightBit, EIGHT_BIT_EVENT, eggDone, isEightBit, reportEgg, setEightBit } from '../lib/eggs'
 import { EGG_LETTERS_KEPT, EGG_WORD_EVENT, eggWordTyped, playEggWord, type EggWordSaid } from '../lib/eggWords'
 import { SECRET_EVENT, type SecretFound } from '../lib/secrets'
@@ -314,6 +315,8 @@ export function EasterEggs() {
 function SecretToast({ secret, onDone }: { secret: SecretFound; onDone: () => void }) {
   const done = useRef(onDone)
   const [inGame] = useState(onGameScreen)
+  // Your card at the period you picked: the shelf is the same at any, and all time would become the site's.
+  const period = useDefaultPeriod()
   useEffect(() => {
     done.current = onDone
   })
@@ -347,7 +350,7 @@ function SecretToast({ secret, onDone }: { secret: SecretFound; onDone: () => vo
           {secret.signedOut ? 'Sign in and find it again to keep it on your shelf.' : secret.says}
         </span>
         {secret.signedOut ? null : (
-          <a className="secret-toast__link" href={rankHref(undefined, 'all', 'trophies')} onClick={onDone}>
+          <a className="secret-toast__link" href={rankHref(undefined, period, 'trophies')} onClick={onDone}>
             On your shelf ›
           </a>
         )}

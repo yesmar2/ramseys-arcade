@@ -70,7 +70,7 @@ function signed(value: number): string {
 }
 
 export function TicketHistoryPage() {
-  const { signedIn, loading: authLoading } = useAuth()
+  const { signedIn, signedOut } = useAuth()
   const tickets = useTickets()
   const name = normalizePlayerName(usePlayerName())
   const avatarId = useMyAvatarId(name)
@@ -157,7 +157,8 @@ export function TicketHistoryPage() {
         ) : null}
       </section>
 
-      {!signedIn && !authLoading ? (
+      {/* A session whose account isn't known yet (still asked, or not to be had) waits on the list, never Sign in. */}
+      {signedOut ? (
         <section className="tixh-signin" aria-label="Sign in">
           <p>Tickets are kept on your account, with your scores, so sign in to see yours. Playing is free.</p>
           <button type="button" className="tixh-signin__btn" onClick={openSiteMenu}>

@@ -13,9 +13,12 @@ import { GamePanelBody } from './PauseControls'
  * twin (the same card in the panel kit, in the game's colour), so stopping
  * a run lands where the run began.
  *
- * A tap anywhere starts the run, and so does Space or Enter. Start is a real
- * button for the eye and the keyboard; it passes its press on to the
- * playfield like any other tap, so it starts the run the same way.
+ * A tap anywhere starts the run, and so does Space or Enter, but not on the
+ * card's other buttons and links: those keys are theirs (games/keys.ts).
+ * Start is a real button for the eye and the keyboard; it passes its press on
+ * to the playfield like any other tap, so it starts the run the same way. A
+ * card too tall for its space scrolls instead (lib/cardFit): a tap on it is
+ * then its own, and Start's goes on once it's a tap rather than a scroll.
  */
 export function GameStartCard({
   title,

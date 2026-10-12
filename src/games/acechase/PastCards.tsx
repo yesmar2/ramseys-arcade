@@ -96,7 +96,7 @@ export function PastStartCard({
   hadResult: boolean
   onStart: () => void
 }) {
-  const { signedIn } = useAuth()
+  const { signedOut } = useAuth()
   const viewer = useAccountId()
   const tries = kind === 'board' ? (progress?.tries ?? 0) : 0
   // Ace Chase is just for fun (data/games.ts Game.ranked): a past hole keeps no board, so a run here is practice.
@@ -122,7 +122,7 @@ export function PastStartCard({
       today={todayCourse()}
       walk={walkFrom(hole)}
     >
-      {!signedIn && kind === 'board' ? (
+      {signedOut && kind === 'board' ? (
         <div className="acechase-daily__signin">
           <SignInButton />
         </div>
@@ -230,7 +230,7 @@ export function PastResultCard({
   onSent: (answer: PastHoleResult) => void
   onAgain: () => void
 }) {
-  const { signedIn, loading } = useAuth()
+  const { signedOut, loading } = useAuth()
   const viewer = useAccountId()
   const name = normalizePlayerName(usePlayerName())
   const [send, setSend] = useState<Send>(() => {
@@ -264,7 +264,8 @@ export function PastResultCard({
       setSend({ phase: 'otherAccount' })
       return
     }
-    if (!signedIn) {
+    // A session whose account couldn't be asked for sends it all the same: the API knows whose it is.
+    if (signedOut) {
       setSend({ phase: 'signedOut' })
       return
     }
@@ -290,7 +291,7 @@ export function PastResultCard({
     )
     // The send's own phase changes aren't a reason to send again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [practice, loading, signedIn, viewer, otherAccount, name, solvedAt, solvedSent, owner, hole.day])
+  }, [practice, loading, signedOut, viewer, otherAccount, name, solvedAt, solvedSent, owner, hole.day])
 
   const board = figures.board
   const answer = send.phase === 'done' ? send.answer : null
@@ -327,7 +328,7 @@ export function PastResultCard({
     headline = `Putting it on ${holeBoard}…`
   } else {
     headline = `Not on its ${ALL_TIME} board yet`
-    if (send.phase === 'otherAccount') status = <PlayedAs owner={owner} signedIn={signedIn} />
+    if (send.phase === 'otherAccount') status = <PlayedAs owner={owner} signedOut={signedOut} />
     else if (send.phase === 'signedOut') status = <SignIn>Sign in and this result goes on the hole&rsquo;s {ALL_TIME} board.</SignIn>
     else if (send.phase === 'noTag') status = <HoleTag />
     else if (send.phase === 'failed') status = <p className="panel__error">{send.error}</p>

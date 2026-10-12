@@ -61,6 +61,7 @@ import { hasHoleResult, nextHoleKind, pastHoleFacts, usePastHoleFigures, type Pa
 import { TrialResultCard, TrialStartCard } from './TrialCards'
 import { AceScene, type View } from './scene'
 import { rememberPlayed } from '../../lib/lastPlayed'
+import { controlTakesKey } from '../keys'
 
 const SLUG = 'acechase'
 
@@ -537,8 +538,8 @@ export function AceChaseGame({ ahead, past, figures }: { ahead?: TodaysHole; pas
       if (saveOpenRef.current || pausedRef.current) return
       const s = stateRef.current!
       if (e.code === 'Space' || e.code === 'Enter') {
-        // A focused button does its own thing with these.
-        if (e.target instanceof HTMLButtonElement) return
+        // A focused button or link does its own thing with these.
+        if (controlTakesKey(e)) return
         e.preventDefault()
         if (e.repeat) return
         if (s.phase === 'menu') {

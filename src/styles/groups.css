@@ -7,7 +7,8 @@
 .grp {
   --g: var(--accent);
   --g-ink: #06201a;
-  --gold: #b8860b;
+  /* Deep enough for a small place number on white (4.5:1). */
+  --gold: #8a6508;
   --silver: #5f6f7c;
   --bronze: #b0632a;
   display: flex;
@@ -78,6 +79,8 @@ html[data-theme='dark'] .grp {
   font-weight: 550;
   line-height: 1.5;
   color: var(--muted);
+  /* It can quote a group's name, which may have no spaces. */
+  overflow-wrap: anywhere;
 }
 
 .grp-fine {
@@ -277,6 +280,14 @@ html[data-theme='dark'] .grp-btn--danger {
   flex-wrap: wrap;
 }
 
+/* "Open" and a long group name: the words wrap inside the button rather than taking it off the card. */
+.grp-acts .grp-btn {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 .grp-seg {
   display: inline-grid;
   grid-auto-flow: column;
@@ -322,6 +333,11 @@ html[data-theme='dark'] .grp-btn--danger {
 
 .grp-field:focus-within {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--g) 70%, transparent);
+}
+
+/* That ring is the field's focus ring, so on the light page it's the group's colour solid and deeper, which reads (3:1). */
+html[data-theme='light'] .grp-field:focus-within {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--g) 70%, #000);
 }
 
 .grp-field input {
@@ -478,12 +494,15 @@ html[data-theme='dark'] .grp-btn--danger {
   min-width: 0;
 }
 
+/* A name with no spaces (up to 32 letters) breaks where it must, rather than widening the page. */
 .grp-gcard__name {
+  min-width: 0;
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
 .grp-gcard__name a {
@@ -1189,31 +1208,41 @@ html[data-theme='light'] .grp-banner,
   font-size: 0.95rem;
 }
 
+/*
+ * The '…' and its menu (MemberMenu.tsx) are the row's own grid items. The menu opens beside the '…' only where it
+ * covers nothing, else on a line of its own under the row, pushing the rows below down: over another row, a tap
+ * meant for that row chose this one's.
+ */
 .grp-menu {
-  position: relative;
+  display: contents;
 }
 
-.grp-menu > summary {
+.grp-member:has(> .grp-menu) {
+  position: relative;
+  /* The row keeps its height with a menu open under it. */
+  grid-template-rows: minmax(2.75rem, auto);
+}
+
+.grp-menu__btn {
   display: grid;
   place-items: center;
   width: 2.2rem;
   height: 2.2rem;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  list-style: none;
+  background: none;
   color: var(--muted);
   cursor: pointer;
   box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.12);
 }
 
-.grp-menu > summary::-webkit-details-marker {
-  display: none;
-}
-
 .grp-menu__pop {
   position: absolute;
   z-index: 5;
-  top: calc(100% + 0.35rem);
-  right: 0;
+  top: 50%;
+  right: calc(2.2rem + 0.35rem);
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   min-width: 12.5rem;
@@ -1221,6 +1250,22 @@ html[data-theme='light'] .grp-banner,
   border-radius: 1rem;
   background: var(--surface);
   box-shadow: var(--shadow-lift), inset 0 0 0 1px rgba(var(--ink-rgb), 0.12);
+}
+
+/* Under the row: in its flow, lined up under the name, flat on the card. */
+.grp-menu__pop--under {
+  position: static;
+  grid-column: 2 / -1;
+  transform: none;
+  min-width: 0;
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.12);
+}
+
+@media (max-width: 900px) {
+  /* Brought into view clear of the tab bar (chrome.css). */
+  .grp-menu__pop {
+    scroll-margin-bottom: calc(5.4rem + env(safe-area-inset-bottom));
+  }
 }
 
 .grp-menu__pop button {
@@ -1586,9 +1631,11 @@ html[data-theme='dark'] .grp-menu__danger {
     display: contents;
   }
 
+  /* Each card the column's width, not its contents' (the grid's align-items: start would give it a form's). */
   .frd-index {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
   }
 
   .frd-index > * > *,

@@ -540,7 +540,6 @@ a.lst__go:focus-visible .lst__name-text {
 .seg__item:hover,
 .seg__item:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .seg__item--active {
@@ -548,6 +547,16 @@ a.lst__go:focus-visible .lst__name-text {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 40%, transparent);
   color: color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 62%, var(--ink));
   cursor: default;
+}
+
+/*
+ * On the light page the words go deeper, so they read on the tint (4.5:1): a game's colour as its page works it
+ * out (--period-text, lib/color.ts readableText: darker only as far as it must, keeping its hue), else the
+ * teal toward the ink. The theme sits in :where() so it adds no weight: a board banner's or the menu's own
+ * active look still wins.
+ */
+:where(html[data-theme='light']) .seg__item--active {
+  color: var(--period-text, color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 45%, var(--ink)));
 }
 
 .chips {
@@ -589,7 +598,6 @@ a.lst__go:focus-visible .lst__name-text {
 .chips__item:focus-visible {
   color: var(--ink);
   border-color: rgba(var(--ink-rgb), 0.18);
-  outline: none;
 }
 
 .chips__item--active {
@@ -597,6 +605,10 @@ a.lst__go:focus-visible .lst__name-text {
   border-color: color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 45%, transparent);
   color: color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 62%, var(--ink));
   cursor: default;
+}
+
+:where(html[data-theme='light']) .chips__item--active {
+  color: var(--period-text, color-mix(in srgb, var(--period-accent, var(--event-accent, var(--accent))) 45%, var(--ink)));
 }
 
 /* ==========================================================================

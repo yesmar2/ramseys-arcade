@@ -40,6 +40,7 @@ import {
 } from './game'
 import { renderGame, warmHole } from './render'
 import { beginRun } from '../../lib/runSession'
+import { chromeTakesKey, controlTakesKey } from '../keys'
 
 const IN_RUN = new Set(['intro', 'aim', 'roll', 'splash', 'sunk'])
 /** A press that moves less than this is a tap, not a pull. */
@@ -316,6 +317,8 @@ export function PuttGame() {
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if (saveOpen || pausedRef.current) return
+      // The play screen's own buttons, reached with Tab, answer the key themselves in a run too.
+      if (chromeTakesKey(e)) return
       const s = stateRef.current
       if (e.code === 'ArrowLeft') keysRef.current.left = true
       if (e.code === 'ArrowRight') keysRef.current.right = true
@@ -329,6 +332,8 @@ export function PuttGame() {
         return
       }
       if (e.code === 'Space' || e.code === 'Enter') {
+        // On the start card, a focused button or link answers the key itself.
+        if (s.phase === 'menu' && controlTakesKey(e)) return
         e.preventDefault()
         if (e.repeat) return
         if (s.phase === 'menu') {

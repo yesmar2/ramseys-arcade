@@ -15,9 +15,19 @@
 }
 
 .gh {
+  /*
+   * The game's colour for small words. GameHubPage works out the shade that reads (4.5:1) on the deepest tint
+   * it sits on, in each theme (lib/color.ts readableText): the colour itself where it can, else only as much
+   * darker (or, on the dark page, lighter) as it needs, so it keeps its hue.
+   */
+  --gh-accent-ink: var(--gh-text-dark, color-mix(in srgb, var(--gh-accent) 70%, var(--ink)));
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+html[data-theme='light'] .gh {
+  --gh-accent-ink: var(--gh-text, color-mix(in srgb, var(--gh-accent) 50%, #000));
 }
 
 .gh-cap {
@@ -39,7 +49,7 @@
   font: inherit;
   font-size: 0.86rem;
   font-weight: 750;
-  color: color-mix(in srgb, var(--gh-accent) 70%, var(--ink));
+  color: var(--gh-accent-ink);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -165,7 +175,7 @@ html[data-theme='light'] .gh-hero {
 .gh-tag--lead,
 .gh-tag--note {
   background: color-mix(in srgb, var(--gh-accent) 16%, transparent);
-  color: color-mix(in srgb, var(--gh-accent) 70%, var(--ink));
+  color: var(--gh-accent-ink);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent) 42%, transparent);
 }
 
@@ -204,7 +214,8 @@ html[data-theme='light'] .gh-hero {
   box-sizing: border-box;
   padding: 0 1.6rem 0 1.3rem;
   border-radius: 999px;
-  background: var(--gh-accent);
+  /* --gh-fill: the colour moved just far enough from its ink to read (lib/color.ts readableFill). */
+  background: var(--gh-fill, var(--gh-accent));
   color: var(--gh-ink);
   font-size: 1.18rem;
   font-weight: 800;
@@ -362,6 +373,12 @@ html[data-theme='light'] .gh-screen {
 html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__top {
   background: linear-gradient(rgba(255, 255, 255, 0.88), transparent);
   color: #1a2b3c;
+}
+
+/* A group's name can follow Hi score, and one with no spaces breaks anywhere rather than push the holder off the screen. */
+.gh-screen__hi {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .gh-screen__hi b {
@@ -717,7 +734,7 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
     height: 3.2rem;
     padding: 0 1.5rem 0 1.2rem;
     border-radius: 999px;
-    background: var(--gh-accent);
+    background: var(--gh-fill, var(--gh-accent));
     color: var(--gh-ink);
     font-size: 1.02rem;
     font-weight: 800;
@@ -743,14 +760,17 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
 }
 
 @media (max-width: 40rem) {
-  /* The games most like it run in a line that scrolls, out to the screen's edges. */
+  /*
+   * The games most like it run in a line that scrolls, out to the screen's edges. A scrolling line clips at its
+   * edges, so it keeps room over the tiles for the lift a focused one takes.
+   */
   .gh .gh-shelf__grid {
     grid-auto-flow: column;
     grid-auto-columns: 44%;
     grid-template-columns: none;
     gap: 0.65rem;
-    margin: 0 -0.625rem;
-    padding: 0 0.625rem 0.4rem;
+    margin: -0.4rem -0.625rem 0;
+    padding: 0.4rem 0.625rem;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
@@ -758,6 +778,11 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
 
   .gh .gh-shelf__grid > li {
     scroll-snap-align: start;
+  }
+
+  /* The keyboard ring goes inside the tile, clear of the line's edges. */
+  .gh .gh-shelf__grid .wall-tile:focus-visible {
+    outline-offset: -2px;
   }
 }
 

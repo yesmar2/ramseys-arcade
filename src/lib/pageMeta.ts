@@ -365,15 +365,16 @@ export function pageMeta(route: Route): PageMeta {
       return {
         ...site,
         title: titled(`About ${APP_NAME}`),
-        description: `${SITE_LINE} Original games inspired by the classics that start in a tap, nothing to install, and leaderboards that reset daily.`,
+        description: `${SITE_LINE} Original games inspired by the classics that start in a tap, nothing to install, and leaderboards for the week, the month, the season and all time.`,
         path: aboutHref(),
       }
     case 'plus':
       return {
         ...site,
         title: titled('Plus'),
+        // The page's own pitch, at the API's prices (its plus.ts): true whether or not Plus is on sale yet, so no free week.
         description:
-          'Playing is free, always. Plus is for whoever runs the events: bigger events, more of them at once, double elimination, and a different game each round. $3 a month.',
+          'Playing stays free for everyone. Plus includes every season’s Gold Pass, every past daily, anyone’s ghost to race, a new look every month and new games a week early. $2.99 a month or $24.99 a year.',
         path: plusHref(),
       }
     case 'admin':
@@ -455,7 +456,7 @@ export function pageMeta(route: Route): PageMeta {
       return {
         ...site,
         title: titled('Leaderboards'),
-        description: `Top scores for every ${APP_NAME} game, and the standings across all of them. Daily, weekly, monthly and all-time.`,
+        description: `Top scores for every ${APP_NAME} game, and the standings across all of them, for the week, the month, the season and all time.`,
         path: '/leaderboards',
       }
     case 'gameLeaderboard': {
@@ -520,7 +521,8 @@ export function pageMeta(route: Route): PageMeta {
       return {
         ...site,
         title: titled('Events'),
-        description: `Official events and private invite-only tournaments on ${APP_NAME}. Brackets, leagues and score races, any size, free to join.`,
+        // True whether or not the arcade's own events are running (siteEvents), and of every plan's size limit.
+        description: `Invite-only events on ${APP_NAME} for you and your friends: a bracket, or a top-score race on up to five games. Free to join.`,
         path: tournamentsHref(),
       }
     case 'tournamentCreate':

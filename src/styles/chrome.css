@@ -87,7 +87,6 @@ html[data-theme='dark'] .brand-mark__dark {
 .site-bar__link:focus-visible {
   color: var(--ink);
   background: rgba(var(--ink-rgb), 0.05);
-  outline: none;
 }
 
 .site-bar__link--on {
@@ -168,7 +167,6 @@ html[data-theme='dark'] .brand-mark__dark {
 .site-scope__btn:focus-visible,
 .site-scope__btn[aria-expanded='true'] {
   border-color: rgba(var(--ink-rgb), 0.18);
-  outline: none;
 }
 
 .site-scope__btn[aria-expanded='true'] {
@@ -284,7 +282,6 @@ html[data-theme='dark'] .brand-mark__dark {
 .site-scope__option:hover,
 .site-scope__option:focus-visible {
   background: rgba(var(--ink-rgb), 0.05);
-  outline: none;
 }
 
 .site-scope__option[aria-pressed='true'] {
@@ -360,7 +357,6 @@ html[data-theme='dark'] .brand-mark__dark {
 .site-scope__add:focus-visible {
   border-style: solid;
   color: var(--ink);
-  outline: none;
 }
 
 .site-scope__note {
@@ -407,7 +403,6 @@ html[data-theme='dark'] .brand-mark__dark {
 .site-seg > button:hover,
 .site-seg > button:focus-visible {
   color: var(--ink);
-  outline: none;
 }
 
 .site-seg > button[aria-pressed='true'] {
@@ -452,7 +447,6 @@ html[data-theme='dark'] .site-seg > button[aria-pressed='true'] {
 .site-you--open,
 .site-you--here {
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  outline: none;
 }
 
 .site-you__mark {
@@ -829,7 +823,10 @@ html[data-theme='light'] .site-menu__scrim {
 .site-menu__card-cta {
   flex: 1;
   padding: 0 1rem;
-  background: var(--card-accent);
+  /* A button too (Try again, when the account couldn't be reached), not only a link. */
+  border: 0;
+  /* --card-fill: the colour moved just far enough from its ink to read (lib/color.ts readableFill). */
+  background: var(--card-fill, var(--card-accent));
   color: var(--card-ink, #16060a);
 }
 
@@ -921,7 +918,6 @@ html[data-theme='light'] .site-menu__scrim {
 .site-menu__row:hover,
 .site-menu__row:focus-visible {
   background: rgba(var(--ink-rgb), 0.05);
-  outline: none;
 }
 
 .site-menu__rows--plain .site-menu__row {
@@ -1440,7 +1436,7 @@ html[data-theme='dark'] .site-menu__sounds .chips__item--active {
   }
 
   .site-tabs__tab:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    outline: 2px solid var(--focus-ring);
     outline-offset: -2px;
   }
 
@@ -1461,6 +1457,11 @@ html[data-theme='dark'] .site-menu__sounds .chips__item--active {
 
   .site-tabs__tab--on {
     color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  }
+
+  /* Deeper on the light page, so the small label reads (4.5:1). */
+  html[data-theme='light'] .site-tabs__tab--on {
+    color: color-mix(in srgb, var(--accent) 45%, var(--ink));
   }
 
   .site-tabs__tab--on .site-tabs__icon {
