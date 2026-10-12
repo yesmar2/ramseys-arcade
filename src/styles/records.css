@@ -1569,73 +1569,6 @@ html[data-theme='dark'] .rbk {
   color: var(--brass-quiet);
 }
 
-/* ---------- a book at a glance: what's up for grabs, and you ---------- */
-
-.rbk-sum {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 0.8rem;
-}
-
-.rbk-sum__tile {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 1rem 1.15rem;
-  border-radius: 1rem;
-  border: 1px solid var(--sb-line);
-  background: var(--surface);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-}
-
-button.rbk-sum__tile {
-  cursor: pointer;
-}
-
-a.rbk-sum__tile:hover,
-a.rbk-sum__tile:focus-visible,
-button.rbk-sum__tile:hover,
-button.rbk-sum__tile:focus-visible {
-  border-color: var(--brass-strong);
-  outline: none;
-}
-
-.rbk-sum__tile--open {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-}
-
-.rbk-sum__tile--you {
-  border-color: var(--brass-edge);
-}
-
-.rbk-sum__kicker {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.rbk-sum__tile--open .rbk-sum__kicker {
-  color: var(--sb-brand-ink, var(--accent));
-}
-
-.rbk-sum__tile--you .rbk-sum__kicker {
-  color: var(--brass-name);
-}
-
-.rbk-sum__line {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
 /* ---------- the Records home: records up for grabs ---------- */
 
 .rbk-grabs__list {
@@ -1736,12 +1669,44 @@ button.rbk-sum__tile:focus-visible {
 }
 
 /* A game's Records tab (RecordBookView): who holds most of them, and the period's tabs, where the book's banner was. */
+.rbk--tab {
+  gap: 1.4rem;
+}
+
 .rbk-tabhead {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 0.9rem 1.5rem;
+}
+
+.rbk-tabhead__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+/* How you stand and what's still open, under the headline. */
+.rbk-tabhead__line {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 550;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.rbk-tabhead__signin {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sb-brand-ink);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
 }
 
 .rbk-tabhead__title {
@@ -1756,4 +1721,487 @@ button.rbk-sum__tile:focus-visible {
 
 .rbk-tabhead .seg.sb-periods {
   margin-top: 0;
+}
+
+/*
+ * The records as one list (the "Records, more ideas" canvas, A), in the Board tab's rows: each group under its
+ * name, a row a record with the best, who holds it and since when, and your best. Yours are lit gold; a run of
+ * records nobody holds is one dashed line at the end of its group.
+ */
+.rbl {
+  --rbl-cols: minmax(0, 1.25fr) minmax(0, 0.8fr) minmax(0, 1.45fr) minmax(0, 1.15fr) 1.1rem;
+  --rbl-accent-ink: color-mix(in srgb, var(--gb-accent, var(--accent)) 72%, var(--ink));
+  --rbl-gold-ink: var(--sb-gold-ink);
+  overflow: hidden;
+  padding: 0.35rem 0 0.7rem;
+}
+
+/* On a light page the game's colour and the gold need more ink to read as small text (4.5:1). */
+html:not([data-theme='dark']) .rbl {
+  --rbl-accent-ink: color-mix(in srgb, var(--gb-accent, var(--accent)) 48%, var(--ink));
+  --rbl-gold-ink: color-mix(in srgb, var(--sb-gold) 45%, var(--ink));
+  --rbl-near-ink: color-mix(in srgb, var(--accent) 55%, var(--ink));
+}
+
+/* Signed out there's no You column. */
+.rbl--anon {
+  --rbl-cols: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1.7fr) 1.1rem;
+}
+
+.rbl-cols,
+.rbl-row__link {
+  display: grid;
+  grid-template-columns: var(--rbl-cols);
+  align-items: center;
+  column-gap: 1.25rem;
+}
+
+.rbl-cols {
+  padding: 0.85rem 1.5rem 0.75rem;
+  border-bottom: 1px solid var(--sb-line);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rbl-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  margin: 0;
+  padding: 1.3rem 1.5rem 0.65rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.rbl-group__icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--gb-accent, var(--accent)) 16%, transparent);
+  color: var(--rbl-accent-ink);
+}
+
+.rbl-group__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.rbl-group__aside {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 550;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.rbl-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rbl-row__link {
+  min-height: 4rem;
+  padding: 0.55rem 1.5rem;
+  border-top: 1px solid var(--sb-line);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+a.rbl-row__link:hover,
+a.rbl-row__link:focus-visible {
+  background: rgba(var(--ink-rgb), 0.045);
+  outline: none;
+}
+
+a.rbl-row__link:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--sb-brand-ink);
+}
+
+/* Yours: a gold pill of a row, its edges where the others' padding is, so the columns still line up. */
+.rbl-row--mine .rbl-row__link {
+  margin: 0.2rem 0.6rem;
+  padding-inline: 0.9rem;
+  border-top: 0;
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--sb-gold) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sb-gold) 42%, transparent);
+}
+
+.rbl-row--mine a.rbl-row__link:hover,
+.rbl-row--mine a.rbl-row__link:focus-visible {
+  background: color-mix(in srgb, var(--sb-gold) 16%, transparent);
+}
+
+.rbl-row--mine + .rbl-row .rbl-row__link {
+  border-top-color: transparent;
+}
+
+.rbl-row__label {
+  min-width: 0;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.rbl-row__best {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rbl-who {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+/* The Board tab's mark. Two classes, so the mark's own size (list.css .pmark) doesn't win. */
+.rbl-who .rbl-who__mark {
+  --pmark: 2.2rem;
+}
+
+/* PlayerAvatar sets its size inline (2rem): fit it inside the mark, as the dailies' records do. */
+.rbl-who__mark .player-avatar {
+  --avatar-size: calc(var(--pmark) - 0.25rem) !important;
+}
+
+/* A tie: both marks, the first to set it in front, the other peeking out behind. */
+.rbl-who__marks {
+  position: relative;
+  flex: none;
+  width: 3.65rem;
+  height: 2.2rem;
+}
+
+.rbl-who__marks .rbl-who__mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.rbl-who__marks .rbl-who__mark--back {
+  left: 1.45rem;
+}
+
+.rbl-who__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.rbl-who__name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.rbl-who__tag {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* When it was set, and whoever it's tied with: under the tag, so the tag never gives way to them. */
+.rbl-who__sub {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.rbl-you {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.rbl-you__best {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* "You" is the column's name on a desk, so it's said only to a screen reader; a phone shows it (no column names). */
+.rbl-you__pre {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.rbl-you__place {
+  font-weight: 550;
+  color: var(--muted);
+}
+
+.rbl-you__gap {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rbl-you__gap--near {
+  font-weight: 800;
+  color: var(--rbl-near-ink, var(--sb-brand-ink));
+}
+
+.rbl-you__none {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rbl-yours {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sb-gold) 18%, transparent);
+  color: var(--rbl-gold-ink);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.rbl-yours svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.rbl-row__go {
+  display: flex;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.rbl-row__go svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.rbl-row--open {
+  /* #up-for-grabs (the Records home's "Show me one") lands here, clear of the header. */
+  scroll-margin-top: 6rem;
+}
+
+.rbl-row--open .rbl-row__link {
+  border-top-style: dashed;
+  border-top-color: var(--sb-line-2);
+}
+
+.rbl-row--open .rbl-row__label {
+  color: var(--muted);
+}
+
+.rbl-open {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 550;
+}
+
+.rbl-open > svg {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--rbl-accent-ink);
+}
+
+.rbl-open__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  /* A 44px target from padding, taken back by the margin, so the line stays one line tall. */
+  margin: -0.7rem 0 -0.7rem auto;
+  padding: 0.7rem 0 0.7rem 0.5rem;
+  color: var(--rbl-accent-ink);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.rbl-open__go:hover,
+.rbl-open__go:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.rbl-open__go svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Loading: the list's own rows, empty, so it lands in place. */
+.rbl--skel .rbl-row__link {
+  min-height: 4rem;
+}
+
+/* A tablet or a narrow window: the columns closer, and more of the width for the best. */
+@media (max-width: 64rem) {
+  .rbl {
+    --rbl-cols: minmax(0, 1.1fr) minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 1.1fr) 1.1rem;
+  }
+
+  .rbl--anon {
+    --rbl-cols: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1.6fr) 1.1rem;
+  }
+
+  .rbl-cols,
+  .rbl-row__link {
+    column-gap: 0.9rem;
+  }
+
+  .rbl-cols,
+  .rbl-row__link,
+  .rbl-group__head {
+    padding-inline: 1.1rem;
+  }
+
+  .rbl-row--mine .rbl-row__link {
+    margin-inline: 0.4rem;
+    padding-inline: 0.7rem;
+  }
+
+  .rbl-row__best {
+    font-size: 1.1rem;
+  }
+}
+
+/* A phone: two lines a record, what it is and the best, then who holds it and you. */
+@media (max-width: 42rem) {
+  .rbl-cols {
+    display: none;
+  }
+
+  .rbl-group__head {
+    padding: 1.1rem 1rem 0.55rem;
+    font-size: 1rem;
+  }
+
+  .rbk-tabhead__title--skel {
+    min-height: 2.3em;
+  }
+
+  .rbl-row__link {
+    /* The right side as wide as it needs, up to the You side's cap below: the record and the holder keep room. */
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label best'
+      'who you';
+    gap: 0.5rem 0.9rem;
+    min-height: 0;
+    padding: 0.8rem 1rem;
+  }
+
+  .rbl--anon .rbl-row__link {
+    grid-template-areas:
+      'label best'
+      'who who';
+  }
+
+  .rbl-row--mine .rbl-row__link {
+    margin: 0.2rem 0.5rem;
+    padding-inline: 0.5rem;
+  }
+
+  .rbl-row__label {
+    grid-area: label;
+  }
+
+  .rbl-row__best {
+    grid-area: best;
+    font-size: 1.1rem;
+    text-align: right;
+  }
+
+  .rbl-who {
+    grid-area: who;
+    gap: 0.55rem;
+  }
+
+  .rbl-who .rbl-who__mark {
+    --pmark: 1.9rem;
+  }
+
+  .rbl-who__marks {
+    width: 3.15rem;
+    height: 1.9rem;
+  }
+
+  .rbl-who__marks .rbl-who__mark--back {
+    left: 1.25rem;
+  }
+
+  .rbl-you {
+    grid-area: you;
+    align-items: flex-end;
+    max-width: 10.5rem;
+    text-align: right;
+    font-size: 0.9rem;
+  }
+
+  .rbl-you__best {
+    white-space: normal;
+  }
+
+  .rbl-you__pre {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .rbl-you__gap {
+    display: none;
+  }
+
+  .rbl-you__gap--near {
+    display: block;
+  }
+
+  .rbl-yours {
+    align-self: flex-end;
+  }
+
+  .rbl-row__go {
+    display: none;
+  }
+
+  .rbl-row--open .rbl-row__link {
+    grid-template-areas: 'label label';
+  }
+
+  .rbl-open {
+    grid-column: 1 / -1;
+    font-size: 0.9rem;
+  }
 }

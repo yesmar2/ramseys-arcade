@@ -166,6 +166,12 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     }
   }, [daily, ranked, slug])
 
+  // So is another game's Records tab, so it opens on its own loading rows rather than a blank that it then
+  // pushes the games under it down from (pages load in place).
+  useEffect(() => {
+    if (gameTabs) void RecordsTab.preload()
+  }, [gameTabs])
+
   // An old link to the records tab of a daily just for fun lands on its Today tab.
   useEffect(() => {
     if (!daily || ranked || tabFromRoute !== 'records') return

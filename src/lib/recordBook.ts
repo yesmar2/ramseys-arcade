@@ -6,7 +6,7 @@ import { normalizePlayerName, type LeaderboardPeriod } from './leaderboard'
 import { formatPercentGap } from './leaderboardFormat'
 import { numberWord } from './numberWord'
 import { GAMES_WITH_RECORDS, type RecordDef, type RecordSummary } from './records'
-import { boardToday } from './scoreboard'
+import { boardToday, ordinal } from './scoreboard'
 
 /*
  * The record books' arithmetic and words: what a record's number means (a
@@ -268,22 +268,26 @@ export function recordKind(record: RecordLike): RecordKind {
   return 'run'
 }
 
-type ClockBook = { title: string; sub: string; short: (label: string) => string }
+/** A game's clock records: their group's name, what they time (`sub`, and `aside` beside the name), and each one's short label. */
+type ClockBook = { title: string; sub: string; aside: string; short: (label: string) => string }
 
 const CLOCKS: Partial<Record<string, ClockBook>> = {
   asteroids: {
     title: 'Wave clears',
     sub: 'How fast each wave has been cleared, timed from the wave’s start.',
+    aside: 'timed from the wave’s start',
     short: (label) => label.replace(/ clear$/, ''),
   },
   snake: {
     title: 'Fastest to length',
     sub: 'From the start of a run to each length.',
+    aside: 'from the start of a run',
     short: (label) => label.replace(/^Fastest to length/, 'Length'),
   },
   crosswalk: {
     title: 'Fastest to rows',
     sub: 'From the start of a run to each row milestone.',
+    aside: 'from the start of a run',
     short: (label) => `${label.replace(/^Fastest to /, '')} rows`,
   },
 }
@@ -319,6 +323,8 @@ export type RecordGroup = {
   kind: RecordKind
   title: string
   sub: string
+  /** A few words beside the title on what the group times: "from the start of a run". */
+  aside?: string
   records: RecordSummary[]
   /** A shorter label for a record inside its group: Wave 9, not Wave 9 clear. */
   short: (label: string) => string
@@ -344,6 +350,7 @@ export function recordGroups(game: string, records: RecordSummary[]): RecordGrou
         kind,
         title: named?.title ?? GROUPS[kind].title,
         sub: named?.sub ?? GROUPS[kind].sub,
+        aside: kind === 'clock' ? CLOCKS[game]?.aside : undefined,
         records: kind === 'course' ? mine.sort((a, b) => (courseNumber(b) ?? 0) - (courseNumber(a) ?? 0)) : mine,
         short: kind === 'clock' ? (CLOCKS[game]?.short ?? ((label: string) => label)) : (label: string) => label,
       }
@@ -419,21 +426,134 @@ export function booksHeadline(records: RecordSummary[]): { name: string; rest: s
   return { name: first.name, rest: ` holds ${first.count} of the ${total} records.` }
 }
 
-/** The headline over one game's book. */
-export function bookHeadline(game: string, records: RecordSummary[]): { name: string; rest: string } {
+/** Names in a sentence: A, A and B, A, B and C. */
+function nameList(names: string[]): string {
+  if (names.length < 2) return names[0] ?? ''
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+export type BookHead = {
+  /** Who leads the headline, apart so it can wear the colour: a tag, "You", or '' when it leads with no one. */
+  name: string
+  rest: string
+  /**
+   * The line under it: where you stand among the holders when you hold some, how many you're on when you
+   * don't, or how to set the first. Empty signed out (the tab asks you to sign in there).
+   */
+  line: string[]
+}
+
+/** " this week", " this month": what a period adds to a sentence about its records ('' for all time). */
+export function periodWords(period: LeaderboardPeriod): string {
+  if (period === 'weekly') return ' this week'
+  if (period === 'monthly') return ' this month'
+  if (period === 'season') return ' this season'
+  if (period === 'daily') return ' today'
+  return ''
+}
+
+/**
+ * The head of a game's Records tab: who holds the most of its records, or "You hold 2 of the 12" when you
+ * hold some, and one line on how you stand. Players tied for the most are named together, never one of them
+ * alone. Your nearest record isn't in it: its row says so ("your nearest"), and saying it twice is noise.
+ * `you` is the viewer's tag ('' signed out).
+ */
+export function bookHead(game: string, records: RecordSummary[], you: string, period: LeaderboardPeriod = 'all'): BookHead {
   const name = gameName(game)
   const total = records.length
+  const when = periodWords(period)
   const holders = holderCounts(records)
   const [first] = holders
-  if (!first) return { name: '', rest: `Nobody’s name is in the ${name} book yet.` }
-  if (first.count === total) return { name: first.name, rest: ` holds every one of the ${total} ${name} records.` }
-  if (first.count === 1 && holders.length > 1) {
-    return {
-      name: '',
-      rest: `${capital(numberWord(holders.length))} players share the ${total} ${name} records.`,
+  const most = first ? holders.filter((h) => h.count === first.count) : []
+  const mine = you ? (holders.find((h) => h.name === you)?.count ?? 0) : 0
+  const each = first?.count === 1 ? 'one' : String(first?.count ?? 0)
+  // Two records are "both"; more are "every one of the 12".
+  const all = total === 2 ? `both ${name} records` : `every one of the ${total} ${name} records`
+  const book = `${total} ${name} ${total === 1 ? 'record' : 'records'}`
+
+  let head: { name: string; rest: string }
+  if (!first) head = { name: '', rest: `No ${name} records set${when || ' yet'}` }
+  else if (mine) head = { name: 'You', rest: ` hold ${mine === total ? all : `${mine} of the ${book}`}${when}` }
+  else if (first.count === total) head = { name: first.name, rest: ` holds ${all}${when}` }
+  else if (most.length === 2) head = { name: '', rest: `${most[0]!.name} and ${most[1]!.name} hold ${each} each of the ${book}${when}` }
+  else if (most.length > 2) head = { name: '', rest: `${capital(numberWord(most.length))} players hold ${each} each of the ${book}${when}` }
+  else head = { name: first.name, rest: ` holds ${first.count} of the ${book}${when}` }
+
+  const line: string[] = []
+  const knows = Boolean(you) && records.some((r) => r.you !== undefined)
+  if (mine && first) {
+    if (mine === first.count) {
+      const others = most.filter((h) => h.name !== you).map((h) => h.name)
+      if (others.length) line.push(`Tied for the most with ${nameList(others)}`)
+      else if (holders.length > 1) line.push('The most of anyone')
+    } else {
+      line.push(
+        most.length > 1
+          ? `${nameList(most.map((h) => h.name))} hold the most, ${each} each`
+          : `${first.name} holds the most, ${first.count}`,
+      )
+    }
+  } else if (knows) {
+    if (!first) line.push('Be the first to set one')
+    else {
+      const on = records.filter((r) => r.top && r.you)
+      const best = Math.min(...on.map((r) => r.you!.rank))
+      if (!on.length) line.push('You’re not on any of them yet')
+      else if (best <= 1) line.push(`You’re on ${on.length} of them, tied for the top of one`)
+      else line.push(`You’re on ${on.length} of them, ${ordinal(best)} at best`)
     }
   }
-  return { name: first.name, rest: ` holds ${first.count} of the ${total} ${name} records.` }
+  return { ...head, line }
+}
+
+/** What a record nobody holds says for a period: nobody has got this far (a clock's), or nobody has set it. */
+export function openWords(kind: RecordKind, period: LeaderboardPeriod): string {
+  const when = periodWords(period)
+  if (kind === 'clock') return `Nobody has got this far${when || ' yet'}.`
+  return when ? `Nobody has set it${when}.` : 'Nobody holds it yet.'
+}
+
+/** A record on the list, or a run of them nobody holds yet, which the list folds into one line. */
+export type BookItem = { kind: 'held'; record: RecordSummary } | { kind: 'open'; records: RecordSummary[]; label: string }
+
+/**
+ * The open records' line: one's own short label, or a run's first and last ("Wave 9 to 20", "150 to 200
+ * rows", "Length 80 and 90"), or every label when they aren't a numbered run.
+ */
+function openLabel(group: RecordGroup, records: RecordSummary[]): string {
+  const shorts = records.map((r) => group.short(r.label))
+  if (shorts.length === 1) return shorts[0]!
+  const parse = (label: string) => /^(.*?)(\d[\d,]*)(\D*)$/.exec(label)
+  const a = parse(shorts[0]!)
+  const b = parse(shorts[shorts.length - 1]!)
+  if (!a || !b || a[1] !== b[1] || a[3] !== b[3]) return shorts.join(' · ')
+  return `${a[1]}${a[2]} ${shorts.length === 2 ? 'and' : 'to'} ${b[2]}${b[3]}`
+}
+
+/**
+ * A group's records as the list shows them: each held one on its own line, and so each open one, but for a
+ * clock's milestones, where a run of open ones is one line ("Wave 9 to 20"): past the furthest anyone has
+ * got, they're all the same story. Two streaks nobody holds are two different records, so two lines.
+ */
+export function bookItems(group: RecordGroup): BookItem[] {
+  const items: BookItem[] = []
+  let run: RecordSummary[] = []
+  const close = () => {
+    if (run.length) items.push({ kind: 'open', records: run, label: openLabel(group, run) })
+    run = []
+  }
+  for (const record of group.records) {
+    if (record.top) {
+      close()
+      items.push({ kind: 'held', record })
+    } else if (group.kind === 'clock') run.push(record)
+    else {
+      close()
+      items.push({ kind: 'open', records: [record], label: group.short(record.label) })
+    }
+  }
+  close()
+  return items
 }
 
 /** The line under a book's headline: how much of it is written, and what it keeps. */
@@ -485,12 +605,14 @@ export function closestToInk(books: { game: string; records: RecordSummary[] }[]
       if (!you || !top || you.rank <= 1) continue
       if (recordShut(game, record, true)) continue
       const gap = recordGap(record, you.score, top.score)
+      // Times that print the same (14.7s and 14.7s) are tied, whatever the milliseconds under them.
+      const same = recordValue(record, you.score) === recordValue(record, top.score)
       near.push({
         game,
         record,
         share: shareOff(record, you.score, top.score),
         off:
-          you.score === top.score
+          same
             ? `Tied with ${top.name}`
             : lowerIsBetter(record)
               ? `${gap} off ${top.name}`

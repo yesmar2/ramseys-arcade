@@ -1,34 +1,42 @@
-import type { CSSProperties } from 'react'
+import type { ComponentType, CSSProperties } from 'react'
 import { gamePlayableOn, getGame } from '../data/games'
 import { useRecordBook } from '../hooks/useRecordBooks'
 import { gamePlayHref, recordHref, recordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
+import { useHeldHeight } from '../lib/heldShape'
 import { useDeviceType } from '../lib/device'
 import { groupBoardEmptyTitle, useActiveGroup } from '../lib/groups'
 import { normalizePlayerName, PERIOD_LABELS, VISIBLE_LEADERBOARD_PERIODS, type LeaderboardPeriod } from '../lib/leaderboard'
 import {
-  bookHeadline,
+  bookHead,
+  bookItems,
   bookRecords,
   closestToInk,
   lowerIsBetter,
+  openWords,
+  recordGap,
   recordGroups,
   recordValue,
   type RecordGroup,
+  type RecordKind,
 } from '../lib/recordBook'
 import type { RecordSummary } from '../lib/records'
+import { ordinal } from '../lib/scoreboard'
 import { resolveGameAccent } from '../lib/theme'
-import { BoardEmpty, BoardSkeleton } from './BoardChrome'
-import { RecordPlaque, shareOf, type PlaqueYou } from './RecordPlaque'
+import { BoardEmpty } from './BoardChrome'
+import { ChevronRightIcon, FlameIcon, SparkleIcon, TimerIcon } from './chromeIcons'
+import { PlayerMark } from './PlayerMark'
+import { PlayerName } from './PlayerName'
 import { openSiteMenu } from './siteNav'
 
 /*
  * One game's records: its page's Records tab (Ramsey picked B of the "Game page: board and records" canvas,
- * 2026-10-11, in place of a record book page of its own). Who holds most of them, with the period's tabs; a
- * line on what's up for grabs and what you're nearest to; then the records nobody holds yet, and the rest in
- * their groups, each a brass plaque with its holder, when it was set, how close you are, and the way to go and
- * beat it (RecordPlaque.tsx; Ramsey picked "C with A's plaques" from the "Record books, redesigned" canvas,
- * 2026-10-11).
+ * 2026-10-11, in place of a record book page of its own). Since the "Records, more ideas" canvas (Ramsey: "go
+ * with what you think is best ... make it look good but easy to read", 2026-10-11) it's A, one list, in the
+ * Board tab's rows: who holds the most and how you stand, in a line; then each group's records, a row apiece
+ * with the best, who holds it and since when, and your best with how far off it is. Yours are lit gold. A run
+ * of a clock's milestones nobody has reached folds into one line ("Wave 9 to 20"). Each row opens its record.
  */
 
 function dayOf(at: number) {
@@ -62,50 +70,269 @@ function PeriodTabs({ game, period }: { game: string; period: LeaderboardPeriod 
   )
 }
 
-/** Where you stand on a record, for its plaque: undefined when there's nobody to ask about, or the API didn't say. */
-function plaqueYou(record: RecordSummary, you: string): PlaqueYou | undefined {
-  if (!you || record.you === undefined) return undefined
-  const top = record.top
-  if (top && normalizePlayerName(top.name) === you) return { kind: 'mine' }
-  const standing = record.you
-  if (!top || !standing) return { kind: 'none' }
-  return {
-    kind: 'on',
-    value: recordValue(record, standing.score),
-    share: shareOf(lowerIsBetter(record), standing.score, top.score),
-    rank: standing.rank,
-  }
+/** The best in a single run: a star. */
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m12 3.5 2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z" />
+    </svg>
+  )
 }
 
-function Plaque({
+/** A record that's yours. */
+function CrownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 18.5h16M5 16l-1.2-9 5 4 3.2-6 3.2 6 5-4-1.2 9z" />
+    </svg>
+  )
+}
+
+const GROUP_ICONS: Record<RecordKind, ComponentType> = {
+  course: TimerIcon,
+  streaks: FlameIcon,
+  run: StarIcon,
+  clock: TimerIcon,
+}
+
+/** Whoever a record is tied with, if anyone: the best of the others, at the same number on show. */
+function tiedWith(record: RecordSummary) {
+  const top = record.top!
+  const second = record.second
+  return second && recordValue(record, second.score) === recordValue(record, top.score) ? second : null
+}
+
+/**
+ * Who holds a record: their mark and tag, and under it when they set it and whoever it's tied with. The tag
+ * gets the line to itself, so it's never the thing cut short. `chip` marks the holder as you, for a list
+ * with no You column to say so.
+ */
+function Holder({ record, you, chip }: { record: RecordSummary; you: string; chip: boolean }) {
+  const top = record.top!
+  const name = normalizePlayerName(top.name)
+  const tied = tiedWith(record)
+  const tiedName = tied ? normalizePlayerName(tied.name) : ''
+  return (
+    <span className="rbl-who">
+      {tied ? (
+        <span className="rbl-who__marks">
+          <PlayerMark name={tiedName} avatarId={tied.avatarId} className="rbl-who__mark rbl-who__mark--back" />
+          <PlayerMark name={name} avatarId={top.avatarId} className="rbl-who__mark" />
+        </span>
+      ) : (
+        <PlayerMark name={name} avatarId={top.avatarId} className="rbl-who__mark" />
+      )}
+      <span className="rbl-who__text">
+        <span className="rbl-who__name">
+          <span className="rbl-who__tag">
+            <PlayerName name={name} avatarId={top.avatarId} />
+          </span>
+          {chip ? <span className="sb-row__you">You</span> : null}
+        </span>
+        <span className="rbl-who__sub">
+          {dayOf(top.at)}
+          {tied ? ` · tied with ${you && tiedName === you ? 'you' : tiedName}` : ''}
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/** Your best on a record: yours, how near it is, or not on it yet. */
+function You({
+  record,
+  kind,
+  mine,
+  nearest,
+  you,
+}: {
+  record: RecordSummary
+  kind: RecordKind
+  mine: boolean
+  nearest: boolean
+  you: string
+}) {
+  if (mine) {
+    return (
+      <span className="rbl-you">
+        <span className="rbl-yours">
+          <CrownIcon />
+          Yours
+        </span>
+      </span>
+    )
+  }
+  const standing = record.you
+  const top = record.top!
+  if (!standing) {
+    // On no record's board: a milestone you haven't reached, or a record your runs haven't made the list of.
+    return (
+      <span className="rbl-you">
+        <span className="rbl-you__none">{kind === 'clock' ? 'Not reached yet' : 'Not on it yet'}</span>
+      </span>
+    )
+  }
+  const tied = recordValue(record, standing.score) === recordValue(record, top.score)
+  // The holder's cell already says "tied with you".
+  const tieShown = tied && normalizePlayerName(tiedWith(record)?.name ?? '') === you
+  const gap = tied
+    ? tieShown
+      ? ''
+      : 'Tied for it'
+    : `${recordGap(record, standing.score, top.score)} ${lowerIsBetter(record) ? 'off' : 'short'}`
+  const note = [gap, nearest ? 'your nearest' : ''].filter(Boolean).join(' · ')
+  return (
+    <span className="rbl-you">
+      <span className="rbl-you__best">
+        <span className="rbl-you__pre">You </span>
+        <b>{recordValue(record, standing.score)}</b>
+        <span className="rbl-you__place"> · {ordinal(standing.rank)}</span>
+      </span>
+      {note ? <span className={`rbl-you__gap${nearest ? ' rbl-you__gap--near' : ''}`}>{note}</span> : null}
+    </span>
+  )
+}
+
+function Group({
   game,
   group,
-  record,
   period,
   you,
-  big,
+  knowsYou,
+  nearest,
+  firstOpen,
   playHref,
 }: {
   game: string
   group: RecordGroup
-  record: RecordSummary
   period: LeaderboardPeriod
   you: string
-  big: boolean
+  knowsYou: boolean
+  nearest: string | null
+  /** The first record nobody holds, on the whole tab: its line is #up-for-grabs, where the Records home's "Show me one" lands. */
+  firstOpen: string | null
   playHref: string | null
 }) {
-  const top = record.top
+  const Icon = GROUP_ICONS[group.kind]
+  const id = `rbl-${group.kind}`
   return (
-    <RecordPlaque
-      label={group.short(record.label)}
-      value={top ? recordValue(record, top.score) : null}
-      holder={top ? { name: normalizePlayerName(top.name), avatarId: top.avatarId } : null}
-      when={top ? `set ${dayOf(top.at)}` : undefined}
-      href={recordHref(game, record.id, period)}
-      you={plaqueYou(record, you)}
-      big={big}
-      action={playHref ? { href: playHref, label: top ? 'Beat it' : 'Set it' } : null}
-    />
+    <section className="rbl-group" aria-labelledby={id}>
+      <h3 id={id} className="rbl-group__head">
+        <span className="rbl-group__icon">
+          <Icon />
+        </span>
+        {group.title}
+        {group.aside ? <span className="rbl-group__aside">{group.aside}</span> : null}
+      </h3>
+      <ol className="rbl-rows">
+        {bookItems(group).map((item) => {
+          if (item.kind === 'open') {
+            const first = item.records[0]!
+            return (
+              <li key={first.id} id={first.id === firstOpen ? 'up-for-grabs' : undefined} className="rbl-row rbl-row--open">
+                <div className="rbl-row__link">
+                  <span className="rbl-row__label">{item.label}</span>
+                  <span className="rbl-open">
+                    <SparkleIcon />
+                    <span>{openWords(group.kind, period)}</span>
+                    {playHref ? (
+                      <a className="rbl-open__go" href={playHref}>
+                        Be the first
+                        <ChevronRightIcon />
+                      </a>
+                    ) : null}
+                  </span>
+                </div>
+              </li>
+            )
+          }
+          const { record } = item
+          const mine = Boolean(you) && normalizePlayerName(record.top!.name) === you
+          return (
+            <li key={record.id} className={`rbl-row${mine ? ' rbl-row--mine' : ''}`}>
+              <a className="rbl-row__link" href={recordHref(game, record.id, period)}>
+                <span className="rbl-row__label">{group.short(record.label)}</span>
+                <span className="rbl-row__best">{recordValue(record, record.top!.score)}</span>
+                {/* With a You column, a gold row and "Yours" say it's yours: the holder needs no You chip too. */}
+                <Holder record={record} you={you} chip={mine && !knowsYou} />
+                {knowsYou ? <You record={record} kind={group.kind} mine={mine} nearest={record.id === nearest} you={you} /> : null}
+                <span className="rbl-row__go" aria-hidden="true">
+                  <ChevronRightIcon />
+                </span>
+              </a>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
+}
+
+/*
+ * How the list was laid out, a count of lines per group, by game, period and whether it had a You column:
+ * its loading rows take that shape, so the list lands in place rather than pushing the page down (pages load
+ * in place). The tab also holds the height it had last time on this device (useHeldHeight). A first look
+ * gets the book's usual shape: its groups as they stand, with the milestones nobody has reached on one line.
+ */
+const shapes = new Map<string, number[]>()
+const USUAL_SHAPE: Record<string, number[]> = {
+  asteroids: [2, 1, 9],
+  snake: [2, 1, 6],
+  crosswalk: [2, 3, 5],
+  frenzy: [2, 3, 1],
+  pileup: [2, 4],
+  crumbtrail: [3, 2],
+  pop: [3],
+  pellets: [3],
+  stacker: [3],
+  patriot: [3],
+  fireflies: [2],
+}
+const TYPICAL_SHAPE = [2, 2, 4]
+
+function ListSkeleton({ shape, anon }: { shape: number[]; anon: boolean }) {
+  return (
+    <div className={`sb-card rbl rbl--skel${anon ? ' rbl--anon' : ''}`} aria-busy="true" aria-label="Loading records">
+      <div className="rbl-cols" aria-hidden="true">
+        <span>Record</span>
+        <span>Best</span>
+        <span>Held by</span>
+        {anon ? null : <span>You</span>}
+        <span />
+      </div>
+      {shape.map((rows, g) => (
+        <div key={g} className="rbl-group" aria-hidden="true">
+          <div className="rbl-group__head">
+            <span className="rbl-group__icon" />
+            <span className="skel-line" style={{ '--skel-w': '7rem' } as CSSProperties} />
+          </div>
+          <ol className="rbl-rows">
+            {Array.from({ length: rows }, (_, i) => (
+              <li key={i} className="rbl-row">
+                <div className="rbl-row__link">
+                  <span className="rbl-row__label">
+                    <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} />
+                  </span>
+                  <span className="rbl-row__best">
+                    <span className="skel-line" style={{ '--skel-w': '4rem' } as CSSProperties} />
+                  </span>
+                  <span className="rbl-who">
+                    <span className="pmark pmark--empty rbl-who__mark" />
+                    <span className="skel-line" style={{ '--skel-w': '5rem' } as CSSProperties} />
+                  </span>
+                  {anon ? null : (
+                    <span className="rbl-you">
+                      <span className="skel-line" style={{ '--skel-w': '5.5rem' } as CSSProperties} />
+                    </span>
+                  )}
+                  <span />
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -114,131 +341,94 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
   const groupId = useActiveGroup()
   const device = useDeviceType()
   const data = useRecordBook(game, period, you, groupId)
+  const held = useHeldHeight<HTMLDivElement>(`records-${game}-${period}-${you ? 'in' : 'out'}`, data.loading)
   const meta = getGame(game)
   if (!meta) return null
   const accent = resolveGameAccent(game, meta.accent)
   const canPlay = gamePlayableOn(meta, device)
   // A daily's page has its own Records tab (DailyRecordsTab), but should one get here its courses stay out.
   const records = bookRecords(game, data.records)
-  const head = bookHeadline(game, records)
+  const head = bookHead(game, records, you, period)
   const groups = recordGroups(game, records)
-  // Nobody's name on these yet: they lead the tab, and come out of their groups.
-  const open = groups.flatMap((group) => group.records.filter((r) => !r.top).map((record) => ({ group, record })))
-  const heldGroups = groups.map((group) => ({ ...group, records: group.records.filter((r) => r.top) })).filter((g) => g.records.length)
   const playHref = canPlay ? gamePlayHref(game) : null
-  const held = records.filter((r) => you && r.top && normalizePlayerName(r.top.name) === you)
-  const knowsYou = records.some((r) => r.you !== undefined)
-  const close = knowsYou ? closestToInk([{ game, records }]) : []
+  // The API says where you stand only when it was asked about you: signed out, there's no You column.
+  const knowsYou = Boolean(you) && records.some((r) => r.you !== undefined)
+  const nearest = knowsYou ? (closestToInk([{ game, records }], 1)[0]?.record.id ?? null) : null
+  const firstOpen = groups.flatMap((g) => g.records).find((r) => !r.top)?.id ?? null
+  const shapeKey = `${game}|${period}|${you ? 'you' : 'anon'}`
+  if (!data.loading && !data.error && groups.length) shapes.set(shapeKey, groups.map((g) => bookItems(g).length))
 
   return (
-    <div className="sb gb rbk rbk--tab" style={{ '--gb-accent': accent, '--gb-accent-ink': inkOn(accent) } as CSSProperties}>
+    <div
+      ref={held.ref}
+      className="sb gb rbk rbk--tab"
+      style={{ '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), ...held.style } as CSSProperties}
+    >
       {/* Who holds most of them, and the period's tabs: where the book's banner was, a bug hunt hiding place (lib/bugHunt.ts). */}
       <div className="rbk-tabhead" data-hunt={`r-head-${game}`}>
-        <h2 className="rbk-tabhead__title">
+        <div className="rbk-tabhead__text">
           {data.loading ? (
-            <span className="skel-line" style={{ '--skel-w': '16ch' } as CSSProperties} />
+            <>
+              <h2 className="rbk-tabhead__title rbk-tabhead__title--skel">
+                <span className="skel-line" style={{ '--skel-w': '16ch' } as CSSProperties} />
+              </h2>
+              <p className="rbk-tabhead__line">
+                <span className="skel-line" style={{ '--skel-w': '22ch' } as CSSProperties} />
+              </p>
+            </>
+          ) : data.error ? (
+            <h2 className="rbk-tabhead__title">{meta.name} records</h2>
           ) : (
             <>
-              {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
-              {head.rest}
+              <h2 className="rbk-tabhead__title">
+                {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
+                {head.rest}
+              </h2>
+              {head.line.length ? (
+                <p className="rbk-tabhead__line">{head.line.join(' · ')}</p>
+              ) : !you ? (
+                <p className="rbk-tabhead__line">
+                  <button type="button" className="rbk-tabhead__signin" onClick={openSiteMenu}>
+                    Sign in
+                  </button>{' '}
+                  to see how close you are
+                </p>
+              ) : null}
             </>
           )}
-        </h2>
+        </div>
         <PeriodTabs game={game} period={period} />
       </div>
 
-      {!data.loading && records.length ? (
-        <section className="rbk-sum" aria-label="This book at a glance">
-          {open.length ? (
-            <a className="rbk-sum__tile rbk-sum__tile--open" href="#up-for-grabs">
-              <span className="rbk-sum__kicker">Up for grabs</span>
-              <span className="rbk-sum__line">
-                {open.length === 1 ? 'A record nobody holds yet' : `${open.length} records nobody holds yet`}
-              </span>
-            </a>
-          ) : null}
-          {you ? (
-            held.length ? (
-              <div className="rbk-sum__tile rbk-sum__tile--you">
-                <span className="rbk-sum__kicker">Yours</span>
-                <span className="rbk-sum__line">
-                  You hold {held.length} {held.length === 1 ? 'record' : 'records'} here
-                </span>
-              </div>
-            ) : close.length ? (
-              <a className="rbk-sum__tile rbk-sum__tile--you" href={recordHref(game, close[0]!.record.id, period)}>
-                <span className="rbk-sum__kicker">Closest for you</span>
-                <span className="rbk-sum__line">
-                  {close[0]!.record.label}: {close[0]!.off}
-                </span>
-              </a>
-            ) : null
-          ) : (
-            <button type="button" className="rbk-sum__tile rbk-sum__tile--you" onClick={openSiteMenu}>
-              <span className="rbk-sum__kicker">How close are you?</span>
-              <span className="rbk-sum__line">Sign in to see your best beside every record</span>
-            </button>
-          )}
-        </section>
-      ) : null}
-
       {data.loading ? (
-        <div className="sb-card rbk-group">
-          <BoardSkeleton rows={6} />
-        </div>
+        <ListSkeleton shape={shapes.get(shapeKey) ?? USUAL_SHAPE[game] ?? TYPICAL_SHAPE} anon={!you} />
       ) : data.error ? (
         <BoardEmpty title="Couldn’t load records" detail="Check your connection and try again." />
       ) : !records.length ? (
         <BoardEmpty title={groupBoardEmptyTitle('No records yet')} />
       ) : (
-        <>
-          {open.length ? (
-            <section id="up-for-grabs" className="rbk-wall rbk-wall--open" aria-labelledby="rbk-open">
-              <div className="rbk-group__head">
-                <h2 id="rbk-open" className="rbk-group__title">
-                  Up for grabs
-                </h2>
-                <span className="rbk-group__count">
-                  {open.length} {open.length === 1 ? 'record' : 'records'}
-                </span>
-              </div>
-              <p className="rbk-group__sub">Nobody holds these yet: the first to do it puts their name in the book.</p>
-              <ol className="rbk-plqs">
-                {open.map(({ group, record }) => (
-                  <Plaque key={record.id} game={game} group={group} record={record} period={period} you={you} big={false} playHref={playHref} />
-                ))}
-              </ol>
-            </section>
-          ) : null}
-          {heldGroups.map((group) => (
-            <section key={group.kind} className="rbk-wall" aria-labelledby={`rbk-${group.kind}`}>
-              <div className="rbk-group__head">
-                <h2 id={`rbk-${group.kind}`} className="rbk-group__title">
-                  {group.title}
-                </h2>
-                <span className="rbk-group__count">
-                  {group.records.length} {group.records.length === 1 ? 'record' : 'records'}
-                </span>
-              </div>
-              <p className="rbk-group__sub">{group.sub}</p>
-              <ol className="rbk-plqs">
-                {group.records.map((record, i) => (
-                  <Plaque
-                    key={record.id}
-                    game={game}
-                    group={group}
-                    record={record}
-                    period={period}
-                    you={you}
-                    // The best single run is the book's headline: its plaque is two wide.
-                    big={group.kind === 'run' && i === 0}
-                    playHref={playHref}
-                  />
-                ))}
-              </ol>
-            </section>
+        <div className={`sb-card rbl${knowsYou ? '' : ' rbl--anon'}`}>
+          <div className="rbl-cols" aria-hidden="true">
+            <span>Record</span>
+            <span>Best</span>
+            <span>Held by</span>
+            {knowsYou ? <span>You</span> : null}
+            <span />
+          </div>
+          {groups.map((group) => (
+            <Group
+              key={group.kind}
+              game={game}
+              group={group}
+              period={period}
+              you={you}
+              knowsYou={knowsYou}
+              nearest={nearest}
+              firstOpen={firstOpen}
+              playHref={playHref}
+            />
           ))}
-        </>
+        </div>
       )}
     </div>
   )
