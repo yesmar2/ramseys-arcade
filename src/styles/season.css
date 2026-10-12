@@ -1325,7 +1325,7 @@ html[data-theme='dark'] .season-tile__got {
   color: var(--muted);
 }
 
-/* Where the bonus levels begin on the Pass+ row: past the free row's last, Pass+ only. */
+/* Where the levels past the free row's last begin, on either row: the free row's go on in tickets, the Gold row's last looks. */
 .season-track__bonus {
   flex: 0 0 auto;
   display: flex;

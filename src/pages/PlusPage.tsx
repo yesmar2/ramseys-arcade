@@ -303,7 +303,7 @@ export function PlusPage() {
               sub: (
                 <>
                   {goldRewards.length} more rewards, {goldSkins} of them skins
-                  {gold.pass.bonus ? `, and ${gold.pass.bonus} bonus levels` : ''}.
+                  {gold.pass.bonus ? `, and ${gold.pass.bonus} on levels past ${gold.season.levels}` : ''}.
                   {signedIn && !member && !goldBought && reached > 0 ? (
                     <b className="plus-cmp__you"> You’re level {yourLevel}: {reached} of them are reached already.</b>
                   ) : null}

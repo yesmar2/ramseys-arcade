@@ -1,5 +1,5 @@
 import { seasonHref, useRoute } from '../../hooks/useHashRoute'
-import { liveSeason, noteLevelsSeen, seasonTop, useSeason, type SeasonRun } from '../../lib/season'
+import { liveSeason, loudLevelUp, noteLevelsSeen, seasonTop, useSeason, type SeasonRun } from '../../lib/season'
 import { Panel } from '../Panel'
 import { SeasonLevelUp } from './SeasonRun'
 import '../../styles/season.css'
@@ -11,7 +11,8 @@ import '../../styles/season.css'
  * noteLevelsSeen), with the run report's own level-up. Off a game it's a celebration over the page. On a game's
  * screen it waits: the next saved run's report tells it (the API keeps those levels for it), or, with no run
  * saved, the next page off the game does. A note on the screen sat over the touch pads and took taps meant for
- * the game, and no one signal says a run is live in every game.
+ * the game, and no one signal says a run is live in every game. Levels past the free row's last are told here
+ * only at every tenth: the others wait for the next run's season line, which says them quietly.
  */
 
 export function LevelUpMoment() {
@@ -21,7 +22,7 @@ export function LevelUpMoment() {
   const you = store.you
   // A challenge link's page only passes you on to the game, so it counts as the game.
   const inGame = route.name === 'gamePlay' || route.name === 'tournamentPlay' || route.name === 'challenge'
-  if (inGame || !season || !you || you.announced == null || you.level <= you.announced || !you.pending?.length) return null
+  if (inGame || !season || !you || you.announced == null || you.level <= you.announced || !loudLevelUp(you.pending ?? [])) return null
 
   // As a run's report has it (SeasonRun): `added` is what it takes from the last level told of to now, which
   // the report's Pass+ line reads to know which levels were just reached.
@@ -35,7 +36,7 @@ export function LevelUpMoment() {
     levels: seasonTop(store),
     nextAt: you.nextAt,
     next: null,
-    levelUp: you.pending,
+    levelUp: you.pending ?? [],
   }
   const done = () => noteLevelsSeen()
 

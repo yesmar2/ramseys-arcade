@@ -6,7 +6,7 @@ import { scoreText } from '../../lib/gameBoard'
 import { formatLeaderboardScore, isPercentBoard, isTimeBoard } from '../../lib/leaderboardFormat'
 import { sparkle, ticketPath } from '../../lib/prizeArt'
 import { MEDAL_NAMES, type Medal } from '../../lib/raceMedals'
-import type { SeasonRun } from '../../lib/season'
+import { loudLevelUp, quietLevelsWords, quietReward, type SeasonRun } from '../../lib/season'
 import { sfx } from '../../lib/sound'
 import { useTickets, type LadderStep, type RunTickets } from '../../lib/tickets'
 import { TicketGlyph, TicketStub } from './Ticket'
@@ -100,10 +100,12 @@ function raceWhy(paid: RunTickets, game: string, medal: Medal | null): string {
  */
 export type RaceTickets = { medal: Medal | null; season: SeasonRun | null }
 
-/** The season's pass in a racing daily's ticket row: "Season pass +3 · 10 more for Level 3". */
+/** The season's pass in a racing daily's ticket row: "Season pass +3 · 10 more for Level 3", or a quiet level's tickets. */
 function seasonWords(run: SeasonRun): string {
   const added = run.added > 0 ? `Season pass +${run.added}` : 'Season pass'
   if (run.nextAt == null) return `${added} · every level is yours`
+  const quiet = loudLevelUp(run.levelUp) ? [] : run.levelUp.filter(quietReward)
+  if (quiet.length) return `${added} · ${quietLevelsWords(quiet)}`
   return `${added} · ${Math.max(0, run.nextAt - run.earned).toLocaleString()} more for Level ${run.level + 1}`
 }
 

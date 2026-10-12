@@ -1,4 +1,4 @@
-import { liveSeason, seasonProgress, seasonTop, useSeason } from '../../lib/season'
+import { liveSeason, seasonProgress, useSeason } from '../../lib/season'
 import '../../styles/season.css'
 
 /*
@@ -14,7 +14,7 @@ export function SeasonYouLevel() {
   const store = useSeason()
   const season = liveSeason(store)
   if (!season) return null
-  const p = seasonProgress(season, store.you, seasonTop(store))
+  const p = seasonProgress(season, store.you)
   return (
     <span className="site-you__lv" aria-hidden="true">
       <span className="site-you__lv-n">Lv {p.level}</span>

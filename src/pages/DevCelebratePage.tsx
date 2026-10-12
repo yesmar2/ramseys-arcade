@@ -7,7 +7,8 @@ import { RaceReport, raceSubWords } from '../components/RaceReport'
 import { caveDay } from '../games/lander/daily'
 import { formatRun } from '../games/lander/score'
 import { TomorrowCave } from '../games/lander/TomorrowCave'
-import type { SeasonRun } from '../lib/season'
+import type { SeasonReward, SeasonRun } from '../lib/season'
+import { SeasonRunLine } from '../components/season/SeasonRun'
 import type { RunTickets } from '../lib/tickets'
 import {
   ReportSignIn,
@@ -380,6 +381,19 @@ const LANDER_STEPS = {
 
 const LANDER_SEASON: SeasonRun = { id: 1, name: 'Space Race', earned: 290, added: 3, level: 2, levels: 30, nextAt: 300, next: null, levelUp: [] }
 
+/** A level past the pass's 30: its tickets (the API's extraReward). */
+const extraAt = (level: number, amount: number): SeasonReward => ({ level, kind: 'tickets', id: `tickets-${level}`, name: `${amount} tickets`, what: 'Tickets', amount, ready: true, extra: true })
+/** A run that reached Level 31, past the free row's last: said in the season line, quietly. */
+const QUIET_SEASON: SeasonRun = { id: 1, name: 'Space Race', earned: 4520, added: 40, level: 31, levels: 30, nextAt: 4650, next: extraAt(32, 25), levelUp: [extraAt(31, 25)] }
+/** A run that reached Level 40: every tenth past 30 gets the level-up. */
+const TENTH_SEASON: SeasonRun = { id: 1, name: 'Space Race', earned: 5870, added: 45, level: 40, levels: 30, nextAt: 6000, next: extraAt(41, 25), levelUp: [extraAt(40, 100)] }
+
+/** An ordinary saved run with the season's line under it (as ScoreSaveCard has it), for a level past 30. */
+function seasonSample(key: string, note: string, run: SeasonRun): Sample {
+  const base = reportSample('quiet', note, facts(318, {}), 'Run over', 'Flattened by traffic')
+  return { key, note, body: { ...base.body, children: <SeasonRunLine run={run} /> } }
+}
+
 /** The run's place on today's board, as runReport.ts's board line says it. */
 const landerPlace = (value: string, detail: string, tone: ReportLine['tone']): ReportLine => ({
   id: 'board',
@@ -710,6 +724,36 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
       ),
     }),
     reportSample('capped', 'A run past the day’s cap: the quiet line, no box.', facts(318, {}), 'Run over', 'Flattened by traffic'),
+    seasonSample('season-31', 'A run past the pass’s 30 levels: Level 31’s tickets said in the season line, with no level-up.', QUIET_SEASON),
+    seasonSample('season-40', 'A run that reached Level 40: every tenth past 30 gets the level-up, and 100 tickets.', TENTH_SEASON),
+    landerSample(
+      'medal-31',
+      'A racing daily’s run that reached Level 31: the season in the ticket row says the level’s tickets.',
+      49_000,
+      52_000,
+      {
+        tickets: (
+          <RunTicketsLine
+            paid={{
+              earned: 3,
+              lines: [{ reason: 'run', amount: 3 }],
+              balance: 1290,
+              reached: LANDER_STEPS.silver,
+              next: LANDER_STEPS.gold,
+              base: 3,
+              baseLabel: 'a run today',
+              step: 8,
+              paidBefore: 5,
+              capped: 0,
+              todayLeft: 170,
+            }}
+            game="lander"
+            race={{ medal: 'silver', season: QUIET_SEASON }}
+          />
+        ),
+        place: landerPlace('#4', 'up from 7th · 0.31s behind PILOT for 3rd', 'accent'),
+      },
+    ),
   ]
 }
 

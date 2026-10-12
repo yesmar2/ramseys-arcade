@@ -16,6 +16,7 @@ import { fetchPlus, freeWeekFor, money, perSeason, seasonWeeks, type PlusInfo } 
 import {
   confirmPlusCheckout,
   daysLeftLabel,
+  extraTickets,
   headlinersOf,
   plusPrice,
   refreshSeason,
@@ -39,7 +40,8 @@ import '../styles/season.css'
 /*
  * The season's page (Ramsey picked layout A, 2026-10-02): the season in its own colours over the top, with
  * where you are on its pass; the pass itself, a row of its 30 levels' rewards that scrolls, the ones you've
- * won ticked and the next one lit; a rail of every level; and how it works, with the season's skins.
+ * won ticked and the next one lit, and at its end the levels past them, which go on paying tickets; a rail of
+ * every level; and how it works, with the season's skins.
  */
 
 /** A tile: won; next to win; still to come; or (on the Pass+ row, without Pass+) reached, and yours with it. */
@@ -192,6 +194,37 @@ function Tile({
   )
 }
 
+/**
+ * The levels past the free row's last, as one tile at its end (Ramsey, 2026-10-11: the levels never stop). Before
+ * them, what each pays; once you're there, lit as your next, with what it pays and how far it is.
+ */
+function ExtraTile({ season, level, toNext }: { season: SeasonInfo; level: number; toNext: number | null }) {
+  const going = level >= season.levels && toNext != null
+  const next = going ? level + 1 : season.levels + 1
+  const amount = extraTickets(season, next)
+  const each = extraTickets(season, season.levels + 1)
+  const tenth = extraTickets(season, Math.ceil((season.levels + 1) / 10) * 10)
+  return (
+    <li className={`season-tile season-tile--extra season-tile--${going ? 'next' : 'locked'}`} data-extra="">
+      <span className="season-tile__top">
+        <span className="season-tile__lv">{going ? `LV ${next}` : `LV ${season.levels + 1}+`}</span>
+        {going ? (
+          <span className="season-tile__next">Next</span>
+        ) : (
+          <span className="season-tile__lock">
+            <LockGlyph />
+          </span>
+        )}
+      </span>
+      <span className="season-tile__art">
+        <RewardArt reward={{ kind: 'tickets', id: `tickets-${next}`, name: `${amount} tickets`, amount }} size={88} />
+      </span>
+      <span className="season-tile__name">{going ? `${amount} tickets` : `${each} tickets a level`}</span>
+      <span className="season-tile__what">{going ? `${toNext.toLocaleString()} to go` : `${tenth} at every tenth`}</span>
+    </li>
+  )
+}
+
 function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoading }: { season: SeasonInfo; level: number; top: number; fraction: number; toNext: number | null; earned: number; signedIn: boolean; authLoading: boolean }) {
   const sky = { backgroundImage: starTile('#f4f0ff', 13, { size: 360, stars: 44 }) } as CSSProperties
   const live = season.status === 'live'
@@ -239,7 +272,7 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, authLoad
           ) : (
             <>
               <span className="season-level__n">
-                {level > 0 ? `Level ${level}` : 'Level 0'} <small>of {top}</small>
+                {level > 0 ? `Level ${level}` : 'Level 0'} {level <= top ? <small>of {top}</small> : null}
               </span>
               <span className="season-level__meter" aria-hidden="true">
                 <i style={{ width: `${Math.round(fraction * 100)}%` }} />
@@ -415,8 +448,7 @@ function PassPlus({
           </h2>
           <p>
             {plus.rewards.length} more: {skins.length} skins, new ships and cars to play in for {gameList}, and {looks} looks for your card and
-            name{plus.bonus ? `, with ${plus.bonus} bonus levels past ${season.levels} that only the Gold Pass climbs` : ''}. Yours to keep. Looks only,
-            never score.
+            name{plus.bonus ? `, ${plus.bonus} of them past Level ${season.levels}` : ''}. Yours to keep. Looks only, never score.
           </p>
         </div>
         <div className="season-plus__get">
@@ -474,8 +506,8 @@ function PassPlus({
           return (
             <Fragment key={reward.id}>
               {reward.id === firstBonus ? (
-                <li className="season-track__bonus" aria-label={`Bonus levels, ${season.levels + 1} on: Gold Pass only`}>
-                  <span>Bonus levels</span>
+                <li className="season-track__bonus" aria-label={`Past Level ${season.levels}`}>
+                  <span>Past {season.levels}</span>
                 </li>
               ) : null}
               <Tile
@@ -634,7 +666,7 @@ export function SeasonPage() {
   const [sought] = useState(soughtSkin)
   const season = store.season
   const top = seasonTop(store)
-  const p = season ? seasonProgress(season, season.status === 'live' ? store.you : null, top || undefined) : null
+  const p = season ? seasonProgress(season, season.status === 'live' ? store.you : null) : null
   const level = p?.level ?? 0
   const slug = season?.slug ?? null
 
@@ -659,9 +691,10 @@ export function SeasonPage() {
       turnTo(track, skin)
       return
     }
-    const target = track.querySelector<HTMLElement>(`[data-level="${Math.max(1, level - 1)}"]`)
+    // Past the free row's last, its end: the levels going on.
+    const target = track.querySelector<HTMLElement>(level > (season?.levels ?? 0) + 1 ? '[data-extra]' : `[data-level="${Math.max(1, level - 1)}"]`)
     if (target) track.scrollLeft = target.offsetLeft - track.offsetLeft - 8
-  }, [level, rewardsKey, sought])
+  }, [level, rewardsKey, sought, season?.levels])
 
   const scrollBy = (dir: 1 | -1) => {
     const track = trackRef.current
@@ -728,6 +761,14 @@ export function SeasonPage() {
               sought={reward.id === sought}
             />
           ))}
+          {store.rewards.length ? (
+            <>
+              <li className="season-track__bonus" aria-label={`Past Level ${season.levels}`}>
+                <span>Past {season.levels}</span>
+              </li>
+              <ExtraTile season={season} level={level} toNext={p.toNext} />
+            </>
+          ) : null}
         </ol>
         <div className="season-rail" aria-hidden="true">
           <div className="season-rail__bar">
@@ -771,7 +812,9 @@ export function SeasonPage() {
               <b>Win tickets in any game.</b> Every ticket you win this season counts. Spending them at the prize counter never takes you back.
             </li>
             <li>
-              <b>A level every {season.perLevel} tickets,</b> {season.levels} in all. The pass is free, and so is everything on it.
+              <b>A level every {season.perLevel} tickets,</b> with something on each of the first {season.levels}. Past them every level pays{' '}
+              {extraTickets(season, season.levels + 1)} tickets, and every tenth {extraTickets(season, Math.ceil((season.levels + 1) / 10) * 10)}. The pass is
+              free, and so is everything on it.
             </li>
             <li>
               <b>What you win is yours to keep</b> after the season ends: ships, badges, titles and more. Looks only, never score.

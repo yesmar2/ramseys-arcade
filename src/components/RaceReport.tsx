@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { raceGapWords, type RaceGame } from '../lib/raceMedals'
 import type { ReportLine } from '../lib/runReport'
-import type { SeasonRun } from '../lib/season'
+import { loudLevelUp, type SeasonRun } from '../lib/season'
 import { MedalLadder } from './RaceMedal'
 import { SeasonLevelUp } from './season/SeasonRun'
 
@@ -51,7 +51,7 @@ export function RaceReport({
       ) : (
         <>
           {tickets}
-          {levelUp?.levelUp.length ? <SeasonLevelUp run={levelUp} /> : null}
+          {levelUp && loudLevelUp(levelUp.levelUp) ? <SeasonLevelUp run={levelUp} /> : null}
           {place ? <PlaceRow line={place} onBoard={onBoard} /> : null}
         </>
       )}

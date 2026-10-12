@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { seasonHref } from '../../hooks/useHashRoute'
 import { boardDay } from '../../lib/rankHow'
-import { rewardPhrase, useSeason, type SeasonReward, type SeasonRun } from '../../lib/season'
+import { loudLevelUp, quietLevelsWords, quietReward, rewardPhrase, useSeason, type SeasonReward, type SeasonRun } from '../../lib/season'
 import { LockIcon } from '../chromeIcons'
 import { RewardArt } from './RewardArt'
 import { SeasonPatch } from './SeasonLook'
@@ -11,7 +11,8 @@ import '../../styles/season.css'
 
 /*
  * The season's line on a run's report, under its tickets: what the run added to the pass and how far to
- * the next level; and, when it reached one, the level's rewards, given then and there.
+ * the next level; and, when it reached one, the level's rewards, given then and there. A level past the free
+ * row's last is said in the line ("Level 31: +25 tickets"), with no level-up, but for every tenth.
  */
 
 export function SeasonRunLine({ run }: { run: SeasonRun }) {
@@ -20,6 +21,11 @@ export function SeasonRunLine({ run }: { run: SeasonRun }) {
   const from = Math.max(0, run.level - 1) * perLevel
   const fraction = run.nextAt == null ? 1 : Math.min(1, Math.max(0, (run.earned - from) / perLevel))
   const toNext = run.nextAt == null ? 0 : Math.max(0, run.nextAt - run.earned)
+  // Past the last level with a look on your rows the levels go on, with no "of".
+  const past = run.level > run.levels
+  const loud = loudLevelUp(run.levelUp)
+  const quiet = loud ? [] : run.levelUp.filter(quietReward)
+  const ahead = `${toNext.toLocaleString()} more for Level ${run.level + 1}`
   return (
     <>
       <a className="run-season" href={seasonHref()}>
@@ -27,9 +33,7 @@ export function SeasonRunLine({ run }: { run: SeasonRun }) {
         <span className="run-season__body">
           <span className="run-season__top">
             <span className="run-season__n">{run.added > 0 ? `Season pass +${run.added}` : 'Season pass'}</span>
-            <span className="run-season__lv">
-              Level {run.level} of {run.levels}
-            </span>
+            <span className="run-season__lv">{past ? `Level ${run.level}` : `Level ${run.level} of ${run.levels}`}</span>
           </span>
           <span className="run-season__meter" aria-hidden="true">
             <i style={{ width: `${Math.round(fraction * 100)}%` }} />
@@ -37,13 +41,15 @@ export function SeasonRunLine({ run }: { run: SeasonRun }) {
           <span className="run-season__why">
             {run.nextAt == null
               ? 'Every level of the pass is yours.'
-              : run.next
-                ? `${toNext.toLocaleString()} more for Level ${run.level + 1}: ${rewardPhrase(run.next)}`
-                : `${toNext.toLocaleString()} more for Level ${run.level + 1}`}
+              : quiet.length
+                ? `${quietLevelsWords(quiet)} · ${ahead}`
+                : run.next
+                  ? `${ahead}: ${rewardPhrase(run.next)}`
+                  : ahead}
           </span>
         </span>
       </a>
-      {run.levelUp.length ? <SeasonLevelUp run={run} /> : null}
+      {loud ? <SeasonLevelUp run={run} /> : null}
     </>
   )
 }
@@ -70,7 +76,8 @@ function useMissedPlus(run: SeasonRun): { missed: SeasonReward[]; waiting: numbe
   const found = useMemo(() => {
     if (!plus || plus.owned || isPlus || !season || season.id !== run.id || !run.levelUp.length) return null
     const before = run.earned - run.added
-    const from = before <= 0 ? 0 : Math.min(run.levels, 1 + Math.floor(before / season.perLevel))
+    // The level before the run: the levels go on past the rows, so it can be past their last.
+    const from = before <= 0 ? 0 : 1 + Math.floor(before / season.perLevel)
     const missed = plus.rewards.filter((r) => r.level > from && r.level <= run.level)
     if (!missed.length) return null
     return { missed, waiting: plus.rewards.filter((r) => r.level <= run.level).length }

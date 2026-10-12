@@ -5,7 +5,9 @@ import { api } from './leaderboard'
 
 /*
  * The season: a stretch of about nine weeks with a theme (Season 1 is Space Race, from Oct 31), a free
- * pass of 30 levels moved by every ticket won in it, and looks to win on the way. The API's seasons.ts
+ * pass of 30 levels moved by every ticket won in it, and looks to win on the way. The levels go on past the
+ * last, each paying tickets (Ramsey, 2026-10-11): said quietly in a run's season line, and out loud at every
+ * tenth (quietReward). The API's seasons.ts
  * decides it all; this is one shared copy, for the header's ring, the home banner, the Season page and the
  * run report, fetched once and nudged along by what a save answers. The last answer is kept on the device
  * (KEPT_KEY), so a page opens with the season it had last time, the home banner included, rather than
@@ -29,6 +31,8 @@ export type SeasonReward = {
   ready: boolean
   /** On the Pass+ row: given only with the season's Pass+. */
   plus?: boolean
+  /** A level past the free row's last: tickets, for everyone (the API's extraReward). */
+  extra?: boolean
 }
 
 export type SeasonInfo = {
@@ -46,6 +50,8 @@ export type SeasonInfo = {
   daysLeft: number
   levels: number
   perLevel: number
+  /** What a level past `levels` pays, and every tenth; an older API leaves it out (extraTickets). */
+  extra?: { tickets: number; tenth: number }
   /** The games it puts forward. */
   spotlight: string[]
 }
@@ -105,7 +111,7 @@ export type SeasonPlus = {
   price: number
   currency: string
   rewards: SeasonReward[]
-  /** Levels past the last that only Pass+ climbs. */
+  /** How many of its rewards are on levels past the free row's last. */
   bonus: number
   owned: boolean
   /** How it's had: bought for the season, or with a Plus membership. */
@@ -325,18 +331,47 @@ export type SeasonProgress = {
   earned: number
 }
 
-/** The highest level your pass reaches: the season's last, and with Pass+ its bonus levels too. */
+/** The last level with a look on your rows: the season's last, and with Pass+ its row's last. The levels go on past it. */
 export function seasonTop(store: Pick<SeasonAnswer, 'season' | 'plus'>): number {
   return (store.season?.levels ?? 0) + (store.plus?.owned ? store.plus.bonus : 0)
 }
 
-export function seasonProgress(season: SeasonInfo, you: Pick<SeasonYou, 'earned' | 'level'> | null, top = season.levels): SeasonProgress {
+/** Your level and the way to the next. There's always a next: an API from before said the top with no `nextAt`. */
+export function seasonProgress(season: SeasonInfo, you: (Pick<SeasonYou, 'earned' | 'level'> & { nextAt?: number | null }) | null): SeasonProgress {
   const earned = you?.earned ?? 0
   const level = you?.level ?? 0
-  if (level >= top) return { level, fraction: 1, toNext: null, earned }
   if (level <= 0) return { level: 0, fraction: 0, toNext: null, earned }
+  if (you?.nextAt === null) return { level, fraction: 1, toNext: null, earned }
   const from = (level - 1) * season.perLevel
   return { level, fraction: Math.min(1, (earned - from) / season.perLevel), toNext: Math.max(0, level * season.perLevel - earned), earned }
+}
+
+/** What a level past the free row's last pays (the API's EXTRA_LEVEL_TICKETS), more at every tenth. */
+export function extraTickets(season: Pick<SeasonInfo, 'extra'>, level: number): number {
+  const extra = season.extra ?? { tickets: 25, tenth: 100 }
+  return level % 10 === 0 ? extra.tenth : extra.tickets
+}
+
+/**
+ * A level past the free row's last that's said quietly, in a run's season line, with no level-up: every one but
+ * the tenths. A player who plays every day reaches one most days.
+ */
+export function quietReward(reward: Pick<SeasonReward, 'extra' | 'level'>): boolean {
+  return Boolean(reward.extra) && reward.level % 10 !== 0
+}
+
+/** Whether the levels reached call for the level-up: anything on them but a quiet level's tickets. */
+export function loudLevelUp(rewards: readonly SeasonReward[]): boolean {
+  return rewards.some((reward) => !quietReward(reward))
+}
+
+/** Quiet levels reached, in a phrase: "Level 31: +25 tickets", "Levels 31–32: +50 tickets". */
+export function quietLevelsWords(rewards: readonly SeasonReward[]): string {
+  const levels = rewards.map((r) => r.level)
+  const first = Math.min(...levels)
+  const last = Math.max(...levels)
+  const total = rewards.reduce((sum, r) => sum + (r.amount ?? 0), 0)
+  return `${first === last ? `Level ${first}` : `Levels ${first}–${last}`}: +${total.toLocaleString()} tickets`
 }
 
 /** A reward in a phrase: "the Moonhopper", "the Liftoff title", "50 bonus tickets". */

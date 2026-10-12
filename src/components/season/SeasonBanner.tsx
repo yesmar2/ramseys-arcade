@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { gamePlayHref, seasonHref } from '../../hooks/useHashRoute'
-import { daysLeftLabel, rewardAt, rewardPhrase, seasonProgress, type SeasonInfo, type SeasonReward, type SeasonYou } from '../../lib/season'
+import { daysLeftLabel, extraTickets, rewardAt, rewardPhrase, seasonProgress, type SeasonInfo, type SeasonReward, type SeasonYou } from '../../lib/season'
 import { SeasonScene } from './SeasonLook'
 import '../../styles/season.css'
 
@@ -24,18 +24,22 @@ export function SeasonBanner({
   you: SeasonYou | null
   rewards: SeasonReward[]
   pick: { slug: string; name: string; kicker: string }
-  /** The highest level their pass reaches: the season's last, or with Pass+ its bonus levels' (lib/season.ts seasonTop). */
+  /** The last level with a look on their rows: the season's last, or with Pass+ its row's last (lib/season.ts seasonTop). */
   top?: number
 }) {
-  const p = seasonProgress(season, you, top)
+  const p = seasonProgress(season, you)
   const next = p.level < season.levels ? rewardAt(rewards, p.level + 1) : null
+  // Past the free row's last, the levels go on paying tickets.
+  const extra = !next && p.level >= season.levels && p.toNext != null ? extraTickets(season, p.level + 1) : null
   const blurb = !you
     ? `Win tickets in any game to climb a free pass of ${season.levels} levels, with looks and ships to win on the way.`
     : p.level <= 0
       ? 'Win a ticket in any game to start the pass. Every ticket you win this season moves you up.'
       : next && p.toNext != null
         ? `You’re Level ${p.level}. Level ${next.level} is ${p.toNext.toLocaleString()} ${p.toNext === 1 ? 'ticket' : 'tickets'} away, with ${rewardPhrase(next)}.`
-        : p.level >= top
+        : extra != null && p.toNext != null
+          ? `You’re Level ${p.level}. Level ${p.level + 1} is ${p.toNext.toLocaleString()} ${p.toNext === 1 ? 'ticket' : 'tickets'} away, with ${extra} bonus tickets.`
+          : p.level >= top
           ? 'You’ve reached the top of the pass. Every level is yours.'
           : `You’re Level ${p.level}. Every ticket you win moves you up.`
   return (
@@ -62,7 +66,7 @@ export function SeasonBanner({
               <dt>Your level</dt>
               <dd>
                 {p.level}
-                <small> of {top}</small>
+                {p.level <= top ? <small> of {top}</small> : null}
               </dd>
             </div>
             {next && p.toNext != null ? (
@@ -71,6 +75,14 @@ export function SeasonBanner({
                 <dd>
                   {next.name}
                   <small> at Level {next.level}</small>
+                </dd>
+              </div>
+            ) : extra != null ? (
+              <div className="home-banner__figure">
+                <dt>Next up</dt>
+                <dd>
+                  {extra} tickets
+                  <small> at Level {p.level + 1}</small>
                 </dd>
               </div>
             ) : null}
