@@ -37,8 +37,8 @@ const drag = (v: number, k: number, cap: number) => k * v * v + (v > cap ? CAP_D
 /**
  * Clean landings in a row are a streak. From STREAK_ON of them the wind lets the bird go faster: the wall
  * moves up STREAK_CAP for each clean landing in the streak, to at most STREAK_CAP_MOST higher. A landing off a
- * flight that isn't clean ends the streak (a hop too short to be clean doesn't), as a thump does, and the
- * wall comes back down. Ramsey found near-perfect runs coming out close together (2026-10-06): with one wall
+ * flight that isn't clean ends the streak (a hop too short to be clean doesn't, nor a smooth one that can't be:
+ * CLEAN_ANGLE), as a thump does, and the wall comes back down. Ramsey found near-perfect runs coming out close together (2026-10-06): with one wall
  * for everyone, a slip cost a top run about a seventh of a second, so everyone good bunched up. On a streak,
  * a run that's clean all the way pulls clear of one that slips.
  */
@@ -58,7 +58,14 @@ export function streakLift(streak: number): number {
 /** A bird never quite stops: up the steepest hill it keeps crawling. */
 export const MIN_SPEED = 9
 const START_SPEED = 7
-/** A landing within this angle of the slope, after this long in the air, is clean, and pays this much. */
+/**
+ * A landing onto a downhill, within this angle of it, after this long in the air, is clean, and pays this much,
+ * once a hill: off a top the bird rode up to, not a skip. Land near a top fast enough and the hill throws the
+ * bird off again. A flight like that, off the rise it has just come down on without riding through a hollow
+ * first, can come down smooth but never clean, and nor can a hop that comes down on the way up a hill (Ramsey,
+ * 2026-10-11: "i might bounce a little then get a clean … two cleans on one hill which shouldn't work"). A
+ * smooth landing that isn't clean doesn't end a streak either.
+ */
 export const CLEAN_ANGLE = 0.22
 const CLEAN_AIR = 0.3
 const CLEAN_BOOST = 1.05
@@ -365,6 +372,11 @@ export type Bird = {
   /** Seconds since it last left the ground, and the highest it's been since. */
   air: number
   peak: number
+  /**
+   * Whether it has ridden through a hollow since it last came down (or since the go). A flight that leaves
+   * without one is a skip off the same rise, and its landing can't be clean (CLEAN_ANGLE).
+   */
+  hollow: boolean
   /** Seconds since the go. */
   t: number
   /** Clean landings this run, the streak of them now, and the longest. */
@@ -391,6 +403,7 @@ export function newBird(h: Hills): Bird {
     ground: true,
     air: 0,
     peak: heightAt(h, 0),
+    hollow: true,
     t: 0,
     clean: 0,
     streak: 0,
@@ -437,6 +450,7 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
       const n2 = Math.sqrt(1 + d2 * d2)
       b.vx = b.s / n2
       b.vy = (b.s * d2) / n2
+      if (curveAt(h, b.x) > 0) b.hollow = true
     }
   } else {
     b.vy -= g * DT
@@ -460,7 +474,8 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
       const speed = Math.hypot(b.vx, b.vy)
       // What runs along the hill is kept; landing into it costs the rest, down to a floor.
       let s = speed * Math.max(LAND_FLOOR, along / Math.max(0.001, speed))
-      if (along > 0 && angle < cleanAngleFor(b.peak - floor) && b.air > CLEAN_AIR) {
+      const smooth = along > 0 && angle < cleanAngleFor(b.peak - floor)
+      if (smooth && d < 0 && b.air > CLEAN_AIR && b.hollow) {
         s *= CLEAN_BOOST
         b.clean += 1
         b.streak += 1
@@ -470,10 +485,12 @@ export function step(h: Hills, b: Bird, hold: boolean): StepEvent {
         b.streak = 0
         ev = 'thump'
       } else {
-        // Off a flight, a landing that isn't clean ends the streak; a little hop doesn't.
-        if (b.air > CLEAN_AIR) b.streak = 0
+        // Off a flight, a landing that isn't smooth ends the streak; a little hop doesn't, nor a smooth skip or one
+        // onto the way up a hill.
+        if (b.air > CLEAN_AIR && !smooth) b.streak = 0
         ev = 'land'
       }
+      b.hollow = curveAt(h, b.x) > 0
       b.s = Math.max(MIN_SPEED, s)
       b.ground = true
       b.y = floor

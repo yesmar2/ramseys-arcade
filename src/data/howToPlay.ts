@@ -453,7 +453,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 16% faster than the blue bird, up to platinum at 39%' },
     ],
     ends: 'Over the finish line. Fly it as often as you like.',
-    tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face. Three clean landings in a row and the bird glows: keep landing clean and it can keep going faster.',
+    tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face. Three clean landings in a row and the bird glows: keep landing clean and it can keep going faster. A clean landing is down a slope, one a hill: a bounce doesn’t count.',
     counts: [
       {
         what: 'Today’s hills',
