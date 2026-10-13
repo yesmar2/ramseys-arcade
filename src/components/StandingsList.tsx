@@ -257,6 +257,8 @@ export function StandingsList({
   const leaderScore = standings[0]?.score ?? 0
   const standing = feed.you
   const below = standing && standing.rank != null && standing.rank > rows.length ? standing : null
+  // A phone shows the top five and your own row past them: from the seventh on, a gap between says it skips some.
+  const skipsTo = !opened && you ? (rows.find((row) => row.name === you && row.rank > 6)?.rank ?? null) : null
   const lastRows = last?.expected && last.rows ? Math.min(5, last.rows.length) : 0
   const lastTop = last?.rows?.[0]?.score ?? 0
   const hasFoot = left > 0 || (!opened && rows.length > 5)
@@ -342,6 +344,11 @@ export function StandingsList({
       ) : (
         <ol className="sb-rows">
           {rows.flatMap((row) => [
+            row.rank === skipsTo ? (
+              <li key="phone-gap" className="sb-row sb-row--gap sb-row--phone-gap" aria-hidden="true">
+                ⋯
+              </li>
+            ) : null,
             <StandingRow
               key={row.name}
               row={row}

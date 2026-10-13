@@ -25,6 +25,18 @@ function dailyPlayLabel(slug: string): string {
 }
 
 /**
+ * The games whose screen draws its own HUD where the hero writes over it: along the top, under the high score
+ * (Pileup's Hold and Next, Bop's bezel), and along the bottom, under Press start (Frenzy's lives, bar and chain,
+ * and on a phone Pileup's pieces up next and Bop's Spin). Their game plays clear of what's written over it (hub.css
+ * .gh-screen--hud-top, .gh-screen--hud-low), so the two never land on each other.
+ */
+const HUD_EDGES: Readonly<Partial<Record<string, { top?: boolean; low?: boolean }>>> = {
+  bop: { top: true, low: true },
+  pileup: { top: true, low: true },
+  frenzy: { low: true },
+}
+
+/**
  * The top of a game's page: its name and a way to play, beside its screen,
  * where the game plays itself the way the cabinet by an arcade's door runs its
  * demo, under the high score and whose it is. On a phone, once the page has
@@ -42,8 +54,8 @@ export function GameHubHero({
   game: Game
   accent: string
   canPlay: boolean
-  /** The game's all-time best run, for its screen. */
-  highScore: LeaderboardEntry | null
+  /** The game's all-time best run, for its screen: null when nobody has one, undefined while it isn't known. */
+  highScore: LeaderboardEntry | null | undefined
 }) {
   const playHref = gamePlayHref(game.slug)
   // The boards' group, when they show one: the high score on the screen is then the group's.
@@ -75,6 +87,11 @@ export function GameHubHero({
   const plays = hasGamePreview(game.slug) || (daily && hasDayPreview(game.slug))
   // A day's track, course, cave and hills are drawn dark in either theme: the high score over them stays dark too.
   const night = daily && hasDayPreview(game.slug)
+  // The high score is written over the screen's top for a ranked game, Press start over its bottom when it plays here.
+  const hud = plays ? HUD_EDGES[game.slug] : undefined
+  const screenClass = ['gh-screen', hud?.top && ranked ? 'gh-screen--hud-top' : '', hud?.low && canPlay ? 'gh-screen--hud-low' : '']
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <section
@@ -141,7 +158,7 @@ export function GameHubHero({
 
       {/* The game on its screen (a daily's, today): its thumb until the first frame is down. */}
       <a
-        className="gh-screen"
+        className={screenClass}
         href={canPlay ? playHref : gameHref(game.slug)}
         tabIndex={-1}
         aria-hidden="true"
@@ -157,7 +174,13 @@ export function GameHubHero({
             <span className="gh-screen__hi">
               {daily ? '1st today' : 'Hi score'}
               {group ? ` · ${group}` : ''}
-              <b>{highScore ? formatLeaderboardScore(game.slug, highScore.score) : 'Open'}</b>
+              {/* The score as the boards print it, its units lower case (54.759s). Open only when nobody has one:
+                  a board on its way, or one that couldn't be read, is a dash. */}
+              {highScore ? (
+                <b className="gh-screen__score">{formatLeaderboardScore(game.slug, highScore.score)}</b>
+              ) : (
+                <b>{highScore === null ? 'Open' : '–'}</b>
+              )}
             </span>
             {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}
           </span>

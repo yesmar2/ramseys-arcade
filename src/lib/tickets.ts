@@ -176,6 +176,8 @@ type LaddersCopy = { at: number; ladders: Record<string, TicketLadder> }
 let ladders: LaddersCopy | null = null
 let laddersRead = false
 let askingLadders: Promise<void> | null = null
+/** The last ask didn't come: How to play goes without its tickets, rather than holding room for them. */
+let laddersFailed = false
 
 function laddersNow(): LaddersCopy | null {
   if (!laddersRead) {
@@ -195,6 +197,7 @@ function laddersNow(): LaddersCopy | null {
 
 function askLadders() {
   if (askingLadders) return
+  laddersFailed = false
   askingLadders = api<{ ladders: Record<string, TicketLadder> }>('/tickets/ladders')
     .then((reply) => {
       ladders = { at: Date.now(), ladders: reply.ladders }
@@ -203,13 +206,14 @@ function askLadders() {
       } catch {
         // Kept for this visit.
       }
-      window.dispatchEvent(new Event(LADDERS_EVENT))
     })
     .catch(() => {
       // How to play goes without its tickets until the next ask.
+      laddersFailed = true
     })
     .finally(() => {
       askingLadders = null
+      window.dispatchEvent(new Event(LADDERS_EVENT))
     })
 }
 
@@ -218,14 +222,27 @@ function subscribeLadders(onChange: () => void) {
   return () => window.removeEventListener(LADDERS_EVENT, onChange)
 }
 
-/** What a run of this game pays, step by step, as the API has it: kept on the device, asked for again every few hours. */
-export function useTicketLadder(slug: string): TicketLadder | null {
+/**
+ * Ask for the ladders unless this device's copy is fresh: by How to play as it opens, and by a game's page ahead
+ * of it (GameHubHowTo), so the panel opens with its tickets in it rather than taking them in after.
+ */
+export function preloadTicketLadders() {
+  const now = laddersNow()
+  if (!now || Date.now() - now.at > LADDERS_FRESH_MS) askLadders()
+}
+
+/**
+ * What a run of this game pays, step by step, as the API has it: kept on the device, asked for again every few
+ * hours. Undefined while this device has none yet and they're still to come; null for none.
+ */
+export function useTicketLadder(slug: string): TicketLadder | null | undefined {
   const copy = useSyncExternalStore(subscribeLadders, laddersNow, () => null)
+  const failed = useSyncExternalStore(subscribeLadders, () => laddersFailed, () => false)
   useEffect(() => {
-    const now = laddersNow()
-    if (!now || Date.now() - now.at > LADDERS_FRESH_MS) askLadders()
+    preloadTicketLadders()
   }, [])
-  return copy?.ladders[slug] ?? null
+  if (copy) return copy.ladders[slug] ?? null
+  return failed ? null : undefined
 }
 
 /** How a count of tickets reads: 1,284 tickets, 1 ticket. */

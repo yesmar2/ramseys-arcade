@@ -392,6 +392,34 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
   color: color-mix(in srgb, var(--gh-accent) 58%, #10281c);
 }
 
+/* A run's score keeps the boards' lower case units (54.759s) under the strip's capitals. */
+.gh-screen__score {
+  text-transform: none;
+}
+
+/*
+ * A game whose screen draws its own HUD where the hero writes over it (GameHubHero HUD_EDGES) plays clear of what's
+ * written, in bands of the screen's own: under the high score along the top, over Press start along the bottom, its
+ * edge fading into each band.
+ */
+.gh-screen--hud-top {
+  --gh-hud-top: 2.5rem;
+  --gh-hud-top-fade: 0.75rem;
+}
+
+.gh-screen--hud-low {
+  --gh-hud-low: 2.25rem;
+  --gh-hud-low-fade: 0.75rem;
+}
+
+.gh-screen--hud-top .gh-screen__game,
+.gh-screen--hud-low .gh-screen__game {
+  top: var(--gh-hud-top, 0rem);
+  height: calc(100% - var(--gh-hud-top, 0rem) - var(--gh-hud-low, 0rem));
+  -webkit-mask-image: linear-gradient(transparent, #000 var(--gh-hud-top-fade, 0rem), #000 calc(100% - var(--gh-hud-low-fade, 0rem)), transparent);
+  mask-image: linear-gradient(transparent, #000 var(--gh-hud-top-fade, 0rem), #000 calc(100% - var(--gh-hud-low-fade, 0rem)), transparent);
+}
+
 .gh-screen__who {
   letter-spacing: 0.08em;
 }
@@ -756,6 +784,15 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
 
   body:has(.install-prompt) .gh-float {
     bottom: calc(11.4rem + env(safe-area-inset-bottom));
+  }
+
+  /* Room at the foot of the page for Play over the tab bar's (chrome.css), so it never sits on the footer's last lines. */
+  body:has(> .site-tabs):has(> .gh-float) {
+    padding-bottom: calc(9.6rem + env(safe-area-inset-bottom));
+  }
+
+  body:has(> .site-tabs):has(> .gh-float):has(.install-prompt) {
+    padding-bottom: calc(15.2rem + env(safe-area-inset-bottom));
   }
 }
 

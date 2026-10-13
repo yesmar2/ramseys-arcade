@@ -1,7 +1,8 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { Game } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
+import { preloadTicketLadders } from '../lib/tickets'
 import { HowToPlay } from './HowToPlay'
 import { Panel, PanelHead } from './Panel'
 import { WhatCounts } from './WhatCounts'
@@ -15,6 +16,10 @@ import { WhatCounts } from './WhatCounts'
 export function GameHubHowTo({ game, className }: { game: Game; className?: string }) {
   const [open, setOpen] = useState(false)
   const titleId = useId()
+  // Its Tickets part is the API's: asked for with the page, so the panel opens whole.
+  useEffect(() => {
+    preloadTicketLadders()
+  }, [])
   if (!howToPlayFor(game.slug)) return null
   return (
     <>

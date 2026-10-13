@@ -194,17 +194,12 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     if (top < 0 || top > window.innerHeight * 0.5) bar.scrollIntoView({ block: 'start' })
   }, [tabKey])
 
-  if (!game) {
-    return (
-      <PageShell>
-        <p className="lb-empty">That game isn’t on the board.</p>
-      </PageShell>
-    )
-  }
+  // A game the site doesn't have never gets here: its address is Game Over (useHashRoute parseUrl).
+  if (!game) return null
 
   const accent = resolveGameAccent(slug, game.accent)
   const shelf = wallGames(device)
-  const more = moreLike(game, shelf)
+  const { games: more, alike } = moreLike(game, shelf)
   const style = {
     '--gh-accent': accent,
     '--gh-ink': inkOn(accent),
@@ -229,7 +224,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
       <section className="gh-shelf" aria-labelledby="gh-shelf-title" data-hunt={shelfHunt}>
         <div className="gh-shelf__head">
           <h2 id="gh-shelf-title" className="gh-shelf__title">
-            More like {game.name}
+            {alike ? `More like ${game.name}` : 'More games'}
           </h2>
           <a className="gh-more" href={`${homeHref()}#games`}>
             All {shelf.length} games

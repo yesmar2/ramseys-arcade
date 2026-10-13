@@ -28,6 +28,7 @@ import {
   type HuntBug,
 } from './bugHuntPick'
 import { api, LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
+import { possessive } from './possessive'
 import { GAMES_WITH_RECORDS } from './records'
 import { hashString } from './seededRandom'
 
@@ -94,10 +95,6 @@ export type HuntAnchor = {
   thing: string
   /** What that corner of the site is for, said once it's caught. */
   lesson: string
-}
-
-function possessive(name: string): string {
-  return name.endsWith('s') ? `${name}’` : `${name}’s`
 }
 
 const GAME_PAGE_LESSON = 'Every game has a page of its own: its board, its records, the events it’s in and how to play.'

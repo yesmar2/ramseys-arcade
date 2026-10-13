@@ -8,20 +8,23 @@ import { getActiveTournamentsForGame, type TournamentSummary } from '../lib/tour
  * RecordBookView): the all-time high score for the screen, and the events the game is in.
  */
 
-/** The game's all-time best run, for the high score on its screen. */
-export function useHubHighScore(slug: LeaderboardGame | null, groupId: string | null): LeaderboardEntry | null {
-  const [top, setTop] = useState<LeaderboardEntry | null>(null)
+/**
+ * The game's all-time best run, for the high score on its screen: null when nobody has a run on it, undefined
+ * while it's on its way or when it couldn't be read, which never says the board is empty.
+ */
+export function useHubHighScore(slug: LeaderboardGame | null, groupId: string | null): LeaderboardEntry | null | undefined {
+  const [top, setTop] = useState<LeaderboardEntry | null | undefined>(undefined)
   useEffect(() => {
     if (!slug) return
     let cancelled = false
-    setTop(null)
+    setTop(undefined)
     // A daily's all time is its day points, not a run: its screen shows who's 1st today instead.
     getLeaderboard(slug, isDailyGame(slug) ? 'daily' : 'all', undefined, { limit: 1 })
       .then((board) => {
         if (!cancelled) setTop(board.entries[0] ?? null)
       })
       .catch(() => {
-        if (!cancelled) setTop(null)
+        /* left unknown: a board that couldn't be read isn't an empty one */
       })
     return () => {
       cancelled = true

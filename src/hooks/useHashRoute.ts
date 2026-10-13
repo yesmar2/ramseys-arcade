@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { isDailyGame } from '../data/games'
+import { getGame, isDailyGame } from '../data/games'
 import { boardPeriodFor } from '../lib/allTime'
 import {
   DEFAULT_PERIOD_EVENT,
@@ -119,8 +119,10 @@ const GAME_SLUG_ALIASES: Record<string, string> = {
   'wobble-run': 'wobblerun',
 }
 
+/** A game's slug as the site writes it, from an address in any case (/games/Snake) or with an old name. */
 export function canonicalGameSlug(slug: string): string {
-  return GAME_SLUG_ALIASES[slug] ?? slug
+  const lower = slug.toLowerCase()
+  return GAME_SLUG_ALIASES[lower] ?? lower
 }
 
 function isLeaderboardGame(value: string): value is LeaderboardGame {
@@ -732,9 +734,12 @@ export function parseUrl(pathname: string, search: string): Route {
       : { name: 'rank', period: defaultPeriod() }
   }
 
+  // A game the site has never had (a typo, an old guess), on any of its record or game addresses, is Game Over:
+  // the page for a place the site doesn't have.
   const recordBoardMatch = /^records\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(path)
   if (recordBoardMatch) {
     const game = canonicalGameSlug(decodeURIComponent(recordBoardMatch[1]))
+    if (!getGame(game)) return { name: 'notFound' }
     const recordId = decodeURIComponent(recordBoardMatch[2])
     const periodRaw = decodeURIComponent(recordBoardMatch[3])
     return {
@@ -749,6 +754,7 @@ export function parseUrl(pathname: string, search: string): Route {
   const recordsGameMatch = /^records\/([^/]+)\/([^/]+)$/.exec(path)
   if (recordsGameMatch) {
     const game = canonicalGameSlug(decodeURIComponent(recordsGameMatch[1]))
+    if (!getGame(game)) return { name: 'notFound' }
     const second = decodeURIComponent(recordsGameMatch[2])
     if (isLeaderboardPeriod(second)) {
       return { name: 'records', game, period: bookPeriod(second) }
@@ -763,11 +769,8 @@ export function parseUrl(pathname: string, search: string): Route {
 
   const recordsMatch = /^records\/([^/]+)$/.exec(path)
   if (recordsMatch) {
-    return {
-      name: 'records',
-      game: canonicalGameSlug(decodeURIComponent(recordsMatch[1])),
-      period: 'all',
-    }
+    const game = canonicalGameSlug(decodeURIComponent(recordsMatch[1]))
+    return getGame(game) ? { name: 'records', game, period: 'all' } : { name: 'notFound' }
   }
 
   // A daily's board on one day. A date that isn't one opens its board today; a game that isn't a daily, its board.
@@ -828,6 +831,8 @@ export function parseUrl(pathname: string, search: string): Route {
 
   const gamePlayMatch = /^games\/([^/]+)\/play$/.exec(path)
   if (gamePlayMatch) {
+    const slug = canonicalGameSlug(decodeURIComponent(gamePlayMatch[1]))
+    if (!getGame(slug)) return { name: 'notFound' }
     const params = new URLSearchParams(search)
     const hole = params.get('hole')?.trim()
     const track = params.get('track')?.trim()
@@ -837,7 +842,7 @@ export function parseUrl(pathname: string, search: string): Route {
     const race = params.get('race')?.trim()
     return {
       name: 'gamePlay',
-      slug: canonicalGameSlug(decodeURIComponent(gamePlayMatch[1])),
+      slug,
       ...(hole ? { hole } : {}),
       ...(track ? { track } : {}),
       ...(day ? { day } : {}),
@@ -849,6 +854,7 @@ export function parseUrl(pathname: string, search: string): Route {
   const gameMatch = /^games\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/.exec(path)
   if (gameMatch) {
     const slug = canonicalGameSlug(decodeURIComponent(gameMatch[1]))
+    if (!getGame(slug)) return { name: 'notFound' }
     const segment = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
     const third = gameMatch[3] ? decodeURIComponent(gameMatch[3]) : undefined
     // A game's Records tab for another period than all time: `/games/{slug}/records/{period}`.

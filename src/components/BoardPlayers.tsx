@@ -219,7 +219,7 @@ export function BoardPlayers({
                     </>
                   ) : (
                     <>
-                      Show {Math.min(gap, MORE).toLocaleString()} more {hasMe ? 'below' : 'players'}
+                      Show {Math.min(gap, MORE).toLocaleString()} more {hasMe ? 'below' : gap === 1 ? 'player' : 'players'}
                       <span> · {gap.toLocaleString()} to go</span>
                     </>
                   )}
@@ -292,7 +292,7 @@ export function BoardRuns({
       <LeaderboardList entries={runs} you={youRun} playerName={you} accent={accent} shown={runs.length} period={period} formatScore={formatScore} />
       {left > 0 ? (
         <button type="button" className="gb-board__more" onClick={() => void more()} disabled={busy}>
-          {busy ? 'Loading…' : `Show ${Math.min(left, MORE).toLocaleString()} more runs`}
+          {busy ? 'Loading…' : `Show ${Math.min(left, MORE).toLocaleString()} more ${left === 1 ? 'run' : 'runs'}`}
           {busy ? null : <span> · {left.toLocaleString()} to go</span>}
         </button>
       ) : null}

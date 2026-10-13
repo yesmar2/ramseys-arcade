@@ -574,6 +574,11 @@ html[data-theme="light"] .sb-line--trophy {
   color: var(--muted);
 }
 
+/* Only a phone skips the sixth to tenth, so only a phone shows the gap before your row among them. */
+.sb-row--phone-gap {
+  display: none;
+}
+
 .sb-row--skel .sb-row__link {
   pointer-events: none;
 }
@@ -1320,6 +1325,10 @@ html[data-theme="light"] .sb-grab__pts {
 
   .sb-row--deep {
     display: none;
+  }
+
+  .sb-row--phone-gap {
+    display: block;
   }
 
   .sb-standings__more--phone {
@@ -2205,6 +2214,14 @@ html[data-theme="light"] .sb-grab__pts {
   margin: 0;
   font-weight: 600;
   color: var(--muted);
+}
+
+/* Try again, on a board that didn't come (GameBoard, DayBoard): a ghost button in the page's own type. */
+.gb-board__retry {
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 /* ---------- phones ---------- */

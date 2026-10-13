@@ -15,6 +15,7 @@ import {
   fieldSizes,
   lastFinal,
   nextUp,
+  nextUpOn,
   periodCopy,
   type BoardLine,
   type BoardTop,
@@ -62,7 +63,10 @@ const LOADING: ScoreboardData = {
 /** The summary's most runs per board: enough to find three players on all but the lopsided boards. */
 const SUMMARY_RUNS = 10
 
-/** How many players above you a board is read for the one just above. Any further down and the hint is left off. */
+/**
+ * How many players above you a board is read for the one just above, and every place a run could land in. Any
+ * further down, the API names the one just above and where beating them lands (nextUpOn).
+ */
 const NEXT_DEPTH = 500
 
 /** Below this many players, the period before gets a look in under the standings. */
@@ -184,7 +188,10 @@ export function useScoreboard(
               try {
                 // Every player above you, once each at their best, rather than every run of theirs above yours.
                 const above = (place?.place ?? 1) - 1
-                if (above > NEXT_DEPTH) return [slug, null] as const
+                if (above > NEXT_DEPTH) {
+                  const board = await getPlayerBoard(slug, period, me, { limit: 1, around: 1 }, pageGroup)
+                  return [slug, nextUpOn(board)] as const
+                }
                 const board = await getPlayerBoard(slug, period, undefined, { limit: above }, pageGroup)
                 return [slug, nextUp(board.entries, me)] as const
               } catch {

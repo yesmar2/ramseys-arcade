@@ -4,7 +4,8 @@ import { rankHref } from '../hooks/useHashRoute'
 import { applyBoardScope, withGroupFallback } from './groups'
 import { api, normalizePlayerName, type GlobalBoardEntry, type GlobalRankResult, type LeaderboardPeriod } from './leaderboard'
 import type { Standing, YouStanding } from './scoreboard'
-import type { SeasonInfo } from './season'
+import { useSeason, type SeasonInfo } from './season'
+import { seasonsBegun } from './seasonCalendar'
 
 /*
  * The season's standings: the `season` period (the API's store.ts PERIODS), the same sums as a week's or a
@@ -38,6 +39,18 @@ export type SeasonBoardResult = {
 /** Whether a season has standings to show: it's live, or it's over and they're final. */
 export function seasonHasStandings(season: SeasonInfo | null | undefined): boolean {
   return season?.status === 'live' || season?.status === 'over'
+}
+
+/**
+ * Whether a page's period tabs end in a Season tab, worked out before the API has answered too, so the tabs are
+ * drawn once rather than as three long ones and then four short ones: by the season this device kept (one that
+ * has started since is running now), and on a first visit by the calendar (lib/seasonCalendar.ts).
+ */
+export function useSeasonTab(): boolean {
+  const { season, loaded } = useSeason()
+  if (loaded) return seasonHasStandings(season)
+  if (season) return seasonHasStandings(season) || season.startsAt <= Date.now()
+  return seasonsBegun()
 }
 
 /** A page's period tabs: its own, and the Season tab after them while a season has standings. */

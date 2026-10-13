@@ -18,11 +18,12 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { formatDayPoints, formatLeaderboardScore, isDayPointsBoard } from '../lib/leaderboardFormat'
+import { possessive } from '../lib/possessive'
 import { ordinal, periodCopy, type PeriodCopy } from '../lib/scoreboard'
 import { useSeason } from '../lib/season'
-import { periodTabs, seasonHasStandings } from '../lib/seasonStandings'
+import { periodTabs, useSeasonTab } from '../lib/seasonStandings'
 import { resolveGameAccent } from '../lib/theme'
-import { BoardEmpty, BoardSkeleton } from './BoardChrome'
+import { BoardSkeleton } from './BoardChrome'
 import { PeriodLabel } from './PeriodLabel'
 import { BoardPlayers, BoardRuns } from './BoardPlayers'
 import { PlayerMark } from './PlayerMark'
@@ -91,7 +92,7 @@ const DAILY_PERIODS: readonly LeaderboardPeriod[] = ['daily', 'weekly', 'monthly
  * `period` none is on, and they're plain links, not tabs: a daily's board on a past day, whose Today is today's.
  */
 export function PeriodTabs({ slug, period }: { slug: LeaderboardGame; period?: LeaderboardPeriod }) {
-  const season = seasonHasStandings(useSeason().season) || period === 'season'
+  const season = useSeasonTab() || period === 'season'
   const periods = periodTabs(isDailyGame(slug) ? DAILY_PERIODS : VISIBLE_LEADERBOARD_PERIODS, season)
   const four = periods.length > 3
   const tabs = period != null
@@ -175,6 +176,21 @@ function BoardHead({
         </span>
       ) : null}
       {children}
+    </div>
+  )
+}
+
+/**
+ * A board that didn't come, in place of its rows: never "nobody's on it", and a way to ask again, as a past day's
+ * board has it (DayBoard).
+ */
+function BoardFailed({ retry }: { retry: () => void }) {
+  return (
+    <div className="gb-board__empty">
+      <p className="gb-board__empty-title">Couldn’t load the board.</p>
+      <button type="button" className="sb-ghost gb-board__retry" onClick={retry}>
+        Try again
+      </button>
     </div>
   )
 }
@@ -345,7 +361,7 @@ function Board({
     <section
       className="sb-card gb-board gb-board--bars"
       aria-labelledby={title ? 'gb-board-title' : undefined}
-      aria-label={title ? undefined : `${game.name}’s board`}
+      aria-label={title ? undefined : `${possessive(game.name)} board`}
       data-hunt={`b-board-${slug}`}
     >
       <BoardHead slug={slug} period={period} title={title} count={count} findRef={setFindSlot} findWait={data.loading}>
@@ -369,6 +385,8 @@ function Board({
       </p>
       {data.loading ? (
         <BarBoardSkeleton />
+      ) : data.error ? (
+        <BoardFailed retry={data.retry} />
       ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">
@@ -453,7 +471,7 @@ function PointsBoard({
     <section
       className="sb-card gb-board gb-board--bars"
       aria-labelledby={title ? 'gb-board-title' : undefined}
-      aria-label={title ? undefined : `${game.name}’s board`}
+      aria-label={title ? undefined : `${possessive(game.name)} board`}
       data-hunt={`b-board-${slug}`}
     >
       <BoardHead slug={slug} period={period} title={title} count={count} findRef={setFindSlot} findWait={data.loading} />
@@ -463,6 +481,8 @@ function PointsBoard({
       </p>
       {data.loading ? (
         <BarBoardSkeleton />
+      ) : data.error ? (
+        <BoardFailed retry={data.retry} />
       ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">
@@ -529,16 +549,10 @@ export function GamePageBoard({
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), '--gb-fill': readableFill(accent) } as CSSProperties
   // While it loads it holds the height it had last time on this device, so nothing under it jumps (lib/heldShape.ts).
+  // One that doesn't come says so in its card, under its tabs, with a way to ask again.
   const held = useHeldHeight<HTMLDivElement>(`gb-page-${slug}-${period}`, data.loading)
 
   // sb-scope: the boards' colours (boards.css), the medals' inks and the lines, as the records tab has them from .sb.
-  if (data.error) {
-    return (
-      <div id={place} className="gb gb--page sb-scope" style={style}>
-        <BoardEmpty title="Couldn’t load scores" detail="Check your connection and try again." />
-      </div>
-    )
-  }
   return (
     <div id={place} className="gb gb--page sb-scope" style={{ ...style, ...held.style }} ref={held.ref}>
       {isDayPointsBoard(slug, period) ? (

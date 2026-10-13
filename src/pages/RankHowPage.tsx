@@ -23,6 +23,7 @@ import {
 } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
+import { possessive } from '../lib/possessive'
 import { andList, barPosition, COUNTED_GAMES, ordinal, placePoints, toPass } from '../lib/profileMath'
 import {
   bestClimb,
@@ -67,7 +68,7 @@ import {
   type Standing,
 } from '../lib/rankHow'
 import { currentSeason, useSeason } from '../lib/season'
-import { periodTabs, seasonHasStandings } from '../lib/seasonStandings'
+import { periodTabs, seasonHasStandings, useSeasonTab } from '../lib/seasonStandings'
 import '../styles/rankHow.css'
 
 /*
@@ -152,7 +153,7 @@ function Crumbs({ who, period }: { who: Who; period: LeaderboardPeriod }) {
  * is); and while a season has standings, the Season after them. A group of the page's own goes along.
  */
 function PeriodTabs({ period, player, group }: { period: LeaderboardPeriod; player?: string; group?: string }) {
-  const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, seasonHasStandings(useSeason().season) || period === 'season')
+  const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, useSeasonTab() || period === 'season')
   const four = periods.length > 3
   return (
     <nav className={`seg rh-periods${four ? ' seg--four' : ''}`} aria-label="Period" style={{ '--seg-count': periods.length } as CSSProperties}>
@@ -529,7 +530,7 @@ function AddsStep({
       </p>
       <p className="rh-step__p">
         {tenth
-          ? `Only the best ten count, so a new place adds something only by beating ${whose(who)} tenth: ${gameName(tenth.slug)}’s ${tenth.points}.`
+          ? `Only the best ten count, so a new place adds something only by beating ${whose(who)} tenth: ${possessive(gameName(tenth.slug))} ${tenth.points}.`
           : `Only the best ten count. ${who.self ? 'You’re' : `${who.name} is`} on ${numberWord(n)}, so every new game adds what it pays.`}
       </p>
       <p className="rh-step__p">
@@ -828,7 +829,7 @@ function Dailies({
                 <DayTable key={w.slug} work={w} period={period} today={today} who={who} words={words} />
               ) : w.failed ? (
                 <p key={w.slug} className="rh-daily__note">
-                  {gameName(w.slug)}’s days didn’t load.
+                  {possessive(gameName(w.slug))} days didn’t load.
                 </p>
               ) : null,
             )}
@@ -963,7 +964,7 @@ function waysUp({
   const ways: { first?: Way; climb?: Way; daily?: Way; fresh?: Way } = {}
   // On ten games already, a new one adds only what it beats the tenth by: said wherever a new game's points are.
   const tenth = tenthGame(placedGames(byGame))
-  const beyond = tenth ? ` Only ${whose(who)} best ten count, so it adds what it beats ${gameName(tenth.slug)}’s ${tenth.points} by.` : ''
+  const beyond = tenth ? ` Only ${whose(who)} best ten count, so it adds what it beats ${possessive(gameName(tenth.slug))} ${tenth.points} by.` : ''
 
   const empties = data.boards.filter((b) => b.top.length === 0 && onWall(b.slug))
   if (empties[0]) {
@@ -1056,7 +1057,7 @@ function waysUp({
       .filter((slug) => byGame[slug]!.place > 1 && byGame[slug]!.total)
       .sort((a, b) => byGame[a]!.total! - byGame[b]!.total!)[0]
     const worthLine = climbing
-      ? ` Each place on ${gameName(climbing)}’s ${words.noun} is worth about ${placeWorth(byGame[climbing]!.total!)}.`
+      ? ` Each place on ${possessive(gameName(climbing))} ${words.noun} is worth about ${placeWorth(byGame[climbing]!.total!)}.`
       : ''
     ways.daily = {
       key: 'daily',
@@ -1144,7 +1145,7 @@ function waysUp({
           big: ordinal(need),
           small: need === 1 ? 'to count' : 'or better',
           title: `Play ${gameName(slug)}`,
-          text: `${on}. Only ${whose(who)} best ten count, so a run there adds something ${from}: ${ordinal(need)} pays ${placePoints(need, field)}, more than ${gameName(tenth.slug)}’s ${tenth.points}${lands}.`,
+          text: `${on}. Only ${whose(who)} best ten count, so a run there adds something ${from}: ${ordinal(need)} pays ${placePoints(need, field)}, more than ${possessive(gameName(tenth.slug))} ${tenth.points}${lands}.`,
           href: href(slug),
         }
       }

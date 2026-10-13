@@ -7,6 +7,7 @@ import {
   type LeaderboardEntry,
   type LeaderboardGame,
   type LeaderboardPeriod,
+  type PlayerBoard,
 } from './leaderboard'
 import { formatDayPoints, formatLeaderboardScore } from './leaderboardFormat'
 import { currentSeason } from './season'
@@ -328,6 +329,19 @@ export function nextUp(runsAbove: LeaderboardEntry[], me: string): BoardTop | nu
   return last && { ...last, reach: firstAt.get(last.score), places: [...firstAt.values()] }
 }
 
+/**
+ * The player directly above a viewer from the API's own reading of a board as players, asked with the viewer's
+ * name: for a board too deep to read every player above. Where beating them lands is the API's `nextPlace`, the
+ * one place above that's known.
+ */
+export function nextUpOn(board: Pick<PlayerBoard, 'you' | 'around' | 'nextPlace'>): BoardTop | null {
+  const place = board.you?.place
+  const up = place ? board.around.find((p) => p.place === place - 1) : undefined
+  if (!up || !board.nextPlace) return null
+  const name = normalizePlayerName(up.name ?? '')
+  return { name, score: up.score, avatarId: up.avatarId, reach: board.nextPlace, places: [board.nextPlace] }
+}
+
 /* ---------- the race ---------- */
 
 /**
@@ -410,12 +424,9 @@ export function youCell(
       return { a: `#${place.place}`, b: place.place === 1 ? 'You lead it' : 'Play every day to climb', tone: 'on' }
     }
     const a = best != null ? `#${place.place} · ${lineScore(line, best)}` : `#${place.place}`
-    const b =
-      place.place === 1
-        ? 'You lead it'
-        : next
-          ? `Beat ${lineScore(line, next.score)} for ${ordinal(reachFor(line, place.place, next))}`
-          : ''
+    // On the same score as the one just above, you're tied with them: only a better score moves you.
+    const beat = next && (next.score === best ? `Break the ${lineScore(line, next.score)} tie` : `Beat ${lineScore(line, next.score)}`)
+    const b = place.place === 1 ? 'You lead it' : next ? `${beat} for ${ordinal(reachFor(line, place.place, next))}` : ''
     return { a, b, tone: 'on' }
   }
   if (line.players === 1 && line.top[0]) {

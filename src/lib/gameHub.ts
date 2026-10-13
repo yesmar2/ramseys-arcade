@@ -7,10 +7,15 @@ import type { Game } from '../data/games'
 
 /* ---------- more games ---------- */
 
-/** Games to suggest from this one: its own kinds first, then the rest of the shelf. */
-export function moreLike(game: Game, shelf: Game[], count = 6): Game[] {
+/**
+ * Games to suggest from this one: its own kinds first, then the rest of the shelf. `alike` when any of them is
+ * one of its kinds: a game none shares a kind with (Putt, the shelf's one sport) is offered more games, not ones
+ * like it.
+ */
+export function moreLike(game: Game, shelf: Game[], count = 6): { games: Game[]; alike: boolean } {
   const tags = new Set(game.tags ?? [])
   const others = shelf.filter((g) => g.slug !== game.slug && !g.comingSoon)
   const shared = (g: Game) => (g.tags ?? []).filter((t) => tags.has(t)).length
-  return [...others].sort((a, b) => shared(b) - shared(a)).slice(0, count)
+  const games = [...others].sort((a, b) => shared(b) - shared(a)).slice(0, count)
+  return { games, alike: games.some((g) => shared(g) > 0) }
 }

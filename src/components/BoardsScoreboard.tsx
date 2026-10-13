@@ -27,7 +27,7 @@ import {
   type YouStanding,
 } from '../lib/scoreboard'
 import { useSeason } from '../lib/season'
-import { periodTabs, prizeLines, seasonHasStandings } from '../lib/seasonStandings'
+import { periodTabs, prizeLines, useSeasonTab } from '../lib/seasonStandings'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
@@ -371,7 +371,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const groupId = useActiveGroup()
   const data = useScoreboard(period, you, groupId)
   const season = useSeason().season
-  const seasonTab = seasonHasStandings(season)
+  const seasonTab = useSeasonTab()
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   // The season's standings draw a line under the places that win its cup, and under the ones that win a trophy.
   const lines = period === 'season' ? prizeLines(data.prizes, data.totalPlayers, season?.id ?? null, Boolean(groupId)) : null

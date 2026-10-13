@@ -59,15 +59,16 @@ export function openingBoard(board: PlayerBoard, slug: string) {
 /**
  * One game's board for a period, as it opens on the game's page: its first players, and the viewer's place
  * with the players either side, all counted by the API (one small ask, however big the board). The rest are
- * asked a page at a time as they're opened.
+ * asked a page at a time as they're opened. `retry` asks again for a board that didn't come.
  */
 export function useGameBoard(
   slug: LeaderboardGame,
   period: LeaderboardPeriod,
   playerName: string,
   groupId: string | null,
-): GameBoardData {
+): GameBoardData & { retry: () => void } {
   const [data, setData] = useState<GameBoardData>(LOADING)
+  const [asks, setAsks] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -87,7 +88,7 @@ export function useGameBoard(
     return () => {
       cancelled = true
     }
-  }, [slug, period, playerName, groupId])
+  }, [slug, period, playerName, groupId, asks])
 
-  return data
+  return { ...data, retry: () => setAsks((n) => n + 1) }
 }

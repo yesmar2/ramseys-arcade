@@ -646,7 +646,7 @@ function Board({
       ) : board.error && !board.rows.length ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">Couldn’t load the {boardName} board.</p>
-          <button type="button" className="sb-ghost" onClick={board.retry}>
+          <button type="button" className="sb-ghost gb-board__retry" onClick={board.retry}>
             Try again
           </button>
         </div>
@@ -805,8 +805,13 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
   const { course, failed: courseFailed } = useDayCourse(slug)
   const [shown, setShown] = useState({ day: FIRST_ROWS, course: FIRST_ROWS })
 
-  const dayBoard = usePagedBoard<Row, DayMeta>(
-    `${slug}|${day}|${name}|${groupId ?? ''}`,
+  // The day is checked against the game's days before its board is asked for: there's none before its first day,
+  // and today's, or one to come, is the live one.
+  const known = course != null || courseFailed
+  const beforeFirst = course != null && day < course.first
+  const notYet = course != null && day >= course.today()
+  const asked = usePagedBoard<Row, DayMeta>(
+    known && !beforeFirst && !notYet ? `${slug}|${day}|${name}|${groupId ?? ''}` : null,
     (offset, limit) =>
       getDayBoard(slug, day, name, { offset, limit }).then((b) => ({
         rows: b.entries,
@@ -815,10 +820,12 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
       })),
     shown.day,
   )
+  // While the game's days are on their way, so is the board.
+  const dayBoard = known ? asked : { ...asked, loading: true }
   const code = dayBoard.error instanceof ApiError ? dayBoard.error.code : undefined
-  const before = code === 'BEFORE_FIRST_DAY' || (course != null && day < course.first)
+  const before = code === 'BEFORE_FIRST_DAY' || beforeFirst
   // Today's board, or one to come: today's is the live one, which says so.
-  const ahead = code === 'DAY_AHEAD' || dayBoard.meta?.final === false || (course != null && day >= course.today())
+  const ahead = code === 'DAY_AHEAD' || dayBoard.meta?.final === false || notYet
 
   const courseBoard = usePagedBoard<Row, CourseMeta>(
     course?.board && !before && !ahead ? `${slug}|${day}|${name}|course` : null,
@@ -841,9 +848,12 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
   if (ahead) return null
 
   if (before) {
+    // Its first day's board, while that's a past day's: a first day that's today is today's board, the one way on.
+    const first = course != null && course.first < course.today() ? course.first : null
     return (
       <div className="sb gb db" style={style}>
         <BoardEmpty
+          heading
           title="No board that day"
           detail={
             course
@@ -852,12 +862,12 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
           }
           action={
             <>
-              {course ? (
-                <a className="gb-cta" href={dayBoardHref(slug, course.first)}>
+              {first ? (
+                <a className="gb-cta" href={dayBoardHref(slug, first)}>
                   See its first day
                 </a>
               ) : null}
-              <a className="sb-ghost" href={boardPlaceHref(slug, 'daily')}>
+              <a className={first ? 'sb-ghost' : 'gb-cta'} href={boardPlaceHref(slug, 'daily')}>
                 Today’s board
               </a>
             </>
