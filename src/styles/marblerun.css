@@ -67,6 +67,24 @@ html[data-theme='dark'] .marblerun--fullscreen {
     0 0 14px rgba(var(--surface-rgb), 0.75);
 }
 
+/* Three figures and the clock don't fit across a phone: the falls go (each one has its notice, and the card counts them). */
+@media (max-width: 420px) {
+  .marblerun .play-stats .play-stat:nth-child(3) {
+    display: none;
+  }
+}
+
+/*
+ * On a narrow one, a best and a clock both past a minute still meet: the best goes too, and the hairline before the
+ * split with it (the start and pause cards show the best, and the split is against the run you race).
+ */
+@media (max-width: 380px) {
+  .marblerun .play-stats .play-stat:nth-child(1),
+  .marblerun .play-stats .play-stat:nth-child(2)::before {
+    display: none;
+  }
+}
+
 .marblerun__delta--good {
   color: var(--marblerun-good);
 }
