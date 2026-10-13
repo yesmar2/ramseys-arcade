@@ -15,8 +15,9 @@ import { gatePassword, makePass, PASS_COOKIE, PASS_DAYS, passFromCookies, passVa
  * its own:
  * - SITE_PASSWORD closes the site behind the gate. Set it and redeploy to close; delete it and redeploy to open.
  *   Changing it signs everyone out.
- * - CANONICAL_HOST is the address the site goes by (blipka.com). Any other address on production (www, the old
- *   ramseys-arcade.vercel.app) answers with a permanent redirect to it, path and all.
+ * - CANONICAL_HOST is the address the site goes by (blipka.com). Any other address on production (the old
+ *   ramseys-arcade.vercel.app) answers with a permanent redirect to it, path and all. Its www twin is left to
+ *   Vercel's domain setting, whichever way that goes.
  *
  * A browser whose service worker kept the app from before opens it without asking the server, so the app asks
  * instead (src/lib/gate.ts): GET /__gate says whether it may run here, or where it lives now.
@@ -42,7 +43,7 @@ const OPEN = new Set([SOON, '/favicon.svg', '/apple-touch-icon.png', '/og.png', 
 export default async function middleware(request) {
   const url = new URL(request.url)
   const home = canonicalHost()
-  if (home && url.hostname !== home && !keepsItsHost(url)) {
+  if (home && !sameSite(url.hostname, home) && !keepsItsHost(url)) {
     if (url.pathname === GATE) return json({ ok: false, go: `https://${home}` })
     return Response.redirect(`https://${home}${url.pathname}${url.search}`, 308)
   }
@@ -61,6 +62,18 @@ export default async function middleware(request) {
   }
   if (OPEN.has(url.pathname) || hasPass(request, password)) return undefined
   return rewrite(new URL(SOON, url))
+}
+
+/**
+ * The site's own address, with www or without. Which of the two the other redirects to is Vercel's domain
+ * setting (Settings → Domains); redirecting between them here too sent visitors round in a loop the day
+ * blipka.com went up (Vercel sent blipka.com to www, this sent www back).
+ * @param {string} host
+ * @param {string} home
+ */
+function sameSite(host, home) {
+  const bare = (/** @type {string} */ name) => name.replace(/^www\./, '')
+  return bare(host) === bare(home)
 }
 
 /** The address the live site goes by, when one is set; only production redirects to it. */
