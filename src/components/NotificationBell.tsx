@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { getGame, isDailyGame } from '../data/games'
 import { useFriends } from '../hooks/useFriends'
-import { dailyTabHref, gamePlayHref, notificationSettingsHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, dailyTabHref, gamePlayHref, notificationSettingsHref, recordsPlaceHref } from '../hooks/useHashRoute'
 import { useInboxLook, type NotificationsState } from '../hooks/useNotifications'
 import { AVATAR_PINS, AVATAR_RINGS, type AvatarPin, type AvatarRing } from '../lib/avatars'
 import { inkOn } from '../lib/color'
@@ -204,6 +204,18 @@ function ordinalSuffix(n: number): string {
 
 /* ------------------------------------------------------------ actions --- */
 
+/**
+ * Where a note leads: a daily's record note where dailyRecordNote says, a podium note to the daily's board under
+ * today's card (its link is the daily's page: landed on the board, BOARD_PLACE), any other its own link.
+ */
+function noteHref(n: AppNotification): AppNotification['href'] {
+  const daily = dailyRecordNote(n)
+  if (daily) return daily.href
+  const game = n.meta.game
+  if (n.kind === 'podium-lost' && game && n.href === dailyTabHref(game)) return boardPlaceHref(game, 'daily')
+  return n.href
+}
+
 /** A record's page in its book, /records/<game>/<id>/…, where record-lost notes led before a daily's courses left the books. */
 const RECORD_LINK = /^\/records\/[^/?#]+\/([^/?#]+)/
 
@@ -241,8 +253,9 @@ function dailyRecordNote(n: AppNotification): DailyRecordNote | null {
     const own = n.href && !n.href.startsWith(gamePlayHref(game)) ? n.href : dailyTabHref(game, 'past')
     return { href: own, course: false, winBack: null }
   }
+  // One like Days played in a row: the Records tab, landed on (RECORDS_PLACE).
+  if (!isCourseRecord({ id: recordId })) return { href: recordsPlaceHref(game), course: false, winBack: n.meta.playHref ?? gamePlayHref(game) }
   const href = dailyRecordHref(game, recordId) ?? dailyTabHref(game, 'records')
-  if (!isCourseRecord({ id: recordId })) return { href, course: false, winBack: n.meta.playHref ?? gamePlayHref(game) }
   // A Hot Lap track takes any lap, any day. A hole's or a day's holder has their one result on it already.
   const winBack = recordShut(game, { id: recordId }, true) ? null : coursePlayHref(game, { id: recordId })
   return { href, course: true, winBack }
@@ -349,10 +362,10 @@ function Actions({
         playHref && (n.meta.endsAt ?? 0) > now ? (
           <>
             {link(playHref, 'Win it back', true)}
-            {link(n.href, 'See the board ›')}
+            {link(noteHref(n), 'See the board ›')}
           </>
         ) : (
-          link(n.href, 'See the board ›')
+          link(noteHref(n), 'See the board ›')
         )
       break
     case 'record-lost': {
@@ -409,7 +422,7 @@ function Row({
   const needs = needsYou(n, now)
   const hot = needs && isClosing(n, now)
   const title = liveTitle(n, now)
-  const href = dailyRecordNote(n)?.href ?? n.href
+  const href = noteHref(n)
   const endsAt = n.meta.endsAt
   const clock = needs && isMatch(n) && endsAt != null ? countdown(endsAt - now) : null
   const cls = ['inbox-row', needs ? 'inbox-row--needs' : '', hot ? 'inbox-row--hot' : ''].filter(Boolean).join(' ')

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { getGame, isRankedGame } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
-import { dailyTabHref, gameBoardHref, recordsHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, recordsPlaceHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { fitCardToSpace } from '../lib/cardFit'
@@ -144,7 +144,7 @@ export function GamePanelBody({
   const ranked = isRankedGame(slug)
   // A daily's records are on its page's Records tab, not in the record books.
   const hasRecords = ranked && (daily || gameHasRecords(slug))
-  const recordsLink = daily ? dailyTabHref(slug, 'records') : recordsHref(slug)
+  const recordsLink = recordsPlaceHref(slug)
   const recordsLabel = daily ? 'Records' : 'Record books'
   // In an event with a set number of tries: how many are left, and when one counts.
   const tournament = useTournamentPlay()
@@ -152,7 +152,7 @@ export function GamePanelBody({
   const showBest = !hideBest && !past
   const showRecord = !hideRecord && !past && ranked
   // A past course's board link: its row, which holds its board (or its day, where it has none).
-  const boardLink = past ? past.href : board && ranked ? gameBoardHref(slug) : null
+  const boardLink = past ? past.href : board && ranked ? boardPlaceHref(slug) : null
   const boardLabel = past
     ? pastKind(slug, past.kind) === 'board'
       ? `This ${dailyWords(slug).course}’s ${BOARD_NAMES.allTime} board`

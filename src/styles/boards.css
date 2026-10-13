@@ -1798,6 +1798,12 @@ html[data-theme="light"] .sb-grab__pts {
   min-width: 0;
 }
 
+/* A board a link lands on, on its game's page (GameHubPage, BOARD_PLACE): just off the top, where a tab change
+ * lands the tabs (dailyTabs.css). */
+.gb--page[id] {
+  scroll-margin-top: 0.75rem;
+}
+
 .gb-board {
   padding: 1.4rem 1.2rem 1.2rem;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { isRankedGame } from '../data/games'
-import { dailyTabHref, gameBoardHref, recordsHref } from '../hooks/useHashRoute'
+import { BOARD_PLACE, dailyTabHref, gameBoardHref, RECORDS_PLACE, recordsHref } from '../hooks/useHashRoute'
 import { dailyWords, type DailyTab } from '../lib/dailyWords'
 import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import '../styles/dailyTabs.css'
@@ -88,7 +88,13 @@ export function DailyTabs({
   return (
     // The tabs are a bug hunt hiding place (lib/bugHunt.ts): a ranked daily's "its page's tabs"; on one just for
     // fun, where its board's table was.
-    <div className={`dtabs${tabs.length === 2 ? ' dtabs--two' : ''}`} ref={ref} data-hunt={isRankedGame(slug) ? `g-board-${slug}` : `b-board-${slug}`}>
+    // On its Records tab the bar is where a link to the records lands (RECORDS_PLACE, useHashRoute).
+    <div
+      id={tab === 'records' ? RECORDS_PLACE : undefined}
+      className={`dtabs${tabs.length === 2 ? ' dtabs--two' : ''}`}
+      ref={ref}
+      data-hunt={isRankedGame(slug) ? `g-board-${slug}` : `b-board-${slug}`}
+    >
       <nav className="dtabs__list" aria-label={`${gameName} pages`}>
         {tabs.map((t) => (
           <a
@@ -137,8 +143,14 @@ export function GameTabs({
     { key: 'records', label: 'Records', href: recordsHref(slug, recordsPeriod), icon: <RecordsIcon /> },
   ]
   return (
-    // A bug hunt hiding place: "its page's tabs" (lib/bugHunt.ts).
-    <div className="dtabs dtabs--two dtabs--game" ref={ref} data-hunt={`g-board-${slug}`}>
+    // A bug hunt hiding place: "its page's tabs" (lib/bugHunt.ts). It's where a link to the board or the records
+    // lands, whichever tab is open (BOARD_PLACE, RECORDS_PLACE: useHashRoute).
+    <div
+      id={tab === 'board' ? BOARD_PLACE : RECORDS_PLACE}
+      className="dtabs dtabs--two dtabs--game"
+      ref={ref}
+      data-hunt={`g-board-${slug}`}
+    >
       <nav className="dtabs__list" aria-label={`${gameName} pages`}>
         {tabs.map((t) => (
           <a key={t.key} className="dtabs__tab" href={t.href} aria-current={t.key === tab ? 'page' : undefined}>

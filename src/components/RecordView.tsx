@@ -4,7 +4,7 @@ import { useRecordPage, type RecordPageData } from '../hooks/useRecordPage'
 import type { BoardPlayer } from '../lib/gameBoard'
 import { fetchRecordBoard } from '../lib/records'
 import { BoardPlayers } from './BoardPlayers'
-import { gamePlayHref, rankHref, recordHref, recordsHref, recordsIndexHref } from '../hooks/useHashRoute'
+import { gamePlayHref, rankHref, recordHref, recordsIndexHref, recordsPlaceHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
 import { bannerText, inkOn, readableFill } from '../lib/color'
@@ -177,7 +177,7 @@ function Banner({
             Record books
           </a>
           <span aria-hidden="true">/</span>
-          <a href={recordsHref(game, period)}>{meta.name}</a>
+          <a href={recordsPlaceHref(game, period)}>{meta.name}</a>
           {label ? (
             <>
               <span aria-hidden="true" className="rcd-crumb__here">
@@ -223,7 +223,7 @@ function Banner({
               {deviceRequirementLabel(meta)}
             </p>
           )}
-          <a className="home-banner__ghost" href={recordsHref(game, period)}>
+          <a className="home-banner__ghost" href={recordsPlaceHref(game, period)}>
             <BookIcon />
             The {meta.name} book
           </a>
@@ -623,7 +623,7 @@ function NearbyCard({
           )
         })}
       </ul>
-      <a className="sb-link rcd-near__all" href={recordsHref(game, period)}>
+      <a className="sb-link rcd-near__all" href={recordsPlaceHref(game, period)}>
         All {book.length} in the {name} book
         <ChevronIcon />
       </a>
@@ -652,7 +652,7 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
           title={data.missing ? 'That record isn’t in the book' : 'Couldn’t load this record'}
           detail={data.missing ? `The ${meta.name} book has every record the game keeps.` : 'Check your connection and try again.'}
           action={
-            <a className="sb-link" href={recordsHref(game, period)}>
+            <a className="sb-link" href={recordsPlaceHref(game, period)}>
               Open the {meta.name} book <ChevronIcon />
             </a>
           }

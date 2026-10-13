@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { getGame, isDailyGame } from '../data/games'
-import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { useRunsAround, type BoardRow, type GameBest } from '../hooks/useProfileBoards'
 import { inkOn, readableFill } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -156,7 +156,7 @@ export function ProfileBestBoard({
           <a className="pbest__play" href={gamePlayHref(best.slug)}>
             Play {gameName}
           </a>
-          <a className="pbest__board" href={gameBoardHref(best.slug as LeaderboardGame, 'all')}>
+          <a className="pbest__board" href={boardPlaceHref(best.slug as LeaderboardGame, 'all')}>
             Full board
           </a>
         </div>

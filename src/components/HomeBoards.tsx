@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGame, isDailyGame, isGameListed } from '../data/games'
-import { recordsHref, siteRecordsHref, standingsHref } from '../hooks/useHashRoute'
+import { recordsPlaceHref, siteRecordsHref, standingsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
@@ -178,7 +178,7 @@ function RecordBook({ slug, records }: { slug: string; records: RecordSummary[] 
           <GameThumbArt slug={slug} accent={accent} />
         </span>
         <h3 className="hb-panel__title">{game?.name ?? slug} record book</h3>
-        <a className="home-section__more" href={recordsHref(slug)}>
+        <a className="home-section__more" href={recordsPlaceHref(slug)}>
           Open ›
         </a>
       </div>

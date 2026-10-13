@@ -10,7 +10,8 @@ import { PageShell } from '../components/PageShell'
 import { gamePlayableOn, getGame, isRankedGame, wallGames } from '../data/games'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
 import { useHubEvents, useHubHighScore } from '../hooks/useGameHub'
-import { dailyTabHref, homeHref, navigate, periodFromRoute, useRoute } from '../hooks/useHashRoute'
+import { BOARD_PLACE, dailyTabHref, homeHref, navigate, periodFromRoute, RECORDS_PLACE, useRoute } from '../hooks/useHashRoute'
+import { scrollToPlace } from '../lib/scrollToPlace'
 import { boardPeriodFor } from '../lib/allTime'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -179,10 +180,14 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   }, [daily, ranked, tabFromRoute, slug])
 
   // A new tab keeps the hero and brings the tabs up to the top, unless they're already in the top half
-  // of the screen with the tab under them in view. A past course's row, when one is named, lands itself.
+  // of the screen with the tab under them in view. A past course's row, when one is named, lands itself. So does
+  // the board or the records when a link on this page names them (#board, #records: "its board" on a daily's
+  // Records tab): the app's own landing on a link's place is for a new page, and a tab is the same page.
   useEffect(() => {
     if (shownTab.current === tabKey) return
     shownTab.current = tabKey
+    const hash = window.location.hash.slice(1)
+    if (hash === BOARD_PLACE || hash === RECORDS_PLACE) return scrollToPlace(() => document.getElementById(hash))
     const bar = tabsRef.current
     if (!bar || window.location.hash.startsWith(COURSE_ANCHOR)) return
     const top = bar.getBoundingClientRect().top
@@ -282,7 +287,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                 </div>
                 <div className={`gh-today__below${ranked ? ' gh-today__below--board' : ''}`}>
                   {ranked && boardSlug ? (
-                    <GamePageBoard slug={boardSlug} period={boardPeriod} title="The board" />
+                    <GamePageBoard slug={boardSlug} period={boardPeriod} title="The board" place={BOARD_PLACE} />
                   ) : (
                     // Just for fun: your days, then today part by part (YourDays.tsx).
                     <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
@@ -317,7 +322,13 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
         ) : (
           <>
             {boardSlug ? (
-              <GamePageBoard slug={boardSlug} period={boardPeriod} noteHunt={gameTabs ? undefined : `g-stand-${game.slug}`} />
+              <GamePageBoard
+                slug={boardSlug}
+                period={boardPeriod}
+                noteHunt={gameTabs ? undefined : `g-stand-${game.slug}`}
+                // With tabs, the tabs are where a link to the board lands; with none, the board itself.
+                place={gameTabs ? undefined : BOARD_PLACE}
+              />
             ) : null}
             {eventsCard}
           </>

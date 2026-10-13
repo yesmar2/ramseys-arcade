@@ -4,7 +4,7 @@ import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
 import { useSaveWait } from '../hooks/useSaveWait'
-import { dailyTabHref, gameBoardHref, gameHref, leaderboardHref, navigate, recordsHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, gameHref, leaderboardHref, navigate, recordsPlaceHref } from '../hooks/useHashRoute'
 import { archiveDayWords } from '../lib/archive'
 import { currentAccountId, linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
 import {
@@ -138,7 +138,7 @@ function leavePlayTo(href: string) {
 
 function boardsHref(gameSlug: string, period: LeaderboardPeriod) {
   if ((LEADERBOARD_GAMES as readonly string[]).includes(gameSlug)) {
-    return gameBoardHref(gameSlug as LeaderboardGame, period)
+    return boardPlaceHref(gameSlug as LeaderboardGame, period)
   }
   return gameHref(gameSlug)
 }
@@ -757,9 +757,9 @@ export function ScoreSaveCard({
     links = [{ label: `${game} board`, onClick: () => leavePlayTo(boardsHref(gameSlug, period)) }]
     // A daily's records are on its page's Records tab, not in the record books.
     if (isDailyGame(gameSlug)) {
-      links.push({ label: 'Records', onClick: () => leavePlayTo(dailyTabHref(gameSlug, 'records')) })
+      links.push({ label: 'Records', onClick: () => leavePlayTo(recordsPlaceHref(gameSlug)) })
     } else if (gameHasRecords(gameSlug)) {
-      links.push({ label: 'Record book', onClick: () => leavePlayTo(recordsHref(gameSlug)) })
+      links.push({ label: 'Record book', onClick: () => leavePlayTo(recordsPlaceHref(gameSlug)) })
     }
   }
   // A daily's run goes on whether it's saved or not, as the other dailies' cards send theirs:

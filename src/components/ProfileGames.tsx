@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { gamePlayableOn, getGame, isDailyGame, type Game } from '../data/games'
-import { gameBoardHref, gameHref, gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, gameHref, gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
 import type { GameBest } from '../hooks/useProfileBoards'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
@@ -85,7 +85,7 @@ function Cabinet({
     <li className="wall__cell">
       <a
         className={`wall-tile pgame${shownPlace || (monthOnly && other.loading) ? '' : ' pgame--idle'}`}
-        href={gameBoardHref(game.slug as LeaderboardGame, shownPeriod)}
+        href={boardPlaceHref(game.slug as LeaderboardGame, shownPeriod)}
         style={style}
         aria-label={label}
       >

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
 import { getGame, homeGames, isDailyGame } from '../data/games'
-import { aboutHref, gameHref, gamePlayHref, rankHref, tournamentHref } from '../hooks/useHashRoute'
+import { aboutHref, boardPlaceHref, gamePlayHref, rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -430,7 +430,7 @@ export function HomeHero() {
       <a className="home-banner__cta" href={gamePlayHref(slug)}>
         Play {game.name}
       </a>
-      <a className="home-banner__ghost" href={gameHref(slug)}>
+      <a className="home-banner__ghost" href={boardPlaceHref(slug, boardPeriod)}>
         Leaderboard
       </a>
     </div>

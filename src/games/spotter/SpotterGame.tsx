@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { GameThumbArt } from '../../components/GameThumbArt'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { useShare } from '../../components/SharePanel'
-import { gameBoardHref, gameHref } from '../../hooks/useHashRoute'
+import { boardPlaceHref, gameHref } from '../../hooks/useHashRoute'
 import { defaultPeriod } from '../../lib/defaultPeriod'
 import { getGame } from '../../data/games'
 import { buildDailyPuzzle, spotterShareLine, type SpotterPuzzle } from './puzzle'
@@ -304,7 +304,7 @@ export function SpotterGame() {
               {sendOn.copied ? 'Copied' : 'Share result'}
             </button>
             {sendOn.panel}
-            <a className="spotter__link" href={gameBoardHref('spotter', defaultPeriod())}>
+            <a className="spotter__link" href={boardPlaceHref('spotter', defaultPeriod())}>
               Today&apos;s board
             </a>
           </div>

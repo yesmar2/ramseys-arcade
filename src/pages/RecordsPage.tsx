@@ -1,10 +1,10 @@
 import { useLayoutEffect } from 'react'
 import { PageShell } from '../components/PageShell'
 import { RecordView } from '../components/RecordView'
-import { getGame, isRankedGame } from '../data/games'
-import { dailyTabHref, dayBoardHref, navigate, recordsHref } from '../hooks/useHashRoute'
+import { getGame, isDailyGame, isRankedGame } from '../data/games'
+import { dailyTabHref, dayBoardHref, navigate, recordsPlaceHref } from '../hooks/useHashRoute'
 import { coerceVisiblePeriod, type LeaderboardPeriod } from '../lib/leaderboard'
-import { courseKey, courseNumber, courseToday, dailyRecordHref } from '../lib/recordBook'
+import { courseKey, courseNumber, courseToday, dailyRecordHref, isCourseRecord } from '../lib/recordBook'
 
 type RecordsPageProps = {
   game: string
@@ -38,7 +38,10 @@ export function RecordsPage({ game, recordId, period = 'all' }: RecordsPageProps
     ? null
     : !isRankedGame(game)
       ? dailyTabHref(game, 'today')
-      : (dayRecordBoardHref(game, recordId) ?? dailyRecordHref(game, recordId) ?? (recordId ? null : recordsHref(game, period)))
+      : (dayRecordBoardHref(game, recordId) ??
+        (recordId && isCourseRecord({ id: recordId }) ? dailyRecordHref(game, recordId) : null) ??
+        // The book (a daily's records too, or one like its Days played in a row): the Records tab, landed on.
+        (recordId && !isDailyGame(game) ? null : recordsPlaceHref(game, period)))
 
   // Before the first paint, so the book never shows on its way to the tab; in place of the old address, so
   // Back doesn't bounce here again. A course's row keeps its #course- part.

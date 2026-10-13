@@ -5,7 +5,7 @@ import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
-import { dailyTabHref, gameBoardHref, rankHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, dailyTabHref, rankHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { archiveDayWords } from '../lib/archive'
 import { inkOn } from '../lib/color'
@@ -585,7 +585,7 @@ function RecordsBody({
           </a>
           {boards ? (
             <>
-              , and {name}’s week is on <a href={gameBoardHref(slug as LeaderboardGame, 'weekly')}>its board</a>
+              , and {name}’s week is on <a href={boardPlaceHref(slug as LeaderboardGame, 'weekly')}>its board</a>
             </>
           ) : null}
           .

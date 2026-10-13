@@ -4,7 +4,7 @@ import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
 import { useDayCourse, usePagedBoard, type PagedBoard } from '../hooks/useDayBoard'
-import { dailyTabHref, dayBoardHref, gameBoardHref, leaderboardHref, navigate, plusHref, rankHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, dailyTabHref, dayBoardHref, leaderboardHref, navigate, plusHref, rankHref } from '../hooks/useHashRoute'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { archiveDayWords, dayBefore, inArchive, useArchiveOpen, useDailyDays } from '../lib/archive'
@@ -149,7 +149,7 @@ function DaySteps({ slug, day, course, group }: { slug: LeaderboardGame; day: st
       {course ? (
         <a
           className="db-step"
-          href={toToday ? gameBoardHref(slug, 'daily') : dayBoardHref(slug, after)}
+          href={toToday ? boardPlaceHref(slug, 'daily') : dayBoardHref(slug, after)}
           aria-label={toToday ? 'Today’s board' : `${stripDayWords(after)}, the day after`}
         >
           <span>{toToday ? 'Today' : stripDayWords(after)}</span>
@@ -206,7 +206,7 @@ function Banner({
             Boards
           </a>
           <span aria-hidden="true">/</span>
-          <a href={gameBoardHref(slug, 'daily')}>{game.name}</a>
+          <a href={boardPlaceHref(slug, 'daily')}>{game.name}</a>
           <span aria-hidden="true">/</span>
           <span aria-current="page">{dayWords}</span>
         </nav>
@@ -759,7 +759,7 @@ function OtherDays({
             <li key={d}>
               <a
                 className={`db-days__link${here ? ' db-days__link--here' : ''}`}
-                href={isToday ? gameBoardHref(slug, 'daily') : dayBoardHref(slug, d)}
+                href={isToday ? boardPlaceHref(slug, 'daily') : dayBoardHref(slug, d)}
                 aria-current={here ? 'page' : undefined}
               >
                 <span className="db-days__text">
@@ -832,7 +832,7 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
   )
 
   useEffect(() => {
-    if (ahead) navigate(gameBoardHref(slug, 'daily'), { replace: true })
+    if (ahead) navigate(boardPlaceHref(slug, 'daily'), { replace: true })
   }, [ahead, slug])
 
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
@@ -857,7 +857,7 @@ export function DayBoard({ slug, day }: { slug: LeaderboardGame; day: string }) 
                   See its first day
                 </a>
               ) : null}
-              <a className="sb-ghost" href={gameBoardHref(slug, 'daily')}>
+              <a className="sb-ghost" href={boardPlaceHref(slug, 'daily')}>
                 Today’s board
               </a>
             </>

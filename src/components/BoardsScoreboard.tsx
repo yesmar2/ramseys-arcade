@@ -2,13 +2,7 @@ import { type CSSProperties } from 'react'
 import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame } from '../data/games'
 import { useScoreboard } from '../hooks/useScoreboard'
-import {
-  gameBoardHref,
-  gamePlayHref,
-  leaderboardHref,
-  rankHowHref,
-  rankHref,
-} from '../hooks/useHashRoute'
+import { boardPlaceHref, gamePlayHref, leaderboardHref, rankHowHref, rankHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn, readableFill, readableText } from '../lib/color'
 import { useActiveGroup, useScope } from '../lib/groups'
@@ -185,7 +179,7 @@ function BoardRow({
       {/* The game's name is the line's link, stretched over it (boards.css); a skin on it opens its own card. */}
       <div className="sb-board__link">
         <GameThumbArt slug={line.slug} accent={accent} className="sb-board__thumb" />
-        <a className="sb-board__name" href={gameBoardHref(line.slug, period)} aria-label={label}>
+        <a className="sb-board__name" href={boardPlaceHref(line.slug, period)} aria-label={label}>
           <span className="sb-board__title">{name}</span>
           {players ? <span className="sb-board__players">{players}</span> : null}
         </a>

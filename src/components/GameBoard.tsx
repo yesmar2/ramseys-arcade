@@ -450,12 +450,15 @@ export function GamePageBoard({
   period,
   title,
   noteHunt,
+  place,
 }: {
   slug: LeaderboardGame
   period: LeaderboardPeriod
   title?: string
   /** A bug hunt hiding place on the line over the table (lib/bugHunt.ts). */
   noteHunt?: string
+  /** Its id, where a link to the board lands (BOARD_PLACE), when no tabs over it are that place. */
+  place?: string
 }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
@@ -470,13 +473,13 @@ export function GamePageBoard({
 
   if (data.error) {
     return (
-      <div className="gb gb--page" style={style}>
+      <div id={place} className="gb gb--page" style={style}>
         <BoardEmpty title="Couldn’t load scores" detail="Check your connection and try again." />
       </div>
     )
   }
   return (
-    <div className="gb gb--page" style={{ ...style, ...held.style }} ref={held.ref}>
+    <div id={place} className="gb gb--page" style={{ ...style, ...held.style }} ref={held.ref}>
       {isDayPointsBoard(slug, period) ? (
         <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} title={title} />
       ) : (

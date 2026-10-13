@@ -3,7 +3,7 @@ import { readableText } from '../lib/color'
 import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame, isDailyGame } from '../data/games'
 import { useRecordBooks } from '../hooks/useRecordBooks'
-import { rankHref, siteRecordsHref } from '../hooks/useHashRoute'
+import { rankHref, recordsPlaceHref, siteRecordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useActiveGroup, useScope } from '../lib/groups'
@@ -398,7 +398,7 @@ export function RecordBooksIndex() {
               <li key={game} data-hunt={i === 0 ? 'records-books' : undefined}>
                 <a
                   className="rbk-book"
-                  href={recordBookHref(game)}
+                  href={recordsPlaceHref(game)}
                   style={
                     {
                       '--book-accent': accent,
@@ -442,7 +442,7 @@ export function RecordBooksIndex() {
           <ul className="rbk-latest">
             {latest.map((entry) => (
               <li key={`${entry.name}-${entry.game}-${entry.at}`}>
-                <a className="rbk-latest__row" href={recordBookHref(entry.game)}>
+                <a className="rbk-latest__row" href={recordsPlaceHref(entry.game)}>
                   <span className="rbk-latest__day">{dayOf(entry.at)}</span>
                   <PlayerMark name={entry.name} avatarId={avatars.get(entry.name)} className="rbk-latest__mark" />
                   <span className="rbk-latest__text">

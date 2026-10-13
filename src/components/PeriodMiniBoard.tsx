@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { gameBoardHref, rankHref } from '../hooks/useHashRoute'
+import { boardPlaceHref, rankHref } from '../hooks/useHashRoute'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import {
   PERIOD_LABELS,
@@ -37,7 +37,7 @@ export function PeriodMiniBoard({
     >
       <a
         className="lb-summary__period-head"
-        href={gameBoardHref(slug, period)}
+        href={boardPlaceHref(slug, period)}
         aria-label={`${label} board`}
       >
         <span className="lb-summary__period-label">{label}</span>

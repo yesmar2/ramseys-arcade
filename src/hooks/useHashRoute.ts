@@ -404,6 +404,29 @@ export function recordsHref(game: string, period: LeaderboardPeriod = 'all') {
   return isDailyGame(game) || book === 'all' ? base : `${base}/${book}`
 }
 
+/*
+ * Where a link to a game's board or records lands on its page (Ramsey: "can the links to the game leaderboards and
+ * records scroll to the correct spot on the game hub page?", 2026-10-13). The page puts these ids on its tabs, or on
+ * a daily's board under today's card (GameHubPage), and the app brings an address's #id into view, waiting for it
+ * as the page fills in (App, lib/scrollToPlace). The page's own tabs link without them: a tab keeps the page where
+ * it is, and the router's own addresses (gameBoardHref, recordsHref) never carry one.
+ */
+export const BOARD_PLACE = 'board'
+export const RECORDS_PLACE = 'records'
+
+/**
+ * A game's board, landed on: its page at the Board tab, or a daily's board under today's card. A game with no
+ * board (a daily just for fun, one on deck) is its page.
+ */
+export function boardPlaceHref(game: string, period?: LeaderboardPeriod) {
+  return isLeaderboardGame(game) ? `${gameBoardHref(game, period)}#${BOARD_PLACE}` : gameHref(game)
+}
+
+/** A game's records, landed on: its page at the Records tab (a daily's too). */
+export function recordsPlaceHref(game: string, period: LeaderboardPeriod = 'all') {
+  return `${recordsHref(game, period)}#${RECORDS_PLACE}`
+}
+
 export function recordHref(
   game: string,
   recordId: string,

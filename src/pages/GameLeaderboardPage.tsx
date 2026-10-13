@@ -2,7 +2,7 @@ import { useLayoutEffect } from 'react'
 import { GameBoard } from '../components/GameBoard'
 import { PageShell } from '../components/PageShell'
 import { getGame, isDailyGame, isRankedGame } from '../data/games'
-import { dailyTabHref, gameBoardHref, navigate } from '../hooks/useHashRoute'
+import { boardPlaceHref, dailyTabHref, navigate } from '../hooks/useHashRoute'
 import { boardPeriodFor } from '../lib/allTime'
 import { defaultPeriod } from '../lib/defaultPeriod'
 import { coerceVisiblePeriod, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
@@ -33,7 +33,7 @@ export function GameLeaderboardPage({ game: gameSlug, period: periodFromRoute, d
         : dailyTabHref(gameSlug, 'today')
       : day
         ? null
-        : gameBoardHref(gameSlug, period)
+        : boardPlaceHref(gameSlug, period)
 
   // Before the first paint, in place of the old address, so Back doesn't bounce here again.
   useLayoutEffect(() => {
