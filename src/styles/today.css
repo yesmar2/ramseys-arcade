@@ -288,6 +288,7 @@ html[data-theme='dark'] {
 
 .today-week__key-kept::before,
 .today-week__key-full::before,
+.today-week__key-played::before,
 .today-week__key-frozen::before {
   content: '';
   display: inline-block;
@@ -297,6 +298,12 @@ html[data-theme='dark'] {
   border-radius: 50%;
   vertical-align: -1px;
   background: var(--ticket, #ff8552);
+}
+
+/* Played short of kept: the calendar's ring. */
+.today-week__key-played::before {
+  background: none;
+  box-shadow: inset 0 0 0 2px rgba(var(--ink-rgb), 0.22);
 }
 
 .today-week__key-frozen::before {
@@ -598,6 +605,12 @@ html[data-theme='dark'] {
 .today-tile__go svg {
   width: 0.75rem;
   height: 0.75rem;
+}
+
+/* In the archive, without Plus: a lock, its strokes drawn as big as the Past tab's. */
+.today-tile__go--locked svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 /*
@@ -972,6 +985,37 @@ html[data-theme='dark'] {
   font-weight: 600;
 }
 
+/* On a phone, those yet to play today: one line, that opens on their cards. */
+.today-rivals__waiting {
+  display: none;
+}
+
+.today-rivals__waiting > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.75rem;
+  padding: 0 0.7rem;
+  list-style: none;
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.today-rivals__waiting > summary::-webkit-details-marker {
+  display: none;
+}
+
+.today-rivals__waiting > summary svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.today-rivals__waiting[open] > summary svg {
+  transform: rotate(180deg);
+}
+
 @media (max-width: 48rem) {
   .today-rivals {
     padding: 1rem 0.85rem;
@@ -983,6 +1027,15 @@ html[data-theme='dark'] {
 
   .today-rivals__cards {
     display: flex;
+  }
+
+  .today-rivals__waiting {
+    display: block;
+    margin-top: -0.4rem;
+  }
+
+  .today-rivals__waiting[open] > .today-rivals__cards {
+    margin-top: 0.2rem;
   }
 }
 

@@ -3,6 +3,7 @@ import { getGame, isRankedGame } from '../data/games'
 import { rankHref } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupsIndexHref } from '../lib/groups'
+import type { LeaderboardPeriod } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { betterFirst, rivalResult, rivalWords, type TodayDaily, type TodayKey, type TodayRival, type TodayRivals as Rivals } from '../lib/today'
 import { GameThumbArt } from './GameThumbArt'
@@ -14,7 +15,8 @@ import { FlameIcon } from './TodayChip'
  * the day's live dailies, with their result on each and their streak. The best on each is marked, and yours
  * stands out.
  * A wider screen has a table, one row a player and a column a daily; a phone has a card a player, their
- * results in a row of small pictures under the name. With nobody to race yet, it says how to get someone.
+ * results in a row of small pictures under the name, and those yet to play today folded under one line. With
+ * nobody to race yet, it says how to get someone.
  */
 
 const CrownIcon = () => (
@@ -43,6 +45,54 @@ function Thumb({ slug, className }: { slug: string; className: string }) {
   return <GameThumbArt slug={slug} accent={resolveGameAccent(slug, getGame(slug)?.accent ?? 'var(--accent)')} className={className} />
 }
 
+const DownIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+)
+
+/** A player on a phone: who, and their streak, over a row of the dailies' pictures and results. */
+function RivalCard({
+  rival: r,
+  dailies,
+  best,
+  period,
+}: {
+  rival: TodayRival
+  dailies: readonly TodayDaily[]
+  best: Partial<Record<TodayKey, number>>
+  period: LeaderboardPeriod
+}) {
+  return (
+    <li className={`today-rival${r.me ? ' today-rival--me' : ''}`}>
+      <div className="today-rival__top">
+        <a href={rankHref(r.name, period)} className="today-rivals__player">
+          <PlayerAvatar avatarId={r.avatarId} name={r.name} size="sm" />
+          <span className="today-rivals__name">{r.me ? 'You' : r.name}</span>
+        </a>
+        <span className="today-rival__streak">
+          <FlameIcon />
+          <span className="today-rivals__sr">Streak </span>
+          {r.streak > 0 ? r.streak : '–'}
+        </span>
+      </div>
+      <div className="today-rival__results" style={{ '--n': dailies.length } as CSSProperties}>
+        {dailies.map((d) => {
+          const value = rivalResult(r, d.key)
+          const top = value != null && best[d.key] === value
+          return (
+            <span key={d.key} className={`today-rival__result${value == null ? ' today-rival__result--none' : top ? ' today-rival__result--best' : ''}`}>
+              <Thumb slug={d.slug} className="today-rival__thumb" />
+              <span className="today-rivals__sr">{d.label}: </span>
+              {value == null ? <span aria-label="Not yet">–</span> : rivalWords(d.key, value)}
+            </span>
+          )
+        })}
+      </div>
+    </li>
+  )
+}
+
 export function TodayRivals({
   data,
   dailies,
@@ -60,6 +110,9 @@ export function TodayRivals({
   if (!data) return null
   const others = data.rivals.filter((r) => !r.me)
   const best = bests(data.rivals, dailies)
+  const playedToday = (r: TodayRival) => dailies.some((d) => rivalResult(r, d.key) != null)
+  const cards = data.rivals.filter((r) => r.me || playedToday(r))
+  const waiting = data.rivals.filter((r) => !r.me && !playedToday(r))
   const title = data.scope.kind === 'group' ? `${data.scope.name} today` : 'Your friends today'
   return (
     <section className="today-rivals" aria-labelledby="today-rivals-title">
@@ -132,40 +185,28 @@ export function TodayRivals({
               ))}
             </tbody>
           </table>
-          {/* On a phone, a card a player instead (today.css shows one or the other). */}
+          {/*
+           * On a phone, a card a player instead (today.css shows one or the other): you, and whoever has played
+           * today. Those who haven't yet fold away under one line, where a card each was a page of dashes.
+           */}
           <ul className="today-rivals__cards">
-            {data.rivals.map((r) => (
-              <li key={r.name} className={`today-rival${r.me ? ' today-rival--me' : ''}`}>
-                <div className="today-rival__top">
-                  <a href={rankHref(r.name, period)} className="today-rivals__player">
-                    <PlayerAvatar avatarId={r.avatarId} name={r.name} size="sm" />
-                    <span className="today-rivals__name">{r.me ? 'You' : r.name}</span>
-                  </a>
-                  <span className="today-rival__streak">
-                    <FlameIcon />
-                    <span className="today-rivals__sr">Streak </span>
-                    {r.streak > 0 ? r.streak : '–'}
-                  </span>
-                </div>
-                <div className="today-rival__results" style={{ '--n': dailies.length } as CSSProperties}>
-                  {dailies.map((d) => {
-                    const value = rivalResult(r, d.key)
-                    const top = value != null && best[d.key] === value
-                    return (
-                      <span
-                        key={d.key}
-                        className={`today-rival__result${value == null ? ' today-rival__result--none' : top ? ' today-rival__result--best' : ''}`}
-                      >
-                        <Thumb slug={d.slug} className="today-rival__thumb" />
-                        <span className="today-rivals__sr">{d.label}: </span>
-                        {value == null ? <span aria-label="Not yet">–</span> : rivalWords(d.key, value)}
-                      </span>
-                    )
-                  })}
-                </div>
-              </li>
+            {cards.map((r) => (
+              <RivalCard key={r.name} rival={r} dailies={dailies} best={best} period={period} />
             ))}
           </ul>
+          {waiting.length ? (
+            <details className="today-rivals__waiting">
+              <summary>
+                {waiting.length} more {waiting.length === 1 ? 'hasn’t' : 'haven’t'} played today
+                <DownIcon />
+              </summary>
+              <ul className="today-rivals__cards">
+                {waiting.map((r) => (
+                  <RivalCard key={r.name} rival={r} dailies={dailies} best={best} period={period} />
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </>
       ) : (
         <p className="today-rivals__empty">

@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { isRankedGame } from '../data/games'
-import { PlayIcon } from './chromeIcons'
+import { LockIcon, PlayIcon } from './chromeIcons'
 import { DailyKindTag } from './DailyKindTag'
 import type { TodayFreezes } from '../lib/today'
 import { GameArt } from './GameArt'
@@ -47,6 +47,8 @@ export type TicketTile = {
   go: string
   goLabel: string
   goTip: string | null
+  /** A past day's course in the archive, without Plus: a lock on the way in, as its Past tab card has. */
+  locked?: boolean
 }
 
 /**
@@ -89,8 +91,8 @@ function Tile({ tile: t, marked }: { tile: TicketTile; marked: boolean }) {
           {t.note ? <span className="today-tile__note">{t.note}</span> : null}
         </span>
       ) : t.play ? (
-        <a className="today-tile__go" href={t.play} title={t.goTip ?? undefined} aria-label={t.goLabel}>
-          <PlayIcon />
+        <a className={`today-tile__go${t.locked ? ' today-tile__go--locked' : ''}`} href={t.play} title={t.goTip ?? undefined} aria-label={t.goLabel}>
+          {t.locked ? <LockIcon /> : <PlayIcon />}
           {t.go}
         </a>
       ) : (

@@ -15,7 +15,6 @@ import { TrophyShelf } from '../components/TrophyShelf'
 import { focusFromUrl, navigate, rankHowHref, rankHref, standingsHref, statsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useImpersonation } from '../hooks/useImpersonation'
-import { useMyStats } from '../hooks/useMyStats'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { EMPTY_RANK, useGameBests, useIsPlayer, usePeriodRanks, useRankFor } from '../hooks/useProfileBoards'
 import { AVATARS_ENABLED, AVATAR_EVENT, avatarWashColor, getLocalAvatarId, resolveAvatar } from '../lib/avatars'
@@ -33,6 +32,7 @@ import {
 } from '../lib/leaderboard'
 import { talksInPlaces } from '../lib/profileMath'
 import { scrollToPlace } from '../lib/scrollToPlace'
+import { subscribeToday, todayServer } from '../lib/today'
 import { fetchTrophies, type TrophyAward } from '../lib/trophies'
 
 /** Down to a part of the page, gliding unless motion is turned down, without touching the address. */
@@ -159,9 +159,11 @@ export function RankPage({
   // Someone else's page measures the viewer against them.
   const viewerData = useRankFor(!isSelf ? myName : '', period, groupId)
 
-  // Your own card has your streak, and the way to your stats.
-  const mine = useMyStats(period, isSelf && signedIn)
-  const streak = mine.data?.stats?.streak.current ?? 0
+  // Your own card has your Dailies streak, from the API's word on your Dailies (lib/today.ts), which the site keeps
+  // while you're signed in; without one, the way to your stats.
+  const [today, setToday] = useState(todayServer)
+  useEffect(() => subscribeToday(() => setToday(todayServer())), [])
+  const streak = today?.streak.current ?? 0
 
   // "in OFFICE": said again once the list of your groups comes with the name.
   const { where } = useScope()

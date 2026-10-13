@@ -19,7 +19,7 @@ import { boardDayKey } from '../lib/statsView'
 /**
  * Your stats: the private side of your profile, beside the player card. The
  * card says where you stand; this says how you got there. The period in
- * numbers and your streak, every day you played, the records within reach,
+ * numbers and your days in a row, every day you played, the records within reach,
  * and each game with your place, your best and the day you set it, a bar for
  * every day you played it, your average and your runs. Only you can see it,
  * and all of it is free.
@@ -64,7 +64,7 @@ export function StatsPage() {
         ) : signedOut ? (
           <Invite
             title="Your stats live here"
-            copy="Sign in and this is where you’ll find every day you played, your streaks, the records within reach and how each game is going. Only you can see it."
+            copy="Sign in and this is where you’ll find every day you played, how many in a row, the records within reach and how each game is going. Only you can see it."
             action="Sign in"
           />
         ) : !stats ? (

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { dailyTrack, nextTrackAt, trackDay } from '../games/hotlap/daily'
+import { keptLap } from '../games/hotlap/lap'
+import { formatLap } from '../games/hotlap/score'
 import { buildTrack, type Piece, type TrackShape } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
+import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -14,7 +17,7 @@ import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
 import { GameThumbArt } from './GameThumbArt'
-import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { DeviceRunNote, PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysTrack.css'
 
@@ -83,6 +86,9 @@ export function TodaysTrackCard() {
   const track = useMemo(() => dailyTrack(day), [day])
   const me = normalizePlayerName(usePlayerName())
   const board = useTodaysBoard(SLUG, day, me)
+  // Signed out, the best lap today this device keeps: on no board.
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptLap(day, null) : null
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#f2813a')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
@@ -110,6 +116,7 @@ export function TodaysTrackCard() {
           Hot Lap, on a new track every day. One lap against the clock, the same track for everyone, and the fastest
           lap tops the day. {standingWords(board)}
         </p>
+        {kept ? <DeviceRunNote time={formatLap(kept.time)} run="lap" /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
@@ -119,7 +126,7 @@ export function TodaysTrackCard() {
         <span className="evp-daily__go">
           <PastTabButton slug={SLUG} />
           <a className="evp-btn evp-btn--small" href={href}>
-            {board?.you ? 'Beat your lap' : 'Race the track'}
+            {board?.you || kept ? 'Beat your lap' : 'Race the track'}
           </a>
         </span>
       </div>

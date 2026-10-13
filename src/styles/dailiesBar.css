@@ -1,6 +1,7 @@
 /*
  * The Dailies bar over each daily's page (components/DailiesBar.tsx): the Dailies page's own chip first, in
- * the ticket's orange, then the day's dailies as pills, the one shown outlined and the ones done checked.
+ * the ticket's orange, then the day's dailies as pills, the one shown outlined and the ones done checked, and on
+ * a puzzle's page the day's puzzles.
  */
 
 .dbar {
@@ -160,6 +161,36 @@ html[data-theme='light'] .dbar__home b {
   top: 0.12rem;
   left: 0.08rem;
   z-index: 1;
+}
+
+/*
+ * On a puzzle's page, the day's puzzles after the ticket's (AlsoToday.tsx): named in the just-for-fun violet
+ * (DailyKindTag's), then their pictures. Wider than a phone, only this page's has its name beside its picture.
+ */
+.dbar__also {
+  --dbar-also: #7046b3;
+  flex: none;
+  padding-left: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dbar-also);
+  white-space: nowrap;
+}
+
+html[data-theme='dark'] .dbar__also {
+  --dbar-also: #c3a3f7;
+}
+
+@media (min-width: 48.01rem) {
+  .dbar__games--also .dbar__game:not(.dbar__game--here) {
+    padding: 0 0.4rem;
+  }
+
+  .dbar__games--also .dbar__game:not(.dbar__game--here) .dbar__name {
+    display: none;
+  }
 }
 
 .dbar__line {

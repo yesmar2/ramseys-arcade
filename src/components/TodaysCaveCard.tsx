@@ -3,6 +3,9 @@ import { getGame } from '../data/games'
 import { CaveDrawing } from '../games/lander/CaveDrawing'
 import { caveDay, nextCaveAt } from '../games/lander/daily'
 import { landerDay } from '../games/lander/runs'
+import { keptRun } from '../games/lander/runStore'
+import { formatRun } from '../games/lander/score'
+import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -13,7 +16,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
-import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { DeviceRunNote, PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysCave.css'
 
@@ -67,6 +70,9 @@ export function TodaysCaveCard() {
   const lander = landerDay(day)
   const me = normalizePlayerName(usePlayerName())
   const board = useTodaysBoard(SLUG, day, me)
+  // Signed out, the best run today this device keeps: on no board.
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#8a6ad4')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
@@ -94,6 +100,7 @@ export function TodaysCaveCard() {
           Lander, in a new cave every day. Fly the ship down it and set it down on the pad at the bottom against the
           clock, the same cave for everyone, and the fastest run tops the day. {standingWords(board)}
         </p>
+        {kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
@@ -103,7 +110,7 @@ export function TodaysCaveCard() {
         <span className="evp-daily__go">
           <PastTabButton slug={SLUG} />
           <a className="evp-btn evp-btn--small" href={href}>
-            {board?.you ? 'Beat your run' : 'Fly the cave'}
+            {board?.you || kept ? 'Beat your run' : 'Fly the cave'}
           </a>
         </span>
       </div>

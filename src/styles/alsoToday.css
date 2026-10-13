@@ -101,9 +101,13 @@ html[data-theme='dark'] .also {
   text-underline-offset: 0.2em;
 }
 
+/* The day's puzzle, in full on the Dailies page, its lines wrapping; the home page's slim line keeps it to one. */
 .also__course {
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.also--compact .also__course {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

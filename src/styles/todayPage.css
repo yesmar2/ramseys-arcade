@@ -328,8 +328,9 @@
   height: 1rem;
 }
 
-.today-days__day--missed .today-days__mark {
-  border: 2px solid rgba(var(--ink-rgb), 0.12);
+/* Played short of kept: a ring, as the strip of days and the month's calendar have it. A day missed has none. */
+.today-days__day--played .today-days__mark {
+  border: 2px solid rgba(var(--ink-rgb), 0.22);
 }
 
 .today-days__day--kept .today-days__mark {

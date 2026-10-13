@@ -3,6 +3,9 @@ import { getGame } from '../data/games'
 import { CourseDrawing } from '../games/marblerun/CourseDrawing'
 import { courseDay, nextCourseAt } from '../games/marblerun/daily'
 import { marbleDay } from '../games/marblerun/runs'
+import { keptRun } from '../games/marblerun/runStore'
+import { formatRun } from '../games/marblerun/score'
+import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -13,7 +16,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
-import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { DeviceRunNote, PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysCourse.css'
 
@@ -67,6 +70,9 @@ export function TodaysCourseCard() {
   const marble = marbleDay(day)
   const me = normalizePlayerName(usePlayerName())
   const board = useTodaysBoard(SLUG, day, me)
+  // Signed out, the best run today this device keeps: on no board.
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#ff5ce1')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
@@ -94,6 +100,7 @@ export function TodaysCourseCard() {
           Marble Run, on a new course every day. Tilt the world to roll the marble down it against the clock, the same
           course for everyone, and the fastest run tops the day. {standingWords(board)}
         </p>
+        {kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
@@ -103,7 +110,7 @@ export function TodaysCourseCard() {
         <span className="evp-daily__go">
           <PastTabButton slug={SLUG} />
           <a className="evp-btn evp-btn--small" href={href}>
-            {board?.you ? 'Beat your run' : 'Roll the course'}
+            {board?.you || kept ? 'Beat your run' : 'Roll the course'}
           </a>
         </span>
       </div>

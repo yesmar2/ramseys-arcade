@@ -3,6 +3,9 @@ import { getGame } from '../data/games'
 import { HillsPostcard } from '../games/swoop/HillsPostcard'
 import { hillsDay, nextHillsAt } from '../games/swoop/daily'
 import { swoopDay } from '../games/swoop/runs'
+import { keptRun } from '../games/swoop/runStore'
+import { formatRun } from '../games/swoop/score'
+import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -13,7 +16,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
-import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { DeviceRunNote, PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysHills.css'
 
@@ -67,6 +70,9 @@ export function TodaysHillsCard() {
   const swoop = swoopDay(day)
   const me = normalizePlayerName(usePlayerName())
   const board = useTodaysBoard(SLUG, day, me)
+  // Signed out, the best run today this device keeps: on no board.
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#e8564f')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
@@ -95,6 +101,7 @@ export function TodaysHillsCard() {
           far side to keep your speed, against the clock, the same hills for everyone, and the fastest run tops the day.{' '}
           {standingWords(board)}
         </p>
+        {kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
@@ -104,7 +111,7 @@ export function TodaysHillsCard() {
         <span className="evp-daily__go">
           <PastTabButton slug={SLUG} />
           <a className="evp-btn evp-btn--small" href={href}>
-            {board?.you ? 'Beat your run' : 'Swoop the hills'}
+            {board?.you || kept ? 'Beat your run' : 'Swoop the hills'}
           </a>
         </span>
       </div>

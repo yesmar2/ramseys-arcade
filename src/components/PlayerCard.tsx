@@ -5,7 +5,7 @@ import { PlayerName } from './PlayerName'
 import { PlusMark } from './PlusMark'
 import { CardBackdrop } from './prizes/PrizeArt'
 import { SignArt } from './prizes/SignArt'
-import { gameHref, navigate, plusHref, rankHref } from '../hooks/useHashRoute'
+import { gameHref, navigate, plusHref, rankHref, todayHref } from '../hooks/useHashRoute'
 import { usePlusMember } from '../lib/plus'
 import { neighboursOf, type PeriodRanks } from '../hooks/useProfileBoards'
 import { bannerText, inkOn, readableFill, shelfTextDark } from '../lib/color'
@@ -346,7 +346,7 @@ export function PlayerCard({
   backHref?: string
   /** How this player's rank works: their own page of the points behind it. */
   howHref: string
-  /** On your own card: your dailies streak, and the way to your stats. */
+  /** On your own card: your Dailies streak, the way to the Dailies page; without one, the way to your stats. */
   stats?: { streak: number; href: string } | null
   /** The player's avatar string, which carries what they wear from the prize counter: a card theme, a title, a name style, the neon sign. */
   avatarId?: string | null
@@ -511,16 +511,16 @@ export function PlayerCard({
           )}
         </span>
         {stats ? (
-          <a className="pcard__fact pcard__fact--link" href={stats.href}>
-            {stats.streak > 0 ? (
-              <>
-                <b>{stats.streak}</b>-day streak
-              </>
-            ) : (
-              'Your stats'
-            )}{' '}
-            ›
-          </a>
+          stats.streak > 0 ? (
+            // As the header's chip says it, short enough to sit beside the games played on a small phone.
+            <a className="pcard__fact pcard__fact--link" href={todayHref()} aria-label={`Your Dailies streak: day ${stats.streak}`}>
+              Dailies · Day <b>{stats.streak}</b> ›
+            </a>
+          ) : (
+            <a className="pcard__fact pcard__fact--link" href={stats.href}>
+              Your stats ›
+            </a>
+          )
         ) : null}
         <a className="home-banner__standing-link" href={howHref}>
           {isSelf ? 'How your rank works' : `How ${name}’s rank works`} ›

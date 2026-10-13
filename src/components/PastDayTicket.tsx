@@ -114,6 +114,7 @@ function tileOf(daily: TodayDaily, day: string, days: DailyDays, said: TodayServ
     go: locked ? 'Plus' : verb,
     goLabel: locked ? `${game}, ${kicker}: in the archive, with Plus` : `${verb} ${game}, ${kicker}`,
     goTip: locked ? archiveTip(slug) : null,
+    locked,
   }
 }
 
@@ -167,8 +168,10 @@ export function PastDayTicket({
   const done = count?.done ?? tiles.filter((t) => t.done).length
   const total = count?.of ?? tiles.length
   const mark = signedIn && said ? markOf(said) : null
-  // The dailies listed now that joined after the day.
-  const later = TODAY_DAILIES.filter((d) => d.from != null && d.from > day && isGameListed(d.slug)).map((d) => getGame(d.slug)?.name ?? d.label)
+  // The dailies listed now that joined after the day: never one that's not been on a ticket at all (Centroid's
+  // plates came after the puzzles left it).
+  const joined = (d: TodayDaily) => d.from != null && (d.until == null || d.from <= d.until)
+  const later = TODAY_DAILIES.filter((d) => joined(d) && d.from! > day && isGameListed(d.slug)).map((d) => getGame(d.slug)?.name ?? d.label)
 
   return (
     <DayTicket

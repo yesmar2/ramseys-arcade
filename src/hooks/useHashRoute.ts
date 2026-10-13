@@ -239,6 +239,9 @@ const TODAY_PATH = /^(?:dailies|today)(?:\/\d{4}-\d{2}-\d{2})?$/
 /** A past day on the Dailies page, /dailies/YYYY-MM-DD: that day's ticket as it finished. */
 const DAILIES_DAY_PATH = /^dailies\/(\d{4}-\d{2}-\d{2})$/
 
+/** The Dailies page's addresses, its own and its old one: whatever else is under them opens the page too. */
+const DAILIES_SECTIONS: ReadonlySet<string> = new Set(['dailies', 'today'])
+
 /** Whether a YYYY-MM-DD names a real day: no month 13, no 31st of September. */
 function realDay(day: string): boolean {
   const t = Date.parse(`${day}T12:00:00Z`)
@@ -672,6 +675,8 @@ export function parseUrl(pathname: string, search: string): Route {
   const pastDay = DAILIES_DAY_PATH.exec(path)?.[1]
   if (pastDay && realDay(pastDay)) return { name: 'today', day: pastDay }
   if (TODAY_PATH.test(path)) return { name: 'today' }
+  // Anything else under the Dailies' addresses (a mistyped day, a link cut short) is the Dailies page, its address put right.
+  if (DAILIES_SECTIONS.has(path.split('/')[0]!.toLowerCase())) return { name: 'today' }
   if (path === 'about') return { name: 'about' }
   if (path === 'plus') return { name: 'plus' }
   if (path === 'admin') return { name: 'admin' }

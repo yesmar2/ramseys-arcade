@@ -12,8 +12,8 @@ export type MyStats = {
 }
 
 /*
- * One answer per account, tag and period is kept for the visit, so going from the
- * player card to Stats and back doesn't ask again. It is a heavy question for
+ * One answer per account, tag and period is kept for the visit, so going from
+ * Stats to the player card and back doesn't ask again. It is a heavy question for
  * the API (it places every run on every board), and the numbers only move
  * when you play.
  */
@@ -21,8 +21,9 @@ const cache = new Map<string, { at: number; body: StatsResponse }>()
 const FRESH_MS = 60_000
 
 /**
- * Your own stats for a period, for the tag you play as here: the Stats view
- * reads all of it, the player card only the streak.
+ * Your own stats for a period, for the tag you play as here: the Stats view's.
+ * The player card's streak is the Dailies streak (lib/today.ts), not these days
+ * in a row.
  */
 export function useMyStats(period: LeaderboardPeriod, enabled = true): MyStats {
   const { account, loading: authLoading } = useAuth()

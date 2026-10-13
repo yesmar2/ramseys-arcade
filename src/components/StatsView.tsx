@@ -23,7 +23,7 @@ import {
   type GameSort,
 } from '../lib/statsView'
 import { resolveGameAccent } from '../lib/theme'
-import { ChevronRightIcon, FlameIcon } from './chromeIcons'
+import { CalendarIcon, ChevronRightIcon } from './chromeIcons'
 import { GameThumbArt } from './GameThumbArt'
 
 /** Weeks the calendar shows on a wide screen, and the last of them a phone keeps. */
@@ -52,7 +52,7 @@ function accentOf(slug: string): string {
   return resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
 }
 
-/* ---------- the top: the period in numbers, and the streak ---------- */
+/* ---------- the top: the period in numbers, and the days in a row ---------- */
 
 const PERIOD_CAPS: Record<LeaderboardPeriod, string> = {
   daily: 'Today',
@@ -113,6 +113,10 @@ export function StatsHero({
   )
 }
 
+/**
+ * The days you played any game in a row, up to today or yesterday (the API's stats.ts). Not the Dailies streak (two
+ * races a day, lib/today.ts), so it has words of its own, and a calendar where that has its flame.
+ */
 function StreakPanel({ streak, today }: { streak: StatsStreak; today: number }) {
   const best = bestStreak(streak.days)
   const playedToday = streak.days.includes(today)
@@ -121,15 +125,16 @@ function StreakPanel({ streak, today }: { streak: StatsStreak; today: number }) 
     ? `You played today. Come back tomorrow to make it ${current + 1}.`
     : current > 0
       ? `Play today to make it ${current + 1}.`
-      : 'Play any game today to start one.'
+      : 'Play any game today to make it 1.'
   return (
     <div className="sv-streak">
       <div className="sv-streak__head">
         <span className="sv-streak__mark" aria-hidden="true">
-          <FlameIcon />
+          <CalendarIcon />
         </span>
         <div>
-          <p className="sv-streak__big">{current > 0 ? `${current}-day streak` : 'No streak yet'}</p>
+          {/* None now is 0, with the best there's been under it. "In a row" stays whole where a small phone breaks the line. */}
+          <p className="sv-streak__big">{`${count(current, 'day')} in\u00a0a\u00a0row`}</p>
           {best && best.length > 1 ? (
             <p className="sv-streak__best">
               Best: {best.length} days, {spanLabel(best.start, best.end)}
@@ -197,7 +202,7 @@ export function StatsCalendar({ streak, today }: { streak: StatsStreak; today: n
         </li>
         <li>
           <b>{count(best?.length ?? 0, 'day')}</b>
-          <span>your best streak</span>
+          <span>your most in a row</span>
         </li>
         {favourite ? (
           <li>

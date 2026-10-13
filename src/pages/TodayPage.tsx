@@ -120,8 +120,12 @@ function dayLine({ total, rule }: Ticket): string | null {
 
 /** The page's head: the day, and where it stands, the streak with it once signed in. */
 function TodayHead({ ticket, signedIn, signedOut }: { ticket: Ticket; signedIn: boolean; signedOut: boolean }) {
-  const { day, done, total, marks, current, server } = ticket
+  const { day, done, total, marks, current, best, server } = ticket
   const line = dayLine(ticket)
+  // "Yet" only for a player who's never had a streak: one that ended says so, with its best, and what starts it again
+  // (kept short, to sit on one line on a small phone).
+  const ended = current === 0 && best > 0
+  const again = `${ticket.left === 1 ? 'One more' : `${capital(numberWord(ticket.left))} to go`} to start again`
   return (
     <section className="today-head" aria-labelledby="today-page-title">
       <div className="today-head__text">
@@ -141,8 +145,8 @@ function TodayHead({ ticket, signedIn, signedOut }: { ticket: Ticket; signedIn: 
             <div className="today-head__streak">
               <span className={`today-head__flame${marks.full ? ' today-head__flame--full' : ''}`}>{marks.full ? <StarIcon /> : <FlameIcon />}</span>
               <span className="today-head__streak-text">
-                <b>{current > 0 ? `Day ${current}` : 'No streak yet'}</b>
-                <span>{streakLine(ticket)}</span>
+                <b>{current > 0 ? `Day ${current}` : ended ? 'Streak ended' : 'No streak yet'}</b>
+                <span>{ended ? `Best: ${best} ${best === 1 ? 'day' : 'days'}. ${again}` : streakLine(ticket)}</span>
                 {server.freezes ? <StreakFreezes freezes={server.freezes} className="sfz--head" /> : null}
               </span>
             </div>
@@ -222,10 +226,11 @@ const CALENDAR_WEEKS = 5
 const CALENDAR_HEAD = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 /**
- * A day on the calendar: a Full ticket, kept, today and still open, missed, or blank: before the Today set
- * began, after today, or a day an older API didn't say.
+ * A day on the calendar: a Full ticket, kept, today and still open, played short of kept, missed, or blank:
+ * before the Today set began, after today, or a day an older API didn't say. Marked as the strip of days and
+ * the month's calendar mark them (lib/pastDays.ts markOf).
  */
-type CalendarState = 'full' | 'kept' | 'open' | 'frozen' | 'missed' | 'before' | 'after' | 'unknown'
+type CalendarState = 'full' | 'kept' | 'open' | 'frozen' | 'played' | 'missed' | 'before' | 'after' | 'unknown'
 
 function calendarDays({ day: today, server, marks }: Ticket): { day: string; state: CalendarState }[] {
   // The API's last five weeks, or an older API's last seven days. Today's punches count at once, as on the ticket.
@@ -243,14 +248,18 @@ function calendarDays({ day: today, server, marks }: Ticket): { day: string; sta
       return { day, state: said?.kept || marks.kept ? 'kept' : 'open' }
     }
     if (!said) return { day, state: 'unknown' }
-    return { day, state: said.full ? 'full' : said.kept ? 'kept' : said.frozen ? 'frozen' : 'missed' }
+    const mark = markOf(said)
+    return { day, state: mark === 'none' ? 'missed' : mark }
   })
 }
 
 const monthDay = (day: string) =>
   dayParts(day).date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
-/** Your last five weeks: the days you kept, your Full tickets, the ones missed, and today. Each opens its ticket. */
+/**
+ * Your last five weeks: the days you kept, your Full tickets, the ones played short of kept, and today, its ring
+ * the dailies done so far, as the strip's is. Each opens its ticket.
+ */
 function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
   const days = calendarDays(ticket)
   const more = ticket.rule.count > ticket.rule.need || days.some((d) => d.state === 'full')
@@ -258,8 +267,9 @@ function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
   const words: Record<CalendarState, string> = {
     full: 'Full ticket',
     kept: 'kept',
-    open: `today, ${ticket.left} to go`,
+    open: `today, ${ticket.done} of ${ticket.total} so far`,
     frozen: 'missed, a streak freeze covered it',
+    played: 'played, not kept',
     missed: 'missed',
     before: 'before the Dailies began',
     after: 'still to come',
@@ -291,7 +301,7 @@ function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
                 ) : state === 'frozen' ? (
                   <FreezeIcon />
                 ) : state === 'open' ? (
-                  ticket.left
+                  ticket.done
                 ) : null}
               </span>
               {/* The first of a month says which. */}
@@ -318,6 +328,7 @@ function YourDays({ ticket, picked }: { ticket: Ticket; picked: string }) {
       <p className="today-week__key today-days__key" aria-hidden="true">
         <span className="today-week__key-kept">Kept</span>
         {more ? <span className="today-week__key-full">Full ticket</span> : null}
+        {days.some((d) => d.state === 'played') ? <span className="today-week__key-played">Played</span> : null}
         {days.some((d) => d.state === 'frozen') ? <span className="today-week__key-frozen">Frozen</span> : null}
       </p>
     </section>

@@ -2,6 +2,9 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { GauntletDrawing } from '../games/wobblerun/GauntletDrawing'
 import { dailyGauntlet, gauntletDay, nextGauntletAt } from '../games/wobblerun/daily'
+import { keptRun } from '../games/wobblerun/runStore'
+import { formatRun } from '../games/wobblerun/score'
+import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
@@ -12,7 +15,7 @@ import { resolveGameAccent } from '../lib/theme'
 import { useTodaysBoard, type TodayBoard } from '../lib/todaysBoard'
 import { PlayIcon } from './chromeIcons'
 import { EventCountdown } from './EventCountdown'
-import { PastTabButton, TodayCounts } from './TodaysCardParts'
+import { DeviceRunNote, PastTabButton, TodayCounts } from './TodaysCardParts'
 import '../styles/evp.css'
 import '../styles/todaysGauntlet.css'
 
@@ -66,6 +69,9 @@ export function TodaysGauntletCard() {
   const gauntlet = dailyGauntlet(day)
   const me = normalizePlayerName(usePlayerName())
   const board = useTodaysBoard(SLUG, day, me)
+  // Signed out, the best run today this device keeps: on no board.
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#e85d9a')
   const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
@@ -93,6 +99,7 @@ export function TodaysGauntletCard() {
           Run, jump and dive Blip through a new gauntlet every day: four rounds and a climb to the star, against
           the clock, the same gauntlet for everyone, and the fastest run tops the day. {standingWords(board)}
         </p>
+        {kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">
@@ -102,7 +109,7 @@ export function TodaysGauntletCard() {
         <span className="evp-daily__go">
           <PastTabButton slug={SLUG} />
           <a className="evp-btn evp-btn--small" href={href}>
-            {board?.you ? 'Beat your run' : 'Run the gauntlet'}
+            {board?.you || kept ? 'Beat your run' : 'Run the gauntlet'}
           </a>
         </span>
       </div>

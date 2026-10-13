@@ -234,54 +234,51 @@ function caveSvg(cave, { picW, picH }) {
 }
 
 /**
- * The hills from the side as Swoop draws them (its HillsDrawing.tsx), in a picture's box: the whole way to the
- * line at dusk, the tops stretched up, washed in the day's colour with a lit edge, the flags and the line.
- * `hills` is the game's sim.ts layHills, with its `heightAt` and `hillsSpan`; `mix` is lib/color's mixColor.
+ * The hills as their postcard (Swoop's HillsPostcard.tsx), in a picture's box: the day's biggest hill close in at
+ * dusk, the sky and its stars, far hills rolling, the near ones in the day's colour with their turf, seams and blips,
+ * your bird just off the top with its trail and the blue bird on the slope behind. The whole way from the side is
+ * fifty times longer than it is tall, so in a panel it was a spiky line: the drawing Ramsey turned down for the
+ * site's own cards of the day when he picked the postcard. `view` is the game's hillsPicture.ts hillsView for the
+ * box, `C` its hillsColours, `bird` its birdShape.ts and `mix` lib/color's mixColor.
  */
-function hillsSvg(hills, heightAt, hillsSpan, mix, { picW, picH }) {
-  const [lo, hi] = hillsSpan(hills)
-  const x0 = -hills.finish * 0.03
-  const x1 = hills.finish * 1.04
-  const kx = picW / (x1 - x0)
-  const X = (x) => ((x - x0) * kx).toFixed(1)
-  // Stretched up no more than four times, so the hills still roll rather than spike.
-  const ky = Math.min((picH * 0.4) / Math.max(1, hi - lo), kx * 4)
-  const Y = (y) => (picH * 0.58 + ((lo + hi) / 2 - y) * ky).toFixed(1)
-  const line = []
-  // A point every eight metres or so of hills: the card is small, but the quick bumps still read as bumps.
-  const steps = Math.max(160, Math.round(hills.finish / 8))
-  for (let i = 0; i <= steps; i++) {
-    const x = x0 + ((x1 - x0) * i) / steps
-    line.push(`${X(x)} ${Y(heightAt(hills, x))}`)
+function hillsSvg(view, C, bird, mix, { picW, picH }) {
+  const { k } = view
+  const n = (v) => String(Math.round(v * 100) / 100)
+  // A Swoop bird (BirdMark.tsx), a unit across, placed as the postcard places it: its wing up in flight.
+  const swift = (at, fill, line, wingUp, opacity) => {
+    const wing = wingUp ? bird.SWIFT_WING_UP : bird.SWIFT_WING_FOLDED
+    const e = bird.SWIFT_EYE
+    return (
+      `<g transform="translate(${n(at.x)} ${n(at.y)}) rotate(${n(at.deg)}) translate(0 ${n(-at.size * bird.SWIFT_LIFT)}) scale(${n(at.size)})"${opacity ? ` opacity="${opacity}"` : ''}>` +
+      `<g stroke-linejoin="round" stroke="${line}" stroke-width="0.1">` +
+      `<path d="${bird.SWIFT_BODY}" fill="${fill}"/>` +
+      `<path d="${bird.SWIFT_BELLY}" fill="#ffffff" fill-opacity="0.55" stroke="none"/>` +
+      `<path d="${bird.SWIFT_BEAK}" fill="#f5b942" stroke-width="0.07"/>` +
+      `<path d="${wing}" fill="${fill}"/>` +
+      `<path d="${wing}" fill="#000000" fill-opacity="0.18" stroke="none"/>` +
+      `<circle cx="${e.x}" cy="${e.y}" r="${e.r}" fill="#ffffff" stroke-width="0.05"/>` +
+      `<circle cx="${e.px}" cy="${e.y}" r="${e.pr}" fill="#1a2b3c" stroke="none"/>` +
+      `</g></g>`
+    )
   }
-  const surface = `M${line.join(' L')}`
-  const flagH = picH * 0.1
-  const flags = hills.flags
-    .map((x) => {
-      const px = Number(X(x))
-      const py = Number(Y(heightAt(hills, x)))
-      return (
-        `<line x1="${px}" y1="${py}" x2="${px}" y2="${(py - flagH).toFixed(1)}" stroke="#e7eef3" stroke-width="1.2" opacity="0.75"/>` +
-        `<path d="M${px} ${(py - flagH).toFixed(1)} L${(px + flagH * 0.5).toFixed(1)} ${(py - flagH * 0.82).toFixed(1)} L${px} ${(py - flagH * 0.64).toFixed(1)} Z" fill="#f5b942"/>`
-      )
-    })
-    .join('')
-  const fx = Number(X(hills.finish))
-  const fy = Number(Y(heightAt(hills, hills.finish)))
-  const cell = flagH * 0.24
-  const chequer = [0, 1, 2]
-    .flatMap((r) => [0, 1].map((q) => `<rect x="${(fx + q * cell).toFixed(1)}" y="${(fy - flagH * 1.3 + r * cell).toFixed(1)}" width="${cell.toFixed(1)}" height="${cell.toFixed(1)}" fill="${(r + q) % 2 === 0 ? '#e7eef3' : '#0e1230'}"/>`))
-    .join('')
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${picW}" height="${picH}" viewBox="0 0 ${picW} ${picH}">` +
-    `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0.1" stop-color="#0a0e29"/><stop offset="0.8" stop-color="#47306b"/></linearGradient></defs>` +
+    `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.skyTop}"/><stop offset="0.75" stop-color="${C.skyLow}"/></linearGradient>` +
+    `<linearGradient id="earth" x1="0" y1="0" x2="0" y2="1"><stop offset="0.45" stop-color="${C.body}"/><stop offset="1" stop-color="${C.deep}"/></linearGradient></defs>` +
     `<rect width="${picW}" height="${picH}" fill="url(#sky)"/>` +
-    `<circle cx="${(picW * 0.8).toFixed(1)}" cy="${(picH * 0.2).toFixed(1)}" r="${(picH * 0.06).toFixed(1)}" fill="#f3ecd2"/>` +
-    `<path d="${surface} L${picW} ${picH} L0 ${picH} Z" fill="${mix(hills.hue, '#0e1230', 0.45)}"/>` +
-    `<path d="${surface}" fill="none" stroke="${mix(hills.hue, '#ffffff', 0.5)}" stroke-width="2" stroke-linejoin="round"/>` +
-    flags +
-    `<line x1="${fx}" y1="${fy}" x2="${fx}" y2="${(fy - flagH * 1.3).toFixed(1)}" stroke="#e7eef3" stroke-width="1.4"/>` +
-    chequer +
+    view.stars.map(([x, y, r, o]) => `<circle cx="${n(x)}" cy="${n(y)}" r="${n(r)}" fill="#ffffff" opacity="${n(o)}"/>`).join('') +
+    `<circle cx="${n(picW * 0.8)}" cy="${n(picH * 0.18)}" r="${n(picH * 0.07)}" fill="${C.moon}"/>` +
+    `<path d="${view.far}" fill="${C.far}"/>` +
+    `<path d="${view.mid}" fill="${C.mid}"/>` +
+    `<path d="${view.ground}" fill="url(#earth)"/>` +
+    `<path d="${view.surface}" fill="none" stroke="${C.turf}" stroke-width="${n(Math.max(3, 1.1 * k))}" transform="translate(0 ${n(Math.max(2, 0.55 * k))})"/>` +
+    view.seams.map((d) => `<path d="${d}" fill="none" stroke="${C.seam}" stroke-width="${n(Math.max(1.5, 0.32 * k))}"/>`).join('') +
+    view.blips.map(([x, y]) => `<circle cx="${n(x)}" cy="${n(y)}" r="${n(Math.max(1.4, 0.36 * k))}" fill="${C.blip}"/>`).join('') +
+    `<path d="${view.surface}" fill="none" stroke="${C.edge}" stroke-width="${n(Math.max(2.5, 0.42 * k))}" stroke-linejoin="round"/>` +
+    // The blue bird, sitting on the slope behind, in its outline as the game draws one at dusk.
+    swift(view.blue, C.blue, mix(C.blue, '#ffffff', 0.4), false, 0.7) +
+    view.trail.map(([x, y], i) => `<circle cx="${n(x)}" cy="${n(y)}" r="${n(Math.max(1.2, 0.18 * k))}" fill="#ffffff" opacity="${n(0.25 + (i / view.trail.length) * 0.5)}"/>`).join('') +
+    swift(view.bird, C.bird, C.birdLine, true) +
     `</svg>`
   )
 }
@@ -491,7 +488,10 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { dailyCave, laidNumber: caveLaid } = await server.ssrLoadModule('/src/games/lander/daily.ts')
   const { plannedCave } = await server.ssrLoadModule('/src/games/lander/sim.ts')
   const { dailyHills, laidNumber: hillsLaid } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
-  const { heightAt, hillsSpan, plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
+  const { plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
+  // The hills' picture is their postcard's, from its layout (no engine): the biggest hill close in.
+  const { hillsColours, hillsView } = await server.ssrLoadModule('/src/games/swoop/hillsPicture.ts')
+  const birdShape = await server.ssrLoadModule('/src/games/swoop/birdShape.ts')
   // The gauntlet's picture is its rounds to the Blip star, from the plan's round code: no engine needed.
   const { dailyGauntlet } = await server.ssrLoadModule('/src/games/wobblerun/daily.ts')
   const { gauntletSvg } = await server.ssrLoadModule('/src/games/wobblerun/gauntletPicture.ts')
@@ -557,7 +557,8 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
       if (live.has('hills')) {
         const daily = dailyHills(day)
         const hills = plannedHills(hillsLaid(daily), daily.attempt)
-        info.hills = { n: daily.n, name: daily.name, picture: svgUrl(hillsSvg(hills, heightAt, hillsSpan, mixColor, size)) }
+        const view = hillsView(hills, size.picW, size.picH)
+        info.hills = { n: daily.n, name: daily.name, picture: svgUrl(hillsSvg(view, hillsColours(hills.hue), birdShape, mixColor, size)) }
       }
       if (live.has('gauntlet')) {
         const daily = dailyGauntlet(day)
