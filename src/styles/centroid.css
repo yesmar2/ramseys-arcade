@@ -58,7 +58,7 @@
   gap: 0.1rem;
 }
 
-/* Practice, under Play again (RunLabel.tsx): the size of its words, not the card's width. */
+/* Practice (RunLabel.tsx), under Play again and on a practice run's report: the size of its words, not the card's width. */
 .centroid-card__label {
   align-self: center;
 }

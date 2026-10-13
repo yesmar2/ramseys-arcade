@@ -708,7 +708,7 @@ function DayCard({
           <span>{sum.tier}</span>
         </div>
       </div>
-      {practice ? <RunLabel kind="practice" slug={SLUG} /> : null}
+      {practice ? <RunLabel kind="practice" slug={SLUG} className="centroid-card__label" /> : null}
       <Marks scores={scores} />
       {kept ? <p className="centroid-card__standing">Your result today stands: {kept.scoreText} {kept.tier}.</p> : null}
       {!practice && !past ? (
