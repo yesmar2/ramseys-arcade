@@ -11,7 +11,7 @@ import { gamePlayableOn, getGame, isRankedGame, wallGames } from '../data/games'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
 import { useHubEvents, useHubHighScore } from '../hooks/useGameHub'
 import { BOARD_PLACE, dailyTabHref, homeHref, navigate, periodFromRoute, RECORDS_PLACE, useRoute } from '../hooks/useHashRoute'
-import { scrollToPlace } from '../lib/scrollToPlace'
+import { scrollToPlace, stillComing } from '../lib/scrollToPlace'
 import { boardPeriodFor } from '../lib/allTime'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -190,7 +190,11 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     if (shownTab.current === tabKey) return
     shownTab.current = tabKey
     const hash = window.location.hash.slice(1)
-    if (hash === BOARD_PLACE || hash === RECORDS_PLACE) return scrollToPlace(() => document.getElementById(hash))
+    if (hash === BOARD_PLACE || hash === RECORDS_PLACE) {
+      // Its rows still coming, the tabs come up first, as for any tab, and the place once the rows are in (stillComing).
+      if (stillComing(document.getElementById(hash))) tabsRef.current?.scrollIntoView({ block: 'start' })
+      return scrollToPlace(() => document.getElementById(hash))
+    }
     const bar = tabsRef.current
     if (!bar || window.location.hash.startsWith(COURSE_ANCHOR)) return
     const top = bar.getBoundingClientRect().top

@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import { currentPath, homeHref, navigate } from '../hooks/useHashRoute'
+import { BOARD_PLACE, currentPath, homeHref, navigate, RECORDS_PLACE } from '../hooks/useHashRoute'
 
 /*
  * Bringing the part of a page a link names into view (an address's #anchor, a profile's ?focus=), and keeping it
@@ -10,7 +10,8 @@ import { currentPath, homeHref, navigate } from '../hooks/useHashRoute'
  * down after the scroll was aimed (a trophy link on a phone, where the best board above fills in late).
  *
  * So this waits for the place to be drawn, jumps to it, and aims again whenever it moves on the page, until it has
- * stayed put a while. It lets go the moment the player scrolls, taps or types, so it never fights them.
+ * stayed put a while. It lets go the moment the player scrolls, taps or types, so it never fights them. A game page's
+ * board or records is waited for until its rows have come (stillComing), as they changed the page's length under it.
  */
 
 /** The longest it waits for the place to be drawn: a slow first visit's data. */
@@ -22,10 +23,26 @@ const MOST_MS = 15_000
 const TICK_MS = 100
 /** Movement smaller than this is rounding, not the page moving. */
 const SLACK_PX = 3
+/** The longest it waits for a board or records still coming (stillComing), before it goes down to them as they are. */
+const COMING_MS = 6000
 
 const PLAYER_INPUT = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const
 
-/** Scroll to what `find` returns once it's there, and keep it there while the page settles. Returns a stop. */
+/**
+ * A game page's board or records (#board, #records) still on their way: the place, or what's just under it (a game's
+ * tabs, then its board or its Records tab), still loading (aria-busy: the tab's wait, or the loading rows). It's gone
+ * down to once they've come: gone down to over the loading rows, the page's foot showed under them for the real ones
+ * to push off, or the games under a short board came up into view as it filled in.
+ */
+export function stillComing(place: Element | null): boolean {
+  if (!place || (place.id !== BOARD_PLACE && place.id !== RECORDS_PLACE)) return false
+  return [place, place.nextElementSibling].some((el) => el?.matches('[aria-busy="true"]') || el?.querySelector('[aria-busy="true"]'))
+}
+
+/**
+ * Scroll to what `find` returns once it's there (a board or records once they've come: stillComing), and keep it there
+ * while the page settles. Returns a stop.
+ */
 export function scrollToPlace(find: () => Element | null, block: ScrollLogicalPosition = 'start'): () => void {
   const started = Date.now()
   let done = false
@@ -34,6 +51,9 @@ export function scrollToPlace(find: () => Element | null, block: ScrollLogicalPo
   let aimedPage: number | null = null
   let aimedScreen = 0
   let stillSince = 0
+  // Still coming at the last look: it's aimed at a look after it has come, not in the frame it comes in, which the
+  // browser counts as the page's foot being pushed off all the same.
+  let coming = false
 
   const stop = () => {
     if (done) return
@@ -54,7 +74,10 @@ export function scrollToPlace(find: () => Element | null, block: ScrollLogicalPo
   const tick = () => {
     if (done) return
     const now = Date.now()
-    const place = find()
+    const found = find()
+    const wasComing = coming
+    coming = stillComing(found) && now - started < COMING_MS
+    const place = coming || wasComing ? null : found
     if (!place) {
       // Not drawn yet, or gone again with the page it was on.
       if (now - started > (aimedPage === null ? WAIT_MS : MOST_MS)) return stop()

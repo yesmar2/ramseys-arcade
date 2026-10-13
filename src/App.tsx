@@ -23,7 +23,7 @@ import { refreshPersonalBests } from './lib/personalBest'
 import { playMusicFor, silenceMusic, unlockSound } from './lib/sound'
 import { isImpersonating } from './lib/impersonate'
 import { pruneOrphanTournamentIds } from './lib/tournaments'
-import { scrollToPlace } from './lib/scrollToPlace'
+import { scrollToPlace, stillComing } from './lib/scrollToPlace'
 import { GameHubPage } from './pages/GameHubPage'
 import { GameLeaderboardPage } from './pages/GameLeaderboardPage'
 import { HomePage } from './pages/HomePage'
@@ -132,27 +132,6 @@ function anchorTarget(): HTMLElement | null {
   return id ? document.getElementById(id) : null
 }
 
-/** A tab's bar with the wait for its tab under it (GameHubPage's gh-tab-wait). */
-function waitsForTab(place: Element | null): boolean {
-  return Boolean(place?.nextElementSibling?.classList.contains('gh-tab-wait'))
-}
-
-/**
- * The place, for one landing (scrollToPlace). A tab's bar (#records) is landed on a look after its tab has come: not
- * over the wait for it, where the page's foot showed under the wait for the tab to push off as it came, nor as the
- * tab came in, which the browser counted as pushing the foot off all the same.
- */
-function landingPlace(): () => HTMLElement | null {
-  let waited = false
-  return () => {
-    const place = anchorTarget()
-    const waiting = waitsForTab(place)
-    const ready = !waiting && !waited
-    waited = waiting
-    return ready ? place : null
-  }
-}
-
 function isGameScreen(route: ReturnType<typeof useRoute>) {
   return route.name === 'gamePlay' || route.name === 'tournamentPlay'
 }
@@ -177,13 +156,14 @@ function App() {
 
   // A new page starts at its top, or at the place its link names (a past course's row, the home page's games, a
   // day board's All time board). A lazy page draws that place once its data comes, so it's waited for, and kept in
-  // view while the page fills in above it (lib/scrollToPlace.ts).
+  // view while the page fills in above it (lib/scrollToPlace.ts). So is a game's board or records, until its rows
+  // have come (stillComing): the page waits at its top meanwhile.
   // The jump to the top is instant: the site's smooth scrolling made it a glide, still running when a page's own
   // place (a board's section, a profile's trophies) was drawn, and it carried the page past it.
   useEffect(() => {
     const place = anchorTarget()
-    if (!place || waitsForTab(place)) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    return anchorId() ? scrollToPlace(landingPlace()) : undefined
+    if (!place || stillComing(place)) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    return anchorId() ? scrollToPlace(anchorTarget) : undefined
   }, [scrollKey])
 
   useEffect(() => {

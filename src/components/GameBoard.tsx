@@ -561,8 +561,15 @@ export function GamePageBoard({
   const held = useHeldHeight<HTMLDivElement>(`gb-page-${slug}-${period}`, data.loading)
 
   // sb-scope: the boards' colours (boards.css), the medals' inks and the lines, as the records tab has them from .sb.
+  // Busy while it loads: a link to the board goes down to it once its rows have come (lib/scrollToPlace stillComing).
   return (
-    <div id={place} className="gb gb--page sb-scope" style={{ ...style, ...held.style }} ref={held.ref}>
+    <div
+      id={place}
+      className="gb gb--page sb-scope"
+      style={{ ...style, ...held.style }}
+      ref={held.ref}
+      aria-busy={data.loading || undefined}
+    >
       {isDayPointsBoard(slug, period) ? (
         <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} title={title} />
       ) : (
