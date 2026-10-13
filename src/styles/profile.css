@@ -428,11 +428,14 @@ html[data-theme='dark'] .pf {
   animation: none;
 }
 
+/*
+ * The buttons wrap as every banner's do (home.css .home-banner__acts), with nothing here saying otherwise: on a small
+ * phone Share takes a line of its own, full width, rather than both buttons squeezing their words onto two lines.
+ */
 .pcard__acts {
   grid-area: acts;
   justify-self: end;
   margin: 0;
-  flex-wrap: nowrap;
 }
 
 .pcard__arrow {
