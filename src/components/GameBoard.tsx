@@ -7,7 +7,7 @@ import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn, readableFill } from '../lib/color'
 import { useDeviceType } from '../lib/device'
-import { gapFigure, oneRunBoard, playersNote, type BoardPlayer } from '../lib/gameBoard'
+import { gapFigure, playersNote, type BoardPlayer } from '../lib/gameBoard'
 import { lazyPage } from '../lib/lazyPage'
 import { useActiveGroup, useScope } from '../lib/groups'
 import {
@@ -23,7 +23,6 @@ import { useSeason } from '../lib/season'
 import { periodTabs, seasonHasStandings } from '../lib/seasonStandings'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty, BoardSkeleton } from './BoardChrome'
-import { DeviceIcon } from './DeviceIcon'
 import { PeriodLabel } from './PeriodLabel'
 import { BoardPlayers, BoardRuns } from './BoardPlayers'
 import { PlayerMark } from './PlayerMark'
@@ -38,6 +37,10 @@ import { RACE_GHOST_GAMES } from '../lib/raceGhost'
  * tabs, in place of a board page and a record book of their own. The board's top row is its periods; then one
  * row per player at their best run, and every run a tap away.
  *
+ * Since the "Board and records, new looks" canvas (Ramsey: "let's do A and C", 2026-10-13) it's A: the first
+ * three on a podium, then a plain list of the rest, a player, their runs and their best a row. Find a player is
+ * on the top row, and there are no column heads.
+ *
  * A daily's board opens on today's. Its week and month are its day points (leaderboardFormat
  * isDayPointsBoard): the points each day's board paid its players by place, added up, drawn as a plain
  * table of players, their days and their points. It has none for all time (lib/allTime.ts).
@@ -49,14 +52,6 @@ const MEDALS = ['gold', 'silver', 'bronze'] as const
 
 /** Rows a loading board holds room for: the players it opens on (useGameBoard FIRST_PLAYERS). */
 const FIRST_ROWS = 10
-
-function dayOf(at: number) {
-  try {
-    return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  } catch {
-    return ''
-  }
-}
 
 export function BackIcon() {
   return (
@@ -146,12 +141,18 @@ function BoardHead({
   period,
   title,
   count,
+  findRef,
+  findWait = false,
   children,
 }: {
   slug: LeaderboardGame
   period: LeaderboardPeriod
   title?: string
   count: string | null
+  /** Where Find a player goes (BoardPlayers puts it there), before the switch. */
+  findRef?: (el: HTMLSpanElement | null) => void
+  /** While the board loads: Find a player's room, so a phone's top row doesn't grow when it comes. */
+  findWait?: boolean
   children?: ReactNode
 }) {
   return (
@@ -163,12 +164,154 @@ function BoardHead({
       ) : null}
       <PeriodTabs slug={slug} period={period} />
       {count ? <span className="gb-board__count">{count}</span> : null}
+      {findRef ? (
+        <span className="gb-board__find" ref={findRef}>
+          {findWait ? (
+            <span className="gb-find" aria-hidden="true">
+              <span className="gb-find__box skel-btn" />
+            </span>
+          ) : null}
+        </span>
+      ) : null}
       {children}
     </div>
   )
 }
 
 /* ---------- the board ---------- */
+
+/**
+ * Today's board of a racing daily: its runs can be raced (race any ghost); `free` is the #1's, for anyone.
+ * `known`: whether the account is, so a member's Plus is never mistaken for none while it's asked for.
+ */
+type RaceRows = { free: (place: number) => boolean; known: boolean; yourScore: number | null }
+
+function RaceButton({ slug, player, mine, race }: { slug: string; player: BoardPlayer; mine: boolean; race: RaceRows }) {
+  return (
+    <RaceGhostButton
+      playHref={gamePlayHref(slug)}
+      name={player.name}
+      time={formatLeaderboardScore(slug, player.best.score)}
+      gap={race.yourScore != null && player.best.score > race.yourScore ? gapFigure(slug, player.best.score, race.yourScore) : null}
+      needsPlus={race.free(player.place) ? false : race.known ? true : null}
+      mine={mine}
+    />
+  )
+}
+
+/** "4 runs". */
+function runsWords(runs: number): string {
+  return `${runs} ${runs === 1 ? 'run' : 'runs'}`
+}
+
+/** The crown over first place. */
+function PodiumCrown() {
+  return (
+    <svg className="gb-pod__crown" viewBox="0 0 32 20" aria-hidden="true">
+      <path d="M3 18 L5 5 L11 11 L16 2 L21 11 L27 5 L29 18 Z" />
+    </svg>
+  )
+}
+
+/**
+ * The board's first three on a podium: first in the middle on the highest step, crowned, second on its left and
+ * third on its right, each with their mark, tag, figure and runs, and their place on their step. Yours says how
+ * far you are behind the place above.
+ */
+function Podium({
+  slug,
+  players,
+  you,
+  period,
+  figure,
+  sub,
+  behind,
+  race,
+}: {
+  slug: string
+  /** The first three, first first. */
+  players: BoardPlayer[]
+  you: string
+  period: LeaderboardPeriod
+  /** A player's figure: their best, or a daily's day points. */
+  figure: (player: BoardPlayer) => string
+  /** The line under it: their runs, or their days. */
+  sub: (player: BoardPlayer) => string
+  /** How far you are behind the place above: "3,743 behind GLITCH". */
+  behind: (above: BoardPlayer, mine: BoardPlayer) => string
+  race?: RaceRows
+}) {
+  return (
+    <ol className="gb-podium">
+      {players.map((p, i) => {
+        const mine = Boolean(you) && p.name === you
+        const above = players[i - 1]
+        const line = [sub(p), mine && above ? behind(above, p) : ''].filter(Boolean).join(' · ')
+        return (
+          <li key={p.name} className={`gb-pod gb-pod--${MEDALS[i]}${mine ? ' gb-pod--you' : ''}`}>
+            {i === 0 ? <PodiumCrown /> : null}
+            <PlayerMark name={p.name} avatarId={p.best.avatarId} className="gb-pod__mark" />
+            {/* The name is the step's link, stretched over it (boards.css); the skin beside it opens its own card. */}
+            <span className="gb-pod__name">
+              <span className="visually-hidden">{ordinal(p.place)}: </span>
+              <a className="gb-pod__go" href={rankHref(p.name, period)}>
+                <PlayerName name={p.name} avatarId={p.best.avatarId} />
+              </a>
+              <SkinMark skin={p.best.skin} />
+              {mine ? <span className="sb-row__you">You</span> : null}
+            </span>
+            <span className="gb-pod__figure">{figure(p)}</span>
+            <span className="gb-pod__sub">{line}</span>
+            {race ? <RaceButton slug={slug} player={p} mine={mine} race={race} /> : null}
+            <span className="gb-pod__step" aria-hidden="true">
+              {p.place}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/** A loading board: the podium's steps and the rows under it, in their own shapes, so the board lands in place. */
+function PodiumBoardSkeleton() {
+  const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
+  return (
+    <div className="gb-list" aria-hidden="true">
+      <ol className="gb-podium gb-podium--skel">
+        {MEDALS.map((medal, i) => (
+          <li key={medal} className={`gb-pod gb-pod--${medal}`}>
+            {i === 0 ? <PodiumCrown /> : null}
+            <span className="pmark pmark--empty gb-pod__mark" />
+            {/* A space with no width: the name's line as tall as a name's. */}
+            <span className="gb-pod__name">
+              {line('5rem')}
+              {'\u200b'}
+            </span>
+            <span className="gb-pod__figure">{line('4.5rem')}</span>
+            <span className="gb-pod__sub">{line('3rem')}</span>
+            <span className="gb-pod__step" />
+          </li>
+        ))}
+      </ol>
+      <ol className="gb-rows">
+        {Array.from({ length: FIRST_ROWS - MEDALS.length }, (_, i) => (
+          <li key={i} className="gb-row gb-row--slim">
+            <div className="gb-row__link">
+              <span className="gb-row__ord">{line('1.6rem')}</span>
+              <span className="pmark pmark--empty gb-row__mark" />
+              <span className="gb-row__who">{line('6rem')}</span>
+              <span className="gb-row__best">{line('3.5rem')}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button type="button" className="gb-board__more skel-btn" disabled tabIndex={-1}>
+        Show 25 more players
+      </button>
+    </div>
+  )
+}
 
 function PlayerRow({
   slug,
@@ -181,16 +324,12 @@ function PlayerRow({
   player: BoardPlayer
   you: string
   period: LeaderboardPeriod
-  /**
-   * Today's board of a racing daily: its rows can be raced (race any ghost); `free` is the #1's, for anyone.
-   * `known`: whether the account is, so a member's Plus is never mistaken for none while it's asked for.
-   */
-  race?: { free: (place: number) => boolean; known: boolean; yourScore: number | null }
+  race?: RaceRows
 }) {
   const mine = Boolean(you) && player.name === you
   const medal = MEDALS[player.place - 1]
   return (
-    <li className={`gb-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
+    <li className={`gb-row gb-row--slim${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
       {/* The name is the row's link, stretched over it (boards.css); the skin beside it opens its own card. */}
       <div className="gb-row__link">
         <span className="gb-row__ord">{ordinal(player.place).toUpperCase()}</span>
@@ -203,25 +342,10 @@ function PlayerRow({
             <SkinMark skin={player.best.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
-          <span className="gb-row__runs">
-            {player.runs} {player.runs === 1 ? 'run' : 'runs'}
-          </span>
+          <span className="gb-row__runs">{runsWords(player.runs)}</span>
         </span>
         <span className="gb-row__best">{formatLeaderboardScore(slug, player.best.score)}</span>
-        <span className="gb-row__set">
-          <DeviceIcon device={player.best.device} />
-          {dayOf(player.best.at)}
-        </span>
-        {race ? (
-          <RaceGhostButton
-            playHref={gamePlayHref(slug)}
-            name={player.name}
-            time={formatLeaderboardScore(slug, player.best.score)}
-            gap={race.yourScore != null && player.best.score > race.yourScore ? gapFigure(slug, player.best.score, race.yourScore) : null}
-            needsPlus={race.free(player.place) ? false : race.known ? true : null}
-            mine={mine}
-          />
-        ) : null}
+        {race ? <RaceButton slug={slug} player={player} mine={mine} race={race} /> : null}
       </div>
     </li>
   )
@@ -246,6 +370,7 @@ function Board({
   noteHunt?: string
 }) {
   const [view, setView] = useState<'players' | 'runs'>('players')
+  const [findSlot, setFindSlot] = useState<HTMLSpanElement | null>(null)
   const byPlayer = view === 'players'
   const game = getGame(slug)!
   const { isPlus, signedIn, signedOut } = useAuth()
@@ -255,7 +380,7 @@ function Board({
   // Today's board of a racing daily: each row's run can be raced as a ghost. A group's top needn't be the
   // course's #1, so there only Plus races.
   const yourRow = data.top.find((p) => p.name === you) ?? data.around?.find((p) => p.name === you)
-  const race =
+  const race: RaceRows | undefined =
     period === 'daily' && RACE_GHOST_GAMES.has(slug)
       ? { free: (place: number) => isPlus || (!groupId && place === 1), known: signedIn || signedOut, yourScore: yourRow?.best.score ?? null }
       : undefined
@@ -263,14 +388,19 @@ function Board({
     !data.loading && data.field
       ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'}${scope.id ? ` ${scope.where}` : ''} · ${data.runCount.toLocaleString()} ${data.runCount === 1 ? 'run' : 'runs'}`
       : null
+  // Tied in what the board shows, as two times can print the same whatever the milliseconds under them.
+  const behind = (above: BoardPlayer, mine: BoardPlayer) =>
+    formatLeaderboardScore(slug, above.best.score) === formatLeaderboardScore(slug, mine.best.score)
+      ? `tied with ${above.name}`
+      : `${gapFigure(slug, above.best.score, mine.best.score)} behind ${above.name}`
   return (
     <section
-      className="sb-card gb-board gb-board--five"
+      className="sb-card gb-board gb-board--slim"
       aria-labelledby={title ? 'gb-board-title' : undefined}
       aria-label={title ? undefined : `${game.name}’s board`}
       data-hunt={`b-board-${slug}`}
     >
-      <BoardHead slug={slug} period={period} title={title} count={count}>
+      <BoardHead slug={slug} period={period} title={title} count={count} findRef={setFindSlot} findWait={data.loading}>
         <div className="gb-tog" role="group" aria-label="Show">
           {(['players', 'runs'] as const).map((v) => (
             <button
@@ -290,7 +420,7 @@ function Board({
         {closesWords(period)}
       </p>
       {data.loading ? (
-        <BoardSkeleton rows={FIRST_ROWS} />
+        <PodiumBoardSkeleton />
       ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">
@@ -301,17 +431,6 @@ function Board({
         </div>
       ) : byPlayer ? (
         <BoardPlayers
-          cols={
-            <div className="gb-board__cols" aria-hidden="true">
-              <span>Place</span>
-              <span />
-              <span>Player</span>
-              {/* A first-result daily's today board keeps each player's first result, which needn't be their best. */}
-              <span className="gb-board__num">{oneRunBoard(slug, period) ? 'Result' : 'Best'}</span>
-              <span className="gb-board__set">Set</span>
-              {race ? <span className="gb-board__race">Ghost</span> : null}
-            </div>
-          }
           slug={slug}
           period={period}
           top={data.top}
@@ -319,6 +438,19 @@ function Board({
           field={data.field}
           you={data.you ? you : ''}
           bandLine={data.bandLine}
+          findSlot={findSlot}
+          podium={(players) => (
+            <Podium
+              slug={slug}
+              players={players}
+              you={you}
+              period={period}
+              figure={(p) => formatLeaderboardScore(slug, p.best.score)}
+              sub={(p) => runsWords(p.runs)}
+              behind={behind}
+              race={race}
+            />
+          )}
           row={(p) => <PlayerRow key={p.name} slug={slug} player={p} you={you} period={period} race={race} />}
         />
       ) : (
@@ -346,7 +478,7 @@ function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; 
   const mine = Boolean(you) && player.name === you
   const medal = MEDALS[player.place - 1]
   return (
-    <li className={`gb-row${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
+    <li className={`gb-row gb-row--slim${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
       <div className="gb-row__link">
         <span className="gb-row__ord">{ordinal(player.place).toUpperCase()}</span>
         <PlayerMark name={player.name} avatarId={player.best.avatarId} className="gb-row__mark" />
@@ -361,10 +493,6 @@ function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; 
           <span className="gb-row__runs">{daysWords(player.best)}</span>
         </span>
         <span className="gb-row__best">{formatDayPoints(player.best.score)}</span>
-        <span className="gb-row__set">
-          <DeviceIcon device={player.best.device} />
-          {dayOf(player.best.at)}
-        </span>
       </div>
     </li>
   )
@@ -388,24 +516,25 @@ function PointsBoard({
 }) {
   const game = getGame(slug)!
   const scope = useScope()
+  const [findSlot, setFindSlot] = useState<HTMLSpanElement | null>(null)
   const count =
     !data.loading && data.field
       ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'}${scope.id ? ` ${scope.where}` : ''}`
       : null
   return (
     <section
-      className="sb-card gb-board gb-board--five"
+      className="sb-card gb-board gb-board--slim"
       aria-labelledby={title ? 'gb-board-title' : undefined}
       aria-label={title ? undefined : `${game.name}’s board`}
       data-hunt={`b-board-${slug}`}
     >
-      <BoardHead slug={slug} period={period} title={title} count={count} />
+      <BoardHead slug={slug} period={period} title={title} count={count} findRef={setFindSlot} findWait={data.loading} />
       <p className="gb-board__note">
         Play every day to climb: the better you finish each day, the more points you add.
         {closesWords(period)}
       </p>
       {data.loading ? (
-        <BoardSkeleton rows={FIRST_ROWS} />
+        <PodiumBoardSkeleton />
       ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">
@@ -416,15 +545,6 @@ function PointsBoard({
         </div>
       ) : (
         <BoardPlayers
-          cols={
-            <div className="gb-board__cols" aria-hidden="true">
-              <span>Place</span>
-              <span />
-              <span>Player</span>
-              <span className="gb-board__num">Points</span>
-              <span className="gb-board__set">Last day</span>
-            </div>
-          }
           slug={slug}
           period={period}
           top={data.top}
@@ -432,6 +552,22 @@ function PointsBoard({
           field={data.field}
           you={data.you ? you : ''}
           bandLine={null}
+          findSlot={findSlot}
+          podium={(players) => (
+            <Podium
+              slug={slug}
+              players={players}
+              you={you}
+              period={period}
+              figure={(p) => formatDayPoints(p.best.score)}
+              sub={(p) => daysWords(p.best)}
+              behind={(above, mine) =>
+                above.best.score === mine.best.score
+                  ? `tied with ${above.name}`
+                  : `${formatDayPoints(above.best.score - mine.best.score)} behind ${above.name}`
+              }
+            />
+          )}
           row={(p) => <PointsRow key={p.name} player={p} you={you} period={period} />}
         />
       )}
@@ -471,15 +607,16 @@ export function GamePageBoard({
   // While it loads it holds the height it had last time on this device, so nothing under it jumps (lib/heldShape.ts).
   const held = useHeldHeight<HTMLDivElement>(`gb-page-${slug}-${period}`, data.loading)
 
+  // sb-scope: the boards' colours (boards.css), the medals' inks and the lines, as the records tab has them from .sb.
   if (data.error) {
     return (
-      <div id={place} className="gb gb--page" style={style}>
+      <div id={place} className="gb gb--page sb-scope" style={style}>
         <BoardEmpty title="Couldn’t load scores" detail="Check your connection and try again." />
       </div>
     )
   }
   return (
-    <div id={place} className="gb gb--page" style={{ ...style, ...held.style }} ref={held.ref}>
+    <div id={place} className="gb gb--page sb-scope" style={{ ...style, ...held.style }} ref={held.ref}>
       {isDayPointsBoard(slug, period) ? (
         <PointsBoard key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} title={title} />
       ) : (

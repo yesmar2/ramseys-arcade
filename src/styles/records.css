@@ -2251,3 +2251,292 @@ a.rbl-row__link:focus-visible {
     font-size: 0.9rem;
   }
 }
+
+/*
+ * C of the "Board and records, new looks" canvas (Ramsey: "let's do A and C", 2026-10-13), for a player the list
+ * knows (RecordBookView BarRow): each record a bar of how close their best is to it. What it is, with its best and
+ * who holds it; the bar, as long as the share of the record their best makes, their best at its end; then their
+ * place and how far off. Theirs are full and gold, their nearest lit in the site's colour. Signed out it's the
+ * list above, unchanged.
+ */
+.rbl--bars {
+  --rbl-cols: minmax(0, 19rem) minmax(0, 1fr) 12rem;
+  padding: 0.5rem 0 0.9rem;
+}
+
+.rbl--bars .rbl-group__head {
+  gap: 0.25rem 0.65rem;
+  padding: 1.15rem 1.65rem 0.4rem;
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rbl-accent-ink);
+}
+
+.rbl--bars .rbl-group__icon {
+  display: none;
+}
+
+.rbl--bars .rbl-group__aside {
+  font-size: 0.84rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.rbl--bars .rbl-row__link {
+  column-gap: 1.4rem;
+  min-height: 3.9rem;
+  margin: 0.1rem 0.75rem;
+  padding: 0.45rem 0.9rem;
+  border-top: 0;
+  border-radius: 0.85rem;
+}
+
+.rbl--bars .rbl-row__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.55rem;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.rbc-what {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+/* "13.3s by SOFIA": the record's best and who holds it, under its name. */
+.rbc-held {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.rbc-held__best {
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two classes, so the mark's own size (list.css .pmark) doesn't win. */
+.rbc-held .rbc-held__mark {
+  --pmark: 1.3rem;
+}
+
+.rbc-held__mark .player-avatar {
+  --avatar-size: calc(var(--pmark) - 0.15rem) !important;
+}
+
+.rbc-held__tag {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.rbc-held__tied {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rbc-near {
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--rbl-near-ink, var(--sb-brand-ink));
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rbc-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.rbc-bar__track {
+  flex: 1;
+  height: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.07);
+}
+
+.rbc-bar__fill {
+  display: block;
+  width: var(--rbc-share);
+  min-width: 0.5rem;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--gb-accent, var(--accent)) 82%, transparent);
+}
+
+.rbc-row--near .rbc-bar__fill {
+  background: var(--accent);
+}
+
+.rbl-row--mine .rbc-bar__fill {
+  background: var(--sb-gold);
+}
+
+/* Your best, at the bar's end: the same width every row, so the bars line up. */
+.rbc-bar__you {
+  flex: none;
+  width: 4.75rem;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rbc-row--near .rbc-bar__you {
+  color: var(--rbl-near-ink, var(--sb-brand-ink));
+}
+
+.rbl-row--mine .rbc-bar__you {
+  color: var(--rbl-gold-ink);
+}
+
+/* Your place and how far off, or Yours. */
+.rbc-end {
+  justify-self: end;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+  text-wrap: balance;
+}
+
+.rbc-row--near .rbc-end {
+  font-weight: 800;
+  color: var(--rbl-near-ink, var(--sb-brand-ink));
+}
+
+.rbc-row--near .rbl-row__link {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.rbc-row--near a.rbl-row__link:hover,
+.rbc-row--near a.rbl-row__link:focus-visible {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.rbl--bars .rbl-open__go {
+  margin: -0.7rem 0;
+}
+
+.rbl--skel .rbc-bar__track {
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+@media (max-width: 64rem) {
+  .rbl--bars {
+    --rbl-cols: minmax(0, 15rem) minmax(0, 1fr) 10rem;
+  }
+
+  .rbl--bars .rbl-row__link {
+    column-gap: 1rem;
+    margin-inline: 0.4rem;
+    padding-inline: 0.7rem;
+  }
+
+  .rbl--bars .rbl-group__head {
+    padding-inline: 1.1rem;
+  }
+
+  .rbc-end {
+    font-size: 0.86rem;
+  }
+}
+
+/* A phone: what it is and how far off on one line, the bar and who holds it on the next. */
+@media (max-width: 42rem) {
+  /* Loading, signed in: the head's line has room for its second line, how close you are. */
+  .rbk-tabhead__line--two::after {
+    content: '\200b';
+    display: block;
+  }
+
+  .rbl--bars .rbl-group__head {
+    padding: 1rem 1rem 0.3rem;
+  }
+
+  .rbl--bars .rbl-row__link {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label end'
+      'bar held';
+    gap: 0.45rem 0.8rem;
+    margin: 0.1rem 0.4rem;
+    padding: 0.65rem 0.6rem;
+  }
+
+  .rbc-what {
+    display: contents;
+  }
+
+  .rbl--bars .rbl-row__label {
+    grid-area: label;
+    font-size: 0.95rem;
+  }
+
+  .rbc-held {
+    grid-area: held;
+    justify-self: end;
+    max-width: 11rem;
+    font-size: 0.78rem;
+  }
+
+  .rbc-bar {
+    grid-area: bar;
+  }
+
+  .rbc-bar__track {
+    height: 0.5rem;
+  }
+
+  .rbc-bar__you {
+    display: none;
+  }
+
+  .rbc-end {
+    grid-area: end;
+    align-self: center;
+    max-width: 9.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* Nobody's yet: its name and Be the first, then what it says, no bar. */
+  .rbl--bars .rbl-row--open .rbl-row__link {
+    grid-template-areas:
+      'label end'
+      'held held';
+  }
+
+  .rbl--bars .rbl-row--open .rbc-held {
+    justify-self: start;
+    max-width: none;
+    white-space: normal;
+  }
+
+  .rbl--bars .rbl-row--open .rbc-bar {
+    display: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { boardPlayer, type BoardPlayer } from '../lib/gameBoard'
 import { getLeaderboard, getPlayerBoard, type LeaderboardEntry, type LeaderboardPeriod, type YouEntry } from '../lib/leaderboard'
 import { ordinal } from '../lib/scoreboard'
@@ -10,6 +11,9 @@ import { LeaderboardList } from './LeaderboardList'
  * two, a break that says how many players it skips and opens 25 at a time. Under the viewer's place, the
  * next band up and what gets into it ("Beat 4,890 to reach the top half"). Over it all, Find a player and
  * Jump to me. Every place is the API's (getPlayerBoard): the page holds only the rows it has asked for.
+ *
+ * A game's page puts its first three on a podium over the rest (`podium`), and Find a player on the board's top
+ * row (`findSlot`).
  */
 
 /** 7,412th: a place with its thousands marked. */
@@ -44,6 +48,8 @@ export function BoardPlayers({
   bandLine,
   cols,
   row,
+  podium,
+  findSlot,
   load,
   search,
 }: {
@@ -62,6 +68,13 @@ export function BoardPlayers({
   cols?: ReactNode
   /** One player's row: an `li`. */
   row: (player: BoardPlayer) => ReactNode
+  /** The first three, drawn over the rest in place of their rows (GameBoard's Podium). Not on a list of players found. */
+  podium?: (players: BoardPlayer[]) => ReactNode
+  /**
+   * Where Find a player and Jump to me go, when not over the rows: the board's top row (GameBoard's). Null till
+   * that row is there.
+   */
+  findSlot?: HTMLElement | null
   /** Where more rows come from: a game board's players (getPlayerBoard), unless a page has its own (a record's). */
   load?: (offset: number, limit: number) => Promise<BoardPlayer[]>
   /** Finding a player by tag: a game board's, unless given; null where the API can't (a record's board). */
@@ -145,11 +158,10 @@ export function BoardPlayers({
   // A viewer near the top is already in view: Jump to me only once their place is past the opening rows.
   const showJump = Boolean(mine && mine.place > top.length + 2)
 
-  return (
-    <div ref={listRef} className="gb-list">
-      {field > top.length && (findRows || showJump) ? (
-        <div className="gb-find">
-          {findRows ? (
+  const finder =
+    field > top.length && (findRows || showJump) ? (
+      <div className="gb-find">
+        {findRows ? (
           <label className="gb-find__box" htmlFor={`gb-find-${slug}`}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
@@ -167,14 +179,18 @@ export function BoardPlayers({
               onChange={(e) => setFind(e.target.value)}
             />
           </label>
-          ) : null}
-          {showJump ? (
-            <button type="button" className="gb-find__me" onClick={jump}>
-              Jump to me <span>{placeWords(mine!.place)}</span>
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+        {showJump ? (
+          <button type="button" className="gb-find__me" onClick={jump}>
+            Jump to me <span>{placeWords(mine!.place)}</span>
+          </button>
+        ) : null}
+      </div>
+    ) : null
+
+  return (
+    <div ref={listRef} className="gb-list">
+      {findSlot === undefined ? finder : findSlot && finder ? createPortal(finder, findSlot) : null}
       {cols}
       {found ? (
         found.length ? (
@@ -190,11 +206,17 @@ export function BoardPlayers({
           const next = segments[k + 1]
           const hasMe = Boolean(mine && mine.place >= seg.from && mine.place <= end)
           const gap = next ? next.from - end - 1 : field - end
+          // The board's first three go up on the podium, and the rows carry on from 4th.
+          const raised = podium && seg.from === 1 ? seg.rows.slice(0, 3) : []
+          const rest = seg.rows.slice(raised.length)
           return (
             <div key={seg.from} className="gb-seg">
-              <ol className="gb-rows" start={seg.from}>
-                {seg.rows.map((p) => row(p))}
-              </ol>
+              {raised.length ? podium!(raised) : null}
+              {rest.length ? (
+                <ol className="gb-rows" start={seg.from + raised.length}>
+                  {rest.map((p) => row(p))}
+                </ol>
+              ) : null}
               {hasMe && bandLine ? <p className="gb-band">{bandLine}</p> : null}
               {gap > 0 ? (
                 <button type="button" className={`gb-board__more${next ? ' gb-board__more--gap' : ''}`} onClick={() => void openAfter(end)} disabled={busy === end}>
