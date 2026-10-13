@@ -101,6 +101,11 @@ html[data-theme='dark'] .blip-poll {
   background: rgba(var(--ink-rgb), 0.06);
 }
 
+/* While the question comes, the lines a narrow card's words take more of (homeToday.css shows them there). */
+.blip-poll__skel-more {
+  display: none;
+}
+
 .blip-poll__bar {
   position: relative;
   display: flex;

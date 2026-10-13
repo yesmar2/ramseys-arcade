@@ -201,6 +201,15 @@ html[data-theme="dark"] .home-banner {
   color: var(--banner-muted);
 }
 
+/* The blurb in a few words, on one line: a phone's, where the long one goes (the lighter phone home, below). */
+.home-banner__blurb--short {
+  display: none;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .home-banner__acts {
   display: flex;
   flex-wrap: wrap;
@@ -1291,6 +1300,13 @@ html[data-theme="dark"] .home-banner {
   color: var(--muted);
 }
 
+/* Over your row straight after the rows shown: a gap only on a phone, which leaves rows out (below). */
+@media (min-width: 36.01rem) {
+  .hb-row--gap-phone {
+    display: none;
+  }
+}
+
 .hb-row__rank {
   flex: none;
   width: 1.3rem;
@@ -1396,6 +1412,19 @@ html[data-theme="light"] .hb-row__rank--bronze {
   font-weight: 600;
   line-height: 1.45;
   color: var(--muted);
+}
+
+/* Signed out, "Sign in" in the note: a tap on it opens the menu, where signing in lives. */
+.hb-note__signin {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
 }
 
 .hb-empty {
@@ -2246,6 +2275,11 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   letter-spacing: 0.02em;
 }
 
+/* The number's period, short, after it: only where its label goes, a phone's home (below). */
+.wall-tile__when {
+  display: none;
+}
+
 .wall-tile__mine {
   min-width: 0;
   overflow: hidden;
@@ -3062,6 +3096,27 @@ html[data-theme="dark"] .home-banner__hint--error {
     min-height: 3rem;
   }
 
+  /*
+   * A season's banner (season/SeasonBanner.tsx), and its skeleton (HomeHero.tsx), keep the game it offers
+   * beside See the pass, each on a line of its own when the two don't fit, and, with no level row, a line on
+   * the pass.
+   */
+  .home-rail :is(.home-banner--season, .home-banner--skel) .home-banner__ghost {
+    display: inline-flex;
+    flex: 1;
+    justify-content: center;
+    min-height: 3rem;
+  }
+
+  .home-rail :is(.home-banner--season, .home-banner--skel) :is(.home-banner__cta, .home-banner__ghost) {
+    white-space: nowrap;
+  }
+
+  .home-rail :is(.home-banner--season, .home-banner--skel) .home-banner__blurb--short {
+    display: block;
+    font-size: 0.95rem;
+  }
+
   .home-rail .home-banner__figures {
     flex-direction: column;
     gap: 0.15rem;
@@ -3128,7 +3183,7 @@ html[data-theme="dark"] .home-banner__hint--error {
     font-size: 0.72rem;
   }
 
-  /* The high score alone, in the game's colour: no label, no holder. */
+  /* The high score in the game's colour, and its period after it, short: no label, no holder. */
   .home-rail .wall-tile__line:first-child .wall-tile__tag,
   .home-rail .wall-tile__who {
     display: none;
@@ -3136,6 +3191,15 @@ html[data-theme="dark"] .home-banner__hint--error {
 
   .home-rail .wall-tile__line:first-child .wall-tile__figure {
     color: var(--wall-accent-ink);
+  }
+
+  .home-rail .wall-tile__when {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.62rem;
+    font-weight: 700;
   }
 
   /* What's on: the daily and the weekly as slim rows, the way in beside each. */

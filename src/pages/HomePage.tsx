@@ -9,18 +9,20 @@ import { HomeTodaySkeleton } from '../components/HomeTodaySkeleton'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PageShell } from '../components/PageShell'
 import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
+import { PartErrorBoundary } from '../components/SiteErrorBoundary'
 import { BugHuntStrip } from '../components/BugHunt'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useRecentGames } from '../lib/lastPlayed'
 import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
 import '../styles/homeToday.css'
+import '../styles/alsoToday.css'
 
 /**
  * Today's row (lib/today.ts), the day's dailies as cards and the way to the Today page, in a chunk of its own
  * with the dailies' plans. It's asked for as soon as the home page's own code is, not once the page has
- * drawn, and until it comes the row holds its place as a skeleton of itself (its styles are here, not in
- * its chunk, so the skeleton has them).
+ * drawn, and until it comes the row holds its place as a skeleton of itself (its styles, and its puzzles',
+ * are here, not in its chunk, so the skeleton has them).
  */
 const HomeToday = lazyPage(() => import('../components/HomeToday').then((m) => m.HomeToday))
 void HomeToday.preload()
@@ -79,9 +81,12 @@ export function HomePage() {
   const parts: Record<Part, ReactElement> = {
     hero: <HomeHero key="hero" />,
     today: (
-      <Suspense key="today" fallback={<HomeTodaySkeleton />}>
-        <HomeToday />
-      </Suspense>
+      // A row that fails to come keeps its skeleton, Open Dailies and all, and the rest of the page stays.
+      <PartErrorBoundary key="today" fallback={<HomeTodaySkeleton />}>
+        <Suspense fallback={<HomeTodaySkeleton />}>
+          <HomeToday />
+        </Suspense>
+      </PartErrorBoundary>
     ),
     hunt: <BugHuntStrip key="hunt" />,
     invites: <PendingInvitesStrip key="invites" />,

@@ -9,7 +9,7 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
-import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace } from '../lib/leaderboard'
+import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace, type LeaderboardPeriod } from '../lib/leaderboard'
 import { periodWord } from '../lib/profileMath'
 import { formatBoardScore, formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
@@ -160,8 +160,23 @@ function isFresh(game: Game) {
 
 const ONE: Span = { w: 1, h: 1 }
 
-/** The places in a cabinet's high-score table. */
+/** The places in a cabinet's high-score table: its players, each at their best. */
 const PLACES = ['1st', '2nd', '3rd']
+
+/**
+ * What the number under a cabinet's screen is: the best on the board for the period, or, on a board nobody has
+ * played this period, the game's high score of all time, the HI SCORE its page's screen shows.
+ */
+const BEST: Record<LeaderboardPeriod, string> = {
+  daily: 'TODAY’S BEST',
+  weekly: 'WEEK’S BEST',
+  monthly: 'MONTH’S BEST',
+  all: 'HI SCORE',
+  season: 'SEASON’S BEST',
+}
+
+/** The same, short, after the number on a phone's cabinet: "week", "all time". */
+const bestWhen = (period: LeaderboardPeriod) => periodWord(period).replace(/^this /, '')
 
 /**
  * The wall: every game but the dailies (they're on today's row, above it)
@@ -184,7 +199,7 @@ export function GameWall() {
   // header already fetched), and who leads each board.
   const bests = usePlayerBests(cleaned, period)
   const { byGame } = useGlobalRank()
-  const leaders = useBoardLeaders(period)
+  const { leaders, failed } = useBoardLeaders(period)
 
   const all = wallGames(device)
   const shown = all.filter((g) => inTab(g, tab))
@@ -201,7 +216,8 @@ export function GameWall() {
       index={index}
       best={bests?.[game.slug] ?? null}
       standing={byGame[game.slug] ?? null}
-      top={leaders?.[game.slug] ?? null}
+      top={leaders ? (leaders[game.slug] ?? null) : undefined}
+      asking={!failed}
       daily={game.slug === dailySlug}
       weekly={weekly.has(game.slug)}
       // Their own row's heading says so on a wider screen, which hides the badge (home.css).
@@ -263,7 +279,8 @@ export function WallTile({
   index,
   best,
   standing = null,
-  top = null,
+  top,
+  asking = true,
   daily = false,
   weekly = false,
   newFlag = true,
@@ -276,8 +293,13 @@ export function WallTile({
   best: number | null
   /** Your place on this game's board for the period, and how many are on it, when you are. */
   standing?: GlobalGamePlace | null
-  /** The board's top runs: the high score under the screen, and the table over it. */
+  /**
+   * The board's top players: the high score under the screen, and the table over it. Null: nobody has a score
+   * yet. Undefined: not known yet, or they didn't come.
+   */
   top?: BoardLeader | null
+  /** Who leads is still being asked: the line under the screen shimmers rather than standing empty. */
+  asking?: boolean
   daily?: boolean
   weekly?: boolean
   /** Badge a game still being tuned as new; off where its row already says so. */
@@ -318,9 +340,14 @@ export function WallTile({
   const label = [
     game.name,
     flag ? flag.label.toLowerCase() : null,
+    // Not known yet, or it didn't come: nothing said of who leads.
     top
-      ? `high score ${fmt(top.entry.score)} by ${top.entry.name}${top.period === 'all' ? ', all time' : ''}`
-      : 'no high score yet',
+      ? top.period === 'all'
+        ? `high score ${fmt(top.entry.score)} by ${top.entry.name}, all time`
+        : `best ${periodWord(top.period)} ${fmt(top.entry.score)} by ${top.entry.name}`
+      : top === null
+        ? 'no high score yet'
+        : null,
     place ? `you are #${place}${total ? ` of ${total}` : ''} ${when}` : null,
     best ? `your best ${fmtBest(best)}` : null,
   ]
@@ -348,7 +375,7 @@ export function WallTile({
             {rows.length > 0 ? (
               rows.map((e, i) => (
                 <span
-                  key={e.id}
+                  key={e.name}
                   className={`wall-tile__score${you && e.name === you ? ' wall-tile__score--you' : ''}`}
                 >
                   <span className="wall-tile__score-place">{PLACES[i]}</span>
@@ -356,11 +383,19 @@ export function WallTile({
                   <span className="wall-tile__score-value">{fmt(e.score)}</span>
                 </span>
               ))
-            ) : (
+            ) : top === null ? (
               <>
                 <span className="wall-tile__score-none">No scores yet</span>
                 <span className="wall-tile__score-hint">The first run posted holds the record.</span>
               </>
+            ) : asking ? (
+              PLACES.map((p) => (
+                <span key={p} className="wall-tile__score">
+                  <span className="skel-line" style={{ '--skel-w': '100%' } as CSSProperties} />
+                </span>
+              ))
+            ) : (
+              <span className="wall-tile__score-hint">The scores didn’t load.</span>
             )}
           </span>
         </span>
@@ -372,16 +407,27 @@ export function WallTile({
           {/* A pointer on the scores brings the board's table up over the screen. */}
           <span className="wall-tile__lines">
             <span className="wall-tile__line">
-              <span className="wall-tile__tag">HI SCORE</span>
+              {/* Whose board the number tops: the period's, or all time's where nobody has played the period. */}
+              <span className="wall-tile__tag">{BEST[top?.period ?? 'all']}</span>
               {top ? (
                 <>
                   <b className="wall-tile__figure">{fmt(top.entry.score)}</b>
+                  {/* A phone's cabinet has the number without its label: the period after it, short. */}
+                  <span className="wall-tile__when">{bestWhen(top.period)}</span>
                   <span className="wall-tile__who">{top.entry.name}</span>
                 </>
-              ) : (
+              ) : top === null ? (
                 <span>
                   open<span className="wall-tile__roomy">, first run takes it</span>
                 </span>
+              ) : asking ? (
+                // Who leads isn't known yet: nothing said, and the line holds its height.
+                <span>
+                  <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
+                </span>
+              ) : (
+                // It didn't come: nothing said either way.
+                <span>—</span>
               )}
             </span>
             {place || best ? (

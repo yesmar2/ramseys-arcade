@@ -44,3 +44,25 @@ export class SiteErrorBoundary extends Component<{ children: ReactNode }, { brok
     )
   }
 }
+
+/**
+ * One part of a page that comes as a chunk of its own (the home page's Dailies row, its pictures): when it
+ * fails to come or to draw (a network blip, or a release that took its old file away), `fallback` takes its
+ * place and the rest of the page carries on, where the site's boundary above would take the whole page.
+ * The error goes to the admin's list all the same.
+ */
+export class PartErrorBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { broken: boolean }> {
+  state = { broken: false }
+
+  static getDerivedStateFromError() {
+    return { broken: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    reportError(error)
+  }
+
+  render() {
+    return this.state.broken ? this.props.fallback : this.props.children
+  }
+}

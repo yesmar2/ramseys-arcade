@@ -42,6 +42,10 @@ export function SeasonBanner({
           : p.level >= top
           ? 'You’ve reached the top of the pass. Every level is yours.'
           : `You’re Level ${p.level}. Every ticket you win moves you up.`
+  // On the pass: your level and what's next, under the buttons.
+  const figures = you != null && p.level > 0
+  // A phone's banner has a line for the pass only where there's no level row: a few words, as on a phone's home.
+  const short = figures ? null : !you ? 'Win tickets to climb the free pass.' : 'Win a ticket to start the pass.'
   return (
     <section className="home-banner home-banner--season" style={STYLE} aria-label={`Season ${season.id}: ${season.name}`} data-hunt="home-hero">
       <div className="home-banner__text">
@@ -52,6 +56,7 @@ export function SeasonBanner({
           <a href={seasonHref()}>{season.name}</a>
         </h2>
         <p className="home-banner__blurb">{blurb}</p>
+        {short ? <p className="home-banner__blurb home-banner__blurb--short">{short}</p> : null}
         <div className="home-banner__acts">
           <a className="home-banner__cta" href={seasonHref()}>
             See the pass
@@ -60,7 +65,7 @@ export function SeasonBanner({
             {pick.kicker}: {pick.name}
           </a>
         </div>
-        {you && p.level > 0 ? (
+        {figures ? (
           <dl className="home-banner__figures" aria-label="Your season">
             <div className="home-banner__figure">
               <dt>Your level</dt>

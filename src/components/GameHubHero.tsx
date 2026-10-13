@@ -84,7 +84,8 @@ export function GameHubHero({
     >
       <div className="gh-hero__text">
         <nav className="gh-crumbs" aria-label="Breadcrumb">
-          <a href={homeHref()}>Games</a>
+          {/* The games are the home page's wall, down the page: the link lands on it. */}
+          <a href={`${homeHref()}#games`}>Games</a>
           <span aria-hidden="true">›</span>
           <span aria-current="page">{game.name}</span>
         </nav>

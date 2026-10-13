@@ -1,3 +1,5 @@
+import type { MouseEvent } from 'react'
+
 /*
  * Bringing the part of a page a link names into view (an address's #anchor, a profile's ?focus=), and keeping it
  * there while the page fills in. Ramsey (2026-10-05): "make sure that every link that automatically scrolls to a
@@ -80,4 +82,19 @@ export function scrollToPlace(find: () => Element | null, block: ScrollLogicalPo
 
   tick()
   return stop
+}
+
+/**
+ * A link to the home page's wall of games (`/#games`), pressed where the wall already is: down to it, gliding
+ * unless motion is turned down, without a hash in the address. Anywhere else the link goes there as any link
+ * does, and the page lands on the wall (App.tsx).
+ */
+export function toWall(event: MouseEvent<HTMLAnchorElement>) {
+  // The wall itself (GameWall): a player card's games are `#games` too.
+  const wall = document.querySelector<HTMLElement>('.wall#games')
+  if (!wall) return
+  event.preventDefault()
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // `auto` would still glide: the page asks for smooth scrolling in its stylesheet.
+  wall.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
 }

@@ -1,10 +1,22 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { answerPoll, blipSet, share, usePoll } from '../lib/poll'
 import { BlipFigure } from './BlipFigure'
 import { BlipSet } from './BlipSet'
 import { openSiteMenu } from './siteNav'
 import '../styles/blipPoll.css'
+
+const skel = (w: string) => ({ '--skel-w': w }) as CSSProperties
+
+/** A shimmer's line more where the card is narrow, beside the races on a desk (homeToday.css): its words take more. */
+function SkelMore({ w }: { w: string }) {
+  return (
+    <span className="blip-poll__skel-more">
+      <br />
+      <span className="skel-line" style={skel(w)} />
+    </span>
+  )
+}
 
 /*
  * Blip's question of the day on the home page, beside the day's races (A on the "Blip's daily poll" canvas,
@@ -55,16 +67,36 @@ export function BlipPoll({ inSheet = false }: { inSheet?: boolean }) {
       <BlipFigure className="blip-poll__blip" mood={voted ? 'happy' : 'hi'} />
       <p className="blip-poll__who">{today ? `Blip asks · #${today.n}` : 'Blip asks'}</p>
       <h3 id={headingId} className="blip-poll__q">
-        {today ? today.q : <span className="skel-line" style={{ '--skel-w': '80%' } as React.CSSProperties} aria-hidden="true" />}
+        {today ? (
+          today.q
+        ) : (
+          <span aria-hidden="true">
+            <span className="skel-line" style={skel('80%')} />
+            <SkelMore w="45%" />
+          </span>
+        )}
       </h3>
       {!today ? (
-        <ul className="blip-poll__opts" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <li key={i}>
-              <span className="blip-poll__opt blip-poll__opt--skel" />
-            </li>
-          ))}
-        </ul>
+        // While the question comes, the card as it will be: its answers, its foot and yesterday's, each a shimmer.
+        <>
+          <ul className="blip-poll__opts" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <li key={i}>
+                <span className="blip-poll__opt blip-poll__opt--skel" />
+              </li>
+            ))}
+          </ul>
+          <p className="blip-poll__foot" aria-hidden="true">
+            <span className="skel-line" style={skel('75%')} />
+            <SkelMore w="40%" />
+          </p>
+          <p className="blip-poll__then" aria-hidden="true">
+            <span className="skel-line" style={skel('95%')} />
+            <br />
+            <span className="skel-line" style={skel('60%')} />
+            <SkelMore w="45%" />
+          </p>
+        </>
       ) : voted ? (
         <ul className="blip-poll__res" aria-label="How everyone answered">
           {today.options.map((option, i) => {

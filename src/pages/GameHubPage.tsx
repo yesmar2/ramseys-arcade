@@ -136,7 +136,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   // For the games below: your best on each, your place on its board, and who leads it, as the wall shows them.
   const bests = usePlayerBests(playerName, period)
   const { byGame } = useGlobalRank()
-  const leaders = useBoardLeaders(period)
+  const { leaders, failed: leadersFailed } = useBoardLeaders(period)
   const [, setThemeTick] = useState(0)
   const tabsRef = useRef<HTMLDivElement>(null)
   const tabKey = daily ? tab : gameTab
@@ -244,7 +244,8 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
               index={i}
               best={bests?.[g.slug] ?? null}
               standing={byGame[g.slug] ?? null}
-              top={leaders?.[g.slug] ?? null}
+              top={leaders ? (leaders[g.slug] ?? null) : undefined}
+              asking={!leadersFailed}
               newFlag={false}
               preview
             />

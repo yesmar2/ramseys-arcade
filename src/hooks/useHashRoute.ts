@@ -923,10 +923,20 @@ export function levelHref() {
   return `/${LEVEL_256}`
 }
 
-/** The route the current URL means (after any legacy `#/…` fix-up). */
+/**
+ * `/games` on its own is the wall of every game, the home page's (GameWall's `#games`): its address becomes the
+ * wall's, in place, so it lands there (App.tsx) rather than at the top of the home page.
+ */
+function migrateWallPath() {
+  if (currentPath() !== '/games' || window.location.hash) return
+  window.history.replaceState(window.history.state, '', `${homeHref()}${window.location.search}#games`)
+}
+
+/** The route the current URL means (after any legacy `#/…` fix-up, and `/games` sent to the wall). */
 export function currentRoute(): Route {
   if (typeof window === 'undefined') return { name: 'home' }
   migrateLegacyHash()
+  migrateWallPath()
   return parseUrl(window.location.pathname, window.location.search)
 }
 

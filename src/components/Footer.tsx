@@ -20,6 +20,7 @@ import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
+import { toWall } from '../lib/scrollToPlace'
 import { BrandMark } from './BrandMark'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 
@@ -61,7 +62,10 @@ export function Footer() {
                 </li>
               ))}
               <li>
-                <a href={homeHref()}>All games</a>
+                {/* The home page's wall: from anywhere, a link that lands on it; on the home page, down to it. */}
+                <a href={`${homeHref()}#games`} onClick={toWall}>
+                  All games
+                </a>
               </li>
             </ul>
           </div>

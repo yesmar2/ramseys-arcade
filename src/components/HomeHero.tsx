@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
-import { getGame, homeGames, isDailyGame } from '../data/games'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { getGame, isDailyGame, wallGames } from '../data/games'
 import { aboutHref, boardPlaceHref, gamePlayHref, rankHref, tournamentHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
+import { getSessionToken } from '../lib/auth'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
@@ -20,7 +21,10 @@ import {
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { periodWord } from '../lib/profileMath'
+import { toWall } from '../lib/scrollToPlace'
 import { resolveGameAccent } from '../lib/theme'
+import { alsoDailies, liveDailies } from '../lib/today'
+import { boardDay } from '../lib/rankHow'
 import { howItWins, type TournamentSummary } from '../lib/tournaments'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { bannerText, bannerTextDark, inkOn, readableFill } from '../lib/color'
@@ -234,16 +238,6 @@ function PromiseIcon({ kind }: { kind: PromiseKind }) {
   )
 }
 
-/** Browse all games: down to the wall, gliding unless motion is turned down, without a hash in the address. */
-function toWall(event: MouseEvent<HTMLAnchorElement>) {
-  const wall = document.getElementById('games')
-  if (!wall) return
-  event.preventDefault()
-  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  // `auto` would still glide: the page asks for smooth scrolling in its stylesheet.
-  wall.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
-}
-
 /** Today's event on the first-visit banner: its game, how it is won, its clock, and the way in. */
 function DailyCard({ t }: { t: TournamentSummary }) {
   const lead = t.games[0] ?? null
@@ -450,7 +444,14 @@ export function HomeHero() {
     </a>
   )
 
+  // The season's banner offers the game this one would have as its second button: the same words in its skeleton,
+  // so a phone's two buttons share a line, or don't, as they will.
+  const pickKicker = lastPlayed ? 'Jump back in' : slug === newest ? 'New' : 'Today’s pick'
+
   if (seasonUnknown) {
+    // A session is a player on the pass, whose banner has a level row once they've won a ticket this season:
+    // its room is held. Signed out, the banner has none, and a phone's has a line on the pass instead.
+    const onPass = Boolean(getSessionToken())
     return (
       // The season banner's own parts (season/SeasonBanner.tsx), shimmering: the same shape at every width, so
       // it comes in place. The game's banner is laid out the same way.
@@ -469,10 +470,29 @@ export function HomeHero() {
             <br />
             <span className="skel-line" style={{ '--skel-w': '17rem' } as CSSProperties} />
           </p>
+          {onPass ? null : (
+            <p className="home-banner__blurb home-banner__blurb--short">
+              <span className="skel-line" style={{ '--skel-w': '15rem' } as CSSProperties} />
+            </p>
+          )}
           <div className="home-banner__acts">
             <span className="home-banner__cta home-banner__skel-btn">See the pass</span>
-            <span className="home-banner__ghost home-banner__skel-btn">Today’s pick: Pellets</span>
+            <span className="home-banner__ghost home-banner__skel-btn">
+              {pickKicker}: {game.name}
+            </span>
           </div>
+          {onPass ? (
+            <dl className="home-banner__figures">
+              {['Your level', 'Next up'].map((label) => (
+                <div key={label} className="home-banner__figure">
+                  <dt>{label}</dt>
+                  <dd>
+                    <span className="skel-line" style={{ '--skel-w': '5rem' } as CSSProperties} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
         </div>
         <span className="home-banner__art home-banner__art--season home-banner__skel-art" aria-hidden="true" />
       </section>
@@ -482,8 +502,7 @@ export function HomeHero() {
   // A live season takes the banner for everyone but a first visit, which still gets what the arcade is. The
   // game the banner would have offered becomes its second button.
   if (season && !firstVisit) {
-    const kicker = lastPlayed ? 'Jump back in' : slug === newest ? 'New' : 'Today’s pick'
-    return <SeasonBanner season={season} you={seasonStore.you} rewards={seasonStore.rewards} pick={{ slug, name: game.name, kicker }} top={seasonTop(seasonStore)} />
+    return <SeasonBanner season={season} you={seasonStore.you} rewards={seasonStore.rewards} pick={{ slug, name: game.name, kicker: pickKicker }} top={seasonTop(seasonStore)} />
   }
 
   if (rung) {
@@ -595,7 +614,11 @@ export function HomeHero() {
   }
 
   if (firstVisit) {
-    const count = numberWord(homeGames(device).length)
+    // As the page counts them: the wall's games ("14 on the floor"), and the Dailies row's, its races and puzzles.
+    const count = numberWord(wallGames(device).length)
+    const day = boardDay()
+    const dailies = liveDailies(day).length + alsoDailies(day).length
+    const andDailies = dailies > 0 ? ` and ${numberWord(dailies)} ${dailies === 1 ? 'daily' : 'dailies'}` : ''
     const daily = official.find((t) => t.cadence === 'daily') ?? null
     return (
       <section className="home-banner home-banner--welcome" style={style} aria-label="Welcome" data-hunt="home-hero">
@@ -607,8 +630,8 @@ export function HomeHero() {
             No ads. <span className="home-banner__gap">Just play.</span>
           </h2>
           <p className="home-banner__blurb">
-            {count.charAt(0).toUpperCase() + count.slice(1)} original games that start in a tap, on a phone or at
-            a desk. Post a score and see where you land.
+            {count.charAt(0).toUpperCase() + count.slice(1)} original games{andDailies} that start in a tap, on a
+            phone or at a desk. Post a score and see where you land.
           </p>
           {daily ? (
             <DailyCard t={daily} />

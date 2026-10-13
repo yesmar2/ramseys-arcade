@@ -21,6 +21,7 @@ import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { medalKind } from './PodiumMedal'
 import { PlayerName } from './PlayerName'
+import { openSiteMenu } from './siteNav'
 
 /** The house records worth a plaque on the front page, in the order they hang. */
 const PLAQUES: SiteRecordId[] = ['day-streak', 'days-played', 'runs-in-a-day', 'boards-topped']
@@ -52,6 +53,11 @@ function Standings({
     you && rank != null && !youOnList && entries.length > 0
       ? { name: you, rank, score, games: 0, avatarId }
       : null
+  // The gap over your row: none when it comes straight after the last row shown, but on a phone, which leaves
+  // out the rows after the third (home.css).
+  const last = entries[entries.length - 1]
+  const nextAfter = yourRow != null && last != null && yourRow.rank === last.rank + 1
+  const gap = !yourRow ? null : !nextAfter ? 'hb-row--gap' : entries.length > 3 ? 'hb-row--gap hb-row--gap-phone' : null
   const ahead = rank != null ? nearby.find((n) => n.rank === rank - 1) : undefined
   const behind = rank != null ? nearby.find((n) => n.rank === rank + 1) : undefined
 
@@ -91,9 +97,11 @@ function Standings({
           {entries.map(row)}
           {yourRow ? (
             <>
-              <li className="hb-row hb-row--gap" aria-hidden="true">
-                ⋯
-              </li>
+              {gap ? (
+                <li className={`hb-row ${gap}`} aria-hidden="true">
+                  ⋯
+                </li>
+              ) : null}
               {row(yourRow)}
             </>
           ) : null}
@@ -121,9 +129,17 @@ function Standings({
         // Not under an empty board as well: its own line already says the first score takes #1.
         <p className="hb-note">
           {/* All time leaves the dailies out (lib/allTime.ts). */}
-          {you
-            ? `Post a score in any ranked game${period === 'all' ? ' but the dailies' : ''} and you’re on this list.`
-            : 'Sign in and your scores count here.'}
+          {you ? (
+            `Post a score in any ranked game${period === 'all' ? ' but the dailies' : ''} and you’re on this list.`
+          ) : (
+            <>
+              {/* The menu, where signing in lives, as on the Dailies page. */}
+              <button type="button" className="hb-note__signin" onClick={openSiteMenu}>
+                Sign in
+              </button>{' '}
+              and your scores count here.
+            </>
+          )}
         </p>
       )}
     </article>

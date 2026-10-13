@@ -113,6 +113,19 @@ html[data-theme='dark'] .home-day {
   color: var(--today-full);
 }
 
+/* Signed out, "sign in" in the streak's words: a tap on it opens the menu, where signing in lives. */
+.home-day__signin {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--day-result);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
 .home-day__next {
   display: inline-flex;
   align-items: center;
@@ -483,6 +496,13 @@ html[data-theme='light'] .home-day__card:focus-visible {
   }
 }
 
+/* Blip's card beside the races is narrow: while its question comes, its shimmer takes the lines its words will. */
+@media (min-width: 64.01rem) {
+  .home-day__row .blip-poll__skel-more {
+    display: inline;
+  }
+}
+
 /* ---------- narrower: the cards scroll sideways, running out to the card's edge ---------- */
 
 @media (max-width: 64rem) {
@@ -645,6 +665,11 @@ html[data-theme='light'] .home-day__card:focus-visible {
 
 .home-day--skel .home-day__card {
   pointer-events: none;
+}
+
+/* A puzzle's picture under the races, before it's drawn. */
+.home-day--skel .also__pic {
+  background: rgba(var(--ink-rgb), 0.08);
 }
 
 .home-day__go.home-day__go--skel {

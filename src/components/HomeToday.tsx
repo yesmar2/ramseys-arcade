@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties } from 'react'
+import { Suspense, type CSSProperties, type ReactNode } from 'react'
 import { isRankedGame } from '../data/games'
 import { untilWords } from '../games/marblerun/daily'
 import { useAccountId } from '../hooks/useAccountId'
@@ -19,6 +19,8 @@ import { AlsoToday } from './AlsoToday'
 import { BlipPoll } from './BlipPoll'
 import { DailyKindTag } from './DailyKindTag'
 import { GamePreview } from './GamePreview'
+import { PartErrorBoundary } from './SiteErrorBoundary'
+import { openSiteMenu } from './siteNav'
 import { FlameIcon, StarIcon } from './TodayChip'
 import { capital, shortDate, useTicket, type Punch, type Ticket } from './todayPunches'
 import '../styles/homeToday.css'
@@ -86,10 +88,20 @@ const ChevronIcon = () => (
 
 /**
  * What the day needs next, in words: how many more keep the streak (or start one), then a Full ticket.
- * A streak is an account's, so signed out it says so.
+ * A streak is an account's, so signed out it says so, and signing in is a tap on it: the menu, as on the
+ * Dailies page.
  */
-function streakWords({ done, rule, marks, before, current }: Ticket, signedIn: boolean): string {
-  if (!signedIn) return `Any ${numberWord(rule.need)} keep a streak, once you sign in`
+function streakWords({ done, rule, marks, before, current }: Ticket, signedIn: boolean): ReactNode {
+  if (!signedIn) {
+    return (
+      <>
+        Any {numberWord(rule.need)} keep a streak, once you{' '}
+        <button type="button" className="home-day__signin" onClick={openSiteMenu}>
+          sign in
+        </button>
+      </>
+    )
+  }
   if (marks.full) return `A Full ticket, Day ${current}`
   if (marks.kept) {
     const more = rule.count - done
@@ -151,6 +163,9 @@ function DayCard({
   const lead = p.done || !ranked ? null : leadOf(p, standing)
   // Halfway through: where you left it, instead of who leads.
   const carry = !p.done && p.carry ? p.carry.replace(/^Carry on,?\s*/, '') : null
+  // The picture's badge, New in its first week or the season's Spotlight: one or the other.
+  const fresh = !p.done && p.fresh
+  const badge = fresh ? 'new' : spotlight ? 'spotlight' : null
   return (
     <a
       className={`home-day__card${p.done ? ' home-day__card--done' : ''}`}
@@ -158,11 +173,15 @@ function DayCard({
       href={gameHref(p.slug)}
       style={{ '--day': ACCENT[p.key] } as CSSProperties}
     >
-      <span className="home-day__pic">
-        {/* The day's own picture, on the tile's plain dark until it's drawn: never the game's other picture first. */}
-        <Suspense fallback={<span className="home-day__pic-wait" />}>
-          <DayPicture daily={p.key} day={day} />
-        </Suspense>
+      {/* Out of the link's name: the course is named under it, and its badge said after the name. */}
+      <span className="home-day__pic" aria-hidden="true">
+        {/* The day's own picture, on the tile's plain dark until it's drawn: never the game's other picture first.
+            Pictures that fail to come leave the plain dark, and the card works as ever. */}
+        <PartErrorBoundary fallback={null}>
+          <Suspense fallback={<span className="home-day__pic-wait" />}>
+            <DayPicture daily={p.key} day={day} />
+          </Suspense>
+        </PartErrorBoundary>
         {/* The game played over its picture, under a pointer or, on a phone, when the row rests on the card
             (Ramsey, 2026-10-04 and 05): the day's own for the hole, the track, the course and the cave; Find the
             Bug's and Half Full's own previews, which never show a day's answer. */}
@@ -175,15 +194,18 @@ function DayCard({
           <span className="home-day__stamp">
             <CheckIcon />
           </span>
-        ) : p.fresh ? (
+        ) : fresh ? (
           <span className="home-day__new">New</span>
         ) : null}
         {/* Top left, where New would be: a card showing New keeps it. */}
-        {spotlight && (p.done || !p.fresh) ? <span className="season-spot season-spot--day">Spotlight</span> : null}
+        {badge === 'spotlight' ? <span className="season-spot season-spot--day">Spotlight</span> : null}
       </span>
       <span className="home-day__body">
         <span className="home-day__kicker">{kickerOf(p)}</span>
-        <span className="home-day__name">{p.title}</span>
+        <span className="home-day__name">
+          {p.title}
+          {badge ? <span className="visually-hidden">({badge})</span> : null}
+        </span>
         <span className="home-day__foot">
           {p.done ? (
             <>
@@ -264,9 +286,17 @@ export function HomeToday() {
           {said ? (
             <span className={`home-day__streak${marks.full ? ' home-day__streak--full' : ''}`}>
               {marks.full ? <StarIcon /> : <FlameIcon />}
-              {said}
+              {/* One run of words, so a sign-in button in them wraps with them. */}
+              <span>{said}</span>
             </span>
-          ) : null}
+          ) : (
+            // Not known yet: its line shimmers as the skeleton's does, so a phone's cards don't move when it comes.
+            <span className="home-day__streak" aria-hidden="true">
+              <span>
+                <span className="skel-line" style={{ '--skel-w': '16rem' } as CSSProperties} />
+              </span>
+            </span>
+          )}
         </div>
         <span className="home-day__next">{next}</span>
         <a className="home-day__open" href={todayHref()}>
