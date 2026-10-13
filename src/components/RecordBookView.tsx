@@ -1,4 +1,4 @@
-import type { ComponentType, CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { gamePlayableOn, getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { useRecordBook } from '../hooks/useRecordBooks'
@@ -13,6 +13,7 @@ import {
   bookHead,
   bookItems,
   bookRecords,
+  clockAside,
   closestToInk,
   lowerIsBetter,
   openWords,
@@ -21,13 +22,12 @@ import {
   recordGroups,
   recordValue,
   type RecordGroup,
-  type RecordKind,
 } from '../lib/recordBook'
 import type { RecordSummary } from '../lib/records'
 import { ordinal } from '../lib/scoreboard'
 import { resolveGameAccent } from '../lib/theme'
 import { BoardEmpty } from './BoardChrome'
-import { ChevronRightIcon, FlameIcon, SparkleIcon, TimerIcon } from './chromeIcons'
+import { ChevronRightIcon, SparkleIcon } from './chromeIcons'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
 import { openSiteMenu } from './siteNav'
@@ -77,15 +77,6 @@ function PeriodTabs({ game, period }: { game: string; period: LeaderboardPeriod 
   )
 }
 
-/** The best in a single run: a star. */
-function StarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m12 3.5 2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z" />
-    </svg>
-  )
-}
-
 /** A record that's yours. */
 function CrownIcon() {
   return (
@@ -93,13 +84,6 @@ function CrownIcon() {
       <path d="M4 18.5h16M5 16l-1.2-9 5 4 3.2-6 3.2 6 5-4-1.2 9z" />
     </svg>
   )
-}
-
-const GROUP_ICONS: Record<RecordKind, ComponentType> = {
-  course: TimerIcon,
-  streaks: FlameIcon,
-  run: StarIcon,
-  clock: TimerIcon,
 }
 
 /** Whoever a record is tied with, if anyone: the best of the others, at the same number on show. */
@@ -254,17 +238,13 @@ function Group({
   firstOpen: string | null
   playHref: string | null
 }) {
-  const Icon = GROUP_ICONS[group.kind]
   const id = `rbl-${group.kind}`
   // With a group's boards, an open record is one nobody in the group holds.
   const { nobody } = useScope()
   return (
     <section className="rbl-group" aria-labelledby={id}>
       <h3 id={id} className="rbl-group__head">
-        <span className="rbl-group__icon">
-          <Icon />
-        </span>
-        {group.title}
+        <span className="rbl-group__title">{group.title}</span>
         {group.aside ? <span className="rbl-group__aside">{group.aside}</span> : null}
       </h3>
       <ol className="rbl-rows">
@@ -337,12 +317,14 @@ function Group({
 }
 
 /*
- * How the list was laid out, a count of lines per group, by game, period and whether it had a You column:
- * its loading rows take that shape, so the list lands in place rather than pushing the page down (pages load
- * in place). The tab also holds the height it had last time on this device (useHeldHeight). A first look
- * gets the book's usual shape: its groups as they stand, with the milestones nobody has reached on one line.
+ * How the list was laid out, a count of lines per group and whether its name had words by it (a line of their own
+ * on a phone), by game, period and whether it had bars: its loading rows take that shape, so the list lands in
+ * place rather than pushing the page down (pages load in place). The tab also holds the height it had last time
+ * on this device (useHeldHeight). A first look gets the book's usual shape: its groups as they stand, with the
+ * milestones nobody has reached on one line, and a game's clock records (its last group) with their words.
  */
-const shapes = new Map<string, number[]>()
+type Shape = { rows: number[]; asides: boolean[] }
+const shapes = new Map<string, Shape>()
 const USUAL_SHAPE: Record<string, number[]> = {
   asteroids: [2, 1, 9],
   snake: [2, 1, 6],
@@ -358,7 +340,13 @@ const USUAL_SHAPE: Record<string, number[]> = {
 }
 const TYPICAL_SHAPE = [2, 2, 4]
 
-function ListSkeleton({ shape, anon }: { shape: number[]; anon: boolean }) {
+function usualShape(game: string): Shape {
+  const rows = USUAL_SHAPE[game] ?? TYPICAL_SHAPE
+  const clock = Boolean(clockAside(game))
+  return { rows, asides: rows.map((_, g) => clock && g === rows.length - 1) }
+}
+
+function ListSkeleton({ shape, anon }: { shape: Shape; anon: boolean }) {
   const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
   return (
     <div className={`sb-card rbl rbl--skel${anon ? ' rbl--anon' : ' rbl--bars'}`} aria-busy="true" aria-label="Loading records">
@@ -370,13 +358,15 @@ function ListSkeleton({ shape, anon }: { shape: number[]; anon: boolean }) {
           <span />
         </div>
       ) : null}
-      {shape.map((rows, g) => (
+      {shape.rows.map((rows, g) => (
         <div key={g} className="rbl-group" aria-hidden="true">
           {/* Spaces with no width: each line as tall as its words will be. */}
           <div className="rbl-group__head">
-            <span className="rbl-group__icon" />
-            {line('7rem')}
-            {'\u200b'}
+            <span className="rbl-group__title">
+              {line('7rem')}
+              {'\u200b'}
+            </span>
+            {shape.asides[g] ? <span className="rbl-group__aside">{line('10rem')}</span> : null}
           </div>
           <ol className="rbl-rows">
             {Array.from({ length: rows }, (_, i) =>
@@ -445,7 +435,9 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
   const nearest = bars ? (closestToInk([{ game, records }], 1)[0]?.record.id ?? null) : null
   const firstOpen = groups.flatMap((g) => g.records).find((r) => !r.top)?.id ?? null
   const shapeKey = `${game}|${period}|${you ? 'you' : 'anon'}`
-  if (!data.loading && !data.error && groups.length) shapes.set(shapeKey, groups.map((g) => bookItems(g).length))
+  if (!data.loading && !data.error && groups.length) {
+    shapes.set(shapeKey, { rows: groups.map((g) => bookItems(g).length), asides: groups.map((g) => Boolean(g.aside)) })
+  }
 
   return (
     <div
@@ -502,7 +494,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
       </div>
 
       {data.loading ? (
-        <ListSkeleton shape={shapes.get(shapeKey) ?? USUAL_SHAPE[game] ?? TYPICAL_SHAPE} anon={!you} />
+        <ListSkeleton shape={shapes.get(shapeKey) ?? usualShape(game)} anon={!you} />
       ) : data.error ? (
         <BoardEmpty title="Couldn’t load records" detail="Check your connection and try again." />
       ) : !records.length ? (

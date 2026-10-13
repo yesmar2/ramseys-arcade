@@ -74,16 +74,6 @@ function FlagIcon() {
   )
 }
 
-/** Days on a calendar: the records made over many days. */
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="4" y="5" width="16" height="15" rx="2.5" />
-      <path d="M4 10h16M9 3v4M15 3v4" />
-    </svg>
-  )
-}
-
 function InfoIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -426,10 +416,7 @@ function CourseGroup({
   return (
     <section className="rbl-group" aria-labelledby="drt-courses-title">
       <h3 id="drt-courses-title" className="rbl-group__head">
-        <span className="rbl-group__icon">
-          <FlagIcon />
-        </span>
-        {title}
+        <span className="rbl-group__title">{title}</span>
         <span className="rbl-group__aside">
           each {course}’s {BOARD_NAMES.allTime} #1{rows ? ` · ${counted(rows.length, course)}` : ''}
         </span>
@@ -501,6 +488,20 @@ function CourseGroup({
 /** The list while it loads: its own rows, empty, as many as it had (the tab also holds its height, useHeldHeight). */
 function ListSkeleton({ rows, anon }: { rows: number[]; anon: boolean }) {
   const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
+  // A space with no width: a line as tall as its words will be.
+  const held = (
+    <span className="rbc-held">
+      {line('3rem')}
+      <span className="pmark pmark--empty rbc-held__mark" />
+      {line('4rem')}
+    </span>
+  )
+  const bar = (
+    <span className="rbc-bar">
+      <span className="rbc-bar__track" />
+      <span className="rbc-bar__you">{line('3.5rem')}</span>
+    </span>
+  )
   return (
     <div className={`sb-card rbl rbl--skel${anon ? ' rbl--anon' : ' rbl--bars'}`} aria-busy="true" aria-label="Loading records">
       {anon ? (
@@ -511,13 +512,15 @@ function ListSkeleton({ rows, anon }: { rows: number[]; anon: boolean }) {
           <span />
         </div>
       ) : null}
+      {/* The first group is the records made over many days; the second, the tracks' or holes', has words by its name. */}
       {rows.map((n, g) => (
         <div key={g} className="rbl-group" aria-hidden="true">
-          {/* Spaces with no width: each line as tall as its words will be. */}
           <div className="rbl-group__head">
-            <span className="rbl-group__icon" />
-            {line('7rem')}
-            {'\u200b'}
+            <span className="rbl-group__title">
+              {line('7rem')}
+              {'\u200b'}
+            </span>
+            {g === 1 ? <span className="rbl-group__aside">{line('12rem')}</span> : null}
           </div>
           <ol className="rbl-rows">
             {Array.from({ length: n }, (_, i) =>
@@ -533,13 +536,12 @@ function ListSkeleton({ rows, anon }: { rows: number[]; anon: boolean }) {
                     <span />
                   </div>
                 </li>
-              ) : (
-                // The first group is the records made over many days, with a line under who holds each.
-                <li key={i} className={`rbl-row rbc-row${g === 0 ? ' drt-day' : ''}`}>
+              ) : g === 0 ? (
+                <li key={i} className="rbl-row rbc-row drt-day">
                   <div className="rbl-row__link">
                     <span className="rbc-what">
-                      <span className={`rbl-row__label${g === 0 ? ' drt-label' : ''}`}>
-                        {g === 0 ? <span className="drt-label__icon" /> : null}
+                      <span className="rbl-row__label drt-label">
+                        <span className="drt-label__icon" />
                         {line('8rem')}
                         {'\u200b'}
                       </span>
@@ -547,24 +549,42 @@ function ListSkeleton({ rows, anon }: { rows: number[]; anon: boolean }) {
                         {line('3rem')}
                         <span className="pmark pmark--empty rbc-held__mark" />
                         {line('4rem')}
-                        {g === 0 ? (
-                          <span className="rbc-held__sub">
-                            {line('6rem')}
-                            {'\u200b'}
-                          </span>
-                        ) : null}
+                        <span className="rbc-held__sub">
+                          {line('6rem')}
+                          {'\u200b'}
+                        </span>
                       </span>
                     </span>
-                    <span className="rbc-bar">
-                      <span className="rbc-bar__track" />
-                      <span className="rbc-bar__you">{line('3.5rem')}</span>
+                    {bar}
+                    <span className="rbc-end">{line('6rem')}</span>
+                  </div>
+                </li>
+              ) : (
+                <li key={i} className="rbl-row rbc-row drt-course">
+                  <div className="rbl-row__link">
+                    <span className="rbc-what drt-course__what">
+                      <span className="drt-course__art" />
+                      <span className="drt-course__text">
+                        <span className="rbl-row__label">
+                          {line('8rem')}
+                          {'\u200b'}
+                        </span>
+                        {held}
+                      </span>
                     </span>
+                    {bar}
                     <span className="rbc-end">{line('6rem')}</span>
                   </div>
                 </li>
               ),
             )}
           </ol>
+          {/* A daily that's run more than the first tracks' worth of days shows them all a press away. */}
+          {g === 1 ? (
+            <button type="button" className="drt-more skel-btn" disabled tabIndex={-1}>
+              Show all
+            </button>
+          ) : null}
         </div>
       ))}
     </div>
@@ -678,10 +698,7 @@ function RecordsBody({
           )}
           <section className="rbl-group" aria-labelledby="drt-days-title">
             <h3 id="drt-days-title" className="rbl-group__head">
-              <span className="rbl-group__icon">
-                <CalendarIcon />
-              </span>
-              Across the days
+              <span className="rbl-group__title">Across the days</span>
             </h3>
             <ol className="rbl-rows">
               {rows.map((record) => (

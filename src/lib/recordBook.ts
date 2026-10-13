@@ -268,6 +268,11 @@ export function recordKind(record: RecordLike): RecordKind {
   return 'run'
 }
 
+/** What a game's clock records time, said beside their group's name: undefined for a game without them. */
+export function clockAside(game: string): string | undefined {
+  return CLOCKS[game]?.aside
+}
+
 /** A game's clock records: their group's name, what they time (`sub`, and `aside` beside the name), and each one's short label. */
 type ClockBook = { title: string; sub: string; aside: string; short: (label: string) => string }
 

@@ -1802,9 +1802,9 @@ html:not([data-theme='dark']) .rbl {
   column-gap: 1.25rem;
 }
 
+/* No line under it: the first group's separator is right there. */
 .rbl-cols {
-  padding: 0.85rem 1.5rem 0.75rem;
-  border-bottom: 1px solid var(--sb-line);
+  padding: 0.85rem 1.5rem 0.25rem;
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -1812,39 +1812,42 @@ html:not([data-theme='dark']) .rbl {
   color: var(--muted);
 }
 
+/*
+ * Each group's name between two lines in the game's colour: the B mock's separators, as Ramsey picked ("i kinda
+ * like the separators better in the B mock (just the separators)", 2026-10-13). What the group times sits by it.
+ */
 .rbl-group__head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.65rem;
+  gap: 0.25rem 1rem;
   margin: 0;
-  padding: 1.3rem 1.5rem 0.65rem;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
+  padding: 1.3rem 1.5rem 0.6rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
-.rbl-group__icon {
-  display: grid;
-  place-items: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border-radius: 0.55rem;
-  background: color-mix(in srgb, var(--gb-accent, var(--accent)) 16%, transparent);
+  text-transform: uppercase;
   color: var(--rbl-accent-ink);
 }
 
-.rbl-group__icon svg {
-  width: 1.05rem;
-  height: 1.05rem;
+.rbl-group__head::before,
+.rbl-group__head::after {
+  content: '';
+  flex: 1 1 0;
+  min-width: 1.5rem;
+  height: 1px;
+  background: color-mix(in srgb, var(--gb-accent, var(--accent)) 40%, transparent);
+}
+
+/* Spaced wide, with the space after its last letter taken back, so it sits in the middle. */
+.rbl-group__title {
+  letter-spacing: 0.3em;
+  margin-right: -0.3em;
 }
 
 .rbl-group__aside {
-  font-family: var(--font-body);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 550;
-  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted);
 }
 
@@ -1852,6 +1855,11 @@ html:not([data-theme='dark']) .rbl {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* A group's first row has no line over it: its separator is the line. */
+.rbl-rows > .rbl-row:first-child > .rbl-row__link {
+  border-top-color: transparent;
 }
 
 .rbl-row__link {
@@ -2145,9 +2153,16 @@ a.rbl-row__link:focus-visible {
     display: none;
   }
 
+  /* What the group times goes under its name and lines. */
   .rbl-group__head {
-    padding: 1.1rem 1rem 0.55rem;
-    font-size: 1rem;
+    flex-wrap: wrap;
+    padding: 1.1rem 1rem 0.5rem;
+  }
+
+  .rbl-group__aside {
+    order: 1;
+    flex-basis: 100%;
+    text-align: center;
   }
 
   .rbk-tabhead__title--skel {
@@ -2265,23 +2280,7 @@ a.rbl-row__link:focus-visible {
 }
 
 .rbl--bars .rbl-group__head {
-  gap: 0.25rem 0.65rem;
-  padding: 1.15rem 1.65rem 0.4rem;
-  font-family: var(--font-body);
-  font-size: 0.76rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--rbl-accent-ink);
-}
-
-.rbl--bars .rbl-group__icon {
-  display: none;
-}
-
-.rbl--bars .rbl-group__aside {
-  font-size: 0.84rem;
-  letter-spacing: 0;
-  text-transform: none;
+  padding-inline: 1.65rem;
 }
 
 .rbl--bars .rbl-row__link {
@@ -2477,7 +2476,7 @@ a.rbl-row__link:focus-visible {
   }
 
   .rbl--bars .rbl-group__head {
-    padding: 1rem 1rem 0.3rem;
+    padding-inline: 1rem;
   }
 
   .rbl--bars .rbl-row__link {
