@@ -13,7 +13,7 @@ import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
 import { isSpotlight, liveSeason, useSeason } from '../lib/season'
-import type { TodayKey } from '../lib/today'
+import { todayFailed, type TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
 import { AlsoToday } from './AlsoToday'
 import { BlipPoll } from './BlipPoll'
@@ -289,8 +289,9 @@ export function HomeToday() {
               {/* One run of words, so a sign-in button in them wraps with them. */}
               <span>{said}</span>
             </span>
-          ) : (
+          ) : todayFailed() ? null : (
             // Not known yet: its line shimmers as the skeleton's does, so a phone's cards don't move when it comes.
+            // If the API couldn't say, it isn't coming: nothing then, not a shimmer for good.
             <span className="home-day__streak" aria-hidden="true">
               <span>
                 <span className="skel-line" style={{ '--skel-w': '16rem' } as CSSProperties} />

@@ -235,9 +235,16 @@ let heldFor: number | null = null
 let heldAt = 0
 /** The question out now, and the session it went out for. */
 let asking: { for: number; reply: Promise<TodayServer | null> } | null = null
+/** The session whose ask failed with nothing held: what waits on its day stops waiting (HomeToday's streak line). */
+let failedFor: number | null = null
 
 export function todayServer(): TodayServer | null {
   return held && heldFor === sessionFingerprint() ? held : null
+}
+
+/** This session's Today couldn't be had, and there's none from before: not coming, so not waited for. */
+export function todayFailed(): boolean {
+  return failedFor != null && failedFor === sessionFingerprint() && !todayServer()
 }
 
 /** The signed-in account's Today, from the API, or null signed out. */
@@ -259,10 +266,17 @@ export function fetchToday(force = false): Promise<TodayServer | null> {
       held = state
       heldFor = session
       heldAt = Date.now()
+      failedFor = null
       window.dispatchEvent(new Event(TODAY_EVENT))
       return state
     })
-    .catch(() => todayServer())
+    .catch(() => {
+      if (sessionFingerprint() === session && !todayServer()) {
+        failedFor = session
+        window.dispatchEvent(new Event(TODAY_EVENT))
+      }
+      return todayServer()
+    })
     .finally(() => {
       if (asking?.reply === reply) asking = null
     })
