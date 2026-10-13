@@ -480,7 +480,7 @@ export function CrumbtrailGame() {
                     gameSlug="crumbtrail"
                     score={ui.score}
                     title={ui.cause === 'drowned' ? 'Swallowed' : 'Caught'}
-                    subtitle={`${ui.depth} rows · ${ui.score.toLocaleString()} points`}
+                    subtitle={`${ui.depth} ${ui.depth === 1 ? 'row' : 'rows'} climbed`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />

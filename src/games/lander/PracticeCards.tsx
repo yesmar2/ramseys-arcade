@@ -7,10 +7,11 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
+import { boardTime } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { caveDay, caveNumber, dailyCave, FIRST_DAY } from './daily'
 import type { LanderDay } from './runs'
-import { crashWords, formatLanderBoardScore, formatRun } from './score'
+import { crashWords, formatLanderBoardScore } from './score'
 
 /*
  * The cards of a past day's cave flown again from the past tab (/games/lander/play?day=YYYY-MM-DD), on the
@@ -136,7 +137,7 @@ export function PastCaveResult({
       day={lander.day}
       name={lander.name}
       kicker={`Past cave #${lander.n} · ${lander.name}`}
-      figure={formatRun(time)}
+      figure={boardTime(SLUG, time)}
       score={score}
       pace={shipWords(time, pace, crashes)}
       fmt={formatLanderBoardScore}

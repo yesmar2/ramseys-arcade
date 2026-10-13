@@ -58,7 +58,7 @@ import { boardDay } from '../lib/rankHow'
 import { alsoDailies, liveDailies } from '../lib/today'
 import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
-import { isRaceGame, medalFor } from '../lib/raceMedals'
+import { boardTime, isRaceGame, medalFor, medalTimes, needsThousandths } from '../lib/raceMedals'
 import { PushAsk, StreakPushAsk } from './PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { RaceReport, raceSubWords } from './RaceReport'
@@ -194,7 +194,6 @@ export function ScoreSaveCard({
   const period: LeaderboardPeriod = isDailyGame(gameSlug) ? 'daily' : defaultPeriod
   // A daily just for fun places nobody (data/games.ts Game.ranked): its save is today's result, on no board.
   const ranked = isRankedGame(gameSlug)
-  const saveWords = ranked ? 'goes on the boards' : 'is saved as today’s result'
   // The Standings line keeps the header's period, so it never says "today" beside the header's weekly rank, but a
   // daily's run can't move all time, which leaves the dailies out: its month instead (lib/allTime.ts).
   // Read as the save goes out, as the run's other extras are.
@@ -529,6 +528,25 @@ export function ScoreSaveCard({
   const ribbon = data?.ribbon ?? (unsavedWin ? CHALLENGE_WON : null)
   const figure = formatLeaderboardScore(gameSlug, score)
   const unit = scoreUnit(gameSlug, score)
+  // A racing daily's run (RaceReport): its medals as a ladder, its tickets and season in one row, its place in
+  // another. Its best goes under the score, and its Standings line is left to the header. The racing dailies
+  // keep a million less the ms (their score.ts), and `bestBefore` is today's best before this run. Every time on
+  // it reads one way: to the hundredth, as its clock and its medals say it, or to the thousandth, as the boards
+  // keep them, when it shows other runs from the boards (a friend passed, the podium) or when two of its times
+  // would read the same without being the same (a run 3ms short of bronze, beside bronze's time).
+  const race = (() => {
+    if (!isRaceGame(gameSlug) || !medalPace || !medalFormat || score <= 0) return null
+    const ms = 1_000_000 - score
+    const previousMs = bestBefore && bestBefore > 0 ? 1_000_000 - bestBefore : null
+    const boards = Boolean(data?.friend || data?.race)
+    const fine = boards || needsThousandths([ms, previousMs, medalPace, ...Object.values(medalTimes(gameSlug, medalPace))], medalFormat)
+    const format = fine ? (seconds: number) => boardTime(gameSlug, seconds) : medalFormat
+    return { game: gameSlug, paceMs: medalPace, format, ms, previousMs }
+  })()
+  // The run as this card says it in a sentence: 74 points, 1:00.90.
+  const said = race ? race.format(race.ms / 1000) : scoreText(gameSlug, score)
+  // What a sign-in does with it: it goes on the boards, or a daily just for fun keeps it as the day's result.
+  const putWords = ranked ? `put ${said} on the boards` : `save ${said} as today’s result`
   const place = wouldPlace
   const winLead = place ? (
     <>
@@ -564,12 +582,12 @@ export function ScoreSaveCard({
         lead={
           facing && outcome?.won ? (
             <>
-              Sign in and {facing.name} hears you won, and {scoreText(gameSlug, score)} {saveWords}. {winLead}
+              Sign in to tell {facing.name} you won and {putWords}. {winLead}
               {others}
             </>
           ) : (
             <>
-              Sign in and {scoreText(gameSlug, score)} {saveWords}. {winLead}
+              Sign in to {putWords}. {winLead}
               {others}
             </>
           )
@@ -602,7 +620,7 @@ export function ScoreSaveCard({
         lead={
           place ? (
             <>
-              {scoreText(gameSlug, score)} is{' '}
+              {said} is{' '}
               <strong className={place === 1 ? 'report__win report__win--gold' : 'report__win'}>
                 #{place} on {game} {copy.phrase}
               </strong>
@@ -649,6 +667,9 @@ export function ScoreSaveCard({
         text={saveWaitOver ? 'Still saving. It finishes even if you play on.' : 'Saving…'}
       />
     )
+  } else if (phase === 'saved' && score <= 0) {
+    // A run that scored nothing goes on no board, signed in or out, and isn't kept as a best here either.
+    who = <ReportWho text="No score · not saved" />
   } else if (savedAs) {
     who = <ReportWho name={savedAs} avatarId={data?.avatarId} text={`Saved as ${savedAs}`} />
   }
@@ -773,13 +794,6 @@ export function ScoreSaveCard({
   const paidTickets = phase === 'saved' ? (facts?.tickets ?? null) : null
   // The season's pass card only when the run moved it: what it added, or a level it reached.
   const seasonMoved = facts?.season && (facts.season.added > 0 || facts.season.levelUp.length > 0) ? facts.season : null
-  // A racing daily's run (RaceReport): its medals as a ladder, its tickets and season in one row, its place in
-  // another. Its best goes under the score, and its Standings line is left to the header. The racing dailies
-  // keep a million less the ms (their score.ts), and `bestBefore` is today's best before this run.
-  const race =
-    isRaceGame(gameSlug) && medalPace && medalFormat && score > 0
-      ? { game: gameSlug, paceMs: medalPace, format: medalFormat, ms: 1_000_000 - score, previousMs: bestBefore && bestBefore > 0 ? 1_000_000 - bestBefore : null }
-      : null
   const raceSub = race ? raceSubWords(ribbon ? (kicker ?? title) : title, race.ms, race.previousMs, race.format) : null
   const racePlace = race ? (data?.lines.find((line) => line.id === 'board') ?? null) : null
   const raceLines = (all: typeof lines) => all?.filter((line) => line.id !== 'best' && line.id !== 'board' && line.id !== 'overall') ?? []
@@ -792,7 +806,7 @@ export function ScoreSaveCard({
   return (
     <>
       <RunReport
-        label={`${heading}, ${scoreText(gameSlug, score)}`}
+        label={`${heading}, ${said}`}
         titleId={titleId}
         style={accentStyle}
         accent={accent}
@@ -803,8 +817,8 @@ export function ScoreSaveCard({
         metal={data?.metal ?? null}
         ribbon={ribbon}
         eyebrow={race && kicker ? kicker : title}
-        // A racing daily's time as its clock and its medals say it (59.00s); its boards keep the thousandths.
-        score={race ? race.format(race.ms / 1000) : figure}
+        // A racing daily's time as the rest of its report says one (59.00s, or 59.004s).
+        score={race ? said : figure}
         unit={unit}
         sub={race ? raceSub : ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
         scoreTone={data?.scoreTone ?? (unsavedWin ? 'gold' : 'plain')}
@@ -824,6 +838,7 @@ export function ScoreSaveCard({
           race ? (
             <RaceReport
               {...race}
+              signedOut={phase === 'needAuth'}
               pending={pending}
               tickets={
                 paidTickets ? (

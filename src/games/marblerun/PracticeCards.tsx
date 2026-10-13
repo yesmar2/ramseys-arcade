@@ -7,10 +7,11 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
+import { boardTime } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { courseDay, courseNumber, dailyCourse, FIRST_DAY } from './daily'
 import type { MarbleDay } from './runs'
-import { formatMarblerunBoardScore, formatRun } from './score'
+import { formatMarblerunBoardScore } from './score'
 
 /*
  * The cards of a past day's course rolled again from the past tab (/games/marblerun/play?day=YYYY-MM-DD),
@@ -138,7 +139,7 @@ export function PastCourseRunResult({
       day={marble.day}
       name={marble.name}
       kicker={`Past course #${marble.n} · ${marble.name}`}
-      figure={formatRun(time)}
+      figure={boardTime(SLUG, time)}
       score={score}
       pace={ballWords(time, pace, falls)}
       fmt={formatMarblerunBoardScore}

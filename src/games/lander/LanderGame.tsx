@@ -61,7 +61,7 @@ import { CaveScene } from './scene'
 import { useSkinInto } from '../../lib/skins'
 import { crashWords, formatLanderBoardScore, formatRun, landerBoardScore, landerMsFromBoardScore } from './score'
 import { MedalRow } from '../../components/RaceMedal'
-import { paceMsOf } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import { TomorrowCave } from './TomorrowCave'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
 import { chromeTakesKey, controlTakesKey } from '../keys'
@@ -341,9 +341,9 @@ function CaveTiles({ lander, ghost, chasing, bestMs }: { lander: LanderDay; ghos
       </div>
       <div className="game-pause-meta__row">
         <span>{chasingLabel(chasing)}</span>
-        <strong>{formatRun(ghost)}</strong>
+        <strong>{boardTime('lander', ghost)}</strong>
       </div>
-      <MedalRow game="lander" paceMs={paceMsOf(lander.pace)} bestMs={bestMs} format={formatRun} />
+      <MedalRow game="lander" paceMs={paceMsOf(lander.pace)} bestMs={bestMs} />
       <div className="game-pause-meta__row">
         <span>Next cave</span>
         <strong>{untilWords(left)}</strong>
@@ -1114,6 +1114,9 @@ function LanderDayGame({
     : apiBest > 0
       ? formatRun(landerMsFromBoardScore(apiBest) / 1000)
       : '–'
+  // A past course's card says Your best here to the thousandth, as its All time board beside it does; the play
+  // screen's Best keeps the clock's hundredths.
+  const bestHere = practiceBestTime != null ? boardTime(SLUG, practiceBestTime) : '–'
   // Whose the run is, for its card: an account's run waits for that account; one flown signed out goes to whoever signs in.
   const runOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
   // A past cave: the chip, the tab's title, the way back to its row and its day's figures, the same on the play
@@ -1143,11 +1146,11 @@ function LanderDayGame({
     <>
       <div className="game-pause-meta__row">
         <span>Blue ship</span>
-        <strong>{formatRun(pace)}</strong>
+        <strong>{boardTime(SLUG, pace)}</strong>
       </div>
       <div className="game-pause-meta__row">
         <span>Your best here</span>
-        <strong>{bestText}</strong>
+        <strong>{bestHere}</strong>
       </div>
     </>
   ) : (

@@ -20,6 +20,7 @@ export function RaceReport({
   format,
   ms,
   previousMs,
+  signedOut = false,
   pending,
   tickets,
   levelUp = null,
@@ -33,6 +34,8 @@ export function RaceReport({
   /** This run's time, and the day's best before it. */
   ms: number
   previousMs: number | null
+  /** Played signed out: what a medal pays waits for a sign-in. */
+  signedOut?: boolean
   /** The save hasn't answered yet. */
   pending: boolean
   /** The run's ticket row (prizes/RunTickets.tsx), the signed-out box, or nothing. */
@@ -45,7 +48,7 @@ export function RaceReport({
 }) {
   return (
     <>
-      <MedalLadder game={game} paceMs={paceMs} ms={ms} previousMs={previousMs} format={format} />
+      <MedalLadder game={game} paceMs={paceMs} ms={ms} previousMs={previousMs} format={format} signedOut={signedOut} />
       {pending ? (
         <RaceRowsLoading />
       ) : (

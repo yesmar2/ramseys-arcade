@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
 import { RunLabel } from '../../components/RunLabel'
 import { useShare } from '../../components/SharePanel'
+import { useAuth } from '../../hooks/useAuth'
 import { gameArchiveHref, gamePlayHref, todayShareHref } from '../../hooks/useHashRoute'
 import { archiveDayWords, dayBefore } from '../../lib/archive'
 import { fitCardToSpace } from '../../lib/cardFit'
@@ -171,6 +172,7 @@ export function TodayCard({
   /** Put a finished first run on the board, when it isn't: it was played signed out, or its save didn't land. */
   onSave: () => void
 }) {
+  const { signedOut } = useAuth()
   const n = dayNumber(day)
   const result = run?.result
   const at = !result ? run?.at : undefined
@@ -240,8 +242,8 @@ export function TodayCard({
             ? 'That’s your result for today. Play the day again as much as you like: it’s practice, and your result stands.'
             : 'Five scenes and a bug wanted in each, the same for everyone today. Your first run is your result, and the clock waits if you leave.'}
       </p>
-      {/* What a run from here does: the day's first is your result (just for fun); once it's done, the rest are practice. */}
-      <RunLabel kind={result ? 'practice' : 'fun'} slug={SLUG} className="findbug-daily__label" />
+      {/* What a run from here does: the day's first is your result (just for fun). Once it's done, Play again says the rest are practice. */}
+      {result ? null : <RunLabel kind="fun" slug={SLUG} className="findbug-daily__label" />}
       <div className="game-pause-meta">
         <Row label="You">
           {waiting ? 'Checking who’s signed in…' : result ? resultWords(result) : at ? soFarWords(at) : started ? 'Started' : 'Not played yet'}
@@ -252,14 +254,17 @@ export function TodayCard({
         {result ? (
           <>
             {offBoard ? (
+              // Signed out, the save asks for a sign-in first, so the button says so.
               <button type="button" className="panel__btn" onClick={onSave}>
-                Save it as today&rsquo;s result
+                {signedOut ? 'Sign in to save it' : 'Save it as today’s result'}
               </button>
             ) : null}
             <ShareDay day={day} result={result} className={offBoard ? 'panel__btn panel__btn--ghost' : 'panel__btn'} />
             <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice}>
-              Play it again · doesn&rsquo;t count
+              Play again
             </button>
+            {/* By the way to play again, not on the result: that one stands. */}
+            <RunLabel kind="practice" slug={SLUG} className="findbug-daily__label" />
           </>
         ) : (
           // Nothing starts until it's known whose run it'll be.

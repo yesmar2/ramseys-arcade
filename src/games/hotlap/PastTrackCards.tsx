@@ -6,11 +6,12 @@ import { inArchive } from '../../lib/archive'
 import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
+import { boardTime } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyTrack, dayOfTrack, PLANNED_TRACKS, trackDay, trackNumber, trackState } from './daily'
 import type { Course } from './lap'
 import { trackDriveHref, type PastTrackFigures } from './pastTrack'
-import { formatHotlapBoardScore, formatLap, formatLapMs } from './score'
+import { formatHotlapBoardScore, formatLapMs } from './score'
 
 /*
  * A past track's cards (/games/hotlap/play?track=<n>, from the Past tracks tab): the one it opens on, and
@@ -82,10 +83,12 @@ export function PastTrackStart({
     }),
     [n, admin],
   )
-  const pace = `Blue car: ${formatLap(course.paceLap.time)}.`
+  // To the thousandth, as its boards' laps on the card are, and kept on one line.
+  const pace = `Blue\u00a0car:\u00a0${boardTime(SLUG, course.paceLap.time)}.`
+  // Practice says how a lap here would count instead, in the note as the other dailies' past cards do.
   const note =
     kind === 'practice'
-      ? pace
+      ? `${inArchive(course.day) ? archivedWhy(SLUG) : `Sign in and your laps here go on its ${BOARD_NAMES.allTime} board.`} ${pace}`
       : board?.you?.place === 1
         ? `You hold its record. ${pace}`
         : `Taking its record pays ${RECORD_TICKETS} tickets, once. ${pace}`
@@ -108,11 +111,6 @@ export function PastTrackStart({
       today={{ name: today }}
       walk={walk}
     >
-      {kind === 'practice' ? (
-        <p className="hotlap-past__line">
-          {inArchive(course.day) ? archivedWhy(SLUG) : `Sign in and your laps here go on its ${BOARD_NAMES.allTime} board.`}
-        </p>
-      ) : null}
       {ghostPick}
     </PastCourseStart>
   )
@@ -151,7 +149,7 @@ export function PastTrackResult({
       n={course.n}
       day={course.day}
       name={course.name}
-      figure={formatLap(time)}
+      figure={boardTime(SLUG, time)}
       score={score}
       pace={paceWords(time, course.paceLap.time)}
       fmt={lapOf}

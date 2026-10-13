@@ -569,6 +569,16 @@ html[data-theme='dark'] .wobblerun--fullscreen {
   color: inherit;
 }
 
+/* What each round asks, in order, under the chips: plain words, for a phone as much as a pointer. */
+.wobblerun-rounds__hints {
+  margin: 0.1rem 0 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+  text-align: left;
+}
+
 /* Squeezed, the chips squeeze too. */
 .game-card[data-fit='2'] .wobblerun-rounds__chip {
   font-size: 0.68rem;
@@ -577,6 +587,7 @@ html[data-theme='dark'] .wobblerun--fullscreen {
 /*
  * Squeezed on a short screen, icons only (each keeps its name for a pointer, its title, and a screen reader), on
  * the gauntlet's name's line when there's room: the card keeps Start in view as the other racing dailies' do.
+ * The line under them still says what each round asks.
  */
 @media (max-height: 760px) {
   .game-card[data-fit='2'] .wobblerun-rounds__chip {
@@ -603,7 +614,8 @@ html[data-theme='dark'] .wobblerun--fullscreen {
     row-gap: 0.15rem;
   }
 
-  .game-card[data-fit='2'] .wobblerun-gauntlet > span:first-child {
+  .game-card[data-fit='2'] .wobblerun-gauntlet > span:first-child,
+  .game-card[data-fit='2'] .wobblerun-gauntlet .wobblerun-rounds__hints {
     flex-basis: 100%;
   }
 }

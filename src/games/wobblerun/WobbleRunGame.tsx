@@ -27,7 +27,7 @@ import { normalizePlayerName } from '../../lib/leaderboard'
 import { allTimeFact } from '../../lib/pastBoards'
 import type { PastPlay } from '../../lib/pastPlay'
 import { getPersonalBest } from '../../lib/personalBest'
-import { MEDAL_NAMES, medalFor, nextMedal, paceMsOf } from '../../lib/raceMedals'
+import { boardTime, MEDAL_NAMES, medalFor, nextMedal, paceMsOf } from '../../lib/raceMedals'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun, runIdFor } from '../../lib/runSession'
 import { ordinal } from '../../lib/scoreboard'
@@ -387,12 +387,24 @@ function RoundList({ k }: { k: string }) {
   )
 }
 
+/**
+ * What each round asks, in order, in a line under the chips: "Time the doors, stay on the stripe, grab the star."
+ * A chip's title waits for a pointer, which a phone hasn't got, and a short phone shows the chips as icons only.
+ */
+function RoundHints({ k }: { k: string }) {
+  const line = gauntletRounds(k)
+    .map((r) => r.hint)
+    .join(', ')
+  return line ? <p className="wobblerun-rounds__hints">{`${line.charAt(0).toUpperCase()}${line.slice(1)}.`}</p> : null
+}
+
 /** The rounds as a figure of their own, on a card whose title is the gauntlet's name (a past one's, a test run's). */
 function RoundChips({ k }: { k: string }) {
   return (
     <div className="game-pause-meta__row wobblerun-rounds">
       <span>Rounds</span>
       <RoundList k={k} />
+      <RoundHints k={k} />
     </div>
   )
 }
@@ -410,12 +422,13 @@ function GauntletTiles({ wobble, ghost, chasing, bestMs }: { wobble: WobbleDay; 
         <span>Today’s gauntlet · #{wobble.n}</span>
         <strong>{wobble.name}</strong>
         <RoundList k={wobble.k} />
+        <RoundHints k={wobble.k} />
       </div>
       <div className="game-pause-meta__row">
         <span>{chasingLabel(chasing)}</span>
-        <strong>{formatRun(ghost)}</strong>
+        <strong>{boardTime('wobblerun', ghost)}</strong>
       </div>
-      <MedalRow game="wobblerun" paceMs={paceMsOf(wobble.pace)} bestMs={bestMs} format={formatRun} />
+      <MedalRow game="wobblerun" paceMs={paceMsOf(wobble.pace)} bestMs={bestMs} />
       <div className="game-pause-meta__row">
         <span>Next gauntlet</span>
         <strong>{untilWords(left)}</strong>
@@ -1450,6 +1463,9 @@ function WobbleRunDay({
   const practiceBestTime = tabBest == null ? boardBest : boardBest == null ? tabBest : Math.min(tabBest, boardBest)
   const todayBestMs = apiBest > 0 ? wobblerunMsFromBoardScore(apiBest) : null
   const bestText = practice ? (practiceBestTime != null ? formatRun(practiceBestTime) : '–') : todayBestMs != null ? formatRun(todayBestMs / 1000) : '–'
+  // A past course's card says Your best here to the thousandth, as its All time board beside it does; the play
+  // screen's Best keeps the clock's hundredths.
+  const bestHere = practiceBestTime != null ? boardTime(SLUG, practiceBestTime) : '–'
   // Whose the run is, for its card: an account's run waits for that account; one run signed out goes to whoever signs in.
   const runOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
   // A past gauntlet: the chip, the tab's title, the way back to its row and its day's figures, the same on the play
@@ -1483,11 +1499,11 @@ function WobbleRunDay({
     <>
       <div className="game-pause-meta__row">
         <span>Blue blip</span>
-        <strong>{formatRun(pace)}</strong>
+        <strong>{boardTime(SLUG, pace)}</strong>
       </div>
       <div className="game-pause-meta__row">
         <span>Your best here</span>
-        <strong>{bestText}</strong>
+        <strong>{bestHere}</strong>
       </div>
     </>
   )

@@ -45,7 +45,7 @@ import { PastTrackResult, PastTrackStart } from './PastTrackCards'
 import { HotLapScene } from './scene'
 import { useSkinInto } from '../../lib/skins'
 import { MedalRow } from '../../components/RaceMedal'
-import { paceMsOf } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import { TomorrowTrack } from './TomorrowTrack'
 import { formatLap, hotlapBoardScore, hotlapMsFromBoardScore } from './score'
 import { botDriver, GHOST_EVERY, newRun, STEP, stepRun, type Controls, type GhostPath, type Run, type Track } from './sim'
@@ -300,7 +300,7 @@ function TrackTiles({
   const chase = (
     <div className="game-pause-meta__row">
       <span>{chasingLabel(chasing)}</span>
-      <strong>{formatLap(ghost)}</strong>
+      <strong>{boardTime('hotlap', ghost)}</strong>
     </div>
   )
   if (past) return chase
@@ -313,7 +313,7 @@ function TrackTiles({
         <strong>{course.name}</strong>
       </div>
       {chase}
-      <MedalRow game="hotlap" paceMs={paceMsOf(course.pace)} bestMs={bestMs} format={formatLap} />
+      <MedalRow game="hotlap" paceMs={paceMsOf(course.pace)} bestMs={bestMs} />
       {test ? (
         <div className="game-pause-meta__row">
           <span>Its day</span>

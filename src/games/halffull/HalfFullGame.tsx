@@ -1094,6 +1094,7 @@ function StartCard({
   onSave: () => void
   onSaveClaimable: () => void
 }) {
+  const { signedOut } = useAuth()
   const done = dayDone(run)
   const started = kept.length > 0 && !done
   const sum = done && kept.length >= ROUNDS ? summarize(kept) : null
@@ -1127,8 +1128,8 @@ function StartCard({
                   : `A pour begun on this device while signed out is waiting at glass ${claimableKept.length + 1} of ${ROUNDS}. Carry it on if it’s yours, or pour your own.`
                 : 'Fill four glasses half full: by what they hold, not how tall they are. Then share one jug fairly between two friends. Your first pour of the day is your result.'}
         </p>
-        {/* What a pour from here does: the day's first is your result (just for fun); once it's done, the rest are practice. */}
-        {saves && !claim ? <RunLabel kind={done ? 'practice' : 'fun'} slug={SLUG} /> : null}
+        {/* What a pour from here does: the day's first is your result (just for fun). Once it's done, Pour again says the rest are practice. */}
+        {saves && !claim && !done ? <RunLabel kind="fun" slug={SLUG} /> : null}
       </div>
       {sum ? (
         <div className="halffull-card__result">
@@ -1153,14 +1154,17 @@ function StartCard({
           <>
             {/* Once the board says it isn't there, Save is the way on, and takes the focus as it comes. */}
             {offBoard ? (
+              // Signed out, the save asks for a sign-in first, so the button says so.
               <button type="button" className="panel__btn" onClick={onSave} autoFocus={!quiet}>
-                Save it as today’s pour
+                {signedOut ? 'Sign in to save it' : 'Save it as today’s pour'}
               </button>
             ) : null}
             {sum ? <ShareButton plan={plan} results={kept} autoFocus={!quiet && !offBoard} ghost={offBoard} /> : null}
             <button type="button" className="panel__btn panel__btn--ghost" onClick={onPractice} autoFocus={!quiet && !sum}>
-              Pour again · doesn’t count
+              Pour again
             </button>
+            {/* By the way to pour again, not on the pour: that one stands. */}
+            {saves ? <RunLabel kind="practice" slug={SLUG} className="halffull-card__label" /> : null}
           </>
         ) : claim ? (
           // Not shared from here: it's only theirs once they've taken it up.
@@ -1313,7 +1317,7 @@ function DayCard({
           onClick={(e) => allow(e) && onAgain()}
           autoFocus={practice}
         >
-          Pour again · doesn’t count
+          Pour again
         </button>
         <button type="button" className="panel__btn panel__btn--ghost" onClick={(e) => allow(e) && onDone()}>
           Done

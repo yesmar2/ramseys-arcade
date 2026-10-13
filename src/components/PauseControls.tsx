@@ -187,9 +187,10 @@ export function GamePanelBody({
           ) : null}
         </div>
       ) : null}
-      {tries?.triesAtStart ? <p className="game-card__hint">A try counts the moment you start it.</p> : null}
+      {/* Notes, not key hints: a phone shows them too. */}
+      {tries?.triesAtStart ? <p className="game-card__note">A try counts the moment you start it.</p> : null}
       {/* Signed out, Your best is this device's (lib/personalBest.ts): saved nowhere until you sign in. */}
-      {showBest && personalBest > 0 && signedOut ? <p className="game-card__hint">Your best on this device. Sign in to save it.</p> : null}
+      {showBest && personalBest > 0 && signedOut ? <p className="game-card__note">Your best on this device. Sign in to save it.</p> : null}
       {tools}
       <div className="game-pause-actions">
         <div className="game-sound-row">

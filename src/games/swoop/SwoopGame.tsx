@@ -27,7 +27,7 @@ import { normalizePlayerName } from '../../lib/leaderboard'
 import { allTimeFact } from '../../lib/pastBoards'
 import type { PastPlay } from '../../lib/pastPlay'
 import { getPersonalBest } from '../../lib/personalBest'
-import { paceMsOf } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import { clearRunAchievements } from '../../lib/runAchievements'
 import { beginRun, runIdFor } from '../../lib/runSession'
 import { ordinal } from '../../lib/scoreboard'
@@ -316,9 +316,9 @@ function HillsTiles({ swoop, ghost, chasing, bestMs }: { swoop: SwoopDay; ghost:
       </div>
       <div className="game-pause-meta__row">
         <span>{chasingLabel(chasing)}</span>
-        <strong>{formatRun(ghost)}</strong>
+        <strong>{boardTime('swoop', ghost)}</strong>
       </div>
-      <MedalRow game="swoop" paceMs={paceMsOf(swoop.pace)} bestMs={bestMs} format={formatRun} />
+      <MedalRow game="swoop" paceMs={paceMsOf(swoop.pace)} bestMs={bestMs} />
       <div className="game-pause-meta__row">
         <span>Next hills</span>
         <strong>{untilWords(left)}</strong>
@@ -1066,6 +1066,9 @@ function SwoopDayGame({
     : apiBest > 0
       ? formatRun(swoopMsFromBoardScore(apiBest) / 1000)
       : '–'
+  // A past course's card says Your best here to the thousandth, as its All time board beside it does; the play
+  // screen's Best keeps the clock's hundredths.
+  const bestHere = practiceBestTime != null ? boardTime(SLUG, practiceBestTime) : '–'
   // Whose the run is, for its card: an account's run waits for that account; one flown signed out goes to whoever signs in.
   const runOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
   // Past hills: the chip, the tab's title, the way back to their row and their day's figures, the same on the
@@ -1095,11 +1098,11 @@ function SwoopDayGame({
     <>
       <div className="game-pause-meta__row">
         <span>Blue bird</span>
-        <strong>{formatRun(pace)}</strong>
+        <strong>{boardTime(SLUG, pace)}</strong>
       </div>
       <div className="game-pause-meta__row">
         <span>Your best here</span>
-        <strong>{bestText}</strong>
+        <strong>{bestHere}</strong>
       </div>
     </>
   ) : (

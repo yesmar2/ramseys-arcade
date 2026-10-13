@@ -224,11 +224,13 @@ function boardLabel(slug: string, copy: PeriodCopy): string {
 
 /* ---------- the lines ---------- */
 
-function bestLine(f: RunFacts): ReportLine {
+function bestLine(f: RunFacts): ReportLine | null {
   const { slug, score, priorBest } = f
   const line = { id: 'best', icon: 'target' as ReportIcon, label: 'Your best' }
   const time = isTimeBoard(slug)
   if (priorBest <= 0) {
+    // A run that scored nothing isn't saved or kept as a best, so it's no first score either.
+    if (score <= 0) return null
     return { ...line, detail: `Your first ${gameName(slug)} score`, value: figure(slug, score), tone: 'plain' }
   }
   if (score > priorBest) {
@@ -500,7 +502,8 @@ export function composeReport(f: RunFacts): RunReportData {
   const lines: ReportLine[] = []
   // A friend's challenge is what the run was for, so it is said first.
   if (challenge) lines.push(challengeReportLine(f.slug, f.score, challenge))
-  lines.push(bestLine(f))
+  const best = bestLine(f)
+  if (best) lines.push(best)
   if (board) lines.push(board.line)
   if (highScore && f.period !== 'all') {
     lines.push({

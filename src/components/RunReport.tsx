@@ -237,6 +237,31 @@ function Race({ race }: { race: ReportRace }) {
   )
 }
 
+/**
+ * On a screen too short for the band and Play again together, the whole card scrolls with Play again pinned at
+ * its foot (report.css). While some of it is out of sight below, the card is marked `data-more`, and the top of
+ * Play again's band is shaded as the middle's edge is when it scrolls, so it reads as more to come.
+ */
+function useMoreBelow(foot: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const card = foot.current?.closest<HTMLElement>('.report')
+    if (!card || typeof ResizeObserver === 'undefined') return undefined
+    const look = () => card.toggleAttribute('data-more', card.scrollHeight - card.clientHeight - card.scrollTop > 2)
+    look()
+    card.addEventListener('scroll', look, { passive: true })
+    const resize = new ResizeObserver(look)
+    resize.observe(card)
+    // A card at its full height doesn't change size when its lines come in; this sees that too.
+    const contents = new MutationObserver(look)
+    contents.observe(card, { childList: true, subtree: true, characterData: true })
+    return () => {
+      card.removeEventListener('scroll', look)
+      resize.disconnect()
+      contents.disconnect()
+    }
+  }, [foot])
+}
+
 export function RunReportBody({
   titleId,
   tier,
@@ -258,6 +283,8 @@ export function RunReportBody({
 }: RunReportBodyProps) {
   // A run's last presses don't reach the buttons (useDeliberatePress).
   const allow = useDeliberatePress()
+  const footRef = useRef<HTMLDivElement>(null)
+  useMoreBelow(footRef)
   return (
     <>
       <header className={`report__head${leave ? ' report__head--leave' : ''}`}>
@@ -307,7 +334,7 @@ export function RunReportBody({
         {tickets}
         {children ? <div className="report__block">{children}</div> : null}
       </div>
-      <div className="report__foot">
+      <div ref={footRef} className="report__foot">
         <div className="report__actions">
           <Action action={primary} className="panel__btn" allow={allow} />
           {secondary ? <Action action={secondary} className="panel__btn panel__btn--ghost" allow={allow} /> : null}

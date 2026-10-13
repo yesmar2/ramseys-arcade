@@ -20,21 +20,16 @@ import { dayPlan as platePlan, PLATES } from '../games/dead-center/plan'
 import { formatBoard as formatPlates, judgeTaps, markFor as plateMark, tierFor as plateTier } from '../games/dead-center/score'
 import { dailyTrack, trackDay } from '../games/hotlap/daily'
 import { keptLap } from '../games/hotlap/lap'
-import { formatLap } from '../games/hotlap/score'
 import { caveDay, dailyCave } from '../games/lander/daily'
 import { keptRun as keptCaveRun } from '../games/lander/runStore'
-import { formatRun as formatCaveRun } from '../games/lander/score'
 import { courseDay, dailyCourse } from '../games/marblerun/daily'
 import { keptRun } from '../games/marblerun/runStore'
-import { formatRun } from '../games/marblerun/score'
 import { dailyHills, hillsDay } from '../games/swoop/daily'
 import { keptRun as keptHillsRun } from '../games/swoop/runStore'
-import { formatRun as formatHillsRun } from '../games/swoop/score'
 import { dailyGauntlet, gauntletDay } from '../games/wobblerun/daily'
 import { keptRun as keptGauntletRun } from '../games/wobblerun/runStore'
-import { formatRun as formatGauntletRun } from '../games/wobblerun/score'
 import { todayShareHref } from '../hooks/useHashRoute'
-import { medalFor, paceMsOf, type Medal } from '../lib/raceMedals'
+import { boardTime, medalFor, paceMsOf, type Medal } from '../lib/raceMedals'
 import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '../lib/dailyHole'
 import type { Viewer } from '../lib/deviceRuns'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -71,7 +66,7 @@ export type Punch = {
   done: boolean
   /** Your result, in words, once there is one. */
   mine: string | null
-  /** The result on the punch itself, short: "3 tries", "58.41s", "91.2%". */
+  /** The result on the punch itself, short, as its board says it: "3 tries", "58.412s", "91.2%". */
   short: string | null
   /** Left halfway, and where to carry on from ("Carry on, glass 3 of 5"); null if not started. */
   carry: string | null
@@ -176,7 +171,7 @@ function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const serverLap = server?.results.track?.score ?? null
   // The viewer's own best lap on this device (never another player's, nor one driven signed out while they're signed in).
   const lapTime = keptLap(tday, viewer)?.time ?? null
-  const lapWords = serverLap != null ? formatLeaderboardScore('hotlap', serverLap) : lapTime != null ? formatLap(lapTime) : null
+  const lapWords = serverLap != null ? formatLeaderboardScore('hotlap', serverLap) : lapTime != null ? boardTime('hotlap', lapTime) : null
   const done = lapWords != null || Boolean(server?.done.track)
   return {
     kicker: `Today’s Track #${track.n}`,
@@ -268,7 +263,7 @@ function coursePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const serverRun = server?.results.course?.score ?? null
   // The viewer's own best run on this device (never another player's, nor one rolled signed out while they're signed in).
   const runTime = keptRun(cday, viewer)?.time ?? null
-  const runWords = serverRun != null ? formatLeaderboardScore('marblerun', serverRun) : runTime != null ? formatRun(runTime) : null
+  const runWords = serverRun != null ? formatLeaderboardScore('marblerun', serverRun) : runTime != null ? boardTime('marblerun', runTime) : null
   const done = runWords != null || Boolean(server?.done.course)
   return {
     kicker: `Today’s Course #${course.n}`,
@@ -288,7 +283,7 @@ function cavePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const serverRun = server?.results.cave?.score ?? null
   // The viewer's own best run on this device (never another player's, nor one flown signed out while they're signed in).
   const runTime = keptCaveRun(vday, viewer)?.time ?? null
-  const runWords = serverRun != null ? formatLeaderboardScore('lander', serverRun) : runTime != null ? formatCaveRun(runTime) : null
+  const runWords = serverRun != null ? formatLeaderboardScore('lander', serverRun) : runTime != null ? boardTime('lander', runTime) : null
   const done = runWords != null || Boolean(server?.done.cave)
   return {
     kicker: `Today’s Cave #${cave.n}`,
@@ -308,7 +303,7 @@ function hillsPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const serverRun = server?.results.hills?.score ?? null
   // The viewer's own best run on this device (never another player's, nor one flown signed out while they're signed in).
   const runTime = keptHillsRun(vday, viewer)?.time ?? null
-  const runWords = serverRun != null ? formatLeaderboardScore('swoop', serverRun) : runTime != null ? formatHillsRun(runTime) : null
+  const runWords = serverRun != null ? formatLeaderboardScore('swoop', serverRun) : runTime != null ? boardTime('swoop', runTime) : null
   const done = runWords != null || Boolean(server?.done.hills)
   return {
     kicker: `Today’s Hills #${hills.n}`,
@@ -328,7 +323,7 @@ function gauntletPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const serverRun = server?.results.gauntlet?.score ?? null
   // The viewer's own best run on this device (never another player's, nor one run signed out while they're signed in).
   const runTime = keptGauntletRun(vday, viewer)?.time ?? null
-  const runWords = serverRun != null ? formatLeaderboardScore('wobblerun', serverRun) : runTime != null ? formatGauntletRun(runTime) : null
+  const runWords = serverRun != null ? formatLeaderboardScore('wobblerun', serverRun) : runTime != null ? boardTime('wobblerun', runTime) : null
   const done = runWords != null || Boolean(server?.done.gauntlet)
   return {
     kicker: `Today’s Gauntlet #${gauntlet.n}`,

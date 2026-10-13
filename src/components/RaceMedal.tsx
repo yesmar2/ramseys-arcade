@@ -1,4 +1,4 @@
-import { blueOf, MEDAL_NAMES, MEDAL_TICKETS, MEDALS, medalBeats, medalFor, medalTimes, nextMedal, raceGapWords, type Medal, type RaceGame } from '../lib/raceMedals'
+import { blueOf, boardTime, MEDAL_NAMES, MEDAL_TICKETS, MEDALS, medalBeats, medalFor, medalTimes, nextMedal, raceGapWords, type Medal, type RaceGame } from '../lib/raceMedals'
 import { TicketGlyph } from './prizes/Ticket'
 import '../styles/raceMedals.css'
 
@@ -37,23 +37,14 @@ export function MedalIcon({ medal, size = 18, dim = false, className }: { medal:
 }
 
 /**
- * A racing daily's medals on its start card: the four, those won today lit, and the time the next one takes.
- * `format` says a time (in seconds) the way the game does.
+ * A racing daily's medals on its start card: the four, those won today lit, and the time the next one takes,
+ * to the thousandth as the card's other times are (boardTime): a medal is taken by the millisecond.
  */
-export function MedalRow({
-  game,
-  paceMs,
-  bestMs,
-  format,
-}: {
-  game: RaceGame
-  paceMs: number
-  bestMs: number | null
-  format: (seconds: number) => string
-}) {
+export function MedalRow({ game, paceMs, bestMs }: { game: RaceGame; paceMs: number; bestMs: number | null }) {
   const held = medalFor(game, paceMs, bestMs)
   const next = nextMedal(game, paceMs, held)
   const won = held ? MEDALS.indexOf(held) : -1
+  const format = (seconds: number) => boardTime(game, seconds)
   const said = `${held ? `${MEDAL_NAMES[held]} won today. ` : ''}${next ? `Next, ${MEDAL_NAMES[next.medal]}: ${format(next.ms / 1000)}` : 'That’s the top medal'}`
   // A tile on the start card: what's next in its label, the time it takes as its figure, the four under it.
   return (
@@ -73,7 +64,8 @@ export function MedalRow({
  * A racing daily's run on its report: the day's four medals as a ladder, each with the time it takes and the
  * tickets it pays, those the day's best holds lit, a new one marked, the next one waiting; and a line on how
  * far the next one is. Ramsey picked it (2026-10-05, "B · Medal ladder") once the report's one medal line
- * left him asking what the medals were. `previousMs` is the day's best before this run.
+ * left him asking what the medals were. `previousMs` is the day's best before this run. A medal held is
+ * won today; signed out, what it pays waits for a sign-in, as the ticket box beside it says.
  */
 export function MedalLadder({
   game,
@@ -81,12 +73,14 @@ export function MedalLadder({
   ms,
   previousMs,
   format,
+  signedOut = false,
 }: {
   game: RaceGame
   paceMs: number
   ms: number
   previousMs: number | null
   format: (seconds: number) => string
+  signedOut?: boolean
 }) {
   const before = medalFor(game, paceMs, previousMs)
   const bestMs = previousMs != null && previousMs > 0 ? Math.min(ms, previousMs) : ms
@@ -115,12 +109,15 @@ export function MedalLadder({
             <li key={medal} className={`medal-ladder__step medal-ladder__step--${state} medal-ladder__step--${medal}`}>
               {tag ? <span className={`medal-ladder__tag medal-ladder__tag--${tag.toLowerCase()}`}>{tag}</span> : null}
               <MedalIcon medal={medal} dim={state !== 'won'} size={30} />
-              <span className="medal-ladder__name">{MEDAL_NAMES[medal]}</span>
+              <span className="medal-ladder__name">
+                {MEDAL_NAMES[medal]}
+                {state === 'won' ? <span className="visually-hidden">, won today</span> : null}
+              </span>
               <span className="medal-ladder__time">{format(times[medal] / 1000)}</span>
               <span className="medal-ladder__tix">
                 <TicketGlyph size={16} dim={state === 'later'} />
                 {MEDAL_TICKETS[medal]}
-                <span className="visually-hidden"> tickets{state === 'won' ? ', won today' : state === 'next' ? ', next' : ''}</span>
+                <span className="visually-hidden"> tickets{state === 'won' && signedOut ? ' once you sign in' : ''}</span>
               </span>
             </li>
           )
@@ -141,7 +138,7 @@ export function MedalLadder({
   )
 }
 
-/** Every medal's time, for the row's tip: "Bronze 57.75s · Silver 54.28s · Gold 50.82s · Platinum 47.35s". */
+/** Every medal's time, for the row's tip: "Bronze 57.748s · Silver 54.282s · Gold 50.816s · Platinum 47.350s". */
 function medalTitle(game: RaceGame, paceMs: number, format: (seconds: number) => string): string {
   const times = medalTimes(game, paceMs)
   return MEDALS.map((m) => `${MEDAL_NAMES[m]} ${format(times[m] / 1000)}`).join(' · ')

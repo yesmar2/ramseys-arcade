@@ -135,6 +135,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A phone under 340px: a time to the thousandth past a minute (1:04.954, when the report says them so) still fits its medal. */
+@media (max-width: 340px) {
+  .medal-ladder__time {
+    font-size: 0.78rem;
+  }
+}
+
 .medal-ladder__step--later .medal-ladder__name,
 .medal-ladder__step--later .medal-ladder__time {
   color: var(--muted);

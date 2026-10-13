@@ -7,10 +7,11 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
+import { boardTime } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyHills, FIRST_DAY, hillsDay, hillsNumber } from './daily'
 import type { SwoopDay } from './runs'
-import { cleanWords, formatRun, formatSwoopBoardScore } from './score'
+import { cleanWords, formatSwoopBoardScore } from './score'
 
 /*
  * The cards of a past day's hills flown again from the past tab (/games/swoop/play?day=YYYY-MM-DD), on the
@@ -136,7 +137,7 @@ export function PastHillsResult({
       day={swoop.day}
       name={swoop.name}
       kicker={`Past hills #${swoop.n} · ${swoop.name}`}
-      figure={formatRun(time)}
+      figure={boardTime(SLUG, time)}
       score={score}
       pace={birdWords(time, pace, clean)}
       fmt={formatSwoopBoardScore}

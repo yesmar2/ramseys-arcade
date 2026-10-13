@@ -6,11 +6,12 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
+import { boardTime } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyGauntlet, FIRST_DAY, gauntletDay, gauntletNumber } from './daily'
 import { gauntletDayHref } from './links'
 import type { WobbleDay } from './runs'
-import { formatRun, formatWobblerunBoardScore, splashWords } from './score'
+import { formatWobblerunBoardScore, splashWords } from './score'
 
 /*
  * The cards of a past day's gauntlet run again from the past tab (/games/wobblerun/play?day=YYYY-MM-DD), on the
@@ -134,7 +135,7 @@ export function PastGauntletResult({
       day={wobble.day}
       name={wobble.name}
       kicker={`Past gauntlet #${wobble.n} · ${wobble.name}`}
-      figure={formatRun(time)}
+      figure={boardTime(SLUG, time)}
       score={score}
       pace={blipWords(time, pace, splats)}
       fmt={formatWobblerunBoardScore}

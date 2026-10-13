@@ -35,7 +35,6 @@ const UNITS: Record<string, [string, string]> = {
   crosswalk: ['row', 'rows'],
   stacker: ['block', 'blocks'],
   simon: ['round', 'rounds'],
-  fireflies: ['note', 'notes'],
 }
 
 function scoreText(slug: string, score: number): string {

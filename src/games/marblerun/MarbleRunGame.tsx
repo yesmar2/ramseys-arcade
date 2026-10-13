@@ -46,7 +46,7 @@ import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, labDay, marbleD
 import { MarbleScene } from './scene'
 import { formatMarblerunBoardScore, formatRun, marblerunBoardScore, marblerunMsFromBoardScore } from './score'
 import { MedalRow } from '../../components/RaceMedal'
-import { paceMsOf } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import { TomorrowCourse } from './TomorrowCourse'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
 import { DT, G, GHOST_EVERY, handsTilt, makeDriver, newBall, PLAYER_BRAKE, PLAYER_TILT_MAX, racingPlan, respawn, STEADY, step, TURN_HELP, zoneUnder, type Ball, type Tilt } from './sim'
@@ -303,9 +303,9 @@ function CourseTiles({ marble, ghost, chasing, bestMs }: { marble: MarbleDay; gh
       </div>
       <div className="game-pause-meta__row">
         <span>{chasingLabel(chasing)}</span>
-        <strong>{formatRun(ghost)}</strong>
+        <strong>{boardTime('marblerun', ghost)}</strong>
       </div>
-      <MedalRow game="marblerun" paceMs={paceMsOf(marble.pace)} bestMs={bestMs} format={formatRun} />
+      <MedalRow game="marblerun" paceMs={paceMsOf(marble.pace)} bestMs={bestMs} />
       <div className="game-pause-meta__row">
         <span>Next course</span>
         <strong>{untilWords(left)}</strong>
@@ -1112,6 +1112,9 @@ function MarbleRunDay({
     : apiBest > 0
       ? formatRun(marblerunMsFromBoardScore(apiBest) / 1000)
       : '–'
+  // A past course's card says Your best here to the thousandth, as its All time board beside it does; the play
+  // screen's Best keeps the clock's hundredths.
+  const bestHere = practiceBestTime != null ? boardTime(SLUG, practiceBestTime) : '–'
   // Whose the run is, for its card: an account's run waits for that account; one rolled signed out goes to whoever signs in.
   const runOwner = g.owner === undefined ? undefined : ownerAccount(g.owner)
   // A past course: the chip, the tab's title, the way back to its row and its day's figures, the same on
@@ -1146,11 +1149,11 @@ function MarbleRunDay({
     <>
       <div className="game-pause-meta__row">
         <span>Blue ball</span>
-        <strong>{formatRun(pace)}</strong>
+        <strong>{boardTime(SLUG, pace)}</strong>
       </div>
       <div className="game-pause-meta__row">
         <span>Your best here</span>
-        <strong>{bestText}</strong>
+        <strong>{bestHere}</strong>
       </div>
     </>
   ) : (

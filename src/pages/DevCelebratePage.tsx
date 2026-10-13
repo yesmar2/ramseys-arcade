@@ -6,6 +6,7 @@ import { RunTicketsLine, RunTicketsWaiting } from '../components/prizes/RunTicke
 import { RaceReport, raceSubWords } from '../components/RaceReport'
 import { caveDay } from '../games/lander/daily'
 import { formatRun } from '../games/lander/score'
+import { boardTime, medalTimes, needsThousandths } from '../lib/raceMedals'
 import { TomorrowCave } from '../games/lander/TomorrowCave'
 import type { SeasonReward, SeasonRun } from '../lib/season'
 import { SeasonRunLine } from '../components/season/SeasonRun'
@@ -419,6 +420,9 @@ function landerSample(
 ): Sample {
   const best = previousMs != null && ms < previousMs
   const ribbon = best ? ({ icon: 'up', text: 'New personal best', tone: 'accent' } as const) : null
+  // As ScoreSaveCard says the times: the clock's hundredths, or the thousandths when two would read the same.
+  const fine = needsThousandths([ms, previousMs, PACE_MS, ...Object.values(medalTimes('lander', PACE_MS))], formatRun)
+  const format = fine ? (seconds: number) => boardTime('lander', seconds) : formatRun
   return {
     key,
     note,
@@ -426,18 +430,19 @@ function landerSample(
       tier: best ? 'lit' : 'quiet',
       ribbon,
       eyebrow: 'Today’s Cave #2',
-      score: formatRun(ms / 1000),
+      score: format(ms / 1000),
       unit: '',
-      sub: raceSubWords(ribbon ? 'Today’s Cave #2' : 'Landed', ms, previousMs, formatRun),
+      sub: raceSubWords(ribbon ? 'Today’s Cave #2' : 'Landed', ms, previousMs, format),
       scoreTone: best ? 'accent' : 'plain',
       lines: [],
       tickets: (
         <RaceReport
           game="lander"
           paceMs={PACE_MS}
-          format={formatRun}
+          format={format}
           ms={ms}
           previousMs={previousMs}
+          signedOut={signedOut}
           pending={pending}
           tickets={tickets}
           place={place}
@@ -708,6 +713,13 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
       tickets: <RunTicketsWaiting />,
       signedOut: true,
     }),
+    landerSample(
+      'medal-missed',
+      'A racing daily’s run 3ms short of Bronze: its times to the thousandth, so the miss shows (Bronze 52.800s, the run 52.803s).',
+      52_803,
+      null,
+      { tickets: <RunTicketsWaiting />, signedOut: true },
+    ),
     landerSample('medal-saving', 'A racing daily’s run while the save answers: the ladder at once, the rows’ room held.', 49_000, 52_000, {
       pending: true,
     }),
@@ -782,7 +794,7 @@ export function DevCelebratePage() {
     <ReportSignIn
       lead={
         <>
-          Sign in and 447 rows goes on the boards. Right now that’s{' '}
+          Sign in to put 447 rows on the boards. Right now that’s{' '}
           <strong className="report__win report__win--gold">#1 on Crosswalk this month</strong>.
         </>
       }

@@ -1,3 +1,5 @@
+import { formatLeaderboardScore } from './leaderboardFormat'
+
 /*
  * Medals on the racing dailies (Hot Lap, Marble Run, Lander, Swoop, Wobble Run): how a day's best went against
  * that day's blue car, ball, ship, bird or blip, on the same steps its tickets are paid by (the API's ticketLadders.ts). Bronze
@@ -95,6 +97,25 @@ export function raceGapWords(ms: number): string {
 /** A day's blue time in ms, from its plan's pace in seconds. */
 export function paceMsOf(paceSeconds: number): number {
   return Math.round(paceSeconds * 1000)
+}
+
+/**
+ * A time in seconds as the game's boards say it, to the thousandth: 1:02.457. A start card, a pause card and the
+ * Dailies ticket show runs from the boards (your best today, the #1's), so every time on them reads this way, and
+ * two runs never look tied that aren't. A run's report keeps the clock's hundredths (needsThousandths).
+ */
+export function boardTime(game: RaceGame, seconds: number): string {
+  return formatLeaderboardScore(game, 1_000_000 - Math.round(seconds * 1000))
+}
+
+/**
+ * Whether a run's report says its times to the thousandth rather than the clock's hundredths: when two of them
+ * (the run, the day's best before it, the blue's, a medal's) would read the same without being the same. A run
+ * 3ms short of bronze read 1:06.28 beside bronze's 1:06.28, under "No medal yet".
+ */
+export function needsThousandths(times: readonly (number | null | undefined)[], format: (seconds: number) => string): boolean {
+  const shown = times.filter((ms): ms is number => ms != null && Number.isFinite(ms) && ms > 0)
+  return shown.some((a, i) => shown.some((b, j) => j > i && a !== b && format(a / 1000) === format(b / 1000)))
 }
 
 /**

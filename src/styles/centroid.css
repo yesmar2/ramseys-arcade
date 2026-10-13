@@ -58,6 +58,11 @@
   gap: 0.1rem;
 }
 
+/* Practice, under Play again (RunLabel.tsx): the size of its words, not the card's width. */
+.centroid-card__label {
+  align-self: center;
+}
+
 .centroid-card__result strong {
   font-family: var(--font-display);
   font-size: 2rem;

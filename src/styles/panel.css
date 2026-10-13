@@ -823,12 +823,14 @@ html[data-theme='dark'] .game-card {
   width: 100%;
 }
 
-.game-card__hint {
+.game-card__hint,
+.game-card__note {
   margin: -0.3rem 0 0;
   font-size: 0.8rem;
   color: var(--muted);
 }
 
+/* A hint is the keyboard's, so a phone never sees one. A note (the best kept on this device, how tries count) is everyone's. */
 @media (pointer: coarse), (max-width: 767px) {
   .game-card__hint {
     display: none;

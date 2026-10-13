@@ -532,11 +532,8 @@ export function CrosswalkGame() {
                     score={ui.score}
                     pickups={ui.runTickets}
                     title="Run over"
-                    subtitle={
-                      ui.cause
-                        ? `${DEATH_COPY[ui.cause]} · ${ui.score} ${ui.score === 1 ? 'row' : 'rows'}`
-                        : `${ui.score} ${ui.score === 1 ? 'row' : 'rows'} forward`
-                    }
+                    // How it ended: the rows are the score over it.
+                    subtitle={ui.cause ? DEATH_COPY[ui.cause] : undefined}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}
                   />

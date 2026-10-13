@@ -7,6 +7,7 @@ import { RunLabel } from '../../components/RunLabel'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { useShare } from '../../components/SharePanel'
 import { useAccountId } from '../../hooks/useAccountId'
+import { useAuth } from '../../hooks/useAuth'
 import { useDeliberatePress } from '../../hooks/useDeliberatePress'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
@@ -518,6 +519,7 @@ function StartCard({
   onSaveClaimable: () => void
 }) {
   const allow = useDeliberatePress()
+  const { signedOut } = useAuth()
   const done = !pastDay && dayDone(run)
   const sum = done && kept.length >= PLATES ? summarize(kept) : null
   const carry = !pastDay && run && !done && run.taps.length > 0
@@ -550,7 +552,8 @@ function StartCard({
                 : `A go begun on this device while signed out is waiting at plate ${claim.taps.length + 1} of ${PLATES}. Carry it on if it’s yours, or play your own.`
               : 'Six plates, the same for everyone today. Tap where each one would balance: the closer to its true center, the more it scores. No clock. Your first go is your result.'}
       </p>
-      {!pastDay && !claim ? <RunLabel kind={done ? 'practice' : 'fun'} slug={SLUG} /> : null}
+      {/* What a go from here does: the day's first is your result (just for fun). Once it's done, Play again says the rest are practice. */}
+      {!pastDay && !claim && !done ? <RunLabel kind="fun" slug={SLUG} className="centroid-card__label" /> : null}
       {sum ? (
         <div className="centroid-card__result">
           <strong>{sum.scoreText}</strong>
@@ -579,8 +582,9 @@ function StartCard({
           <>
             {/* Once the board says it isn't there, Save is the way on, and takes the focus as it comes. */}
             {offBoard ? (
+              // Signed out, the save asks for a sign-in first, so the button says so.
               <button type="button" className="panel__btn" onClick={go(onSave)} autoFocus={!quiet}>
-                Save it as today’s result
+                {signedOut ? 'Sign in to save it' : 'Save it as today’s result'}
               </button>
             ) : null}
             {sum ? <ShareButton plan={plan} scores={kept} allow={allow} ghost /> : null}
@@ -590,8 +594,10 @@ function StartCard({
               onClick={go(onPractice)}
               autoFocus={!quiet && !offBoard}
             >
-              Play again (practice)
+              Play again
             </button>
+            {/* By the way to play again, not on the result: that one stands. */}
+            <RunLabel kind="practice" slug={SLUG} className="centroid-card__label" />
           </>
         ) : claim ? (
           // Not shared from here: it's only theirs once they've taken it up.
