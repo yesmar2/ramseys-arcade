@@ -36,6 +36,16 @@ import { glide, scrollToPlace } from '../lib/scrollToPlace'
 import { subscribeToday, todayServer } from '../lib/today'
 import { fetchTrophies, type TrophyAward } from '../lib/trophies'
 
+/** The card's own button's arrow. */
+function ArrowIcon() {
+  return (
+    <svg className="pcard__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12h14" />
+      <path d="M13 6l6 6-6 6" />
+    </svg>
+  )
+}
+
 /** Down to a part of the page, gliding unless motion is turned down, without touching the address. */
 function jumpTo(id: string) {
   return (event: MouseEvent<HTMLAnchorElement>) => {
@@ -197,19 +207,18 @@ export function RankPage({
 
   const actions = isSelf ? (
     <>
-      {/* Its place while the figures that choose it load: a button's shape, so the row is as it will be. */}
+      {/* Its place while the figures that choose it load: a button's shape, arrow and all, so the row is as it will
+          be (on a small phone, Share falls to a line of its own the same as it will). */}
       {!primary && (loading || !allTime) ? (
         <span className="home-banner__cta skel-btn" aria-hidden="true">
           Close the gap
+          <ArrowIcon />
         </span>
       ) : null}
       {primary ? (
         <a className="home-banner__cta" href={`#${primary.target}`} onClick={jumpTo(primary.target)}>
           {primary.label}
-          <svg className="pcard__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M5 12h14" />
-            <path d="M13 6l6 6-6 6" />
-          </svg>
+          <ArrowIcon />
         </a>
       ) : null}
       <ShareBoardButton className="home-banner__ghost" text="Share profile" label={shareLabel} url={shareUrl} />

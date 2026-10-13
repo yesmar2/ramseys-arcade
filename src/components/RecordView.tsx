@@ -2,6 +2,7 @@ import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type R
 import { deviceRequirementLabel, gamePlayableOn, getGame } from '../data/games'
 import { useRecordPage, type RecordPageData } from '../hooks/useRecordPage'
 import type { BoardPlayer } from '../lib/gameBoard'
+import { useHeldHeight } from '../lib/heldShape'
 import { fetchRecordBoard } from '../lib/records'
 import { BoardPlayers } from './BoardPlayers'
 import { gamePlayHref, rankHref, recordHref, recordsIndexHref, recordsPlaceHref } from '../hooks/useHashRoute'
@@ -111,6 +112,16 @@ function PlayLink({ game, record }: { game: string; record?: { id: string } | nu
 
 /* ---------- the banner ---------- */
 
+/** A loading line's second line, drawn on a phone only (records.css .rcd-skel-2). */
+function PhoneLine({ w }: { w: string }) {
+  return (
+    <>
+      <br className="rcd-skel-2" />
+      <span className="skel-line rcd-skel-2" style={{ '--skel-w': w } as CSSProperties} />
+    </>
+  )
+}
+
 /** The record at each period: links, so a nav with the one you're on marked (lib/choiceKeys.ts). */
 function PeriodTabs({ game, recordId, period }: { game: string; recordId: string; period: LeaderboardPeriod }) {
   return (
@@ -163,6 +174,10 @@ function Banner({
   const head = recordHeadline(top, period, progression)
   const label = record?.label ?? ''
   const play = playTarget(game, meta.name, record ?? { id: recordId })
+  // The headline and the line under it wrap as the names in them do: held at last time's height while they load
+  // (any record's, at this width), and a first look holds two lines of each on a phone, where they run to two.
+  const titleHeld = useHeldHeight<HTMLHeadingElement>('rcd-title', loading)
+  const ledeHeld = useHeldHeight<HTMLParagraphElement>('rcd-lede', loading || !record)
   const style = {
     '--hero-accent': accent,
     '--hero-ink': inkOn(accent),
@@ -196,10 +211,19 @@ function Banner({
           Record · {recordWhen(period)}
           {group ? ` · ${group}` : ''}
         </p>
-        {label ? <p className="rcd-label">{label}</p> : null}
-        <h1 id="rcd-title" className="gb-title">
+        {label ? (
+          <p className="rcd-label">{label}</p>
+        ) : loading ? (
+          <p className="rcd-label" aria-hidden="true">
+            <span className="skel-line" style={{ '--skel-w': '10rem' } as CSSProperties} />
+          </p>
+        ) : null}
+        <h1 id="rcd-title" className="gb-title" ref={titleHeld.ref} style={titleHeld.style}>
           {loading ? (
-            <span className="skel-line" style={{ '--skel-w': '12ch' } as CSSProperties} />
+            <>
+              <span className="skel-line" style={{ '--skel-w': '12ch' } as CSSProperties} />
+              {titleHeld.known ? null : <PhoneLine w="8ch" />}
+            </>
           ) : (
             <>
               {head.name ? <span className="gb-title__lead">{head.name}</span> : null}
@@ -207,9 +231,12 @@ function Banner({
             </>
           )}
         </h1>
-        <p className="home-banner__blurb gb-lede">
+        <p className="home-banner__blurb gb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
           {loading || !record ? (
-            <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
+            <>
+              <span className="skel-line" style={{ '--skel-w': '20rem' } as CSSProperties} />
+              {ledeHeld.known ? null : <PhoneLine w="12rem" />}
+            </>
           ) : (
             recordLede(game, record, period, entries, shut)
           )}
@@ -641,6 +668,11 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
   const data = useRecordPage(game, recordId, period, you, groupId)
   // The boards' group by name, said again once the list of your groups comes.
   const group = useScope().name
+  // Who's closest is the holder's alone, over the board: while the record loads it holds the height it had on
+  // this record last time. A first look can't know whether the viewer holds it, so for a viewer with a name
+  // what's under it waits until it's in and comes in its place, as a player card's page does (RankPage.tsx).
+  const closestHeld = useHeldHeight<HTMLDivElement>(`rcd-closest-${game}-${recordId}-${period}${groupId ? `-${groupId}` : ''}`, data.loading)
+  const below = !data.loading || !you || closestHeld.known
   const meta = getGame(game)
   if (!meta) return null
   const accent = resolveGameAccent(game, meta.accent)
@@ -688,32 +720,38 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         shut={shut}
       />
 
-      {!data.loading && record && standing?.mode === 'held' ? (
-        <section className="sb-you gb-you sb-you--solo" aria-label="Who’s closest">
-          <ClosestCard record={record} entries={entries} />
-        </section>
-      ) : null}
-
-      <div className="gb-main">
-        <Board
-          key={`${recordId}-${period}`}
-          game={game}
-          recordId={recordId}
-          period={period}
-          record={record}
-          data={data}
-          loading={data.loading}
-          you={you}
-        />
-        {!data.loading && record ? (
-          <aside className="gb-side" aria-label="More about this record">
-            <NearbyCard game={game} recordId={recordId} period={period} record={record} book={bookRecords(game, data.book)} you={you} />
-          </aside>
+      <div className="rcd-slot" ref={closestHeld.ref} style={closestHeld.style}>
+        {!data.loading && record && standing?.mode === 'held' ? (
+          <section className="sb-you gb-you sb-you--solo" aria-label="Who’s closest">
+            <ClosestCard record={record} entries={entries} />
+          </section>
         ) : null}
       </div>
 
-      {/* Its history, at the foot of the page, under everyone's best (Ramsey, 2026-09-30). */}
-      {story ? <StoryCard story={story} /> : null}
+      {below ? (
+        <>
+          <div className="gb-main">
+            <Board
+              key={`${recordId}-${period}`}
+              game={game}
+              recordId={recordId}
+              period={period}
+              record={record}
+              data={data}
+              loading={data.loading}
+              you={you}
+            />
+            {!data.loading && record ? (
+              <aside className="gb-side" aria-label="More about this record">
+                <NearbyCard game={game} recordId={recordId} period={period} record={record} book={bookRecords(game, data.book)} you={you} />
+              </aside>
+            ) : null}
+          </div>
+
+          {/* Its history, at the foot of the page, under everyone's best (Ramsey, 2026-09-30). */}
+          {story ? <StoryCard story={story} /> : null}
+        </>
+      ) : null}
     </div>
   )
 }

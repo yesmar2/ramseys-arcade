@@ -134,7 +134,8 @@ export function TicketHistoryPage() {
           </h1>
           <p className="tixh-lede">Every ticket in and out, newest first. A run that paid for more than one thing shows each part.</p>
         </div>
-        {signedIn ? (
+        {/* There while a session's account is still asked for too, each a "…", so the list under them never drops. */}
+        {!signedOut ? (
           <dl className="tixh-stats">
             <div className="tixh-stat tixh-stat--balance">
               <dt>Balance</dt>

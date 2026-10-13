@@ -62,6 +62,8 @@ export type StandingsLast = {
   /** Whether the period has one before it to show, and so room to hold for it while loading. */
   expected: boolean
   rows: LastFinal | null
+  /** Still being asked for after the list is in: its room stays held till it comes. */
+  waiting?: boolean
   title: string
   note: string
   rowHref: (name: string) => string
@@ -262,12 +264,17 @@ export function StandingsList({
   const skipsTo = !opened && you ? (rows.find((row) => row.name === you && row.rank > 6)?.rank ?? null) : null
   const lastRows = last?.expected && last.rows ? Math.min(5, last.rows.length) : 0
   const lastTop = last?.rows?.[0]?.score ?? 0
+  // Last time's top five come after the rest (useScoreboard): till then their room is held, as while it all loads.
+  const lastWaiting = loading || Boolean(last?.expected && last.waiting)
   const hasFoot = left > 0 || (!opened && rows.length > 5)
-  // While they load, the room they took last time on this device (lib/heldShape.ts): the rows, the gap and
-  // you below them, Show more, and last time's top five.
+  // While they load, the room they took last time on this device (lib/heldShape.ts): the box to find a player,
+  // the rows, the gap and you below them, Show more, and last time's top five. A first look holds none of those
+  // five: the list may come as ten or as three, so they come in their own place under it (and what's under the
+  // list waits for them, BoardsScoreboard.tsx).
+  const heldFind = useHeldShape(`standings-find-${key}`, loading ? undefined : totalPlayers > 10 ? 1 : 0, 1)
   const heldRows = useHeldShape(`standings-rows-${key}`, loading ? undefined : Math.max(3, rows.length) + (below ? 2 : 0), 10)
   const heldFoot = useHeldShape(`standings-foot-${key}`, loading ? undefined : hasFoot ? 1 : 0, 1)
-  const heldLast = useHeldShape(`standings-last-${key}`, loading ? undefined : lastRows, last?.expected ? 5 : 0)
+  const heldLast = useHeldShape(`standings-last-${key}`, lastWaiting ? undefined : lastRows, 0)
   // A line follows its place only when someone's placed under it, shown yet or not.
   const lineAfter = (rank: number) => {
     if (!lines) return null
@@ -294,8 +301,8 @@ export function StandingsList({
         ) : null}
       </div>
       {sub ? <p className="sb-standings__sub">{sub}</p> : null}
-      {/* Held while the list loads too, so it doesn't push the rows down when it comes. */}
-      {loading || totalPlayers > 10 ? (
+      {/* Held while the list loads too, if it had one last time, so it doesn't push the rows down when it comes. */}
+      {(loading ? heldFind > 0 : totalPlayers > 10) ? (
         <div className="gb-find sb-standings__find">
           <label className="gb-find__box" htmlFor={`sb-find-${key}`}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -389,7 +396,20 @@ export function StandingsList({
           <span className="sb-ghost sb-standings__more skel-btn">Show more</span>
         </div>
       ) : null}
-      {loading && heldLast ? (
+      {!loading && hasFoot && !found ? (
+        <div className="sb-standings__foot">
+          {/* With nobody left to fetch, it is only a phone's hidden sixth to tenth still to show. */}
+          <button
+            type="button"
+            className={`sb-ghost sb-standings__more${left > 0 ? '' : ' sb-standings__more--phone'}`}
+            onClick={() => void showMore()}
+            disabled={loadingMore}
+          >
+            {loadingMore ? 'Loading…' : 'Show more'}
+          </button>
+        </div>
+      ) : null}
+      {lastWaiting && heldLast ? (
         <div className="sb-last" aria-hidden="true">
           <div className="sb-last__head">
             <h3 className="sb-last__title">
@@ -409,19 +429,6 @@ export function StandingsList({
               </li>
             ))}
           </ol>
-        </div>
-      ) : null}
-      {!loading && hasFoot && !found ? (
-        <div className="sb-standings__foot">
-          {/* With nobody left to fetch, it is only a phone's hidden sixth to tenth still to show. */}
-          <button
-            type="button"
-            className={`sb-ghost sb-standings__more${left > 0 ? '' : ' sb-standings__more--phone'}`}
-            onClick={() => void showMore()}
-            disabled={loadingMore}
-          >
-            {loadingMore ? 'Loading…' : 'Show more'}
-          </button>
         </div>
       ) : null}
       {last?.expected && last.rows ? (

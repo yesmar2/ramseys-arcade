@@ -43,6 +43,8 @@ export type ScoreboardData = {
   nexts: Partial<Record<string, BoardTop | null>>
   /** How the period before finished, shown while this one is still thin. */
   last: LastFinal | null
+  /** Whether `last` is still being asked for, after the rest is in: its room stays held till it comes. */
+  lastWaiting: boolean
   /** The season's: what its places win, for the lines under them (lib/seasonStandings.ts prizeLines). */
   prizes: SeasonPrizes | null
 }
@@ -57,6 +59,7 @@ const LOADING: ScoreboardData = {
   bests: {},
   nexts: {},
   last: null,
+  lastWaiting: false,
   prizes: null,
 }
 
@@ -151,6 +154,10 @@ export function useScoreboard(
         )
         if (cancelled) return
 
+        // Last period's final, while this one is thin. Trophies are everyone's, so not inside a group.
+        const copy = periodCopy(period, Date.now(), Boolean(groupId))
+        const askLast = Boolean(copy.last && !groupId && board.totalPlayers < THIN)
+
         setData({
           loading: false,
           error: false,
@@ -161,20 +168,21 @@ export function useScoreboard(
           bests,
           nexts: {},
           last: null,
+          lastWaiting: askLast,
           prizes: board.prizes ?? null,
         })
 
-        // Last period's final, while this one is thin. Trophies are everyone's, so not inside a group.
-        const copy = periodCopy(period, Date.now(), Boolean(groupId))
-        if (copy.last && !groupId && board.totalPlayers < THIN) {
+        if (askLast && copy.last) {
           const { period: closed, key } = copy.last
           void fetchRecentTrophies(TROPHY_DEPTH)
             .then((awards) => {
               const rows = lastFinal(awards, closed, key)
               // A podium at least, or it is not worth the room.
-              if (!cancelled && rows.length >= 3) setData((prev) => ({ ...prev, last: rows }))
+              if (!cancelled) setData((prev) => ({ ...prev, last: rows.length >= 3 ? rows : null, lastWaiting: false }))
             })
-            .catch(() => {})
+            .catch(() => {
+              if (!cancelled) setData((prev) => ({ ...prev, lastWaiting: false }))
+            })
         }
 
         // The score that takes the next place up, on each board scored by runs.

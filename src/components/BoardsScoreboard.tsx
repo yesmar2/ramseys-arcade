@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame } from '../data/games'
 import { useScoreboard } from '../hooks/useScoreboard'
@@ -384,8 +384,25 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const ledeHeld = useHeldHeight<HTMLParagraphElement>(`boards-lede-${period}`, data.loading)
   const closed = copy.last
   const last = closed
-    ? { expected: true, rows: data.last, title: closed.title, note: closed.note, rowHref: (name: string) => rankHref(name, closed.period) }
+    ? {
+        expected: true,
+        rows: data.last,
+        waiting: data.lastWaiting,
+        title: closed.title,
+        note: closed.note,
+        rowHref: (name: string) => rankHref(name, closed.period),
+      }
     : null
+  // A first look has no shapes kept for this page (lib/heldShape.ts), and the standings may come as ten rows or
+  // as three and last time's five: what's under them waits until they're in and comes in its place, as a player
+  // card's page does (RankPage.tsx). It's under the fold while they load either way. Once drawn it stays, when
+  // another period is picked too.
+  const settled = !data.loading && !data.lastWaiting
+  const [drawn, setDrawn] = useState(false)
+  useEffect(() => {
+    if (settled) setDrawn(true)
+  }, [settled])
+  const below = title.known || drawn || settled
 
   if (data.error) {
     return (
@@ -416,7 +433,16 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
           </h1>
           <p className="sb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
             {data.loading ? (
-              <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} />
+              <>
+                <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} />
+                {/* A first look has no height kept for it: the line runs to two lines as a rule, so it holds two. */}
+                {ledeHeld.known ? null : (
+                  <>
+                    <br />
+                    <span className="skel-line" style={{ '--skel-w': '13rem' } as CSSProperties} />
+                  </>
+                )}
+              </>
             ) : (
               lede(copy, period, data.standings, data.totalPlayers, data.boards)
             )}
@@ -441,8 +467,12 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
         />
       </section>
 
-      <EveryBoard period={period} copy={copy} data={data} you={you} />
-      <UpForGrabs period={period} copy={copy} boards={data.boards} loading={data.loading} />
+      {below ? (
+        <>
+          <EveryBoard period={period} copy={copy} data={data} you={you} />
+          <UpForGrabs period={period} copy={copy} boards={data.boards} loading={data.loading} />
+        </>
+      ) : null}
     </div>
   )
 }

@@ -510,6 +510,18 @@ html[data-theme="dark"] .rbk-book__value--open b {
   color: var(--banner-ink);
 }
 
+/* A first look's second loading line in the headline and the line under it: a phone's, where both run to two. */
+br.rcd-skel-2,
+.skel-line.rcd-skel-2 {
+  display: none;
+}
+
+/* Where Who's closest goes (RecordView.tsx): no room of its own when empty, but the room held for it (an inline
+   min-height) while the record loads. */
+.rcd-slot:empty:not([style]) {
+  display: none;
+}
+
 /* You hold it: the card wears the gold. */
 .rcd-held {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sb-gold) 45%, transparent);
@@ -1107,6 +1119,14 @@ html[data-theme="dark"] .rbk-book__value--open b {
 @media (max-width: 42rem) {
   .rcd-label {
     display: block;
+  }
+
+  br.rcd-skel-2 {
+    display: inline;
+  }
+
+  .skel-line.rcd-skel-2 {
+    display: inline-block;
   }
 
   .rcd-crumb__here {

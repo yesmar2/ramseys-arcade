@@ -216,7 +216,9 @@ html[data-theme="dark"] :is(.sb, .sb-scope) {
   padding-top: 1rem;
 }
 
+/* Never wider than the page, so the placeholder bars in them (BoardsScoreboard.tsx) can't push it sideways. */
 .sb-title {
+  max-width: 100%;
   margin: 1.3rem 0 0;
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 5vw, 4rem);
@@ -236,7 +238,7 @@ html[data-theme="dark"] :is(.sb, .sb-scope) {
 
 .sb-lede {
   margin: 1.15rem 0 0;
-  max-width: 34rem;
+  max-width: min(34rem, 100%);
   font-size: 1.15rem;
   font-weight: 550;
   line-height: 1.5;

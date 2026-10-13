@@ -26,8 +26,7 @@ import { metalTone, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKin
 import { BackChevronIcon } from './PageBackLink'
 import { useHeldHeight } from '../lib/heldShape'
 import { glide } from '../lib/scrollToPlace'
-import { useSeason } from '../lib/season'
-import { seasonHasStandings } from '../lib/seasonStandings'
+import { useSeasonTab } from '../lib/seasonStandings'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import { secretByNumber, SECRETS } from '../lib/secrets'
 
@@ -140,6 +139,29 @@ function TrophyShelf({
           ) : (
             <span>No trophies yet</span>
           )}
+        </li>
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * The trophy shelf's room while the trophies load, on your own card, which always has the shelf: a tile and a
+ * line where its own go, so the buttons under it stay put when it comes, a first look too.
+ */
+function TrophyShelfWait() {
+  return (
+    <div className="pcard-shelf" aria-hidden="true">
+      <div className="pcard-shelf__head">
+        <span className="pcard-shelf__title">Trophies</span>
+        <span className="pcard-shelf__all">
+          <Skel w="3.5rem" />
+        </span>
+      </div>
+      <ul className="pcard-shelf__row">
+        <li className="pcard-case__tile trophy-tone--hidden" />
+        <li className="pcard-shelf__words">
+          <Skel w="7rem" />
         </li>
       </ul>
     </div>
@@ -371,13 +393,14 @@ export function PlayerCard({
   // Without a card theme, the pictures of their best games across the top.
   const games = theme ? [] : bestGames([...Object.values(ranks), data], 2)
   const word = periodWord(period)
-  // A Season tile after all time while the season has standings (and whenever the card is the season's).
-  const withSeason = seasonHasStandings(useSeason().season) || period === 'season'
+  // A Season tile after all time while the season has standings (and whenever the card is the season's), known
+  // before the API answers as the period tabs know it, so the coins are drawn once rather than three then four.
+  const withSeason = useSeasonTab() || period === 'season'
   const periods: readonly LeaderboardPeriod[] = withSeason ? [...VISIBLE_LEADERBOARD_PERIODS, 'season'] : VISIBLE_LEADERBOARD_PERIODS
   const said = loading ? null : standing({ name, isSelf, period, periods, ranks, data, where })
   const placed = Object.keys(data.byGame).length
   // The shelves come with their asks: their room is held while those load when this device saw them on this
-  // card before (lib/heldShape.ts).
+  // card before (lib/heldShape.ts), and on a first look your own card holds its trophy shelf's (TrophyShelfWait).
   const shelvesHeld = useHeldHeight<HTMLDivElement>(`pcard-shelves-${name}`, trophies === null || skins === null)
   const trophyShelf = trophies && (trophies.length || isSelf)
   const hangarShelf = skins && skins.some((id) => SKINS.some((s) => s.id === id))
@@ -495,6 +518,8 @@ export function PlayerCard({
         <div className="pcard__slot pcard__shelves" ref={shelvesHeld.ref} style={shelvesHeld.style}>
           {trophyShelf ? (
             <TrophyShelf trophies={trophies} isSelf={isSelf} href={rankHref(isSelf ? undefined : name, period, 'trophies')} onOpen={toShelf} />
+          ) : trophies === null && isSelf ? (
+            <TrophyShelfWait />
           ) : null}
           {hangarShelf ? <HangarShelf skins={skins} isSelf={isSelf} /> : null}
         </div>
@@ -502,7 +527,8 @@ export function PlayerCard({
       <div className="home-banner__strip pcard__strip">
         <span className="pcard__fact">
           {loading ? (
-            <Skel w="12ch" />
+            // As wide as "Played 4 of 19 ranked games" on a phone, so the strip wraps there as it will once that's in.
+            <Skel w="11.5rem" />
           ) : (
             <>
               {/* The games the period ranks (lib/allTime.ts): Stats counts every game played, these only the ranked. */}
