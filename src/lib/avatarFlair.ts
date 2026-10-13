@@ -57,6 +57,7 @@ export function flairNote(kind: 'ring' | 'pin', id: AvatarRing | AvatarPin, stat
     case 'games':
       return `${best ?? 0} of 5 played`
     case 'streak':
+    case 'today':
       return `Your best: ${best ?? 0} ${best === 1 ? 'day' : 'days'}`
     case 'crown':
       return best != null ? `Your best month: ${ordinal(best)}` : 'No month in the top ten yet'

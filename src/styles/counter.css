@@ -1192,6 +1192,13 @@ button.counter-goal:focus-visible {
   display: block;
 }
 
+/* What to do with it, and what doing it said: pinned at a phone's foot (below). */
+.prize-info__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
 .prize-confirm {
   display: flex;
   flex-direction: column;
@@ -1237,6 +1244,29 @@ button.counter-goal:focus-visible {
   .prize-stage {
     min-height: 16rem;
   }
+
+  /* One column scrolls, the prizes' grid in it: the trade (or its question), and what it said, pinned at the foot. */
+  .prize-info__foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    gap: 0;
+    margin: 0 -1.5rem;
+    background: var(--surface);
+    box-shadow: 0 -1px 0 var(--panel-line);
+  }
+
+  .prize-info__foot .prize-info__note {
+    margin: 0.9rem 1.5rem 0;
+  }
+
+  .prize-info__foot .prize-confirm {
+    margin: 0.9rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .prize-info__foot .prize-confirm__acts {
+    padding: 0;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1278,17 +1308,25 @@ button.counter-goal:focus-visible {
     gap: 0.9rem 0.8rem;
   }
 
-  .counter-band {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding: 0.85rem 1.1rem;
-    /* Room for a keyboard ring when a link is scrolled to the line's edge. */
-    scroll-padding-inline: 0.5rem;
-    scrollbar-width: none;
+  /* Two signs to a row leave no room for a name beside its tag: the tag goes under it. */
+  .counter-wall__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
   }
 
-  .counter-band::-webkit-scrollbar {
-    display: none;
+  .counter-wall__name {
+    max-width: 100%;
+  }
+
+  /* Every line in sight: a row to scroll sideways hid most of them, cut off mid-word. */
+  .counter-band {
+    gap: 0.45rem 1.1rem;
+    padding: 0.85rem 1.1rem;
+  }
+
+  .counter-earn {
+    font-size: 0.9rem;
   }
 
   .counter-chips {

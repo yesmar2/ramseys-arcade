@@ -3,6 +3,7 @@ import {
   fetchGlobalBoard,
   fetchGlobalRank,
   getLeaderboard,
+  getPlayerBoard,
   isPlayerTag,
   VISIBLE_LEADERBOARD_PERIODS,
   type GlobalGamePlace,
@@ -233,49 +234,39 @@ export function useGameBests(name: string, slugs: string[], groupId: string | nu
 export type BoardRow = { rank: number; entry: LeaderboardEntry }
 
 /**
- * The runs around one on a game's all-time board: the top five when the run
- * is among them, otherwise the two runs either side of it; and the run
- * sitting on the line the player is chasing, when that is outside the window.
+ * The players around one on a game's all-time board, a row each (its players mode): the top five when the
+ * player is among them, otherwise the two either side; and the player on the line being chased, with the place
+ * a run just better than theirs takes (`beatPlace`, past any tied with them).
  */
-export function useRunsAround(
+export function usePlayersAround(
   slug: string | null,
-  rank: number,
+  place: number,
   lineRank: number | null,
   groupId: string | null,
-): { rows: BoardRow[]; line: BoardRow | null } | null {
-  const key = slug ? `${groupId ?? ''}|${slug}|${rank}|${lineRank ?? ''}` : ''
-  const [state, setState] = useState<{ key: string; rows: BoardRow[]; line: BoardRow | null }>({
+): { rows: BoardRow[]; line: (BoardRow & { beatPlace: number }) | null } | null {
+  const key = slug ? `${groupId ?? ''}|${slug}|${place}|${lineRank ?? ''}` : ''
+  const [state, setState] = useState<{ key: string; rows: BoardRow[]; line: (BoardRow & { beatPlace: number }) | null }>({
     key: '',
     rows: [],
     line: null,
   })
 
   useEffect(() => {
-    if (!slug || rank < 1) return
+    if (!slug || place < 1) return
     let cancelled = false
-    const from = rank <= 5 ? 0 : rank - 3
-    const inWindow = lineRank != null && lineRank >= from + 1 && lineRank <= from + 5
-    void Promise.all([
-      getLeaderboard(slug, 'all', undefined, { offset: from, limit: 5 }).catch(() => ({ entries: [] as LeaderboardEntry[] })),
-      lineRank != null && !inWindow
-        ? getLeaderboard(slug, 'all', undefined, { offset: lineRank - 1, limit: 1 }).catch(() => ({
-            entries: [] as LeaderboardEntry[],
-          }))
-        : Promise.resolve({ entries: [] as LeaderboardEntry[] }),
-    ]).then(([around, atLine]) => {
-      if (cancelled) return
-      const rows = around.entries.map((entry, i) => ({ rank: from + 1 + i, entry }))
-      const line =
-        lineRank == null
-          ? null
-          : (rows.find((r) => r.rank === lineRank) ??
-            (atLine.entries[0] ? { rank: lineRank, entry: atLine.entries[0] } : null))
-      setState({ key, rows, line })
-    })
+    const from = place <= 5 ? 0 : place - 3
+    getPlayerBoard(slug, 'all', undefined, { offset: from, limit: 5, marks: lineRank != null ? [lineRank] : undefined })
+      .catch(() => null)
+      .then((board) => {
+        if (cancelled) return
+        const rows = (board?.entries ?? []).map((entry) => ({ rank: entry.place, entry }))
+        const mark = board?.marked[0]
+        setState({ key, rows, line: mark ? { rank: mark.place, entry: mark, beatPlace: mark.beatPlace } : null })
+      })
     return () => {
       cancelled = true
     }
-  }, [key, slug, rank, lineRank])
+  }, [key, slug, place, lineRank])
 
   if (!slug) return null
   return state.key === key ? { rows: state.rows, line: state.line } : null

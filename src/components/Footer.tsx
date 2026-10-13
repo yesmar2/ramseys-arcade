@@ -21,6 +21,8 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
 import { toHomeTop, toWall } from '../lib/scrollToPlace'
+import { useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 import { BrandMark } from './BrandMark'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 
@@ -36,6 +38,8 @@ export function Footer() {
   const { official } = useLiveEvents('')
   // Standings and Profile open at the period you picked: a stale one in their address would switch the site back.
   const period = useDefaultPeriod()
+  // The season's boards too, while it has standings, as the header's Boards offers them.
+  const season = seasonHasStandings(useSeason().season)
 
   return (
     <footer className="site-footer">
@@ -84,6 +88,11 @@ export function Footer() {
               <li>
                 <a href={leaderboardHref('all')}>{PERIOD_LABELS.all}</a>
               </li>
+              {season ? (
+                <li>
+                  <a href={leaderboardHref('season')}>{PERIOD_LABELS.season}</a>
+                </li>
+              ) : null}
               <li>
                 <a href={standingsHref(period)}>Standings</a>
               </li>

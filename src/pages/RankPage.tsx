@@ -11,6 +11,7 @@ import { ProfileBestBoard } from '../components/ProfileBestBoard'
 import { ProfileGames } from '../components/ProfileGames'
 import { ProfileRival } from '../components/ProfileRival'
 import { ShareBoardButton } from '../components/ShareBoardButton'
+import { openSiteMenu } from '../components/siteNav'
 import { TrophyShelf } from '../components/TrophyShelf'
 import { focusFromUrl, navigate, rankHowHref, rankHref, standingsHref, statsHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
@@ -62,7 +63,7 @@ export function RankPage({
 }) {
   const globalPeriod = useDefaultPeriod()
   const period = periodFromRoute ?? globalPeriod
-  const { signedIn } = useAuth()
+  const { signedIn, signedOut, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   // Editing the avatar needs a session, or the dev impersonation which carries a claim token.
   const canEditAvatar = signedIn || Boolean(impersonation)
@@ -364,13 +365,29 @@ export function RankPage({
             ) : null}
           </>
         ) : (
-          <PageBanner
-            ariaLabel="Your profile"
-            kicker={<span className="ev-kicker__bit">Your profile</span>}
-            title="No gamer tag yet"
-            blurb="Pick a gamer tag to get on the boards and start collecting trophies."
-            art={<span className="home-banner__glyph home-banner__glyph--faint">?</span>}
-          />
+          // Your own profile with no tag on it yet: its two sides still, and the way to a tag (a session that isn't
+          // known yet holds the button's room, never Sign in).
+          <>
+            <ProfileViews on="card" />
+            <PageBanner
+              ariaLabel="Your profile"
+              kicker={<span className="ev-kicker__bit">Your profile</span>}
+              title="No gamer tag yet"
+              blurb="Pick a gamer tag to get on the boards and start collecting trophies."
+              actions={
+                signedIn || signedOut ? (
+                  <button type="button" className="home-banner__cta" onClick={openSiteMenu}>
+                    {signedOut ? 'Sign in to pick a tag' : 'Pick a tag'}
+                  </button>
+                ) : authLoading ? (
+                  <span className="home-banner__cta skel-btn" aria-hidden="true">
+                    Sign in to pick a tag
+                  </span>
+                ) : null
+              }
+              art={<span className="home-banner__glyph home-banner__glyph--faint">?</span>}
+            />
+          </>
         )}
       </div>
     </PageShell>

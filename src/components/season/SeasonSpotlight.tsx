@@ -10,6 +10,11 @@ import '../../styles/season.css'
  * with the skin the pass has for it and the level it's at.
  */
 
+/** What a skin is, with its article and its game's name as it's written: "an Asteroids ship", "a Lander ship". */
+function aSkin(what: string): string {
+  return `${/^[aeiou]/i.test(what) ? 'an' : 'a'} ${what}`
+}
+
 export function SpotlightCard({ slug, name }: { slug: string; name: string }) {
   const store = useSeason()
   const { owned } = useTickets()
@@ -29,7 +34,7 @@ export function SpotlightCard({ slug, name }: { slug: string; name: string }) {
         {skin
           ? yours
             ? `The ${skin.name} is yours, for ${name}.`
-            : `The ${skin.name}, a ${skin.what.toLowerCase()}, is at Level ${skin.level} of the pass.`
+            : `The ${skin.name}, ${aSkin(skin.what)}, is at Level ${skin.level} of the pass.`
           : `${name} is in this season’s spotlight.`}
       </span>
       <span className="season-spotcard__go">See the pass</span>

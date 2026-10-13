@@ -3,6 +3,7 @@ import { GameArt } from '../components/GameArt'
 import { PageShell } from '../components/PageShell'
 import { PrizeArt } from '../components/prizes/PrizeArt'
 import { TicketGlyph } from '../components/prizes/Ticket'
+import { RewardArt } from '../components/season/RewardArt'
 import { openSiteMenu } from '../components/siteNav'
 import { games, isListedGame } from '../data/games'
 import { prizeById } from '../data/prizes'
@@ -12,6 +13,7 @@ import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { resolveAvatar, type Avatar } from '../lib/avatars'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { skinById } from '../lib/skins'
 import {
   boardDayKey,
   dayHeading,
@@ -377,9 +379,17 @@ function Row({ row, avatar, tag }: { row: HistoryRow; avatar: Avatar; tag: strin
 function RowIcon({ row, avatar, tag }: { row: HistoryRow; avatar: Avatar; tag: string }) {
   if (row.icon === 'prize') {
     const prize = prizeById(row.prize)
+    // A Hangar skin is drawn as its bay draws it.
+    const skin = prize ? null : skinById(row.prize)
     return (
       <span className="tixh-icon tixh-icon--prize" aria-hidden="true">
-        {prize ? <PrizeArt prize={prize} avatar={avatar} name={tag} width={40} /> : <TicketGlyph size={24} />}
+        {prize ? (
+          <PrizeArt prize={prize} avatar={avatar} name={tag} width={40} />
+        ) : skin ? (
+          <RewardArt reward={{ kind: 'skin', id: skin.id, name: skin.name }} size={40} />
+        ) : (
+          <TicketGlyph size={24} />
+        )}
       </span>
     )
   }

@@ -505,7 +505,8 @@ export function PlayerCard({
             <Skel w="12ch" />
           ) : (
             <>
-              Played <b>{placed}</b> of {standingsGames(period).length} games<span className="pcard__fact-when"> {word}</span>
+              {/* The games the period ranks (lib/allTime.ts): Stats counts every game played, these only the ranked. */}
+              Played <b>{placed}</b> of {standingsGames(period).length} ranked games<span className="pcard__fact-when"> {word}</span>
             </>
           )}
         </span>

@@ -565,8 +565,8 @@ export function PlusPage() {
               <div className="plus-faq__one">
                 <h3>What happens after the free week?</h3>
                 <p>
-                  Your first payment, and with it this season’s Gold Pass and the month’s look. Cancel before the week ends and you pay
-                  nothing.
+                  Your first payment, and with it the month’s look and this season’s Gold Pass, for as long as you’re a member. Cancel
+                  before the week ends and you pay nothing.
                 </p>
               </div>
             ) : null}

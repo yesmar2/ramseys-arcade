@@ -334,31 +334,35 @@ export function PrizePanel({
           {note?.ok ? null : (
             <p className={`prize-info__status${owned ? ' prize-info__status--ok' : signedIn && !afford ? ' prize-info__status--go' : ''}`}>{status}</p>
           )}
-          {note ? (
-            <p className={`prize-info__note${note.ok ? ' prize-info__note--ok' : ''}`} role={note.ok ? 'status' : 'alert'}>
-              {note.text}
-            </p>
-          ) : null}
-          {confirming ? (
-            <div className="prize-confirm">
-              <p className="prize-confirm__q">
-                Trade {prize.price.toLocaleString()} tickets for {prize.name}?
+          {/* On a phone the sheet scrolls, the prizes' grid and all: these stay pinned at its foot (counter.css), with
+              what a press of them said. */}
+          <div className="prize-info__foot">
+            {note ? (
+              <p className={`prize-info__note${note.ok ? ' prize-info__note--ok' : ''}`} role={note.ok ? 'status' : 'alert'}>
+                {note.text}
               </p>
-              <div className="panel__actions prize-confirm__acts">
-                <button type="button" className="panel__btn" disabled={busy} onClick={() => void trade()}>
-                  {busy ? 'Trading…' : 'Yes, trade'}
-                </button>
-                <button type="button" className="panel__btn panel__btn--ghost" disabled={busy} onClick={() => setConfirming(false)}>
-                  Not now
-                </button>
+            ) : null}
+            {confirming ? (
+              <div className="prize-confirm">
+                <p className="prize-confirm__q">
+                  Trade {prize.price.toLocaleString()} tickets for {prize.name}?
+                </p>
+                <div className="panel__actions prize-confirm__acts">
+                  <button type="button" className="panel__btn" disabled={busy} onClick={() => void trade()}>
+                    {busy ? 'Trading…' : 'Yes, trade'}
+                  </button>
+                  <button type="button" className="panel__btn panel__btn--ghost" disabled={busy} onClick={() => setConfirming(false)}>
+                    Not now
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="panel__actions prize-info__acts">
-              {primary}
-              {secondary}
-            </div>
-          )}
+            ) : (
+              <div className="panel__actions prize-info__acts">
+                {primary}
+                {secondary}
+              </div>
+            )}
+          </div>
           <p className="prize-info__fine">Looks only: it never changes a score. Once it’s traded it’s yours for good.</p>
         </div>
       </div>

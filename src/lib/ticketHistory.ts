@@ -4,6 +4,7 @@ import { bugForDay } from './bugHuntPick'
 import { scoreText } from './gameBoard'
 import { api } from './leaderboard'
 import { ordinal } from './scoreboard'
+import { skinById } from './skins'
 
 /*
  * Your tickets, every one in and out (/prizes/tickets), from the API's
@@ -106,7 +107,7 @@ export type HistoryRow = {
   at: number
   game: string | null
   icon: LineIcon | null
-  /** The prize a trade was for, to draw. */
+  /** The prize (or Hangar skin) a trade was for, to draw. */
   prize: string | null
   title: string
   sub: string | null
@@ -242,14 +243,16 @@ function otherRow(line: LedgerLine): HistoryRow {
     case 'grant':
       return { ...row, game: null, icon: 'ticket', title: 'From the arcade', words: 'Tickets given by hand' }
     case 'trade': {
+      // A prize from the case, or a skin from the Hangar beside it (lib/skins.ts).
       const prize = prizeById(line.ref)
+      const skin = prize ? null : skinById(line.ref)
       return {
         ...row,
         game: null,
         icon: 'prize',
-        prize: prize?.id ?? null,
-        title: prize ? `Traded for ${prize.name}` : 'Traded for a prize',
-        sub: prize ? PRIZE_KINDS[prize.kind].one.toLowerCase() : null,
+        prize: prize?.id ?? skin?.id ?? null,
+        title: prize ? `Traded for ${prize.name}` : skin ? `Traded for the ${skin.name}` : 'Traded for a prize',
+        sub: prize ? PRIZE_KINDS[prize.kind].one.toLowerCase() : (skin?.what ?? null),
         words: 'At the prize counter',
       }
     }

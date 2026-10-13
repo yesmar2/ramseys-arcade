@@ -1424,10 +1424,39 @@ html[data-theme='light'] .season-track__bonus span {
   color: color-mix(in srgb, var(--space-orange) 60%, var(--ink));
 }
 
+/* The Gold Pass to buy, and under it what buying it gives at once. */
+.season-plus__way {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
 .season-plus__now {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--muted);
+}
+
+/* The Gold row's head: its name, and the arrows the free pass's row has. A phone swipes both, with neither. */
+.season-plus__rowhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: -0.35rem;
+}
+
+.season-plus__rowname {
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--space-orange) 65%, var(--ink));
+}
+
+html[data-theme='light'] .season-plus__rowname {
+  color: var(--space-orange-ink);
 }
 
 .season-plus__note {
@@ -1503,7 +1532,8 @@ html[data-theme='light'] .season-tile.season-tile--sought {
   }
 
   .season-plus__buy,
-  .season-plus__member {
+  .season-plus__member,
+  .season-plus__way {
     width: 100%;
   }
 }
@@ -1885,7 +1915,8 @@ a.season-skinchip__in:focus-visible {
     padding: 1.1rem 1rem 1.2rem;
   }
 
-  .season-pass__nav {
+  .season-pass__nav,
+  .season-plus__rowhead {
     display: none;
   }
 }

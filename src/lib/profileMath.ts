@@ -207,9 +207,9 @@ export function bestBoard<T extends { rank: number; total: number }>(bests: Reco
 }
 
 /**
- * The lines of an all-time board of runs, for a player's best run: the
- * record, the top three, the top ten, and the top 10%, 25% and half of every
- * run. The loosest one still ahead of a run is the next to chase.
+ * The lines of an all-time board, for a player's place on it: the record,
+ * the top three, the top ten, and the top 10%, 25% and half of its players.
+ * The loosest one still ahead of them is the next to chase.
  */
 export function nextRunLine(rank: number, total: number): { rank: number; label: string } | null {
   if (rank <= 1) return null

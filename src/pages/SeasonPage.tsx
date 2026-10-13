@@ -23,6 +23,7 @@ import {
   refreshSeason,
   startPlusCheckout,
   seasonDates,
+  seasonFirstDay,
   seasonProgress,
   seasonTop,
   useSeason,
@@ -71,6 +72,11 @@ function turnTo(track: HTMLElement, tile: HTMLElement) {
   const row = track.getBoundingClientRect()
   const at = tile.getBoundingClientRect()
   track.scrollLeft += at.left - row.left - (row.width - at.width) / 2
+}
+
+/** A row of tiles turned most of its width one way: its arrows, on a desk. */
+function turnBy(track: HTMLElement | null, dir: 1 | -1) {
+  track?.scrollBy({ left: dir * track.clientWidth * 0.8, behavior: glide() })
 }
 
 function CheckBadge() {
@@ -229,11 +235,13 @@ function ExtraTile({ season, level, toNext }: { season: SeasonInfo; level: numbe
 function Hero({ season, level, top, fraction, toNext, earned, signedIn, signedOut, authLoading }: { season: SeasonInfo; level: number; top: number; fraction: number; toNext: number | null; earned: number; signedIn: boolean; signedOut: boolean; authLoading: boolean }) {
   const sky = { backgroundImage: starTile('#f4f0ff', 13, { size: 360, stars: 44 }) } as CSSProperties
   const live = season.status === 'live'
+  // A preview's own days, from the day it went live early, so they agree with its days left.
+  const [from, to] = seasonDates(season).split(' – ')
   const when =
     season.status === 'upcoming'
-      ? `Starts ${seasonDates(season).split(' – ')[0]}`
+      ? `Starts ${from}`
       : season.status === 'over'
-        ? `Ended ${seasonDates(season).split(' – ')[1]}`
+        ? `Ended ${to}`
         : `${seasonDates(season)} · ${daysLeftLabel(season)}`
   return (
     <section className="season-hero" aria-labelledby="season-title">
@@ -250,7 +258,11 @@ function Hero({ season, level, top, fraction, toNext, earned, signedIn, signedOu
         <p className="season-hero__lede">
           Every ticket you win this season moves you up the pass. Spending tickets never moves you back.
         </p>
-        {season.preview ? <p className="season-hero__preview">Preview: the season starts for everyone on its first day. Tickets since the 1st count here, for trying it out.</p> : null}
+        {season.preview ? (
+          <p className="season-hero__preview">
+            Preview: the season starts for everyone on {seasonFirstDay(season)}. Tickets since {from} count here, for trying it out.
+          </p>
+        ) : null}
       </div>
       <div className="season-level">
         <SeasonPatch label={level > 0 ? String(level) : undefined} size={104} className="season-level__patch" slug={season.slug} />
@@ -406,6 +418,8 @@ function PassPlus({
   }, [plus.owned])
   const firstBonus = plus.rewards.find((r) => r.level > season.levels)?.id
   const headliners = headlinersOf(season, plus)
+  // The Gold row's rewards your level has reached: yours the moment the Gold Pass is.
+  const reached = level > 0 ? plus.rewards.filter((r) => r.level <= level).length : 0
 
   // A Pass+ skin the address asks for: the row turns to it.
   const rewardsKey = plus.rewards.length
@@ -476,26 +490,34 @@ function PassPlus({
               <CheckBadge /> {plus.via === 'plus' ? 'Included with your Plus' : 'Yours this season'}
             </span>
           ) : onPlus ? (
-            // Plus's free week gives nothing kept for good: Pass+ comes with its first payment.
-            <span className="season-plus__soon">Yours with your first Plus payment, when the free week ends</span>
+            // Plus's free week gives nothing kept for good: Pass+ comes with its first payment, for as long as Plus lasts.
+            <span className="season-plus__soon">Included with your Plus from its first payment, when the free week ends</span>
           ) : (
             <div className="season-plus__ways">
-              {plus.buyable ? (
-                // Until a session's account is known, neither buying nor signing in.
-                <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || (!signedIn && !signedOut)}>
-                  <b>{busy ? 'Opening…' : signedOut ? `Sign in to get the Gold Pass` : `Get the Gold Pass · ${price}`}</b>
-                  <small>Once, for the whole season ({seasonWeeks(season)} weeks). Yours to keep.</small>
-                </button>
-              ) : (
-                <span className="season-plus__soon">On sale soon · {price} for the season</span>
-              )}
+              <div className="season-plus__way">
+                {plus.buyable ? (
+                  // Until a session's account is known, neither buying nor signing in.
+                  <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || (!signedIn && !signedOut)}>
+                    <b>{busy ? 'Opening…' : signedOut ? `Sign in to get the Gold Pass` : `Get the Gold Pass · ${price}`}</b>
+                    <small>Once, for the whole season ({seasonWeeks(season)} weeks). Yours to keep.</small>
+                  </button>
+                ) : (
+                  <span className="season-plus__soon">On sale soon · {price} for the season</span>
+                )}
+                {/* What buying it gives at once, said by the buying: the Gold row's rewards your level has reached. */}
+                {signedIn && reached > 0 ? (
+                  <span className="season-plus__now">
+                    {reached} {reached === 1 ? 'reward' : 'rewards'} reached already, yours at once
+                  </span>
+                ) : null}
+              </div>
               <a className="season-plus__member" href={plusHref()}>
                 {freeWeekFor(plusInfo) && plusInfo ? (
                   <>
                     <b>Or try Plus free for a week</b>
                     <small>
-                      Then {money(plusInfo.price, plusInfo.currency)}/month, with every season’s Gold Pass and every past daily. The Gold Pass comes with
-                      the first payment.
+                      Then {money(plusInfo.price, plusInfo.currency)}/month, about {perSeason(plusInfo.price, season, plusInfo.currency)} a season.
+                      Members get every season’s Gold Pass, from the first payment, and every past daily.
                     </small>
                   </>
                 ) : (
@@ -510,16 +532,21 @@ function PassPlus({
               </a>
             </div>
           )}
-          {!plus.owned && !onPlus && signedIn && level > 0 ? (
-            <span className="season-plus__now">
-              {plus.rewards.filter((r) => r.level <= level).length
-                ? `${plus.rewards.filter((r) => r.level <= level).length} of them yours at once`
-                : 'The first comes at once'}
-            </span>
-          ) : null}
         </div>
       </div>
       <HeadlinerStage headliners={headliners} owned={plus.owned} level={level} />
+      {/* Its row turns as the free pass's does: a desk's arrows, a phone's swipe. */}
+      <div className="season-plus__rowhead">
+        <span className="season-plus__rowname">The Gold row</span>
+        <div className="season-pass__nav">
+          <button type="button" aria-label="Earlier Gold rewards" onClick={() => turnBy(trackRef.current, -1)}>
+            <Chevron back />
+          </button>
+          <button type="button" aria-label="Later Gold rewards" onClick={() => turnBy(trackRef.current, 1)}>
+            <Chevron />
+          </button>
+        </div>
+      </div>
       <ol className="season-track season-track--plus" ref={trackRef}>
         {plus.rewards.map((reward) => {
           const state = stateOfPlus(reward)
@@ -716,11 +743,6 @@ export function SeasonPage() {
     if (target) track.scrollLeft = target.offsetLeft - track.offsetLeft - 8
   }, [level, rewardsKey, sought, season?.levels])
 
-  const scrollBy = (dir: 1 | -1) => {
-    const track = trackRef.current
-    if (track) track.scrollBy({ left: dir * track.clientWidth * 0.8, behavior: glide() })
-  }
-
   if (!season || !p) {
     return (
       <PageShell innerClassName="lb-page__inner season-page">
@@ -761,10 +783,10 @@ export function SeasonPage() {
             <p>Free for everyone · {season.levels} levels · looks only, never score</p>
           </div>
           <div className="season-pass__nav">
-            <button type="button" aria-label="Earlier levels" onClick={() => scrollBy(-1)}>
+            <button type="button" aria-label="Earlier levels" onClick={() => turnBy(trackRef.current, -1)}>
               <Chevron back />
             </button>
-            <button type="button" aria-label="Later levels" onClick={() => scrollBy(1)}>
+            <button type="button" aria-label="Later levels" onClick={() => turnBy(trackRef.current, 1)}>
               <Chevron />
             </button>
           </div>

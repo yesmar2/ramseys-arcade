@@ -8,6 +8,7 @@ import { openSiteMenu } from '../components/siteNav'
 import { ticketsHref } from '../hooks/useHashRoute'
 import { FOR_SALE, PRIZE_KINDS, prizeById, SHELVES, SIGNS, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
 import { useAuth } from '../hooks/useAuth'
+import { useLiveEvents } from '../hooks/useLiveEvents'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { isWearing, resolveAvatar } from '../lib/avatars'
@@ -25,10 +26,11 @@ import { HangarBays } from '../components/prizes/HangarBays'
  * tickets can't be bought.
  */
 
-const EARN: { icon: string; amount: string; what: string }[] = [
+/** What pays, along the hero's foot. The day's event pays only while the arcade's own events run. */
+const EARN: { icon: string; amount: string; what: string; event?: boolean }[] = [
   { icon: 'play', amount: '1–15', what: 'every saved run, by its score' },
   { icon: 'up', amount: '+5', what: 'a new best' },
-  { icon: 'calendar', amount: '+10', what: 'today’s event' },
+  { icon: 'calendar', amount: '+10', what: 'today’s event', event: true },
   { icon: 'flame', amount: '+5', what: 'a day on a streak' },
   { icon: 'bug', amount: '+15', what: 'the day’s bug' },
   { icon: 'pad', amount: '+20', what: 'a first go at a game' },
@@ -77,6 +79,10 @@ export function PrizeCounterPage() {
   const [openId, setOpenId] = useState<string | null>(null)
   const goal = prizeById(tickets.goal)
   const balance = signedIn ? tickets.balance : 0
+  // The arcade's own events can be paused (/admin, Site events): then there's no day's event to pay for.
+  const { official } = useLiveEvents('')
+  const eventOn = official.some((t) => t.cadence === 'daily')
+  const event = eventOn ? 'today’s event, ' : ''
   const shown = FOR_SALE.filter((p) => p.kind !== 'sign' && (filter === 'all' || p.kind === filter))
   // Yours of the case's: what a streak or a season's pass gave isn't in it.
   const ownedCount = FOR_SALE.filter((p) => p.kind !== 'sign' && owned.has(p.id)).length
@@ -258,7 +264,7 @@ export function PrizeCounterPage() {
           </div>
         </div>
         <ul className="counter-band" aria-label="What pays tickets">
-          {EARN.map((e) => (
+          {EARN.filter((e) => eventOn || !e.event).map((e) => (
             <li key={e.what} className="counter-earn">
               <Icon name={e.icon} />
               <b>{e.amount}</b> {e.what}
@@ -313,7 +319,7 @@ export function PrizeCounterPage() {
             <Icon name="hand" />
             Earned, never bought
           </span>
-          <p>Tickets come from saved runs, today’s event, day streaks and the bug hunt. There’s no way to buy them.</p>
+          <p>Tickets come from saved runs, {event}day streaks and the bug hunt. There’s no way to buy them.</p>
         </div>
         <div className="counter-rule">
           <span className="counter-rule__t">
@@ -334,12 +340,13 @@ export function PrizeCounterPage() {
             <Icon name="clock" />
             Fair pay
           </span>
+          {/* The API's tickets.ts and ticketLadders.ts: said of the dailies as a kind, never by name, as they come and go. */}
           <p>
             A run pays by the score it reaches, like an arcade machine: 1 ticket, then 3, 5, 7 and 10 at the scores each game’s How to play
-            shows. Today’s Hole, Today’s Track and Today’s Pour pay your best of the day once, up to 15, and each day’s top three get 10, 6 and 3 more after
-            midnight. A new best pays 5 more, and Crosswalk one for each ticket picked up. Runs pay up to 200 tickets a day, bests and pickups
-            included. A first go at a game, a day on a streak, today’s event, the day’s bug, a top-three day, taking a past track’s or hole’s record
-            and a Dailies streak milestone still pay after that.
+            shows. A new best pays 5 more, and Crosswalk one for each ticket picked up. A daily pays your best of the day once instead, up to 15,
+            and the ranked dailies’ top three each day get 10, 6 and 3 more after midnight. Runs pay up to 200 tickets a day, bests and pickups
+            included. A first go at a game, a day on a streak, {event}the day’s bug, a top-three day, taking a past course’s record and a Dailies
+            streak milestone still pay after that.
           </p>
         </div>
       </section>

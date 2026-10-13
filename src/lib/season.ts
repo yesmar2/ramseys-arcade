@@ -150,9 +150,21 @@ function keep(answer: SeasonAnswer) {
   }
 }
 
+const DAY_MS = 86_400_000
+
 /**
- * The season this device saw last, to open with: none once it's over, and `you` only for the account it was
- * said for. The API's answer replaces it as soon as it comes.
+ * A season kept as still to come that has reached its first day since (seen on Oct 30, opened on Oct 31): live,
+ * as the API will say, with its days left from now (the API's seasonInfo). So the first paint is the season's,
+ * rather than the arcade's until the answer comes. A preview kept is live already, and one not yet begun waits.
+ */
+function started(season: SeasonInfo, now = Date.now()): SeasonInfo {
+  if (season.status !== 'upcoming' || season.startsAt > now) return season
+  return { ...season, status: 'live', daysLeft: Math.max(0, Math.ceil((season.endsAt - now) / DAY_MS)) }
+}
+
+/**
+ * The season this device saw last, to open with: none once it's over, live once it has begun, and `you` only for
+ * the account it was said for. The API's answer replaces it as soon as it comes.
  */
 function kept(): Store {
   try {
@@ -163,7 +175,7 @@ function kept(): Store {
     const mine = account != null && account === currentAccountId()
     // Whether Pass+ is owned is the account's too: another player on this device hasn't bought it.
     const plus = answer.plus ? { ...answer.plus, owned: mine && answer.plus.owned } : answer.plus
-    return { ...empty, season: answer.season, rewards: answer.rewards, plus, you: mine ? answer.you : null }
+    return { ...empty, season: started(answer.season), rewards: answer.rewards, plus, you: mine ? answer.you : null }
   } catch {
     return empty
   }
@@ -414,13 +426,26 @@ export function useSpotlight(game: string): boolean {
   return isSpotlight(liveSeason(useSeason()), game)
 }
 
-/** "Oct 31 – Jan 4". */
+/** A board day, YYYY-MM-DD, as "Oct 31". */
+function dayWords(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/** The day a season starts for everyone, "Oct 31", previewed early or not. */
+export function seasonFirstDay(season: SeasonInfo): string {
+  return dayWords(season.firstDay)
+}
+
+/**
+ * "Oct 31 – Jan 4". A preview's are its own, from the day it went live early (`startsAt`, on the boards' clock),
+ * so they agree with the days it says are left.
+ */
 export function seasonDates(season: SeasonInfo): string {
-  const fmt = (day: string) => {
-    const [y, m, d] = day.split('-').map(Number)
-    return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-  }
-  return `${fmt(season.firstDay)} – ${fmt(season.lastDay)}`
+  const first = season.preview
+    ? new Date(season.startsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
+    : dayWords(season.firstDay)
+  return `${first} – ${dayWords(season.lastDay)}`
 }
 
 export function daysLeftLabel(season: SeasonInfo): string {

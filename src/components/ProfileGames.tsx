@@ -8,6 +8,8 @@ import { standingsGames } from '../lib/allTime'
 import { RANKED_LEADERBOARD_GAMES, type GlobalGamePlace, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { COUNTED_GAMES, ordinal, periodWord } from '../lib/profileMath'
+import { useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 import { resolveGameAccent } from '../lib/theme'
 import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
@@ -33,6 +35,7 @@ function Cabinet({
   other,
   best,
   bestsLoading,
+  withSeason,
 }: {
   game: Game
   period: LeaderboardPeriod
@@ -43,12 +46,15 @@ function Cabinet({
   other: DailyOther
   best: GameBest | null
   bestsLoading: boolean
+  /** A daily counts toward the season too, while it has standings. */
+  withSeason: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
   const style = { '--tile-accent': accent } as CSSProperties
   // A daily has no all-time board (lib/allTime.ts): its line is its place in its other period instead.
   const daily = isDailyGame(game.slug)
-  // Looking at all time, a daily stands at its place this month, and says it counts toward the week and the month only.
+  // Looking at all time, a daily stands at its place this month, and says it counts toward the week and the month only
+  // (and the season, while it has standings).
   const monthOnly = daily && period === 'all'
   const shownPeriod = monthOnly ? other.period : period
   const shownPlace = monthOnly ? other.place : place
@@ -69,7 +75,7 @@ function Cabinet({
     game.name,
     shownPlace ? `${ordinal(shownPlace.place)} ${word}` : `no run ${word}`,
     monthOnly
-      ? 'counts toward the week and the month only'
+      ? `counts toward ${withSeason ? 'the week, the month and the season' : 'the week and the month'} only`
       : daily
         ? other.place
           ? `${ordinal(other.place.place)} ${periodWord(other.period)}`
@@ -119,7 +125,7 @@ function Cabinet({
           </span>
           {monthOnly ? (
             <span className="pgame__line">
-              <span className="pgame__only">Week and month only</span>
+              <span className="pgame__only">{withSeason ? 'Week, month and season' : 'Week and month only'}</span>
             </span>
           ) : daily ? (
             <span className="pgame__line">
@@ -197,6 +203,7 @@ export function ProfileGames({
 }) {
   const device = useDeviceType()
   const word = periodWord(period)
+  const withSeason = seasonHasStandings(useSeason().season)
   const games = standingsGames(period).map((slug) => getGame(slug)).filter((g): g is Game => Boolean(g))
   const otherPeriod = period === 'monthly' ? 'weekly' : 'monthly'
   const otherByGame = otherPeriod === 'monthly' ? monthByGame : weekByGame
@@ -247,6 +254,7 @@ export function ProfileGames({
               other={{ period: otherPeriod, place: otherByGame?.[g.slug] ?? null, loading: otherByGame === null }}
               best={bests?.[g.slug] ?? null}
               bestsLoading={bestsLoading}
+              withSeason={withSeason}
             />
           ))}
         </ul>

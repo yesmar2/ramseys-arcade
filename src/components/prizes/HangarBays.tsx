@@ -117,7 +117,7 @@ export function HangarBays() {
     const game = getGame(skin.game)?.name ?? skin.game
     const yes = await confirm({
       title: `Roll out the ${skin.name}?`,
-      body: `${(skin.price ?? 0).toLocaleString()} tickets, for good. It’s your ${skin.what.toLowerCase()} in ${game} from now on, and your ghost wears it too. Looks only: it never changes a score.`,
+      body: `${(skin.price ?? 0).toLocaleString()} tickets, for good. It’s your ${skin.what} from now on, and your ghost wears it too. Looks only: it never changes a score.`,
       confirm: `Trade ${(skin.price ?? 0).toLocaleString()} tickets`,
     })
     if (!yes) return

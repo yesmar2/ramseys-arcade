@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { useTickets } from '../lib/tickets'
 import { daysLeftLabel, liveSeason, useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 import { TicketGlyph } from './prizes/Ticket'
 import { SeasonPatch } from './season/SeasonLook'
 import { createPortal } from 'react-dom'
@@ -509,7 +510,9 @@ export function SiteMenu({
                 </span>
                 <span className="site-menu__row-text">
                   <span className="site-menu__row-label">A place on every board</span>
-                  <span className="site-menu__row-sub">Ranked each week, each month and all time</span>
+                  <span className="site-menu__row-sub">
+                    {seasonHasStandings(seasonStore.season) ? 'Ranked each week, each month, each season and all time' : 'Ranked each week, each month and all time'}
+                  </span>
                 </span>
               </li>
               <li className="site-menu__row">

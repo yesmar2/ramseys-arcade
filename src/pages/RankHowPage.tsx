@@ -110,6 +110,11 @@ function FunDailiesLine() {
   ) : null
 }
 
+/** What a daily counts toward: the week and the month, and the season too while it has standings. */
+function dailyStretches(): string {
+  return seasonHasStandings(currentSeason()) ? 'the week, the month and the season' : 'the week and the month'
+}
+
 /**
  * Why the dailies that rank aren't in all time (lib/allTime.ts): said wherever all time's games are counted, or the
  * dailies are explained.
@@ -117,7 +122,7 @@ function FunDailiesLine() {
 function AllTimeDailiesLine() {
   return ALL_DAILIES.length ? (
     <p className="rh-step__p">
-      {andList(ALL_DAILIES.map(gameName))} {ALL_DAILIES.length === 1 ? 'counts' : 'count'} toward the week and the month,
+      {andList(ALL_DAILIES.map(gameName))} {ALL_DAILIES.length === 1 ? 'counts' : 'count'} toward {dailyStretches()},
       not all time: added up since {ALL_DAILIES.length === 1 ? 'it' : 'they'} began, {ALL_DAILIES.length === 1 ? 'its' : 'their'}{' '}
       days would mostly count how long someone has been playing.
     </p>
@@ -869,8 +874,9 @@ function DailiesStep({
     return (
       <Step id={STEP_IDS.dailies} n="4" title={stepTitles(who).dailies}>
         <p className="rh-step__p">
-          Each day’s board pays its players the same way, and the days add up to {whose(who)} week and month, each
-          ranked like any other game. Only each day’s own run counts: playing a past day again never does.
+          Each day’s board pays its players the same way, and the days add up to {whose(who)}{' '}
+          {seasonHasStandings(currentSeason()) ? 'week, month and season' : 'week and month'}, each ranked like any other game. Only
+          each day’s own run counts: playing a past day again never does.
         </p>
         <AllTimeDailiesLine />
         {funLine}
@@ -1389,12 +1395,13 @@ function FinePrint({ words, tie }: { words: PeriodWords; tie?: string | null }) 
 function GeneralSteps({ words }: { words: PeriodWords }) {
   const who: Who = { self: true, name: '' }
   const example = workedExample({ slug: '', place: 3, total: 13, points: placePoints(3, 13) }, who)
+  const season = seasonHasStandings(currentSeason())
   return (
     <>
       <Step id={STEP_IDS.games} n="1" title={stepTitles(who).games}>
         <p className="rh-step__p">
-          Only your best run on each game counts, and each ranked game has its own board for the week, the month and all
-          time. A daily’s are for the week and the month only.
+          Only your best run on each game counts, and each ranked game has its own board for the week, the month
+          {season ? ', the season' : ''} and all time. A daily’s are for {dailyStretches()} only.
         </p>
         <p className="rh-step__p">A game you haven’t played doesn’t count against you. It just hasn’t added anything yet.</p>
         <FunDailiesLine />
@@ -1420,7 +1427,8 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
       </Step>
       <Step id={STEP_IDS.dailies} n="4" title={stepTitles(who).dailies}>
         <p className="rh-step__p">
-          Each day’s board pays its players the same way. The days add up to your {words.noun ?? 'week and your month'}, and
+          Each day’s board pays its players the same way. The days add up to your{' '}
+          {words.noun ?? (season ? 'week, your month and your season' : 'week and your month')}, and
           then <b>{words.noun ? 'that is' : 'each is'} ranked like any other game</b>. Only each day’s own run counts:
           playing a past day again never does.
         </p>
@@ -1436,6 +1444,8 @@ function GeneralSteps({ words }: { words: PeriodWords }) {
 /** Signed out, or no tag yet: how ranks work in general, and the way to one of your own. */
 function General({ signedIn, loading, period }: { signedIn: boolean; loading: boolean; period: LeaderboardPeriod }) {
   const words = periodWords(period)
+  // The season's words come from it (lib/rankHow.ts, dailyStretches): drawn again when it comes.
+  useSeason()
   return (
     <>
       <Hero
@@ -1504,8 +1514,10 @@ function PlayerHow({
   // Someone else's tag, made up or from before a rename, may be nobody's: then there's no rank to work out. Runs
   // this period settle it at once, whoever holds the tag.
   const isPlayer = useIsPlayer(self ? '' : name, Object.keys(data.you?.byGame ?? {}).length > 0)
-  // The season's words and days come from it (lib/rankHow.ts): drawn again when it comes.
-  useSeason()
+  // The season's words and days come from it (lib/rankHow.ts): drawn again when it comes. The steps wait for it as
+  // they wait for the boards, so a season said late (nothing kept on this device) never reflows their words.
+  const seasonStore = useSeason()
+  const seasonUnknown = !seasonStore.loaded && !seasonStore.season
   const you = data.you
   const rank = !data.loading ? (you?.rank ?? null) : null
   const byGame: ByGame = you?.byGame ?? {}
@@ -1519,7 +1531,7 @@ function PlayerHow({
   const kicker = self ? `How your rank works · ${name}` : `How ${name}’s rank works`
   const tabs = <PeriodTabs period={period} player={player} group={pageGroup} />
 
-  if (data.loading || isPlayer === null) return <Loading who={who} period={period} group={pageGroup} />
+  if (data.loading || isPlayer === null || seasonUnknown) return <Loading who={who} period={period} group={pageGroup} />
 
   if (isPlayer === false) {
     return (
