@@ -1,6 +1,7 @@
 import { isDailyGame } from '../data/games'
 import { AUTH_EVENT, SESSION_KEY } from './accountEvents'
 import { fetchPlayerBests, getLastPlayerName } from './leaderboard'
+import { keptToSave, stillSavable } from './pendingRuns'
 import { keptSinceReset } from './runResets'
 
 export type PersonalBestKind = 'first' | 'new' | 'tie' | 'short'
@@ -69,6 +70,18 @@ function liveBest(slug: string, kept: DeviceBest | undefined): DeviceBest | null
 
 function deviceBest(slug: string): number {
   return liveBest(slug, readDeviceBests()[slug])?.score ?? 0
+}
+
+/**
+ * Whether signing in can still put this device's best on its game's board: the run that set it is kept to be
+ * saved (lib/pendingRuns.ts), or on a daily, which keeps its runs its own way (deviceRuns.ts), it was played
+ * while its run can still be taken up. Past that it's only this device's best, and where it shows it says so.
+ */
+export function deviceBestSavable(slug: string): boolean {
+  const best = liveBest(slug, readDeviceBests()[slug])
+  if (!best) return false
+  if (isDailyGame(slug)) return best.at != null && stillSavable(best.at)
+  return keptToSave(slug, best.score)
 }
 
 /** A signed-out run's score, kept as this device's best on its game if it beats it (a daily's, if it's today's). */

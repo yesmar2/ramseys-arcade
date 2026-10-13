@@ -40,11 +40,16 @@ export type PendingSaved = { saved: number; tickets: number }
 /** A run whose report is up: that report saves it, so the saver here leaves it be. */
 const held = new Set<string>()
 
+/** Whether a run that ended then can still go on a board under whoever signs in: the API's limit, with an hour in hand. */
+export function stillSavable(endedAt: number, now = Date.now()): boolean {
+  return now - endedAt < KEEP_MS
+}
+
 function read(now = Date.now()): PendingRun[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown
     if (!Array.isArray(parsed)) return []
-    return (parsed as PendingRun[]).filter((r) => r && typeof r.slug === 'string' && typeof r.score === 'number' && now - r.endedAt < KEEP_MS)
+    return (parsed as PendingRun[]).filter((r) => r && typeof r.slug === 'string' && typeof r.score === 'number' && stillSavable(r.endedAt, now))
   } catch {
     return []
   }
@@ -85,6 +90,11 @@ export function releasePendingRun(id: string) {
 /** How many runs are kept, leaving out one (the report asking). */
 export function pendingCount(except?: string): number {
   return read().filter((r) => r.id !== except).length
+}
+
+/** Whether a run of a game with this score is kept here still, so signing in on this device saves it. */
+export function keptToSave(slug: string, score: number): boolean {
+  return read().some((r) => r.slug === slug && r.score === score)
 }
 
 /** Whether a refusal is for good (the run can never be saved) rather than for now. */

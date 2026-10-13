@@ -10,6 +10,7 @@ import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { pastKind, type PastPlay } from '../lib/pastPlay'
+import { deviceBestSavable } from '../lib/personalBest'
 import { gameHasRecords } from '../lib/records'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { Panel, PanelHead } from './Panel'
@@ -189,8 +190,13 @@ export function GamePanelBody({
       ) : null}
       {/* Notes, not key hints: a phone shows them too. */}
       {tries?.triesAtStart ? <p className="game-card__note">A try counts the moment you start it.</p> : null}
-      {/* Signed out, Your best is this device's (lib/personalBest.ts): saved nowhere until you sign in. */}
-      {showBest && personalBest > 0 && signedOut ? <p className="game-card__note">Your best on this device. Sign in to save it.</p> : null}
+      {/* Signed out, Your best is this device's (lib/personalBest.ts): signing in saves it only while the run that
+          set it can still go on the board (a few hours), so only then does it say to. */}
+      {showBest && personalBest > 0 && signedOut ? (
+        <p className="game-card__note">
+          {deviceBestSavable(slug) ? 'Your best on this device. Sign in to save it.' : 'Your best on this device.'}
+        </p>
+      ) : null}
       {tools}
       <div className="game-pause-actions">
         <div className="game-sound-row">
