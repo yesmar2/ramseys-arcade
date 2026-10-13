@@ -165,7 +165,7 @@ export function LabResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
       </div>
-      <p className="game-card__hint">The test cave: not saved.</p>
+      <p className="game-card__note">The test cave: not saved.</p>
       <div className="game-card__actions">
         <button
           type="button"
@@ -234,7 +234,7 @@ export function TestResultCard({
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue ship">{formatRun(lander.pace)}</Row>
       </div>
-      <p className="game-card__hint">A test flight: not saved.</p>
+      <p className="game-card__note">A test flight: not saved.</p>
       <div className="game-card__actions">
         <button
           type="button"

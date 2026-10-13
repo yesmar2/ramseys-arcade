@@ -221,7 +221,7 @@ export function TestResultCard({
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue blip">{formatRun(wobble.pace)}</Row>
       </div>
-      <p className="game-card__hint">A test run: not saved.</p>
+      <p className="game-card__note">A test run: not saved.</p>
       <div className="game-card__actions">
         <button
           type="button"
@@ -420,7 +420,7 @@ export function LabResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
       </div>
-      <p className="game-card__hint">A test run: not saved.</p>
+      <p className="game-card__note">A test run: not saved.</p>
       <div className="game-card__actions">
         <button
           type="button"

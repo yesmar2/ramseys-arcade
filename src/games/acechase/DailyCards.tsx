@@ -54,7 +54,7 @@ function NextHole() {
     const t = window.setInterval(() => setMs(msUntilNextHole()), 30_000)
     return () => window.clearInterval(t)
   }, [])
-  return <p className="game-card__hint acechase-daily__next">Next hole in {untilNext(ms)}</p>
+  return <p className="game-card__note acechase-daily__next">Next hole in {untilNext(ms)}</p>
 }
 
 
@@ -315,7 +315,7 @@ export function DailyStartCard({
       {result?.pattern && progress?.tickets ? <HoleTickets tickets={progress.tickets} /> : null}
       {result && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
       {open ? (
-        <p className="game-card__hint">
+        <p className="game-card__note">
           {open.solved
             ? 'Someone got it here signed out. Save it as yours, or play your own.'
             : 'Someone played it here signed out. Carry it on as yours, or start your own.'}
@@ -456,9 +456,9 @@ export function DailyResultCard({
       {!practice && mine && server?.season ? <SeasonRunLine run={server.season} /> : null}
       {mine && signedIn && you?.tries != null && you.tag === null ? <BoardTag /> : null}
       {theirs ? <PlayedAs owner={owner} signedOut={signedOut} /> : null}
-      {takeUp && taking === 'sending' ? <p className="game-card__hint">Saving it as today&rsquo;s result…</p> : null}
+      {takeUp && taking === 'sending' ? <p className="game-card__note">Saving it as today&rsquo;s result…</p> : null}
       {takeUp && taking === 'refused' ? (
-        <p className="game-card__hint">
+        <p className="game-card__note">
           {you?.tries != null ? `Your result today stands: bullseye in ${you.tries}. This one, played signed out, isn’t saved.` : 'This one, played signed out, isn’t saved.'}
         </p>
       ) : null}

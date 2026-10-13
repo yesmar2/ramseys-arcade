@@ -774,9 +774,8 @@
   text-decoration: underline;
 }
 
-/* The next hole's countdown shows everywhere, a phone included: it's the day's rhythm, not a keyboard hint. */
-.game-card__hint.acechase-daily__next {
-  display: block;
+/* The next hole's countdown, a note (a phone sees it too): it's the day's rhythm, not a keyboard hint. */
+.game-card__note.acechase-daily__next {
   margin: 0;
   text-align: center;
 }

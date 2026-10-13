@@ -459,9 +459,8 @@
   text-decoration: underline;
 }
 
-/* The next day's countdown shows everywhere, a phone included: it's the day's rhythm, not a keyboard hint. */
-.game-card__hint.findbug-daily__next {
-  display: block;
+/* The next day's countdown, a note (a phone sees it too): it's the day's rhythm, not a keyboard hint. */
+.game-card__note.findbug-daily__next {
   margin: 0;
   text-align: center;
 }

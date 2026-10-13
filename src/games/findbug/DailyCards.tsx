@@ -48,7 +48,7 @@ function NextDay() {
     const t = window.setInterval(() => setMs(msUntilNextDay()), 30_000)
     return () => window.clearInterval(t)
   }, [])
-  return <p className="game-card__hint findbug-daily__next">New scenes in {untilNext(ms)}</p>
+  return <p className="game-card__note findbug-daily__next">New scenes in {untilNext(ms)}</p>
 }
 
 /** Each square as the share line has it: its look here, and what it says. */

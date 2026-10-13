@@ -136,7 +136,7 @@ export function TestResultCard({
         <Row label="Your best here">{improved ? 'This lap' : formatLap(best)}</Row>
         <Row label="Pace car">{formatLap(course.paceLap.time)}</Row>
       </div>
-      <p className="game-card__hint">A test lap: not saved.</p>
+      <p className="game-card__note">A test lap: not saved.</p>
       <div className="game-card__actions">
         <button
           type="button"

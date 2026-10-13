@@ -158,7 +158,7 @@ export function TestResultCard({
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue bird">{formatRun(swoop.pace)}</Row>
       </div>
-      <p className="game-card__hint">A test run: not saved.</p>
+      <p className="game-card__note">A test run: not saved.</p>
       <div className="game-card__actions">
         <button
           type="button"
