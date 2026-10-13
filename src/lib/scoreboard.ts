@@ -11,6 +11,7 @@ import {
 } from './leaderboard'
 import { formatDayPoints, formatLeaderboardScore } from './leaderboardFormat'
 import { currentSeason } from './season'
+import { seasonHasStandings } from './seasonStandings'
 import type { TrophyAward } from './trophies'
 
 /*
@@ -217,14 +218,14 @@ export function periodCopy(period: LeaderboardPeriod, now = Date.now(), group = 
       ...(over ? { over: true } : {}),
     }
   }
+  // While a season has standings, its top ten take trophies too.
+  const closers = seasonHasStandings(currentSeason()) ? 'week, month and season' : 'week and month'
   return {
     noun: null,
     phrase: 'all time',
     kicker: 'All time',
     live: false,
-    closes: group
-      ? 'All time never closes.'
-      : 'All time never closes. Trophies go to the top ten of every week and month.',
+    closes: group ? 'All time never closes.' : `All time never closes. Trophies go to the top ten of every ${closers}.`,
     last: null,
   }
 }

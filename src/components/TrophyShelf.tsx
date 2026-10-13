@@ -6,6 +6,8 @@ import { medalKind } from './PodiumMedal'
 import { SET_SIZE } from '../lib/bugHuntPick'
 import { numberWord } from '../lib/numberWord'
 import { secretByNumber, SECRETS } from '../lib/secrets'
+import { useSeason } from '../lib/season'
+import { seasonHasStandings } from '../lib/seasonStandings'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal, type TrophyArtSize } from './TrophyArt'
 
 /** Board trophies shown before "Show all": three rows on a phone, two on a wide screen with your open place. */
@@ -109,11 +111,12 @@ function Section({ name, count, children, after }: { name: string; count: string
 /**
  * The trophy shelf: a dark display cabinet, each trophy lit in a nook of its
  * own, with event wins on one shelf, full months of the bug hunt on another,
- * secrets on a third and top-ten finishes of a week or a month on the last,
- * newest first. Your own shelf keeps a nook open for this week, and shows how
- * many secrets are still hidden. With nothing on it yet, it says how things
- * get onto it; for most of the arcade that is winning an event among friends
- * or catching a month of bugs, since the top ten of everyone is a small club.
+ * secrets on a third and top-ten finishes of a week, a month or a season on
+ * the last, newest first. Your own shelf keeps a nook open for this week, and
+ * shows how many secrets are still hidden. With nothing on it yet, it says how
+ * things get onto it; for most of the arcade that is winning an event among
+ * friends or catching a month of bugs, since the top ten of everyone is a
+ * small club.
  */
 export function TrophyShelf({
   trophies,
@@ -126,6 +129,8 @@ export function TrophyShelf({
   name: string
 }) {
   const [showAll, setShowAll] = useState(false)
+  // While a season has standings, its top ten take trophies too, as each week's and month's do.
+  const seasons = seasonHasStandings(useSeason().season)
 
   if (trophies === null) {
     return (
@@ -143,7 +148,7 @@ export function TrophyShelf({
   const sets = trophies.filter((t) => t.period === 'hunt').sort(newest)
   const secrets = trophies.filter((t) => t.period === 'secret').sort(newest)
   const hidden = isSelf ? SECRETS.filter((x) => !secrets.some((t) => t.periodKey === x.n)) : []
-  const boards = trophies.filter((t) => t.period === 'weekly' || t.period === 'monthly').sort(newest)
+  const boards = trophies.filter((t) => t.period === 'weekly' || t.period === 'monthly' || t.period === 'season').sort(newest)
   const shownBoards = showAll ? boards : boards.slice(0, BOARD_SHOWN)
   const s = summarizeTrophies(trophies)
   const bits = [
@@ -219,8 +224,8 @@ export function TrophyShelf({
                 <span className="pshelf__name">Arcade top ten</span>
                 <span className="pshelf__when">
                   {isSelf
-                    ? 'Finish a week or a month in the top ten of the whole arcade.'
-                    : `${name}’s first top-ten week or month will show here.`}
+                    ? `Finish ${seasons ? 'a week, a month or a season' : 'a week or a month'} in the top ten of the whole arcade.`
+                    : `${name}’s first top-ten ${seasons ? 'week, month or season' : 'week or month'} will show here.`}
                 </span>
               </span>
             </li>
@@ -295,8 +300,8 @@ export function TrophyShelf({
         </div>
       )}
       <p className="pshelf__foot">
-        The arcade’s top ten each week and month get a trophy, and so does every event’s winner and every full month
-        of the bug hunt. Some trophies are secret, hidden around the arcade.
+        The arcade’s top ten each {seasons ? 'week, month and season' : 'week and month'} get a trophy, and so does
+        every event’s winner and every full month of the bug hunt. Some trophies are secret, hidden around the arcade.
       </p>
     </article>
   )
