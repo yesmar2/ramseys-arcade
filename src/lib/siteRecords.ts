@@ -34,11 +34,18 @@ export type SiteRecordBoard = {
   label: string
   blurb: string
   unit: SiteRecordUnit
+  /** The top ten, most first; of two equal, whoever got there first. */
   entries: SiteRecordEntry[]
+  /** How many share the most, past the top ten too, from an API that says. */
+  leaders?: number
 }
 
+/**
+ * Where you stand on each house record: your number, your place (shared with everyone on as many), and how
+ * many others have as many (from an API that says). A place of null, with no number.
+ */
 export type SiteRecordStanding = Partial<
-  Record<SiteRecordId, { value: number; rank: number | null }>
+  Record<SiteRecordId, { value: number; rank: number | null; tied?: number }>
 >
 
 export type SiteRecordsResult = {

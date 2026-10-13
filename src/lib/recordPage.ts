@@ -184,14 +184,28 @@ export function shutLine(game: string, shut: RecordShut): string {
 
 /* ---------- the banner ---------- */
 
-/** Whose name is on it and for how long, with the name apart so it can wear the gold. */
+/**
+ * When the holder's reign began: their first step on the record since anyone else held it, as the story
+ * counts their stretch (stints), not their latest mark. A holder who keeps beating their own record, a streak
+ * a day longer each day, has held it since the first. Their mark's own moment without a story to go by.
+ */
+export function reignStart(top: { name: string; at: number }, progression: { name: string; at: number }[]): number {
+  const last = progression[progression.length - 1]
+  if (!last || last.name !== top.name) return top.at
+  let i = progression.length - 1
+  while (i > 0 && progression[i - 1]!.name === top.name) i--
+  return Math.min(progression[i]!.at, top.at)
+}
+
+/** Whose name is on it and for how long (from the start of their reign), with the name apart so it can wear the gold. */
 export function recordHeadline(
   top: LeaderboardEntry | null,
   period: LeaderboardPeriod,
+  progression: { name: string; at: number }[] = [],
   now = Date.now(),
 ): { name: string; rest: string } {
   if (!top) return { name: '', rest: period === 'all' ? 'Nobody has set it yet.' : `Nobody has set it ${recordWhen(period)}.` }
-  const days = daysBetween(top.at, now)
+  const days = daysBetween(reignStart(top, progression), now)
   return {
     name: top.name,
     rest: days <= 0 ? ' set it today.' : days === 1 ? ' has held it since yesterday.' : ` has held it for ${days} days.`,
@@ -276,7 +290,7 @@ export function recordStanding(
       mode: 'held',
       big: 'It’s yours',
       of: `#1 of ${total.toLocaleString()}`,
-      line: `${recordValue(record, top.score)} · set ${recordDay(top.at)} · held ${heldFor(top.at, now)}`,
+      line: `${recordValue(record, top.score)} · set ${recordDay(top.at)} · held ${heldFor(reignStart(top, progression), now)}`,
       stats,
       callout: !second
         ? 'Nobody else is on it yet.'
@@ -499,16 +513,16 @@ export function recordStory(
   })
 
   const first = progression[0]
-  // The standing holder's run: when they took it, and how far they've taken it since.
+  // The standing holder's reign: when they took it, and how far they've taken it since (the headline's, reignStart).
   const standingRun = runs[runs.length - 1]
-  const top = standingRun[0]
   const last = reached(standingRun)
+  const since = reignStart(last, progression)
   const breaks = runs.length - 1
   const holders = new Set(progression.map((m) => m.name)).size
   const within = period === 'all' ? '' : ` ${recordWhen(period)}`
-  const raisedTo = standingRun.length > 1 ? `, and has taken it to ${recordValue(record, last.score)}` : ''
+  const raisedTo = since < last.at ? `, and has taken it to ${recordValue(record, last.score)}` : ''
   const sub = breaks
-    ? `${first.name} set the first${within}, ${recordValue(record, first.score)}, on ${recordDay(first.at)}. ${top.name} has held it since ${recordDay(top.at)}${raisedTo}.`
+    ? `${first.name} set the first${within}, ${recordValue(record, first.score)}, on ${recordDay(first.at)}. ${last.name} has held it since ${recordDay(since)}${raisedTo}.`
     : standingRun.length > 1
       ? `${first.name} set it on ${recordDay(first.at)}${within}, ${recordValue(record, first.score)}, and has taken it to ${recordValue(record, last.score)} since. Nobody else has held it.`
       : `${first.name} set it on ${recordDay(first.at)}${within}, and nobody has beaten it since.`

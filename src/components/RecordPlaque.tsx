@@ -10,8 +10,8 @@ import { PlayerMark } from './PlayerMark'
 export type PlaqueYou =
   /** You hold it. */
   | { kind: 'mine' }
-  /** On its board: your best, and how near the record it is, 0 to 1. */
-  | { kind: 'on'; value: string; share: number; rank: number }
+  /** On its board: your best, and how near the record it is, 0 to 1; `tied`, with others on as many. */
+  | { kind: 'on'; value: string; share: number; rank: number; tied?: boolean }
   /** Signed in, with no run on it yet. */
   | { kind: 'none' }
 
@@ -28,7 +28,8 @@ export function RecordPlaque({
   label: string
   /** The record, or null for one nobody holds yet. */
   value: string | null
-  holder: { name: string; avatarId?: string | null } | null
+  /** Who holds it; `names`, everyone tied for it in words, when it's more than them. */
+  holder: { name: string; avatarId?: string | null; names?: string } | null
   /** "set Sep 14" and the like. */
   when?: string
   href: string
@@ -41,6 +42,8 @@ export function RecordPlaque({
 }) {
   const open = value == null || !holder
   const mine = you?.kind === 'mine'
+  // Your place past the top, and whether others are on as many: #6, #2, tied, or just tied at the top.
+  const place = you?.kind === 'on' ? [you.rank > 1 ? `#${you.rank}` : '', you.tied ? 'tied' : ''].filter(Boolean).join(', ') : ''
   return (
     <li className={`rbk-plq${open ? ' rbk-plq--open' : ''}${mine ? ' rbk-plq--mine' : ''}${big && !open ? ' rbk-plq--big' : ''}`}>
       <a className="rbk-plq__link" href={href}>
@@ -54,7 +57,7 @@ export function RecordPlaque({
           <>
             <span className="rbk-plq__holder">
               <PlayerMark name={holder.name} avatarId={holder.avatarId ?? undefined} className="rbk-plq__mark" />
-              <span className="rbk-plq__who">{holder.name}</span>
+              <span className={`rbk-plq__who${holder.names ? ' rbk-plq__who--tied' : ''}`}>{holder.names ?? holder.name}</span>
             </span>
             {when ? <span className="rbk-plq__when">{when}</span> : null}
           </>
@@ -68,7 +71,7 @@ export function RecordPlaque({
             <span className="rbk-plq__you">
               <span>
                 You: <b>{you.value}</b>
-                {you.rank > 1 ? <span className="rbk-plq__rank"> · #{you.rank}</span> : null}
+                {place ? <span className="rbk-plq__rank"> · {place}</span> : null}
               </span>
               <span className="rbk-plq__bar" aria-hidden="true">
                 <span style={{ width: `${Math.round(Math.max(0.04, Math.min(1, you.share)) * 100)}%` }} />

@@ -139,6 +139,7 @@ function Banner({
   period,
   record,
   entries,
+  progression,
   loading,
   group,
   shut,
@@ -148,6 +149,8 @@ function Banner({
   period: LeaderboardPeriod
   record: RecordDef | null
   entries: LeaderboardEntry[]
+  /** Every time it was broken, oldest first: how long its holder has held it goes from the start of their reign. */
+  progression: LeaderboardEntry[]
   loading: boolean
   group?: string
   shut: RecordShut | null
@@ -157,7 +160,7 @@ function Banner({
   const accent = resolveGameAccent(game, meta.accent)
   const canPlay = gamePlayableOn(meta, device)
   const top = entries[0] ?? null
-  const head = recordHeadline(top, period)
+  const head = recordHeadline(top, period, progression)
   const label = record?.label ?? ''
   const play = playTarget(game, meta.name, record ?? { id: recordId })
   const style = {
@@ -679,6 +682,7 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         period={period}
         record={record}
         entries={entries}
+        progression={data.progression}
         loading={data.loading}
         group={group}
         shut={shut}

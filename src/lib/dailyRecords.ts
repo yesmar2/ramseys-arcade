@@ -262,10 +262,14 @@ function capital(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-/** "Today’s track" mid-sentence: today’s track, but Today’s Wanted, which is a name. */
+/**
+ * "Today’s track" mid-sentence: today’s track, today’s hills, but Today’s Wanted and Today’s Pour, which are
+ * names (their own word has a capital).
+ */
 export function todayWords(slug: string): string {
-  const words = dailyWords(slug)
-  return words.today.endsWith(words.course) ? words.today.charAt(0).toLowerCase() + words.today.slice(1) : words.today
+  const { today } = dailyWords(slug)
+  const own = today.slice(today.indexOf(' ') + 1)
+  return own.charAt(0) !== own.charAt(0).toLowerCase() ? today : today.charAt(0).toLowerCase() + today.slice(1)
 }
 
 /**
@@ -519,7 +523,10 @@ function tallyRecord(
   }
 }
 
-/** Most days won: 1st on a day's board when it ended. Only days that are over count, so never today. */
+/**
+ * Most days won: 1st on a day's board when it ended. Only days that are over count, so never today. What
+ * they're out of is every day that's over, a day nobody played too, as the past tab lists them.
+ */
 export function daysWonRecord(tally: DailyRecordsResult['daysWon'] | null, viewer: Viewer): DayRecord {
   const closed = tally?.closedDays ?? null
   return tallyRecord(
@@ -539,7 +546,7 @@ export function daysWonRecord(tally: DailyRecordsResult['daysWon'] | null, viewe
               ? 'both days so far'
               : `every day so far`
           : `of the ${counted(closed, 'day')} so far`,
-    'No day has ended yet: the first does at midnight, New York time.',
+    closed ? 'Nobody has won a day yet.' : 'No day has ended yet: the first does at midnight, New York time.',
     'No days won yet',
   )
 }

@@ -2,11 +2,13 @@ import type { CSSProperties } from 'react'
 import { readableText } from '../lib/color'
 import { useHeldHeight, useHeldShape } from '../lib/heldShape'
 import { getGame, isDailyGame } from '../data/games'
+import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { useRecordBooks } from '../hooks/useRecordBooks'
 import { rankHref, recordsPlaceHref, siteRecordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useActiveGroup, useScope } from '../lib/groups'
+import { houseHolderLine, houseHolders } from '../lib/houseBook'
 import { normalizePlayerName } from '../lib/leaderboard'
 import {
   bookHolders,
@@ -75,6 +77,18 @@ function ChevronIcon() {
   )
 }
 
+/**
+ * The players a tie at the card's last place carries past it, said under it rather than left off: "NADIA
+ * holds 3 too", "GLITCH, ROWAN and you hold 3 too".
+ */
+function tiedPast(cut: { name: string }[], count: number, me: string): string {
+  const others = cut.filter((h) => h.name !== me).map((h) => h.name)
+  const named = others.length > 4 ? [...others.slice(0, 3), `${others.length - 3} more`] : others
+  const all = others.length < cut.length ? [...named, 'you'] : named
+  const who = all.length === 1 ? all[0]! : `${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}`
+  return `${who.charAt(0).toUpperCase()}${who.slice(1)} ${all.length === 1 && all[0] !== 'you' ? 'holds' : 'hold'} ${count} too.`
+}
+
 /** One record in a short list: its game's thumb, what it is, and a figure on the right. */
 function RecordItem({
   game,
@@ -106,6 +120,7 @@ function RecordItem({
 
 export function RecordBooksIndex() {
   const me = normalizePlayerName(usePlayerName())
+  const myAvatar = useMyAvatarId(me)
   const groupId = useActiveGroup()
   // The boards' group, when they show one: every book here is then the group's, and so is who holds none.
   const scope = useScope()
@@ -117,6 +132,11 @@ export function RecordBooksIndex() {
   const all = books.flatMap((b) => b.records)
   const head = booksHeadline(all)
   const holders = holderCounts(all)
+  // The card's six, each at a place shared between equal counts; a tie its last place carries past them is named under it.
+  const shownHolders = holders.slice(0, 6)
+  const holderPlaces = shownHolders.map((h) => 1 + holders.filter((o) => o.count > h.count).length)
+  const lastShown = shownHolders[shownHolders.length - 1]
+  const cutTie = lastShown ? holders.slice(6).filter((h) => h.count === lastShown.count) : []
   const inBooks = booksHeld(books)
   const topCount = holders[0]?.count ?? 0
   const avatars = new Map(all.filter((r) => r.top).map((r) => [normalizePlayerName(r.top!.name), r.top!.avatarId]))
@@ -142,6 +162,8 @@ export function RecordBooksIndex() {
   const title = useHeldHeight<HTMLHeadingElement>('records-title', loading)
   const lede = useHeldHeight<HTMLParagraphElement>('records-lede', loading)
   const heldHolders = useHeldShape('records-holders', loading ? undefined : Math.min(6, holders.length), 6)
+  // The card as a whole too: a tie named under its rows comes with them.
+  const standingsCard = useHeldHeight<HTMLDivElement>('records-standings', loading)
   const yours = useHeldHeight<HTMLElement>('records-yours', loading)
   const heldBooks = useHeldShape('records-books', loading ? undefined : books.length, 20)
   const shelf = useHeldHeight<HTMLUListElement>('records-shelf', loading)
@@ -210,7 +232,7 @@ export function RecordBooksIndex() {
           </div>
         </div>
 
-        <div className="sb-card sb-standings">
+        <div className="sb-card sb-standings" ref={standingsCard.ref} style={standingsCard.style}>
           <div className="sb-standings__head">
             <h2 className="sb-card__title">Most records held</h2>
             <span className="sb-standings__count">all books</span>
@@ -238,9 +260,10 @@ export function RecordBooksIndex() {
             </ol>
           ) : (
             <ol className="sb-rows">
-              {holders.slice(0, 6).map((h, i) => {
+              {shownHolders.map((h, i) => {
                 const mineRow = Boolean(me) && h.name === me
-                const medal = MEDALS[i]
+                const place = holderPlaces[i]!
+                const medal = MEDALS[place - 1]
                 const bookCount = inBooks.get(h.name) ?? 1
                 return (
                   <li
@@ -248,7 +271,7 @@ export function RecordBooksIndex() {
                     className={`sb-row${medal ? ` sb-row--${medal}` : ''}${mineRow ? ' sb-row--you' : ''}`}
                   >
                     <a className="sb-row__link" href={rankHref(h.name, period)}>
-                      <span className="sb-row__ord">{ordinal(i + 1).toUpperCase()}</span>
+                      <span className="sb-row__ord">{ordinal(place).toUpperCase()}</span>
                       <PlayerMark name={h.name} avatarId={avatars.get(h.name)} className="sb-row__mark" />
                       <span className="sb-row__who">
                         <PlayerName className="sb-row__name" name={h.name} avatarId={avatars.get(h.name)} />
@@ -267,6 +290,9 @@ export function RecordBooksIndex() {
               })}
             </ol>
           )}
+          {!data.loading && lastShown && cutTie.length ? (
+            <p className="sb-standings__note">{tiedPast(cutTie, lastShown.count, me)}</p>
+          ) : null}
         </div>
       </section>
 
@@ -307,7 +333,7 @@ export function RecordBooksIndex() {
         <section className="sb-you" aria-label="Your records" ref={yours.ref}>
           <div className="sb-card rbk-card">
             <div className="rbk-card__head">
-              <PlayerMark name={me} className="rbk-card__mark" />
+              <PlayerMark name={me} avatarId={myAvatar} className="rbk-card__mark" />
               <h2 className="sb-card__title">
                 {mine.length
                   ? `You hold ${mine.length} ${mine.length === 1 ? 'record' : 'records'}`
@@ -427,6 +453,14 @@ export function RecordBooksIndex() {
                         <span>{normalizePlayerName(cover.top!.name)}</span>
                       </span>
                     </span>
+                  ) : records[0] ? (
+                    // Nobody's name in it yet (a new daily's Days played in a row): its first record, to take.
+                    <span className="rbk-book__cover">
+                      <span className="rbk-book__label">{records[0].label}</span>
+                      <span className="rbk-book__value rbk-book__value--open">
+                        <b>Up for grabs</b>
+                      </span>
+                    </span>
                   ) : null}
                 </a>
               </li>
@@ -471,6 +505,7 @@ export function RecordBooksIndex() {
             <ul className="rbk-house">
               {data.site.boards.map((board) => {
                 const top = board.entries[0]
+                const holders = houseHolders(board)
                 const stand = data.site?.you?.[board.id]
                 return (
                   <li key={board.id} className="rbk-house__tile">
@@ -480,14 +515,15 @@ export function RecordBooksIndex() {
                       {top ? <span>{siteRecordUnitWord(top.value, board.unit)}</span> : null}
                     </span>
                     <span className="rbk-house__who">
-                      {top ? (
+                      {top && holders ? (
                         <>
                           <PlayerMark
                             name={top.name}
-                            avatarId={avatars.get(normalizePlayerName(top.name))}
+                            avatarId={top.avatarId ?? avatars.get(normalizePlayerName(top.name))}
                             className="rbk-house__mark"
                           />
-                          {top.name}
+                          {/* Everyone on the most, the first to get there first. */}
+                          {houseHolderLine(holders)}
                         </>
                       ) : (
                         'Nobody yet'
@@ -496,6 +532,7 @@ export function RecordBooksIndex() {
                     {stand?.rank ? (
                       <span className="rbk-house__you">
                         You #{stand.rank} with {stand.value.toLocaleString()}
+                        {stand.tied ? ', tied' : ''}
                       </span>
                     ) : null}
                   </li>

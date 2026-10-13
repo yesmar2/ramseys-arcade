@@ -7,6 +7,7 @@ import { RecordPlaque, shareOf, type PlaqueYou } from '../components/RecordPlaqu
 import { ShareBoardButton } from '../components/ShareBoardButton'
 import { getGame, PALETTE } from '../data/games'
 import { homeHref, rankHref, recordsIndexHref, siteRecordsHref, type Route } from '../hooks/useHashRoute'
+import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePageMeta } from '../hooks/usePageMeta'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { APP_NAME } from '../lib/brand'
@@ -20,6 +21,9 @@ import {
   houseGroups,
   houseHeadline,
   houseHeld,
+  houseHolderLine,
+  houseHolders,
+  housePlaces,
   houseValue,
   houseWhen,
 } from '../lib/houseBook'
@@ -71,23 +75,34 @@ function BookIcon() {
 
 type Standing = SiteRecordStanding[SiteRecordId]
 
-/** A house record as a brass plaque (RecordPlaque.tsx): it, its holder, and how close you are. It goes to its top ten. */
+/**
+ * A house record as a brass plaque (RecordPlaque.tsx): it, its holder, and how close you are. It goes to its
+ * top ten. A tie names everyone on the most; the first to get there holds it, as a daily's records go.
+ */
 function HousePlaque({ board, you, standing }: { board: SiteRecordBoard; you: string; standing: Standing }) {
   const top = board.entries[0]
   const holder = top ? normalizePlayerName(top.name) : ''
+  const holders = houseHolders(board)
+  const tied = holders != null && holders.names.length + holders.more > 1
   // Every house record is the most of something: a share of the holder's.
   const mark: PlaqueYou | undefined = !you
     ? undefined
     : top && holder === you
       ? { kind: 'mine' }
       : top && standing && standing.value > 0
-        ? { kind: 'on', value: houseValue(board, standing.value), share: shareOf(false, standing.value, top.value), rank: standing.rank ?? 0 }
+        ? {
+            kind: 'on',
+            value: houseValue(board, standing.value),
+            share: shareOf(false, standing.value, top.value),
+            rank: standing.rank ?? 0,
+            tied: Boolean(standing.tied),
+          }
         : { kind: 'none' }
   return (
     <RecordPlaque
       label={board.label}
       value={top ? houseValue(board, top.value) : null}
-      holder={top ? { name: holder, avatarId: top.avatarId } : null}
+      holder={top ? { name: holder, avatarId: top.avatarId, names: tied && holders ? houseHolderLine(holders) : undefined } : null}
       when={top ? houseWhen(board, top.at) : undefined}
       href={`#house-${board.id}`}
       you={mark}
@@ -98,6 +113,8 @@ function HousePlaque({ board, you, standing }: { board: SiteRecordBoard; you: st
 function TopTen({ board, you, standing }: { board: SiteRecordBoard; you: string; standing: Standing }) {
   const listed = board.entries.some((e) => normalizePlayerName(e.name) === you)
   const last = board.entries[board.entries.length - 1]
+  // Equal numbers share a place, as a daily's records have them: 76, 76, 64 are 1st, 1st and 3rd.
+  const places = housePlaces(board.entries)
   // A holder's card opens at the period you picked.
   const period = useDefaultPeriod()
   return (
@@ -111,11 +128,11 @@ function TopTen({ board, you, standing }: { board: SiteRecordBoard; you: string;
           {board.entries.map((entry, i) => {
             const name = normalizePlayerName(entry.name)
             const mine = Boolean(you) && name === you
-            const medal = MEDALS[i]
+            const medal = MEDALS[places[i]! - 1]
             return (
               <li key={name} className={`hbk-row${medal ? ` hbk-row--${medal}` : ''}${mine ? ' hbk-row--you' : ''}`}>
                 <a className="hbk-row__link" href={rankHref(name, period)}>
-                  <span className="hbk-row__ord">{ordinal(i + 1).toUpperCase()}</span>
+                  <span className="hbk-row__ord">{ordinal(places[i]!).toUpperCase()}</span>
                   <PlayerMark name={name} avatarId={entry.avatarId} className="hbk-row__mark" />
                   <span className="hbk-row__who">
                     <span className="hbk-row__name">
@@ -136,7 +153,9 @@ function TopTen({ board, you, standing }: { board: SiteRecordBoard; you: string;
       {/* Only when you're not in the list already: a row repeated right under itself reads as a bug. */}
       {you && standing && !listed && standing.value > 0 && last ? (
         <p className="hbk-top__note">
-          You: {houseValue(board, standing.value)}. Tenth has {houseValue(board, last.value)}.
+          You: {houseValue(board, standing.value)}
+          {standing.rank ? `, ${standing.tied ? 'tied ' : ''}${ordinal(standing.rank)}` : ''}. Tenth has{' '}
+          {houseValue(board, last.value)}.
         </p>
       ) : null}
     </section>
@@ -174,10 +193,14 @@ export function SiteRecordsPage() {
   const groups = houseGroups(boards)
   const held = houseHeld(boards, you)
   const close = houseClosest(boards, data?.you ?? null, you)
-  // Your own avatar, from wherever you're on the lists.
-  const yourAvatar = boards.flatMap((b) => b.entries).find((e) => normalizePlayerName(e.name) === you)?.avatarId
+  // Your own avatar, as the header has it; else from wherever you're on the lists.
+  const myAvatar = useMyAvatarId(you)
+  const yourAvatar = myAvatar ?? boards.flatMap((b) => b.entries).find((e) => normalizePlayerName(e.name) === you)?.avatarId
   const cover = boards.find((b) => b.id === 'day-streak') ?? boards[0]
   const coverTop = cover?.entries[0]
+  // A tie on a sign this small is a count, "3 tied": its plaque below names them.
+  const coverHolders = cover ? houseHolders(cover) : null
+  const coverTied = coverHolders ? coverHolders.names.length + coverHolders.more : 0
   const style = {
     '--hero-accent': HOUSE_ACCENT,
     '--hero-ink': inkOn(HOUSE_ACCENT),
@@ -239,7 +262,7 @@ export function SiteRecordsPage() {
               <span className="gb-marquee rbk-marquee">
                 <span>{cover.label}</span>
                 <b>{houseValue(cover, coverTop.value)}</b>
-                <span>{normalizePlayerName(coverTop.name)}</span>
+                <span>{coverTied > 1 ? `${coverTied} tied` : normalizePlayerName(coverTop.name)}</span>
               </span>
             ) : null}
           </div>
@@ -275,13 +298,14 @@ export function SiteRecordsPage() {
                 <h2 className="sb-card__title">Closest to ink</h2>
                 <p className="rbk-card__sub">The house records you are nearest to taking.</p>
                 <ul className="rbk-list">
-                  {close.map(({ board, value, rank, off }) => (
+                  {close.map(({ board, value, rank, tied, off }) => (
                     <li key={board.id}>
                       <a className="rbk-item rbk-item--plain" href={`#house-${board.id}`}>
                         <span className="rbk-item__text">
                           <span className="rbk-item__label">{board.label}</span>
                           <span className="rbk-item__sub">
                             {rank ? `You’re #${rank} with ${houseValue(board, value)}` : `You have ${houseValue(board, value)}`}
+                            {tied ? ', tied' : ''}
                           </span>
                         </span>
                         <span className="rbk-item__figure rbk-item__figure--quiet">{off} off</span>

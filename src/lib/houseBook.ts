@@ -37,6 +37,34 @@ export function houseWhen(board: Pick<SiteRecordBoard, 'id'>, at: number | null)
   return 'all time'
 }
 
+/**
+ * Everyone on a house record's most, the first to get there first, who holds it (the API's order, as a
+ * daily's records go); `more` counts any tied past the top ten. Null with nobody on it.
+ */
+export function houseHolders(board: SiteRecordBoard): { names: string[]; more: number } | null {
+  const top = board.entries[0]
+  if (!top) return null
+  const names = board.entries.filter((e) => e.value === top.value).map((e) => normalizePlayerName(e.name))
+  return { names, more: Math.max(0, (board.leaders ?? 0) - names.length) }
+}
+
+/** The holders in words: PILOT; PILOT and SOFIA; past `max` of them, PILOT and 3 more. Tied, it says so. */
+export function houseHolderLine(holders: { names: string[]; more: number }, max = 2): string {
+  const { names } = holders
+  const total = names.length + holders.more
+  if (total <= 1) return names[0] ?? ''
+  const who =
+    total > max
+      ? `${names.slice(0, max - 1).join(', ')} and ${total - (max - 1)} more`
+      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  return `${who}, tied`
+}
+
+/** Each row's place in a top ten, shared between equal numbers: 76, 76, 64 are 1st, 1st and 3rd. */
+export function housePlaces(entries: { value: number }[]): number[] {
+  return entries.map((e) => 1 + entries.filter((o) => o.value > e.value).length)
+}
+
 /** How many house records each player holds, most first. */
 function holderCounts(boards: SiteRecordBoard[]): { name: string; count: number }[] {
   const counts = new Map<string, number>()
@@ -106,22 +134,32 @@ export function houseHeld(boards: SiteRecordBoard[], you: string): SiteRecordBoa
   return boards.filter((b) => b.entries[0] && normalizePlayerName(b.entries[0].name) === you)
 }
 
-/** The records a player is nearest to taking, nearest first: on them, but not on top. */
+/**
+ * The records a player is nearest to taking, nearest first: on them, but not on top. `tied`: others have as
+ * many, at the same place.
+ */
 export function houseClosest(
   boards: SiteRecordBoard[],
   standing: SiteRecordStanding | null,
   you: string,
-): { board: SiteRecordBoard; value: number; rank: number | null; off: string }[] {
+): { board: SiteRecordBoard; value: number; rank: number | null; tied: boolean; off: string }[] {
   if (!standing || !you) return []
   return boards
     .map((board) => {
       const top = board.entries[0]
       const mine = standing[board.id]
       if (!top || !mine || mine.value <= 0 || mine.rank === 1 || normalizePlayerName(top.name) === you) return null
-      return { board, value: mine.value, rank: mine.rank, off: houseValue(board, top.value - mine.value), share: (top.value - mine.value) / top.value }
+      return {
+        board,
+        value: mine.value,
+        rank: mine.rank,
+        tied: Boolean(mine.tied),
+        off: houseValue(board, top.value - mine.value),
+        share: (top.value - mine.value) / top.value,
+      }
     })
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .sort((a, b) => a.share - b.share)
     .slice(0, 3)
-    .map(({ board, value, rank, off }) => ({ board, value, rank, off }))
+    .map(({ board, value, rank, tied, off }) => ({ board, value, rank, tied, off }))
 }

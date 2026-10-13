@@ -7,6 +7,7 @@ import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { useActiveGroup, useScope } from '../lib/groups'
 import { dailyPick } from '../lib/homePicks'
+import { houseHolderLine, houseHolders } from '../lib/houseBook'
 import {
   fetchGlobalBoard,
   normalizePlayerName,
@@ -180,6 +181,7 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
               .filter((board): board is SiteRecordBoard => Boolean(board))
               .map((board) => {
                 const top = board.entries[0] ?? null
+                const holders = houseHolders(board)
                 return (
                   <li key={board.id} className="hb-plaque">
                     <span className="hb-plaque__value">
@@ -187,7 +189,8 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
                       {top ? <small> {siteRecordUnitWord(top.value, board.unit)}</small> : null}
                     </span>
                     <span className="hb-plaque__label">{board.label}</span>
-                    <span className="hb-plaque__who">{top ? top.name : 'Nobody yet'}</span>
+                    {/* Everyone on the most, not just the first of them. */}
+                    <span className="hb-plaque__who">{holders ? houseHolderLine(holders) : 'Nobody yet'}</span>
                   </li>
                 )
               })}

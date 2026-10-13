@@ -385,17 +385,21 @@ export function coverRecord(records: RecordSummary[]): RecordSummary | null {
   return null
 }
 
-/** How many records each player holds, most first. */
+/**
+ * How many records each player holds, most first. Of two with as many, whoever got there first, as a daily's
+ * records held go: the one whose newest record was set first. Then the name.
+ */
 export function holderCounts(records: RecordSummary[]): { name: string; count: number }[] {
-  const counts = new Map<string, number>()
+  const counts = new Map<string, { count: number; reached: number }>()
   for (const r of records) {
     if (!r.top) continue
     const name = normalizePlayerName(r.top.name)
-    counts.set(name, (counts.get(name) ?? 0) + 1)
+    const had = counts.get(name)
+    counts.set(name, { count: (had?.count ?? 0) + 1, reached: Math.max(had?.reached ?? 0, r.top.at) })
   }
   return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .sort(([an, a], [bn, b]) => b.count - a.count || a.reached - b.reached || an.localeCompare(bn))
+    .map(([name, { count }]) => ({ name, count }))
 }
 
 /** How many books each player's name is in, for the line under it in the standings. */
@@ -408,12 +412,18 @@ export function booksHeld(books: { records: RecordSummary[] }[]): Map<string, nu
   return held
 }
 
-/** Who holds a book: its main holder, or how many share it when nobody holds more than one. */
+/**
+ * Who holds a book: its main holder, or how many share it when nobody holds more than one, or how many are
+ * tied for the most.
+ */
 export function bookHolders(records: RecordSummary[]): string {
   const holders = holderCounts(records)
   if (!holders.length) return 'Nobody yet'
   const [first] = holders
   if (first.count === 1 && holders.length > 1) return `${holders.length} different holders`
+  // Tied for the most, as a game's Records tab says it (headOver): never one of them as if alone.
+  const tied = holders.filter((h) => h.count === first.count).length
+  if (tied > 1) return `${tied} players hold ${first.count} each`
   return `${first.name} holds ${first.count}`
 }
 
@@ -425,6 +435,8 @@ export function booksHeadline(records: RecordSummary[]): { name: string; rest: s
   const total = records.length
   const [first, second] = holders
   if (!first) return { name: '', rest: 'The books are waiting for their first names.' }
+  const tied = holders.filter((h) => h.count === first.count).length
+  if (tied > 2) return { name: '', rest: `${capital(numberWord(tied))} players hold ${first.count} records each, of the ${total}.` }
   if (second && second.count === first.count) {
     return { name: '', rest: `${first.name} and ${second.name} hold ${first.count} records each, of the ${total}.` }
   }
