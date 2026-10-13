@@ -132,6 +132,27 @@ function anchorTarget(): HTMLElement | null {
   return id ? document.getElementById(id) : null
 }
 
+/** A tab's bar with the wait for its tab under it (GameHubPage's gh-tab-wait). */
+function waitsForTab(place: Element | null): boolean {
+  return Boolean(place?.nextElementSibling?.classList.contains('gh-tab-wait'))
+}
+
+/**
+ * The place, for one landing (scrollToPlace). A tab's bar (#records) is landed on a look after its tab has come: not
+ * over the wait for it, where the page's foot showed under the wait for the tab to push off as it came, nor as the
+ * tab came in, which the browser counted as pushing the foot off all the same.
+ */
+function landingPlace(): () => HTMLElement | null {
+  let waited = false
+  return () => {
+    const place = anchorTarget()
+    const waiting = waitsForTab(place)
+    const ready = !waiting && !waited
+    waited = waiting
+    return ready ? place : null
+  }
+}
+
 function isGameScreen(route: ReturnType<typeof useRoute>) {
   return route.name === 'gamePlay' || route.name === 'tournamentPlay'
 }
@@ -160,8 +181,9 @@ function App() {
   // The jump to the top is instant: the site's smooth scrolling made it a glide, still running when a page's own
   // place (a board's section, a profile's trophies) was drawn, and it carried the page past it.
   useEffect(() => {
-    if (!anchorTarget()) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    return anchorId() ? scrollToPlace(anchorTarget) : undefined
+    const place = anchorTarget()
+    if (!place || waitsForTab(place)) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    return anchorId() ? scrollToPlace(landingPlace()) : undefined
   }, [scrollKey])
 
   useEffect(() => {
