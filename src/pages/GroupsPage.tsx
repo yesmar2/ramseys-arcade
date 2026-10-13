@@ -78,8 +78,9 @@ export function GroupsPage() {
       .then((list) => {
         if (!cancelled) setGroups(list)
       })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load')
+      .catch(() => {
+        // In the site's words, where the Start card shows it: the browser's ("Failed to fetch") isn't how the site talks.
+        if (!cancelled) setError('Your groups couldn’t load. Check your connection and reload the page.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

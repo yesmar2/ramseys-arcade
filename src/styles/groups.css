@@ -1349,7 +1349,9 @@ html[data-theme='dark'] .grp-menu__danger {
   max-width: 32rem;
 }
 
+/* One column the card's width: sized by its contents, the code field's input held it 7px past the card at 360. */
 .grp-gate {
+  grid-template-columns: minmax(0, 1fr);
   justify-items: stretch;
   max-width: 36rem;
   text-align: left;

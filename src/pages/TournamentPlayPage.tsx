@@ -27,9 +27,11 @@ import { isRaceEventGame, type RaceEventGame } from '../lib/tournaments'
 /*
  * Every game that can be played inside an event. Each of these reads the
  * tournament context and saves through the shared score card, so the only
- * thing that decides whether a slug plays here is whether it is in this map.
- * The old fixed list of eight left the weekly's newer games — Find the Bug,
- * Crumbtrail — reporting that they weren't part of an event they were in.
+ * thing that decides whether a slug plays here is whether it is in this map
+ * or the racing dailies' below: the game the page would render. The old
+ * fixed list of eight left the weekly's newer games — Find the Bug,
+ * Crumbtrail — reporting that they weren't part of an event they were in,
+ * and a check of this map alone did the same to the racing dailies.
  *
  * Each game is the same chunk its own page loads. It is fetched as soon as
  * this page mounts, while the event detail is still on its way, so by the
@@ -48,6 +50,7 @@ const TOURNAMENT_GAMES: Record<string, LazyPage<object>> = {
   putt: lazyPage(() => import('../games/putt/PuttGame').then((m) => m.PuttGame)),
   findbug: lazyPage(() => import('../games/findbug/FindBugGame').then((m) => m.FindBugGame)),
   fireflies: lazyPage(() => import('../games/fireflies/FirefliesGame').then((m) => m.FirefliesGame)),
+  frenzy: lazyPage(() => import('../games/frenzy/FrenzyGame').then((m) => m.FrenzyGame)),
   patriot: lazyPage(() => import('../games/patriot/PatriotGame').then((m) => m.PatriotGame)),
   pellets: lazyPage(() => import('../games/pellets/PelletsGame').then((m) => m.PelletsGame)),
   pileup: lazyPage(() => import('../games/pileup/PileupGame').then((m) => m.PileupGame)),
@@ -118,7 +121,8 @@ export function TournamentPlayPage({
         })
         if (cancelled) return
         setDetail(data)
-        if (!data.games.includes(gameSlug) || !(gameSlug in TOURNAMENT_GAMES)) {
+        // The game this page renders decides: a racing daily's is in RACE_TOURNAMENT_GAMES, not the map above.
+        if (!data.games.includes(gameSlug) || !Game) {
           setLoadError('That game isn’t part of this event.')
           return
         }
@@ -192,7 +196,7 @@ export function TournamentPlayPage({
     return () => {
       cancelled = true
     }
-  }, [tournamentId, gameSlug, playerName, invite])
+  }, [tournamentId, gameSlug, playerName, invite, Game])
 
   /*
    * In an event that spends a try as its run starts, this page's runs begin

@@ -9,6 +9,8 @@ import {
   gameName,
   ordinal,
   standingsTable,
+  trophyField,
+  trophyGiven,
   type ResultLine,
   type SkipLesson,
 } from '../lib/eventPages'
@@ -172,7 +174,7 @@ export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolea
         </h1>
         <p className="evp-hero__lede">
           Play all {t.games.length === 3 ? 'three' : t.games.length} by Sunday night. Do well on every one: the best
-          all-round player takes the week and its trophy.
+          all-round player takes the week, and its trophy with {trophyField(t)} or more players.
         </p>
         <p className="evp-metas">
           <span className="evp-meta">
@@ -232,7 +234,7 @@ export function DailyCard({ t }: { t: TournamentSummary }) {
           {t.title}
         </h2>
         <p className="evp-card__copy">
-          The best score by midnight takes the day, and a trophy.{' '}
+          The best score by midnight takes the day, and a trophy with {trophyField(t)} or more players.{' '}
           {leader
             ? `${leader.name} leads${leader.score != null ? ` with ${leader.score.toLocaleString()}` : ''}.`
             : 'Nobody has played yet, so any run leads.'}
@@ -308,6 +310,8 @@ export function LastWeekCard({
   const winner = t.winner ?? t.podium?.[0]?.name ?? ''
   const mine = Boolean(me) && normalizePlayerName(winner) === normalizePlayerName(me)
   const avatars = new Map((detail ? standingsTable(detail, '') : []).map((r) => [r.name, r.avatarId]))
+  // Whether the week's trophy was given (lib/eventPages trophyGiven): known once its standings have come.
+  const trophy = detail && detail.id === t.id ? trophyGiven(detail) : null
   const podium = (t.podium ?? []).slice(0, 3)
   const order = [podium[1], podium[0], podium[2]].filter(Boolean)
   // A player's card opens at the period you picked.
@@ -324,7 +328,11 @@ export function LastWeekCard({
           </h2>
           <p className="evp-card__copy">
             {gameList(t.games)}
-            {mine ? '. The trophy is on your player card.' : `, from ${t.playerCount} players.`}
+            {mine && trophy
+              ? '. The trophy is on your player card.'
+              : mine && trophy === false
+                ? `. No trophy this time: it takes ${trophyField(t)} or more players.`
+                : `, from ${t.playerCount} players.`}
           </p>
         </div>
       </div>

@@ -10,6 +10,7 @@ import {
   type LeaderboardPeriod,
 } from './leaderboard'
 import { applyBoardScope, FRIENDS_SCOPE, type GroupPublic } from './groups'
+import { PLUS_LIMITS } from './plans'
 
 /*
  * The groups pages, worked out: a group's table for a period, the record it
@@ -45,8 +46,11 @@ export function parseGroupLink(text: string): { id: string; invite: string | nul
   return { id: decodeURIComponent(match[1]!), invite: invite ? invite[1]!.toUpperCase() : null }
 }
 
-/** A free host's roster (the API's plans.ts groupMembers). How many groups you can host is your plan's (useAuth limits). */
-export const MEMBER_LIMIT = 20
+/**
+ * The most a group can hold on any plan (the API's plans.ts groupMembers, a Plus host's): a group's table asks
+ * for that many rows, so a full group is all on it. How many a group holds is its host's plan's (GroupDetail).
+ */
+const MOST_MEMBERS = PLUS_LIMITS.groupMembers
 
 export type GroupPeriod = Extract<LeaderboardPeriod, 'weekly' | 'monthly' | 'all'>
 
@@ -66,7 +70,7 @@ export type GroupTable = { period: GroupPeriod; totalPlayers: number; entries: G
 
 /** The group's standings for a period: every member who has played, by points. */
 export async function fetchGroupTable(groupId: string, period: GroupPeriod): Promise<GroupTable> {
-  const qs = scoped(groupId, { limit: String(MEMBER_LIMIT + 5) })
+  const qs = scoped(groupId, { limit: String(MOST_MEMBERS + 5) })
   if (period !== 'all') qs.set('period', period)
   const data = await api<{ totalPlayers?: number; entries?: GlobalBoardEntry[] }>(`/leaderboards/rank?${qs}`)
   return { period, totalPlayers: data.totalPlayers ?? 0, entries: data.entries ?? [] }

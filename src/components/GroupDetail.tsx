@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { useAuth } from '../hooks/useAuth'
 import { gameHref, rankHowHref, rankHref, tournamentCreateHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -6,7 +7,6 @@ import {
   gameName,
   gamesLed,
   GROUP_PERIODS,
-  MEMBER_LIMIT,
   membersInOrder,
   nameList,
   newestRecords,
@@ -21,6 +21,8 @@ import {
 import { appendGroupQuery, groupsIndexHref, type GroupPublic } from '../lib/groups'
 import { formatBoardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName, type GlobalBoardEntry } from '../lib/leaderboard'
+import { FREE_LIMITS, PLUS_LIMITS } from '../lib/plans'
+import { usePlusMember } from '../lib/plus'
 import { resolveGameAccent } from '../lib/theme'
 import { getGame } from '../data/games'
 import { GameThumbArt } from './GameThumbArt'
@@ -478,6 +480,18 @@ export function NewestRecords({ records }: { records: GroupRecord[] | null }) {
 
 const MEMBERS_SHOWN = 7
 
+/**
+ * How many people the group can hold: its host's plan's (the API's plans.ts groupMembers, 20 free and 100 on
+ * Plus). The host has their own limits; anyone else goes by the Plus mark on the host's tag (lib/plus.ts), which
+ * a host on Plus's free week doesn't wear yet.
+ */
+function useMemberCap(group: GroupPublic): number {
+  const { limits } = useAuth()
+  const hostOnPlus = usePlusMember(group.ownerName ?? '')
+  if (group.isOwner) return limits.groupMembers
+  return hostOnPlus ? PLUS_LIMITS.groupMembers : FREE_LIMITS.groupMembers
+}
+
 function MemberRow({
   member,
   host,
@@ -550,6 +564,7 @@ export function GroupMembers({
   const members = membersInOrder(group)
   const host = group.ownerName ? normalizePlayerName(group.ownerName) : null
   const you = normalizePlayerName(me)
+  const cap = useMemberCap(group)
   const row = (m: GroupPublic['members'][number]) => (
     <MemberRow
       key={m.name}
@@ -569,7 +584,7 @@ export function GroupMembers({
           Who’s in
         </h2>
         <span className="grp-sub">
-          {group.memberCount} of {MEMBER_LIMIT}
+          {group.memberCount} of {cap}
         </span>
       </div>
       <ul className="grp-members">{members.slice(0, MEMBERS_SHOWN).map(row)}</ul>
@@ -615,7 +630,8 @@ export function GroupInvite({
   onRotate: () => void
   onMembersInvite: (on: boolean) => void
 }) {
-  const seats = Math.max(0, MEMBER_LIMIT - group.memberCount)
+  const cap = useMemberCap(group)
+  const seats = Math.max(0, cap - group.memberCount)
   const host = group.isOwner
   return (
     <section className="grp-card grp-side grp-invite" aria-labelledby="grp-invite-title">
