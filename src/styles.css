@@ -971,6 +971,21 @@ html[data-theme='dark'] .home-about__prose a {
   text-decoration: underline;
 }
 
+/* About's way on, after "Ready to play?": the panel kit's buttons, in the site's own colour. */
+.home-about__acts {
+  --panel-accent: var(--accent);
+  --panel-on-accent: #03211b;
+  --panel-fill: rgba(var(--ink-rgb), 0.05);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.home-about__acts .panel__btn {
+  flex: none;
+}
+
 .home-spotter__card {
   display: flex;
   align-items: center;

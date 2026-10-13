@@ -269,6 +269,29 @@ export function skipLesson(detail: TournamentDetail): SkipLesson | null {
   }
 }
 
+/*
+ * A trophy is for beating a field (the API's TROPHY_FIELD_OFFICIAL and TROPHY_FIELD_HOSTED): five who played
+ * in the arcade's own events, three in one players run. Fewer, and the event still has a winner, but no trophy.
+ */
+export function trophyField(t: Pick<TournamentSummary, 'official'>): number {
+  return t.official ? 5 : 3
+}
+
+/** How many played, as the API counts them for a trophy: a bracket's entrants, or everyone with a run in. */
+function eventField(detail: TournamentDetail): number {
+  return eventKind(detail) === 'bracket' ? detail.playerCount : detail.standings.filter((r) => r.gamesPlayed > 0).length
+}
+
+/** Whether a finished event's winner took a trophy: its field was big enough. */
+export function trophyGiven(detail: TournamentDetail): boolean {
+  return eventField(detail) >= trophyField(detail)
+}
+
+/** "With 3 or more players, ": what a trophy takes, said wherever one is promised. */
+function trophyTakes(detail: TournamentDetail): string {
+  return `With ${trophyField(detail)} or more players, `
+}
+
 /**
  * How an event works, as short steps. An all-round event's points per place
  * stay off them: what counts is playing every game and placing well on each.
@@ -294,12 +317,15 @@ export function scoringSteps(detail: TournamentDetail): string[] {
         ? `${hours / 24} ${hours === 24 ? 'day' : 'days'}`
         : `${hours} ${hours === 1 ? 'hour' : 'hours'}`
     const each = !tries ? 'You each play as often as you like' : tries === 1 ? 'You each get one try' : `You each get ${tries} tries`
+    // A bracket draws only once every seat is taken, so its seats are its field: enough of them, and the trophy is sure.
+    const sure = (detail.rules.maxPlayers ?? detail.playerCount) >= trophyField(detail)
+    const end = isDoubleElim(detail)
+      ? 'A first loss drops you to the losers bracket and a second puts you out. Win the grand final and'
+      : 'Lose a match and you’re out. Win the final and'
     return [
       'Everyone is drawn into head-to-head matches, a round at a time.',
       `${each}${span ? ` in the round’s ${span}` : ''}, and the higher best score goes through.`,
-      isDoubleElim(detail)
-        ? 'A first loss drops you to the losers bracket and a second puts you out. Win the grand final and the trophy is yours.'
-        : 'Lose a match and you’re out. Win the final and the trophy is yours.',
+      sure ? `${end} the trophy is yours.` : `${end} the event is yours. A trophy takes ${trophyField(detail)} or more players.`,
     ]
   }
   if (detail.format === 'place-points' && detail.games.length > 1) {
@@ -307,12 +333,12 @@ export function scoringSteps(detail: TournamentDetail): string[] {
       'Each game ranks everyone who played it, by their best run.',
       'Play them all: a game you skip counts for nothing.',
       detail.cadence === 'weekly'
-        ? 'The best all-round player on Sunday night wins the week, and its trophy.'
-        : 'The best all-round player when it ends wins, and takes the trophy.',
+        ? `The best all-round player on Sunday night wins the week. ${trophyTakes(detail)}its trophy too.`
+        : `The best all-round player when it ends wins. ${trophyTakes(detail)}a trophy too.`,
     ]
   }
   if (detail.format === 'place-points') {
-    return [triesLine, 'The best run when it ends wins.', 'The winner takes a trophy for their player card.']
+    return [triesLine, 'The best run when it ends wins.', `${trophyTakes(detail)}the winner takes a trophy for their player card.`]
   }
   if (detail.format === 'cumulative' || detail.rules.scoring === 'sum') {
     return [triesLine, 'Every run adds to your total.', 'The biggest total when it ends wins.']
@@ -321,9 +347,9 @@ export function scoringSteps(detail: TournamentDetail): string[] {
     triesLine,
     detail.games.length > 1 ? 'Your scores on the games add up to your total.' : 'The best score when it ends wins.',
     detail.cadence === 'daily'
-      ? 'It closes at midnight, and the winner takes the day’s trophy.'
+      ? `It closes at midnight. ${trophyTakes(detail)}the winner takes the day’s trophy.`
       : detail.cadence === 'oneshot'
-        ? 'It closes at midnight, and the best try takes the day’s trophy.'
-        : 'The winner takes a trophy for their player card.',
+        ? `It closes at midnight. ${trophyTakes(detail)}the best try takes the day’s trophy.`
+        : `${trophyTakes(detail)}the winner takes a trophy for their player card.`,
   ]
 }

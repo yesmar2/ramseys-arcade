@@ -151,6 +151,8 @@ const TRIPLE = {
     standingRow('IVY', [10, 6, 8], [1, 6, 4]),
     standingRow('HAWK', [7, 10, 6], [5, 1, 6]),
     standingRow('CHEF', [8, 9, 5], [4, 2, 8]),
+    // A fifth who played: the arcade's own events give a trophy from five (lib/eventPages trophyGiven).
+    standingRow('ROOK', [6, 7, 7], [6, 3, 5]),
   ],
 } as unknown as TournamentDetail
 

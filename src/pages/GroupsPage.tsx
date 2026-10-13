@@ -23,7 +23,7 @@ import { useFriends } from '../hooks/useFriends'
 import { useGroupBoard } from '../hooks/useGroupBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn } from '../lib/color'
-import { GROUP_LIMIT, groupAccent, groupStyle, leadLine, youLine, type GroupPeriod } from '../lib/groupPages'
+import { groupAccent, groupStyle, leadLine, youLine, type GroupPeriod } from '../lib/groupPages'
 import {
   createGroup,
   deleteGroup,
@@ -47,6 +47,7 @@ import {
   type GroupPublic,
 } from '../lib/groups'
 import { ApiError, normalizePlayerName } from '../lib/leaderboard'
+import { isPlanLimitError } from '../lib/plans'
 import { COPIED_MS, copyToClipboard } from '../lib/share'
 
 function inviteUrl(id: string, code: string) {
@@ -59,13 +60,14 @@ function inviteUrl(id: string, code: string) {
  * one from a link. With no group yet, what a group is.
  */
 export function GroupsPage() {
-  const { account, signedOut, loading: authLoading } = useAuth()
+  const { account, signedOut, loading: authLoading, limits, isPlus } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const activeId = useActiveGroup()
   const { friends, loaded: friendsLoaded } = useFriends()
   const [groups, setGroups] = useState<GroupPublic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [planError, setPlanError] = useState<unknown>(null)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -93,12 +95,15 @@ export function GroupsPage() {
     if (busy || signedOut) return
     setBusy(true)
     setError(null)
+    setPlanError(null)
     try {
       const group = await createGroup(name)
       if (group.inviteCode) rememberGroupInvite(group.id, group.inviteCode)
       navigate(groupHref(group.id, group.inviteCode ?? undefined))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the group')
+      // A plan's refusal (402) gets its own notice, with the way to Plus; anything else is a plain error.
+      setError(isPlanLimitError(err) ? null : err instanceof Error ? err.message : 'Could not start the group')
+      setPlanError(isPlanLimitError(err) ? err : null)
       setBusy(false)
     }
   }
@@ -115,9 +120,10 @@ export function GroupsPage() {
             <h1 className="grp-head__title">Friends &amp; groups</h1>
             <p className="grp-head__lede">The same boards, with just your people on them.</p>
           </div>
+          {/* No "of 5": joining is never capped, only hosting (the Start card says how many). */}
           {account && friendsLoaded ? (
             <p className="grp-cap">
-              {friends.length} {friends.length === 1 ? 'friend' : 'friends'} · {groups.length} of {GROUP_LIMIT} groups
+              {friends.length} {friends.length === 1 ? 'friend' : 'friends'} · {groups.length} {groups.length === 1 ? 'group' : 'groups'}
             </p>
           ) : null}
         </header>
@@ -154,11 +160,14 @@ export function GroupsPage() {
                 <AddFriendCard me={playerName} />
                 <StartGroupCard
                   signedIn={!signedOut}
-                  full={groups.length >= GROUP_LIMIT}
+                  hosting={groups.filter((g) => g.isOwner).length}
+                  limits={limits}
+                  isPlus={isPlus}
                   name={name}
                   setName={setName}
                   busy={busy}
                   error={error}
+                  planError={planError}
                   onCreate={(e) => void onCreate(e)}
                 />
                 <LinkCard onOpen={(id, invite) => navigate(groupHref(id, invite ?? undefined))} />
@@ -179,12 +188,15 @@ export function GroupsPage() {
  */
 export function GroupDetailPage({ id, invite }: { id: string; invite?: string }) {
   const route = useRoute()
-  const { account } = useAuth()
+  const { account, signedOut } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
   const activeId = useActiveGroup()
   const [group, setGroup] = useState<GroupPublic | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** Why there's no group to show: none at this address (a 404), or the API wasn't reached. The page says it in its own words. */
+  const [error, setError] = useState<'missing' | 'failed' | null>(null)
+  /** Try again, after a load that failed. */
+  const [attempt, setAttempt] = useState(0)
   const [needsInvite, setNeedsInvite] = useState(false)
   const [inviteDraft, setInviteDraft] = useState(invite ?? '')
   const [busy, setBusy] = useState(false)
@@ -219,14 +231,18 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     setLoading(true)
     setError(null)
     setNeedsInvite(false)
-    void load(invite ?? storedInvite)
+    setNote(null)
+    const code = invite ?? storedInvite
+    void load(code)
       .catch((err) => {
         if (cancelled) return
         if (err instanceof ApiError && err.code === 'INVITE_REQUIRED') {
           setNeedsInvite(true)
           setError(null)
+          // A code that came with the link, or was kept from one, and no longer opens it: the gate says why.
+          setNote(code ? 'That invite link has stopped working: the host may have made a new one.' : null)
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load')
+          setError(err instanceof ApiError && err.status === 404 ? 'missing' : 'failed')
         }
       })
       .finally(() => {
@@ -235,7 +251,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
     return () => {
       cancelled = true
     }
-  }, [id, invite, route, playerName, account?.id])
+  }, [id, invite, route, playerName, account?.id, attempt])
 
   const onJoin = async (code = storedInvite ?? inviteDraft) => {
     if (busy) return
@@ -454,15 +470,24 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   }
 
   if (error || !group) {
+    // The site's own words, never the API's: no group at this address, or none reached.
+    const missing = error === 'missing'
     return (
       <PageShell innerClassName="lb-page__inner lb-page__inner--events">
         <div className="grp" style={style}>
           <section className="grp-banner grp-banner--plain">
-            <h1 className="grp-banner__title">Group not found</h1>
-            <p className="grp-copy">{error ?? 'Its invite link may have been replaced by a new one.'}</p>
+            <h1 className="grp-banner__title">{missing ? 'This group isn’t here' : 'Couldn’t open this group'}</h1>
+            <p className="grp-copy">
+              {missing ? 'It may have been deleted, or the link is missing a letter.' : 'Check your connection and try again.'}
+            </p>
             <div className="grp-acts">
-              <a className="grp-btn grp-btn--ghost" href={groupsIndexHref()}>
-                Friends &amp; groups
+              {missing ? null : (
+                <button type="button" className="grp-btn" onClick={() => setAttempt((n) => n + 1)}>
+                  Try again
+                </button>
+              )}
+              <a className={missing ? 'grp-btn' : 'grp-btn grp-btn--ghost'} href={groupsIndexHref()}>
+                Your groups
               </a>
             </div>
           </section>
@@ -474,6 +499,7 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   const viewer = group.isOwner ? 'host' : group.isMember ? 'member' : 'visitor'
   const url = group.inviteCode ? inviteUrl(id, group.inviteCode) : null
   const monthEntries = month.table?.entries ?? []
+  // Joining takes a gamer tag, and a new tag takes an account (the API's names.ts): signed out, signing in comes first.
   const join = playerName ? (
     <button type="button" className="grp-btn" disabled={busy} onClick={() => void onJoin()}>
       {busy ? 'Joining…' : `Join as ${playerName}`}
@@ -481,9 +507,9 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   ) : (
     <>
       <button type="button" className="grp-btn" onClick={openSiteMenu}>
-        Pick a gamer tag to join
+        {signedOut ? 'Sign in to join' : 'Pick a gamer tag to join'}
       </button>
-      <span className="grp-hint">Sign in from the menu and pick a tag.</span>
+      <span className="grp-hint">{signedOut ? 'Sign in and pick a gamer tag to join.' : 'Pick one in the menu.'}</span>
     </>
   )
   const members = (

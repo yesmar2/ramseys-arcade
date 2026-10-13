@@ -1,6 +1,6 @@
 import { getGame } from '../data/games'
 import { rankHowHref, rankHref } from '../hooks/useHashRoute'
-import { eventSpan, gameList, ordinal, standingsTable } from './eventPages'
+import { eventSpan, gameList, ordinal, standingsTable, trophyField, trophyGiven } from './eventPages'
 import type { FriendsWeek } from './friendsWeek'
 import { gapBetween } from './gameBoard'
 import { normalizePlayerName, type GlobalRankResult, type LeaderboardPeriod } from './leaderboard'
@@ -46,6 +46,8 @@ export type WinTakeoverData = {
   podium: WinPodium[]
   /** Engraved on the trophy's base, when it fits. */
   plate: string | null
+  /** The cup over the podium; off for an event won without a trophy (too few played: lib/eventPages trophyGiven). */
+  trophy?: boolean
   note: { text: string; href?: string } | null
   /** A quiet link under the note: the standings' workings. */
   more?: { text: string; href: string }
@@ -93,8 +95,12 @@ function prizeWords(detail: TournamentDetail) {
 export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeoverData | null {
   const you = normalizePlayerName(me)
   if (!you) return null
+  // The cup and its note only when the API gave one: below the event's field, a win takes no trophy.
+  const trophy = trophyGiven(detail)
   const words = prizeWords(detail)
-  const note = { text: 'The trophy is on your shelf, on your player card.', href: rankHref() }
+  const note = trophy
+    ? { text: 'The trophy is on your shelf, on your player card.', href: rankHref() }
+    : { text: `No trophy this time: it takes ${trophyField(detail)} or more players.` }
 
   if (eventKind(detail) === 'bracket') {
     const final = finalBracketMatch(detail.bracket?.matches ?? [])
@@ -105,7 +111,8 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
       kicker: words.kicker,
       lead: words.lead,
       prize: words.prize,
-      plate: words.plate,
+      plate: trophy ? words.plate : null,
+      trophy,
       lede: `${opponent ? `You beat ${normalizePlayerName(opponent)} in the final. ` : ''}${players(count)} in the draw.`,
       rows: [],
       podium: [
@@ -166,7 +173,8 @@ export function eventWinTakeover(detail: TournamentDetail, me: string): WinTakeo
     kicker: words.kicker,
     lead: words.lead,
     prize: words.prize,
-    plate: words.plate,
+    plate: trophy ? words.plate : null,
+    trophy,
     lede: `${how}${margin}. ${players(count)} went for it.`,
     rows,
     podium: table.slice(0, 3).map((row, i) => ({

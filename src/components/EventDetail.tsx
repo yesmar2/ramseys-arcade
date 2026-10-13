@@ -65,12 +65,14 @@ export function EventGames({ games }: { games: GameCardState[] }) {
 /*
  * What a player scored on a game, and where it placed them. The place is
  * what counts in an all-round event, but the score is what they played for.
+ * A game with no run is "not yet" while the event runs: only once it's over
+ * was it skipped.
  */
-function Cell({ slug, place, score }: TableRow['cells'][number]) {
+function Cell({ slug, place, score, ended }: TableRow['cells'][number] & { ended: boolean }) {
   if (place == null) {
     return (
       <span className="evp-cell evp-cell--skipped">
-        —<small>skipped</small>
+        —<small>{ended ? 'skipped' : 'not yet'}</small>
       </span>
     )
   }
@@ -82,8 +84,8 @@ function Cell({ slug, place, score }: TableRow['cells'][number]) {
   )
 }
 
-function cellTitle(cell: TableRow['cells'][number]): string {
-  if (cell.place == null) return `${gameName(cell.slug)}: skipped`
+function cellTitle(cell: TableRow['cells'][number], ended: boolean): string {
+  if (cell.place == null) return `${gameName(cell.slug)}: ${ended ? 'skipped' : 'not played yet'}`
   return `${gameName(cell.slug)}: ${formatLeaderboardScore(cell.slug, cell.score ?? 0)}, ${ordinal(cell.place)}`
 }
 
@@ -91,7 +93,19 @@ function cellTitle(cell: TableRow['cells'][number]): string {
  * An all-round event has no total column: its total is only the places added
  * up, and the order already says it. Scores that add up keep theirs.
  */
-function StandingsRow({ row, allRound, cols, gap = false }: { row: TableRow; allRound: boolean; cols: CSSProperties; gap?: boolean }) {
+function StandingsRow({
+  row,
+  allRound,
+  ended,
+  cols,
+  gap = false,
+}: {
+  row: TableRow
+  allRound: boolean
+  ended: boolean
+  cols: CSSProperties
+  gap?: boolean
+}) {
   // A player's card opens at the period you picked.
   const period = useDefaultPeriod()
   const cls = [
@@ -111,11 +125,11 @@ function StandingsRow({ row, allRound, cols, gap = false }: { row: TableRow; all
         {row.you ? <span className="evp-you">You</span> : null}
       </a>
       {row.cells.map((cell) => (
-        <span key={cell.slug} className="evp-table__cell" title={cellTitle(cell)}>
+        <span key={cell.slug} className="evp-table__cell" title={cellTitle(cell, ended)}>
           <span className="evp-table__cell-game" aria-hidden="true">
             <GameThumbArt slug={cell.slug} accent={gameAccent(cell.slug)} />
           </span>
-          <Cell {...cell} />
+          <Cell {...cell} ended={ended} />
         </span>
       ))}
       {allRound ? null : <span className="evp-table__total">{eventScoreText(row.cells.map((c) => c.slug), row.total)}</span>}
@@ -125,8 +139,8 @@ function StandingsRow({ row, allRound, cols, gap = false }: { row: TableRow; all
 
 /**
  * The standings, a row a player and a column a game: what each scored and
- * where they placed on it. A game a player skipped shows as skipped, which is
- * most of the story of who won.
+ * where they placed on it. A game a player skipped shows as skipped (as "not
+ * yet" while the event runs), which is most of the story of who won.
  */
 export function StandingsTable({
   detail,
@@ -170,16 +184,16 @@ export function StandingsTable({
       </div>
       <ol className="evp-table__rows">
         {shown.map((row) => (
-          <StandingsRow key={row.name} row={row} allRound={allRound} cols={cols} />
+          <StandingsRow key={row.name} row={row} allRound={allRound} ended={ended} cols={cols} />
         ))}
-        {extra ? <StandingsRow row={extra} allRound={allRound} cols={cols} gap /> : null}
+        {extra ? <StandingsRow row={extra} allRound={allRound} ended={ended} cols={cols} gap /> : null}
       </ol>
       {limit && top.length > shown.length ? (
         <details className="evp-table__all">
           <summary>{below > 0 ? `The top ${top.length}` : `All ${total.toLocaleString()} players`}</summary>
           <ol className="evp-table__rows">
             {top.slice(shown.length).map((row) => (
-              <StandingsRow key={row.name} row={row} allRound={allRound} cols={cols} />
+              <StandingsRow key={row.name} row={row} allRound={allRound} ended={ended} cols={cols} />
             ))}
           </ol>
           {below > 0 ? (
@@ -412,7 +426,11 @@ export function NextEventCard({ t }: { t: TournamentSummary }) {
   )
 }
 
-/** The winner, in the banner of a finished event: with their score, when a score decided it. */
+/**
+ * The winner, in the banner of a finished event: with their score, when a score decided it. The cup and the
+ * trophy line only when a trophy was given (lib/eventPages trophyGiven): below its field, the event still has a
+ * winner, but no trophy.
+ */
 export function WinnerCard({
   winner,
   avatarId,
@@ -420,6 +438,8 @@ export function WinnerCard({
   mine,
   runnersUp,
   games = [],
+  trophy,
+  trophyAt,
 }: {
   winner: string
   avatarId?: string
@@ -428,6 +448,9 @@ export function WinnerCard({
   runnersUp: string | null
   /** The event's games, so a racing daily's winning time reads as a time. */
   games?: readonly string[]
+  trophy: boolean
+  /** How many players a trophy takes, for a win without one. */
+  trophyAt: number
 }) {
   const amount = total == null ? '' : `, with ${eventScoreText(games, total)}`
   const period = useDefaultPeriod()
@@ -435,16 +458,22 @@ export function WinnerCard({
     <div className="evp-winner">
       <span className="evp-winner__mark">
         <PlayerAvatar name={winner} avatarId={avatarId} size="lg" />
-        <span className="evp-winner__cup" aria-hidden="true">
-          <TrophyIcon />
-        </span>
+        {trophy ? (
+          <span className="evp-winner__cup" aria-hidden="true">
+            <TrophyIcon />
+          </span>
+        ) : null}
       </span>
       <span className="evp-winner__text">
         <b>{mine ? `You won${amount}` : `${winner} won${amount}`}</b>
         {mine ? (
-          <a className="evp-more" href={rankHref(undefined, period)}>
-            The trophy is on your player card
-          </a>
+          trophy ? (
+            <a className="evp-more" href={rankHref(undefined, period)}>
+              The trophy is on your player card
+            </a>
+          ) : (
+            <span>No trophy this time: it takes {trophyAt} or more players.</span>
+          )
         ) : runnersUp ? (
           <span>{runnersUp}</span>
         ) : null}

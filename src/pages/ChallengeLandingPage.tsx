@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
-import { gameHref, gamePlayHref, navigate } from '../hooks/useHashRoute'
+import { gameHref, gamePlayHref, homeHref, navigate } from '../hooks/useHashRoute'
 import { fetchChallenge, setActiveChallenge } from '../lib/challenges'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { ApiError } from '../lib/leaderboard'
@@ -12,7 +12,8 @@ const SLOW_MS = 3500
 /**
  * A friend's challenge link. It reads the challenge, makes it this tab's for
  * the game, and goes straight on to the game's start card, which names it.
- * A link that no longer leads anywhere still leads to the game.
+ * A link that no longer leads anywhere still leads to the game, or to all of
+ * them when the link names a game the arcade doesn't have.
  */
 export function ChallengeLandingPage({ slug, id }: { slug: string; id: string }) {
   const [state, setState] = useState<'loading' | 'missing' | 'failed'>('loading')
@@ -54,7 +55,9 @@ export function ChallengeLandingPage({ slug, id }: { slug: string; id: string })
         ) : state === 'missing' ? (
           <>
             <h1 className="challenge-landing__title">This challenge link doesn’t lead anywhere any more.</h1>
-            <p className="challenge-landing__text">The game’s still here, though.</p>
+            <p className="challenge-landing__text">
+              {game ? 'The game’s still here, though.' : 'Every game in the arcade is still here, though.'}
+            </p>
           </>
         ) : (
           <>
@@ -65,14 +68,23 @@ export function ChallengeLandingPage({ slug, id }: { slug: string; id: string })
             </button>
           </>
         )}
-        {game && state !== 'loading' ? (
+        {state !== 'loading' ? (
           <div className="challenge-landing__actions">
-            <a className="panel__btn" href={gamePlayHref(slug)}>
-              Play {game.name}
-            </a>
-            <a className="panel__btn panel__btn--ghost" href={gameHref(slug)}>
-              Its board
-            </a>
+            {game ? (
+              <>
+                <a className="panel__btn" href={gamePlayHref(slug)}>
+                  Play {game.name}
+                </a>
+                <a className="panel__btn panel__btn--ghost" href={gameHref(slug)}>
+                  Its board
+                </a>
+              </>
+            ) : (
+              // A game the arcade doesn't have (a mistyped link): the wall of the ones it does.
+              <a className="panel__btn" href={`${homeHref()}#games`}>
+                See all games
+              </a>
+            )}
           </div>
         ) : null}
       </section>

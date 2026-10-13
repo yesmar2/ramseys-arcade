@@ -125,10 +125,11 @@
   max-width: 29rem;
 }
 
+/* The regular weight: at this size the bold's C closes up and "ACCESS" read as "AOOESS". */
 .staff-only__kicker {
   margin: 0;
   font-family: 'Pixelify Sans', ui-monospace, monospace;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 0.95rem;
   letter-spacing: 0.18em;
   color: #c73366;

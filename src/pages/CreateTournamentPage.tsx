@@ -15,6 +15,7 @@ import { EventArtBox } from '../components/EventsHome'
 import { EventCoursePicker } from '../components/EventCoursePicker'
 import { GameThumbArt } from '../components/GameThumbArt'
 import { EVENT_COURSES } from '../lib/eventCourses'
+import { trophyField } from '../lib/eventPages'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
 import { navigate, tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
@@ -61,11 +62,12 @@ const DURATIONS = [
 /** Bracket: finite time to play each open match (no overall tournament clock). */
 const ROUND_DURATIONS = DURATIONS.filter((d) => d.hours > 0)
 
-function attemptsSummary(maxAttempts: number, unlimited: boolean, gameCount: number) {
-  const gameWord = gameCount === 1 ? 'game' : 'games'
-  if (unlimited) return `Unlimited attempts per ${gameWord}`
-  if (maxAttempts === 1) return `1 attempt per ${gameWord}`
-  return `${maxAttempts} attempts per ${gameWord}`
+/** "3 tries on each game. The best one counts.": tries, as the rest of the site says them. */
+function triesHint(maxAttempts: number, unlimited: boolean, gameCount: number) {
+  const on = gameCount === 1 ? 'on the game' : 'on each game'
+  if (unlimited) return `Unlimited tries ${on}. The best one counts.`
+  if (maxAttempts === 1) return `1 try ${on}, so make it count.`
+  return `${maxAttempts} tries ${on}. The best one counts.`
 }
 
 function playersSummary(maxPlayers: number) {
@@ -602,6 +604,14 @@ export function CreateTournamentPage() {
         unlimitedAttempts ? 'Unlimited tries' : `${maxAttempts} ${maxAttempts === 1 ? 'try' : 'tries'} a game`,
         `0 of ${maxPlayers} in`,
       ]
+  // A trophy needs a field (lib/eventPages trophyField). A bracket fills every seat before it draws, so its seats say.
+  const trophyAt = trophyField({ official: false })
+  const trophyStep =
+    maxPlayers < trophyAt
+      ? `A trophy takes ${trophyAt} or more players, so with ${maxPlayers} seats there’s none.`
+      : isBracket
+        ? 'The winner takes a trophy for their player card.'
+        : `With ${trophyAt} or more players, the winner takes a trophy for their player card.`
 
   const step = (title: string, body: ReactNode, note?: ReactNode) => (
     <section className="evp-card evp-step" aria-label={title}>
@@ -929,7 +939,7 @@ export function CreateTournamentPage() {
                     hint={
                       isBracket
                         ? 'Fresh tries each round. The higher score takes the match.'
-                        : `${attemptsSummary(maxAttempts, unlimitedAttempts, games.length)}. The best one counts.`
+                        : triesHint(maxAttempts, unlimitedAttempts, games.length)
                     }
                   />
                 </div>,
@@ -1053,7 +1063,7 @@ export function CreateTournamentPage() {
                     <span className="evp-steps__n" aria-hidden="true">
                       3
                     </span>
-                    <span>The winner takes a trophy for their player card.</span>
+                    <span>{trophyStep}</span>
                   </li>
                 </ol>
                 <p className="evp-lesson">

@@ -198,7 +198,7 @@ export function formatRulesSummary(
   if (eventKind(t) === 'bracket') {
     const n = t.rules.maxAttempts ?? 1
     const cap = t.rules.maxPlayers ?? 0
-    const tries = n === 1 ? '1 attempt' : `${n} attempts`
+    const tries = n === 1 ? '1 try' : `${n} tries`
     const roundH = t.rules.roundPlayHours
     const round =
       roundH == null
@@ -215,16 +215,17 @@ export function formatRulesSummary(
   }
   // One game ranks by its best score, so it reads like any other; several are won all-round.
   if (t.format === 'place-points' && t.games.length > 1) return 'Every game counts — best all-round wins.'
+  // Tries, as the rest of the site says them: "3 tries, best score wins", or "on each game" for several.
   const n = t.rules.maxAttempts
-  const gameWord = t.games.length === 1 ? 'game' : 'games'
+  const each = t.games.length === 1 ? '' : ' on each game'
   if (t.format === 'open' || n === 0) {
-    return `Unlimited attempts per ${gameWord} — best score wins.`
+    return `Unlimited tries${each}, best score wins.`
   }
   if (t.format === 'single-run' || n === 1) {
-    return `1 attempt per ${gameWord} — best score wins.`
+    return `1 try${each}, best score wins.`
   }
   if (n) {
-    return `${n} attempts per ${gameWord} — best score wins.`
+    return `${n} tries${each}, best score wins.`
   }
   return 'Best score wins.'
 }

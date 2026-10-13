@@ -639,9 +639,10 @@
   overflow: hidden;
 }
 
+/* The −/+ fill the pill top to bottom: centred, they were half its height, and a click near an edge missed. */
 .ev-limit__stepper {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
 }
 
 .ev-limit__btn {

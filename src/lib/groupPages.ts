@@ -45,7 +45,7 @@ export function parseGroupLink(text: string): { id: string; invite: string | nul
   return { id: decodeURIComponent(match[1]!), invite: invite ? invite[1]!.toUpperCase() : null }
 }
 
-export const GROUP_LIMIT = 5
+/** A free host's roster (the API's plans.ts groupMembers). How many groups you can host is your plan's (useAuth limits). */
 export const MEMBER_LIMIT = 20
 
 export type GroupPeriod = Extract<LeaderboardPeriod, 'weekly' | 'monthly' | 'all'>

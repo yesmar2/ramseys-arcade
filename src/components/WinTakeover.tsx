@@ -107,7 +107,7 @@ export function WinTakeover({
       </button>
       <div className="win__stage">
         <div className="win__art">
-          <Trophy plate={data.plate} />
+          {data.trophy === false ? null : <Trophy plate={data.plate} />}
           {data.podium.length ? (
             <ol className="win__podium" aria-label="Podium">
               {podiumOrder(data.podium).map((p) => (

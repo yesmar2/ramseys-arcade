@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
-import { rankHref } from '../hooks/useHashRoute'
+import { plusHref, rankHref } from '../hooks/useHashRoute'
 import { useGroupBoard } from '../hooks/useGroupBoard'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   gameName,
-  GROUP_LIMIT,
   groupStyle,
-  MEMBER_LIMIT,
   parseGroupLink,
   newestRecords,
   openRecords,
@@ -17,10 +15,12 @@ import {
 import { groupHref, type GroupPublic } from '../lib/groups'
 import { formatBoardScore } from '../lib/leaderboardFormat'
 import { normalizePlayerName, type GlobalBoardEntry } from '../lib/leaderboard'
+import { PLUS_LIMITS, type PlanLimits } from '../lib/plans'
 import { resolveGameAccent } from '../lib/theme'
 import { getGame } from '../data/games'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
+import { PlanLimitNotice } from './PlusBadge'
 import { openSiteMenu } from './siteNav'
 
 /* The groups page's pieces: each of your groups as a card, starting one, opening one from a code, and what a group is. */
@@ -276,23 +276,36 @@ export function GroupCard({
   )
 }
 
-/** Start a group: a name, and it exists. Signed out, the way to sign in instead. */
+/**
+ * Start a group: a name, and it exists. Signed out, the way to sign in instead. A plan counts only the groups
+ * you host (the API's groups.ts): joining is never capped, so a free host with a group already gets the way
+ * to Plus, not the form.
+ */
 export function StartGroupCard({
   signedIn,
-  full,
+  hosting,
+  limits,
+  isPlus,
   name,
   setName,
   busy,
   error,
+  planError = null,
   onCreate,
   focusOnMount = false,
 }: {
   signedIn: boolean
-  full: boolean
+  /** The groups you host now, not the ones you're in. */
+  hosting: number
+  /** Your plan's: how many groups you can host, and how many people each can have. */
+  limits: Pick<PlanLimits, 'groups' | 'groupMembers'>
+  isPlus: boolean
   name: string
   setName: (v: string) => void
   busy: boolean
   error: string | null
+  /** The API's refusal on plan grounds (402), if the count here was behind. */
+  planError?: unknown
   onCreate: (e: FormEvent) => void
   focusOnMount?: boolean
 }) {
@@ -300,6 +313,8 @@ export function StartGroupCard({
   useEffect(() => {
     if (focusOnMount) input.current?.focus()
   }, [focusOnMount])
+  const full = hosting >= limits.groups
+  const host = limits.groups === 1 ? 'one' : String(limits.groups)
   return (
     <section className="grp-card grp-side" aria-labelledby="grp-start" data-hunt="groups-start">
       <div className="grp-side__head">
@@ -317,8 +332,20 @@ export function StartGroupCard({
         <button type="button" className="grp-btn" onClick={openSiteMenu}>
           Sign in to start one
         </button>
+      ) : full && !isPlus ? (
+        <>
+          {/* More than one is a Plus host's groups, kept after Plus ended. */}
+          <p className="grp-copy">
+            {hosting === 1
+              ? 'You host a group already, the most a free account can.'
+              : `You host ${hosting} groups already. A free account hosts ${host}.`}
+          </p>
+          <a className="grp-btn grp-btn--small grp-btn--ghost" href={plusHref()}>
+            See Plus
+          </a>
+        </>
       ) : full ? (
-        <p className="grp-copy">You’re in {GROUP_LIMIT} groups, the most there can be. Leave one to start another.</p>
+        <p className="grp-copy">You host {hosting} groups, the most anyone can. Hand one over or delete it to start another.</p>
       ) : (
         <form className="grp-field" onSubmit={onCreate}>
           <label className="visually-hidden" htmlFor="grp-new-name">
@@ -339,8 +366,18 @@ export function StartGroupCard({
         </form>
       )}
       {error ? <p className="grp-error">{error}</p> : null}
+      <PlanLimitNotice error={planError} />
       <p className="grp-fine">
-        Up to {MEMBER_LIMIT} people in a group. You can be in {GROUP_LIMIT}.
+        Up to {limits.groupMembers} people in a group. You can host {host}, and join as many as you like.
+        {isPlus ? null : (
+          <>
+            {' '}
+            <a className="grp-link" href={plusHref()}>
+              Plus
+            </a>{' '}
+            hosts up to {PLUS_LIMITS.groups}.
+          </>
+        )}
       </p>
     </section>
   )
@@ -389,7 +426,7 @@ export function LinkCard({ onOpen }: { onOpen: (id: string, invite: string | nul
         </button>
       </form>
       {error ? <p className="grp-error">{error}</p> : null}
-      <p className="grp-fine">Following the link opens the group by itself. You need a gamer tag to join, not an account.</p>
+      <p className="grp-fine">Following the link opens the group by itself. Sign in and pick a gamer tag to join.</p>
     </section>
   )
 }

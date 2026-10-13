@@ -281,7 +281,8 @@ export function GroupStandings({
         ? `${count} of ${group.memberCount} have played in ${periodWords('monthly')}`
         : period === 'weekly'
           ? `${count} of ${group.memberCount} have played this week`
-          : `${count} ${count === 1 ? 'player' : 'players'} since the group began`
+          : // All time counts every run its members have, from before the group as well.
+            `${count} ${count === 1 ? 'player' : 'players'}, all time`
   return (
     <section className="grp-card grp-table" aria-labelledby="grp-table-title">
       <div className="grp-card__head">
@@ -306,7 +307,9 @@ export function GroupStandings({
           <span className="grp-empty__mark" aria-hidden="true">
             <TrophyIcon />
           </span>
-          <p className="grp-empty__title">Nobody’s played {period === 'weekly' ? 'this week' : `in ${periodWords(period)}`} yet</p>
+          <p className="grp-empty__title">
+            Nobody’s played {period === 'weekly' ? 'this week ' : period === 'all' ? '' : `in ${periodWords(period)} `}yet
+          </p>
           <p className="grp-copy">Any run on a ranked game puts you top of the {group.name} table.</p>
         </div>
       ) : (

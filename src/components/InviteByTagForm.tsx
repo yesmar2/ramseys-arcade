@@ -44,6 +44,8 @@ export function InviteByTagForm({
   }, [excludeNames])
 
   const inLabel = kind === 'group' ? 'in group' : 'in event'
+  // Where an invite waits besides the header and Home: the page of its own kind (PendingInvitesStrip).
+  const page = kind === 'group' ? 'Friends & groups' : 'Events'
 
   useEffect(() => {
     if (!signedIn) return
@@ -73,7 +75,7 @@ export function InviteByTagForm({
     setNote(null)
     try {
       await invite(toName)
-      setNote(`Invite sent to ${toName}. They’ll see it in the header and on Events.`)
+      setNote(`Invite sent to ${toName}. They’ll see it in the header and on ${page}.`)
       setInvitedNames((prev) => new Set(prev).add(toName))
       setTag('')
     } catch (err) {
@@ -90,7 +92,7 @@ export function InviteByTagForm({
     setNote(null)
     try {
       await invite(name)
-      setNote(`Invite sent to ${name}. They’ll see it in the header and on Events.`)
+      setNote(`Invite sent to ${name}. They’ll see it in the header and on ${page}.`)
       setInvitedNames((prev) => new Set(prev).add(name))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not send invite')
@@ -161,9 +163,7 @@ export function InviteByTagForm({
         </button>
       </div>
       <p className={`inv__msg${error ? ' inv__msg--error' : ''}`}>
-        {error ??
-          note ??
-          'They need that gamer tag set. Invites show as a badge in the header, on Home, and under Events.'}
+        {error ?? note ?? `They need that gamer tag set. Invites show as a badge in the header, on Home, and on ${page}.`}
       </p>
     </form>
   )

@@ -19,7 +19,7 @@ import {
   triesCountAtStart,
   type TournamentDetail,
 } from '../lib/tournaments'
-import { tournamentHref } from '../hooks/useHashRoute'
+import { tournamentHref, tournamentsHref } from '../hooks/useHashRoute'
 import { TournamentPlayProvider } from '../tournaments/TournamentPlayContext'
 import { EVENT_COURSES } from '../lib/eventCourses'
 import { isRaceEventGame, type RaceEventGame } from '../lib/tournaments'
@@ -81,6 +81,8 @@ export function TournamentPlayPage({
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  /** No event at this address (a 404): the way back goes to the events, not to the event that isn't there. */
+  const [missing, setMissing] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [joining, setJoining] = useState(false)
@@ -92,7 +94,7 @@ export function TournamentPlayPage({
   const RaceGame = isRaceEventGame(gameSlug) ? RACE_TOURNAMENT_GAMES[gameSlug] : null
   const Game = RaceGame ?? TOURNAMENT_GAMES[gameSlug]
   const accentStyle = gameAccentStyle(gameSlug)
-  const backHref = tournamentHref(tournamentId, invite ?? getTournamentInvite(tournamentId) ?? undefined)
+  const backHref = missing ? tournamentsHref() : tournamentHref(tournamentId, invite ?? getTournamentInvite(tournamentId) ?? undefined)
 
   useEffect(() => {
     void Game?.preload()
@@ -103,6 +105,7 @@ export function TournamentPlayPage({
     let cancelled = false
     setLoading(true)
     setLoadError(null)
+    setMissing(false)
     setReady(false)
 
     const boot = async () => {
@@ -116,15 +119,15 @@ export function TournamentPlayPage({
         if (cancelled) return
         setDetail(data)
         if (!data.games.includes(gameSlug) || !(gameSlug in TOURNAMENT_GAMES)) {
-          setLoadError('That game isn’t part of this tournament.')
+          setLoadError('That game isn’t part of this event.')
           return
         }
         if (data.status === 'ended') {
-          setLoadError('This tournament has ended.')
+          setLoadError('This event has ended.')
           return
         }
         if (data.status === 'upcoming') {
-          setLoadError('This tournament hasn’t started yet.')
+          setLoadError('This event hasn’t started yet.')
           return
         }
         const playerStatus = data.playerStatus
@@ -145,7 +148,7 @@ export function TournamentPlayPage({
               setLoadError('It is not your match yet.')
             }
           } else if (playerStatus.maxAttempts != null) {
-            setLoadError('You have no attempts remaining in this event.')
+            setLoadError('You have no tries left in this event.')
           } else {
             setLoadError('You cannot play this event right now.')
           }
@@ -170,7 +173,16 @@ export function TournamentPlayPage({
           }
         }
       } catch (err) {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load')
+        if (cancelled) return
+        // In the site's words: the API's ("Tournament not found") isn't how the site talks.
+        if (err instanceof ApiError && err.status === 404) {
+          setMissing(true)
+          setLoadError('This event isn’t here.')
+        } else if (err instanceof ApiError && err.code === 'INVITE_REQUIRED') {
+          setLoadError('This event is invite only.')
+        } else {
+          setLoadError('Couldn’t load the event. Check your connection and try again.')
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -260,7 +272,7 @@ export function TournamentPlayPage({
     return (
       <main className="game-page game-page--fullscreen tour-play">
         <a className="game-page__back game-page__back--overlay" href={backHref}>
-          ← Event
+          {missing ? '← Events' : '← Event'}
         </a>
         <div className="tour-play__gate">
           <section className="panel" aria-labelledby="tour-gate-title" style={accentStyle}>
@@ -272,9 +284,14 @@ export function TournamentPlayPage({
                 </h1>
               </div>
             </div>
+            {missing ? (
+              <div className="panel__body">
+                <p className="panel__text">It may be an old link, or one missing a letter.</p>
+              </div>
+            ) : null}
             <div className="panel__actions">
               <a className="panel__btn" href={backHref}>
-                Back to event
+                {missing ? 'See events' : 'Back to event'}
               </a>
             </div>
           </section>

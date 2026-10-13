@@ -7,9 +7,11 @@ import {
   privacyHref,
   rankHowHref,
   termsHref,
+  todayHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
+import { toWall } from '../lib/scrollToPlace'
 
 const HIGHLIGHTS = [
   {
@@ -86,6 +88,16 @@ export function AboutPage() {
           Head back to the arcade, pick a tile, and hop in. Whether you have two minutes or
           twenty, there’s always another run to beat. Thanks for stopping by.
         </p>
+      </div>
+
+      {/* The way back the last lines offer, as buttons: the home page's wall of games, and today's dailies. */}
+      <div className="home-about__acts">
+        <a className="panel__btn" href={`${homeHref()}#games`} onClick={toWall}>
+          Browse games
+        </a>
+        <a className="panel__btn panel__btn--ghost" href={todayHref()}>
+          Today’s dailies
+        </a>
       </div>
 
       <p className="home-about__fine">

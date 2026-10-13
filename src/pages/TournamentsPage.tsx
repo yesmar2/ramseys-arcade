@@ -58,6 +58,8 @@ import {
   resultLines,
   skipLesson,
   standingsTable,
+  trophyField,
+  trophyGiven,
 } from '../lib/eventPages'
 import { listEventInvites, type PublicInvite } from '../lib/invites'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
@@ -407,10 +409,14 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
     // All-round, the names say it: its totals are only places added up. Scores keep theirs.
     const allRound = detail.format === 'place-points' && !single
     // Only who played: without a number beside them, a name that never posted a run would read as beaten.
+    // The viewer is "you" here, as everywhere else on the page.
     const runnersUp = rows
       .filter((r) => r.cells.some((c) => c.score != null))
       .slice(1, 3)
-      .map((r) => (allRound ? r.name : `${r.name} on ${eventScoreText(detail.games, r.total)}`))
+      .map((r) => {
+        const who = r.you ? 'you' : r.name
+        return allRound ? who : `${who} on ${eventScoreText(detail.games, r.total)}`
+      })
       .join(' and ')
     return (
       <div className="evp-banner__side">
@@ -421,6 +427,8 @@ function BannerSide({ detail, displayName }: { detail: TournamentDetail; display
           games={detail.games}
           mine={normalizePlayerName(winner) === normalizePlayerName(displayName)}
           runnersUp={runnersUp ? `Ahead of ${runnersUp}` : null}
+          trophy={trophyGiven(detail)}
+          trophyAt={trophyField(detail)}
         />
       </div>
     )
@@ -961,13 +969,26 @@ export function TournamentsPage() {
 /* ====================================================================== */
 
 /** The event page before it has an event to show: a gate, a not-found, a wait. */
-function PlainHeader({ title }: { title: string }) {
+function PlainHeader({
+  title,
+  crumb = title,
+  blurb,
+  actions,
+}: {
+  title: string
+  /** The breadcrumb's last step, when the title is a sentence. */
+  crumb?: string
+  blurb?: ReactNode
+  actions?: ReactNode
+}) {
   return (
     <PageBanner
       size="compact"
-      crumbs={[{ href: tournamentsHref(), label: 'Events' }, { label: title }]}
+      crumbs={[{ href: tournamentsHref(), label: 'Events' }, { label: crumb }]}
       kicker="Events"
       title={title}
+      blurb={blurb}
+      actions={actions}
     />
   )
 }
@@ -978,7 +999,10 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const { account, loading: authLoading } = useAuth()
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** Why there's no event to show: none at this address (a 404), or the API wasn't reached. Said in the site's words. */
+  const [error, setError] = useState<'missing' | 'failed' | null>(null)
+  /** Try again, after a load that failed. */
+  const [attempt, setAttempt] = useState(0)
   const [needsInvite, setNeedsInvite] = useState(false)
   const [inviteDraft, setInviteDraft] = useState(invite ?? '')
   const [busy, setBusy] = useState(false)
@@ -1040,7 +1064,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           setNeedsInvite(true)
           setError(null)
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load')
+          setError(err instanceof ApiError && err.status === 404 ? 'missing' : 'failed')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -1049,7 +1073,7 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     return () => {
       cancelled = true
     }
-  }, [id, invite, route])
+  }, [id, invite, route, attempt])
 
   /*
    * Signing in, out or as someone else changes what this page may show: the
@@ -1386,10 +1410,35 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           </div>
         </>
       ) : error || !detail ? (
-        <>
-          <PlainHeader title="Event" />
-          <p className="lb-empty">{error ?? 'Event not found'}</p>
-        </>
+        // The site's own words, never the API's: no event at this address, or none reached. Either way, a way on.
+        error === 'missing' ? (
+          <PlainHeader
+            title="This event isn’t here"
+            crumb="Not found"
+            blurb="It may be an old link, or one missing a letter."
+            actions={
+              <a className="home-banner__cta" href={tournamentsHref()}>
+                See events
+              </a>
+            }
+          />
+        ) : (
+          <PlainHeader
+            title="Couldn’t open this event"
+            crumb="Event"
+            blurb="Check your connection and try again."
+            actions={
+              <>
+                <button type="button" className="home-banner__cta" onClick={() => setAttempt((n) => n + 1)}>
+                  Try again
+                </button>
+                <a className="home-banner__ghost" href={tournamentsHref()}>
+                  See events
+                </a>
+              </>
+            }
+          />
+        )
       ) : (
         body
       )}

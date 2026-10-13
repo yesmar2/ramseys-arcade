@@ -34,11 +34,21 @@ type SignedInProps = {
 export function SignInList({
   onSignedIn,
   onBusy,
+  onEmail,
   autoFocus = false,
-}: SignedInProps & { onBusy?: (busy: boolean) => void; autoFocus?: boolean }) {
+}: SignedInProps & {
+  onBusy?: (busy: boolean) => void
+  /** Email picked, or left for the other ways: whoever holds the list can change its words to match. */
+  onEmail?: (open: boolean) => void
+  autoFocus?: boolean
+}) {
   const ways = useSignInWays()
   const on = waysOn(ways)
-  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailOpen, setEmailOpenHere] = useState(false)
+  const setEmailOpen = (open: boolean) => {
+    setEmailOpenHere(open)
+    onEmail?.(open)
+  }
   const [busy, setBusyHere] = useState(false)
   // Signing in, by Google's popup or Discord's: whoever holds the list waits too.
   const setBusy = (next: boolean) => {
@@ -170,13 +180,15 @@ export function SignInButton({ onSignedIn, label = 'Sign in' }: SignedInProps & 
 
 function SignInSheet({ onClose, onSignedIn }: { onClose: () => void } & SignedInProps) {
   const titleId = useId()
+  // Once email is picked the way is chosen: the lead about picking one goes.
+  const [email, setEmail] = useState(false)
   return (
     // Typing happens in here (an email, a code), so a stray tap outside doesn't throw it away.
     <Panel onClose={onClose} labelledBy={titleId} scrimCloses={false} className="signin-sheet">
       <PanelHead titleId={titleId} title="Sign in" onClose={onClose} />
       <div className="panel__body panel__body--last signin-sheet__body">
-        <p className="signin-sheet__lead">Pick a way. Next time, the one you used is marked.</p>
-        <SignInList onSignedIn={onSignedIn} autoFocus />
+        {email ? null : <p className="signin-sheet__lead">Pick a way. Next time, the one you used is marked.</p>}
+        <SignInList onSignedIn={onSignedIn} onEmail={setEmail} autoFocus />
         <p className="signin-sheet__note">Signing in with the same email any of these ways keeps you one player.</p>
       </div>
     </Panel>
