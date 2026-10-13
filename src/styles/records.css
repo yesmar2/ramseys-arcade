@@ -2368,6 +2368,14 @@ a.rbl-row__link:focus-visible {
   --avatar-size: calc(var(--pmark) - 0.15rem) !important;
 }
 
+/* Who holds it: their mark and tag, kept together. */
+.rbc-held__who {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .rbc-held__tag {
   min-width: 0;
   overflow: hidden;
@@ -2538,8 +2546,11 @@ a.rbl-row__link:focus-visible {
     font-size: 0.78rem;
   }
 
-  /* A tie: who it's tied with takes a line of its own under the holder, rather than being cut off. */
-  .rbc-held--tie {
+  /*
+   * Rather than being cut off, a long tag takes the next line, mark and tag together ("10 tickets by", then
+   * "GRANDPAJOE12"); and a tie, who it's tied with, a line of its own under the holder.
+   */
+  .rbc-held:has(> .rbc-held__who) {
     flex-wrap: wrap;
     justify-content: flex-end;
     row-gap: 0.15rem;

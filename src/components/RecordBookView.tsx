@@ -190,9 +190,12 @@ function BarRow({
           <span className={`rbc-held${tied ? ' rbc-held--tie' : ''}`}>
             <b className="rbc-held__best">{recordValue(record, top.score)}</b>
             <span>by</span>
-            <PlayerMark name={name} avatarId={top.avatarId} className="rbc-held__mark" />
-            <span className="rbc-held__tag">
-              <PlayerName name={name} avatarId={top.avatarId} />
+            {/* The holder's mark and tag, kept together: on a phone a long tag takes the next line whole. */}
+            <span className="rbc-held__who">
+              <PlayerMark name={name} avatarId={top.avatarId} className="rbc-held__mark" />
+              <span className="rbc-held__tag">
+                <PlayerName name={name} avatarId={top.avatarId} />
+              </span>
             </span>
             {tied ? (
               <span className="rbc-held__tied">
