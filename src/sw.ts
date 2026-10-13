@@ -21,8 +21,14 @@ declare const self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// Single-page app: anything not precached falls back to the shell.
-registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
+// Single-page app: anything not precached falls back to the shell. Not the pages the server answers itself,
+// the coming-soon page and the gate's /__gate (middleware.js), or a browser with this worker would only ever
+// open the app at those addresses.
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL('/index.html'), {
+    denylist: [/^\/soon\.html(?:\?|$)/, /^\/__gate(?:\?|$)/],
+  }),
+)
 
 // Matches the old `registerType: 'autoUpdate'` behaviour.
 self.skipWaiting()
