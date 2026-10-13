@@ -15,6 +15,8 @@ export function SeasonYouLevel() {
   const season = liveSeason(store)
   if (!season) return null
   const p = seasonProgress(season, store.you)
+  // Before your first ticket of the season there's no level to show, as in your menu and on the banner.
+  if (p.level <= 0) return null
   return (
     <span className="site-you__lv" aria-hidden="true">
       <span className="site-you__lv-n">Lv {p.level}</span>

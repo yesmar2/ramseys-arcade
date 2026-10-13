@@ -87,12 +87,13 @@ export function SiteScopeControl() {
   // book's, a daily's day) says that one on the page.
   const period: LeaderboardPeriod = useDefaultPeriod()
   const { account } = useAuth()
-  const { friends, loaded: friendsLoaded } = useFriends()
+  const { friends, loaded: friendsLoaded, error: friendsError, signedOut } = useFriends()
   const activeId = useActiveGroup()
   const [groups, setGroups] = useState<GroupPublic[]>(() => cachedMyGroups())
   const [loaded, setLoaded] = useState(false)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -118,8 +119,11 @@ export function SiteScopeControl() {
     const onPointer = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false)
     }
+    // Escape gives the keys back to the chip they opened it from, not the top of the page.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      btnRef.current?.focus()
     }
     window.addEventListener('pointerdown', onPointer)
     window.addEventListener('keydown', onKey)
@@ -134,6 +138,13 @@ export function SiteScopeControl() {
   const pending = Boolean(activeId) && !onFriends && !active && !loaded
   const among = onFriends ? 'Friends' : activeId ? (active?.name ?? 'Your group') : 'Everyone'
   const friendCount = friends.length
+  const noFriends = signedOut || (friendsLoaded && !friendsError && friendCount === 0)
+
+  // Your friends with nobody in them aren't boards to show: a shared ?group=friends link, or your last friend gone,
+  // would leave you first among one. Everyone, then.
+  useEffect(() => {
+    if (onFriends && noFriends) applySiteGroup(null, route)
+  }, [onFriends, noFriends, route])
   const periodLabel = PERIOD_LABELS[period]
   // The season is a period of the site's too while it has standings: the fourth choice, short words to fit.
   const season = useSeason()
@@ -156,10 +167,18 @@ export function SiteScopeControl() {
   }
 
   return (
-    <div className="site-scope" ref={ref}>
+    <div
+      className="site-scope"
+      ref={ref}
+      // Tabbing on past the last choice closes it, so it never sits open over what has the focus.
+      onBlur={(e) => {
+        if (open && e.relatedTarget && !ref.current?.contains(e.relatedTarget as Node)) setOpen(false)
+      }}
+    >
       <button
+        ref={btnRef}
         type="button"
-        className={`site-scope__btn${activeId ? ' site-scope__btn--group' : ''}`}
+        className={`site-scope__btn${activeId ? ' site-scope__btn--group' : ''}${onFriends ? ' site-scope__btn--friends' : ''}`}
         aria-label={`Boards show ${periodLabel.toLowerCase()}, among ${pending ? 'your group' : among}. Change`}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -173,6 +192,16 @@ export function SiteScopeControl() {
           <span aria-hidden="true">· </span>
           {pending ? <span className="skel-line site-scope__skel" /> : among}
         </span>
+        {/*
+         * A phone has room for one of the two on a line, so with a group on it's the group's name, the period small
+         * under it (A on the "Group on the phone header" canvas, 2026-10-13). Wider, the line above says both.
+         */}
+        {activeId ? (
+          <span className="site-scope__stack">
+            <span className="site-scope__who">{pending ? <span className="skel-line site-scope__skel" /> : among}</span>
+            <span className="site-scope__when">{periodLabel}</span>
+          </span>
+        ) : null}
         <span className="site-scope__chev">
           <Chevron />
         </span>
@@ -284,7 +313,14 @@ export function SiteScopeControl() {
                 <span className="site-scope__option-mark">
                   <PlusIcon />
                 </span>
-                {groups.length > 0 ? 'Add friends, or start or manage a group' : 'Add friends, or start a group the boards can show'}
+                {/* With no friends, the Friends row above already asks you to add one. */}
+                {account && friendsLoaded && friendCount === 0 && !onFriends
+                  ? groups.length > 0
+                    ? 'Start or manage a group'
+                    : 'Start a group the boards can show'
+                  : groups.length > 0
+                    ? 'Add friends, or start or manage a group'
+                    : 'Add friends, or start a group the boards can show'}
               </a>
             </li>
           </ul>

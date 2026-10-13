@@ -542,14 +542,18 @@ export function NotificationBell({ notes, onWear }: { notes: NotificationsState;
   const { unread } = notes
   const isFresh = useInboxLook(notes, open)
   const wrapRef = useRef<HTMLDivElement | null>(null)
+  const bellRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
     }
+    // Escape gives the keys back to the bell, not the top of the page.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      bellRef.current?.focus()
     }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
@@ -563,8 +567,16 @@ export function NotificationBell({ notes, onWear }: { notes: NotificationsState;
   const freshCount = notes.items.filter(isFresh).length
 
   return (
-    <div className="site-header__notifs" ref={wrapRef}>
+    <div
+      className="site-header__notifs"
+      ref={wrapRef}
+      // Tabbing on past the panel closes it, so it never covers what has the focus.
+      onBlur={(e) => {
+        if (open && e.relatedTarget && !wrapRef.current?.contains(e.relatedTarget as Node)) setOpen(false)
+      }}
+    >
       <button
+        ref={bellRef}
         type="button"
         className={`notif-bell${unread > 0 ? ' notif-bell--alert' : ''}${open ? ' notif-bell--open' : ''}`}
         aria-label={label}

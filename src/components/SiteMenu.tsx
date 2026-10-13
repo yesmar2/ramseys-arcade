@@ -222,6 +222,11 @@ export function SiteMenu({
             <a className="site-menu__card-how" href={rankHowHref(undefined, standing.period)} onClick={onClose}>
               How your rank works ›
             </a>
+          ) : !impersonating && !standing.loading && standing.period === 'all' ? (
+            // Someone who only plays the dailies is never on the all-time boards (lib/allTime.ts): say why, not "yet".
+            <a className="site-menu__card-how" href={rankHowHref(undefined, standing.period)} onClick={onClose}>
+              Dailies don’t count all time ›
+            </a>
           ) : null}
           {facts.length > 0 ? <span className="site-menu__card-facts">{facts.join(' · ')}</span> : null}
         </div>
