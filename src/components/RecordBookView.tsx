@@ -191,9 +191,10 @@ function BarRow({
     // On no record's board: a milestone you haven't reached, or a record your runs haven't made the list of.
     end = <span className="rbc-end__none">{group.kind === 'clock' ? 'Not reached yet' : 'Not on it yet'}</span>
   } else {
+    // The dot keeps to the line it ends, should the words wrap.
     end = level
-      ? `${ordinal(standing.rank)} · tied`
-      : `${ordinal(standing.rank)} · ${recordGap(record, standing.score, top.score)} ${lowerIsBetter(record) ? 'off' : 'short'}`
+      ? `${ordinal(standing.rank)}\u00a0· tied`
+      : `${ordinal(standing.rank)}\u00a0· ${recordGap(record, standing.score, top.score)} ${lowerIsBetter(record) ? 'off' : 'short'}`
   }
   return (
     <li className={`rbl-row rbc-row${mine ? ' rbl-row--mine' : ''}${nearest ? ' rbc-row--near' : ''}`}>

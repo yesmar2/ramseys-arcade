@@ -320,8 +320,11 @@ export type RecordCardRow = TallyRow & { place: number; you: boolean }
 export type DayRecordYou =
   /** You hold it, alone; `note` is how your run stands, for a streak. */
   | { kind: 'mine'; note: string }
-  /** On it: your number, your place in words and as a number, and how far off or tied. */
-  | { kind: 'on'; value: string; place: string; rank: number; note: string }
+  /**
+   * On it: your number (in words, and `n` for its bar), your place in words ('' when you're tied for it) and as
+   * a number, how far off ('' tied), and for a streak how your run stands (`live`).
+   */
+  | { kind: 'on'; value: string; n: number; place: string; rank: number; gap: string; live: string }
   /** Not on it yet. */
   | { kind: 'none'; text: string }
 
@@ -415,13 +418,15 @@ export function streakRecord(slug: string, glance: BookGlance | null, viewer: Vi
         const tied = all ? entries.filter((e) => e.score === n).length - 1 : null
         you =
           n >= best
-            ? { kind: 'on', value: counted(n, 'day'), place: '', rank, note: live }
+            ? { kind: 'on', value: counted(n, 'day'), n, place: '', rank, gap: '', live }
             : {
                 kind: 'on',
                 value: counted(n, 'day'),
+                n,
                 place: placeWords({ value: n, place: mine.rank, tied }, rows, glance?.total ?? null, listed ? rank : null),
                 rank,
-                note: `${counted(best - n, 'day')} short · ${live}`,
+                gap: `${counted(best - n, 'day')} short`,
+                live,
               }
       }
     }
@@ -480,16 +485,18 @@ function tallyRecord(
     const n = mine?.value ?? 0
     if (!mine || n <= 0) you = { kind: 'none', text: none }
     else if (holder === viewer.name) you = { kind: 'mine', note: '' }
-    else if (n >= most) you = { kind: 'on', value: counted(n, unit[0], unit[1]), place: '', rank: 1, note: '' }
+    else if (n >= most) you = { kind: 'on', value: counted(n, unit[0], unit[1]), n, place: '', rank: 1, gap: '', live: '' }
     else {
       const listed = top.some((r) => r.name === viewer.name)
       const rank = listed ? 1 + top.filter((r) => r.value > n).length : mine.place
       you = {
         kind: 'on',
         value: counted(n, unit[0], unit[1]),
+        n,
         place: placeWords(mine, rows, tally?.players ?? null, listed ? rank : null),
         rank,
-        note: `${counted(most - n, unit[0], unit[1])} short`,
+        gap: `${counted(most - n, unit[0], unit[1])} short`,
+        live: '',
       }
     }
   }

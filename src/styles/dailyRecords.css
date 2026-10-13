@@ -398,3 +398,125 @@ html:not([data-theme='dark']) .rbl-row .drt-top__you {
     font-size: 0.9rem;
   }
 }
+
+/* ---------- the bars, for a player it knows (records.css .rbl--bars), with what only a daily has ---------- */
+
+/* A daily's names run longer (a track's has its map and day), so its first column is wider. */
+.drt .rbl--bars {
+  --rbl-cols: minmax(0, 22rem) minmax(0, 1fr) 12rem;
+}
+
+/* A record made over many days opens its first five: its chevron by its name, as the bars have no last column. */
+.rbl--bars .drt-label__more {
+  display: flex;
+}
+
+/* Its icon, name and chevron stay on one line; only the name's words wrap. */
+.rbl--bars .drt-label {
+  flex-wrap: nowrap;
+}
+
+/* Who holds it, and what follows (tied; who got there first, or the tracks they hold), wrap rather than be cut. */
+.rbl--bars .drt-day .rbc-held {
+  flex-wrap: wrap;
+  row-gap: 0.1rem;
+  white-space: normal;
+}
+
+.rbl--bars .drt-day .rbc-held__tag {
+  overflow: visible;
+}
+
+.rbc-held__sub {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+}
+
+/* Its row is a button: its margins taken out of its width, as the bars' other rows have them. */
+.rbl--bars button.rbl-row__link.drt-row-btn,
+.rbl--bars .rbl-row--mine button.rbl-row__link.drt-row-btn {
+  width: calc(100% - 1.5rem);
+  border-top: 0;
+}
+
+/* How your run stands, under your place or under Yours: still going, or race today to keep it going. */
+.rbc-end__note {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* A track's or hole's record: its map beside its name and its #1. */
+.drt-course__what {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.drt-course__what .drt-course__text {
+  gap: 0.2rem;
+}
+
+.drt-course__when {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+@media (max-width: 64rem) {
+  .drt .rbl--bars {
+    --rbl-cols: minmax(0, 17rem) minmax(0, 1fr) 10rem;
+  }
+
+  .rbl--bars button.rbl-row__link.drt-row-btn,
+  .rbl--bars .rbl-row--mine button.rbl-row__link.drt-row-btn {
+    width: calc(100% - 0.8rem);
+  }
+}
+
+/* A phone: a track's map, name and #1, with how far off beside them; its bar across under them. */
+@media (max-width: 42rem) {
+  .rbl--bars button.rbl-row__link.drt-row-btn,
+  .rbl--bars .rbl-row--mine button.rbl-row__link.drt-row-btn {
+    width: calc(100% - 0.8rem);
+  }
+
+  /* A record made over many days: its name, then who holds it, then its bar with your place beside it. */
+  .rbl--bars .drt-day .rbl-row__link {
+    grid-template-areas:
+      'label label'
+      'held held'
+      'bar end';
+  }
+
+  .rbl--bars .drt-day .rbc-held {
+    justify-self: start;
+    max-width: none;
+  }
+
+  .rbl--bars .drt-day .rbc-end {
+    max-width: 11rem;
+  }
+
+  .rbl--bars .drt-course .rbl-row__link {
+    grid-template-areas:
+      'what end'
+      'bar bar';
+  }
+
+  .rbl--bars .drt-course .rbc-what {
+    display: flex;
+    grid-area: what;
+  }
+
+  .rbl--bars .drt-course .rbc-held {
+    justify-self: auto;
+    max-width: none;
+  }
+
+  .drt-course__when {
+    display: none;
+  }
+}

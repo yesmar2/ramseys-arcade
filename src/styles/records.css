@@ -2344,7 +2344,9 @@ a.rbl-row__link:focus-visible {
   letter-spacing: 0.04em;
 }
 
+/* What follows the holder gives way first, so a tag is cut only when there's no room at all. */
 .rbc-held__tied {
+  flex-shrink: 10;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
