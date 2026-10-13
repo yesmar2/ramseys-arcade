@@ -1,7 +1,7 @@
 import { useLayoutEffect } from 'react'
 import { PageShell } from '../components/PageShell'
 import { RecordView } from '../components/RecordView'
-import { getGame, isDailyGame, isRankedGame } from '../data/games'
+import { isDailyGame, isRankedGame } from '../data/games'
 import { dailyTabHref, dayBoardHref, navigate, recordsPlaceHref } from '../hooks/useHashRoute'
 import { coerceVisiblePeriod, type LeaderboardPeriod } from '../lib/leaderboard'
 import { courseKey, courseNumber, courseToday, dailyRecordHref, isCourseRecord } from '../lib/recordBook'
@@ -33,15 +33,14 @@ function dayRecordBoardHref(game: string, recordId: string | undefined, now = Da
  * day's board, so an old link to any of them goes there, in place of this address.
  */
 export function RecordsPage({ game, recordId, period = 'all' }: RecordsPageProps) {
+  // A game the site doesn't have never gets here: its address is Game Over (useHashRoute parseUrl).
   // A daily just for fun keeps no records (data/games.ts Game.ranked): an old link to one goes to its page.
-  const moved = !getGame(game)
-    ? null
-    : !isRankedGame(game)
-      ? dailyTabHref(game, 'today')
-      : (dayRecordBoardHref(game, recordId) ??
-        (recordId && isCourseRecord({ id: recordId }) ? dailyRecordHref(game, recordId) : null) ??
-        // The book (a daily's records too, or one like its Days played in a row): the Records tab, landed on.
-        (recordId && !isDailyGame(game) ? null : recordsPlaceHref(game, period)))
+  const moved = !isRankedGame(game)
+    ? dailyTabHref(game, 'today')
+    : (dayRecordBoardHref(game, recordId) ??
+      (recordId && isCourseRecord({ id: recordId }) ? dailyRecordHref(game, recordId) : null) ??
+      // The book (a daily's records too, or one like its Days played in a row): the Records tab, landed on.
+      (recordId && !isDailyGame(game) ? null : recordsPlaceHref(game, period)))
 
   // Before the first paint, so the book never shows on its way to the tab; in place of the old address, so
   // Back doesn't bounce here again. A course's row keeps its #course- part.
@@ -49,13 +48,6 @@ export function RecordsPage({ game, recordId, period = 'all' }: RecordsPageProps
     if (moved) navigate(moved, { replace: true })
   }, [moved])
 
-  if (!getGame(game)) {
-    return (
-      <PageShell>
-        <p className="lb-empty">That game isn’t on the board.</p>
-      </PageShell>
-    )
-  }
   if (moved) return null
 
   return (

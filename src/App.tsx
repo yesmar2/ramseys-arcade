@@ -7,12 +7,9 @@ import { MilestoneMoment } from './components/MilestoneMoment'
 import { FriendsWeekMoment } from './components/FriendsWeekMoment'
 import { defaultPeriod } from './lib/defaultPeriod'
 import { EarlyGate } from './components/EarlyGate'
-import { Footer } from './components/Footer'
 import { PageShell } from './components/PageShell'
-import { SiteHeader } from './components/SiteHeader'
-import { getGame, isGameHidden } from './data/games'
 import { BlipHello } from './components/BlipHello'
-import { homeHref, useRoute } from './hooks/useHashRoute'
+import { useRoute } from './hooks/useHashRoute'
 import { usePageMeta } from './hooks/usePageMeta'
 import {
   getClaimToken,
@@ -116,29 +113,6 @@ async function onPlayerNameChanged() {
   }
   await refreshPersonalBests()
   await refreshGlobalRank()
-}
-
-function ComingSoonPage({ slug }: { slug: string }) {
-  const game = getGame(slug)
-
-  return (
-    <>
-      <SiteHeader />
-      <main className="game-page">
-        <div className="game-page__inner game-page__inner--narrow">
-          <a className="game-page__back" href={homeHref()}>
-            ← Games
-          </a>
-          <h1 className="game-page__title">{game?.name ?? 'Game'}</h1>
-          <p className="game-page__blurb">That game isn’t on the board.</p>
-          <a className="game-page__cta" href={homeHref()}>
-            See available games
-          </a>
-        </div>
-      </main>
-      <Footer />
-    </>
-  )
 }
 
 /** The id the address's `#anchor` names, if it names one: a `#/…` is an old-style route, not a place. */
@@ -328,10 +302,8 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'leaderboards') {
     return <LeaderboardsPage period={route.period ?? defaultPeriod()} />
   }
+  // A retired game's page, play page and board are never routes: the router sends them on (useHashRoute goneGameRoute).
   if (route.name === 'gameLeaderboard') {
-    if (isGameHidden(route.game)) {
-      return <ComingSoonPage slug={route.game} />
-    }
     return (
       <GameLeaderboardPage game={route.game} period={route.period ?? defaultPeriod()} day={route.day} />
     )
@@ -362,11 +334,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
     return <TournamentDetailPage id={route.id} invite={route.invite} />
   }
   if (route.name === 'game') {
-    if (isGameHidden(route.slug)) return <ComingSoonPage slug={route.slug} />
     return <GameHubPage slug={route.slug} board={route.board} tab={route.tab} />
-  }
-  if (route.name === 'gamePlay' && isGameHidden(route.slug)) {
-    return <ComingSoonPage slug={route.slug} />
   }
   if (route.name === 'gamePlay') {
     const GamePage = GAME_PAGES[route.slug]
@@ -375,7 +343,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
         <GamePage />
       </EarlyGate>
     ) : (
-      <ComingSoonPage slug={route.slug} />
+      <GameOverPage />
     )
   }
   return <HomePage />

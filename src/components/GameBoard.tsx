@@ -531,6 +531,7 @@ export function GamePageBoard({
   title,
   noteHunt,
   place,
+  onRetry,
 }: {
   slug: LeaderboardGame
   period: LeaderboardPeriod
@@ -539,10 +540,19 @@ export function GamePageBoard({
   noteHunt?: string
   /** Its id, where a link to the board lands (BOARD_PLACE), when no tabs over it are that place. */
   place?: string
+  /** Try again, pressed: the page asks again for what it shows from the boards beside this (its screen's high score). */
+  onRetry?: () => void
 }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const data = useGameBoard(slug, period, you, groupId)
+  const board = useGameBoard(slug, period, you, groupId)
+  const data = {
+    ...board,
+    retry: () => {
+      board.retry()
+      onRetry?.()
+    },
+  }
   // The Season tab's words name the season (lib/scoreboard.ts periodCopy): drawn again when it comes.
   useSeason()
   const copy = periodCopy(period, Date.now(), Boolean(groupId))

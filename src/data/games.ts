@@ -49,6 +49,11 @@ export type Game = {
   /** Hidden from home, boards, and nav — code kept for later. */
   hidden?: boolean
   /**
+   * A hidden game's successor, the game that took its place: the hidden one's page, play page and board open that
+   * game's page (useHashRoute goneGameRoute). Without one, they're Game Over.
+   */
+  replacedBy?: string
+  /**
    * On deck: finished, and held back to be released after launch, one at a
    * time. Listed nowhere (see isListedGame), but its own pages still play, by
    * address and in an event already running with it. Take the flag off the day
@@ -151,6 +156,7 @@ export const games: Game[] = [
     playable: true,
     // Fireflies took its place; its scores stay on the books, and an event already running with it plays on.
     hidden: true,
+    replacedBy: 'fireflies',
   },
   {
     name: 'Spotter',

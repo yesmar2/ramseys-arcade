@@ -131,7 +131,10 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const device = useDeviceType()
   const playerName = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
-  const highScore = useHubHighScore(ranked ? boardSlug : null, groupId)
+  // The board's Try again asks again for the high score too: they come from the same boards.
+  const [scoreAsks, setScoreAsks] = useState(0)
+  const highScore = useHubHighScore(ranked ? boardSlug : null, groupId, scoreAsks)
+  const askScoreAgain = () => setScoreAsks((n) => n + 1)
   const events = useHubEvents(slug)
   // For the games below: your best on each, your place on its board, and who leads it, as the wall shows them.
   const bests = usePlayerBests(playerName, period)
@@ -283,7 +286,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                 </div>
                 <div className={`gh-today__below${ranked ? ' gh-today__below--board' : ''}`}>
                   {ranked && boardSlug ? (
-                    <GamePageBoard slug={boardSlug} period={boardPeriod} title="The board" place={BOARD_PLACE} />
+                    <GamePageBoard slug={boardSlug} period={boardPeriod} title="The board" place={BOARD_PLACE} onRetry={askScoreAgain} />
                   ) : (
                     // Just for fun: your days, then today part by part (YourDays.tsx).
                     <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
@@ -324,6 +327,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
                 noteHunt={gameTabs ? undefined : `g-stand-${game.slug}`}
                 // With tabs, the tabs are where a link to the board lands; with none, the board itself.
                 place={gameTabs ? undefined : BOARD_PLACE}
+                onRetry={askScoreAgain}
               />
             ) : null}
             {eventsCard}

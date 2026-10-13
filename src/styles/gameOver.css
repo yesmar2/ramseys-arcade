@@ -171,6 +171,19 @@
   text-align: center;
 }
 
+/* Its way back is a link, on the page rather than the screen: the sky blue the site's prose links wear. */
+.game-over__note a {
+  /* Deepened toward the ink on the light page, so it reads there (4.5:1). */
+  color: color-mix(in srgb, var(--accent-sky) 55%, var(--ink));
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+html[data-theme='dark'] .game-over__note a {
+  color: var(--accent-sky);
+}
+
 /* ---------- /level/256: the right half is garbage ---------- */
 
 .game-over__screen--kill {

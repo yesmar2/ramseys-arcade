@@ -10,9 +10,10 @@ import { getActiveTournamentsForGame, type TournamentSummary } from '../lib/tour
 
 /**
  * The game's all-time best run, for the high score on its screen: null when nobody has a run on it, undefined
- * while it's on its way or when it couldn't be read, which never says the board is empty.
+ * while it's on its way or when it couldn't be read, which never says the board is empty. A new `asks` asks again
+ * (the board's Try again).
  */
-export function useHubHighScore(slug: LeaderboardGame | null, groupId: string | null): LeaderboardEntry | null | undefined {
+export function useHubHighScore(slug: LeaderboardGame | null, groupId: string | null, asks = 0): LeaderboardEntry | null | undefined {
   const [top, setTop] = useState<LeaderboardEntry | null | undefined>(undefined)
   useEffect(() => {
     if (!slug) return
@@ -29,7 +30,7 @@ export function useHubHighScore(slug: LeaderboardGame | null, groupId: string | 
     return () => {
       cancelled = true
     }
-  }, [slug, groupId])
+  }, [slug, groupId, asks])
   return top
 }
 

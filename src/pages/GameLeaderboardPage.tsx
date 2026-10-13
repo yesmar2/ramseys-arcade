@@ -1,7 +1,7 @@
 import { useLayoutEffect } from 'react'
 import { GameBoard } from '../components/GameBoard'
 import { PageShell } from '../components/PageShell'
-import { getGame, isDailyGame, isRankedGame } from '../data/games'
+import { isDailyGame, isRankedGame } from '../data/games'
 import { boardPlaceHref, dailyTabHref, navigate } from '../hooks/useHashRoute'
 import { boardPeriodFor } from '../lib/allTime'
 import { defaultPeriod } from '../lib/defaultPeriod'
@@ -25,29 +25,21 @@ export function GameLeaderboardPage({ game: gameSlug, period: periodFromRoute, d
   const period = isDailyGame(gameSlug)
     ? boardPeriodFor(gameSlug, periodFromRoute ?? 'daily')
     : coerceVisiblePeriod(periodFromRoute ?? defaultPeriod())
-  const moved = !getGame(gameSlug)
-    ? null
-    : !isRankedGame(gameSlug)
-      ? day
-        ? dailyTabHref(gameSlug, 'past', day)
-        : dailyTabHref(gameSlug, 'today')
-      : day
-        ? null
-        : boardPlaceHref(gameSlug, period)
+  // A game the site doesn't have, or has retired, never gets here (useHashRoute goneGameRoute): every board here
+  // is a game's, and one with no day goes on to its page.
+  const moved = !isRankedGame(gameSlug)
+    ? day
+      ? dailyTabHref(gameSlug, 'past', day)
+      : dailyTabHref(gameSlug, 'today')
+    : day
+      ? null
+      : boardPlaceHref(gameSlug, period)
 
   // Before the first paint, in place of the old address, so Back doesn't bounce here again.
   useLayoutEffect(() => {
     if (moved) navigate(moved, { replace: true })
   }, [moved])
-  if (moved) return null
-
-  if (!getGame(gameSlug) || !day) {
-    return (
-      <PageShell>
-        <p className="lb-empty">That game isn’t on the board.</p>
-      </PageShell>
-    )
-  }
+  if (moved || !day) return null
 
   return (
     <PageShell innerClassName="lb-page__inner">

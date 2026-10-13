@@ -1023,10 +1023,14 @@ function waysUp({
       const worth = `${field <= 10 ? 'Only ' : ''}${field.toLocaleString()} ${field === 1 ? 'player is' : 'players are'} on it${words.noun ? ` ${words.phrase}` : ''}, so each place there is worth about ${each}.`
       const passing = passes ? passedWords(o) : ''
       const passesWords = passing ? ` and ${you} ${who.self ? 'pass' : 'passes'} ${passing.replace(/^past /, '')}` : ''
-      // "Beat X for Nth" whenever N is exactly what beating the next player up takes.
+      // "Beat X for Nth" whenever N is exactly what beating the next player up takes. On their score already, the
+      // two are tied, as the Boards page says it (lib/scoreboard.ts youCell): only a better one moves.
+      const nextScore = next ? formatLeaderboardScore(climb.slug, next.score) : ''
       const step =
         next && to === lands
-          ? ` Beat ${next.name}’s ${formatLeaderboardScore(climb.slug, next.score)} for ${ordinal(to)}${passesWords}.`
+          ? next.score === data.bests[climb.slug]
+            ? ` Break the ${nextScore} tie with ${next.name} for ${ordinal(to)}${passesWords}.`
+            : ` Beat ${next.name}’s ${nextScore} for ${ordinal(to)}${passesWords}.`
           : ` Climb ${numberWord(places)} ${places === 1 ? 'place' : 'places'} (${ordinal(climb.from)} to ${ordinal(to)})${passesWords}.`
       const adds = passes ? '' : ` That adds ${o.gain}.`
       ways.climb = {

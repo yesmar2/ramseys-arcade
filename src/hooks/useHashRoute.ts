@@ -129,6 +129,19 @@ function isLeaderboardGame(value: string): value is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(value)
 }
 
+/**
+ * Where a game's page, play page or board goes when the game isn't on the site, or null when it is. One it has never
+ * had (a typo, an old guess) is Game Over. One it has retired (data/games.ts Game.hidden) is the page of the game
+ * that took its place (Simon's is Fireflies'), or Game Over when none did. Its records keep their own pages, and an
+ * event already running with it plays on (tournamentPlay).
+ */
+function goneGameRoute(slug: string): Route | null {
+  const game = getGame(slug)
+  if (!game) return { name: 'notFound' }
+  if (!game.hidden) return null
+  return game.replacedBy ? { name: 'game', slug: game.replacedBy } : { name: 'notFound' }
+}
+
 function isLeaderboardPeriod(value: string): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly string[]).includes(value)
 }
@@ -739,8 +752,8 @@ export function parseUrl(pathname: string, search: string): Route {
       : { name: 'rank', period: defaultPeriod() }
   }
 
-  // A game the site has never had (a typo, an old guess), on any of its record or game addresses, is Game Over:
-  // the page for a place the site doesn't have.
+  // A game the site has never had (a typo, an old guess) is Game Over on its record addresses, as on its others
+  // (goneGameRoute). A retired game's records keep their pages.
   const recordBoardMatch = /^records\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(path)
   if (recordBoardMatch) {
     const game = canonicalGameSlug(decodeURIComponent(recordBoardMatch[1]))
@@ -783,10 +796,10 @@ export function parseUrl(pathname: string, search: string): Route {
   if (dayBoardMatch) {
     const game = canonicalGameSlug(decodeURIComponent(dayBoardMatch[1]!))
     const day = decodeURIComponent(dayBoardMatch[2]!)
-    if (isLeaderboardGame(game)) {
-      if (!isDailyGame(game)) return gameLeaderboardRoute(game, defaultPeriod())
-      return isDate(day) ? { name: 'gameLeaderboard', game, period: 'daily', day } : gameLeaderboardRoute(game, 'daily')
-    }
+    const gone = goneGameRoute(game)
+    if (gone || !isLeaderboardGame(game)) return gone ?? { name: 'notFound' }
+    if (!isDailyGame(game)) return gameLeaderboardRoute(game, defaultPeriod())
+    return isDate(day) ? { name: 'gameLeaderboard', game, period: 'daily', day } : gameLeaderboardRoute(game, 'daily')
   }
 
   const boardsMatch = /^leaderboards\/([^/]+)(?:\/([^/]+))?$/.exec(path)
@@ -801,7 +814,10 @@ export function parseUrl(pathname: string, search: string): Route {
     if (isLeaderboardPeriod(segment) && !periodRaw) {
       return { name: 'leaderboards', period: segment }
     }
-    if (isLeaderboardGame(segment)) {
+    // Neither a period nor a game on the site: a game it has never had, or one it has retired.
+    if (!isLeaderboardPeriod(segment)) {
+      const gone = goneGameRoute(segment)
+      if (gone || !isLeaderboardGame(segment)) return gone ?? { name: 'notFound' }
       // A daily's board with no period is today's, as its page opens on.
       const period =
         periodRaw && isLeaderboardPeriod(periodRaw) ? periodRaw : isDailyGame(segment) ? 'daily' : defaultPeriod()
@@ -837,7 +853,8 @@ export function parseUrl(pathname: string, search: string): Route {
   const gamePlayMatch = /^games\/([^/]+)\/play$/.exec(path)
   if (gamePlayMatch) {
     const slug = canonicalGameSlug(decodeURIComponent(gamePlayMatch[1]))
-    if (!getGame(slug)) return { name: 'notFound' }
+    const gone = goneGameRoute(slug)
+    if (gone) return gone
     const params = new URLSearchParams(search)
     const hole = params.get('hole')?.trim()
     const track = params.get('track')?.trim()
@@ -859,7 +876,8 @@ export function parseUrl(pathname: string, search: string): Route {
   const gameMatch = /^games\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/.exec(path)
   if (gameMatch) {
     const slug = canonicalGameSlug(decodeURIComponent(gameMatch[1]))
-    if (!getGame(slug)) return { name: 'notFound' }
+    const gone = goneGameRoute(slug)
+    if (gone) return gone
     const segment = gameMatch[2] ? decodeURIComponent(gameMatch[2]) : undefined
     const third = gameMatch[3] ? decodeURIComponent(gameMatch[3]) : undefined
     // A game's Records tab for another period than all time: `/games/{slug}/records/{period}`.
