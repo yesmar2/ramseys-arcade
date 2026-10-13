@@ -12,8 +12,7 @@ import { LeaderboardList } from './LeaderboardList'
  * next band up and what gets into it ("Beat 4,890 to reach the top half"). Over it all, Find a player and
  * Jump to me. Every place is the API's (getPlayerBoard): the page holds only the rows it has asked for.
  *
- * A game's page puts its first three on a podium over the rest (`podium`), and Find a player on the board's top
- * row (`findSlot`).
+ * A game's page puts Find a player on the board's top row (`findSlot`).
  */
 
 /** 7,412th: a place with its thousands marked. */
@@ -48,7 +47,6 @@ export function BoardPlayers({
   bandLine,
   cols,
   row,
-  podium,
   findSlot,
   load,
   search,
@@ -68,8 +66,6 @@ export function BoardPlayers({
   cols?: ReactNode
   /** One player's row: an `li`. */
   row: (player: BoardPlayer) => ReactNode
-  /** The first three, drawn over the rest in place of their rows (GameBoard's Podium). Not on a list of players found. */
-  podium?: (players: BoardPlayer[]) => ReactNode
   /**
    * Where Find a player and Jump to me go, when not over the rows: the board's top row (GameBoard's). Null till
    * that row is there.
@@ -206,17 +202,11 @@ export function BoardPlayers({
           const next = segments[k + 1]
           const hasMe = Boolean(mine && mine.place >= seg.from && mine.place <= end)
           const gap = next ? next.from - end - 1 : field - end
-          // The board's first three go up on the podium, and the rows carry on from 4th.
-          const raised = podium && seg.from === 1 ? seg.rows.slice(0, 3) : []
-          const rest = seg.rows.slice(raised.length)
           return (
             <div key={seg.from} className="gb-seg">
-              {raised.length ? podium!(raised) : null}
-              {rest.length ? (
-                <ol className="gb-rows" start={seg.from + raised.length}>
-                  {rest.map((p) => row(p))}
-                </ol>
-              ) : null}
+              <ol className="gb-rows" start={seg.from}>
+                {seg.rows.map((p) => row(p))}
+              </ol>
               {hasMe && bandLine ? <p className="gb-band">{bandLine}</p> : null}
               {gap > 0 ? (
                 <button type="button" className={`gb-board__more${next ? ' gb-board__more--gap' : ''}`} onClick={() => void openAfter(end)} disabled={busy === end}>

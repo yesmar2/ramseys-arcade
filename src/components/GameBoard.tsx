@@ -7,7 +7,7 @@ import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn, readableFill } from '../lib/color'
 import { useDeviceType } from '../lib/device'
-import { gapFigure, playersNote, type BoardPlayer } from '../lib/gameBoard'
+import { boardShare, gapFigure, playersNote, type BoardPlayer } from '../lib/gameBoard'
 import { lazyPage } from '../lib/lazyPage'
 import { useActiveGroup, useScope } from '../lib/groups'
 import {
@@ -37,9 +37,10 @@ import { RACE_GHOST_GAMES } from '../lib/raceGhost'
  * tabs, in place of a board page and a record book of their own. The board's top row is its periods; then one
  * row per player at their best run, and every run a tap away.
  *
- * Since the "Board and records, new looks" canvas (Ramsey: "let's do A and C", 2026-10-13) it's A: the first
- * three on a podium, then a plain list of the rest, a player, their runs and their best a row. Find a player is
- * on the top row, and there are no column heads.
+ * Since the "Board and records, new looks" canvas it's C (Ramsey, 2026-10-13: "i don't really like the podium
+ * anymore. i think i like the gap bars"): a row a player, with a bar of their score against 1st's, the top three
+ * in their medals' colours and yours in the site's, and on yours how far behind the place above you are. Find a
+ * player is on the top row, and there are no column heads.
  *
  * A daily's board opens on today's. Its week and month are its day points (leaderboardFormat
  * isDayPointsBoard): the points each day's board paid its players by place, added up, drawn as a plain
@@ -204,132 +205,46 @@ function runsWords(runs: number): string {
   return `${runs} ${runs === 1 ? 'run' : 'runs'}`
 }
 
-/** The crown over first place. */
-function PodiumCrown() {
-  return (
-    <svg className="gb-pod__crown" viewBox="0 0 32 20" aria-hidden="true">
-      <path d="M3 18 L5 5 L11 11 L16 2 L21 11 L27 5 L29 18 Z" />
-    </svg>
-  )
+/** "3 days": the days a player's day points came from. */
+function daysWords(entry: LeaderboardEntry): string {
+  const n = entry.days ?? 1
+  return `${n} ${n === 1 ? 'day' : 'days'}`
+}
+
+/** The player above yours on the rows asked for, for how far behind them you are. */
+function placeAbove(data: ReturnType<typeof useGameBoard>, you: BoardPlayer | undefined): BoardPlayer | undefined {
+  return you ? [...data.top, ...(data.around ?? [])].find((p) => p.place === you.place - 1) : undefined
 }
 
 /**
- * The board's first three on a podium: first in the middle on the highest step, crowned, second on its left and
- * third on its right, each with their mark, tag, figure and runs, and their place on their step. Yours says how
- * far you are behind the place above.
+ * One player's row: place, mark, the player with their runs (or days), a bar of their score against 1st's
+ * (`share`, lib/gameBoard boardShare), and their score. Yours says how far behind the place above you are (`sub`).
  */
-function Podium({
-  slug,
-  players,
-  you,
-  period,
-  figure,
-  sub,
-  behind,
-  race,
-}: {
-  slug: string
-  /** The first three, first first. */
-  players: BoardPlayer[]
-  you: string
-  period: LeaderboardPeriod
-  /** A player's figure: their best, or a daily's day points. */
-  figure: (player: BoardPlayer) => string
-  /** The line under it: their runs, or their days. */
-  sub: (player: BoardPlayer) => string
-  /** How far you are behind the place above: "3,743 behind GLITCH". */
-  behind: (above: BoardPlayer, mine: BoardPlayer) => string
-  race?: RaceRows
-}) {
-  return (
-    <ol className="gb-podium">
-      {players.map((p, i) => {
-        const mine = Boolean(you) && p.name === you
-        const above = players[i - 1]
-        const line = [sub(p), mine && above ? behind(above, p) : ''].filter(Boolean).join(' · ')
-        return (
-          <li key={p.name} className={`gb-pod gb-pod--${MEDALS[i]}${mine ? ' gb-pod--you' : ''}`}>
-            {i === 0 ? <PodiumCrown /> : null}
-            <PlayerMark name={p.name} avatarId={p.best.avatarId} className="gb-pod__mark" />
-            {/* The name is the step's link, stretched over it (boards.css); the skin beside it opens its own card. */}
-            <span className="gb-pod__name">
-              <span className="visually-hidden">{ordinal(p.place)}: </span>
-              <a className="gb-pod__go" href={rankHref(p.name, period)}>
-                <PlayerName name={p.name} avatarId={p.best.avatarId} />
-              </a>
-              <SkinMark skin={p.best.skin} />
-              {mine ? <span className="sb-row__you">You</span> : null}
-            </span>
-            <span className="gb-pod__figure">{figure(p)}</span>
-            <span className="gb-pod__sub">{line}</span>
-            {race ? <RaceButton slug={slug} player={p} mine={mine} race={race} /> : null}
-            <span className="gb-pod__step" aria-hidden="true">
-              {p.place}
-            </span>
-          </li>
-        )
-      })}
-    </ol>
-  )
-}
-
-/** A loading board: the podium's steps and the rows under it, in their own shapes, so the board lands in place. */
-function PodiumBoardSkeleton() {
-  const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
-  return (
-    <div className="gb-list" aria-hidden="true">
-      <ol className="gb-podium gb-podium--skel">
-        {MEDALS.map((medal, i) => (
-          <li key={medal} className={`gb-pod gb-pod--${medal}`}>
-            {i === 0 ? <PodiumCrown /> : null}
-            <span className="pmark pmark--empty gb-pod__mark" />
-            {/* A space with no width: the name's line as tall as a name's. */}
-            <span className="gb-pod__name">
-              {line('5rem')}
-              {'\u200b'}
-            </span>
-            <span className="gb-pod__figure">{line('4.5rem')}</span>
-            <span className="gb-pod__sub">{line('3rem')}</span>
-            <span className="gb-pod__step" />
-          </li>
-        ))}
-      </ol>
-      <ol className="gb-rows">
-        {Array.from({ length: FIRST_ROWS - MEDALS.length }, (_, i) => (
-          <li key={i} className="gb-row gb-row--slim">
-            <div className="gb-row__link">
-              <span className="gb-row__ord">{line('1.6rem')}</span>
-              <span className="pmark pmark--empty gb-row__mark" />
-              <span className="gb-row__who">{line('6rem')}</span>
-              <span className="gb-row__best">{line('3.5rem')}</span>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <button type="button" className="gb-board__more skel-btn" disabled tabIndex={-1}>
-        Show 25 more players
-      </button>
-    </div>
-  )
-}
-
 function PlayerRow({
   slug,
   player,
   you,
   period,
+  figure,
+  sub,
+  share,
   race,
 }: {
   slug: string
   player: BoardPlayer
   you: string
   period: LeaderboardPeriod
+  /** Their score as the board shows it: a best, or a daily's day points. */
+  figure: string
+  /** The line under their name. */
+  sub: string
+  share: number
   race?: RaceRows
 }) {
   const mine = Boolean(you) && player.name === you
   const medal = MEDALS[player.place - 1]
   return (
-    <li className={`gb-row gb-row--slim${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
+    <li className={`gb-row gb-row--bar${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
       {/* The name is the row's link, stretched over it (boards.css); the skin beside it opens its own card. */}
       <div className="gb-row__link">
         <span className="gb-row__ord">{ordinal(player.place).toUpperCase()}</span>
@@ -342,12 +257,40 @@ function PlayerRow({
             <SkinMark skin={player.best.skin} />
             {mine ? <span className="sb-row__you">You</span> : null}
           </span>
-          <span className="gb-row__runs">{runsWords(player.runs)}</span>
+          <span className="gb-row__runs">{sub}</span>
         </span>
-        <span className="gb-row__best">{formatLeaderboardScore(slug, player.best.score)}</span>
+        <span className="gb-row__bar" aria-hidden="true">
+          {share > 0 ? <span className="gb-row__fill" style={{ '--gb-share': `${(share * 100).toFixed(1)}%` } as CSSProperties} /> : null}
+        </span>
+        <span className="gb-row__best">{figure}</span>
         {race ? <RaceButton slug={slug} player={player} mine={mine} race={race} /> : null}
       </div>
     </li>
+  )
+}
+
+/** A loading board: its first rows in their own shape, empty, so the board lands in place. */
+function BarBoardSkeleton() {
+  const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
+  return (
+    <div className="gb-list" aria-hidden="true">
+      <ol className="gb-rows">
+        {Array.from({ length: FIRST_ROWS }, (_, i) => (
+          <li key={i} className="gb-row gb-row--bar">
+            <div className="gb-row__link">
+              <span className="gb-row__ord">{line('1.6rem')}</span>
+              <span className="pmark pmark--empty gb-row__mark" />
+              <span className="gb-row__who">{line('6rem')}</span>
+              <span className="gb-row__bar" />
+              <span className="gb-row__best">{line('3.5rem')}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button type="button" className="gb-board__more skel-btn" disabled tabIndex={-1}>
+        Show 25 more players
+      </button>
+    </div>
   )
 }
 
@@ -388,14 +331,19 @@ function Board({
     !data.loading && data.field
       ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'}${scope.id ? ` ${scope.where}` : ''} · ${data.runCount.toLocaleString()} ${data.runCount === 1 ? 'run' : 'runs'}`
       : null
-  // Tied in what the board shows, as two times can print the same whatever the milliseconds under them.
-  const behind = (above: BoardPlayer, mine: BoardPlayer) =>
-    formatLeaderboardScore(slug, above.best.score) === formatLeaderboardScore(slug, mine.best.score)
-      ? `tied with ${above.name}`
-      : `${gapFigure(slug, above.best.score, mine.best.score)} behind ${above.name}`
+  // Each bar is a score against 1st's; yours says how far behind the place above you are, tied in what the board
+  // shows (two times can print the same whatever the milliseconds under them).
+  const best = data.top[0]?.best.score ?? 0
+  const above = placeAbove(data, yourRow)
+  const yourLine =
+    yourRow && above
+      ? formatLeaderboardScore(slug, above.best.score) === formatLeaderboardScore(slug, yourRow.best.score)
+        ? `tied with ${above.name}`
+        : `${gapFigure(slug, above.best.score, yourRow.best.score)} behind ${above.name}`
+      : null
   return (
     <section
-      className="sb-card gb-board gb-board--slim"
+      className="sb-card gb-board gb-board--bars"
       aria-labelledby={title ? 'gb-board-title' : undefined}
       aria-label={title ? undefined : `${game.name}’s board`}
       data-hunt={`b-board-${slug}`}
@@ -420,7 +368,7 @@ function Board({
         {closesWords(period)}
       </p>
       {data.loading ? (
-        <PodiumBoardSkeleton />
+        <BarBoardSkeleton />
       ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">
@@ -439,19 +387,19 @@ function Board({
           you={data.you ? you : ''}
           bandLine={data.bandLine}
           findSlot={findSlot}
-          podium={(players) => (
-            <Podium
+          row={(p) => (
+            <PlayerRow
+              key={p.name}
               slug={slug}
-              players={players}
+              player={p}
               you={you}
               period={period}
-              figure={(p) => formatLeaderboardScore(slug, p.best.score)}
-              sub={(p) => runsWords(p.runs)}
-              behind={behind}
+              figure={formatLeaderboardScore(slug, p.best.score)}
+              sub={yourLine && p.name === yourRow?.name ? yourLine : runsWords(p.runs)}
+              share={boardShare(slug, p.best.score, best)}
               race={race}
             />
           )}
-          row={(p) => <PlayerRow key={p.name} slug={slug} player={p} you={you} period={period} race={race} />}
         />
       ) : (
         <BoardRuns
@@ -468,37 +416,7 @@ function Board({
 
 /* ---------- a daily's day points ---------- */
 
-/** "3 days": the days a player's day points came from. */
-function daysWords(entry: LeaderboardEntry): string {
-  const n = entry.days ?? 1
-  return `${n} ${n === 1 ? 'day' : 'days'}`
-}
-
-function PointsRow({ player, you, period }: { player: BoardPlayer; you: string; period: LeaderboardPeriod }) {
-  const mine = Boolean(you) && player.name === you
-  const medal = MEDALS[player.place - 1]
-  return (
-    <li className={`gb-row gb-row--slim${medal ? ` gb-row--${medal}` : ''}${mine ? ' gb-row--you' : ''}`}>
-      <div className="gb-row__link">
-        <span className="gb-row__ord">{ordinal(player.place).toUpperCase()}</span>
-        <PlayerMark name={player.name} avatarId={player.best.avatarId} className="gb-row__mark" />
-        <span className="gb-row__who">
-          <span className="gb-row__name">
-            <a className="gb-row__go" href={rankHref(player.name, period)}>
-              <PlayerName name={player.name} avatarId={player.best.avatarId} />
-            </a>
-            <SkinMark skin={player.best.skin} />
-            {mine ? <span className="sb-row__you">You</span> : null}
-          </span>
-          <span className="gb-row__runs">{daysWords(player.best)}</span>
-        </span>
-        <span className="gb-row__best">{formatDayPoints(player.best.score)}</span>
-      </div>
-    </li>
-  )
-}
-
-/** A daily's day points for the week or the month: a row a player, their days and their points. */
+/** A daily's day points for the week or the month: a row a player, their days, a bar against 1st's and their points. */
 function PointsBoard({
   slug,
   period,
@@ -521,9 +439,19 @@ function PointsBoard({
     !data.loading && data.field
       ? `${data.field.toLocaleString()} ${data.field === 1 ? 'player' : 'players'}${scope.id ? ` ${scope.where}` : ''}`
       : null
+  // Points are always more is better, whatever the game's own board counts.
+  const best = data.top[0]?.best.score ?? 0
+  const yourRow = data.top.find((p) => p.name === you) ?? data.around?.find((p) => p.name === you)
+  const above = placeAbove(data, yourRow)
+  const yourLine =
+    yourRow && above
+      ? above.best.score === yourRow.best.score
+        ? `tied with ${above.name}`
+        : `${formatDayPoints(above.best.score - yourRow.best.score)} behind ${above.name}`
+      : null
   return (
     <section
-      className="sb-card gb-board gb-board--slim"
+      className="sb-card gb-board gb-board--bars"
       aria-labelledby={title ? 'gb-board-title' : undefined}
       aria-label={title ? undefined : `${game.name}’s board`}
       data-hunt={`b-board-${slug}`}
@@ -534,7 +462,7 @@ function PointsBoard({
         {closesWords(period)}
       </p>
       {data.loading ? (
-        <PodiumBoardSkeleton />
+        <BarBoardSkeleton />
       ) : !data.field ? (
         <div className="gb-board__empty">
           <p className="gb-board__empty-title">
@@ -553,22 +481,18 @@ function PointsBoard({
           you={data.you ? you : ''}
           bandLine={null}
           findSlot={findSlot}
-          podium={(players) => (
-            <Podium
+          row={(p) => (
+            <PlayerRow
+              key={p.name}
               slug={slug}
-              players={players}
+              player={p}
               you={you}
               period={period}
-              figure={(p) => formatDayPoints(p.best.score)}
-              sub={(p) => daysWords(p.best)}
-              behind={(above, mine) =>
-                above.best.score === mine.best.score
-                  ? `tied with ${above.name}`
-                  : `${formatDayPoints(above.best.score - mine.best.score)} behind ${above.name}`
-              }
+              figure={formatDayPoints(p.best.score)}
+              sub={yourLine && p.name === yourRow?.name ? yourLine : daysWords(p.best)}
+              share={best > 0 ? Math.min(1, Math.max(0, p.best.score / best)) : 0}
             />
           )}
-          row={(p) => <PointsRow key={p.name} player={p} you={you} period={period} />}
         />
       )}
     </section>

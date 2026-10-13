@@ -102,6 +102,22 @@ export function gapFigure(slug: string, a: number, b: number): string {
   return isTimeBoard(slug) ? formatTimeGap(slug, gap) : gap.toLocaleString()
 }
 
+/** What every inverted board (a time's, a hole's tries) keeps its figure under: each game's score.ts *_SCORE_BASE. */
+const INVERTED_BASE = 1_000_000
+
+/**
+ * How close a score is to the board's best, from nothing to all of it, for a bar: its share of the best, or where
+ * less is better (a time, tries) the best's share of it, read back from the board's inverted figure.
+ */
+export function boardShare(slug: string, score: number, best: number): number {
+  if (isInvertedBoard(slug)) {
+    const mine = INVERTED_BASE - score
+    const top = INVERTED_BASE - best
+    return mine > 0 && top > 0 ? Math.min(1, top / mine) : 0
+  }
+  return score > 0 && best > 0 ? Math.min(1, score / best) : 0
+}
+
 /** A score in the game's own terms, for a sentence: 49 rows, 1,000 points, 9.9s, 3 tries, 91.2%. */
 export function scoreText(slug: string, score: number): string {
   if (isInvertedBoard(slug) || isPercentBoard(slug)) return formatLeaderboardScore(slug, score)

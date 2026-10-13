@@ -2296,12 +2296,12 @@ html[data-theme="light"] .sb-grab__pts {
   margin-right: 0.3rem;
 }
 
-/* ---------- a game's board on its page: the podium, and the rows under it (GameBoard.tsx) ---------- */
+/* ---------- a game's board on its page: a bar a player, how close they are to 1st (GameBoard.tsx) ---------- */
 
 /*
- * A of the "Board and records, new looks" canvas (Ramsey: "let's do A and C", 2026-10-13): the first three on a
- * podium, then a plain list of the rest with a line between each, a place, a mark, a player with their runs and
- * their best a row. Find a player is on the board's top row, before Players / Every run; there are no column heads.
+ * C of the "Board and records, new looks" canvas (Ramsey, 2026-10-13: "i think i like the gap bars"): a row a
+ * player, with a bar of their score against 1st's, the top three in their medals' colours and yours in the
+ * site's. Find a player is on the board's top row, before Players / Every run; there are no column heads.
  */
 .gb-board__find {
   display: flex;
@@ -2334,289 +2334,88 @@ html[data-theme="light"] .sb-grab__pts {
   white-space: nowrap;
 }
 
-/* The podium and the list under it in the middle of a wide board, so a name and its figure aren't a screen apart. */
-.gb-board--slim .gb-list {
-  max-width: 56rem;
-  margin-inline: auto;
+.gb-board--bars .gb-rows {
+  gap: 0.25rem;
 }
 
-.gb-podium {
-  --gb-pod-line: rgba(var(--ink-rgb), 0.16);
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: end;
-  gap: 1.25rem;
-  margin: 1.4rem 0 0;
-  padding: 0 0.5rem;
-  list-style: none;
-  /* The floor the steps stand on. */
-  border-bottom: 1px solid var(--gb-pod-line);
+/* Place, mark, the player and their runs, the bar, their score. */
+.gb-row--bar .gb-row__link {
+  grid-template-columns: 3.5rem 2.5rem minmax(0, 14rem) minmax(0, 1fr) 7rem;
+  column-gap: 1rem;
+  min-height: 3.9rem;
+  padding: 0.35rem 1rem;
 }
 
-.gb-pod {
-  /* Each place's colour: its medal's, and yours the site's. */
-  --gb-pod: var(--sb-gold, #e8b23c);
-  --gb-pod-ink: var(--sb-gold-ink, var(--gb-pod));
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  min-width: 0;
-  /* Second on the left, first in the middle, third on the right, whoever's missing on a board of one or two. */
-  grid-row: 1;
-  grid-column: 2;
-  text-align: center;
+.gb-row--bar .gb-row__ord {
+  font-size: 0.9rem;
 }
 
-.gb-pod--silver {
-  --gb-pod: var(--sb-silver, #b9c4cf);
-  --gb-pod-ink: var(--sb-silver-ink, var(--gb-pod));
-  grid-column: 1;
-}
-
-.gb-pod--bronze {
-  --gb-pod: var(--sb-bronze, #cd8b5c);
-  --gb-pod-ink: var(--sb-bronze-ink, var(--gb-pod));
-  grid-column: 3;
-}
-
-.gb-pod__crown {
-  width: 2.5rem;
-  height: auto;
-  margin-bottom: 0.1rem;
-  fill: var(--gb-pod);
-  stroke: color-mix(in srgb, var(--gb-pod) 62%, #000);
-  stroke-width: 1.2;
-  stroke-linejoin: round;
-}
-
-.gb-pod .gb-pod__mark {
-  --pmark: 4.6rem;
-  margin-bottom: 0.45rem;
-  box-shadow:
-    0 0 0 3px var(--surface),
-    0 0 0 6px var(--gb-pod);
-}
-
-.gb-pod--gold .gb-pod__mark {
-  --pmark: 5.6rem;
-}
-
-/* PlayerAvatar sets its size inline (2rem): grown to fill the mark, as in a row. */
-.gb-pod__mark .player-avatar {
-  --avatar-size: calc(var(--pmark) * 0.8) !important;
-}
-
-.gb-pod--you .gb-pod__mark {
-  box-shadow:
-    0 0 0 3px var(--surface),
-    0 0 0 6px var(--accent);
-}
-
-.gb-pod__name {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  max-width: 100%;
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.gb-pod--gold .gb-pod__name {
-  font-size: 1.35rem;
-}
-
-.gb-pod--you .gb-pod__name {
-  color: var(--sb-brand-ink, var(--accent));
-}
-
-.gb-pod__name .skin-mark,
-.gb-pod__name .sb-row__you {
-  flex: none;
-}
-
-/* As a row's: the name is the step's link, stretched over all of it; the skin and Race sit over that. */
-.gb-pod__go {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: inherit;
-  text-decoration: none;
-  outline: none;
-}
-
-.gb-pod__go::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  border-radius: 1rem 1rem 0 0;
-}
-
-.gb-pod:has(.gb-pod__go:focus-visible) .gb-pod__go::after {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.gb-pod__figure {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.gb-pod--gold .gb-pod__figure {
-  font-size: 2rem;
-  color: var(--gb-pod-ink);
-}
-
-.gb-pod__sub {
-  min-height: 1.2em;
-  font-size: 0.82rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.gb-pod .gb-row__race {
-  justify-content: center;
-  margin-top: 0.2rem;
-}
-
-/* Race's card opens over the rows, from under the button, kept on the board at either side. */
-.gb-pod:has(.rg-pop) {
-  z-index: 6;
-}
-
-.gb-pod .rg-pop {
-  right: auto;
-  left: 50%;
-  translate: -50% 0;
-}
-
-.gb-pod--silver .rg-pop {
-  left: 0;
-  translate: none;
-}
-
-.gb-pod--bronze .rg-pop {
-  right: 0;
-  left: auto;
-  translate: none;
-}
-
-.gb-pod__step {
-  display: grid;
-  place-items: center;
-  align-self: stretch;
-  height: 6rem;
-  margin-top: 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--gb-pod) 30%, transparent);
-  border-bottom: 0;
-  border-radius: 1rem 1rem 0 0;
-  background: color-mix(in srgb, var(--gb-pod) 11%, transparent);
-  color: var(--gb-pod-ink);
-  font-family: var(--font-display);
-  font-size: 2.9rem;
-  font-weight: 800;
-  line-height: 1;
-  transition: background-color 0.15s ease;
-}
-
-.gb-pod--gold .gb-pod__step {
-  height: 8.25rem;
-  font-size: 3.5rem;
-}
-
-.gb-pod--bronze .gb-pod__step {
-  height: 4.5rem;
-  font-size: 2.5rem;
-}
-
-.gb-pod:hover .gb-pod__step {
-  background: color-mix(in srgb, var(--gb-pod) 18%, transparent);
-}
-
-.gb-podium--skel .gb-pod__crown {
-  fill: rgba(var(--ink-rgb), 0.08);
-  stroke: none;
-}
-
-.gb-podium--skel .gb-pod .gb-pod__mark {
-  box-shadow: none;
-}
-
-.gb-podium--skel .gb-pod__step {
-  border-color: rgba(var(--ink-rgb), 0.08);
-  background: rgba(var(--ink-rgb), 0.03);
-}
-
-/* The rest: a line between each, and the first stands on the podium's floor. */
-.gb-board--slim .gb-rows {
-  gap: 0;
-  margin-top: 0;
-}
-
-.gb-row--slim .gb-row__link {
-  grid-template-columns: 3rem 2.4rem minmax(0, 1fr) auto;
-  min-height: 3.65rem;
-  padding: 0.3rem 0.75rem;
-  border-top: 1px solid var(--sb-line, rgba(var(--ink-rgb), 0.08));
-  border-radius: 0;
-}
-
-.gb-podium + .gb-rows > .gb-row--slim:first-child .gb-row__link,
-.gb-row--slim.gb-row--you .gb-row__link,
-.gb-row--slim.gb-row--you + .gb-row--slim .gb-row__link {
-  border-top-color: transparent;
-}
-
-.gb-row--slim.gb-row--you .gb-row__link {
-  border-radius: 0.9rem;
-}
-
-.gb-row--slim .gb-row__ord {
-  font-size: 0.86rem;
-}
-
-.gb-row--slim .gb-row__mark {
+.gb-row--bar .gb-row__mark {
   --pmark: 2.4rem;
 }
 
-/* The runs after the name, on its line. */
-.gb-row--slim .gb-row__who {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 0.65rem;
-}
-
-.gb-row--slim .gb-row__name {
+.gb-row--bar .gb-row__name {
   font-size: 1.05rem;
 }
 
-.gb-row--slim .gb-row__runs {
-  flex: none;
+.gb-row--bar .gb-row__runs {
   font-size: 0.8rem;
-  white-space: nowrap;
 }
 
-.gb-row--slim .gb-row__best {
+.gb-row--bar .gb-row__best {
   font-size: 1.25rem;
 }
 
+.gb-row__bar {
+  height: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.07);
+}
+
+.gb-row__fill {
+  display: block;
+  width: var(--gb-share);
+  min-width: 0.5rem;
+  height: 100%;
+  border-radius: inherit;
+  /* Lighter than the medals' solid bars, so 3rd's bronze stands apart even on an orange game. */
+  background: color-mix(in srgb, var(--gb-accent, var(--accent)) 55%, transparent);
+}
+
+.gb-row--gold .gb-row__fill {
+  background: var(--sb-gold);
+}
+
+.gb-row--silver .gb-row__fill {
+  background: var(--sb-silver);
+}
+
+.gb-row--bronze .gb-row__fill {
+  background: var(--sb-bronze);
+}
+
+/* 1st's score in gold; yours, your line and your bar in the site's colour. */
+.gb-row--bar.gb-row--gold .gb-row__best {
+  color: var(--sb-gold-ink);
+}
+
+.gb-row--you .gb-row__fill {
+  background: var(--accent);
+}
+
+.gb-row--bar.gb-row--you .gb-row__best,
+.gb-row--bar.gb-row--you .gb-row__runs {
+  color: var(--sb-brand-ink);
+}
+
 /* Race's column the same width in every row, yours empty, so the bests line up. */
-.gb-board--slim:has(.gb-row__race) .gb-row--slim .gb-row__link {
-  grid-template-columns: 3rem 2.4rem minmax(0, 1fr) auto 4.6rem;
+.gb-board--bars:has(.gb-row__race) .gb-row--bar .gb-row__link {
+  grid-template-columns: 3.5rem 2.5rem minmax(0, 14rem) minmax(0, 1fr) 7rem 4.6rem;
 }
 
 /* Show more: a button in the middle, under the list. */
-.gb-board--slim .gb-board__more:not(.gb-board__more--gap) {
+.gb-board--bars .gb-board__more:not(.gb-board__more--gap) {
   width: auto;
   margin: 1rem auto 0;
   padding: 0 1.4rem;
@@ -2625,32 +2424,17 @@ html[data-theme="light"] .sb-grab__pts {
 }
 
 @media (max-width: 64rem) {
-  .gb-podium {
-    gap: 0.9rem;
+  .gb-row--bar .gb-row__link {
+    grid-template-columns: 3rem 2.2rem minmax(0, 11rem) minmax(0, 1fr) 6rem;
+    column-gap: 0.85rem;
   }
 
-  .gb-pod .gb-pod__mark {
-    --pmark: 4rem;
+  .gb-board--bars:has(.gb-row__race) .gb-row--bar .gb-row__link {
+    grid-template-columns: 3rem 2.2rem minmax(0, 11rem) minmax(0, 1fr) 6rem 4.6rem;
   }
 
-  .gb-pod--gold .gb-pod__mark {
-    --pmark: 4.8rem;
-  }
-
-  .gb-pod__name {
-    font-size: 1.05rem;
-  }
-
-  .gb-pod--gold .gb-pod__name {
-    font-size: 1.2rem;
-  }
-
-  .gb-pod__figure {
-    font-size: 1.35rem;
-  }
-
-  .gb-pod--gold .gb-pod__figure {
-    font-size: 1.65rem;
+  .gb-row--bar .gb-row__best {
+    font-size: 1.1rem;
   }
 }
 
@@ -2679,129 +2463,61 @@ html[data-theme="light"] .sb-grab__pts {
     padding-inline: 0.85rem;
   }
 
-  .gb-podium {
-    gap: 0.5rem;
-    margin-top: 1.1rem;
-    padding: 0;
+  /* A phone: the player and their score on a line, the bar across under them. */
+  .gb-row--bar .gb-row__link {
+    grid-template-columns: 2.25rem 1.9rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      'ord mark who best'
+      'ord mark bar bar';
+    gap: 0.4rem 0.6rem;
+    min-height: 3.6rem;
+    padding: 0.45rem 0.5rem;
   }
 
-  .gb-pod {
-    gap: 0.15rem;
+  .gb-board--bars:has(.gb-row__race) .gb-row--bar .gb-row__link {
+    grid-template-columns: 2.25rem 1.9rem minmax(0, 1fr) auto 3.9rem;
+    grid-template-areas:
+      'ord mark who best race'
+      'ord mark bar bar race';
   }
 
-  .gb-pod__crown {
-    width: 1.75rem;
-  }
-
-  .gb-pod .gb-pod__mark {
-    --pmark: 3.25rem;
-    margin-bottom: 0.35rem;
-    box-shadow:
-      0 0 0 2px var(--surface),
-      0 0 0 4px var(--gb-pod);
-  }
-
-  .gb-pod--gold .gb-pod__mark {
-    --pmark: 3.9rem;
-  }
-
-  .gb-pod--you .gb-pod__mark {
-    box-shadow:
-      0 0 0 2px var(--surface),
-      0 0 0 4px var(--accent);
-  }
-
-  .gb-pod__name {
-    gap: 0.25rem;
-    font-size: 0.9rem;
-  }
-
-  .gb-pod--gold .gb-pod__name {
-    font-size: 0.98rem;
-  }
-
-  .gb-pod__name .sb-row__you {
-    padding-inline: 0.3rem;
-    font-size: 0.55rem;
-  }
-
-  .gb-pod__figure {
-    font-size: 1.05rem;
-  }
-
-  .gb-pod--gold .gb-pod__figure {
-    font-size: 1.2rem;
-  }
-
-  /* Only yours keeps its line on a phone, for how far behind you are. */
-  .gb-pod__sub {
-    min-height: 0;
-    font-size: 0.72rem;
-  }
-
-  .gb-pod:not(.gb-pod--you) .gb-pod__sub {
-    display: none;
-  }
-
-  .gb-pod__step {
-    height: 3.9rem;
-    margin-top: 0.4rem;
-    border-radius: 0.75rem 0.75rem 0 0;
-    font-size: 1.9rem;
-  }
-
-  .gb-pod--gold .gb-pod__step {
-    height: 5.25rem;
-    font-size: 2.25rem;
-  }
-
-  .gb-pod--bronze .gb-pod__step {
-    height: 2.9rem;
-    font-size: 1.6rem;
-  }
-
-  .gb-pod__go::after {
-    border-radius: 0.75rem 0.75rem 0 0;
-  }
-
-  .gb-row--slim .gb-row__link {
-    grid-template-columns: 2.4rem 2rem minmax(0, 1fr) auto;
-    column-gap: 0.6rem;
-    min-height: 3.25rem;
-    padding: 0.3rem 0.4rem;
-  }
-
-  .gb-board--slim:has(.gb-row__race) .gb-row--slim .gb-row__link {
-    grid-template-columns: 2.4rem 2rem minmax(0, 1fr) auto 3.9rem;
-  }
-
-  .gb-row--slim .gb-row__ord {
+  .gb-row--bar .gb-row__ord {
+    grid-area: ord;
     font-size: 0.78rem;
   }
 
-  .gb-row--slim .gb-row__mark {
-    --pmark: 2rem;
+  .gb-row--bar .gb-row__mark {
+    --pmark: 1.9rem;
+    grid-area: mark;
   }
 
-  .gb-row--slim .gb-row__name {
+  .gb-row--bar .gb-row__who {
+    grid-area: who;
+  }
+
+  .gb-row--bar .gb-row__name {
     font-size: 0.95rem;
   }
 
-  .gb-row--slim .gb-row__runs {
+  .gb-row--bar .gb-row__runs {
     display: none;
   }
 
-  .gb-row--slim .gb-row__best {
+  .gb-row--bar .gb-row__bar {
+    grid-area: bar;
+    height: 0.5rem;
+  }
+
+  .gb-row--bar .gb-row__best {
+    grid-area: best;
     font-size: 1.05rem;
   }
 
-  .gb-board--slim .gb-board__more:not(.gb-board__more--gap) {
-    width: 100%;
+  .gb-row--bar .gb-row__race {
+    grid-area: race;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .gb-pod__step {
-    transition: none;
+  .gb-board--bars .gb-board__more:not(.gb-board__more--gap) {
+    width: 100%;
   }
 }
