@@ -74,6 +74,17 @@ html[data-theme='dark'] .swoop--fullscreen {
   }
 }
 
+/*
+ * On a narrow one, a best and a clock both past a minute still meet: the best goes too, and the hairline before the
+ * split with it (the start and pause cards show the best, and the split is against the run you race).
+ */
+@media (max-width: 380px) {
+  .swoop .play-stats .play-stat:nth-child(1),
+  .swoop .play-stats .play-stat:nth-child(2)::before {
+    display: none;
+  }
+}
+
 .swoop__delta--good {
   color: var(--swoop-good);
 }
