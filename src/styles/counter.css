@@ -845,6 +845,8 @@ button.counter-goal:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* The player card on it fits its width (below): a phone's stage is narrower than a desk's. */
+  container-type: inline-size;
   min-height: 21rem;
   padding: 1.2rem;
   border-radius: 1.3rem;
@@ -1065,11 +1067,54 @@ button.counter-goal:focus-visible {
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;
+  /* A long tag breaks onto a second line, as on the card itself, rather than running off it. */
+  overflow-wrap: anywhere;
+}
+
+/* A sign comes down to the width the words have, and a title plate never runs past it. */
+.prize-card__text > svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.prize-card .prize-plate {
+  max-width: 100%;
 }
 
 .prize-card__line {
   font-size: 0.85rem;
   color: #c7d4dd;
+}
+
+/* On a phone's stage: a smaller tile, so the tag, its sign and its title have the room. */
+@container (max-width: 21rem) {
+  .prize-card {
+    gap: 0.85rem;
+    padding: 0 1rem;
+  }
+
+  .prize-card__tile {
+    width: 5rem;
+    height: 5rem;
+    border-radius: 1.2rem;
+  }
+
+  .prize-card__tile svg {
+    width: 3.8rem;
+    height: 3.8rem;
+  }
+
+  .prize-card__name {
+    font-size: 2rem;
+  }
+
+  /* As the card's own title on a phone, a size down; the longest of them take two lines at 360. */
+  .prize-card .prize-plate {
+    padding: 0 0.6rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    white-space: normal;
+  }
 }
 
 .prize-info {
@@ -1188,6 +1233,12 @@ button.counter-goal:focus-visible {
   justify-content: flex-start;
 }
 
+/* Lined up with the words over them: a panel's actions bar keeps sides of its own (panel.css), which only a
+   phone's pinned foot wants (below). */
+.prize-info .prize-info__acts {
+  padding-inline: 0;
+}
+
 .prize-info__acts .panel__btn svg {
   display: block;
 }
@@ -1216,6 +1267,11 @@ button.counter-goal:focus-visible {
 
 .prize-confirm__acts {
   justify-content: flex-start;
+}
+
+/* The question's own box has the room round it: its buttons sit under its words, a desk's as a phone's. */
+.prize-confirm .prize-confirm__acts {
+  padding: 0;
 }
 
 .prize-info__fine {
@@ -1260,12 +1316,12 @@ button.counter-goal:focus-visible {
     margin: 0.9rem 1.5rem 0;
   }
 
-  .prize-info__foot .prize-confirm {
-    margin: 0.9rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+  .prize-info__foot .prize-info__acts {
+    padding-inline: 1.5rem;
   }
 
-  .prize-info__foot .prize-confirm__acts {
-    padding: 0;
+  .prize-info__foot .prize-confirm {
+    margin: 0.9rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
   }
 }
 
