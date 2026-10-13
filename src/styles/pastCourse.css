@@ -316,12 +316,13 @@
 }
 
 /*
- * The last step leaves out the label's own line and the walk to the neighbours, which "Back to past
- * tracks" does too. The notes stay ("You're 2 tries in. Every try counts…"), and so does the result's
- * line under its figure, which the step leaves out of every other card as its blurb.
+ * The last step leaves out the label's own line, and only if that isn't enough (data-fit-more) the walk to
+ * the neighbours, which "Back to past tracks" stands in for. The notes stay ("You're 2 tries in. Every try
+ * counts…"), and so does the result's line under its figure, which the step leaves out of every other card
+ * as its blurb.
  */
 .past-card[data-fit='2'] .past-label__sub,
-.past-card[data-fit='2'] .past-card__walk {
+.past-card[data-fit-more] .past-card__walk {
   display: none;
 }
 

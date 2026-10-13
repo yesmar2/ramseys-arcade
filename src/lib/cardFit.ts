@@ -12,24 +12,31 @@ const TIGHT = 7
  * or the card's contents change: the window resized, a best score arriving,
  * the admin tools appearing. The step is the card's `data-fit`; a card a few
  * pixels over then closes up its top (`data-tight`), and one that still hides
- * some of what's in it is marked `data-scrolls`.
+ * some of what's in it is marked `data-scrolls`. Before it would scroll, a card
+ * with something more it can do without leaves that out too (`data-fit-more`:
+ * a past course's start card, its links to the courses either side,
+ * styles/pastCourse.css); on any other card that changes nothing.
  */
 export function fitCardToSpace(card: HTMLElement | null): (() => void) | undefined {
   const space = card?.parentElement
   if (!card || !space || typeof ResizeObserver === 'undefined') return undefined
 
+  // What's cut off at its foot: what runs past the bottom padding, however much of that padding there is.
+  const hidden = () => card.scrollHeight - card.clientHeight - parseFloat(getComputedStyle(card).paddingBottom)
+
   const fit = () => {
     let step = 0
     card.dataset.fit = '0'
     card.removeAttribute('data-tight')
+    card.removeAttribute('data-fit-more')
     while (step < STEPS && card.scrollHeight > card.clientHeight + 1) {
       step += 1
       card.dataset.fit = String(step)
     }
-    // What's cut off at its foot: what runs past the bottom padding, however much of that padding there is.
-    const hidden = card.scrollHeight - card.clientHeight - parseFloat(getComputedStyle(card).paddingBottom)
-    card.toggleAttribute('data-tight', hidden > 0.5 && hidden <= TIGHT)
-    card.toggleAttribute('data-scrolls', hidden > TIGHT)
+    if (hidden() > TIGHT) card.setAttribute('data-fit-more', '')
+    const over = hidden()
+    card.toggleAttribute('data-tight', over > 0.5 && over <= TIGHT)
+    card.toggleAttribute('data-scrolls', over > TIGHT)
   }
 
   /*
