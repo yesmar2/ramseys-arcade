@@ -26,7 +26,7 @@ import { PlayerName } from './PlayerName'
 import { openSiteMenu } from './siteNav'
 
 /** The house records worth a plaque on the front page, in the order they hang. */
-const PLAQUES: SiteRecordId[] = ['day-streak', 'days-played', 'runs-in-a-day', 'boards-topped']
+const PLAQUES: SiteRecordId[] = ['day-streak', 'days-played', 'games-in-a-day', 'boards-topped']
 
 /**
  * One game's record book a day, so the front page walks through all of them. The dailies sit this out:

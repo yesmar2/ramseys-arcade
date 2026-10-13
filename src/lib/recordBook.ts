@@ -208,6 +208,11 @@ const COUNT_WORDS: Record<string, [string, string]> = {
   'biggest-shake': ['row', 'rows'],
   'fish-eaten': ['fish', 'fish'],
   frenzies: ['frenzy', 'frenzies'],
+  'holes-in-one': ['hole in one', 'holes in one'],
+  grazes: ['graze', 'grazes'],
+  'longest-tune': ['note', 'notes'],
+  'nights-cleared': ['night', 'nights'],
+  'mazes-cleared': ['maze', 'mazes'],
 }
 
 /** A record's number in its own terms: 2:51.1, ×36, 19 days, 13 in a row, 33 tickets, a lap's 45.18s, 2 tries, a pour's 91.2%. */
@@ -218,6 +223,7 @@ export function recordValue(record: RecordLike, score: number): string {
   if (record.unit === 'ms') return recordTime(score)
   if (record.id === 'highest-combo') return `×${score}`
   if (record.id === 'longest') return `length ${score}`
+  if (record.id === 'furthest-wave') return `wave ${score}`
   const words = COUNT_WORDS[record.id]
   if (words) return `${score.toLocaleString()} ${score === 1 ? words[0] : words[1]}`
   if (record.id.endsWith('streak')) return `${score.toLocaleString()} in a row`

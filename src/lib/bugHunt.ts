@@ -156,7 +156,7 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     id: 'home-records',
     page: 'on the home page',
     thing: 'the house records',
-    lesson: 'House records are the arcade’s own: the longest streak, the most days played, the busiest day. Beat one and your tag goes up there.',
+    lesson: 'House records are the arcade’s own: the most days played in a row, the most days played, the most games in a day. Beat one and your tag goes up there.',
   },
   {
     id: 'home-groups',

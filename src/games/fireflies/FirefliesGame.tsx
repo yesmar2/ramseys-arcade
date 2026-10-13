@@ -9,8 +9,12 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { reportEgg } from '../../lib/eggs'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import { FIREFLIES_NIGHTS_ID, FIREFLIES_TUNE_ID, shouldCelebrateRecordSubmit, submitRunBook } from '../../lib/records'
+import { clearRunAchievements, pushRunAchievement } from '../../lib/runAchievements'
 import { getPersonalBest } from '../../lib/personalBest'
 import { beginRun } from '../../lib/runSession'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -55,6 +59,8 @@ function inRun(phase: Phase) {
 export function FirefliesGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('fireflies')
+  const playerName = normalizePlayerName(usePlayerName())
+  const booksKey = useRef('')
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 390, h: 700 })
@@ -126,10 +132,35 @@ export function FirefliesGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  /*
+   * Its books are a run's figures, posted once it's over (Ramsey, 2026-10-13): the longest tune sung back (the
+   * first is three notes, each got right one longer), and the nights all five lanterns were lit. Not from an
+   * event's run, which is the event's alone.
+   */
+  useEffect(() => {
+    if (tournament || !playerName || ui.phase !== 'gameover') return
+    const key = `${playerName}:${ui.score}:${ui.tunes}:${ui.night}`
+    if (booksKey.current === key) return
+    booksKey.current = key
+    const tune = ui.tunes > 0 ? FIRST_TUNE + ui.tunes - 1 : 0
+    const nights = Math.max(0, ui.night - 1)
+    const books: [string, number, string, string][] = [
+      [FIREFLIES_TUNE_ID, tune, 'Longest tune sung back', `${tune} notes`],
+      [FIREFLIES_NIGHTS_ID, nights, 'Nights cleared in a run', `${nights} ${nights === 1 ? 'night' : 'nights'}`],
+    ]
+    void (async () => {
+      for (const [id, value, label, shown] of books) {
+        const result = await submitRunBook('fireflies', id, value, playerName)
+        if (shouldCelebrateRecordSubmit(result)) pushRunAchievement({ id: `fireflies:${id}`, label, value: shown, rank: result.rank })
+      }
+    })()
+  }, [ui.phase, ui.score, ui.tunes, ui.night, playerName, tournament])
+
   const restart = (intoMenu = false) => {
     saveOpenRef.current = false
     setSaveOpen(false)
     offeredScore.current = null
+    clearRunAchievements()
     if (!intoMenu) beginRun('fireflies')
     const { w, h } = sizeRef.current
     const fresh = startGame(setScale(stateRef.current, w, h))

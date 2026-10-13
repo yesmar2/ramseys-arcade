@@ -18,7 +18,13 @@ import {
   clearRunAchievements,
   pushRunAchievement,
 } from '../../lib/runAchievements'
-import { submitPatriotDirectStreak, shouldCelebrateRecordSubmit } from '../../lib/records'
+import {
+  LONGEST_CHAIN_ID,
+  PATRIOT_CLEAN_WAVES_ID,
+  submitPatriotDirectStreak,
+  submitRunBook,
+  shouldCelebrateRecordSubmit,
+} from '../../lib/records'
 import { STAGE_ASPECT } from '../../lib/stage'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import { PALETTE } from '../../data/games'
@@ -142,6 +148,7 @@ export function PatriotGame() {
   const fireLock = useRef(false)
   const offeredScore = useRef<number | null>(null)
   const streakRecordKey = useRef<string | null>(null)
+  const booksKey = useRef<string | null>(null)
   const previousBestRef = useRef(getPersonalBest('patriot'))
   const needsRotate = useNeedsLandscape()
   const ignorePauseKeys = useRef(false)
@@ -235,6 +242,27 @@ export function PatriotGame() {
       }
     })()
   }, [ui.phase, ui.directStreakBest, playerName, tournament])
+
+  /*
+   * The books a run's figures go in once it's over (Ramsey, 2026-10-13): its longest chain, and its most waves in
+   * a row with no city lost. Not from an event's run, which is the event's alone.
+   */
+  useEffect(() => {
+    if (tournament || !playerName || ui.phase !== 'gameover') return
+    const key = `${playerName}:${ui.score}:${ui.chainBest}:${ui.cleanWavesBest}`
+    if (booksKey.current === key) return
+    booksKey.current = key
+    const books: [string, number, string][] = [
+      [LONGEST_CHAIN_ID, ui.chainBest, 'Longest chain'],
+      [PATRIOT_CLEAN_WAVES_ID, ui.cleanWavesBest, 'Waves without losing a city'],
+    ]
+    void (async () => {
+      for (const [id, value, label] of books) {
+        const result = await submitRunBook('patriot', id, value, playerName)
+        if (shouldCelebrateRecordSubmit(result)) pushRunAchievement({ id: `patriot:${id}`, label, value: String(value), rank: result.rank })
+      }
+    })()
+  }, [ui.phase, ui.score, ui.chainBest, ui.cleanWavesBest, playerName, tournament])
 
   const aimFromEvent = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()

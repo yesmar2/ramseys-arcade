@@ -102,7 +102,7 @@ export type HouseGroup = { key: string; title: string; sub: string; boards: Site
 
 const GROUPS: { key: string; title: string; sub: string; ids: SiteRecordId[] }[] = [
   { key: 'turning-up', title: 'Turning up', sub: 'Coming back, day after day.', ids: ['day-streak', 'days-played'] },
-  { key: 'big-days', title: 'Big days', sub: 'The most anyone has packed into one day.', ids: ['games-in-a-day', 'runs-in-a-day'] },
+  { key: 'big-days', title: 'Big days', sub: 'The most games anyone has played in one day.', ids: ['games-in-a-day'] },
   { key: 'whole-arcade', title: 'Across the arcade', sub: 'How much of the arcade has your name on it.', ids: ['boards-topped'] },
 ]
 

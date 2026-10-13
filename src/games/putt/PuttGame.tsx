@@ -10,7 +10,11 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { haptic } from '../../lib/haptics'
+import { normalizePlayerName } from '../../lib/leaderboard'
+import { PUTT_HOLES_IN_ONE_ID, shouldCelebrateRecordSubmit, submitRunBook } from '../../lib/records'
+import { clearRunAchievements, pushRunAchievement } from '../../lib/runAchievements'
 import { getPersonalBest } from '../../lib/personalBest'
 import { sfx } from '../../lib/sound'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
@@ -96,6 +100,8 @@ function roundLabel(toPar: number, bests: number) {
 export function PuttGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('putt')
+  const playerName = normalizePlayerName(usePlayerName())
+  const acesKey = useRef('')
   const stateRef = useRef<GameState>(createInitialState())
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sizeRef = useRef({ w: 540, h: 720 })
@@ -182,6 +188,21 @@ export function PuttGame() {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
 
+  /** A round's holes in one, in their own book once it's over (Ramsey, 2026-10-13). Not an event's round, which is the event's alone. */
+  useEffect(() => {
+    if (tournament || !playerName || ui.phase !== 'gameover') return
+    const key = `${playerName}:${ui.score}:${ui.aces}`
+    if (acesKey.current === key) return
+    acesKey.current = key
+    const aces = ui.aces
+    void (async () => {
+      const result = await submitRunBook('putt', PUTT_HOLES_IN_ONE_ID, aces, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({ id: 'putt:holes-in-one', label: 'Holes in one in a round', value: String(aces), rank: result.rank })
+      }
+    })()
+  }, [ui.phase, ui.score, ui.aces, playerName, tournament])
+
   // The later holes' outlines and gardens take a moment to work out: do it a hole at a time while the
   // first is being looked at, so none of them stalls on its first frame.
   useEffect(() => {
@@ -226,6 +247,7 @@ export function PuttGame() {
   const restart = (intoMenu = false) => {
     setSaveOpen(false)
     offeredScore.current = null
+    clearRunAchievements()
     if (!intoMenu) beginRun('putt')
     pressRef.current = null
     const { w, h } = sizeRef.current

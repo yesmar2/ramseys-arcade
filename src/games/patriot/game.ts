@@ -176,6 +176,10 @@ export type Snapshot = {
   burstArmed: boolean
   /** Peak consecutive direct hits this run. */
   directStreakBest: number
+  /** The run's longest chain of kills, each set off by the last. */
+  chainBest: number
+  /** The run's most waves in a row ended with every city they began with. */
+  cleanWavesBest: number
 }
 
 export type WaveClearBonus = {
@@ -222,8 +226,12 @@ export type GameState = {
   clearBonus: WaveClearBonus | null
   /** Cities still standing when the current wave began. */
   citiesAtWaveStart: number
-  /** Consecutive waves cleared without losing a city. */
+  /** Consecutive waves cleared without losing a city, back to 0 when one rebuilds a city. */
   cleanStreak: number
+  /** The same, never back to 0 for a rebuild: waves in a row with no city lost, for its book. */
+  cleanWaves: number
+  /** The most of those this run. */
+  cleanWavesBest: number
   /** Current consecutive direct (perfect) hits. */
   directStreak: number
   /** Best consecutive direct hits this run. */
@@ -425,6 +433,8 @@ export function createInitialState(w = DESIGN_W, h = DESIGN_H): GameState {
     clearBonus: null,
     citiesAtWaveStart: cities.length,
     cleanStreak: 0,
+    cleanWaves: 0,
+    cleanWavesBest: 0,
     directStreak: 0,
     directStreakBest: 0,
     chains: {},
@@ -2058,6 +2068,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
     const perfect = survived === s.cities.length
     const clean = survived === started
     const cleanStreak = clean ? s.cleanStreak + 1 : 0
+    const cleanWaves = clean ? (s.cleanWaves ?? 0) + 1 : 0
+    const cleanWavesBest = Math.max(s.cleanWavesBest ?? 0, cleanWaves)
     const wreck =
       !perfect && cleanStreak >= CLEAN_WAVES_TO_REBUILD
         ? (s.cities.find((c) => !c.alive) ?? null)
@@ -2097,6 +2109,8 @@ export function tick(state: GameState, dt: number, w: number): GameState {
       flash: Math.max(s.flash, perfect || rebuilt ? 0.5 : 0.28),
       floaters: [...s.floaters, ...bonusFloaters],
       cleanStreak: nextStreak,
+      cleanWaves,
+      cleanWavesBest,
       clearBonus: {
         perfect,
         rebuilt,
@@ -2125,5 +2139,7 @@ export function toSnapshot(s: GameState): Snapshot {
     slowT: s.slowT ?? 0,
     burstArmed: s.burstArmed ?? false,
     directStreakBest: s.directStreakBest ?? 0,
+    chainBest: s.chainBest ?? 0,
+    cleanWavesBest: s.cleanWavesBest ?? 0,
   }
 }

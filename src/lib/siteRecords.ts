@@ -9,16 +9,19 @@ import { api, getLastPlayerName, normalizePlayerName } from './leaderboard'
  * them: every one is read back out of the scores already on the boards.
  */
 
+/*
+ * "Busiest day", the most scores saved in a day whatever they were, went (Ramsey, 2026-10-13: "yes, all of it"):
+ * a hundred runs thrown away a minute each beat a day of good ones. The API's siteRecords.ts says the same.
+ */
 export const SITE_RECORD_IDS = [
   'day-streak',
   'games-in-a-day',
-  'runs-in-a-day',
   'days-played',
   'boards-topped',
 ] as const
 export type SiteRecordId = (typeof SITE_RECORD_IDS)[number]
 
-export type SiteRecordUnit = 'days' | 'games' | 'runs' | 'boards'
+export type SiteRecordUnit = 'days' | 'games' | 'boards'
 
 export type SiteRecordEntry = {
   name: string
@@ -57,7 +60,6 @@ export type SiteRecordsResult = {
 const UNIT_WORDS: Record<SiteRecordUnit, [string, string]> = {
   days: ['day', 'days'],
   games: ['game', 'games'],
-  runs: ['run', 'runs'],
   boards: ['board', 'boards'],
 }
 

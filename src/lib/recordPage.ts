@@ -113,6 +113,12 @@ const RUN_SUBJECTS: Partial<Record<string, string>> = {
   'biggest-shake': 'The most rows anyone has cleared with a single Shake',
   'fish-eaten': 'The most fish anyone has eaten in a single run',
   frenzies: 'The most frenzies anyone has set off in a single run',
+  'holes-in-one': 'The most holes in one anyone has made in a single round',
+  grazes: 'The most bullets anyone has grazed in a single run',
+  'furthest-wave': 'The furthest wave anyone has reached in a single run',
+  'longest-tune': 'The longest tune anyone has sung back',
+  'nights-cleared': 'The most nights anyone has cleared in a single run',
+  'mazes-cleared': 'The most mazes anyone has cleared in a single run',
 }
 
 /**
@@ -161,6 +167,7 @@ export function onTheBoard(game: string, record: Rec): string {
   if (record.id === 'play-days-streak') return 'Play one day'
   if (record.id === 'threshold-streak' && threshold(record.label)) return `Score over ${threshold(record.label)} once`
   if (record.id === 'highest-combo') return 'Chain any combo'
+  if (record.id === 'holes-in-one') return 'Make a hole in one'
   if (kind === 'streaks') return 'Start a streak'
   return 'Finish a run'
 }

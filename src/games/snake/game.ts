@@ -119,6 +119,8 @@ export type Snapshot = {
   /** Tank level 1 → 0, for the control's own meter. */
   fuel: number
   chain: number
+  /** The run's longest chain: fruit eaten one after another while each one's ring still ran. */
+  bestChain: number
   deathCause: DeathCause | null
 }
 
@@ -1502,6 +1504,7 @@ export function toSnapshot(s: GameState): Snapshot {
     canBoost: s.phase === 'playing' && s.boostFuel > 0,
     fuel: boostFuelLeft(s),
     chain: s.chain,
+    bestChain: s.bestChain,
     deathCause: s.deathCause,
   }
 }

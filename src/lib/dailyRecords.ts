@@ -46,19 +46,27 @@ export type Tally = {
 
 export type DailyRecordsResult = {
   daysWon: Tally & { closedDays: number | null }
+  /** 1st, 2nd or 3rd on a day's board when it ended; null from an API before them (Ramsey, 2026-10-13). */
+  podiumDays: (Tally & { closedDays: number | null }) | null
+  /** The racing dailies: the longest run of gold (or platinum) medals, day after day; null for the rest. */
+  goldStreak: Tally | null
   /** Hot Lap and Ace Chase: the past courses whose board each player tops, by number. */
   courseRecords: (Tally & { courses: Map<string, number[]> }) | null
 }
 
 type RawYou = { place: number; tied?: number } & Record<string, unknown>
+/** A count of days, as the API says Days won, the days on the podium and a run of gold medals. */
+type RawDays = {
+  top: { name: string; days: number; avatarId?: string }[]
+  you: (RawYou & { days: number }) | null
+  closedDays?: number
+  players?: number
+  leaders?: number
+}
 type RawRecords = {
-  daysWon: {
-    top: { name: string; days: number; avatarId?: string }[]
-    you: (RawYou & { days: number }) | null
-    closedDays?: number
-    players?: number
-    leaders?: number
-  }
+  daysWon: RawDays
+  podiumDays?: RawDays
+  goldStreak?: RawDays
   courseRecords?: {
     top: { name: string; count: number; courses?: number[]; avatarId?: string }[]
     you: (RawYou & { count: number; courses?: number[] }) | null
@@ -78,19 +86,21 @@ export async function fetchDailyRecords(slug: string, name: string): Promise<Dai
   const raw = await api<RawRecords>(
     `/leaderboards/${encodeURIComponent(slug)}/daily-records${who ? `?name=${encodeURIComponent(who)}` : ''}`,
   )
-  const won = raw.daysWon
   const held = raw.courseRecords
   const courses = new Map<string, number[]>()
   for (const t of held?.top ?? []) if (t.courses) courses.set(normalizePlayerName(t.name), t.courses)
   if (who && held?.you?.courses) courses.set(who, held.you.courses)
+  const days = (d: RawDays): Tally & { closedDays: number | null } => ({
+    top: d.top.map((t) => ({ name: normalizePlayerName(t.name), value: t.days, avatarId: t.avatarId })),
+    you: tallyYou(d.you, d.you?.days),
+    players: d.players ?? null,
+    leaders: d.leaders ?? null,
+    closedDays: d.closedDays ?? null,
+  })
   return {
-    daysWon: {
-      top: won.top.map((t) => ({ name: normalizePlayerName(t.name), value: t.days, avatarId: t.avatarId })),
-      you: tallyYou(won.you, won.you?.days),
-      players: won.players ?? null,
-      leaders: won.leaders ?? null,
-      closedDays: won.closedDays ?? null,
-    },
+    daysWon: days(raw.daysWon),
+    podiumDays: raw.podiumDays ? days(raw.podiumDays) : null,
+    goldStreak: raw.goldStreak ? days(raw.goldStreak) : null,
     courseRecords: held
       ? {
           top: held.top.map((t) => ({ name: normalizePlayerName(t.name), value: t.count, avatarId: t.avatarId })),
@@ -337,7 +347,7 @@ export type DayRecordYou =
  * as a row of its Records tab's list (the "Records, more ideas" canvas's A, as a game's Records tab is).
  */
 export type DayRecord = {
-  key: 'streak' | 'days-won' | 'courses-held'
+  key: 'streak' | 'days-won' | 'podium-days' | 'gold-streak' | 'courses-held'
   title: string
   /** The record in words, 5 days or 6 tracks; null with nobody on it. */
   value: string | null
@@ -548,6 +558,39 @@ export function daysWonRecord(tally: DailyRecordsResult['daysWon'] | null, viewe
           : `of the ${counted(closed, 'day')} so far`,
     closed ? 'Nobody has won a day yet.' : 'No day has ended yet: the first does at midnight, New York time.',
     'No days won yet',
+  )
+}
+
+/** Most days on the podium: 1st, 2nd or 3rd on a day's board when it ended (Ramsey, 2026-10-13). Never today. */
+export function podiumDaysRecord(tally: DailyRecordsResult['podiumDays'], viewer: Viewer): DayRecord {
+  const closed = tally?.closedDays ?? null
+  return tallyRecord(
+    'podium-days',
+    'Most days on the podium',
+    tally,
+    ['day', 'days'],
+    viewer,
+    // The number is in the row already: this is what it's out of.
+    (value) => (!closed ? '' : value === closed ? (closed === 1 ? 'the only day so far' : 'every day so far') : `of the ${counted(closed, 'day')} so far`),
+    'No day has ended yet: the first does at midnight, New York time.',
+    'No days on the podium yet',
+  )
+}
+
+/**
+ * Gold medals in a row: the longest run of days with a gold or platinum on the day's course (Ramsey, 2026-10-13).
+ * Medals go by each day's blue run, so a run of them means the same whichever courses they were on.
+ */
+export function goldStreakRecord(tally: DailyRecordsResult['goldStreak'], viewer: Viewer): DayRecord {
+  return tallyRecord(
+    'gold-streak',
+    'Gold medals in a row',
+    tally,
+    ['day', 'days'],
+    viewer,
+    () => 'gold or platinum, day after day',
+    'Nobody has won gold two days running yet.',
+    'No run of gold medals yet',
   )
 }
 

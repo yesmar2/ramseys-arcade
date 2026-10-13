@@ -29,9 +29,9 @@ import {
 } from '../../lib/runAchievements'
 import {
   formatRecordMs,
-  SNAKE_LENGTH_MILESTONE_MAX,
-  SNAKE_LENGTH_MILESTONE_MIN,
-  SNAKE_LENGTH_MILESTONE_STEP,
+  LONGEST_CHAIN_ID,
+  SNAKE_LENGTH_BOOKS,
+  submitRunBook,
   submitSnakeFastestLength,
   submitSnakeLongest,
   shouldCelebrateRecordSubmit,
@@ -154,11 +154,7 @@ export function SnakeGame() {
     const elapsedMs = performance.now() - runStartRef.current
     if (!(elapsedMs > 0)) return
 
-    for (
-      let milestone = SNAKE_LENGTH_MILESTONE_MIN;
-      milestone <= SNAKE_LENGTH_MILESTONE_MAX;
-      milestone += SNAKE_LENGTH_MILESTONE_STEP
-    ) {
+    for (const milestone of SNAKE_LENGTH_BOOKS) {
       if (ui.length < milestone || milestonesRef.current.has(milestone)) continue
       milestonesRef.current.add(milestone)
       void (async () => {
@@ -196,6 +192,7 @@ export function SnakeGame() {
     if (tournament || !playerName) return
     longestSentRef.current = true
     const peak = longestRef.current
+    const chain = ui.bestChain
     void (async () => {
       const result = await submitSnakeLongest(peak, playerName)
       if (shouldCelebrateRecordSubmit(result)) {
@@ -206,8 +203,13 @@ export function SnakeGame() {
           rank: result.rank,
         })
       }
+      // The run's longest chain, in its own book (Ramsey, 2026-10-13).
+      const chained = await submitRunBook('snake', LONGEST_CHAIN_ID, chain, playerName)
+      if (shouldCelebrateRecordSubmit(chained)) {
+        pushRunAchievement({ id: 'snake:longest-chain', label: 'Longest chain', value: String(chain), rank: chained.rank })
+      }
     })()
-  }, [ui.phase, ui.length, playerName, tournament])
+  }, [ui.phase, ui.length, ui.bestChain, playerName, tournament])
 
   useEffect(() => {
     const sync = () => {

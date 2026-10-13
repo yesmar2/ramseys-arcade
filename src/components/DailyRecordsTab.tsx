@@ -15,8 +15,10 @@ import {
   coursesHeldRecord,
   dayRecordsHead,
   daysWonRecord,
+  goldStreakRecord,
   holeRecordRows,
   nearestCourse,
+  podiumDaysRecord,
   recordsIntro,
   streakRecord,
   trackRecordRows,
@@ -29,6 +31,7 @@ import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
 import { useHeldHeight } from '../lib/heldShape'
 import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame } from '../lib/leaderboard'
 import { useHoleRecordsAsked } from '../lib/pastHoles'
+import { isRaceGame } from '../lib/raceMedals'
 import { ordinal } from '../lib/scoreboard'
 import { resolveGameAccent } from '../lib/theme'
 import { useTrackRecordsAsked } from '../lib/trackBoards'
@@ -44,9 +47,10 @@ import '../styles/todaysTrack.css'
  * A daily's Records tab: only the records its boards don't already show. Since Ramsey said "yes match" (to the
  * game Records tab's one list, the "Records, more ideas" canvas's A, 2026-10-12) it's that list: who holds the
  * most and how you stand, in a line; then the records made over many days (Days played in a row, the most days
- * won, and on Hot Lap and Ace Chase the most track or hole records held), a row apiece that opens its first
- * five; then each track's or hole's record, which is just the #1 on its All time board, a row apiece that
- * opens that course's row on the past tab. What each row says is worked out in lib/dailyRecords.ts.
+ * won, the most days on the podium, a racing daily's longest run of gold medals, and on Hot Lap and Ace Chase the
+ * most track or hole records held), a row apiece that opens its first five; then each track's or hole's record,
+ * which is just the #1 on its All time board, a row apiece that opens that course's row on the past tab. What
+ * each row says is worked out in lib/dailyRecords.ts.
  *
  * Since Ramsey said "yes do bars on dailies too" (2026-10-13), a player it knows gets the game Records tab's
  * bars (C of the "Board and records, new looks" canvas): each record a bar of how close their best is to it.
@@ -62,6 +66,26 @@ function CrownIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M4 18.5h16M5 16l-1.2-9 5 4 3.2-6 3.2 6 5-4-1.2 9z" />
+    </svg>
+  )
+}
+
+/** Three steps, the middle one tallest. */
+function PodiumIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8.5 20V8h7v12M3 20v-7h5.5M15.5 20v-5H21v5M2 20h20" />
+    </svg>
+  )
+}
+
+/** A medal on its ribbon. */
+function MedalIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 3l2.5 6M16 3l-2.5 6" />
+      <circle cx="12" cy="15" r="5.5" />
+      <path d="M12 12.5v5" />
     </svg>
   )
 }
@@ -86,6 +110,8 @@ function InfoIcon() {
 const RECORD_ICONS: Record<DayRecord['key'], ComponentType> = {
   streak: FlameIcon,
   'days-won': CrownIcon,
+  'podium-days': PodiumIcon,
+  'gold-streak': MedalIcon,
   'courses-held': FlagIcon,
 }
 
@@ -621,6 +647,9 @@ function RecordsBody({
   const rows: DayRecord[] = [
     streakRecord(slug, streak.data, viewer),
     daysWonRecord(records.data?.daysWon ?? null, viewer),
+    // Not from an API before them, which sends neither: while the records come, a racing daily's wait for them.
+    ...(records.data?.podiumDays !== null ? [podiumDaysRecord(records.data?.podiumDays ?? null, viewer)] : []),
+    ...(isRaceGame(slug) && records.data?.goldStreak !== null ? [goldStreakRecord(records.data?.goldStreak ?? null, viewer)] : []),
     ...(hasCourses ? [coursesHeldRecord(slug, records.data?.courseRecords ?? null, viewer)] : []),
   ]
   const failedRow = (key: DayRecord['key']) => (key === 'streak' ? streak.failed : records.failed)

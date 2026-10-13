@@ -493,7 +493,7 @@ export function pageMeta(route: Route): PageMeta {
       return {
         ...site,
         title: titled('House records'),
-        description: `The records that belong to the whole arcade rather than one game: longest streaks, busiest days and the most boards held on ${APP_NAME}.`,
+        description: `The records that belong to the whole arcade rather than one game: the most days played in a row, the most games in a day and the most boards held on ${APP_NAME}.`,
         path: siteRecordsHref(),
       }
     case 'records': {

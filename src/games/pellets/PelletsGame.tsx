@@ -24,8 +24,10 @@ import {
 } from '../../lib/runAchievements'
 import {
   PELLETS_CRUMB_STREAK_MIN,
+  PELLETS_MAZES_ID,
   shouldCelebrateRecordSubmit,
   submitPelletsCrumbStreak,
+  submitRunBook,
 } from '../../lib/records'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
@@ -64,6 +66,7 @@ export function PelletsGame() {
   const draggedRef = useRef(false)
   const startGrace = useRef(0)
   const streakRecordKey = useRef<string | null>(null)
+  const mazesKey = useRef<string | null>(null)
   // The player's own skin, if they chose one (lib/skins.ts): looks only.
   const skinRef = useRef<string | null>(null)
   useSkinInto('pellets', skinRef)
@@ -150,6 +153,21 @@ export function PelletsGame() {
       }
     })()
   }, [ui.phase, ui.crumbStreakBest, playerName, tournament])
+
+  /** The mazes a run cleared, in their own book once it's over (Ramsey, 2026-10-13): the level it ended on, less one. */
+  useEffect(() => {
+    if (tournament || !playerName || ui.phase !== 'gameover') return
+    const mazes = ui.level - 1
+    const key = `mazes:${ui.score}:${mazes}`
+    if (mazesKey.current === key) return
+    mazesKey.current = key
+    void (async () => {
+      const result = await submitRunBook('pellets', PELLETS_MAZES_ID, mazes, playerName)
+      if (shouldCelebrateRecordSubmit(result)) {
+        pushRunAchievement({ id: 'pellets:mazes-cleared', label: 'Mazes cleared in a run', value: String(mazes), rank: result.rank })
+      }
+    })()
+  }, [ui.phase, ui.score, ui.level, playerName, tournament])
 
   // Rebuild the maze for the new shape when the window changes between runs.
   useEffect(() => {

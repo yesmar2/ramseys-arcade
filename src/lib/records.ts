@@ -15,11 +15,13 @@ import {
   type YouEntry,
 } from './leaderboard'
 
-export const ASTEROIDS_WAVE_RECORD_MAX = 20
-// Fastest to length 20 was retired (Ramsey, 2026-10-05): the books start at 30.
-export const SNAKE_LENGTH_MILESTONE_MIN = 30
-export const SNAKE_LENGTH_MILESTONE_MAX = 100
-export const SNAKE_LENGTH_MILESTONE_STEP = 10
+/*
+ * The waves whose clear Asteroids times in a book, and the lengths Snake times a growth to: every fifth wave, and
+ * 30, 50, 75 and 100 (the API's records.ts ASTEROIDS_WAVE_BOOKS and SNAKE_LENGTH_BOOKS; Ramsey, 2026-10-13: "yes,
+ * all of it"). They were every wave to 20 and every tenth length, and past the first few nobody reached them.
+ */
+export const ASTEROIDS_WAVE_BOOKS: readonly number[] = [5, 10, 15, 20]
+export const SNAKE_LENGTH_BOOKS: readonly number[] = [30, 50, 75, 100]
 export const CROSSWALK_ROW_MILESTONE_MIN = 50
 export const CROSSWALK_ROW_MILESTONE_MAX = 200
 export const CROSSWALK_ROW_MILESTONE_STEP = 25
@@ -118,48 +120,26 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** A wave's clear book, or null for a wave without one: only every fifth is timed. */
 export function asteroidsWaveTimeRecordId(wave: number): string | null {
-  if (!Number.isInteger(wave) || wave < 1 || wave > ASTEROIDS_WAVE_RECORD_MAX) {
-    return null
-  }
-  return `wave-time-${wave}`
+  return ASTEROIDS_WAVE_BOOKS.includes(wave) ? `wave-time-${wave}` : null
 }
 
 export function parseAsteroidsWaveFromRecordId(recordId: string): number | null {
   const match = /^wave-time-(\d+)$/.exec(recordId)
-  if (!match) return null
-  const wave = Number(match[1])
-  if (!Number.isInteger(wave) || wave < 1 || wave > ASTEROIDS_WAVE_RECORD_MAX) {
-    return null
-  }
-  return wave
+  const wave = match ? Number(match[1]) : NaN
+  return ASTEROIDS_WAVE_BOOKS.includes(wave) ? wave : null
 }
 
+/** A length's fastest-to book, or null for a length without one. */
 export function snakeFastestLengthRecordId(length: number): string | null {
-  if (
-    !Number.isInteger(length) ||
-    length < SNAKE_LENGTH_MILESTONE_MIN ||
-    length > SNAKE_LENGTH_MILESTONE_MAX ||
-    length % SNAKE_LENGTH_MILESTONE_STEP !== 0
-  ) {
-    return null
-  }
-  return `fastest-length-${length}`
+  return SNAKE_LENGTH_BOOKS.includes(length) ? `fastest-length-${length}` : null
 }
 
 export function parseSnakeLengthFromRecordId(recordId: string): number | null {
   const match = /^fastest-length-(\d+)$/.exec(recordId)
-  if (!match) return null
-  const length = Number(match[1])
-  if (
-    !Number.isInteger(length) ||
-    length < SNAKE_LENGTH_MILESTONE_MIN ||
-    length > SNAKE_LENGTH_MILESTONE_MAX ||
-    length % SNAKE_LENGTH_MILESTONE_STEP !== 0
-  ) {
-    return null
-  }
-  return length
+  const length = match ? Number(match[1]) : NaN
+  return SNAKE_LENGTH_BOOKS.includes(length) ? length : null
 }
 
 export function crosswalkFastestRowRecordId(rows: number): string | null {
@@ -207,6 +187,14 @@ export function recordNavShortLabel(row: { id: string; label: string }): string 
   if (row.id === FRENZY_FISH_ID) return 'Fish'
   if (row.id === FRENZY_FRENZIES_ID) return 'Frenzies'
   if (row.id === FRENZY_LEVIATHAN_ID) return 'Leviathan'
+  if (row.id === PUTT_HOLES_IN_ONE_ID) return 'Aces'
+  if (row.id === BARRAGE_GRAZES_ID) return 'Grazes'
+  if (row.id === BARRAGE_WAVE_ID) return 'Wave'
+  if (row.id === FIREFLIES_TUNE_ID) return 'Tune'
+  if (row.id === FIREFLIES_NIGHTS_ID) return 'Nights'
+  if (row.id === PATRIOT_CLEAN_WAVES_ID) return 'Cities'
+  if (row.id === PELLETS_MAZES_ID) return 'Mazes'
+  if (row.id === LONGEST_CHAIN_ID) return 'Chain'
   const wave = parseAsteroidsWaveFromRecordId(row.id)
   if (wave != null) return `W${wave}`
   const length = parseSnakeLengthFromRecordId(row.id)
@@ -305,7 +293,37 @@ export const FRENZY_BOOK_MIN: Record<string, number> = {
   [FRENZY_FRENZIES_ID]: 1,
   [FRENZY_LEVIATHAN_ID]: 1,
 }
+/*
+ * Books for the games that had only the two every game keeps, and more of what the games already count (Ramsey,
+ * 2026-10-13: "yes, all of it"), each a run's figure posted once the run is over (submitRunBook). The chain is
+ * the same book id in Crosswalk, Frenzy, Patriot and Snake, so it reads and is called the same way.
+ */
+export const PUTT_HOLES_IN_ONE_ID = 'holes-in-one'
+export const BARRAGE_GRAZES_ID = 'grazes'
+export const BARRAGE_WAVE_ID = 'furthest-wave'
+export const FIREFLIES_TUNE_ID = 'longest-tune'
+export const FIREFLIES_NIGHTS_ID = 'nights-cleared'
+export const PATRIOT_CLEAN_WAVES_ID = 'clean-wave-streak'
+export const PELLETS_MAZES_ID = 'mazes-cleared'
+export const LONGEST_CHAIN_ID = 'longest-chain'
+/** Below these a run's figure is noise, not a go at the book: a first tune is three notes, and anyone grazes a few. */
+export const RUN_BOOK_MIN: Record<string, number> = {
+  [PUTT_HOLES_IN_ONE_ID]: 1,
+  [BARRAGE_GRAZES_ID]: 10,
+  [BARRAGE_WAVE_ID]: 2,
+  [FIREFLIES_TUNE_ID]: 5,
+  [FIREFLIES_NIGHTS_ID]: 1,
+  [PATRIOT_CLEAN_WAVES_ID]: 2,
+  [PELLETS_MAZES_ID]: 1,
+  [LONGEST_CHAIN_ID]: 3,
+}
 const PLAIN_COUNT_RECORD_IDS = new Set<string>([
+  PUTT_HOLES_IN_ONE_ID,
+  BARRAGE_GRAZES_ID,
+  BARRAGE_WAVE_ID,
+  FIREFLIES_TUNE_ID,
+  FIREFLIES_NIGHTS_ID,
+  PELLETS_MAZES_ID,
   PILEUP_FOURS_ID,
   PILEUP_ROWS_ID,
   PILEUP_SHAKE_ID,
@@ -322,26 +340,6 @@ const PLAIN_COUNT_RECORD_IDS = new Set<string>([
 export const PLAY_DAYS_STREAK_ID = 'play-days-streak'
 export const THRESHOLD_STREAK_ID = 'threshold-streak'
 
-/** Mirrors API SCORE_STREAK_THRESHOLDS for labels / docs. */
-export const SCORE_STREAK_THRESHOLDS: Record<string, number> = {
-  asteroids: 1000,
-  patriot: 1000,
-  snake: 500,
-  crosswalk: 75,
-  stacker: 15,
-  // A daily just for fun since 2026-10-06: no records.
-  centroid: 0,
-  pop: 300,
-  simon: 10,
-  spotter: 955_000,
-  pellets: 2000,
-  crumbtrail: 10_000,
-  bop: 25,
-  putt: 2000,
-  fireflies: 60,
-  pileup: 3000,
-  frenzy: 10_000,
-}
 
 export type RecordSubmitOutcome = {
   improved: boolean
@@ -901,6 +899,26 @@ export async function submitFrenzyBook(
   if (!cleaned || !(v >= (FRENZY_BOOK_MIN[recordId] ?? 1))) return null
   try {
     return toRecordSubmitOutcome(await submitRecord('frenzy', recordId, cleaned, v))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Best-effort run book submit, for the books a game posts once its run is over (RUN_BOOK_MIN): one of its run's
+ * figures, once it's past the book's floor. A Crosswalk or Frenzy chain goes by its own submit.
+ */
+export async function submitRunBook(
+  game: string,
+  recordId: string,
+  value: number,
+  name: string,
+): Promise<RecordSubmitOutcome | null> {
+  const v = Math.floor(value)
+  const cleaned = normalizePlayerName(name)
+  if (!cleaned || !(v >= (RUN_BOOK_MIN[recordId] ?? 1))) return null
+  try {
+    return toRecordSubmitOutcome(await submitRecord(game, recordId, cleaned, v))
   } catch {
     return null
   }

@@ -11,9 +11,12 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
+import { usePlayerName } from '../../hooks/usePlayerName'
 import { reportEgg } from '../../lib/eggs'
+import { normalizePlayerName } from '../../lib/leaderboard'
 import { getPersonalBest } from '../../lib/personalBest'
-import { clearRunAchievements } from '../../lib/runAchievements'
+import { BARRAGE_GRAZES_ID, BARRAGE_WAVE_ID, shouldCelebrateRecordSubmit, submitRunBook } from '../../lib/records'
+import { clearRunAchievements, pushRunAchievement } from '../../lib/runAchievements'
 import { useTournamentPlay } from '../../tournaments/TournamentPlayContext'
 import {
   MAX_STOCK,
@@ -106,6 +109,8 @@ const DOUBLE_TAP_MS = 320
 export function BarrageGame() {
   const tournament = useTournamentPlay()
   const apiBest = usePersonalBest('barrage')
+  const playerName = normalizePlayerName(usePlayerName())
+  const booksKey = useRef('')
   const stateRef = useRef<GameState>(createInitialState())
   // The player's own skin, if they chose one (lib/skins.ts): looks only.
   const skinRef = useRef<string | null>(null)
@@ -260,6 +265,27 @@ export function BarrageGame() {
   useEffect(() => {
     if (ui.phase === 'menu') previousBestRef.current = apiBest
   }, [apiBest, ui.phase])
+
+  /*
+   * Its books are a run's figures, posted once it's over (Ramsey, 2026-10-13): the bullets grazed, and the wave it
+   * got to. Not from an event's run, which is the event's alone.
+   */
+  useEffect(() => {
+    if (tournament || !playerName || ui.phase !== 'gameover') return
+    const key = `${playerName}:${ui.score}:${ui.grazes}:${ui.wave}`
+    if (booksKey.current === key) return
+    booksKey.current = key
+    const books: [string, number, string, string][] = [
+      [BARRAGE_GRAZES_ID, ui.grazes, 'Grazes in a run', `${ui.grazes} grazes`],
+      [BARRAGE_WAVE_ID, ui.wave, 'Furthest wave', `Wave ${ui.wave}`],
+    ]
+    void (async () => {
+      for (const [id, value, label, shown] of books) {
+        const result = await submitRunBook('barrage', id, value, playerName)
+        if (shouldCelebrateRecordSubmit(result)) pushRunAchievement({ id: `barrage:${id}`, label, value: shown, rank: result.rank })
+      }
+    })()
+  }, [ui.phase, ui.score, ui.grazes, ui.wave, playerName, tournament])
 
   // Losing the tab mid-hold would otherwise leave the ship flying itself.
   useEffect(() => {

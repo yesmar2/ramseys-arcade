@@ -272,6 +272,8 @@ export type Snapshot = {
   toPar: number
   /** Holes this round played in fewer strokes than ever before. */
   bests: number
+  /** Holes this round played in one stroke. */
+  aces: number
   aiming: 'none' | 'drag' | 'key'
 }
 
@@ -1792,6 +1794,7 @@ export function toSnapshot(s: GameState): Snapshot {
     par: hole.par,
     toPar: played - parPlayed,
     bests: s.results.filter((r) => r.best).length,
+    aces: s.results.filter((r) => r.strokes === 1).length,
     aiming: s.aiming,
   }
 }
