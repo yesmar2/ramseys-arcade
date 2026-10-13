@@ -2875,7 +2875,17 @@ function drawBackground(ctx: CanvasRenderingContext2D, sk: Skin, w: number, h: n
   ctx.fill()
 }
 
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number) {
+/**
+ * Draw a frame. `buttons`: where the page's own buttons sit at the top right (PuttGame measures them), so the par
+ * and strokes keep clear of them; the cabinet's preview has none.
+ */
+export function renderGame(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  w: number,
+  h: number,
+  buttons?: { left: number; bottom: number },
+) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   if (ctx.canvas.width !== Math.floor(w * dpr) || ctx.canvas.height !== Math.floor(h * dpr)) {
     ctx.canvas.width = Math.floor(w * dpr)
@@ -3090,17 +3100,24 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   // ---- the band above: the hole's par and strokes, at the right. The hole's number and the round against
   // par are the readout's, at the left over this (PuttGame).
   if (state.phase !== 'menu') {
-    const inset = Math.max(w * 0.12, 56)
-    const cy = f.top * 0.55
+    let end = w - Math.max(w * 0.12, 56)
+    let cy = f.top * 0.55
+    let size = Math.max(11, textScale * 0.03)
+    // On a narrow phone the page's buttons come in past that inset, and the end ran under Fullscreen: there the
+    // line goes down under the buttons, where the band above the field has room for it, or else ends short of them.
+    if (buttons && end > buttons.left - 8 && cy - size / 2 < buttons.bottom + 4) {
+      const under = buttons.bottom + 4 + size / 2
+      if (under + size / 2 <= f.y - 4) cy = under
+      else end = buttons.left - 8
+    }
     const strokeWord = state.strokes === 1 ? 'STROKE' : 'STROKES'
     const best = state.holeBests[hole.name]
     const withBest = best !== undefined ? `PAR ${hole.par}  ·  BEST ${best}  ·  ${state.strokes} ${strokeWord}` : null
     const plain = `PAR ${hole.par}  ·  ${state.strokes} ${strokeWord}`
     // In the right half of the line, clear of the readout's figures at the left: the best only if there is
     // room for it.
-    let size = Math.max(11, textScale * 0.03)
     let right = withBest ?? plain
-    const room = w / 2 - inset
+    const room = end - w / 2
     const fits = () => {
       ctx.font = font(size, 750)
       return ctx.measureText(right).width <= room
@@ -3111,7 +3128,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
     ctx.textBaseline = 'middle'
     ctx.fillStyle = ink(sk, 0.62)
     ctx.font = font(size, 750)
-    ctx.fillText(right, w - inset, cy)
+    ctx.fillText(right, end, cy)
   }
 
   // ---- the band below: the cue, and how hard the pull is

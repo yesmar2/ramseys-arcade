@@ -444,6 +444,14 @@ function SwoopDayGame({
     if (hintRef.current && hintRef.current.textContent !== text) hintRef.current.textContent = text
   }
 
+  /** The split box empty again for a new run, or the last run's gap stays under "Split". */
+  const clearSplit = () => {
+    const el = splitRef.current
+    if (!el) return
+    el.textContent = '–'
+    el.className = ''
+  }
+
   /** Midnight has brought new hills: the page mounts the game again for them. */
   const newDay = (why?: string) => {
     if (practice || hillsDay() === day || devDay()) return false
@@ -489,6 +497,7 @@ function SwoopDayGame({
     coach.pressed = false
     countCoachRun()
     coachSays(coach.on || touch ? (touch ? 'Hold anywhere to dive. Let go to fly.' : 'Hold Space to dive. Let go to fly.') : '')
+    clearSplit()
     say(null)
     setUi(snapshot(g))
   }
@@ -504,6 +513,7 @@ function SwoopDayGame({
     sceneRef.current?.snap()
     letGo()
     coachSays('')
+    clearSplit()
     say(null)
     setUi(snapshot(gameRef.current))
   }
@@ -684,9 +694,9 @@ function SwoopDayGame({
       return keysRef.current.size > 0 || fingersRef.current.size > 0
     }
 
-    const splitShown = (g: Game, k: number) => {
+    /** The split box: flag `k`'s time, against the run being raced's (`theirs`, at the line its own time). */
+    const splitShown = (g: Game, k: number, theirs: number | undefined = g.ghost.run.splits[k]) => {
       const at = g.bird.splits[k]
-      const theirs = g.ghost.run.splits[k]
       const d = at != null && theirs != null ? at - theirs : null
       const el = splitRef.current
       if (el) {
@@ -827,6 +837,8 @@ function SwoopDayGame({
             g.phase = 'crossed'
             g.clock = 0
             finishRun(g)
+            // The line's own split, the last one: the box no longer holds the last flag's.
+            splitShown(g, b.splits.length - 1, g.ghost.run.time)
           } else if (ev && typeof ev === 'object') {
             const d = splitShown(g, ev.flag)
             sayRef.current(`Flag ${ev.flag + 1} · ${d == null ? formatRun(b.splits[ev.flag]!) : gapText(d)}`)
@@ -1147,7 +1159,10 @@ function SwoopDayGame({
                 </PlayReadoutScore>
                 <PlayReadoutStats>
                   <PlayStat label="Best" value={bestText} />
-                  <PlayStat label={ui.passed > 0 ? `Flag ${ui.passed}` : 'Split'} value={<span ref={splitRef}>–</span>} />
+                  <PlayStat
+                    label={ui.phase === 'crossed' || ui.phase === 'gameover' ? 'Finish' : ui.passed > 0 ? `Flag ${ui.passed}` : 'Split'}
+                    value={<span ref={splitRef}>–</span>}
+                  />
                   <PlayStat label="km/h" value={<span ref={speedRef}>0</span>} />
                 </PlayReadoutStats>
               </PlayReadout>

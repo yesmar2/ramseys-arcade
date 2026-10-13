@@ -307,8 +307,17 @@ function PlayLeaveButton({
     askedRef.current = asked
   }, [confirming, paused])
 
+  // Asked from a panel's Leave (the pause card, Patriot's Turn your phone): a run under way is asked about, and
+  // with none there's nothing to lose, so it goes straight away, as the back control does.
   useEffect(() => {
-    const onAsk = () => setConfirming(true)
+    const onAsk = () => {
+      if (pausedRef.current || resolveInRun(inRunRef.current)) {
+        setConfirming(true)
+        return
+      }
+      armedRef.current = false
+      leaveTo(hrefRef.current)
+    }
     window.addEventListener('arcade:leave-confirm', onAsk)
     return () => window.removeEventListener('arcade:leave-confirm', onAsk)
   }, [])

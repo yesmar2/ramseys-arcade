@@ -54,6 +54,18 @@ function toParLabel(toPar: number) {
   return `${n} ${toPar < 0 ? 'under' : 'over'} par`
 }
 
+/**
+ * Where the page's own buttons sit at the top right, measured from the play area, so the par and strokes on the
+ * canvas can keep clear of them. A run's Pause button comes and goes, and the safe area moves them on a notched
+ * phone, which the canvas has no other way to know.
+ */
+function measureButtons(play: HTMLElement) {
+  const r = play.querySelector('.game-play-chrome--actions')?.getBoundingClientRect()
+  if (!r || r.width === 0) return undefined
+  const at = play.getBoundingClientRect()
+  return { left: r.left - at.left, bottom: r.bottom - at.top }
+}
+
 /** The round against par so far, the way a scoreboard puts it: E for even, +2 over, −1 under. */
 function toParFigure(toPar: number) {
   if (toPar === 0) return 'E'
@@ -154,9 +166,9 @@ export function PuttGame() {
         }
       }
 
-      if (canvas && w > 0 && h > 0) {
+      if (canvas && parent && w > 0 && h > 0) {
         const ctx = canvas.getContext('2d')
-        if (ctx) renderGame(ctx, stateRef.current, w, h)
+        if (ctx) renderGame(ctx, stateRef.current, w, h, measureButtons(parent))
       }
 
       raf = requestAnimationFrame(loop)

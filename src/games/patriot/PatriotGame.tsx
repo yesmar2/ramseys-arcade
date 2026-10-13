@@ -149,9 +149,15 @@ export function PatriotGame() {
   /** A run is on screen: mid-wave, or on the card between waves. */
   const inPlay = ui.phase === 'playing' || ui.phase === 'waveClear'
   const pausable = inPlay && !saveOpen
-  const { paused, toggle: togglePause, resume } = useGamePause(pausable, ignorePauseKeys)
+  const { paused, toggle: togglePause, resume, pause } = useGamePause(pausable, ignorePauseKeys)
   const pausedRef = useRef(false)
   pausedRef.current = needsRotate || paused
+
+  // Turned upright mid-run, the run pauses too: turned back, the pause card waits for the player, rather than the
+  // wave carrying on at once with missiles already falling.
+  useEffect(() => {
+    if (needsRotate) pause()
+  }, [needsRotate, pause])
 
   useEffect(() => {
     let raf = 0

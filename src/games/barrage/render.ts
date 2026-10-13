@@ -1091,7 +1091,12 @@ function drawFloaters(g: Gfx) {
       size = small * 1.1
       weight = 700
     }
-    haloText(ctx, f.text, X(f.x), Y(f.y), size, colour, weight)
+    // Over where it happened, but kept in from the walls, so the whole line fits on the field: centred on a ship
+    // against a wall, "Barrage ready" was cut to "Barrage r".
+    ctx.font = `${weight} ${Math.round(size)}px ${FONT}`
+    const half = ctx.measureText(f.text).width / 2 + size * 0.3
+    const x = Math.min(Math.max(X(f.x), X(0) + half), X(1) - half)
+    haloText(ctx, f.text, x, Y(f.y), size, colour, weight)
   }
   ctx.globalAlpha = 1
 }

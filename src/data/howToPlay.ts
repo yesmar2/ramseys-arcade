@@ -202,7 +202,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
   barrage: {
     goal: 'Dodge the bullets. Break the ships.',
     controls: [
-      { does: 'Fly (Shift to slow)', touch: 'Drag', keys: 'Arrows' },
+      { does: 'Fly', touch: 'Drag', keys: 'Arrows · Shift to slow' },
       { does: 'Let a Barrage go', touch: 'Double-tap · 2nd finger', keys: 'Space' },
     ],
     auto: 'Your ship fires by itself.',

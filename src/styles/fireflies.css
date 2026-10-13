@@ -33,10 +33,12 @@
 
 /*
  * The sky behind the readout is dark in either theme — night, or the blue
- * hour — so the readout reads light on it. Scoped to the readout alone: the
- * start, pause and score cards keep their themed panels.
+ * hour — so the readout reads light on it, and so do the leave and pause
+ * controls up there with it. Scoped to those alone: the start, pause and
+ * score cards keep their themed panels.
  */
-.fireflies .play-readout {
+.fireflies .play-readout,
+.fireflies .game-play-chrome {
   --ink: #eef1ff;
   --ink-rgb: 238, 241, 255;
   --surface-rgb: 20, 24, 56;

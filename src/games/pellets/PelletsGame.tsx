@@ -67,7 +67,10 @@ export function PelletsGame() {
   // The player's own skin, if they chose one (lib/skins.ts): looks only.
   const skinRef = useRef<string | null>(null)
   useSkinInto('pellets', skinRef)
-  const pausable = ui.phase === 'playing' && !saveOpen
+  const inRun = ui.phase === 'playing' || ui.phase === 'dying' || ui.phase === 'clearing'
+  // Being caught and clearing a maze are the run too, as Asteroids' wave clear is: a tab hidden then pauses,
+  // so the next life or maze never starts while nobody is looking.
+  const pausable = inRun && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
@@ -298,7 +301,6 @@ export function PelletsGame() {
 
   const surgeFull = ui.surge >= 1
   const surging = ui.surgeTime > 0
-  const inRun = ui.phase === 'playing' || ui.phase === 'dying' || ui.phase === 'clearing'
 
   return (
     <section className={`pellets pellets--fullscreen${saveOpen ? ' pellets--saving' : ''}`}>
@@ -381,12 +383,12 @@ export function PelletsGame() {
             <div className="pellets__overlay">
               <GamePauseOverlay
                 slug="pellets"
-                personalBest={ui.phase === 'playing' ? previousBestRef.current : apiBest}
+                personalBest={inRun ? previousBestRef.current : apiBest}
                 paused={paused}
                 onResume={resume}
                 onRestart={restart}
                 tools={
-                  ui.phase === 'playing' || ui.phase === 'clearing' || ui.phase === 'dying' ? (
+                  inRun ? (
                     <AdminWaveSkip
                       unit="level"
                       wave={ui.level}

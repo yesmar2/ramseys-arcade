@@ -1225,9 +1225,13 @@ function drawEffects(ctx: CanvasRenderingContext2D, v: View, pal: Palette) {
 function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette, skin: string | null) {
   const s = v.s
   if (s.phase === 'menu' || s.phase === 'gameover') return
-  const bw = Math.min(240, v.w * 0.42)
+  // The pill reaches 112 left of the bar for the lives and 54 right of it for the chain. The bar is centred, but on
+  // a phone that ran the pill off the left edge: there the pill is centred instead, the bar a little right of the
+  // middle, and on a narrow one the bar gives way to keep the pill clear of both edges.
+  const bw = Math.min(240, v.w * 0.42, v.w - 166 - 24)
   const bh = 14
-  const bx = (v.w - bw) / 2
+  const centred = (v.w - bw) / 2
+  const bx = centred - 112 < 12 ? (v.w - bw - 166) / 2 + 112 : centred
   const by = v.h - 30 - bh
   ctx.save()
   ctx.fillStyle = pal.dark ? 'rgba(8, 18, 28, 0.6)' : 'rgba(8, 18, 28, 0.45)'

@@ -423,6 +423,12 @@ export function AsteroidsGame() {
     const wave = ui.lastWave
     const time = ui.lastWaveTime
     const combo = ui.runComboBest
+    // Signed out, a clear goes in no book, as in the other games: the card shows the record that stands, and nothing
+    // is sent for the API to refuse.
+    if (!playerName) {
+      setBookRows(settledRows(wave, combo, [], glancesRef.current, playerName))
+      return
+    }
     const submitKey = `${wave}:${time.toFixed(3)}`
     let rows = predictionsRef.current.get(submitKey)
     if (!rows) {
@@ -462,7 +468,7 @@ export function AsteroidsGame() {
   ])
 
   useEffect(() => {
-    if (ui.phase !== 'gameover' || tournament) return
+    if (ui.phase !== 'gameover' || tournament || !playerName) return
     const combo = ui.runComboBest
     if (combo < 2) return
     const key = `combo:${combo}`
