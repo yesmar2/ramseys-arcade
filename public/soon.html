@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  The coming-soon page (Ramsey's pick, A · Attract mode, 2026-10-13). middleware.js shows it in place of any page
+  while the site is closed (SITE_PASSWORD on Vercel). A plain page, not the app: nothing of the app loads for the
+  people it stops, and it never registers the service worker. scripts/prerender.mjs fills in the %ORIGIN% tags,
+  the API it sends emails to, and the contact address (VITE_CONTACT_EMAIL) at build.
+-->
+<title>Blipka · Opening October 31</title>
+<meta name="description" content="Simple games. No ads. Just play. Blipka opens on October 31: quick arcade games for your phone or computer, and a new daily race every day.">
+<link rel="canonical" href="%ORIGIN%/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Blipka">
+<meta property="og:title" content="Blipka · Opening October 31">
+<meta property="og:description" content="Simple games. No ads. Just play. Quick arcade games for your phone or computer, and a new daily race every day.">
+<meta property="og:url" content="%ORIGIN%/">
+<meta property="og:image" content="%ORIGIN%/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b1117">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Outfit, the site's own file; here its full weights, as the page was drawn (the site holds it to 600). */
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/outfit-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/outfit-latin-ext.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Arial made Outfit's size, until Outfit is in (as styles.css). */
+@font-face {
+  font-family: "Outfit Fallback";
+  src: local("Arial"), local("ArialMT"), local("Helvetica");
+  font-weight: 100 549;
+  size-adjust: 97.7%;
+  ascent-override: 102.4%;
+  descent-override: 26.6%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Outfit Fallback";
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold");
+  font-weight: 550 1000;
+  size-adjust: 93.5%;
+  ascent-override: 107%;
+  descent-override: 27.8%;
+  line-gap-override: 0%;
+}
+
+:root { color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: #0b1117;
+  color: #e7eef3;
+  font-family: Outfit, "Outfit Fallback", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: #9dfce4; text-decoration: none; }
+a:hover { color: #c9fff1; text-decoration: underline; }
+button, input { font: inherit; }
+:focus-visible { outline: 2px solid #9dfce4; outline-offset: 2px; }
+
+.soon {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: max(48px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom));
+}
+
+/* The games, a wall of screens tipped behind the card, drifting the way an arcade's attract mode does. */
+.soon-wall {
+  position: fixed;
+  inset: -150px -140px;
+  z-index: -2;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-content: start;
+  gap: 18px;
+  opacity: 0.5;
+  transform: rotate(-8deg);
+  animation: soon-drift 70s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.soon-wall img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 16px;
+  background: #141d26;
+}
+@keyframes soon-drift {
+  from { transform: rotate(-8deg) translate3d(0, 0, 0); }
+  to { transform: rotate(-8deg) translate3d(-40px, -90px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soon-wall { animation: none; }
+}
+.soon-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(9, 13, 18, 0.58);
+}
+
+.soon-card {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  padding: 38px 44px 26px;
+  border-radius: 28px;
+  background: rgba(13, 19, 26, 0.9);
+  border: 1px solid rgba(231, 238, 243, 0.12);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+.soon-mark { display: block; width: 210px; height: 77px; margin: 0 auto; overflow: visible; }
+.soon-eyebrow {
+  margin: 22px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8ff0d0;
+}
+.soon-card h1 {
+  margin: 10px 0 12px;
+  font-size: 42px;
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.soon-lede {
+  margin: 0 auto;
+  max-width: 470px;
+  font-size: 17px;
+  line-height: 1.5;
+  font-weight: 500;
+  color: #a9bac6;
+}
+
+.soon-count { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }
+.soon-count__box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 80px;
+  padding: 10px 0 9px;
+  border-radius: 14px;
+  background: rgba(231, 238, 243, 0.06);
+  border: 1px solid rgba(231, 238, 243, 0.1);
+}
+.soon-count__box b { font-size: 30px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.soon-count__box span { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #8fa3b1; }
+.soon-count-done { margin: 24px 0 0; font-size: 17px; font-weight: 700; color: #8ff0d0; }
+
+.soon-form { display: flex; flex-direction: column; gap: 8px; margin-top: 26px; text-align: left; }
+.soon-label { font-size: 15px; font-weight: 700; }
+.soon-row { display: flex; gap: 10px; }
+.soon-input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(231, 238, 243, 0.2);
+  background: rgba(6, 10, 14, 0.6);
+  color: #e7eef3;
+  font-size: 16px;
+}
+.soon-input::placeholder { color: #7f93a1; }
+.soon-input[aria-invalid="true"] { border: 2px solid #ff9d6b; padding: 0 15px; }
+.soon-input[aria-invalid="true"]:focus-visible { outline-color: #ff9d6b; }
+.soon-button {
+  height: 52px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 14px;
+  background: #2eb8a0;
+  color: #04231c;
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.soon-button:hover { background: #3ccbb2; }
+.soon-button[aria-disabled="true"] { opacity: 0.75; cursor: progress; }
+.soon-note { margin: 0; font-size: 13px; line-height: 1.45; color: #8fa3b1; text-wrap: balance; }
+.soon-error { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.4; color: #ffb48f; }
+/* A box only a bot fills in. */
+.soon-hp { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; }
+
+.soon-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 26px;
+  padding: 22px 20px 20px;
+  border-radius: 18px;
+  background: rgba(46, 184, 160, 0.08);
+  border: 1px solid rgba(46, 184, 160, 0.3);
+}
+.soon-done__tick {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(46, 184, 160, 0.16);
+  color: #3ee0b0;
+}
+.soon-done__title { margin: 0; font-size: 22px; font-weight: 800; outline: none; }
+.soon-done__text { margin: 0; max-width: 440px; font-size: 16px; line-height: 1.5; color: #a9bac6; }
+.soon-done__text b { color: #e7eef3; overflow-wrap: anywhere; }
+
+.soon-link {
+  display: inline-block;
+  padding: 12px 4px;
+  margin: -12px 0;
+  border: 0;
+  background: none;
+  color: #9dfce4;
+  font-size: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.soon-link:hover { color: #c9fff1; text-decoration: underline; }
+.soon-pass__foot { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: #8fa3b1; }
+.soon-door {
+  margin: 22px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(231, 238, 243, 0.08);
+  font-size: 14px;
+  color: #a9bac6;
+}
+
+.soon-foot {
+  position: relative;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(9, 13, 18, 0.85);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #a9bac6;
+  text-align: center;
+}
+.soon-foot__why::before { content: " · "; }
+
+@media (max-width: 560px) {
+  .soon {
+    justify-content: flex-start;
+    gap: 16px;
+    padding: max(40px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  .soon-wall { inset: -80px -120px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .soon-wall img { border-radius: 12px; }
+  .soon-card { padding: 30px 20px 20px; border-radius: 24px; background: rgba(13, 19, 26, 0.92); }
+  .soon-mark { width: 160px; height: 58px; }
+  .soon-eyebrow { margin-top: 20px; font-size: 12px; }
+  .soon-card h1 { margin: 8px 0 10px; font-size: 31px; }
+  .soon-lede { font-size: 16px; }
+  .soon-count { gap: 8px; margin-top: 20px; }
+  .soon-count__box { width: 72px; padding: 9px 0 8px; border-radius: 12px; }
+  .soon-count__box b { font-size: 26px; }
+  .soon-count__box span { font-size: 10px; }
+  .soon-form { gap: 10px; margin-top: 22px; }
+  .soon-row { flex-direction: column; }
+  /* Stacked, a box that grows would take its height from the row, not its own 52px. */
+  .soon-input { flex: none; width: 100%; }
+  .soon-note { text-align: center; }
+  .soon-door { margin-top: 18px; padding-top: 14px; }
+  .soon-foot { padding: 8px 14px; border-radius: 14px; font-size: 12px; }
+  .soon-foot__why { display: block; }
+  .soon-foot__why::before { content: none; }
+}
+</style>
+</head>
+<body>
+<div class="soon">
+  <!-- The fourteen games, over and over: enough tiles that the tipped wall covers a tall or a wide screen. -->
+  <div class="soon-wall" aria-hidden="true">
+    <img src="/soon/frenzy.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/snake.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crosswalk.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pellets.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/stacker.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/barrage.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/fireflies.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pileup.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/putt.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/asteroids.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crumbtrail.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/bop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/patriot.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/frenzy.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/snake.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crosswalk.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/pellets.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/stacker.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/barrage.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/fireflies.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pileup.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/putt.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/asteroids.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crumbtrail.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/bop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/patriot.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/frenzy.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pop.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/snake.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crosswalk.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pellets.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/stacker.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/barrage.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/fireflies.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/pileup.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/putt.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/asteroids.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crumbtrail.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/bop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/patriot.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/frenzy.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/snake.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crosswalk.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pellets.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/stacker.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/barrage.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/fireflies.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pileup.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/putt.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/asteroids.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crumbtrail.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/bop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/patriot.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/frenzy.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/snake.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crosswalk.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/pellets.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/stacker.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/barrage.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/fireflies.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pileup.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/putt.webp" alt="" width="400" height="300" decoding="async">
+    <img src="/soon/asteroids.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/crumbtrail.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/bop.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/patriot.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/frenzy.webp" alt="" width="400" height="300" decoding="async"><img src="/soon/pop.webp" alt="" width="400" height="300" decoding="async">
+  </div>
+  <div class="soon-scrim" aria-hidden="true"></div>
+
+  <main class="soon-card">
+    <svg class="soon-mark" viewBox="54 -732 2574 937" role="img" aria-label="Blipka"><defs><radialGradient id="soon-glow"><stop offset="0" stop-color="#3ee0b0" stop-opacity="0.9"/><stop offset="0.21" stop-color="#3ee0b0" stop-opacity="0.75"/><stop offset="0.33" stop-color="#3ee0b0" stop-opacity="0.45"/><stop offset="0.5" stop-color="#3ee0b0" stop-opacity="0.2"/><stop offset="0.75" stop-color="#3ee0b0" stop-opacity="0.07"/><stop offset="1" stop-color="#3ee0b0" stop-opacity="0"/></radialGradient></defs><path d="M334 10Q285 10 244-11Q222-21 205-36L205 0L54 0L54-726L207-726L207-455Q224-468 244-477Q285-496 334-496Q403-496 456.5-463Q510-430 540.5-373Q571-316 571-243Q571-170 540.5-113Q510-56 456.5-23Q403 10 334 10ZM307-128Q339-128 363.5-143Q388-158 402-184Q416-210 416-243Q416-277 402-303Q388-329 363.5-343.5Q339-358 307-358Q275-358 250-343.5Q225-329 211.5-303Q198-277 198-243Q198-209 212-183Q226-157 250.5-142.5Q275-128 307-128ZM772 0L619 0L619-726L772-726L772 0ZM1003 0L850 0L850-486L1003-486L1003 0ZM1361 10Q1312 10 1271-9Q1249-19 1232-33L1232 205L1081 205L1081-486L1234-486L1234-452Q1251-466 1271-476Q1312-496 1361-496Q1430-496 1483.5-463Q1537-430 1567.5-373Q1598-316 1598-243Q1598-170 1567.5-113Q1537-56 1483.5-23Q1430 10 1361 10ZM1333-128Q1366-128 1390.5-143Q1415-158 1429-184Q1443-210 1443-243Q1443-277 1429-303Q1415-329 1390.5-343.5Q1366-358 1334-358Q1302-358 1277.5-343.5Q1253-329 1239-303Q1225-277 1225-243Q1225-210 1238.5-184Q1252-158 1277-143Q1302-128 1333-128ZM2137 0L1957 0L1799-234L1799 0L1646 0L1646-726L1799-726L1799-269L1956-486L2127-486L1949-257L2137 0ZM2344 10Q2277 10 2224.5-23Q2172-56 2141.5-113Q2111-170 2111-243Q2111-316 2141.5-373Q2172-430 2224.5-463Q2277-496 2344-496Q2393-496 2433-477Q2458-465 2478-446L2478-486L2628-486L2628 0L2478 0L2478-39Q2459-21 2433-9Q2393 10 2344 10ZM2375-128Q2424-128 2454-160.5Q2484-193 2484-243Q2484-277 2470.5-303Q2457-329 2432.5-343.5Q2408-358 2376-358Q2344-358 2319.5-343.5Q2295-329 2280.5-303Q2266-277 2266-243Q2266-210 2280-184Q2294-158 2319-143Q2344-128 2375-128Z" fill="#e7eef3"/><circle cx="926.5" cy="-637" r="446.5" fill="url(#soon-glow)"/><circle cx="926.5" cy="-637" r="95" fill="#9dfce4"/></svg>
+    <p class="soon-eyebrow">Opening October 31</p>
+    <h1>Simple games. No ads. Just play.</h1>
+    <p class="soon-lede">Quick arcade games for your phone or computer, and a new daily race every day. Free to play, with no ads.</p>
+
+    <div class="soon-count" role="timer" aria-label="Opening October 31">
+      <span class="soon-count__box" aria-hidden="true"><b data-count="days">&ndash;</b><span>DAYS</span></span>
+      <span class="soon-count__box" aria-hidden="true"><b data-count="hours">&ndash;</b><span>HOURS</span></span>
+      <span class="soon-count__box" aria-hidden="true"><b data-count="mins">&ndash;</b><span>MINS</span></span>
+    </div>
+    <p class="soon-count-done" hidden>Opening any minute now.</p>
+
+    <form class="soon-form" id="soon-email" novalidate>
+      <label class="soon-label" for="soon-email-input">Tell me when it opens</label>
+      <span class="soon-row">
+        <input class="soon-input" id="soon-email-input" type="email" name="email" autocomplete="email" inputmode="email" maxlength="254" required placeholder="you@example.com" aria-describedby="soon-email-error soon-email-note">
+        <button class="soon-button" type="submit">Notify me</button>
+      </span>
+      <input class="soon-hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <p class="soon-error" id="soon-email-error" role="alert" hidden></p>
+      <p class="soon-note" id="soon-email-note">One email on opening day, then your address is deleted.</p>
+    </form>
+
+    <section class="soon-done" id="soon-done" aria-labelledby="soon-done-title" hidden>
+      <span class="soon-done__tick" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+      <h2 class="soon-done__title" id="soon-done-title" tabindex="-1">You’re on the list.</h2>
+      <p class="soon-done__text">We’ll email <b id="soon-done-email"></b> once, on opening day, then delete the address.</p>
+      <button class="soon-link" type="button" id="soon-again">Use another address</button>
+    </section>
+
+    <form class="soon-form" id="soon-pass" method="post" action="/__gate" hidden>
+      <label class="soon-label" for="soon-pass-input">Password</label>
+      <span class="soon-row">
+        <input class="soon-input" id="soon-pass-input" type="password" name="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200" aria-describedby="soon-pass-error">
+        <button class="soon-button" type="submit">Come in</button>
+      </span>
+      <input type="hidden" name="next" value="/">
+      <p class="soon-error" id="soon-pass-error" role="alert" hidden></p>
+      <span class="soon-pass__foot"><span>From whoever invited you.</span><button class="soon-link" type="button" id="soon-back">Back</button></span>
+    </form>
+
+    <p class="soon-door" id="soon-door">Have a password? <button class="soon-link" type="button" id="soon-come-in" aria-controls="soon-pass" aria-expanded="false">Come in ›</button></p>
+  </main>
+
+  <footer class="soon-foot"><span>© 2026 Blipka<!--soon:contact--></span><span class="soon-foot__why">Your email is only used to tell you we’re open.</span></footer>
+</div>
+
+<script id="soon-config" type="application/json">{"api":""}</script>
+<script>
+(function () {
+  'use strict'
+
+  // Midnight on October 31 in New York, when the boards' day turns and Season 1 begins.
+  var OPENS_AT = Date.UTC(2026, 9, 31, 4)
+  var LIVE_HOSTS = ['blipka.com', 'www.blipka.com', 'ramseys-arcade.vercel.app']
+
+  var config = {}
+  try {
+    config = JSON.parse(document.getElementById('soon-config').textContent || '{}')
+  } catch (e) {
+    config = {}
+  }
+  // The build names the API; a laptop's dev server serves this file as it is, beside the API on :8787.
+  var api = String(config.api || location.protocol + '//' + (location.hostname || 'localhost') + ':8787').replace(/\/$/, '')
+
+  function $(id) {
+    return document.getElementById(id)
+  }
+
+  /* The countdown, to the minute. */
+  var boxes = {
+    days: document.querySelector('[data-count="days"]'),
+    hours: document.querySelector('[data-count="hours"]'),
+    mins: document.querySelector('[data-count="mins"]'),
+  }
+  var timer = document.querySelector('.soon-count')
+  function plural(n, one) {
+    return n + ' ' + one + (n === 1 ? '' : 's')
+  }
+  function tick() {
+    var left = OPENS_AT - Date.now()
+    if (left <= 0) {
+      timer.hidden = true
+      document.querySelector('.soon-count-done').hidden = false
+      return
+    }
+    var mins = Math.floor(left / 60000)
+    var d = Math.floor(mins / 1440)
+    var h = Math.floor((mins % 1440) / 60)
+    var m = mins % 60
+    boxes.days.textContent = String(d)
+    boxes.hours.textContent = (h < 10 ? '0' : '') + h
+    boxes.mins.textContent = (m < 10 ? '0' : '') + m
+    timer.setAttribute('aria-label', 'Opening October 31: ' + plural(d, 'day') + ', ' + plural(h, 'hour') + ' and ' + plural(m, 'minute') + ' to go')
+    setTimeout(tick, (left % 60000) + 50)
+  }
+  tick()
+
+  /* The arcade's server sleeps when nobody's about; wake it now, so an email doesn't wait on it. */
+  try {
+    if (!sessionStorage.getItem('soon-woke')) {
+      sessionStorage.setItem('soon-woke', '1')
+      fetch(api + '/health', { mode: 'no-cors', cache: 'no-store' }).catch(function () {})
+    }
+  } catch (e) {
+    /* storage off: no wake, the email just takes longer */
+  }
+
+  /* A browser that kept the app from before can show this page from its copy on an old address: send it on. */
+  fetch('/__gate', { cache: 'no-store', headers: { accept: 'application/json' } })
+    .then(function (res) {
+      return res.ok ? res.json() : null
+    })
+    .then(function (answer) {
+      if (answer && answer.go) leave(answer.go + location.pathname + location.search)
+    })
+    .catch(function () {})
+
+  /* Counts visits on the live site, as the app does (Vercel Web Analytics: no cookies). */
+  if (LIVE_HOSTS.indexOf(location.hostname) >= 0) {
+    window.va = window.va || function () {
+      ;(window.vaq = window.vaq || []).push(arguments)
+    }
+    var insights = document.createElement('script')
+    insights.defer = true
+    insights.src = '/_vercel/insights/script.js'
+    document.head.appendChild(insights)
+  }
+
+  function busy(button, words) {
+    button.dataset.idle = button.dataset.idle || button.textContent
+    button.textContent = words
+    button.setAttribute('aria-disabled', 'true')
+  }
+  function idle(button) {
+    if (button.dataset.idle) button.textContent = button.dataset.idle
+    button.removeAttribute('aria-disabled')
+  }
+  function isBusy(button) {
+    return button.getAttribute('aria-disabled') === 'true'
+  }
+  function say(error, input, words) {
+    error.textContent = words
+    error.hidden = !words
+    if (words) input.setAttribute('aria-invalid', 'true')
+    else input.removeAttribute('aria-invalid')
+  }
+
+  /* Tell me when it opens. */
+  var emailForm = $('soon-email')
+  var emailInput = $('soon-email-input')
+  var emailButton = emailForm.querySelector('button')
+  var emailError = $('soon-email-error')
+  var emailNote = $('soon-email-note')
+  var noteWords = emailNote.textContent
+  var done = $('soon-done')
+  var signedUp = false
+
+  emailInput.addEventListener('input', function () {
+    if (!emailError.hidden) say(emailError, emailInput, '')
+  })
+  emailForm.addEventListener('submit', function (event) {
+    event.preventDefault()
+    if (isBusy(emailButton)) return
+    var email = emailInput.value.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      say(emailError, emailInput, 'That doesn’t look like an email address.')
+      emailInput.focus()
+      return
+    }
+    say(emailError, emailInput, '')
+    busy(emailButton, 'Saving…')
+    // A sleeping server takes half a minute or so to wake: say so rather than look stuck.
+    var slow = setTimeout(function () {
+      emailNote.textContent = 'Still saving: the arcade’s server is waking up.'
+    }, 5000)
+    var controller = typeof AbortController === 'function' ? new AbortController() : null
+    var giveUp = setTimeout(function () {
+      if (controller) controller.abort()
+    }, 90000)
+    fetch(api + '/launch-list', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email, website: emailForm.elements.website.value }),
+      signal: controller ? controller.signal : undefined,
+    })
+      .then(function (res) {
+        if (res.ok) return showDone(email)
+        if (res.status === 400) return say(emailError, emailInput, 'That doesn’t look like an email address.')
+        if (res.status === 429) return say(emailError, emailInput, 'That’s a lot of tries. Try again in a while.')
+        say(emailError, emailInput, 'Couldn’t save that. Try again in a moment.')
+      })
+      .catch(function () {
+        say(emailError, emailInput, 'Couldn’t reach Blipka. Try again in a moment.')
+      })
+      .then(function () {
+        clearTimeout(slow)
+        clearTimeout(giveUp)
+        emailNote.textContent = noteWords
+        idle(emailButton)
+      })
+  })
+
+  function showDone(email) {
+    signedUp = true
+    $('soon-done-email').textContent = email
+    emailForm.hidden = true
+    done.hidden = false
+    $('soon-done-title').focus()
+  }
+  $('soon-again').addEventListener('click', function () {
+    signedUp = false
+    done.hidden = true
+    emailForm.hidden = false
+    emailInput.value = ''
+    emailInput.focus()
+  })
+
+  /* Have a password? */
+  var passForm = $('soon-pass')
+  var passInput = $('soon-pass-input')
+  var passButton = passForm.querySelector('button[type="submit"]')
+  var passError = $('soon-pass-error')
+  var door = $('soon-door')
+  var comeIn = $('soon-come-in')
+
+  passForm.elements.next.value = location.pathname + location.search
+  comeIn.addEventListener('click', function () {
+    emailForm.hidden = true
+    done.hidden = true
+    door.hidden = true
+    passForm.hidden = false
+    comeIn.setAttribute('aria-expanded', 'true')
+    passInput.focus()
+  })
+  $('soon-back').addEventListener('click', function () {
+    passForm.hidden = true
+    say(passError, passInput, '')
+    if (signedUp) done.hidden = false
+    else emailForm.hidden = false
+    door.hidden = false
+    comeIn.setAttribute('aria-expanded', 'false')
+    comeIn.focus()
+  })
+  passInput.addEventListener('input', function () {
+    if (!passError.hidden) say(passError, passInput, '')
+  })
+  passForm.addEventListener('submit', function (event) {
+    event.preventDefault()
+    if (isBusy(passButton)) return
+    if (!passInput.value.trim()) {
+      say(passError, passInput, 'Type the password first.')
+      passInput.focus()
+      return
+    }
+    say(passError, passInput, '')
+    busy(passButton, 'Checking…')
+    var body = new URLSearchParams()
+    body.set('password', passInput.value)
+    body.set('next', passForm.elements.next.value)
+    fetch('/__gate', { method: 'POST', headers: { accept: 'application/json' }, body: body, credentials: 'same-origin' })
+      .then(function (res) {
+        return res
+          .json()
+          .catch(function () {
+            return null
+          })
+          .then(function (answer) {
+            if (answer && answer.go) return leave(answer.go + location.pathname + location.search)
+            if (res.ok && answer && answer.ok) {
+              busy(passButton, 'Opening…')
+              return leave(location.pathname === '/soon.html' ? '/' : null)
+            }
+            idle(passButton)
+            if (res.status === 429) say(passError, passInput, 'Too many tries. Wait a minute, then try again.')
+            else if (res.status === 401) say(passError, passInput, 'That’s not it. Check it and try again.')
+            else say(passError, passInput, 'Couldn’t check it. Try again in a moment.')
+            passInput.focus()
+          })
+      })
+      .catch(function () {
+        idle(passButton)
+        say(passError, passInput, 'Couldn’t check it. Try again in a moment.')
+      })
+  })
+
+  /*
+   * Off to the app (or to its new address). A browser that kept the app from before would open its copy, or
+   * this page from it, again: let that copy go first, so the page comes fresh from the server.
+   */
+  function leave(to) {
+    var jobs = []
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        jobs.push(navigator.serviceWorker.getRegistrations().then(function (all) {
+          return Promise.all(all.map(function (one) {
+            return one.unregister()
+          }))
+        }))
+      }
+      if (window.caches && caches.keys) {
+        jobs.push(caches.keys().then(function (names) {
+          return Promise.all(names.map(function (name) {
+            return caches.delete(name)
+          }))
+        }))
+      }
+    } catch (e) {
+      /* nothing kept, or no way to look: go on */
+    }
+    Promise.all(jobs)
+      .catch(function () {})
+      .then(function () {
+        if (to) location.replace(to)
+        else location.reload()
+      })
+  }
+})()
+</script>
+</body>
+</html>

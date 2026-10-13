@@ -1,3 +1,4 @@
+import { ownReadHeaders } from './_gate.js'
 import { challengeWords, originOf, queryOf, readChallenge, readGames, SLUG } from './_og/challenge.js'
 
 /*
@@ -40,7 +41,7 @@ async function readTemplate(origin, game) {
   const paths = SLUG.test(game) ? [`/c/${game}/`, '/index.html'] : ['/index.html']
   for (const path of paths) {
     try {
-      const res = await fetch(`${origin}${path}`, { headers: { [OWN_READ]: '1' } })
+      const res = await fetch(`${origin}${path}`, { headers: { [OWN_READ]: '1', ...ownReadHeaders() } })
       if (res.ok) return await res.text()
     } catch {
       /* try the next */

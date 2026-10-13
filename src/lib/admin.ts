@@ -218,6 +218,36 @@ export async function fetchFeedback() {
   return (await api<{ feedback: AdminFeedback[] }>('/admin/feedback?limit=100')).feedback
 }
 
+/**
+ * The coming-soon page's launch list (the API's launchList.ts): who asked to hear when Blipka opens, the latest
+ * first; whether the API can send email at all (Resend set up on Render); how many one send mails; and the email.
+ */
+export type LaunchList = {
+  emails: { email: string; createdAt: number }[]
+  mailer: boolean
+  batch: number
+  mail: { subject: string; text: string }
+}
+
+export function fetchLaunchList() {
+  return api<LaunchList>('/admin/launch-list')
+}
+
+/** One address off the list, for someone who asked. */
+export function removeFromLaunchList(email: string) {
+  return api<{ removed: boolean }>(`/admin/launch-list/${encodeURIComponent(email)}`, { method: 'DELETE' })
+}
+
+/** The launch email to the admin asking, to see it first. */
+export function sendLaunchTest() {
+  return api<{ to: string }>('/admin/launch-list/test', { method: 'POST' })
+}
+
+/** The launch email to the next batch; each address is deleted once its email has gone. */
+export function sendLaunchEmail() {
+  return api<{ sent: number; left: number }>('/admin/launch-list/send', { method: 'POST' })
+}
+
 export async function fetchOpenFlags() {
   return (await api<{ flags: AdminFlag[] }>('/admin/flags?limit=100')).flags
 }

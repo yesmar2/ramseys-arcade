@@ -1,3 +1,4 @@
+import { ownReadHeaders } from './_gate.js'
 import { originOf, queryOf, readGames } from './_og/challenge.js'
 import { EVENT_ID, eventWords, readEvent } from './_og/event.js'
 
@@ -32,7 +33,7 @@ const OWN_READ = 'x-event-page-read'
 /** @param {string} origin */
 async function readShell(origin) {
   try {
-    const res = await fetch(`${origin}/index.html`, { headers: { [OWN_READ]: '1' } })
+    const res = await fetch(`${origin}/index.html`, { headers: { [OWN_READ]: '1', ...ownReadHeaders() } })
     if (res.ok) return await res.text()
   } catch {
     /* no shell: people go straight on */

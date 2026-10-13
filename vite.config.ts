@@ -85,10 +85,13 @@ export default defineConfig(({ mode }) => {
           // 3D engine (about a fifth of everything else put together, and its own chunk now two games share),
           // so each downloads when someone opens it, not with the app. Wobble Run's page and its scene chunk
           // (the renderer with the obstacle engine, rounds and bots its preview shares) wait to be opened too.
+          // The coming-soon page is for the people the gate stops (middleware.js), never the app's offline copy.
           globIgnores: [
             '**/node_modules/**/*',
             'og.png',
             'og/**',
+            'soon.html',
+            'soon/**',
             'assets/AceChaseGame-*',
             'assets/HotLapGame-*',
             'assets/WobbleRunPage-*',

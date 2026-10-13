@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { createServer } from 'vite'
+import { createServer, loadEnv } from 'vite'
 
 /**
  * Static pages for crawlers and link unfurlers.
@@ -85,6 +85,29 @@ function robotsTxt() {
     `Sitemap: ${origin}/sitemap.xml`,
     '',
   ].join('\n')
+}
+
+/**
+ * The coming-soon page (public/soon.html, which middleware.js shows while the site is closed), filled in: this
+ * build's origin for its tags, the API its emails go to and the address to write to, the same ones the app was
+ * built with. Returns the API, or null when the build has no such page.
+ */
+function writeSoonPage() {
+  const file = join(DIST, 'soon.html')
+  if (!existsSync(file)) return null
+  const env = loadEnv('production', process.cwd(), 'VITE_')
+  const api = (env.VITE_API_URL?.trim() || 'https://ramseys-arcade-api.onrender.com').replace(/\/$/, '')
+  const contact = env.VITE_CONTACT_EMAIL?.trim()
+  const config = '<script id="soon-config" type="application/json">{"api":""}</script>'
+  let html = readFileSync(file, 'utf8')
+  if (!html.includes(config) || !html.includes('<!--soon:contact-->')) {
+    throw new Error('prerender: public/soon.html has lost the places it is filled in at')
+  }
+  html = html.replaceAll('%ORIGIN%', origin)
+  html = html.replace(config, config.replace('{"api":""}', JSON.stringify({ api }).replace(/</g, '\\u003c')))
+  html = html.replace('<!--soon:contact-->', contact ? ` · <a href="mailto:${esc(contact)}">${esc(contact)}</a>` : '')
+  writeFileSync(file, html)
+  return api
 }
 
 function sitemapXml(paths) {
@@ -195,8 +218,11 @@ try {
   }
   writeFileSync(join(DIST, 'robots.txt'), robotsTxt())
   writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml(paths))
+  const soon = writeSoonPage()
   console.log(
-    `prerendered ${paths.length} pages and ${challengePages} challenge pages at ${origin}, plus robots.txt and sitemap.xml`,
+    `prerendered ${paths.length} pages and ${challengePages} challenge pages at ${origin}, plus robots.txt and sitemap.xml${
+      soon ? `, and the coming-soon page (emails to ${soon})` : ''
+    }`,
   )
 } finally {
   await server.close()
