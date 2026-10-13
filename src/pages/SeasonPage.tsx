@@ -11,6 +11,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { AVATAR_EVENT, AVATAR_PINS, AVATARS_ENABLED, getLocalAvatarId, isWearing, resolveAvatar, type Avatar, type AvatarPin } from '../lib/avatars'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useGlobalRank } from '../lib/globalRank'
+import { glide } from '../lib/scrollToPlace'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { fetchPlus, freeWeekFor, money, perSeason, seasonWeeks, type PlusInfo } from '../lib/plus'
 import {
@@ -637,7 +638,7 @@ function SkinChip({ skin, yours, plus }: { skin: SeasonReward; yours: boolean; p
  * tall tiles three rows deep beside a short card, and none of Pass+'s.
  */
 function SkinsCard({ free, plus, level, owned, plusOwned }: { free: SeasonReward[]; plus: SeasonReward[]; level: number; owned: string[]; plusOwned: boolean }) {
-  const toPlus = () => document.querySelector('.season-plus')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const toPlus = () => document.querySelector('.season-plus')?.scrollIntoView({ behavior: glide(), block: 'start' })
   return (
     <section className="season-card season-card--wide season-skincard" aria-labelledby="season-skins-title">
       <div className="season-skincard__head">
@@ -717,7 +718,7 @@ export function SeasonPage() {
 
   const scrollBy = (dir: 1 | -1) => {
     const track = trackRef.current
-    if (track) track.scrollBy({ left: dir * track.clientWidth * 0.8, behavior: 'smooth' })
+    if (track) track.scrollBy({ left: dir * track.clientWidth * 0.8, behavior: glide() })
   }
 
   if (!season || !p) {

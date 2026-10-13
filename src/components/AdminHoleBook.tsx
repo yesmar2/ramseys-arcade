@@ -6,6 +6,7 @@ import { drawHolePlan } from '../games/acechase/holePlan'
 import type { HoleDef, Style } from '../games/acechase/physics'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { dailyDay } from '../lib/dailyHole'
+import { glide } from '../lib/scrollToPlace'
 import '../styles/adminBooks.css'
 
 /*
@@ -106,8 +107,7 @@ export function AdminHoleBook() {
   useEffect(() => {
     if (target === null) return
     const el = document.getElementById(`hole-${target}`)
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' })
+    el?.scrollIntoView({ behavior: glide(), block: 'center' })
     setFlash(target)
     setTarget(null)
   }, [target])

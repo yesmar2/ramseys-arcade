@@ -12,6 +12,7 @@ import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PartErrorBoundary } from '../components/SiteErrorBoundary'
 import { BugHuntStrip } from '../components/BugHunt'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { APP_NAME } from '../lib/brand'
 import { useRecentGames } from '../lib/lastPlayed'
 import { lazyPage } from '../lib/lazyPage'
 import { normalizePlayerName } from '../lib/leaderboard'
@@ -98,8 +99,10 @@ export function HomePage() {
   }
   return (
     <>
-      <PageShell variant="home">
-        <div className="home-rail">{(firstVisit ? FIRST : phone ? NARROW : WIDE).map((part) => parts[part])}</div>
+      <PageShell variant="home" innerClassName="home-rail">
+        {/* The page's heading, for a screen reader: each part has its own h2, and the site's name heads them. */}
+        <h1 className="visually-hidden">{APP_NAME}</h1>
+        {(firstVisit ? FIRST : phone ? NARROW : WIDE).map((part) => parts[part])}
       </PageShell>
       <InstallPrompt />
     </>

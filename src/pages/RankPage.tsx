@@ -31,7 +31,7 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import { talksInPlaces } from '../lib/profileMath'
-import { scrollToPlace } from '../lib/scrollToPlace'
+import { glide, scrollToPlace } from '../lib/scrollToPlace'
 import { subscribeToday, todayServer } from '../lib/today'
 import { fetchTrophies, type TrophyAward } from '../lib/trophies'
 
@@ -41,8 +41,7 @@ function jumpTo(id: string) {
     const target = document.getElementById(id)
     if (!target) return
     event.preventDefault()
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    target.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+    target.scrollIntoView({ behavior: glide(), block: 'start' })
   }
 }
 

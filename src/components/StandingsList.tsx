@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { focusFromUrl, ROUTE_EVENT } from '../hooks/useHashRoute'
 import { useHeldShape } from '../lib/heldShape'
+import { glide } from '../lib/scrollToPlace'
 import { ordinal, type LastFinal, type Standing, type YouStanding } from '../lib/scoreboard'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
@@ -230,7 +231,7 @@ export function StandingsList({
     const focus = () => {
       if (focusFromUrl() !== 'standings') return
       setOpened(true)
-      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      ref.current?.scrollIntoView({ behavior: glide(), block: 'start' })
     }
     focus()
     window.addEventListener(ROUTE_EVENT, focus)

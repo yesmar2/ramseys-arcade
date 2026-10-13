@@ -88,33 +88,31 @@ export function TrophyIcon() {
 const DAILY_PERIODS: readonly LeaderboardPeriod[] = ['daily', 'weekly', 'monthly']
 
 /**
- * The board's periods, as links, and while a season has standings, its Season tab after them. With no
- * `period` none is on, and they're plain links, not tabs: a daily's board on a past day, whose Today is today's.
+ * The board's periods, as links, and while a season has standings, its Season tab after them: a nav with the one
+ * you're on marked, since each is an address of its own (lib/choiceKeys.ts). With no `period` none is on: a
+ * daily's board on a past day, whose Today is today's.
  */
 export function PeriodTabs({ slug, period }: { slug: LeaderboardGame; period?: LeaderboardPeriod }) {
   const season = useSeasonTab() || period === 'season'
   const periods = periodTabs(isDailyGame(slug) ? DAILY_PERIODS : VISIBLE_LEADERBOARD_PERIODS, season)
   const four = periods.length > 3
-  const tabs = period != null
   return (
-    <div
+    <nav
       className={`seg sb-periods gb-periods${four ? ' seg--four' : ''}`}
-      role={tabs ? 'tablist' : 'group'}
-      aria-label={tabs ? 'Period' : 'Today’s boards'}
+      aria-label={period != null ? 'Period' : 'Today’s boards'}
       style={{ '--seg-count': periods.length } as CSSProperties}
     >
       {periods.map((p) => (
         <a
           key={p}
-          role={tabs ? 'tab' : undefined}
-          aria-selected={tabs ? p === period : undefined}
+          aria-current={p === period ? 'page' : undefined}
           className={`seg__item${p === period ? ' seg__item--active' : ''}`}
           href={gameBoardHref(slug, p)}
         >
           <PeriodLabel period={p} four={four} />
         </a>
       ))}
-    </div>
+    </nav>
   )
 }
 

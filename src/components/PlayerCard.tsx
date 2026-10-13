@@ -25,6 +25,7 @@ import { RewardArt } from './season/RewardArt'
 import { metalTone, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { BackChevronIcon } from './PageBackLink'
 import { useHeldHeight } from '../lib/heldShape'
+import { glide } from '../lib/scrollToPlace'
 import { useSeason } from '../lib/season'
 import { seasonHasStandings } from '../lib/seasonStandings'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal } from './TrophyArt'
@@ -163,8 +164,7 @@ function HangarShelf({ skins, isSelf }: { skins: readonly string[]; isSelf: bool
     const hangar = document.getElementById('hangar')
     if (!hangar) return
     e.preventDefault()
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    hangar.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+    hangar.scrollIntoView({ behavior: glide(), block: 'start' })
   }
   return (
     <div className="pcard-shelf pcard-shelf--hangar">
@@ -392,8 +392,7 @@ export function PlayerCard({
     const shelf = document.getElementById('trophies')
     if (!shelf) return
     e.preventDefault()
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    shelf.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+    shelf.scrollIntoView({ behavior: glide(), block: 'start' })
   }
 
   const tile = (

@@ -282,6 +282,13 @@ html[data-theme='light'] .medal-ladder__step--won .medal-ladder__tix {
   animation: report-shimmer 1.3s ease-in-out infinite;
 }
 
+/* Still with motion turned down, as the report's own ghost rows are (report.css). */
+@media (prefers-reduced-motion: reduce) {
+  .race-place--ghost .race-place__at {
+    animation: none;
+  }
+}
+
 /* Today's ticket: the racing dailies' medals and the day's goal, gold on all of them (TodayCard MedalGoal). */
 .today-medals__goal {
   align-self: center;

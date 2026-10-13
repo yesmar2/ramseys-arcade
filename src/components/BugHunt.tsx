@@ -33,6 +33,7 @@ import {
 import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
 import { getSessionToken } from '../lib/auth'
+import { glide } from '../lib/scrollToPlace'
 import { THEME_EVENT } from '../lib/theme'
 import type { AvatarWear } from './AvatarStudio'
 import { Panel, PanelHead } from './Panel'
@@ -503,7 +504,7 @@ function HuntTestBar({ test }: { test: HuntTest }) {
     const room = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
     const landsAt = mid - Math.min(Math.max(mid - window.innerHeight / 2, 0), room)
     setLow(landsAt < window.innerHeight / 2)
-    peek.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    peek.scrollIntoView({ block: 'center', behavior: glide() })
   }
   const random = () => {
     const poses = POSE_PAD.filter((p): p is HuntPose => p !== null)
@@ -681,9 +682,11 @@ export function BugHuntStrip() {
   const count = countWords(server, pick.bug.name, stats)
   return (
     <section className={`hunt-strip${stats.foundToday ? ' hunt-strip--found' : ''}`} aria-label="Daily bug hunt">
-      <button type="button" className="hunt-strip__mark" onClick={openBugHunt} aria-label="Your bugs">
+      {/* The bug opens your bugs too, for a finger or a mouse. Your bugs, beside it, is the one button the keyboard and
+          a screen reader meet: the picture was a second one by the same name. */}
+      <span className="hunt-strip__mark" aria-hidden="true" onClick={openBugHunt}>
         <BugPortrait bugId={pick.bug.id} size={56} pose={stats.foundToday ? 'cheer' : 'wave'} mood={stats.foundToday ? 'smile' : pick.mood} className="hunt-strip__art" />
-      </button>
+      </span>
       <div className="hunt-strip__text">
         <p className="hunt-strip__kicker">Daily bug hunt</p>
         {stats.foundToday ? (

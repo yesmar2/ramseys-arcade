@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGame, isDailyGame, isGameListed } from '../data/games'
+import { useAuth } from '../hooks/useAuth'
 import { recordsPlaceHref, siteRecordsHref, standingsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
@@ -43,6 +44,7 @@ function Standings({
 }) {
   const period = useDefaultPeriod()
   const { nobody } = useScope()
+  const { signedIn, signedOut } = useAuth()
   const { rank, score, nearby = [], avatarId } = useGlobalRank()
   const loading = useGlobalRankLoading()
   const entries = board?.entries ?? []
@@ -131,7 +133,15 @@ function Standings({
           {/* All time leaves the dailies out (lib/allTime.ts). */}
           {you ? (
             `Post a score in any ranked game${period === 'all' ? ' but the dailies' : ''} and you’re on this list.`
-          ) : (
+          ) : signedIn ? (
+            <>
+              {/* Signed in with no tag yet: it's a tag that's missing, picked in the menu, as on the Dailies page. */}
+              <button type="button" className="hb-note__signin" onClick={openSiteMenu}>
+                Pick a gamer tag
+              </button>{' '}
+              and your scores count here.
+            </>
+          ) : signedOut ? (
             <>
               {/* The menu, where signing in lives, as on the Dailies page. */}
               <button type="button" className="hb-note__signin" onClick={openSiteMenu}>
@@ -139,6 +149,9 @@ function Standings({
               </button>{' '}
               and your scores count here.
             </>
+          ) : (
+            // A session whose account isn't known yet: the line's room, never Sign in.
+            '\u00a0'
           )}
         </p>
       )}
@@ -151,8 +164,9 @@ function HouseRecords({ boards }: { boards: SiteRecordBoard[] | null }) {
     <article className="hb-panel" data-hunt="home-records">
       <div className="hb-panel__head">
         <h3 className="hb-panel__title">House records</h3>
+        {/* Named in full for a screen reader's list of links, where "All" alone says nothing. */}
         <a className="home-section__more" href={siteRecordsHref()}>
-          All ›
+          All<span className="visually-hidden"> house records</span> ›
         </a>
       </div>
       <ul className="hb-plaques">
@@ -195,7 +209,7 @@ function RecordBook({ slug, records }: { slug: string; records: RecordSummary[] 
         </span>
         <h3 className="hb-panel__title">{game?.name ?? slug} record book</h3>
         <a className="home-section__more" href={recordsPlaceHref(slug)}>
-          Open ›
+          Open<span className="visually-hidden"> the {game?.name ?? slug} record book</span> ›
         </a>
       </div>
       <ul className="hb-records">

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { openBlipPoll } from '../../lib/poll'
 import { liveSeason, useSeason } from '../../lib/season'
+import { glide } from '../../lib/scrollToPlace'
 import { SEASON_CALENDAR } from '../../lib/seasonCalendar'
 import { chooseSkin, skinsFor, useChosenSkin, type Skin } from '../../lib/skins'
 import { hangarSkinHref, seasonSkinHref } from '../../lib/skinWhere'
@@ -170,7 +171,7 @@ export function SkinPicker({ game }: { game: string }) {
           ))}
         </div>
         {more ? (
-          <button type="button" className="skin-pick__more" aria-label={`More ${noun}s`} onClick={() => rowRef.current?.scrollBy({ left: 260, behavior: 'smooth' })}>
+          <button type="button" className="skin-pick__more" aria-label={`More ${noun}s`} onClick={() => rowRef.current?.scrollBy({ left: 260, behavior: glide() })}>
             ›
           </button>
         ) : null}

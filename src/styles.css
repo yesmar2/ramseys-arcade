@@ -161,6 +161,21 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/*
+ * A game's screen never scrolls, so it keeps no room for a scrollbar: with one drawn beside the page (Windows),
+ * that room was an empty strip down the stage's right edge, white in the light theme.
+ */
+html:has(.game-page--fullscreen) {
+  scrollbar-gutter: auto;
+}
+
+/* Turned down, motion stops here too: a jump to a part of the page goes straight there (lib/scrollToPlace glide). */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 html,
 body {
   overscroll-behavior: none;
@@ -2115,7 +2130,9 @@ html[data-theme='dark'] .music-level__note {
   z-index: 13;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  /* Read by the buttons' press room too (below), which splits it. */
+  --chrome-gap: 0.35rem;
+  gap: var(--chrome-gap);
   pointer-events: auto;
 }
 
@@ -2162,6 +2179,43 @@ html[data-theme='dark'] .music-level__note {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 0.35rem;
+}
+
+/*
+ * Leave, Fullscreen and Pause take a finger's press, 44px each way, whatever size they're drawn: on a phone they
+ * shrink to 26 to 32px, and a press just off one went through to the game (a missile in Patriot). The room is an
+ * invisible box round each, so nothing changes to look at. Two side by side split the gap between them, each
+ * reaching out on its other side instead, so neither takes a press meant for the other.
+ */
+.game-play-chrome > :is(.game-play-back, .game-pause-btn) {
+  position: relative;
+}
+
+.game-play-chrome > :is(.game-play-back, .game-pause-btn)::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 2.75rem);
+  height: max(100%, 2.75rem);
+  transform: translate(-50%, -50%);
+}
+
+.game-play-chrome > :is(.game-play-back, .game-pause-btn):not(:last-child)::before {
+  left: auto;
+  right: calc(var(--chrome-gap) / -2);
+  transform: translateY(-50%);
+}
+
+.game-play-chrome > :is(.game-play-back, .game-pause-btn):not(:first-child)::before {
+  left: calc(var(--chrome-gap) / -2);
+  transform: translateY(-50%);
+}
+
+/* One between two keeps to its halves of the gaps either side. */
+.game-play-chrome > :is(.game-play-back, .game-pause-btn):not(:first-child):not(:last-child)::before {
+  right: calc(var(--chrome-gap) / -2);
+  width: auto;
 }
 
 /* Plain playfield readouts: score center, secondary under it (no chips). */
@@ -3959,6 +4013,23 @@ html[data-theme='dark'] .patriot__power {
   box-sizing: border-box;
 }
 
+/*
+ * A page's main with no inner box (PageShell): across the page, its parts placed as they would be straight in
+ * it, so a page reads the same with its header outside main.
+ */
+.page-main {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: inherit;
+}
+
+/* Skipped to from the header (Skip to content), it takes the focus without a ring round the whole page. */
+main:focus {
+  outline: none;
+}
+
 .lb-page__inner {
   width: min(100% - 1.25rem, var(--max-width));
   margin-inline: auto;
@@ -5299,6 +5370,20 @@ a.lb-share:visited:focus-visible {
   }
   100% {
     background-position: -100% 0;
+  }
+}
+
+/*
+ * With motion turned down, the shine stands still: whatever borrows this sweep (.skel-line, a list's skeleton
+ * rows, the cards' and panels' own) waits as a soft, still bar rather than one that shimmers for as long as
+ * the API takes.
+ */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes lb-skel-shine {
+    0%,
+    100% {
+      background-position: 50% 0;
+    }
   }
 }
 

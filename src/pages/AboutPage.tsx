@@ -48,21 +48,21 @@ export function AboutPage() {
       <ul className="home-about__highlights">
         {HIGHLIGHTS.map((item, i) => (
           <li key={item.title} className="home-about__highlight" data-hunt={i === 0 ? 'about-highlights' : undefined}>
-            <h3 className="home-about__highlight-title">{item.title}</h3>
+            <h2 className="home-about__highlight-title">{item.title}</h2>
             <p className="home-about__highlight-body">{item.body}</p>
           </li>
         ))}
       </ul>
 
       <div className="home-about__prose">
-        <h3 className="home-about__subtitle">The idea</h3>
+        <h2 className="home-about__subtitle">The idea</h2>
         <p>
           We wanted a place that feels like walking up to a good arcade cabinet: one game in
           front of you, a score to chase, and nothing else competing for attention. {APP_NAME}{' '}
           keeps the focus on play — not feeds, loot boxes, or clutter.
         </p>
 
-        <h3 className="home-about__subtitle">Rank up and compete</h3>
+        <h2 className="home-about__subtitle">Rank up and compete</h2>
         <p>
           Post a score and climb the{' '}
           <a href={leaderboardHref(period)}>leaderboards</a>. Track personal bests, chase record
@@ -73,7 +73,7 @@ export function AboutPage() {
           <a href={rankHowHref(undefined, period)}>How your rank works</a> shows yours, game by game.
         </p>
 
-        <h3 className="home-about__subtitle">Classic inspiration, original games</h3>
+        <h2 className="home-about__subtitle">Classic inspiration, original games</h2>
         <p>
           The lineup is inspired by the games we grew up on — Asteroids-style survival, Frogger
           crossings, endless hoppers, reflex testers, and arcade shooters — but every title
@@ -81,7 +81,7 @@ export function AboutPage() {
           and polishing the in-development ones; expect the cabinet row to grow over time.
         </p>
 
-        <h3 className="home-about__subtitle">Ready to play?</h3>
+        <h2 className="home-about__subtitle">Ready to play?</h2>
         <p>
           Head back to the arcade, pick a tile, and hop in. Whether you have two minutes or
           twenty, there’s always another run to beat. Thanks for stopping by.

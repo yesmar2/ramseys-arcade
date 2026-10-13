@@ -54,26 +54,25 @@ function dayOf(at: number) {
   }
 }
 
+/** The records at each period: links, so a nav with the one you're on marked (lib/choiceKeys.ts). */
 function PeriodTabs({ game, period }: { game: string; period: LeaderboardPeriod }) {
   return (
-    <div
+    <nav
       className="seg sb-periods gb-periods"
-      role="tablist"
       aria-label="Period"
       style={{ '--seg-count': VISIBLE_LEADERBOARD_PERIODS.length } as CSSProperties}
     >
       {VISIBLE_LEADERBOARD_PERIODS.map((p) => (
         <a
           key={p}
-          role="tab"
-          aria-selected={p === period}
+          aria-current={p === period ? 'page' : undefined}
           className={`seg__item${p === period ? ' seg__item--active' : ''}`}
           href={recordsHref(game, p)}
         >
           {PERIOD_LABELS[p]}
         </a>
       ))}
-    </div>
+    </nav>
   )
 }
 

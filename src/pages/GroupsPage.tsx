@@ -18,6 +18,7 @@ import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { openSiteMenu } from '../components/siteNav'
 import { navigate, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
+import { usePageName } from '../hooks/usePageMeta'
 import { useFriends } from '../hooks/useFriends'
 import { useGroupBoard } from '../hooks/useGroupBoard'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -198,6 +199,8 @@ export function GroupDetailPage({ id, invite }: { id: string; invite?: string })
   const [ask, question] = useConfirm({ '--celeb-accent': accent, '--hero-ink': inkOn(accent) } as CSSProperties)
 
   const inside = Boolean(group && (group.isMember || group.isOwner))
+  // The tab says which group, once it's here (and only this one: another's stays up while this one loads).
+  usePageName(group?.id === id ? group.name : null)
   const board = useGroupBoard(group?.id ?? null, period, inside)
   const month = useGroupBoard(group?.id ?? null, 'monthly', inside)
 

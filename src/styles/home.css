@@ -25,6 +25,11 @@
   position: relative;
 }
 
+/* The page's heading, there for a screen reader (HomePage), stays out of the rail's flow. */
+.home-rail > .visually-hidden {
+  position: absolute;
+}
+
 /* ---------- per-tile best ---------- */
 
 .game-tile__best {
@@ -2829,6 +2834,28 @@ html[data-theme="dark"] .home-banner__hint--error {
 
   .page-banner--barred .home-banner__text {
     padding-top: 0.5rem;
+  }
+}
+
+/*
+ * A full page banner (the events', a player's) narrower than a desk. Stacked over the words, its card had a band
+ * across the top to itself, mostly empty on a tablet, whose foot cut the leaning card (and its shadow) off in a
+ * straight line. Now only the banner's own rounded edge cuts what runs off it, as wider up, and on a tablet the
+ * card stands beside the words; a phone keeps it over them.
+ */
+@media (max-width: 56rem) {
+  .page-banner:not(.page-banner--compact, .page-banner--barred) .home-banner__art {
+    overflow: visible;
+  }
+}
+
+@media (min-width: 36.01rem) and (max-width: 56rem) {
+  .page-banner:not(.page-banner--compact, .page-banner--bare, .page-banner--barred) {
+    grid-template-columns: minmax(0, 1fr) 13rem;
+  }
+
+  .page-banner:not(.page-banner--compact, .page-banner--bare, .page-banner--barred) .home-banner__art {
+    order: 0;
   }
 }
 

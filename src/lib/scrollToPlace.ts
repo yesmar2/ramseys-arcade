@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react'
+import { currentPath, homeHref, navigate } from '../hooks/useHashRoute'
 
 /*
  * Bringing the part of a page a link names into view (an address's #anchor, a profile's ?focus=), and keeping it
@@ -85,6 +86,16 @@ export function scrollToPlace(find: () => Element | null, block: ScrollLogicalPo
 }
 
 /**
+ * How a scroll the page makes itself moves (a link down to a part of the page, a row's arrows): a glide, or
+ * straight there when the player has motion turned down. Every such scroll asks this rather than for 'smooth'.
+ * Never 'auto': the page asks for smooth scrolling in its stylesheet, so that would glide too (styles.css stops
+ * it there as well when motion is turned down).
+ */
+export function glide(): ScrollBehavior {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+}
+
+/**
  * A link to the home page's wall of games (`/#games`), pressed where the wall already is: down to it, gliding
  * unless motion is turned down, without a hash in the address. Anywhere else the link goes there as any link
  * does, and the page lands on the wall (App.tsx).
@@ -94,7 +105,17 @@ export function toWall(event: MouseEvent<HTMLAnchorElement>) {
   const wall = document.querySelector<HTMLElement>('.wall#games')
   if (!wall) return
   event.preventDefault()
-  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  // `auto` would still glide: the page asks for smooth scrolling in its stylesheet.
-  wall.scrollIntoView({ behavior: still ? 'instant' : 'smooth', block: 'start' })
+  wall.scrollIntoView({ behavior: glide(), block: 'start' })
+}
+
+/**
+ * The site's name (the header's and the footer's), pressed on the home page: up to its top. A link to the address
+ * you're already at goes nowhere, so it did nothing there. The wall's `#games` comes off the address on the way, as
+ * the link would take it. Anywhere else it's a link home like any other.
+ */
+export function toHomeTop(event: MouseEvent<HTMLAnchorElement>) {
+  if (currentPath() !== homeHref()) return
+  event.preventDefault()
+  navigate(homeHref())
+  window.scrollTo({ top: 0, left: 0, behavior: glide() })
 }

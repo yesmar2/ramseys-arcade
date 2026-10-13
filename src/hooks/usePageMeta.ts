@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import type { Route } from './useHashRoute'
-import { pageMeta, siteOrigin, type PageMeta } from '../lib/pageMeta'
+import { currentRoute, type Route } from './useHashRoute'
+import { pageMeta, siteOrigin, titled, type PageMeta } from '../lib/pageMeta'
 
 function upsertMeta(attr: 'name' | 'property', key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`)
@@ -40,9 +40,39 @@ export function applyPageMeta(meta: PageMeta) {
   else removeMeta('name', 'robots')
 }
 
+/**
+ * The names pages have given themselves once what they're about has come (a group's, an event's), by the path
+ * each is known by. The route alone knows only "Group" or "Event", so two open side by side had the same tab.
+ */
+const ownNames = new Map<string, string>()
+
+/** The route's tags, titled with the page's own name where it has given one. */
+function metaFor(route: Route): PageMeta {
+  const meta = pageMeta(route)
+  const name = ownNames.get(meta.path)
+  return name ? { ...meta, title: titled(name) } : meta
+}
+
 /** Keep the document's title, description and share tags in step with the route. */
 export function usePageMeta(route: Route) {
   useEffect(() => {
-    applyPageMeta(pageMeta(route))
+    applyPageMeta(metaFor(route))
   }, [route])
+}
+
+/**
+ * A page's own name in its tab, once it has loaded: "OFFICE · Blipka" where the route alone gave "Group · Blipka".
+ * It stays through the page's own changes of address (a period picked on it) and goes with the page.
+ */
+export function usePageName(name: string | null | undefined) {
+  useEffect(() => {
+    if (!name) return
+    const route = currentRoute()
+    const path = pageMeta(route).path
+    ownNames.set(path, name)
+    applyPageMeta(metaFor(route))
+    return () => {
+      if (ownNames.get(path) === name) ownNames.delete(path)
+    }
+  }, [name])
 }

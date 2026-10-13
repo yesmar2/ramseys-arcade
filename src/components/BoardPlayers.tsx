@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { boardPlayer, type BoardPlayer } from '../lib/gameBoard'
 import { getLeaderboard, getPlayerBoard, type LeaderboardEntry, type LeaderboardPeriod, type YouEntry } from '../lib/leaderboard'
 import { ordinal } from '../lib/scoreboard'
+import { glide } from '../lib/scrollToPlace'
 import { LeaderboardList } from './LeaderboardList'
 
 /*
@@ -150,7 +151,7 @@ export function BoardPlayers({
   }
 
   // Your row wears gb-row--you (the row renderer's), wherever it is in the list.
-  const jump = () => listRef.current?.querySelector('.gb-row--you')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const jump = () => listRef.current?.querySelector('.gb-row--you')?.scrollIntoView({ behavior: glide(), block: 'center' })
   // A viewer near the top is already in view: Jump to me only once their place is past the opening rows.
   const showJump = Boolean(mine && mine.place > top.length + 2)
 

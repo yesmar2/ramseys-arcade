@@ -25,6 +25,7 @@ import {
   tournamentHref,
   tournamentPlayHref,
   tournamentsHref,
+  type AdminSection,
   type Route,
 } from '../hooks/useHashRoute'
 import { archiveDayWords } from './archive'
@@ -68,8 +69,21 @@ export function siteOrigin(): string {
   return baked || local
 }
 
-function titled(name: string) {
+/** A tab's title: the page's name, then the site's. */
+export function titled(name: string) {
   return `${name} · ${APP_NAME}`
+}
+
+/** The admin's tabs past the overview, by the names their pages give them (AdminPage). */
+const ADMIN_TITLES: Record<AdminSection, string> = {
+  holes: 'Hole Book',
+  tracks: 'Track Book',
+  courses: 'Course Book',
+  caves: 'Cave Book',
+  hills: 'Hills Book',
+  gauntlets: 'Gauntlet Book',
+  pours: 'Pour Book',
+  trophies: 'Trophies',
 }
 
 /** Under about 160 characters, ending at a sentence where there is one. */
@@ -364,7 +378,8 @@ export function pageMeta(route: Route): PageMeta {
     case 'about':
       return {
         ...site,
-        title: titled(`About ${APP_NAME}`),
+        // The site's name once: "About Blipka · Blipka" said it twice.
+        title: `About ${APP_NAME}`,
         description: `${SITE_LINE} Original games inspired by the classics that start in a tap, nothing to install, and leaderboards for the week, the month, the season and all time.`,
         path: aboutHref(),
       }
@@ -380,17 +395,7 @@ export function pageMeta(route: Route): PageMeta {
     case 'admin':
       return {
         ...site,
-        title: titled(
-          route.section === 'holes'
-            ? 'Hole Book'
-            : route.section === 'tracks'
-              ? 'Track Book'
-              : route.section === 'pours'
-                ? 'Pour Book'
-                : route.section === 'trophies'
-                  ? 'Trophies'
-                  : 'Admin',
-        ),
+        title: titled(route.section ? ADMIN_TITLES[route.section] : 'Admin'),
         path: adminHref(route.section),
         noindex: true,
       }

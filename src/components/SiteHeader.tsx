@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useFriends } from '../hooks/useFriends'
@@ -16,6 +16,7 @@ import { useGlobalRank, useGlobalRankLoading } from '../lib/globalRank'
 import { useScope } from '../lib/groups'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { lockScroll, unlockScroll } from '../lib/scrollLock'
+import { toHomeTop } from '../lib/scrollToPlace'
 import { currentTheme, THEME_EVENT, type Theme } from '../lib/theme'
 import { AvatarStudio, type AvatarWear } from './AvatarStudio'
 import { BrandMark } from './BrandMark'
@@ -34,6 +35,20 @@ import { FeedbackHost } from './FeedbackPanel'
 import { SeasonYouLevel } from './season/SeasonChip'
 import { TodayChip } from './TodayChip'
 import { PlayerName } from './PlayerName'
+
+/**
+ * Skip to content: from the top of a page, past the bar's links to the page's own, its `main`. The focus goes
+ * there, so the next Tab is the page's first link or button. `main` takes it only for the moment it's skipped
+ * to: kept focusable, a click anywhere in the page would hand it the focus.
+ */
+function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
+  const main = document.querySelector<HTMLElement>('main')
+  if (!main) return
+  event.preventDefault()
+  main.tabIndex = -1
+  main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true })
+  main.focus()
+}
 
 /**
  * The site's header, on every page but a game screen: one floating bar with
@@ -219,8 +234,13 @@ export function SiteHeader() {
 
   return (
     <div className="site-chrome">
+      {/* The first Tab on a page, and only seen then (chrome.css). */}
+      <a className="skip-link" href="#main" onClick={skipToContent}>
+        Skip to content
+      </a>
       <nav className="site-bar" aria-label="Site">
-        <a className="site-bar__brand" href={homeHref()} aria-label={APP_NAME}>
+        {/* On the home page, back up to its top: a link to where you are goes nowhere. */}
+        <a className="site-bar__brand" href={homeHref()} aria-label={APP_NAME} onClick={toHomeTop}>
           <BrandMark ping />
         </a>
         <div className="site-bar__links">

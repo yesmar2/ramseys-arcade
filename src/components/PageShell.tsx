@@ -10,18 +10,24 @@ type PageShellProps = {
   footer?: boolean
 }
 
-/** Shared page chrome: nav header, main landmark, optional footer. */
+/**
+ * Shared page chrome: nav header, main landmark, optional footer.
+ *
+ * The header comes before `main`, not in it, so `main` is the page's own and the header's Skip to content lands
+ * on it. The page's wrapper keeps the classes `main` had, and `main` takes the place the inner box had (or, with
+ * no inner box, lays its children out as the wrapper would), so nothing on the page moves.
+ */
 export function PageShell({
   children,
   variant = 'page',
   innerClassName,
   footer = true,
 }: PageShellProps) {
-  const mainClass = variant === 'home' ? 'home-stage home-stage--bare' : 'lb-page'
+  const stageClass = variant === 'home' ? 'home-stage home-stage--bare' : 'lb-page'
 
   return (
     <>
-      <main className={mainClass}>
+      <div className={stageClass}>
         {variant === 'home' ? (
           <div className="home-ambient" aria-hidden="true">
             <span className="home-ambient__orb home-ambient__orb--a" />
@@ -30,12 +36,10 @@ export function PageShell({
           </div>
         ) : null}
         <SiteHeader />
-        {innerClassName ? (
-          <div className={innerClassName}>{children}</div>
-        ) : (
-          children
-        )}
-      </main>
+        <main id="main" className={innerClassName ?? 'page-main'}>
+          {children}
+        </main>
+      </div>
       {footer ? <Footer /> : null}
     </>
   )

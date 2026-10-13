@@ -28,6 +28,7 @@ import {
   type AvatarPin,
   type AvatarRing,
 } from '../lib/avatars'
+import { moveChoice } from '../lib/choiceKeys'
 import { inkOn } from '../lib/color'
 import { useGlobalRank } from '../lib/globalRank'
 import { setPlayerAvatar } from '../lib/leaderboard'
@@ -356,13 +357,14 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
   }
 
   const swatches = (key: 'body' | 'detail', label: string) => (
-    <div className="studio__swatches" role="radiogroup" aria-label={label}>
+    <div className="studio__swatches" role="radiogroup" aria-label={label} onKeyDown={moveChoice}>
       {AVATAR_COLORS.map((c, i) => (
         <button
           key={c.id}
           type="button"
           role="radio"
           aria-checked={draft[key] === i}
+          tabIndex={draft[key] === i ? 0 : -1}
           aria-label={c.label}
           title={c.label}
           className="studio__swatch"
@@ -414,9 +416,17 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
         </div>
 
         <div className="studio__main">
-          <div className="studio__tabs" role="tablist" aria-label="What to change">
+          <div className="studio__tabs" role="tablist" aria-label="What to change" onKeyDown={moveChoice}>
             {tabs.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className="studio__tab" onClick={() => setTab(t.id)}>
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                tabIndex={tab === t.id ? 0 : -1}
+                className="studio__tab"
+                onClick={() => setTab(t.id)}
+              >
                 {t.label}
                 {t.count ? <span className="studio__count">{t.count}</span> : null}
               </button>

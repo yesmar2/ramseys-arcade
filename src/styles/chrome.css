@@ -13,6 +13,40 @@
   width: min(100% - 1.25rem, var(--max-width));
 }
 
+/*
+ * Skip to content: the first thing Tab reaches on a page, and only seen then, over the bar's left end. It takes
+ * the keyboard past the bar's links to the page's own (SiteHeader).
+ */
+.skip-link {
+  position: absolute;
+  top: 50%;
+  left: 0.45rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.93rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-50%);
+}
+
+.skip-link:not(:focus) {
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  box-shadow: none;
+}
+
 .site-bar {
   position: relative;
   display: flex;

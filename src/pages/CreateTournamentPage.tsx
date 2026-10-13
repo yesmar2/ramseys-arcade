@@ -40,6 +40,7 @@ import {
   type TournamentKind,
 } from '../lib/tournaments'
 import { resolveGameAccent } from '../lib/theme'
+import { moveChoice } from '../lib/choiceKeys'
 import { inkOn } from '../lib/color'
 import { listFriends } from '../lib/friends'
 import { fetchGroupDetail, FRIENDS_SCOPE, friendsGroup, type GroupPublic } from '../lib/groups'
@@ -368,6 +369,7 @@ export function CreateTournamentPage() {
                     className="ev-sizes"
                     role="radiogroup"
                     aria-labelledby="limit-players"
+                    onKeyDown={moveChoice}
                   >
                     {DOUBLE_ELIM_SIZES.map((size) => {
                       const locked = size > limits.maxDraw
@@ -377,6 +379,7 @@ export function CreateTournamentPage() {
                           type="button"
                           role="radio"
                           aria-checked={maxPlayers === size}
+                          tabIndex={maxPlayers === size ? 0 : -1}
                           disabled={locked}
                           title={locked ? `Draws over ${limits.maxDraw} are a Plus feature` : undefined}
                           className={`ev-size${maxPlayers === size ? ' ev-size--on' : ''}${
@@ -669,11 +672,12 @@ export function CreateTournamentPage() {
               {step(
                 'What kind of event?',
                 <>
-                  <div className="ev-choice" role="radiogroup" aria-label="Event format">
+                  <div className="ev-choice" role="radiogroup" aria-label="Event format" onKeyDown={moveChoice}>
                     <button
                       type="button"
                       role="radio"
                       aria-checked={kind === 'scores'}
+                      tabIndex={kind === 'scores' ? 0 : -1}
                       className={`ev-choice__opt${kind === 'scores' ? ' ev-choice__opt--on' : ''}`}
                       onClick={() => selectKind('scores')}
                     >
@@ -686,6 +690,7 @@ export function CreateTournamentPage() {
                       type="button"
                       role="radio"
                       aria-checked={kind === 'bracket'}
+                      tabIndex={kind === 'bracket' ? 0 : -1}
                       className={`ev-choice__opt${kind === 'bracket' ? ' ev-choice__opt--on' : ''}`}
                       onClick={() => selectKind('bracket')}
                     >
@@ -697,11 +702,12 @@ export function CreateTournamentPage() {
                   </div>
 
                   {isBracket ? (
-                    <div className="ev-choice ev-choice--sub" role="radiogroup" aria-label="Elimination">
+                    <div className="ev-choice ev-choice--sub" role="radiogroup" aria-label="Elimination" onKeyDown={moveChoice}>
                       <button
                         type="button"
                         role="radio"
                         aria-checked={elimination === 'single'}
+                        tabIndex={elimination === 'single' ? 0 : -1}
                         className={`ev-choice__opt${elimination === 'single' ? ' ev-choice__opt--on' : ''}`}
                         onClick={() => selectElimination('single')}
                       >
@@ -712,6 +718,7 @@ export function CreateTournamentPage() {
                         type="button"
                         role="radio"
                         aria-checked={elimination === 'double'}
+                        tabIndex={elimination === 'double' ? 0 : -1}
                         disabled={!limits.doubleElimination}
                         className={`ev-choice__opt${elimination === 'double' ? ' ev-choice__opt--on' : ''}${
                           limits.doubleElimination ? '' : ' ev-choice__opt--locked'
@@ -931,7 +938,7 @@ export function CreateTournamentPage() {
               {step(
                 isBracket ? 'How long is a round?' : 'How long?',
                 <>
-                  <div className="evp-create__durations" role="radiogroup" aria-label={isBracket ? 'Time per round' : 'Duration'}>
+                  <div className="evp-create__durations" role="radiogroup" aria-label={isBracket ? 'Time per round' : 'Duration'} onKeyDown={moveChoice}>
                     {(isBracket ? ROUND_DURATIONS : DURATIONS).map((d) => {
                       const on = (isBracket ? roundPlayHours : durationHours) === d.hours
                       return (
@@ -940,6 +947,7 @@ export function CreateTournamentPage() {
                           type="button"
                           role="radio"
                           aria-checked={on}
+                          tabIndex={on ? 0 : -1}
                           className={`evp-choice${on ? ' evp-choice--on' : ''}`}
                           onClick={() => (isBracket ? setRoundPlayHours(d.hours) : setDurationHours(d.hours))}
                         >

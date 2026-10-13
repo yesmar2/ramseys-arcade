@@ -20,7 +20,7 @@ import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupsIndexHref } from '../lib/groups'
 import { PERIOD_LABELS } from '../lib/leaderboard'
-import { toWall } from '../lib/scrollToPlace'
+import { toHomeTop, toWall } from '../lib/scrollToPlace'
 import { BrandMark } from './BrandMark'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 
@@ -41,7 +41,8 @@ export function Footer() {
     <footer className="site-footer">
       <div className="site-footer__inner">
         <div className="site-footer__brand">
-          <a className="site-footer__logo" href={homeHref()} aria-label={APP_NAME}>
+          {/* On the home page, back up to its top, as the header's does. */}
+          <a className="site-footer__logo" href={homeHref()} aria-label={APP_NAME} onClick={toHomeTop}>
             <BrandMark />
           </a>
           <p className="site-footer__tag">No ads. No install. Free to play.</p>
@@ -52,9 +53,10 @@ export function Footer() {
           </p>
         </div>
 
+        {/* The columns' heads are h2s: the footer is a part of the page of its own, under the page's h1. */}
         <nav className="site-footer__cols" aria-label="Site map">
           <div className="site-footer__col">
-            <h3 className="site-footer__head">Games</h3>
+            <h2 className="site-footer__head">Games</h2>
             <ul className="site-footer__list">
               {shelf.map((g) => (
                 <li key={g.slug}>
@@ -71,7 +73,7 @@ export function Footer() {
           </div>
 
           <div className="site-footer__col">
-            <h3 className="site-footer__head">Boards</h3>
+            <h2 className="site-footer__head">Boards</h2>
             <ul className="site-footer__list">
               <li>
                 <a href={leaderboardHref('weekly')}>{PERIOD_LABELS.weekly}</a>
@@ -92,7 +94,7 @@ export function Footer() {
           </div>
 
           <div className="site-footer__col">
-            <h3 className="site-footer__head">Events</h3>
+            <h2 className="site-footer__head">Events</h2>
             <ul className="site-footer__list">
               {official.length > 0 ? (
                 <li>
@@ -106,7 +108,7 @@ export function Footer() {
           </div>
 
           <div className="site-footer__col">
-            <h3 className="site-footer__head">You</h3>
+            <h2 className="site-footer__head">You</h2>
             <ul className="site-footer__list">
               <li>
                 <a href={rankHref(undefined, period)}>Profile</a>
@@ -127,7 +129,7 @@ export function Footer() {
           </div>
 
           <div className="site-footer__col">
-            <h3 className="site-footer__head">About</h3>
+            <h2 className="site-footer__head">About</h2>
             <ul className="site-footer__list">
               <li>
                 <a href={aboutHref()}>About {APP_NAME}</a>

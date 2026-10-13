@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { moveChoice } from '../lib/choiceKeys'
 import { mixColor, readableText } from '../lib/color'
 import { gameHasRecords } from '../lib/records'
 
@@ -25,6 +26,7 @@ export function GameBoardSwitcher({
       className="seg"
       role="tablist"
       aria-label="Board type"
+      onKeyDown={moveChoice}
       style={
         {
           '--board-accent': accent,
@@ -37,6 +39,7 @@ export function GameBoardSwitcher({
         type="button"
         role="tab"
         aria-selected={active === 'scores'}
+        tabIndex={active === 'scores' ? 0 : -1}
         className={`seg__item${active === 'scores' ? ' seg__item--active' : ''}`}
         onClick={() => onSelect('scores')}
       >
@@ -46,6 +49,7 @@ export function GameBoardSwitcher({
         type="button"
         role="tab"
         aria-selected={active === 'records'}
+        tabIndex={active === 'records' ? 0 : -1}
         className={`seg__item${active === 'records' ? ' seg__item--active' : ''}`}
         onClick={() => onSelect('records')}
       >

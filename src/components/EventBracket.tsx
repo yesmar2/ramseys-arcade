@@ -8,7 +8,9 @@ import {
   type CSSProperties,
   type RefObject,
 } from 'react'
+import { moveChoice } from '../lib/choiceKeys'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { glide } from '../lib/scrollToPlace'
 import {
   bracketRoundLabel,
   eventKind,
@@ -329,7 +331,7 @@ export function EventBracket({
     jumpPending.current = false
     const you = visibleYouCard()
     if (!you) return
-    you.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+    you.scrollIntoView({ behavior: glide(), block: 'center', inline: 'nearest' })
     flashMatch(you)
   }, [activeRound, showTree, jumpTick])
 
@@ -442,6 +444,7 @@ export function EventBracket({
                 className="event-bracket-rounds ev-bracket-sides"
                 role="tablist"
                 aria-label="Bracket"
+                onKeyDown={moveChoice}
               >
                 {sideOptions.map((opt) => (
                   <button
@@ -449,6 +452,7 @@ export function EventBracket({
                     type="button"
                     role="tab"
                     aria-selected={narrowSide === opt.key}
+                    tabIndex={narrowSide === opt.key ? 0 : -1}
                     className={`event-bracket-rounds__tab${
                       narrowSide === opt.key ? ' event-bracket-rounds__tab--on' : ''
                     }`}
@@ -460,7 +464,7 @@ export function EventBracket({
               </div>
             ) : null}
             {sideRounds.length > 1 ? (
-              <div className="event-bracket-rounds" role="tablist" aria-label="Rounds">
+              <div className="event-bracket-rounds" role="tablist" aria-label="Rounds" onKeyDown={moveChoice}>
                 {sideRounds.map((round) => {
                   const selected = round === shownRound
                   return (
@@ -469,6 +473,7 @@ export function EventBracket({
                       type="button"
                       role="tab"
                       aria-selected={selected}
+                      tabIndex={selected ? 0 : -1}
                       aria-label={
                         isDouble && narrowSide === 'lb'
                           ? loserRoundLabel(round, sideMaxRound)

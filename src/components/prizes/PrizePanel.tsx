@@ -10,6 +10,7 @@ import {
   wornPrize,
   type Avatar,
 } from '../../lib/avatars'
+import { moveChoice } from '../../lib/choiceKeys'
 import { useGlobalRank } from '../../lib/globalRank'
 import { setPlayerAvatar } from '../../lib/leaderboard'
 import { setTicketGoal, tradePrize, useTickets } from '../../lib/tickets'
@@ -250,9 +251,17 @@ export function PrizePanel({
       <div className="panel__body prize-panel__body">
         <div className="prize-stage-wrap">
           {views.length > 1 ? (
-            <div className="prize-views" role="tablist" aria-label="Try it on">
+            <div className="prize-views" role="tablist" aria-label="Try it on" onKeyDown={moveChoice}>
               {views.map((v) => (
-                <button key={v} type="button" role="tab" aria-selected={shownView === v} className="prize-views__btn" onClick={() => setView(v)}>
+                <button
+                  key={v}
+                  type="button"
+                  role="tab"
+                  aria-selected={shownView === v}
+                  tabIndex={shownView === v ? 0 : -1}
+                  className="prize-views__btn"
+                  onClick={() => setView(v)}
+                >
                   {VIEW_LABELS[v]}
                 </button>
               ))}

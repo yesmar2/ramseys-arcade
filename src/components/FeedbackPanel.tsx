@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { moveChoice } from '../lib/choiceKeys'
 import { ApiError } from '../lib/leaderboard'
 import { onOpenFeedback, sendFeedback, type FeedbackKind } from '../lib/feedback'
 import { Panel, PanelHead } from './Panel'
@@ -74,7 +75,7 @@ function FeedbackPanel({ initialKind, onClose }: { initialKind: FeedbackKind; on
       ) : (
         <>
           <div className="panel__body">
-            <div className="feedback__kinds" role="radiogroup" aria-label="What it’s about">
+            <div className="feedback__kinds" role="radiogroup" aria-label="What it’s about" onKeyDown={moveChoice}>
               {(
                 [
                   ['idea', 'An idea or a game'],
@@ -86,6 +87,7 @@ function FeedbackPanel({ initialKind, onClose }: { initialKind: FeedbackKind; on
                   type="button"
                   role="radio"
                   aria-checked={kind === value}
+                  tabIndex={kind === value ? 0 : -1}
                   className="feedback__kind"
                   onClick={() => {
                     setKind(value)

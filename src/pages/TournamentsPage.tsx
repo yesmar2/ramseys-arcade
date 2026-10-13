@@ -35,6 +35,7 @@ import { ShareBoardButton } from '../components/ShareBoardButton'
 import { openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
+import { usePageName } from '../hooks/usePageMeta'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
@@ -989,6 +990,8 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const [previous, setPrevious] = useState<TournamentDetail | null>(null)
 
   const displayName = normalizePlayerName(playerName)
+  // The tab says which event, once it's here (and only this one: another's stays up while this one loads).
+  usePageName(detail?.id === id ? detail.title : null)
   const storedInvite = invite ?? getTournamentInvite(id) ?? undefined
   const playInvite = detail?.inviteCode ?? storedInvite
   const rosterCap = detail?.rules.maxPlayers ?? 0

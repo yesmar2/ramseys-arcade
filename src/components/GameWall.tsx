@@ -5,6 +5,7 @@ import { gameHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
+import { moveChoice } from '../lib/choiceKeys'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
@@ -234,7 +235,8 @@ export function GameWall() {
           Games
         </h2>
         <span className="wall__count">{shown.length} on the floor</span>
-        <div className="chips wall__tabs" role="tablist" aria-label="Kind of game">
+        {/* Tabs over the wall: one Tab stop, and the arrow keys move along them (lib/choiceKeys.ts). */}
+        <div className="chips wall__tabs" role="tablist" aria-label="Kind of game" onKeyDown={moveChoice}>
           {TABS.map((t) => {
             const count = all.filter((g) => inTab(g, t.id)).length
             if (count === 0) return null
@@ -244,6 +246,7 @@ export function GameWall() {
                 type="button"
                 role="tab"
                 aria-selected={tab === t.id}
+                tabIndex={tab === t.id ? 0 : -1}
                 className={`chips__item${tab === t.id ? ' chips__item--active' : ''}`}
                 onClick={() => setTab(t.id)}
               >

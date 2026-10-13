@@ -74,29 +74,30 @@ function ChevronIcon() {
 
 /* ---------- the race ---------- */
 
-/** The periods, and while a season has standings, the Season tab after them. */
+/**
+ * The periods, and while a season has standings, the Season tab after them. Each is a link to the boards at that
+ * period, so they're a nav with the one you're on marked, not tabs (lib/choiceKeys.ts).
+ */
 function PeriodTabs({ active, season }: { active: LeaderboardPeriod; season: boolean }) {
   const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, season || active === 'season')
   const four = periods.length > 3
   return (
-    <div
+    <nav
       className={`seg sb-periods${four ? ' seg--four' : ''}`}
-      role="tablist"
       aria-label="Period"
       style={{ '--seg-count': periods.length } as CSSProperties}
     >
       {periods.map((p) => (
         <a
           key={p}
-          role="tab"
-          aria-selected={p === active}
+          aria-current={p === active ? 'page' : undefined}
           className={`seg__item${p === active ? ' seg__item--active' : ''}`}
           href={leaderboardHref(p)}
         >
           <PeriodLabel period={p} four={four} />
         </a>
       ))}
-    </div>
+    </nav>
   )
 }
 
