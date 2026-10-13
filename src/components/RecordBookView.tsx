@@ -187,14 +187,18 @@ function BarRow({
             {group.short(record.label)}
             {nearest ? <span className="rbc-near">Your nearest</span> : null}
           </span>
-          <span className="rbc-held">
+          <span className={`rbc-held${tied ? ' rbc-held--tie' : ''}`}>
             <b className="rbc-held__best">{recordValue(record, top.score)}</b>
             <span>by</span>
             <PlayerMark name={name} avatarId={top.avatarId} className="rbc-held__mark" />
             <span className="rbc-held__tag">
               <PlayerName name={name} avatarId={top.avatarId} />
             </span>
-            {tied ? <span className="rbc-held__tied">· tied with {you && tiedName === you ? 'you' : tiedName}</span> : null}
+            {tied ? (
+              <span className="rbc-held__tied">
+                <span className="rbc-held__dot">· </span>tied with {you && tiedName === you ? 'you' : tiedName}
+              </span>
+            ) : null}
           </span>
         </span>
         <span className="rbc-bar">
