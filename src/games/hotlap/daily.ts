@@ -83,7 +83,7 @@ export type DailyTrack = {
   pieces: Piece[]
   /** How it lies on the map, and its hills, if it has any: a landmark's (landmarks.ts). */
   shape: TrackShape
-  /** The pace car's lap when the day was planned. */
+  /** The pace car's lap when the day was planned, in seconds: the plan keeps it to the millisecond. */
   pace: number
 }
 
@@ -98,7 +98,7 @@ export function shapeOf(entry: PlannedTrack): TrackShape {
 export function dailyTrack(day = trackDay()): DailyTrack {
   const n = Math.max(1, trackNumber(day))
   const entry = DAILY_TRACKS[(n - 1) % DAILY_TRACKS.length]!
-  return { day, n, name: entry.name, pieces: decodeCourse(entry.course), shape: shapeOf(entry), pace: entry.pace }
+  return { day, n, name: entry.name, pieces: decodeCourse(entry.course), shape: shapeOf(entry), pace: entry.pace / 1000 }
 }
 
 /** "3h 12m", "12m", "under a minute": how long until the next track. */

@@ -3,6 +3,7 @@ import { decodeCourse, hillKindOf, type HillKind } from '../games/hotlap/courses
 import { dayOfTrack, dayWords, shapeOf, trackDay } from '../games/hotlap/daily'
 import { DAILY_TRACKS, type PlannedTrack } from '../games/hotlap/dailyPlan'
 import { LANDMARKS } from '../games/hotlap/landmarks'
+import { formatLap } from '../games/hotlap/score'
 import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan, type TrackPlanShape } from '../games/hotlap/trackPlan'
 import { gamePlayHref } from '../hooks/useHashRoute'
@@ -40,13 +41,6 @@ const monthFormat = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'num
 const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' })
 const dateOf = (day: string) => new Date(`${day}T12:00:00Z`)
 
-/** "53.36s", or "1:29.78" for a lap of a minute and more. */
-function lapWords(seconds: number): string {
-  if (seconds < 60) return `${seconds.toFixed(2)}s`
-  const m = Math.floor(seconds / 60)
-  return `${m}:${(seconds - m * 60).toFixed(2).padStart(5, '0')}`
-}
-
 /** A hilly track's heights round the lap, as an area in a 100 × 20 box, from the start line. */
 function profileOf(z: Float64Array): { climb: number; profile: string } {
   let low = Infinity
@@ -75,7 +69,7 @@ function bookTrack(entry: PlannedTrack, i: number): BookTrack {
     n,
     day: dayOfTrack(n),
     name: entry.name,
-    pace: entry.pace,
+    pace: entry.pace / 1000,
     km: track.length / 1000,
     corners: track.corners.length,
     plan: trackPlan(track),
@@ -124,7 +118,7 @@ export function AdminTrackBook() {
               <span className="hb-badge">Today · #{todays.n}</span>
               <h3 className="tb-feature__name">{todays.name}</h3>
               <p className="tb-feature__facts">
-                {dayWords(todays.day)} · pace car {lapWords(todays.pace)} · {todays.km.toFixed(2)} km · {todays.corners} corners
+                {dayWords(todays.day)} · pace car {formatLap(todays.pace)} · {todays.km.toFixed(2)} km · {todays.corners} corners
                 {todays.hills ? ` · climbs ${todays.hills.climb} m` : ''}
               </p>
               <div className="tb-feature__acts">
@@ -235,7 +229,7 @@ function TrackTile({ track, today }: { track: BookTrack; today: string }) {
         <dl className="tb-figs">
           <div>
             <dt>Pace</dt>
-            <dd>{lapWords(track.pace)}</dd>
+            <dd>{formatLap(track.pace)}</dd>
           </div>
           <div>
             <dt>Length</dt>

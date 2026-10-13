@@ -9,6 +9,8 @@
 //                                                                from that day to come on, those that have none
 //   node scripts/hotlap-daily.mjs remake YYYY-MM-DD          every made day from that day to come on made again
 //                                                                by today's track maker (landmarks stay put)
+//   node scripts/hotlap-daily.mjs repace                     every day's pace car driven again, each day's track
+//                                                                as it is: only the laps are written again
 //
 // Day 1 (2026-09-26) is the classic track. Each later day's track is the first that passes courses.ts's
 // checks among seeds made from the day's number. Days already in the plan are never made again, even if
@@ -18,23 +20,33 @@
 //
 // Every command that writes the plan also writes the API's src/hotlapPace.ts, each day's blue car, which
 // the API pays laps by (its ticketLadders.ts), and its src/courseNames.ts (course-names.mjs), each track's
-// name for the record books: commit both in the API repo too (branch master).
+// name for the record books: commit both in the API repo too (branch master). From a worktree, set API_DIR
+// to the API's checkout, as the other plan scripts take it.
 import fs from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const COURSES = new URL('../src/games/hotlap/courses.ts', import.meta.url)
 const SIM = new URL('../src/games/hotlap/sim.ts', import.meta.url)
 const PLAN = new URL('../src/games/hotlap/dailyPlan.ts', import.meta.url)
 const SEEDS = new URL('../src/lib/seededRandom.ts', import.meta.url)
 const LANDMARKS_FILE = new URL('../src/games/hotlap/landmarks.ts', import.meta.url)
+const root = fileURLToPath(new URL('..', import.meta.url))
 /** The API's copy of each day's blue car, which it pays laps by (its ticketLadders.ts): written with the plan. */
-const API_PACE = new URL('../../ramseys-arcade-api/src/hotlapPace.ts', import.meta.url)
+const API_PACE = join(process.env.API_DIR ?? join(root, '../ramseys-arcade-api'), 'src/hotlapPace.ts')
 
 const C = await import(COURSES.href)
 const S = await import(SIM.href)
 const { hashString } = await import(SEEDS.href)
 
 const FIRST_DAY = '2026-09-26'
-const round2 = (v) => Math.round(v * 100) / 100
+/**
+ * A pace car's lap as the plan keeps it: in milliseconds, as the boards keep laps, so the blue car on a card,
+ * its medals and the API's tickets all go by the lap it drives (66.367s, not 66.37s).
+ */
+const paceMs = (seconds) => Math.round(seconds * 1000)
+/** A planned lap in words: 66.367s. */
+const paceWords = (ms) => `${(ms / 1000).toFixed(3)}s`
 
 async function readPlan() {
   if (!fs.existsSync(PLAN)) return []
@@ -60,6 +72,7 @@ function writePlan(entries) {
   )
   const text = `// Written by scripts/hotlap-daily.mjs: Hot Lap's track for each day from the first (${FIRST_DAY}), each
 // checked to close, keep clear of itself and give the pace car and a driver on the limit a clean lap.
+// \`pace\` is the pace car's lap in milliseconds: the blue car's, as the game drives it (lap.ts hotlapCourse).
 // Days are only ever added at the end, never made again: a day that's been played stays the track it was.
 // A landmark (landmarks.ts, a real circuit's layout) may be put on a day to come, and carries which way it
 // faces on the map and its hills.
@@ -78,16 +91,16 @@ ${lines.join('\n')}
 /**
  * The API pays a lap by the day's own blue car, from its copy of the plan's pace laps, in milliseconds by
  * day (index = day number − 1): written whenever the plan is. A day's pace is the pace car's lap on it,
- * the same lap the game drives as the blue car (lap.ts hotlapCourse), to the hundredth. Commit it in the
+ * the same lap the game drives as the blue car (lap.ts hotlapCourse), to the millisecond. Commit it in the
  * API repo too (branch master), or the API pays by the old plan.
  */
 function writeApiPace(entries) {
-  if (!fs.existsSync(new URL('.', API_PACE))) {
-    console.log('no API repo beside this one: its src/hotlapPace.ts was not written')
+  if (!fs.existsSync(dirname(API_PACE))) {
+    console.log('no API repo beside this one (set API_DIR): its src/hotlapPace.ts was not written')
     return
   }
   const rows = []
-  for (let i = 0; i < entries.length; i += 10) rows.push(`  ${entries.slice(i, i + 10).map((e) => Math.round(e.pace * 1000)).join(', ')},`)
+  for (let i = 0; i < entries.length; i += 10) rows.push(`  ${entries.slice(i, i + 10).map((e) => e.pace).join(', ')},`)
   const text = `// Written by the site's scripts/hotlap-daily.mjs from its src/games/hotlap/dailyPlan.ts: each planned day's
 // blue car (its pace car's lap), in milliseconds, from the first day on. Hot Lap's ticket ladder goes by it
 // (ticketLadders.ts), so a lap is paid by the day's own blue car, whatever the site sends. Past the last
@@ -118,7 +131,7 @@ function makeDay(n) {
   if (n === 1) {
     const check = C.checkCourse(S.CLASSIC)
     if (!check.ok) throw new Error(`the classic track fails its checks: ${check.why}`)
-    return { name: 'The Classic', seed: 0, course: C.encodeCourse(S.CLASSIC), pace: round2(check.pace), tries: 1 }
+    return { name: 'The Classic', seed: 0, course: C.encodeCourse(S.CLASSIC), pace: paceMs(check.pace), tries: 1 }
   }
   for (let k = 0; k < 500; k++) {
     const seed = hashString(`hotlap:${n}:${k}`)
@@ -129,8 +142,8 @@ function makeDay(n) {
     const course = C.encodeCourse(pieces)
     // Its hills, if its line gives it any: a track that can't take them stays flat.
     const hilly = C.hillyCourse(course)
-    if (hilly) return { seed, course, hills: hilly.hills, pace: round2(hilly.check.pace), tries: k + 1 }
-    return { seed, course, pace: round2(check.pace), tries: k + 1 }
+    if (hilly) return { seed, course, hills: hilly.hills, pace: paceMs(hilly.check.pace), tries: k + 1 }
+    return { seed, course, pace: paceMs(check.pace), tries: k + 1 }
   }
   throw new Error(`no track for day ${n} in 500 seeds`)
 }
@@ -149,7 +162,7 @@ if (command === 'plan') {
     for (let j = 1; names.has(name) && j < 1000; j++) name = C.courseName(made.seed + j)
     names.add(name)
     plan.push({ name, course: made.course, pace: made.pace, ...(made.hills ? { hills: made.hills } : {}) })
-    if (n % 20 === 0 || n === days) console.log(`day ${n} (${dayOf(n)}): ${name}, pace ${made.pace}s, seed try ${made.tries}`)
+    if (n % 20 === 0 || n === days) console.log(`day ${n} (${dayOf(n)}): ${name}, pace ${paceWords(made.pace)}, seed try ${made.tries}`)
   }
   writePlan(plan)
   console.log(`plan: ${had} days kept, ${plan.length - had} added, ${plan.length} in all (to ${dayOf(plan.length)})`)
@@ -163,7 +176,7 @@ if (command === 'plan') {
   const check = C.checkCourse(pieces, shapeOf(entry), isLandmark(entry))
   console.log(`day ${n} (${day}): ${entry.name}`)
   console.log(`  ${entry.course}`)
-  console.log(check.ok ? `  length ${check.track.length.toFixed(0)} m, pace ${check.pace.toFixed(2)}s, limit ${check.limit.toFixed(2)}s, start straight ${check.track.straights.A.toFixed(0)} m, clearance ${C.clearance(check.track).toFixed(0)} m` : `  fails: ${check.why}`)
+  console.log(check.ok ? `  length ${check.track.length.toFixed(0)} m, pace ${paceWords(paceMs(check.pace))} (planned ${paceWords(entry.pace)}), limit ${check.limit.toFixed(2)}s, start straight ${check.track.straights.A.toFixed(0)} m, clearance ${C.clearance(check.track).toFixed(0)} m` : `  fails: ${check.why}`)
 } else if (command === 'sheet') {
   const from = Number(args[0] ?? 1)
   const count = Number(args[1] ?? 36)
@@ -188,7 +201,7 @@ if (command === 'plan') {
     const sy = oy - (track.y[track.startIndex] - box.cy) * scale
     parts.push(`<polygon points="${pts.join(' ')}" fill="none" stroke="#e7eef3" stroke-width="3" stroke-linejoin="round"/>`)
     parts.push(`<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="4" fill="#f2813a"/>`)
-    parts.push(`<text x="${(i % cols) * cell + 8}" y="${Math.floor(i / cols) * cell + 16}" fill="#9bb0be" font-size="12">#${n} ${entry.name} · ${entry.pace}s</text>`)
+    parts.push(`<text x="${(i % cols) * cell + 8}" y="${Math.floor(i / cols) * cell + 16}" fill="#9bb0be" font-size="12">#${n} ${entry.name} · ${paceWords(entry.pace)}</text>`)
   }
   parts.push('</svg>')
   fs.writeFileSync(file, parts.join('\n'))
@@ -209,9 +222,9 @@ if (command === 'plan') {
   const entry = { name: landmark.name, course: landmark.course, heading: landmark.heading, hills: landmark.hills }
   const check = C.checkCourse(C.decodeCourse(entry.course), shapeOf(entry), true)
   if (!check.ok) throw new Error(`${landmark.name} fails its checks: ${check.why}`)
-  plan.splice(n - 1, 0, { ...entry, pace: round2(check.pace) })
+  plan.splice(n - 1, 0, { ...entry, pace: paceMs(check.pace) })
   writePlan(plan)
-  console.log(`day ${n} (${day}): ${landmark.name}, ${check.track.length.toFixed(0)} m, pace ${check.pace.toFixed(2)}s, limit ${check.limit.toFixed(2)}s; the days after it each move on one, to ${dayOf(plan.length)}`)
+  console.log(`day ${n} (${day}): ${landmark.name}, ${check.track.length.toFixed(0)} m, pace ${paceWords(paceMs(check.pace))}, limit ${check.limit.toFixed(2)}s; the days after it each move on one, to ${dayOf(plan.length)}`)
 } else if (command === 'remake') {
   const [day] = args
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('usage: remake YYYY-MM-DD')
@@ -230,7 +243,7 @@ if (command === 'plan') {
     names.add(name)
     plan[n - 1] = { name, course: track.course, pace: track.pace, ...(track.hills ? { hills: track.hills } : {}) }
     made++
-    if (n % 20 === 0) console.log(`day ${n} (${dayOf(n)}): ${name}, pace ${track.pace}s, seed try ${track.tries}`)
+    if (n % 20 === 0) console.log(`day ${n} (${dayOf(n)}): ${name}, pace ${paceWords(track.pace)}, seed try ${track.tries}`)
   }
   writePlan(plan)
   console.log(`from day ${from} (${day}): ${made} days made again; landmarks and the days before kept`)
@@ -256,11 +269,31 @@ if (command === 'plan') {
     }
     kinds[hilly.kind]++
     entry.hills = hilly.hills
-    entry.pace = round2(hilly.check.pace)
-    if (n % 20 === 0) console.log(`day ${n} (${dayOf(n)}): ${entry.name}, ${hilly.kind}, pace ${entry.pace}s`)
+    entry.pace = paceMs(hilly.check.pace)
+    if (n % 20 === 0) console.log(`day ${n} (${dayOf(n)}): ${entry.name}, ${hilly.kind}, pace ${paceWords(entry.pace)}`)
   }
   writePlan(plan)
   console.log(`from day ${from} (${day}): ${kinds.rolling} rolling, ${kinds.hilly} hilly, ${kinds.big} big, ${kinds.flat} flat; ${kinds.kept} kept as they were`)
+} else if (command === 'repace') {
+  // Every day keeps its track (its line, name, heading and hills); only its pace car's lap is driven again, on
+  // the track as the game builds it, and written to the millisecond. A lap that moves by more than a hundredth's
+  // rounding means the car's handling has changed under a planned day: those days are listed.
+  const plan = await readPlan()
+  let moved = 0
+  let most = 0
+  for (const [i, entry] of plan.entries()) {
+    const lap = S.botLap(S.buildTrack(C.decodeCourse(entry.course), shapeOf(entry)))
+    if (lap.time == null) throw new Error(`day ${i + 1} (${dayOf(i + 1)}): the pace car did not get round`)
+    const pace = paceMs(lap.time)
+    // Plans before 2026-10-13 kept the lap in seconds, to the hundredth.
+    const was = entry.pace < 1000 ? paceMs(entry.pace) : entry.pace
+    if (pace !== was) moved++
+    most = Math.max(most, Math.abs(pace - was))
+    if (Math.abs(pace - was) > 5) console.log(`day ${i + 1} (${dayOf(i + 1)}): ${entry.name}, ${paceWords(was)} -> ${paceWords(pace)}`)
+    entry.pace = pace
+  }
+  writePlan(plan)
+  console.log(`${plan.length} days paced again: ${moved} laps moved, by ${most} ms at most; every track kept as it was`)
 } else {
-  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file] | insert YYYY-MM-DD <landmark> | hills YYYY-MM-DD | remake YYYY-MM-DD')
+  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file] | insert YYYY-MM-DD <landmark> | hills YYYY-MM-DD | remake YYYY-MM-DD | repace')
 }
