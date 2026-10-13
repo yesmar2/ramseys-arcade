@@ -33,6 +33,11 @@ export type GroupPublic = {
   membersInvite?: boolean
   /** This viewer may invite. Absent on older API builds, where only the host could. */
   canInvite?: boolean
+  /**
+   * How many it holds, as the API refuses a join past it: its host's plan's (the API's plans.ts groupMembers),
+   * Plus's free week as Plus. Absent on older API builds.
+   */
+  memberLimit?: number
 }
 
 export function storedActiveGroup(): string | null {

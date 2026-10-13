@@ -482,12 +482,13 @@ const MEMBERS_SHOWN = 7
 
 /**
  * How many people the group can hold: its host's plan's (the API's plans.ts groupMembers, 20 free and 100 on
- * Plus). The host has their own limits; anyone else goes by the Plus mark on the host's tag (lib/plus.ts), which
- * a host on Plus's free week doesn't wear yet.
+ * Plus), as the API sends it with the group. From an older API, the host has their own limits and anyone else
+ * goes by the Plus mark on the host's tag (lib/plus.ts), which a host on Plus's free week doesn't wear yet.
  */
 function useMemberCap(group: GroupPublic): number {
   const { limits } = useAuth()
   const hostOnPlus = usePlusMember(group.ownerName ?? '')
+  if (group.memberLimit) return group.memberLimit
   if (group.isOwner) return limits.groupMembers
   return hostOnPlus ? PLUS_LIMITS.groupMembers : FREE_LIMITS.groupMembers
 }
