@@ -471,6 +471,14 @@ function LanderDayGame({
     if (stickRef.current) stickRef.current.hidden = true
   }
 
+  /** The split box empty again for a new run, or the last run's gap stays under "Split". */
+  const clearSplit = () => {
+    const el = splitRef.current
+    if (!el) return
+    el.textContent = '–'
+    el.className = ''
+  }
+
   /** Midnight has brought a new cave: the page mounts the game again for it. */
   const newDay = (why?: string) => {
     if (practice || caveDay() === day || devDay()) return false
@@ -508,6 +516,7 @@ function LanderDayGame({
     soundRef.current?.wake()
     letGoStick()
     setHint(touch)
+    clearSplit()
     say(null)
     setUi(snapshot(g))
   }
@@ -854,6 +863,9 @@ function LanderDayGame({
             g.clock = 0
             g.throttle = 0
             finishRun(g)
+            // The landing's own split, the last one, against the raced run's there: the box no longer holds the
+            // room's. The test cave's stand-in has none, so there it's the time, as at its gates.
+            splitShown(g, g.splits.length - 1)
           } else if (ev && typeof ev === 'object') {
             g.splits[ev.gate] = g.t
             const d = splitShown(g, ev.gate)
@@ -1186,7 +1198,15 @@ function LanderDayGame({
                 <PlayReadoutStats>
                   <PlayStat label="Best" value={bestText} />
                   <PlayStat
-                    label={lastGate < 0 ? 'Split' : lastGate === lander.cave.gates.length - 1 ? 'Room' : `Gate ${lastGate + 1}`}
+                    label={
+                      ui.phase === 'landed' || ui.phase === 'gameover'
+                        ? 'Finish'
+                        : lastGate < 0
+                          ? 'Split'
+                          : lastGate === lander.cave.gates.length - 1
+                            ? 'Room'
+                            : `Gate ${lastGate + 1}`
+                    }
                     value={<span ref={splitRef}>–</span>}
                   />
                   <PlayStat label="Crashes" value={String(ui.crashes)} />

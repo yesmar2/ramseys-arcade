@@ -456,6 +456,14 @@ function MarbleRunDay({
     if (stickRef.current) stickRef.current.hidden = true
   }
 
+  /** The split box empty again for a new run, or the last run's gap stays under "Split". */
+  const clearSplit = () => {
+    const el = splitRef.current
+    if (!el) return
+    el.textContent = '–'
+    el.className = ''
+  }
+
   /** Midnight has brought a new course: the page mounts the game again for it. */
   const newDay = (why?: string) => {
     if (practice || courseDay() === day || devDay()) return false
@@ -493,6 +501,7 @@ function MarbleRunDay({
     soundRef.current?.wake()
     letGoStick()
     setHint(touch)
+    clearSplit()
     say(null)
     // A run started again over the egg's line clears it; its secret still comes.
     setMarbles(false)
@@ -868,6 +877,9 @@ function MarbleRunDay({
             g.phase = 'finished'
             g.clock = 0
             finishRun(g)
+            // The goal's own split, the last one, against the raced run's there: the box no longer holds the last
+            // checkpoint's. The test track's stand-in has none, so there it's the time, as at its checkpoints.
+            splitShown(g, b.splits.length - 1)
           }
         }
       }
@@ -1191,7 +1203,16 @@ function MarbleRunDay({
                 </PlayReadoutScore>
                 <PlayReadoutStats>
                   <PlayStat label="Best" value={bestText} />
-                  <PlayStat label={ui.passed > 0 && ui.passed <= marble.course.lines.length - 1 ? `CP ${ui.passed}` : 'Split'} value={<span ref={splitRef}>–</span>} />
+                  <PlayStat
+                    label={
+                      ui.phase === 'finished' || ui.phase === 'gameover'
+                        ? 'Finish'
+                        : ui.passed > 0 && ui.passed <= marble.course.lines.length - 1
+                          ? `CP ${ui.passed}`
+                          : 'Split'
+                    }
+                    value={<span ref={splitRef}>–</span>}
+                  />
                   <PlayStat label="Falls" value={String(ui.falls)} />
                 </PlayReadoutStats>
               </PlayReadout>
