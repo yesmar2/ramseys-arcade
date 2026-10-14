@@ -52,7 +52,7 @@ export type ReportTier = 'quiet' | 'lit' | 'big'
 /** 2nd or 3rd: a big report's gold, in its medal's metal (report.css .report--silver, .report--bronze). */
 export type ReportMetal = 'silver' | 'bronze'
 export type ReportTone = 'plain' | 'accent' | 'gold'
-export type ReportIcon = 'up' | 'crown' | 'book' | 'board' | 'target' | 'sum' | 'flag'
+export type ReportIcon = 'up' | 'crown' | 'book' | 'board' | 'target' | 'sum' | 'flag' | 'share'
 
 export type ReportLine = {
   id: string

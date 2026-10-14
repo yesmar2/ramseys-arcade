@@ -44,6 +44,7 @@ const ICON_PATHS: Record<ReportIcon, string> = {
   target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   sum: 'M18 4H6l6 8-6 8h12',
   flag: 'M4 21V4M4 4h13l-2 4 2 4H4',
+  share: 'M12 3v12M7.5 7.5L12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7',
 }
 
 export function ReportIconSvg({ icon }: { icon: ReportIcon }) {
@@ -93,7 +94,8 @@ function ActionLabel({ action }: { action: ReportAction }) {
   )
 }
 
-export type ReportLink = { label: string; onClick: () => void }
+/** A way out of the report: to the board, the record book, or the run sent on. The reel's dock draws its icon. */
+export type ReportLink = { label: string; onClick: () => void; icon?: ReportIcon }
 
 export type RunReportBodyProps = {
   titleId: string

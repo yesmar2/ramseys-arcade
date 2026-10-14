@@ -14,7 +14,7 @@ import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { prizesHref } from '../hooks/useHashRoute'
 import { ordinal } from '../lib/profileMath'
 import { MEDAL_NAMES, type Medal } from '../lib/raceMedals'
-import type { ReportFriend, ReportLine, ReportMetal, ReportRace, ReportRibbon, ReportTier, ReportTone } from '../lib/runReport'
+import type { ReportFriend, ReportIcon, ReportLine, ReportMetal, ReportRace, ReportRibbon, ReportTier, ReportTone } from '../lib/runReport'
 import { loudLevelUp, type SeasonRun } from '../lib/season'
 import { sfx } from '../lib/sound'
 import { useTickets, type RunTickets } from '../lib/tickets'
@@ -34,9 +34,11 @@ import '../styles/runReel.css'
  * after "full screen multi step game over screens ... similar to how fall guys might do it"): the whole screen,
  * a step at a time, each with one thing to say, and a tap anywhere goes on. The run itself first, the moment the
  * game ends, while the save goes out underneath; then only the steps the run has something for: where it landed
- * on the boards, the tickets it paid, a level it reached on the season's pass; then what next, with Play again.
- * Signed out, the step after the run asks for the sign-in; signed in without a tag, for the tag. Skip, top right,
- * goes straight to the last step, and Esc back to the game as Play again does.
+ * on the boards, the tickets it paid, a level it reached on the season's pass; then what next: the run's figure and
+ * what it won as round badges, over a dock at the foot of the screen with Play again (Ramsey picked C, "Badges and
+ * a dock", from the "What next screen" canvas). Signed out, the step after the run asks for the sign-in; signed
+ * in without a tag, for the tag. Skip, top right, goes straight to the last step, and Esc back to the game as Play
+ * again does.
  */
 
 /** A press the reel will act on: one meant for it (useDeliberatePress), and not the tail of the last step's tap. */
@@ -53,6 +55,8 @@ export type ReelStep = {
   goLabel?: string
   /** Where focus goes when the step comes up: a tag's own field. */
   focus?: RefObject<HTMLElement | null>
+  /** The last step's dock, held at the foot of the screen in place of the way on: Play again and the rest. */
+  dock?: ReactNode
 }
 
 export type RunReelProps = {
@@ -92,6 +96,7 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
   const changedAt = useRef(0)
   const goRef = useRef<HTMLButtonElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  const dockRef = useRef<HTMLDivElement>(null)
   const allow: Press = (e) => deliberate(e) && performance.now() - changedAt.current > 350
   const goTo = (i: number) => {
     const next = steps[i]
@@ -106,7 +111,11 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
     if (stageRef.current) stageRef.current.scrollTop = 0
     const target =
       step.focus?.current ??
-      (last ? (primaryRef?.current ?? stageRef.current?.querySelector<HTMLElement>('.reel-btn')) : goRef.current)
+      (last
+        ? (primaryRef?.current ??
+          dockRef.current?.querySelector<HTMLElement>('.reel-btn') ??
+          stageRef.current?.querySelector<HTMLElement>('.reel-btn'))
+        : goRef.current)
     target?.focus({ preventScroll: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.key, last])
@@ -177,22 +186,28 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
             {step.body}
           </div>
         </div>
+        {last ? (
+          step.dock ? (
+            <div ref={dockRef} className="reel__dock">
+              {step.dock}
+            </div>
+          ) : null
+        ) : (
+          <div className="reel__on">
+            <button
+              ref={goRef}
+              type="button"
+              className="reel__go"
+              onClick={(e) => {
+                if (allow(e)) goTo(index + 1)
+              }}
+            >
+              {step.goLabel ?? 'Tap to go on'}
+              <ChevronIcon />
+            </button>
+          </div>
+        )}
       </ReelPress.Provider>
-      {last ? null : (
-        <div className="reel__on">
-          <button
-            ref={goRef}
-            type="button"
-            className="reel__go"
-            onClick={(e) => {
-              if (allow(e)) goTo(index + 1)
-            }}
-          >
-            {step.goLabel ?? 'Tap to go on'}
-            <ChevronIcon />
-          </button>
-        </div>
-      )}
       {burst ? (
         <div className="reel__confetti" aria-hidden="true">
           <ReportConfetti accent={accent} metal={metal} />
@@ -462,8 +477,50 @@ export function ReelSeason({ run }: { run: SeasonRun }) {
   )
 }
 
-/** A tile of the last step's recap: one figure of the run and what it is. */
-export type ReelRecap = { key: string; value: string; label: string; tone: 'run' | 'boards' | 'tickets' | 'season' }
+/**
+ * A badge on the last step (Ramsey picked C, "Badges and a dock", from the "What next screen" canvas): one thing
+ * the run won, round, with what it is under it.
+ */
+export type ReelBadge = {
+  key: string
+  kind: 'medal' | 'place' | 'best' | 'book' | 'tickets' | 'season' | 'tries' | 'won'
+  value: string
+  label: string
+  /** A medal badge's metal. */
+  medal?: Medal
+}
+
+const HEX_PATH = 'M12 2.5l8 4.6v9.8l-8 4.6-8-4.6V7.1z'
+const AGAIN_PATH = 'M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3.5 4v4.5H8'
+
+function StrokeIcon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d={d} />
+    </svg>
+  )
+}
+
+function BadgeIcon({ badge }: { badge: ReelBadge }) {
+  switch (badge.kind) {
+    case 'medal':
+      return badge.medal ? <MedalIcon medal={badge.medal} size={44} /> : null
+    case 'place':
+      return <ReportIconSvg icon={badge.value === '1st' ? 'crown' : 'board'} />
+    case 'won':
+      return <ReportIconSvg icon="crown" />
+    case 'best':
+      return <ReportIconSvg icon="up" />
+    case 'book':
+      return <ReportIconSvg icon="book" />
+    case 'tickets':
+      return <TicketGlyph size={36} />
+    case 'season':
+      return <StrokeIcon d={HEX_PATH} />
+    case 'tries':
+      return <StrokeIcon d={AGAIN_PATH} />
+  }
+}
 
 /** A reel's button: the run's last presses don't reach it (useDeliberatePress), nor the tail of a step's tap. */
 export function ReelButton({ action, variant = 'play' }: { action: ReportAction; variant?: 'play' | 'ghost' }) {
@@ -505,62 +562,116 @@ export function ReelButton({ action, variant = 'play' }: { action: ReportAction;
   )
 }
 
-/** What next: the run in a few tiles, what the moment asks, then Play again and the way to send the run on. */
-export function ReelNext({
-  recap,
-  block,
-  primary,
-  secondary = null,
-  who,
-  links,
-}: {
-  recap: ReelRecap[]
-  block?: ReactNode
-  primary: ReportAction
-  secondary?: ReportAction | null
-  who?: ReactNode
-  links?: ReportLink[]
-}) {
-  const allow = useContext(ReelPress)
+/** The run's figure on the last step, as big as there's room for, under its own words (Run over, Today's Cave #2). */
+export type ReelScore = { kicker: string; value: string; unit: string; note?: string | null }
+
+/**
+ * What next, over the dock: the run's figure, what it won as round badges, a friend it went past, and what the
+ * moment asks (the next daily, an alert, a sign-in).
+ */
+export function ReelNext({ score, badges, callout, block }: { score: ReelScore; badges: ReelBadge[]; callout?: ReactNode; block?: ReactNode }) {
   return (
     <div className="reel-next">
-      {recap.length ? (
-        <>
-          <p className="reel__kick reel-next__kick">That run</p>
-          <ul className={`reel-recap reel-recap--${recap.length}`} aria-label="That run">
-            {recap.map((tile, i) => (
-              <li key={tile.key} className={`reel-recap__tile reel-recap__tile--${tile.tone}`} style={{ '--i': i } as CSSProperties}>
-                <span className="reel-recap__value">{tile.value}</span>
-                <span className="reel-recap__label">{tile.label}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {block ? <div className="reel-next__block">{block}</div> : null}
-      <div className="reel-next__actions">
-        <ReelButton action={primary} />
-        {secondary ? <ReelButton action={secondary} variant="ghost" /> : null}
+      <div className="reel-next__score">
+        <p className="reel__kick">{score.kicker}</p>
+        <p className="reel-next__figure">
+          {score.value}
+          {score.unit ? <span className="reel-next__unit">{score.unit}</span> : null}
+        </p>
+        {score.note ? <p className="reel-next__note">{score.note}</p> : null}
       </div>
-      {who || links?.length ? (
-        <div className="reel-next__meta">
-          {who ? <span className="report__who">{who}</span> : <span />}
-          {links?.length ? (
-            <span className="reel-next__links">
-              {links.map((link) => (
-                <button
-                  key={link.label}
-                  type="button"
-                  className="reel-next__link"
-                  onClick={(e) => {
-                    if (allow(e)) link.onClick()
-                  }}
-                >
-                  {link.label}
-                </button>
-              ))}
-            </span>
-          ) : null}
+      {badges.length ? (
+        <ul className={`reel-badges reel-badges--${badges.length}`} aria-label="That run">
+          {badges.map((badge, i) => (
+            <li
+              key={badge.key}
+              className={`reel-badge reel-badge--${badge.kind}${badge.medal ? ` reel-badge--${badge.medal}` : ''}`}
+              style={{ '--i': i } as CSSProperties}
+            >
+              <span className="reel-badge__disc">
+                <BadgeIcon badge={badge} />
+              </span>
+              <span className="reel-badge__value">{badge.value}</span>
+              <span className="reel-badge__label">{badge.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {callout}
+      {block ? <div className="reel-next__block">{block}</div> : null}
+    </div>
+  )
+}
+
+/** A friend the run went past: who, by how much, and the way to send them the run to take it back. */
+export function ReelFriend({ friend, action }: { friend: ReportFriend; action: ReportAction }) {
+  const allow = useContext(ReelPress)
+  const { them, gap } = friend
+  return (
+    <div className="reel-friend">
+      <PlayerAvatar name={them.name} avatarId={them.avatarId} size="md" className="reel-friend__face" />
+      <span className="reel-friend__text">
+        <span className="reel-friend__kick">You passed {them.name}</span>
+        <span className="reel-friend__gap">You’re {gap} ahead</span>
+      </span>
+      <button
+        type="button"
+        className="reel-friend__send"
+        disabled={action.disabled}
+        onClick={(e) => {
+          if (allow(e)) action.onClick?.()
+        }}
+      >
+        {action.label}
+      </button>
+    </div>
+  )
+}
+
+/** One of the dock's ways on, under Play again: its icon over its words. */
+export type ReelTile = { key: string; label: string; icon: ReportIcon; onClick?: () => void; href?: string; disabled?: boolean }
+
+/** The dock at the foot of the last step: who it's saved as, Play again, and the other ways on as tiles. */
+export function ReelDock({ primary, tiles, who }: { primary: ReportAction; tiles: ReelTile[]; who?: ReactNode }) {
+  const allow = useContext(ReelPress)
+  return (
+    <div className="reel-dock">
+      {who ? (
+        <p className="reel-dock__who">
+          <span className="report__who">{who}</span>
+        </p>
+      ) : null}
+      <ReelButton action={primary} />
+      {tiles.length ? (
+        <div className={`reel-tiles reel-tiles--${tiles.length}`}>
+          {tiles.map((tile) =>
+            tile.href ? (
+              <a
+                key={tile.key}
+                className="reel-tile"
+                href={tile.href}
+                onClick={(e) => {
+                  if (!allow(e)) e.preventDefault()
+                }}
+              >
+                <ReportIconSvg icon={tile.icon} />
+                {tile.label}
+              </a>
+            ) : (
+              <button
+                key={tile.key}
+                type="button"
+                className="reel-tile"
+                disabled={tile.disabled}
+                onClick={(e) => {
+                  if (allow(e)) tile.onClick?.()
+                }}
+              >
+                <ReportIconSvg icon={tile.icon} />
+                {tile.label}
+              </button>
+            ),
+          )}
         </div>
       ) : null}
     </div>
@@ -597,7 +708,12 @@ export type ReelInput = {
   ask?: ReactNode
   askGoLabel?: string
   askFocus?: RefObject<HTMLElement | null>
-  recap: ReelRecap[]
+  /** The last step's badges: what the run won, most telling first, four at most. */
+  badges: ReelBadge[]
+  /** Under the score on the last step, when the run won nothing louder: how far it was off the best. */
+  note?: string | null
+  /** Under the badges: a friend the run went past, with the way to send them the run (ReelFriend). */
+  callout?: ReactNode
   /** What the last step asks or says: the way on to the next daily, an alert, a note on the save. */
   block?: ReactNode
   primary: ReportAction
@@ -639,22 +755,90 @@ export function reelSteps(input: ReelInput): ReelStep[] {
     if (input.tickets) steps.push({ key: 'tickets', tone: 'tickets', body: input.tickets })
     if (input.season && input.season.levelUp.length) steps.push({ key: 'season', tone: 'season', body: <ReelSeason run={input.season} /> })
   }
+  // The dock's tiles: the way to send the run on, then the board, the records, a share.
+  const secondary = input.secondary ?? null
+  const tiles: ReelTile[] = [
+    ...(secondary
+      ? [
+          {
+            key: 'secondary',
+            label: secondary.shortLabel ?? secondary.label,
+            icon: secondary.icon ?? 'share',
+            onClick: secondary.onClick,
+            href: secondary.href,
+            disabled: secondary.disabled,
+          },
+        ]
+      : []),
+    ...(input.links ?? []).map((link, i) => ({ key: `link-${i}`, label: link.label, icon: link.icon ?? 'board', onClick: link.onClick })),
+  ].slice(0, 4)
   steps.push({
     key: 'next',
     tone: 'next',
     body: (
-      <ReelNext recap={input.recap} block={input.block} primary={input.primary} secondary={input.secondary} who={input.who} links={input.links} />
+      <ReelNext
+        score={{ kicker: run.eyebrow, value: run.score, unit: run.unit, note: input.note }}
+        badges={input.badges}
+        callout={input.callout}
+        block={input.block}
+      />
     ),
+    dock: <ReelDock primary={input.primary} tiles={tiles} who={input.who} />,
   })
   return steps
 }
 
-/** "Lv 31": a season's level, said short for a recap tile. */
-export function levelTile(run: SeasonRun): ReelRecap {
-  return { key: 'season', value: `Lv ${Math.max(1, run.level)}`, label: run.added > 0 ? `Season pass +${run.added}` : 'Season pass', tone: 'season' }
+/** "Lv 31": a season's level, as a badge. */
+export function levelBadge(run: SeasonRun): ReelBadge {
+  return { key: 'season', kind: 'season', value: `Lv ${Math.max(1, run.level)}`, label: 'season pass' }
 }
 
-/** The run's place on its board, said short for a recap tile. */
-export function placeTile(line: ReportLine): ReelRecap {
-  return { key: 'place', value: placeWords(line.value), label: line.label, tone: 'boards' }
+/** The run's place on a board, as a badge: the board's words without the game's name, which is over the reel. */
+export function placeBadge(line: ReportLine, game: string, key = 'place'): ReelBadge {
+  const label = line.label.startsWith(`${game} `) ? line.label.slice(game.length + 1) : line.label
+  return { key, kind: 'place', value: placeWords(line.value), label }
+}
+
+/** A record book's line, as a badge: the run's place in the book, and which book it is. */
+export function bookBadge(line: ReportLine): ReelBadge {
+  return { key: 'book', kind: 'book', value: line.rank === 1 ? 'Record' : line.rank != null ? ordinal(line.rank) : 'In it', label: line.label }
+}
+
+/** The order badges read in, whichever four a run shows. */
+const BADGE_ORDER: ReelBadge['kind'][] = ['won', 'medal', 'best', 'place', 'book', 'tickets', 'tries', 'season']
+
+/**
+ * A saved run's badges, from its report: a racing daily's medal, a new best, its place on the board, the record book
+ * its stamp spoke of, the tickets it paid, and the pass. The four that say most, then in reading order. Each is
+ * said once: the stamp's "1st today" isn't said again beside the place's 1st.
+ */
+export function runBadges({
+  lines,
+  lead = null,
+  game,
+  medal = null,
+  tickets = 0,
+  season = null,
+  race = false,
+}: {
+  lines: ReportLine[]
+  lead?: string | null
+  game: string
+  medal?: Medal | null
+  tickets?: number
+  season?: SeasonRun | null
+  race?: boolean
+}): ReelBadge[] {
+  const board = lines.find((line) => line.id === 'board') ?? null
+  const book = lines.find((line) => line.id.startsWith('book-') && (line.id === lead || line.tone === 'gold')) ?? null
+  const best = lines.find((line) => line.id === 'best' && line.tone === 'accent') ?? null
+  const picked: ReelBadge[] = []
+  if (medal) picked.push({ key: 'medal', kind: 'medal', medal, value: MEDAL_NAMES[medal], label: 'today’s medal' })
+  if (board) picked.push(placeBadge(board, game))
+  if (book) picked.push(bookBadge(book))
+  if (tickets > 0) picked.push({ key: 'tickets', kind: 'tickets', value: `+${tickets}`, label: tickets === 1 ? 'ticket' : 'tickets' })
+  // A racing daily's best is its medal's and its time's to say.
+  if (best && !race) picked.push({ key: 'best', kind: 'best', value: 'Best', label: (best.detail ?? '').replace(/ (on|than) .*$/, '') || 'new best' })
+  if (season) picked.push(levelBadge(season))
+  return picked.slice(0, 4).sort((a, b) => BADGE_ORDER.indexOf(a.kind) - BADGE_ORDER.indexOf(b.kind))
 }
