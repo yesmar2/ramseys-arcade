@@ -22,7 +22,7 @@ export const ATTENDANT_LINES = [
   'Leaderboards lie less than I do. Barely.',
   'You’re early. Or late. In arcade time it’s the same thing.',
   'One more game is a scam I fully endorse.',
-  'Stacker looks peaceful. That’s how it gets you.',
+  'Highrise looks peaceful. That’s how it gets you.',
   'Pileup’s Shake fixes a messy pile. It doesn’t fix how it got messy.',
   'Snake says hi. Then crashes into itself. Classic.',
   'Rank is temporary. A good groan is forever.',

@@ -255,7 +255,7 @@ export function StackerGame() {
           />
           {ui.status === 'menu' && !saveOpen && !paused && (
             <GameStartCard
-              title="Stacker"
+              title="Highrise"
               slug="stacker"
               tools={
                 <AdminWaveSkip

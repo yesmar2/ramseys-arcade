@@ -120,7 +120,7 @@ export const games: Game[] = [
     playable: true,
   },
   {
-    name: 'Stacker',
+    name: 'Highrise',
     slug: 'stacker',
     tags: ['quick', 'puzzle'],
     description: 'Time the drop. Stack higher. Don’t miss.',

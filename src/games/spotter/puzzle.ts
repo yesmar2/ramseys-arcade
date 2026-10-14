@@ -68,7 +68,7 @@ export type SpotterPuzzle =
 
 const NAME_TYPOS: Record<string, string[]> = {
   patriot: ['Patrio', 'Patriott'],
-  stacker: ['Stackr', 'Stakcer'],
+  stacker: ['Highrse', 'Hihgrise'],
   snake: ['Snak', 'Snakee'],
   asteroids: ['Space Rokcs', 'Spcae Rocks'],
   'centroid': ['Centriod', 'Centoid'],

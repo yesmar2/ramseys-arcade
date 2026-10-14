@@ -119,6 +119,7 @@ const GAME_ADDRESS: Record<string, string> = {
   asteroids: 'space-rocks',
   bop: 'fidget',
   pellets: 'glowberry',
+  stacker: 'highrise',
 }
 
 /** A game's part of an address, `/games/<this>`: its own name where it has one (GAME_ADDRESS), else its slug. */
