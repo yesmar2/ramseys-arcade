@@ -203,8 +203,8 @@ function LinesLoading() {
   )
 }
 
-/** The race the run won: the top three, with your row come up past the name it beat. */
-function Race({ race }: { race: ReportRace }) {
+/** The race the run won: the top three, with your row come up past the name it beat. The reel's too (RunReel.tsx). */
+export function RacePodium({ race }: { race: ReportRace }) {
   const mineAt = race.rows.findIndex((r) => r.mine)
   const was = race.rows[mineAt]?.from
   // The row it rose from, or from under the three when it came from further down.
@@ -330,7 +330,7 @@ export function RunReportBody({
       {/* The score's band stays on top and Play again at the bottom; only what's between scrolls, when it must. */}
       <div className="report__body">
         {lines === null ? <LinesLoading /> : lines.length ? <Lines lines={lines} tier={tier} /> : null}
-        {race ? <Race race={race} /> : null}
+        {race ? <RacePodium race={race} /> : null}
         {tickets}
         {children ? <div className="report__block">{children}</div> : null}
       </div>

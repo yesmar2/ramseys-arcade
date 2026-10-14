@@ -1,0 +1,1127 @@
+/*
+ * The end of a run as a show (components/RunReel.tsx): the whole screen, a step at a time. Each step wears a
+ * colour of its own under slow rays: the run the game's, where it landed the boards' blue, the tickets their
+ * orange, a level the season's violet, and what next the page's own. The words are big and chunky, the stamps
+ * tilt and land, the rows come in one after another, and with reduced motion it's all simply there.
+ */
+
+.reel-layer {
+  padding: 0;
+}
+
+/* The page under it can't scroll while it's up: no room kept for a scrollbar, or the room is a strip down its edge. */
+html:has(.reel-layer) {
+  scrollbar-gutter: auto;
+}
+
+.reel-layer .panel-scrim {
+  background: #0a1016;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-theme='light'] .reel-layer .panel-scrim {
+  background: #eef3f6;
+}
+
+.panel.reel {
+  /* Each step's ground, rays, words and quiet words: the dark theme's here, the light theme's below. */
+  --reel-bg: #0c1218;
+  --reel-ray: transparent;
+  --reel-ink: #f2f6f9;
+  --reel-muted: rgba(242, 246, 249, 0.74);
+  --reel-figure: #ffffff;
+  --reel-kick: color-mix(in srgb, var(--celeb-accent, #34c6a8) 50%, #ffffff);
+  --reel-fill: rgba(242, 246, 249, 0.08);
+  --reel-line: rgba(242, 246, 249, 0.14);
+  --reel-shade: rgba(0, 0, 0, 0.28);
+  /* The kit's tokens the reused pieces read (the podium, the friend duel, the season line). */
+  --ink: var(--reel-ink);
+  --muted: var(--reel-muted);
+  --ink-rgb: 242, 246, 249;
+  --surface: color-mix(in srgb, var(--reel-bg) 82%, #ffffff);
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--reel-bg);
+  box-shadow: none;
+  color: var(--reel-ink);
+  overflow: hidden;
+  transition: background-color 0.35s ease;
+  animation: reel-in 0.28s ease-out;
+}
+
+.panel.reel .panel__grab {
+  display: none;
+}
+
+.panel.reel--run {
+  --reel-bg: color-mix(in srgb, var(--celeb-accent, #34c6a8) 26%, #0a1016);
+  --reel-ray: color-mix(in srgb, var(--celeb-accent, #34c6a8) 24%, transparent);
+}
+
+/* A run that went big: gold rays, or a 2nd's silver and a 3rd's bronze. */
+.panel.reel--run.reel--big {
+  --reel-ray: rgba(245, 185, 66, 0.22);
+}
+
+.panel.reel--run.reel--silver {
+  --reel-ray: rgba(198, 209, 220, 0.24);
+}
+
+.panel.reel--run.reel--bronze {
+  --reel-ray: rgba(217, 154, 99, 0.24);
+}
+
+.panel.reel--boards {
+  --reel-bg: #10223a;
+  --reel-ray: rgba(74, 168, 232, 0.13);
+  --reel-kick: #8cc8f0;
+}
+
+.panel.reel--tickets {
+  --reel-bg: #341a10;
+  --reel-ray: rgba(255, 133, 82, 0.14);
+  --reel-kick: #ffb48f;
+}
+
+.panel.reel--season {
+  --reel-bg: #1b1437;
+  --reel-ray: rgba(140, 108, 240, 0.14);
+  --reel-kick: #c9b8ff;
+}
+
+.panel.reel--ask {
+  --reel-bg: #0f1d22;
+  --reel-ray: rgba(52, 198, 168, 0.1);
+  --reel-kick: #7fe3c4;
+}
+
+.panel.reel--next {
+  --reel-bg: var(--bg, #0c1218);
+  --reel-kick: var(--reel-muted);
+}
+
+html[data-theme='light'] .panel.reel {
+  --reel-ink: #142231;
+  --reel-muted: #46596b;
+  --reel-figure: #142231;
+  --reel-kick: color-mix(in srgb, var(--celeb-accent, #34c6a8) 55%, #142231);
+  --reel-fill: rgba(20, 34, 49, 0.06);
+  --reel-line: rgba(20, 34, 49, 0.12);
+  --reel-shade: rgba(20, 34, 49, 0.14);
+  --ink-rgb: 20, 34, 49;
+  --surface: #ffffff;
+}
+
+html[data-theme='light'] .panel.reel--run {
+  --reel-bg: color-mix(in srgb, var(--celeb-accent, #34c6a8) 18%, #f5f8fa);
+}
+
+html[data-theme='light'] .panel.reel--boards {
+  --reel-bg: #e2eefa;
+  --reel-kick: #1f6aa5;
+}
+
+html[data-theme='light'] .panel.reel--tickets {
+  --reel-bg: #fdebe2;
+  --reel-kick: #b8441c;
+}
+
+html[data-theme='light'] .panel.reel--season {
+  --reel-bg: #ece6fb;
+  --reel-kick: #5b36a8;
+}
+
+html[data-theme='light'] .panel.reel--ask {
+  --reel-bg: #e1f3ee;
+  --reel-kick: #13715f;
+}
+
+/* ---------- the ground: slow rays, faded at the edges ---------- */
+
+.reel__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.reel__rays {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 170vmax;
+  height: 170vmax;
+  margin: -85vmax 0 0 -85vmax;
+  border-radius: 50%;
+  background: repeating-conic-gradient(var(--reel-ray) 0deg 9deg, transparent 9deg 18deg);
+  animation: reel-spin 80s linear infinite;
+  will-change: transform;
+}
+
+.reel__bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, transparent 0 26%, var(--reel-bg) 72%);
+  transition: background 0.35s ease;
+}
+
+/* ---------- over every step: how far along, the game, and Skip ---------- */
+
+.reel__top,
+.reel__stage,
+.reel__on {
+  position: relative;
+  z-index: 1;
+}
+
+.reel__top {
+  width: min(30rem, 100%);
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: max(0.9rem, env(safe-area-inset-top)) 1.1rem 0;
+}
+
+.reel__pips {
+  display: flex;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reel__pip {
+  flex: 1;
+  height: 0.25rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--reel-ink) 24%, transparent);
+  transition: background-color 0.25s ease;
+}
+
+.reel__pip--on {
+  background: var(--reel-ink);
+}
+
+.reel__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.reel__game {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.reel__skip {
+  flex: none;
+  min-height: 2.75rem;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--reel-ink) 12%, transparent);
+  color: var(--reel-ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reel__skip:hover,
+.reel__skip:focus-visible {
+  background: color-mix(in srgb, var(--reel-ink) 20%, transparent);
+}
+
+/* ---------- the step: its middle, scrolling only when it must ---------- */
+
+.reel__stage {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+
+.reel__step {
+  width: min(30rem, 100%);
+  margin: auto;
+  box-sizing: border-box;
+  padding: 1rem 1.1rem;
+}
+
+.reel__kick {
+  margin: 0;
+  color: var(--reel-kick);
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.reel__on {
+  display: flex;
+  justify-content: center;
+  padding: 0.25rem 1rem max(1.3rem, env(safe-area-inset-bottom));
+}
+
+.reel__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0 1.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--reel-ink);
+  font: inherit;
+  font-size: 1.12rem;
+  font-weight: 800;
+  cursor: pointer;
+  animation: reel-blink 1.6s ease-in-out infinite;
+}
+
+.reel__go:hover,
+.reel__go:focus-visible {
+  background: color-mix(in srgb, var(--reel-ink) 10%, transparent);
+}
+
+.reel__confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ---------- a stamp: what the run won, tilted, landing ---------- */
+
+.reel-stamp {
+  --reel-tilt: -4deg;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 100%;
+  padding: 0.5rem 1rem;
+  border-radius: 0.8rem;
+  box-sizing: border-box;
+  background: #ff8552;
+  color: #3a1406;
+  box-shadow: 0 0.3rem 0 #b8441c;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transform: rotate(var(--reel-tilt));
+  animation: reel-stamp 0.5s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+.reel-stamp svg {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.reel-stamp__face {
+  flex: none;
+}
+
+.reel-stamp--gold {
+  background: #f5b942;
+  color: #2a1d05;
+  box-shadow: 0 0.3rem 0 #b98318;
+}
+
+.reel-stamp--silver {
+  background: #dfe6ec;
+  color: #26313b;
+  box-shadow: 0 0.3rem 0 #8794a0;
+}
+
+.reel-stamp--bronze {
+  background: #e2a06a;
+  color: #3a1d08;
+  box-shadow: 0 0.3rem 0 #9c5a26;
+}
+
+.reel-stamp--platinum {
+  background: #b9f1fb;
+  color: #0f3a44;
+  box-shadow: 0 0.3rem 0 #3e9fb3;
+}
+
+/* ---------- the run ---------- */
+
+.reel-run {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.reel-run__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0.7rem 0 0;
+  font-family: var(--font-display);
+  line-height: 0.92;
+}
+
+.reel-run__figure {
+  color: var(--reel-figure);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-shadow: 0 0.4rem 0 var(--reel-shade);
+  white-space: nowrap;
+  animation: reel-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.reel-run__figure--xl {
+  font-size: min(9.5rem, 34vw);
+}
+
+.reel-run__figure--lg {
+  font-size: min(7.25rem, 24vw);
+}
+
+.reel-run__figure--md {
+  font-size: min(5.5rem, 17vw);
+}
+
+.reel-run__figure--sm {
+  font-size: min(4.25rem, 13vw);
+}
+
+.reel-run__score--gold .reel-run__figure {
+  color: #f5b942;
+}
+
+.reel--silver .reel-run__score--gold .reel-run__figure {
+  color: #dfe6ec;
+}
+
+.reel--bronze .reel-run__score--gold .reel-run__figure {
+  color: #e2a06a;
+}
+
+.reel-run__score--accent .reel-run__figure {
+  color: color-mix(in srgb, var(--celeb-accent, #34c6a8) 34%, var(--reel-figure));
+}
+
+.reel-run__unit {
+  margin-top: 0.35rem;
+  color: var(--reel-kick);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.reel-run__sub {
+  margin: 1rem 0 0;
+  max-width: 24rem;
+  color: var(--reel-muted);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  animation: reel-rise 0.45s 0.35s both;
+}
+
+.reel-run__medal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 1rem;
+  transform-origin: 50% 0;
+  animation: reel-swing 0.9s 0.4s cubic-bezier(0.3, 0.8, 0.3, 1) both;
+}
+
+.reel-run__medal .reel-stamp {
+  --reel-tilt: -3deg;
+  margin-top: -0.4rem;
+  font-size: 1.5rem;
+  animation-delay: 1s;
+}
+
+.reel-run .medal-ladder {
+  width: 100%;
+  margin-top: 1.4rem;
+  text-align: left;
+  animation: reel-rise 0.45s 0.7s both;
+}
+
+/* ---------- while it saves ---------- */
+
+.reel-wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.reel-wait__blip {
+  height: 6rem;
+  width: auto;
+  animation: reel-bob 1.4s ease-in-out infinite;
+}
+
+.reel-wait__said {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.reel-wait__dots {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.reel-wait__dots i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--reel-ink);
+  animation: reel-blink 1s ease-in-out infinite;
+}
+
+.reel-wait__dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.reel-wait__dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* ---------- where it landed ---------- */
+
+.reel-land {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.reel-land__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.reel-land__place {
+  margin: 0.2rem 0 0;
+  color: var(--reel-figure);
+  font-family: var(--font-display);
+  font-size: min(7rem, 26vw);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-shadow: 0 0.4rem 0 var(--reel-shade);
+  animation: reel-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.reel-land__hero--gold .reel-land__place {
+  color: #f5b942;
+}
+
+.reel-land__detail {
+  margin: 0.4rem 0 0;
+  color: var(--reel-muted);
+  font-size: 1.05rem;
+  font-weight: 600;
+  animation: reel-rise 0.45s 0.35s both;
+}
+
+.reel-land .report__race,
+.reel-land .report-duel {
+  margin: 0;
+  animation: reel-rise 0.45s 0.55s both;
+}
+
+.reel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reel-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 1rem;
+  box-sizing: border-box;
+  background: var(--reel-fill);
+  animation: reel-slide 0.4s calc(0.75s + var(--i, 0) * 0.22s) cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.reel-row__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--reel-ink) 10%, transparent);
+}
+
+.reel-row__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.reel-row--gold .reel-row__icon {
+  background: rgba(245, 185, 66, 0.2);
+  color: #f5c45c;
+}
+
+.reel-row--accent .reel-row__icon {
+  background: color-mix(in srgb, var(--celeb-accent, #34c6a8) 26%, transparent);
+  color: color-mix(in srgb, var(--celeb-accent, #34c6a8) 50%, var(--reel-ink));
+}
+
+.reel-row__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.reel-row__label {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.reel-row__detail {
+  color: var(--reel-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.reel-row__value {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.reel-row--gold .reel-row__value {
+  color: #f5c45c;
+}
+
+.reel-link {
+  align-self: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--reel-kick);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.reel-link:hover,
+.reel-link:focus-visible {
+  background: color-mix(in srgb, var(--reel-ink) 10%, transparent);
+}
+
+/* ---------- the tickets ---------- */
+
+.reel-tix {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  text-align: center;
+}
+
+.reel-tix__stub {
+  align-self: center;
+  margin: 0.4rem 0 0.6rem;
+  transform: rotate(-5deg);
+  filter: drop-shadow(0 0.45rem 0 rgba(156, 58, 23, 0.85));
+  animation: reel-ticket 0.6s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+}
+
+.reel-tix__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0.4rem 1.1rem;
+  border-radius: 1.3rem;
+  background: var(--reel-fill);
+  list-style: none;
+}
+
+.reel-tix__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--reel-line);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+  animation: reel-slide 0.4s calc(0.6s + var(--i, 0) * 0.26s) cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.reel-tix__row b {
+  flex: none;
+  color: #ffab85;
+  font-weight: 900;
+}
+
+html[data-theme='light'] .reel-tix__row b {
+  color: #b8441c;
+}
+
+.reel-tix__row--total {
+  border-bottom: 0;
+  font-weight: 800;
+}
+
+.reel-tix__row--total b {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--reel-ink);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-theme='light'] .reel-tix__row--total b {
+  color: var(--reel-ink);
+}
+
+.reel-tix__note {
+  margin: 0;
+  color: var(--reel-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.reel-tix__goal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1.1rem;
+  background: var(--reel-fill);
+  color: var(--reel-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-align: left;
+}
+
+.reel-tix .run-season,
+.reel-season .run-season {
+  margin: 0;
+  text-align: left;
+}
+
+/* ---------- a level on the pass ---------- */
+
+.reel-season {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.9rem;
+  text-align: center;
+}
+
+.reel-season__up {
+  --reel-tilt: -3deg;
+  margin: 0;
+  color: #ffd36b;
+  font-family: var(--font-display);
+  font-size: min(3.75rem, 15vw);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0.35rem 0 #5b36a8;
+  transform: rotate(var(--reel-tilt));
+  animation: reel-stamp 0.55s 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+html[data-theme='light'] .reel-season__up {
+  color: #5b36a8;
+  text-shadow: 0 0.3rem 0 #ffd36b;
+}
+
+.reel-season__patch {
+  align-self: center;
+  animation: reel-pop 0.6s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+/* The pass's own level-up card, under the reel's big words: its kicker said already. */
+.reel-season .run-levelup {
+  margin: 0;
+}
+
+.reel-season .run-levelup__kick {
+  display: none;
+}
+
+/* ---------- what next ---------- */
+
+.reel-next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.reel-next__kick {
+  letter-spacing: 0.16em;
+}
+
+.reel-recap {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reel-recap--1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.reel-recap--3 > :first-child {
+  grid-column: 1 / -1;
+}
+
+.reel-recap__tile {
+  --reel-tile: var(--celeb-accent, #34c6a8);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.85rem 1rem 0.95rem;
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--reel-tile) 16%, var(--reel-bg));
+  box-shadow: inset 0 3px 0 var(--reel-tile);
+  animation: reel-rise 0.4s calc(var(--i, 0) * 0.07s) both;
+}
+
+.reel-recap__tile--boards {
+  --reel-tile: #4aa8e8;
+}
+
+.reel-recap__tile--tickets {
+  --reel-tile: #ff8552;
+}
+
+.reel-recap__tile--season {
+  --reel-tile: #8c6cf0;
+}
+
+.reel-recap__value {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.reel-recap__label {
+  color: var(--reel-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.reel-next__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reel-next__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.2rem;
+}
+
+.reel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 3.4rem;
+  padding: 0 1.2rem;
+  border: 0;
+  border-radius: 1.2rem;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.reel-btn svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.reel-btn--play {
+  min-height: 4rem;
+  border-radius: 1.35rem;
+  background: #f5b942;
+  color: #2a1d05;
+  box-shadow: 0 0.35rem 0 #b98318;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.reel-btn--play:hover,
+.reel-btn--play:focus-visible {
+  background: #ffc657;
+}
+
+.reel-btn--play:active {
+  transform: translateY(0.2rem);
+  box-shadow: 0 0.15rem 0 #b98318;
+}
+
+.reel-btn--busy {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+.reel-btn--ghost {
+  background: var(--reel-fill);
+  box-shadow: inset 0 0 0 1.5px var(--reel-line);
+  color: var(--reel-ink);
+  font-size: 1.05rem;
+}
+
+.reel-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.reel-next__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: var(--reel-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.reel-next__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.reel-next__link {
+  min-height: 2.75rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--reel-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reel-next__link:hover,
+.reel-next__link:focus-visible {
+  background: color-mix(in srgb, var(--reel-ink) 10%, transparent);
+}
+
+/* ---------- the ask: a sign-in, or a tag ---------- */
+
+.reel-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reel-ask .report__ask {
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.reel-ask .report__ask-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* What the run would win, in the ask: the ticket's orange, gold for a 1st. */
+.panel.reel .report__win {
+  color: #ffab85;
+}
+
+.panel.reel .report__win--gold {
+  color: #f5b942;
+}
+
+html[data-theme='light'] .panel.reel .report__win {
+  color: #b8441c;
+}
+
+html[data-theme='light'] .panel.reel .report__win--gold {
+  color: #865c05;
+}
+
+/* ---------- motion ---------- */
+
+@keyframes reel-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes reel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes reel-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes reel-stamp {
+  0% {
+    transform: rotate(var(--reel-tilt, 0deg)) scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(var(--reel-tilt, 0deg)) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(var(--reel-tilt, 0deg)) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes reel-ticket {
+  0% {
+    transform: rotate(-5deg) scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(-5deg) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-5deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes reel-rise {
+  from {
+    transform: translateY(1.3rem);
+    opacity: 0;
+  }
+}
+
+@keyframes reel-slide {
+  from {
+    transform: translateX(-1.6rem);
+    opacity: 0;
+  }
+}
+
+@keyframes reel-swing {
+  0% {
+    transform: translateY(-3.5rem) rotate(-14deg);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(0.35rem) rotate(6deg);
+    opacity: 1;
+  }
+  80% {
+    transform: rotate(-3deg);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes reel-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.5rem);
+  }
+}
+
+@keyframes reel-blink {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel.reel,
+  .panel.reel *,
+  .panel.reel::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

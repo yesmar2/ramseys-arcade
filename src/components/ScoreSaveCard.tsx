@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { getGame, isDailyGame, isRankedGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
@@ -42,7 +42,6 @@ import {
 } from '../lib/runAchievements'
 import {
   CHALLENGE_WON,
-  challengeReportLine,
   composeReport,
   readBookFacts,
   saveRunForReport,
@@ -58,12 +57,14 @@ import { boardDay } from '../lib/rankHow'
 import { alsoDailies, liveDailies } from '../lib/today'
 import { standingsTakeover } from '../lib/winTakeover'
 import { useChallengeShare } from './ChallengeShare'
-import { boardTime, isRaceGame, medalFor, medalTimes, needsThousandths } from '../lib/raceMedals'
+import { boardTime, isRaceGame, MEDAL_NAMES, medalBeats, medalFor, medalTimes, needsThousandths } from '../lib/raceMedals'
 import { PushAsk, StreakPushAsk } from './PushAsk'
 import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
-import { RaceReport, raceSubWords } from './RaceReport'
+import { MedalLadder } from './RaceMedal'
+import { raceSubWords } from './RaceReport'
 import { SeasonRunLine } from './season/SeasonRun'
-import { FriendDuel, ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction, type ReportLink } from './RunReport'
+import { ReportSignIn, ReportWho, TagSlots, type ReportAction, type ReportLink } from './RunReport'
+import { levelTile, placeTile, ReelButton, reelSteps, ReelTickets, RunReel, type ReelRecap } from './RunReel'
 import { useShare } from './SharePanel'
 import { WinTakeover } from './WinTakeover'
 
@@ -129,6 +130,8 @@ function afterFailure(err: unknown): { phase: Phase; error: string | null } {
 function ownerSignedIn(owner: string | null | undefined): boolean {
   return typeof owner !== 'string' || currentAccountId() === owner
 }
+
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 /** Leave the play overlay and open an in-app route, out of fullscreen as the play screen's back control does. */
 function leavePlayTo(href: string) {
@@ -565,9 +568,13 @@ export function ScoreSaveCard({
     onClick: onDone,
     buttonRef: playRef,
   }
-  let primary = playAgain
   let secondary: ReportAction | null = null
-  let block: ReactNode = null
+  /** What the save waits on, a step of its own after the run: the sign-in, or a tag. */
+  let ask: ReactNode = null
+  /** A word on a run that isn't saved and won't be: another account's, a stage skip, practice, a failed save. */
+  let note: ReactNode = null
+  /** What the moment offers once it's saved: an alert, or why a challenge link didn't come. */
+  let moment: ReactNode = null
   let who: ReactNode = null
   let links: ReportLink[] = []
 
@@ -577,7 +584,7 @@ export function ScoreSaveCard({
       othersPending > 0
         ? ` Your ${othersPending} other ${othersPending === 1 ? 'run' : 'runs'} from the last few hours ${othersPending === 1 ? 'goes' : 'go'} on too.`
         : null
-    block = (
+    ask = (
       <ReportSignIn
         lead={
           facing && outcome?.won ? (
@@ -603,42 +610,46 @@ export function ScoreSaveCard({
     // Beating the best kept on this device says so: the moment a signed-in run's report calls a new best.
     who = <ReportWho text={recordRef.current > 0 && score > recordRef.current ? 'New best on this device · not saved yet' : 'Not saved yet'} />
   } else if (phase === 'needName') {
-    primary = {
-      label: ranked ? 'Save to the board' : 'Save it',
-      onClick: () => void submitName(),
-      disabled: !normalizePlayerName(nameDraft),
-    }
-    secondary = { label: 'Skip', onClick: onDone }
-    block = (
-      <TagSlots
-        id={tagId}
-        value={nameDraft}
-        onChange={setNameDraft}
-        onSubmit={() => void submitName()}
-        inputRef={tagRef}
-        error={error}
-        lead={
-          place ? (
-            <>
-              {said} is{' '}
-              <strong className={place === 1 ? 'report__win report__win--gold' : 'report__win'}>
-                #{place} on {game} {copy.phrase}
-              </strong>
-              . Put your name on it.
-            </>
-          ) : ranked ? (
-            'Put your name on the boards.'
-          ) : (
-            'Put your tag on it to save it as today’s result.'
-          )
-        }
-      />
+    // The tag in slots, and the way to save it: the reel's own Skip goes on without.
+    ask = (
+      <>
+        <TagSlots
+          id={tagId}
+          value={nameDraft}
+          onChange={setNameDraft}
+          onSubmit={() => void submitName()}
+          inputRef={tagRef}
+          error={error}
+          lead={
+            place ? (
+              <>
+                {said} is{' '}
+                <strong className={place === 1 ? 'report__win report__win--gold' : 'report__win'}>
+                  #{place} on {game} {copy.phrase}
+                </strong>
+                . Put your name on it.
+              </>
+            ) : ranked ? (
+              'Put your name on the boards.'
+            ) : (
+              'Put your tag on it to save it as today’s result.'
+            )
+          }
+        />
+        <ReelButton
+          action={{
+            label: ranked ? 'Save to the board' : 'Save it',
+            onClick: () => void submitName(),
+            disabled: !normalizePlayerName(nameDraft),
+          }}
+        />
+      </>
     )
     who = <ReportWho text="Signed in, no tag yet" />
   } else if (phase === 'otherAccount') {
     // Played under another account on this device: it goes on the board as theirs, once they're back.
     const tag = typeof owner === 'string' ? recallAccountTag(owner) : ''
-    block = (
+    note = (
       <p className="report__note">
         {tag
           ? `Played as ${tag}. Sign in as ${tag} to ${ranked ? 'put it on the board' : 'save it'}.`
@@ -647,18 +658,18 @@ export function ScoreSaveCard({
     )
     who = <ReportWho text="Not saved yet" />
   } else if (phase === 'assisted') {
-    block = <p className="report__note">Stage skip used, so this run wasn’t saved to the boards or the record books.</p>
+    note = <p className="report__note">Stage skip used, so this run wasn’t saved to the boards or the record books.</p>
     who = <ReportWho text="Not saved" />
   } else if (phase === 'early') {
     const opens = launchDayOf(gameSlug)
-    block = (
+    note = (
       <p className="report__note">
         Played before launch, so this run is practice. {game}’s boards open for everyone on launch day{opens ? `, ${archiveDayWords(opens)}` : ''}.
       </p>
     )
     who = <ReportWho text="Practice" />
   } else if (phase === 'error') {
-    block = <p className="panel__error">{error}</p>
+    note = <p className="panel__error">{error}</p>
     who = <ReportWho text="Not saved" />
   } else if (pending) {
     who = (
@@ -742,36 +753,23 @@ export function ScoreSaveCard({
         },
       }
     }
-    if (sendError) block = <p className="panel__error">{sendError}</p>
-    else if (challenged) block = <PushAsk reason="challenge" />
+    if (sendError) moment = <p className="panel__error">{sendError}</p>
+    else if (challenged) moment = <PushAsk reason="challenge" />
   }
   // A daily of the Dailies just saved: once today is kept, the moment to offer a nudge before a day ends unkept.
   const today = boardDay()
   const onTicket = liveDailies(today).some((d) => d.slug === gameSlug)
-  if (phase === 'saved' && signedIn && !impersonation && onTicket && !block) {
-    block = <StreakPushAsk active />
+  if (phase === 'saved' && signedIn && !impersonation && onTicket && !moment) {
+    moment = <StreakPushAsk active />
   }
-  // And the way on to the next of today's dailies: first, or after the sign-in for a run that isn't saved yet.
-  // One of the day's puzzles (Also today) leads on to the races too.
-  if ((onTicket || alsoDailies(today).some((d) => d.slug === gameSlug)) && (phase === 'saved' || phase === 'needAuth')) {
-    // Once all of today's are done, a racing daily's tomorrow under it: what comes next, and when.
-    const next = (
+  // And the way on to the next of today's dailies, saved or waiting on the sign-in. One of the day's puzzles (Also
+  // today) leads on to the races too. Once all of today's are done, a racing daily's tomorrow under it.
+  const nextDaily =
+    (onTicket || alsoDailies(today).some((d) => d.slug === gameSlug)) && (phase === 'saved' || phase === 'needAuth') ? (
       <Suspense fallback={null}>
         <NextDaily slug={gameSlug} tomorrow={tomorrow} />
       </Suspense>
-    )
-    block = phase === 'needAuth' ? (
-      <>
-        {block}
-        {next}
-      </>
-    ) : (
-      <>
-        {next}
-        {block}
-      </>
-    )
-  }
+    ) : null
 
   // A daily just for fun has no board and no records to go to.
   if (ranked && (phase === 'saved' || phase === 'assisted' || phase === 'error')) {
@@ -789,91 +787,107 @@ export function ScoreSaveCard({
     links = [{ label: lineShare.copied ? 'Copied' : 'Share', onClick: () => lineShare.share({ text: shareLine }) }, ...links]
   }
 
-  const lines = pending ? null : (data?.lines ?? [])
   const heading = ribbon?.text ?? title
-  const paidTickets = phase === 'saved' ? (facts?.tickets ?? null) : null
-  // The season's pass card only when the run moved it: what it added, or a level it reached.
-  const seasonMoved = facts?.season && (facts.season.added > 0 || facts.season.levelUp.length > 0) ? facts.season : null
+  const saved = phase === 'saved'
+  const paidTickets = saved ? (facts?.tickets ?? null) : null
+  // Tickets get a step of their own when the run paid some; a run that paid none says why in a line at the end.
+  const paid = paidTickets && paidTickets.earned > 0 ? paidTickets : null
+  // The season's pass only when the run moved it: what it added, or a level it reached.
+  const seasonMoved = saved && facts?.season && (facts.season.added > 0 || facts.season.levelUp.length > 0) ? facts.season : null
   const raceSub = race ? raceSubWords(ribbon ? (kicker ?? title) : title, race.ms, race.previousMs, race.format) : null
-  const racePlace = race ? (data?.lines.find((line) => line.id === 'board') ?? null) : null
-  const raceLines = (all: typeof lines) => all?.filter((line) => line.id !== 'best' && line.id !== 'board' && line.id !== 'overall') ?? []
-  // First in the standings takes the whole screen, once, with the report under it, in the standings' own period.
+  // A racing daily's medal: the one the day's best now holds, and whether this run won it.
+  const medalHeld = race ? medalFor(race.game, race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms)) : null
+  const medalNew = race && medalHeld && medalBeats(medalHeld, medalFor(race.game, race.paceMs, race.previousMs)) ? medalHeld : null
+  // First in the standings takes the whole screen, once, over the reel, in the standings' own period.
   const standingsPeriod = facts?.standingsPeriod ?? period
   const takeover =
     data?.standingsTop && facts?.overall.after && !takeoverDone
       ? standingsTakeover(facts.overall.after, facts.name, standingsPeriod)
       : null
+
+  // The reel (RunReel.tsx): the run, then the steps it has something for, then what next.
+  const bestLine = saved ? (data?.lines.find((line) => line.id === 'best') ?? null) : null
+  const boardLine = saved ? (data?.lines.find((line) => line.id === 'board') ?? null) : null
+  const recap: ReelRecap[] = [
+    {
+      key: 'score',
+      value: unit ? `${figure} ${unit}` : race ? said : figure,
+      label: ribbon?.text ?? (bestLine?.detail ? capital(bestLine.detail) : title),
+      tone: 'run',
+    },
+  ]
+  if (boardLine) recap.push(placeTile(boardLine))
+  if (saved && medalHeld) recap.push({ key: 'medal', value: MEDAL_NAMES[medalHeld], label: 'Today’s medal', tone: 'run' })
+  if (paid) recap.push({ key: 'tickets', value: `+${paid.earned}`, label: paid.earned === 1 ? 'Ticket' : 'Tickets', tone: 'tickets' })
+  if (seasonMoved) recap.push(levelTile(seasonMoved))
+  // A run not saved yet carries its ask to the end too, for whoever went past it.
+  const waiting = unsaved && score > 0 ? <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} tag={phase === 'needName'} /> : null
+  const lastBits = [
+    note,
+    unsaved ? ask : null,
+    moment,
+    paidTickets && !paid ? <RunTicketsLine paid={paidTickets} game={gameSlug} race={race ? { medal: medalHeld, season: null } : null} /> : null,
+    seasonMoved && !seasonMoved.levelUp.length && !paid ? <SeasonRunLine run={seasonMoved} /> : null,
+    nextDaily,
+  ].filter(Boolean)
+  const steps = reelSteps({
+    phase: pending ? 'pending' : unsaved ? 'ask' : saved ? 'saved' : 'done',
+    slow: saveWaitOver,
+    run: {
+      titleId,
+      tier,
+      metal: data?.metal ?? null,
+      ribbon,
+      eyebrow: race && kicker ? kicker : title,
+      // A racing daily's time as the rest of its report says one (59.00s, or 59.004s).
+      score: race ? said : figure,
+      unit,
+      sub: race ? raceSub : ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null),
+      scoreTone: data?.scoreTone ?? (unsavedWin ? 'gold' : 'plain'),
+      medal: medalNew,
+      children: race ? (
+        <MedalLadder game={race.game} paceMs={race.paceMs} ms={race.ms} previousMs={race.previousMs} format={race.format} signedOut={phase === 'needAuth'} />
+      ) : null,
+    },
+    // A racing daily's best is under its time already, and its standings are the header's.
+    lines: saved ? (data?.lines ?? []).filter((line) => !race || (line.id !== 'best' && line.id !== 'overall')) : [],
+    race: saved ? (data?.race ?? null) : null,
+    friend: saved ? (data?.friend ?? null) : null,
+    onBoard: ranked && saved ? () => leavePlayTo(boardsHref(gameSlug, period)) : undefined,
+    tickets: paid ? (
+      <ReelTickets paid={paid} game={gameSlug} medal={race ? medalHeld : null} season={seasonMoved && !seasonMoved.levelUp.length ? seasonMoved : null} />
+    ) : null,
+    season: seasonMoved,
+    ask: ask ? (
+      <>
+        {ask}
+        {waiting}
+      </>
+    ) : null,
+    askGoLabel: phase === 'needName' ? 'Skip' : 'Not now',
+    askFocus: phase === 'needName' ? tagRef : undefined,
+    recap: recap.slice(0, 4),
+    block: lastBits.length ? lastBits.map((bit, i) => <Fragment key={i}>{bit}</Fragment>) : null,
+    primary: playAgain,
+    secondary,
+    who,
+    links,
+  })
   return (
     <>
-      <RunReport
+      <RunReel
         label={`${heading}, ${said}`}
-        titleId={titleId}
         style={accentStyle}
         accent={accent}
-        initialFocus={phase === 'needName' ? tagRef : playRef}
-        // Esc goes back to the start card, except while a tag is being typed.
-        onEscape={phase === 'needName' ? undefined : onDone}
+        game={game}
         tier={tier}
         metal={data?.metal ?? null}
-        ribbon={ribbon}
-        eyebrow={race && kicker ? kicker : title}
-        // A racing daily's time as the rest of its report says one (59.00s, or 59.004s).
-        score={race ? said : figure}
-        unit={unit}
-        sub={race ? raceSub : ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
-        scoreTone={data?.scoreTone ?? (unsavedWin ? 'gold' : 'plain')}
-        lines={
-          unsaved
-            ? facing
-              ? [challengeReportLine(gameSlug, score, facing)]
-              : []
-            : phase === 'assisted' || phase === 'early' || phase === 'error'
-              ? []
-              : race
-                ? raceLines(lines)
-                : lines
-        }
-        race={data?.race ?? null}
-        tickets={
-          race ? (
-            <RaceReport
-              {...race}
-              signedOut={phase === 'needAuth'}
-              pending={pending}
-              tickets={
-                paidTickets ? (
-                  <RunTicketsLine
-                    paid={paidTickets}
-                    game={gameSlug}
-                    race={{ medal: medalFor(race.game, race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms)), season: seasonMoved }}
-                  />
-                ) : unsaved ? (
-                  <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} tag={phase === 'needName'} />
-                ) : null
-              }
-              levelUp={seasonMoved}
-              place={racePlace}
-              onBoard={() => leavePlayTo(boardsHref(gameSlug, period))}
-            />
-          ) : paidTickets ? (
-            <>
-              <RunTicketsLine paid={paidTickets} game={gameSlug} />
-              {seasonMoved ? <SeasonRunLine run={seasonMoved} /> : null}
-            </>
-          ) : unsaved && score > 0 ? (
-            <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} tag={phase === 'needName'} />
-          ) : null
-        }
-        primary={primary}
-        secondary={secondary}
-        who={who}
-        links={links}
+        steps={steps}
+        primaryRef={playRef}
         leave={{ label: 'Leave', onClick: () => leavePlayTo(gameHref(gameSlug)) }}
-      >
-        {/* A friend gone past, face to face, before whatever else the moment asks. */}
-        {phase === 'saved' && data?.friend ? <FriendDuel friend={data.friend} /> : null}
-        {block}
-      </RunReport>
+        // Esc goes back to the start card, except while a tag is being typed.
+        onEscape={phase === 'needName' ? undefined : onDone}
+      />
       {sharePanel}
       {lineShare.panel}
       {takeover ? (

@@ -21,6 +21,9 @@ import {
   type RunReportBodyProps,
 } from '../components/RunReport'
 import { WinTakeover } from '../components/WinTakeover'
+import { MedalLadder } from '../components/RaceMedal'
+import { levelTile, placeTile, ReelButton, reelSteps, ReelTickets, RunReel, type ReelInput, type ReelRecap } from '../components/RunReel'
+import type { ReportTier } from '../lib/runReport'
 import { milestoneSpotlight, milestoneWear } from '../components/MilestoneMoment'
 import { Spotlight } from '../components/Spotlight'
 import type { FriendsWeek } from '../lib/friendsWeek'
@@ -771,16 +774,246 @@ function samples(tag: ReactNode, signIn: ReactNode): Sample[] {
   ]
 }
 
+/* ---------- the reel (RunReel.tsx): the same runs, a step at a time ---------- */
+
+type ReelSample = {
+  key: string
+  label: string
+  game: string
+  slug: string
+  tier: ReportTier
+  metal: ReportMetal | null
+  input: Omit<ReelInput, 'primary'>
+}
+
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** A saved Crosswalk run, as ScoreSaveCard puts its reel together. */
+function arcadeReel(key: string, label: string, f: RunFacts, title: string, sub: string, extra: Partial<ReelInput> = {}): ReelSample {
+  const r = composeReport(f)
+  const paid = SAMPLE_TICKETS[key] ?? SAMPLE_TICKETS.quiet!
+  const board = r.lines.find((l) => l.id === 'board') ?? null
+  const best = r.lines.find((l) => l.id === 'best') ?? null
+  const recap: ReelRecap[] = [{ key: 'score', value: `${f.score} rows`, label: r.ribbon?.text ?? (best?.detail ? capital(best.detail) : title), tone: 'run' }]
+  if (board) recap.push(placeTile(board))
+  if (paid.earned > 0) recap.push({ key: 'tickets', value: `+${paid.earned}`, label: 'Tickets', tone: 'tickets' })
+  if (extra.season) recap.push(levelTile(extra.season))
+  return {
+    key,
+    label,
+    game: 'Crosswalk',
+    slug: 'crosswalk',
+    tier: r.tier,
+    metal: r.metal,
+    input: {
+      phase: 'saved',
+      run: {
+        titleId: `reel-${key}`,
+        tier: r.tier,
+        metal: r.metal,
+        ribbon: r.ribbon,
+        eyebrow: title,
+        score: String(f.score),
+        unit: 'rows',
+        sub: r.ribbon ? `${title} · ${sub}` : sub,
+        scoreTone: r.scoreTone,
+      },
+      lines: r.lines,
+      race: r.race,
+      friend: r.friend,
+      onBoard: () => {},
+      tickets:
+        paid.earned > 0 ? <ReelTickets paid={paid} game="crosswalk" season={extra.season && !extra.season.levelUp.length ? extra.season : null} /> : null,
+      recap: recap.slice(0, 4),
+      block: paid.earned <= 0 ? <RunTicketsLine paid={paid} game="crosswalk" /> : null,
+      secondary: r.friend ? { label: `Send ${r.friend.them.name} your run`, icon: 'flag' } : { label: 'Challenge a friend', icon: 'flag' },
+      who: <ReportWho name="VERA" text="Saved as VERA" />,
+      links: [
+        { label: 'Crosswalk board', onClick: () => {} },
+        { label: 'Record book', onClick: () => {} },
+      ],
+      ...extra,
+    },
+  }
+}
+
+/** Lander's run of 49.00s over a best of 52.00s: Silver, new; 4th today; 3 tickets; the pass moved. */
+function landerReel(key: string, label: string, season: SeasonRun): ReelSample {
+  const format = formatRun
+  const paid: RunTickets = {
+    earned: 3,
+    lines: [{ reason: 'run', amount: 3 }],
+    balance: 1290,
+    reached: LANDER_STEPS.silver,
+    next: LANDER_STEPS.gold,
+    base: 3,
+    baseLabel: 'a run today',
+    step: 8,
+    paidBefore: 5,
+    capped: 0,
+    todayLeft: 170,
+  }
+  const place = landerPlace('#4', 'up from 7th · 0.31s behind PILOT for 3rd', 'accent')
+  return {
+    key,
+    label,
+    game: 'Lander',
+    slug: 'lander',
+    tier: 'lit',
+    metal: null,
+    input: {
+      phase: 'saved',
+      run: {
+        titleId: `reel-${key}`,
+        tier: 'lit',
+        ribbon: { icon: 'up', text: 'New personal best', tone: 'accent' },
+        eyebrow: 'Today’s Cave #2',
+        score: format(49),
+        unit: '',
+        sub: raceSubWords('Today’s Cave #2', 49_000, 52_000, format),
+        scoreTone: 'accent',
+        medal: 'silver',
+        children: <MedalLadder game="lander" paceMs={PACE_MS} ms={49_000} previousMs={52_000} format={format} />,
+      },
+      lines: [place],
+      onBoard: () => {},
+      tickets: <ReelTickets paid={paid} game="lander" medal="silver" season={season.levelUp.length ? null : season} />,
+      season,
+      recap: [
+        { key: 'score', value: format(49), label: 'New personal best', tone: 'run' },
+        placeTile(place),
+        { key: 'medal', value: 'Silver', label: 'Today’s medal', tone: 'run' },
+        { key: 'tickets', value: '+3', label: 'Tickets', tone: 'tickets' },
+      ],
+      block: <NextDailyView slug="lander" punches={SAMPLE_PUNCHES} done={2} total={6} />,
+      secondary: { label: 'Challenge a friend', icon: 'flag' },
+      who: <ReportWho name="VERA" text="Saved as VERA" />,
+      links: [
+        { label: 'Share', onClick: () => {} },
+        { label: 'Lander board', onClick: () => {} },
+      ],
+    },
+  }
+}
+
+function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
+  const quietRun = (key: string, score: number) => ({
+    titleId: `reel-${key}`,
+    tier: 'quiet' as const,
+    ribbon: null,
+    eyebrow: 'Run over',
+    score: String(score),
+    unit: 'rows',
+    sub: 'The train got you',
+    scoreTone: 'plain' as const,
+  })
+  const unsaved = (key: string, label: string, phase: ReelInput['phase'], extra: Partial<ReelInput>): ReelSample => ({
+    key,
+    label,
+    game: 'Crosswalk',
+    slug: 'crosswalk',
+    tier: 'quiet',
+    metal: null,
+    input: { phase, run: quietRun(key, 447), lines: [], recap: [{ key: 'score', value: '447 rows', label: 'Run over', tone: 'run' }], ...extra },
+  })
+  return [
+    arcadeReel('quiet', 'An ordinary run', facts(318, {}), 'Run over', 'Flattened by traffic'),
+    arcadeReel('best', 'A personal best', facts(440, {}), 'Run over', 'Fell in the water'),
+    arcadeReel(
+      'top',
+      'Top of the board',
+      facts(447, {
+        overall: {
+          before: standings(4, 598, []),
+          after: standings(2, 616, [
+            ['DAD', 1, 924],
+            ['VERA', 2, 616],
+            ['IVY', 3, 580],
+          ]),
+        },
+      }),
+      'Run over',
+      'The train got you',
+    ),
+    arcadeReel('silver', 'Onto the podium, 2nd', facts(436, { board: climbTo(436), priorBest: 350 }), 'Run over', 'The train got you'),
+    arcadeReel(
+      'friend',
+      'A friend gone past',
+      facts(436, {
+        friends: {
+          you: friendRow(2, 'VERA', 436, 'a2:e:ufo:0:7:deep:none:none'),
+          passed: [friendRow(3, 'MAYA', 433, 'a2:m:1:split:3:9:bold:none:none')],
+          next: friendRow(1, 'WES', 441),
+        },
+      }),
+      'Run over',
+      'The train got you',
+    ),
+    arcadeReel(
+      'record',
+      'A new record',
+      facts(296, {
+        books: [
+          {
+            hit: { id: 'crosswalk:most-coins', label: 'Most tickets in a run', value: '34', rank: 1 },
+            record: { id: 'most-coins', unit: 'count', label: 'Most tickets in a run' } as never,
+            holder: { id: 'r1', name: 'VERA', score: 34, at: NOW },
+            previous: { id: 'r0', name: 'CHEF', score: 33, at: NOW - 86_400_000 },
+          },
+        ],
+      }),
+      'Run over',
+      'Swept off the edge',
+    ),
+    arcadeReel('season-40', 'Level 40 on the pass', facts(318, {}), 'Run over', 'Flattened by traffic', { season: TENTH_SEASON }),
+    arcadeReel('season-31', 'Level 31, past the free row', facts(318, {}), 'Run over', 'Flattened by traffic', { season: QUIET_SEASON }),
+    arcadeReel('capped', 'Past the day’s cap', facts(318, {}), 'Run over', 'Flattened by traffic'),
+    unsaved('signin', 'Signed out', 'ask', {
+      ask: (
+        <>
+          {signIn}
+          <RunTicketsWaiting />
+        </>
+      ),
+      askGoLabel: 'Not now',
+      block: signIn,
+      who: <ReportWho text="Not saved yet" />,
+    }),
+    unsaved('tag', 'Signed in, no tag yet', 'ask', {
+      ask: (
+        <>
+          {tag}
+          <ReelButton action={{ label: 'Save to the board' }} />
+          <RunTicketsWaiting tag />
+        </>
+      ),
+      askGoLabel: 'Skip',
+      block: (
+        <>
+          {tag}
+          <ReelButton action={{ label: 'Save to the board' }} />
+        </>
+      ),
+      who: <ReportWho text="Signed in, no tag yet" />,
+    }),
+    unsaved('saving', 'Still saving', 'pending', { who: <ReportWho name="VERA" text="Saving…" /> }),
+    landerReel('lander', 'A racing daily: Silver, new', LANDER_SEASON),
+    landerReel('lander-31', 'A racing daily that reached Level 31', QUIET_SEASON),
+  ]
+}
+
 export function DevCelebratePage() {
   // ?open=top or ?win=triple opens one on load, for a screenshot of the first paint.
   const [open, setOpen] = useState<string | null>(() => new URLSearchParams(window.location.search).get('open'))
   const [win, setWin] = useState<string | null>(() => new URLSearchParams(window.location.search).get('win'))
   const [spot, setSpot] = useState<string | null>(() => new URLSearchParams(window.location.search).get('spot'))
+  // ?reel=best opens one of the reel's runs on load.
+  const [reel, setReel] = useState<string | null>(() => new URLSearchParams(window.location.search).get('reel'))
   const [tag, setTag] = useState('VERA')
   const tagId = useId()
   const style = gameAccentStyle('crosswalk')
   const accent = String((style as Record<string, string>)['--celeb-accent'])
-  const list = samples(
+  const tagNode = (
     <TagSlots
       id={tagId}
       value={tag}
@@ -792,7 +1025,9 @@ export function DevCelebratePage() {
           name on it.
         </>
       }
-    />,
+    />
+  )
+  const signInNode = (
     <ReportSignIn
       lead={
         <>
@@ -801,9 +1036,12 @@ export function DevCelebratePage() {
         </>
       }
       onSignedIn={() => {}}
-    />,
+    />
   )
+  const list = samples(tagNode, signInNode)
   const opened = list.find((s) => s.key === open)
+  const reels = reelSamples(tagNode, signInNode)
+  const reeled = reels.find((r) => r.key === reel)
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
@@ -830,6 +1068,20 @@ export function DevCelebratePage() {
                   </button>
                 </figcaption>
               </figure>
+            ))}
+          </div>
+        </section>
+
+        <section className="lst-block" aria-label="Run reel">
+          <div className="lst-block__head">
+            <h2 className="lst-block__title">Run reel</h2>
+            <p className="lst-block__note">the end of a run a step at a time (RunReel.tsx) · ?reel=best opens one on load</p>
+          </div>
+          <div className="hero__actions" style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {reels.map((r) => (
+              <button key={r.key} type="button" className="hero__ghost" onClick={() => setReel(r.key)}>
+                {r.label}
+              </button>
             ))}
           </div>
         </section>
@@ -873,6 +1125,20 @@ export function DevCelebratePage() {
             leave={{ label: 'Leave', onClick: () => setOpen(null) }}
             metal={opened.metal}
             {...opened.body}
+          />
+        ) : null}
+        {reeled ? (
+          <RunReel
+            key={reeled.key}
+            label={`${reeled.input.run.ribbon?.text ?? reeled.input.run.eyebrow}, ${reeled.input.run.score}`}
+            style={gameAccentStyle(reeled.slug)}
+            accent={String((gameAccentStyle(reeled.slug) as Record<string, string>)['--celeb-accent'])}
+            game={reeled.game}
+            tier={reeled.tier}
+            metal={reeled.metal}
+            steps={reelSteps({ ...reeled.input, primary: { label: 'Play again', onClick: () => setReel(null) } })}
+            leave={{ label: 'Leave', onClick: () => setReel(null) }}
+            onEscape={() => setReel(null)}
           />
         ) : null}
         {(() => {

@@ -43,7 +43,7 @@ function stepWords(step: LadderStep, game: string): string {
 }
 
 /** The next step up, to aim for: Hot Lap's with the time it takes, Half Full's with the figure (Steady Hand, 92.0%). */
-function nextWords(next: LadderStep, game: string): string {
+export function nextWords(next: LadderStep, game: string): string {
   if (!next.label) return `${next.tickets} at ${scoreText(game, next.at)}`
   const figure = isTimeBoard(game) || isPercentBoard(game)
   return `${next.tickets} for ${next.label}${figure ? ` (${formatLeaderboardScore(game, next.at)})` : ''}`
@@ -67,6 +67,30 @@ function lineWords(paid: RunTickets, line: RunTickets['lines'][number], game: st
       return `${line.amount} for another day on your streak`
     default:
       return `${line.amount} more`
+  }
+}
+
+/**
+ * One of the save's ticket lines as the reel's tally says it, its amount beside it rather than in it: "93 rows or
+ * better", "A new best", "Picked up on the way". A racing daily's run is said by the medal it pays for (`medal`).
+ */
+export function lineLabel(paid: RunTickets, line: RunTickets['lines'][number], game: string, medal: Medal | null = null): string {
+  switch (line.reason) {
+    case 'run': {
+      if (medal && paid.reached) return paid.paidBefore > 0 ? `${MEDAL_NAMES[medal]} brings today’s to ${paid.step}` : MEDAL_NAMES[medal]
+      const what = paid.reached ? stepWords(paid.reached, game) : (paid.baseLabel ?? 'the run')
+      return what.charAt(0).toUpperCase() + what.slice(1)
+    }
+    case 'best':
+      return 'A new best'
+    case 'pickup':
+      return 'Picked up on the way'
+    case 'first':
+      return `Your first go at ${getGame(game)?.name ?? 'this game'}`
+    case 'streak':
+      return 'Another day on your streak'
+    default:
+      return 'More'
   }
 }
 
