@@ -292,17 +292,24 @@ function loadBest() {
   return getPersonalBest('patriot')
 }
 
-const BATTERY_AMMO = 10
+/**
+ * Two turrets of sixteen shells each among five cities, and points of the
+ * game's own. It used to be three turrets of ten with six
+ * cities in two threes between them, scoring 25 a missile, 100 a city and 5 a
+ * spare shell, which is Missile Command's own screen and table; Ramsey asked
+ * for it to be ours (2026-10-14, "fix these issues please").
+ */
+const BATTERY_AMMO = 16
 const AMMO_PACK = 10
 const BLAST_MAX = 82
 const BLAST_BURST = 152
 /** Extra radius a perfect hit adds when the blast regrows. */
 const BLAST_REGROW = 52
 const DIRECT_HIT_RADIUS = 16
-const SCORE_SPLASH = 25
+const SCORE_SPLASH = 30
 const SCORE_DIRECT = 100
-const SCORE_CITY = 100
-const SCORE_AMMO = 5
+const SCORE_CITY = 150
+const SCORE_AMMO = 3
 const SCORE_PLANE = 200
 const SCORE_BOMBER = 400
 /** Horizontal distance at which a ground hit kills a city / turret. */
@@ -375,12 +382,13 @@ function layoutWorld(w: number, h: number) {
   const edge = Math.max(w * 0.06, 22 * scale * 1.85)
   const left = edge
   const right = w - edge
-  // Turret, city, city, city, turret, city, city, city, turret
-  const slots = 9
+  // City, city, turret, city, turret, city, city: the two turrets near the middle, either side of a city, so no
+  // city is more than two places from one.
+  const slots = 7
   const step = (right - left) / (slots - 1)
   const xAt = (i: number) => left + i * step
 
-  const batteries: Battery[] = [0, 4, 8].map((slot, i) => ({
+  const batteries: Battery[] = [2, 4].map((slot, i) => ({
     id: i,
     x: xAt(slot),
     ammo: BATTERY_AMMO,
@@ -388,7 +396,7 @@ function layoutWorld(w: number, h: number) {
     kick: 0,
   }))
 
-  const cities: City[] = [1, 2, 3, 5, 6, 7].map((slot, i) => ({
+  const cities: City[] = [0, 1, 3, 5, 6].map((slot, i) => ({
     id: i,
     x: xAt(slot),
     alive: true,

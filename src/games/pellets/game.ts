@@ -49,10 +49,10 @@ export type Bit = {
 export type Ring = { x: number; y: number; r0: number; r1: number; life: number; maxLife: number; hue: number }
 
 /**
- * The bonus under the den. Classic Pac-Man puts one there twice a maze, and it
- * is the only reason on the board to go back to the middle on purpose.
+ * The bonus under the bugs' nest, twice a maze: a garden treat (games/fruitArt.ts), and the only reason on the
+ * board to go back to the middle on purpose.
  */
-export type FruitKind = 'cherry' | 'berry' | 'orange' | 'apple' | 'melon' | 'bell' | 'key'
+export type FruitKind = 'radish' | 'carrot' | 'corn' | 'tomato' | 'pear' | 'pumpkin' | 'sunflower'
 export type Fruit = { kind: FruitKind; x: number; y: number; life: number; maxLife: number; value: number }
 
 export type Snapshot = {
@@ -203,20 +203,20 @@ const STREAK_LANDMARK = 100
 const SCORE_LANDMARK = 1000
 
 /**
- * Fruit: offered when a third, and then two thirds, of the maze is eaten, for
+ * A treat: offered when a third, and then two thirds, of the maze is eaten, for
  * a little under ten seconds. Worth more on later mazes, but kept well short of
  * the arcade's thousands, so a deep run cannot outpace what the boards accept.
  */
 const FRUIT_AT = [0.3, 0.68] as const
 const FRUIT_LIFE = 9
 const FRUIT_LADDER: readonly { kind: FruitKind; value: number }[] = [
-  { kind: 'cherry', value: 100 },
-  { kind: 'berry', value: 200 },
-  { kind: 'orange', value: 300 },
-  { kind: 'apple', value: 500 },
-  { kind: 'melon', value: 700 },
-  { kind: 'bell', value: 1000 },
-  { kind: 'key', value: 1500 },
+  { kind: 'radish', value: 100 },
+  { kind: 'carrot', value: 200 },
+  { kind: 'corn', value: 300 },
+  { kind: 'tomato', value: 500 },
+  { kind: 'pear', value: 700 },
+  { kind: 'pumpkin', value: 1000 },
+  { kind: 'sunflower', value: 1500 },
 ]
 
 /*

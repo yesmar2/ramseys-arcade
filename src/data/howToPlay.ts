@@ -86,19 +86,19 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     tip: 'A new ship every third wave, and a Shield takes one hit for you. Saucers join from wave 3.',
   },
   patriot: {
-    goal: 'Keep your six cities standing.',
+    goal: 'Keep your five cities standing.',
     controls: [
       { does: 'Fire where you aim', touch: 'Tap', keys: 'Click' },
       { does: 'Use a power', touch: 'Badges', keys: '1–4' },
     ],
     scores: [
-      { what: 'Missile destroyed', pts: '+25' },
+      { what: 'Missile destroyed', pts: '+30' },
       { what: 'Each kill in a chain', pts: '×2, ×3 … up to ×8' },
       { what: 'Direct hit', pts: '+100' },
-      { what: 'City standing at wave end', pts: '+100' },
+      { what: 'City standing at wave end', pts: '+150' },
     ],
     ends: 'The last city falls.',
-    tip: 'Burst where trails cross to chain them. Each turret has 10 shells a wave.',
+    tip: 'Burst where trails cross to chain them. Each turret has 16 shells a wave.',
   },
   snake: {
     goal: 'Eat, grow, don’t crash.',
@@ -178,7 +178,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Crumb', pts: '+10 × streak' },
       { what: 'Fresh crumbs in a row', pts: '×2 at 10', sub: 'up to ×8' },
       { what: 'A scared bug', pts: '+200', sub: 'after a glowberry, doubling to +1,600' },
-      { what: 'Fruit', pts: '+100 and up' },
+      { what: 'A garden treat', pts: '+100 and up' },
     ],
     ends: 'Caught three times.',
     tip: 'Eat a glowberry and the bugs go pale: catch them before they get their colour back. Doubling back over eaten ground resets the streak.',

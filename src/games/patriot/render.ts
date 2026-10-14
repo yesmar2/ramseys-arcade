@@ -29,7 +29,7 @@ import {
  * world there is. The cities are skylines with lit windows; a city that falls
  * leaves rubble that smokes. The launchers turn to follow the sight and kick
  * when they fire. A missile's trail thickens toward its warhead and a mark on
- * the ground says where it will land; a shot marks its burst point with an X.
+ * the ground says where it will land; a shot marks its burst point with a turning ring.
  */
 
 const FONT = '"Outfit", system-ui, sans-serif'
@@ -448,22 +448,22 @@ function drawBattery(ctx: CanvasRenderingContext2D, sk: Skin, bat: Battery, s: G
   const under = sk.ground
   const red = hue('red')
 
-  // The rack: ten shells in two rows, spent ones left as outlines. An ammo
-  // power lights the rack while it fills.
+  // The rack: sixteen shells in two rows of eight, spent ones left as
+  // outlines. An ammo power lights the rack while it fills.
   const reload = bat.alive ? (s.reloadT ?? 0) : 0
   if (reload > 0) {
     ctx.save()
     ctx.globalAlpha = reload * (sk.dark ? 0.5 : 0.4)
     ctx.fillStyle = hsla(hue('amber'), 90, sk.dark ? 60 : 70, 1)
     ctx.beginPath()
-    ctx.roundRect(x - 21 * u, gy + 6 * u, 42 * u, 28 * u, 6 * u)
+    ctx.roundRect(x - 32 * u, gy + 6 * u, 64 * u, 28 * u, 6 * u)
     ctx.fill()
     ctx.restore()
   }
-  for (let i = 0; i < 10; i++) {
-    const col = i % 5
-    const row = Math.floor(i / 5)
-    const mx = x + (col - 2) * 7.4 * u
+  for (let i = 0; i < 16; i++) {
+    const col = i % 8
+    const row = Math.floor(i / 8)
+    const mx = x + (col - 3.5) * 7.4 * u
     const my = gy + 9 * u + row * 13 * u
     const full = bat.alive && i < bat.ammo
     const k = full && reload > 0 ? 1 + 0.3 * reload * Math.max(0, Math.sin((1 - reload) * 12 - i * 0.6)) : 1
@@ -697,21 +697,25 @@ function drawShot(ctx: CanvasRenderingContext2D, sk: Skin, shot: Shot, s: GameSt
   ctx.lineWidth = Math.max(1, 1.1 * u)
   ctx.stroke()
 
-  // The burst point, marked with an X until the shot gets there.
-  const r = 5.5 * u
-  const spin = s.time * 2.2
+  // The burst point, marked with a turning ring of four arcs and a dot in it until the shot gets there.
+  const r = 6 * u
   ctx.save()
   ctx.translate(shot.x1, shot.y1)
-  ctx.rotate(spin * 0.25)
+  ctx.rotate(s.time * 1.6)
   ctx.strokeStyle = hsla(h, 80, sk.dark ? 70 : 42, 0.9)
   ctx.lineWidth = Math.max(1.3, 1.8 * u)
   ctx.lineCap = 'round'
   ctx.beginPath()
-  ctx.moveTo(-r, -r)
-  ctx.lineTo(r, r)
-  ctx.moveTo(r, -r)
-  ctx.lineTo(-r, r)
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2
+    ctx.moveTo(Math.cos(a + 0.3) * r, Math.sin(a + 0.3) * r)
+    ctx.arc(0, 0, r, a + 0.3, a + Math.PI / 2 - 0.3)
+  }
   ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(0, 0, Math.max(1, 1.5 * u), 0, Math.PI * 2)
+  ctx.fillStyle = ctx.strokeStyle
+  ctx.fill()
   ctx.restore()
 }
 

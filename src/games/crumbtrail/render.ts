@@ -49,8 +49,8 @@ const LOOK: Record<Dir, { x: number; y: number }> = {
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
 }
-/** Fruit by tier, lowest first: the same fruit Glowberry offers. */
-const FRUIT_ART: FruitArt[] = ['cherry', 'berry', 'orange', 'apple', 'melon', 'bell', 'key']
+/** Treats by tier, lowest first: the same garden treats Glowberry offers. */
+const FRUIT_ART: FruitArt[] = ['radish', 'carrot', 'corn', 'tomato', 'pear', 'pumpkin', 'sunflower']
 
 function hsla(hue: number, sat: number, light: number, alpha = 1) {
   return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`
