@@ -8,7 +8,7 @@
 export type SeasonDates = { id: number; name: string; firstDay: string; lastDay: string }
 
 export const SEASON_CALENDAR: readonly SeasonDates[] = [
-  { id: 1, name: 'Space Race', firstDay: '2026-10-31', lastDay: '2027-01-04' },
+  { id: 1, name: 'Space Race', firstDay: '2026-11-14', lastDay: '2027-01-04' },
   { id: 2, name: 'Cold Snap', firstDay: '2027-01-05', lastDay: '2027-03-08' },
 ]
 

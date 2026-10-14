@@ -178,7 +178,7 @@ export const PRIZES: readonly Prize[] = [
     name: 'Regular',
     price: 0,
     blurb: LIT,
-    earned: { by: 'Keeping the Dailies on 30 days of Season 1', short: 'Season 1' },
+    earned: { by: 'Keeping the Dailies on 24 days of Season 1', short: 'Season 1' },
   },
   // Season 2, Cold Snap: its pass gives these at their levels (the API's seasons.ts).
   ...(

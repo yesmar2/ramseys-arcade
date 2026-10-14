@@ -142,7 +142,7 @@ export function usePlusMember(name: string): boolean {
 
 const DAY_MS = 86_400_000
 
-/** A season's own days, first to last (not a preview's early start): 66 for Oct 31 to Jan 4. */
+/** A season's own days, first to last (not a preview's early start): 52 for Nov 14 to Jan 4. */
 function seasonDays(season: { firstDay: string; lastDay: string }): number {
   const day = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
   return Math.round((day(season.lastDay) - day(season.firstDay)) / DAY_MS) + 1
