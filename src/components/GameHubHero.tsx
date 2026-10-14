@@ -146,8 +146,6 @@ export function GameHubHero({
                 ? 'Coming soon. The screen shows what it will be.'
                 : (deviceRequirementLabel(game) ?? `${game.name} isn’t available on this device.`)}
             </p>
-          ) : game.inDevelopment ? (
-            <p className="gh-hero__hint">Still being tuned, so expect rough edges.</p>
           ) : null}
         </div>
         <p className="gh-hero__where">

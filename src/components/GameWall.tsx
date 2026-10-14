@@ -13,7 +13,6 @@ import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace, type LeaderboardPeriod } from '../lib/leaderboard'
 import { periodWord } from '../lib/profileMath'
 import { formatBoardScore, formatLeaderboardScore } from '../lib/leaderboardFormat'
-import { numberWord } from '../lib/numberWord'
 import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import { resolveGameAccent } from '../lib/theme'
 import { GameArt } from './GameArt'
@@ -183,9 +182,9 @@ const bestWhen = (period: LeaderboardPeriod) => periodWord(period).replace(/^thi
  * The wall: every game but the dailies (they're on today's row, above it)
  * as an arcade cabinet, in a grid that runs five across on a desktop and three
  * on a phone, and no two cabinets of one colour side by side. The finished
- * games stand on the floor; the ones still being tuned get a row of their own
- * under them, which on a phone runs on from the floor with
- * a New badge on each instead of a heading. Each cabinet's screen shows its game, which
+ * games stand on the floor together, a newer one with a New badge (Ramsey,
+ * 2026-10-14: "we don't need the 'New on the floor' section on home page, all
+ * games can be together"). Each cabinet's screen shows its game, which
  * plays when asked; under the screen go the name, the board's high score and
  * yours. Today's event's game and the weekly's wear a badge. Tabs along the top
  * cut the wall by what kind of game it is, and say how many of each there are.
@@ -204,8 +203,7 @@ export function GameWall() {
 
   const all = wallGames(device)
   const shown = all.filter((g) => inTab(g, tab))
-  const floor = arrangeWall(shown.filter((g) => !isFresh(g)), null, () => ONE)
-  const fresh = arrangeWall(shown.filter(isFresh), null, () => ONE)
+  const floor = arrangeWall(shown, null, () => ONE)
   // Today's event's game and the weekly's wear their badges on the wall.
   const dailySlug = official.find((t) => t.cadence === 'daily')?.games[0] ?? null
   const weekly = new Set(official.find((t) => t.cadence === 'weekly')?.games ?? [])
@@ -221,7 +219,6 @@ export function GameWall() {
       asking={!failed}
       daily={game.slug === dailySlug}
       weekly={weekly.has(game.slug)}
-      // Their own row's heading says so on a wider screen, which hides the badge (home.css).
       newFlag={isFresh(game)}
       preview
       hunt={index === 0 ? 'home-wall' : undefined}
@@ -258,21 +255,6 @@ export function GameWall() {
         </div>
       </div>
       {floor.length > 0 ? <ul className="wall__grid">{floor.map((g, i) => cabinet(g, i))}</ul> : null}
-      {fresh.length > 0 ? (
-        <>
-          <div className="wall__sub">
-            <h3 className="wall__subtitle">New on the floor</h3>
-            <p className="wall__subnote">
-              {tab !== 'all' && tab !== 'new'
-                ? 'Still being tuned.'
-                : fresh.length === 1
-                  ? 'The newest, still being tuned.'
-                  : `The ${numberWord(fresh.length)} newest, still being tuned.`}
-            </p>
-          </div>
-          <ul className="wall__grid wall__grid--fresh">{fresh.map((g, i) => cabinet(g, floor.length + i))}</ul>
-        </>
-      ) : null}
     </section>
   )
 }

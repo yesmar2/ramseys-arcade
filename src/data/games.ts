@@ -219,6 +219,9 @@ export const games: Game[] = [
     accent: PALETTE.green,
     playable: true,
     inDevelopment: true,
+    // Held back (Ramsey, 2026-10-14: "i want to hide putt game for now"): off every listing, its pages still
+    // play by address. The API's ON_DECK_GAMES too.
+    onDeck: true,
   },
   {
     name: 'Frenzy',

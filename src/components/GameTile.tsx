@@ -44,19 +44,11 @@ export function GameTile({
         className="game-tile game-tile--thumb"
         href={href ?? gameHref(game.slug)}
         style={style}
-        aria-label={
-          game.inDevelopment
-            ? `${game.name}, in development`
-            : game.comingSoon
-              ? `${game.name}, coming soon`
-              : game.name
-        }
+        aria-label={game.comingSoon ? `${game.name}, coming soon` : game.name}
       >
         <GameThumbArt slug={game.slug} accent={accent} shape="card" />
         <h3 className="game-tile__title">{game.name}</h3>
-        {game.inDevelopment ? (
-          <span className="game-tile__status">In development</span>
-        ) : game.comingSoon ? (
+        {game.comingSoon ? (
           <span className="game-tile__status">Coming soon</span>
         ) : best ? (
           <span className="game-tile__best">
