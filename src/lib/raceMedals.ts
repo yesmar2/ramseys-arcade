@@ -45,14 +45,18 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * Wobble Run came at 12% from the start (2026-10-09), where the two newest settled: its blue blip waits out
  * every gap and takes no shortcut, and its plan keeps a day only when a perfect run comes in at 48 to 60% of
  * the blue blip's time, so platinum at 36% takes most of the gold lines in one run, short of perfect.
+ * Hot Lap's step went to 5% and Marble Run's to 10% on 2026-10-14, when Ramsey found gold and platinum "too hard"
+ * in both: his best Hot Lap laps had landed 13 to 25% under the blue car (17% the middle day, 12.8% that day, short of
+ * gold at 14%), and no one's Marble Run had reached platinum's 36% (the best 34.5%; his 30.8% that day was gold).
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.06, marblerun: 0.12, lander: 0.1, swoop: 0.13, wobblerun: 0.12 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.13, wobblerun: 0.12 }
 
 /**
  * How many of the game's steps faster than the blue each medal is. Platinum stays three, where it was tuned to
  * his best runs; the others sit closer under it, bronze no longer just beating the blue (Ramsey, 2026-10-11:
- * "the medals on the dailies should be closer together in times, bronze is too easy"). Hot Lap's are 7, 11, 14
- * and 18% now (they were 0, 6, 12, 18); Marble Run's and Wobble Run's 14, 22, 29, 36. Lander's step went to 10%
+ * "the medals on the dailies should be closer together in times, bronze is too easy"). Hot Lap's are 6, 9, 12
+ * and 15% now (7, 11, 14 and 18 until 2026-10-14); Marble Run's 12, 18, 24, 30 (14, 22, 29, 36 till then, as
+ * Wobble Run's still are). Lander's step went to 10%
  * and Swoop's to 13% the same day, when he found their platinum "a little too easy": his best Lander days had
  * landed 27 to 28% under the blue ship (platinum was 24%), his best Swoop days 36 to 38% under the blue bird
  * (platinum was 36%). Lander's are 12, 18, 24, 30 now; Swoop's 16, 23, 31, 39. The API's ticketLadders.ts

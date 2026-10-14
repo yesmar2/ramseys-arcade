@@ -325,7 +325,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 7% faster than the blue car, up to platinum at 18%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 6% faster than the blue car, up to platinum at 15%' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'The call under the clock names the next corner and counts down to it: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
@@ -374,7 +374,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Off the edge', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 14% faster than the blue ball, up to platinum at 36%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 12% faster than the blue ball, up to platinum at 30%' },
     ],
     ends: 'At the goal. Roll it as often as you like.',
     tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. Each course has a few of these too: boost pads and mud, bumpers, swinging hammers, a windmill, a moving platform, ice, a fork, a loop (hit its boost pad or you won’t make the top). The ghost is the run to beat.',
