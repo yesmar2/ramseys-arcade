@@ -21,17 +21,21 @@ import {
 import { pileLayout, type Box, type Layout } from './layout'
 
 /*
- * The well, drawn the arcade's way: every piece one rounded shape in a soft
- * wash of its own colour, outlined round the outside, with faint seams so its
- * blocks can still be counted. A row that clears splits as it goes, and a
- * piece keeps its shape until a clear or a Shake breaks it up.
+ * The well, drawn the arcade's way: every block a glossy pebble in its
+ * piece's colour, lit from the top left and darker round its foot, with a
+ * darker outline and a white shine. Each block is its own stone, so a piece
+ * is told by its colour, and a row that clears goes white and closes up.
+ * Where the falling piece will land, each of its blocks is a dotted outline.
  *
- * Where the falling piece will land is a dashed outline of it. The pieces have
- * no faces: Ramsey asked for the eyes off them (2026-10-06).
+ * Pebbles, so the game has a look of its own and not the block game's: Ramsey
+ * picked them from the "Look-alikes to fix" canvas (2026-10-14, "pebbles is
+ * fine, but i don't want the faces"). They have no faces: he had asked for the
+ * eyes off the pieces before (2026-10-06).
  *
  * Seven colours of the arcade's ten: the long one pink, the square amber, T
  * violet, S green, Z orange, J sky and L red. The well is the page's own
- * ground, a step darker in the dark theme and a step lighter in the light.
+ * ground, a step darker in the dark theme and a step lighter in the light,
+ * edged in Pileup's pink.
  */
 
 const TAU = Math.PI * 2
@@ -53,7 +57,9 @@ const HUES: readonly string[] = [
  * them: the pile, the falling piece and where it will land, the hold and next
  * boxes, and the bits a Shake knocks loose. Looks only. Each kind keeps its
  * own colour in every skin, as players read a piece by its colour as much as
- * by its shape. Season 2 (Cold Snap):
+ * by its shape. A skin draws each piece as one rounded shape, outlined round
+ * the outside, with faint seams so its blocks can still be counted; it keeps
+ * its shape until a clear or a Shake breaks it up. Season 2 (Cold Snap):
  *
  * - Ice cubes: clear ice faintly tinted the kind's colour, a frosty outline,
  *   a frosted glint in each block's corner and a bubble or two.
@@ -84,11 +90,15 @@ type Tones = {
   dark: boolean
   fill: string
   line: string
+  /** Between a skin's blocks; pebbles are blocks apart, with none. */
   seam: string
-  /** The light along a piece's top; empty for none. */
+  /** The light along a piece's top, or the gleam on a pebble; empty for none. */
   shine: string
   /** Where the piece will land, and the speed lines of a hard drop. */
   ghost: string
+  /** A pebble's lit top and its shaded foot, either side of `fill`. */
+  tint?: string
+  shade?: string
   /** A second, thinner line just inside the outline: the frost on ice in the light theme. */
   rim?: string
   /** Ice's corner glints, the knit's stitches, the aurora's stars. */
@@ -166,27 +176,20 @@ function tonesFor(dark: boolean, ground: string, look: Look): Tones[] {
         deco2: mixColor(mixColor(hue, AURORA[0], 0.15), '#ffffff', 0.22),
       }
     }
-    return dark
-      ? {
-          look,
-          kind,
-          dark,
-          fill: mixColor(hue, ground, 0.28),
-          line: mixColor(hue, '#ffffff', 0.5),
-          seam: mixColor(hue, ground, 0.55),
-          shine: 'rgba(255, 255, 255, 0.3)',
-          ghost: mixColor(hue, '#ffffff', 0.5),
-        }
-      : {
-          look,
-          kind,
-          dark,
-          fill: mixColor(hue, '#ffffff', 0.4),
-          line: mixColor(hue, '#1a2b3c', 0.45),
-          seam: mixColor(hue, '#1a2b3c', 0.12),
-          shine: 'rgba(255, 255, 255, 0.75)',
-          ghost: mixColor(hue, '#1a2b3c', 0.45),
-        }
+    // A pebble: the kind's own colour, the same in both themes, as it stands out on either ground.
+    const tint = mixColor(hue, '#ffffff', 0.35)
+    return {
+      look,
+      kind,
+      dark,
+      fill: hue,
+      line: mixColor(hue, '#1a1020', 0.42),
+      seam: '',
+      shine: 'rgba(255, 255, 255, 0.55)',
+      ghost: dark ? tint : mixColor(hue, '#1a2b3c', 0.35),
+      tint,
+      shade: mixColor(hue, '#1a1020', 0.2),
+    }
   })
   toneCache.set(key, tones)
   return tones
@@ -271,6 +274,47 @@ function tileFor(ctx: CanvasRenderingContext2D, tone: Tones, px: number): Canvas
   return pattern
 }
 
+/** A pebble in its cell, as parts of the cell: how far in from the edge, and how round. */
+const PEBBLE_IN = 0.075
+const PEBBLE_ROUND = 0.35
+
+/** One pebble, `px` device pixels square, made once and kept: a frame draws each block as a copy of it. */
+const pebbles = new Map<string, HTMLCanvasElement | null>()
+
+function pebbleFor(tone: Tones, px: number): HTMLCanvasElement | null {
+  const id = `${tone.kind}:${tone.dark}:${px}`
+  if (pebbles.has(id)) return pebbles.get(id)!
+  if (pebbles.size > 48) pebbles.clear()
+  const canvas = document.createElement('canvas')
+  canvas.width = px
+  canvas.height = px
+  const g = canvas.getContext('2d')
+  if (!g) {
+    pebbles.set(id, null)
+    return null
+  }
+  const ins = px * PEBBLE_IN
+  const w = px - ins * 2
+  // Lit from the top left: its colour lifted there, the colour itself across most of it, and a shade round its foot.
+  const lit = g.createRadialGradient(ins + w * 0.35, ins + w * 0.3, 0, ins + w * 0.35, ins + w * 0.3, w * 0.8)
+  lit.addColorStop(0, tone.tint!)
+  lit.addColorStop(0.6, tone.fill)
+  lit.addColorStop(1, tone.shade!)
+  g.beginPath()
+  g.roundRect(ins, ins, w, w, px * PEBBLE_ROUND)
+  g.fillStyle = lit
+  g.fill()
+  g.strokeStyle = tone.line
+  g.lineWidth = Math.max(1, px * 0.06)
+  g.stroke()
+  g.fillStyle = tone.shine
+  g.beginPath()
+  g.ellipse(px * 0.35, px * 0.35, px * 0.15, px * 0.09, 0, 0, TAU)
+  g.fill()
+  pebbles.set(id, canvas)
+  return canvas
+}
+
 function clamp01(v: number) {
   return Math.max(0, Math.min(1, v))
 }
@@ -316,10 +360,74 @@ type ShapeOpts = {
 
 const key = (x: number, y: number) => (y + 8) * 64 + x
 
+/** Each cell's pebble as a path, `ins` in from the cell's edge and `round` at the corners, both parts of a cell. */
+function pebblePaths(cells: readonly CellAt[], ox: number, oy: number, c: number, ins: number, round: number) {
+  const path = new Path2D()
+  for (const cell of cells) {
+    path.roundRect(ox + cell.x * c + c * ins, oy + cell.y * c + c * ins, c * (1 - ins * 2), c * (1 - ins * 2), c * round)
+  }
+  return path
+}
+
 /**
- * Cells as one piece, at `c` pixels a cell from (ox, oy): rounded where it
- * turns outward, an outline round the outside a hair in from the edge, so two
- * pieces side by side keep a line of the well between them, and seams inside.
+ * Cells as pebbles, at `c` pixels a cell from (ox, oy), each block a copy of
+ * its kind's pebble. Where the piece will land, each block is a dotted
+ * outline of a pebble, a little smaller.
+ */
+function drawPebbles(
+  ctx: CanvasRenderingContext2D,
+  cells: readonly CellAt[],
+  tone: Tones,
+  ox: number,
+  oy: number,
+  c: number,
+  o: ShapeOpts,
+) {
+  const x0 = ox + (o.dx ?? 0)
+  const y0 = oy + (o.dy ?? 0)
+  ctx.save()
+  ctx.globalAlpha *= o.alpha ?? 1
+  if (o.ghost) {
+    const outline = pebblePaths(cells, x0, y0, c, 0.125, 0.3)
+    ctx.fillStyle = tone.ghost
+    ctx.globalAlpha *= 0.08
+    ctx.fill(outline)
+    ctx.globalAlpha /= 0.08
+    ctx.setLineDash([c * 0.15, c * 0.125])
+    ctx.strokeStyle = tone.ghost
+    ctx.lineWidth = Math.max(1, c * 0.08)
+    ctx.globalAlpha *= 0.75
+    ctx.stroke(outline)
+    ctx.restore()
+    return
+  }
+  const t = ctx.getTransform()
+  const stone = pebbleFor(tone, Math.max(4, Math.round(c * Math.hypot(t.a, t.b))))
+  if (stone) {
+    for (const cell of cells) ctx.drawImage(stone, x0 + cell.x * c, y0 + cell.y * c, c, c)
+  }
+  if (!stone || o.flash) {
+    const shape = pebblePaths(cells, x0, y0, c, PEBBLE_IN, PEBBLE_ROUND)
+    if (!stone) {
+      ctx.fillStyle = tone.fill
+      ctx.fill(shape)
+      ctx.strokeStyle = tone.line
+      ctx.lineWidth = Math.max(1, c * 0.06)
+      ctx.stroke(shape)
+    }
+    if (o.flash) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * clamp01(o.flash)})`
+      ctx.fill(shape)
+    }
+  }
+  ctx.restore()
+}
+
+/**
+ * Cells as one piece, at `c` pixels a cell from (ox, oy): pebbles in the
+ * usual look, and in a skin, rounded where it turns outward, an outline round
+ * the outside a hair in from the edge, so two pieces side by side keep a line
+ * of the well between them, and seams inside.
  */
 function drawShape(
   ctx: CanvasRenderingContext2D,
@@ -331,6 +439,10 @@ function drawShape(
   o: ShapeOpts = {},
 ) {
   if (!cells.length) return
+  if (tone.look === 'plain') {
+    drawPebbles(ctx, cells, tone, ox, oy, c, o)
+    return
+  }
   const set = new Set<number>()
   for (const cell of cells) set.add(key(cell.x, Math.round(cell.y)))
   const has = (x: number, y: number) => set.has(key(x, y))
@@ -347,11 +459,9 @@ function drawShape(
   // A skin's marks go by where a block sits in its piece, so they hold still while the piece moves.
   let minX = Infinity
   let minY = Infinity
-  if (look !== 'plain') {
-    for (const cell of cells) {
-      minX = Math.min(minX, cell.x)
-      minY = Math.min(minY, Math.round(cell.y))
-    }
+  for (const cell of cells) {
+    minX = Math.min(minX, cell.x)
+    minY = Math.min(minY, Math.round(cell.y))
   }
   const deco = look === 'aurora' ? new Path2D() : null
   const bubbles = look === 'ice' ? new Path2D() : null
@@ -498,21 +608,19 @@ function drawShape(
     ctx.setLineDash([c * 0.2, c * 0.14])
     ctx.strokeStyle = look === 'aurora' ? outline : tone.ghost
     ctx.lineWidth = lw
-    ctx.globalAlpha *= look === 'plain' ? 0.62 : 0.75
+    ctx.globalAlpha *= 0.75
     ctx.stroke(line)
     ctx.restore()
     return
   }
-  if (look !== 'plain') {
-    // The block's tile, laid from the first block's corner so every block of the piece starts a tile.
-    const t = ctx.getTransform()
-    const px = Math.max(4, Math.round(c * Math.hypot(t.a, t.b)))
-    const pattern = tileFor(ctx, tone, px)
-    if (pattern) {
-      const first = cells[0]!
-      pattern.setTransform(new DOMMatrix().translate(ox + first.x * c + dx, oy + first.y * c + dy).scale(c / px))
-      ctx.fillStyle = pattern
-    } else ctx.fillStyle = tone.fill
+  // The block's tile, laid from the first block's corner so every block of the piece starts a tile.
+  const t = ctx.getTransform()
+  const px = Math.max(4, Math.round(c * Math.hypot(t.a, t.b)))
+  const pattern = tileFor(ctx, tone, px)
+  if (pattern) {
+    const first = cells[0]!
+    pattern.setTransform(new DOMMatrix().translate(ox + first.x * c + dx, oy + first.y * c + dy).scale(c / px))
+    ctx.fillStyle = pattern
   } else ctx.fillStyle = tone.fill
   ctx.fill(fill)
   ctx.strokeStyle = tone.seam
@@ -658,14 +766,15 @@ function drawBackdrop(v: View, w: number, h: number) {
     ctx.fillStyle = HUES[kind]!
     ctx.beginPath()
     for (const [cx, cy] of SHAPES[kind]![turn]!) {
-      ctx.roundRect((cx - 1.5) * big, (cy - 1) * big, big * 0.94, big * 0.94, big * 0.24)
+      const at = PEBBLE_IN * big
+      ctx.roundRect((cx - 1.5) * big + at, (cy - 1) * big + at, big - at * 2, big - at * 2, big * PEBBLE_ROUND)
     }
     ctx.fill()
     ctx.restore()
   }
 }
 
-/** The well: a panel a step off the ground, dots where the cells meet, and a red glow at the brim when the pile is near it. */
+/** The well: a panel a step off the ground edged in Pileup's pink, dots where the cells meet, and a red glow at the brim when the pile is near it. */
 function drawWell(v: View, well: Box, shiftX: number) {
   const { ctx, dark, ground, ink, s, c } = v
   const x = well.x + shiftX
@@ -674,9 +783,9 @@ function drawWell(v: View, well: Box, shiftX: number) {
   roundRect(ctx, x - pad, well.y - pad, well.w + pad * 2, well.h + pad * 2, c * 0.32)
   ctx.fillStyle = dark ? mixColor(ground, '#000000', 0.32) : mixColor(ground, '#ffffff', 0.7)
   ctx.fill()
-  ctx.strokeStyle = ink
-  ctx.globalAlpha = dark ? 0.16 : 0.14
-  ctx.lineWidth = Math.max(1.2, c * 0.05)
+  ctx.strokeStyle = PALETTE.pink
+  ctx.globalAlpha = dark ? 0.4 : 0.45
+  ctx.lineWidth = Math.max(1.2, c * 0.07)
   ctx.stroke()
   ctx.globalAlpha = dark ? 0.14 : 0.16
   ctx.fillStyle = ink
@@ -987,7 +1096,8 @@ function drawBits(v: View, shiftX: number) {
     ctx.fillStyle = tone.fill
     ctx.strokeStyle = tone.line
     ctx.lineWidth = Math.max(1, c * 0.03)
-    roundRect(ctx, ox + shiftX + b.x * c - size / 2, oy + b.y * c - size / 2, size, size, size * 0.3)
+    // Chips of pebble are rounder than chips of a skin's block.
+    roundRect(ctx, ox + shiftX + b.x * c - size / 2, oy + b.y * c - size / 2, size, size, size * (tone.look === 'plain' ? 0.42 : 0.3))
     ctx.fill()
     ctx.stroke()
   }

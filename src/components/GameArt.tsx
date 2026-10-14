@@ -1886,60 +1886,52 @@ function WobbleRun({ id }: { id: Id }) {
 }
 
 /*
- * Pileup's pieces, as its renderer draws them in the dark theme: a soft wash
- * of the piece's colour against the well, its outline the colour lifted
- * halfway to white, rounded where it turns outward, seams between its blocks.
+ * Pileup's pebbles, as its renderer draws them: every block its own glossy
+ * stone in its piece's colour, lit from the top left and darker round its
+ * foot, with a darker outline and a white shine.
  */
-const PILE_GROUND = '#121c24'
 const PILE_HUES = [PALETTE.pink, PALETTE.amber, PALETTE.violet, PALETTE.green, PALETTE.orange, PALETTE.sky, PALETTE.red]
 
 function pileTone(kind: number) {
   const hue = PILE_HUES[kind]!
-  return { fill: mixColor(hue, PILE_GROUND, 0.28), line: mixColor(hue, '#ffffff', 0.5) }
+  return { hue, tint: mixColor(hue, '#ffffff', 0.35), shade: mixColor(hue, '#1a1020', 0.2), line: mixColor(hue, '#1a1020', 0.42) }
 }
 
-/** Cells (column, row up from the floor) as one piece, `c` a cell, the floor at `floor`. */
-function PileShape({ cells, kind, x0, floor, c, opacity = 1 }: { cells: Array<[number, number]>; kind: number; x0: number; floor: number; c: number; opacity?: number }) {
-  const has = (x: number, y: number) => cells.some(([cx, cy]) => cx === x && cy === y)
-  const ins = c * 0.04
-  const r = c * 0.26
-  let fill = ''
-  let edge = ''
-  let seam = ''
-  for (const [x, y] of cells) {
-    const px = x0 + x * c
-    const py = floor - (y + 1) * c
-    const T = !has(x, y + 1)
-    const B = !has(x, y - 1)
-    const L = !has(x - 1, y)
-    const R = !has(x + 1, y)
-    const a = px + (L ? ins : 0)
-    const b = px + c - (R ? ins : 0)
-    const t = py + (T ? ins : 0)
-    const u = py + c - (B ? ins : 0)
-    const tl = T && L ? r : 0
-    const tr = T && R ? r : 0
-    const br = B && R ? r : 0
-    const bl = B && L ? r : 0
-    fill += `M${a + tl} ${t} H${b - tr} Q${b} ${t} ${b} ${t + tr} V${u - br} Q${b} ${u} ${b - br} ${u} H${a + bl} Q${a} ${u} ${a} ${u - bl} V${t + tl} Q${a} ${t} ${a + tl} ${t} Z `
-    if (T) edge += `M${L ? a + tl : px} ${t} H${R ? b - tr : px + c} `
-    if (B) edge += `M${L ? a + bl : px} ${u} H${R ? b - br : px + c} `
-    if (L) edge += `M${a} ${T ? t + tl : py} V${B ? u - bl : py + c} `
-    if (R) edge += `M${b} ${T ? t + tr : py} V${B ? u - br : py + c} `
-    if (tl) edge += `M${a} ${t + tl} Q${a} ${t} ${a + tl} ${t} `
-    if (tr) edge += `M${b - tr} ${t} Q${b} ${t} ${b} ${t + tr} `
-    if (br) edge += `M${b} ${u - br} Q${b} ${u} ${b - br} ${u} `
-    if (bl) edge += `M${a + bl} ${u} Q${a} ${u} ${a} ${u - bl} `
-    if (!R) seam += `M${px + c} ${py + c * 0.24} V${py + c * 0.76} `
-    if (!T) seam += `M${px + c * 0.24} ${py} H${px + c * 0.76} `
-  }
-  const tone = pileTone(kind)
+/** The pebbles' light, one gradient a kind, laid across each stone. */
+function PileLight({ id }: { id: Id }) {
   return (
-    <g opacity={opacity}>
-      <path d={fill} fill={tone.fill} />
-      <path d={seam} {...line(tone.line, c * 0.05, 0.35)} />
-      <path d={edge} {...line(tone.line, c * 0.1)} />
-    </g>
+    <defs>
+      {PILE_HUES.map((_, kind) => {
+        const tone = pileTone(kind)
+        return (
+          <radialGradient key={kind} id={id(`pebble${kind}`)} cx="0.35" cy="0.3" r="0.8">
+            <stop offset="0" stopColor={tone.tint} />
+            <stop offset="0.6" stopColor={tone.hue} />
+            <stop offset="1" stopColor={tone.shade} />
+          </radialGradient>
+        )
+      })}
+    </defs>
+  )
+}
+
+/** Cells (column, row up from the floor) as a piece's pebbles, `c` a cell, the floor at `floor`. */
+function PileShape({ id, cells, kind, x0, floor, c }: { id: Id; cells: Array<[number, number]>; kind: number; x0: number; floor: number; c: number }) {
+  const tone = pileTone(kind)
+  const ins = c * 0.075
+  return (
+    <>
+      {cells.map(([x, y]) => {
+        const px = x0 + x * c
+        const py = floor - (y + 1) * c
+        return (
+          <g key={`${x}-${y}`}>
+            <rect x={px + ins} y={py + ins} width={c - ins * 2} height={c - ins * 2} rx={c * 0.35} fill={`url(#${id(`pebble${kind}`)})`} stroke={tone.line} strokeWidth={c * 0.06} />
+            <ellipse cx={px + c * 0.35} cy={py + c * 0.35} rx={c * 0.15} ry={c * 0.09} fill="#ffffff" opacity="0.55" />
+          </g>
+        )
+      })}
+    </>
   )
 }
 
@@ -1976,23 +1968,24 @@ function Pileup({ id }: { id: Id }) {
   return (
     <>
       <Backdrop id={id} stops={[[0, '#1b2744'], [1, '#0d141d']]} />
-      {/* The well, a step darker than the room, with dots where its cells meet. */}
-      <rect x={x0 - 0.4} y="-1" width={10 * c + 0.8} height={floor + 1.4} rx="0.9" fill="#0b1218" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="0.2" />
+      <PileLight id={id} />
+      {/* The well, a step darker than the room and edged in Pileup's pink, with dots where its cells meet. */}
+      <rect x={x0 - 0.4} y="-1" width={10 * c + 0.8} height={floor + 1.4} rx="0.9" fill="#0b1218" stroke={PALETTE.pink} strokeOpacity="0.4" strokeWidth="0.24" />
       {Array.from({ length: 9 }, (_, i) =>
         Array.from({ length: 10 }, (__, j) => (
           <circle key={`${i}-${j}`} cx={x0 + (i + 1) * c} cy={floor - (j + 1) * c} r="0.1" fill="#ffffff" opacity="0.13" />
         )),
       )}
       {PILE_PIECES.map(([kind, cells], i) => (
-        <PileShape key={i} cells={cells} kind={kind} x0={x0} floor={floor} c={c} />
+        <PileShape key={i} id={id} cells={cells} kind={kind} x0={x0} floor={floor} c={c} />
       ))}
-      {/* Loose blocks dropping, each with the streak of its fall above it. */}
+      {/* Loose pebbles dropping, each with the streak of its fall above it. */}
       {PILE_FALLING.map(([kind, col, row]) => {
         const p = at(col, row)
         return (
           <g key={`${col}-${row}`}>
-            <path d={`M${p.x + c * 0.3} ${p.y - c * 0.85} V${p.y - c * 0.12} M${p.x + c * 0.7} ${p.y - c * 1.25} V${p.y - c * 0.12}`} {...line(pileTone(kind).line, 0.2, 0.45)} />
-            <PileShape cells={[[col, row]]} kind={kind} x0={x0} floor={floor} c={c} />
+            <path d={`M${p.x + c * 0.3} ${p.y - c * 0.85} V${p.y - c * 0.12} M${p.x + c * 0.7} ${p.y - c * 1.25} V${p.y - c * 0.12}`} {...line(pileTone(kind).tint, 0.2, 0.45)} />
+            <PileShape id={id} cells={[[col, row]]} kind={kind} x0={x0} floor={floor} c={c} />
           </g>
         )
       })}
@@ -2009,17 +2002,17 @@ function Pileup({ id }: { id: Id }) {
         [30.2, 23.6, 0.5, 0],
         [19.2, 21.9, 0.45, 6],
       ].map(([x, y, s, kind]) => (
-        <rect key={x} x={x} y={y} width={s} height={s} rx={s * 0.3} fill={pileTone(kind!).line} opacity="0.85" />
+        <rect key={x} x={x} y={y} width={s} height={s} rx={s * 0.42} fill={pileTone(kind!).tint} opacity="0.85" />
       ))}
       {/* The piece in play, waiting at the top while the pile settles. */}
-      <PileShape cells={waiting} kind={2} x0={x0} floor={floor} c={c} />
+      <PileShape id={id} cells={waiting} kind={2} x0={x0} floor={floor} c={c} />
       {/* Held, and next: the boxes either side of the well. */}
       {box(0.5, 2, 4.3, 4.6)}
-      <PileShape cells={[[1, 0], [2, 0], [0, -1], [1, -1]]} kind={3} x0={0.5 + 2.15 - 1.35} floor={2 + 2.3 + 0.9} c={0.9} />
+      <PileShape id={id} cells={[[1, 0], [2, 0], [0, -1], [1, -1]]} kind={3} x0={0.5 + 2.15 - 1.35} floor={2 + 2.3 + 0.9} c={0.9} />
       {box(35.2, 2, 4.3, 4.6)}
-      <PileShape cells={[[0, 0], [1, 0], [0, 1], [1, 1]]} kind={1} x0={35.2 + 2.15 - 0.9} floor={2 + 2.3 + 0.9} c={0.9} />
+      <PileShape id={id} cells={[[0, 0], [1, 0], [0, 1], [1, 1]]} kind={1} x0={35.2 + 2.15 - 0.9} floor={2 + 2.3 + 0.9} c={0.9} />
       {box(35.2, 7.6, 4.3, 3.6)}
-      <PileShape cells={[[0, 1], [1, 1], [1, 0], [2, 0]]} kind={4} x0={35.2 + 2.15 - 1.05} floor={7.6 + 1.8 + 0.7} c={0.7} />
+      <PileShape id={id} cells={[[0, 1], [1, 1], [1, 0], [2, 0]]} kind={4} x0={35.2 + 2.15 - 1.05} floor={7.6 + 1.8 + 0.7} c={0.7} />
     </>
   )
 }
