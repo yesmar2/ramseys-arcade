@@ -243,15 +243,19 @@ const CENTER_EPS = 0.001
 /** Steering input goes stale so you never get a surprise turn later. */
 const PENDING_TTL = 1.1
 
-/** The player's colour, the chasers', and the crumbs', as hues. */
-export const PLAYER_HUE = 24
+/**
+ * The player's colour (Blip's mint, blip.ts BLIP_HUE), the chasers', the
+ * crumbs' and the glowberries', as hues. The chasers are the bugs of
+ * games/mazeBugs.ts: Snatch red, Sly violet, Shady sky and Grumble amber.
+ */
+export const PLAYER_HUE = 168
 export const CRUMB_HUE = 42
+export const BERRY_HUE = 276
 export const GHOST_HUE: Record<GhostKind, number> = {
-  blink: 356,
-  pink: 322,
-  inky: 188,
-  // Green, not the arcade's orange: orange is the player here.
-  clyde: 146,
+  blink: 3,
+  pink: 258,
+  inky: 205,
+  clyde: 40,
 }
 
 function loadBest() {
@@ -1013,8 +1017,8 @@ function eatAt(state: GameState) {
     state.surge = Math.min(1, state.surge + 0.25)
     frighten(state, Math.max(FRIGHT_TIME * 0.5, FRIGHT_TIME - (state.level - 1) * 0.4))
     state.bites.push({ x: x + 0.5, y: y + 0.5, life: 1, power: true })
-    addRing(state, x + 0.5, y + 0.5, 0.3, 2.2, 0.55, CRUMB_HUE)
-    addSparks(state, x + 0.5, y + 0.5, 10, CRUMB_HUE, 5)
+    addRing(state, x + 0.5, y + 0.5, 0.3, 2.2, 0.55, BERRY_HUE)
+    addSparks(state, x + 0.5, y + 0.5, 10, BERRY_HUE, 5)
     sfx('wave')
   }
 

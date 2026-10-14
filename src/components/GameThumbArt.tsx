@@ -271,13 +271,14 @@ function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
   return `M ${cx} ${cy} L ${lx} ${ly} A ${r} ${r} 0 1 1 ${ux} ${uy} Z`
 }
 
-/** The chomp, as it is drawn in play: an eye over the mouth, and the next crumb in front of it. */
+/** Glowberry's berry: round, a leaf on top, its shine, and a twinkle of its glow. */
 function PelletsThumb({ accent }: { accent: string }) {
   return (
     <>
-      <path d={pelletsPacPath(14.2, 16, 9.4)} {...mark(accent)} />
-      <circle cx="15.5" cy="11.3" r="1.35" fill={accent} />
-      <circle cx="27.4" cy="16" r="1.6" fill={accent} opacity="0.9" />
+      <circle cx="14.6" cy="18.6" r="8.6" {...mark(accent)} />
+      <path d="M15.8 9.9 C17.1 6.6 20.9 5.2 24.4 6.1 C23.3 9.4 19.6 11 15.8 9.9 Z" {...mark(accent, 0.28, 1.5)} />
+      <circle cx="11.6" cy="15.6" r="1.7" fill={accent} />
+      <path d="M26.4 19.2 Q26.4 22.2 29.4 22.2 Q26.4 22.2 26.4 25.2 Q26.4 22.2 23.4 22.2 Q26.4 22.2 26.4 19.2 Z" fill={accent} />
     </>
   )
 }

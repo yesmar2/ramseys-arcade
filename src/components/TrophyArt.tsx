@@ -297,13 +297,15 @@ const SECRET_ART: Record<number, ReactNode> = {
       <path d="M20 34l-1.5 6h11L28 34M15 40h18" />
     </>
   ),
-  // Safe Spot: tucked in a corner of the maze while a chaser wonders where you went.
+  // Safe Spot: tucked in a corner of Glowberry's maze while a bug wonders where you went.
   25: (
     <>
       <path d="M8 8h32M8 8v32h13" />
       <circle className="trophy-art__fill" cx="14.5" cy="33.5" r="3.6" />
-      <path className="trophy-art__fill trophy-art__fill--soft" d="M27 41v-9a6.5 6.5 0 0 1 13 0v9l-2.2-1.6-2.1 1.6-2.2-1.6-2.2 1.6-2.1-1.6Z" />
-      <Numeral n="?" x={33.5} y={24} size={11} />
+      <path d="M31.6 30.4 29.8 27.2M35.4 30.4 37.2 27.2M29.4 38.6 27 37.4M37.6 38.6 40 37.4M29.6 41.2 27.4 42.6M37.4 41.2 39.6 42.6" />
+      <ellipse className="trophy-art__fill trophy-art__fill--soft" cx="33.5" cy="39.4" rx="4.3" ry="3" />
+      <circle className="trophy-art__fill trophy-art__fill--soft" cx="33.5" cy="33.4" r="3.4" />
+      <Numeral n="?" x={33.5} y={22.5} size={11} />
     </>
   ),
   // Shooting Star: across the dusk, its tail behind it.

@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react'
 import { PALETTE } from '../data/games'
+import { BUG_INK, bugParts, type BugName, type BugPose } from '../games/mazeBugs'
 import { BirdMark } from '../games/swoop/BirdMark'
 import { mixColor } from '../lib/color'
 
@@ -530,55 +531,44 @@ function roundedLoop(pts: Array<[number, number]>, r: number, open = false) {
   return `${d} Z`
 }
 
-/** A Pellets chaser as the game draws it (render.ts traceGhost): a dome, straight sides, four feet. */
-function chaser(cx: number, cy: number, r: number, step = 0) {
-  const foot = cy + r * 0.9
-  let d = `M${cx - r} ${foot - r * 0.1} L${cx - r} ${cy - r * 0.05} A${r} ${r} 0 0 1 ${cx + r} ${cy - r * 0.05} L${cx + r} ${foot - r * 0.1}`
-  for (let i = 0; i < 4; i++) {
-    const x0 = cx + r - (i * 2 * r) / 4
-    const x1 = cx + r - ((i + 1) * 2 * r) / 4
-    const down = (i + step) % 2 === 0
-    d += ` Q${(x0 + x1) / 2} ${foot + (down ? r * 0.28 : -r * 0.02)} ${x1} ${foot - r * 0.1}`
-  }
-  return `${d} Z`
-}
-
-const PELLETS_GROUND = '#0c1118'
-
-function Chaser({ cx, cy, hue, look, step = 0 }: { cx: number; cy: number; hue: number; look: [number, number]; step?: number }) {
-  const r = 0.4
-  const rim = hsl(hue, 70, 66, 0.95)
+/** A maze bug (games/mazeBugs.ts) the way the game draws it, `size` tall and centred on (x, y). */
+function MazeBug({ name, x, y, size, pose }: { name: BugName; x: number; y: number; size: number; pose: BugPose }) {
   return (
-    <g>
-      <path d={chaser(cx, cy, r, step)} fill={PELLETS_GROUND} />
-      <path d={chaser(cx, cy, r, step)} fill={hsl(hue, 72, 60, 0.34)} stroke={rim} strokeWidth="0.07" strokeLinejoin="round" />
-      {[-1, 1].map((side) => {
-        const ex = cx + side * r * 0.36 + look[0] * r * 0.1
-        const ey = cy - r * 0.22 + look[1] * r * 0.1
-        return (
-          <g key={side}>
-            <ellipse cx={ex} cy={ey} rx={r * 0.25} ry={r * 0.31} fill="#eef3f7" stroke={rim} strokeWidth={r * 0.07} />
-            <circle cx={ex + look[0] * r * 0.11} cy={ey + look[1] * r * 0.13} r={r * 0.13} fill="#23306e" />
-          </g>
-        )
+    <g transform={`translate(${x} ${y}) scale(${size / 100})`} strokeLinecap="round" strokeLinejoin="round">
+      {bugParts(name, pose).map((p, i) => {
+        if (p.k === 'stroke') return <path key={i} d={p.d} fill="none" stroke={p.colour} strokeWidth={p.w} opacity={p.alpha} />
+        const ink = p.line ? { stroke: BUG_INK, strokeWidth: p.line } : {}
+        if (p.k === 'path') return <path key={i} d={p.d} fill={p.fill} opacity={p.alpha} {...ink} />
+        if (p.k === 'ell') {
+          const turn = p.rot ? `rotate(${p.rot} ${p.x} ${p.y})` : undefined
+          return <ellipse key={i} cx={p.x} cy={p.y} rx={p.rx} ry={p.ry} fill={p.fill} opacity={p.alpha} transform={turn} {...ink} />
+        }
+        return <rect key={i} x={p.x} y={p.y} width={p.w} height={p.h} rx={p.r} fill={p.fill} opacity={p.alpha} {...ink} />
       })}
     </g>
   )
 }
 
+const PELLETS_GROUND = '#0c1118'
+
 /**
- * Close in on the first maze's top left corner, drawn as the game draws it (pellets/render.ts): the chomp
- * eating its way along the top lane to the power pip, picked-clean ground and its trail behind it, Blink coming
- * up the side lane and Pinky round the block. Measured in the maze's tiles, a tile 4.76 across.
+ * Glowberry: close in on the first maze's top left corner, drawn as the game draws it (pellets/render.ts): Blip
+ * eating his way along the top lane to a glowberry, picked-clean ground and his trail behind him, Snatch coming up
+ * the side lane and Sly round the hedge. Measured in the maze's tiles, a tile 4.76 across.
  */
 function Pellets({ id }: { id: Id }) {
   const wall = {
-    fill: hsl(234, 70, 60, 0.13),
-    stroke: hsl(234, 85, 70, 0.95),
+    fill: hsl(138, 55, 42, 0.32),
+    stroke: hsl(138, 62, 60, 0.95),
     strokeWidth: 0.075,
     strokeLinejoin: 'round' as const,
   }
-  const inner = { fill: 'none', stroke: hsl(234, 85, 70, 0.38), strokeWidth: 0.04, strokeLinejoin: 'round' as const }
+  const inner = { fill: 'none', stroke: hsl(138, 62, 60, 0.38), strokeWidth: 0.04, strokeLinejoin: 'round' as const }
+  // A few leaves in each hedge: [x, y, turn].
+  const leaves: Array<[number, number, number]> = [
+    [2.6, 2.6, 20], [3.4, 4.3, -40], [5.1, 2.5, 60], [2.7, 3.9, 80], [7.5, 2.5, -20], [6.1, 4.5, 30], [7.4, 4.6, -60],
+    [9.6, 2.7, 45], [10.4, 3.6, -15], [9.7, 4.4, 70], [0.3, 3, 10], [0.4, 5.6, -50], [3, 0.3, 30], [6.6, 0.4, -30], [9.8, 0.3, 60],
+  ]
   // Each block's tile outline; drawn inset, and again further in for the inner line.
   const blocks: Array<Array<[number, number]>> = [
     [[2, 2], [6, 2], [6, 3], [4, 3], [4, 5], [2, 5]],
@@ -627,26 +617,25 @@ function Pellets({ id }: { id: Id }) {
             <path d={roundedLoop(inset(loop, 0.3), 0.18)} {...inner} />
           </g>
         ))}
+        {leaves.map(([x, y, turn]) => (
+          <ellipse key={`${x}-${y}`} cx={x} cy={y} rx="0.13" ry="0.065" fill={hsl(138, 60, 62, 0.26)} transform={`rotate(${turn} ${x} ${y})`} />
+        ))}
         {crumbs.map(([x, y]) => (
           <circle key={`${x}-${y}`} cx={x + 0.5} cy={y + 0.5} r="0.1" fill={hsl(42, 92, 64)} />
         ))}
-        {/* The power pip, glowing. */}
-        <Glow id={id} name="pip" cx={1.5} cy={1.5} r={0.65} colour={hsl(42, 95, 60)} strength={0.42} />
-        <circle cx="1.5" cy="1.5" r="0.27" fill={hsl(42, 92, 62, 0.9)} stroke={hsl(42, 80, 78, 0.95)} strokeWidth="0.04" />
-        <circle cx="1.42" cy="1.42" r="0.08" fill="#fff" opacity="0.7" />
+        {/* A glowberry: violet, a leaf on top, glowing. */}
+        <Glow id={id} name="berry" cx={1.5} cy={1.52} r={0.7} colour={hsl(276, 95, 66)} strength={0.5} />
+        <ellipse cx="1.61" cy="1.27" rx="0.13" ry="0.06" fill={hsl(138, 62, 56)} transform="rotate(-29 1.61 1.27)" />
+        <circle cx="1.5" cy="1.52" r="0.25" fill={hsl(276, 82, 66, 0.95)} stroke={hsl(276, 70, 82, 0.95)} strokeWidth="0.04" />
+        <circle cx="1.42" cy="1.44" r="0.065" fill="#fff" opacity="0.72" />
         {trail.map(([x, life]) => (
           <circle key={x} cx={x} cy="1.5" r={r * (0.35 + 0.5 * life)} fill={hsl(42, 92, 60, 0.2 * life)} />
         ))}
-        <Glow id={id} name="lamp" cx={3.7} cy={1.5} r={r * 2.6} colour={hsl(24, 90, 60)} strength={0.26} />
-        <Chaser cx={1.5} cy={4.6} hue={356} look={[0, -1]} />
-        <Chaser cx={7.5} cy={3.5} hue={322} look={[-1, 0]} step={1} />
-        {/* The chomp, headed left for the pip, with the shine on its crown and its eye over the mouth. */}
-        <g transform="translate(3.7 1.5) scale(-1 1)">
-          <path d={`M${-r * 0.12} 0 ${chomp(r, 0.39).slice(4)}`} fill={hsl(24, 92, 60, 0.42)} stroke={hsl(24, 85, 70, 0.98)} strokeWidth="0.075" strokeLinejoin="round" />
-          <path d={`M${(r * 0.7 * Math.cos(Math.PI * 1.12)).toFixed(3)} ${(r * 0.7 * Math.sin(Math.PI * 1.12)).toFixed(3)} A${r * 0.7} ${r * 0.7} 0 0 1 ${(r * 0.7 * Math.cos(Math.PI * 1.42)).toFixed(3)} ${(r * 0.7 * Math.sin(Math.PI * 1.42)).toFixed(3)}`} {...line('#fff', 0.06, 0.55)} />
-          <ellipse cx={r * 0.14} cy={-r * 0.5} rx={r * 0.12} ry={r * 0.15} fill="#16202b" />
-          <circle cx={r * 0.18} cy={-r * 0.55} r={r * 0.045} fill="#fff" />
-        </g>
+        <Glow id={id} name="lamp" cx={3.7} cy={1.5} r={r * 2.6} colour={hsl(168, 90, 60)} strength={0.26} />
+        <MazeBug name="snatch" x={1.5} y={4.55} size={1.3} pose={{ state: 'normal', look: [0, -1], step: 0 }} />
+        <MazeBug name="sly" x={7.5} y={3.45} size={1.3} pose={{ state: 'normal', look: [-1, 0], step: 1 }} />
+        {/* Blip, headed left for the glowberry. */}
+        <Blip id={id} name="blip" x={3.7} y={1.43} s={r / 7.35} c={BLIP_MINT} />
       </g>
     </>
   )

@@ -163,7 +163,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     tip: 'Let a bubble fade and your streak resets.',
   },
   pellets: {
-    goal: 'Clear the maze, level after level.',
+    goal: 'Clear the maze, level after level, and keep away from the bugs.',
     controls: [
       { does: 'Steer', touch: 'Swipe', keys: 'Arrows' },
       { does: 'Surge, when charged', touch: 'Tap', keys: 'Space' },
@@ -171,11 +171,11 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Crumb', pts: '+10 × streak' },
       { what: 'Fresh crumbs in a row', pts: '×2 at 10', sub: 'up to ×8' },
-      { what: 'Blue chaser', pts: '+200', sub: 'doubling to +1,600' },
+      { what: 'A scared bug', pts: '+200', sub: 'after a glowberry, doubling to +1,600' },
       { what: 'Fruit', pts: '+100 and up' },
     ],
     ends: 'Caught three times.',
-    tip: 'Doubling back over eaten ground resets the streak.',
+    tip: 'Eat a glowberry and the bugs go pale: catch them before they get their colour back. Doubling back over eaten ground resets the streak.',
   },
   findbug: {
     goal: 'Find the bug on each card, in today’s five scenes, fast. New scenes come every day at midnight, New York time.',

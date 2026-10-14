@@ -61,8 +61,9 @@ export const SKINS: readonly Skin[] = [
   { id: 'snake-candy-stripe', game: 'snake', name: 'Candy Stripe', price: 800, what: 'Snake skin' },
   // Blip's set (Ramsey, 2026-10-11: "i like A, daily question 7 times"): the site's mascot in four games, won one
   // at a time by answering his daily question, every 7 answers the next, in this order (the API's poll.ts gives
-  // them). Never a season's, never for tickets.
-  { id: 'pellets-blip', game: 'pellets', name: 'Gulping Blip', poll: 7, what: 'Pellets chomper' },
+  // them). Never a season's, never for tickets. Glowberry's was the Gulping Blip, him in place of the chomper; since
+  // he is that game's own hero (2026-10-14), it dresses him as a ladybug.
+  { id: 'pellets-blip', game: 'pellets', name: 'Ladybug Blip', poll: 7, what: 'Glowberry Blip' },
   { id: 'swoop-blip', game: 'swoop', name: 'Winged Blip', poll: 14, what: 'Swoop bird' },
   { id: 'frenzy-blip', game: 'frenzy', name: 'Blip fish', poll: 21, what: 'Frenzy fish' },
   { id: 'marblerun-blip', game: 'marblerun', name: 'Blip marble', poll: 28, what: 'Marble Run marble' },

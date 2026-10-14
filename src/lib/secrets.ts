@@ -57,7 +57,7 @@ export const SECRETS: readonly Secret[] = [
   { n: 22, key: 'donuts', name: 'Donuts', says: 'Spun three donuts on Hot Lap’s track.' },
   { n: 23, key: 'marbles', name: 'Lost Your Marbles', says: 'Fell off Marble Run three times before the first checkpoint.' },
   { n: 24, key: 'wargames', name: 'Shall We Play a Game?', says: 'Let a whole wave of Patriot fall without firing a shot.' },
-  { n: 25, key: 'safespot', name: 'Safe Spot', says: 'Hid from the chasers in Pellets’ safe spot.' },
+  { n: 25, key: 'safespot', name: 'Safe Spot', says: 'Hid from the bugs in Glowberry’s safe spot.' },
   { n: 27, key: 'shootingstar', name: 'Shooting Star', says: 'Caught a shooting star over the Fireflies pond.' },
   { n: 28, key: 'moon', name: 'Shoot the Moon', says: 'Shot the moon over Barrage until it had a black eye.' },
   { n: 29, key: 'staffonly', name: 'Staff Only', says: 'Tried the door marked Staff Only.' },

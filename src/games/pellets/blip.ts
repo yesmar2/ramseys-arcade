@@ -1,22 +1,27 @@
 import type { Dir } from './game'
 
 /*
- * Blip, the site's mascot (components/BlipFigure.tsx), as Pellets' player: the skin `pellets-blip`, the Gulping
- * Blip (lib/skins.ts), won by answering his daily question. Looks only. Ramsey picked him whole (A on the "Blip in
- * other games" canvas, 2026-10-11) after a chomper with a bite cut out of him "looks funny": his round body, the
- * shade under his belly, his shine, his cheeks, his feet and his spark are all his figure's, drawn the house way
- * with an outline round him, bright over the dark theme's ground and deep over the light one. Everything is in his
- * figure's units (his body's radius is 7.35), from the middle of his body, and he is as big as the usual chomper.
+ * Blip, the site's mascot (components/BlipFigure.tsx), as Glowberry's player. He was first the skin `pellets-blip`
+ * over a chomper, picked whole (A on the "Blip in other games" canvas, 2026-10-11) after a chomper with a bite cut
+ * out of him "looks funny"; since Glowberry (2026-10-14) he is the game's own hero, and the skin dresses him as a
+ * ladybug instead: the Ladybug Blip (lib/skins.ts), won by answering his daily question. Looks only. His round
+ * body, the shade under his belly, his shine, his cheeks, his feet and his spark are all his figure's, drawn the
+ * house way with an outline round him, bright over the dark theme's ground and deep over the light one.
+ * Everything is in his figure's units (his body's radius is 7.35), from the middle of his body.
  *
  * His heading is in his face, which turns on his round body toward it the way the Frenzy Blip fish's does, his
  * eyes looking on a little further; he leans into the way he goes across the screen, stretches going up and
  * squashes going down, and his feet step. Eating, his smile opens to a round "O" with his tongue in it, on the
- * usual chomper's beat. He grins after a chaser or a cleared maze, blinks now and then, and when he's caught he
+ * game's chomp beat. He grins after a bug or a cleared maze, blinks now and then, and when he's caught he
  * winces and shrinks away while his spark floats up off him and goes out.
  */
 
-/** The skin's id (lib/skins.ts). */
+/** The Ladybug Blip skin's id (lib/skins.ts). */
 export const BLIP_SKIN = 'pellets-blip'
+
+/** The ladybug suit: pink, so he's never taken for Snatch, the red beetle. */
+const SUIT = '#e85d9a'
+const SUIT_SPOT = '#7a2350'
 
 /** His mint, as a hue: the light on the floor under him, and the puff he goes out in. */
 export const BLIP_HUE = 168
@@ -244,8 +249,71 @@ function feet(ctx: CanvasRenderingContext2D, at: readonly (readonly [number, num
   }
 }
 
+/**
+ * The suit's hood: a ladybug's spotted shell over the top of his head, its seam down the middle and its shine,
+ * his face clear under it. Drawn inside his body's outline, before his face.
+ */
+function hood(ctx: CanvasRenderingContext2D) {
+  const edge = () => {
+    ctx.beginPath()
+    ctx.moveTo(-R - 1, 1.3)
+    ctx.quadraticCurveTo(0, -6.6, R + 1, 1.3)
+  }
+  edge()
+  ctx.lineTo(R + 1, -R - 1)
+  ctx.lineTo(-R - 1, -R - 1)
+  ctx.closePath()
+  ctx.fillStyle = SUIT
+  ctx.fill()
+  ctx.fillStyle = SUIT_SPOT
+  for (const [x, y, r] of [
+    [-3.5, -4.7, 1.05],
+    [3.5, -4.7, 1.05],
+    [-5.9, -1.5, 0.85],
+    [5.9, -1.5, 0.85],
+    [-1.6, -6.6, 0.7],
+    [1.6, -6.6, 0.7],
+  ] as const) {
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, TAU)
+    ctx.fill()
+  }
+  ctx.strokeStyle = SUIT_SPOT
+  ctx.lineWidth = 0.5
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(0, -R)
+  ctx.lineTo(0, -2.9)
+  ctx.stroke()
+  edge()
+  ctx.lineWidth = 0.6
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.ellipse(-3.4, -5.6, 1.7, 0.75, (-28 * Math.PI) / 180, 0, TAU)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
+  ctx.fill()
+}
+
+/** The suit's feelers, his spark between them: drawn over his outline. */
+function feelers(ctx: CanvasRenderingContext2D, line: number) {
+  ctx.lineCap = 'round'
+  ctx.strokeStyle = INK
+  ctx.lineWidth = line * 0.6
+  for (const side of [-1, 1]) {
+    ctx.beginPath()
+    ctx.moveTo(side * 2.3, -6.9)
+    ctx.quadraticCurveTo(side * 2.9, -9.4, side * 4.7, -10.3)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(side * 4.7, -10.3, 1.05, 0, TAU)
+    ctx.fillStyle = SUIT
+    ctx.fill()
+    ctx.stroke()
+  }
+}
+
 /** His body, never cut, with his face on it: in his units, after the caller's scale. */
-function body(ctx: CanvasRenderingContext2D, v: View, mood: Mood, m: number, blink: boolean, s: number, dark: boolean, line: number) {
+function body(ctx: CanvasRenderingContext2D, v: View, mood: Mood, m: number, blink: boolean, s: number, dark: boolean, line: number, suit = false) {
   ctx.beginPath()
   ctx.arc(0, 0, R, 0, TAU)
   ctx.fillStyle = BODY
@@ -254,6 +322,7 @@ function body(ctx: CanvasRenderingContext2D, v: View, mood: Mood, m: number, bli
   ctx.clip()
   belly(ctx)
   shine(ctx)
+  if (suit) hood(ctx)
   face(ctx, v, mood, m, blink, s)
   ctx.restore()
   ctx.beginPath()
@@ -264,24 +333,26 @@ function body(ctx: CanvasRenderingContext2D, v: View, mood: Mood, m: number, bli
 }
 
 export type BlipPose = {
-  /** The middle of his body and its radius, the usual chomper's. */
+  /** The middle of his body and its radius,. */
   x: number
   y: number
   r: number
   dir: Dir
-  /** How far his mouth is open, 0 to 1, on the usual chomper's beat. */
+  /** How far his mouth is open, 0 to 1, on the game's chomp beat. */
   open: number
-  /** The usual chomper's chomp, which runs on as he goes: his feet step to it. */
+  /** The game's chomp beat, which runs on as he goes: his feet step to it. */
   stride: number
   dark: boolean
-  /** The outline's width, the usual chomper's. */
+  /** The outline's width. */
   lw: number
   /** The game's clock, for his spark's float and his blinks. */
   t: number
-  /** Eyes shut in a grin: a chaser eaten, a maze cleared. */
+  /** Eyes shut in a grin: a bug caught, a maze cleared. */
   happy: boolean
-  /** The chasers are blue: his spark burns bigger. */
+  /** The bugs are scared of him: his spark burns bigger. */
   power: boolean
+  /** In the Ladybug Blip skin's suit. */
+  suit?: boolean
 }
 
 /** Blip at play. */
@@ -318,15 +389,19 @@ export function drawBlip(ctx: CanvasRenderingContext2D, p: BlipPose) {
     line,
   )
   const view: View = { yaw: turn.yaw * dx, pitch: across ? turn.pitch : turn.pitch * dy, lookX: turn.look * dx, lookY: turn.look * dy }
-  body(ctx, view, p.happy ? 'happy' : 'hi', Math.max(0, Math.min(1, p.open)), blinking(p.t), s, p.dark, line)
+  body(ctx, view, p.happy ? 'happy' : 'hi', Math.max(0, Math.min(1, p.open)), blinking(p.t), s, p.dark, line, p.suit)
+  if (p.suit) feelers(ctx, line)
   ctx.restore()
 }
 
 /**
- * Caught: he turns to you and winces, squashed by the hit, then shrinks away on the usual chomper's clock (`k`
+ * Caught: he turns to you and winces, squashed by the hit, then shrinks away on the game's clock (`k`
  * from 0 to 1; he is gone as the puff goes off), while his spark floats up off him and goes out.
  */
-export function drawBlipCaught(ctx: CanvasRenderingContext2D, p: { x: number; y: number; r: number; k: number; dark: boolean; lw: number }) {
+export function drawBlipCaught(
+  ctx: CanvasRenderingContext2D,
+  p: { x: number; y: number; r: number; k: number; dark: boolean; lw: number; suit?: boolean },
+) {
   const q = Math.max(0, Math.min(1, p.k / 0.62))
   const shrink = 1 - q * q
   const s = p.r / R
@@ -346,7 +421,8 @@ export function drawBlipCaught(ctx: CanvasRenderingContext2D, p: { x: number; y:
       p.dark,
       line,
     )
-    body(ctx, FACING_YOU, 'caught', 0, false, s * shrink, p.dark, line)
+    body(ctx, FACING_YOU, 'caught', 0, false, s * shrink, p.dark, line, p.suit)
+    if (p.suit) feelers(ctx, line)
   }
   ctx.restore()
 }

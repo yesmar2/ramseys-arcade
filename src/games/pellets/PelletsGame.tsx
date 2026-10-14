@@ -429,7 +429,7 @@ export function PelletsGame() {
               />
               {ui.phase === 'menu' && !saveOpen && !paused && (
                 <GameStartCard
-                  title="Pellets"
+                  title="Glowberry"
                   slug="pellets"
                   tools={
                     <AdminWaveSkip

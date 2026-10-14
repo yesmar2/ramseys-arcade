@@ -21,7 +21,7 @@ import { announceSecrets, SECRETS, type SecretFound } from './secrets'
  * - Nine more live in their games, each with its clue in its own files (the admin page's Trophies tab
  *   says each one in full): Crosswalk's crossing button that does nothing; Bop's lever pulled down to the
  *   cherries; three donuts in Hot Lap; three falls before Marble Run's first checkpoint; a wave of
- *   Patriot without a shot; Pellets' safe spot; Lander's cracked wall, broken through to the moon past it;
+ *   Patriot without a shot; Glowberry's safe spot; Lander's cracked wall, broken through to the moon past it;
  *   a shooting star over the Fireflies pond; and Barrage's moon, shot till it has a black eye.
  */
 

@@ -168,7 +168,7 @@ export const games: Game[] = [
     hidden: true,
   },
   {
-    name: 'Pellets',
+    name: 'Glowberry',
     slug: 'pellets',
     tags: ['arcade'],
     description: 'Clear the maze. Bank a streak. Surge.',
@@ -198,7 +198,7 @@ export const games: Game[] = [
     name: 'Crumbtrail',
     slug: 'crumbtrail',
     tags: ['arcade'],
-    description: 'Pellets with no way out. Climb forever. Don’t settle in.',
+    description: 'Glowberry with no way out. Climb forever. Don’t settle in.',
     accent: PALETTE.green,
     playable: true,
   },
