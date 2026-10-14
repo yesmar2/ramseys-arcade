@@ -642,6 +642,97 @@ html[data-theme='light'] .panel.reel--ask {
   display: none;
 }
 
+/* While the save is out: the card's shape, shimmering, there from the start, so nothing moves when it lands. */
+.reel-place--loading {
+  animation: none;
+}
+
+.reel-place--loading .reel-place__head {
+  min-height: 1.6rem;
+}
+
+/* Come in where its shape stood: a fade, no entrance of its own, and its rows straight after. */
+.reel-place--arrived {
+  animation: reel-fade 0.35s both;
+}
+
+.reel-place--arrived .reel-board__row {
+  animation-delay: calc(0.1s + var(--i, 0) * 0.08s);
+}
+
+.reel-skel {
+  display: block;
+  border-radius: 0.5rem;
+  background: linear-gradient(
+    90deg,
+    var(--reel-fill) 0%,
+    color-mix(in srgb, var(--reel-ink) 16%, transparent) 50%,
+    var(--reel-fill) 100%
+  );
+  background-size: 200% 100%;
+  animation: reel-shimmer 1.4s ease-in-out infinite;
+}
+
+.reel-skel--label {
+  width: 9rem;
+  height: 0.8rem;
+}
+
+.reel-skel.reel-skel--value {
+  width: 5.5rem;
+  height: 3.1rem;
+  margin-top: 0.3rem;
+  border-radius: 0.8rem;
+}
+
+.reel-skel.reel-skel--line {
+  width: 11rem;
+  max-width: 70%;
+  height: 0.9rem;
+  margin-top: 0.55rem;
+}
+
+.reel-board__row--skel {
+  animation: none;
+}
+
+.reel-skel--place {
+  flex: none;
+  width: 1.1rem;
+  height: 0.9rem;
+}
+
+.reel-skel--face {
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+}
+
+.reel-skel--name {
+  flex: 1;
+  max-width: 7rem;
+  height: 0.9rem;
+}
+
+.reel-skel--score {
+  flex: none;
+  width: 2.6rem;
+  height: 0.9rem;
+  margin-left: auto;
+}
+
+.reel-place--compact .reel-skel.reel-skel--value {
+  width: 3rem;
+  height: 1.7rem;
+  margin: 0;
+}
+
+.reel-place--compact .reel-skel.reel-skel--line {
+  width: 13rem;
+  margin: 0;
+}
+
 .reel-move {
   display: inline-flex;
   align-items: center;
@@ -1627,6 +1718,18 @@ html[data-theme='light'] .reel-recap--list .reel-recap__icon {
     display: flex;
   }
 
+  .reel-skel.reel-skel--value,
+  .reel-place--compact .reel-skel.reel-skel--value {
+    width: 7rem;
+    height: 4.4rem;
+    margin: 0.3rem 0.25rem 0;
+  }
+
+  .reel-place--compact .reel-skel.reel-skel--line {
+    width: 11rem;
+    margin: 0.55rem 0.25rem 0;
+  }
+
   .reel-big__figure {
     font-size: min(11rem, 13vw);
   }
@@ -1670,6 +1773,21 @@ html[data-theme='light'] .reel-recap--list .reel-recap__icon {
 @keyframes reel-in {
   from {
     opacity: 0;
+  }
+}
+
+@keyframes reel-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes reel-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
   }
 }
 

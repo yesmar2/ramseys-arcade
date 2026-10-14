@@ -397,6 +397,8 @@ export function TournamentScoreCard({
   const [signIns, setSignIns] = useState(0)
   const playRef = useRef<HTMLButtonElement>(null)
   const tagRef = useRef<HTMLInputElement>(null)
+  /** The event's card had its shape standing in while the post was out: it fades in there when it comes. */
+  const boardWaitedRef = useRef(false)
   const titleId = useId()
   const tagId = useId()
   const [shareLink, sharePanel, shareCopied] = useLinkShare()
@@ -554,6 +556,9 @@ export function TournamentScoreCard({
   const postWaitOver = useSaveWait(status === 'saving')
   const holding = status === 'saving' && canSaveScores && !postWaitOver
   const unposted = status === 'needAuth' || status === 'needName'
+  // While the post is out, a run that will place in the event holds its card's place with the card's shape.
+  const postingPlace = status === 'saving' && canSaveScores && score > 0 && !isRunAssisted()
+  if (postingPlace) boardWaitedRef.current = true
 
   let primary: ReportAction = {
     label: holding ? 'Posting…' : 'Play again',
@@ -677,6 +682,8 @@ export function TournamentScoreCard({
       scoreTone: ribbon?.tone === 'gold' ? 'gold' : ribbon ? 'accent' : 'plain',
     },
     board: parts?.board ?? null,
+    boardLoading: postingPlace,
+    boardWaited: boardWaitedRef.current,
     tickets: parts?.paid ? <ReelTickets paid={parts.paid} game={gameSlug} /> : null,
     ask,
     askGoLabel: status === 'needName' ? 'Skip' : 'Not now',

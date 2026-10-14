@@ -1,4 +1,4 @@
-import { useId, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
 import { NextDailyView } from '../components/NextDaily'
 import { PushAsk } from '../components/PushAsk'
@@ -1039,6 +1039,8 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
       'The train got you',
       { season: TENTH_SEASON },
     ),
+    // The board's shape beside the score while the save is out, then the board in its place (?reel=landing).
+    arcadeReel('landing', 'A save landing', facts(440, {}), 'Run over', 'Fell in the water'),
     arcadeReel('season-40', 'Level 40 on the pass', facts(318, {}), 'Run over', 'Flattened by traffic', { season: TENTH_SEASON }),
     arcadeReel('season-31', 'Level 31, past the free row', facts(318, {}), 'Run over', 'Flattened by traffic', { season: QUIET_SEASON }),
     arcadeReel('capped', 'Past the day’s cap', facts(318, {}), 'Run over', 'Flattened by traffic'),
@@ -1070,7 +1072,7 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
       ),
       who: <ReportWho text="Signed in, no tag yet" />,
     }),
-    unsaved('saving', 'Still saving', 'pending', { who: <ReportWho name="VERA" text="Saving…" /> }),
+    unsaved('saving', 'Still saving', 'pending', { who: <ReportWho name="VERA" text="Saving…" />, boardLoading: true }),
     landerReel('lander', 'A racing daily: Silver, new', LANDER_SEASON),
     landerReel('lander-31', 'A racing daily that reached Level 31', QUIET_SEASON),
   ]
@@ -1241,7 +1243,7 @@ function eventReels(tag: ReactNode, signIn: ReactNode): ReelSample[] {
     eventReel('event-out', 'Event: the last try', eventPost(cup(352), 352, { maxAttempts: 1, attemptsRemaining: 0, exhausted: true }), 318, 'View standings'),
     unposted('event-signin', 'Event: signed out', 'ask', { ask: signIn, askGoLabel: 'Not now', block: signIn, who: <ReportWho text="Not posted yet" /> }),
     unposted('event-tag', 'Event: no tag yet', 'ask', { ask: tagAsk, askGoLabel: 'Skip', block: tagAsk, who: <ReportWho text="Signed in, no tag yet" /> }),
-    unposted('event-posting', 'Event: still posting', 'pending', { who: <ReportWho name="VERA" text="Posting…" /> }),
+    unposted('event-posting', 'Event: still posting', 'pending', { who: <ReportWho name="VERA" text="Posting…" />, boardLoading: true }),
   ]
 }
 
@@ -1252,6 +1254,14 @@ export function DevCelebratePage() {
   const [spot, setSpot] = useState<string | null>(() => new URLSearchParams(window.location.search).get('spot'))
   // ?reel=best opens one of the reel's runs on load.
   const [reel, setReel] = useState<string | null>(() => new URLSearchParams(window.location.search).get('reel'))
+  // ?reel=landing: a save that lands 2.5 seconds in, the board's shape standing in beside the score till then.
+  const [landed, setLanded] = useState(false)
+  useEffect(() => {
+    if (reel !== 'landing') return undefined
+    setLanded(false)
+    const timer = window.setTimeout(() => setLanded(true), 2500)
+    return () => window.clearTimeout(timer)
+  }, [reel])
   const [tag, setTag] = useState('VERA')
   const tagId = useId()
   const style = gameAccentStyle('crosswalk')
@@ -1383,7 +1393,11 @@ export function DevCelebratePage() {
             game={reeled.game}
             tier={reeled.tier}
             metal={reeled.metal}
-            steps={reelSteps({ ...reeled.input, primary: { label: reeled.primary ?? 'Play again', onClick: () => setReel(null) } })}
+            steps={reelSteps({
+              ...reeled.input,
+              ...(reeled.key === 'landing' ? (landed ? { boardWaited: true } : { phase: 'pending' as const, boardLoading: true }) : {}),
+              primary: { label: reeled.primary ?? 'Play again', onClick: () => setReel(null) },
+            })}
             leave={{ label: reeled.leave ?? 'Leave', onClick: () => setReel(null) }}
             onEscape={() => setReel(null)}
           />

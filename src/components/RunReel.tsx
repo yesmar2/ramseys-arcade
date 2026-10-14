@@ -329,9 +329,12 @@ export function ReelRun({ titleId, tier, metal = null, ribbon, eyebrow, score, u
  * Where the run landed on its board, beside its score: the place, how far it came, and the board around it (the
  * podium when it's on it). A racing daily's goes compact on a phone, under its medal ladder.
  */
-export function ReelPlace({ card, compact = false }: { card: ReportBoardCard; compact?: boolean }) {
+export function ReelPlace({ card, compact = false, arrived = false }: { card: ReportBoardCard; compact?: boolean; arrived?: boolean }) {
   return (
-    <section className={`reel-place${compact ? ' reel-place--compact' : ''}${card.gold ? ' reel-place--gold' : ''}`} aria-label={card.label}>
+    <section
+      className={`reel-place${compact ? ' reel-place--compact' : ''}${card.gold ? ' reel-place--gold' : ''}${arrived ? ' reel-place--arrived' : ''}`}
+      aria-label={card.label}
+    >
       <div className="reel-place__head">
         <span className="reel-place__label">{card.label}</span>
         {card.move ? <ReelMove words={card.move} /> : null}
@@ -339,6 +342,32 @@ export function ReelPlace({ card, compact = false }: { card: ReportBoardCard; co
       <p className="reel-place__value">{card.value}</p>
       {card.detail ? <p className="reel-place__detail">{capital(card.detail)}</p> : null}
       {card.rows.length ? <ReelBoardRows rows={card.rows} label={card.label} /> : null}
+    </section>
+  )
+}
+
+/**
+ * The board's card while the save is out: its shape, quietly shimmering, so the score has its place beside it from
+ * the start and nothing moves when the board lands (Ramsey: "it pops to the left when it loads the board").
+ */
+function ReelPlaceSkeleton({ compact = false }: { compact?: boolean }) {
+  return (
+    <section className={`reel-place reel-place--loading${compact ? ' reel-place--compact' : ''}`} aria-busy="true" aria-label="Finding your place on the board">
+      <div className="reel-place__head">
+        <span className="reel-skel reel-skel--label" />
+      </div>
+      <span className="reel-place__value reel-skel reel-skel--value" />
+      <span className="reel-place__detail reel-skel reel-skel--line" />
+      <ol className="reel-board" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <li key={i} className="reel-board__row reel-board__row--skel">
+            <span className="reel-skel reel-skel--place" />
+            <span className="reel-skel reel-skel--face" />
+            <span className="reel-skel reel-skel--name" />
+            <span className="reel-skel reel-skel--score" />
+          </li>
+        ))}
+      </ol>
     </section>
   )
 }
@@ -817,6 +846,10 @@ export type ReelInput = {
   board?: ReportBoardCard | null
   /** A racing daily's board, compact on a phone under its medal ladder. */
   boardCompact?: boolean
+  /** A board is on its way while the save is out: its card's shape holds the place beside the score. */
+  boardLoading?: boolean
+  /** The board came in after its shape stood in: it fades in where that was, without an entrance of its own. */
+  boardWaited?: boolean
   /** A friend the run went past on the friends' board: a page of its own, face to face. */
   friend?: ReportFriend | null
   /** The standings, when the run moved you up them: a page of their own. */
@@ -855,7 +888,12 @@ export function reelSteps(input: ReelInput): ReelStep[] {
   const { phase } = input
   const { ladder, ...run } = input.run
   const saved = phase === 'saved'
-  const board = saved && input.board ? <ReelPlace card={input.board} compact={input.boardCompact} /> : null
+  const board =
+    saved && input.board ? (
+      <ReelPlace card={input.board} compact={input.boardCompact} arrived={input.boardWaited} />
+    ) : phase === 'pending' && input.boardLoading ? (
+      <ReelPlaceSkeleton compact={input.boardCompact} />
+    ) : null
   const side = ladder || board ? (
     <div className="reel-run__side">
       {ladder}

@@ -230,6 +230,8 @@ export function ScoreSaveCard({
   const runRef = useRef<Promise<string | undefined> | null>(null)
   const playRef = useRef<HTMLButtonElement>(null)
   const tagRef = useRef<HTMLInputElement>(null)
+  /** The board's card had its shape standing in while the save was out: it fades in there when it comes. */
+  const boardWaitedRef = useRef(false)
   // Read when the save goes out; the run's count doesn't change once it's over.
   const pickupsRef = useRef(pickups)
   pickupsRef.current = pickups
@@ -804,6 +806,10 @@ export function ScoreSaveCard({
   const bestLine = saved ? (data?.lines.find((line) => line.id === 'best') ?? null) : null
   const boardLine = saved ? (data?.lines.find((line) => line.id === 'board') ?? null) : null
   const board = saved && facts ? boardCard(facts, boardLine) : null
+  // While the save is out, a run that will land on a board holds its card's place with the card's shape: signed
+  // in, on a game with boards, with a score, not a stage skip or practice. Nothing moves when the board comes.
+  const boardLoading = pending && ranked && canSaveScores && score > 0 && !isRunAssisted() && !beforeLaunch(gameSlug)
+  if (boardLoading) boardWaitedRef.current = true
   // A racing daily's standings are its header's, as its report always had them.
   const standings = saved && facts && !race ? standingsCard(facts) : null
   // The record books the run got into, the one its stamp spoke of first.
@@ -867,6 +873,8 @@ export function ScoreSaveCard({
     },
     board,
     boardCompact: Boolean(race),
+    boardLoading,
+    boardWaited: boardWaitedRef.current,
     friend: saved ? (data?.friend ?? null) : null,
     standings,
     onStandings: () => leavePlayTo(leaderboardHref(standingsPeriod)),
