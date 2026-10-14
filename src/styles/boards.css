@@ -629,11 +629,6 @@ html[data-theme="light"] .sb-line--trophy {
     gap: 1.25rem;
     align-items: stretch;
   }
-
-  /* One card in the row takes all of it: a record's page when you're on it but don't hold it. */
-  .sb-you.sb-you--solo {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .sb-you__card {
@@ -1569,7 +1564,6 @@ html[data-theme="light"] .sb-grab__pts {
 }
 
 .gb-runs,
-.gb-price,
 .gb-more {
   padding: 1.5rem 1.6rem;
 }
@@ -2249,7 +2243,6 @@ html[data-theme="light"] .sb-grab__pts {
   }
 
   .gb-runs,
-  .gb-price,
   .gb-more {
     padding: 1.2rem 1.1rem;
   }

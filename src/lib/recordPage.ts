@@ -1,25 +1,23 @@
 import { getGame } from '../data/games'
 import { avatarWashColor, resolveAvatar } from './avatars'
 import { firstRunWord } from './gameBoard'
-import type { LeaderboardEntry, LeaderboardPeriod, YouEntry } from './leaderboard'
+import type { LeaderboardEntry, LeaderboardPeriod } from './leaderboard'
 import {
   courseName,
   recordBrief,
   recordGap,
   recordKind,
-  recordTime,
   recordValue,
   type RecordKind,
   type RecordShut,
 } from './recordBook'
 import type { RecordDef, RecordSummary } from './records'
-import { boardToday, ordinal, type Stat } from './scoreboard'
+import { boardToday } from './scoreboard'
 
 /*
  * One record's page in words and numbers: whose name is on it and for how
- * long, what the record is, where the viewer stands and what the next place
- * takes, every time it was broken, and the records beside it in its book. The
- * page only fetches and lays out; this says it.
+ * long, what the record is, every time it was broken, and the records beside
+ * it in its book. The page only fetches and lays out; this says it.
  */
 
 type Rec = Pick<RecordDef, 'id' | 'label' | 'unit' | 'direction'>
@@ -29,10 +27,6 @@ const DAY_MS = 86_400_000
 
 function gameName(slug: string): string {
   return getGame(slug)?.name ?? slug
-}
-
-function capital(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 /** this week, this month, all time */
@@ -70,19 +64,6 @@ export function heldFor(from: number, to: number): string {
     return hours < 1 ? 'under an hour' : `${hours} ${hours === 1 ? 'hour' : 'hours'}`
   }
   return `${days} ${days === 1 ? 'day' : 'days'}`
-}
-
-/** Whether a beats b on this record. */
-export function recordBetter(record: Rec, a: number, b: number): boolean {
-  return record.direction === 'lower' ? a < b : a > b
-}
-
-/** What beats a result: under 3:51.2, or 13 in a row, or a lap under 45.18s, or 2 tries or fewer, or a pour over 91.2%. */
-export function recordBeat(record: Rec, score: number): string {
-  if (record.id.startsWith('track-')) return `under ${recordValue(record, score)}`
-  if (record.id.startsWith('hole-')) return score <= 1 ? 'an ace, to tie it' : `${recordValue(record, score - 1)} or fewer`
-  if (record.id.startsWith('pour-')) return `over ${recordValue(record, score)}`
-  return record.unit === 'ms' ? `under ${recordTime(score)}` : recordValue(record, score + 1)
 }
 
 /** The milestone a clock record times: wave 12, length 40, 100 rows. */
@@ -244,122 +225,6 @@ export function recordLede(
   // A tie says why the order is what it is; a plain lead needs no numbers here.
   if (second.score === top.score) return `${rule} ${second.name} has matched it, but ${top.name} got there first.`
   return rule
-}
-
-/* ---------- you ---------- */
-
-export type RecordStanding =
-  | { mode: 'held'; big: string; of: string; line: string; stats: Stat[]; callout: string }
-  | { mode: 'on'; big: string; of: string; line: string; stats: Stat[]; callout: string; heldBefore: string | null }
-  | { mode: 'off'; line: string; callout: string; best: string | null }
-
-/** Holders one stretch at a time: a player who beat their own record keeps one stretch. */
-function stints(progression: LeaderboardEntry[]): { name: string; from: number; to: number | null; taker: LeaderboardEntry | null }[] {
-  const out: { name: string; from: number; to: number | null; taker: LeaderboardEntry | null }[] = []
-  for (const [i, moment] of progression.entries()) {
-    if (i > 0 && progression[i - 1].name === moment.name) continue
-    const last = out[out.length - 1]
-    if (last) {
-      last.to = moment.at
-      last.taker = moment
-    }
-    out.push({ name: moment.name, from: moment.at, to: null, taker: null })
-  }
-  return out
-}
-
-/**
- * Where the viewer stands on a record: holding it, on its board, or not on it
- * yet, with the numbers and the next thing to aim at; on a shut one (recordShut),
- * why there's nothing left to aim at.
- */
-export function recordStanding(
-  game: string,
-  record: Rec,
-  period: LeaderboardPeriod,
-  board: { entries: LeaderboardEntry[]; total: number; you: YouEntry | null; progression: LeaderboardEntry[] },
-  me: string,
-  allTimeYou: YouEntry | null,
-  shut: RecordShut | null = null,
-  now = Date.now(),
-): RecordStanding {
-  const { entries, total, you, progression } = board
-  const [top, second] = entries
-  if (you && top && you.rank === 1) {
-    // One number: how far ahead of the next best you are.
-    const tied = second?.score === top.score
-    const stats: Stat[] = !second
-      ? []
-      : tied
-        ? [{ value: 'Tied', label: `with ${second.name}` }]
-        : [{ value: recordGap(record, second.score, top.score), label: `ahead of ${second.name}` }]
-    return {
-      mode: 'held',
-      big: 'It’s yours',
-      of: `#1 of ${total.toLocaleString()}`,
-      line: `${recordValue(record, top.score)} · set ${recordDay(top.at)} · held ${heldFor(reignStart(top, progression), now)}`,
-      stats,
-      callout: !second
-        ? 'Nobody else is on it yet.'
-        : tied
-          ? `${second.name} has matched it, but you got there first.`
-          : `${second.name} is ${recordGap(record, second.score, top.score)} behind.`,
-    }
-  }
-  if (you && top) {
-    const rank = you.rank
-    const next = entries[rank - 2]
-    // One number: the gap to the place above (from 2nd, the holder); past the players listed, to the holder.
-    const ahead = next ?? top
-    const stats: Stat[] = [
-      ahead.score === you.score
-        ? { value: 'Tied', label: `with ${ahead.name}` }
-        : { value: recordGap(record, you.score, ahead.score), label: `behind ${ahead.name}` },
-    ]
-    const callout = shut
-      ? shutLine(game, shut)
-      : !next
-        ? `${capital(recordBeat(record, top.score))} takes the record.`
-        : next.score === you.score
-          ? `Tied with ${next.name}, who got there first. ${capital(recordBeat(record, next.score))} passes them.`
-          : rank === 2
-            ? `${capital(recordBeat(record, top.score))} takes the record from ${top.name}.`
-            : `${capital(recordBeat(record, next.score))} passes ${next.name} for ${ordinal(rank - 1)}.`
-    // Held it once and lost it: the last stretch, and who took it.
-    const mine = stints(progression).filter((s) => s.name === me && s.taker)
-    const lost = mine[mine.length - 1]
-    const heldBefore = lost?.taker
-      ? `You held it for ${heldFor(lost.from, lost.to!)} from ${recordDay(lost.from)}, until ${lost.taker.name}’s ${recordValue(record, lost.taker.score)}.`
-      : null
-    return {
-      mode: 'on',
-      big: `#${rank.toLocaleString()}`,
-      of: `of ${total.toLocaleString()}`,
-      line: `Best ${recordValue(record, you.score)} · set ${recordDay(you.at)}`,
-      stats,
-      callout,
-      heldBefore,
-    }
-  }
-  const when = period === 'all' ? '' : ` ${recordWhen(period)}`
-  // Shut, there's no getting on it: just who is.
-  const join = (then: string) => (shut ? '' : ` ${onTheBoard(game, record)} and ${then}.`)
-  const line = total
-    ? `${total.toLocaleString()} ${total === 1 ? 'player is' : 'players are'} on it${when}.${join('you’re one of them')}`
-    : `Nobody is on it ${soFar(period)}.${join('the record is yours')}`
-  const callout = shut
-    ? shutLine(game, shut)
-    : entries.length >= 3
-      ? `${capital(recordBeat(record, entries[2].score))} makes the podium; ${recordBeat(record, top.score)} takes the record.`
-      : top
-        ? `${capital(recordBeat(record, top.score))} takes the record from ${top.name}.`
-        : 'Any result takes it.'
-  let best: string | null = null
-  if (period !== 'all' && allTimeYou) {
-    const place = 1 + entries.filter((e) => !recordBetter(record, allTimeYou.score, e.score)).length
-    best = `Your best of all time, ${recordValue(record, allTimeYou.score)}, would ${place === 1 ? 'take the record' : `place ${ordinal(place)}`}.`
-  }
-  return { mode: 'off', line, callout, best }
 }
 
 /* ---------- the story ---------- */

@@ -28,7 +28,6 @@ import {
   recordHeadline,
   recordLede,
   recordShut,
-  recordStanding,
   recordStory,
   recordWhen,
   type RecordShut,
@@ -48,9 +47,9 @@ import { PlayerName } from './PlayerName'
 
 /*
  * One record. The banner is its game at the scale of the page, with the
- * record on the marquee, whose name is on it and for how long. Then, when you
- * hold it, who's closest; everyone's best, and the records beside it in its
- * book; and at the foot, every time it was broken, charted and listed.
+ * record on the marquee, whose name is on it and for how long. Then everyone's
+ * best, and the records beside it in its book; and at the foot, every time it
+ * was broken, charted and listed.
  */
 
 const MEDALS = ['gold', 'silver', 'bronze'] as const
@@ -286,40 +285,6 @@ function Banner({
         ) : null}
       </a>
     </section>
-  )
-}
-
-/* ---------- you ---------- */
-
-/**
- * Holding the record: the next three, and how far behind you they are. It's all of you that's left on the page:
- * at Ramsey's word (2026-09-30) the cards that only said you weren't on it (Not on it yet, Get in the book, a
- * past day's This record is final), What it takes, and then the card with your place ("DAD · this week") went.
- */
-function ClosestCard({ record, entries }: { record: RecordDef; entries: LeaderboardEntry[] }) {
-  const [top, ...rest] = entries
-  return (
-    <div className="sb-card gb-price rcd-takes">
-      <h2 className="sb-card__title">Who’s closest</h2>
-      <p className="gb-card__sub">The next three, and how far behind you they are.</p>
-      <ul className="rcd-closest__rows">
-        {rest.slice(0, 3).map((e) => (
-          <li key={e.id} className="rcd-closest__row">
-            <span className="rcd-closest">
-              <PlayerMark name={e.name} avatarId={e.avatarId} className="rcd-closest__mark" />
-              <span className="rcd-closest__who">
-                <b>{e.name}</b>
-                <span>set {recordDay(e.at)}</span>
-              </span>
-            </span>
-            <span className="rcd-take__beat rcd-take__beat--stack">
-              <b>{recordValue(record, e.score)}</b>
-              <span>{recordGap(record, e.score, top.score)} behind</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
   )
 }
 
@@ -668,16 +633,11 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
   const data = useRecordPage(game, recordId, period, you, groupId)
   // The boards' group by name, said again once the list of your groups comes.
   const group = useScope().name
-  // Who's closest is the holder's alone, over the board: while the record loads it holds the height it had on
-  // this record last time. A first look can't know whether the viewer holds it, so for a viewer with a name
-  // what's under it waits until it's in and comes in its place, as a player card's page does (RankPage.tsx).
-  const closestHeld = useHeldHeight<HTMLDivElement>(`rcd-closest-${game}-${recordId}-${period}${groupId ? `-${groupId}` : ''}`, data.loading)
-  const below = !data.loading || !you || closestHeld.known
   const meta = getGame(game)
   if (!meta) return null
   const accent = resolveGameAccent(game, meta.accent)
   const style = { '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), '--gb-fill': readableFill(accent) } as CSSProperties
-  const { record, entries, total } = data
+  const { record, entries } = data
 
   if (data.error) {
     return (
@@ -697,13 +657,6 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
 
   // A day's record that no run can move for you now: its day over, or your one result on it in.
   const shut = record ? recordShut(game, record, Boolean(data.you || data.allTimeYou)) : null
-  // The first rows and the viewer's neighbours, each at its place (index place − 1): all recordStanding reads.
-  const known: LeaderboardEntry[] = [...entries]
-  for (const a of data.around) known[a.place - 1] = a.entry
-  const standing =
-    record && you
-      ? recordStanding(game, record, period, { entries: known, total, you: data.you, progression: data.progression }, you, data.allTimeYou, shut)
-      : null
   const story = record ? recordStory(record, data.progression, data.youProgression, period, you) : null
 
   return (
@@ -720,38 +673,26 @@ export function RecordView({ game, recordId, period }: { game: string; recordId:
         shut={shut}
       />
 
-      <div className="rcd-slot" ref={closestHeld.ref} style={closestHeld.style}>
-        {!data.loading && record && standing?.mode === 'held' ? (
-          <section className="sb-you gb-you sb-you--solo" aria-label="Who’s closest">
-            <ClosestCard record={record} entries={entries} />
-          </section>
+      <div className="gb-main">
+        <Board
+          key={`${recordId}-${period}`}
+          game={game}
+          recordId={recordId}
+          period={period}
+          record={record}
+          data={data}
+          loading={data.loading}
+          you={you}
+        />
+        {!data.loading && record ? (
+          <aside className="gb-side" aria-label="More about this record">
+            <NearbyCard game={game} recordId={recordId} period={period} record={record} book={bookRecords(game, data.book)} you={you} />
+          </aside>
         ) : null}
       </div>
 
-      {below ? (
-        <>
-          <div className="gb-main">
-            <Board
-              key={`${recordId}-${period}`}
-              game={game}
-              recordId={recordId}
-              period={period}
-              record={record}
-              data={data}
-              loading={data.loading}
-              you={you}
-            />
-            {!data.loading && record ? (
-              <aside className="gb-side" aria-label="More about this record">
-                <NearbyCard game={game} recordId={recordId} period={period} record={record} book={bookRecords(game, data.book)} you={you} />
-              </aside>
-            ) : null}
-          </div>
-
-          {/* Its history, at the foot of the page, under everyone's best (Ramsey, 2026-09-30). */}
-          {story ? <StoryCard story={story} /> : null}
-        </>
-      ) : null}
+      {/* Its history, at the foot of the page, under everyone's best (Ramsey, 2026-09-30). */}
+      {story ? <StoryCard story={story} /> : null}
     </div>
   )
 }
