@@ -77,7 +77,7 @@ export function AboutPage() {
 
         <h2 className="home-about__subtitle">Classic inspiration, original games</h2>
         <p>
-          The lineup is inspired by the games we grew up on — Asteroids-style survival, Frogger
+          The lineup is inspired by the games we grew up on — rock-blasting space runs, road
           crossings, endless hoppers, reflex testers, and arcade shooters — but every title
           here is built for the web as an original take, not a clone. We’re still adding games
           and polishing the in-development ones; expect the cabinet row to grow over time.

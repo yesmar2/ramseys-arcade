@@ -88,7 +88,7 @@ export type Game = {
 
 export const games: Game[] = [
   {
-    name: 'Asteroids',
+    name: 'Space Rocks',
     slug: 'asteroids',
     tags: ['arcade'],
     description: 'Spin, thrust, clear the rocks. Chain hits for more.',

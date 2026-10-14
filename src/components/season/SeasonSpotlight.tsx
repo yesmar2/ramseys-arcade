@@ -10,7 +10,7 @@ import '../../styles/season.css'
  * with the skin the pass has for it and the level it's at.
  */
 
-/** What a skin is, with its article and its game's name as it's written: "an Asteroids ship", "a Lander ship". */
+/** What a skin is, with its article and its game's name as it's written: "a Space Rocks ship", "a Lander ship". */
 function aSkin(what: string): string {
   return `${/^[aeiou]/i.test(what) ? 'an' : 'a'} ${what}`
 }

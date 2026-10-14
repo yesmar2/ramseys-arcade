@@ -57,7 +57,7 @@ export const PRIZES: readonly Prize[] = [
   { id: 'cd-checker', kind: 'card', name: 'Checkerboard', price: 600, blurb: 'An old arcade’s checked floor running off to a neon wall, behind your player card.' },
   { id: 'cd-carpet', kind: 'card', name: 'Arcade carpet', price: 750, blurb: 'The old arcade floor, squiggles and all, behind your player card.' },
   { id: 'cd-sunset', kind: 'card', name: 'Sunset grid', price: 1200, blurb: 'A striped sun going down behind a neon grid, behind your player card.' },
-  { id: 'cd-asteroids', kind: 'card', name: 'Asteroid belt', price: 1800, blurb: 'Asteroids’ rocks drifting past your player card, with the ship among them.' },
+  { id: 'cd-asteroids', kind: 'card', name: 'Asteroid belt', price: 1800, blurb: 'The rocks and the ship from Space Rocks, drifting past your player card.' },
   { id: 'cd-aquarium', kind: 'card', name: 'Aquarium', price: 2500, blurb: 'Frenzy’s fish swimming behind your player card.' },
   { id: 'cd-fireflies', kind: 'card', name: 'Firefly lake', price: 3500, blurb: 'Fireflies’ lanterns and fireflies over the lake at night, behind your player card.' },
   { id: 'cf-stars', kind: 'confetti', name: 'Stars', price: 150, blurb: `Stars go up ${CONFETTI}` },

@@ -20,12 +20,12 @@ export type Skin = { id: string; game: string; name: string; season?: number; pr
 
 export const SKINS: readonly Skin[] = [
   { id: 'lander-moonhopper', game: 'lander', name: 'Moonhopper', season: 1, what: 'Lander ship' },
-  { id: 'asteroids-comet', game: 'asteroids', name: 'Comet', season: 1, what: 'Asteroids ship' },
+  { id: 'asteroids-comet', game: 'asteroids', name: 'Comet', season: 1, what: 'Space Rocks ship' },
   { id: 'barrage-nova', game: 'barrage', name: 'Nova fighter', season: 1, what: 'Barrage ship' },
   { id: 'hotlap-rocket', game: 'hotlap', name: 'Rocket car', season: 1, what: 'Hot Lap car' },
   { id: 'snake-comet-tail', game: 'snake', name: 'Blazing comet', season: 1, what: 'Snake skin' },
   // Season 1's Pass+ row.
-  { id: 'asteroids-shuttle', game: 'asteroids', name: 'Shuttle', season: 1, what: 'Asteroids ship', plus: true },
+  { id: 'asteroids-shuttle', game: 'asteroids', name: 'Shuttle', season: 1, what: 'Space Rocks ship', plus: true },
   { id: 'lander-eagle', game: 'lander', name: 'Eagle', season: 1, what: 'Lander ship', plus: true },
   { id: 'barrage-ringship', game: 'barrage', name: 'Ringship', season: 1, what: 'Barrage ship', plus: true },
   { id: 'snake-nebula-tail', game: 'snake', name: 'Astro worm', season: 1, what: 'Snake skin', plus: true },
@@ -33,7 +33,7 @@ export const SKINS: readonly Skin[] = [
   { id: 'hotlap-sunracer', game: 'hotlap', name: 'Shuttle car', season: 1, what: 'Hot Lap car', plus: true },
   { id: 'barrage-stingray', game: 'barrage', name: 'Stingray', season: 1, what: 'Barrage ship', plus: true },
   { id: 'snake-saturn-tail', game: 'snake', name: 'Saturn tail', season: 1, what: 'Snake skin', plus: true },
-  { id: 'asteroids-orbiter', game: 'asteroids', name: 'Orbiter', season: 1, what: 'Asteroids ship', plus: true },
+  { id: 'asteroids-orbiter', game: 'asteroids', name: 'Orbiter', season: 1, what: 'Space Rocks ship', plus: true },
   { id: 'lander-starhopper', game: 'lander', name: 'Starhopper', season: 1, what: 'Lander ship', plus: true },
   // Season 2's (Cold Snap), free row then Pass+. Skins go round the games a season at a time (Ramsey, 2026-10-07):
   // Cold Snap's are Hot Lap's and Snake's, and Swoop's, Marble Run's and Pileup's for the first time. Its Lander,
@@ -56,7 +56,7 @@ export const SKINS: readonly Skin[] = [
   // The Hangar's: for good, traded for tickets (the API's prizes.ts has the prices too). Never a season's.
   { id: 'hotlap-green-flash', game: 'hotlap', name: 'Green Flash', price: 1000, what: 'Hot Lap car' },
   { id: 'lander-gold', game: 'lander', name: 'Gold Lander', price: 1500, what: 'Lander ship' },
-  { id: 'asteroids-retro', game: 'asteroids', name: 'Retro Wedge', price: 800, what: 'Asteroids ship' },
+  { id: 'asteroids-retro', game: 'asteroids', name: 'Retro Wedge', price: 800, what: 'Space Rocks ship' },
   { id: 'barrage-paper-plane', game: 'barrage', name: 'Paper Plane', price: 1200, what: 'Barrage ship' },
   { id: 'snake-candy-stripe', game: 'snake', name: 'Candy Stripe', price: 800, what: 'Snake skin' },
   // Blip's set (Ramsey, 2026-10-11: "i like A, daily question 7 times"): the site's mascot in four games, won one

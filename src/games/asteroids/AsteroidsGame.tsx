@@ -834,7 +834,7 @@ export function AsteroidsGame() {
             {ui.phase === 'waveClear' && !saveOpen && !paused && (
               <div className="game-card game-card--wave" style={gameAccentStyle('asteroids')}>
                 <div className="game-card__head">
-                  <span className="game-card__kicker">Asteroids</span>
+                  <span className="game-card__kicker">Space Rocks</span>
                   <h2 className="game-card__title">Wave {ui.lastWave} clear</h2>
                   <p className="game-card__figure">{formatWaveTime(ui.lastWaveTime)}s</p>
                 </div>
@@ -872,7 +872,7 @@ export function AsteroidsGame() {
             )}
             {ui.phase === 'menu' && !saveOpen && !paused && (
               <GameStartCard
-                title="Asteroids"
+                title="Space Rocks"
                 slug="asteroids"
                 tools={
                   <AdminWaveSkip

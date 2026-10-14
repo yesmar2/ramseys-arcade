@@ -16,7 +16,7 @@ export const ATTENDANT_LINES = [
   'Looking confident won’t help. Looking cool still counts.',
   'I saw your last run. We’re not talking about it.',
   'Coin slot’s metaphorical. Your free time isn’t. Go play.',
-  'Asteroids called. They want their rocks back.',
+  'Space Rocks called. It wants its rocks back.',
   'Patriot tip: cities are emotional support objects. Protect them.',
   'The fireflies remember every tune. I forget why I walked in here.',
   'Leaderboards lie less than I do. Barely.',
