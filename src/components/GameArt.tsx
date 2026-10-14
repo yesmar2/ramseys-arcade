@@ -104,38 +104,6 @@ function sparkle(cx: number, cy: number, s: number) {
   return `M${cx} ${cy - s} Q${cx} ${cy} ${cx + s} ${cy} Q${cx} ${cy} ${cx} ${cy + s} Q${cx} ${cy} ${cx - s} ${cy} Q${cx} ${cy} ${cx} ${cy - s} Z`
 }
 
-/** The chomp, mouth open to +x, as Pellets and Crumbtrail draw it. */
-function chomp(r: number, open = 0.62) {
-  const x = r * Math.cos(open)
-  const y = r * Math.sin(open)
-  return `M0 0 L${x.toFixed(2)} ${y.toFixed(2)} A${r} ${r} 0 1 1 ${x.toFixed(2)} ${(-y).toFixed(2)} Z`
-}
-
-/** A ghost: a dome, straight sides, three scalloped feet. */
-function ghost(cx: number, cy: number, r: number) {
-  const top = cy - r * 0.1
-  const bottom = cy + r
-  const step = r / 3
-  const lift = r * 0.32
-  let d = `M${cx - r} ${bottom} V${top} A${r} ${r} 0 0 1 ${cx + r} ${top} V${bottom}`
-  for (let i = 0; i < 6; i++) d += ` l${-step} ${i % 2 === 0 ? -lift : lift}`
-  return `${d} Z`
-}
-
-function GhostEyes({ cx, cy, r, look = [0, 0] }: { cx: number; cy: number; r: number; look?: [number, number] }) {
-  const e = r * 0.3
-  return (
-    <>
-      {[-1, 1].map((side) => (
-        <g key={side}>
-          <circle cx={cx + side * r * 0.38} cy={cy - r * 0.12} r={e} fill="#fff" />
-          <circle cx={cx + side * r * 0.38 + look[0] * e * 0.45} cy={cy - r * 0.12 + look[1] * e * 0.45} r={e * 0.5} fill={INK} />
-        </g>
-      ))}
-    </>
-  )
-}
-
 /** Round white eyes with dark pupils, the arcade's own (Snake's). */
 function Eyes({ at, r, look = [0, -1], ring }: { at: Array<[number, number]>; r: number; look?: [number, number]; ring?: string }) {
   return (
@@ -931,21 +899,26 @@ function Barrage({ id }: { id: Id }) {
 
 /** A bar of Crumbtrail's maze: a rounded rail, doubled like the game's walls. */
 function MazeBar({ x0, x1, y, h = 2.4 }: { x0: number; x1: number; y: number; h?: number }) {
+  // A hedge, as Crumbtrail draws its walls: a leafy green tube with a line inside it and a few leaves.
+  const leaves = Array.from({ length: Math.max(1, Math.floor((x1 - x0) / 3.2)) }, (_, i) => x0 + 1.6 + i * 3.2)
   return (
     <g>
-      <rect x={x0} y={y} width={x1 - x0} height={h} rx={h / 2} fill={hsl(234, 45, 22, 0.55)} stroke={hsl(234, 72, 66)} strokeWidth="0.42" />
-      <rect x={x0 + 0.55} y={y + 0.55} width={x1 - x0 - 1.1} height={h - 1.1} rx={(h - 1.1) / 2} {...line(hsl(234, 72, 66), 0.18, 0.4)} />
+      <rect x={x0} y={y} width={x1 - x0} height={h} rx={h / 2} fill={hsl(138, 55, 30, 0.75)} stroke={hsl(138, 62, 60)} strokeWidth="0.42" />
+      <rect x={x0 + 0.55} y={y + 0.55} width={x1 - x0 - 1.1} height={h - 1.1} rx={(h - 1.1) / 2} {...line(hsl(138, 62, 60), 0.18, 0.4)} />
+      {leaves.map((x, i) => (
+        <ellipse key={x} cx={x} cy={y + h / 2} rx="0.5" ry="0.25" fill={hsl(138, 60, 62, 0.35)} transform={`rotate(${i % 2 ? 30 : -30} ${x} ${y + h / 2})`} />
+      ))}
     </g>
   )
 }
 
 /**
- * The climb: the chomp has eaten its way along a row and turns up for the gap,
- * crumbs thick in every row above, two chasers about, the snowflake charm, and
- * the tide coming up right behind with its crest, bubbles and embers.
+ * The climb: Blip has eaten his way along a row and turns up for the gap, crumbs thick in every row above,
+ * Pester the moth and Snatch about, the snowflake charm, and the rainwater coming up right behind with its
+ * crest, bubbles and the rain falling into it.
  */
 function Crumbtrail({ id }: { id: Id }) {
-  const crumb = '#3ecf8e'
+  const crumb = hsl(42, 92, 64)
   const bars: Array<[number, number, number]> = [
     [-2, 8.4, 2.6],
     [12.6, 23.4, 2.6],
@@ -966,7 +939,7 @@ function Crumbtrail({ id }: { id: Id }) {
   const crumbs: Array<[number, number]> = []
   for (const y of [7.6, 15.2, 22.8]) {
     for (let x = 1.3; x < 40; x += 2.6) {
-      // Eaten: the bottom row, where the chomp came along it.
+      // Eaten: the bottom row, where Blip came along it.
       if (y === 22.8 && x > 7.5 && x < 21) continue
       if (busy.some(([bx, by]) => Math.abs(bx - x) < 1.6 && by === y)) continue
       crumbs.push([x, y])
@@ -979,12 +952,12 @@ function Crumbtrail({ id }: { id: Id }) {
     <>
       <defs>
         <linearGradient id={id('tide')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={hsl(350, 70, 38)} stopOpacity="0.95" />
-          <stop offset="1" stopColor={hsl(344, 60, 12)} stopOpacity="0.97" />
+          <stop offset="0" stopColor={hsl(205, 70, 40)} stopOpacity="0.95" />
+          <stop offset="1" stopColor={hsl(217, 60, 13)} stopOpacity="0.97" />
         </linearGradient>
         <linearGradient id={id('warn')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={hsl(350, 80, 60)} stopOpacity="0" />
-          <stop offset="1" stopColor={hsl(350, 80, 60)} stopOpacity="0.34" />
+          <stop offset="0" stopColor={hsl(205, 80, 60)} stopOpacity="0" />
+          <stop offset="1" stopColor={hsl(205, 80, 60)} stopOpacity="0.34" />
         </linearGradient>
       </defs>
       <Backdrop id={id} stops={[[0, '#121a32'], [1, '#0e1326']]} />
@@ -1005,15 +978,11 @@ function Crumbtrail({ id }: { id: Id }) {
       ))}
       <circle cx="12.9" cy="15.2" r="1.25" fill={hsl(200, 80, 55, 0.35)} stroke={hsl(200, 85, 70)} strokeWidth="0.3" />
       <path d="M12.9 14.3 V16.1 M12.12 14.75 L13.68 15.65 M12.12 15.65 L13.68 14.75" {...line('#fff', 0.18, 0.9)} />
-      <path d={ghost(9.6, 7.4, 1.65)} {...wash(270, 70, 68, 0.32, 0.4)} />
-      <GhostEyes cx={9.6} cy={7.4} r={1.65} look={[1, 0.3]} />
-      <path d={ghost(30.5, 15, 1.65)} {...wash(356, 78, 64, 0.32, 0.4)} />
-      <GhostEyes cx={30.5} cy={15} r={1.65} look={[-1, 0.4]} />
+      <MazeBug name="pester" x={9.6} y={7.2} size={6} pose={{ state: 'normal', look: [1, 0.3], step: 0, t: 0.1 }} />
+      <MazeBug name="snatch" x={30.5} y={14.8} size={6} pose={{ state: 'normal', look: [-1, 0.4], step: 1 }} />
       <rect x="-1" y="19.6" width="42" height="6.8" fill={`url(#${id('warn')})`} />
-      <Glow id={id} name="chomp" cx={20} cy={22.8} r={5} colour={crumb} strength={0.45} />
-      <g transform="translate(20 22.8) rotate(-90)">
-        <path d={chomp(2.15)} {...wash(152, 62, 56, 0.4, 0.5)} />
-      </g>
+      <Glow id={id} name="lamp" cx={20} cy={22.8} r={5} colour={hsl(168, 90, 60)} strength={0.4} />
+      <Blip id={id} name="blip" x={20} y={22.6 - 1.26 * (2.1 / 7.35)} s={2.1 / 7.35} c={BLIP_MINT} />
       <path d={`M-1 31 L${surface.join(' L')} L41 31 Z`} fill={`url(#${id('tide')})`} />
       {[
         [6, 28, 0.35],
@@ -1022,17 +991,18 @@ function Crumbtrail({ id }: { id: Id }) {
         [27, 28.6, 0.3],
         [33, 27.3, 0.38],
       ].map(([x, y, r]) => (
-        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} {...line('rgba(255, 190, 205, 0.55)', 0.14)} />
+        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} {...line('rgba(200, 232, 255, 0.55)', 0.14)} />
       ))}
-      <path d={`M${surface.join(' L')}`} {...line(hsl(356, 90, 70), 0.4, 0.9)} />
+      <path d={`M${surface.join(' L')}`} {...line(hsl(197, 90, 76), 0.4, 0.9)} />
+      {/* Rain falling into it. */}
       {[
-        [8, 24.5, 0.28, 0.8],
-        [15.6, 23.7, 0.22, 0.5],
-        [26, 24.2, 0.26, 0.7],
-        [31.4, 23.3, 0.2, 0.45],
-        [36, 24.7, 0.24, 0.6],
-      ].map(([x, y, r, o]) => (
-        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill={hsl(0, 95, 66)} opacity={o} />
+        [8, 22.6, 0.8],
+        [15.6, 21.4, 0.5],
+        [26, 22.2, 0.7],
+        [31.4, 21, 0.45],
+        [36, 22.8, 0.6],
+      ].map(([x, y, o]) => (
+        <path key={`${x}-${y}`} d={`M${x} ${y} l-0.3 -1.2`} {...line(hsl(205, 80, 78), 0.22, o)} />
       ))}
     </>
   )

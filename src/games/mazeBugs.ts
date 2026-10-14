@@ -13,6 +13,12 @@
  *   He was teal on the canvas; sky keeps him clear of Blip's mint.
  * - Grumble, who wanders, then lunges: an amber wasp in a hard hat.
  *
+ * Crumbtrail has two more:
+ * - Pester, its herder, who runs ahead to stand where you're going: a pink
+ *   moth in a propeller cap, arms out to block the way.
+ * - Its trains, a line of cars sweeping a row: a caterpillar in a work visor,
+ *   a car to each segment, the head on the car in front.
+ *
  * Every part is in a box 100 units tall centred on the bug, feet near y 48
  * and antenna tips near y -50, as a list of shapes, so the game draws them on
  * its canvas (paintBug) and the card art in SVG (GameArt.tsx) from the same
@@ -20,21 +26,24 @@
  * bug's own colour inside the ink, so they still show on the dark ground.
  */
 
-export type BugName = 'snatch' | 'sly' | 'shady' | 'grumble'
+export type BugName = 'snatch' | 'sly' | 'shady' | 'grumble' | 'pester' | 'car'
 
 export type BugPose = {
   /**
    * normal; scared (a glowberry: pale and wide-eyed, or in its own colours
-   * with `own` as the fright runs out); dazed (caught, on its way home).
+   * with `own` as the fright runs out); dazed (caught, on its way home);
+   * asleep (Crumbtrail's, seeded up ahead: eyes shut).
    */
-  state: 'normal' | 'scared' | 'dazed'
+  state: 'normal' | 'scared' | 'dazed' | 'asleep'
   own?: boolean
   /** Which way its eyes look, as a step in x and y. */
   look: readonly [number, number]
   /** Which foot is forward: 0 or 1. */
   step: number
-  /** Seconds, for the stars round a dazed bug. */
+  /** Seconds, for the stars round a dazed bug and the light in a caterpillar's visor. */
   t?: number
+  /** A caterpillar's car with its head on it, rather than a segment of its body. */
+  lead?: boolean
 }
 
 export type BugPart =
@@ -59,6 +68,9 @@ export const BUG_COLOURS: Record<BugName, Colours> = {
   sly: { body: '#8a6ad4', dark: '#6a50b8', light: '#b9a5ea' },
   shady: { body: '#4aa8e8', dark: '#2f82c0', light: '#a6d5f5' },
   grumble: { body: '#f5b942', dark: '#cf931f', light: '#fbd88f' },
+  pester: { body: '#e85d9a', dark: '#b8407a', light: '#f49ac2' },
+  // Drained of colour, like something built rather than something hunting.
+  car: { body: '#cdbb8e', dark: '#9c8a5c', light: '#e8dfc4' },
 }
 
 /** A glowberry's fright: every bug pale, still in its own shape and hat. */
@@ -71,9 +83,11 @@ const pts = (list: readonly Pt[]) => list.map(([x, y]) => `${n(x)} ${n(y)}`)
 
 /** Parts of one bug, front on, in its 100-unit box. */
 export function bugParts(name: BugName, pose: BugPose): BugPart[] {
+  if (name === 'car') return carParts(pose)
   const out: BugPart[] = []
   const scared = pose.state === 'scared'
   const dazed = pose.state === 'dazed'
+  const asleep = pose.state === 'asleep'
   const c = (scared && !pose.own) || dazed ? PALE : BUG_COLOURS[name]
   const limbC = c.dark
   const [lx, ly] = pose.look
@@ -103,8 +117,15 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
   const sweat = (x: number, y: number, r: number) =>
     shape(`M ${n(x)} ${n(y - r * 1.6)} Q ${n(x + r)} ${n(y)} ${n(x)} ${n(y + r * 0.6)} Q ${n(x - r)} ${n(y)} ${n(x)} ${n(y - r * 1.6)} Z`, '#9fd8ff', 1.4)
 
-  type Mood = 'angry' | 'sly' | 'shades' | 'grumpy' | 'scared' | 'dizzy'
+  type Mood = 'angry' | 'sly' | 'shades' | 'grumpy' | 'cheeky' | 'scared' | 'dizzy' | 'sleep'
   const eyes = (y: number, spread: number, r: number, mood: Mood, skin: string) => {
+    if (mood === 'sleep') {
+      for (const s of [-1, 1]) {
+        const cx = s * spread
+        out.push({ k: 'stroke', d: `M ${n(cx - r * 0.95)} ${n(y)} Q ${n(cx)} ${n(y + r * 0.8)} ${n(cx + r * 0.95)} ${n(y)}`, colour: BUG_INK, w: r * 0.42 })
+      }
+      return
+    }
     if (mood === 'shades') {
       const w = r * 2.3
       const h = r * 1.55
@@ -149,9 +170,11 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
       if (mood === 'angry') out.push({ k: 'stroke', d: `M ${n(cx + s * r * 1.15)} ${n(y - r * 1.45)} L ${n(cx - s * r * 0.75)} ${n(y - r * 0.55)}`, colour: BUG_INK, w: r * 0.55 })
       if (mood === 'grumpy') out.push({ k: 'stroke', d: `M ${n(cx + s * r * 1.1)} ${n(y - r * 1.05)} L ${n(cx - s * r * 0.85)} ${n(y - r * 1.25)}`, colour: BUG_INK, w: r * 0.5 })
       if (mood === 'scared') out.push({ k: 'stroke', d: `M ${n(cx + s * r * 1.05)} ${n(y - r * 1.35)} L ${n(cx - s * r * 0.7)} ${n(y - r * 1.9)}`, colour: BUG_INK, w: r * 0.42 })
+      if (mood === 'cheeky') out.push({ k: 'stroke', d: `M ${n(cx - r)} ${n(y - r * 1.3)} Q ${n(cx)} ${n(y - r * 2)} ${n(cx + r)} ${n(y - r * 1.3)}`, colour: BUG_INK, w: r * 0.45 })
     }
   }
-  const mood: Mood = dazed ? 'dizzy' : scared ? 'scared' : ({ snatch: 'angry', sly: 'sly', shady: 'shades', grumble: 'grumpy' } as const)[name]
+  const usual = ({ snatch: 'angry', sly: 'sly', shady: 'shades', grumble: 'grumpy', pester: 'cheeky' } as const)[name]
+  const mood: Mood = dazed ? 'dizzy' : scared ? 'scared' : asleep ? (name === 'shady' ? 'shades' : 'sleep') : usual
   const wobble = (x0: number, x1: number, y: number) => {
     const list: Pt[] = []
     for (let i = 0; i <= 6; i++) list.push([x0 + ((x1 - x0) * i) / 6, y + (i % 2 === 0 ? 0 : -2.5)])
@@ -174,6 +197,15 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
   }
   if (name === 'grumble') {
     for (const s of [-1, 1]) ell(s * 25, 0, 17, 10, WINGS, 2.4, s * -30)
+  }
+  if (name === 'pester') {
+    // A moth's wings: a big pair up top and a small pair under them, spotted.
+    for (const s of [-1, 1]) {
+      ell(s * 22, 30, 15, 10, c.light, 2.6, s * 24)
+      ell(s * 30, 6, 20, 14, c.body, 2.8, s * -26)
+      ell(s * 35, 3, 5, 5, c.dark, 0)
+      ell(s * 24, 31, 3.6, 3.6, c.dark, 0)
+    }
   }
 
   if (name === 'snatch') {
@@ -218,6 +250,11 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
         else arch(leg, limbC, 3.8)
       }
     }
+  } else if (name === 'pester') {
+    // A moth's fuzzy body, its fuzz in rings.
+    shape('M 0 5 C 14 5 19 16 19 27 C 19 39 11 46 0 46 C -11 46 -19 39 -19 27 C -19 16 -14 5 0 5 Z', c.light)
+    out.push({ k: 'stroke', d: 'M -17 18 Q 0 23 17 18 M -18 29 Q 0 34 18 29 M -14 39 Q 0 43 14 39', colour: c.body, w: 3 })
+    gloss(-10, 13, 3, 5, 30)
   } else {
     shape('M 0 5 C 16 5 22 15 22 27 C 22 40 13 47 0 47 C -13 47 -22 40 -22 27 C -22 15 -16 5 0 5 Z', c.body)
     for (const y of [16, 28, 39]) {
@@ -227,21 +264,27 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
     gloss(-11, 12, 3, 5, 30)
   }
 
-  // Front arms: hands on hips for the bosses, reaching for the sneak.
+  // Front arms: hands on hips for the bosses, reaching for the sneak, held out wide to block the way for the moth.
   if (name !== 'shady') {
-    const reach = name === 'sly'
     for (const s of [-1, 1]) {
-      const arm: Pt[] = reach
-        ? [
-            [s * 10, 8],
-            [s * 22, 4],
-            [s * 30, -4],
-          ]
-        : [
-            [s * 12, 8],
-            [s * 25, 12],
-            [s * 17, 21],
-          ]
+      const arm: Pt[] =
+        name === 'sly'
+          ? [
+              [s * 10, 8],
+              [s * 22, 4],
+              [s * 30, -4],
+            ]
+          : name === 'pester'
+            ? [
+                [s * 10, 9],
+                [s * 24, 6],
+                [s * 37, 11],
+              ]
+            : [
+                [s * 12, 8],
+                [s * 25, 12],
+                [s * 17, 21],
+              ]
       limb(arm, limbC, 4.6)
       ell(arm[2]![0], arm[2]![1], 3.6, 3.6, limbC, 2.2)
     }
@@ -290,6 +333,12 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
   if (scared || dazed) {
     wobble(-7, 8, my)
     if (scared) sweat(18, head.y - 4, 3.2)
+  } else if (asleep) {
+    out.push({ k: 'stroke', d: `M -4 ${my + 1} Q 0 ${my + 3} 4 ${my + 1}`, colour: BUG_INK, w: 2.2 })
+  } else if (name === 'pester') {
+    // A cheeky grin, his tongue out.
+    out.push({ k: 'path', d: `M -9 ${my - 1} Q 0 ${my + 10} 9 ${my - 1} Z`, fill: BUG_INK, line: 0 })
+    out.push({ k: 'ell', x: 2.5, y: my + 4, rx: 3.2, ry: 2.6, fill: '#ff8fb3', line: 1.4 })
   } else if (name === 'snatch') {
     out.push({ k: 'stroke', d: `M -8 ${my + 1} Q 1 ${my + 5} 9 ${my - 2}`, colour: BUG_INK, w: 2.6 })
     shape(`M 3 ${my + 2.4} L 4.8 ${my + 6.6} L 6.6 ${my + 1.4} Z`, '#ffffff', 1.3)
@@ -309,6 +358,13 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
     shape(`M -20 ${top + 12} Q -20 ${top - 6} 0 ${top - 6} Q 20 ${top - 6} 20 ${top + 12} Z`, c.body)
     out.push({ k: 'stroke', d: `M -8 ${top - 4} L -8 ${top + 11} M 0 ${top - 5} L 0 ${top + 11} M 8 ${top - 4} L 8 ${top + 11}`, colour: c.dark, w: 2 })
     out.push({ k: 'rect', x: -22, y: top + 8, w: 44, h: 7, r: 3.5, fill: c.dark, line: 2.4 })
+  } else if (name === 'pester') {
+    // A propeller cap, the propeller turning while he's about.
+    shape(`M -19 ${top + 11} Q -19 ${top - 7} 0 ${top - 7} Q 19 ${top - 7} 19 ${top + 11} Z`, c.dark)
+    out.push({ k: 'rect', x: -21, y: top + 8, w: 42, h: 6, r: 3, fill: c === PALE ? PALE.light : BAND, line: 2.4 })
+    out.push({ k: 'stroke', d: `M 0 ${top - 7} L 0 ${top - 13}`, colour: BUG_INK, w: 2.4 })
+    const spin = asleep ? 1 : Math.abs(Math.cos((pose.t ?? 0) * 9))
+    for (const s of [-1, 1]) ell(s * 6.5 * spin, top - 14, 7 * spin + 1.4, 2.4, c === PALE ? PALE.light : '#f5d142', 2)
   } else {
     // A hard hat, for the one who works.
     shape(`M -19 ${top + 11} Q -19 ${top - 8} 0 ${top - 8} Q 19 ${top - 8} 19 ${top + 11} Z`, c.body)
@@ -316,6 +372,52 @@ export function bugParts(name: BugName, pose: BugPose): BugPart[] {
     out.push({ k: 'rect', x: -25, y: top + 8, w: 50, h: 6, r: 3, fill: c.body, line: 2.4 })
   }
   if (dazed) stars(out, 0, top - 4, 24, pose.t ?? 0)
+  return out
+}
+
+/**
+ * A caterpillar's car: a round segment of its body, little feet under it,
+ * and, on the car in front, its head in a work visor with a light running
+ * along it where a hunter would have eyes. The cars are joined by the game,
+ * so a line of them reads as one caterpillar.
+ */
+function carParts(pose: BugPose): BugPart[] {
+  const out: BugPart[] = []
+  const scared = pose.state === 'scared'
+  const dazed = pose.state === 'dazed'
+  const asleep = pose.state === 'asleep'
+  const c = (scared && !pose.own) || dazed ? PALE : BUG_COLOURS.car
+  for (const [x, i] of [
+    [-17, 0],
+    [0, 1],
+    [17, 2],
+  ] as const) {
+    const lift = (i + pose.step) % 2 === 1 ? -2.5 : 0
+    out.push({ k: 'ell', x, y: 41 + lift, rx: 5.5, ry: 3.6, fill: c.dark, line: 2.2 })
+  }
+  out.push({ k: 'ell', x: 0, y: 8, rx: 35, ry: 32, fill: c.body, line: O })
+  out.push({ k: 'stroke', d: 'M -31 -4 Q 0 3 31 -4 M -33 14 Q 0 21 33 14', colour: c.dark, w: 3.4 })
+  out.push({ k: 'path', d: 'M 35 8 C 35 26 20 40 0 40 C 16 34 28 22 29 6 C 29 -6 23 -15 14 -20 C 27 -16 35 -5 35 8 Z', fill: SHADE })
+  out.push({ k: 'ell', x: -17, y: -9, rx: 6, ry: 9, fill: '#ffffff', line: 0, rot: 35, alpha: 0.5 })
+  if (!pose.lead) return out
+  for (const s of [-1, 1]) {
+    out.push({ k: 'stroke', d: `M ${s * 9} -21 Q ${s * 13} -36 ${s * 19} -42`, colour: BUG_INK, w: 2.8 })
+    out.push({ k: 'ell', x: s * 19, y: -42, rx: 3.6, ry: 3.6, fill: c.dark, line: 2.2 })
+  }
+  out.push({ k: 'rect', x: -25, y: -10, w: 50, h: 14, r: 7, fill: '#1e2430', line: 2.6 })
+  if (!asleep && !dazed) {
+    const sweep = Math.sin((pose.t ?? 0) * 3.2) * 15 + pose.look[0] * 3
+    out.push({ k: 'ell', x: sweep, y: -3, rx: 7, ry: 5, fill: scared ? '#bcd6ff' : '#ff6b5b', line: 0, alpha: 0.35 })
+    out.push({ k: 'ell', x: sweep, y: -3, rx: 3.4, ry: 3, fill: scared ? '#e6f0ff' : '#ff8a7a', line: 0 })
+  }
+  if (scared || dazed) {
+    const list: Pt[] = []
+    for (let i = 0; i <= 6; i++) list.push([-8 + (16 * i) / 6, 16 + (i % 2 === 0 ? 0 : -2.5)])
+    out.push({ k: 'stroke', d: `M ${pts(list).join(' L ')}`, colour: BUG_INK, w: 2.2 })
+  } else {
+    out.push({ k: 'stroke', d: 'M -7 15 Q 0 19 7 15', colour: BUG_INK, w: 2.4 })
+  }
+  if (dazed) stars(out, 0, -30, 26, pose.t ?? 0)
   return out
 }
 

@@ -1,4 +1,6 @@
 import { paintFruit, type FruitArt } from '../fruitArt'
+import { paintBug, type BugName } from '../mazeBugs'
+import { drawBlip, drawBlipCaught } from '../pellets/blip'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
 import {
   bufferRowOf,
@@ -13,22 +15,31 @@ import {
 } from './game'
 
 /*
- * Drawn the house way, and the same way as Pellets, whose maze this is with the
- * exit taken out: walls as rounded tubes with a line inside them, solid crumbs,
- * glossy power pips, and chasers with eyes that look where they are going.
+ * Drawn the house way, and the same way as Glowberry, whose maze this is with
+ * the exit taken out: Blip (pellets/blip.ts) climbing a garden of leafy
+ * hedges, gold crumbs, violet glowberries, and the bad bugs of
+ * games/mazeBugs.ts after him, their eyes on the way they're going, with the
+ * rainwater rising under them all. Ramsey picked the cast for both games from
+ * the "Look-alikes to fix" canvas (2026-10-14), so neither is the chomper and
+ * the ghosts they began as.
  *
- * Crumbs and the player are green rather than Pellets' gold: the chasers sit on
- * 355, 320, 262, 190 and 28 and fruit runs red, so green is the one wide arc of
- * the wheel with nothing else in it — the two things you track every second
- * read clearly against everything that can kill you. Gold is kept for power.
+ * Besides Glowberry's four bugs, the herder is Pester, a pink moth in a
+ * propeller cap, and a train is a caterpillar in a work visor, a car to each
+ * of its segments.
  */
 
-const ACCENT = 152
+/** Blip's mint: his lamp, the row markers and the rows-climbed pops. */
+const ACCENT = 168
 const GOLD = 42
-const WALL_HUE = 234
-/** Frightened chasers: the sky blue, clear of the indigo walls. */
-const SCARED_HUE = 212
-const TIDE_HUE = 350
+const BERRY = 276
+const HEDGE_HUE = 138
+const WATER_HUE = 205
+
+/** Which bug each chaser is. */
+const BUG_OF: Record<GhostKind, BugName> = { blink: 'snatch', pink: 'sly', herd: 'pester', inky: 'shady', clyde: 'grumble', train: 'car' }
+/** A bug's height, in tiles, and a caterpillar car's: a car is one round segment. */
+const BUG_SIZE = 1.25
+const CAR_SIZE = 0.95
 /** The site's own face, at a weight it loads; a canvas can't read the CSS variable. */
 const FONT = '"Outfit", system-ui, sans-serif'
 const TAU = Math.PI * 2
@@ -38,7 +49,7 @@ const LOOK: Record<Dir, { x: number; y: number }> = {
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
 }
-/** Fruit by tier, lowest first: the same fruit Pellets offers. */
+/** Fruit by tier, lowest first: the same fruit Glowberry offers. */
 const FRUIT_ART: FruitArt[] = ['cherry', 'berry', 'orange', 'apple', 'melon', 'bell', 'key']
 
 function hsla(hue: number, sat: number, light: number, alpha = 1) {
@@ -54,27 +65,6 @@ function frac(v: number) {
 
 function clamp01(v: number) {
   return Math.max(0, Math.min(1, v))
-}
-
-/**
- * A train is told apart by being a line of identical chasers sweeping together,
- * which no single chaser can look like — so rather than spend a hue the wheel
- * does not have, it reads as a different material: the same warm tone drained
- * of colour, like something built rather than something hunting, with a visor
- * where the eyes would be.
- */
-function chaserSat(kind: GhostKind) {
-  return kind === 'train' ? 18 : 70
-}
-
-function chaserHue(kind: GhostKind) {
-  if (kind === 'train') return 42
-  if (kind === 'blink') return 355
-  if (kind === 'pink') return 320
-  // Violet, clear of the other four and of the green crumbs it stands among.
-  if (kind === 'herd') return 262
-  if (kind === 'inky') return 190
-  return 28
 }
 
 export type Layout = {
@@ -295,13 +285,13 @@ function roundedLoop(path: Path2D, pts: Pt[], r: number) {
   path.closePath()
 }
 
-type WallPaths = { key: string; outer: Path2D; inner: Path2D }
+type WallPaths = { key: string; outer: Path2D; inner: Path2D; leaves: Path2D }
 let wallCache: WallPaths | null = null
 
 /**
- * The walls as two paths in the buffer's own space — the tube and the line
- * inside it — rebuilt only when the board shifts a row. The camera moves them
- * with a translate, so the climb stays smooth between shifts.
+ * The hedges as paths in the buffer's own space — the tube, the line inside
+ * it and its leaves — rebuilt only when the board shifts a row. The camera
+ * moves them with a translate, so the climb stays smooth between shifts.
  */
 function wallPaths(g: Gfx): WallPaths {
   const { s, cell } = g
@@ -309,12 +299,27 @@ function wallPaths(g: Gfx): WallPaths {
   if (wallCache && wallCache.key === key) return wallCache
   const outer = new Path2D()
   const inner = new Path2D()
+  const leaves = new Path2D()
   const toPx = (p: Pt) => ({ x: p.x * cell, y: p.y * cell })
   for (const loop of wallLoops(s)) {
     roundedLoop(outer, insetLoop(loop, 0.18).map(toPx), cell * 0.26)
     roundedLoop(inner, insetLoop(loop, 0.32).map(toPx), cell * 0.14)
   }
-  wallCache = { key, outer, inner }
+  // A few leaves to every hedge tile, placed by its row in the world, so they climb with the hedge.
+  for (let y = 0; y < s.rows; y++) {
+    const world = worldRowAt(s, y)
+    for (let x = 0; x < s.cols; x++) {
+      if (s.open[y][x]) continue
+      for (let k = 0; k < 2; k++) {
+        const lx = (x + 0.22 + frac(Math.sin((x * 7.1 + world * 3.3 + k * 1.7) * 12.9898) * 43758.5453) * 0.56) * cell
+        const ly = (y + 0.22 + frac(Math.sin((x * 2.9 + world * 8.3 + k * 4.1) * 78.233) * 12345.6789) * 0.56) * cell
+        const turn = frac(Math.sin((x + world * 5 + k) * 3.7137) * 9973.113) * Math.PI
+        leaves.moveTo(lx + Math.cos(turn) * cell * 0.12, ly + Math.sin(turn) * cell * 0.12)
+        leaves.ellipse(lx, ly, cell * 0.12, cell * 0.06, turn, 0, TAU)
+      }
+    }
+  }
+  wallCache = { key, outer, inner, leaves }
   return wallCache
 }
 
@@ -323,13 +328,18 @@ function drawWalls(g: Gfx) {
   const walls = wallPaths(g)
   ctx.save()
   ctx.translate(0, Y(0))
-  ctx.fillStyle = hsla(WALL_HUE, 70, 60, dark ? 0.13 : 0.14)
+  ctx.fillStyle = hsla(HEDGE_HUE, 55, 42, dark ? 0.32 : 0.26)
   ctx.fill(walls.outer)
+  ctx.save()
+  ctx.clip(walls.outer)
+  ctx.fillStyle = hsla(HEDGE_HUE, 60, dark ? 62 : 40, dark ? 0.26 : 0.24)
+  ctx.fill(walls.leaves)
+  ctx.restore()
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = hsla(WALL_HUE, dark ? 85 : 66, dark ? 70 : 52, 0.95)
+  ctx.strokeStyle = hsla(HEDGE_HUE, dark ? 62 : 58, dark ? 60 : 32, 0.95)
   ctx.lineWidth = Math.max(1.5, cell * 0.07)
   ctx.stroke(walls.outer)
-  ctx.strokeStyle = hsla(WALL_HUE, dark ? 85 : 66, dark ? 70 : 52, dark ? 0.36 : 0.32)
+  ctx.strokeStyle = hsla(HEDGE_HUE, dark ? 62 : 58, dark ? 60 : 32, dark ? 0.36 : 0.32)
   ctx.lineWidth = Math.max(1, cell * 0.035)
   ctx.stroke(walls.inner)
   ctx.restore()
@@ -340,7 +350,7 @@ function drawWalls(g: Gfx) {
 function drawCrumbs(g: Gfx) {
   const { ctx, s, dark, cell, h, Y, t } = g
   const r = Math.max(1.4, cell * 0.095)
-  ctx.fillStyle = hsla(ACCENT, 72, dark ? 60 : 40)
+  ctx.fillStyle = hsla(GOLD, 92, dark ? 64 : 46)
   ctx.beginPath()
   for (let y = 0; y < s.rows; y++) {
     const cy = Y(y + 0.5)
@@ -354,31 +364,36 @@ function drawCrumbs(g: Gfx) {
   }
   ctx.fill()
 
-  const pulse = 0.88 + Math.sin(t * 6) * 0.12
+  // The glowberries: round and violet, a leaf on top, glowing as they breathe.
+  const pulse = 0.9 + Math.sin(t * 6) * 0.1
   for (let y = 0; y < s.rows; y++) {
-    const cy = Y(y + 0.5)
+    const cy = Y(y + 0.52)
     if (cy < -cell || cy > h + cell) continue
     for (let x = 0; x < s.cols; x++) {
       if (!s.power[y][x]) continue
       const cx = (x + 0.5) * cell
-      const pr = cell * 0.25 * pulse
-      const glow = ctx.createRadialGradient(cx, cy, pr * 0.4, cx, cy, pr * 2.4)
-      glow.addColorStop(0, hsla(GOLD, 95, 60, dark ? 0.42 : 0.34))
-      glow.addColorStop(1, hsla(GOLD, 95, 60, 0))
+      const pr = cell * 0.24 * pulse
+      const glow = ctx.createRadialGradient(cx, cy, pr * 0.4, cx, cy, pr * 2.6)
+      glow.addColorStop(0, hsla(BERRY, 95, 66, dark ? 0.46 : 0.36))
+      glow.addColorStop(1, hsla(BERRY, 95, 66, 0))
       ctx.fillStyle = glow
       ctx.beginPath()
-      ctx.arc(cx, cy, pr * 2.4, 0, TAU)
+      ctx.arc(cx, cy, pr * 2.6, 0, TAU)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.ellipse(cx + pr * 0.42, cy - pr * 1.02, pr * 0.52, pr * 0.24, -0.5, 0, TAU)
+      ctx.fillStyle = hsla(HEDGE_HUE, 62, dark ? 56 : 40)
       ctx.fill()
       ctx.beginPath()
       ctx.arc(cx, cy, pr, 0, TAU)
-      ctx.fillStyle = hsla(GOLD, 92, dark ? 62 : 56, 0.9)
+      ctx.fillStyle = hsla(BERRY, 82, dark ? 66 : 58, 0.95)
       ctx.fill()
-      ctx.strokeStyle = hsla(GOLD, 80, dark ? 78 : 38, 0.95)
+      ctx.strokeStyle = hsla(BERRY, 70, dark ? 82 : 36, 0.95)
       ctx.lineWidth = Math.max(1.2, cell * 0.045)
       ctx.stroke()
       ctx.beginPath()
-      ctx.arc(cx - pr * 0.32, cy - pr * 0.34, pr * 0.24, 0, TAU)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+      ctx.arc(cx - pr * 0.32, cy - pr * 0.34, pr * 0.26, 0, TAU)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.72)'
       ctx.fill()
     }
   }
@@ -386,14 +401,14 @@ function drawCrumbs(g: Gfx) {
 
 /**
  * A crumb, just eaten: its ring opens out and fades where it was, a fifth of a
- * second each. At a crumb a tile it is a steady patter behind the chomp rather
+ * second each. At a crumb a tile it is a steady patter behind Blip rather
  * than a burst, which is what eating the trail should feel like.
  */
 function drawBites(g: Gfx) {
   const { ctx, s, dark, cell, Y } = g
   if (!s.bites.length) return
   ctx.lineWidth = Math.max(1, cell * 0.04)
-  ctx.strokeStyle = hsla(ACCENT, 70, dark ? 66 : 40)
+  ctx.strokeStyle = hsla(GOLD, 90, dark ? 68 : 44)
   for (const bite of s.bites) {
     const k = 1 - bite.life
     ctx.globalAlpha = Math.max(0, bite.life) * 0.75
@@ -430,7 +445,7 @@ function glowAt(g: Gfx, cx: number, cy: number, r: number, hue: number, a: numbe
 }
 
 /**
- * The fruit: the same ones Pellets offers, a kind to each tier, so a better
+ * The fruit: the same ones Glowberry offers, a kind to each tier, so a better
  * one is worth more at a glance. The last two seconds blink, because an offer
  * you cannot see expiring is a prize that was taken away from you.
  */
@@ -551,46 +566,25 @@ function drawBeam(g: Gfx) {
 
 // —————————————————————————————————————————————————————— player
 
-function faceLocal(ctx: CanvasRenderingContext2D, dir: Dir) {
-  if (dir === 'left') ctx.scale(-1, 1)
-  else if (dir === 'up') ctx.rotate(-Math.PI / 2)
-  else if (dir === 'down') ctx.rotate(Math.PI / 2)
-}
-
 function drawPlayer(g: Gfx) {
   const { ctx, s, dark, cell, Y } = g
   const cx = s.player.x * cell
   const cy = Y(s.player.y)
   const surging = s.surgeTime > 0
   const r = cell * (surging ? 0.44 : 0.4)
-  const line = hsla(ACCENT, 70, dark ? 66 : 34, 0.98)
-  const fill = hsla(ACCENT, 72, 55, dark ? 0.42 : 0.5)
   const lw = Math.max(1.3, cell * 0.07)
 
   if (s.phase === 'dying') {
     const k = clamp01(1 - s.deathAnim / 0.85)
-    ctx.save()
     if (s.cause === 'drowned') {
-      // Taken under the surface.
+      // Taken under the water, wincing.
+      ctx.save()
       ctx.globalAlpha = 1 - k
-      ctx.translate(cx, cy + k * cell * 0.6)
-      ctx.rotate(-Math.PI / 2)
+      drawBlipCaught(ctx, { x: cx, y: cy + k * cell * 0.6, r, k: k * 0.35, dark, lw })
+      ctx.restore()
     } else {
-      ctx.translate(cx, cy)
-      ctx.rotate(-Math.PI / 2)
+      drawBlipCaught(ctx, { x: cx, y: cy, r, k, dark, lw })
     }
-    const open = s.cause === 'drowned' ? 0.5 : 0.2 + k * (Math.PI - 0.25)
-    ctx.beginPath()
-    ctx.moveTo(0, 0)
-    ctx.arc(0, 0, r * (1 - k * 0.2), open, TAU - open)
-    ctx.closePath()
-    ctx.fillStyle = fill
-    ctx.fill()
-    ctx.strokeStyle = line
-    ctx.lineWidth = lw
-    ctx.lineJoin = 'round'
-    ctx.stroke()
-    ctx.restore()
     return
   }
 
@@ -613,246 +607,119 @@ function drawPlayer(g: Gfx) {
 
   if (s.invuln > 0 && Math.floor(s.invuln * 14) % 2 === 0) ctx.globalAlpha = 0.45
 
-  // The mouth works while you move and rests where it stopped.
-  const open = 0.08 + 0.62 * (0.5 - 0.5 * Math.cos(s.mouth * Math.PI))
-  ctx.save()
-  ctx.translate(cx, cy)
-  faceLocal(ctx, s.player.dir)
-  ctx.beginPath()
-  ctx.moveTo(-r * 0.12, 0)
-  ctx.arc(0, 0, r, open, TAU - open)
-  ctx.closePath()
-  ctx.fillStyle = fill
-  ctx.fill()
-  ctx.strokeStyle = line
-  ctx.lineWidth = lw
-  ctx.lineJoin = 'round'
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(0, 0, r * 0.7, Math.PI * 1.12, Math.PI * 1.42)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
-  ctx.lineWidth = Math.max(1, lw * 0.8)
-  ctx.lineCap = 'round'
-  ctx.stroke()
-  ctx.lineCap = 'butt'
-  ctx.beginPath()
-  ctx.ellipse(r * 0.14, -r * 0.5, r * 0.12, r * 0.15, 0, 0, TAU)
-  ctx.fillStyle = dark ? '#16202b' : '#1a2b3c'
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(r * 0.18, -r * 0.55, Math.max(0.6, r * 0.045), 0, TAU)
-  ctx.fillStyle = '#ffffff'
-  ctx.fill()
-  ctx.restore()
+  // His mouth opens to eat while he moves, and rests where it stopped.
+  const open = 0.5 - 0.5 * Math.cos(s.mouth * Math.PI)
+  drawBlip(ctx, { x: cx, y: cy, r, dir: s.player.dir, open, stride: s.mouth, dark, lw, t: s.time, happy: false, power: s.fright > 0 })
   ctx.globalAlpha = 1
 }
 
 // ————————————————————————————————————————————————————— chasers
 
-function traceGhost(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, step: number) {
-  const foot = cy + r * 0.9
-  ctx.beginPath()
-  ctx.moveTo(cx - r, foot - r * 0.1)
-  ctx.lineTo(cx - r, cy - r * 0.05)
-  ctx.arc(cx, cy - r * 0.05, r, Math.PI, 0)
-  ctx.lineTo(cx + r, foot - r * 0.1)
-  // Four feet along the hem that trade places as it goes.
-  for (let i = 0; i < 4; i++) {
-    const x0 = cx + r - (i * 2 * r) / 4
-    const x1 = cx + r - ((i + 1) * 2 * r) / 4
-    const down = (i + step) % 2 === 0
-    ctx.quadraticCurveTo((x0 + x1) / 2, foot + (down ? r * 0.28 : -r * 0.02), x1, foot - r * 0.1)
-  }
-  ctx.closePath()
-}
-
 /**
- * A chaser's eyes, which are how you read one: they look the way it is going,
- * so its next turn shows on its face before it takes it. They open as it
- * wakes, and they are all that is left of one you have eaten, on its way home.
+ * A train's cars, joined into one caterpillar: its body between each car and
+ * the next, drawn under them, so the line reads as one creature.
  */
-function drawEyes(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, dir: Dir, open: number, dark: boolean, rim: string) {
-  const look = LOOK[dir]
-  const ry = r * 0.31 * Math.max(0.15, open)
-  for (const side of [-1, 1]) {
-    const ex = cx + side * r * 0.36 + look.x * r * 0.1
-    const ey = cy - r * 0.22 + look.y * r * 0.1
-    ctx.beginPath()
-    ctx.ellipse(ex, ey, r * 0.25, ry, 0, 0, TAU)
-    ctx.fillStyle = dark ? '#eef3f7' : '#ffffff'
-    ctx.fill()
-    ctx.strokeStyle = rim
-    ctx.lineWidth = Math.max(0.8, r * 0.07)
-    ctx.stroke()
-    if (open < 0.35) continue
-    ctx.beginPath()
-    ctx.arc(ex + look.x * r * 0.11, ey + look.y * r * 0.13, r * 0.13, 0, TAU)
-    ctx.fillStyle = '#23306e'
-    ctx.fill()
-  }
-}
-
-/** Couplings between the cars of a train, drawn under them, so a line reads as one thing. */
 function drawCouplings(g: Gfx) {
-  const { ctx, s, dark, cell, Y } = g
-  const cars = s.ghosts.filter((gh) => gh.kind === 'train' && gh.mode !== 'eaten' && gh.mode !== 'frightened')
+  const { ctx, s, cell, Y } = g
+  const cars = s.ghosts.filter((gh) => gh.kind === 'train' && gh.mode !== 'eaten')
   if (cars.length < 2) return
-  ctx.strokeStyle = hsla(42, 18, dark ? 58 : 44, 0.8)
-  ctx.lineWidth = Math.max(2, cell * 0.08)
   ctx.lineCap = 'round'
   for (const a of cars) {
     for (const b of cars) {
       if (b.x <= a.x || Math.abs(a.y - b.y) > 0.05 || b.x - a.x > 1.2) continue
       // As faint as the cars it joins while they sleep.
       ctx.globalAlpha = a.mode === 'asleep' ? 0.5 : 0.35 + 0.65 * a.arrive
-      const y = Y(a.y + 0.12)
-      ctx.beginPath()
-      ctx.moveTo(a.x * cell, y)
-      ctx.lineTo(b.x * cell, y)
-      ctx.stroke()
+      const scared = a.mode === 'frightened' && b.mode === 'frightened'
+      const y = Y(a.y) + cell * 0.08
+      for (const [colour, width] of [
+        ['#1a2b3c', cell * 0.46],
+        [scared ? '#d6def3' : '#cdbb8e', cell * 0.4],
+      ] as const) {
+        ctx.strokeStyle = colour
+        ctx.lineWidth = width
+        ctx.beginPath()
+        ctx.moveTo(a.x * cell, y)
+        ctx.lineTo(b.x * cell, y)
+        ctx.stroke()
+      }
     }
   }
   ctx.globalAlpha = 1
   ctx.lineCap = 'butt'
 }
 
+/** Whether a train's car has no car ahead of it on its row, the way it is going: the one with the head. */
+function leadsTrain(s: GameState, car: Ghost) {
+  const ahead = car.dir === 'left' ? -1 : 1
+  return !s.ghosts.some(
+    (o) => o !== car && o.kind === 'train' && o.mode !== 'eaten' && Math.abs(o.y - car.y) < 0.05 && (o.x - car.x) * ahead > 0 && Math.abs(o.x - car.x) < 1.2,
+  )
+}
+
+/**
+ * A bug (games/mazeBugs.ts), its eyes on the way it's going so its next turn
+ * shows on its face before it takes it. One seeded ahead sleeps, faint and
+ * still, eyes shut, z's drifting off it: unmistakably there, never yet
+ * chasing. A glowberry turns it pale and wide-eyed, and as that runs out it
+ * flashes back into its own colours; caught, it goes home dazed and
+ * see-through, seeing stars.
+ */
 function drawChaser(g: Gfx, ghost: Ghost) {
   const { ctx, s, dark, cell, Y, t } = g
   const asleep = ghost.mode === 'asleep'
+  const car = ghost.kind === 'train'
   const cx = ghost.x * cell
-  const cy = Y(ghost.y) + (asleep ? Math.sin(ghost.bob * 0.5) * cell * 0.05 : 0)
+  const cy = Y(ghost.y) + (asleep ? Math.sin(ghost.bob * 0.5) * cell * 0.05 : 0) - cell * 0.03
+  const size = cell * (car ? CAR_SIZE : BUG_SIZE)
   const r = cell * 0.38
-  const lw = Math.max(1.2, cell * 0.065)
   const scared = ghost.mode === 'frightened'
   const eaten = ghost.mode === 'eaten'
   const flash = scared && s.fright < 2 && Math.floor(t * 8) % 2 === 0
-
-  /*
-   * A sleeper is drawn faint and still. It has to be unmistakably there —
-   * seeing it coming is the entire point of seeding them ahead — while never
-   * reading as something already chasing you.
-   */
-  ctx.globalAlpha = asleep ? 0.5 : 0.35 + 0.65 * ghost.arrive
+  const name = BUG_OF[ghost.kind]
+  const step = asleep ? 0 : Math.floor(ghost.bob * 1.4) % 2
+  const look = [LOOK[ghost.dir].x, LOOK[ghost.dir].y] as const
+  const lead = car && leadsTrain(s, ghost)
 
   if (eaten) {
-    // Only the eyes are left, heading home — the way it has always been.
-    drawEyes(ctx, cx, cy, r, ghost.dir, 1, dark, hsla(chaserHue(ghost.kind), 50, lineL(dark), 0.9))
-    ctx.globalAlpha = 1
+    paintBug(ctx, name, cx, cy, size * 0.92, { state: 'dazed', look, step, t, lead }, 0.6)
     return
   }
 
-  const hue = scared ? SCARED_HUE : chaserHue(ghost.kind)
-  const sat = scared ? 80 : chaserSat(ghost.kind)
-
+  // Waking, it fades in.
+  const alpha = asleep ? 0.5 : 0.35 + 0.65 * ghost.arrive
   if (ghost.hit > 0) {
     ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * ghost.hit})`
     ctx.beginPath()
-    ctx.arc(cx, cy, r * (1.3 + ghost.hit * 0.5), 0, TAU)
+    ctx.arc(cx, cy, size * (0.52 + ghost.hit * 0.2), 0, TAU)
     ctx.fill()
   }
+  const state = scared ? 'scared' : asleep || ghost.arrive < 0.35 ? 'asleep' : 'normal'
+  paintBug(ctx, name, cx, cy, size, { state, own: flash, look, step, t: t + ghost.id * 0.7, lead }, alpha)
 
-  /*
-   * The herder wears a crest, because colour had run out: it is told apart by
-   * outline rather than by hue, which reads at a glance, at speed, and to an
-   * eye that does not separate violet from blue. It points up on purpose: this
-   * is the one that runs ahead to stand in the way out. Drawn in every mode,
-   * frightened included, because that is when knowing which one it is matters.
-   */
-  if (ghost.kind === 'herd') {
-    ctx.beginPath()
-    ctx.moveTo(cx - r * 0.42, cy - r * 0.8)
-    ctx.lineTo(cx, cy - r * 1.5)
-    ctx.lineTo(cx + r * 0.42, cy - r * 0.8)
-    ctx.closePath()
-    ctx.fillStyle = hsla(hue, sat, dark ? 62 : 56, 0.9)
-    ctx.fill()
-    ctx.strokeStyle = hsla(hue, sat, lineL(dark), 0.95)
-    ctx.lineWidth = Math.max(1, lw * 0.8)
-    ctx.lineJoin = 'round'
-    ctx.stroke()
-  }
-
-  const step = asleep ? 0 : Math.floor(ghost.bob * 1.4) % 2
-  traceGhost(ctx, cx, cy, r, step)
-  // Backed with the ground, so the crumbs underneath do not show through a
-  // chaser: the one thing that can kill you must not be the one you see past.
-  ctx.fillStyle = playfieldColor()
-  ctx.fill()
-  ctx.fillStyle = flash
-    ? dark
-      ? 'rgba(240, 244, 250, 0.85)'
-      : 'rgba(255, 255, 255, 0.95)'
-    : hsla(hue, sat, 60, scared ? (dark ? 0.55 : 0.6) : dark ? 0.34 : 0.4)
-  ctx.fill()
-  ctx.strokeStyle = flash ? hsla(356, 80, dark ? 66 : 50, 0.95) : hsla(hue, sat, lineL(dark), 0.95)
-  ctx.lineWidth = lw
-  ctx.lineJoin = 'round'
-  ctx.stroke()
-
-  if (scared) {
-    // Pin eyes and a wobbling mouth: the face of a chaser that knows it is food.
-    const ink = flash ? hsla(356, 80, 50) : '#ffffff'
-    ctx.fillStyle = ink
-    for (const side of [-1, 1]) {
-      ctx.beginPath()
-      ctx.arc(cx + side * r * 0.3, cy - r * 0.22, Math.max(1, r * 0.11), 0, TAU)
-      ctx.fill()
-    }
-    ctx.strokeStyle = ink
-    ctx.lineWidth = Math.max(1, r * 0.1)
-    ctx.beginPath()
-    for (let i = 0; i <= 6; i++) {
-      const x = cx - r * 0.54 + (i * r * 1.08) / 6
-      const y = cy + r * 0.28 + (i % 2 === 0 ? r * 0.08 : -r * 0.08)
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    }
-    ctx.stroke()
-  } else if (asleep) {
-    // Shut eyes, and the z's drifting off it: "not yet", at a glance.
-    ctx.strokeStyle = hsla(hue, sat, dark ? 72 : 34, 0.9)
-    ctx.lineWidth = Math.max(1, cell * 0.045)
-    ctx.lineCap = 'round'
-    for (const side of [-1, 1]) {
-      ctx.beginPath()
-      ctx.arc(cx + side * r * 0.34, cy - r * 0.24, r * 0.16, 0.15 * Math.PI, 0.85 * Math.PI)
-      ctx.stroke()
-    }
-    ctx.lineCap = 'butt'
+  ctx.globalAlpha = alpha
+  if (asleep) {
+    // The z's drifting off it: "not yet", at a glance.
     ctx.font = `700 ${Math.max(9, Math.round(cell * 0.3))}px ${FONT}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = hsla(hue, sat, dark ? 76 : 36, 0.9)
+    ctx.fillStyle = dark ? 'rgba(231, 238, 243, 0.9)' : 'rgba(26, 43, 60, 0.85)'
     for (let k = 0; k < 2; k++) {
       const u = frac(t * 0.45 + ghost.id * 0.37 + k * 0.5)
       ctx.globalAlpha = 0.5 * Math.sin(u * Math.PI)
-      ctx.fillText('z', cx + r * (0.6 + u * 0.5), cy - r * (1 + u * 1.1))
+      ctx.fillText('z', cx + r * (0.7 + u * 0.5), cy - r * (1.3 + u * 1.1))
     }
-  } else if (ghost.kind === 'train') {
-    // A visor with a light running along it, where a hunter would have eyes.
-    const vy = cy - r * 0.22
-    ctx.beginPath()
-    ctx.roundRect(cx - r * 0.62, vy - r * 0.17, r * 1.24, r * 0.34, r * 0.17)
-    ctx.fillStyle = dark ? '#161c24' : '#2a2f38'
-    ctx.fill()
-    const sweep = Math.sin(t * 3.2 + ghost.id) * r * 0.44
-    const dot = ctx.createRadialGradient(cx + sweep, vy, 0, cx + sweep, vy, r * 0.22)
-    dot.addColorStop(0, hsla(4, 95, 64, 1))
-    dot.addColorStop(1, hsla(4, 95, 60, 0))
-    ctx.fillStyle = dot
-    ctx.beginPath()
-    ctx.arc(cx + sweep, vy, r * 0.22, 0, TAU)
-    ctx.fill()
-  } else {
-    drawEyes(ctx, cx, cy, r, ghost.dir, 0.2 + 0.8 * ghost.arrive, dark, hsla(hue, sat, lineL(dark), 0.95))
+    ctx.globalAlpha = alpha
   }
 
   // Frozen by the charm: in a block of ice until it wears off.
   if (s.freeze > 0 && !asleep) {
     const fade = Math.min(1, s.freeze / 0.5)
     ctx.globalAlpha = fade
+    // Big enough for the bug in it, hat and feelers too.
+    const bw = Math.max(r * 2.36, size * 0.8)
+    const bh = Math.max(r * 2.4, size * 0.98)
     ctx.beginPath()
-    ctx.roundRect(cx - r * 1.18, cy - r * 1.22, r * 2.36, r * 2.4, r * 0.3)
+    ctx.roundRect(cx - bw / 2, cy - bh / 2, bw, bh, r * 0.3)
     ctx.fillStyle = dark ? 'rgba(180, 225, 255, 0.22)' : 'rgba(150, 210, 245, 0.3)'
     ctx.fill()
     ctx.strokeStyle = dark ? 'rgba(210, 240, 255, 0.85)' : 'rgba(70, 150, 200, 0.85)'
@@ -861,10 +728,10 @@ function drawChaser(g: Gfx, ghost: Ghost) {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
     ctx.lineCap = 'round'
     ctx.beginPath()
-    ctx.moveTo(cx - r * 0.95, cy - r * 0.55)
-    ctx.lineTo(cx - r * 0.6, cy - r * 0.95)
-    ctx.moveTo(cx + r * 0.7, cy + r * 0.85)
-    ctx.lineTo(cx + r * 0.95, cy + r * 0.55)
+    ctx.moveTo(cx - bw * 0.4, cy - bh * 0.23)
+    ctx.lineTo(cx - bw * 0.25, cy - bh * 0.4)
+    ctx.moveTo(cx + bw * 0.3, cy + bh * 0.35)
+    ctx.lineTo(cx + bw * 0.4, cy + bh * 0.23)
     ctx.stroke()
     ctx.lineCap = 'butt'
   }
@@ -930,12 +797,12 @@ function drawRings(g: Gfx) {
 // ————————————————————————————————————————————————————————— tide
 
 /**
- * The tide.
+ * The rainwater, rising.
  *
  * It lives just under the view while you are making ground, so most runs only
  * ever see the glow that warns it is about to move. Once it is climbing it has
- * to be unambiguous — a surface with a crest, bubbles, embers coming off it —
- * because the only correct response to seeing it is to stop and climb.
+ * to be unambiguous — a surface with a crest, bubbles, rain coming down into
+ * it — because the only correct response to seeing it is to stop and climb.
  */
 function drawTide(g: Gfx) {
   const { ctx, s, dark, cell, w, h, Y, t } = g
@@ -946,23 +813,28 @@ function drawTide(g: Gfx) {
   const top = Math.min(surface, h + cell)
   const beat = heat > 0.5 ? 0.5 + 0.5 * Math.sin(t * (5 + heat * 6)) : 0
   const glow = ctx.createLinearGradient(0, top - cell * 3.2, 0, top)
-  glow.addColorStop(0, hsla(TIDE_HUE, 80, 60, 0))
-  glow.addColorStop(1, hsla(TIDE_HUE, 80, 60, 0.08 + heat * 0.28 + beat * 0.08))
+  glow.addColorStop(0, hsla(WATER_HUE, 80, 60, 0))
+  glow.addColorStop(1, hsla(WATER_HUE, 80, 60, 0.08 + heat * 0.28 + beat * 0.08))
   ctx.fillStyle = glow
   ctx.fillRect(0, top - cell * 3.2, w, cell * 3.2)
 
-  // Embers lifting off it while it is awake.
+  // Rain coming down into it while it is awake, a short slanting streak a drop.
   if (heat > 0.25) {
-    for (let i = 0; i < 14; i++) {
-      const u = frac(t * 0.7 + i * 0.137)
-      const x = frac(Math.sin(i * 91.7) * 311.3) * w + Math.sin(t * 2 + i) * cell * 0.2
-      ctx.globalAlpha = heat * (1 - u) * 0.8
-      ctx.fillStyle = hsla(TIDE_HUE + 10, 95, dark ? 66 : 56)
+    ctx.strokeStyle = hsla(WATER_HUE, 80, dark ? 78 : 46)
+    ctx.lineWidth = Math.max(1, cell * 0.035)
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 18; i++) {
+      const u = frac(t * 1.6 + i * 0.137)
+      const x = frac(Math.sin(i * 91.7) * 311.3) * w + u * cell * 0.5
+      const y = top - (1 - u) * cell * 3
+      ctx.globalAlpha = heat * Math.sin(u * Math.PI) * 0.8
       ctx.beginPath()
-      ctx.arc(x, top - u * cell * 2.4, Math.max(1, cell * 0.05 * (1 - u * 0.5)), 0, TAU)
-      ctx.fill()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x - cell * 0.08, y - cell * 0.32)
+      ctx.stroke()
     }
     ctx.globalAlpha = 1
+    ctx.lineCap = 'butt'
   }
 
   if (top >= h) return
@@ -976,15 +848,15 @@ function drawTide(g: Gfx) {
   path.closePath()
 
   const body = ctx.createLinearGradient(0, top, 0, h)
-  body.addColorStop(0, dark ? hsla(TIDE_HUE, 70, 38, 0.94) : hsla(TIDE_HUE, 72, 62, 0.88))
-  body.addColorStop(1, dark ? hsla(TIDE_HUE - 6, 60, 12, 0.97) : hsla(TIDE_HUE - 6, 55, 38, 0.93))
+  body.addColorStop(0, dark ? hsla(WATER_HUE, 70, 40, 0.94) : hsla(WATER_HUE, 72, 62, 0.88))
+  body.addColorStop(1, dark ? hsla(WATER_HUE + 12, 60, 13, 0.97) : hsla(WATER_HUE + 12, 55, 38, 0.93))
   ctx.fillStyle = body
   ctx.fill(path)
 
   // Bubbles rising through it.
   ctx.save()
   ctx.clip(path)
-  ctx.strokeStyle = dark ? 'rgba(255, 190, 205, 0.5)' : 'rgba(255, 235, 240, 0.7)'
+  ctx.strokeStyle = dark ? 'rgba(200, 232, 255, 0.5)' : 'rgba(236, 246, 255, 0.75)'
   ctx.lineWidth = Math.max(1, cell * 0.03)
   for (let i = 0; i < 16; i++) {
     const u = frac(t * 0.28 + i * 0.173)
@@ -1004,7 +876,7 @@ function drawTide(g: Gfx) {
     if (x === 0) ctx.moveTo(x, wave(x))
     else ctx.lineTo(x, wave(x))
   }
-  ctx.strokeStyle = hsla(TIDE_HUE + 6, 90, dark ? 70 : 52, 0.65 + heat * 0.35)
+  ctx.strokeStyle = hsla(WATER_HUE - 8, 90, dark ? 76 : 50, 0.65 + heat * 0.35)
   ctx.lineWidth = Math.max(1.5, cell * 0.07)
   ctx.lineJoin = 'round'
   ctx.stroke()
@@ -1014,7 +886,7 @@ function drawTide(g: Gfx) {
 
 const POP_SCALE: Record<PopTone, number> = { ink: 0.52, streak: 0.62, lost: 0.46, row: 0.78 }
 
-/** The streak keeps the amber the readout gives it; a lost one goes the tide's red. */
+/** The streak keeps the amber the readout gives it; a lost one goes red. */
 function popColour(tone: PopTone, dark: boolean) {
   switch (tone) {
     case 'streak':

@@ -224,10 +224,10 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Row climbed', pts: '+5' },
       { what: 'Crumb', pts: '+10 × streak' },
-      { what: 'Blue chaser', pts: '+200', sub: 'doubling to +1,600' },
+      { what: 'A scared bug', pts: '+200', sub: 'after a glowberry, doubling to +1,600' },
     ],
-    ends: 'Caught, or the tide catches you. One life.',
-    tip: 'Stop climbing and the tide rises.',
+    ends: 'Caught, or the rising rainwater catches you. One life.',
+    tip: 'Stop climbing and the rainwater rises.',
   },
   bop: {
     goal: 'Do what the toy calls, fast.',

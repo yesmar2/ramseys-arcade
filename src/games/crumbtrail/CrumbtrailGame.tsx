@@ -147,7 +147,7 @@ export function CrumbtrailGame() {
       if (shouldCelebrateRecordSubmit(eaten)) {
         pushRunAchievement({
           id: 'crumbtrail:chasers-eaten',
-          label: 'Chasers eaten in a run',
+          label: 'Bugs caught in a run',
           value: String(ui.ghostsEaten),
           rank: eaten.rank,
         })
@@ -368,7 +368,7 @@ export function CrumbtrailGame() {
                 <PlayReadoutStats>
                   <PlayStat label="Rows" value={ui.depth} />
                   {ui.tide > 0.35 ? (
-                    <PlayStat label="Tide" value="Climb!" urgent />
+                    <PlayStat label="Water" value="Climb!" urgent />
                   ) : ui.crumbStreak >= 2 ? (
                     <PlayStat
                       label="In a row"
@@ -479,7 +479,7 @@ export function CrumbtrailGame() {
                   <ScoreSaveCard
                     gameSlug="crumbtrail"
                     score={ui.score}
-                    title={ui.cause === 'drowned' ? 'Swallowed' : 'Caught'}
+                    title={ui.cause === 'drowned' ? 'Washed away' : 'Caught'}
                     subtitle={`${ui.depth} ${ui.depth === 1 ? 'row' : 'rows'} climbed`}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     onDone={toMenu}

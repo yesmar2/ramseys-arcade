@@ -441,7 +441,7 @@ export function makeSim(): Sim<GameState> {
           // The words that float up for a player (points, the multiplier, a lost streak, the row
           // landmarks) are the readout's job, and at a cabinet's size they only cover the maze.
           pops: [],
-          // Once a run is over the game draws the chomper whole again under its score card; hold
+          // Once a run is over the game draws Blip whole again under its score card; hold
           // on the end of the fall instead.
           ...(s.phase === 'gameover' ? { phase: 'dying' as const, deathAnim: 0 } : null),
         },

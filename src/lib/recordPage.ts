@@ -106,7 +106,7 @@ const RUN_SUBJECTS: Partial<Record<string, string>> = {
   'most-coins': 'The most tickets anyone has picked up in a single run',
   'near-misses': 'The most close calls anyone has survived in a single run',
   'most-rows': 'The most rows anyone has climbed in a single run',
-  'chasers-eaten': 'The most chasers anyone has eaten in a single run',
+  'chasers-eaten': 'The most bugs anyone has caught in a single run',
   'longest-chain': 'The longest chain anyone has built in a single run',
   fours: 'The most fours anyone has cleared in a single run, four rows at once each',
   'rows-cleared': 'The most rows anyone has cleared in a single run',

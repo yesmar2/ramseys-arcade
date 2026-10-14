@@ -261,16 +261,6 @@ function SpotterThumb({ accent }: { accent: string }) {
   )
 }
 
-/** Same pie path as canvas drawPlayer (clockwise major arc). */
-function pelletsPacPath(cx: number, cy: number, r: number, open = 0.55) {
-  const ux = cx + r * Math.cos(open)
-  const uy = cy - r * Math.sin(open)
-  const lx = cx + r * Math.cos(open)
-  const ly = cy + r * Math.sin(open)
-  // Lower lip → clockwise large arc → upper lip → close (matches ctx.arc).
-  return `M ${cx} ${cy} L ${lx} ${ly} A ${r} ${r} 0 1 1 ${ux} ${uy} Z`
-}
-
 /** Glowberry's berry: round, a leaf on top, its shine, and a twinkle of its glow. */
 function PelletsThumb({ accent }: { accent: string }) {
   return (
@@ -283,15 +273,15 @@ function PelletsThumb({ accent }: { accent: string }) {
   )
 }
 
-/** Same chomp as Pellets, turned to face the climb, on a crumb trail. */
+/** Blip climbing, his spark over him, the rainwater rising under him. */
 function CrumbtrailThumb({ accent }: { accent: string }) {
   return (
     <g>
-      <circle cx="16" cy="5" r="2" fill={accent} opacity="0.9" />
-      <g transform="translate(16 18) rotate(-90)">
-        <path d={pelletsPacPath(0, 0, 8.6)} {...mark(accent)} />
-        <circle cx="1.2" cy="-4.3" r="1.25" fill={accent} />
-      </g>
+      <circle cx="16" cy="5.2" r="1.7" fill={accent} />
+      <circle cx="16" cy="15" r="7" {...mark(accent)} />
+      <ellipse cx="13.7" cy="14.6" rx="1.05" ry="1.6" fill={accent} />
+      <ellipse cx="18.3" cy="14.6" rx="1.05" ry="1.6" fill={accent} />
+      <path d="M3 27 Q6.5 24.4 10 27 T17 27 T24 27 T31 27" fill="none" stroke={accent} strokeWidth="1.8" strokeLinecap="round" />
     </g>
   )
 }

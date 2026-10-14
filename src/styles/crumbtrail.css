@@ -205,7 +205,7 @@
 .crumbtrail__headerband--warn {
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, #e85d75 26%, rgba(var(--surface-rgb), 0.62)),
+    color-mix(in srgb, #4aa8e8 28%, rgba(var(--surface-rgb), 0.62)),
     rgba(var(--surface-rgb), 0.34) 62%,
     rgba(var(--surface-rgb), 0)
   );

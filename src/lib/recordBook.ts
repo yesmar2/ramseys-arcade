@@ -202,7 +202,7 @@ const COUNT_WORDS: Record<string, [string, string]> = {
   'most-coins': ['ticket', 'tickets'],
   'near-misses': ['close call', 'close calls'],
   'most-rows': ['row', 'rows'],
-  'chasers-eaten': ['chaser', 'chasers'],
+  'chasers-eaten': ['bug', 'bugs'],
   fours: ['four', 'fours'],
   'rows-cleared': ['row', 'rows'],
   'biggest-shake': ['row', 'rows'],

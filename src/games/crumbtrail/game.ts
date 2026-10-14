@@ -1462,10 +1462,11 @@ function addPop(state: GameState, x: number, y: number, text: string, tone: PopT
 
 // —— Effects: presentation only ————————————————————————————————
 
-/** Hues the effects borrow: the crumbs', the power pip's gold, the tide's rose. */
-const FX_GREEN = 152
+/** Hues the effects borrow: Blip's mint, the crumbs' gold, a glowberry's violet, the rainwater's blue. */
+const FX_GREEN = 168
 const FX_GOLD = 42
-const FX_TIDE = 350
+const FX_TIDE = 205
+const FX_BERRY = 276
 
 function rand(a: number, b: number) {
   return a + Math.random() * (b - a)
@@ -1517,14 +1518,14 @@ function addRing(state: GameState, x: number, y: number, r0: number, r1: number,
   state.rings.push({ x, y, r0, r1, life, maxLife: life, hue })
 }
 
-/** Hue a chaser wears, for the debris it leaves. Mirrors the renderer's. */
+/** Hue a chaser wears, for the debris it leaves: its bug's colour (games/mazeBugs.ts). */
 function ghostHue(kind: GhostKind) {
-  if (kind === 'train') return 42
-  if (kind === 'blink') return 355
-  if (kind === 'pink') return 320
-  if (kind === 'herd') return 262
-  if (kind === 'inky') return 190
-  return 28
+  if (kind === 'train') return 44
+  if (kind === 'blink') return 3
+  if (kind === 'pink') return 258
+  if (kind === 'herd') return 330
+  if (kind === 'inky') return 205
+  return 40
 }
 
 /** A chaser taken off the board: pieces of it, a ring, a knock. */
@@ -1628,8 +1629,8 @@ function eatAt(state: GameState) {
     state.score += SCORE_POWER
     state.surge = Math.min(1, state.surge + 0.15)
     frighten(state)
-    addRing(state, x + 0.5, y + 0.5, 0.3, 2.2, 0.55, FX_GOLD)
-    addSparks(state, x + 0.5, y + 0.5, 10, FX_GOLD, 5)
+    addRing(state, x + 0.5, y + 0.5, 0.3, 2.2, 0.55, FX_BERRY)
+    addSparks(state, x + 0.5, y + 0.5, 10, FX_BERRY, 5)
     sfx('wave')
   }
 }
