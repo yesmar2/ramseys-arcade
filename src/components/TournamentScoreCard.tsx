@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { useImpersonation } from '../hooks/useImpersonation'
@@ -13,6 +13,7 @@ import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderb
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import type { ReportLine, ReportRibbon, ReportTier } from '../lib/runReport'
 import { ordinal } from '../lib/scoreboard'
+import type { RunTickets } from '../lib/tickets'
 import {
   eventKind,
   getTournament,
@@ -23,7 +24,8 @@ import {
   type TournamentDetail,
 } from '../lib/tournaments'
 import { eventWinTakeover } from '../lib/winTakeover'
-import { ReportSignIn, ReportWho, RunReport, TagSlots, type ReportAction } from './RunReport'
+import { ReportSignIn, ReportWho, TagSlots, type ReportAction, type ReportLink } from './RunReport'
+import { placeTile, ReelButton, reelSteps, ReelTickets, RunReel, type ReelRecap } from './RunReel'
 import { useLinkShare } from './ChallengeShare'
 import { WinTakeover } from './WinTakeover'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
@@ -53,7 +55,7 @@ type TournamentScoreCardProps = {
   onDone: () => void
 }
 
-type SubmitSnapshot = {
+export type SubmitSnapshot = {
   improved: boolean
   best: number
   attemptsRemaining: number | null
@@ -63,6 +65,8 @@ type SubmitSnapshot = {
   youWonTournament: boolean
   matchOpponent: string | null
   detail: TournamentDetail | null
+  /** Tickets the run paid: a run in the day's event pays once a day. */
+  tickets: { earned: number; balance: number } | null
 }
 
 const recentScoreSubmits = new Map<string, { at: number; promise: Promise<SubmitSnapshot> }>()
@@ -98,6 +102,7 @@ async function submitTournamentRun(
       youWonTournament: false,
       matchOpponent: null,
       detail: d,
+      tickets: null,
     }
   }
 
@@ -140,6 +145,7 @@ async function submitTournamentRun(
       youWonTournament,
       matchOpponent: result.matchOpponent ?? null,
       detail: d,
+      tickets: result.tickets ?? null,
     }
   })()
 
@@ -147,8 +153,20 @@ async function submitTournamentRun(
   return promise
 }
 
+/**
+ * How many are in it with you: on a game, those who scored on it (the field's own count); in the standings, those
+ * who've played. Past a hundred rows the page carries only some of them, so the standings' count isn't known.
+ */
+function fieldOf(detail: TournamentDetail, gameSlug: string | null): number | null {
+  if (gameSlug) return detail.fieldByGame?.[gameSlug] ?? detail.standings.filter((s) => s.byGame[gameSlug]?.score != null).length
+  if ((detail.standingsTotal ?? 0) > detail.standings.length) return null
+  return detail.standings.filter((s) => s.gamesPlayed > 0).length
+}
+
+const outOf = (field: number | null) => (field != null && field > 1 ? `out of ${field}` : null)
+
 /** What a posted run did in the event, as report lines, and how loud to be about it. */
-function eventReport(
+export function eventReport(
   snapshot: SubmitSnapshot,
   gameSlug: string,
   name: string,
@@ -192,23 +210,23 @@ function eventReport(
       tone: improved ? 'accent' : 'plain',
     })
   }
-  // Places, not what each place is worth toward the event.
-  if (!isBracket && cell?.place != null) {
+  // Places, not what each place is worth toward the event, and out of how many.
+  if (detail && !isBracket && cell?.place != null) {
     lines.push({
       id: 'game',
       icon: cell.place === 1 ? 'crown' : 'board',
-      label: detail && detail.games.length > 1 ? `${game} in this event` : 'In this event',
-      detail: null,
+      label: detail.games.length > 1 ? `${game} in this event` : 'In this event',
+      detail: outOf(fieldOf(detail, gameSlug)),
       value: `#${cell.place}`,
       tone: cell.place === 1 ? 'gold' : cell.place <= 3 ? 'accent' : 'plain',
     })
   }
-  if (!isBracket && overallPlace) {
+  if (detail && !isBracket && overallPlace) {
     lines.push({
       id: 'overall',
       icon: overallPlace === 1 ? 'crown' : 'sum',
       label: 'Event standings',
-      detail: null,
+      detail: outOf(fieldOf(detail, null)),
       value: `#${overallPlace}`,
       tone: overallPlace === 1 ? 'gold' : overallPlace <= 3 ? 'accent' : 'plain',
     })
@@ -238,6 +256,62 @@ function eventReport(
   }
   if (improved && posted) return { tier: 'lit', ribbon: { icon: 'up', text: 'New best in the event', tone: 'accent' }, lines }
   return { tier: 'quiet', ribbon: null, lines }
+}
+
+/** Tries left where the event counts them: none to say where they're unlimited, or the run's match was won. */
+function triesLeft(snapshot: SubmitSnapshot): number | null {
+  if (snapshot.youWonMatch || snapshot.youWonTournament || snapshot.maxAttempts == null) return null
+  if (snapshot.exhausted) return 0
+  return snapshot.attemptsRemaining ?? snapshot.maxAttempts
+}
+
+/** The day's event pays once a day: its tickets as a run's, for the reel's tickets step. */
+function eventTickets(paid: SubmitSnapshot['tickets']): RunTickets | null {
+  if (!paid || paid.earned <= 0) return null
+  return {
+    earned: paid.earned,
+    lines: [{ reason: 'daily', amount: paid.earned }],
+    balance: paid.balance,
+    reached: null,
+    next: null,
+    base: 0,
+    step: 0,
+    paidBefore: 0,
+    capped: 0,
+    todayLeft: 0,
+  }
+}
+
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** The run's score as a recap tile: what it won, or what it did to the best here, or just which game it was. */
+function scoreTile(gameSlug: string, score: number, label: string): ReelRecap {
+  const figure = formatLeaderboardScore(gameSlug, score)
+  const unit = scoreUnit(gameSlug, score)
+  return { key: 'score', value: unit ? `${figure} ${unit}` : figure, label, tone: 'run' }
+}
+
+/**
+ * What the event's answer gives the reel: the report, the line Where it landed makes much of (the match, else the
+ * place in the standings, else on the game), the tickets it paid, and the last step's tiles.
+ */
+export function eventReelParts(snapshot: SubmitSnapshot, gameSlug: string, name: string, score: number, posted: boolean) {
+  const report = eventReport(snapshot, gameSlug, name, score, posted)
+  const line = (id: string) => report.lines.find((l) => l.id === id) ?? null
+  const hero = line('match') ?? line('overall') ?? line('game')
+  const best = line('best')
+  const paid = eventTickets(snapshot.tickets)
+  const recap: ReelRecap[] = [
+    scoreTile(gameSlug, score, report.ribbon?.text ?? (best?.detail ? capital(best.detail) : (getGame(gameSlug)?.name ?? 'Your run'))),
+  ]
+  if (hero) recap.push(placeTile(hero))
+  // A Triple's place on this game, beside its place in the standings.
+  const onGame = line('game')
+  if (onGame && onGame !== hero) recap.push({ ...placeTile(onGame), key: 'game' })
+  if (paid) recap.push({ key: 'tickets', value: `+${paid.earned}`, label: paid.earned === 1 ? 'Ticket' : 'Tickets', tone: 'tickets' })
+  const left = triesLeft(snapshot)
+  if (left != null) recap.push({ key: 'tries', value: String(left), label: left === 1 ? 'Try left' : 'Tries left', tone: 'run' })
+  return { ...report, hero: hero?.id, paid, recap: recap.slice(0, 4) }
 }
 
 export function TournamentScoreCard({
@@ -377,6 +451,7 @@ export function TournamentScoreCard({
             youWonTournament: false,
             matchOpponent: null,
             detail: prev?.detail ?? null,
+            tickets: null,
           }))
           setStatus('done')
           setError(null)
@@ -420,19 +495,27 @@ export function TournamentScoreCard({
   const accentStyle = gameAccentStyle(gameSlug)
   const accent = String((accentStyle as Record<string, string>)['--celeb-accent'] ?? '#2eb8a0')
   const detail = snapshot?.detail ?? null
-  const eventName = detail?.title?.trim() || null
+  // The event's name from the page it's played from, before the post's answer brings it.
+  const eventName = detail?.title?.trim() || playing?.title?.trim() || null
   const eventTitle = eventName ?? 'Event'
+  const game = getGame(gameSlug)?.name ?? gameSlug
   const isBracket = detail ? eventKind(detail) === 'bracket' : false
   const done = status === 'done' && snapshot
   // A zero, or a run that used the stage jump, posts nothing; it costs a try only where tries count as they start.
   const posted = score > 0 && !isRunAssisted()
   const spentTry = detail ? triesCountAtStart(detail) : false
-  const outcome = done ? eventReport(snapshot, gameSlug, name, score, posted) : null
-  const ribbon = outcome?.ribbon ?? null
+  const parts = done ? eventReelParts(snapshot, gameSlug, name, score, posted) : null
+  const ribbon = parts?.ribbon ?? null
+  const tier = parts?.tier ?? 'quiet'
   const standingsHref = tournamentHref(tournamentId)
+  const toEvent = () => {
+    void exitFullscreen()
+    navigate(standingsHref)
+  }
   // Play again waits on the post, for a while (useSaveWait): a press can't cut the run off before it's in.
   const postWaitOver = useSaveWait(status === 'saving')
   const holding = status === 'saving' && canSaveScores && !postWaitOver
+  const unposted = status === 'needAuth' || status === 'needName'
 
   let primary: ReportAction = {
     label: holding ? 'Posting…' : 'Play again',
@@ -441,10 +524,13 @@ export function TournamentScoreCard({
     buttonRef: playRef,
   }
   let secondary: ReportAction | null = null
-  let block: ReactNode = null
+  /** What the post waits on, a step of its own after the run: the sign-in, or a tag. */
+  let ask: ReactNode = null
+  /** A word on a run that wasn't posted: no score, a stage skip, a failed post. */
+  let note: ReactNode = null
   let who: ReactNode = null
   if (status === 'needAuth') {
-    block = (
+    ask = (
       <ReportSignIn
         lead={<>Sign in to post {scoreText(gameSlug, score)} to {eventName ?? 'this event'}.</>}
         error={error}
@@ -458,26 +544,30 @@ export function TournamentScoreCard({
     )
     who = <ReportWho text="Not posted yet" />
   } else if (status === 'needName') {
-    primary = {
-      label: 'Post score',
-      onClick: () => void submitName(),
-      disabled: !normalizePlayerName(nameDraft),
-    }
-    secondary = { label: 'Skip', onClick: onDone }
-    block = (
-      <TagSlots
-        id={tagId}
-        value={nameDraft}
-        onChange={setNameDraft}
-        onSubmit={() => void submitName()}
-        inputRef={tagRef}
-        error={error}
-        lead={eventName ? `Your tag goes on ${eventName}’s standings.` : 'Your tag goes on the event’s standings.'}
-      />
+    // The tag in slots, and the way to post with it: the reel's own Skip goes on without.
+    ask = (
+      <>
+        <TagSlots
+          id={tagId}
+          value={nameDraft}
+          onChange={setNameDraft}
+          onSubmit={() => void submitName()}
+          inputRef={tagRef}
+          error={error}
+          lead={eventName ? `Your tag goes on ${eventName}’s standings.` : 'Your tag goes on the event’s standings.'}
+        />
+        <ReelButton
+          action={{
+            label: 'Post score',
+            onClick: () => void submitName(),
+            disabled: !normalizePlayerName(nameDraft),
+          }}
+        />
+      </>
     )
     who = <ReportWho text="Signed in, no tag yet" />
   } else if (status === 'error') {
-    block = <p className="panel__error">{error}</p>
+    note = <p className="panel__error">{error}</p>
     who = <ReportWho text="Not posted" />
   } else if (status === 'saving') {
     who = <ReportWho name={name || null} text="Posting…" />
@@ -489,7 +579,7 @@ export function TournamentScoreCard({
       snapshot.youWonTournament ? 'champion' : snapshot.youWonMatch ? 'match' : null,
     )
     if (!posted) {
-      block = (
+      note = (
         <p className="report__note">
           {score > 0
             ? 'Stage skip used, so this run wasn’t posted.'
@@ -500,7 +590,9 @@ export function TournamentScoreCard({
       )
     }
     const as = posted ? `Posted as ${name}` : 'Not posted'
-    who = <ReportWho name={posted ? name : null} text={left ? `${as}, ${left}` : as} />
+    // Tries the recap counts in a tile aren't said again under it.
+    const tail = left && !parts?.recap.some((tile) => tile.key === 'tries') ? left : null
+    who = <ReportWho name={posted ? name : null} text={tail ? `${as}, ${tail}` : as} />
     if (snapshot.exhausted || snapshot.youWonMatch) {
       primary = {
         label: snapshot.youWonTournament || isBracket ? 'View bracket' : 'View standings',
@@ -526,47 +618,59 @@ export function TournamentScoreCard({
     }
   }
 
-  const links =
-    done && !snapshot.exhausted && !snapshot.youWonMatch
-      ? [{ label: 'Standings', onClick: () => navigate(standingsHref) }]
-      : []
-  const heading = ribbon?.text ?? eventTitle
-  // Winning the event takes the whole screen, once, with the report under it.
+  const links: ReportLink[] =
+    done && !snapshot.exhausted && !snapshot.youWonMatch ? [{ label: isBracket ? 'Bracket' : 'Standings', onClick: toEvent }] : []
+  // The reel (RunReel.tsx), as a game's run has it: the run, then what it did in the event, the tickets the day's
+  // event paid, then what next. The event's name is over every step, and the game's over the score.
+  const lastBits = [note, unposted ? ask : null].filter(Boolean)
+  const steps = reelSteps({
+    phase: status === 'saving' ? 'pending' : unposted ? 'ask' : done ? 'saved' : 'done',
+    slow: postWaitOver,
+    wait: { said: `Posting to ${eventName ?? 'the event'}…`, slow: 'Still posting. It finishes even if you play on.' },
+    run: {
+      titleId,
+      tier,
+      ribbon,
+      eyebrow: game,
+      score: formatLeaderboardScore(gameSlug, score),
+      unit: scoreUnit(gameSlug, score),
+      sub: subtitle ?? null,
+      scoreTone: ribbon?.tone === 'gold' ? 'gold' : ribbon ? 'accent' : 'plain',
+    },
+    lines: parts?.lines ?? [],
+    landedHero: parts?.hero,
+    onBoard: done ? toEvent : undefined,
+    boardLabel: isBracket ? 'See the bracket' : 'See the standings',
+    tickets: parts?.paid ? <ReelTickets paid={parts.paid} game={gameSlug} /> : null,
+    ask,
+    askGoLabel: status === 'needName' ? 'Skip' : 'Not now',
+    askFocus: status === 'needName' ? tagRef : undefined,
+    recap: parts?.recap ?? [scoreTile(gameSlug, score, game)],
+    block: lastBits.length ? lastBits.map((bit, i) => <Fragment key={i}>{bit}</Fragment>) : null,
+    primary,
+    secondary,
+    who,
+    links,
+  })
+  // Winning the event takes the whole screen, once, over the reel.
   const takeover =
     done && snapshot.youWonTournament && snapshot.detail && !takeoverDone
       ? eventWinTakeover(snapshot.detail, name)
       : null
   return (
     <>
-      <RunReport
-        label={`${heading}, ${scoreText(gameSlug, score)}`}
-        titleId={titleId}
+      <RunReel
+        label={`${ribbon?.text ?? eventTitle}, ${scoreText(gameSlug, score)}`}
         style={accentStyle}
         accent={accent}
-        initialFocus={status === 'needName' ? tagRef : playRef}
+        game={eventTitle}
+        tier={tier}
+        steps={steps}
+        primaryRef={playRef}
+        leave={{ label: 'Back to event', onClick: toEvent }}
+        // Esc goes back to the game once the run is in, never while a tag is being typed.
         onEscape={status === 'needName' || !done ? undefined : onDone}
-        tier={outcome?.tier ?? 'quiet'}
-        ribbon={ribbon}
-        eyebrow={eventTitle}
-        score={formatLeaderboardScore(gameSlug, score)}
-        unit={scoreUnit(gameSlug, score)}
-        sub={ribbon ? [eventTitle, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null)}
-        scoreTone={ribbon?.tone === 'gold' ? 'gold' : ribbon ? 'accent' : 'plain'}
-        lines={status === 'saving' ? null : (outcome?.lines ?? [])}
-        primary={primary}
-        secondary={secondary}
-        who={who}
-        links={links}
-        leave={{
-          label: 'Back to event',
-          onClick: () => {
-            void exitFullscreen()
-            navigate(standingsHref)
-          },
-        }}
-      >
-        {block}
-      </RunReport>
+      />
       {takeover ? (
         <WinTakeover
           data={takeover}

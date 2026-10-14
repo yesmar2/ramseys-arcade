@@ -89,6 +89,8 @@ export function lineLabel(paid: RunTickets, line: RunTickets['lines'][number], g
       return `Your first go at ${getGame(game)?.name ?? 'this game'}`
     case 'streak':
       return 'Another day on your streak'
+    case 'daily':
+      return 'Played the day’s event'
     default:
       return 'More'
   }

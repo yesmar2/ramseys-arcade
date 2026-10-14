@@ -100,10 +100,13 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
     setAt({ key: next.key, index: i })
   }
 
-  // Focus follows the steps: the way on, a step's own field, and on the last step, Play again. A step opens at its top.
+  // Focus follows the steps: the way on, a step's own field, and on the last step, Play again (or the link that
+  // stands in for it, an event's standings once its tries are spent). A step opens at its top.
   useEffect(() => {
     if (stageRef.current) stageRef.current.scrollTop = 0
-    const target = step.focus?.current ?? (last ? primaryRef?.current : goRef.current)
+    const target =
+      step.focus?.current ??
+      (last ? (primaryRef?.current ?? stageRef.current?.querySelector<HTMLElement>('.reel-btn')) : goRef.current)
     target?.focus({ preventScroll: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.key, last])
@@ -263,13 +266,18 @@ export function ReelRun({ titleId, tier, metal = null, ribbon, eyebrow, score, u
   )
 }
 
+/** How the wait says it: a run being saved, or posted to an event. */
+export type ReelWaitWords = { said: string; slow: string }
+
+const SAVING: ReelWaitWords = { said: 'Saving your run…', slow: 'Still saving. It finishes even if you play on.' }
+
 /** While the save answers: Blip, and the word that it's on its way. */
-export function ReelWait({ slow }: { slow: boolean }) {
+export function ReelWait({ slow, words = SAVING }: { slow: boolean; words?: ReelWaitWords }) {
   return (
     <div className="reel-wait">
       <BlipFigure className="reel-wait__blip" size={96} />
       <p className="reel-wait__said" role="status">
-        {slow ? 'Still saving. It finishes even if you play on.' : 'Saving your run…'}
+        {slow ? words.slow : words.said}
       </p>
       <span className="reel-wait__dots" aria-hidden="true">
         <i />
@@ -283,21 +291,26 @@ export function ReelWait({ slow }: { slow: boolean }) {
 /**
  * Where the run landed: its place on the board as big as the score was (the board's line, or what else it did
  * when it has no board), the podium when it climbed onto it, the friend it went past face to face, and the rest of
- * what it did in rows.
+ * what it did in rows. An event's run makes much of its own line instead: its place in the event, or its match.
  */
 export function ReelLanded({
   lines,
   race = null,
   friend = null,
+  hero: heroId = 'board',
   onBoard,
+  boardLabel = 'See the board',
 }: {
   lines: ReportLine[]
   race?: ReportRace | null
   friend?: ReportFriend | null
+  /** The line to make much of, by its id. */
+  hero?: string
   onBoard?: () => void
+  boardLabel?: string
 }) {
   const allow = useContext(ReelPress)
-  const hero = lines.find((l) => l.id === 'board') ?? lines[0] ?? null
+  const hero = lines.find((l) => l.id === heroId) ?? lines[0] ?? null
   const rest = lines.filter((l) => l !== hero)
   return (
     <div className="reel-land">
@@ -334,7 +347,7 @@ export function ReelLanded({
             if (allow(e)) onBoard()
           }}
         >
-          See the board ›
+          {boardLabel} ›
         </button>
       ) : null}
     </div>
@@ -564,12 +577,18 @@ export type ReelInput = {
   phase: 'pending' | 'ask' | 'saved' | 'done'
   /** The save has gone on a while. */
   slow?: boolean
+  /** How the wait says it, when it isn't a save: an event's post. */
+  wait?: ReelWaitWords
   run: ReelRunProps
   /** What the run did on the boards and in the books, once it's saved. */
   lines: ReportLine[]
+  /** The line Where it landed makes much of, by its id: the board's, unless said. */
+  landedHero?: string
   race?: ReportRace | null
   friend?: ReportFriend | null
   onBoard?: () => void
+  /** What the way to the board says: "See the standings" for an event. */
+  boardLabel?: string
   /** The tickets step's body (ReelTickets), when the run paid some. */
   tickets?: ReactNode
   /** The season's pass, when the run moved it. */
@@ -595,7 +614,7 @@ export type ReelInput = {
 export function reelSteps(input: ReelInput): ReelStep[] {
   const { phase, run } = input
   const steps: ReelStep[] = [{ key: 'run', tone: 'run', body: <ReelRun {...run} /> }]
-  if (phase === 'pending') steps.push({ key: 'wait', tone: 'run', body: <ReelWait slow={Boolean(input.slow)} /> })
+  if (phase === 'pending') steps.push({ key: 'wait', tone: 'run', body: <ReelWait slow={Boolean(input.slow)} words={input.wait} /> })
   if (phase === 'ask' && input.ask) {
     steps.push({ key: 'ask', tone: 'ask', body: <div className="reel-ask">{input.ask}</div>, goLabel: input.askGoLabel, focus: input.askFocus })
   }
@@ -605,7 +624,16 @@ export function reelSteps(input: ReelInput): ReelStep[] {
       steps.push({
         key: 'landed',
         tone: 'boards',
-        body: <ReelLanded lines={input.lines} race={input.race} friend={input.friend} onBoard={input.onBoard} />,
+        body: (
+          <ReelLanded
+            lines={input.lines}
+            race={input.race}
+            friend={input.friend}
+            hero={input.landedHero}
+            onBoard={input.onBoard}
+            boardLabel={input.boardLabel}
+          />
+        ),
       })
     }
     if (input.tickets) steps.push({ key: 'tickets', tone: 'tickets', body: input.tickets })

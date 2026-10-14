@@ -23,6 +23,7 @@ import {
 import { WinTakeover } from '../components/WinTakeover'
 import { MedalLadder } from '../components/RaceMedal'
 import { levelTile, placeTile, ReelButton, reelSteps, ReelTickets, RunReel, type ReelInput, type ReelRecap } from '../components/RunReel'
+import { eventReelParts, type SubmitSnapshot } from '../components/TournamentScoreCard'
 import type { ReportTier } from '../lib/runReport'
 import { milestoneSpotlight, milestoneWear } from '../components/MilestoneMoment'
 import { Spotlight } from '../components/Spotlight'
@@ -32,7 +33,7 @@ import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { playersFromRuns, type BoardPlayer } from '../lib/gameBoard'
 import type { GlobalRankResult, LeaderboardEntry } from '../lib/leaderboard'
 import { boardFacts, composeReport, type ReportLine, type ReportMetal, type RunFacts } from '../lib/runReport'
-import type { TournamentDetail } from '../lib/tournaments'
+import type { StandingRow, TournamentDetail } from '../lib/tournaments'
 import { eventWinTakeover, friendsWeekTakeover, standingsTakeover, type WinTakeoverData } from '../lib/winTakeover'
 
 /**
@@ -783,6 +784,10 @@ type ReelSample = {
   slug: string
   tier: ReportTier
   metal: ReportMetal | null
+  /** The last step's way on when it isn't Play again: an event's standings once its tries are spent. */
+  primary?: string
+  /** The way out on the last step: Leave, or an event's Back to event. */
+  leave?: string
   input: Omit<ReelInput, 'primary'>
 }
 
@@ -1002,6 +1007,177 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
   ]
 }
 
+/* ---------- an event's run on the reel (TournamentScoreCard.tsx) ---------- */
+
+/** A row of an event's standings: each game's score and its place on it. */
+function eventRow(name: string, cells: Record<string, [number, number]>, place: number): StandingRow {
+  return {
+    playerId: `e-${name}`,
+    name,
+    totalPoints: 0,
+    gamesPlayed: Object.keys(cells).length,
+    place,
+    byGame: Object.fromEntries(Object.entries(cells).map(([slug, [score, at]]) => [slug, { score, place: at, points: 0 }])),
+  }
+}
+
+function eventDetail(id: string, title: string, games: string[], standings: StandingRow[], kind = 'scores'): TournamentDetail {
+  return {
+    id,
+    title,
+    blurb: '',
+    games,
+    startsAt: NOW - DAY,
+    endsAt: NOW + DAY,
+    official: true,
+    format: 'open',
+    kind,
+    status: 'active',
+    playerCount: standings.length,
+    players: [],
+    placePoints: {},
+    standings,
+  } as unknown as TournamentDetail
+}
+
+const CUP_FIELD: [string, number][] = [
+  ['WES', 470],
+  ['CHEF', 431],
+  ['IVY', 402],
+  ['HAWK', 388],
+  ['DAD', 350],
+  ['ROOK', 333],
+  ['MAYA', 301],
+  ['JUNO', 288],
+  ['PIP', 240],
+  ['OWEN', 210],
+  ['ZED', 160],
+]
+
+/** A one-game event of Crosswalk, with VERA's best here at `best` among the rest. */
+function cup(best: number, id = 'dev-cup', title = 'Friday Cup'): TournamentDetail {
+  const rows = [...CUP_FIELD, ['VERA', best] as [string, number]].sort((a, b) => b[1] - a[1])
+  return eventDetail(id, title, ['crosswalk'], rows.map(([name, score], i) => eventRow(name, { crosswalk: [score, i + 1] }, i + 1)))
+}
+
+/** A Triple under way: VERA 2nd in the standings, 3rd on Crosswalk. */
+function tripleLive(): TournamentDetail {
+  return eventDetail('dev-triple-live', 'Weekly Triple', ['crosswalk', 'snake', 'frenzy'], [
+    eventRow('IVY', { crosswalk: [470, 1], snake: [88, 2], frenzy: [41_000, 1] }, 1),
+    eventRow('VERA', { crosswalk: [447, 3], snake: [95, 1], frenzy: [36_000, 2] }, 2),
+    eventRow('HAWK', { crosswalk: [455, 2], snake: [70, 3] }, 3),
+    eventRow('CHEF', { crosswalk: [402, 4], frenzy: [22_000, 3] }, 4),
+    eventRow('ROOK', { snake: [51, 4] }, 5),
+  ])
+}
+
+/** The event's answer to a post, as submitTournamentRun puts it. */
+function eventPost(detail: TournamentDetail, best: number, extra: Partial<SubmitSnapshot> = {}): SubmitSnapshot {
+  return {
+    improved: false,
+    best,
+    attemptsRemaining: null,
+    maxAttempts: null,
+    exhausted: false,
+    youWonMatch: false,
+    youWonTournament: false,
+    matchOpponent: null,
+    detail,
+    tickets: null,
+    ...extra,
+  }
+}
+
+/** An event's run of Crosswalk, posted, as TournamentScoreCard puts its reel together. */
+function eventReel(key: string, label: string, post: SubmitSnapshot, score: number, primary?: string): ReelSample {
+  const parts = eventReelParts(post, 'crosswalk', 'VERA', score, true)
+  const bracket = post.detail?.kind === 'bracket'
+  const counted = parts.recap.some((tile) => tile.key === 'tries') || post.youWonMatch
+  return {
+    key,
+    label,
+    game: post.detail?.title ?? 'Event',
+    slug: 'crosswalk',
+    tier: parts.tier,
+    metal: null,
+    primary,
+    leave: 'Back to event',
+    input: {
+      phase: 'saved',
+      run: {
+        titleId: `reel-${key}`,
+        tier: parts.tier,
+        ribbon: parts.ribbon,
+        eyebrow: 'Crosswalk',
+        score: String(score),
+        unit: 'rows',
+        sub: 'The train got you',
+        scoreTone: parts.ribbon?.tone === 'gold' ? 'gold' : parts.ribbon ? 'accent' : 'plain',
+      },
+      lines: parts.lines,
+      landedHero: parts.hero,
+      onBoard: () => {},
+      boardLabel: bracket ? 'See the bracket' : 'See the standings',
+      tickets: parts.paid ? <ReelTickets paid={parts.paid} game="crosswalk" /> : null,
+      recap: parts.recap,
+      secondary: primary ? null : { label: 'Share' },
+      who: <ReportWho name="VERA" text={counted ? 'Posted as VERA' : 'Posted as VERA, unlimited tries'} />,
+      links: primary ? [] : [{ label: bracket ? 'Bracket' : 'Standings', onClick: () => {} }],
+    },
+  }
+}
+
+function eventReels(tag: ReactNode, signIn: ReactNode): ReelSample[] {
+  const unposted = (key: string, label: string, phase: ReelInput['phase'], extra: Partial<ReelInput>): ReelSample => ({
+    key,
+    label,
+    game: 'Friday Cup',
+    slug: 'crosswalk',
+    tier: 'quiet',
+    metal: null,
+    leave: 'Back to event',
+    input: {
+      phase,
+      wait: { said: 'Posting to Friday Cup…', slow: 'Still posting. It finishes even if you play on.' },
+      run: { titleId: `reel-${key}`, tier: 'quiet', ribbon: null, eyebrow: 'Crosswalk', score: '447', unit: 'rows', sub: 'The train got you', scoreTone: 'plain' },
+      lines: [],
+      recap: [{ key: 'score', value: '447 rows', label: 'Crosswalk', tone: 'run' }],
+      ...extra,
+    },
+  })
+  const tagAsk = (
+    <>
+      {tag}
+      <ReelButton action={{ label: 'Post score' }} />
+    </>
+  )
+  const match = eventDetail('dev-bracket-live', 'Friday Bracket', ['crosswalk'], [], 'bracket')
+  return [
+    eventReel('event-2nd', 'Event: 2nd, a new best', eventPost(cup(447), 447, { improved: true }), 447),
+    eventReel('event-1st', 'Event: 1st', eventPost(cup(480), 480, { improved: true }), 480),
+    eventReel('event-quiet', 'Event: an ordinary run', eventPost(cup(352), 352), 318),
+    eventReel('event-triple', 'Event: a Triple, 2nd', eventPost(tripleLive(), 447, { improved: true }), 447),
+    eventReel(
+      'event-match',
+      'Event: a bracket match won',
+      eventPost(match, 447, { improved: true, youWonMatch: true, matchOpponent: 'REESE', attemptsRemaining: 0, exhausted: true }),
+      447,
+      'View bracket',
+    ),
+    eventReel(
+      'event-daily',
+      'Event: the day’s, +10 tickets',
+      eventPost(cup(398, 'daily-2026-10-14', 'Today’s event · Crosswalk'), 398, { improved: true, tickets: { earned: 10, balance: 1331 } }),
+      398,
+    ),
+    eventReel('event-tries', 'Event: 2 tries left', eventPost(cup(352), 352, { maxAttempts: 3, attemptsRemaining: 2 }), 318),
+    eventReel('event-out', 'Event: the last try', eventPost(cup(352), 352, { maxAttempts: 1, attemptsRemaining: 0, exhausted: true }), 318, 'View standings'),
+    unposted('event-signin', 'Event: signed out', 'ask', { ask: signIn, askGoLabel: 'Not now', block: signIn, who: <ReportWho text="Not posted yet" /> }),
+    unposted('event-tag', 'Event: no tag yet', 'ask', { ask: tagAsk, askGoLabel: 'Skip', block: tagAsk, who: <ReportWho text="Signed in, no tag yet" /> }),
+    unposted('event-posting', 'Event: still posting', 'pending', { who: <ReportWho name="VERA" text="Posting…" /> }),
+  ]
+}
+
 export function DevCelebratePage() {
   // ?open=top or ?win=triple opens one on load, for a screenshot of the first paint.
   const [open, setOpen] = useState<string | null>(() => new URLSearchParams(window.location.search).get('open'))
@@ -1038,9 +1214,13 @@ export function DevCelebratePage() {
       onSignedIn={() => {}}
     />
   )
+  const eventTagNode = (
+    <TagSlots id={tagId} value={tag} onChange={setTag} onSubmit={() => {}} lead="Your tag goes on Friday Cup’s standings." />
+  )
+  const eventSignInNode = <ReportSignIn lead="Sign in to post 447 rows to Friday Cup." onSignedIn={() => {}} />
   const list = samples(tagNode, signInNode)
   const opened = list.find((s) => s.key === open)
-  const reels = reelSamples(tagNode, signInNode)
+  const reels = [...reelSamples(tagNode, signInNode), ...eventReels(eventTagNode, eventSignInNode)]
   const reeled = reels.find((r) => r.key === reel)
 
   return (
@@ -1136,8 +1316,8 @@ export function DevCelebratePage() {
             game={reeled.game}
             tier={reeled.tier}
             metal={reeled.metal}
-            steps={reelSteps({ ...reeled.input, primary: { label: 'Play again', onClick: () => setReel(null) } })}
-            leave={{ label: 'Leave', onClick: () => setReel(null) }}
+            steps={reelSteps({ ...reeled.input, primary: { label: reeled.primary ?? 'Play again', onClick: () => setReel(null) } })}
+            leave={{ label: reeled.leave ?? 'Leave', onClick: () => setReel(null) }}
             onEscape={() => setReel(null)}
           />
         ) : null}
