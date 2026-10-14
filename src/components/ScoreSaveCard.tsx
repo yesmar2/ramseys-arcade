@@ -851,6 +851,8 @@ export function ScoreSaveCard({
     },
     // A racing daily's best is under its time already, and its standings are the header's.
     lines: saved ? (data?.lines ?? []).filter((line) => !race || (line.id !== 'best' && line.id !== 'overall')) : [],
+    // What the run's stamp spoke of leads Where it landed: the record book it's 2nd in, over the board's 55th.
+    landedHero: data?.lead ?? undefined,
     race: saved ? (data?.race ?? null) : null,
     friend: saved ? (data?.friend ?? null) : null,
     onBoard: ranked && saved ? () => leavePlayTo(boardsHref(gameSlug, period)) : undefined,

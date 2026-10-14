@@ -824,6 +824,7 @@ function arcadeReel(key: string, label: string, f: RunFacts, title: string, sub:
         scoreTone: r.scoreTone,
       },
       lines: r.lines,
+      landedHero: r.lead ?? undefined,
       race: r.race,
       friend: r.friend,
       onBoard: () => {},
@@ -969,6 +970,22 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
       }),
       'Run over',
       'Swept off the edge',
+    ),
+    // A record book's 2nd on an ordinary run: the stamp names the book, and Where it landed leads with it.
+    arcadeReel(
+      'book-2nd',
+      '2nd in a record book',
+      facts(318, {
+        books: [
+          {
+            hit: { id: 'crosswalk:longest-chain', label: 'Longest chain', value: '41', rank: 2 },
+            record: { id: 'longest-chain', unit: 'count', label: 'Longest chain' } as never,
+            holder: { id: 'h1', name: 'CHEF', score: 44, at: NOW },
+          },
+        ],
+      }),
+      'Run over',
+      'Flattened by traffic',
     ),
     arcadeReel('season-40', 'Level 40 on the pass', facts(318, {}), 'Run over', 'Flattened by traffic', { season: TENTH_SEASON }),
     arcadeReel('season-31', 'Level 31, past the free row', facts(318, {}), 'Run over', 'Flattened by traffic', { season: QUIET_SEASON }),

@@ -61,6 +61,8 @@ export type ReportLine = {
   detail: string | null
   value: string
   tone: ReportTone
+  /** A record book's line: the run's place in that book (its value is the run's figure). */
+  rank?: number | null
 }
 
 export type ReportRibbon = {
@@ -99,6 +101,11 @@ export type RunReportData = {
   /** The metal a big report's gold is in, for a 2nd or a 3rd; null for gold. */
   metal: ReportMetal | null
   ribbon: ReportRibbon | null
+  /**
+   * The line the ribbon is about, by its id, for Where it landed to make much of: a record book's when the run's
+   * 2nd in one, not the board's 55th (a Frenzy run said "2nd in the record book", then "55th all time").
+   */
+  lead: string | null
   /** The big figure: gold when it tops a board, the game's colour for a personal best. */
   scoreTone: ReportTone
   lines: ReportLine[]
@@ -366,7 +373,7 @@ function bookLine(f: RunFacts, book: BookFact, i: number): ReportLine {
   const { hit, record } = book
   const brief = (e: LeaderboardEntry) => (record ? recordBrief(record, e.score) : e.score.toLocaleString())
   const value = hit.value ?? (hit.rank != null ? `#${hit.rank}` : 'New')
-  const line = { id: `book-${i}`, icon: 'book' as ReportIcon, label: hit.label, value }
+  const line = { id: `book-${i}`, icon: 'book' as ReportIcon, label: hit.label, value, rank: hit.rank }
   if (hit.rank === 1) {
     const previous = book.previous
     const detail =
@@ -455,31 +462,42 @@ export function composeReport(f: RunFacts): RunReportData {
   let ribbon: ReportRibbon | null = null
   // The line that lit a silver or bronze report, said in its metal too.
   let metalLine: string | null = null
+  // The line the ribbon is about; left null, the board's.
+  let lead: string | null = null
+  // A record book's ribbon says which book: "2nd in the record book" alone left a player asking 2nd at what.
+  const topBook = books.find((line) => line.tone === 'gold') ?? null
   if (challenge?.won) {
     tier = 'big'
     ribbon = CHALLENGE_WON
+    lead = 'challenge'
   } else if (overall?.newTop) {
     tier = 'big'
     ribbon = { icon: 'crown', text: 'Top of the standings', tone: 'gold' }
+    lead = 'overall'
   } else if (highScore) {
     tier = 'big'
     ribbon = { icon: 'crown', text: 'The high score', tone: 'gold' }
+    lead = f.period !== 'all' ? 'all-time' : 'board'
   } else if (board?.newTop) {
     tier = 'big'
     ribbon = { icon: 'crown', text: 'Top of the board', tone: 'gold' }
-  } else if (bookTop) {
+    lead = 'board'
+  } else if (bookTop && topBook) {
     tier = 'big'
-    ribbon = { icon: 'book', text: 'New record', tone: 'gold' }
+    ribbon = { icon: 'book', text: `New record · ${topBook.label}`, tone: 'gold' }
+    lead = topBook.id
   } else if (boardPodium) {
     tier = 'big'
     metal = boardPodium === 2 ? 'silver' : 'bronze'
     ribbon = { icon: 'up', text: `${ordinal(boardPodium)} on ${boardLabel(f.slug, copy)}`, tone: 'gold' }
     metalLine = 'board'
+    lead = 'board'
   } else if (bookPodium) {
     tier = 'big'
     metal = bookPodium === 2 ? 'silver' : 'bronze'
-    ribbon = { icon: 'book', text: `${ordinal(bookPodium)} in the record book`, tone: 'gold' }
+    ribbon = { icon: 'book', text: `${ordinal(bookPodium)} · ${shelf[0]!.hit.label}`, tone: 'gold' }
     metalLine = 'book-0'
+    lead = 'book-0'
   } else if (passedFriend) {
     tier = 'lit'
     ribbon = {
@@ -496,7 +514,9 @@ export function composeReport(f: RunFacts): RunReportData {
     ribbon = { icon: 'up', text: `${ordinal(board.place)} ${copy.phrase}`, tone: 'accent' }
   } else if (books.length) {
     tier = 'lit'
-    ribbon = { icon: 'book', text: 'In the record book', tone: 'accent' }
+    const rank = shelf[0]!.hit.rank
+    ribbon = { icon: 'book', text: `${rank != null ? ordinal(rank) : 'In the book'} · ${shelf[0]!.hit.label}`, tone: 'accent' }
+    lead = 'book-0'
   }
 
   const lines: ReportLine[] = []
@@ -546,6 +566,7 @@ export function composeReport(f: RunFacts): RunReportData {
     tier,
     metal,
     ribbon,
+    lead,
     scoreTone: challenge?.won || highScore || board?.newTop || boardPodium ? 'gold' : isBest ? 'accent' : 'plain',
     lines: ordered,
     race,
