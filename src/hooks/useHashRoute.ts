@@ -110,13 +110,30 @@ const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', '
 /** Fired after in-app navigation has changed the URL. */
 export const ROUTE_EVENT = 'skermix:route'
 
-/** Old URL slugs → current game slugs (name-matching). */
+/**
+ * The address a game goes by where it isn't its slug: the name players know rather than the old one, which was
+ * another company's (Ramsey, 2026-10-14, "fix these issues please"). The slug stays what the code, the boards and
+ * the API call it, and the old address still opens the game (GAME_SLUG_ALIASES).
+ */
+const GAME_ADDRESS: Record<string, string> = {
+  asteroids: 'space-rocks',
+  bop: 'fidget',
+  pellets: 'glowberry',
+}
+
+/** A game's part of an address, `/games/<this>`: its own name where it has one (GAME_ADDRESS), else its slug. */
+export function gameAddress(slug: string) {
+  return encodeURIComponent(GAME_ADDRESS[slug] ?? slug)
+}
+
+/** Old URL slugs and the games' own addresses → current game slugs (name-matching). */
 const GAME_SLUG_ALIASES: Record<string, string> = {
   'dead-center': 'centroid',
   whack: 'pop',
   'whack-a-mole': 'pop',
   stride: 'crosswalk',
   'wobble-run': 'wobblerun',
+  ...Object.fromEntries(Object.entries(GAME_ADDRESS).map(([slug, address]) => [address, slug])),
 }
 
 /** A game's slug as the site writes it, from an address in any case (/games/Snake) or with an old name. */
@@ -181,7 +198,7 @@ export function gameBoardHref(
   game: LeaderboardGame,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  const base = `/games/${encodeURIComponent(game)}`
+  const base = `/games/${gameAddress(game)}`
   const shown = boardPeriodFor(game, period)
   return isDailyGame(game) && shown === 'daily' ? base : `${base}/${shown}`
 }
@@ -295,7 +312,7 @@ function keepFocus(href: string): string {
 
 /** Game hub / lobby. Optional records tab: `/games/{slug}/records`. */
 export function gameHref(slug: string, board: 'scores' | 'records' = 'scores') {
-  const base = `/games/${encodeURIComponent(slug)}`
+  const base = `/games/${gameAddress(slug)}`
   if (board === 'records') return `${base}/records`
   return base
 }
@@ -305,7 +322,7 @@ export function gameHubHref(
   slug: string,
   period: LeaderboardPeriod = defaultPeriod(),
 ) {
-  return `/games/${encodeURIComponent(slug)}/${period}`
+  return `/games/${gameAddress(slug)}/${period}`
 }
 
 /**
@@ -314,7 +331,7 @@ export function gameHubHref(
  * daily's day (YYYY-MM-DD).
  */
 export function dailyTabHref(slug: string, tab: 'today' | 'past' | 'records' = 'today', course?: string | number) {
-  const base = `/games/${encodeURIComponent(slug)}`
+  const base = `/games/${gameAddress(slug)}`
   if (tab === 'today') return base
   const anchor = tab === 'past' && course != null ? `#course-${encodeURIComponent(String(course))}` : ''
   return `${base}/${tab}${anchor}`
@@ -326,7 +343,7 @@ export function gameArchiveHref(slug: string) {
 }
 
 export function gamePlayHref(slug: string) {
-  return `/games/${encodeURIComponent(slug)}/play`
+  return `/games/${gameAddress(slug)}/play`
 }
 
 /** Site-wide record books catalog. */
@@ -417,7 +434,7 @@ export function tournamentPlayHref(id: string, game: string, invite?: string) {
  * defaults to `all` rather than the site's general leaderboard period.
  */
 export function recordsHref(game: string, period: LeaderboardPeriod = 'all') {
-  const base = `/games/${encodeURIComponent(game)}/records`
+  const base = `/games/${gameAddress(game)}/records`
   const book = bookPeriod(period)
   return isDailyGame(game) || book === 'all' ? base : `${base}/${book}`
 }
