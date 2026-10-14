@@ -45,7 +45,7 @@ const GATE_HUE = 32
 /** Which bug each chaser is. */
 const BUG_OF: Record<GhostKind, BugName> = { blink: 'snatch', pink: 'sly', inky: 'shady', clyde: 'grumble' }
 /** A bug's height, in tiles: its hat and feelers stand over its tile a little. */
-const BUG_SIZE = 1.3
+const BUG_SIZE = 1.1
 
 const LOOK: Record<Dir, { x: number; y: number }> = {
   up: { x: 0, y: -1 },

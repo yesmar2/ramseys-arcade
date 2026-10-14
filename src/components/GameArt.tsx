@@ -600,8 +600,8 @@ function Pellets({ id }: { id: Id }) {
           <circle key={x} cx={x} cy="1.5" r={r * (0.35 + 0.5 * life)} fill={hsl(42, 92, 60, 0.2 * life)} />
         ))}
         <Glow id={id} name="lamp" cx={3.7} cy={1.5} r={r * 2.6} colour={hsl(168, 90, 60)} strength={0.26} />
-        <MazeBug name="snatch" x={1.5} y={4.55} size={1.3} pose={{ state: 'normal', look: [0, -1], step: 0 }} />
-        <MazeBug name="sly" x={7.5} y={3.45} size={1.3} pose={{ state: 'normal', look: [-1, 0], step: 1 }} />
+        <MazeBug name="snatch" x={1.5} y={4.55} size={1.1} pose={{ state: 'normal', look: [0, -1], step: 0 }} />
+        <MazeBug name="sly" x={7.5} y={3.45} size={1.1} pose={{ state: 'normal', look: [-1, 0], step: 1 }} />
         {/* Blip, headed left for the glowberry. */}
         <Blip id={id} name="blip" x={3.7} y={1.43} s={r / 7.35} c={BLIP_MINT} />
       </g>
@@ -978,8 +978,8 @@ function Crumbtrail({ id }: { id: Id }) {
       ))}
       <circle cx="12.9" cy="15.2" r="1.25" fill={hsl(200, 80, 55, 0.35)} stroke={hsl(200, 85, 70)} strokeWidth="0.3" />
       <path d="M12.9 14.3 V16.1 M12.12 14.75 L13.68 15.65 M12.12 15.65 L13.68 14.75" {...line('#fff', 0.18, 0.9)} />
-      <MazeBug name="pester" x={9.6} y={7.2} size={6} pose={{ state: 'normal', look: [1, 0.3], step: 0, t: 0.1 }} />
-      <MazeBug name="snatch" x={30.5} y={14.8} size={6} pose={{ state: 'normal', look: [-1, 0.4], step: 1 }} />
+      <MazeBug name="pester" x={9.6} y={7.2} size={5} pose={{ state: 'normal', look: [1, 0.3], step: 0, t: 0.1 }} />
+      <MazeBug name="snatch" x={30.5} y={14.8} size={5} pose={{ state: 'normal', look: [-1, 0.4], step: 1 }} />
       <rect x="-1" y="19.6" width="42" height="6.8" fill={`url(#${id('warn')})`} />
       <Glow id={id} name="lamp" cx={20} cy={22.8} r={5} colour={hsl(168, 90, 60)} strength={0.4} />
       <Blip id={id} name="blip" x={20} y={22.6 - 1.26 * (2.1 / 7.35)} s={2.1 / 7.35} c={BLIP_MINT} />

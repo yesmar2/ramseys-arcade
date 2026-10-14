@@ -38,7 +38,7 @@ const WATER_HUE = 205
 /** Which bug each chaser is. */
 const BUG_OF: Record<GhostKind, BugName> = { blink: 'snatch', pink: 'sly', herd: 'pester', inky: 'shady', clyde: 'grumble', train: 'car' }
 /** A bug's height, in tiles, and a caterpillar car's: a car is one round segment. */
-const BUG_SIZE = 1.25
+const BUG_SIZE = 1.05
 const CAR_SIZE = 0.95
 /** The site's own face, at a weight it loads; a canvas can't read the CSS variable. */
 const FONT = '"Outfit", system-ui, sans-serif'
