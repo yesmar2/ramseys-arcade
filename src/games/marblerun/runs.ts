@@ -1,3 +1,4 @@
+import { standIn } from './boardGhost'
 import { dailyCourse, laidNumber, type DailyCourse } from './daily'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE, labCourse, paceRun, plannedCourse, type Course } from './sim'
@@ -46,7 +47,11 @@ export function paceOf(day: string): GhostRun {
   if (!pace) {
     const { course, pace: planned } = marbleDay(day)
     const run = paceRun(course)
-    pace = { time: run.finished ? run.time : planned, splits: run.splits, ghost: run.ghost }
+    const flown = { time: run.finished ? run.time : planned, splits: run.splits, ghost: run.ghost }
+    // Rolled in the plan's time, to the millisecond, as Swoop's and Wobble Run's blues are (boardGhost.ts standIn):
+    // its medals and tickets go by that time, whatever a browser's maths comes to over so long a roll.
+    const drifted = run.finished && planned > 0 && Math.round(run.time * 1000) !== Math.round(planned * 1000)
+    pace = drifted ? standIn(flown, planned) : flown
     if (paces.size > 2) paces.clear()
     paces.set(day, pace)
   }

@@ -737,8 +737,10 @@ function HotLapDay({
         keepBestLap(g.day, g.test, g.owner, { time, splits: [...run.splits], ghost: g.record, ...(skinRef.current ? { skin: skinRef.current } : {}) })
       }
       g.lap = { time, score: hotlapBoardScore(time), splits: [...run.splits], improved, run: g.past ? runIdFor(SLUG) : null, path: g.record }
-      // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
-      if (!g.test) noteCourseBest(SLUG, trackNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
+      // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but an admin's test
+      // drive. A past track is mounted as a test too (with its board), and its laps count, as the other races' past
+      // courses' do: an archived track's practice is kept nowhere else.
+      if (!g.test || g.past) noteCourseBest(SLUG, trackNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       sfx(improved ? 'perfect' : 'good')
       haptic('boost')
     }

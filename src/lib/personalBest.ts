@@ -15,6 +15,15 @@ export type PersonalBestResult = {
 
 let cachedName = ''
 let cachedBests: Record<string, number> = {}
+/**
+ * The board day the cached dailies' bests are for: a daily's best is that day's, so one kept from before midnight
+ * (a tab or the app left open) is yesterday's, and is never judged against today's blue (a medal won "today"
+ * before a run).
+ */
+let cachedDay = ''
+/** The day a stale cache last asked to be fetched again: a day's turn asks once. */
+let staleAsked = ''
+let turnover = 0
 let inflightRefresh: Promise<void> | null = null
 const listeners = new Set<() => void>()
 
@@ -40,6 +49,24 @@ export function subscribePersonalBests(onStoreChange: () => void) {
  */
 const DEVICE_KEY = 'skermix-device-bests'
 const boardDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+const boardClock = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+/** At the boards' midnight, whatever shows a best reads it again: a daily's goes with its day. */
+function watchTurnover() {
+  if (typeof window === 'undefined') return
+  window.clearTimeout(turnover)
+  const [h, m, s] = boardClock.format(new Date()).split(':').map(Number)
+  const left = Math.max(0, (24 * 3600 - (h! * 3600 + m! * 60 + s!)) * 1000)
+  turnover = window.setTimeout(emit, left + 1000)
+}
+
+/** The cache is a day behind: fetch it again, once a day, and not from inside a render. */
+function askAgainForToday() {
+  const today = boardDay.format(new Date())
+  if (staleAsked === today || typeof window === 'undefined') return
+  staleAsked = today
+  window.setTimeout(() => void refreshPersonalBests(), 0)
+}
 
 /** A device's best on a game: its score, its board day, and when it was kept (missing on bests kept before resets). */
 type DeviceBest = { score: number; day: string; at?: number }
@@ -104,15 +131,26 @@ export function getPersonalBest(slug: string): number {
   if (!signedIn()) return deviceBest(slug)
   const name = getLastPlayerName().trim().toUpperCase()
   if (!name || name !== cachedName) return 0
+  // Yesterday's best on a daily is nothing today: none till today's comes back.
+  if (isDailyGame(slug) && cachedDay !== boardDay.format(new Date())) {
+    askAgainForToday()
+    return 0
+  }
   return cachedBests[slug] ?? 0
 }
 
 export function rememberPersonalBest(slug: string, score: number) {
   const name = getLastPlayerName().trim().toUpperCase()
   if (!name || score <= 0) return
+  const today = boardDay.format(new Date())
   if (cachedName !== name) {
     cachedName = name
     cachedBests = {}
+    cachedDay = today
+  } else if (cachedDay !== today) {
+    // A new day since the cache was filled: the dailies' bests were yesterday's; the other games' are for good.
+    for (const key of Object.keys(cachedBests)) if (isDailyGame(key)) delete cachedBests[key]
+    cachedDay = today
   }
   cachedBests[slug] = Math.max(cachedBests[slug] ?? 0, score)
   emit()
@@ -121,7 +159,10 @@ export function rememberPersonalBest(slug: string, score: number) {
 export async function refreshPersonalBests() {
   if (inflightRefresh) return inflightRefresh
 
+  watchTurnover()
   inflightRefresh = (async () => {
+    // The day it's asked on: one that turns while it's on its way is caught as a day behind, and asked again.
+    const day = boardDay.format(new Date())
     const name = getLastPlayerName().trim().toUpperCase()
     if (!name) {
       cachedName = ''
@@ -139,6 +180,7 @@ export async function refreshPersonalBests() {
       }
       cachedName = name
       cachedBests = bests
+      cachedDay = day
       emit()
     } catch {
       if (cachedName !== name) {

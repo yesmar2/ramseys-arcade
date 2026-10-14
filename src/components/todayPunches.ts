@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer } from 'react'
 import { getGame } from '../data/games'
 import {
   bugDay,
@@ -383,7 +383,9 @@ export type Ticket = {
  */
 export function useTicket(viewer: Viewer): Ticket {
   const [, refresh] = useReducer((n: number) => n + 1, 0)
-  const [day, setDay] = useState(dailyDay)
+  // The day as the clock has it at this drawing (drawn again at least every 30 s, below): just after midnight it's
+  // the new day's ticket at once, never yesterday's results judged against the new day's blues.
+  const day = dailyDay()
   useEffect(() => subscribeDaily(refresh), [])
   useEffect(() => subscribeBugDay(refresh), [])
   useEffect(() => subscribePourDay(refresh), [])
@@ -393,10 +395,7 @@ export function useTicket(viewer: Viewer): Ticket {
     void syncDaily()
   }, [day])
   useEffect(() => {
-    const t = window.setInterval(() => {
-      setDay(dailyDay())
-      refresh()
-    }, 30_000)
+    const t = window.setInterval(refresh, 30_000)
     return () => window.clearInterval(t)
   }, [])
 

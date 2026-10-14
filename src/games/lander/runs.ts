@@ -1,3 +1,4 @@
+import { standIn } from './boardGhost'
 import { dailyCave, laidNumber, type DailyCave } from './daily'
 import type { GhostRun } from './runStore'
 import { ENGINE_OFF, ENGINE_ON, GHOST_RATE, GHOST_STRIDE, labCave, paceRun, plannedCave, WRECKED, wrap, type Cave } from './sim'
@@ -48,7 +49,11 @@ export function paceOf(day: string): GhostRun {
   if (!pace) {
     const { cave, pace: planned } = landerDay(day)
     const run = paceRun(cave)
-    pace = { time: run.landed ? run.time : planned, splits: run.splits, ghost: run.ghost }
+    const flown = { time: run.landed ? run.time : planned, splits: run.splits, ghost: run.ghost }
+    // Flown in the plan's time, to the millisecond, as Swoop's and Wobble Run's blues are (boardGhost.ts standIn):
+    // its medals and tickets go by that time, whatever a browser's maths comes to over so long a flight.
+    const drifted = run.landed && planned > 0 && Math.round(run.time * 1000) !== Math.round(planned * 1000)
+    pace = drifted ? standIn(flown, planned) : flown
     if (paces.size > 2) paces.clear()
     paces.set(day, pace)
   }

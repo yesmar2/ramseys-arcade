@@ -66,7 +66,7 @@ export const MEDAL_RUNGS: Record<Medal, number> = { bronze: 1.2, silver: 1.8, go
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in
- * all three games (a run short of bronze pays its 3 for a run today). Shown on a run's medal ladder.
+ * all five races (a run short of bronze pays its 3 for a run today). Shown on a run's medal ladder.
  */
 export const MEDAL_TICKETS: Record<Medal, number> = { bronze: 5, silver: 8, gold: 11, platinum: 15 }
 
@@ -79,7 +79,7 @@ export function blueOf(game: RaceGame): string {
   return BLUE[game]
 }
 
-/** A medal's lead on the blue, in percent: 10 for Lander's bronze, 14 for its silver, 24 for its platinum. */
+/** A medal's lead on the blue, in percent: 12 for Lander's bronze, 18 for its silver, 30 for its platinum. */
 export function medalPercent(game: RaceGame, medal: Medal): number {
   return Math.round(MEDAL_RUNGS[medal] * MEDAL_STEP[game] * 100)
 }

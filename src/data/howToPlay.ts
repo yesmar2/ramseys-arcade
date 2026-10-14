@@ -1,4 +1,10 @@
 import { BOARD_NAMES } from '../lib/dailyWords'
+import { blueOf, medalPercent, type RaceGame } from '../lib/raceMedals'
+
+/** A racing daily's medals in words, from the steps they're worked out by (lib/raceMedals.ts): never out of step. */
+function medalLine(game: RaceGame): string {
+  return `bronze ${medalPercent(game, 'bronze')}% faster than the ${blueOf(game)}, up to platinum at ${medalPercent(game, 'platinum')}%`
+}
 
 /*
  * How to play each game, in the same parts wherever it shows (the game's page
@@ -325,7 +331,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 6% faster than the blue car, up to platinum at 15%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('hotlap') },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'The call under the clock names the next corner and counts down to it: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
@@ -374,7 +380,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Off the edge', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 12% faster than the blue ball, up to platinum at 30%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('marblerun') },
     ],
     ends: 'At the goal. Roll it as often as you like.',
     tip: 'The marble keeps its speed until you lean the other way: ease off before a curve, a narrow or a jump, and let it run down the straights. Each course has a few of these too: boost pads and mud, bumpers, swinging hammers, a windmill, a moving platform, ice, a fork, a loop (hit its boost pad or you won’t make the top). The ghost is the run to beat.',
@@ -402,7 +408,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Bump the rock', pts: 'nothing', sub: 'a gentle knock bounces you off' },
       { what: 'Hit the rock hard', pts: 'the time it takes', sub: 'back to the last gate, clock running' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 12% faster than the blue ship, up to platinum at 30%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('lander') },
     ],
     ends: 'Down on the landing pad, slowly and level. Fly it as often as you like.',
     tip: 'Gravity is free speed: let the ship fall down the shafts, then turn the nose up and brake before the bottom. Let go of everything and the ship rights itself. Come down onto the pad slowly and level: the speed by your ship turns green when it’s slow enough. Each cave has a few things in it too: steam vents, crushers, turning bars, water, low gravity, lava, shortcuts, a pad on a lift. Crushers, bars and lava crash you at a touch.',
@@ -450,7 +456,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Land along a slope', pts: 'keeps your speed', sub: 'a clean landing adds a little' },
       { what: 'Clean landings in a row', pts: 'faster and faster', sub: 'from 3 in a row, until one isn’t clean' },
       { what: 'Land into a hill', pts: 'costs speed', sub: 'up to 40% of it' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 16% faster than the blue bird, up to platinum at 39%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('swoop') },
     ],
     ends: 'Over the finish line. Fly it as often as you like.',
     tip: 'Hold down every slope and let go just past the bottom: the bird flies off the next top instead of crawling over it. In the air, hold to drop sooner, so you come down on the far side of the next hill and not into its face. Three clean landings in a row and the bird glows: keep landing clean and it can keep going faster. A clean landing is down a slope, one a hill: a bounce doesn’t count.',
@@ -479,7 +485,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
       { what: 'Fall in the soda', pts: 'the time it takes', sub: 'back to the last checkpoint, clock running' },
       { what: 'Knocked over', pts: 'a moment', sub: 'a bar or hammer stuns you for half a second; fruit or a wall throws you back, about a second' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: 'bronze 14% faster than the blue blip, up to platinum at 36%' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('wobblerun') },
     ],
     ends: 'Grab the star. Run it as often as you like.',
     tip: 'Jump the orange, dive under the purple, and keep away from the red. Everything moves on the same clock for everyone, so a short wait for a gap often beats a knock. Gold edges are risky shortcuts: quicker if you make them, slower if you don’t. A dive is a lunge forward, for a far edge or to get going again.',

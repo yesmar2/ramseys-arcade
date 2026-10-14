@@ -1,4 +1,5 @@
 import { ownKey, ownRun, SIGNED_OUT, type OwnedRuns, type Viewer } from '../../lib/deviceRuns'
+import { standIn } from './boardGhost'
 import { dailyTrack, type DailyTrack } from './daily'
 import { botLap, buildTrack, GHOST_RATE, lapDistance, nearest, type GhostPath, type Track } from './sim'
 
@@ -149,7 +150,11 @@ export function hotlapCourse(day: string): Course {
     const daily = dailyTrack(day)
     const track = buildTrack(daily.pieces, daily.shape)
     const bot = botLap(track)
-    course = { ...daily, track, paceLap: { time: bot.time ?? daily.pace, splits: bot.splits, ghost: bot.ghost } }
+    const flown: GhostLap = { time: bot.time ?? daily.pace, splits: bot.splits, ghost: bot.ghost }
+    // Driven in the plan's time, to the millisecond, as Swoop's and Wobble Run's blues are: its medals and tickets
+    // go by that time, so a browser whose maths drifts over so long a drive still sees its blue car finish there.
+    const drifted = bot.time != null && daily.pace > 0 && Math.round(bot.time * 1000) !== Math.round(daily.pace * 1000)
+    course = { ...daily, track, paceLap: drifted ? standIn(flown, daily.pace) : flown }
     if (courses.size > 2) courses.clear()
     courses.set(day, course)
   }

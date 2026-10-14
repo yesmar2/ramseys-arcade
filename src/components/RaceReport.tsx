@@ -7,7 +7,7 @@ import { MedalLadder } from './RaceMedal'
 import { SeasonLevelUp } from './season/SeasonRun'
 
 /*
- * A racing daily's run on its report (Hot Lap, Marble Run, Lander), between the score and the way on to the
+ * A racing daily's run on its report (Hot Lap, Marble Run, Lander, Swoop, Wobble Run), between the score and the way on to the
  * next daily, as Ramsey picked it (2026-10-05, "B · Medal ladder"): the day's four medals as a ladder, with
  * their times and tickets, so the medals explain themselves; the run's tickets in one slim row, the season's
  * pass said in it; and the run's place today in one row, the board a press away. The ladder is worked out

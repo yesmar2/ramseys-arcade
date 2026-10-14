@@ -69,7 +69,7 @@ import {
   type WobbleDay,
 } from './runs'
 import { WobbleScene, type GhostShow } from './WobbleScene'
-import { formatRun, formatWobblerunBoardScore, splashWords, wobblerunBoardScore, wobblerunMsFromBoardScore } from './score'
+import { formatRun, formatRunMs, formatWobblerunBoardScore, splashWords, wobblerunBoardScore, wobblerunMsFromBoardScore } from './score'
 import { LabResultCard, LabStartCard, TestResultCard, TestStartCard } from './TestCards'
 import { TomorrowGauntlet } from './TomorrowGauntlet'
 import { chromeTakesKey, controlTakesKey } from '../keys'
@@ -1529,7 +1529,8 @@ function WobbleRunDay({
   const target = practice ? null : chasingMedal ? (
     <div className="wobblerun__target">
       <MedalIcon medal={chasingMedal.medal} size={13} />
-      {MEDAL_NAMES[chasingMedal.medal]} · {formatRun(chasingMedal.ms / 1000)}
+      {/* To the thousandth: in hundredths a 53.725s line read 53.73, and a 53.728s run looked on it but missed. */}
+      {MEDAL_NAMES[chasingMedal.medal]} · {formatRunMs(chasingMedal.ms, 3)}
     </div>
   ) : (
     <div className="wobblerun__target">
