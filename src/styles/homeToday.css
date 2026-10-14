@@ -177,15 +177,41 @@ html[data-theme='dark'] .home-day {
 
 /* ---------- the cards ---------- */
 
-/* The races, and Blip's question as a card the races' width beside them (BlipPoll.tsx). */
+/*
+ * The races, the day's puzzles in a slim line under them (AlsoToday.tsx), and Blip's question as a card beside
+ * both (BlipPoll.tsx), never narrower than its words need. Each race card is as tall as its own words: Blip's
+ * card, taller once you've answered, runs down beside the puzzles instead of stretching the races (Ramsey,
+ * 2026-10-14: "this doesn't look great with the stretching of the game cards"; A on the "Dailies row, no
+ * stretching" canvas).
+ */
 .home-day__row {
   display: grid;
-  grid-template-columns: minmax(0, var(--races, 4fr)) minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--races, 4fr)) minmax(13rem, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'cards blip'
+    'also blip';
   gap: 0.85rem;
-  align-items: stretch;
+  align-items: start;
+}
+
+.home-day__row > .blip-poll {
+  grid-area: blip;
+  align-self: stretch;
+}
+
+/* As tall as Blip's card leaves beside it, with its line in the middle. */
+.home-day__row > .also {
+  grid-area: also;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-top: 0;
 }
 
 .home-day__cards {
+  grid-area: cards;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -501,15 +527,51 @@ html[data-theme='light'] .home-day__card:focus-visible {
   .home-day__row .blip-poll__skel-more {
     display: inline;
   }
+
+  /*
+   * And a little tighter than elsewhere, so once you've answered, his results, his set and yesterday's come to
+   * about the races' and the puzzles' height. The question starts under him, so it can run the card's width.
+   */
+  .home-day__row .blip-poll {
+    gap: 0.45rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .home-day__row .blip-poll__q {
+    padding-right: 0;
+  }
+
+  .home-day__row .blip-poll__res {
+    gap: 0.3rem;
+  }
+
+  .home-day__row .blip-poll__bar {
+    min-height: 2rem;
+    font-size: 0.84rem;
+  }
+
+  .home-day__row .blip-set {
+    gap: 0.35rem;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .home-day__row .blip-set__art {
+    max-width: 2.1rem;
+  }
+
+  .home-day__row .blip-poll__then {
+    padding-top: 0.45rem;
+  }
 }
 
 /* ---------- narrower: the cards scroll sideways, running out to the card's edge ---------- */
 
 @media (max-width: 64rem) {
-  /* The races swipe; Blip's question comes under them, the row's width. */
+  /* The races swipe; Blip's question comes under them, then the puzzles, each the row's width. */
   .home-day__row {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     /* Room over the card for Blip, who sits on its edge. */
     gap: 1.9rem;
   }

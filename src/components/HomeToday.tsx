@@ -305,7 +305,9 @@ export function HomeToday() {
           <ChevronIcon />
         </a>
       </div>
-      {/* The races, and Blip's question beside them as one more card (on a phone, under them): BlipPoll.tsx. */}
+      {/* The races, the day's puzzles just for fun in a slim line under them (AlsoToday.tsx), and Blip's question
+          as one more card beside both (BlipPoll.tsx), so the races keep their own height (homeToday.css). On a
+          phone, each under the one before. */}
       <div className="home-day__row" style={{ '--races': `${total}fr` } as CSSProperties}>
       <ul className="home-day__cards" style={{ '--n': total } as CSSProperties}>
         {punches.map((p) => (
@@ -317,9 +319,8 @@ export function HomeToday() {
         ))}
       </ul>
       <BlipPoll />
-      </div>
-      {/* The day's puzzles, just for fun, in a slim line under the races (AlsoToday.tsx). */}
       <AlsoToday punches={ticket.also} compact />
+      </div>
       {/* On a phone the time to the next dailies comes under the cards (homeToday.css), and the one over them goes. */}
       <p className="home-day__next home-day__next--under">{next}</p>
     </section>

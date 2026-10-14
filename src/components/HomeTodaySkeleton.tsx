@@ -51,7 +51,8 @@ export function HomeTodaySkeleton() {
           Open Dailies
         </a>
       </div>
-      {/* The races, and Blip's question beside them: his own card, already here, waiting on its question itself. */}
+      {/* The races, the puzzles under them, and Blip's question beside both: his own card, already here, waiting on
+          its question itself. */}
       <div className="home-day__row" style={{ '--races': `${n}fr` } as CSSProperties}>
         <ul className="home-day__cards" style={{ '--n': n } as CSSProperties} aria-hidden="true">
           {Array.from({ length: n }, (_, i) => (
@@ -77,32 +78,32 @@ export function HomeTodaySkeleton() {
           ))}
         </ul>
         <BlipPoll />
-      </div>
-      {/* The day's puzzles, the slim line under the races (AlsoToday.tsx), each a shimmer till it comes. */}
-      {also > 0 ? (
-        <div className="also also--compact" aria-hidden="true">
-          <div className="also__head">
-            <p className="also__title">Also today</p>
-            <p className="also__sub">Daily puzzles, just for fun. They don’t count toward your streak.</p>
+        {/* The day's puzzles, the slim line under the races (AlsoToday.tsx), each a shimmer till it comes. */}
+        {also > 0 ? (
+          <div className="also also--compact" aria-hidden="true">
+            <div className="also__head">
+              <p className="also__title">Also today</p>
+              <p className="also__sub">Daily puzzles, just for fun. They don’t count toward your streak.</p>
+            </div>
+            <ul className="also__list">
+              {Array.from({ length: also }, (_, i) => (
+                <li key={i} className="also__item">
+                  <span className="also__pic" />
+                  <span className="also__text">
+                    <span className="also__game">
+                      <span className="skel-line" style={skel('5.5rem')} />
+                    </span>
+                    <span className="also__course">
+                      <span className="skel-line" style={skel('7.5rem')} />
+                    </span>
+                  </span>
+                  <span className="also__go skel-btn">Play</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="also__list">
-            {Array.from({ length: also }, (_, i) => (
-              <li key={i} className="also__item">
-                <span className="also__pic" />
-                <span className="also__text">
-                  <span className="also__game">
-                    <span className="skel-line" style={skel('5.5rem')} />
-                  </span>
-                  <span className="also__course">
-                    <span className="skel-line" style={skel('7.5rem')} />
-                  </span>
-                </span>
-                <span className="also__go skel-btn">Play</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
       {/* On a phone the time to the next dailies comes under the cards (homeToday.css), as on the row. */}
       <p className="home-day__next home-day__next--under">
         <span>
