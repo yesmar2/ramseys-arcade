@@ -440,6 +440,7 @@ html[data-theme='light'] .panel.reel--ask {
   font-size: 1.1rem;
   font-weight: 600;
   line-height: 1.35;
+  text-wrap: balance;
   animation: reel-rise 0.45s 0.35s both;
 }
 
@@ -547,6 +548,7 @@ html[data-theme='light'] .panel.reel--ask {
   color: var(--reel-muted);
   font-size: 1.05rem;
   font-weight: 600;
+  text-wrap: balance;
   animation: reel-rise 0.45s 0.35s both;
 }
 
@@ -862,6 +864,7 @@ html[data-theme='light'] .reel-season__up {
   color: var(--reel-muted);
   font-size: 0.85rem;
   font-weight: 700;
+  text-wrap: balance;
 }
 
 .reel-next__block {
