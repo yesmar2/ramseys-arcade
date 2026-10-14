@@ -26,7 +26,7 @@ import {
  * find the control.
  *
  * The call, its screen and the clock are one colour whatever is called. They
- * used to take the called control's colour, so a player could find Bop it by
+ * used to take the called control’s colour, so a player could find Pop by
  * looking for the red one without reading the call or hearing it.
  *
  * Each control shows how it is worked: arrows round the knob, a track for the
@@ -38,13 +38,13 @@ const TAU = Math.PI * 2
 /** Canvas text cannot read the page's font variable, so the face is named here. */
 const FONT = '"Outfit", system-ui, sans-serif'
 
-/** The word printed under each control. */
+/** The word printed under each control (and on the button): its call, so the two always agree. */
 const NAME: Record<Control, string> = {
-  bop: 'BOP',
-  twist: 'TWIST',
-  pull: 'PULL',
-  flick: 'FLICK',
-  spin: 'SPIN',
+  bop: CONTROL_LABEL.bop.toUpperCase(),
+  twist: CONTROL_LABEL.twist.toUpperCase(),
+  pull: CONTROL_LABEL.pull.toUpperCase(),
+  flick: CONTROL_LABEL.flick.toUpperCase(),
+  spin: CONTROL_LABEL.spin.toUpperCase(),
 }
 
 /** The keys, for a player with a keyboard. */

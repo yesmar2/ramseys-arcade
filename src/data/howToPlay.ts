@@ -232,11 +232,11 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
   bop: {
     goal: 'Do what the toy calls, fast.',
     controls: [
-      { does: 'Bop', touch: 'Tap the button', keys: 'Space' },
-      { does: 'Twist', touch: 'Drag the knob', keys: '← →' },
-      { does: 'Pull', touch: 'Pull the lever', keys: '↓' },
-      { does: 'Flick', touch: 'Flick the switch', keys: '↑' },
-      { does: 'Spin', touch: 'Spin the wheel', keys: 'S' },
+      { does: 'Pop', touch: 'Tap the button', keys: 'Space' },
+      { does: 'Crank', touch: 'Drag the knob round', keys: '← →' },
+      { does: 'Slide', touch: 'Slide the lever down', keys: '↓' },
+      { does: 'Flip', touch: 'Flip the switch', keys: '↑' },
+      { does: 'Whirl', touch: 'Whirl the wheel', keys: 'S' },
     ],
     scores: [
       { what: 'Right move', pts: '+1' },

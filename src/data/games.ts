@@ -203,7 +203,7 @@ export const games: Game[] = [
     playable: true,
   },
   {
-    name: 'Bop',
+    name: 'Fidget',
     slug: 'bop',
     tags: ['quick', 'arcade'],
     description: 'Five controls. One voice. Do what it says, faster.',

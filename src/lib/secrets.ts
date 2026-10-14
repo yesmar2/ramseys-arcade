@@ -53,7 +53,7 @@ export const SECRETS: readonly Secret[] = [
   { n: 18, key: 'continue', name: 'Continue?', says: 'Put a coin in at Game Over.' },
   { n: 19, key: 'shatter', name: 'Smashing', says: 'Broke a balanced plate in Centroid.' },
   { n: 20, key: 'placebo', name: 'Placebo', says: 'Pressed the button at a crossing. Nothing happened.' },
-  { n: 21, key: 'jackpot', name: 'Jackpot', says: 'Pulled Bop’s lever all the way down to the cherries.' },
+  { n: 21, key: 'jackpot', name: 'Jackpot', says: 'Pulled Fidget’s lever all the way down to the cherries.' },
   { n: 22, key: 'donuts', name: 'Donuts', says: 'Spun three donuts on Hot Lap’s track.' },
   { n: 23, key: 'marbles', name: 'Lost Your Marbles', says: 'Fell off Marble Run three times before the first checkpoint.' },
   { n: 24, key: 'wargames', name: 'Shall We Play a Game?', says: 'Let a whole wave of Patriot fall without firing a shot.' },

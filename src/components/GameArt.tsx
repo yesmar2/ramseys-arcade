@@ -1049,7 +1049,7 @@ function Crumbtrail({ id }: { id: Id }) {
   )
 }
 
-/** The toy itself: the big BOP button in the middle, a knob, a handle, a switch and a wheel round it. */
+/** The toy itself: the big POP button in the middle, a knob, a handle, a switch and a wheel round it. */
 function Bop({ id }: { id: Id }) {
   return (
     <>
@@ -1057,7 +1057,7 @@ function Bop({ id }: { id: Id }) {
       <rect x="1.2" y="1.2" width="37.6" height="27.6" rx="3.4" fill="#1c1f2b" stroke="#e0567a" strokeWidth="1.1" />
       <rect x="13.2" y="3.6" width="13.6" height="4.4" rx="1" fill="#2a1a26" stroke={hsl(345, 60, 58, 0.6)} strokeWidth="0.3" />
       <text x="20" y="6.95" textAnchor="middle" fontSize="2.9" fontWeight="900" fill="#f06b8f" fontFamily="Outfit, system-ui, sans-serif">
-        BOP IT!
+        POP!
       </text>
       <defs>
         <radialGradient id={id('button')} cx="0.42" cy="0.36">

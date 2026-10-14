@@ -3,7 +3,7 @@ import { sfx, type SoundName } from '../../lib/sound'
 import { sayCall } from './voice'
 
 /*
- * Bop: five controls on a console, and a voice that calls one at a time.
+ * Fidget: five controls on a console, and a voice that calls one at a time.
  * Do what it says before the window closes. Each correct call is a point,
  * and a quick one is two; the wrong control, or too slow, ends the run.
  * The window shrinks as the run goes on, so the game is really about how
@@ -16,11 +16,11 @@ export const CONTROLS = ['bop', 'twist', 'pull', 'flick', 'spin'] as const
 export type Control = (typeof CONTROLS)[number]
 
 export const CONTROL_LABEL: Record<Control, string> = {
-  bop: 'Bop it',
-  twist: 'Twist it',
-  pull: 'Pull it',
-  flick: 'Flick it',
-  spin: 'Spin it',
+  bop: 'Pop',
+  twist: 'Crank',
+  pull: 'Slide',
+  flick: 'Flip',
+  spin: 'Whirl',
 }
 
 /** Hue per control, for the console and the call text. */
@@ -59,7 +59,7 @@ export type Snapshot = {
 
 export type PopTone = 'quick' | 'plain' | 'streak'
 
-/** The lever, still held after a Pull it was answered: how long, and how long at the cherry (-1 if it isn't there). */
+/** The lever, still held after a Slide was answered: how long, and how long at the cherry (-1 if it isn't there). */
 export type Lever = { held: number; bottom: number }
 
 /** A word that rises off a control: what an answer paid, or a streak landmark. */
@@ -103,7 +103,7 @@ export type GameState = {
   /** The jackpot's reels on the screen: seconds left, 0 when there are none; and whether this run has had one. */
   reels: number
   jackpotDone: boolean
-  /** The lever, if it's still held after a Pull it was answered; the toy waits for it. */
+  /** The lever, if it's still held after a Slide was answered; the toy waits for it. */
   lever: Lever | null
   scale: number
   stageW: number
@@ -148,7 +148,7 @@ export const STREAK_STEP = 10
 const POP_LIFE = 0.7
 /**
  * The easter egg: the lever pulled all the way down to the cherry at the
- * bottom of its slot, on a Pull it, and held there, spins the screen like a
+ * bottom of its slot, on a Slide, and held there, spins the screen like a
  * fruit machine and lands on three cherries. The next call waits for it, once
  * a run, so it is a moment's show and no way to rest.
  *
@@ -429,7 +429,7 @@ export function act(state: GameState, control: Control): GameState {
 }
 
 /**
- * Where the lever is, just after a Pull it was answered: let go (`off`),
+ * Where the lever is, just after a Slide was answered: let go (`off`),
  * still held on its way down (`down`), or down at the cherry (`bottom`).
  * While it's held the toy waits, and held at the cherry for JACKPOT_HOLD the
  * jackpot comes up (in `tick`), once a run. Let go sooner, and the next call

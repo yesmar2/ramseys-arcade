@@ -205,7 +205,7 @@ export function BopGame() {
   /**
    * The easter egg: a pull that started up by the lever's handle and goes on,
    * after it has counted, all the way down to the cherry at the bottom of the
-   * slot, and stays there. The engine only lets it count just after a Pull it
+   * slot, and stays there. The engine only lets it count just after a Slide
    * was answered, and brings the jackpot up once it's been held long enough.
    */
   const leverAt = (drag: Drag, y: number) => {
@@ -326,7 +326,7 @@ export function BopGame() {
           }}
         >
           {ui.phase === 'menu' && !saveOpen && (
-            <GameStartCard title="Bop" slug="bop" />
+            <GameStartCard title="Fidget" slug="bop" />
           )}
           {ui.phase === 'gameover' && saveOpen && (
             tournament ? (

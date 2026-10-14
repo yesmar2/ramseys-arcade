@@ -81,7 +81,7 @@ export function makeSim(): Sim<GameState> {
     render: (ctx, s, w, h) => renderGame(ctx, { ...s, stageTop: topFor(w, h) }, w, h),
     // The run itself has no size; only where the toy is drawn does, and that is worked out as it is drawn.
     resize: (s) => s,
-    // The still: the toy calling Bop it, its clock full round the rim.
+    // The still: the toy calling Pop, its clock full round the rim.
     poster: { seed: 1, at: 21.53 },
     // Its renderer times its twinkles and pulses by the page's clock; the run's own keeps the still the same.
     runClock: true,

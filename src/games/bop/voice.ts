@@ -7,10 +7,10 @@ import spinUrl from './voice/spin.wav'
 import twistUrl from './voice/twist.wav'
 
 /*
- * The toy says each call out loud: "Bop it!", "Twist it!" and the rest, as the
- * real one does, so a call can be played by ear while the eyes are on the
+ * The toy says each call out loud: "Pop!", "Crank!" and the rest, as a toy
+ * would, so a call can be played by ear while the eyes are on the
  * controls. The calls were recorded once with Windows' Mark voice, quickened a
- * little and trimmed tight (0.27 to 0.37 s, about 50 KB for all five), and play
+ * little and trimmed tight (0.28 to 0.41 s, about 55 KB for all five), and play
  * through the sound effects' bus, so the mute switch and limiter hold for them.
  */
 
