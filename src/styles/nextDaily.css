@@ -110,3 +110,89 @@ html[data-theme='dark'] .next-daily__more {
 .report__block > .next-daily:last-child {
   margin-bottom: 0.35rem;
 }
+
+/*
+ * The run reel's last page (B, "Up next first"): the next daily as a poster. Its name as big as a page's figure,
+ * its course under it, then its picture in a glass card with its own button, the main one. Play again under it.
+ */
+.next-daily-poster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.next-daily--poster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  text-align: center;
+}
+
+.next-daily__headline {
+  margin: 0.25rem 0 0;
+  color: var(--reel-figure, var(--ink));
+  font-family: var(--font-display);
+  font-size: min(3.5rem, 14vw);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 0.35rem 0 var(--reel-shade, transparent);
+  animation: reel-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.next-daily__course {
+  margin: 0.4rem 0 0;
+  color: var(--reel-muted, var(--muted));
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.next-daily__card {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 0.7rem;
+  padding: 0 0 0.85rem;
+  overflow: hidden;
+  border-radius: 1.4rem;
+  background: var(--reel-card, rgba(0, 0, 0, 0.3));
+  box-shadow: inset 0 0 0 1.5px var(--reel-line, rgba(255, 255, 255, 0.12));
+  animation: reel-rise 0.45s 0.3s both;
+}
+
+/* A band of the game's picture: held to its shape (the picture itself would make it as tall as it likes). */
+.next-daily__poster-art {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 2.3 / 1;
+}
+
+.next-daily__poster-art .next-daily__art {
+  position: absolute;
+  inset: 0;
+}
+
+.next-daily__card .next-daily__race {
+  margin: 0 0.85rem;
+}
+
+.next-daily--poster-all .reel-link {
+  margin-top: 0.4rem;
+}
+
+@media (min-width: 62rem) and (min-height: 34rem) {
+  .next-daily__headline {
+    font-size: min(6.5rem, 8vw);
+  }
+
+  .next-daily__course {
+    font-size: 1.25rem;
+  }
+
+  .next-daily__poster-art {
+    aspect-ratio: 16 / 7;
+  }
+}

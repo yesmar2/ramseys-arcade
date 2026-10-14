@@ -14,7 +14,19 @@ import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { prizesHref } from '../hooks/useHashRoute'
 import { ordinal } from '../lib/profileMath'
 import { MEDAL_NAMES, type Medal } from '../lib/raceMedals'
-import type { ReportFriend, ReportIcon, ReportLine, ReportMetal, ReportRace, ReportRibbon, ReportTier, ReportTone } from '../lib/runReport'
+import type {
+  ReportBoardCard,
+  ReportBoardRow,
+  ReportChase,
+  ReportFriend,
+  ReportIcon,
+  ReportLine,
+  ReportMetal,
+  ReportRibbon,
+  ReportStandings,
+  ReportTier,
+  ReportTone,
+} from '../lib/runReport'
 import { loudLevelUp, type SeasonRun } from '../lib/season'
 import { sfx } from '../lib/sound'
 import { useTickets, type RunTickets } from '../lib/tickets'
@@ -24,7 +36,7 @@ import { PlayerAvatar } from './PlayerAvatar'
 import { lineLabel, nextWords } from './prizes/RunTickets'
 import { TicketGlyph, TicketStub } from './prizes/Ticket'
 import { MedalIcon } from './RaceMedal'
-import { FriendDuel, RacePodium, ReportConfetti, ReportIconSvg, type ReportAction, type ReportLink } from './RunReport'
+import { FriendDuel, ReportConfetti, ReportIconSvg, type ReportAction, type ReportLink } from './RunReport'
 import { SeasonPatch } from './season/SeasonLook'
 import { SeasonRunLine } from './season/SeasonRun'
 import '../styles/runReel.css'
@@ -32,20 +44,21 @@ import '../styles/runReel.css'
 /*
  * The end of a run as a show (Ramsey picked A, "Show reel", from the "Game over screens" canvas, 2026-10-14,
  * after "full screen multi step game over screens ... similar to how fall guys might do it"): the whole screen,
- * a step at a time, each with one thing to say, and a tap anywhere goes on. The run itself first, the moment the
- * game ends, while the save goes out underneath; then only the steps the run has something for: where it landed
- * on the boards, the tickets it paid, a level it reached on the season's pass; then what next: the run's figure and
- * what it won as round badges, over a dock at the foot of the screen with Play again (Ramsey picked C, "Badges and
- * a dock", from the "What next screen" canvas). Signed out, the step after the run asks for the sign-in; signed
- * in without a tag, for the tag. Skip, top right, goes straight to the last step, and Esc back to the game as Play
- * again does.
+ * a page at a time, each with one thing to say, and a tap anywhere goes on. In the order he set out on the "What
+ * next screen" canvas ("the first game over page just the score and where it lands on the board, then ...
+ * standings ..., record books, ... tickets"): the run and where it landed on its board; then, only when there's
+ * news, the standings it moved, the record books it got into, the tickets it paid, a level on the pass; then what
+ * next, as B: the next move as a poster (the next daily, or the place to beat) with Play again. On a computer each
+ * page lays its two halves side by side (Desktop 2, "Wide"). Signed out, the page after the run asks for the
+ * sign-in; signed in without a tag, for the tag. Skip, top right, goes straight to the last page, and Esc back to
+ * the game as Play again does.
  */
 
 /** A press the reel will act on: one meant for it (useDeliberatePress), and not the tail of the last step's tap. */
 type Press = (e: ReactMouseEvent) => boolean
 const ReelPress = createContext<Press>(() => true)
 
-export type ReelTone = 'run' | 'boards' | 'tickets' | 'season' | 'ask' | 'next'
+export type ReelTone = 'run' | 'friends' | 'standings' | 'books' | 'tickets' | 'season' | 'ask' | 'next'
 
 export type ReelStep = {
   key: string
@@ -55,8 +68,6 @@ export type ReelStep = {
   goLabel?: string
   /** Where focus goes when the step comes up: a tag's own field. */
   focus?: RefObject<HTMLElement | null>
-  /** The last step's dock, held at the foot of the screen in place of the way on: Play again and the rest. */
-  dock?: ReactNode
 }
 
 export type RunReelProps = {
@@ -96,7 +107,6 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
   const changedAt = useRef(0)
   const goRef = useRef<HTMLButtonElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const dockRef = useRef<HTMLDivElement>(null)
   const allow: Press = (e) => deliberate(e) && performance.now() - changedAt.current > 350
   const goTo = (i: number) => {
     const next = steps[i]
@@ -105,17 +115,11 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
     setAt({ key: next.key, index: i })
   }
 
-  // Focus follows the steps: the way on, a step's own field, and on the last step, Play again (or the link that
-  // stands in for it, an event's standings once its tries are spent). A step opens at its top.
+  // Focus follows the steps: the way on, a step's own field, and on the last step, Play again (or what stands in
+  // for it: the next daily's own button, an event's standings once its tries are spent). A step opens at its top.
   useEffect(() => {
     if (stageRef.current) stageRef.current.scrollTop = 0
-    const target =
-      step.focus?.current ??
-      (last
-        ? (primaryRef?.current ??
-          dockRef.current?.querySelector<HTMLElement>('.reel-btn') ??
-          stageRef.current?.querySelector<HTMLElement>('.reel-btn'))
-        : goRef.current)
+    const target = step.focus?.current ?? (last ? (primaryRef?.current ?? stageRef.current?.querySelector<HTMLElement>('.reel-btn')) : goRef.current)
     target?.focus({ preventScroll: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.key, last])
@@ -186,28 +190,25 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
             {step.body}
           </div>
         </div>
-        {last ? (
-          step.dock ? (
-            <div ref={dockRef} className="reel__dock">
-              {step.dock}
-            </div>
-          ) : null
-        ) : (
-          <div className="reel__on">
-            <button
-              ref={goRef}
-              type="button"
-              className="reel__go"
-              onClick={(e) => {
-                if (allow(e)) goTo(index + 1)
-              }}
-            >
-              {step.goLabel ?? 'Tap to go on'}
-              <ChevronIcon />
-            </button>
-          </div>
-        )}
       </ReelPress.Provider>
+      {last ? null : (
+        <div className="reel__on">
+          <button
+            ref={goRef}
+            type="button"
+            className="reel__go"
+            onClick={(e) => {
+              if (allow(e)) goTo(index + 1)
+            }}
+          >
+            {step.goLabel ?? 'Tap to go on'}
+            <ChevronIcon />
+          </button>
+          <span className="reel__hint" aria-hidden="true">
+            or press Space
+          </span>
+        </div>
+      )}
       {burst ? (
         <div className="reel__confetti" aria-hidden="true">
           <ReportConfetti accent={accent} metal={metal} />
@@ -217,7 +218,7 @@ export function RunReel({ label, style, accent, game, tier, metal = null, steps,
   )
 }
 
-/* ---------- the steps ---------- */
+/* ---------- the pieces of a page ---------- */
 
 const motionOk = () => typeof matchMedia !== 'function' || !matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -228,6 +229,50 @@ function placeWords(value: string): string {
 }
 
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** A page's two halves: stacked on a phone, side by side on a computer (Desktop 2, "Wide"). */
+function ReelSplit({ main, side, className = '' }: { main: ReactNode; side?: ReactNode; className?: string }) {
+  return (
+    <div className={`reel-split${side ? '' : ' reel-split--solo'}${className ? ` ${className}` : ''}`}>
+      <div className="reel-split__main">{main}</div>
+      {side ? <div className="reel-split__side">{side}</div> : null}
+    </div>
+  )
+}
+
+/** A few rows of a board around you: where you are, who's above to pass, who you went past. */
+function ReelBoardRows({ rows, label }: { rows: ReportBoardRow[]; label: string }) {
+  return (
+    <ol className="reel-board" aria-label={label}>
+      {rows.map((row, i) => (
+        <li
+          key={`${row.place}-${row.name}`}
+          className={`reel-board__row${row.you ? ' reel-board__row--you' : ''}${row.mark ? ` reel-board__row--${row.mark}` : ''}`}
+          style={{ '--i': i } as CSSProperties}
+        >
+          <span className="reel-board__place">{row.place}</span>
+          <PlayerAvatar name={row.name} avatarId={row.avatarId} size="sm" className="reel-board__face" />
+          <span className="reel-board__name">
+            {row.you ? 'You' : row.name}
+            {row.note ? <span className="reel-board__note">{row.note}</span> : null}
+            {row.mark === 'passed' ? <span className="reel-board__tag">passed</span> : null}
+          </span>
+          <span className="reel-board__score">{row.score}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+/** How far a place came: up from 71st. */
+function ReelMove({ words }: { words: string }) {
+  return (
+    <span className="reel-move">
+      <ReportIconSvg icon="up" />
+      {words}
+    </span>
+  )
+}
 
 export type ReelRunProps = {
   titleId: string
@@ -242,12 +287,12 @@ export type ReelRunProps = {
   scoreTone: ReportTone
   /** A racing daily's medal, newly won: shown big under its time. */
   medal?: Medal | null
-  /** Under it all: a racing daily's medal ladder. */
-  children?: ReactNode
+  /** Beside it, with the board: a racing daily's medal ladder. */
+  ladder?: ReactNode
 }
 
 /** The run: what it won as a stamp (or its own words), the score as big as it goes, and how it ended. */
-export function ReelRun({ titleId, tier, metal = null, ribbon, eyebrow, score, unit, sub, scoreTone, medal = null, children }: ReelRunProps) {
+export function ReelRun({ titleId, tier, metal = null, ribbon, eyebrow, score, unit, sub, scoreTone, medal = null }: Omit<ReelRunProps, 'ladder'>) {
   const stamp = ribbon ? (tier === 'big' && metal ? metal : ribbon.tone) : null
   // The figure as big as its length allows: 436 fills the screen, 1:02.00 doesn't fit at that size.
   const size = score.length <= 3 ? 'xl' : score.length <= 5 ? 'lg' : score.length <= 7 ? 'md' : 'sm'
@@ -276,8 +321,25 @@ export function ReelRun({ titleId, tier, metal = null, ribbon, eyebrow, score, u
           <span className={`reel-stamp reel-stamp--${medal}`}>{MEDAL_NAMES[medal]}!</span>
         </div>
       ) : null}
-      {children}
     </div>
+  )
+}
+
+/**
+ * Where the run landed on its board, beside its score: the place, how far it came, and the board around it (the
+ * podium when it's on it). A racing daily's goes compact on a phone, under its medal ladder.
+ */
+export function ReelPlace({ card, compact = false }: { card: ReportBoardCard; compact?: boolean }) {
+  return (
+    <section className={`reel-place${compact ? ' reel-place--compact' : ''}${card.gold ? ' reel-place--gold' : ''}`} aria-label={card.label}>
+      <div className="reel-place__head">
+        <span className="reel-place__label">{card.label}</span>
+        {card.move ? <ReelMove words={card.move} /> : null}
+      </div>
+      <p className="reel-place__value">{card.value}</p>
+      {card.detail ? <p className="reel-place__detail">{capital(card.detail)}</p> : null}
+      {card.rows.length ? <ReelBoardRows rows={card.rows} label={card.label} /> : null}
+    </section>
   )
 }
 
@@ -303,69 +365,101 @@ export function ReelWait({ slow, words = SAVING }: { slow: boolean; words?: Reel
   )
 }
 
-/**
- * Where the run landed: its place on the board as big as the score was (the board's line, or what else it did
- * when it has no board), the podium when it climbed onto it, the friend it went past face to face, and the rest of
- * what it did in rows. An event's run makes much of its own line instead: its place in the event, or its match.
- */
-export function ReelLanded({
-  lines,
-  race = null,
-  friend = null,
-  hero: heroId = 'board',
-  onBoard,
-  boardLabel = 'See the board',
-}: {
-  lines: ReportLine[]
-  race?: ReportRace | null
-  friend?: ReportFriend | null
-  /** The line to make much of, by its id. */
-  hero?: string
-  onBoard?: () => void
-  boardLabel?: string
-}) {
-  const allow = useContext(ReelPress)
-  const hero = lines.find((l) => l.id === heroId) ?? lines[0] ?? null
-  const rest = lines.filter((l) => l !== hero)
+/** A friend the run went past on the friends' board: a page of its own, face to face, and who's next up. */
+export function ReelFriends({ friend }: { friend: ReportFriend }) {
   return (
-    <div className="reel-land">
-      {hero ? (
-        <div className={`reel-land__hero reel-land__hero--${hero.tone}`}>
-          <p className="reel__kick">{hero.label}</p>
-          <p className="reel-land__place">{placeWords(hero.value)}</p>
-          {hero.detail ? <p className="reel-land__detail">{capital(hero.detail)}</p> : null}
-        </div>
-      ) : null}
-      {race ? <RacePodium race={race} /> : null}
-      {friend ? <FriendDuel friend={friend} /> : null}
-      {rest.length ? (
-        <ul className="reel-rows" aria-label="What else the run did">
-          {rest.map((line, i) => (
-            <li key={line.id} className={`reel-row reel-row--${line.tone}`} style={{ '--i': i } as CSSProperties}>
-              <span className="reel-row__icon">
-                <ReportIconSvg icon={line.icon} />
-              </span>
-              <span className="reel-row__text">
-                <span className="reel-row__label">{line.label}</span>
-                {line.detail ? <span className="reel-row__detail">{line.detail}</span> : null}
-              </span>
-              <span className="reel-row__value">{line.value}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {onBoard ? (
-        <button
-          type="button"
-          className="reel-link"
-          onClick={(e) => {
-            if (allow(e)) onBoard()
-          }}
-        >
-          {boardLabel} ›
-        </button>
-      ) : null}
+    <div className="reel-friends">
+      <p className="reel__kick">Your friends</p>
+      <p className="reel-friends__head">You passed {friend.them.name}</p>
+      <FriendDuel friend={friend} />
     </div>
+  )
+}
+
+/** The standings, when the run moved you up them: your place as big as the score was, and who's around you. */
+export function ReelStandings({ card, onSee }: { card: ReportStandings; onSee?: () => void }) {
+  const allow = useContext(ReelPress)
+  return (
+    <ReelSplit
+      main={
+        <div className="reel-big">
+          <p className="reel__kick">{card.label}</p>
+          <p className={`reel-big__figure${card.place === 1 ? ' reel-big__figure--gold' : ''}`}>{ordinal(card.place)}</p>
+          <ReelMove words={capital(card.move)} />
+          <p className="reel-big__line">{card.line}</p>
+        </div>
+      }
+      side={
+        <div className="reel-big__side">
+          {card.rows.length ? <ReelBoardRows rows={card.rows} label={card.label} /> : null}
+          {onSee ? (
+            <button
+              type="button"
+              className="reel-link"
+              onClick={(e) => {
+                if (allow(e)) onSee()
+              }}
+            >
+              See the standings ›
+            </button>
+          ) : null}
+        </div>
+      }
+    />
+  )
+}
+
+/** A record book's place said short: Record for a 1st, else 2nd. */
+const bookPlace = (line: ReportLine) => (line.rank === 1 ? 'Record' : line.rank != null ? ordinal(line.rank) : 'In it')
+
+/** The record books the run got into: the best of them as big as the score was, then each as a brass plaque. */
+export function ReelBooks({ lines, onSee }: { lines: ReportLine[]; onSee?: () => void }) {
+  const allow = useContext(ReelPress)
+  const lead = lines[0]!
+  return (
+    <ReelSplit
+      main={
+        <div className="reel-big">
+          <p className="reel__kick">{lines.length > 1 ? 'Record books' : 'Record book'}</p>
+          <p className="reel-big__figure reel-big__figure--brass">{lead.rank === 1 ? 'Record!' : bookPlace(lead)}</p>
+          <p className="reel-big__line">
+            {lead.label}, with {lead.value}
+          </p>
+        </div>
+      }
+      side={
+        <div className="reel-big__side">
+          <ul className="reel-plaques" aria-label="Record books">
+            {lines.map((line, i) => (
+              <li key={line.id} className={`reel-plaque${i === 0 ? ' reel-plaque--lead' : ''}`} style={{ '--i': i } as CSSProperties}>
+                <span className="reel-plaque__icon">
+                  <ReportIconSvg icon="book" />
+                </span>
+                <span className="reel-plaque__text">
+                  <span className="reel-plaque__label">{line.label}</span>
+                  <span className="reel-plaque__value">{line.value}</span>
+                </span>
+                <span className="reel-plaque__place">
+                  <b>{bookPlace(line)}</b>
+                  {line.aside ? <small>{capital(line.aside)}</small> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {onSee ? (
+            <button
+              type="button"
+              className="reel-link"
+              onClick={(e) => {
+                if (allow(e)) onSee()
+              }}
+            >
+              See the records ›
+            </button>
+          ) : null}
+        </div>
+      }
+    />
   )
 }
 
@@ -417,46 +511,55 @@ export function ReelTickets({ paid, game, medal = null, season = null }: { paid:
   }, [])
   const toGo = goal ? Math.max(0, goal.price - total) : 0
   return (
-    <div className="reel-tix">
-      <p className="reel__kick">Tickets</p>
-      <div className="reel-tix__stub">
-        <TicketStub amount={paid.earned} width={208} fan={paid.earned >= 15 ? 2 : paid.earned >= 8 ? 1 : 0} />
-      </div>
-      <ul className="reel-tix__rows" aria-label={`${paid.earned} tickets`}>
-        {rows.map((row, i) => (
-          <li key={`${row.label}-${i}`} className="reel-tix__row" style={{ '--i': i } as CSSProperties}>
-            <span>{row.label}</span>
-            <b>+{row.amount}</b>
-          </li>
-        ))}
-        <li className="reel-tix__row reel-tix__row--total" style={{ '--i': rows.length } as CSSProperties}>
-          <span>Your tickets</span>
-          <b>
-            <TicketGlyph size={22} />
-            <span aria-hidden="true">{shown.toLocaleString()}</span>
-            <span className="visually-hidden">{total.toLocaleString()}</span>
-          </b>
-        </li>
-      </ul>
-      {paid.capped > 0 ? (
-        <p className="reel-tix__note">Today’s run tickets are all in. Tomorrow’s runs pay again.</p>
-      ) : paid.next && !medal ? (
-        <p className="reel-tix__note">Next: {nextWords(paid.next, game)}</p>
-      ) : null}
-      {goal ? (
-        <a className="reel-tix__goal" href={prizesHref()}>
-          <span className="tix-meter" aria-hidden="true">
-            <i style={{ width: `${Math.min(100, (100 * total) / goal.price)}%` }} />
-          </span>
-          {toGo > 0 ? `${toGo.toLocaleString()} to ${goal.name}` : `${goal.name} is yours to trade for`}
-        </a>
-      ) : (
-        <a className="reel-link" href={prizesHref()}>
-          Spend them at the prize counter ›
-        </a>
-      )}
-      {season ? <SeasonRunLine run={season} /> : null}
-    </div>
+    <ReelSplit
+      className="reel-tix"
+      main={
+        <div className="reel-tix__top">
+          <p className="reel__kick">Tickets</p>
+          <div className="reel-tix__stub">
+            <TicketStub amount={paid.earned} width={208} fan={paid.earned >= 15 ? 2 : paid.earned >= 8 ? 1 : 0} />
+          </div>
+        </div>
+      }
+      side={
+        <div className="reel-tix__body">
+          <ul className="reel-tix__rows" aria-label={`${paid.earned} tickets`}>
+            {rows.map((row, i) => (
+              <li key={`${row.label}-${i}`} className="reel-tix__row" style={{ '--i': i } as CSSProperties}>
+                <span>{row.label}</span>
+                <b>+{row.amount}</b>
+              </li>
+            ))}
+            <li className="reel-tix__row reel-tix__row--total" style={{ '--i': rows.length } as CSSProperties}>
+              <span>Your tickets</span>
+              <b>
+                <TicketGlyph size={22} />
+                <span aria-hidden="true">{shown.toLocaleString()}</span>
+                <span className="visually-hidden">{total.toLocaleString()}</span>
+              </b>
+            </li>
+          </ul>
+          {paid.capped > 0 ? (
+            <p className="reel-tix__note">Today’s run tickets are all in. Tomorrow’s runs pay again.</p>
+          ) : paid.next && !medal ? (
+            <p className="reel-tix__note">Next: {nextWords(paid.next, game)}</p>
+          ) : null}
+          {goal ? (
+            <a className="reel-tix__goal" href={prizesHref()}>
+              <span className="tix-meter" aria-hidden="true">
+                <i style={{ width: `${Math.min(100, (100 * total) / goal.price)}%` }} />
+              </span>
+              {toGo > 0 ? `${toGo.toLocaleString()} to ${goal.name}` : `${goal.name} is yours to trade for`}
+            </a>
+          ) : (
+            <a className="reel-link" href={prizesHref()}>
+              Spend them at the prize counter ›
+            </a>
+          )}
+          {season ? <SeasonRunLine run={season} /> : null}
+        </div>
+      }
+    />
   )
 }
 
@@ -464,62 +567,22 @@ export function ReelTickets({ paid, game, medal = null, season = null }: { paid:
 export function ReelSeason({ run }: { run: SeasonRun }) {
   const loud = loudLevelUp(run.levelUp)
   return (
-    <div className={`reel-season${loud ? ' reel-season--loud' : ''}`}>
-      <p className="reel__kick">{run.name}</p>
-      <p className="reel-season__up">Level up!</p>
-      {loud ? null : (
-        <span className="reel-season__patch">
-          <SeasonPatch label={String(run.level)} size={128} />
-        </span>
-      )}
-      <SeasonRunLine run={run} />
-    </div>
+    <ReelSplit
+      className={`reel-season${loud ? ' reel-season--loud' : ''}`}
+      main={
+        <div className="reel-season__top">
+          <p className="reel__kick">{run.name}</p>
+          <p className="reel-season__up">Level up!</p>
+          {loud ? null : (
+            <span className="reel-season__patch">
+              <SeasonPatch label={String(run.level)} size={128} />
+            </span>
+          )}
+        </div>
+      }
+      side={<SeasonRunLine run={run} />}
+    />
   )
-}
-
-/**
- * A badge on the last step (Ramsey picked C, "Badges and a dock", from the "What next screen" canvas): one thing
- * the run won, round, with what it is under it.
- */
-export type ReelBadge = {
-  key: string
-  kind: 'medal' | 'place' | 'best' | 'book' | 'tickets' | 'season' | 'tries' | 'won'
-  value: string
-  label: string
-  /** A medal badge's metal. */
-  medal?: Medal
-}
-
-const HEX_PATH = 'M12 2.5l8 4.6v9.8l-8 4.6-8-4.6V7.1z'
-const AGAIN_PATH = 'M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3.5 4v4.5H8'
-
-function StrokeIcon({ d }: { d: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d={d} />
-    </svg>
-  )
-}
-
-function BadgeIcon({ badge }: { badge: ReelBadge }) {
-  switch (badge.kind) {
-    case 'medal':
-      return badge.medal ? <MedalIcon medal={badge.medal} size={44} /> : null
-    case 'place':
-      return <ReportIconSvg icon={badge.value === '1st' ? 'crown' : 'board'} />
-    case 'won':
-      return <ReportIconSvg icon="crown" />
-    case 'best':
-      return <ReportIconSvg icon="up" />
-    case 'book':
-      return <ReportIconSvg icon="book" />
-    case 'tickets':
-      return <TicketGlyph size={36} />
-    case 'season':
-      return <StrokeIcon d={HEX_PATH} />
-    case 'tries':
-      return <StrokeIcon d={AGAIN_PATH} />
-  }
 }
 
 /** A reel's button: the run's last presses don't reach it (useDeliberatePress), nor the tail of a step's tap. */
@@ -562,123 +625,182 @@ export function ReelButton({ action, variant = 'play' }: { action: ReportAction;
   )
 }
 
-/** The run's figure on the last step, as big as there's room for, under its own words (Run over, Today's Cave #2). */
-export type ReelScore = { kicker: string; value: string; unit: string; note?: string | null }
+/* ---------- what next (B): the next move as a poster, the run in a strip ---------- */
+
+/** One thing in the run's recap on the last page: a strip of figures on a phone, a list on a computer. */
+export type ReelBadge = {
+  key: string
+  kind: 'score' | 'medal' | 'best' | 'place' | 'standings' | 'book' | 'tickets' | 'season' | 'tries' | 'won'
+  value: string
+  label: string
+  /** A medal's metal. */
+  medal?: Medal
+  /** Its icon, where the kind's own won't do: the score's arrow for a new best. */
+  icon?: ReportIcon
+}
+
+const HEX_PATH = 'M12 2.5l8 4.6v9.8l-8 4.6-8-4.6V7.1z'
+const AGAIN_PATH = 'M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3.5 4v4.5H8'
+
+function StrokeIcon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d={d} />
+    </svg>
+  )
+}
+
+function BadgeIcon({ badge }: { badge: ReelBadge }) {
+  switch (badge.kind) {
+    case 'score':
+      return <ReportIconSvg icon={badge.icon ?? 'target'} />
+    case 'medal':
+      return badge.medal ? <MedalIcon medal={badge.medal} size={30} /> : null
+    case 'place':
+      return <ReportIconSvg icon={badge.value === '1st' ? 'crown' : 'board'} />
+    case 'standings':
+      return <ReportIconSvg icon="sum" />
+    case 'won':
+      return <ReportIconSvg icon="crown" />
+    case 'best':
+      return <ReportIconSvg icon="up" />
+    case 'book':
+      return <ReportIconSvg icon="book" />
+    case 'tickets':
+      return <TicketGlyph size={24} />
+    case 'season':
+      return <StrokeIcon d={HEX_PATH} />
+    case 'tries':
+      return <StrokeIcon d={AGAIN_PATH} />
+  }
+}
+
+/** The run in a few figures: a strip of four over the poster on a phone, every one in a list beside it on a computer. */
+function ReelRecap({ items, variant }: { items: ReelBadge[]; variant: 'strip' | 'list' }) {
+  const shown = variant === 'strip' ? items.slice(0, 4) : items
+  if (!shown.length) return null
+  return (
+    <div className={`reel-recap reel-recap--${variant}`}>
+      {variant === 'list' ? <p className="reel__kick">That run</p> : null}
+      <ul aria-label="That run">
+        {shown.map((item, i) => (
+          <li
+            key={item.key}
+            className={`reel-recap__item reel-recap__item--${item.kind}${item.medal ? ` reel-recap__item--${item.medal}` : ''}`}
+            style={{ '--i': i } as CSSProperties}
+          >
+            <span className="reel-recap__icon">
+              <BadgeIcon badge={item} />
+            </span>
+            <span className="reel-recap__text">
+              <b className="reel-recap__value">{item.value}</b>
+              <span className="reel-recap__label">{item.label}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 /**
- * What next, over the dock: the run's figure, what it won as round badges, a friend it went past, and what the
- * moment asks (the next daily, an alert, a sign-in).
+ * What next's place to beat, on a game with a board: the figure it takes as big as the score was, the board around
+ * you with the one to pass marked, and Play again. On top of the board, the lead to hold.
  */
-export function ReelNext({ score, badges, callout, block }: { score: ReelScore; badges: ReelBadge[]; callout?: ReactNode; block?: ReactNode }) {
+export function ReelChase({ chase, primary }: { chase: ReportChase; primary: ReportAction }) {
   return (
-    <div className="reel-next">
-      <div className="reel-next__score">
-        <p className="reel__kick">{score.kicker}</p>
-        <p className="reel-next__figure">
-          {score.value}
-          {score.unit ? <span className="reel-next__unit">{score.unit}</span> : null}
-        </p>
-        {score.note ? <p className="reel-next__note">{score.note}</p> : null}
-      </div>
-      {badges.length ? (
-        <ul className={`reel-badges reel-badges--${badges.length}`} aria-label="That run">
-          {badges.map((badge, i) => (
-            <li
-              key={badge.key}
-              className={`reel-badge reel-badge--${badge.kind}${badge.medal ? ` reel-badge--${badge.medal}` : ''}`}
-              style={{ '--i': i } as CSSProperties}
-            >
-              <span className="reel-badge__disc">
-                <BadgeIcon badge={badge} />
-              </span>
-              <span className="reel-badge__value">{badge.value}</span>
-              <span className="reel-badge__label">{badge.label}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {callout}
-      {block ? <div className="reel-next__block">{block}</div> : null}
-    </div>
-  )
-}
-
-/** A friend the run went past: who, by how much, and the way to send them the run to take it back. */
-export function ReelFriend({ friend, action }: { friend: ReportFriend; action: ReportAction }) {
-  const allow = useContext(ReelPress)
-  const { them, gap } = friend
-  return (
-    <div className="reel-friend">
-      <PlayerAvatar name={them.name} avatarId={them.avatarId} size="md" className="reel-friend__face" />
-      <span className="reel-friend__text">
-        <span className="reel-friend__kick">You passed {them.name}</span>
-        <span className="reel-friend__gap">You’re {gap} ahead</span>
-      </span>
-      <button
-        type="button"
-        className="reel-friend__send"
-        disabled={action.disabled}
-        onClick={(e) => {
-          if (allow(e)) action.onClick?.()
-        }}
-      >
-        {action.label}
-      </button>
-    </div>
-  )
-}
-
-/** One of the dock's ways on, under Play again: its icon over its words. */
-export type ReelTile = { key: string; label: string; icon: ReportIcon; onClick?: () => void; href?: string; disabled?: boolean }
-
-/** The dock at the foot of the last step: who it's saved as, Play again, and the other ways on as tiles. */
-export function ReelDock({ primary, tiles, who }: { primary: ReportAction; tiles: ReelTile[]; who?: ReactNode }) {
-  const allow = useContext(ReelPress)
-  return (
-    <div className="reel-dock">
-      {who ? (
-        <p className="reel-dock__who">
-          <span className="report__who">{who}</span>
-        </p>
-      ) : null}
+    <section className="reel-chase" aria-label={chase.top ? `On top: ${chase.label}` : `To beat: ${chase.target}`}>
+      <p className="reel__kick">{chase.top ? `On top · ${chase.label}` : 'To beat'}</p>
+      <p className={`reel-chase__figure${chase.top ? ' reel-chase__figure--gold' : ''}`}>
+        {chase.figure}
+        {chase.unit ? <span className="reel-chase__unit">{chase.unit}</span> : null}
+      </p>
+      <p className="reel-chase__words">{chase.words}</p>
+      {chase.rows.length ? <ReelBoardRows rows={chase.rows} label={chase.label} /> : null}
       <ReelButton action={primary} />
-      {tiles.length ? (
-        <div className={`reel-tiles reel-tiles--${tiles.length}`}>
-          {tiles.map((tile) =>
-            tile.href ? (
-              <a
-                key={tile.key}
-                className="reel-tile"
-                href={tile.href}
-                onClick={(e) => {
-                  if (!allow(e)) e.preventDefault()
-                }}
-              >
-                <ReportIconSvg icon={tile.icon} />
-                {tile.label}
-              </a>
-            ) : (
-              <button
-                key={tile.key}
-                type="button"
-                className="reel-tile"
-                disabled={tile.disabled}
-                onClick={(e) => {
-                  if (allow(e)) tile.onClick?.()
-                }}
-              >
-                <ReportIconSvg icon={tile.icon} />
-                {tile.label}
-              </button>
-            ),
-          )}
-        </div>
-      ) : null}
-    </div>
+    </section>
   )
 }
 
-/* ---------- which steps a run gets ---------- */
+/**
+ * What next, as B: the run in a strip, then the next move as a poster (the next daily, or the place to beat) with
+ * its own buttons; with neither, what the moment asks and Play again. Then the way to send the run on, who it's
+ * saved as, and the ways out.
+ */
+export function ReelNext({
+  recap,
+  poster,
+  block,
+  blockFirst = false,
+  primary,
+  secondary = null,
+  who,
+  links,
+}: {
+  recap: ReelBadge[]
+  poster?: ReactNode
+  block?: ReactNode
+  /** What the moment asks goes over the poster: a run not saved yet asks for the sign-in first. */
+  blockFirst?: boolean
+  primary: ReportAction
+  secondary?: ReportAction | null
+  who?: ReactNode
+  links?: ReportLink[]
+}) {
+  const allow = useContext(ReelPress)
+  const asked = block ? <div className="reel-next__block">{block}</div> : null
+  return (
+    <ReelSplit
+      className="reel-split--next"
+      main={
+        <>
+          <ReelRecap items={recap} variant="strip" />
+          {poster ? (
+            <>
+              {blockFirst ? asked : null}
+              {poster}
+            </>
+          ) : (
+            <div className="reel-next__plain">
+              {asked}
+              <ReelButton action={primary} />
+            </div>
+          )}
+        </>
+      }
+      side={
+        <>
+          <ReelRecap items={recap} variant="list" />
+          {poster && !blockFirst ? asked : null}
+          {secondary ? <ReelButton action={secondary} variant="ghost" /> : null}
+          {who || links?.length ? (
+            <div className="reel-next__meta">
+              {who ? <span className="report__who">{who}</span> : <span />}
+              {links?.length ? (
+                <span className="reel-next__links">
+                  {links.map((link, i) => (
+                    <button
+                      key={`link-${i}`}
+                      type="button"
+                      className="reel-next__link"
+                      onClick={(e) => {
+                        if (allow(e)) link.onClick()
+                      }}
+                    >
+                      {link.label}
+                    </button>
+                  ))}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      }
+    />
+  )
+}
+
+/* ---------- which pages a run gets ---------- */
 
 export type ReelInput = {
   /**
@@ -691,31 +813,34 @@ export type ReelInput = {
   /** How the wait says it, when it isn't a save: an event's post. */
   wait?: ReelWaitWords
   run: ReelRunProps
-  /** What the run did on the boards and in the books, once it's saved. */
-  lines: ReportLine[]
-  /** The line Where it landed makes much of, by its id: the board's, unless said. */
-  landedHero?: string
-  race?: ReportRace | null
+  /** Beside the score once the run is saved: where it landed on its board. */
+  board?: ReportBoardCard | null
+  /** A racing daily's board, compact on a phone under its medal ladder. */
+  boardCompact?: boolean
+  /** A friend the run went past on the friends' board: a page of its own, face to face. */
   friend?: ReportFriend | null
-  onBoard?: () => void
-  /** What the way to the board says: "See the standings" for an event. */
-  boardLabel?: string
-  /** The tickets step's body (ReelTickets), when the run paid some. */
+  /** The standings, when the run moved you up them: a page of their own. */
+  standings?: ReportStandings | null
+  onStandings?: () => void
+  /** The record books the run got into, best first: a page of their own. */
+  books?: ReportLine[]
+  onBooks?: () => void
+  /** The tickets page's body (ReelTickets), when the run paid some. */
   tickets?: ReactNode
-  /** The season's pass, when the run moved it. */
+  /** The season's pass, when the run moved it: a page when it reached a level. */
   season?: SeasonRun | null
-  /** The step after the run when the save waits on something: the sign-in, or a tag. */
+  /** The page after the run when the save waits on something: the sign-in, or a tag. */
   ask?: ReactNode
   askGoLabel?: string
   askFocus?: RefObject<HTMLElement | null>
-  /** The last step's badges: what the run won, most telling first, four at most. */
-  badges: ReelBadge[]
-  /** Under the score on the last step, when the run won nothing louder: how far it was off the best. */
-  note?: string | null
-  /** Under the badges: a friend the run went past, with the way to send them the run (ReelFriend). */
-  callout?: ReactNode
-  /** What the last step asks or says: the way on to the next daily, an alert, a note on the save. */
+  /** The last page's recap of the run. */
+  recap: ReelBadge[]
+  /** The last page's poster: the next daily, or the place to beat, with its own buttons. */
+  poster?: ReactNode
+  /** What the last page asks or says: an alert, a note on the save, the sign-in. */
   block?: ReactNode
+  /** The block goes over the poster: the sign-in, for a run not saved yet. */
+  blockFirst?: boolean
   primary: ReportAction
   secondary?: ReportAction | null
   who?: ReactNode
@@ -723,122 +848,99 @@ export type ReelInput = {
 }
 
 /**
- * The steps a run gets, in order: always the run first and what next last; between them only what the run has
- * something for. A run that lit nothing on the boards (quiet) doesn't get the boards step: its place is in the
- * last step's recap. A level reached on the pass gets a step; points only, a line under the tickets.
+ * The pages a run gets, in order: the run and where it landed on its board first, and what next last; between
+ * them only what has news: the standings it moved, the record books it got into, the tickets it paid, a level.
  */
 export function reelSteps(input: ReelInput): ReelStep[] {
-  const { phase, run } = input
-  const steps: ReelStep[] = [{ key: 'run', tone: 'run', body: <ReelRun {...run} /> }]
+  const { phase } = input
+  const { ladder, ...run } = input.run
+  const saved = phase === 'saved'
+  const board = saved && input.board ? <ReelPlace card={input.board} compact={input.boardCompact} /> : null
+  const side = ladder || board ? (
+    <div className="reel-run__side">
+      {ladder}
+      {board}
+    </div>
+  ) : null
+  const steps: ReelStep[] = [{ key: 'run', tone: 'run', body: <ReelSplit className="reel-split--run" main={<ReelRun {...run} />} side={side} /> }]
   if (phase === 'pending') steps.push({ key: 'wait', tone: 'run', body: <ReelWait slow={Boolean(input.slow)} words={input.wait} /> })
   if (phase === 'ask' && input.ask) {
     steps.push({ key: 'ask', tone: 'ask', body: <div className="reel-ask">{input.ask}</div>, goLabel: input.askGoLabel, focus: input.askFocus })
   }
-  if (phase === 'saved') {
-    const moment = run.tier !== 'quiet' || Boolean(input.friend) || Boolean(input.race)
-    if (moment && (input.lines.length || input.race || input.friend)) {
-      steps.push({
-        key: 'landed',
-        tone: 'boards',
-        body: (
-          <ReelLanded
-            lines={input.lines}
-            race={input.race}
-            friend={input.friend}
-            hero={input.landedHero}
-            onBoard={input.onBoard}
-            boardLabel={input.boardLabel}
-          />
-        ),
-      })
-    }
+  if (saved) {
+    if (input.friend) steps.push({ key: 'friends', tone: 'friends', body: <ReelFriends friend={input.friend} /> })
+    if (input.standings) steps.push({ key: 'standings', tone: 'standings', body: <ReelStandings card={input.standings} onSee={input.onStandings} /> })
+    if (input.books?.length) steps.push({ key: 'books', tone: 'books', body: <ReelBooks lines={input.books} onSee={input.onBooks} /> })
     if (input.tickets) steps.push({ key: 'tickets', tone: 'tickets', body: input.tickets })
     if (input.season && input.season.levelUp.length) steps.push({ key: 'season', tone: 'season', body: <ReelSeason run={input.season} /> })
   }
-  // The dock's tiles: the way to send the run on, then the board, the records, a share.
-  const secondary = input.secondary ?? null
-  const tiles: ReelTile[] = [
-    ...(secondary
-      ? [
-          {
-            key: 'secondary',
-            label: secondary.shortLabel ?? secondary.label,
-            icon: secondary.icon ?? 'share',
-            onClick: secondary.onClick,
-            href: secondary.href,
-            disabled: secondary.disabled,
-          },
-        ]
-      : []),
-    ...(input.links ?? []).map((link, i) => ({ key: `link-${i}`, label: link.label, icon: link.icon ?? 'board', onClick: link.onClick })),
-  ].slice(0, 4)
   steps.push({
     key: 'next',
     tone: 'next',
     body: (
       <ReelNext
-        score={{ kicker: run.eyebrow, value: run.score, unit: run.unit, note: input.note }}
-        badges={input.badges}
-        callout={input.callout}
+        recap={input.recap}
+        poster={input.poster}
         block={input.block}
+        blockFirst={input.blockFirst}
+        primary={input.primary}
+        secondary={input.secondary}
+        who={input.who}
+        links={input.links}
       />
     ),
-    dock: <ReelDock primary={input.primary} tiles={tiles} who={input.who} />,
   })
   return steps
 }
 
-/** "Lv 31": a season's level, as a badge. */
+/* ---------- the recap's figures ---------- */
+
+/** "Lv 31": a season's level, for the recap. */
 export function levelBadge(run: SeasonRun): ReelBadge {
-  return { key: 'season', kind: 'season', value: `Lv ${Math.max(1, run.level)}`, label: 'season pass' }
+  return { key: 'season', kind: 'season', value: `Lv ${Math.max(1, run.level)}`, label: run.added > 0 ? `Season pass +${run.added}` : 'Season pass' }
 }
 
-/** The run's place on a board, as a badge: the board's words without the game's name, which is over the reel. */
-export function placeBadge(line: ReportLine, game: string, key = 'place'): ReelBadge {
-  const label = line.label.startsWith(`${game} `) ? line.label.slice(game.length + 1) : line.label
-  return { key, kind: 'place', value: placeWords(line.value), label }
+/** The run's place on a board, for the recap. */
+export function placeBadge(line: ReportLine, key = 'place'): ReelBadge {
+  return { key, kind: 'place', value: placeWords(line.value), label: line.label }
 }
 
-/** A record book's line, as a badge: the run's place in the book, and which book it is. */
+/** A record book's line, for the recap: the run's place in the book, and which book it is. */
 export function bookBadge(line: ReportLine): ReelBadge {
-  return { key: 'book', kind: 'book', value: line.rank === 1 ? 'Record' : line.rank != null ? ordinal(line.rank) : 'In it', label: line.label }
+  return { key: 'book', kind: 'book', value: bookPlace(line), label: line.label }
 }
-
-/** The order badges read in, whichever four a run shows. */
-const BADGE_ORDER: ReelBadge['kind'][] = ['won', 'medal', 'best', 'place', 'book', 'tickets', 'tries', 'season']
 
 /**
- * A saved run's badges, from its report: a racing daily's medal, a new best, its place on the board, the record book
- * its stamp spoke of, the tickets it paid, and the pass. The four that say most, then in reading order. Each is
- * said once: the stamp's "1st today" isn't said again beside the place's 1st.
+ * A saved run's recap, from its report: its score first, then a racing daily's medal, its place on the board, the
+ * record book its stamp spoke of, the tickets it paid, the standings it moved, and the pass. A phone's strip shows
+ * the first four; a computer's list, all of them.
  */
-export function runBadges({
+export function runRecap({
+  score,
   lines,
   lead = null,
-  game,
   medal = null,
   tickets = 0,
+  standings = null,
   season = null,
-  race = false,
 }: {
+  score: { value: string; label: string; best?: boolean }
   lines: ReportLine[]
   lead?: string | null
-  game: string
   medal?: Medal | null
   tickets?: number
+  standings?: ReportStandings | null
   season?: SeasonRun | null
-  race?: boolean
 }): ReelBadge[] {
   const board = lines.find((line) => line.id === 'board') ?? null
-  const book = lines.find((line) => line.id.startsWith('book-') && (line.id === lead || line.tone === 'gold')) ?? null
-  const best = lines.find((line) => line.id === 'best' && line.tone === 'accent') ?? null
-  const picked: ReelBadge[] = []
-  if (medal) picked.push({ key: 'medal', kind: 'medal', medal, value: MEDAL_NAMES[medal], label: 'today’s medal' })
-  if (board) picked.push(placeBadge(board, game))
-  if (book) picked.push(bookBadge(book))
-  if (tickets > 0) picked.push({ key: 'tickets', kind: 'tickets', value: `+${tickets}`, label: tickets === 1 ? 'ticket' : 'tickets' })
-  // A racing daily's best is its medal's and its time's to say.
-  if (best && !race) picked.push({ key: 'best', kind: 'best', value: 'Best', label: (best.detail ?? '').replace(/ (on|than) .*$/, '') || 'new best' })
-  if (season) picked.push(levelBadge(season))
-  return picked.slice(0, 4).sort((a, b) => BADGE_ORDER.indexOf(a.kind) - BADGE_ORDER.indexOf(b.kind))
+  const books = lines.filter((line) => line.id.startsWith('book-'))
+  const book = books.find((line) => line.id === lead || line.tone === 'gold') ?? books[0] ?? null
+  const items: ReelBadge[] = [{ key: 'score', kind: 'score', value: score.value, label: score.label, icon: score.best ? 'up' : 'target' }]
+  if (medal) items.push({ key: 'medal', kind: 'medal', medal, value: MEDAL_NAMES[medal], label: 'Today’s medal' })
+  if (board) items.push(placeBadge(board))
+  if (book) items.push(bookBadge(book))
+  if (tickets > 0) items.push({ key: 'tickets', kind: 'tickets', value: `+${tickets}`, label: tickets === 1 ? 'Ticket' : 'Tickets' })
+  if (standings) items.push({ key: 'standings', kind: 'standings', value: ordinal(standings.place), label: standings.label })
+  if (season) items.push(levelBadge(season))
+  return items
 }

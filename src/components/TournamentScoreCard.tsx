@@ -11,7 +11,7 @@ import { linkCurrentNameToAccount } from '../lib/auth'
 import { scoreText, scoreUnit } from '../lib/gameBoard'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
-import type { ReportLine, ReportRibbon, ReportTier } from '../lib/runReport'
+import type { ReportBoardCard, ReportBoardRow, ReportLine, ReportRibbon, ReportTier } from '../lib/runReport'
 import { ordinal } from '../lib/scoreboard'
 import type { RunTickets } from '../lib/tickets'
 import {
@@ -21,6 +21,7 @@ import {
   joinTournament,
   submitTournamentScore,
   triesCountAtStart,
+  type StandingRow,
   type TournamentDetail,
 } from '../lib/tournaments'
 import { eventWinTakeover } from '../lib/winTakeover'
@@ -288,29 +289,67 @@ const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
  * What the event's answer gives the reel: the report, the line Where it landed makes much of (the match, else the
  * place in the standings, else on the game), the tickets it paid, and the last step's badges and note.
  */
+/**
+ * The event's card on the run's first page: the match it won, or its place in the event (the standings for a
+ * Triple, the game's for a one-game event) with the players either side of you.
+ */
+function eventBoardCard(snapshot: SubmitSnapshot, gameSlug: string, name: string, lines: ReportLine[]): ReportBoardCard | null {
+  const line = (id: string) => lines.find((l) => l.id === id) ?? null
+  const match = line('match')
+  if (match) return { label: match.label, value: 'Won', gold: true, move: null, detail: match.detail, rows: [] }
+  const { detail } = snapshot
+  const place = line('overall') ?? line('game')
+  if (!detail || !place) return null
+  const multi = detail.games.length > 1
+  const you = normalizePlayerName(name)
+  const ranked = detail.standings
+    .map((s, i) => ({ s, at: multi ? (s.place ?? i + 1) : (s.byGame[gameSlug]?.place ?? null) }))
+    .filter((r): r is { s: StandingRow; at: number } => r.at != null)
+    .sort((a, b) => a.at - b.at)
+  const mine = ranked.findIndex((r) => normalizePlayerName(r.s.name) === you)
+  const rows: ReportBoardRow[] = (mine < 0 ? [] : ranked.slice(Math.max(0, mine - 1), mine + 2)).map(({ s, at }) => ({
+    place: at,
+    name: s.name,
+    score: multi ? `${s.totalPoints.toLocaleString()} pts` : formatLeaderboardScore(gameSlug, s.byGame[gameSlug]?.score ?? 0),
+    avatarId: s.avatarId,
+    you: normalizePlayerName(s.name) === you,
+  }))
+  const at = Number(place.value.replace('#', ''))
+  return { label: place.label, value: ordinal(at), gold: at === 1, move: null, detail: place.detail, rows }
+}
+
+/**
+ * What the event's answer gives the reel: the report, the card under the score, the tickets it paid, and the last
+ * page's recap.
+ */
 export function eventReelParts(snapshot: SubmitSnapshot, gameSlug: string, name: string, score: number, posted: boolean) {
   const report = eventReport(snapshot, gameSlug, name, score, posted)
   const line = (id: string) => report.lines.find((l) => l.id === id) ?? null
-  const hero = line('match') ?? line('overall') ?? line('game')
   const best = line('best')
   const paid = eventTickets(snapshot.tickets)
   const game = getGame(gameSlug)?.name ?? gameSlug
-  const multi = (snapshot.detail?.games.length ?? 1) > 1
-  // The last step's badges: the match won, the places (a Triple's in the standings and on this game), the tickets,
-  // the tries left, and a best here when there's room.
-  const badges: ReelBadge[] = []
-  if (line('match')) badges.push({ key: 'won', kind: 'won', value: 'Won', label: snapshot.youWonTournament ? 'the final' : 'your match' })
+  const figure = formatLeaderboardScore(gameSlug, score)
+  const unit = scoreUnit(gameSlug, score)
+  // The last page's recap: the score, the match won, the places, the tickets, the tries left.
+  const recap: ReelBadge[] = [
+    {
+      key: 'score',
+      kind: 'score',
+      value: unit ? `${figure} ${unit}` : figure,
+      label: report.ribbon?.text ?? (best?.detail ? capital(best.detail) : game),
+      icon: snapshot.improved ? 'up' : 'target',
+    },
+  ]
+  const match = line('match')
+  if (match) recap.push({ key: 'won', kind: 'won', value: 'Won', label: match.label })
   const overall = line('overall')
-  if (overall) badges.push({ ...placeBadge(overall, game, 'overall'), label: 'standings' })
+  if (overall) recap.push(placeBadge(overall, 'overall'))
   const onGame = line('game')
-  if (onGame) badges.push({ ...placeBadge(onGame, game, 'game'), label: multi ? `on ${game}` : 'in the event' })
-  if (paid) badges.push({ key: 'tickets', kind: 'tickets', value: `+${paid.earned}`, label: paid.earned === 1 ? 'ticket' : 'tickets' })
+  if (onGame) recap.push(placeBadge(onGame, 'game'))
+  if (paid) recap.push({ key: 'tickets', kind: 'tickets', value: `+${paid.earned}`, label: paid.earned === 1 ? 'Ticket' : 'Tickets' })
   const left = triesLeft(snapshot)
-  if (left != null) badges.push({ key: 'tries', kind: 'tries', value: String(left), label: left === 1 ? 'try left' : 'tries left' })
-  if (posted && snapshot.improved) badges.push({ key: 'best', kind: 'best', value: 'Best', label: 'in this event' })
-  // How far off its best here the run was, when it won nothing louder.
-  const note = !report.ribbon && best?.detail && !snapshot.improved ? capital(best.detail) : null
-  return { ...report, hero: hero?.id, paid, badges: badges.slice(0, 4), note }
+  if (left != null) recap.push({ key: 'tries', kind: 'tries', value: String(left), label: left === 1 ? 'Try left' : 'Tries left' })
+  return { ...report, board: eventBoardCard(snapshot, gameSlug, name, report.lines), paid, recap }
 }
 
 export function TournamentScoreCard({
@@ -589,8 +628,8 @@ export function TournamentScoreCard({
       )
     }
     const as = posted ? `Posted as ${name}` : 'Not posted'
-    // Tries a badge counts aren't said again under it.
-    const tail = left && !parts?.badges.some((badge) => badge.key === 'tries') ? left : null
+    // Tries the recap counts aren't said again under it.
+    const tail = left && !parts?.recap.some((item) => item.key === 'tries') ? left : null
     who = <ReportWho name={posted ? name : null} text={tail ? `${as}, ${tail}` : as} />
     if (snapshot.exhausted || snapshot.youWonMatch) {
       primary = {
@@ -637,16 +676,14 @@ export function TournamentScoreCard({
       sub: subtitle ?? null,
       scoreTone: ribbon?.tone === 'gold' ? 'gold' : ribbon ? 'accent' : 'plain',
     },
-    lines: parts?.lines ?? [],
-    landedHero: parts?.hero,
-    onBoard: done ? toEvent : undefined,
-    boardLabel: isBracket ? 'See the bracket' : 'See the standings',
+    board: parts?.board ?? null,
     tickets: parts?.paid ? <ReelTickets paid={parts.paid} game={gameSlug} /> : null,
     ask,
     askGoLabel: status === 'needName' ? 'Skip' : 'Not now',
     askFocus: status === 'needName' ? tagRef : undefined,
-    badges: parts?.badges ?? [],
-    note: parts?.note ?? null,
+    recap: parts?.recap ?? [
+      { key: 'score', kind: 'score', value: [formatLeaderboardScore(gameSlug, score), scoreUnit(gameSlug, score)].filter(Boolean).join(' '), label: game },
+    ],
     block: lastBits.length ? lastBits.map((bit, i) => <Fragment key={i}>{bit}</Fragment>) : null,
     primary,
     secondary,

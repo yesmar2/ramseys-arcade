@@ -1,10 +1,13 @@
-import type { MouseEvent, ReactNode } from 'react'
+import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
+import { getGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { gamePlayHref, navigate, todayHref } from '../hooks/useHashRoute'
 import { dailyWords } from '../lib/dailyWords'
 import { exitFullscreen } from '../lib/fullscreen'
 import { GameArt } from './GameArt'
+import { ReelButton } from './RunReel'
+import type { ReportAction } from './RunReport'
 import { useTicket, type Punch } from './todayPunches'
 import '../styles/nextDaily.css'
 
@@ -41,17 +44,94 @@ export type NextDailyViewProps = {
    * of today's is the better way on (Ramsey, 2026-10-05: the report was "a lot").
    */
   tomorrow?: ReactNode
+  /**
+   * The run reel's last page (B, "Up next first"): the next daily as its poster, its name big, its picture, and its
+   * own button the main one, with Play again under it. All of today's done, Play again is the main one again.
+   */
+  variant?: 'row' | 'poster'
+  /** The poster's Play again. */
+  playAgain?: ReportAction
+  /** The poster's stand-in while the day's ticket isn't in, or there's no next daily: the place to beat. */
+  fallback?: ReactNode
 }
 
 /** What NextDaily shows, given the day's punches: also the dev page's samples. */
-export function NextDailyView({ slug, punches, done, total, className = '', tomorrow = null }: NextDailyViewProps) {
+export function NextDailyView({
+  slug,
+  punches,
+  done,
+  total,
+  className = '',
+  tomorrow = null,
+  variant = 'row',
+  playAgain,
+  fallback = null,
+}: NextDailyViewProps) {
   const allow = useDeliberatePress()
   const next = nextAfter(punches as Punch[], slug)
   // Played just now, the ticket may not have this one in yet: it's done all the same.
   const doneNow = Math.min(total, done + (punches.some((p) => p.slug === slug && !p.done) ? 1 : 0))
+  // The poster comes in after its stand-in (the place to beat, or Play again) had focus, and that went with it:
+  // its own main button takes it.
+  const posterRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (variant !== 'poster') return
+    const active = document.activeElement
+    if (!active || active === document.body) posterRef.current?.querySelector<HTMLElement>('.reel-btn')?.focus({ preventScroll: true })
+  }, [variant, next?.slug, doneNow, total])
   const go = (href: string) => (e: MouseEvent) => {
     e.preventDefault()
     if (allow(e)) leaveTo(href)
+  }
+
+  if (variant === 'poster') {
+    if (!next) {
+      if (!total || doneNow < total) return <>{fallback}</>
+      // All of today's done: the ticket's word, tomorrow's tease, and Play again the main way on.
+      return (
+        <div ref={posterRef} className={`next-daily-poster ${className}`}>
+          <section className="next-daily--poster next-daily--poster-all">
+            <p className="reel__kick">The Dailies</p>
+            <p className="next-daily__headline">All {total} done</p>
+            <a className="reel-link" href={todayHref()} onClick={go(todayHref())}>
+              See your ticket ›
+            </a>
+          </section>
+          {tomorrow}
+          {playAgain ? <ReelButton action={playAgain} /> : null}
+        </div>
+      )
+    }
+    const verb = dailyWords(next.slug).verb
+    const href = gamePlayHref(next.slug)
+    const course = `${next.kicker.replace(/^Today’s\s+/, '')} · ${next.title}`
+    const played = getGame(slug)?.name ?? 'it'
+    return (
+      <div ref={posterRef} className={`next-daily-poster ${className}`}>
+        <section className="next-daily--poster" aria-label={`Up next: ${next.game}`}>
+          <p className="reel__kick">
+            Up next · {doneNow} of {total} done
+          </p>
+          <p className="next-daily__headline">{next.game}</p>
+          <p className="next-daily__course">{course}</p>
+          <div className="next-daily__card">
+            <span className="next-daily__poster-art" aria-hidden="true">
+              <GameArt slug={next.slug} shape="card" className="next-daily__art" />
+            </span>
+            <a className="reel-btn reel-btn--play next-daily__race" href={href} onClick={go(href)}>
+              {verb} {next.game}
+            </a>
+          </div>
+        </section>
+        {/* Play again under it, not the main way on now: focus goes to the next daily's button. */}
+        {playAgain ? (
+          <ReelButton
+            action={{ ...playAgain, buttonRef: undefined, label: playAgain.busy ? playAgain.label : `Play ${played} again` }}
+            variant="ghost"
+          />
+        ) : null}
+      </div>
+    )
   }
 
   if (!next) {
@@ -94,9 +174,35 @@ export function NextDailyView({ slug, punches, done, total, className = '', tomo
 }
 
 /** After a daily's run: the next of today's still to play, for whoever is playing on this device. */
-export default function NextDaily({ slug, className, tomorrow }: { slug: string; className?: string; tomorrow?: ReactNode }) {
+export default function NextDaily({
+  slug,
+  className,
+  tomorrow,
+  variant = 'row',
+  playAgain,
+  fallback = null,
+}: {
+  slug: string
+  className?: string
+  tomorrow?: ReactNode
+  variant?: 'row' | 'poster'
+  playAgain?: ReportAction
+  fallback?: ReactNode
+}) {
   const viewer = useAccountId()
   const ticket = useTicket(viewer)
-  if (!ticket.punches.length) return null
-  return <NextDailyView slug={slug} punches={ticket.punches} done={ticket.done} total={ticket.total} className={className} tomorrow={tomorrow} />
+  if (!ticket.punches.length) return variant === 'poster' ? <>{fallback}</> : null
+  return (
+    <NextDailyView
+      slug={slug}
+      punches={ticket.punches}
+      done={ticket.done}
+      total={ticket.total}
+      className={className}
+      tomorrow={tomorrow}
+      variant={variant}
+      playAgain={playAgain}
+      fallback={fallback}
+    />
+  )
 }

@@ -1,8 +1,9 @@
 /*
- * The end of a run as a show (components/RunReel.tsx): the whole screen, a step at a time. Each step wears a
- * colour of its own under slow rays: the run the game's, where it landed the boards' blue, the tickets their
- * orange, a level the season's violet, and what next the page's own. The words are big and chunky, the stamps
- * tilt and land, the rows come in one after another, and with reduced motion it's all simply there.
+ * The end of a run as a show (components/RunReel.tsx): the whole screen, a page at a time. Each page wears a
+ * colour of its own under slow rays: the run and what next the game's, the standings the boards' blue, the record
+ * books brass, the tickets their orange, a level the season's violet. The words are big and chunky, the stamps
+ * tilt and land, the rows come in one after another, and with reduced motion it's all simply there. On a computer
+ * (62rem and up) each page lays its two halves side by side (Ramsey picked Desktop 2, "Wide").
  */
 
 .reel-layer {
@@ -25,7 +26,7 @@ html[data-theme='light'] .reel-layer .panel-scrim {
 }
 
 .panel.reel {
-  /* Each step's ground, rays, words and quiet words: the dark theme's here, the light theme's below. */
+  /* Each page's ground, rays, words and quiet words: the dark theme's here, the light theme's below. */
   --reel-bg: #0c1218;
   --reel-ray: transparent;
   --reel-ink: #f2f6f9;
@@ -33,9 +34,10 @@ html[data-theme='light'] .reel-layer .panel-scrim {
   --reel-figure: #ffffff;
   --reel-kick: color-mix(in srgb, var(--celeb-accent, #34c6a8) 50%, #ffffff);
   --reel-fill: rgba(242, 246, 249, 0.08);
+  --reel-card: rgba(6, 4, 14, 0.42);
   --reel-line: rgba(242, 246, 249, 0.14);
   --reel-shade: rgba(0, 0, 0, 0.28);
-  /* The kit's tokens the reused pieces read (the podium, the friend duel, the season line). */
+  /* The kit's tokens the reused pieces read (the friend duel, the season line). */
   --ink: var(--reel-ink);
   --muted: var(--reel-muted);
   --ink-rgb: 242, 246, 249;
@@ -62,7 +64,9 @@ html[data-theme='light'] .reel-layer .panel-scrim {
   display: none;
 }
 
-.panel.reel--run {
+/* The run's page and what next: the game's own colour, as its first page and its last (W1). */
+.panel.reel--run,
+.panel.reel--next {
   --reel-bg: color-mix(in srgb, var(--celeb-accent, #34c6a8) 26%, #0a1016);
   --reel-ray: color-mix(in srgb, var(--celeb-accent, #34c6a8) 24%, transparent);
 }
@@ -80,10 +84,22 @@ html[data-theme='light'] .reel-layer .panel-scrim {
   --reel-ray: rgba(217, 154, 99, 0.24);
 }
 
-.panel.reel--boards {
+.panel.reel--standings {
   --reel-bg: #10223a;
   --reel-ray: rgba(74, 168, 232, 0.13);
   --reel-kick: #8cc8f0;
+}
+
+.panel.reel--books {
+  --reel-bg: #2d2618;
+  --reel-ray: rgba(216, 166, 87, 0.16);
+  --reel-kick: #f0cf8f;
+}
+
+.panel.reel--friends {
+  --reel-bg: #241a3d;
+  --reel-ray: rgba(164, 138, 240, 0.16);
+  --reel-kick: #cfc4f5;
 }
 
 .panel.reel--tickets {
@@ -104,30 +120,37 @@ html[data-theme='light'] .reel-layer .panel-scrim {
   --reel-kick: #7fe3c4;
 }
 
-.panel.reel--next {
-  --reel-bg: var(--bg, #0c1218);
-  --reel-kick: var(--reel-muted);
-}
-
 html[data-theme='light'] .panel.reel {
   --reel-ink: #142231;
   --reel-muted: #46596b;
   --reel-figure: #142231;
   --reel-kick: color-mix(in srgb, var(--celeb-accent, #34c6a8) 55%, #142231);
   --reel-fill: rgba(20, 34, 49, 0.06);
+  --reel-card: rgba(255, 255, 255, 0.72);
   --reel-line: rgba(20, 34, 49, 0.12);
   --reel-shade: rgba(20, 34, 49, 0.14);
   --ink-rgb: 20, 34, 49;
   --surface: #ffffff;
 }
 
-html[data-theme='light'] .panel.reel--run {
+html[data-theme='light'] .panel.reel--run,
+html[data-theme='light'] .panel.reel--next {
   --reel-bg: color-mix(in srgb, var(--celeb-accent, #34c6a8) 18%, #f5f8fa);
 }
 
-html[data-theme='light'] .panel.reel--boards {
+html[data-theme='light'] .panel.reel--standings {
   --reel-bg: #e2eefa;
   --reel-kick: #1f6aa5;
+}
+
+html[data-theme='light'] .panel.reel--books {
+  --reel-bg: #f6eedd;
+  --reel-kick: #8a5d14;
+}
+
+html[data-theme='light'] .panel.reel--friends {
+  --reel-bg: #ede7fb;
+  --reel-kick: #5b36a8;
 }
 
 html[data-theme='light'] .panel.reel--tickets {
@@ -175,12 +198,11 @@ html[data-theme='light'] .panel.reel--ask {
   transition: background 0.35s ease;
 }
 
-/* ---------- over every step: how far along, the game, and Skip ---------- */
+/* ---------- over every page: how far along, the game, and Skip ---------- */
 
 .reel__top,
 .reel__stage,
-.reel__on,
-.reel__dock {
+.reel__on {
   position: relative;
   z-index: 1;
 }
@@ -248,7 +270,7 @@ html[data-theme='light'] .panel.reel--ask {
   background: color-mix(in srgb, var(--reel-ink) 20%, transparent);
 }
 
-/* ---------- the step: its middle, scrolling only when it must ---------- */
+/* ---------- the page: its middle, scrolling only when it must ---------- */
 
 .reel__stage {
   min-height: 0;
@@ -276,7 +298,9 @@ html[data-theme='light'] .panel.reel--ask {
 
 .reel__on {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
   padding: 0.25rem 1rem max(1.3rem, env(safe-area-inset-bottom));
 }
 
@@ -302,11 +326,38 @@ html[data-theme='light'] .panel.reel--ask {
   background: color-mix(in srgb, var(--reel-ink) 10%, transparent);
 }
 
+/* A computer's keyboard goes on too: said there only. */
+.reel__hint {
+  display: none;
+  color: var(--reel-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .reel__confetti {
   position: fixed;
   inset: 0;
   z-index: 3;
   pointer-events: none;
+}
+
+/* ---------- a page's two halves: stacked on a phone, side by side on a computer ---------- */
+
+.reel-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.reel-split__main,
+.reel-split__side {
+  min-width: 0;
+}
+
+.reel-split__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 /* ---------- a stamp: what the run won, tilted, landing ---------- */
@@ -367,7 +418,7 @@ html[data-theme='light'] .panel.reel--ask {
   box-shadow: 0 0.3rem 0 #3e9fb3;
 }
 
-/* ---------- the run ---------- */
+/* ---------- the run, and beside it where it landed ---------- */
 
 .reel-run {
   display: flex;
@@ -462,11 +513,235 @@ html[data-theme='light'] .panel.reel--ask {
   animation-delay: 1s;
 }
 
-.reel-run .medal-ladder {
-  width: 100%;
-  margin-top: 1.4rem;
+.reel-run__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* The ladder keeps a report card's side room (raceMedals.css): none here, where the page has its own. */
+.reel-run__side .medal-ladder {
+  margin: 0;
   text-align: left;
   animation: reel-rise 0.45s 0.7s both;
+}
+
+/* ---------- a friend gone past: a page of its own, face to face ---------- */
+
+.reel-friends {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(30rem, 100%);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.reel-friends__head {
+  margin: 0;
+  color: var(--reel-figure);
+  font-family: var(--font-display);
+  font-size: min(3.4rem, 13vw);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  text-shadow: 0 0.35rem 0 var(--reel-shade);
+  animation: reel-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.reel-friends .report-duel {
+  width: 100%;
+  margin: 1rem 0 0;
+  animation: reel-rise 0.45s 0.35s both;
+}
+
+/* Where it landed on its board: a card in the page's glass, the place big, the board around you under it. */
+.reel-place {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0.9rem 0.75rem;
+  border-radius: 1.4rem;
+  background: var(--reel-card);
+  box-shadow: inset 0 0 0 1.5px var(--reel-line);
+  text-align: left;
+  animation: reel-rise 0.45s 0.5s both;
+}
+
+.reel-place__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0 0.25rem;
+}
+
+.reel-place__label {
+  min-width: 0;
+  color: var(--reel-kick);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.reel-place__value {
+  margin: 0.15rem 0.25rem 0;
+  color: var(--reel-figure);
+  font-family: var(--font-display);
+  font-size: 3.4rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.reel-place--gold .reel-place__value {
+  color: #f5b942;
+}
+
+.reel-place__detail {
+  margin: 0.3rem 0.25rem 0;
+  color: var(--reel-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.reel-place .reel-board {
+  margin-top: 0.7rem;
+}
+
+/* A racing daily's, on a phone: its place in one line under the medal ladder. */
+.reel-place--compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  padding: 0.7rem 1rem;
+}
+
+.reel-place--compact .reel-place__head {
+  order: 2;
+  padding: 0;
+}
+
+.reel-place--compact .reel-place__value {
+  order: 1;
+  margin: 0;
+  font-size: 1.7rem;
+}
+
+.reel-place--compact .reel-place__detail {
+  order: 3;
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.reel-place--compact .reel-board {
+  display: none;
+}
+
+.reel-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(52, 198, 168, 0.18);
+  color: #7fe3c4;
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.reel-move svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  stroke-width: 3;
+}
+
+/* A few rows of a board around you. */
+.reel-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reel-board__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.6rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.8rem;
+  box-sizing: border-box;
+  color: color-mix(in srgb, var(--reel-ink) 82%, transparent);
+  font-size: 0.95rem;
+  font-weight: 700;
+  animation: reel-slide 0.4s calc(0.65s + var(--i, 0) * 0.12s) cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.reel-board__row--you {
+  background: rgba(52, 198, 168, 0.16);
+  box-shadow: inset 0 0 0 2px #34c6a8;
+  color: var(--reel-ink);
+  font-weight: 800;
+}
+
+.reel-board__row--beat {
+  background: rgba(245, 185, 66, 0.13);
+  box-shadow: inset 0 0 0 1.5px rgba(245, 185, 66, 0.55);
+  color: var(--reel-ink);
+}
+
+.reel-board__place {
+  flex: none;
+  min-width: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.reel-board__row--beat .reel-board__place {
+  color: #f8cd5f;
+}
+
+.reel-board__face {
+  flex: none;
+}
+
+.reel-board__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.reel-board__note {
+  margin-left: 0.4rem;
+  color: #7fe3c4;
+  font-size: 0.8rem;
+}
+
+.reel-board__tag {
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(164, 138, 240, 0.22);
+  color: #cfc4f5;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.reel-board__score {
+  flex: none;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- while it saves ---------- */
@@ -512,127 +787,154 @@ html[data-theme='light'] .panel.reel--ask {
   animation-delay: 0.3s;
 }
 
-/* ---------- where it landed ---------- */
+/* ---------- a page with one big figure: the standings, the record books ---------- */
 
-.reel-land {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 1rem;
-}
-
-.reel-land__hero {
+.reel-big {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 0.2rem;
   text-align: center;
 }
 
-.reel-land__place {
-  margin: 0.2rem 0 0;
+.reel-big__figure {
+  margin: 0.2rem 0 0.5rem;
   color: var(--reel-figure);
   font-family: var(--font-display);
-  font-size: min(7rem, 26vw);
+  font-size: min(7.25rem, 28vw);
   font-weight: 900;
-  line-height: 1;
+  line-height: 0.95;
   letter-spacing: -0.04em;
   text-shadow: 0 0.4rem 0 var(--reel-shade);
   animation: reel-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
 }
 
-.reel-land__hero--gold .reel-land__place {
+.reel-big__figure--gold {
   color: #f5b942;
 }
 
-.reel-land__detail {
-  margin: 0.4rem 0 0;
+.reel-big__figure--brass {
+  color: #f6d58e;
+}
+
+.reel-big .reel-move {
+  font-size: 1rem;
+  animation: reel-rise 0.4s 0.35s both;
+}
+
+.reel-big__line {
+  margin: 0.6rem 0 0;
   color: var(--reel-muted);
   font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: 700;
   text-wrap: balance;
-  animation: reel-rise 0.45s 0.35s both;
+  animation: reel-rise 0.4s 0.45s both;
 }
 
-.reel-land .report__race,
-.reel-land .report-duel {
-  margin: 0;
-  animation: reel-rise 0.45s 0.55s both;
-}
-
-.reel-rows {
+.reel-big__side {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 0.6rem;
+}
+
+.reel-big__side .reel-board__row {
+  min-height: 2.9rem;
+  background: var(--reel-fill);
+}
+
+.reel-big__side .reel-board__row--you {
+  background: rgba(52, 198, 168, 0.16);
+}
+
+/* The record books' plaques: brass, the best of them the brightest. */
+.reel-plaques {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.reel-row {
+.reel-plaque {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  min-height: 3.5rem;
-  padding: 0.4rem 0.9rem;
-  border-radius: 1rem;
-  box-sizing: border-box;
-  background: var(--reel-fill);
-  animation: reel-slide 0.4s calc(0.75s + var(--i, 0) * 0.22s) cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  gap: 0.8rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1.1rem;
+  background: rgba(216, 166, 87, 0.08);
+  box-shadow: inset 0 0 0 1.5px rgba(216, 166, 87, 0.45);
+  animation: reel-slide 0.4s calc(0.55s + var(--i, 0) * 0.18s) cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 
-.reel-row__icon {
+.reel-plaque--lead {
+  background: linear-gradient(180deg, #4b3d22, #2f2615);
+  box-shadow:
+    inset 0 0 0 2px #d8a657,
+    inset 0 0 0 4px rgba(0, 0, 0, 0.25);
+}
+
+.reel-plaque__icon {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.6rem;
+  height: 2.6rem;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--reel-ink) 10%, transparent);
+  background: rgba(216, 166, 87, 0.2);
+  color: #f0cf8f;
 }
 
-.reel-row__icon svg {
-  width: 1.1rem;
-  height: 1.1rem;
+.reel-plaque__icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
 }
 
-.reel-row--gold .reel-row__icon {
-  background: rgba(245, 185, 66, 0.2);
-  color: #f5c45c;
-}
-
-.reel-row--accent .reel-row__icon {
-  background: color-mix(in srgb, var(--celeb-accent, #34c6a8) 26%, transparent);
-  color: color-mix(in srgb, var(--celeb-accent, #34c6a8) 50%, var(--reel-ink));
-}
-
-.reel-row__text {
-  display: flex;
-  flex-direction: column;
+.reel-plaque__text {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   text-align: left;
 }
 
-.reel-row__label {
-  font-size: 1rem;
+.reel-plaque__label {
+  color: #f0cf8f;
+  font-size: 0.75rem;
   font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.reel-row__detail {
-  color: var(--reel-muted);
-  font-size: 0.85rem;
-  font-weight: 600;
+.reel-plaque__value {
+  color: #fff6e3;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1.15;
 }
 
-.reel-row__value {
+.reel-plaque__place {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   flex: none;
+  max-width: 45%;
+  text-align: right;
+}
+
+.reel-plaque__place b {
+  color: #f6d58e;
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 900;
 }
 
-.reel-row--gold .reel-row__value {
-  color: #f5c45c;
+.reel-plaque__place small {
+  color: rgba(255, 246, 227, 0.72);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-wrap: balance;
 }
 
 .reel-link {
@@ -659,20 +961,25 @@ html[data-theme='light'] .panel.reel--ask {
 
 /* ---------- the tickets ---------- */
 
-.reel-tix {
+.reel-tix__top {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 1rem;
+  align-items: center;
   text-align: center;
 }
 
 .reel-tix__stub {
-  align-self: center;
-  margin: 0.4rem 0 0.6rem;
+  margin: 1rem 0 0.4rem;
   transform: rotate(-5deg);
   filter: drop-shadow(0 0.45rem 0 rgba(156, 58, 23, 0.85));
   animation: reel-ticket 0.6s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+}
+
+.reel-tix__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  text-align: center;
 }
 
 .reel-tix__rows {
@@ -756,10 +1063,10 @@ html[data-theme='light'] .reel-tix__row--total b {
 
 /* ---------- a level on the pass ---------- */
 
-.reel-season {
+.reel-season__top {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 0.9rem;
   text-align: center;
 }
@@ -783,7 +1090,6 @@ html[data-theme='light'] .reel-season__up {
 }
 
 .reel-season__patch {
-  align-self: center;
   animation: reel-pop 0.6s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
 }
 
@@ -796,245 +1102,260 @@ html[data-theme='light'] .reel-season__up {
   display: none;
 }
 
-/* ---------- what next: the run's figure, its badges, and over the dock what the moment asks ---------- */
+/* ---------- what next (B): the run in a strip, the next move as a poster ---------- */
 
-.reel-next {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.4rem;
-  text-align: center;
-}
-
-.reel-next__score {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  animation: reel-rise 0.4s both;
-}
-
-/* The game's own colour over the score, as on the run's first step. */
-.reel-next .reel__kick,
-.reel-next__unit {
-  color: color-mix(in srgb, var(--celeb-accent, #34c6a8) 55%, #ffffff);
-}
-
-.reel-next__figure {
-  margin: 0.35rem 0 0;
-  color: var(--reel-figure);
-  font-family: var(--font-display);
-  font-size: clamp(3rem, 16vw, 4.2rem);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.reel-next__unit {
-  margin-left: 0.5rem;
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
-.reel-next__note {
-  margin: 0.55rem 0 0;
-  color: var(--reel-muted);
-  font-size: 1rem;
-  font-weight: 600;
-  text-wrap: balance;
-}
-
-/* What the run won, round: a disc in its colour, the figure under it, and what it is. */
-.reel-badges {
-  display: flex;
-  justify-content: center;
+/* A phone's last page holds the most: a little closer together. */
+.reel-split--next {
   gap: 0.9rem;
+}
+
+.reel-split--next .reel-split__side {
+  gap: 0.7rem;
+}
+
+.reel-split--next .reel-split__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.reel-recap ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.reel-badges--4 {
-  gap: 0.45rem;
+/* A phone's strip: the run's four figures in one glass row. */
+.reel-recap--strip ul {
+  display: flex;
+  border-radius: 1rem;
+  background: var(--reel-card);
+  box-shadow: inset 0 0 0 1.5px var(--reel-line);
+  animation: reel-rise 0.4s both;
 }
 
-.reel-badge {
-  --reel-badge: var(--celeb-accent, #34c6a8);
+.reel-recap--strip .reel-recap__item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 3.1rem;
+  padding: 0 0.3rem;
+}
+
+.reel-recap--strip .reel-recap__item + .reel-recap__item {
+  border-left: 1.5px solid var(--reel-line);
+}
+
+.reel-recap--strip .reel-recap__item--score {
+  flex: 1.35;
+}
+
+.reel-recap--strip .reel-recap__item--score .reel-recap__icon {
+  display: none;
+}
+
+.reel-recap--strip .reel-recap__icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.reel-recap--strip .reel-recap__value {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 900;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.reel-recap--strip .reel-recap__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A computer's list: each figure with what it is. */
+.reel-recap--list {
+  display: none;
+}
+
+.reel-recap--list ul {
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.reel-recap--list .reel-recap__item {
+  display: flex;
   align-items: center;
-  width: 6.25rem;
-  min-width: 0;
-  animation: reel-pop 0.45s calc(0.15s + var(--i, 0) * 0.09s) both;
+  gap: 0.85rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 1.1rem;
+  background: var(--reel-card);
+  box-shadow: inset 0 0 0 1.5px var(--reel-line);
+  animation: reel-slide 0.4s calc(0.2s + var(--i, 0) * 0.08s) both;
 }
 
-.reel-badges--4 .reel-badge {
-  width: 5.1rem;
-}
-
-.reel-badge--place {
-  --reel-badge: #4aa8e8;
-}
-
-.reel-badge--best {
-  --reel-badge: #34c6a8;
-}
-
-.reel-badge--book {
-  --reel-badge: #d8a657;
-}
-
-.reel-badge--tickets {
-  --reel-badge: #ff8552;
-}
-
-.reel-badge--season {
-  --reel-badge: #8c6cf0;
-}
-
-.reel-badge--tries {
-  --reel-badge: #8fa3b3;
-}
-
-.reel-badge--won,
-.reel-badge--gold {
-  --reel-badge: #f4c53e;
-}
-
-.reel-badge--silver {
-  --reel-badge: #d3dbe2;
-}
-
-.reel-badge--bronze {
-  --reel-badge: #d08a4c;
-}
-
-.reel-badge--platinum {
-  --reel-badge: #b9f1fb;
-}
-
-.reel-badge__disc {
+.reel-recap--list .reel-recap__icon {
   display: grid;
   place-items: center;
-  width: 4.9rem;
-  height: 4.9rem;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--reel-badge) 18%, var(--reel-bg));
-  box-shadow: inset 0 0 0 2.5px var(--reel-badge);
-  color: color-mix(in srgb, var(--reel-badge) 62%, #ffffff);
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--reel-recap, var(--celeb-accent, #34c6a8)) 24%, transparent);
+  color: color-mix(in srgb, var(--reel-recap, var(--celeb-accent, #34c6a8)) 55%, #ffffff);
 }
 
-.reel-badges--4 .reel-badge__disc {
-  width: 4rem;
-  height: 4rem;
+.reel-recap--list .reel-recap__icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
 }
 
-.reel-badge__disc svg {
-  width: 2.15rem;
-  height: 2.15rem;
+.reel-recap--list .reel-recap__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.reel-badges--4 .reel-badge__disc svg {
-  width: 1.75rem;
-  height: 1.75rem;
-}
-
-.reel-badge--medal .reel-badge__disc svg {
-  width: 2.75rem;
-  height: 2.75rem;
-}
-
-.reel-badges--4 .reel-badge--medal .reel-badge__disc svg {
-  width: 2.3rem;
-  height: 2.3rem;
-}
-
-.reel-badge__value {
-  margin-top: 0.5rem;
+.reel-recap--list .reel-recap__value {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
-.reel-badge__label {
-  margin-top: 0.1rem;
+.reel-recap--list .reel-recap__label {
   color: var(--reel-muted);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.reel-recap__item--place,
+.reel-recap__item--standings {
+  --reel-recap: #4aa8e8;
+}
+
+.reel-recap__item--book {
+  --reel-recap: #d8a657;
+}
+
+.reel-recap__item--tickets {
+  --reel-recap: #ff8552;
+}
+
+.reel-recap__item--season {
+  --reel-recap: #8c6cf0;
+}
+
+.reel-recap__item--won,
+.reel-recap__item--gold {
+  --reel-recap: #f5b942;
+}
+
+.reel-recap__item--tries {
+  --reel-recap: #8fa3b3;
+}
+
+/* The place to beat: the figure it takes, the board around you, and Play again. */
+.reel-chase {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  text-align: center;
+}
+
+.reel-chase__figure {
+  margin: -0.2rem 0 0;
+  color: var(--reel-figure);
+  font-family: var(--font-display);
+  font-size: min(5.5rem, 22vw);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-shadow: 0 0.35rem 0 var(--reel-shade);
+  animation: reel-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.reel-chase__figure--gold {
+  color: #f5b942;
+}
+
+.reel-chase__unit {
+  margin-left: 0.5rem;
+  color: var(--reel-kick);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.reel-chase__words {
+  margin: -0.4rem 0 0;
+  color: var(--reel-muted);
+  font-size: 1.02rem;
   font-weight: 700;
-  line-height: 1.25;
   text-wrap: balance;
 }
 
-/* A friend the run went past, in a row of their own, with the way to send them the run. */
-.reel-friend {
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0.6rem 0.6rem 0.75rem;
-  border-radius: 1.1rem;
-  background: rgba(164, 138, 240, 0.1);
-  box-shadow: inset 0 0 0 1.5px rgba(164, 138, 240, 0.36);
+.reel-chase .reel-board {
+  padding: 0.6rem;
+  border-radius: 1.2rem;
+  background: var(--reel-card);
+  box-shadow: inset 0 0 0 1.5px var(--reel-line);
   text-align: left;
-  animation: reel-rise 0.4s 0.45s both;
 }
 
-.reel-friend__face {
-  flex: none;
-}
-
-.reel-friend__text {
-  flex: 1;
-  min-width: 0;
+.reel-next__plain {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
+  gap: 1rem;
 }
 
-.reel-friend__kick {
-  color: #c9b8ff;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.reel-next__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.reel-friend__gap {
-  font-size: 1.05rem;
-  font-weight: 800;
+.reel-next__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: var(--reel-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
-.reel-friend__send {
-  flex: none;
+.reel-next__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.reel-next__link {
   min-height: 2.75rem;
-  padding: 0 1.1rem;
+  padding: 0 0.6rem;
   border: 0;
   border-radius: 999px;
-  background: #a48af0;
-  color: #1d1236;
+  background: none;
+  color: var(--reel-ink);
   font: inherit;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.reel-friend__send:hover,
-.reel-friend__send:focus-visible {
-  background: #b7a1f5;
-}
-
-.reel-friend__send:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-/* What the moment asks: the next daily, an alert, the sign-in. */
-.reel-next__block {
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  text-align: left;
+.reel-next__link:hover,
+.reel-next__link:focus-visible {
+  background: color-mix(in srgb, var(--reel-ink) 10%, transparent);
 }
 
 .reel-btn {
@@ -1084,7 +1405,7 @@ html[data-theme='light'] .reel-season__up {
 }
 
 .reel-btn--ghost {
-  background: var(--reel-fill);
+  background: var(--reel-card);
   box-shadow: inset 0 0 0 1.5px var(--reel-line);
   color: var(--reel-ink);
   font-size: 1.05rem;
@@ -1095,122 +1416,14 @@ html[data-theme='light'] .reel-season__up {
   cursor: default;
 }
 
-/* ---------- the dock: who it's saved as, Play again, and the other ways on, at the foot of the last step ---------- */
-
-.reel__dock {
-  justify-self: center;
-  width: min(30rem, 100%);
-  box-sizing: border-box;
-}
-
-.reel-dock {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.9rem 1.1rem max(1rem, env(safe-area-inset-bottom));
-  border-radius: 1.6rem 1.6rem 0 0;
-  background: color-mix(in srgb, var(--reel-bg) 94%, #ffffff);
-  box-shadow: inset 0 1.5px 0 var(--reel-line);
-  animation: reel-rise 0.4s 0.2s both;
-}
-
-.reel-dock__who {
-  display: flex;
-  justify-content: center;
-  margin: 0;
-}
-
-.reel-dock__who .report__who {
-  color: var(--reel-muted);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.reel-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6rem;
-  margin-top: 0.2rem;
-}
-
-.reel-tiles--1 {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.reel-tiles--2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.reel-tiles--4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.45rem;
-}
-
-.reel-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  min-width: 0;
-  min-height: 3.9rem;
-  padding: 0.4rem 0.3rem;
-  border: 0;
-  border-radius: 1rem;
-  background: var(--reel-fill);
-  color: var(--reel-ink);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  line-height: 1.15;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.reel-tile svg {
-  flex: none;
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.reel-tile:hover,
-.reel-tile:focus-visible {
-  background: color-mix(in srgb, var(--reel-ink) 14%, transparent);
-}
-
-.reel-tile:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-html[data-theme='light'] .reel-dock {
-  background: #ffffff;
-  box-shadow:
-    0 -0.4rem 1.5rem rgba(20, 34, 49, 0.08),
-    inset 0 1.5px 0 var(--reel-line);
-}
-
-html[data-theme='light'] .reel-next .reel__kick,
-html[data-theme='light'] .reel-next__unit {
-  color: color-mix(in srgb, var(--celeb-accent, #34c6a8) 62%, #142231);
-}
-
-html[data-theme='light'] .reel-badge__disc {
-  background: color-mix(in srgb, var(--reel-badge) 16%, #ffffff);
-  color: color-mix(in srgb, var(--reel-badge) 72%, #142231);
-}
-
-html[data-theme='light'] .reel-friend__kick {
-  color: #5b36a8;
-}
-
 /* ---------- the ask: a sign-in, or a tag ---------- */
 
 .reel-ask {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: min(30rem, 100%);
+  margin: 0 auto;
 }
 
 .reel-ask .report__ask {
@@ -1231,7 +1444,7 @@ html[data-theme='light'] .reel-friend__kick {
 }
 
 .panel.reel .report__win--gold {
-  color: #f5b942;
+  color: #f5c45c;
 }
 
 html[data-theme='light'] .panel.reel .report__win {
@@ -1239,7 +1452,217 @@ html[data-theme='light'] .panel.reel .report__win {
 }
 
 html[data-theme='light'] .panel.reel .report__win--gold {
-  color: #865c05;
+  color: #8a5d14;
+}
+
+html[data-theme='light'] .reel-plaque {
+  background: rgba(216, 166, 87, 0.14);
+}
+
+html[data-theme='light'] .reel-plaque--lead {
+  background: linear-gradient(180deg, #fff6e3, #f2e2bf);
+}
+
+html[data-theme='light'] .reel-plaque__label,
+html[data-theme='light'] .reel-plaque__icon {
+  color: #8a5d14;
+}
+
+html[data-theme='light'] .reel-plaque__value {
+  color: #3a2a0c;
+}
+
+html[data-theme='light'] .reel-plaque__place b {
+  color: #8a5d14;
+}
+
+html[data-theme='light'] .reel-plaque__place small {
+  color: #6b5a3a;
+}
+
+html[data-theme='light'] .reel-big__figure--brass {
+  color: #8a5d14;
+}
+
+html[data-theme='light'] .reel-move,
+html[data-theme='light'] .reel-board__note {
+  color: #13715f;
+}
+
+html[data-theme='light'] .reel-board__tag {
+  background: rgba(91, 54, 168, 0.12);
+  color: #5b36a8;
+}
+
+html[data-theme='light'] .reel-recap--list .reel-recap__icon {
+  color: color-mix(in srgb, var(--reel-recap, var(--celeb-accent, #34c6a8)) 70%, #142231);
+}
+
+/* ---------- a computer: each page's halves side by side (Desktop 2, "Wide") ---------- */
+
+@media (min-width: 62rem) and (min-height: 34rem) {
+  .reel__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 40rem) minmax(0, 1fr);
+    align-items: center;
+    gap: 2rem;
+    width: 100%;
+    padding: max(1.4rem, env(safe-area-inset-top)) 3.5rem 0;
+  }
+
+  .reel__pips {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .reel__pip {
+    height: 0.32rem;
+  }
+
+  .reel__bar {
+    display: contents;
+  }
+
+  .reel__game {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+
+  .reel__skip {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .reel__step {
+    width: min(76rem, 100%);
+    padding: 1.5rem 3.5rem;
+  }
+
+  .reel-split {
+    flex-direction: row;
+    align-items: center;
+    gap: 4.5rem;
+  }
+
+  .reel-split__main {
+    flex: 1.15 1 0;
+  }
+
+  .reel-split__side {
+    flex: 1 1 0;
+    max-width: 30rem;
+  }
+
+  .reel-split--solo .reel-split__main {
+    flex: none;
+    width: min(38rem, 100%);
+    margin: 0 auto;
+  }
+
+  .reel-run__figure--xl {
+    font-size: min(12rem, 15vw);
+  }
+
+  .reel-run__figure--lg {
+    font-size: min(10rem, 12.5vw);
+  }
+
+  .reel-run__figure--md {
+    font-size: min(8rem, 10vw);
+  }
+
+  .reel-run__figure--sm {
+    font-size: min(6rem, 7.5vw);
+  }
+
+  .reel-run__sub {
+    font-size: 1.3rem;
+    max-width: 32rem;
+  }
+
+  .reel-place {
+    padding: 1.3rem 1.2rem 1rem;
+    border-radius: 1.75rem;
+  }
+
+  .reel-place__value {
+    font-size: 4.75rem;
+  }
+
+  .reel-board__row {
+    min-height: 3rem;
+    font-size: 1.05rem;
+  }
+
+  /* A racing daily's board isn't squeezed on a computer: the full card, rows and all. */
+  .reel-place--compact {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    padding: 1.3rem 1.2rem 1rem;
+  }
+
+  .reel-place--compact .reel-place__head {
+    order: 0;
+    padding: 0 0.25rem;
+  }
+
+  .reel-place--compact .reel-place__value {
+    order: 0;
+    margin: 0.15rem 0.25rem 0;
+    font-size: 3.6rem;
+  }
+
+  .reel-place--compact .reel-place__detail {
+    order: 0;
+    flex-basis: auto;
+    margin: 0.3rem 0.25rem 0;
+  }
+
+  .reel-place--compact .reel-board {
+    display: flex;
+  }
+
+  .reel-big__figure {
+    font-size: min(11rem, 13vw);
+  }
+
+  .reel-big__line {
+    font-size: 1.3rem;
+  }
+
+  .reel-chase__figure {
+    font-size: min(8rem, 10vw);
+  }
+
+  .reel-chase__unit {
+    font-size: 2rem;
+  }
+
+  .reel-chase__words {
+    font-size: 1.25rem;
+  }
+
+  .reel-recap--strip {
+    display: none;
+  }
+
+  .reel-recap--list {
+    display: block;
+  }
+
+  .reel-split--next .reel-next__meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reel__hint {
+    display: inline;
+  }
 }
 
 /* ---------- motion ---------- */

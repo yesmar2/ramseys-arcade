@@ -22,7 +22,7 @@ import {
 } from '../components/RunReport'
 import { WinTakeover } from '../components/WinTakeover'
 import { MedalLadder } from '../components/RaceMedal'
-import { ReelButton, ReelFriend, runBadges, reelSteps, ReelTickets, RunReel, type ReelInput } from '../components/RunReel'
+import { ReelButton, ReelChase, reelSteps, ReelTickets, RunReel, runRecap, type ReelInput } from '../components/RunReel'
 import { eventReelParts, type SubmitSnapshot } from '../components/TournamentScoreCard'
 import type { ReportTier } from '../lib/runReport'
 import { milestoneSpotlight, milestoneWear } from '../components/MilestoneMoment'
@@ -32,7 +32,17 @@ import type { TodayServer, TodayServerDay } from '../lib/today'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { playersFromRuns, type BoardPlayer } from '../lib/gameBoard'
 import type { GlobalRankResult, LeaderboardEntry } from '../lib/leaderboard'
-import { boardFacts, composeReport, type ReportLine, type ReportMetal, type RunFacts } from '../lib/runReport'
+import {
+  boardCard,
+  boardFacts,
+  chaseFacts,
+  composeReport,
+  standingsCard,
+  type ReportBoardCard,
+  type ReportLine,
+  type ReportMetal,
+  type RunFacts,
+} from '../lib/runReport'
 import type { StandingRow, TournamentDetail } from '../lib/tournaments'
 import { eventWinTakeover, friendsWeekTakeover, standingsTakeover, type WinTakeoverData } from '../lib/winTakeover'
 
@@ -799,6 +809,8 @@ function arcadeReel(key: string, label: string, f: RunFacts, title: string, sub:
   const paid = SAMPLE_TICKETS[key] ?? SAMPLE_TICKETS.quiet!
   const best = r.lines.find((l) => l.id === 'best') ?? null
   const season = extra.season ?? null
+  const standingsNow = standingsCard(f)
+  const chase = chaseFacts(f)
   return {
     key,
     label,
@@ -819,22 +831,29 @@ function arcadeReel(key: string, label: string, f: RunFacts, title: string, sub:
         sub: r.ribbon ? `${title} · ${sub}` : sub,
         scoreTone: r.scoreTone,
       },
-      lines: r.lines,
-      landedHero: r.lead ?? undefined,
-      race: r.race,
+      board: boardCard(f, r.lines.find((l) => l.id === 'board') ?? null),
       friend: r.friend,
-      onBoard: () => {},
+      standings: standingsNow,
+      onStandings: () => {},
+      books: r.lines.filter((l) => l.id.startsWith('book-')).sort((a, b) => Number(b.id === r.lead) - Number(a.id === r.lead)),
+      onBooks: () => {},
       tickets:
         paid.earned > 0 ? <ReelTickets paid={paid} game="crosswalk" season={extra.season && !extra.season.levelUp.length ? extra.season : null} /> : null,
-      badges: runBadges({ lines: r.lines, lead: r.lead, game: 'Crosswalk', tickets: paid.earned, season }),
-      note: !r.ribbon && best?.detail && best.tone !== 'accent' ? capital(best.detail) : null,
-      callout: r.friend ? <ReelFriend friend={r.friend} action={{ label: 'Send' }} /> : null,
+      recap: runRecap({
+        score: { value: `${f.score} rows`, label: r.ribbon?.text ?? (best?.detail ? capital(best.detail) : title), best: best?.tone === 'accent' },
+        lines: r.lines,
+        lead: r.lead,
+        tickets: paid.earned,
+        standings: standingsNow,
+        season,
+      }),
+      poster: chase ? <ReelChase chase={chase} primary={{ label: 'Play again' }} /> : undefined,
       block: paid.earned <= 0 ? <RunTicketsLine paid={paid} game="crosswalk" /> : null,
-      secondary: r.friend ? null : { label: 'Challenge a friend', shortLabel: 'Challenge', icon: 'flag' },
+      secondary: r.friend ? { label: `Send ${r.friend.them.name} your run`, icon: 'flag' } : { label: 'Challenge a friend', icon: 'flag' },
       who: <ReportWho name="VERA" text="Saved as VERA" />,
       links: [
-        { label: 'Board', icon: 'board', onClick: () => {} },
-        { label: 'Records', icon: 'book', onClick: () => {} },
+        { label: 'Board', onClick: () => {} },
+        { label: 'Records', onClick: () => {} },
       ],
       ...extra,
     },
@@ -858,6 +877,18 @@ function landerReel(key: string, label: string, season: SeasonRun): ReelSample {
     todayLeft: 170,
   }
   const place = landerPlace('#4', 'up from 7th · 0.31s behind PILOT for 3rd', 'accent')
+  const card: ReportBoardCard = {
+    label: 'Lander today',
+    value: '4th',
+    gold: false,
+    move: 'up from 7th',
+    detail: '0.31s behind PILOT for 3rd',
+    rows: [
+      { place: 3, name: 'PILOT', score: format(48.69), you: false },
+      { place: 4, name: 'VERA', score: format(49), you: true, avatarId: 'a2:e:ufo:0:7:deep:none:none' },
+      { place: 5, name: 'WES', score: format(49.4), you: false, mark: 'passed' },
+    ],
+  }
   return {
     key,
     label,
@@ -877,20 +908,20 @@ function landerReel(key: string, label: string, season: SeasonRun): ReelSample {
         sub: raceSubWords('Today’s Cave #2', 49_000, 52_000, format),
         scoreTone: 'accent',
         medal: 'silver',
-        children: <MedalLadder game="lander" paceMs={PACE_MS} ms={49_000} previousMs={52_000} format={format} />,
+        ladder: <MedalLadder game="lander" paceMs={PACE_MS} ms={49_000} previousMs={52_000} format={format} />,
       },
-      lines: [place],
-      onBoard: () => {},
+      board: card,
+      boardCompact: true,
       tickets: <ReelTickets paid={paid} game="lander" medal="silver" season={season.levelUp.length ? null : season} />,
       season,
-      badges: runBadges({ lines: [place], game: 'Lander', medal: 'silver', tickets: 3, season, race: true }),
-      block: <NextDailyView slug="lander" punches={SAMPLE_PUNCHES} done={2} total={6} />,
-      secondary: { label: 'Challenge a friend', shortLabel: 'Challenge', icon: 'flag' },
+      recap: runRecap({ score: { value: format(49), label: 'New personal best', best: true }, lines: [place], medal: 'silver', tickets: 3, season }),
+      poster: <NextDailyView variant="poster" slug="lander" punches={SAMPLE_PUNCHES} done={2} total={6} playAgain={{ label: 'Play again' }} />,
+      secondary: { label: 'Challenge a friend', icon: 'flag' },
       who: <ReportWho name="VERA" text="Saved as VERA" />,
       links: [
-        { label: 'Share', icon: 'share', onClick: () => {} },
-        { label: 'Board', icon: 'board', onClick: () => {} },
-        { label: 'Records', icon: 'book', onClick: () => {} },
+        { label: 'Share', onClick: () => {} },
+        { label: 'Board', onClick: () => {} },
+        { label: 'Records', onClick: () => {} },
       ],
     },
   }
@@ -914,7 +945,7 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
     slug: 'crosswalk',
     tier: 'quiet',
     metal: null,
-    input: { phase, run: quietRun(key, 447), lines: [], badges: [], ...extra },
+    input: { phase, run: quietRun(key, 447), recap: [{ key: 'score', kind: 'score', value: '447 rows', label: 'Run over' }], ...extra },
   })
   return [
     arcadeReel('quiet', 'An ordinary run', facts(318, {}), 'Run over', 'Flattened by traffic'),
@@ -981,6 +1012,33 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
       'Run over',
       'Flattened by traffic',
     ),
+    // Every page: the board, the standings it moved, a record book's 2nd, the tickets, a level.
+    arcadeReel(
+      'all-pages',
+      'Every page',
+      facts(447, {
+        overall: {
+          before: standings(21, 470, []),
+          after: standings(18, 498, [
+            ['DAD', 16, 540],
+            ['HAWK', 17, 512],
+            ['VERA', 18, 498],
+            ['IVY', 19, 471],
+            ['CHEF', 20, 455],
+          ]),
+        },
+        books: [
+          {
+            hit: { id: 'crosswalk:longest-chain', label: 'Longest chain', value: '41', rank: 2 },
+            record: { id: 'longest-chain', unit: 'count', label: 'Longest chain' } as never,
+            holder: { id: 'h1', name: 'CHEF', score: 44, at: NOW },
+          },
+        ],
+      }),
+      'Run over',
+      'The train got you',
+      { season: TENTH_SEASON },
+    ),
     arcadeReel('season-40', 'Level 40 on the pass', facts(318, {}), 'Run over', 'Flattened by traffic', { season: TENTH_SEASON }),
     arcadeReel('season-31', 'Level 31, past the free row', facts(318, {}), 'Run over', 'Flattened by traffic', { season: QUIET_SEASON }),
     arcadeReel('capped', 'Past the day’s cap', facts(318, {}), 'Run over', 'Flattened by traffic'),
@@ -1022,13 +1080,15 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
 
 /** A row of an event's standings: each game's score and its place on it. */
 function eventRow(name: string, cells: Record<string, [number, number]>, place: number): StandingRow {
+  // Each game's place is worth 11 less it (1st 10, 2nd 9), as a Triple counts them.
+  const byGame = Object.fromEntries(Object.entries(cells).map(([slug, [score, at]]) => [slug, { score, place: at, points: Math.max(0, 11 - at) }]))
   return {
     playerId: `e-${name}`,
     name,
-    totalPoints: 0,
+    totalPoints: Object.values(byGame).reduce((sum, cell) => sum + cell.points, 0),
     gamesPlayed: Object.keys(cells).length,
     place,
-    byGame: Object.fromEntries(Object.entries(cells).map(([slug, [score, at]]) => [slug, { score, place: at, points: 0 }])),
+    byGame,
   }
 }
 
@@ -1103,7 +1163,7 @@ function eventPost(detail: TournamentDetail, best: number, extra: Partial<Submit
 function eventReel(key: string, label: string, post: SubmitSnapshot, score: number, primary?: string): ReelSample {
   const parts = eventReelParts(post, 'crosswalk', 'VERA', score, true)
   const bracket = post.detail?.kind === 'bracket'
-  const counted = parts.badges.some((badge) => badge.key === 'tries') || post.youWonMatch
+  const counted = parts.recap.some((item) => item.key === 'tries') || post.youWonMatch
   return {
     key,
     label,
@@ -1125,16 +1185,12 @@ function eventReel(key: string, label: string, post: SubmitSnapshot, score: numb
         sub: 'The train got you',
         scoreTone: parts.ribbon?.tone === 'gold' ? 'gold' : parts.ribbon ? 'accent' : 'plain',
       },
-      lines: parts.lines,
-      landedHero: parts.hero,
-      onBoard: () => {},
-      boardLabel: bracket ? 'See the bracket' : 'See the standings',
+      board: parts.board,
       tickets: parts.paid ? <ReelTickets paid={parts.paid} game="crosswalk" /> : null,
-      badges: parts.badges,
-      note: parts.note,
+      recap: parts.recap,
       secondary: primary ? null : { label: 'Share', icon: 'share' },
       who: <ReportWho name="VERA" text={counted ? 'Posted as VERA' : 'Posted as VERA, unlimited tries'} />,
-      links: primary ? [] : [{ label: bracket ? 'Bracket' : 'Standings', icon: 'board', onClick: () => {} }],
+      links: primary ? [] : [{ label: bracket ? 'Bracket' : 'Standings', onClick: () => {} }],
     },
   }
 }
@@ -1152,8 +1208,7 @@ function eventReels(tag: ReactNode, signIn: ReactNode): ReelSample[] {
       phase,
       wait: { said: 'Posting to Friday Cup…', slow: 'Still posting. It finishes even if you play on.' },
       run: { titleId: `reel-${key}`, tier: 'quiet', ribbon: null, eyebrow: 'Crosswalk', score: '447', unit: 'rows', sub: 'The train got you', scoreTone: 'plain' },
-      lines: [],
-      badges: [],
+      recap: [{ key: 'score', kind: 'score', value: '447 rows', label: 'Crosswalk' }],
       ...extra,
     },
   })

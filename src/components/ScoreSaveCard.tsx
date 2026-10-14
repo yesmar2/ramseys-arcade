@@ -41,8 +41,11 @@ import {
   type RunAchievement,
 } from '../lib/runAchievements'
 import {
+  boardCard,
   CHALLENGE_WON,
+  chaseFacts,
   composeReport,
+  standingsCard,
   readBookFacts,
   saveRunForReport,
   wouldPlaceOnBoard,
@@ -63,7 +66,7 @@ import { RunTicketsLine, RunTicketsWaiting } from './prizes/RunTickets'
 import { MedalLadder } from './RaceMedal'
 import { raceSubWords } from './RaceReport'
 import { ReportSignIn, ReportWho, TagSlots, type ReportAction, type ReportLink } from './RunReport'
-import { ReelButton, ReelFriend, runBadges, reelSteps, ReelTickets, RunReel } from './RunReel'
+import { ReelButton, ReelChase, reelSteps, ReelTickets, RunReel, runRecap } from './RunReel'
 import { useShare } from './SharePanel'
 import { WinTakeover } from './WinTakeover'
 
@@ -568,8 +571,6 @@ export function ScoreSaveCard({
     buttonRef: playRef,
   }
   let secondary: ReportAction | null = null
-  /** A friend the run went past: the way to send them the run, in their own row on the last step (ReelFriend). */
-  let friendSend: ReportAction | null = null
   /** What the save waits on, a step of its own after the run: the sign-in, or a tag. */
   let ask: ReactNode = null
   /** A word on a run that isn't saved and won't be: another account's, a stage skip, practice, a failed save. */
@@ -710,9 +711,10 @@ export function ScoreSaveCard({
         },
       }
     } else if (passedFriend) {
-      // A friend gone past: the run goes to them, to take it back, from their row (ReelFriend says who and by how much).
-      friendSend = {
-        label: sending ? 'Wait…' : challengeCopied ? 'Copied' : 'Send',
+      // A friend gone past: the run goes to them, to take it back (FriendDuel, under the board, says who and by how much).
+      secondary = {
+        label: sending ? 'Making the link…' : challengeCopied ? 'Copied' : `Send ${passedFriend.name} your run`,
+        icon: 'flag',
         disabled: sending,
         onClick: () => {
           setSending(true)
@@ -761,14 +763,9 @@ export function ScoreSaveCard({
   if (phase === 'saved' && signedIn && !impersonation && onTicket && !moment) {
     moment = <StreakPushAsk active />
   }
-  // And the way on to the next of today's dailies, saved or waiting on the sign-in. One of the day's puzzles (Also
-  // today) leads on to the races too. Once all of today's are done, a racing daily's tomorrow under it.
-  const nextDaily =
-    (onTicket || alsoDailies(today).some((d) => d.slug === gameSlug)) && (phase === 'saved' || phase === 'needAuth') ? (
-      <Suspense fallback={null}>
-        <NextDaily slug={gameSlug} tomorrow={tomorrow} />
-      </Suspense>
-    ) : null
+  // And the way on to the next of today's dailies, saved or waiting on the sign-in: the last page's poster. One of
+  // the day's puzzles (Also today) leads on to the races too. Once all of today's are done, a racing daily's tomorrow.
+  const nextOnTicket = (onTicket || alsoDailies(today).some((d) => d.slug === gameSlug)) && (phase === 'saved' || phase === 'needAuth')
 
   // A daily just for fun has no board and no records to go to.
   if (ranked && (phase === 'saved' || phase === 'assisted' || phase === 'error')) {
@@ -802,17 +799,45 @@ export function ScoreSaveCard({
       ? standingsTakeover(facts.overall.after, facts.name, standingsPeriod)
       : null
 
-  // The reel (RunReel.tsx): the run, then the steps it has something for, then what next.
+  // The reel (RunReel.tsx), in Ramsey's order: the run and where it landed on its board; then, when they have news,
+  // the standings, the record books, the tickets, a level; then what next.
   const bestLine = saved ? (data?.lines.find((line) => line.id === 'best') ?? null) : null
-  // The last step's badges (RunReel.tsx runBadges): what the run won, round.
-  const badges =
-    saved && data
-      ? runBadges({ lines: data.lines, lead: data.lead, game, medal: medalHeld, tickets: paid?.earned, season: seasonMoved, race: Boolean(race) })
-      : []
-  // Under the score when the run won nothing louder: how far off the best it was.
-  const scoreNote = !ribbon && bestLine?.detail && bestLine.tone !== 'accent' ? capital(bestLine.detail) : null
-  // A friend gone past gets a row of their own, with the way to send them the run.
-  const callout = friendSend && data?.friend ? <ReelFriend friend={data.friend} action={friendSend} /> : null
+  const boardLine = saved ? (data?.lines.find((line) => line.id === 'board') ?? null) : null
+  const board = saved && facts ? boardCard(facts, boardLine) : null
+  // A racing daily's standings are its header's, as its report always had them.
+  const standings = saved && facts && !race ? standingsCard(facts) : null
+  // The record books the run got into, the one its stamp spoke of first.
+  const books = (saved ? (data?.lines ?? []) : [])
+    .filter((line) => line.id.startsWith('book-'))
+    .sort((a, b) => Number(b.id === data?.lead) - Number(a.id === data?.lead))
+  const recap = runRecap({
+    score: {
+      value: unit ? `${figure} ${unit}` : race ? said : figure,
+      label: ribbon?.text ?? (bestLine?.detail ? capital(bestLine.detail) : title),
+      best: bestLine?.tone === 'accent',
+    },
+    lines: saved ? (data?.lines ?? []) : [],
+    lead: data?.lead ?? null,
+    medal: saved ? medalHeld : null,
+    tickets: paid?.earned ?? 0,
+    standings,
+    season: seasonMoved,
+  })
+  // What next's poster: the next of today's dailies, the place to beat standing in till the day's ticket is in; on
+  // any other game, the place to beat. Each carries Play again.
+  const chase = saved && facts ? chaseFacts(facts) : null
+  const chasePoster = chase ? <ReelChase chase={chase} primary={playAgain} /> : null
+  const poster = nextOnTicket ? (
+    <Suspense fallback={chasePoster ?? <ReelButton action={playAgain} />}>
+      <NextDaily
+        variant="poster"
+        slug={gameSlug}
+        tomorrow={tomorrow}
+        playAgain={playAgain}
+        fallback={chasePoster ?? <ReelButton action={playAgain} />}
+      />
+    </Suspense>
+  ) : chasePoster
   // A run not saved yet carries its ask to the end too, for whoever went past it.
   const waiting = unsaved && score > 0 ? <RunTicketsWaiting runs={phase === 'needAuth' ? 1 + othersPending : 1} tag={phase === 'needName'} /> : null
   const lastBits = [
@@ -820,7 +845,6 @@ export function ScoreSaveCard({
     unsaved ? ask : null,
     moment,
     paidTickets && !paid ? <RunTicketsLine paid={paidTickets} game={gameSlug} race={race ? { medal: medalHeld, season: null } : null} /> : null,
-    nextDaily,
   ].filter(Boolean)
   const steps = reelSteps({
     phase: pending ? 'pending' : unsaved ? 'ask' : saved ? 'saved' : 'done',
@@ -837,17 +861,17 @@ export function ScoreSaveCard({
       sub: race ? raceSub : ribbon ? [title, subtitle].filter(Boolean).join(' · ') : (subtitle ?? null),
       scoreTone: data?.scoreTone ?? (unsavedWin ? 'gold' : 'plain'),
       medal: medalNew,
-      children: race ? (
+      ladder: race ? (
         <MedalLadder game={race.game} paceMs={race.paceMs} ms={race.ms} previousMs={race.previousMs} format={race.format} signedOut={phase === 'needAuth'} />
       ) : null,
     },
-    // A racing daily's best is under its time already, and its standings are the header's.
-    lines: saved ? (data?.lines ?? []).filter((line) => !race || (line.id !== 'best' && line.id !== 'overall')) : [],
-    // What the run's stamp spoke of leads Where it landed: the record book it's 2nd in, over the board's 55th.
-    landedHero: data?.lead ?? undefined,
-    race: saved ? (data?.race ?? null) : null,
+    board,
+    boardCompact: Boolean(race),
     friend: saved ? (data?.friend ?? null) : null,
-    onBoard: ranked && saved ? () => leavePlayTo(boardsHref(gameSlug, period)) : undefined,
+    standings,
+    onStandings: () => leavePlayTo(leaderboardHref(standingsPeriod)),
+    books,
+    onBooks: isDailyGame(gameSlug) || gameHasRecords(gameSlug) ? () => leavePlayTo(recordsPlaceHref(gameSlug)) : undefined,
     tickets: paid ? (
       <ReelTickets paid={paid} game={gameSlug} medal={race ? medalHeld : null} season={seasonMoved && !seasonMoved.levelUp.length ? seasonMoved : null} />
     ) : null,
@@ -860,10 +884,11 @@ export function ScoreSaveCard({
     ) : null,
     askGoLabel: phase === 'needName' ? 'Skip' : 'Not now',
     askFocus: phase === 'needName' ? tagRef : undefined,
-    badges,
-    note: scoreNote,
-    callout,
+    recap,
+    poster,
     block: lastBits.length ? lastBits.map((bit, i) => <Fragment key={i}>{bit}</Fragment>) : null,
+    // Not saved yet, the sign-in (or the tag) comes before the next daily.
+    blockFirst: unsaved,
     primary: playAgain,
     secondary,
     who,

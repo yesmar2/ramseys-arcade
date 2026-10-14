@@ -2,7 +2,7 @@ import { chosenSkin } from './skins'
 import { getGame, isRankedGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
 import { noteSeasonRun, type SeasonRun } from './season'
-import { boardPlayer, gapBetween, gapFigure, type BoardPlayer } from './gameBoard'
+import { boardPlayer, gapBetween, gapFigure, scoreUnit, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
 import { getSessionToken } from './auth'
 import { FRIENDS_SCOPE } from './groups'
@@ -63,6 +63,8 @@ export type ReportLine = {
   tone: ReportTone
   /** A record book's line: the run's place in that book (its value is the run's figure). */
   rank?: number | null
+  /** A record book's line: who holds the record (or held it, when this run broke it). */
+  aside?: string | null
 }
 
 export type ReportRibbon = {
@@ -384,11 +386,16 @@ function bookLine(f: RunFacts, book: BookFact, i: number): ReportLine {
             ? `beat your own ${brief(previous)}`
             : `${previous.name} held it with ${brief(previous)}`
           : 'A new record'
-    return { ...line, detail, tone: 'gold' }
+    return { ...line, detail, aside: detail, tone: 'gold' }
   }
   const holder = book.holder && normalizePlayerName(book.holder.name) !== me ? book.holder : null
   const where = hit.rank != null ? `${ordinal(hit.rank)} in the book` : 'In the book'
-  return { ...line, detail: holder ? `${where}, ${holder.name} holds it` : where, tone: 'accent' }
+  return {
+    ...line,
+    detail: holder ? `${where}, ${holder.name} holds it` : where,
+    aside: holder ? `${holder.name} holds it with ${brief(holder)}` : null,
+    tone: 'accent',
+  }
 }
 
 /* ---------- the report ---------- */
@@ -573,6 +580,145 @@ export function composeReport(f: RunFacts): RunReportData {
     friend,
     standingsTop: Boolean(overall?.newTop),
     avatarId: f.overall.after?.avatarId,
+  }
+}
+
+/* ---------- the reel's pages: the board under the score, the standings, and what next's place to beat ---------- */
+
+/** A row of a board around the run's player, as the reel shows it. */
+export type ReportBoardRow = {
+  place: number
+  name: string
+  score: string
+  avatarId?: string
+  you: boolean
+  /** The one to pass next, or one this run went past. */
+  mark?: 'beat' | 'passed' | null
+  /** Beside your name: how far you came (▲3). */
+  note?: string | null
+}
+
+/** Where a saved run landed on its board, under its score on the reel's first page. */
+export type ReportBoardCard = {
+  label: string
+  /** The place in words (55th), or what a bracket's match came to (Won). */
+  value: string
+  gold: boolean
+  /** How far it came: up from 71st, new on the board. */
+  move: string | null
+  detail: string | null
+  rows: ReportBoardRow[]
+}
+
+/** The rows around the run's player: the podium when they're on it, else the one above, them, and the one below. */
+function aroundRows(f: RunFacts, beat: string | null): ReportBoardRow[] {
+  const b = f.board
+  const you = b?.you
+  if (!b || !you) return []
+  const me = normalizePlayerName(f.name)
+  const passed = new Set(b.passed)
+  const players =
+    you.place <= 3 && b.top.some((p) => p.name === you.name)
+      ? b.top
+      : [b.above, you, b.below].filter((p): p is BoardPlayer => Boolean(p))
+  return players.map((p) => {
+    const mine = normalizePlayerName(p.name) === me
+    return {
+      place: p.place,
+      name: p.name,
+      score: figure(f.slug, p.best.score),
+      avatarId: p.best.avatarId,
+      you: mine,
+      mark: mine ? null : p.name === beat ? 'beat' : passed.has(p.name) ? 'passed' : null,
+    }
+  })
+}
+
+/** The board's card for the run's first page, from its board line and the board around it. */
+export function boardCard(f: RunFacts, line: ReportLine | null): ReportBoardCard | null {
+  if (!line) return null
+  const b = f.board
+  const you = b?.you ?? null
+  const place = you?.place ?? Number(line.value.replace('#', ''))
+  if (!place) return null
+  const before = b?.before ?? null
+  const move = you ? (before == null ? ((b?.field ?? 0) > 1 ? 'new on the board' : null) : place < before ? `up from ${ordinal(before)}` : null) : null
+  // The line's own words, less the climb the move already says.
+  const detail = line.detail?.replace(/^up from \d+(st|nd|rd|th)(, | · )?/, '') || null
+  return { label: line.label, value: ordinal(place), gold: place === 1, move, detail, rows: aroundRows(f, null) }
+}
+
+/** The standings' page: only when the run moved the player up them. */
+export type ReportStandings = { label: string; place: number; move: string; line: string; rows: ReportBoardRow[] }
+
+export function standingsCard(f: RunFacts): ReportStandings | null {
+  const after = f.overall.after
+  const rank = after?.rank
+  if (!after || !rank || !isRankedGame(f.slug)) return null
+  const before = f.overall.before?.rank ?? null
+  if (before != null && rank >= before) return null
+  const me = normalizePlayerName(f.name)
+  const up = before != null ? before - rank : 0
+  return {
+    label: scopeLabel('Standings', periodCopy(f.standingsPeriod ?? f.period)),
+    place: rank,
+    move: before == null ? 'new on the standings' : `up ${up} ${up === 1 ? 'place' : 'places'}`,
+    line: `Your best ten games add up to ${after.score.toLocaleString()}`,
+    rows: (after.nearby ?? []).map((n) => {
+      const mine = normalizePlayerName(n.name) === me
+      return { place: n.rank, name: n.name, score: n.score.toLocaleString(), you: mine, note: mine && up > 0 ? `▲${up}` : null }
+    }),
+  }
+}
+
+/** What next's place to beat on the run's board: the one above, what passing them takes; or, on top, the lead. */
+export type ReportChase = {
+  label: string
+  top: boolean
+  target: string | null
+  figure: string
+  unit: string
+  words: string
+  rows: ReportBoardRow[]
+}
+
+export function chaseFacts(f: RunFacts): ReportChase | null {
+  const b = f.board
+  const you = b?.you
+  if (!b || !you || !isRankedGame(f.slug)) return null
+  const label = boardLabel(f.slug, periodCopy(f.period))
+  // A racing daily's gaps read as its clock does, and its boards keep a million less the ms: a gap in score is ms.
+  const race = isRaceGame(f.slug)
+  const clock = race || isTimeBoard(f.slug)
+  const above = b.above
+  if (!above) {
+    const below = b.below
+    const lead = below ? (race ? raceGapWords(you.best.score - below.best.score) : gapBetween(f.slug, you.best.score, below.best.score)) : null
+    return {
+      label,
+      top: true,
+      target: null,
+      figure: '1st',
+      unit: '',
+      words: below ? `${lead} ahead of ${below.name}` : 'Nobody else on it yet',
+      rows: aroundRows(f, null),
+    }
+  }
+  const gap = gapFigure(f.slug, above.best.score, you.best.score)
+  if (clock) {
+    const short = race ? raceGapWords(above.best.score - you.best.score) : gap
+    return { label, top: false, target: above.name, figure: short, unit: '', words: `faster to pass ${above.name} for ${ordinal(above.place)}`, rows: aroundRows(f, above.name) }
+  }
+  // A score passes the one above by beating it, one more than the gap; a percent's gap is the gap itself.
+  const need = gap.endsWith('%') ? null : above.best.score - you.best.score + 1
+  return {
+    label,
+    top: false,
+    target: above.name,
+    figure: need != null ? need.toLocaleString() : gap,
+    unit: need != null ? scoreUnit(f.slug, need) : '',
+    words: `${need != null ? '' : 'more '}to pass ${above.name} for ${ordinal(above.place)}`,
+    rows: aroundRows(f, above.name),
   }
 }
 
