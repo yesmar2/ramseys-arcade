@@ -15,6 +15,7 @@ import {
   type GlobalBoardEntry,
   type GlobalBoardResult,
 } from '../lib/leaderboard'
+import { ordinal } from '../lib/profileMath'
 import { recordValue } from '../lib/recordBook'
 import { fetchGameRecords, GAMES_WITH_RECORDS, type RecordSummary } from '../lib/records'
 import { fetchSiteRecords, siteRecordUnitWord, type SiteRecordBoard, type SiteRecordId } from '../lib/siteRecords'
@@ -36,12 +37,21 @@ function spotlightGame(): string | null {
   return dailyPick(GAMES_WITH_RECORDS.filter((slug) => isGameListed(slug) && !isDailyGame(slug)))
 }
 
+/**
+ * The Standings in the canvas's shape (D on the "Home page redesign" canvas): the top four, or with you further down,
+ * the top two, then the player just above you and you. Each name has a bar against the leader's, and no points:
+ * those stay on the full Standings list, a tap away (Ramsey, 2026-09-29). Under them, who's next up, in words.
+ */
 function Standings({
   board,
   you,
+  players,
+  group,
 }: {
   board: GlobalBoardResult | null
   you: string
+  players: number
+  group?: string | null
 }) {
   const period = useDefaultPeriod()
   const { nobody } = useScope()
@@ -50,44 +60,77 @@ function Standings({
   const loading = useGlobalRankLoading()
   const entries = board?.entries ?? []
   const empty = board != null && entries.length === 0
-  const youOnList = Boolean(you) && entries.some((e) => e.name === you)
-  // Ranked, but below the rows shown: your own row goes under them.
-  const yourRow: GlobalBoardEntry | null =
-    you && rank != null && !youOnList && entries.length > 0
-      ? { name: you, rank, score, games: 0, avatarId }
-      : null
-  // The gap over your row: none when it comes straight after the last row shown, but on a phone, which leaves
-  // out the rows after the third (home.css).
-  const last = entries[entries.length - 1]
-  const nextAfter = yourRow != null && last != null && yourRow.rank === last.rank + 1
-  const gap = !yourRow ? null : !nextAfter ? 'hb-row--gap' : entries.length > 3 ? 'hb-row--gap hb-row--gap-phone' : null
+  const leader = entries[0]?.score ?? 0
+  const top = entries.slice(0, 4)
   const ahead = rank != null ? nearby.find((n) => n.rank === rank - 1) : undefined
   const behind = rank != null ? nearby.find((n) => n.rank === rank + 1) : undefined
+  // Ranked, but under the top four: the top two, the player above you (when they're not one of those two), and you.
+  const below = Boolean(you) && rank != null && entries.length > 0 && !top.some((e) => e.name === you)
+  const shown = below ? entries.slice(0, 2) : top
+  const lastShown = shown[shown.length - 1]
+  const aboveRow: GlobalBoardEntry | null =
+    below && ahead && lastShown && ahead.rank > lastShown.rank
+      ? { name: ahead.name, rank: ahead.rank, score: ahead.score, games: 0, avatarId: ahead.avatarId }
+      : null
+  const yourRow: GlobalBoardEntry | null = below ? { name: you, rank: rank!, score, games: 0, avatarId } : null
+  // A gap over the rows after the top two, when they don't follow straight on.
+  const after = aboveRow ?? yourRow
+  const gap = Boolean(after && lastShown && after.rank > lastShown.rank + 1)
 
-  // Places and names only: the points behind them stay on the full Standings list, a tap away.
   const row = (e: GlobalBoardEntry) => {
     const medal = medalKind(e.rank)
+    const mine = e.name === you
     return (
-      <li key={`${e.rank}-${e.name}`} className={`hb-row${e.name === you ? ' hb-row--you' : ''}`}>
+      <li key={`${e.rank}-${e.name}`} className={`hb-row${mine ? ' hb-row--you' : ''}`}>
         <span className={`hb-row__rank${medal ? ` hb-row__rank--${medal}` : ''}`}>{e.rank}</span>
         <PlayerMark name={e.name} avatarId={e.avatarId} className="hb-row__mark" />
-        <PlayerName className="hb-row__name" name={e.name} avatarId={e.avatarId} />
-        {e.name === you ? <span className="hb-row__you">You</span> : null}
+        <span className="hb-row__main">
+          <span className="hb-row__line">
+            <PlayerName className="hb-row__name" name={e.name} avatarId={e.avatarId} />
+            {mine ? <span className="hb-row__you">You</span> : null}
+          </span>
+          {/* How far along they are against the leader, as a bar: no figure on it. */}
+          <span className="hb-row__bar" aria-hidden="true">
+            <span style={{ width: `${leader > 0 ? Math.max(3, Math.min(100, Math.round((e.score / leader) * 100))) : 0}%` }} />
+          </span>
+        </span>
       </li>
     )
   }
+
+  // Who's next up, in words. A tie names who got there first; on top, who you lead.
+  const next =
+    you && rank != null && !loading
+      ? rank === 1
+        ? behind
+          ? behind.score === score
+            ? `Tied with ${behind.name}, and you got there first.`
+            : `You lead ${behind.name}.`
+          : 'Nobody else is on it yet.'
+        : ahead
+          ? ahead.score === score
+            ? `Tied with ${ahead.name}, who got there first.`
+            : `${ahead.name} is next up, in ${ordinal(ahead.rank)}.`
+          : null
+      : null
 
   return (
     <article className="hb-panel hb-panel--standings" data-hunt="home-standings">
       <div className="hb-panel__head">
         <h3 className="hb-panel__title">Standings</h3>
+        {board && players > 0 ? (
+          <span className="hb-panel__sub">
+            {PERIOD_LABELS[period]}
+            {group ? ` · ${group}` : ''} · {players.toLocaleString()} {players === 1 ? 'player' : 'players'}
+          </span>
+        ) : null}
         <a className="home-section__more" href={standingsHref(period)}>
           Full board ›
         </a>
       </div>
       {board == null ? (
         <ol className="hb-rows" aria-hidden="true">
-          {[0, 1, 2, 3, 4].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <li key={i} className="hb-row hb-row--skel">
               <span className="skel-line" />
             </li>
@@ -97,38 +140,19 @@ function Standings({
         <p className="hb-empty">{nobody} is on the board yet. The first score posted takes #1.</p>
       ) : (
         <ol className="hb-rows">
-          {entries.map(row)}
-          {yourRow ? (
-            <>
-              {gap ? (
-                <li className={`hb-row ${gap}`} aria-hidden="true">
-                  ⋯
-                </li>
-              ) : null}
-              {row(yourRow)}
-            </>
+          {shown.map(row)}
+          {gap ? (
+            <li className="hb-row hb-row--gap" aria-hidden="true">
+              ⋯
+            </li>
           ) : null}
+          {aboveRow ? row(aboveRow) : null}
+          {yourRow ? row(yourRow) : null}
         </ol>
       )}
-      {you && rank != null && !loading ? (
-        <div className="hb-gaps">
-          {/* Who is either side of you, by name: the label first, so it reads "Next up: SAM at #13". */}
-          {ahead ? (
-            <div className="hb-gap">
-              <span>Next up</span>
-              <b>
-                {ahead.name} at #{ahead.rank}
-              </b>
-            </div>
-          ) : null}
-          {behind ? (
-            <div className="hb-gap">
-              <span>{rank === 1 ? 'You lead' : 'Right behind you'}</span>
-              <b>{behind.name}</b>
-            </div>
-          ) : null}
-        </div>
-      ) : empty && you ? null : (
+      {next ? (
+        <p className="hb-next">{next}</p>
+      ) : you && rank != null ? null : empty && you ? null : (
         // Not under an empty board as well: its own line already says the first score takes #1.
         <p className="hb-note">
           {/* All time leaves the dailies out (lib/allTime.ts). */}
@@ -152,7 +176,7 @@ function Standings({
             </>
           ) : (
             // A session whose account isn't known yet: the line's room, never Sign in.
-            '\u00a0'
+            ' '
           )}
         </p>
       )}
@@ -215,6 +239,7 @@ function RecordBook({ slug, records }: { slug: string; records: RecordSummary[] 
           Open<span className="visually-hidden"> the {game?.name ?? slug} record book</span> ›
         </a>
       </div>
+      <p className="hb-panel__note">A different game’s book every day.</p>
       <ul className="hb-records">
         {records == null
           ? [0, 1, 2, 3, 4].map((i) => (
@@ -299,19 +324,14 @@ export function HomeBoards() {
 
   return (
     <section className="hboards" aria-labelledby="hboards-title">
-      <div className="home-section__bar">
+      {/* With a group on, a bar says all three panels are its; without one, the Standings' head says the period. */}
+      <div className={`home-section__bar${group ? '' : ' visually-hidden'}`}>
         <h2 id="hboards-title" className="home-section__title">
-          {PERIOD_LABELS[period]}
-          {group ? ` · ${group}` : ''}
+          {group ? `${PERIOD_LABELS[period]} · ${group}` : 'The boards'}
         </h2>
-        {board && players > 0 ? (
-          <span className="home-section__count">
-            {players.toLocaleString()} {players === 1 ? 'player' : 'players'} ranked
-          </span>
-        ) : null}
       </div>
       <div className="hboards__grid">
-        <Standings board={board} you={you} />
+        <Standings board={board} you={you} players={players} group={group} />
         <HouseRecords boards={house} />
         {bookGame ? <RecordBook slug={bookGame} records={book} /> : null}
       </div>

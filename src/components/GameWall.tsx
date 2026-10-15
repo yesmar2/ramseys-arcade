@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { TAG_LABELS, wallGames, type Game, type GameTag } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useBoardLeaders, type BoardLeader } from '../hooks/useBoardLeaders'
@@ -197,34 +197,6 @@ const ChevronIcon = () => (
   </svg>
 )
 
-/*
- * How many columns the wall runs at this width, as home.css lays it out (a phone's home has three), so the day's
- * puzzles can take the rest of the floor's last row.
- */
-const COLUMN_QUERIES: [string, number][] = [
-  ['(max-width: 36rem)', 3],
-  ['(max-width: 50rem)', 3],
-  ['(max-width: 64rem)', 4],
-  ['(min-width: 100rem)', 6],
-]
-
-function columnsNow(): number {
-  if (typeof window === 'undefined') return 5
-  return COLUMN_QUERIES.find(([q]) => window.matchMedia(q).matches)?.[1] ?? 5
-}
-
-function useWallColumns(): number {
-  const [columns, setColumns] = useState(columnsNow)
-  useEffect(() => {
-    const lists = COLUMN_QUERIES.map(([q]) => window.matchMedia(q))
-    const sync = () => setColumns(columnsNow())
-    sync()
-    lists.forEach((l) => l.addEventListener('change', sync))
-    return () => lists.forEach((l) => l.removeEventListener('change', sync))
-  }, [])
-  return columns
-}
-
 /**
  * The wall: every game but the dailies (they're on today's ticket, above it)
  * as an arcade cabinet, in a grid that runs five across on a desktop and three
@@ -236,9 +208,9 @@ function useWallColumns(): number {
  * screen go the name, the board's top score with who holds it, and where you
  * are, all of it the way to the game's page (D on the "Home page redesign"
  * canvas, 2026-10-15). Today's event's game and the weekly's wear a badge. With
- * `puzzles`, the day's puzzles, just for fun, take the rest of the floor's last
- * row. Tabs along the top cut the wall by what kind of game it is, and say how
- * many of each.
+ * `puzzles`, the day's puzzles, just for fun, take two cells at the end of the
+ * floor. Tabs along the top cut the wall by what kind of game it is, and say
+ * how many of each.
  */
 export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean } = {}) {
   const device = useDeviceType()
@@ -254,15 +226,11 @@ export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean }
   // The day's puzzles (lib/today.ts alsoDailies), from the same punches as the ticket above.
   const viewer = useAccountId()
   const { also } = useTicket(viewer)
-  const columns = useWallColumns()
 
   const all = wallGames(device)
   const shown = all.filter((g) => inTab(g, tab))
   const floor = arrangeWall(shown, null, () => ONE)
   const puzzles = withPuzzles && (tab === 'all' || tab === 'puzzle') && also.length > 0
-  // The rest of the last row, or a row of its own where one cell would be all that's left.
-  const left = columns - (floor.length % columns)
-  const puzzleSpan = left >= 2 ? left : columns
   // Today's event's game and the weekly's wear their badges on the wall.
   const dailySlug = official.find((t) => t.cadence === 'daily')?.games[0] ?? null
   const weekly = new Set(official.find((t) => t.cadence === 'weekly')?.games ?? [])
@@ -317,7 +285,9 @@ export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean }
         <ul className="wall__grid">
           {floor.map((g, i) => cabinet(g, i))}
           {puzzles ? (
-            <li className="wall__cell wall__cell--also" style={{ gridColumn: `span ${puzzleSpan}` } as CSSProperties}>
+            // Two cabinets wide at any width, the puzzles one under another (a phone's three side by side), as the
+            // canvas has it: across a whole row they spread thin.
+            <li className="wall__cell wall__cell--also">
               <AlsoToday punches={also} look="tile" />
             </li>
           ) : null}

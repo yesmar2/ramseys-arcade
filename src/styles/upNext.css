@@ -89,7 +89,7 @@ html[data-theme='dark'] .upnext {
     grid-column: 1 / -1;
   }
 
-  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd):not(.unx--plain) {
+  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd){
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   }
@@ -231,18 +231,6 @@ html[data-theme='dark'] .upnext {
   height: 0.7rem;
 }
 
-/* A way to a page rather than into a game: drawn, not filled. */
-.unx__go--quiet {
-  background: none;
-  box-shadow: inset 0 0 0 1.5px rgba(var(--ink-rgb), 0.18);
-  color: var(--ink);
-}
-
-.unx__go--quiet:hover,
-.unx__go--quiet:focus-visible {
-  background: rgba(var(--ink-rgb), 0.06);
-}
-
 /* ---------- the chase: the three around you ---------- */
 
 .unx__chase {
@@ -321,7 +309,7 @@ html[data-theme='dark'] .upnext {
   color: var(--unx-you-score);
 }
 
-/* ---------- a record's two at the top, and the Standings around you ---------- */
+/* ---------- a record's two at the top ---------- */
 
 .unx__rows {
   display: flex;
@@ -374,19 +362,16 @@ html[data-theme='dark'] .upnext {
   color: var(--unx-gold-text);
 }
 
-.unx__row--mine {
-  background: color-mix(in srgb, var(--ticket, #ff8552) 14%, transparent);
-}
-
-.unx__row--mine .unx__row-place,
-.unx__row--mine .unx__row-value {
-  color: var(--unx-you);
-}
-
 /* ---------- Blip's question, in the same frame, Blip in his band ---------- */
 
-.upnext .blip-poll {
+/*
+ * BlipPoll's card look: his band across the top with "Blip asks" on a chip over it, the answers (or, answered, how
+ * everyone answered) two by two, yesterday's in a box, and the foot at the card's foot. Answered or not, it's the
+ * same height, so the row doesn't stretch when you answer.
+ */
+.blip-poll--card {
   padding: calc(var(--unx-band) + 1rem) 1.15rem 1.15rem;
+  gap: 0.65rem;
   border: 0;
   border-radius: 1.5rem;
   overflow: hidden;
@@ -394,7 +379,7 @@ html[data-theme='dark'] .upnext {
   box-shadow: var(--unx-shadow);
 }
 
-.upnext .blip-poll::before {
+.blip-poll--card::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
@@ -402,11 +387,15 @@ html[data-theme='dark'] .upnext {
   background: radial-gradient(circle at 50% 62%, #c9f1e5 0%, #e4f8f2 60%, #eefbf7 100%);
 }
 
-html[data-theme='dark'] .upnext .blip-poll::before {
+html[data-theme='dark'] .blip-poll--card {
+  background: var(--surface);
+}
+
+html[data-theme='dark'] .blip-poll--card::before {
   background: radial-gradient(circle at 50% 62%, #1f5045 0%, #183a34 58%, #16302c 100%);
 }
 
-.upnext .blip-poll__blip {
+.blip-poll--card .blip-poll__blip {
   top: calc(var(--unx-band) - 8.1rem);
   right: auto;
   left: 50%;
@@ -415,20 +404,107 @@ html[data-theme='dark'] .upnext .blip-poll::before {
   transform: translateX(-50%);
 }
 
-.upnext .blip-poll__q {
+/* "Blip asks · #7" on a chip over his band, as the other cards' chips sit. */
+.blip-poll--card .blip-poll__who {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--unx-chip);
+  color: var(--unx-kick);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.blip-poll--card .blip-poll__q {
   padding-right: 0;
   font-size: 1.25rem;
 }
 
-/* Its answers two by two, as the other cards' rows sit. */
-.upnext .blip-poll__opts {
+/* Its answers two by two, and how everyone answered the same way, so answering doesn't change its height. */
+.blip-poll--card .blip-poll__opts,
+.blip-poll--card .blip-poll__res {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
 }
 
-.upnext .blip-poll__opt {
+.blip-poll--card .blip-poll__opt {
   height: 100%;
+  min-height: 2.6rem;
   text-align: center;
+}
+
+.blip-poll--card .blip-poll__bar {
+  min-height: 2.6rem;
+  padding: 0 0.65rem;
+  font-size: 0.84rem;
+}
+
+.blip-poll--card .blip-poll__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Yesterday's answer, in a box with its share as a bar. */
+.blip-poll__ago {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  background: var(--unx-row);
+}
+
+.blip-poll__ago-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.blip-poll__ago-q {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blip-poll__ago-row b {
+  flex: none;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+.blip-poll__ago-bar {
+  display: block;
+  height: 5px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--unx-track);
+}
+
+.blip-poll__ago-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--accent);
+}
+
+/* The foot at the card's foot, with a ticket for what an answer pays. */
+.blip-poll--card .blip-poll__foot {
+  margin-top: auto;
+}
+
+.blip-poll__ticket {
+  margin-right: 0.4rem;
+  vertical-align: -0.2em;
 }
 
 /* ---------- the season: deep space in both themes ---------- */
@@ -619,7 +695,7 @@ html[data-theme='dark'] .unx--season {
     gap: 0.85rem;
   }
 
-  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd):not(.unx--plain) {
+  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd):not(.unx--season) {
     grid-template-columns: 7.4rem minmax(0, 1fr);
   }
 
@@ -635,17 +711,17 @@ html[data-theme='dark'] .unx--season {
     min-height: 0;
   }
 
-  .unx:not(.unx--season):not(.unx--plain) {
+  .unx:not(.unx--season) {
     display: grid;
     grid-template-columns: 7.4rem minmax(0, 1fr);
   }
 
-  .unx:not(.unx--season):not(.unx--plain) .unx__band {
+  .unx:not(.unx--season) .unx__band {
     height: auto;
     min-height: 100%;
   }
 
-  .unx:not(.unx--season):not(.unx--plain) .unx__chip {
+  .unx:not(.unx--season) .unx__chip {
     display: none;
   }
 
@@ -703,18 +779,18 @@ html[data-theme='dark'] .unx--season {
     font-size: 1.3rem;
   }
 
-  /* Blip back on the card's edge, as everywhere else, with room over the card for him. */
-  .upnext .blip-poll {
+  /* Blip back on the card's edge, as everywhere else, with room over the card for him, and his chip a line. */
+  .blip-poll--card {
     margin-top: 1.1rem;
     padding-top: 1.25rem;
     overflow: visible;
   }
 
-  .upnext .blip-poll::before {
+  .blip-poll--card::before {
     content: none;
   }
 
-  .upnext .blip-poll__blip {
+  .blip-poll--card .blip-poll__blip {
     top: -1.6rem;
     right: 0.9rem;
     left: auto;
@@ -723,8 +799,22 @@ html[data-theme='dark'] .unx--season {
     transform: none;
   }
 
-  .upnext .blip-poll__q {
+  .blip-poll--card .blip-poll__who {
+    position: static;
+    padding: 0;
+    background: none;
+  }
+
+  .blip-poll--card .blip-poll__q {
     padding-right: 2.6rem;
     font-size: 1.1rem;
   }
+}
+
+/* Your answer's tick, before it on a card's results. */
+.blip-poll__mine {
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-right: 0.3rem;
+  vertical-align: -0.08em;
 }

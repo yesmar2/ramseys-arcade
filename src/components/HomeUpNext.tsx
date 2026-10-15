@@ -1,18 +1,16 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { getGame, isDailyGame, isGameListed } from '../data/games'
-import { gamePlayHref, seasonHref, standingsHref } from '../hooks/useHashRoute'
+import { gamePlayHref, seasonHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { gapBetween } from '../lib/gameBoard'
-import { useGlobalRank } from '../lib/globalRank'
 import { useActiveGroup } from '../lib/groups'
 import { slots, useRung, type Place, type Rung } from '../lib/heroRung'
 import { heroSlug, newestSlug } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
-import { ordinal, periodWord } from '../lib/profileMath'
+import { ordinal } from '../lib/profileMath'
 import { recordGap, recordValue } from '../lib/recordBook'
 import { fetchGameRecords, GAMES_WITH_RECORDS, type RecordSummary } from '../lib/records'
 import { daysLeftLabel, extraTickets, liveSeason, rewardAt, rewardPhrase, seasonProgress, seasonTop, useSeason } from '../lib/season'
@@ -26,8 +24,8 @@ import '../styles/upNext.css'
 /*
  * Up next for you, under today's ticket (D on the "Home page redesign" canvas, 2026-10-15): a row of cards picked
  * from your own games. The place you're after on the game you played last (or, with no score on it, the game
- * itself, to jump back in), a record you hold and could lose, Blip's question of the day, and the season's pass;
- * where there's no record or no season, your place in the Standings fills in. Each card has one way on. It took
+ * itself, to jump back in), a record you hold and could lose, Blip's question of the day, and the season's pass:
+ * three or four of them, whichever there are, across the row. Each card has one way on. It took
  * the place of the banner that used to open the page for anyone who'd played before (HomeHero.tsx keeps a first
  * visit's welcome).
  */
@@ -281,52 +279,6 @@ function RecordCard({ held, name }: { held: Held; name: string }) {
   )
 }
 
-/* ---------- your place in the Standings, where a card is missing ---------- */
-
-function StandingsCard() {
-  const standing = useGlobalRank()
-  const period = useDefaultPeriod()
-  if (standing.rank == null) return null
-  const rank = standing.rank
-  const near = standing.nearby ?? []
-  const ahead = near.find((n) => n.rank === rank - 1) ?? null
-  const behind = near.find((n) => n.rank === rank + 1) ?? null
-  const pts = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'point' : 'points'}`
-  const row = (who: string, at: number, score: number, you = false) => (
-    <li className={`unx__row${you ? ' unx__row--mine' : ''}`}>
-      <span className="unx__row-place">{ordinal(at)}</span>
-      {you ? <b className="unx__row-name">{who}</b> : <span className="unx__row-name">{who}</span>}
-      {you ? <b className="unx__row-value">{score.toLocaleString()}</b> : <span className="unx__row-value">{score.toLocaleString()}</span>}
-    </li>
-  )
-  return (
-    <article className="unx unx--plain" aria-labelledby="unx-standings">
-      <div className="unx__body">
-        <p className="unx__kick">Standings · {periodWord(period)}</p>
-        <h3 id="unx-standings" className="unx__title">
-          You’re {ordinal(rank)}
-          {standing.totalPlayers ? ` of ${standing.totalPlayers.toLocaleString()}` : ''}
-        </h3>
-        <ol className="unx__rows">
-          {ahead ? row(ahead.name, ahead.rank, ahead.score) : null}
-          {row('You', rank, standing.score, true)}
-          {behind ? row(behind.name, behind.rank, behind.score) : null}
-        </ol>
-        <p className="unx__line">
-          {ahead
-            ? ahead.score === standing.score
-              ? `Tied with ${ahead.name}, who got there first.`
-              : `${pts(ahead.score - standing.score)} from ${ahead.name}, in ${ordinal(ahead.rank)}.`
-            : 'Nobody’s ahead of you.'}
-        </p>
-        <a className="unx__go unx__go--quiet" href={standingsHref(period)}>
-          See the Standings
-        </a>
-      </div>
-    </article>
-  )
-}
-
 /* ---------- the season ---------- */
 
 /** The season's pass: your level and what's next on it, or for a first visit (`wide`, beside Blip), what it is. */
@@ -393,7 +345,6 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
   const slug = heroSlug(device, recent)
   const { rung, loading } = useRung(slug, name)
   const held = useHeldRecord(name, recent)
-  const standing = useGlobalRank()
   const store = useSeason()
   const [gaveUp, setGaveUp] = useState(false)
   const seasonUnknown = !store.loaded && !store.season && !gaveUp
@@ -410,7 +361,7 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
       <section className={`upnext upnext--first${wide ? '' : ' upnext--alone'}`} aria-label="The season and Blip’s question">
         <div className="upnext__grid">
           {wide}
-          <BlipPoll key="blip" />
+          <BlipPoll key="blip" look="card" />
         </div>
       </section>
     )
@@ -422,8 +373,6 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
   const lead = loading ? <SkelCard key="chase" /> : rung && slots(rung) ? <ChaseCard key="chase" slug={slug} rung={rung} /> : <PickCard key="chase" slug={slug} kicker={kicker} />
   const record = held ? <RecordCard key="record" held={held} name={name} /> : null
   const seasonCard = season ? <SeasonCard key="season" /> : seasonUnknown ? <SkelCard key="season" dark /> : null
-  // Your place in the Standings, where there's no record or no season to show: never more than four cards.
-  const fill = (!record || !seasonCard) && standing.rank != null ? <StandingsCard key="standings" /> : null
   return (
     <section className="upnext" aria-labelledby="upnext-title">
       <div className="upnext__head">
@@ -435,9 +384,8 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
       <div className="upnext__grid">
         {lead}
         {record}
-        <BlipPoll key="blip" />
+        <BlipPoll key="blip" look="card" />
         {seasonCard}
-        {fill}
       </div>
     </section>
   )

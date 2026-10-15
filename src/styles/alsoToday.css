@@ -205,81 +205,99 @@ html[data-theme='dark'] .also {
  * phone's narrow tile just their pictures and names.
  */
 .also--tile {
+  --also-tile-bg: linear-gradient(140deg, #f1ecfd 0%, #faf8ff 60%, var(--surface) 100%);
+  --also-tile-sub: #5b4f7a;
+  --also-tile-line: rgba(95, 69, 176, 0.1);
+  --also-tile-go: var(--also);
+  --also-tile-go-ink: #ffffff;
   container-type: inline-size;
   display: flex;
   flex-direction: column;
+  gap: 0.35rem;
   width: 100%;
   min-height: 100%;
-  padding: 1rem 1.15rem 0.85rem;
-  border-radius: 1.2rem;
-  background: linear-gradient(140deg, color-mix(in srgb, var(--also) 12%, var(--surface)) 0%, var(--surface) 72%);
-  border: 1px solid color-mix(in srgb, var(--also) 22%, transparent);
-  box-shadow:
-    0 1px 2px rgba(var(--shade-rgb), 0.05),
-    0 26px 40px -32px color-mix(in srgb, var(--also) 50%, transparent);
+  box-sizing: border-box;
+  padding: 1.15rem 1.3rem 0.95rem;
+  border-radius: 1.25rem;
+  background: var(--also-tile-bg);
+  border: 0;
+  box-shadow: 0 10px 26px rgba(var(--shade-rgb), 0.08);
+}
+
+html[data-theme='dark'] .also--tile {
+  --also-tile-bg: linear-gradient(140deg, #2b2448 0%, #221f3a 60%, #1c2431 100%);
+  --also-tile-sub: #c4b9ee;
+  --also-tile-line: rgba(185, 162, 255, 0.14);
+  --also-tile-go: #7c5ccb;
+  --also-tile-go-ink: #ffffff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42);
 }
 
 .also--tile .also__head {
-  margin-bottom: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.6rem;
+  margin: 0 0 0.35rem;
 }
 
 .also--tile .also__title {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
 }
 
 .also--tile .also__sub {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
+  color: var(--also-tile-sub);
 }
 
+/* One under another, each on a line of its own, sharing out any height the row gives the tile. */
 .also--tile .also__list {
   flex: 1;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: space-evenly;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
   gap: 0;
 }
 
 .also--tile .also__item {
-  padding: 0.55rem 0;
+  gap: 0.85rem;
+  padding: 0.45rem 0;
   border-radius: 0;
   background: none;
   border: 0;
-  border-top: 1px solid color-mix(in srgb, var(--also) 14%, transparent);
+  border-top: 1px solid var(--also-tile-line);
 }
 
 .also--tile .also__pic {
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.9rem;
+  height: 2.9rem;
+  box-shadow: 0 4px 10px rgba(95, 69, 176, 0.18);
+}
+
+.also--tile .also__game {
+  font-size: 0.98rem;
 }
 
 .also--tile .also__course {
+  font-size: 0.8rem;
+  color: var(--also-tile-sub);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Filled, as a cabinet's Play is: white on the violet in Light, the night's ink on its paler violet in Dark. */
+/* Filled, as a cabinet's Play is. */
 .also--tile .also__go {
-  min-height: 2.35rem;
-  padding: 0 0.9rem;
-  color: #ffffff;
-  background: var(--also);
+  min-height: 2.25rem;
+  padding: 0 0.95rem;
+  color: var(--also-tile-go-ink);
+  background: var(--also-tile-go);
   border-color: transparent;
-}
-
-html[data-theme='dark'] .also--tile .also__go {
-  color: #1a1030;
 }
 
 .also--tile .also__go:hover,
 .also--tile .also__go:focus-visible {
-  background: color-mix(in srgb, var(--also) 85%, var(--ink));
-}
-
-@container (min-width: 44rem) {
-  .also--tile .also__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-  }
+  background: color-mix(in srgb, var(--also-tile-go) 85%, var(--ink));
 }
 
 /* A phone's tile: the three side by side, a picture and a name each, every one the way to its game's page. */
@@ -296,7 +314,9 @@ html[data-theme='dark'] .also--tile .also__go {
   }
 
   .also--tile .also__list {
+    display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: center;
     gap: 0.25rem;
   }
 
@@ -312,4 +332,9 @@ html[data-theme='dark'] .also--tile .also__go {
     font-size: 0.72rem;
     line-height: 1.15;
   }
+}
+
+/* The wall's cell for the tile (GameWall.tsx): two cabinets wide at every width. */
+.wall__cell--also {
+  grid-column: span 2;
 }
