@@ -24,6 +24,7 @@ import { SignInList } from './SignInWays'
 import { PlayerAvatar } from './PlayerAvatar'
 import { MusicToggle } from './MusicToggle'
 import { SoundPackSelect } from './SoundPackSelect'
+import { StationSelect } from './StationSelect'
 
 type PlayerBadgeProps = {
   /** Compact chip for tight headers / game overlays */
@@ -422,6 +423,7 @@ export const PlayerBadge = forwardRef<PlayerBadgeHandle, PlayerBadgeProps>(
           </button>
           <SoundPackSelect variant="drawer" />
           <MusicToggle variant="drawer" />
+          <StationSelect variant="drawer" />
         </div>
         <DevImpersonateControl variant="drawer" />
       </div>

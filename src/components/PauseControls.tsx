@@ -19,7 +19,7 @@ import { RunLabel } from './RunLabel'
 import { ScoreGuide } from './ScoreGuide'
 import { SoundPackSelect } from './SoundPackSelect'
 import { HapticsToggle } from './HapticsToggle'
-import { MusicToggle } from './MusicToggle'
+import { NowPlaying } from './NowPlaying'
 import { SoundToggle } from './SoundToggle'
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
@@ -199,9 +199,10 @@ export function GamePanelBody({
       ) : null}
       {tools}
       <div className="game-pause-actions">
+        {/* The song on its own line (the note, the song, Skip); the other chips share the next. */}
+        <NowPlaying slug={slug} game={game?.name} style={gameAccentStyle(slug)} />
         <div className="game-sound-row">
           <SoundToggle className="game-sound--bare" />
-          <MusicToggle className="game-sound--bare" />
           <SoundPackSelect />
           {/* Renders nothing where there is no motor to buzz. */}
           <HapticsToggle />

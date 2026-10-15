@@ -11,7 +11,8 @@ import {
 } from './soundPacks'
 import { roomImpulse, type Fx } from './soundPacks/voices'
 import { startTrack, type Playing } from './music'
-import { trackForGame } from './musicTracks'
+import { songFor, STATION_EVENT } from './musicStations'
+import { TRACKS } from './musicTracks'
 import { isQuiet } from './quiet'
 
 export type { SoundName, SoundPackId }
@@ -223,11 +224,13 @@ function applyMusicGain() {
 }
 
 /**
- * Start, change or stop the music to match the game on screen and the
- * settings. It waits for the page's first tap: a browser won't play before one.
+ * Start, change or stop the music to match the game on screen, its song on
+ * the station (musicStations.ts), and the settings. It waits for the page's
+ * first tap: a browser won't play before one.
  */
 function syncMusic() {
-  const track = musicSlug && musicOn && !muted && !idle ? trackForGame(musicSlug) : null
+  const id = musicSlug && musicOn && !muted && !idle ? songFor(musicSlug) : null
+  const track = id ? TRACKS[id] : null
   if (!track) {
     playing?.stop()
     playing = null
@@ -354,6 +357,8 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', applyMusicGain)
   window.addEventListener('blur', applyMusicGain)
   window.addEventListener('focus', applyMusicGain)
+  // Another station, or another song picked for the game on screen.
+  window.addEventListener(STATION_EVENT, syncMusic)
   for (const type of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
     window.addEventListener(type, noteInput, { capture: true, passive: true })
   }

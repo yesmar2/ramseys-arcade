@@ -18,7 +18,7 @@ function useMusic() {
   return state
 }
 
-function NoteIcon({ off }: { off: boolean }) {
+export function NoteIcon({ off }: { off: boolean }) {
   return (
     <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 17.5V6.2l10-2v11.3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />

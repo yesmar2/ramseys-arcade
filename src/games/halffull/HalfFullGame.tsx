@@ -15,7 +15,7 @@ import '../../styles/todaysPour.css'
 import { GamePlayChrome } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { HapticsToggle } from '../../components/HapticsToggle'
-import { MusicToggle } from '../../components/MusicToggle'
+import { NowPlaying } from '../../components/NowPlaying'
 import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
 import { PastPlayChip } from '../../components/PastPlay'
 import { RunLabel } from '../../components/RunLabel'
@@ -1032,9 +1032,9 @@ function untilNext(ms: number): string {
 function SoundRow() {
   return (
     <div className="game-pause-actions">
+      <NowPlaying slug={SLUG} game="Half Full" style={gameAccentStyle(SLUG)} />
       <div className="game-sound-row">
         <SoundToggle className="game-sound--bare" />
-        <MusicToggle className="game-sound--bare" />
         <SoundPackSelect />
         <HapticsToggle />
       </div>

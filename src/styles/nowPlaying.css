@@ -1,0 +1,257 @@
+/*
+ * The song picker (musicStations.ts). On a game's start and pause cards, NowPlaying puts the music on a
+ * line of its own: the note, the song with its station, and Skip. Mute, the sound set and the rest share
+ * the line under it. The song opens the music sheet: the station, its songs, and the volume.
+ */
+
+.now-playing {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 100%;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+/* Its chips join the rules' and the boards' line, now the music has a line of its own. */
+.game-card .game-sound-row {
+  display: contents;
+}
+
+/*
+ * On a phone that line has six chips, vibration's too: a little closer, and the sound set's chip only as
+ * wide as its name, so they share one line rather than leaving the records' chip on a line by itself.
+ * On the narrowest phones the chips come down to 2.5rem as well.
+ */
+@media (max-width: 480px) {
+  .game-card .game-pause-actions {
+    column-gap: 0.25rem;
+  }
+
+  .game-card .sound-pack-btn {
+    min-width: 0;
+    padding-inline: 0.6rem;
+  }
+}
+
+@media (max-width: 374px) {
+  .game-card .game-pause-actions .game-pause-btn:not(.sound-pack-btn),
+  .game-card .game-pause-actions .patriot__info {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+.now-playing__song {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0 1rem 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-line, rgba(var(--ink-rgb), 0.12));
+  background: var(--panel-fill, rgba(var(--ink-rgb), 0.05));
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.now-playing__song:hover,
+.now-playing__song:focus-visible {
+  border-color: rgba(var(--ink-rgb), 0.26);
+}
+
+.now-playing__eq {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--panel-accent, var(--accent));
+}
+
+.now-playing__name {
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.now-playing__station {
+  flex: none;
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* With the music off, the song stays, dimmed: Skip or a song in the sheet turns it back on. */
+.now-playing--off .now-playing__song {
+  color: var(--muted);
+}
+
+.now-playing--off .now-playing__eq {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* ---------- the music sheet ---------- */
+
+.music-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.music-sheet__part {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.music-sheet__cap {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The stations as one segmented choice, like the menu's sounds. */
+.music-sheet__stations.chips {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.2rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.music-sheet__stations .chips__item {
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.music-sheet__stations .chips__item--active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.16), inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+}
+
+html[data-theme='dark'] .music-sheet__stations .chips__item--active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.music-sheet__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.music-sheet__songs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.music-sheet__song {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.9rem;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.music-sheet__song:hover,
+.music-sheet__song:focus-visible {
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.music-sheet__song[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--panel-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--panel-accent) 9%, transparent);
+  cursor: default;
+}
+
+.music-sheet__dot {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--muted);
+}
+
+.music-sheet__dot svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.music-sheet__song[aria-pressed='true'] .music-sheet__dot {
+  background: color-mix(in srgb, var(--panel-accent) 18%, transparent);
+  color: var(--panel-accent-ink);
+}
+
+.music-sheet__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.music-sheet__name {
+  font-size: 0.98rem;
+  font-weight: 650;
+}
+
+.music-sheet__feel {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.music-sheet__tag {
+  flex: none;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--panel-accent-ink);
+}
+
+/* ---------- the menu's Station row: four to a row where Sounds has three ---------- */
+
+.site-menu__stations > button {
+  padding: 0 0.2rem;
+  font-size: 0.8rem;
+}

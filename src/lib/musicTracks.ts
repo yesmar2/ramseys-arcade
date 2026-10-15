@@ -1,9 +1,12 @@
 import type { Chip } from './chip'
+import { KIT_TRACKS, type KitTrack, type KitTrackId } from './kitSongs'
 
 /*
- * The arcade's music: thirteen songs for the Game Boy chip in chip.ts, each a loop of a few bars written a
- * sixteenth at a time, played under the games by music.ts. Ramsey picked them in the Chip Lab (2026-10-05,
- * "i like them all, can you put them in?"), with the Game Boy sound, replacing the four synth tracks.
+ * The arcade's music. Here: thirteen songs for the Game Boy chip in chip.ts, each a loop of a few bars
+ * written a sixteenth at a time, played under the games by music.ts. Ramsey picked them in the Chip Lab
+ * (2026-10-05, "i like them all, can you put them in?"), with the Game Boy sound, replacing the four synth
+ * tracks. They are the 8-bit station now; the other stations' songs are in kitSongs.ts, and which song
+ * plays under which game is musicStations.ts's.
  *
  * Mountain King is Grieg's (1875) and free to use. Korobeiniki, Tetris's Type A tune, was left out on his
  * word, though the folk tune is free: it is too tied to Tetris.
@@ -41,7 +44,7 @@ function tune(bars: string[], steps = 16): [number, number, number][][] {
   })
 }
 
-export type TrackId =
+export type ChipTrackId =
   | 'nightdrive'
   | 'pocket'
   | 'paper'
@@ -56,8 +59,9 @@ export type TrackId =
   | 'bonus'
   | 'credits'
 
-export type Track = {
-  id: TrackId
+export type ChipTrack = {
+  engine?: 'chip'
+  id: ChipTrackId
   name: string
   bpm: number
   /** The tempo on a given time round, for a song that speeds up. */
@@ -311,7 +315,7 @@ const CREDITS_TUNE = tune(
   12,
 )
 
-export const TRACKS: Record<TrackId, Track> = {
+const CHIP_TRACKS: Record<ChipTrackId, ChipTrack> = {
   nightdrive: {
     id: 'nightdrive',
     name: 'Night Drive',
@@ -568,8 +572,8 @@ export const TRACKS: Record<TrackId, Track> = {
   },
 }
 
-/** Which song plays under each game. */
-const GAME_MUSIC: Record<string, TrackId> = {
+/** The 8-bit station's song for each game, as they were picked before there were stations. */
+export const CHIP_GAME_MUSIC: Record<string, ChipTrackId> = {
   // Waves that come quicker, and a tune that does too.
   asteroids: 'mountainking',
   barrage: 'hyperspace',
@@ -602,7 +606,8 @@ const GAME_MUSIC: Record<string, TrackId> = {
   simon: 'pond',
 }
 
-export function trackForGame(slug: string): Track | null {
-  const id = GAME_MUSIC[slug]
-  return id ? TRACKS[id] : null
-}
+export type TrackId = ChipTrackId | KitTrackId
+export type Track = ChipTrack | KitTrack
+
+/** Every song, on either engine. */
+export const TRACKS: Record<TrackId, Track> = { ...CHIP_TRACKS, ...KIT_TRACKS }
