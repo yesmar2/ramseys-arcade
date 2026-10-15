@@ -89,30 +89,45 @@ export function computeLayout(w: number, h: number, state: GameState, camera = s
   }
 }
 
-/** Seconds the drawn camera takes to make up about two thirds of the way to the game's. */
-const CAMERA_EASE = 0.07
+/**
+ * How stiffly the drawn camera follows the game's, per second: from a standstill it is up to nine tenths of a
+ * climb's speed in about a fifth of a second, and runs about half a row behind while it climbs.
+ */
+const CAMERA_SPRING = 22
 
 /** The drawn camera of each run on the page, by its seed: a cabinet's preview can draw beside the game. */
-const views = new Map<number, { camera: number; time: number }>()
+const views = new Map<number, { camera: number; speed: number; time: number }>()
 
 /**
- * The camera as drawn: it eases after the game's, which jumps with the
- * player, so the whole maze doesn't jerk into motion as they set off up a
- * lane, or stop dead as they turn along one, and an uneven frame on a busy
- * laptop isn't a jolt of the whole screen. It is never more than a fraction
- * of a row behind, and never ahead; a new run, or a jump, starts it level.
+ * The camera as drawn. It follows the game's, which moves with the player, like a weight on a spring damped just
+ * enough not to bounce: the whole maze gathers speed as they set off up a lane and slows to a stop as they turn
+ * along one, never jerking into motion or stopping dead, and an uneven frame on a busy laptop isn't a jolt of the
+ * whole screen. It is never ahead of the game's, never more than a row or so behind; a new run, or a jump, starts
+ * it level.
  */
 function viewCamera(state: GameState) {
   const target = state.camera
   const kept = views.get(state.seed)
   if (!kept || state.time < kept.time || Math.abs(target - kept.camera) > 2) {
     if (views.size > 8) views.clear()
-    views.set(state.seed, { camera: target, time: state.time })
+    views.set(state.seed, { camera: target, speed: 0, time: state.time })
     return target
   }
   const dt = Math.min(0.1, state.time - kept.time)
   kept.time = state.time
-  kept.camera = Math.min(target, kept.camera + (target - kept.camera) * (1 - Math.exp(-dt / CAMERA_EASE)))
+  // The spring's own motion over the frame, worked out exactly rather than stepped, so a long frame can't throw it.
+  const k = CAMERA_SPRING
+  const off = kept.camera - target
+  const lead = kept.speed + k * off
+  const fade = Math.exp(-k * dt)
+  const next = target + (off + lead * dt) * fade
+  if (next >= target) {
+    kept.camera = target
+    kept.speed = 0
+  } else {
+    kept.camera = next
+    kept.speed = (kept.speed - k * lead * dt) * fade
+  }
   return kept.camera
 }
 
@@ -132,6 +147,62 @@ type Gfx = {
 
 // ————————————————————————————————————————————————————————— sky
 
+/** The two layers of stars: which, how fast each slides down as you climb, and how thinly it's spread. */
+const STAR_LAYERS = [
+  [0, 0.16, 9000],
+  [1, 0.38, 17000],
+] as const
+
+/**
+ * Each layer of stars as a picture of the sky's height, painted once for the size and the theme and slid down
+ * after, its bottom coming round at the top. Painted every frame, the stars were most of what a frame cost: a
+ * scatter of dots across the whole screen is a slow shape to fill, about 6 ms a frame on a laptop.
+ */
+let starField: { key: string; height: number; layers: HTMLCanvasElement[] } | null = null
+
+function starFieldFor(w: number, h: number, dpr: number, dark: boolean) {
+  const ink = inkColor()
+  const key = `${w}x${h}:${dpr}:${dark}:${ink}`
+  if (starField?.key === key) return starField
+  const width = Math.floor(w * dpr)
+  const height = Math.floor(h * dpr)
+  // The picture's own height, in the frame's units: where it comes round.
+  const span = height / dpr
+  const layers = STAR_LAYERS.map(([layer, , density], i) => {
+    const canvas = starField?.layers[i] ?? document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const sc = canvas.getContext('2d')
+    if (!sc) return canvas
+    sc.setTransform(dpr, 0, 0, dpr, 0, 0)
+    sc.fillStyle = ink
+    // Each layer goes down in three brightnesses, one path apiece.
+    const count = Math.round((w * h) / density)
+    for (let band = 0; band < 3; band++) {
+      sc.beginPath()
+      for (let i = 1 + band; i <= count; i += 3) {
+        const a = frac(Math.sin(i * 12.9898 + layer * 7.13) * 43758.5453)
+        const b = frac(Math.sin(i * 78.233 + layer * 3.31) * 12345.6789)
+        const c = frac(Math.sin(i * 3.7137 + layer) * 9973.113)
+        const x = a * w
+        const r = (0.4 + c * 0.9) * (layer ? 1.35 : 1)
+        // A star at an edge is at the other edge too, so it comes round whole.
+        for (const y of [b * span - span, b * span, b * span + span]) {
+          if (y < -r || y > span + r) continue
+          sc.moveTo(x + r, y)
+          sc.arc(x, y, r, 0, TAU)
+        }
+      }
+      const k = (band + 0.5) / 3
+      sc.globalAlpha = dark ? (0.05 + k * 0.13) * (layer ? 1.25 : 0.85) : (0.035 + k * 0.07) * (layer ? 1.2 : 0.9)
+      sc.fill()
+    }
+    return canvas
+  })
+  starField = { key, height: span, layers }
+  return starField
+}
+
 /**
  * Two layers of stars that slide down as you climb, slower than the maze does,
  * the far ones slowest. It is the only thing on screen that says how high up
@@ -142,33 +213,19 @@ function drawSky(g: Gfx) {
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
-  // Each layer goes down in three brightnesses, one path apiece: a hundred and
-  // fifty separate little fills cost more than the whole maze.
+  const m = ctx.getTransform()
+  const dpr = Math.hypot(m.a, m.b) || 1
+  const field = starFieldFor(w, h, dpr, dark)
+  const span = field.height
   const climbed = g.camera * cell
-  ctx.fillStyle = inkColor()
-  for (const [layer, pace, density] of [
-    [0, 0.16, 9000],
-    [1, 0.38, 17000],
-  ] as const) {
-    const count = Math.round((w * h) / density)
-    for (let band = 0; band < 3; band++) {
-      ctx.beginPath()
-      for (let i = 1 + band; i <= count; i += 3) {
-        const a = frac(Math.sin(i * 12.9898 + layer * 7.13) * 43758.5453)
-        const b = frac(Math.sin(i * 78.233 + layer * 3.31) * 12345.6789)
-        const c = frac(Math.sin(i * 3.7137 + layer) * 9973.113)
-        const x = a * w
-        const y = (((b * h + climbed * pace) % h) + h) % h
-        const r = (0.4 + c * 0.9) * (layer ? 1.35 : 1)
-        ctx.moveTo(x + r, y)
-        ctx.arc(x, y, r, 0, TAU)
-      }
-      const k = (band + 0.5) / 3
-      ctx.globalAlpha = dark ? (0.05 + k * 0.13) * (layer ? 1.25 : 0.85) : (0.035 + k * 0.07) * (layer ? 1.2 : 0.9)
-      ctx.fill()
-    }
-  }
-  ctx.globalAlpha = 1
+  STAR_LAYERS.forEach(([, pace], i) => {
+    const picture = field.layers[i]!
+    const down = (((climbed * pace) % span) + span) % span
+    const width = picture.width / dpr
+    // The picture slid down by `down`, and the part slid off the bottom shown at the top.
+    if (down < span) ctx.drawImage(picture, 0, 0, picture.width, (span - down) * dpr, 0, down, width, span - down)
+    if (down > 0) ctx.drawImage(picture, 0, (span - down) * dpr, picture.width, down * dpr, 0, 0, width, down)
+  })
 }
 
 /**
@@ -478,22 +535,47 @@ function drawWalls(g: Gfx) {
 
 // —————————————————————————————————————————————————————— crumbs
 
+/**
+ * A crumb as a picture, painted once for its size and colour and stamped at every crumb. One path of every crumb
+ * on the board, scattered across the whole screen, was a slow shape to fill, over a millisecond a frame.
+ */
+let crumbStamp: { key: string; canvas: HTMLCanvasElement; half: number } | null = null
+
+function crumbStampFor(r: number, dpr: number, colour: string) {
+  const key = `${r}:${dpr}:${colour}`
+  if (crumbStamp?.key === key) return crumbStamp
+  // Whole pixels, with room round the dot for its soft edge.
+  const size = Math.ceil((r + 1) * dpr) * 2
+  const canvas = crumbStamp?.canvas ?? document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const half = size / 2 / dpr
+  const sc = canvas.getContext('2d')
+  if (sc) {
+    sc.setTransform(dpr, 0, 0, dpr, 0, 0)
+    sc.fillStyle = colour
+    sc.beginPath()
+    sc.arc(half, half, r, 0, TAU)
+    sc.fill()
+  }
+  crumbStamp = { key, canvas, half }
+  return crumbStamp
+}
+
 function drawCrumbs(g: Gfx) {
   const { ctx, s, dark, cell, h, Y, t } = g
   const r = Math.max(1.4, cell * 0.095)
-  ctx.fillStyle = hsla(GOLD, 92, dark ? 64 : 46)
-  ctx.beginPath()
+  const m = ctx.getTransform()
+  const stamp = crumbStampFor(r, Math.hypot(m.a, m.b) || 1, hsla(GOLD, 92, dark ? 64 : 46))
+  const size = stamp.half * 2
   for (let y = 0; y < s.rows; y++) {
     const cy = Y(y + 0.5)
     if (cy < -cell || cy > h + cell) continue
     for (let x = 0; x < s.cols; x++) {
       if (!s.crumbs[y][x]) continue
-      const cx = (x + 0.5) * cell
-      ctx.moveTo(cx + r, cy)
-      ctx.arc(cx, cy, r, 0, TAU)
+      ctx.drawImage(stamp.canvas, (x + 0.5) * cell - stamp.half, cy - stamp.half, size, size)
     }
   }
-  ctx.fill()
 
   // The glowberries: round and violet, a leaf on top, glowing as they breathe.
   const pulse = 0.9 + Math.sin(t * 6) * 0.1
@@ -993,21 +1075,19 @@ function drawTide(g: Gfx) {
   ctx.fillStyle = body
   ctx.fill(path)
 
-  // Bubbles rising through it.
-  ctx.save()
-  ctx.clip(path)
+  // Bubbles rising through it, gone just under its deepest dip: cut off at the waves instead, by a clip of the
+  // water's shape, they were the dearest thing in a frame with the water up.
   ctx.strokeStyle = dark ? 'rgba(200, 232, 255, 0.5)' : 'rgba(236, 246, 255, 0.75)'
   ctx.lineWidth = Math.max(1, cell * 0.03)
   for (let i = 0; i < 16; i++) {
     const u = frac(t * 0.28 + i * 0.173)
     const x = frac(Math.sin(i * 57.1) * 713.7) * w + Math.sin(t * 1.6 + i * 2) * cell * 0.15
-    const y = h - (h - top + cell) * u
+    const y = h - (h - top - cell * 0.32) * u
     ctx.globalAlpha = Math.sin(u * Math.PI)
     ctx.beginPath()
     ctx.arc(x, y, cell * (0.05 + 0.07 * frac(i * 0.61)), 0, TAU)
     ctx.stroke()
   }
-  ctx.restore()
   ctx.globalAlpha = 1
 
   // The crest.
