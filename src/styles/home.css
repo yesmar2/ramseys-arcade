@@ -206,15 +206,6 @@ html[data-theme="dark"] .home-banner {
   color: var(--banner-muted);
 }
 
-/* The blurb in a few words, on one line: a phone's, where the long one goes (the lighter phone home, below). */
-.home-banner__blurb--short {
-  display: none;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .home-banner__acts {
   display: flex;
   flex-wrap: wrap;
@@ -461,182 +452,7 @@ html[data-theme="dark"] .home-banner {
   }
 }
 
-/* ---------- the banner for a returning player: the next place up ---------- */
-
-.home-banner--rung .home-banner__text {
-  gap: 0.85rem;
-}
-
-.home-banner__kicker-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.7rem;
-}
-
-.home-banner__kicker-note {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--banner-faint);
-}
-
-.home-banner__goal {
-  margin: 0;
-  max-width: 11.2em; /* 17ch in Outfit: em, so it doesn't change width as the font comes in */
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 3.7vw, 3.05rem);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.02;
-  text-wrap: balance;
-  color: var(--banner-ink);
-}
-
-.home-banner__gap {
-  color: var(--banner-accent-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.home-banner--rung .home-banner__blurb {
-  max-width: 30.2em; /* 46ch in Outfit: em, so it doesn't change width as the font comes in */
-}
-
-/* The race line: their names over the track, yours and the gap under it. */
-.hero-race {
-  position: relative;
-  width: min(100%, 29rem);
-  height: 4.4rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.hero-race__track,
-.hero-race__lit {
-  position: absolute;
-  top: 50%;
-  border-radius: 999px;
-  transform: translateY(-50%);
-}
-
-.hero-race__track {
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: color-mix(in srgb, var(--banner-ink) 20%, transparent);
-}
-
-.hero-race__lit {
-  height: 4px;
-  background: var(--banner-dot);
-  transform-origin: left center;
-  animation: hero-race-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both;
-}
-
-@keyframes hero-race-grow {
-  from {
-    transform: translateY(-50%) scaleX(0);
-  }
-  to {
-    transform: translateY(-50%) scaleX(1);
-  }
-}
-
-.hero-race__dot {
-  position: absolute;
-  top: 50%;
-  width: 0.75rem;
-  height: 0.75rem;
-  box-sizing: border-box;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.hero-race__dot--rival {
-  background: var(--banner-ink);
-}
-
-.hero-race__dot--trail {
-  background: var(--banner-chip-bg);
-  box-shadow: inset 0 0 0 2px var(--banner-faint);
-}
-
-.hero-race__dot--you {
-  width: 1.1rem;
-  height: 1.1rem;
-  background: var(--banner-dot);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hero-accent) 30%, transparent);
-}
-
-.hero-race__label {
-  position: absolute;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 0.74rem;
-  font-weight: 750;
-  letter-spacing: 0.03em;
-  line-height: 1.15;
-}
-
-/* The two names over the line hang from opposite ends and never pass the middle. */
-.hero-race__label--over {
-  bottom: calc(50% + 0.7rem);
-  max-width: 40%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hero-race__label--under {
-  top: calc(50% + 0.85rem);
-}
-
-.hero-race__label--rival {
-  color: var(--banner-ink);
-}
-
-.hero-race__label--trail {
-  color: var(--banner-faint);
-}
-
-.hero-race__label--you,
-.hero-race__label--gap {
-  color: var(--banner-accent-ink);
-}
-
-.hero-race__label--you {
-  font-size: 0.8rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.hero-race__label--start {
-  transform: translateX(-0.45rem);
-}
-
-.hero-race__label--end {
-  transform: translateX(calc(-100% + 0.45rem));
-}
-
-.hero-race__flag {
-  width: 0.72rem;
-  height: 0.72rem;
-  margin-right: 0.28rem;
-  vertical-align: -0.08rem;
-}
-
-.hero-race__flag path:first-child {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-
-.hero-race__flag path:last-child {
-  fill: currentColor;
-}
-
-/*
- * Along the bottom, the whole width: where you stand across the arcade this
- * period, or on a first visit, what the arcade promises.
- */
+/* Along the bottom, the whole width: where the player stands across the arcade (a player card's). */
 .home-banner__strip {
   grid-column: 1 / -1;
   position: relative;
@@ -653,33 +469,6 @@ html[data-theme="dark"] .home-banner {
   color: var(--banner-muted);
 }
 
-.home-banner__stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.home-banner__stat-k {
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--banner-faint);
-}
-
-.home-banner__stat b {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--banner-ink);
-}
-
-.home-banner__stat-rank {
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
-}
-
 .home-banner__standing-link {
   margin-left: auto;
   font-weight: 750;
@@ -691,17 +480,6 @@ html[data-theme="dark"] .home-banner {
 .home-banner__standing-link:focus-visible {
   text-decoration: underline;
   text-underline-offset: 0.2em;
-}
-
-/* ---------- the banner on a first visit: what the arcade is ---------- */
-
-.home-banner--welcome .home-banner__text {
-  gap: 0.9rem;
-}
-
-.home-banner__goal--pitch {
-  max-width: none;
-  font-size: clamp(2.2rem, 4.4vw, 3.6rem);
 }
 
 /* Today's daily as a way in: its game, how it is won, its clock. */
@@ -763,52 +541,9 @@ html[data-theme="dark"] .home-banner {
   color: var(--banner-faint);
 }
 
-.home-banner__promises {
-  align-items: center;
-}
-
-.home-banner__promise {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.home-banner__promise svg {
-  flex: none;
-  width: 1.1rem;
-  height: 1.1rem;
-  color: var(--banner-accent-ink);
-}
-
-.home-banner__promise-short {
-  display: none;
-}
-
 @media (max-width: 56rem) {
-  .home-banner--rung .home-banner__art,
-  .home-banner--welcome .home-banner__art {
-    min-height: 8.5rem;
-  }
-
-  .home-banner--rung .home-banner__art > .inline-thumb,
-  .home-banner--welcome .home-banner__art > .inline-thumb {
-    width: 8.5rem;
-  }
-
   .home-banner__strip {
     padding: 0.85rem 1.25rem;
-  }
-
-  /*
-   * On a phone the screen sits on top, sixteen by nine, and fades into the words under it. Wider, it keeps the
-   * banner's width (a width of its own, or the height cap would narrow it too) and grows taller more slowly,
-   * never wider than about 2.7 to 1, so a game zoomed to fit its screen still shows what's going on.
-   */
-  .home-banner .home-banner__art--screen {
-    width: 100%;
-    min-height: 0;
-    aspect-ratio: 16 / 9;
-    max-height: max(15rem, 36vw);
   }
 
   .home-banner__fade {
@@ -846,35 +581,12 @@ html[data-theme="dark"] .home-banner {
     gap: 0.4rem 0.9rem;
   }
 
-  .home-banner__stat--side,
   .home-banner__standing-link {
     display: none;
   }
 
   .home-banner__standing .home-banner__standing-link {
     display: inline;
-  }
-
-  /* The promises shorten to three: no ads, no install, free. */
-  .home-banner__promises {
-    justify-content: space-between;
-    gap: 0.4rem 0.8rem;
-    font-size: 0.82rem;
-  }
-
-  .home-banner__promise--roomy,
-  .home-banner__promise-long {
-    display: none;
-  }
-
-  .home-banner__promise-short {
-    display: inline;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-race__lit {
-    animation: none;
   }
 }
 
@@ -1551,6 +1263,54 @@ html[data-theme="light"] .hb-plaque__who {
 
 .hb-record--skel {
   pointer-events: none;
+}
+
+/* ---------- the foot of the page: the bug hunt and groups side by side ---------- */
+
+/* D on the "Home page redesign" canvas: the day's bug and a board of your own, the last two things on the page. */
+.home-foot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Side by side, the groups band keeps to its words, and its bracket steps aside, as on a phone. */
+.home-foot .gband {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  padding: 1.3rem 1.5rem;
+}
+
+.home-foot .gband__art {
+  display: none;
+}
+
+.home-foot .gband__text {
+  gap: 0.5rem;
+}
+
+.home-foot .gband__title {
+  font-size: 1.3rem;
+}
+
+.home-foot .gband__lead {
+  font-size: 0.88rem;
+}
+
+.home-foot .gband__acts {
+  margin-top: 0.15rem;
+}
+
+.home-foot .hunt-strip {
+  padding: 1rem 1.25rem 1rem 1rem;
+}
+
+@media (max-width: 64rem) {
+  .home-foot {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---------- groups and events: a board for your own people ---------- */
@@ -3188,9 +2948,6 @@ html[data-theme="dark"] .home-banner__hint--error {
   gap: 1rem;
 }
 
-
-
-
 /* ---------- the lighter phone home ---------- */
 
 /* The newest games' own row says they're new above a phone, so their badge waits for a phone. */
@@ -3201,99 +2958,19 @@ html[data-theme="dark"] .home-banner__hint--error {
 }
 
 /*
- * On a phone the home page keeps to what a glance takes in. It ran six
- * screens, and the games began below the first; now (HomePage sets the order)
- * a shorter banner with one way to play, the games straight under it three
- * across, what's on as two slim rows, the bug hunt on a line, the top three
- * of the standings with the house records, and groups as a title and a
- * button. Explanations the rest of the site gives once go; anything about the
- * player stays. Scoped to the home page: other pages share these parts.
+ * On a phone the home page keeps to what a glance takes in (HomePage sets the order): the games three across,
+ * what's on as two slim rows, the bug hunt on a line, the top three of the standings with the house records, and
+ * groups as a title and a button. Explanations the rest of the site gives once go; anything about the player
+ * stays. Scoped to the home page: other pages share these parts.
  */
 @media (max-width: 36rem) {
   .home-rail {
     gap: 1.1rem;
   }
 
-  /* The banner: a shorter screen, the name, the scores on a line, one button. */
-  .home-rail .home-banner .home-banner__art--screen {
-    aspect-ratio: 12 / 5;
-  }
-
-  .home-rail .home-banner__art {
-    min-height: 7.5rem;
-  }
-
-  .home-rail .home-banner__art > .inline-thumb {
-    width: 7rem;
-  }
-
-  .home-rail .home-banner__text {
-    gap: 0.6rem;
-    padding: 0.9rem 1rem 1.05rem;
-  }
-
-  .home-rail .home-banner__name {
-    font-size: 2rem;
-  }
-
-  .home-rail .home-banner__goal {
-    font-size: 1.65rem;
-  }
-
-  .home-rail .home-banner__blurb,
-  .home-rail .home-banner__ghost,
-  .home-rail .home-banner__daily,
-  .home-rail .home-banner__promises {
+  /* Today's event, on a first visit's welcome: not on a phone, where the welcome keeps to Play. */
+  .home-rail .home-banner__daily {
     display: none;
-  }
-
-  .home-rail .home-banner__acts {
-    order: 2;
-    width: 100%;
-    margin-top: 0.15rem;
-  }
-
-  .home-rail .home-banner__cta {
-    flex: 1;
-    justify-content: center;
-    min-height: 3rem;
-  }
-
-  /*
-   * A season's banner (season/SeasonBanner.tsx), and its skeleton (HomeHero.tsx), keep the game it offers
-   * beside See the pass, each on a line of its own when the two don't fit, and, with no level row, a line on
-   * the pass.
-   */
-  .home-rail :is(.home-banner--season, .home-banner--skel) .home-banner__ghost {
-    display: inline-flex;
-    flex: 1;
-    justify-content: center;
-    min-height: 3rem;
-  }
-
-  .home-rail :is(.home-banner--season, .home-banner--skel) :is(.home-banner__cta, .home-banner__ghost) {
-    white-space: nowrap;
-  }
-
-  .home-rail :is(.home-banner--season, .home-banner--skel) .home-banner__blurb--short {
-    display: block;
-    font-size: 0.95rem;
-  }
-
-  .home-rail .home-banner__figures {
-    flex-direction: column;
-    gap: 0.15rem;
-    margin: 0;
-  }
-
-  .home-rail .home-banner__figure {
-    display: flex;
-    align-items: baseline;
-    gap: 0.45rem;
-  }
-
-  .home-rail .home-banner__figure dd {
-    font-size: 1.05rem;
   }
 
   /* The games, three across: the screen, the name and one number under it. */
@@ -3522,40 +3199,3 @@ html[data-theme="dark"] .home-banner__hint--error {
   }
 }
 
-/* The banner while it's not yet known whether a season is on (HomeHero.tsx): its shape, shimmering, no game in it. */
-.home-banner.home-banner--skel,
-html[data-theme="dark"] .home-banner.home-banner--skel {
-  background: rgba(var(--surface-rgb), 0.6);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
-  box-shadow: none;
-}
-
-/* The season's title is the one it holds the place of: its size and line, as season.css has them. */
-.home-banner--skel .home-banner__name {
-  font-family: var(--space-font);
-  font-size: clamp(2.2rem, 4.2vw, 3.3rem);
-  letter-spacing: 0.01em;
-}
-
-.home-banner__skel-title {
-  height: 0.75em;
-}
-
-/* A button's own size, its words hidden: the shape of what's coming, no colour of its own. */
-.home-banner .home-banner__skel-btn {
-  color: transparent;
-  background: rgba(var(--ink-rgb), 0.1);
-  border-color: transparent;
-  box-shadow: none;
-  pointer-events: none;
-}
-
-.home-banner__skel-art {
-  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.04), rgba(var(--ink-rgb), 0.09), rgba(var(--ink-rgb), 0.04));
-  background-size: 200% 100%;
-  animation: lb-skel-shine 1.15s ease-in-out infinite;
-}
-
-.home-banner__skel-art::before {
-  content: none;
-}

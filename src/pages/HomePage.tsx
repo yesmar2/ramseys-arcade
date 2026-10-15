@@ -44,7 +44,7 @@ function usePhone(): boolean {
   return phone
 }
 
-type Part = 'hero' | 'today' | 'upnext' | 'hunt' | 'invites' | 'onnow' | 'wall' | 'boards' | 'spotter' | 'groups'
+type Part = 'hero' | 'today' | 'upnext' | 'invites' | 'onnow' | 'wall' | 'boards' | 'spotter' | 'foot'
 
 /*
  * D on the "Home page redesign" canvas (Ramsey, 2026-10-15: "ok, let's impelment this"). Anyone who has played
@@ -57,9 +57,9 @@ type Part = 'hero' | 'today' | 'upnext' | 'hunt' | 'invites' | 'onnow' | 'wall' 
  * A first visit (no tag, nothing played on this device) gets the welcome first, what the arcade is, then the
  * ticket and the games; the season and Blip's question come after the games (HomeUpNext's first-visit row).
  */
-const WIDE: Part[] = ['today', 'upnext', 'invites', 'onnow', 'wall', 'boards', 'spotter', 'hunt', 'groups']
-const NARROW: Part[] = ['today', 'upnext', 'invites', 'wall', 'onnow', 'boards', 'spotter', 'hunt', 'groups']
-const FIRST: Part[] = ['hero', 'invites', 'today', 'wall', 'upnext', 'onnow', 'boards', 'spotter', 'hunt', 'groups']
+const WIDE: Part[] = ['today', 'upnext', 'invites', 'onnow', 'wall', 'boards', 'spotter', 'foot']
+const NARROW: Part[] = ['today', 'upnext', 'invites', 'wall', 'onnow', 'boards', 'spotter', 'foot']
+const FIRST: Part[] = ['hero', 'invites', 'today', 'wall', 'upnext', 'onnow', 'boards', 'spotter', 'foot']
 
 /**
  * The front door, at the width of the screen: today's ticket (on a first visit, after what the arcade is), what's
@@ -83,13 +83,18 @@ export function HomePage() {
       </PartErrorBoundary>
     ),
     upnext: <HomeUpNext key="upnext" first={firstVisit} />,
-    hunt: <BugHuntStrip key="hunt" />,
     invites: <PendingInvitesStrip key="invites" />,
     onnow: <HomeOnNow key="onnow" />,
     wall: <GameWall key="wall" puzzles />,
     boards: <HomeBoards key="boards" />,
     spotter: <HomeSpotterStrip key="spotter" />,
-    groups: <HomeGroupsBand key="groups" />,
+    // The bug hunt and groups side by side at the foot (home.css .home-foot); one under the other when narrow.
+    foot: (
+      <div key="foot" className="home-foot">
+        <BugHuntStrip />
+        <HomeGroupsBand />
+      </div>
+    ),
   }
   return (
     <>

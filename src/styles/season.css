@@ -198,72 +198,10 @@ html[data-theme='dark'] .site-you__lv-n {
   background: var(--space-orange);
 }
 
-/* ---------- the home banner, while a season is live ---------- */
-
-.home-banner.home-banner--season,
-html[data-theme='dark'] .home-banner.home-banner--season {
-  --banner-ink: #ffffff;
-  --banner-muted: var(--space-text);
-  --banner-faint: var(--space-muted);
-  --banner-hover: var(--space-hover);
-  --banner-chip-bg: rgba(var(--space-orange-rgb), 0.16);
-  --banner-chip-border: rgba(var(--space-orange-rgb), 0.42);
-  --banner-chip-ink: var(--space-chip-ink);
-  --banner-chip-hover: rgba(var(--space-orange-rgb), 0.26);
-  --banner-dot: var(--space-orange);
-  --banner-glow: rgba(var(--space-violet-rgb), 0.35);
-  background-color: var(--space-night);
-  background-image: var(--season-stars-dark);
-  background-size: 360px 360px;
-  border-color: rgba(var(--space-violet-rgb), 0.55);
-  box-shadow: 0 16px 40px rgba(var(--space-night-rgb), 0.3);
-}
-
-.home-banner--season .home-banner__name {
-  font-family: var(--space-font);
-  font-size: clamp(2.2rem, 4.2vw, 3.3rem);
-  letter-spacing: 0.01em;
-  text-shadow: 0 0 22px rgba(var(--space-violet-rgb), 0.8), 0 4px 0 var(--space-violet-ink);
-}
-
-.home-banner--season .home-banner__ghost {
-  color: #ffffff;
-  border-color: rgba(var(--space-star-rgb), 0.35);
-  background: rgba(var(--space-star-rgb), 0.06);
-}
-
-.home-banner--season .home-banner__ghost:hover,
-.home-banner--season .home-banner__ghost:focus-visible {
-  background: rgba(var(--space-star-rgb), 0.14);
-}
-
-.home-banner__art--season {
-  min-height: 14rem;
-}
-
-.home-banner__art--season::before {
-  display: none;
-}
-
-.home-banner__art--season > svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
 /*
  * Over the words, the banner's width. Past the height cap the scene is cropped (its svg slices), not narrowed;
  * the cap rises with the width, so it's never wider than about 2.7 to 1 and keeps its moon.
  */
-@media (max-width: 56rem) {
-  .home-banner__art--season {
-    width: 100%;
-    min-height: 0;
-    aspect-ratio: 16 / 8.5;
-    max-height: max(14rem, 36vw);
-  }
-}
 
 /* ---------- the spotlight: on its games' tiles, its daily's card, and its games' pages ---------- */
 
