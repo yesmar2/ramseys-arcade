@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { TAG_LABELS, wallGames, type Game, type GameTag } from '../data/games'
+import { useAccountId } from '../hooks/useAccountId'
 import { useBoardLeaders, type BoardLeader } from '../hooks/useBoardLeaders'
-import { gameHref } from '../hooks/useHashRoute'
+import { gameHref, gamePlayHref } from '../hooks/useHashRoute'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -11,13 +12,16 @@ import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace, type LeaderboardPeriod } from '../lib/leaderboard'
-import { periodWord } from '../lib/profileMath'
+import { ordinal, periodWord } from '../lib/profileMath'
 import { formatBoardScore, formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import { resolveGameAccent } from '../lib/theme'
+import { AlsoToday } from './AlsoToday'
 import { GameArt } from './GameArt'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
+import { PlayerAvatar } from './PlayerAvatar'
+import { useTicket } from './todayPunches'
 
 type Tab = 'all' | GameTag | 'new'
 
@@ -164,29 +168,79 @@ const ONE: Span = { w: 1, h: 1 }
 const PLACES = ['1st', '2nd', '3rd']
 
 /**
- * What the number under a cabinet's screen is: the best on the board for the period, or, on a board nobody has
+ * What the number under a cabinet's screen is: the top of the board for the period, or, on a board nobody has
  * played this period, the game's high score of all time, the HI SCORE its page's screen shows.
  */
-const BEST: Record<LeaderboardPeriod, string> = {
-  daily: 'TODAY’S BEST',
-  weekly: 'WEEK’S BEST',
-  monthly: 'MONTH’S BEST',
-  all: 'HI SCORE',
-  season: 'SEASON’S BEST',
+const TOP: Record<LeaderboardPeriod, string> = {
+  daily: 'Top today',
+  weekly: 'Top this week',
+  monthly: 'Top this month',
+  all: 'Top all time',
+  season: 'Top this season',
+}
+
+const CrownIcon = () => (
+  <svg className="wall-tile__crown" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M3 8.2l4.6 3.6L12 5l4.4 6.8L21 8.2l-2 9.8H5z" />
+  </svg>
+)
+
+const PlayGlyph = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M7 4.5v15l12-7.5z" fill="currentColor" />
+  </svg>
+)
+
+const ChevronIcon = () => (
+  <svg className="wall-tile__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+)
+
+/*
+ * How many columns the wall runs at this width, as home.css lays it out (a phone's home has three), so the day's
+ * puzzles can take the rest of the floor's last row.
+ */
+const COLUMN_QUERIES: [string, number][] = [
+  ['(max-width: 36rem)', 3],
+  ['(max-width: 50rem)', 3],
+  ['(max-width: 64rem)', 4],
+  ['(min-width: 100rem)', 6],
+]
+
+function columnsNow(): number {
+  if (typeof window === 'undefined') return 5
+  return COLUMN_QUERIES.find(([q]) => window.matchMedia(q).matches)?.[1] ?? 5
+}
+
+function useWallColumns(): number {
+  const [columns, setColumns] = useState(columnsNow)
+  useEffect(() => {
+    const lists = COLUMN_QUERIES.map(([q]) => window.matchMedia(q))
+    const sync = () => setColumns(columnsNow())
+    sync()
+    lists.forEach((l) => l.addEventListener('change', sync))
+    return () => lists.forEach((l) => l.removeEventListener('change', sync))
+  }, [])
+  return columns
 }
 
 /**
- * The wall: every game but the dailies (they're on today's row, above it)
+ * The wall: every game but the dailies (they're on today's ticket, above it)
  * as an arcade cabinet, in a grid that runs five across on a desktop and three
  * on a phone, and no two cabinets of one colour side by side. The finished
  * games stand on the floor together, a newer one with a New badge (Ramsey,
  * 2026-10-14: "we don't need the 'New on the floor' section on home page, all
  * games can be together"). Each cabinet's screen shows its game, which
- * plays when asked; under the screen go the name, the board's high score and
- * yours. Today's event's game and the weekly's wear a badge. Tabs along the top
- * cut the wall by what kind of game it is, and say how many of each there are.
+ * plays when asked, and a tap on it goes straight to the game; under the
+ * screen go the name, the board's top score with who holds it, and where you
+ * are, all of it the way to the game's page (D on the "Home page redesign"
+ * canvas, 2026-10-15). Today's event's game and the weekly's wear a badge. With
+ * `puzzles`, the day's puzzles, just for fun, take the rest of the floor's last
+ * row. Tabs along the top cut the wall by what kind of game it is, and say how
+ * many of each.
  */
-export function GameWall() {
+export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean } = {}) {
   const device = useDeviceType()
   const cleaned = normalizePlayerName(usePlayerName())
   const period = useDefaultPeriod()
@@ -197,10 +251,18 @@ export function GameWall() {
   const bests = usePlayerBests(cleaned, period)
   const { byGame } = useGlobalRank()
   const { leaders, failed } = useBoardLeaders(period)
+  // The day's puzzles (lib/today.ts alsoDailies), from the same punches as the ticket above.
+  const viewer = useAccountId()
+  const { also } = useTicket(viewer)
+  const columns = useWallColumns()
 
   const all = wallGames(device)
   const shown = all.filter((g) => inTab(g, tab))
   const floor = arrangeWall(shown, null, () => ONE)
+  const puzzles = withPuzzles && (tab === 'all' || tab === 'puzzle') && also.length > 0
+  // The rest of the last row, or a row of its own where one cell would be all that's left.
+  const left = columns - (floor.length % columns)
+  const puzzleSpan = left >= 2 ? left : columns
   // Today's event's game and the weekly's wear their badges on the wall.
   const dailySlug = official.find((t) => t.cadence === 'daily')?.games[0] ?? null
   const weekly = new Set(official.find((t) => t.cadence === 'weekly')?.games ?? [])
@@ -251,7 +313,16 @@ export function GameWall() {
           })}
         </div>
       </div>
-      {floor.length > 0 ? <ul className="wall__grid">{floor.map((g, i) => cabinet(g, i))}</ul> : null}
+      {floor.length > 0 || puzzles ? (
+        <ul className="wall__grid">
+          {floor.map((g, i) => cabinet(g, i))}
+          {puzzles ? (
+            <li className="wall__cell wall__cell--also" style={{ gridColumn: `span ${puzzleSpan}` } as CSSProperties}>
+              <AlsoToday punches={also} look="tile" />
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
     </section>
   )
 }
@@ -319,6 +390,9 @@ export function WallTile({
   const when = periodWord(period)
   const rows = top ? (top.entries.length > 0 ? top.entries : [top.entry]) : []
   const kind = (game.tags ?? []).map((tag) => TAG_LABELS[tag]).join(' · ') || 'Game'
+  // Where you are, after what the number is: your place on the period's board, else your best; with neither,
+  // or signed out, nothing.
+  const mine = place ? `you’re ${ordinal(place)}${total ? ` of ${total}` : ''}` : best ? `your best ${fmtBest(best)}` : null
   const label = [
     game.name,
     flag ? flag.label.toLowerCase() : null,
@@ -338,8 +412,10 @@ export function WallTile({
 
   return (
     <li className="wall__cell" data-hunt={hunt}>
-      <a className="wall-tile" href={gameHref(game.slug)} style={style} aria-label={label}>
-        <span className="wall-tile__screen">
+      <div className="wall-tile" style={style}>
+        {/* The screen is the way straight in: a tap on it opens the game itself, not its page (the launch review's
+            "fewer taps to play"). The game plays on it under a pointer, as ever. */}
+        <a className="wall-tile__screen" href={gamePlayHref(game.slug)} aria-label={`Play ${game.name}`}>
           <span className="wall-tile__art" aria-hidden="true">
             <GameArt slug={game.slug} shape="card" fallback={<GameThumbArt slug={game.slug} accent={accent} />} />
           </span>
@@ -380,54 +456,57 @@ export function WallTile({
               <span className="wall-tile__score-hint">The scores didn’t load.</span>
             )}
           </span>
-        </span>
-        <span className="wall-tile__info" aria-hidden="true">
-          <span className="wall-tile__title">
+          <span className="wall-tile__play" aria-hidden="true">
+            <PlayGlyph />
+            <span className="wall-tile__play-word">Play</span>
+          </span>
+        </a>
+        <a className="wall-tile__info" href={gameHref(game.slug)} aria-label={label}>
+          <span className="wall-tile__title" aria-hidden="true">
             <span className="wall-tile__name">{game.name}</span>
             <span className="wall-tile__kind">{kind}</span>
           </span>
           {/* A pointer on the scores brings the board's table up over the screen. */}
-          <span className="wall-tile__lines">
-            <span className="wall-tile__line">
-              {/* Whose board the number tops: the period's, or all time's where nobody has played the period. */}
-              <span className="wall-tile__tag">{BEST[top?.period ?? 'all']}</span>
+          <span className="wall-tile__lines" aria-hidden="true">
+            {/* The board's top score, the number a cabinet is played to beat, and who holds it. */}
+            <span className="wall-tile__top">
+              <CrownIcon />
               {top ? (
                 <>
                   <b className="wall-tile__figure">{fmt(top.entry.score)}</b>
-                  <span className="wall-tile__who">{top.entry.name}</span>
+                  <span className="wall-tile__who">
+                    <PlayerAvatar avatarId={top.entry.avatarId} name={top.entry.name} size="xs" />
+                    <span className="wall-tile__who-name">{top.entry.name}</span>
+                  </span>
                 </>
               ) : top === null ? (
-                <span>
-                  open<span className="wall-tile__roomy">, first run takes it</span>
-                </span>
+                <span className="wall-tile__open">No score yet</span>
               ) : asking ? (
                 // Who leads isn't known yet: nothing said, and the line holds its height.
-                <span>
-                  <span className="skel-line" style={{ '--skel-w': '4.5rem' } as CSSProperties} />
+                <span className="wall-tile__open">
+                  <span className="skel-line" style={{ '--skel-w': '6.5rem' } as CSSProperties} />
                 </span>
               ) : (
                 // It didn't come: nothing said either way.
-                <span>—</span>
+                <span className="wall-tile__open">—</span>
+              )}
+              <ChevronIcon />
+            </span>
+            {/* Whose board the number tops (the period's, or all time's where nobody has played the period), then
+                you; on a board nobody is on, what the first run gets. */}
+            <span className="wall-tile__sub">
+              {top === null ? (
+                <span className="wall-tile__when">First run takes it</span>
+              ) : (
+                <>
+                  <span className="wall-tile__when">{TOP[top?.period ?? period]}</span>
+                  {mine ? <span className="wall-tile__mine">{mine}</span> : null}
+                </>
               )}
             </span>
-            {place || best ? (
-              <span className="wall-tile__line">
-                <span className="wall-tile__tag wall-tile__tag--you">YOU</span>
-                <span className="wall-tile__mine">
-                  {place ? (
-                    <>
-                      #{place}
-                      <span className="wall-tile__roomy"> {when}</span>
-                    </>
-                  ) : null}
-                  {place && best ? ' · ' : null}
-                  {best ? fmtBest(best) : null}
-                </span>
-              </span>
-            ) : null}
           </span>
-        </span>
-      </a>
+        </a>
+      </div>
     </li>
   )
 }

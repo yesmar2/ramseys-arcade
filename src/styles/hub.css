@@ -817,8 +817,9 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
     scroll-snap-align: start;
   }
 
-  /* The keyboard ring goes inside the tile, clear of the line's edges. */
-  .gh .gh-shelf__grid .wall-tile:focus-visible {
+  /* The keyboard ring goes inside the screen or the words, clear of the line's edges. */
+  .gh .gh-shelf__grid .wall-tile__screen:focus-visible,
+  .gh .gh-shelf__grid .wall-tile__info:focus-visible {
     outline-offset: -2px;
   }
 }

@@ -12,12 +12,14 @@ type PlayerAvatarProps = {
   name?: string
   /** A parsed avatar wins over `avatarId`, for previews that haven't been saved. */
   avatar?: Avatar
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
   title?: string
 }
 
 const SIZE_REM: Record<NonNullable<PlayerAvatarProps['size']>, string> = {
+  // A name's mark in a line of text: the holder of a cabinet's top score (GameWall.tsx).
+  xs: '1.2rem',
   sm: '1.45rem',
   md: '2rem',
   lg: '3.5rem',

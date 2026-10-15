@@ -1930,35 +1930,80 @@ html[data-theme="dark"] .wall-tile {
 }
 
 .wall-tile:hover,
-.wall-tile:focus-visible {
+.wall-tile:focus-visible,
+.wall-tile:has(:focus-visible) {
   transform: translateY(-4px);
   box-shadow: 0 16px 32px color-mix(in srgb, var(--tile-accent) 28%, transparent);
 }
 
 html[data-theme="dark"] .wall-tile:hover,
-html[data-theme="dark"] .wall-tile:focus-visible {
+html[data-theme="dark"] .wall-tile:focus-visible,
+html[data-theme="dark"] .wall-tile:has(:focus-visible) {
   box-shadow: 0 18px 36px color-mix(in srgb, var(--tile-accent) 35%, rgba(0, 0, 0, 0.3));
 }
 
-/* The tile's own colour, deepened so its ring holds 3:1 on the light page. */
-.wall-tile:focus-visible {
+/* The tile's own colour, deepened so its ring holds 3:1 on the light page: round the screen, or the words (or,
+   on the profile's cabinets, which are one link, the whole tile). */
+.wall-tile:focus-visible,
+.wall-tile__screen:focus-visible,
+.wall-tile__info:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--tile-accent) 55%, var(--ink));
   outline-offset: 2px;
 }
 
-html[data-theme="dark"] .wall-tile:focus-visible {
+html[data-theme="dark"] .wall-tile:focus-visible,
+html[data-theme="dark"] .wall-tile__screen:focus-visible,
+html[data-theme="dark"] .wall-tile__info:focus-visible {
   outline-color: rgba(255, 255, 255, 0.7);
 }
 
-/* The screen: the game's picture behind glass (or, for a game with none yet, its mark on its colour). */
+/* The screen: the game's picture behind glass (or, for a game with none yet, its mark on its colour), and the way into the game. */
 .wall-tile__screen {
   position: relative;
+  display: block;
   aspect-ratio: 4 / 3;
   border-radius: 0.8rem;
   overflow: hidden;
   isolation: isolate;
+  color: inherit;
+  text-decoration: none;
   background: linear-gradient(160deg, var(--wall-a), var(--wall-b));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tile-accent) 32%, transparent);
+}
+
+/*
+ * Play, on the glass: a quiet chip at rest, so a tap on the screen is known to start the game; under a pointer,
+ * or with focus, the ticket's orange, as the game plays behind it.
+ */
+.wall-tile__play {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.9rem;
+  padding: 0 0.75rem 0 0.62rem;
+  border-radius: 999px;
+  background: rgba(10, 16, 30, 0.7);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  backdrop-filter: blur(4px);
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.wall-tile__play svg {
+  width: 0.62rem;
+  height: 0.62rem;
+}
+
+.wall-tile__screen:hover .wall-tile__play,
+.wall-tile__screen:focus-visible .wall-tile__play {
+  background: #ff8552;
+  color: #3a1406;
+  transform: scale(1.06);
 }
 
 /* The glass: light falling from the top left, over the mark and any game playing. */
@@ -2012,7 +2057,8 @@ html[data-theme="dark"] .wall-tile__art .inline-thumb {
 }
 
 .wall-tile:hover .inline-thumb,
-.wall-tile:focus-visible .inline-thumb {
+.wall-tile:focus-visible .inline-thumb,
+.wall-tile:has(:focus-visible) .inline-thumb {
   transform: scale(1.06);
 }
 
@@ -2192,13 +2238,16 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   color: var(--muted);
 }
 
-/* Under the screen: the name and what kind of game, the board's high score, and yours. */
+/* Under the screen: the name and what kind of game, the board's top score and who holds it, and yours: the way to its page. */
 .wall-tile__info {
   display: grid;
   align-content: start;
-  gap: 0.3rem;
+  gap: 0.35rem;
   min-width: 0;
   padding: 0.7rem 0.35rem 0.25rem;
+  border-radius: 0.7rem;
+  color: inherit;
+  text-decoration: none;
 }
 
 .wall-tile__title {
@@ -2237,58 +2286,115 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
 /* The scores under the name, together: what a pointer rests on to bring the table up. */
 .wall-tile__lines {
   display: grid;
-  gap: inherit;
+  gap: 0.2rem;
   min-width: 0;
 }
 
-.wall-tile__line {
+/* The top score, big enough to be the number a cabinet is played to beat: a crown, the score, who holds it. */
+.wall-tile__top {
   display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
+  align-items: center;
+  gap: 0.4rem;
   min-width: 0;
-  font-size: 0.76rem;
-  font-weight: 650;
-  line-height: 1.2;
-  white-space: nowrap;
+  min-height: 1.6rem;
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
 }
 
-.wall-tile__tag {
+.wall-tile__crown {
   flex: none;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--wall-accent-ink);
-}
-
-.wall-tile__tag--you {
-  color: var(--wall-you-ink);
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: #f5b942;
+  stroke: #b9831a;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
 }
 
 .wall-tile__figure {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 1.22rem;
   font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
   color: var(--ink);
 }
 
 .wall-tile__who {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   min-width: 0;
   margin-left: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.76rem;
   font-weight: 750;
   letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.wall-tile__who .player-avatar {
+  flex: none;
+}
+
+.wall-tile__who-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wall-tile__open {
+  min-width: 0;
+  font-size: 0.86rem;
+  font-weight: 750;
+  color: var(--muted);
+}
+
+.wall-tile__chev {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+/* With no holder to push it right, the way on still sits at the line's end. */
+.wall-tile__open + .wall-tile__chev {
+  margin-left: auto;
+}
+
+/* What the number is (the period's top, or all time's), then where you are. */
+.wall-tile__sub {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.wall-tile__when {
+  flex: none;
 }
 
 .wall-tile__mine {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: 700;
-  color: var(--ink);
+  font-weight: 750;
+  color: var(--wall-you-ink);
 }
 
-/* On a phone a cabinet keeps to the essentials: no kind, no ordinals, no spelled-out periods. */
+.wall-tile__mine::before {
+  content: '·';
+  margin-right: 0.4rem;
+  color: var(--muted);
+}
+
+/* On a phone a cabinet keeps to the essentials: no kind, no holder, the score's line and yours each on their own. */
 @media (max-width: 36rem) {
   .wall-tile {
     padding: 0.4rem;
@@ -2307,9 +2413,24 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   }
 
   .wall-tile__kind,
-  .wall-tile__roomy,
   .wall-tile__score-place,
-  .wall-tile__scores-head small {
+  .wall-tile__scores-head small,
+  .wall-tile__who,
+  .wall-tile__chev {
+    display: none;
+  }
+
+  /* Just the mark at rest: a tap anywhere on the screen plays. */
+  .wall-tile__play {
+    right: 0.35rem;
+    bottom: 0.35rem;
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .wall-tile__play-word {
     display: none;
   }
 
@@ -2331,8 +2452,28 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
     font-size: 0.92rem;
   }
 
-  .wall-tile__line {
-    font-size: 0.7rem;
+  .wall-tile__top {
+    gap: 0.3rem;
+    min-height: 0;
+  }
+
+  .wall-tile__crown {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .wall-tile__figure {
+    font-size: 1rem;
+  }
+
+  .wall-tile__sub {
+    flex-direction: column;
+    gap: 0.05rem;
+    font-size: 0.66rem;
+  }
+
+  .wall-tile__mine::before {
+    content: none;
   }
 }
 
@@ -3200,31 +3341,15 @@ html[data-theme="dark"] .home-banner__hint--error {
     font-size: 0.84rem;
   }
 
-  .home-rail .wall-tile__line {
-    gap: 0.3rem;
-    font-size: 0.72rem;
-  }
-
-  /* What the number is, small over it (WEEK'S BEST, HI SCORE), then the number in the game's colour; no holder.
+  /* The top score in the game's colour, no holder; what it is, small under it ("Top this week"), and then you.
      A bare "1,554 week" didn't say what 1,554 was (launch review, 2026-10-15). */
-  .home-rail .wall-tile__line:first-child {
-    flex-wrap: wrap;
-    row-gap: 0.1rem;
-  }
-
-  .home-rail .wall-tile__line:first-child .wall-tile__tag {
-    flex-basis: 100%;
-    font-size: 0.52rem;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-  }
-
-  .home-rail .wall-tile__who {
-    display: none;
-  }
-
-  .home-rail .wall-tile__line:first-child .wall-tile__figure {
+  .home-rail .wall-tile__figure {
+    font-size: 0.95rem;
     color: var(--wall-accent-ink);
+  }
+
+  .home-rail .wall-tile__sub {
+    font-size: 0.6rem;
   }
 
   /* What's on: the daily and the weekly as slim rows, the way in beside each. */

@@ -198,3 +198,118 @@ html[data-theme='dark'] .also {
     gap: 0.55rem;
   }
 }
+
+/*
+ * On the home page's wall, a tile of its own taking the rest of the floor's last row (GameWall.tsx): a cabinet's
+ * card washed in the just-for-fun violet, the three in a list, side by side where the row is wide, and on a
+ * phone's narrow tile just their pictures and names.
+ */
+.also--tile {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  padding: 1rem 1.15rem 0.85rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--also) 12%, var(--surface)) 0%, var(--surface) 72%);
+  border: 1px solid color-mix(in srgb, var(--also) 22%, transparent);
+  box-shadow:
+    0 1px 2px rgba(var(--shade-rgb), 0.05),
+    0 26px 40px -32px color-mix(in srgb, var(--also) 50%, transparent);
+}
+
+.also--tile .also__head {
+  margin-bottom: 0.35rem;
+}
+
+.also--tile .also__title {
+  font-size: 1.15rem;
+}
+
+.also--tile .also__sub {
+  font-size: 0.82rem;
+}
+
+.also--tile .also__list {
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: space-evenly;
+  gap: 0;
+}
+
+.also--tile .also__item {
+  padding: 0.55rem 0;
+  border-radius: 0;
+  background: none;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--also) 14%, transparent);
+}
+
+.also--tile .also__pic {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.also--tile .also__course {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Filled, as a cabinet's Play is: white on the violet in Light, the night's ink on its paler violet in Dark. */
+.also--tile .also__go {
+  min-height: 2.35rem;
+  padding: 0 0.9rem;
+  color: #ffffff;
+  background: var(--also);
+  border-color: transparent;
+}
+
+html[data-theme='dark'] .also--tile .also__go {
+  color: #1a1030;
+}
+
+.also--tile .also__go:hover,
+.also--tile .also__go:focus-visible {
+  background: color-mix(in srgb, var(--also) 85%, var(--ink));
+}
+
+@container (min-width: 44rem) {
+  .also--tile .also__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* A phone's tile: the three side by side, a picture and a name each, every one the way to its game's page. */
+@container (max-width: 17rem) {
+  .also--tile {
+    padding: 0.75rem 0.65rem 0.6rem;
+  }
+
+  .also--tile .also__sub,
+  .also--tile .also__course,
+  .also--tile .also__go,
+  .also--tile .also__result {
+    display: none;
+  }
+
+  .also--tile .also__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .also--tile .also__item {
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.2rem 0 0;
+    border-top: 0;
+    text-align: center;
+  }
+
+  .also--tile .also__game {
+    font-size: 0.72rem;
+    line-height: 1.15;
+  }
+}
