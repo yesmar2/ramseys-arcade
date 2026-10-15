@@ -204,19 +204,21 @@ function drawMilestones(g: Gfx) {
 
 type Pt = { x: number; y: number }
 
-/** Lane or off the buffer — both get an outline edge. */
-function openOrOutside(s: GameState, x: number, y: number) {
-  if (y < 0 || y >= s.rows || x < 0 || x >= s.cols) return true
+/** Lane or off the rows being outlined — both get an outline edge. */
+function openOrOutside(s: GameState, rows: number, x: number, y: number) {
+  if (y < 0 || y >= rows || x < 0 || x >= s.cols) return true
   return s.open[y][x]
 }
 
 /**
- * The outline of every wall region as closed loops of corners, walked so the
- * wall is always on the right. Where two regions only touch at a corner, the
- * walk turns right first, which keeps it on the region it started round. The
- * loops close along the buffer's top and bottom, which are off screen.
+ * The outline of every wall region in the buffer's top `rows` rows as closed
+ * loops of corners, walked so the wall is always on the right. Where two
+ * regions only touch at a corner, the walk turns right first, which keeps it
+ * on the region it started round. The loops close along the top of the buffer
+ * and the bottom of the last row, which are off screen, or out of the rows
+ * that are kept when only a few are being painted (wallLayerFor).
  */
-function wallLoops(s: GameState): Pt[][] {
+function wallLoops(s: GameState, rows: number): Pt[][] {
   const W = s.cols + 1
   const key = (x: number, y: number) => y * W + x
   const edges = new Map<number, Pt[]>()
@@ -226,13 +228,13 @@ function wallLoops(s: GameState): Pt[][] {
     if (list) list.push({ x: x1, y: y1 })
     else edges.set(k, [{ x: x1, y: y1 }])
   }
-  for (let y = 0; y < s.rows; y++) {
+  for (let y = 0; y < rows; y++) {
     for (let x = 0; x < s.cols; x++) {
       if (s.open[y][x]) continue
-      if (openOrOutside(s, x, y - 1)) add(x, y, x + 1, y)
-      if (openOrOutside(s, x + 1, y)) add(x + 1, y, x + 1, y + 1)
-      if (openOrOutside(s, x, y + 1)) add(x + 1, y + 1, x, y + 1)
-      if (openOrOutside(s, x - 1, y)) add(x, y + 1, x, y)
+      if (openOrOutside(s, rows, x, y - 1)) add(x, y, x + 1, y)
+      if (openOrOutside(s, rows, x + 1, y)) add(x + 1, y, x + 1, y + 1)
+      if (openOrOutside(s, rows, x, y + 1)) add(x + 1, y + 1, x, y + 1)
+      if (openOrOutside(s, rows, x - 1, y)) add(x, y + 1, x, y)
     }
   }
 
@@ -314,28 +316,26 @@ function roundedLoop(path: Path2D, pts: Pt[], r: number) {
   path.closePath()
 }
 
-type WallPaths = { key: string; outer: Path2D; inner: Path2D; leaves: Path2D }
-let wallCache: WallPaths | null = null
+type WallPaths = { outer: Path2D; inner: Path2D; leaves: Path2D }
 
 /**
- * The hedges as paths in the buffer's own space — the tube, the line inside
- * it and its leaves — rebuilt only when the board shifts a row. The camera
- * moves them with a translate, so the climb stays smooth between shifts.
+ * The hedges of the buffer's top `rows` rows as paths in its own space: the
+ * tube, the line inside it and its leaves. A hedge's shape at a tile depends
+ * only on the tiles next to it, and its leaves on its row in the world, so a
+ * few rows outlined on their own come out the same as with all the rest, short
+ * of the last row, where their outline closes.
  */
-function wallPaths(g: Gfx): WallPaths {
-  const { s, cell } = g
-  const key = `${s.originRow}:${s.cols}x${s.rows}:${cell}:${s.seed}`
-  if (wallCache && wallCache.key === key) return wallCache
+function wallPaths(s: GameState, cell: number, rows: number): WallPaths {
   const outer = new Path2D()
   const inner = new Path2D()
   const leaves = new Path2D()
   const toPx = (p: Pt) => ({ x: p.x * cell, y: p.y * cell })
-  for (const loop of wallLoops(s)) {
+  for (const loop of wallLoops(s, rows)) {
     roundedLoop(outer, insetLoop(loop, 0.18).map(toPx), cell * 0.26)
     roundedLoop(inner, insetLoop(loop, 0.32).map(toPx), cell * 0.14)
   }
   // A few leaves to every hedge tile, placed by its row in the world, so they climb with the hedge.
-  for (let y = 0; y < s.rows; y++) {
+  for (let y = 0; y < rows; y++) {
     const world = worldRowAt(s, y)
     for (let x = 0; x < s.cols; x++) {
       if (s.open[y][x]) continue
@@ -348,8 +348,7 @@ function wallPaths(g: Gfx): WallPaths {
       }
     }
   }
-  wallCache = { key, outer, inner, leaves }
-  return wallCache
+  return { outer, inner, leaves }
 }
 
 /** The hedges in the buffer's own space: a leafy fill, the line round them and the one inside. */
@@ -371,33 +370,110 @@ function paintWalls(ctx: CanvasRenderingContext2D, walls: WallPaths, dark: boole
 }
 
 /**
- * The hedges as a picture, drawn when the board shifts a row (or the size or the theme changes) and copied into
- * every frame after it: between shifts the camera only slides it. Painted afresh every frame, the hedges and
- * their leaves were most of what a frame cost, enough to make the climb judder on a busy laptop.
+ * The hedges as a picture, copied into every frame, so a frame never paints them. Its rows are a whole number of
+ * pixels tall, stretched to the cell when it is drawn, so when the board shifts the picture is copied down the
+ * rows it shifted exactly, and only the rows that came in are painted, with the one under them whose top edge
+ * they change. The very top row waits for the row that comes in above it: the two at the top of the buffer are
+ * above the view (HIDDEN_TOP). Painting all of it each time the board shifted took a frame on a laptop from about
+ * 7 ms to 22 ms, so the climb dropped a frame at every row. A new run, size or theme paints all of it.
  */
-let wallLayer: { key: string; canvas: HTMLCanvasElement } | null = null
+type WallLayer = {
+  /** What painting all of it again answers: the board's size, the cell, the theme, the sharpness. */
+  key: string
+  originRow: number
+  /** Pixels to a row in the picture. */
+  pitch: number
+  dpr: number
+  canvas: HTMLCanvasElement
+  /** The copy down goes into this and the two swap. */
+  spare: HTMLCanvasElement
+}
+
+/** By run, like the camera (views): a cabinet's preview can draw beside the game. */
+const wallLayers = new Map<number, WallLayer>()
+
+/** Paints buffer rows `from` to `to` (not including it) of hedges into the picture, over whatever was there. */
+function paintWallRows(layer: WallLayer, s: GameState, dark: boolean, cell: number, from: number, to: number) {
+  const ctx = layer.canvas.getContext('2d')
+  if (!ctx) return
+  const top = from * layer.pitch
+  const height = (to - from) * layer.pitch
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.clearRect(0, top, layer.canvas.width, height)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, top, layer.canvas.width, height)
+  ctx.clip()
+  ctx.setTransform(layer.dpr, 0, 0, layer.pitch / cell, 0, 0)
+  // Outlined a row further than they're kept: the outline closes along that row's far side, out of the clip.
+  paintWalls(ctx, wallPaths(s, cell, Math.min(s.rows, to + 1)), dark, cell)
+  ctx.restore()
+}
+
+function wallLayerFor(s: GameState, dark: boolean, cell: number, dpr: number): WallLayer {
+  const key = `${s.cols}x${s.rows}:${cell}:${dark}:${dpr}`
+  let layer = wallLayers.get(s.seed)
+  if (layer && wallLayers.size > 1) {
+    // Last drawn goes last, so the one given up for a new run is the one drawn longest ago.
+    wallLayers.delete(s.seed)
+    wallLayers.set(s.seed, layer)
+  }
+  if (!layer || layer.key !== key) {
+    if (!layer) {
+      // Another run's picture is reused rather than kept: the last two runs drawn are plenty.
+      const oldest = wallLayers.size >= 2 ? wallLayers.keys().next().value : undefined
+      const reused = oldest === undefined ? undefined : wallLayers.get(oldest)
+      if (oldest !== undefined) wallLayers.delete(oldest)
+      layer = {
+        key,
+        originRow: s.originRow,
+        pitch: 1,
+        dpr,
+        canvas: reused?.canvas ?? document.createElement('canvas'),
+        spare: reused?.spare ?? document.createElement('canvas'),
+      }
+      wallLayers.set(s.seed, layer)
+    }
+    layer.key = key
+    layer.dpr = dpr
+    layer.pitch = Math.max(1, Math.round(cell * dpr))
+    const width = Math.ceil(s.cols * cell * dpr)
+    const height = s.rows * layer.pitch
+    for (const canvas of [layer.canvas, layer.spare]) {
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width
+        canvas.height = height
+      }
+    }
+    layer.originRow = s.originRow
+    paintWallRows(layer, s, dark, cell, 0, s.rows)
+    return layer
+  }
+  const shift = s.originRow - layer.originRow
+  if (shift === 0) return layer
+  layer.originRow = s.originRow
+  const spare = shift > 0 && shift < s.rows - 1 ? layer.spare.getContext('2d') : null
+  if (!spare) {
+    paintWallRows(layer, s, dark, cell, 0, s.rows)
+    return layer
+  }
+  spare.setTransform(1, 0, 0, 1, 0, 0)
+  spare.clearRect(0, 0, layer.spare.width, layer.spare.height)
+  spare.imageSmoothingEnabled = false
+  spare.drawImage(layer.canvas, 0, shift * layer.pitch)
+  spare.imageSmoothingEnabled = true
+  ;[layer.canvas, layer.spare] = [layer.spare, layer.canvas]
+  paintWallRows(layer, s, dark, cell, 1, shift + 1)
+  return layer
+}
 
 function drawWalls(g: Gfx) {
   const { ctx, s, dark, cell, Y } = g
-  const walls = wallPaths(g)
   const m = ctx.getTransform()
   const dpr = Math.hypot(m.a, m.b) || 1
-  const w = s.cols * cell
-  const h = s.rows * cell
-  const key = `${walls.key}:${dark}:${dpr}`
-  if (!wallLayer || wallLayer.key !== key) {
-    const canvas = wallLayer?.canvas ?? document.createElement('canvas')
-    canvas.width = Math.ceil(w * dpr)
-    canvas.height = Math.ceil(h * dpr)
-    const layer = canvas.getContext('2d')
-    if (layer) {
-      layer.setTransform(dpr, 0, 0, dpr, 0, 0)
-      paintWalls(layer, walls, dark, cell)
-    }
-    wallLayer = { key, canvas }
-  }
+  const layer = wallLayerFor(s, dark, cell, dpr)
   // Where the camera has it, between pixels too, so the hedges glide with everything else rather than stepping.
-  ctx.drawImage(wallLayer.canvas, 0, Y(0), w, h)
+  ctx.drawImage(layer.canvas, 0, Y(0), layer.canvas.width / dpr, s.rows * cell)
 }
 
 // —————————————————————————————————————————————————————— crumbs
