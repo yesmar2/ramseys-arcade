@@ -453,18 +453,13 @@ function pathOf(d: string) {
 }
 
 /**
- * A bug on a canvas, `size` pixels tall, centred on (x, y). Lines never go
- * thinner than about a device pixel, so the smallest maze keeps its outlines.
+ * A bug's parts on a canvas already set to its 100-unit box, `devicePerUnit`
+ * device pixels to a unit. Lines never go thinner than about a device pixel,
+ * so the smallest maze keeps its outlines.
  */
-export function paintBug(ctx: CanvasRenderingContext2D, name: BugName, x: number, y: number, size: number, pose: BugPose, alpha = 1) {
-  const u = size / 100
-  ctx.save()
-  ctx.translate(x, y)
-  ctx.scale(u, u)
-  const m = ctx.getTransform()
-  const devicePerUnit = Math.hypot(m.a, m.b) || 1
+function paintParts(ctx: CanvasRenderingContext2D, name: BugName, pose: BugPose, devicePerUnit: number) {
   const thinnest = 1 / devicePerUnit
-  const base = ctx.globalAlpha * alpha
+  const base = ctx.globalAlpha
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
   for (const p of bugParts(name, pose)) {
@@ -492,6 +487,82 @@ export function paintBug(ctx: CanvasRenderingContext2D, name: BugName, x: number
       ctx.lineWidth = Math.max(p.line, thinnest)
       ctx.stroke(shape)
     }
+  }
+  ctx.globalAlpha = base
+}
+
+/** Every part of every bug falls inside this, in units from the middle of its box: a spider's legs, a moth's wings, a dazed bug's stars. */
+const REACH_X = 66
+const REACH_Y = 58
+
+/**
+ * The few things on a bug that move by the clock, held to a handful of steps
+ * so each step can be drawn once and kept: the moth's propeller, the light in
+ * the caterpillar's visor and the stars round a dazed bug. The step, and the
+ * time to draw it at; nothing for a bug with nothing moving.
+ */
+function clockStep(name: BugName, pose: BugPose): { step: number; t: number } | null {
+  const t = pose.t ?? 0
+  const at = (period: number, steps: number) => {
+    const step = Math.floor((((t % period) + period) % period) / (period / steps))
+    return { step, t: ((step + 0.5) * period) / steps }
+  }
+  if (pose.state === 'dazed') return at((Math.PI * 2) / 5, 12)
+  if (pose.state === 'asleep') return null
+  if (name === 'pester') return at(Math.PI / 9, 8)
+  if (name === 'car' && pose.lead) return at((Math.PI * 2) / 3.2, 16)
+  return null
+}
+
+/** Each bug as it looks right now, drawn once at the size it is on screen and kept: a frame copies it. */
+const sprites = new Map<string, HTMLCanvasElement | null>()
+
+/**
+ * A bug on a canvas, `size` pixels tall, centred on (x, y), from a picture of
+ * it kept for its pose and size: a frame with a dozen bugs about only copies
+ * them, which keeps the climb smooth on a busy laptop.
+ */
+export function paintBug(ctx: CanvasRenderingContext2D, name: BugName, x: number, y: number, size: number, pose: BugPose, alpha = 1) {
+  const u = size / 100
+  const m = ctx.getTransform()
+  const scale = Math.hypot(m.a, m.b) || 1
+  const devicePerUnit = u * scale
+  const clock = clockStep(name, pose)
+  const drawn = clock ? { ...pose, t: clock.t } : pose
+  const key = [
+    name,
+    pose.state,
+    pose.own ? 1 : 0,
+    pose.step,
+    Math.round(pose.look[0] * 4),
+    Math.round(pose.look[1] * 4),
+    pose.lead ? 1 : 0,
+    clock?.step ?? '',
+    Math.round(devicePerUnit * 100),
+  ].join('|')
+  let sprite = sprites.get(key)
+  if (sprite === undefined) {
+    if (sprites.size > 400) sprites.clear()
+    sprite = null
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.ceil(REACH_X * 2 * devicePerUnit))
+    canvas.height = Math.max(1, Math.ceil(REACH_Y * 2 * devicePerUnit))
+    const g = canvas.getContext('2d')
+    if (g) {
+      g.setTransform(devicePerUnit, 0, 0, devicePerUnit, REACH_X * devicePerUnit, REACH_Y * devicePerUnit)
+      paintParts(g, name, drawn, devicePerUnit)
+      sprite = canvas
+    }
+    sprites.set(key, sprite)
+  }
+  ctx.save()
+  ctx.globalAlpha *= alpha
+  if (sprite) {
+    ctx.drawImage(sprite, x - REACH_X * u, y - REACH_Y * u, REACH_X * 2 * u, REACH_Y * 2 * u)
+  } else {
+    ctx.translate(x, y)
+    ctx.scale(u, u)
+    paintParts(ctx, name, drawn, devicePerUnit)
   }
   ctx.restore()
 }

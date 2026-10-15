@@ -323,11 +323,8 @@ function wallPaths(g: Gfx): WallPaths {
   return wallCache
 }
 
-function drawWalls(g: Gfx) {
-  const { ctx, dark, cell, Y } = g
-  const walls = wallPaths(g)
-  ctx.save()
-  ctx.translate(0, Y(0))
+/** The hedges in the buffer's own space: a leafy fill, the line round them and the one inside. */
+function paintWalls(ctx: CanvasRenderingContext2D, walls: WallPaths, dark: boolean, cell: number) {
   ctx.fillStyle = hsla(HEDGE_HUE, 55, 42, dark ? 0.32 : 0.26)
   ctx.fill(walls.outer)
   ctx.save()
@@ -342,7 +339,36 @@ function drawWalls(g: Gfx) {
   ctx.strokeStyle = hsla(HEDGE_HUE, dark ? 62 : 58, dark ? 60 : 32, dark ? 0.36 : 0.32)
   ctx.lineWidth = Math.max(1, cell * 0.035)
   ctx.stroke(walls.inner)
-  ctx.restore()
+}
+
+/**
+ * The hedges as a picture, drawn when the board shifts a row (or the size or the theme changes) and copied into
+ * every frame after it: between shifts the camera only slides it. Painted afresh every frame, the hedges and
+ * their leaves were most of what a frame cost, enough to make the climb judder on a busy laptop.
+ */
+let wallLayer: { key: string; canvas: HTMLCanvasElement } | null = null
+
+function drawWalls(g: Gfx) {
+  const { ctx, s, dark, cell, Y } = g
+  const walls = wallPaths(g)
+  const m = ctx.getTransform()
+  const dpr = Math.hypot(m.a, m.b) || 1
+  const w = s.cols * cell
+  const h = s.rows * cell
+  const key = `${walls.key}:${dark}:${dpr}`
+  if (!wallLayer || wallLayer.key !== key) {
+    const canvas = wallLayer?.canvas ?? document.createElement('canvas')
+    canvas.width = Math.ceil(w * dpr)
+    canvas.height = Math.ceil(h * dpr)
+    const layer = canvas.getContext('2d')
+    if (layer) {
+      layer.setTransform(dpr, 0, 0, dpr, 0, 0)
+      paintWalls(layer, walls, dark, cell)
+    }
+    wallLayer = { key, canvas }
+  }
+  // On whole device pixels, so the hedges' lines stay sharp as the camera slides.
+  ctx.drawImage(wallLayer.canvas, 0, Math.round(Y(0) * dpr) / dpr, w, h)
 }
 
 // —————————————————————————————————————————————————————— crumbs
