@@ -943,11 +943,22 @@ function drawTide(g: Gfx) {
 
   const top = Math.min(surface, h + cell)
   const beat = heat > 0.5 ? 0.5 + 0.5 * Math.sin(t * (5 + heat * 6)) : 0
+  // The water's edge, a point every quarter tile.
+  const crest: Pt[] = []
+  for (let x = 0; x <= w + cell * 0.25; x += cell * 0.25) {
+    crest.push({ x, y: top + Math.sin(x / (cell * 1.3) + t * 2.4) * cell * 0.09 + Math.sin(x / (cell * 3.1) - t * 1.4) * cell * 0.06 })
+  }
   const glow = ctx.createLinearGradient(0, top - cell * 3.2, 0, top)
   glow.addColorStop(0, hsla(WATER_HUE, 80, 60, 0))
   glow.addColorStop(1, hsla(WATER_HUE, 80, 60, 0.08 + heat * 0.28 + beat * 0.08))
   ctx.fillStyle = glow
-  ctx.fillRect(0, top - cell * 3.2, w, cell * 3.2)
+  // Down to the waves rather than to the water's level, so no strip of bare sky shows above a dip.
+  ctx.beginPath()
+  ctx.moveTo(0, top - cell * 3.2)
+  ctx.lineTo(w, top - cell * 3.2)
+  for (let i = crest.length - 1; i >= 0; i--) ctx.lineTo(crest[i].x, crest[i].y)
+  ctx.closePath()
+  ctx.fill()
 
   // Rain coming down into it while it is awake, a short slanting streak a drop.
   if (heat > 0.25) {
@@ -970,11 +981,9 @@ function drawTide(g: Gfx) {
 
   if (top >= h) return
 
-  const wave = (x: number) =>
-    top + Math.sin(x / (cell * 1.3) + t * 2.4) * cell * 0.09 + Math.sin(x / (cell * 3.1) - t * 1.4) * cell * 0.06
   const path = new Path2D()
   path.moveTo(0, h)
-  for (let x = 0; x <= w + cell * 0.25; x += cell * 0.25) path.lineTo(x, wave(x))
+  for (const p of crest) path.lineTo(p.x, p.y)
   path.lineTo(w, h)
   path.closePath()
 
@@ -1003,10 +1012,7 @@ function drawTide(g: Gfx) {
 
   // The crest.
   ctx.beginPath()
-  for (let x = 0; x <= w + cell * 0.25; x += cell * 0.25) {
-    if (x === 0) ctx.moveTo(x, wave(x))
-    else ctx.lineTo(x, wave(x))
-  }
+  for (const p of crest) ctx.lineTo(p.x, p.y)
   ctx.strokeStyle = hsla(WATER_HUE - 8, 90, dark ? 76 : 50, 0.65 + heat * 0.35)
   ctx.lineWidth = Math.max(1.5, cell * 0.07)
   ctx.lineJoin = 'round'
