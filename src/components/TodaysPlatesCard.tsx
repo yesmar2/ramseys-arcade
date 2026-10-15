@@ -146,9 +146,10 @@ export function TodaysPlatesCard() {
           Six plates · {weekdayShort(day)} · {plan.label}
         </h2>
         <TodayCounts slug={SLUG} />
+        {/* Today's part, and the week's climb the page above doesn't say: how to play is the page's own (launch
+            review, 2026-10-15). */}
         <p className="evp-card__copy">
-          Centroid, with six new plates every day, the same for everyone: easy on a Monday, brutal by Sunday. Tap where each
-          would balance; your first go is your result. {standingWords(judged, run, board)}
+          Easy on a Monday, brutal by Sunday. {standingWords(judged, run, board)}
         </p>
         {judged ? (
           <p className="tpc-marks" aria-hidden="true">

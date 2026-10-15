@@ -175,9 +175,6 @@ const BEST: Record<LeaderboardPeriod, string> = {
   season: 'SEASON’S BEST',
 }
 
-/** The same, short, after the number on a phone's cabinet: "week", "all time". */
-const bestWhen = (period: LeaderboardPeriod) => periodWord(period).replace(/^this /, '')
-
 /**
  * The wall: every game but the dailies (they're on today's row, above it)
  * as an arcade cabinet, in a grid that runs five across on a desktop and three
@@ -397,8 +394,6 @@ export function WallTile({
               {top ? (
                 <>
                   <b className="wall-tile__figure">{fmt(top.entry.score)}</b>
-                  {/* A phone's cabinet has the number without its label: the period after it, short. */}
-                  <span className="wall-tile__when">{bestWhen(top.period)}</span>
                   <span className="wall-tile__who">{top.entry.name}</span>
                 </>
               ) : top === null ? (

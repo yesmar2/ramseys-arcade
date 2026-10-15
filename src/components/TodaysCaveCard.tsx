@@ -96,10 +96,9 @@ export function TodaysCaveCard() {
           {lander.name}
         </h2>
         <TodayCounts slug={SLUG} />
-        <p className="evp-card__copy">
-          Lander, in a new cave every day. Fly the ship down it and set it down on the pad at the bottom against the
-          clock, the same cave for everyone, and the fastest run tops the day. {standingWords(board)}
-        </p>
+        {/* Only today's part: how to play is the page's own, just above it (launch review, 2026-10-15). The space
+            holds the line while the board is asked for. */}
+        <p className="evp-card__copy">{standingWords(board) || ' '}</p>
         {kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">

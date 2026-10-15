@@ -2280,11 +2280,6 @@ html[data-theme="dark"] .wall-tile__flag--weekly {
   letter-spacing: 0.02em;
 }
 
-/* The number's period, short, after it: only where its label goes, a phone's home (below). */
-.wall-tile__when {
-  display: none;
-}
-
 .wall-tile__mine {
   min-width: 0;
   overflow: hidden;
@@ -3210,23 +3205,26 @@ html[data-theme="dark"] .home-banner__hint--error {
     font-size: 0.72rem;
   }
 
-  /* The high score in the game's colour, and its period after it, short: no label, no holder. */
-  .home-rail .wall-tile__line:first-child .wall-tile__tag,
+  /* What the number is, small over it (WEEK'S BEST, HI SCORE), then the number in the game's colour; no holder.
+     A bare "1,554 week" didn't say what 1,554 was (launch review, 2026-10-15). */
+  .home-rail .wall-tile__line:first-child {
+    flex-wrap: wrap;
+    row-gap: 0.1rem;
+  }
+
+  .home-rail .wall-tile__line:first-child .wall-tile__tag {
+    flex-basis: 100%;
+    font-size: 0.52rem;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
   .home-rail .wall-tile__who {
     display: none;
   }
 
   .home-rail .wall-tile__line:first-child .wall-tile__figure {
     color: var(--wall-accent-ink);
-  }
-
-  .home-rail .wall-tile__when {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.62rem;
-    font-weight: 700;
   }
 
   /* What's on: the daily and the weekly as slim rows, the way in beside each. */

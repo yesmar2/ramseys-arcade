@@ -150,9 +150,10 @@ export function TodaysPourCard() {
           {glassNames(plan)}
         </h2>
         <TodayCounts slug={SLUG} />
+        {/* Today's part, and the week's climb the page above doesn't say: how to play is the page's own (launch
+            review, 2026-10-15). */}
         <p className="evp-card__copy">
-          Half Full, with five new glasses every day, the same for everyone: easy on a Monday, brutal by Sunday. Your first
-          pour is your result. {standingWords(judged, run, board)}
+          Easy on a Monday, brutal by Sunday. {standingWords(judged, run, board)}
         </p>
         {/* The five squares the pour's share sends; the sentence above says the same in words. */}
         {judged ? (

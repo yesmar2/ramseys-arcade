@@ -112,10 +112,9 @@ export function TodaysTrackCard() {
           {track.name}
         </h2>
         <TodayCounts slug={SLUG} />
-        <p className="evp-card__copy">
-          Hot Lap, on a new track every day. One lap against the clock, the same track for everyone, and the fastest
-          lap tops the day. {standingWords(board)}
-        </p>
+        {/* Only today's part: how to play is the page's own, just above it (launch review, 2026-10-15). The space
+            holds the line while the board is asked for. */}
+        <p className="evp-card__copy">{standingWords(board) || ' '}</p>
         {kept ? <DeviceRunNote time={formatLap(kept.time)} run="lap" /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">

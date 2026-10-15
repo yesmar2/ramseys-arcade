@@ -114,10 +114,9 @@ export function TodaysWantedCard() {
           {wantedNames(wanted)}
         </h2>
         <TodayCounts slug={SLUG} />
-        <p className="evp-card__copy">
-          Find the Bug, with five new scenes every day and the same bugs wanted for everyone. Your first run is your result.{' '}
-          {standingWords(run, board)}
-        </p>
+        {/* Only today's part: how to play is the page's own, just above it (launch review, 2026-10-15). The space
+            holds the line while the board is asked for. */}
+        <p className="evp-card__copy">{standingWords(run, board) || ' '}</p>
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">
         <span className="evp-meta">

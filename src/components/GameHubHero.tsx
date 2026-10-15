@@ -62,6 +62,7 @@ export function GameHubHero({
   const group = useScope().name
   const ctaRef = useRef<HTMLAnchorElement>(null)
   const [pastPlay, setPastPlay] = useState(false)
+  const [playInSight, setPlayInSight] = useState(false)
 
   // Play follows the page once the one in the banner has scrolled up out of sight.
   useEffect(() => {
@@ -73,6 +74,34 @@ export function GameHubHero({
     watch.observe(cta)
     return () => watch.disconnect()
   }, [canPlay])
+
+  // ...and stands down while another way into the game is on screen, or the footer is. A daily's Today card has its
+  // own Play, and on a phone the two stacked, one on top of the other (launch review, 2026-10-15).
+  useEffect(() => {
+    if (!canPlay) return
+    let frame = 0
+    const inSight = (el: Element) => {
+      const box = el.getBoundingClientRect()
+      return box.width > 0 && box.bottom > 0 && box.top < window.innerHeight
+    }
+    const look = () => {
+      frame = 0
+      const others = document.querySelectorAll(`a[href^="${playHref}"]:not(.gh-float), .site-footer`)
+      setPlayInSight([...others].some((el) => el !== ctaRef.current && inSight(el)))
+    }
+    const soon = () => {
+      if (!frame) frame = requestAnimationFrame(look)
+    }
+    look()
+    window.addEventListener('scroll', soon, { passive: true })
+    window.addEventListener('resize', soon)
+    return () => {
+      window.removeEventListener('scroll', soon)
+      window.removeEventListener('resize', soon)
+      cancelAnimationFrame(frame)
+    }
+  }, [canPlay, playHref])
+  const floating = pastPlay && !playInSight
 
   const tags = (game.tags ?? []).map((tag) => TAG_LABELS[tag])
   const where = `${deviceRequirementLabel(game) ?? 'Phone or desk'} · Free to play`
@@ -189,10 +218,10 @@ export function GameHubHero({
       {canPlay && typeof document !== 'undefined'
         ? createPortal(
             <a
-              className={`gh-float${pastPlay ? ' gh-float--on' : ''}`}
+              className={`gh-float${floating ? ' gh-float--on' : ''}`}
               href={playHref}
-              aria-hidden={!pastPlay}
-              tabIndex={pastPlay ? undefined : -1}
+              aria-hidden={!floating}
+              tabIndex={floating ? undefined : -1}
               style={{ '--gh-accent': accent, '--gh-ink': inkOn(accent), '--gh-fill': readableFill(accent) } as CSSProperties}
             >
               <PlayIcon />

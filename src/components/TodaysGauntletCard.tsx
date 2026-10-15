@@ -95,10 +95,9 @@ export function TodaysGauntletCard() {
           {gauntlet.name}
         </h2>
         <TodayCounts slug={SLUG} />
-        <p className="evp-card__copy">
-          Run, jump and dive Blip through a new gauntlet every day: four rounds and a climb to the star, against
-          the clock, the same gauntlet for everyone, and the fastest run tops the day. {standingWords(board)}
-        </p>
+        {/* Only today's part: how to play is the page's own, just above it (launch review, 2026-10-15). The space
+            holds the line while the board is asked for. */}
+        <p className="evp-card__copy">{standingWords(board) || ' '}</p>
         {kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null}
       </div>
       <div className="evp-daily__foot evp-daily__foot--wrap">

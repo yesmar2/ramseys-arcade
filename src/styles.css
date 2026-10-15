@@ -5837,6 +5837,21 @@ html[data-theme='light'] .site-footer__list a:focus-visible {
   color: color-mix(in srgb, var(--accent) 45%, var(--ink));
 }
 
+/* On a touch screen each link is a thumb's height, 40px, not the 21px line it reads as (launch review,
+   2026-10-15). Suggest a game and Something broke are buttons here (feedback.css). */
+@media (pointer: coarse) {
+  .site-footer__list {
+    gap: 0;
+  }
+
+  .site-footer__list a,
+  .site-footer__list .feedback-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+  }
+}
+
 .site-footer__base {
   display: flex;
   flex-wrap: wrap;
