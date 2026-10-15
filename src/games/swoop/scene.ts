@@ -34,6 +34,12 @@ const SHAPE_OF = () =>
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
 
+/**
+ * A size for words, in whole pixels. The sizes follow the camera's zoom, which moves a little every frame, and
+ * a canvas draws the letters of each new size afresh: at whole pixels it draws them once and reuses them.
+ */
+const textSize = (px: number) => Math.round(px)
+
 /** Swoop's red, the bird's: the game's accent (data/games.ts). */
 const RED = '#e8564f'
 const BEAK = '#f5b942'
@@ -135,6 +141,15 @@ const LEAD = 0.32
 const LOW = 0.6
 /** The seams under the turf: how deep, in metres, and the one that's a row of blips. */
 const SEAMS = [4.2, 13.5] as const
+/** About how wide a piece of the ground under the hills is filled, in the canvas's own pixels (drawGround). */
+const HILL_PIECE = 240
+/**
+ * The columns the lines along the hills are cut in (drawGround), in the canvas's own pixels: from LINE_NARROWEST
+ * to LINE_WIDEST wide, in steps of 4, each piece turning at most LINE_TURN (radians) from the last.
+ */
+const LINE_NARROWEST = 8
+const LINE_WIDEST = 32
+const LINE_TURN = 0.07
 const BLIPS_AT = 8.6
 const BLIP_EVERY = 3.2
 
@@ -149,6 +164,8 @@ export class HillsScene {
   private cam = { x: 0, y: 0, k: 8, snap: true }
   private C: Palette
   private sky: HTMLCanvasElement | null = null
+  /** A blip, painted once for its size and colour and stamped along the row (blipStamp). */
+  private blip: { key: string; canvas: HTMLCanvasElement; r: number; half: number } | null = null
   private time = 0
   private squash = 0
   private bits: Bit[] = []
@@ -295,6 +312,7 @@ export class HillsScene {
     this.floaters.length = 0
     this.trail.length = 0
     this.sky = null
+    this.blip = null
   }
 
   /* ---------- the camera ---------- */
@@ -411,21 +429,26 @@ export class HillsScene {
   private drawFarHills(depth: number, colour: string, scale: number, lift: number) {
     const { ctx, W, H, cam } = this
     ctx.fillStyle = colour
-    ctx.beginPath()
-    ctx.moveTo(0, H)
     const shift = cam.x * cam.k * depth
+    const xs: number[] = []
+    const ys: number[] = []
     for (let px = 0; px <= W + 8; px += 8) {
       const u = (px + shift) / scale
       const h = Math.sin(u) * 0.5 + Math.sin(u * 0.43 + 1.7) * 0.35 + Math.sin(u * 2.1 + 0.4) * 0.12
-      ctx.lineTo(px, H * lift - h * H * 0.06 - (cam.y - 40) * cam.k * depth * 0.4)
+      xs.push(px)
+      ys.push(H * lift - h * H * 0.06 - (cam.y - 40) * cam.k * depth * 0.4)
     }
-    ctx.lineTo(W, H)
-    ctx.closePath()
-    ctx.fill()
+    this.fillUnder(xs, ys)
   }
 
   /* ---------- the day's hills ---------- */
 
+  /*
+   * Drawn so a laptop's graphics chip keeps up. It fills a shape the slower the more of the screen the shape's box
+   * covers: a line along the hills across the whole screen, or the ground under them, was slow, about 13 ms of a
+   * 20 ms frame. Now the lines are bands cut in four-cornered pieces (below), and the ground is filled in pieces a
+   * few hundred pixels wide, each only down to the lowest point of its line, with a plain block under it.
+   */
   private drawGround() {
     const { ctx, C, W, H, cam } = this
     const k = cam.k
@@ -436,60 +459,167 @@ export class HillsScene {
       xs.push(px)
       ys.push(this.sy(heightAt(this.hills, this.wx(px))))
     }
-    const surface = (dy: number) => {
-      ctx.beginPath()
-      for (let i = 0; i < xs.length; i++) {
-        if (i === 0) ctx.moveTo(xs[i]!, ys[i]! + dy)
-        else ctx.lineTo(xs[i]!, ys[i]! + dy)
-      }
-    }
     let top = H
     for (const y of ys) top = Math.min(top, y)
+    const pieces = this.piecesOf(xs, ys)
     // The body: the day's colour, deepening further down.
-    surface(0)
-    ctx.lineTo(W + 10, H + 10)
-    ctx.lineTo(-10, H + 10)
-    ctx.closePath()
     const grad = ctx.createLinearGradient(0, top, 0, Math.max(top + 1, top + 40 * k))
     grad.addColorStop(0, C.body)
     grad.addColorStop(1, C.deep)
     ctx.fillStyle = grad
-    ctx.fill()
-    ctx.lineJoin = 'round'
-    ctx.lineCap = 'round'
-    // The turf: a lighter band just under the surface.
-    surface(Math.max(2, 0.55 * k))
-    ctx.strokeStyle = C.turf
-    ctx.lineWidth = Math.max(3, 1.1 * k)
-    ctx.stroke()
-    // The seams of earth further down, and between them a row of blips.
-    ctx.strokeStyle = C.seam
-    ctx.lineWidth = Math.max(1.5, 0.32 * k)
-    for (const depth of SEAMS) {
-      surface(depth * k)
-      ctx.stroke()
+    for (const p of pieces) this.fillUnder(p.xs, p.ys)
+    // The lines along the hills, each a band as thick across the line as a stroke would be, cut in four-cornered
+    // pieces a column of the canvas wide: shapes that simple a graphics chip fills fast. Each costs a little, so
+    // a column is as wide as the hill lets it be, narrow over a tight crest and wide down a slope, turning no more
+    // than LINE_TURN from the one before so the bend never shows. The columns meet on whole pixels, so the pieces
+    // join without a seam.
+    const { dpr } = this
+    const at = (x: number) => {
+      const i = clamp(Math.floor((x - xs[0]!) / 5), 0, xs.length - 2)
+      return ys[i]! + ((ys[i + 1]! - ys[i]!) * (x - xs[i]!)) / 5
     }
-    ctx.fillStyle = C.blip
+    // How sharply the line bends at sample i, per canvas pixel along it.
+    const bend: number[] = ys.map((y, i) => {
+      if (i === 0 || i === ys.length - 1) return 0
+      const slope = (ys[i + 1]! - ys[i - 1]!) / 10
+      return Math.abs(ys[i + 1]! - 2 * y + ys[i - 1]!) / 25 / dpr / (1 + slope * slope) ** 1.5
+    })
+    const bendOver = (a: number, b: number) => {
+      let most = 0
+      const i0 = clamp(Math.floor((a - xs[0]!) / 5), 0, xs.length - 1)
+      const i1 = clamp(Math.ceil((b - xs[0]!) / 5), 0, xs.length - 1)
+      for (let i = i0; i <= i1; i++) most = Math.max(most, bend[i]!)
+      return most
+    }
+    const cols: number[] = []
+    const mid: number[] = []
+    const across: number[] = []
+    const mark = (d: number) => {
+      const x = d / dpr
+      const slope = (at(x + 2.5) - at(x - 2.5)) / 5
+      cols.push(x)
+      mid.push(at(x))
+      across.push(Math.sqrt(1 + slope * slope) / 2)
+    }
+    const end = this.canvas.width + LINE_WIDEST
+    for (let d = -LINE_WIDEST; ; ) {
+      mark(d)
+      if (d >= end) break
+      let wide = LINE_WIDEST
+      while (wide > LINE_NARROWEST && wide * bendOver(d / dpr, (d + wide) / dpr) > LINE_TURN) wide -= 4
+      d += wide
+    }
+    const tall = this.canvas.height / dpr
+    const line = (dy: number, colour: string, width: number) => {
+      ctx.fillStyle = colour
+      for (let c = 0; c + 1 < cols.length; c++) {
+        const a0 = across[c]! * width
+        const a1 = across[c + 1]! * width
+        const y0 = mid[c]! + dy
+        const y1 = mid[c + 1]! + dy
+        if (Math.max(y0 + a0, y1 + a1) < 0 || Math.min(y0 - a0, y1 - a1) > tall) continue
+        ctx.beginPath()
+        ctx.moveTo(cols[c]!, y0 - a0)
+        ctx.lineTo(cols[c + 1]!, y1 - a1)
+        ctx.lineTo(cols[c + 1]!, y1 + a1)
+        ctx.lineTo(cols[c]!, y0 + a0)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
+    // The turf: a lighter band just under the surface.
+    line(Math.max(2, 0.55 * k), C.turf, Math.max(3, 1.1 * k))
+    // The seams of earth further down, and between them a row of blips.
+    for (const depth of SEAMS) line(depth * k, C.seam, Math.max(1.5, 0.32 * k))
     const r = Math.max(1.4, 0.36 * k)
+    const stamp = this.blipStamp(r)
+    const half = (stamp.half * r) / stamp.r
     const left = this.wx(-20)
     const right = this.wx(W + 20)
-    ctx.beginPath()
     for (let x = Math.ceil(left / BLIP_EVERY) * BLIP_EVERY; x <= right; x += BLIP_EVERY) {
-      const px = this.sx(x)
-      const py = this.sy(heightAt(this.hills, x) - BLIPS_AT)
-      ctx.moveTo(px + r, py)
-      ctx.arc(px, py, r, 0, Math.PI * 2)
+      ctx.drawImage(stamp.canvas, this.sx(x) - half, this.sy(heightAt(this.hills, x) - BLIPS_AT) - half, half * 2, half * 2)
     }
-    ctx.fill()
     // The lit edge along the top, and a line of light just under it.
-    surface(0)
-    ctx.strokeStyle = C.edge
-    ctx.lineWidth = Math.max(2.5, 0.42 * k)
-    ctx.stroke()
-    surface(Math.max(3, 0.55 * k))
-    ctx.strokeStyle = C.shine
-    ctx.lineWidth = Math.max(1.5, 0.22 * k)
-    ctx.stroke()
+    line(0, C.edge, Math.max(2.5, 0.42 * k))
+    line(Math.max(3, 0.55 * k), C.shine, Math.max(1.5, 0.22 * k))
+  }
+
+  /**
+   * A line across the screen (points evenly spaced) in pieces about HILL_PIECE pixels wide. They meet at whole
+   * pixels, at points on the line itself, so the pieces of ground filled under them fit together without a seam.
+   */
+  private piecesOf(xs: number[], ys: number[]) {
+    const { dpr } = this
+    const wide = this.canvas.width
+    const count = Math.max(1, Math.round(wide / HILL_PIECE))
+    const step = xs[1]! - xs[0]!
+    const at = (x: number) => {
+      const i = clamp(Math.floor((x - xs[0]!) / step), 0, xs.length - 2)
+      return ys[i]! + ((ys[i + 1]! - ys[i]!) * (x - xs[i]!)) / step
+    }
+    const cuts = [xs[0]!]
+    for (let j = 1; j < count; j++) cuts.push(Math.round((j * wide) / count) / dpr)
+    cuts.push(xs[xs.length - 1]!)
+    const pieces: { xs: number[]; ys: number[] }[] = []
+    for (let j = 0; j < count; j++) {
+      const a = cuts[j]!
+      const b = cuts[j + 1]!
+      const px = [a]
+      const py = [at(a)]
+      for (let i = 0; i < xs.length; i++) {
+        if (xs[i]! <= a || xs[i]! >= b) continue
+        px.push(xs[i]!)
+        py.push(ys[i]!)
+      }
+      px.push(b)
+      py.push(at(b))
+      pieces.push({ xs: px, ys: py })
+    }
+    return pieces
+  }
+
+  /**
+   * Fills from a line down to the bottom of the canvas: the shape between the line and a whole pixel under its
+   * lowest point, then a plain block from there down, which costs next to nothing to fill.
+   */
+  private fillUnder(xs: number[], ys: number[]) {
+    const { ctx, dpr } = this
+    const tall = this.canvas.height / dpr
+    let low = -Infinity
+    for (const y of ys) low = Math.max(low, y)
+    const cut = Math.min(tall, Math.ceil(low * dpr) / dpr)
+    const a = xs[0]!
+    const b = xs[xs.length - 1]!
+    ctx.beginPath()
+    ctx.moveTo(a, cut)
+    for (let i = 0; i < xs.length; i++) ctx.lineTo(xs[i]!, ys[i]!)
+    ctx.lineTo(b, cut)
+    ctx.closePath()
+    ctx.fill()
+    if (cut < tall) ctx.fillRect(a, cut, b - a, tall - cut)
+  }
+
+  /** A blip as a picture, painted again only when its size moves by a quarter of a pixel, and drawn to size between. */
+  private blipStamp(r: number) {
+    const { dpr, C } = this
+    const rs = Math.max(0.25, Math.round(r * dpr * 4) / 4) / dpr
+    const key = `${rs}:${dpr}:${C.blip}`
+    if (this.blip?.key === key) return this.blip
+    const size = Math.ceil((rs + 1) * dpr) * 2
+    const canvas = this.blip?.canvas ?? document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const half = size / 2 / dpr
+    const g = canvas.getContext('2d')
+    if (g) {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      g.fillStyle = C.blip
+      g.beginPath()
+      g.arc(half, half, rs, 0, Math.PI * 2)
+      g.fill()
+    }
+    this.blip = { key, canvas, r: rs, half }
+    return this.blip
   }
 
   private drawFlags(f: SceneFrame) {
@@ -515,7 +645,7 @@ export class HillsScene {
       ctx.lineTo(px, y - pole * 0.64)
       ctx.closePath()
       ctx.fill()
-      ctx.font = `800 ${Math.max(11, pole * 0.22)}px ${this.font}`
+      ctx.font = `800 ${textSize(Math.max(11, pole * 0.22))}px ${this.font}`
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = C.paper
@@ -539,7 +669,7 @@ export class HillsScene {
           ctx.fillRect(fx + wide * 0.15 + q * cell, y - tall + r * cell, cell, cell)
         }
       }
-      ctx.font = `800 ${Math.max(12, tall * 0.13)}px ${this.font}`
+      ctx.font = `800 ${textSize(Math.max(12, tall * 0.13))}px ${this.font}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'alphabetic'
       ctx.fillStyle = C.ink
@@ -674,7 +804,7 @@ export class HillsScene {
     const name = f.ghostTag
     if (!name) return
     ctx.save()
-    ctx.font = `700 ${Math.max(11, 0.62 * cam.k)}px ${this.font}`
+    ctx.font = `700 ${textSize(Math.max(11, 0.62 * cam.k))}px ${this.font}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
     const tx = this.sx(g.x)
@@ -811,7 +941,7 @@ export class HillsScene {
       }
       const t = 1 - f.life
       ctx.globalAlpha = clamp(f.life * 2, 0, 1)
-      const size = Math.max(16, 1.6 * cam.k)
+      const size = textSize(Math.max(16, 1.6 * cam.k))
       ctx.font = `800 ${size}px ${this.font}`
       ctx.lineWidth = size * 0.28
       ctx.strokeStyle = C.paper
