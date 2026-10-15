@@ -78,15 +78,42 @@ export type Layout = {
  * index: the row it names is drawn along the bottom of the view, and the rest
  * of the strip stacks up from there. Because the camera is a float that tracks
  * the player continuously, the climb is smooth even though the buffer itself
- * only ever shifts in whole rows.
+ * only ever shifts in whole rows. `camera` is the one drawn (viewCamera).
  */
-export function computeLayout(w: number, h: number, state: GameState): Layout {
+export function computeLayout(w: number, h: number, state: GameState, camera = state.camera): Layout {
   const cell = w / state.cols
-  const cameraBuf = bufferRowOf(state, state.camera)
+  const cameraBuf = bufferRowOf(state, camera)
   return {
     cell,
     rowY: (y: number) => h - (cameraBuf - y + 1) * cell,
   }
+}
+
+/** Seconds the drawn camera takes to make up about two thirds of the way to the game's. */
+const CAMERA_EASE = 0.07
+
+/** The drawn camera of each run on the page, by its seed: a cabinet's preview can draw beside the game. */
+const views = new Map<number, { camera: number; time: number }>()
+
+/**
+ * The camera as drawn: it eases after the game's, which jumps with the
+ * player, so the whole maze doesn't jerk into motion as they set off up a
+ * lane, or stop dead as they turn along one, and an uneven frame on a busy
+ * laptop isn't a jolt of the whole screen. It is never more than a fraction
+ * of a row behind, and never ahead; a new run, or a jump, starts it level.
+ */
+function viewCamera(state: GameState) {
+  const target = state.camera
+  const kept = views.get(state.seed)
+  if (!kept || state.time < kept.time || Math.abs(target - kept.camera) > 2) {
+    if (views.size > 8) views.clear()
+    views.set(state.seed, { camera: target, time: state.time })
+    return target
+  }
+  const dt = Math.min(0.1, state.time - kept.time)
+  kept.time = state.time
+  kept.camera = Math.min(target, kept.camera + (target - kept.camera) * (1 - Math.exp(-dt / CAMERA_EASE)))
+  return kept.camera
 }
 
 type Gfx = {
@@ -97,6 +124,8 @@ type Gfx = {
   w: number
   h: number
   t: number
+  /** The camera as drawn (viewCamera), a world row. */
+  camera: number
   /** Screen y of a buffer position, in tiles (a tile's centre is y + 0.5). */
   Y: (y: number) => number
 }
@@ -109,13 +138,13 @@ type Gfx = {
  * you are rather than what is in front of you.
  */
 function drawSky(g: Gfx) {
-  const { ctx, s, dark, cell, w, h } = g
+  const { ctx, dark, cell, w, h } = g
   ctx.fillStyle = playfieldColor()
   ctx.fillRect(0, 0, w, h)
 
   // Each layer goes down in three brightnesses, one path apiece: a hundred and
   // fifty separate little fills cost more than the whole maze.
-  const climbed = s.camera * cell
+  const climbed = g.camera * cell
   ctx.fillStyle = inkColor()
   for (const [layer, pace, density] of [
     [0, 0.16, 9000],
@@ -367,8 +396,8 @@ function drawWalls(g: Gfx) {
     }
     wallLayer = { key, canvas }
   }
-  // On whole device pixels, so the hedges' lines stay sharp as the camera slides.
-  ctx.drawImage(wallLayer.canvas, 0, Math.round(Y(0) * dpr) / dpr, w, h)
+  // Where the camera has it, between pixels too, so the hedges glide with everything else rather than stepping.
+  ctx.drawImage(wallLayer.canvas, 0, Y(0), w, h)
 }
 
 // —————————————————————————————————————————————————————— crumbs
@@ -970,7 +999,8 @@ export function renderGame(
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-  const layout = computeLayout(w, h, state)
+  const camera = viewCamera(state)
+  const layout = computeLayout(w, h, state, camera)
   const cell = layout.cell
   const top = layout.rowY(0)
   const g: Gfx = {
@@ -981,6 +1011,7 @@ export function renderGame(
     w,
     h,
     t: state.time,
+    camera,
     Y: (y) => top + y * cell,
   }
 

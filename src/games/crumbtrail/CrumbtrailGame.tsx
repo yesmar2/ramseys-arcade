@@ -73,13 +73,17 @@ export function CrumbtrailGame() {
     let uiAcc = 0
 
     const loop = (now: number) => {
-      const dt = Math.min(0.033, (now - last) / 1000)
+      // A late frame, on a busy laptop, is caught up in steps no longer than a usual frame, so the climb keeps
+      // its pace instead of slowing for a moment, and nothing moves more than a frame's worth in one step. Past
+      // a tenth of a second (a tab left in the background) it doesn't try to catch up.
+      const elapsed = Math.min(0.1, (now - last) / 1000)
       last = now
 
       if (!pausedRef.current) {
-        stateRef.current = tick(stateRef.current, dt)
+        const steps = Math.max(1, Math.ceil(elapsed * 60))
+        for (let i = 0; i < steps; i++) stateRef.current = tick(stateRef.current, elapsed / steps)
       }
-      uiAcc += dt
+      uiAcc += elapsed
       if (uiAcc > 0.08) {
         uiAcc = 0
         const snap = toSnapshot(stateRef.current)
