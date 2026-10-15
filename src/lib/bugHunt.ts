@@ -131,8 +131,8 @@ const SITE_ANCHORS: HuntAnchor[] = ([
   {
     id: 'home-hero',
     page: 'on the home page',
-    thing: 'the big banner at the top',
-    lesson: 'The banner at the top of the home page is the way in: today’s event, or the next game to try.',
+    thing: 'today’s ticket',
+    lesson: 'Today’s ticket is the day’s races, new every day and the same for everyone. Any two keep your streak going, and all of them make a Full ticket.',
   },
   {
     id: 'home-onnow',

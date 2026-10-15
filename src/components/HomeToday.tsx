@@ -3,7 +3,7 @@ import { isRankedGame } from '../data/games'
 import { untilWords } from '../games/marblerun/daily'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
-import { gameHref, todayHref } from '../hooks/useHashRoute'
+import { gameHref, gamePlayHref, todayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { msUntilNextHole } from '../lib/dailyHole'
 import { hasDayPreview, hasGamePreview } from '../lib/gamePreviews'
@@ -12,27 +12,27 @@ import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
+import { boardTime, isRaceGame, MEDAL_NAMES, nextMedal } from '../lib/raceMedals'
 import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import { todayFailed, type TodayKey } from '../lib/today'
 import { useDayStandings, type DayStanding } from '../lib/todayDays'
-import { AlsoToday } from './AlsoToday'
-import { BlipPoll } from './BlipPoll'
-import { DailyKindTag } from './DailyKindTag'
 import { GamePreview } from './GamePreview'
+import { MedalIcon } from './RaceMedal'
 import { PartErrorBoundary } from './SiteErrorBoundary'
 import { openSiteMenu } from './siteNav'
-import { FlameIcon, StarIcon } from './TodayChip'
-import { capital, shortDate, useTicket, type Punch, type Ticket } from './todayPunches'
+import { StarIcon } from './TodayChip'
+import { shortDate, streakLine, useTicket, type Punch, type Ticket } from './todayPunches'
 import '../styles/homeToday.css'
 
 /*
- * Today on the home page (lib/today.ts): the day's dailies as cards, each with its own picture of the day
- * (the hole, the track, who's wanted, the glasses, the course, the cave: todayPictures.tsx), what it is today, and
- * either your result and your place on its board or the way in and who leads. Over them, where the day
- * stands: a pip for each daily, the one that keeps the streak marked, what the streak needs next, the time
- * to the next dailies, and the way to the Today page. It's drawn from the same punches as the Today page's
- * ticket (todayPunches.ts), for the same viewer, so the two always agree. Below 64rem the cards scroll
- * sideways.
+ * Today's ticket on the home page (lib/today.ts), D on the "Home page redesign" canvas (Ramsey, 2026-10-15: "ok,
+ * let's impelment this"): a ticket with a stub torn along a dotted line. On the stub, the day and where it stands,
+ * your streak big with what it needs next, a punch hole for each race, the time to the next races, and one button
+ * straight into the first race still to run. Beside it, the day's races as cards, each with its own picture of the
+ * day (todayPictures.tsx) and its name on it, the next medal to take and who leads (or how you did and your
+ * place), and its own way straight in; the card itself opens the daily's page. It's drawn from the same punches as
+ * the Dailies page's ticket (todayPunches.ts), for the same viewer, so the two always agree. On a phone the stub
+ * goes on top and the races swipe under it; between a phone and a wide screen they swipe beside it.
  */
 
 /** The pictures, in a chunk of their own with the plans they're drawn from; each game's own picture until then. */
@@ -71,7 +71,7 @@ const CheckIcon = () => (
 )
 const PlayIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M8 5.5v13l10.5-6.5z" />
+    <path d="M7 4.5v15l12-7.5z" />
   </svg>
 )
 const ClockIcon = () => (
@@ -85,65 +85,89 @@ const ChevronIcon = () => (
     <path d="M9 5l7 7-7 7" />
   </svg>
 )
+const ArrowIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 12h13M13 6l6 6-6 6" />
+  </svg>
+)
+/** The streak's flame, solid, on its orange disc. */
+const FlameIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 2.5c.6 3.2 4.6 5.2 4.6 10a4.6 4.6 0 0 1-9.2 0c0-2.3 1.2-3.7 2.4-4.8.2 1.6 1 2.6 2 3-1-2.8-.6-5.6.2-8.2z" />
+  </svg>
+)
 
 /**
- * What the day needs next, in words: how many more keep the streak (or start one), then a Full ticket.
- * A streak is an account's, so signed out it says so, and signing in is a tap on it: the menu, as on the
- * Dailies page.
+ * The stub's streak: how long it is, big, and what the day needs next under it, in the Dailies page's words
+ * (todayPunches streakLine). A streak is an account's, so signed out it says how one is kept, and signing in is a
+ * tap on it: the menu, as on the Dailies page.
  */
-function streakWords({ done, rule, marks, before, current }: Ticket, signedIn: boolean): ReactNode {
+function streakParts(ticket: Ticket, signedIn: boolean): { big: string; sub: ReactNode } {
   if (!signedIn) {
-    return (
-      <>
-        Any {numberWord(rule.need)} keep a streak, once you{' '}
-        <button type="button" className="home-day__signin" onClick={openSiteMenu}>
-          sign in
-        </button>
-      </>
-    )
+    return {
+      big: 'Keep a streak',
+      sub: (
+        <>
+          Race any {numberWord(ticket.rule.need)} a day, once you{' '}
+          <button type="button" className="home-day__signin" onClick={openSiteMenu}>
+            sign in
+          </button>
+        </>
+      ),
+    }
   }
-  if (marks.full) return `A Full ticket, Day ${current}`
-  if (marks.kept) {
-    const more = rule.count - done
-    return more > 0 ? `Day ${current} kept. ${capital(numberWord(more))} more for a Full ticket` : `Day ${current} kept`
-  }
-  const left = rule.need - done
-  const count = capital(numberWord(left))
-  if (before > 0) {
-    if (done === 0) return `${count} keep your ${before}-day streak going`
-    return left === 1 ? `One more keeps your ${before}-day streak going` : `${count} more keep your ${before}-day streak going`
-  }
-  if (done === 0) return `Play ${numberWord(left)} to start a streak`
-  return left === 1 ? 'One more starts a streak' : `${count} more start a streak`
+  return { big: ticket.current > 0 ? `${ticket.current}-day streak` : 'No streak yet', sub: streakLine(ticket) }
 }
 
-/** A pip for each daily: the punched ones filled, and the one that keeps the day ringed until it's kept. */
-function Pips({ done, rule, full }: { done: number; rule: Ticket['rule']; full: boolean }) {
+/** A punch hole for each race: those run punched through, and the one that keeps the day ringed till it's punched. */
+function Holes({ done, rule }: { done: number; rule: Ticket['rule'] }) {
   return (
-    <span className={`home-day__pips${full ? ' home-day__pips--full' : ''}`} aria-hidden="true">
+    <span className="home-day__holes" aria-hidden="true">
       {Array.from({ length: rule.count }, (_, i) => (
-        <span key={i} className={`home-day__pip${i < done ? ' home-day__pip--done' : i === rule.need - 1 ? ' home-day__pip--keep' : ''}`} />
+        <span key={i} className={`home-day__hole${i < done ? ' home-day__hole--done' : i === rule.need - 1 ? ' home-day__hole--keep' : ''}`}>
+          {i < done ? <CheckIcon /> : null}
+        </span>
       ))}
     </span>
   )
 }
 
-/** "Ace Chase · Hole #5": the game, and which of its days this is. */
-const kickerOf = (p: Punch) => `${p.game} · ${p.kicker.replace(/^Today’s\s+/, '')}`
-
-/** Who leads the day, for a daily still to play: the leader's name, and their result. */
-function leadOf(p: Punch, standing: DayStanding | null | undefined): { who: string; what: string } | null {
+/** Who leads the day: the leader's name, and their result. */
+function leadOf(p: Punch, standing: DayStanding | null | undefined): string | null {
   if (standing === undefined) return null
-  if (standing === null) return { who: 'Nobody yet', what: 'be the first' }
-  return { who: `${standing.top.name} leads`, what: formatLeaderboardScore(p.slug, standing.top.score) }
+  if (standing === null) return 'Nobody yet · be the first'
+  return `${standing.top.name} leads · ${formatLeaderboardScore(p.slug, standing.top.score)}`
 }
 
-/** A line of the card's foot not known yet: shimmering while the day's standings are asked, else just its height. */
-function SideWaiting({ asking }: { asking: boolean }) {
-  return <span className="home-day__side">{asking ? <span className="skel-line" style={{ '--skel-w': '5.5rem' } as CSSProperties} /> : '\u00a0'}</span>
+/**
+ * A race's next medal (lib/raceMedals.ts) and the time it takes, to the thousandth as its boards say times: the
+ * one held lit beside it once there is one, and once the top one's held, just that.
+ */
+function MedalLine({ p }: { p: Punch }) {
+  if (!isRaceGame(p.slug) || p.paceMs == null) return null
+  const held = p.medal ?? null
+  const next = nextMedal(p.slug, p.paceMs, held)
+  return (
+    <span className="home-day__medal">
+      {held ? <MedalIcon medal={held} size={16} /> : null}
+      {held ? <span className="visually-hidden">{MEDAL_NAMES[held]} won. </span> : null}
+      {next ? (
+        <>
+          <span className={`home-day__medal-next home-day__medal-next--${next.medal}`}>
+            <MedalIcon medal={next.medal} size={16} dim />
+          </span>
+          <span className="visually-hidden">Next medal: </span>
+          <span className="home-day__medal-name">{MEDAL_NAMES[next.medal]}</span>
+          <b className="home-day__medal-time">{boardTime(p.slug, next.ms / 1000)}</b>
+        </>
+      ) : (
+        <span className="home-day__medal-name">Top medal</span>
+      )}
+    </span>
+  )
 }
 
-function DayCard({
+function RaceCard({
   p,
   day,
   standing,
@@ -152,7 +176,7 @@ function DayCard({
   p: Punch
   day: string
   standing: DayStanding | null | undefined
-  /** The day's standings are still being asked for: a ranked card's last line holds its place till they come. */
+  /** The day's standings are still being asked for: the card's last line holds its place till they come. */
   asking: boolean
 }) {
   const spotlight = isSpotlight(liveSeason(useSeason()), p.slug)
@@ -160,85 +184,85 @@ function DayCard({
   const ranked = isRankedGame(p.slug)
   // Your place, once you're on the day's board: never a place for a result the board doesn't have yet.
   const place = ranked && p.done && standing?.you ? `${ordinal(standing.you.place)} of ${standing.players} today` : null
-  const lead = p.done || !ranked ? null : leadOf(p, standing)
+  const lead = ranked ? leadOf(p, standing) : null
   // Halfway through: where you left it, instead of who leads.
   const carry = !p.done && p.carry ? p.carry.replace(/^Carry on,?\s*/, '') : null
   // The picture's badge, New in its first week or the season's Spotlight: one or the other.
   const fresh = !p.done && p.fresh
   const badge = fresh ? 'new' : spotlight ? 'spotlight' : null
+  const verb = carry != null ? 'Carry on' : GO[p.key]
+  const side = p.done ? (place ?? lead) : (carry ?? lead)
   return (
-    <a
-      className={`home-day__card${p.done ? ' home-day__card--done' : ''}`}
-      // To the daily's page, its Today tab, rather than straight into the game (Ramsey, 2026-09-30).
-      href={gameHref(p.slug)}
-      style={{ '--day': ACCENT[p.key] } as CSSProperties}
-    >
-      {/* Out of the link's name: the course is named under it, and its badge said after the name. */}
-      <span className="home-day__pic" aria-hidden="true">
-        {/* The day's own picture, on the tile's plain dark until it's drawn: never the game's other picture first.
-            Pictures that fail to come leave the plain dark, and the card works as ever. */}
-        <PartErrorBoundary fallback={null}>
-          <Suspense fallback={<span className="home-day__pic-wait" />}>
-            <DayPicture daily={p.key} day={day} />
-          </Suspense>
-        </PartErrorBoundary>
-        {/* The game played over its picture, under a pointer or, on a phone, when the row rests on the card
-            (Ramsey, 2026-10-04 and 05): the day's own for the hole, the track, the course and the cave; Find the
-            Bug's and Half Full's own previews, which never show a day's answer. */}
-        {hasDayPreview(p.slug) ? (
-          <GamePreview slug={p.slug} day={day} className="home-day__preview" rail />
-        ) : hasGamePreview(p.slug) ? (
-          <GamePreview slug={p.slug} className="home-day__preview" rail />
-        ) : null}
-        {p.done ? (
-          <span className="home-day__stamp">
-            <CheckIcon />
+    <li className={`home-day__race${p.done ? ' home-day__race--done' : ''}`} style={{ '--day': ACCENT[p.key] } as CSSProperties}>
+      {/* To the daily's page, its Today tab (Ramsey, 2026-09-30); the button under it goes straight into the race. */}
+      <a className="home-day__card" href={gameHref(p.slug)}>
+        <span className="home-day__pic">
+          <span className="home-day__art" aria-hidden="true">
+            {/* The day's own picture, on the tile's plain dark until it's drawn: never the game's other picture
+                first. Pictures that fail to come leave the plain dark, and the card works as ever. */}
+            <PartErrorBoundary fallback={null}>
+              <Suspense fallback={<span className="home-day__pic-wait" />}>
+                <DayPicture daily={p.key} day={day} />
+              </Suspense>
+            </PartErrorBoundary>
+            {/* The game played over its picture, under a pointer or, on a phone, when the row rests on the card
+                (Ramsey, 2026-10-04 and 05): the day's own where the game can draw it, else its own preview. */}
+            {hasDayPreview(p.slug) ? (
+              <GamePreview slug={p.slug} day={day} className="home-day__preview" rail />
+            ) : hasGamePreview(p.slug) ? (
+              <GamePreview slug={p.slug} className="home-day__preview" rail />
+            ) : null}
           </span>
-        ) : fresh ? (
-          <span className="home-day__new">New</span>
-        ) : null}
-        {/* Top left, where New would be: a card showing New keeps it. */}
-        {badge === 'spotlight' ? <span className="season-spot season-spot--day">Spotlight</span> : null}
-      </span>
-      <span className="home-day__body">
-        <span className="home-day__kicker">{kickerOf(p)}</span>
-        <span className="home-day__name">
-          {p.title}
-          {badge ? <span className="visually-hidden">({badge})</span> : null}
-        </span>
-        <span className="home-day__foot">
+          <span className="home-day__game">{p.game}</span>
           {p.done ? (
-            <>
-              <span className="home-day__result">
-                <CheckIcon />
-                <span className="visually-hidden">Punched: </span>
-                {p.short ?? 'Done'}
-              </span>
-              {place ? <span className="home-day__side">{place}</span> : ranked && standing === undefined ? <SideWaiting asking={asking} /> : null}
-            </>
-          ) : (
-            <>
-              <span className="home-day__go">
-                <PlayIcon />
-                {carry != null ? 'Carry on' : GO[p.key]}
-              </span>
-              {carry ? (
-                <span className="home-day__side">{carry}</span>
-              ) : lead ? (
-                <span className="home-day__side">
-                  {lead.who}
-                  <span className="home-day__sep"> · </span>
-                  <br />
-                  {lead.what}
-                </span>
-              ) : ranked ? (
-                <SideWaiting asking={asking} />
-              ) : null}
-            </>
-          )}
+            <span className="home-day__stamp" aria-hidden="true">
+              <CheckIcon />
+            </span>
+          ) : badge === 'new' ? (
+            <span className="home-day__new" aria-hidden="true">
+              New
+            </span>
+          ) : badge === 'spotlight' ? (
+            <span className="season-spot season-spot--day" aria-hidden="true">
+              Spotlight
+            </span>
+          ) : null}
+          {/* The day's name on its picture, and which of the game's days it is. */}
+          <span className="home-day__on">
+            <span className="home-day__name">
+              {p.title}
+              {badge ? <span className="visually-hidden"> ({badge})</span> : null}
+            </span>
+            <span className="home-day__course">{p.kicker.replace(/^Today’s\s+/, '')}</span>
+          </span>
         </span>
+        <span className="home-day__body">
+          <MedalLine p={p} />
+          <span className="home-day__side">
+            {side ??
+              (ranked && standing === undefined && asking ? (
+                <span className="skel-line" style={{ '--skel-w': '7.5rem' } as CSSProperties} />
+              ) : (
+                ' '
+              ))}
+          </span>
+        </span>
+      </a>
+      <span className="home-day__foot">
+        {p.done ? (
+          <span className="home-day__result">
+            <CheckIcon />
+            <span className="visually-hidden">Punched: </span>
+            {p.short ?? 'Done'}
+          </span>
+        ) : (
+          <a className="home-day__go" href={gamePlayHref(p.slug)} aria-label={`${verb}, ${p.game}: ${p.title}`}>
+            <PlayIcon />
+            {verb}
+          </a>
+        )}
       </span>
-    </a>
+    </li>
   )
 }
 
@@ -257,72 +281,82 @@ export function HomeToday() {
     done,
   )
   if (!total) return null
-  // Ranked or just for fun, on each card only while the row has both (a day before the puzzles came off the ticket).
-  const mixed = punches.some((p) => isRankedGame(p.slug)) && punches.some((p) => !isRankedGame(p.slug))
   // The streak is the API's, once it has answered; before then it isn't said, as on the chip. Nor is signing in,
-  // to a session whose account isn't known yet.
-  const said = signedOut || (signedIn && ticket.server) ? streakWords(ticket, signedIn) : null
-  const next = (
-    <>
-      <ClockIcon />
-      New dailies in {untilWords(msUntilNextHole())}
-    </>
+  // to a session whose account isn't known yet. If the API couldn't say, it isn't coming: nothing then.
+  const streak = signedOut || (signedIn && ticket.server) ? streakParts(ticket, signedIn) : null
+  const waiting = !streak && !todayFailed()
+  const count = marks.full
+    ? `All ${numberWord(total)} raced: a Full ticket`
+    : `${done} of ${total} raced${rule.count > rule.need ? ` · all ${numberWord(rule.count)} make a Full ticket` : ''}`
+  // Straight into the first race still to run; once they're all run, how the day went.
+  const up = punches.find((p) => !p.done) ?? null
+  const start = (under: boolean) => (
+    <a className={`home-day__start${under ? ' home-day__start--under' : ''}`} href={up ? gamePlayHref(up.slug) : todayHref()}>
+      {up ? (done === 0 ? `Start with ${up.game}` : `Next up: ${up.game}`) : 'See how you did'}
+      <ArrowIcon />
+    </a>
   )
   return (
-    <section className="home-day" aria-labelledby="home-day-title">
-      <div className="home-day__head">
+    // The top of the page for anyone who has played, and on every home page: one of the bug hunt's hiding places.
+    <section className={`home-day${marks.full ? ' home-day--full' : ''}`} aria-labelledby="home-day-title" data-hunt="home-hero">
+      <div className="home-day__stub">
         <div className="home-day__when">
           <h2 id="home-day-title" className="home-day__title">
-            Dailies
+            Today’s ticket
           </h2>
           <span className="home-day__date">{shortDate(day)}</span>
         </div>
-        <div className="home-day__stand">
-          <Pips done={done} rule={rule} full={marks.full} />
-          <span className="home-day__count">
-            {done} of {total}
-            <span className="visually-hidden"> done</span>
-          </span>
-          {said ? (
-            <span className={`home-day__streak${marks.full ? ' home-day__streak--full' : ''}`}>
-              {marks.full ? <StarIcon /> : <FlameIcon />}
-              {/* One run of words, so a sign-in button in them wraps with them. */}
-              <span>{said}</span>
-            </span>
-          ) : todayFailed() ? null : (
-            // Not known yet: its line shimmers as the skeleton's does, so a phone's cards don't move when it comes.
-            // If the API couldn't say, it isn't coming: nothing then, not a shimmer for good.
-            <span className="home-day__streak" aria-hidden="true">
-              <span>
-                <span className="skel-line" style={{ '--skel-w': '16rem' } as CSSProperties} />
+        {streak || waiting ? (
+          <div className="home-day__streak">
+            <span className="home-day__flame">{marks.full ? <StarIcon /> : <FlameIcon />}</span>
+            {streak ? (
+              <span className="home-day__streak-words">
+                <b className="home-day__streak-big">{streak.big}</b>
+                {/* One run of words, so a sign-in button in them wraps with them. */}
+                <span className="home-day__streak-sub">{streak.sub}</span>
               </span>
-            </span>
-          )}
+            ) : (
+              // Not known yet: its lines shimmer as the skeleton's do, so nothing under them moves when they come.
+              <span className="home-day__streak-words" aria-hidden="true">
+                <b className="home-day__streak-big">
+                  <span className="skel-line" style={{ '--skel-w': '8rem' } as CSSProperties} />
+                </b>
+                <span className="home-day__streak-sub">
+                  <span className="skel-line" style={{ '--skel-w': '10rem' } as CSSProperties} />
+                </span>
+              </span>
+            )}
+          </div>
+        ) : null}
+        <div className="home-day__punch">
+          <Holes done={done} rule={rule} />
+          <span className="home-day__count">{count}</span>
         </div>
-        <span className="home-day__next">{next}</span>
-        <a className="home-day__open" href={todayHref()}>
-          Open Dailies
-          <ChevronIcon />
-        </a>
+        <span className="home-day__next">
+          <ClockIcon />
+          <span>
+            New<span className="home-day__next-word"> races</span> in {untilWords(msUntilNextHole())}
+          </span>
+        </span>
+        {start(false)}
       </div>
-      {/* The races, the day's puzzles just for fun in a slim line under them (AlsoToday.tsx), and Blip's question
-          as one more card beside both (BlipPoll.tsx), so the races keep their own height (homeToday.css). On a
-          phone, each under the one before. */}
-      <div className="home-day__row" style={{ '--races': `${total}fr` } as CSSProperties}>
-      <ul className="home-day__cards" style={{ '--n': total } as CSSProperties}>
-        {punches.map((p) => (
-          <li key={p.key}>
-            <DayCard p={p} day={day} standing={standings ? standings.get(p.slug) : undefined} asking={standings === null} />
-            {/* Ranked or just for fun, on the picture: a button of its own, so it sits over the card's link, not in it. */}
-            {mixed ? <DailyKindTag slug={p.slug} look="pill" className="home-day__kind" /> : null}
-          </li>
-        ))}
-      </ul>
-      <BlipPoll />
-      <AlsoToday punches={ticket.also} compact />
+      <div className="home-day__races">
+        <div className="home-day__head">
+          <h3 className="home-day__races-title">Today’s races</h3>
+          <span className="home-day__races-sub">New every day, the same for everyone</span>
+          <a className="home-day__open" href={todayHref()}>
+            Open Dailies
+            <ChevronIcon />
+          </a>
+        </div>
+        <ul className="home-day__cards" style={{ '--n': total } as CSSProperties}>
+          {punches.map((p) => (
+            <RaceCard key={p.key} p={p} day={day} standing={standings ? standings.get(p.slug) : undefined} asking={standings === null} />
+          ))}
+        </ul>
+        {/* On a phone the way in comes under the races, where a thumb is after looking at them. */}
+        {start(true)}
       </div>
-      {/* On a phone the time to the next dailies comes under the cards (homeToday.css), and the one over them goes. */}
-      <p className="home-day__next home-day__next--under">{next}</p>
     </section>
   )
 }

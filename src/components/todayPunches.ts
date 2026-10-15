@@ -76,6 +76,8 @@ export type Punch = {
   fresh: boolean
   /** A racing daily's medal for the day's best against its blue (lib/raceMedals.ts), once it has one. */
   medal?: Medal | null
+  /** A racing daily's blue time for the day, in ms: what its medals are measured from (lib/raceMedals.ts medalTimes). */
+  paceMs?: number
 }
 
 /** A board score's time in ms: the racing dailies keep a million less the ms (their score.ts). */
@@ -182,6 +184,7 @@ function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     carry: null,
     share: lapWords ? `${track.name} ${lapWords}` : null,
     medal: medalFor('hotlap', paceMsOf(track.pace), serverLap != null ? msOfScore(serverLap) : lapTime != null ? Math.round(lapTime * 1000) : null),
+    paceMs: paceMsOf(track.pace),
   }
 }
 
@@ -274,6 +277,7 @@ function coursePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     carry: null,
     share: runWords ? `${course.name} ${runWords}` : null,
     medal: medalFor('marblerun', paceMsOf(course.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+    paceMs: paceMsOf(course.pace),
   }
 }
 
@@ -294,6 +298,7 @@ function cavePunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     carry: null,
     share: runWords ? `${cave.name} ${runWords}` : null,
     medal: medalFor('lander', paceMsOf(cave.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+    paceMs: paceMsOf(cave.pace),
   }
 }
 
@@ -314,6 +319,7 @@ function hillsPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     carry: null,
     share: runWords ? `${hills.name} ${runWords}` : null,
     medal: medalFor('swoop', paceMsOf(hills.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+    paceMs: paceMsOf(hills.pace),
   }
 }
 
@@ -334,6 +340,7 @@ function gauntletPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     carry: null,
     share: runWords ? `${gauntlet.name} ${runWords}` : null,
     medal: medalFor('wobblerun', paceMsOf(gauntlet.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+    paceMs: paceMsOf(gauntlet.pace),
   }
 }
 

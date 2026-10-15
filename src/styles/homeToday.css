@@ -1,116 +1,164 @@
 /*
- * The home page's Today row (HomeToday.tsx): the day's dailies as cards, each with its own picture of the
- * day, what it is today, and your result and place or the way in and who leads; over them, where the day
- * stands. One card in the ticket's orange, as the Today page's ticket is (today.css). Five across on a
- * desktop; below 64rem the cards scroll sideways, and on a phone the day's line wraps under the title.
+ * Today's ticket on the home page (HomeToday.tsx), D on the "Home page redesign" canvas: a stub in the ticket's
+ * orange, torn from the races along a dotted line with a notch cut at each end of it, and the day's races as
+ * cards beside it. Each half cuts its own half of each notch (a mask), so nothing has to know how tall the
+ * other is, and the shadow under both is a plain one under the ticket's box: a filter over the races would be
+ * worked out afresh for every frame a race plays on its picture. Five across on a wide screen; narrower, the
+ * races swipe beside the stub; on a phone the stub goes on top and the races swipe under it.
  */
 
 .home-day {
   /* Your result on a punched card, dark enough to read on its tint in the light theme. */
   --day-result: #a8380f;
+  --day-stub: linear-gradient(180deg, #ffdfc8 0%, #ffeee1 36%, #fff7f0 100%);
+  --day-stub-ink: var(--ink);
+  --day-stub-sub: #7a4a2e;
+  --day-stub-kick: #9a4316;
+  --day-perf: rgba(224, 96, 46, 0.34);
+  --day-hole: rgba(255, 255, 255, 0.7);
+  --day-hole-ring: rgba(224, 96, 46, 0.45);
+  --day-hole-keep: #ffffff;
+  --day-card: #f6f9fb;
+  --day-chip: rgba(255, 255, 255, 0.94);
+  /* The notch: its radius, and the round corners of the ticket. */
+  --day-notch: 0.95rem;
+  --day-round: 1.9rem;
+  position: relative;
+  /* Its own stacking, so the shadow under it (below) can sit behind its halves. */
+  isolation: isolate;
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
   min-width: 0;
-  box-sizing: border-box;
-  padding: 1.2rem 1.4rem 1.4rem;
-  border-radius: 1.6rem;
-  background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--ticket, #ff8552) 38%, transparent);
-  box-shadow: var(--shadow-soft);
+  border-radius: var(--day-round);
 }
 
 html[data-theme='dark'] .home-day {
   --day-result: var(--ticket-text, #ffab85);
+  --day-stub: linear-gradient(180deg, #4b2a18 0%, #37231b 42%, #2b1f1b 100%);
+  --day-stub-ink: #fff1e6;
+  --day-stub-sub: #f0c3a6;
+  --day-stub-kick: #ffb38f;
+  --day-perf: rgba(255, 140, 95, 0.4);
+  --day-hole: rgba(255, 255, 255, 0.05);
+  --day-hole-ring: rgba(255, 160, 120, 0.5);
+  --day-hole-keep: #2b1f1b;
+  --day-card: #1e2c37;
+  --day-chip: rgba(10, 16, 22, 0.82);
 }
 
-/* ---------- where the day stands ---------- */
+/* The ticket's shadow: under its box, behind both halves, never redrawn while a race plays. */
+.home-day::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: 0 18px 30px rgba(var(--shade-rgb), 0.11);
+  pointer-events: none;
+}
 
-.home-day__head {
+html[data-theme='dark'] .home-day::before {
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- the stub ---------- */
+
+.home-day__stub {
+  flex: 0 0 18rem;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem 1.1rem;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1.75rem 1.75rem 1.6rem;
+  border-radius: var(--day-round) 0 0 var(--day-round);
+  border-right: 2px dashed var(--day-perf);
+  background: var(--day-stub);
+  color: var(--day-stub-ink);
+  /* Its half of each notch, at the top and the foot of the dotted line. */
+  -webkit-mask:
+    radial-gradient(circle at 100% 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+    radial-gradient(circle at 100% 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+  -webkit-mask-composite: source-in;
+  mask:
+    radial-gradient(circle at 100% 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+    radial-gradient(circle at 100% 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+  mask-composite: intersect;
 }
 
 .home-day__when {
   display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
 }
 
 .home-day__title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.75rem;
+  font-size: 0.75rem;
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--day-stub-kick);
 }
 
 .home-day__date {
-  font-size: 0.95rem;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.home-day__stand {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.75rem;
-  padding-left: 1.1rem;
-  border-left: 1px solid rgba(var(--ink-rgb), 0.12);
-  font-size: 0.9rem;
-}
-
-.home-day__pips {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.home-day__pip {
-  width: 1.85rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.14);
-}
-
-.home-day__pip--done {
-  background: var(--ticket, #ff8552);
-}
-
-/* The daily that keeps the day, ringed until it's punched. */
-.home-day__pip--keep {
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ticket, #ff8552) 85%, transparent);
-}
-
-.home-day__pips--full .home-day__pip {
-  background: var(--today-full);
-}
-
-.home-day__count {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
 .home-day__streak {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
-  color: var(--muted);
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-.home-day__streak svg {
-  width: 1rem;
-  height: 1rem;
+.home-day__flame {
   flex: none;
-  color: var(--ticket, #ff8552);
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--ticket, #ff8552);
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(224, 96, 46, 0.35);
 }
 
-.home-day__streak--full svg {
-  color: var(--today-full);
+.home-day__flame svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* A Full ticket: the flame a gold star, as on the Dailies page. */
+.home-day--full .home-day__flame {
+  background: var(--today-full);
+  color: #3a2a00;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--today-full) 40%, transparent);
+}
+
+.home-day__streak-words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.home-day__streak-big {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.home-day__streak-sub {
+  font-size: 0.85rem;
+  line-height: 1.3;
+  color: var(--day-stub-sub);
+  text-wrap: pretty;
 }
 
 /* Signed out, "sign in" in the streak's words: a tap on it opens the menu, where signing in lives. */
@@ -126,48 +174,185 @@ html[data-theme='dark'] .home-day {
   cursor: pointer;
 }
 
+.home-day__punch {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.home-day__holes {
+  display: flex;
+  gap: 0.55rem;
+}
+
+/* A hole still to punch: a dotted ring. */
+.home-day__hole {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px dashed var(--day-hole-ring);
+  background: var(--day-hole);
+  color: var(--ticket-ink, #3a1406);
+}
+
+/* The one that keeps the day, ringed in the ticket's orange till it's punched. */
+.home-day__hole--keep {
+  border: 3px solid var(--ticket, #ff8552);
+  background: var(--day-hole-keep);
+  box-shadow: 0 0 0 4px rgba(255, 133, 82, 0.18);
+}
+
+.home-day__hole--done {
+  border: 0;
+  background: var(--ticket, #ff8552);
+}
+
+.home-day--full .home-day__hole--done {
+  background: var(--today-full);
+  color: #3a2a00;
+}
+
+.home-day__hole svg {
+  width: 58%;
+  height: 58%;
+}
+
+.home-day__count {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--day-stub-sub);
+  font-variant-numeric: tabular-nums;
+  text-wrap: pretty;
+}
+
 .home-day__next {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-left: auto;
+  gap: 0.45rem;
   font-size: 0.82rem;
-  color: var(--muted);
+  color: var(--day-stub-sub);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .home-day__next svg {
+  flex: none;
   width: 0.95rem;
   height: 0.95rem;
-  flex: none;
 }
 
-/* The same, under the cards: a phone's. */
-.home-day__next--under {
+/* Straight into the first race still to run. */
+.home-day__start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 3.1rem;
+  margin-top: auto;
+  box-sizing: border-box;
+  padding: 0 1.2rem;
+  border-radius: 999px;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(224, 96, 46, 0.28);
+}
+
+.home-day__start:hover,
+.home-day__start:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+}
+
+.home-day__start:focus-visible {
+  outline: 2px solid var(--ticket-deep, #e0602e);
+  outline-offset: 3px;
+}
+
+.home-day__start svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* The same, under the races: a phone's. */
+.home-day__start--under {
   display: none;
+}
+
+/* ---------- the races ---------- */
+
+.home-day__races {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 1.5rem 1.6rem 1.6rem;
+  border-radius: 0 var(--day-round) var(--day-round) 0;
+  /* Round at its corners even where the races swipe out to its edge. */
+  overflow: hidden;
+  background: var(--surface);
+  /* Its half of each notch. */
+  -webkit-mask:
+    radial-gradient(circle at 0 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+    radial-gradient(circle at 0 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+  -webkit-mask-composite: source-in;
+  mask:
+    radial-gradient(circle at 0 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+    radial-gradient(circle at 0 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+  mask-composite: intersect;
+}
+
+.home-day__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+  min-width: 0;
+}
+
+.home-day__races-title {
   margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.home-day__races-sub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+  color: var(--muted);
 }
 
 .home-day__open {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  min-height: 2.5rem;
-  box-sizing: border-box;
-  padding: 0 0.9rem 0 1.15rem;
-  border-radius: 999px;
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
+  gap: 0.2rem;
+  margin-left: auto;
+  min-height: 2.25rem;
   font-size: 0.9rem;
   font-weight: 800;
+  color: var(--day-result);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .home-day__open:hover,
 .home-day__open:focus-visible {
-  background: var(--ticket-deep, #e0602e);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .home-day__open svg {
@@ -175,110 +360,62 @@ html[data-theme='dark'] .home-day {
   height: 0.95rem;
 }
 
-/* ---------- the cards ---------- */
-
-/*
- * The races, the day's puzzles in a slim line under them (AlsoToday.tsx), and Blip's question as a card beside
- * both (BlipPoll.tsx), never narrower than its words need. Each race card is as tall as its own words: Blip's
- * card, taller once you've answered, runs down beside the puzzles instead of stretching the races (Ramsey,
- * 2026-10-14: "this doesn't look great with the stretching of the game cards"; A on the "Dailies row, no
- * stretching" canvas).
- */
-.home-day__row {
-  display: grid;
-  grid-template-columns: minmax(0, var(--races, 4fr)) minmax(13rem, 1fr);
-  grid-template-rows: auto 1fr;
-  grid-template-areas:
-    'cards blip'
-    'also blip';
-  gap: 0.85rem;
-  align-items: start;
-}
-
-.home-day__row > .blip-poll {
-  grid-area: blip;
-  align-self: stretch;
-}
-
-/* As tall as Blip's card leaves beside it, with its line in the middle. */
-.home-day__row > .also {
-  grid-area: also;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  margin-top: 0;
-}
-
 .home-day__cards {
-  grid-area: cards;
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
-  gap: 0.85rem;
-}
-
-.home-day__cards > li {
-  position: relative;
-  /* The card's width, for the ranked or just-for-fun pill on its picture (below). */
-  container-type: inline-size;
-  display: flex;
-  min-width: 0;
+  gap: 0.9rem;
 }
 
 /*
- * Ranked or just for fun (DailyKindTag), on the foot of the card's picture. It's the card's sibling, a
- * button of its own rather than one inside the card's link, so it's placed from the card's width: the
- * picture is 4:3 at the card's top.
+ * A race: the card (its picture with its name on it, the next medal, who leads) is the way to the daily's page,
+ * and under it, outside that link, the way straight into the race.
  */
-.home-day__kind {
-  position: absolute;
-  left: 0.6rem;
-  top: calc(75cqw - 0.55rem);
-  z-index: 2;
-  transform: translateY(-100%);
-}
-
-.home-day__card {
+.home-day__race {
   /* Its colour as text: the daily's own in the dark, darker in the light, where it would be too pale to read. */
   --day-text: color-mix(in srgb, var(--day) 45%, var(--ink));
-  /* A narrow card stacks its foot (below). */
-  container-type: inline-size;
   display: flex;
   flex-direction: column;
-  width: 100%;
   min-width: 0;
-  box-sizing: border-box;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   overflow: hidden;
-  background: var(--playfield);
-  border: 1px solid rgba(var(--ink-rgb), 0.08);
-  color: var(--ink);
-  text-decoration: none;
+  background: var(--day-card);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
   transition: border-color 0.15s ease;
 }
 
-html[data-theme='dark'] .home-day__card {
+html[data-theme='dark'] .home-day__race {
   --day-text: var(--day);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
-.home-day__card:hover {
+.home-day__race:hover {
   border-color: color-mix(in srgb, var(--day) 60%, transparent);
 }
 
-.home-day__card:focus-visible {
+/* The card's keyboard ring goes round the whole race, its button and all. */
+.home-day__race:has(.home-day__card:focus-visible) {
   outline: 2px solid var(--ticket, #ff8552);
   outline-offset: 2px;
 }
 
-/* The ticket's deeper orange on the light page, so the ring holds 3:1 there. */
-html[data-theme='light'] .home-day__card:focus-visible {
+html[data-theme='light'] .home-day__race:has(.home-day__card:focus-visible) {
   outline-color: var(--ticket-deep, #e0602e);
 }
 
-/* The day's picture, 4:3, with the game's own picture in its place until it's drawn. */
+.home-day__card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+  outline: none;
+}
+
+/* The day's picture, 4:3, its name over the dark at its foot. */
 .home-day__pic {
   position: relative;
   display: block;
@@ -287,24 +424,35 @@ html[data-theme='light'] .home-day__card:focus-visible {
   background: #0c1218;
 }
 
-.home-day__pic > svg,
-.home-day__pic > img,
-.home-day__pic > canvas,
-.home-day__pic > .home-day__faces {
+.home-day__art,
+.home-day__art > svg,
+.home-day__art > img,
+.home-day__art > canvas,
+.home-day__art > .home-day__faces {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
 
-.home-day__pic > svg,
-.home-day__pic > img,
-.home-day__pic > canvas {
+.home-day__art > svg,
+.home-day__art > img,
+.home-day__art > canvas {
   display: block;
 }
 
-.home-day__pic > img {
+.home-day__art > img {
   object-fit: cover;
+}
+
+/* Dark at the foot, for the day's name to stand on: over the game too, as it plays. */
+.home-day__art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(8, 12, 28, 0) 42%, rgba(8, 12, 28, 0.82) 100%);
+  pointer-events: none;
 }
 
 /* Who's wanted: their heads in a row on Find the Bug's teal. */
@@ -334,9 +482,8 @@ html[data-theme='light'] .home-day__card:focus-visible {
 }
 
 /*
- * The day played over its picture (GamePreview, hoverOnly): Marble Run's course rolled, Lander's cave flown,
- * while a pointer is over the card or it has focus. It fades in over the picture as it starts and out as it
- * stops, so the picture is what the card shows at rest, and all a touch screen ever shows.
+ * The day played over its picture (GamePreview): under a pointer, or on a phone when the row rests on the card.
+ * It fades in over the picture as it starts and out as it stops, so the picture is what the card shows at rest.
  */
 .home-day__preview {
   opacity: 0;
@@ -347,29 +494,41 @@ html[data-theme='light'] .home-day__card:focus-visible {
   opacity: 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .home-day__preview {
-    transition: none;
-  }
+/* The game's name, on a chip at the picture's top. */
+.home-day__game {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 2;
+  max-width: calc(100% - 4rem);
+  box-sizing: border-box;
+  padding: 0.2rem 0.55rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: var(--day-chip);
+  color: var(--day-text);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-/* Punched: the picture dimmed under the ticket's ring and check. */
-.home-day__card--done .home-day__pic::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(12, 18, 24, 0.42);
+/* Run: the picture dimmed under the ticket's ring and check. */
+.home-day__race--done .home-day__art::after {
+  background: linear-gradient(180deg, rgba(12, 18, 24, 0.42) 0%, rgba(8, 12, 28, 0.86) 100%);
 }
 
 .home-day__stamp {
   position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
-  z-index: 1;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
   display: grid;
   place-items: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.2rem;
+  height: 2.2rem;
   box-sizing: border-box;
   border-radius: 50%;
   border: 2px solid var(--ticket, #ff8552);
@@ -386,8 +545,8 @@ html[data-theme='light'] .home-day__card:focus-visible {
 .home-day__new {
   position: absolute;
   top: 0.6rem;
-  left: 0.6rem;
-  z-index: 1;
+  right: 0.6rem;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   height: 1.35rem;
@@ -401,61 +560,176 @@ html[data-theme='light'] .home-day__card:focus-visible {
   text-transform: uppercase;
 }
 
-.home-day__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  flex: 1;
-  min-width: 0;
-  padding: 0.75rem 0.85rem 0.85rem;
+/* The season's Spotlight, where New would be: top right, as the game's name has the left. */
+.home-day__pic .season-spot {
+  top: 0.6rem;
+  right: 0.6rem;
+  left: auto;
 }
 
-.home-day__kicker {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--day-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* The day's name, on the dark at the picture's foot. */
+.home-day__on {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.6rem;
+  left: 0.75rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  color: #ffffff;
 }
 
 .home-day__name {
-  font-size: 1.06rem;
-  font-weight: 700;
-  line-height: 1.25;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.06rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
+.home-day__course {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* Under the picture: the next medal, then who leads (or your place). */
+.home-day__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem 0.8rem 0;
+}
+
+.home-day__medal {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  /* Its medals' height, so its shimmer is the same while it comes. */
+  min-height: 1rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-day__medal svg {
+  flex: none;
+}
+
+/* The next medal, an outline in its own metal. */
+.home-day__medal-next {
+  display: inline-flex;
+  color: #b8742f;
+}
+
+.home-day__medal-next .race-medal--dim {
+  color: inherit;
+}
+
+.home-day__medal-next--silver {
+  color: #7e8b97;
+}
+
+.home-day__medal-next--gold {
+  color: #a87c0c;
+}
+
+.home-day__medal-next--platinum {
+  color: #2f8ea3;
+}
+
+html[data-theme='dark'] .home-day__medal-next {
+  color: #e0a06a;
+}
+
+html[data-theme='dark'] .home-day__medal-next--silver {
+  color: #c3ccd4;
+}
+
+html[data-theme='dark'] .home-day__medal-next--gold {
+  color: #f4c53e;
+}
+
+html[data-theme='dark'] .home-day__medal-next--platinum {
+  color: #8fe3f2;
+}
+
+.home-day__medal-name {
+  color: var(--muted);
+}
+
+.home-day__medal-time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 800;
+}
+
+.home-day__side {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+/* The way straight in, or how the run went. */
 .home-day__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-top: auto;
-  padding-top: 0.6rem;
+  padding: 0.6rem 0.8rem 0.8rem;
 }
 
-.home-day__result,
-.home-day__go {
+.home-day__go,
+.home-day__result {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  flex: none;
-  min-height: 1.9rem;
+  gap: 0.4rem;
+  min-height: 2.25rem;
   box-sizing: border-box;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 800;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
+.home-day__go {
+  padding: 0 1rem 0 0.85rem;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  text-decoration: none;
+}
+
+.home-day__go:hover,
+.home-day__go:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+}
+
+.home-day__go:focus-visible {
+  outline: 2px solid var(--ticket-deep, #e0602e);
+  outline-offset: 2px;
+}
+
+.home-day__go svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
 .home-day__result {
-  padding: 0 0.7rem;
+  padding: 0 0.8rem;
   background: color-mix(in srgb, var(--ticket, #ff8552) 14%, transparent);
   color: var(--day-result);
 }
@@ -465,158 +739,45 @@ html[data-theme='light'] .home-day__card:focus-visible {
   height: 0.85rem;
 }
 
-.home-day__go {
-  padding: 0 0.8rem 0 0.7rem;
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
-}
-
-.home-day__go svg {
-  width: 0.7rem;
-  height: 0.7rem;
-}
-
-.home-day__card:hover .home-day__go {
-  background: var(--ticket-deep, #e0602e);
-}
-
-/* Your place, or who leads: beside the result or the way in, on two lines; a phone's on one. */
-.home-day__side {
-  min-width: 0;
-  font-size: 0.78rem;
-  line-height: 1.25;
-  color: var(--muted);
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.home-day__sep {
-  display: none;
-}
-
-/*
- * A card up to 16rem across (all but the widest screens'): the way in or your result, then who leads or
- * your place on a line of its own, so a long tag beside a long button never breaks into three lines.
- */
-@container (max-width: 16rem) {
-  .home-day__foot {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.35rem;
-  }
-
-  .home-day__side {
-    text-align: left;
-  }
-
-  .home-day__side br {
-    display: none;
-  }
-
-  .home-day__sep {
-    display: inline;
-  }
-
-  .home-day__kicker {
-    letter-spacing: 0.04em;
+@media (prefers-reduced-motion: reduce) {
+  .home-day__preview,
+  .home-day__race {
+    transition: none;
   }
 }
 
-/* Blip's card beside the races is narrow: while its question comes, its shimmer takes the lines its words will. */
-@media (min-width: 64.01rem) {
-  .home-day__row .blip-poll__skel-more {
-    display: inline;
+/* ---------- narrower: the races swipe beside the stub ---------- */
+
+@media (max-width: 74rem) {
+  .home-day__stub {
+    flex-basis: 16rem;
+    padding: 1.5rem 1.4rem 1.4rem;
   }
 
-  /*
-   * And a little tighter than elsewhere, so once you've answered, his results, his set and yesterday's come to
-   * about the races' and the puzzles' height. The question starts under him, so it can run the card's width.
-   */
-  .home-day__row .blip-poll {
-    gap: 0.45rem;
-    padding-bottom: 0.85rem;
+  .home-day__date {
+    font-size: 1.9rem;
   }
 
-  .home-day__row .blip-poll__q {
+  .home-day__races {
     padding-right: 0;
   }
 
-  .home-day__row .blip-poll__res {
-    gap: 0.3rem;
-  }
-
-  .home-day__row .blip-poll__bar {
-    min-height: 2rem;
-    font-size: 0.84rem;
-  }
-
-  .home-day__row .blip-set {
-    gap: 0.35rem;
-    padding: 0.5rem 0.6rem;
-  }
-
-  .home-day__row .blip-set__art {
-    max-width: 2.1rem;
-  }
-
-  .home-day__row .blip-poll__then {
-    padding-top: 0.45rem;
-  }
-}
-
-/* ---------- narrower: the cards scroll sideways, running out to the card's edge ---------- */
-
-@media (max-width: 64rem) {
-  /* The races swipe; Blip's question comes under them, then the puzzles, each the row's width. */
-  .home-day__row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    /* Room over the card for Blip, who sits on its edge. */
-    gap: 1.9rem;
-  }
-
-  .home-day {
-    padding: 1.1rem 0 1.1rem 1.2rem;
-  }
-
-  /* The title and the way to the Today page on the first line, where the day stands on the next. */
   .home-day__head {
-    row-gap: 0.3rem;
-    padding-right: 1.2rem;
+    padding-right: 1.4rem;
   }
 
-  .home-day__open {
-    order: 1;
-    margin-left: auto;
-  }
-
-  /* The break between the two lines. */
-  .home-day__head::after {
-    content: '';
-    order: 2;
-    flex-basis: 100%;
-    height: 0;
-  }
-
-  .home-day__stand {
-    order: 3;
-    padding-left: 0;
-    border-left: none;
-  }
-
-  .home-day__next {
-    order: 4;
+  .home-day__races-sub {
+    display: none;
   }
 
   .home-day__cards {
     display: flex;
-    gap: 0.65rem;
+    gap: 0.75rem;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
-    scroll-padding-left: 1.2rem;
-    padding-right: 1.2rem;
+    scroll-padding-left: 0;
+    padding-right: 1.4rem;
     scrollbar-width: none;
   }
 
@@ -624,20 +785,20 @@ html[data-theme='light'] .home-day__card:focus-visible {
     display: none;
   }
 
-  .home-day__cards > li {
+  .home-day__race {
     flex: none;
-    width: 12.5rem;
+    width: 13rem;
     scroll-snap-align: start;
   }
 
-  /* The row scrolls, so it clips past its edges: the keyboard ring goes inside the card. */
-  .home-day__card:focus-visible {
+  /* The row scrolls, so it clips past its edges: the keyboard ring goes inside the race. */
+  .home-day__race:has(.home-day__card:focus-visible) {
     outline-offset: -2px;
   }
 }
 
 /* With a mouse there's no swipe: a thin scrollbar to drag. */
-@media (max-width: 64rem) and (pointer: fine) {
+@media (max-width: 74rem) and (pointer: fine) {
   .home-day__cards {
     padding-bottom: 0.5rem;
     scrollbar-width: thin;
@@ -654,88 +815,195 @@ html[data-theme='light'] .home-day__card:focus-visible {
   }
 }
 
-/* A phone: the title and the way to the Today page on one line, where the day stands under them, then the cards. */
+/* ---------- a phone: the stub on top, the races swiping under it, the way in under them ---------- */
+
 @media (max-width: 48rem) {
   .home-day {
-    gap: 0.85rem;
-    padding: 1rem 0 1rem 1rem;
-    border-radius: 1.4rem;
+    --day-notch: 0.8rem;
+    --day-round: 1.6rem;
+    flex-direction: column;
   }
 
-  .home-day__head {
-    gap: 0.3rem 0.75rem;
-    padding-right: 1rem;
+  /* The day and the time to the next races along the top; the streak and the holes on the line under them. */
+  .home-day__stub {
+    flex: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'when next'
+      'streak punch';
+    align-items: center;
+    gap: 0.75rem 0.75rem;
+    padding: 1rem 1.25rem 0.95rem;
+    border-right: 0;
+    border-bottom: 2px dashed var(--day-perf);
+    border-radius: var(--day-round) var(--day-round) 0 0;
+    -webkit-mask:
+      radial-gradient(circle at 0 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+      radial-gradient(circle at 100% 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+    -webkit-mask-composite: source-in;
+    mask:
+      radial-gradient(circle at 0 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+      radial-gradient(circle at 100% 100%, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+    mask-composite: intersect;
+  }
+
+  .home-day__when {
+    grid-area: when;
   }
 
   .home-day__title {
-    font-size: 1.4rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+  }
+
+  .home-day__date {
+    font-size: 1.7rem;
+  }
+
+  .home-day__next {
+    grid-area: next;
+    align-self: start;
+    padding-top: 0.05rem;
+    font-size: 0.75rem;
+  }
+
+  .home-day__next-word {
+    display: none;
+  }
+
+  .home-day__streak {
+    grid-area: streak;
+    gap: 0.6rem;
+  }
+
+  .home-day__flame {
+    width: 2.15rem;
+    height: 2.15rem;
+  }
+
+  .home-day__flame svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .home-day__streak-big {
+    font-size: 1.03rem;
+  }
+
+  .home-day__streak-sub {
+    font-size: 0.75rem;
+  }
+
+  .home-day__punch {
+    grid-area: punch;
+  }
+
+  .home-day__holes {
+    gap: 0.4rem;
+  }
+
+  .home-day__hole {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  .home-day__hole--keep {
+    border-width: 2.5px;
+    box-shadow: 0 0 0 3px rgba(255, 133, 82, 0.18);
+  }
+
+  /* The holes say it: the count, for a screen reader only. */
+  .home-day__count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .home-day__stub .home-day__start {
+    display: none;
+  }
+
+  .home-day__races {
+    gap: 0.75rem;
+    padding: 0.9rem 0 1rem;
+    border-radius: 0 0 var(--day-round) var(--day-round);
+    -webkit-mask:
+      radial-gradient(circle at 0 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+      radial-gradient(circle at 100% 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+    -webkit-mask-composite: source-in;
+    mask:
+      radial-gradient(circle at 0 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px)),
+      radial-gradient(circle at 100% 0, transparent var(--day-notch), #000 calc(var(--day-notch) + 0.5px));
+    mask-composite: intersect;
+  }
+
+  .home-day__head {
+    align-items: center;
+    padding: 0 0.6rem 0 1.25rem;
+  }
+
+  .home-day__races-title {
+    font-size: 1.1rem;
   }
 
   .home-day__open {
     min-height: 2.75rem;
-    padding: 0 0.2rem 0 0.5rem;
-    background: none;
-    color: var(--day-result);
-  }
-
-  .home-day__open:hover,
-  .home-day__open:focus-visible {
-    background: none;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-  }
-
-  .home-day__stand {
+    padding: 0 0.6rem;
     font-size: 0.85rem;
   }
 
-  /* The time to the next dailies goes under the cards. */
-  .home-day__head .home-day__next {
-    display: none;
-  }
-
-  .home-day__next--under {
-    display: inline-flex;
-    padding-right: 1rem;
-  }
-
-  .home-day__pip {
-    width: 1.3rem;
-  }
-
   .home-day__cards {
+    gap: 0.7rem;
     scroll-padding-left: 1rem;
-    padding-right: 1rem;
+    padding: 0 1rem;
   }
 
-  .home-day__cards > li {
-    width: 11.75rem;
+  .home-day__race {
+    width: 13.5rem;
   }
 
-  .home-day__name {
-    font-size: 0.98rem;
+  .home-day__start--under {
+    display: flex;
+    margin: 0.2rem 1rem 0;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .home-day__card {
-    transition: none;
+/* The narrowest phones: the holes go under the streak, which keeps the stub's width for its words. */
+@media (max-width: 22.5rem) {
+  .home-day__stub {
+    grid-template-areas:
+      'when next'
+      'streak streak'
+      'punch punch';
   }
 }
 
 /* ---------- while it comes (HomeTodaySkeleton.tsx), and a picture still being drawn ---------- */
 
-.home-day--skel .home-day__card {
+.home-day--skel .home-day__card,
+.home-day--skel .home-day__start {
   pointer-events: none;
 }
 
-/* A puzzle's picture under the races, before it's drawn. */
-.home-day--skel .also__pic {
-  background: rgba(var(--ink-rgb), 0.08);
+.home-day__go.home-day__go--skel,
+.home-day__start.home-day__start--skel {
+  color: transparent;
+  background: rgba(var(--ink-rgb), 0.1);
+  box-shadow: none;
 }
 
-.home-day__go.home-day__go--skel {
-  color: transparent;
+.home-day__hole.home-day__hole--skel {
+  border-style: solid;
+  border-color: rgba(var(--ink-rgb), 0.12);
+  background: rgba(var(--ink-rgb), 0.05);
+  box-shadow: none;
+}
+
+.home-day__flame.home-day__flame--skel {
   background: rgba(var(--ink-rgb), 0.1);
   box-shadow: none;
 }
