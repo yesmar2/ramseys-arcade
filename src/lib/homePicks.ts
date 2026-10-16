@@ -38,11 +38,20 @@ export function dailyPick(slugs: string[]): string | null {
 }
 
 /**
+ * The game for someone who hasn't played here yet: Barrage, the showiest screen on the wall (Ramsey, 2026-10-16:
+ * "i think the hero game for first timers should be barrage"). It had been the newest game, Pop, whose screen is
+ * two thin rings on an empty panel.
+ */
+const FIRST_VISIT_GAME = 'barrage'
+
+/**
  * The game the hero is showing. Shared with the grid so the same artwork does
  * not appear twice within a screen of itself.
  */
 export function heroSlug(device: DeviceType, recent: string[]): string | null {
   const slugs = playableHomeGames(device).map((g) => g.slug)
   const lastPlayed = recent.find((slug) => slugs.includes(slug)) ?? null
-  return lastPlayed ?? newestSlug(device) ?? dailyPick(slugs)
+  if (lastPlayed) return lastPlayed
+  if (slugs.includes(FIRST_VISIT_GAME)) return FIRST_VISIT_GAME
+  return newestSlug(device) ?? dailyPick(slugs)
 }
