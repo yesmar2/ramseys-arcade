@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Footer } from './Footer'
 import { SiteHeader } from './SiteHeader'
+import { TestRunBanner } from './TestRunBanner'
 
 type PageShellProps = {
   children: ReactNode
@@ -36,6 +37,7 @@ export function PageShell({
           </div>
         ) : null}
         <SiteHeader />
+        <TestRunBanner />
         <main id="main" className={innerClassName ?? 'page-main'}>
           {children}
         </main>

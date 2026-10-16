@@ -248,6 +248,47 @@ export function sendLaunchEmail() {
   return api<{ sent: number; left: number }>('/admin/launch-list/send', { method: 'POST' })
 }
 
+/** What Reset test data finds: kept, then gone (the API's resetWorld.ts ResetCounts). */
+export type ResetCounts = {
+  players: number
+  launchList: number
+  feedback: number
+  samplePlayers: number
+  runs: number
+  boardScores: number
+  records: number
+  ticketRows: number
+  prizes: number
+  trophies: number
+  seasonPlayers: number
+  medalsAndLaps: number
+  events: number
+  notifications: number
+}
+
+export type ResetPreview = {
+  counts: ResetCounts
+  /** When the reset stops working (the end of launch day), ms. */
+  until: number
+  open: boolean
+  lastResetAt: number | null
+}
+
+export function fetchResetPreview() {
+  return api<ResetPreview>('/admin/reset')
+}
+
+/**
+ * Empty everything played and delete the sample players, keeping accounts, tags, friends and groups. On Render
+ * the API then starts afresh (`restarting`), which takes it away for a minute.
+ */
+export function resetTestData() {
+  return api<{ at: number; before: ResetCounts; restarting: boolean }>('/admin/reset', {
+    method: 'POST',
+    body: JSON.stringify({ confirm: 'RESET' }),
+  })
+}
+
 export async function fetchOpenFlags() {
   return (await api<{ flags: AdminFlag[] }>('/admin/flags?limit=100')).flags
 }

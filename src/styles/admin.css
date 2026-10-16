@@ -202,3 +202,58 @@ html[data-theme='dark'] .adm {
   flex-basis: 100%;
   margin-top: 0.2rem;
 }
+
+/* ---------- Reset test data (AdminReset.tsx) ---------- */
+
+.adm-reset {
+  --panel-on-danger: #fff;
+}
+
+html[data-theme='dark'] .adm-reset {
+  --panel-on-danger: #2a0a10;
+}
+
+.adm-reset__lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.6rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.adm-reset__head {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adm-reset__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-reset__confirm {
+  display: flex;
+  flex: 0 1 12rem;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* The admin input's flex basis is a width in a row; in this column it would be a height. */
+.adm-reset__confirm .adm-input.panel__input {
+  flex: none;
+}
+
+.adm-reset__go.panel__btn {
+  align-self: flex-end;
+  background: var(--panel-danger);
+  color: var(--panel-on-danger);
+}

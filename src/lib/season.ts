@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { currentAccountId, getSessionToken } from './auth'
+import { forgetScoresFromBefore } from './dataReset'
 import { api } from './leaderboard'
 
 /*
@@ -127,6 +128,8 @@ type SeasonAnswer = {
   /** Only on the Season page's asking (catchup): they take more reading than the header wants. */
   standings?: SeasonStandings
   goals?: SeasonGoal[]
+  /** When the API's data was last reset (Reset test data, before launch), ms: lib/dataReset.ts. */
+  resetAt?: number | null
 }
 
 type Store = SeasonAnswer & { loaded: boolean; loading: boolean }
@@ -254,6 +257,8 @@ export function refreshSeason({ force = false, signedIn = fetchedSignedIn ?? fal
       // The header's asking has no standings or goals: keep the page's from before, the same season's.
       const same = snapshot.season?.id === answer.season?.id && fetchedSignedIn === signedIn
       fetchedSignedIn = signedIn
+      // After a reset, what this device kept from playing goes first (this answer's season is kept after it).
+      forgetScoresFromBefore(answer.resetAt)
       keep(answer)
       emit({
         ...answer,
