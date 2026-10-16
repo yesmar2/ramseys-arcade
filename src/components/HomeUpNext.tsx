@@ -1,15 +1,17 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { getGame, isDailyGame, isGameListed } from '../data/games'
+import { useAuth } from '../hooks/useAuth'
 import { gamePlayHref, seasonHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { useDeviceType } from '../lib/device'
+import { useDeviceType, type DeviceType } from '../lib/device'
 import { gapBetween } from '../lib/gameBoard'
 import { useActiveGroup } from '../lib/groups'
 import { slots, useRung, type Place, type Rung } from '../lib/heroRung'
-import { heroSlug, newestSlug } from '../lib/homePicks'
+import { heroSlug, newestSlug, playableHomeGames } from '../lib/homePicks'
 import { useRecentGames } from '../lib/lastPlayed'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { usePoll } from '../lib/poll'
 import { ordinal } from '../lib/profileMath'
 import { recordGap, recordValue } from '../lib/recordBook'
 import { fetchGameRecords, GAMES_WITH_RECORDS, type RecordSummary } from '../lib/records'
@@ -25,9 +27,9 @@ import '../styles/upNext.css'
  * Up next for you, under today's ticket (D on the "Home page redesign" canvas, 2026-10-15): a row of cards picked
  * from your own games. The place you're after on the game you played last (or, with no score on it, the game
  * itself, to jump back in), a record you hold and could lose, Blip's question of the day, and the season's pass:
- * three or four of them, whichever there are, across the row. Each card has one way on. It took
- * the place of the banner that used to open the page for anyone who'd played before (HomeHero.tsx keeps a first
- * visit's welcome).
+ * three or four of them across the row, never fewer than three (FEWEST_CARDS: more games fill it out). Each card
+ * has one way on. It took the place of the banner that used to open the page for anyone who'd played before
+ * (HomeHero.tsx keeps a first visit's welcome).
  */
 
 const PlayIcon = () => (
@@ -338,6 +340,38 @@ function SeasonCard({ wide = false }: { wide?: boolean }) {
 /** How long the row holds the season's place before the API says whether one is on (as the banner waited). */
 const SEASON_WAIT_MS = 4000
 
+/*
+ * The fewest cards the row shows: two spread thin across the page (Ramsey, 2026-10-16: "it looks a little funny
+ * when there is only two, i think we always need to have at least 3"). With no record held, no season on or no
+ * question from Blip, more games fill it out. The Standings card that used to fill in went because it repeated
+ * the Standings further down the page.
+ */
+const FEWEST_CARDS = 3
+
+type Filler = { slug: string; kicker: string; played: boolean }
+
+/**
+ * Games to fill the row out with, best first: another game you've played lately, then games you haven't tried
+ * (the arcade's newest first, then a different one each day), then more of yours. Never a daily (today's ticket
+ * is above the row) or a game the row already has (`taken`).
+ */
+function fillerGames(device: DeviceType, recent: readonly string[], taken: readonly string[]): Filler[] {
+  const playable = playableHomeGames(device)
+    .map((g) => g.slug)
+    .filter((slug) => !isDailyGame(slug) && !taken.includes(slug))
+  const played = recent.filter((slug) => playable.includes(slug))
+  const untried = playable.filter((slug) => !recent.includes(slug))
+  const day = Math.floor(Date.now() / 86_400_000)
+  const turned = untried.length ? [...untried.slice(day % untried.length), ...untried.slice(0, day % untried.length)] : []
+  const newest = newestSlug(device)
+  const fresh = newest && turned.includes(newest) ? [newest, ...turned.filter((slug) => slug !== newest)] : turned
+  return [
+    ...played.slice(0, 1).map((slug) => ({ slug, kicker: 'Played lately', played: true })),
+    ...fresh.map((slug) => ({ slug, kicker: slug === newest ? 'New in the arcade' : 'Try something new', played: false })),
+    ...played.slice(1).map((slug) => ({ slug, kicker: 'Played lately', played: true })),
+  ]
+}
+
 export function HomeUpNext({ first = false }: { first?: boolean }) {
   const device = useDeviceType()
   const recent = useRecentGames()
@@ -354,6 +388,17 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
     return () => window.clearTimeout(timer)
   }, [seasonUnknown])
   const season = liveSeason(store)
+  // Blip's card is missing when there's no question today or the API couldn't say (BlipPoll.tsx).
+  const { signedIn } = useAuth()
+  const poll = usePoll(signedIn)
+  const blipShown = !(poll.status === 'error' || (poll.status === 'ready' && !poll.view?.today))
+  // A record's card or the season's still coming holds its place (the season's as a skeleton), so it counts.
+  const have = 1 + (held ? 1 : 0) + (blipShown ? 1 : 0) + (season || seasonUnknown ? 1 : 0)
+  const need = first || !slug ? 0 : Math.max(0, FEWEST_CARDS - have)
+  const fill = need ? fillerGames(device, recent, [slug!, ...(held ? [held.slug] : [])]).slice(0, need) : []
+  // A game you played lately gets its board's chase too, as the row's first card does.
+  const playedFill = fill.find((f) => f.played) ?? null
+  const { rung: fillRung, loading: fillLoading } = useRung(playedFill?.slug ?? null, name)
   // A first visit has nothing of its own to pick from yet: the season, wide, and Blip's question, after the games.
   if (first) {
     const wide = season ? <SeasonCard key="season" wide /> : seasonUnknown ? <SkelCard key="season" dark wide /> : null
@@ -373,19 +418,32 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
   const lead = loading ? <SkelCard key="chase" /> : rung && slots(rung) ? <ChaseCard key="chase" slug={slug} rung={rung} /> : <PickCard key="chase" slug={slug} kicker={kicker} />
   const record = held ? <RecordCard key="record" held={held} name={name} /> : null
   const seasonCard = season ? <SeasonCard key="season" /> : seasonUnknown ? <SkelCard key="season" dark /> : null
+  // Last in the row, so a season that turns out to be off hands its place to a game rather than moving the row.
+  const fillers = fill.map((f) =>
+    f === playedFill && fillLoading ? (
+      <SkelCard key={`fill-${f.slug}`} />
+    ) : f === playedFill && fillRung && slots(fillRung) ? (
+      <ChaseCard key={`fill-${f.slug}`} slug={f.slug} rung={fillRung} />
+    ) : (
+      <PickCard key={`fill-${f.slug}`} slug={f.slug} kicker={f.kicker} />
+    ),
+  )
   return (
     <section className="upnext" aria-labelledby="upnext-title">
       <div className="upnext__head">
         <h2 id="upnext-title" className="upnext__title">
           Up next for you
         </h2>
-        <span className="upnext__sub">Picked from your games{record ? ' and your records' : ''}</span>
+        <span className="upnext__sub">
+          {record ? 'Picked from your games and your records' : fill.some((f) => !f.played) ? 'Picked for you' : 'Picked from your games'}
+        </span>
       </div>
       <div className="upnext__grid">
         {lead}
         {record}
         <BlipPoll key="blip" look="card" />
         {seasonCard}
+        {fillers}
       </div>
     </section>
   )
