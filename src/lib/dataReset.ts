@@ -35,6 +35,9 @@ const PLAYED_KEYS = [
   'skermix-passplus-missed',
   'skermix-today-rivals',
   'skermix-challenges',
+  // The avatar this device last set for each tag: the reset takes what was earned and bought off the saved one
+  // (the API's resetWorld.ts), and this copy would still wear it (Ramsey: "i still have player card stuff").
+  'arcade-avatar-id',
 ]
 
 /** Forget what this device kept from playing, once, if the data was reset after it last looked. */

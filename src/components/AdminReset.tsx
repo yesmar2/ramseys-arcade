@@ -76,6 +76,9 @@ export function AdminReset() {
                 {count(c.ticketRows, 'ticket payout')} and {count(c.prizes, 'prize')}
               </li>
               <li>{count(c.trophies, 'trophy', 'trophies')}</li>
+              <li>
+                Prize counter looks, rings and pins off {count(c.dressedAvatars ?? 0, 'avatar')}
+              </li>
               <li>{count(c.seasonPlayers, 'player')} on the season pass</li>
               <li>{c.medalsAndLaps.toLocaleString()} medals, laps and ghosts</li>
               <li>

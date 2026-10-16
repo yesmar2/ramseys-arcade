@@ -254,6 +254,8 @@ export type ResetCounts = {
   launchList: number
   feedback: number
   samplePlayers: number
+  /** Real players' avatars wearing something earned or bought, which comes off. */
+  dressedAvatars: number
   runs: number
   boardScores: number
   records: number
