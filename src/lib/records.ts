@@ -1,6 +1,6 @@
 import { applyBoardScope, withGroupFallback } from './groups'
 import { isRunAssisted } from './runAchievements'
-import { runIdFor } from './runSession'
+import { runFields, runIdFor } from './runSession'
 import {
   ApiError,
   detectDeviceType,
@@ -557,7 +557,7 @@ export async function submitRecord(
       score: Math.floor(score),
       device: detectDeviceType(),
       ...(token ? { token } : {}),
-      ...(runId ? { runId } : {}),
+      ...runFields(runId),
     }),
   })
 

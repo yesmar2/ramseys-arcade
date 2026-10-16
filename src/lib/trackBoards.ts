@@ -2,6 +2,7 @@ import { chosenSkin } from './skins'
 import { useCallback, useEffect, useState } from 'react'
 import { detectDeviceType } from './device'
 import { api, getClaimToken, normalizePlayerName } from './leaderboard'
+import { runFields } from './runSession'
 import { noteTicketsPaid } from './tickets'
 
 /*
@@ -178,7 +179,7 @@ export async function saveTrackLap(
   const token = getClaimToken(cleaned)
   const result = await api<TrackLapResult>(`/tracks/${game}/${track}/laps`, {
     method: 'POST',
-    body: JSON.stringify({ name: cleaned, score, device: detectDeviceType(), runId, ...(token ? { token } : {}), ...skinOf(game) }),
+    body: JSON.stringify({ name: cleaned, score, device: detectDeviceType(), ...runFields(runId), ...(token ? { token } : {}), ...skinOf(game) }),
   })
   // The tracks' records are stale now, and taking a record pays: the header's count goes up with it.
   held.clear()

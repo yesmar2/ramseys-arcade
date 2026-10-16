@@ -2,7 +2,7 @@ import { isGameListed } from '../data/games'
 import { formatLeaderboardScore, isTimeBoard } from './leaderboardFormat'
 import { noteTicketsPaid } from './tickets'
 import { isImpersonating } from './impersonate'
-import { runIdFor } from './runSession'
+import { runFields, runIdFor } from './runSession'
 import { getClaimToken, getLastPlayerName, normalizePlayerName, rememberClaimToken, ApiError } from './leaderboard'
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended'
@@ -1055,7 +1055,7 @@ export async function submitTournamentScore(
       game,
       score,
       ...(token ? { token } : {}),
-      ...(runId ? { runId } : {}),
+      ...runFields(runId),
       ...(course != null ? { course } : {}),
       ...tournamentAccessQuery(id),
     }),

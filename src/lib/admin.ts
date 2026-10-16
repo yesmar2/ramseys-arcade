@@ -295,6 +295,19 @@ export async function fetchOpenFlags() {
   return (await api<{ flags: AdminFlag[] }>('/admin/flags?limit=100')).flags
 }
 
+/** The API's run check (runCheck.ts there): whether runs are required, and how many of the last days' saves came with theirs. */
+export type RunCheck = {
+  required: boolean
+  days: number
+  saves: number
+  withRun: number
+  games: { game: string; saves: number; withRun: number; lastWithout: number | null }[]
+}
+
+export function fetchRunCheck(days = 7) {
+  return api<RunCheck>(`/admin/run-check?days=${days}`)
+}
+
 export async function fetchBans() {
   return (await api<{ bans: AdminBan[] }>('/admin/bans')).bans
 }

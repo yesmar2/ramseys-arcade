@@ -18,6 +18,7 @@ import {
   fetchClientErrors,
   fetchFeedback,
   fetchOpenFlags,
+  fetchRunCheck,
   grantTickets,
   liftBan,
   settleFlag,
@@ -25,6 +26,7 @@ import {
   type AdminClientError,
   type AdminFeedback,
   type AdminFlag,
+  type RunCheck,
 } from '../lib/admin'
 import { capitalName, HUNT_ANCHORS, huntDay, huntPick, huntTestHref, huntWhere, msUntilNextBug } from '../lib/bugHunt'
 import { lazyPage } from '../lib/lazyPage'
@@ -240,6 +242,7 @@ export function AdminPage({ section }: { section?: AdminSection }) {
                 <FeedbackCard />
                 <ErrorsCard />
                 <FlagsCard />
+                <RunCheckCard />
                 <TicketsCard />
                 <BansCard />
               </>
@@ -505,6 +508,68 @@ function ErrorsCard() {
   )
 }
 
+/** What each kind of flag means (the API's scoreFlags.ts). */
+const FLAG_KINDS: Record<string, string> = {
+  outlier: 'Far past the best',
+  'near-cap': 'At the edge of possible',
+}
+
+/**
+ * Whether a score has to come with its run (REQUIRE_RUN_TOKEN on the API), and how many of the last week's saves
+ * did, game by game. Once they all do, the switch can go on without refusing anyone's save.
+ */
+function RunCheckCard() {
+  const [check, setCheck] = useState<RunCheck | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const refresh = useCallback(() => {
+    setError(null)
+    fetchRunCheck()
+      .then(setCheck)
+      .catch((err) => setError(errorText(err, 'Couldn’t load this')))
+  }, [])
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+  const missing = check?.games.filter((g) => g.withRun < g.saves) ?? []
+  const share = check && check.saves ? Math.floor((check.withRun / check.saves) * 1000) / 10 : null
+
+  return (
+    <section className="adm-card" aria-labelledby="adm-runs">
+      <CardHead title="Run check" count={missing.length || null} onRefresh={refresh} />
+      <p className="adm-card__sub" id="adm-runs">
+        Every run the site starts is timed by the server, and a score is checked against that time. While runs aren’t
+        required, a score sent without one isn’t checked. Once the last week’s saves all came with their run, set
+        REQUIRE_RUN_TOKEN to 1 on Render (the API service, Environment) and this says On.
+      </p>
+      {error ? <p className="adm-fail">{error}</p> : null}
+      {check ? (
+        <p className="adm-note">
+          Runs required: <b>{check.required ? 'On' : 'Off'}</b>
+          {share != null
+            ? ` · ${share}% of the last ${check.days} days’ ${check.saves.toLocaleString()} saves came with their run`
+            : ` · no saves in the last ${check.days} days`}
+        </p>
+      ) : null}
+      {check && check.saves && !missing.length ? <p className="adm-note">Every save came with its run.</p> : null}
+      {missing.length ? (
+        <ul className="adm-list">
+          {missing.map((g) => (
+            <li key={g.game} className="adm-row">
+              <div className="adm-row__main">
+                <b className="adm-row__title">{gameName(g.game)}</b>
+                <span className="adm-row__sub">
+                  {(g.saves - g.withRun).toLocaleString()} of {g.saves.toLocaleString()} saves without a run
+                  {g.lastWithout ? ` · the last ${ago(g.lastWithout)}` : ''}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  )
+}
+
 function FlagsCard() {
   const { items, setItems, error, setError, refresh } = useList<AdminFlag>(fetchOpenFlags)
   const [busy, setBusy] = useState<string | null>(null)
@@ -539,7 +604,7 @@ function FlagsCard() {
                   {f.name} · {gameName(f.game)} · {formatLeaderboardScore(f.game, f.score)}
                 </b>
                 <span className="adm-row__sub">
-                  {f.kind}
+                  {FLAG_KINDS[f.kind] ?? f.kind}
                   {f.detail ? `: ${f.detail}` : ''} · {ago(f.createdAt)}
                 </span>
               </div>

@@ -3,7 +3,7 @@ import { announceSecrets, type SecretFound } from './secrets'
 import type { RunTickets } from './tickets'
 import type { SeasonRun } from './season'
 import type { SeasonPrizes } from './seasonStandings'
-import { runIdFor } from './runSession'
+import { runFields, runIdFor } from './runSession'
 import type { DeviceType } from './device'
 import { isDailyGame, isGameListed, isRankedGame } from '../data/games'
 import type { ChallengeRunResult } from './challenges'
@@ -890,7 +890,7 @@ export async function addLeaderboardScore(
       score,
       device: detectDeviceType(),
       ...(token ? { token } : {}),
-      ...(runId ? { runId } : {}),
+      ...runFields(runId),
       ...(opts.challengeId ? { challengeId: opts.challengeId } : {}),
       ...(opts.pickups ? { pickups: Math.floor(opts.pickups) } : {}),
       ...(opts.pace ? { pace: Math.round(opts.pace) } : {}),

@@ -1,6 +1,6 @@
 import { noteRunBegun } from './engagement'
 import { rememberPlayed } from './lastPlayed'
-import { api } from './leaderboard'
+import { api, ApiError } from './leaderboard'
 
 /**
  * Tells the server a run has begun, so the score at the end has something to
@@ -39,6 +39,27 @@ export function openRunsThrough(slug: string, open: (() => Promise<{ runId?: str
 }
 
 /**
+ * Another go at opening a run that couldn't be, after each of these waits: a dropped request or a busy server
+ * shouldn't leave a run unchecked, and once the API refuses scores without a run (REQUIRE_RUN_TOKEN), unsaved.
+ */
+const RETRY_WAITS_MS = [2_000, 5_000, 10_000] as const
+
+/**
+ * How long each run's id took to come back after the run began, in ms, by id. The server's clock for a run starts
+ * when it opens it, so a late id (a retry, a slow answer) would make an honest score look too quick for its time:
+ * a save sends this along (runLagOf) and the API allows for it, up to a minute.
+ */
+const lags = new Map<string, number>()
+const LAGS_KEPT = 40
+
+/** Worth another go: no answer at all, or the server busy or failing, never a refusal of the request itself. */
+function retryable(err: unknown): boolean {
+  return !(err instanceof ApiError) || err.status >= 500 || err.status === 429
+}
+
+const wait = (ms: number) => new Promise<void>((done) => window.setTimeout(done, ms))
+
+/**
  * A run has started.
  *
  * Fire and forget: called from the same place a game resets itself, and a
@@ -49,18 +70,46 @@ export function beginRun(slug: string): void {
   // A run begun, not a page opened, is what "recently played" means: the home page says "Jump back in" off it.
   rememberPlayed(slug)
   const through = opener && opener.slug === slug ? opener.open : null
-  const run = (
-    through
+  const began = performance.now()
+  const open = () =>
+    (through
       ? through()
       : api<{ runId?: string }>('/runs/start', {
           method: 'POST',
           body: JSON.stringify({ game: slug }),
         })
-  )
-    .then((res) => res?.runId || undefined)
-    // Unopenable run: the score still saves, just unverified.
-    .catch(() => undefined)
+    ).then((res) => res?.runId || undefined)
+  // An event's opener spends a try, so it's never sent twice; a plain start is tried again while this is still the
+  // game's run, and a run that can't be opened at all still plays, its score saving unverified.
+  const attempt = (tries: number): Promise<string | undefined> =>
+    open().catch((err: unknown) => {
+      const waitMs = RETRY_WAITS_MS[tries]
+      if (through || waitMs == null || !retryable(err)) return undefined
+      return wait(waitMs).then(() => (current.get(slug) === run ? attempt(tries + 1) : undefined))
+    })
+  const run: Promise<string | undefined> = attempt(0).then((runId) => {
+    if (runId) {
+      lags.set(runId, Math.round(performance.now() - began))
+      if (lags.size > LAGS_KEPT) lags.delete(lags.keys().next().value!)
+    }
+    return runId
+  })
   current.set(slug, run)
+}
+
+/**
+ * How long after its run began this run's id came back, for a save to send as runLagMs. Undefined for an id this
+ * page didn't open, such as Find the Bug's run carried on after a reload.
+ */
+export function runLagOf(runId: string | null | undefined): number | undefined {
+  return runId ? lags.get(runId) : undefined
+}
+
+/** A run's fields for a save's body: its id, and how late it came back when this page opened it. */
+export function runFields(runId: string | null | undefined): { runId?: string; runLagMs?: number } {
+  if (!runId) return {}
+  const lag = lags.get(runId)
+  return lag != null ? { runId, runLagMs: lag } : { runId }
 }
 
 /**

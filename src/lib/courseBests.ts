@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AUTH_EVENT } from './accountEvents'
 import { getSessionToken } from './auth'
 import { api } from './leaderboard'
+import { runFields } from './runSession'
 
 /*
  * Your best time on each course of a racing daily, kept by the API for you alone (courseBests.ts there): the
@@ -26,7 +27,7 @@ export function noteCourseBest(game: string, course: number, ms: number, run: Pr
       if (!runId) return
       const res = await api<{ improved: boolean }>(`/course-bests/${game}/${course}`, {
         method: 'POST',
-        body: JSON.stringify({ ms: Math.round(ms), runId }),
+        body: JSON.stringify({ ms: Math.round(ms), ...runFields(runId) }),
       })
       if (res.improved) {
         window.dispatchEvent(new CustomEvent<CourseBestNews>(COURSE_BEST_EVENT, { detail: { game, course, ms: Math.round(ms) } }))
