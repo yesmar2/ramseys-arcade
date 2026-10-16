@@ -34,10 +34,13 @@ const GATE = '/__gate'
 const SOON = '/soon.html'
 
 /**
- * What anyone may have with the gate closed: the coming-soon page and what it shows, and the service worker,
- * so a browser that kept the app from before can take the update that lets it go.
+ * What anyone may have with the gate closed: the coming-soon page and what it shows, the service worker, so a
+ * browser that kept the app from before can take the update that lets it go, and the Privacy Policy and Terms.
+ * Google's sign-in branding check and the payments sign-up read those before launch (Ramsey, 2026-10-16: "let
+ * the privacy and terms pages through"). The app runs on them, and goes back to the server for any other page
+ * (src/lib/gate.ts OPEN_PAGES).
  */
-const OPEN = new Set([SOON, '/favicon.svg', '/apple-touch-icon.png', '/og.png', '/robots.txt', '/sw.js'])
+const OPEN = new Set([SOON, '/favicon.svg', '/apple-touch-icon.png', '/og.png', '/robots.txt', '/sw.js', '/privacy', '/privacy/', '/terms', '/terms/'])
 
 /** @param {Request} request */
 export default async function middleware(request) {
