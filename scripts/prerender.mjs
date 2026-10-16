@@ -63,6 +63,13 @@ function pageHtml(meta, content) {
   return html
 }
 
+/** A page's structured data (lib/pageMeta.ts pageStructuredData) in its head, `<` escaped so nothing in it can end the script. */
+function withStructuredData(html, data) {
+  if (!data) return html
+  const json = JSON.stringify(data).replace(/</g, '\\u003c')
+  return html.replace('</head>', `  <script type="application/ld+json">${json}</script>\n  </head>`)
+}
+
 function outFile(path) {
   return path === '/' ? join(DIST, 'index.html') : join(DIST, path, 'index.html')
 }
@@ -129,7 +136,7 @@ const server = await createServer({
   server: { middlewareMode: true, hmr: false, watch: null },
 })
 try {
-  const { pageContent, pageMeta, publicRoutes } = await server.ssrLoadModule('/src/lib/pageMeta.ts')
+  const { llmsText, pageContent, pageMeta, pageStructuredData, publicRoutes } = await server.ssrLoadModule('/src/lib/pageMeta.ts')
   const paths = []
   for (const route of publicRoutes()) {
     const meta = pageMeta(route)
@@ -137,7 +144,7 @@ try {
     paths.push(meta.path)
     const file = outFile(meta.path)
     mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, pageHtml(meta, pageContent(route)))
+    writeFileSync(file, withStructuredData(pageHtml(meta, pageContent(route)), pageStructuredData(route, origin)))
   }
   /*
    * A challenge link, /c/<game>/<id>, starts from its game's page here:
@@ -218,9 +225,11 @@ try {
   }
   writeFileSync(join(DIST, 'robots.txt'), robotsTxt())
   writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml(paths))
+  // The site in plain Markdown for AI tools (llmstxt.org), from the same listed games.
+  writeFileSync(join(DIST, 'llms.txt'), llmsText(origin))
   const soon = writeSoonPage()
   console.log(
-    `prerendered ${paths.length} pages and ${challengePages} challenge pages at ${origin}, plus robots.txt and sitemap.xml${
+    `prerendered ${paths.length} pages and ${challengePages} challenge pages at ${origin}, plus robots.txt, sitemap.xml and llms.txt${
       soon ? `, and the coming-soon page (emails to ${soon})` : ''
     }`,
   )

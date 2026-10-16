@@ -1,4 +1,4 @@
-import { games, getGame, isDailyGame, isGameListed, isListedGame, isRankedGame, type Game } from '../data/games'
+import { games, getGame, isDailyGame, isGameListed, isListedGame, isRankedGame, TAG_LABELS, type Game } from '../data/games'
 import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
@@ -57,7 +57,7 @@ export type PageMeta = {
 
 export const SITE_TAGLINE = 'Simple games, no ads, just play'
 
-export const SITE_DESCRIPTION = `${SITE_LINE} Quick original games that start in a tap, on a phone or at a desk, with leaderboards, record books and events to play with friends.`
+export const SITE_DESCRIPTION = `${SITE_LINE} Quick, free original games that start in a tap, on a phone or at a desk, with leaderboards, record books and events to play with friends.`
 
 export const DEFAULT_IMAGE = '/og.png'
 
@@ -109,8 +109,46 @@ function goalBeyond(game: Game): string | null {
   return game.description.toLowerCase().includes(bare) ? null : goal
 }
 
+/**
+ * What kind of game each one is, in the words people search for: the second half of its page's title ("Space
+ * Rocks · Free asteroid shooter"), the start of its description, the line its page opens on for readers that run
+ * no scripts (search engines and AI tools mostly read that), its structured data and llms.txt. Plain genre words,
+ * never another game's name: a description like "Spin, thrust, clear the rocks" doesn't say what the game is.
+ */
+const GAME_KINDS: Readonly<Record<string, string>> = {
+  asteroids: 'asteroid shooter',
+  patriot: 'missile defense game',
+  snake: 'classic snake game',
+  crosswalk: 'endless road-crossing game',
+  stacker: 'block-stacking game',
+  pop: 'bubble-popping game',
+  pellets: 'maze chase game',
+  barrage: 'bullet-hell shooter',
+  crumbtrail: 'endless maze climber',
+  bop: 'fast reaction game',
+  frenzy: 'fish-eat-fish game',
+  fireflies: 'light-and-sound memory game',
+  pileup: 'falling-block puzzle',
+  putt: 'mini golf game',
+  centroid: 'daily balance puzzle',
+  findbug: 'daily hidden-object puzzle',
+  halffull: 'daily pouring puzzle',
+  acechase: 'daily trick-shot golf game',
+  hotlap: 'daily racing game',
+  marblerun: 'daily marble race',
+  lander: 'daily cave-flying game',
+  swoop: 'daily hill-gliding game',
+  wobblerun: 'daily obstacle race',
+}
+
+/** What kind of game it is, in searchable words ("asteroid shooter"), when it has a kind written. */
+export function gameKind(slug: string): string | null {
+  return GAME_KINDS[slug] ?? null
+}
+
 export function gameDescription(game: Game): string {
-  return clipDescription(`${game.description} ${goalBeyond(game) ?? ''}`)
+  const kind = gameKind(game.slug)
+  return clipDescription(`${kind ? `A free ${kind} in your browser, with no ads. ` : ''}${game.description} ${goalBeyond(game) ?? ''}`)
 }
 
 /** Share image for a game; the site's own for anything that has none. */
@@ -125,8 +163,10 @@ function gameMeta(slug: string, path: string, verb?: string): PageMeta {
   if (!game || game.hidden) {
     return { title: titled('Game'), description: SITE_DESCRIPTION, path, image: DEFAULT_IMAGE }
   }
+  // A game's own page says what kind of game it is, as people search for it: "Space Rocks · Free asteroid shooter".
+  const kind = verb ? null : gameKind(slug)
   return {
-    title: titled(verb ? `${verb} ${game.name}` : game.name),
+    title: titled(verb ? `${verb} ${game.name}` : kind ? `${game.name} · Free ${kind}` : game.name),
     description: gameDescription(game),
     path,
     image: gameImagePath(slug),
@@ -288,8 +328,30 @@ export type PageContent = {
   links: PageLink[]
 }
 
+/** Every listed game, each named with what kind of game it is: "Space Rocks: asteroid shooter". */
 function gameLinks(): PageLink[] {
-  return visibleGames().map((game) => ({ href: gameHref(game.slug), label: game.name }))
+  return visibleGames().map((game) => {
+    const kind = gameKind(game.slug)
+    return { href: gameHref(game.slug), label: kind ? `${game.name}: ${kind}` : game.name }
+  })
+}
+
+/** "A free asteroid shooter you play in your browser…": what a game is, in a line a search engine or an AI tool can quote. */
+function gameIsLine(game: Game): string | null {
+  const kind = gameKind(game.slug)
+  return kind
+    ? `${game.name} is a free ${kind} you play in your browser, on a phone or a computer: no ads, and nothing to install.`
+    : null
+}
+
+/** The arcade in numbers, for the home page and llms.txt: "Thirteen games to play any time, four daily races…". */
+function arcadeLine(): string {
+  const listed = visibleGames().filter((game) => game.playable)
+  const anyTime = listed.filter((game) => !game.daily).length
+  const races = listed.filter((game) => game.daily && isRankedGame(game.slug)).length
+  const puzzles = listed.filter((game) => game.daily && !isRankedGame(game.slug)).length
+  const count = numberWord(anyTime)
+  return `${count.charAt(0).toUpperCase()}${count.slice(1)} original games to play any time, plus ${numberWord(races)} daily races and ${numberWord(puzzles)} daily puzzles, new every day and the same for everyone. All free to play, with nothing to install.`
 }
 
 function siteLinks(): PageLink[] {
@@ -326,7 +388,7 @@ export function pageContent(route: Route): PageContent {
     case 'home':
       return {
         heading: `${APP_NAME}: ${SITE_TAGLINE}`,
-        paragraphs: [SITE_DESCRIPTION],
+        paragraphs: [SITE_DESCRIPTION, arcadeLine()],
         links: [...gameLinks(), ...siteLinks()],
       }
     case 'game':
@@ -338,7 +400,8 @@ export function pageContent(route: Route): PageContent {
         return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
       }
       const [goal, ...rules] = howToPlaySentences(game.slug)
-      const paragraphs = [game.description, ...(goal && goalBeyond(game) ? [goal] : []), ...rules]
+      const isLine = gameIsLine(game)
+      const paragraphs = [...(isLine ? [isLine] : []), game.description, ...(goal && goalBeyond(game) ? [goal] : []), ...rules]
       return { heading, paragraphs, links: gameContentLinks(game) }
     }
     case 'gameLeaderboard':
@@ -581,4 +644,108 @@ export function pageMeta(route: Route): PageMeta {
     case 'notFound':
       return { ...site, title: titled(route.killScreen ? 'Level 256' : 'Game Over'), path: homeHref(), noindex: true }
   }
+}
+
+const capital = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`
+
+/**
+ * Structured data (schema.org, as JSON-LD) for a page the build writes: on the home page, what the site is and who
+ * makes it; on a game's own page, that it's a free game played in a web browser, what kind, and where to play it.
+ * Search engines and AI tools read it to know what a page is. Null for every other page. `origin` is the build's,
+ * as the prerender has it (scripts/prerender.mjs).
+ */
+export function pageStructuredData(route: Route, origin: string): Record<string, unknown> | null {
+  const orgId = `${origin}/#org`
+  const org = { '@type': 'Organization', '@id': orgId, name: APP_NAME, url: `${origin}/`, logo: `${origin}/apple-touch-icon.png`, description: SITE_LINE }
+  if (route.name === 'home') {
+    return {
+      '@context': 'https://schema.org',
+      '@graph': [
+        { '@type': 'WebSite', '@id': `${origin}/#site`, name: APP_NAME, url: `${origin}/`, description: SITE_DESCRIPTION, inLanguage: 'en', publisher: { '@id': orgId } },
+        org,
+      ],
+    }
+  }
+  if (route.name !== 'game' || route.tab || route.board) return null
+  const game = getGame(route.slug)
+  if (!game || game.hidden) return null
+  const meta = pageMeta(route)
+  const url = `${origin}${meta.path}`
+  const kind = gameKind(game.slug)
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'VideoGame',
+        '@id': `${url}#game`,
+        name: game.name,
+        url,
+        description: gameDescription(game),
+        image: `${origin}${meta.image}`,
+        genre: [...(kind ? [capital(kind)] : []), ...(game.tags ?? []).map((tag) => TAG_LABELS[tag])],
+        gamePlatform: 'Web browser',
+        applicationCategory: 'Game',
+        operatingSystem: 'Any',
+        playMode: 'SinglePlayer',
+        inLanguage: 'en',
+        isAccessibleForFree: true,
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        publisher: { '@id': orgId },
+        potentialAction: { '@type': 'PlayAction', target: `${origin}${gamePlayHref(game.slug)}` },
+      },
+      org,
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: APP_NAME, item: `${origin}/` },
+          { '@type': 'ListItem', position: 2, name: game.name, item: url },
+        ],
+      },
+    ],
+  }
+}
+
+/**
+ * llms.txt (llmstxt.org): the site in plain Markdown for AI tools, which mostly read a page without running it. What
+ * the arcade is, then every listed game by kind with a line about it, and the main pages. The build writes it beside
+ * the sitemap, from the same games, so it never lists one that's held back.
+ */
+export function llmsText(origin: string): string {
+  const listed = visibleGames().filter((game) => game.playable)
+  const line = (game: Game) => {
+    const kind = gameKind(game.slug)
+    return `- [${game.name}](${origin}${gameHref(game.slug)}): ${kind ? `${capital(kind)}. ` : ''}${clipDescription(game.description, 220)}`
+  }
+  const page = (route: Route, label: string) => `- [${label}](${origin}${pageMeta(route).path}): ${pageMeta(route).description}`
+  return [
+    `# ${APP_NAME}`,
+    '',
+    `> ${SITE_LINE} ${arcadeLine()} It plays in a web browser, on a phone or a computer, with leaderboards, record books, seasons and invite-only events.`,
+    '',
+    '## Daily races',
+    '',
+    'New every day and the same for everyone, each against the clock. Playing any two keeps a streak going.',
+    '',
+    ...listed.filter((game) => game.daily && isRankedGame(game.slug)).map(line),
+    '',
+    '## Daily puzzles',
+    '',
+    'New every day and the same for everyone, just for fun.',
+    '',
+    ...listed.filter((game) => game.daily && !isRankedGame(game.slug)).map(line),
+    '',
+    '## Games',
+    '',
+    ...listed.filter((game) => !game.daily).map(line),
+    '',
+    '## More',
+    '',
+    page({ name: 'today' }, 'The Dailies'),
+    page({ name: 'leaderboards' }, 'Leaderboards'),
+    page({ name: 'recordsIndex' }, 'Record books'),
+    page({ name: 'prizes' }, 'Prize counter'),
+    page({ name: 'plus' }, 'Plus'),
+    page({ name: 'about' }, `About ${APP_NAME}`),
+    '',
+  ].join('\n')
 }
