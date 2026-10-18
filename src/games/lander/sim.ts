@@ -35,9 +35,16 @@ export const BUMP_SPEED = 7
 const BOUNCE = 0.35
 /** Sliding along rock loses speed this fast, a share a second. */
 const SCRAPE = 1.5
-/** A landing is a touch on the pad no faster than this, m/s, and no more tilted than this, rad (19°). */
-export const LAND_SPEED = 3.2
-export const LAND_ANGLE = 0.33
+/** A foot skidding along a pad loses speed this fast, a share a second: it bites harder than rock. */
+const SKID = 4
+/**
+ * A landing is a touch on the pad no faster than this, m/s, and no more tilted than this, rad (24°). They were
+ * 3.2 m/s and 19°, and anything else was a crash; players "were having a little trouble" (Ramsey, 2026-10-18).
+ * Now a touch too fast, short of a crash on rock (BUMP_SPEED), bounces the ship off the pad, and one slow
+ * enough but tilted stands it on the foot that touched, to rock level.
+ */
+export const LAND_SPEED = 4
+export const LAND_ANGLE = 0.42
 /** A ghost keeps where the ship was every this many steps: 20 times a second. */
 export const GHOST_EVERY = 6
 /** Ghost samples a second. */
@@ -638,10 +645,12 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
   s.y += s.vy * dt
   s.hint = nearestNode(cave, s.x, s.y, s.hint)
 
-  // A foot on a pad, coming down onto it: a landing if it's gentle and near level, else a crash. Going up (lifting
-  // off and turning as it goes), a foot that dips onto the pad only stands on it: the ship pivots on that foot.
-  // With the way out open, the moon's pad is one too. On the test cave's lift, the landing pad is where the lift
-  // has it, and a landing's speed is the ship's against the pad's.
+  // A foot on a pad, coming down onto it: a landing if it's gentle and near level. Harder than rock takes, it's a
+  // crash; too fast to land, short of that, the pad knocks the ship back up as rock would; slow enough but
+  // tilted, the ship stands on that foot and rocks level (hands off, the nose rights itself), and lands when
+  // it's level enough. Going up (lifting off and turning as it goes), a foot that dips onto the pad only stands
+  // on it: the ship pivots on that foot. With the way out open, the moon's pad is one too. On the test cave's
+  // lift, the landing pad is where the lift has it, and a landing's speed is the ship's against the pad's.
   const lift = lab?.lift ? liftAt(lab.lift, now) : null
   const pads = lift ? [cave.pads[0], { ...cave.pads[1], y: lift.y }] : open ? [...cave.pads, open.pad] : cave.pads
   for (const pad of pads) {
@@ -655,7 +664,21 @@ export function step(cave: Cave, s: Ship, hands: Hands, dt = DT, egg: Breach | n
         s.y += pad.y - fy + 1e-6
         continue
       }
-      if (Math.hypot(s.vx, s.vy - rise) > LAND_SPEED || Math.abs(s.a) > LAND_ANGLE) return 'crash'
+      const into = rise - s.vy
+      if (into > BUMP_SPEED) return 'crash'
+      if (into > LAND_SPEED) {
+        s.vy = rise + into * BOUNCE
+        s.vx *= Math.max(0, 1 - SCRAPE * dt)
+        s.y += pad.y - fy + 1e-6
+        return 'bump'
+      }
+      // Down gently but still going sideways too fast, or tilted: on its foot, skidding to a stop.
+      if (Math.hypot(s.vx, s.vy - rise) > LAND_SPEED || Math.abs(s.a) > LAND_ANGLE) {
+        s.vy = rise
+        s.vx *= Math.max(0, 1 - SKID * dt)
+        s.y += pad.y - fy + 1e-6
+        continue
+      }
       // Where the foot was as the step began (a step's turn is too small to count), so where it met the pad.
       const was = fy - (s.y - py)
       s.landFrac = was > fy ? clamp((was - pad.y) / (was - fy), 0, 1) : 1
