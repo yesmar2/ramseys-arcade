@@ -33,17 +33,18 @@ export const CONTROL_HUE: Record<Control, number> = {
 }
 
 /**
- * The sound each control makes when it's worked. They used to be one chime at
- * five pitches, which only a trained ear tells apart. The toy says its calls
- * out loud now (voice.ts); a call sounds its control's sound only when the
- * voice can't play.
+ * The sound each control makes when it's worked, as its call names it. They used to be one chime at five
+ * pitches, then five short blips, a spring, a ratchet, a zip, a switch and a wheel, that still ran together
+ * (Ramsey, 2026-10-18: "each sound in fidget game needs to be different for each action"). Now each is a
+ * different kind of sound: a note dropping, clunks, rushing air, a clack, a note winding up. The toy says its
+ * calls out loud (voice.ts); a call sounds its control's sound only when the voice can't play.
  */
 export const CONTROL_SOUND: Record<Control, SoundName> = {
-  bop: 'boing',
-  twist: 'ratchet',
-  pull: 'zip',
-  flick: 'click',
-  spin: 'whirr',
+  bop: 'pop',
+  twist: 'crank',
+  pull: 'slide',
+  flick: 'flip',
+  spin: 'whirl',
 }
 
 export type Snapshot = {
@@ -377,8 +378,11 @@ export function controlAt(state: GameState, x: number, y: number): Control | nul
 export function act(state: GameState, control: Control): GameState {
   if (state.phase !== 'call' || !state.call || state.gap > 0) return state
 
-  // What you did makes its own sound, right or wrong.
-  sfx(CONTROL_SOUND[control], 1)
+  // What you did makes its own sound, right or wrong, and only its own: a quick answer gets the full one, the
+  // rest the shorter. A bright ping used to go over every quick answer, most of them early on, so every control
+  // sounded alike.
+  const quick = control === state.call && state.timer >= state.window * QUICK_FRACTION
+  sfx(CONTROL_SOUND[control], quick ? 0 : 1)
 
   if (control !== state.call) {
     sfx('miss')
@@ -396,7 +400,6 @@ export function act(state: GameState, control: Control): GameState {
     }
   }
 
-  const quick = state.timer >= state.window * QUICK_FRACTION
   const gained = quick ? 2 : 1
   const streak = state.streak + 1
   const pops: Pop[] = [
@@ -407,9 +410,6 @@ export function act(state: GameState, control: Control): GameState {
     const life = POP_LIFE * 1.8
     pops.push({ control: 'bop', text: `${streak} in a row`, tone: 'streak', life, max: life })
     sfx('perfect')
-  } else if (quick) {
-    // A bright ping over the control's own sound for the quick point.
-    sfx('hit', 5)
   }
   return {
     ...state,

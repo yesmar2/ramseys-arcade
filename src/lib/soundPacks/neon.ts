@@ -91,14 +91,6 @@ export const playNeon: PlaySfx = (synth, name, pitch) => {
       osc(160, 0.28 * k, 0.09 * k, { type: 'square', to: 480, slideTime: 0.22 * k, filter: lowpass(1500), vib: { rate: 22, depth: 16 } })
       break
     }
-    case 'ratchet': {
-      const teeth = pitch >= 1 ? 3 : 5
-      for (let k = 0; k < teeth; k++) {
-        osc(700 + k * 95, 0.026, 0.055, { type: 'square', attack: 0.001, delay: k * 0.04 })
-        noise(0.012, 0.05, { type: 'highpass', freq: 3500, delay: k * 0.04 })
-      }
-      break
-    }
     case 'zip': {
       const k = pitch >= 1 ? 0.7 : 1
       osc(1400, 0.18 * k, 0.078 * k, { type: 'sawtooth', to: 250, attack: 0.002, filter: lowpass(5000, 800) })
@@ -109,11 +101,40 @@ export const playNeon: PlaySfx = (synth, name, pitch) => {
       osc(620, 0.045, 0.055, { type: 'triangle', delay: 0.012 })
       if (pitch < 1) osc(1900, 0.02, 0.05, { type: 'square', attack: 0.001, delay: 0.09 })
       break
-    case 'whirr': {
-      const notes = pitch >= 1 ? 5 : 8
-      for (let k = 0; k < notes; k++) {
-        osc(500 + k * 50 + (k % 2) * 100, 0.036, 0.05, { type: 'square', attack: 0.001, delay: k * 0.025, filter: lowpass(4000) })
+    case 'pop': {
+      // Fidget's Pop: a bubble bursting, a round note dropping fast with a snap on its front.
+      const k = pitch >= 1 ? 0.8 : 1
+      osc(640, 0.13 * k, 0.075, { to: 150, slideTime: 0.07 * k, attack: 0.001 })
+      osc(1280, 0.035, 0.016, { type: 'square', to: 320, slideTime: 0.03, attack: 0.001, filter: lowpass(4200) })
+      noise(0.012, 0.03, { type: 'highpass', freq: 3200 })
+      break
+    }
+    case 'crank': {
+      // Fidget's Crank: a handle wound round, a heavy ratchet. Clunks, evenly spaced, each a knock and a rasp.
+      const teeth = pitch >= 1 ? 3 : 4
+      for (let k = 0; k < teeth; k++) {
+        noise(0.035, 0.07, { type: 'bandpass', freq: 1400, Q: 2.5, delay: k * 0.075 })
+        osc(150, 0.055, 0.05, { type: 'square', to: 105, attack: 0.001, filter: lowpass(650), delay: k * 0.075 })
       }
+      break
+    }
+    case 'slide': {
+      // Fidget's Slide: a lever hauled down its slot, air rushing from high to low.
+      const k = pitch >= 1 ? 0.75 : 1
+      noise(0.26 * k, 0.14, { type: 'bandpass', freq: 4500, to: 450, Q: 1.6, attack: 0.02, hold: 0.1 * k })
+      break
+    }
+    case 'flip': {
+      // Fidget's Flip: a switch thrown, one hard clack and nothing after it.
+      noise(0.008, 0.1, { type: 'highpass', freq: 5000 })
+      osc(2400, 0.01, 0.035, { type: 'square', attack: 0.0005 })
+      osc(260, 0.028, 0.035, { to: 160, attack: 0.001 })
+      break
+    }
+    case 'whirl': {
+      // Fidget's Whirl: a wheel spun, one note winding up and warbling as it goes round.
+      const k = pitch >= 1 ? 0.75 : 1
+      osc(320, 0.38 * k, 0.042, { type: 'sawtooth', to: 1050, slideTime: 0.32 * k, vib: { rate: 26, depth: 70 }, attack: 0.01, hold: 0.2 * k, filter: lowpass(2600) })
       break
     }
   }

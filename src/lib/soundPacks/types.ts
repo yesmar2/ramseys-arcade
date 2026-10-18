@@ -17,16 +17,20 @@ export type SoundName =
   | 'miss'
   | 'hop'
   | 'whoosh'
-  /*
-   * Five sounds you can tell apart with your eyes shut, one to each of Bop's
-   * controls: a spring, a ratchet, a zip, a switch and a wheel. Pitch 0 is
-   * the full sound, for the toy calling a control; 1 a shorter one, for doing it.
-   */
+  /* A spring, a zip and a switch: Barrage, Ace Chase, the run report's rows and the ticket slot use them. */
   | 'boing'
-  | 'ratchet'
   | 'zip'
   | 'click'
-  | 'whirr'
+  /*
+   * Fidget's five controls, a sound each, different in kind so they can be told apart with your eyes shut: a
+   * pop, a crank, a slide, a flip and a whirl. Pitch 0 is the full sound, for a quick answer (or the toy calling a
+   * control when its voice can't play); 1 a shorter one, for any other.
+   */
+  | 'pop'
+  | 'crank'
+  | 'slide'
+  | 'flip'
+  | 'whirl'
   /*
    * A round landing on something that doesn't break yet: short and quiet,
    * because it comes many times a second, and higher the nearer the thing is
