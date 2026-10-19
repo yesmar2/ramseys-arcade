@@ -18,7 +18,6 @@ import { fetchGameRecords, GAMES_WITH_RECORDS, type RecordSummary } from '../lib
 import { daysLeftLabel, extraTickets, liveSeason, rewardAt, rewardPhrase, seasonProgress, seasonTop, useSeason } from '../lib/season'
 import { resolveGameAccent } from '../lib/theme'
 import { BlipPoll } from './BlipPoll'
-import { GameArt } from './GameArt'
 import { GameThumbArt } from './GameThumbArt'
 import { SeasonScene } from './season/SeasonLook'
 import { nextSeasonSoon } from './season/NextSeason'
@@ -41,13 +40,18 @@ const PlayIcon = () => (
 
 const skel = (w: string) => ({ '--skel-w': w }) as CSSProperties
 
-/** A game's picture across the top of a card, its name (or what the card is) on a chip over it. */
-function Band({ slug, chip }: { slug: string; chip: string }) {
+/*
+ * A game's picture across the top of a card: the middle of the game's picture in a rounded tile lit in its colour,
+ * on a soft dot pattern (B on the "Up Next Pictures" mock, 2026-10-19), the record's medal's sibling. The whole 4:3
+ * scene cut to the band sliced its characters through (Ramsey: "i still don't like the image on those cards
+ * either"). No chip over it, or over the medal: in the band's middle a picture ran into the chip on the narrower
+ * cards, and the chip only said what the words under it say.
+ */
+function Band({ slug }: { slug: string }) {
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? 'var(--accent)')
   return (
-    <a className="unx__band" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accent } as CSSProperties}>
-      <GameArt slug={slug} shape="card" fallback={<GameThumbArt slug={slug} accent={accent} />} />
-      <span className="unx__chip">{chip}</span>
+    <a className="unx__band unx__band--tile" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accent } as CSSProperties}>
+      <GameThumbArt slug={slug} accent={accent} className="unx__tile" />
     </a>
   )
 }
@@ -72,7 +76,6 @@ function MedalBand({ slug }: { slug: string }) {
         <CrownIcon />
         <GameThumbArt slug={slug} accent={accent} className="unx__medal-face" />
       </span>
-      <span className="unx__chip unx__chip--gold">Your record</span>
     </a>
   )
 }
@@ -132,7 +135,7 @@ function ChaseCard({ slug, rung }: { slug: string; rung: Rung }) {
     : null
   return (
     <article className="unx" aria-labelledby={`unx-chase-${slug}`}>
-      <Band slug={slug} chip={game.name} />
+      <Band slug={slug} />
       <div className="unx__body">
         <p className="unx__kick">{kicker}</p>
         <h3 id={`unx-chase-${slug}`} className="unx__title">
@@ -154,7 +157,7 @@ function PickCard({ slug, kicker }: { slug: string; kicker: string }) {
   const game = getGame(slug)!
   return (
     <article className="unx" aria-labelledby={`unx-pick-${slug}`}>
-      <Band slug={slug} chip={kicker} />
+      <Band slug={slug} />
       <div className="unx__body">
         <p className="unx__kick">{kicker}</p>
         <h3 id={`unx-pick-${slug}`} className="unx__title">
