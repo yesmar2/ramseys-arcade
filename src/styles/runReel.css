@@ -790,6 +790,27 @@ html[data-theme='light'] .panel.reel--ask {
   color: var(--reel-ink);
 }
 
+/* The run just played, under the best you hold the place with: no place of its own, its score where it falls. */
+.reel-board__row--run {
+  border: 1.5px dashed color-mix(in srgb, var(--reel-ink) 38%, transparent);
+  background: transparent;
+  color: var(--reel-ink);
+  font-weight: 800;
+}
+
+.reel-board__run-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  color: color-mix(in srgb, var(--reel-ink) 70%, transparent);
+}
+
+.reel-board__run-mark svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
 .reel-board__place {
   flex: none;
   min-width: 1.6rem;
@@ -935,6 +956,10 @@ html[data-theme='light'] .panel.reel--ask {
 
 .reel-big__side .reel-board__row--you {
   background: rgba(52, 198, 168, 0.16);
+}
+
+.reel-big__side .reel-board__row--run {
+  background: transparent;
 }
 
 /* The record books' plaques: brass, the best of them the brightest. */

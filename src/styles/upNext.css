@@ -123,8 +123,7 @@ html[data-theme='dark'] .upnext {
   background: linear-gradient(160deg, color-mix(in srgb, var(--unx-accent, var(--accent)) 30%, #10161e), #0c1218);
 }
 
-.unx__band > svg,
-.unx__band > .inline-thumb {
+.unx__band > svg {
   position: absolute;
   inset: 0;
   display: block;
@@ -132,31 +131,45 @@ html[data-theme='dark'] .upnext {
   height: 100%;
 }
 
-.unx__chip {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  z-index: 1;
-  max-width: calc(100% - 1.5rem);
-  box-sizing: border-box;
-  padding: 0.25rem 0.65rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  border-radius: 999px;
-  background: var(--unx-chip);
-  color: var(--ink);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+/* A game: its middle in a rounded tile lit in its colour, on a soft dot pattern, in both themes. */
+.unx__band--tile {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--unx-accent, var(--accent)) 50%, #0c1218), #0c1218 74%);
 }
 
-/* A record held: the chip in gold leaf. */
-.unx__chip--gold {
-  background: linear-gradient(135deg, #fbe7a8, #e7b955);
-  box-shadow: inset 0 0 0 1px rgba(122, 82, 0, 0.25);
-  color: #5a3c00;
+.unx__band--tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--unx-accent, var(--accent)) 55%, transparent) 1.2px, transparent 1.6px);
+  background-size: 16px 16px;
+  opacity: 0.35;
+  -webkit-mask-image: radial-gradient(circle at 50% 55%, #000 15%, transparent 70%);
+  mask-image: radial-gradient(circle at 50% 55%, #000 15%, transparent 70%);
+}
+
+.unx__tile {
+  --inline-thumb-size: 7.2rem;
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: var(--inline-thumb-size);
+  height: var(--inline-thumb-size);
+  overflow: hidden;
+  border: 0;
+  border-radius: 1.6rem;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--unx-accent, var(--accent)) 70%, #fff 10%),
+    0 0 0 6px rgba(12, 18, 24, 0.55),
+    0 10px 26px rgba(0, 0, 0, 0.5),
+    0 0 40px color-mix(in srgb, var(--unx-accent, var(--accent)) 45%, transparent);
+}
+
+.unx__tile > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* A record held: the game's middle in a gold medal with a crown, gold rays on the game's colour, in both themes. */
@@ -191,6 +204,7 @@ html[data-theme='dark'] .upnext {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  border: 0;
   border-radius: 50%;
   box-shadow: inset 0 0 0 2px rgba(90, 60, 0, 0.4);
 }
@@ -778,12 +792,13 @@ html[data-theme='dark'] .unx--season {
     min-height: 100%;
   }
 
-  .unx:not(.unx--season) .unx__chip {
-    display: none;
-  }
-
   .unx__medal {
     width: 5.6rem;
+  }
+
+  .unx__tile {
+    --inline-thumb-size: 5.6rem;
+    border-radius: 1.25rem;
   }
 
   .unx__body {

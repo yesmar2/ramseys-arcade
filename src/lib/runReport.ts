@@ -587,15 +587,18 @@ export function composeReport(f: RunFacts): RunReportData {
 
 /** A row of a board around the run's player, as the reel shows it. */
 export type ReportBoardRow = {
-  place: number
+  /** Null on the run's own row: a run under your best holds no place of its own. */
+  place: number | null
   name: string
   score: string
   avatarId?: string
   you: boolean
   /** The one to pass next, or one this run went past. */
   mark?: 'beat' | 'passed' | null
-  /** Beside your name: how far you came (▲3). */
+  /** Beside your name: how far you came (▲3), or that the row is your best when the run is on a row of its own. */
   note?: string | null
+  /** The run just played, under the best you hold the place with (Ramsey: "it should show the users current score"). */
+  run?: boolean
 }
 
 /** Where a saved run landed on its board, under its score on the reel's first page. */
@@ -645,7 +648,24 @@ export function boardCard(f: RunFacts, line: ReportLine | null): ReportBoardCard
   const move = you ? (before == null ? ((b?.field ?? 0) > 1 ? 'new on the board' : null) : place < before ? `up from ${ordinal(before)}` : null) : null
   // The line's own words, less the climb the move already says.
   const detail = line.detail?.replace(/^up from \d+(st|nd|rd|th)(, | · )?/, '') || null
-  return { label: line.label, value: ordinal(place), gold: place === 1, move, detail, rows: aroundRows(f, null) }
+  return { label: line.label, value: ordinal(place), gold: place === 1, move, detail, rows: withRun(f, aroundRows(f, null)) }
+}
+
+/**
+ * The board around you with the run just played among it, where its score falls, when it came in under the best
+ * your row shows: else the board said only your all-time high, as if that were this run's (Ramsey: "i got a lower
+ * score than my all time high, but the screen is showing my all time high").
+ */
+function withRun(f: RunFacts, rows: ReportBoardRow[]): ReportBoardRow[] {
+  const you = f.board?.you
+  if (!you || f.score <= 0 || f.score >= you.best.score || !rows.some((r) => r.you)) return rows
+  const players = [f.board?.above, you, f.board?.below, ...(f.board?.top ?? [])].filter((p): p is BoardPlayer => Boolean(p))
+  const scoreOf = new Map(players.map((p) => [p.place, p.best.score]))
+  const run: ReportBoardRow = { place: null, name: 'This run', score: figure(f.slug, f.score), you: false, run: true }
+  // After every row that scored as much or more; a board's higher score is always the better (a clock's too).
+  const at = rows.findIndex((r) => r.place != null && (scoreOf.get(r.place) ?? Infinity) < f.score)
+  const marked = rows.map((r) => (r.you && !r.note ? { ...r, note: 'best' } : r))
+  return at < 0 ? [...marked, run] : [...marked.slice(0, at), run, ...marked.slice(at)]
 }
 
 /** The standings' page: only when the run moved the player up them. */

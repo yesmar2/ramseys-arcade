@@ -240,11 +240,24 @@ function ReelSplit({ main, side, className = '' }: { main: ReactNode; side?: Rea
   )
 }
 
-/** A few rows of a board around you: where you are, who's above to pass, who you went past. */
+/**
+ * A few rows of a board around you: where you are, who's above to pass, who you went past; and the run just
+ * played, where its score falls, when it came in under your best.
+ */
 function ReelBoardRows({ rows, label }: { rows: ReportBoardRow[]; label: string }) {
   return (
     <ol className="reel-board" aria-label={label}>
-      {rows.map((row, i) => (
+      {rows.map((row, i) =>
+        row.run ? (
+          <li key="run" className="reel-board__row reel-board__row--run" style={{ '--i': i } as CSSProperties}>
+            <span className="reel-board__place" />
+            <span className="reel-board__face reel-board__run-mark">
+              <ReportIconSvg icon="target" />
+            </span>
+            <span className="reel-board__name">{row.name}</span>
+            <span className="reel-board__score">{row.score}</span>
+          </li>
+        ) : (
         <li
           key={`${row.place}-${row.name}`}
           className={`reel-board__row${row.you ? ' reel-board__row--you' : ''}${row.mark ? ` reel-board__row--${row.mark}` : ''}`}
@@ -259,7 +272,8 @@ function ReelBoardRows({ rows, label }: { rows: ReportBoardRow[]; label: string 
           </span>
           <span className="reel-board__score">{row.score}</span>
         </li>
-      ))}
+        ),
+      )}
     </ol>
   )
 }
