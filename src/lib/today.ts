@@ -3,6 +3,7 @@ import { TODAY_FROM } from '../games/halffull/daily'
 import { TODAY_FROM as PLATES_FROM } from '../games/dead-center/daily'
 import { TODAY_FROM as CAVE_FROM } from '../games/lander/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
+import { TODAY_FROM as TOWER_FROM } from '../games/sling/daily'
 import { TODAY_FROM as HILLS_FROM } from '../games/swoop/daily'
 import { TODAY_FROM as GAUNTLET_FROM } from '../games/wobblerun/daily'
 import { ROUTE_EVENT } from '../hooks/useHashRoute'
@@ -29,7 +30,7 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * punches at once and works signed out.
  */
 
-export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave' | 'hills' | 'gauntlet' | 'plates'
+export type TodayKey = 'hole' | 'track' | 'wanted' | 'pour' | 'course' | 'cave' | 'hills' | 'gauntlet' | 'tower' | 'plates'
 
 /** One of the Today set's dailies. */
 export type TodayDaily = {
@@ -75,6 +76,8 @@ export const TODAY_DAILIES: readonly TodayDaily[] = [
   { key: 'cave', slug: 'lander', label: 'Cave', emoji: '🚀', better: 'higher', from: CAVE_FROM },
   { key: 'track', slug: 'hotlap', label: 'Track', emoji: '🏎️', better: 'higher', from: '' },
   { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
+  // Sling's tower joined the races the day the game came, after Marble Run (the API's today.ts says the same).
+  { key: 'tower', slug: 'sling', label: 'Tower', emoji: '🧗', better: 'higher', from: TOWER_FROM },
   // Wobble Run's gauntlet joined the races the day the game came, the fifth (the API's today.ts says the same).
   { key: 'gauntlet', slug: 'wobblerun', label: 'Wobble', emoji: '🌟', better: 'higher', from: GAUNTLET_FROM },
   { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '', until: PUZZLES_UNTIL },
@@ -120,12 +123,13 @@ export type TodayServer = {
   /** The boards' day, YYYY-MM-DD. */
   day: string
   /** Whether each is done today. An API from before Today's Pour, Course, Cave, Hills or Gauntlet leaves them out. */
-  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave' | 'hills' | 'gauntlet' | 'plates'>, boolean> & {
+  done: Record<Exclude<TodayKey, 'pour' | 'course' | 'cave' | 'hills' | 'gauntlet' | 'tower' | 'plates'>, boolean> & {
     pour?: boolean
     course?: boolean
     cave?: boolean
     hills?: boolean
     gauntlet?: boolean
+    tower?: boolean
     plates?: boolean
   }
   /**
@@ -142,6 +146,7 @@ export type TodayServer = {
     cave?: { score: number } | null
     hills?: { score: number } | null
     gauntlet?: { score: number } | null
+    tower?: { score: number } | null
   }
   streak: { current: number; best: number }
   /** Streak freezes held, and the next one's way off; an older API leaves them out. */
@@ -367,6 +372,7 @@ const STILL: Record<TodayKey, string> = {
   cave: 'still to fly',
   hills: 'still to swoop',
   gauntlet: 'still to run',
+  tower: 'still to climb',
   plates: 'still to balance',
 }
 
@@ -410,6 +416,7 @@ export type TodayRival = {
   cave?: number | null
   hills?: number | null
   gauntlet?: number | null
+  tower?: number | null
   plates?: number | null
   streak: number
   avatarId: string

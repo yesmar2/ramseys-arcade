@@ -459,6 +459,7 @@ const DAYS_COUNT_FROM: Partial<Record<string, string>> = {
   lander: '2026-09-30',
   swoop: '2026-10-06',
   wobblerun: '2026-10-09',
+  sling: '2026-10-19',
 }
 
 /**
@@ -493,6 +494,7 @@ export const RESULT_WORD: Record<string, string> = {
   lander: 'Run',
   swoop: 'Run',
   wobblerun: 'Run',
+  sling: 'Run',
 }
 
 /** A daily's today, as the site names it. */
@@ -506,6 +508,7 @@ export const TODAY_NAME: Record<string, string> = {
   lander: 'Today’s Cave',
   swoop: 'Today’s Hills',
   wobblerun: 'Today’s Gauntlet',
+  sling: 'Today’s Tower',
 }
 
 /** A day's result in the game's own terms: a lap, a time, tries, a pour. */

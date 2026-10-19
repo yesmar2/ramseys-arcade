@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
  */
 
 /** The racing dailies, whose runs leave ghosts to race. */
-export const RACE_GHOST_GAMES: ReadonlySet<string> = new Set(['hotlap', 'marblerun', 'lander', 'swoop', 'wobblerun'])
+export const RACE_GHOST_GAMES: ReadonlySet<string> = new Set(['hotlap', 'marblerun', 'lander', 'swoop', 'wobblerun', 'sling'])
 
 type Pick = { game: string; course: number; tag: string | null }
 

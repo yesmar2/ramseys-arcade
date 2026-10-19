@@ -588,6 +588,8 @@ export const CHIP_GAME_MUSIC: Record<string, ChipTrackId> = {
   bop: 'pocket',
   // A bouncy tune for a bird over the hills.
   swoop: 'pocket',
+  // A coin-op tune for Blip flinging up a tower.
+  sling: 'coinop',
   crosswalk: 'coinop',
   crumbtrail: 'coinop',
   pellets: 'bonus',

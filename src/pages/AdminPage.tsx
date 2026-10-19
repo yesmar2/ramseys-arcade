@@ -41,6 +41,7 @@ const AdminHoleBook = lazyPage(() => import('../components/AdminHoleBook').then(
 const AdminTrackBook = lazyPage(() => import('../components/AdminTrackBook').then((m) => m.AdminTrackBook))
 const AdminCourseBook = lazyPage(() => import('../components/AdminCourseBook').then((m) => m.AdminCourseBook))
 const AdminCaveBook = lazyPage(() => import('../components/AdminCaveBook').then((m) => m.AdminCaveBook))
+const AdminTowerBook = lazyPage(() => import('../components/AdminTowerBook').then((m) => m.AdminTowerBook))
 const AdminHillsBook = lazyPage(() => import('../components/AdminHillsBook').then((m) => m.AdminHillsBook))
 const AdminGauntletBook = lazyPage(() => import('../components/AdminGauntletBook').then((m) => m.AdminGauntletBook))
 const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
@@ -82,6 +83,12 @@ const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: s
     label: 'Hills Book',
     title: 'Hills Book',
     blurb: 'Every planned day of Swoop’s Today’s Hills, to test fly ahead of its day.',
+  },
+  {
+    section: 'towers',
+    label: 'Tower Book',
+    title: 'Tower Book',
+    blurb: 'Every planned day of Sling’s Today’s Tower, to test climb ahead of its day, and the test tower.',
   },
   {
     section: 'gauntlets',
@@ -219,6 +226,10 @@ export function AdminPage({ section }: { section?: AdminSection }) {
               <Suspense fallback={<p className="adm-note">Opening the Hills Book…</p>}>
                 <AdminHillsBook />
               </Suspense>
+            ) : section === 'towers' ? (
+              <Suspense fallback={<p className="adm-note">Opening the Tower Book…</p>}>
+                <AdminTowerBook />
+              </Suspense>
             ) : section === 'gauntlets' ? (
               <Suspense fallback={<p className="adm-note">Opening the Gauntlet Book…</p>}>
                 <AdminGauntletBook />
@@ -324,6 +335,10 @@ function DailyGamesCard() {
           <b>Hills Book</b>
           <span>Swoop: every planned Today’s Hills, to test fly</span>
         </a>
+        <a className="adm-book" href={adminHref('towers')}>
+          <b>Tower Book</b>
+          <span>Sling: every planned Today’s Tower, to test climb, and the test tower</span>
+        </a>
         <a className="adm-book" href={adminHref('gauntlets')}>
           <b>Gauntlet Book</b>
           <span>Wobble Run: every planned Today’s Gauntlet, to test run, and the test course</span>
@@ -353,6 +368,10 @@ function DailyGamesCard() {
         <li>
           <a href={gamePlayHref('swoop')}>Swoop · Today’s Hills</a>
           <span>the real one, where your best run today counts; the Hills Book test-flies any day ahead</span>
+        </li>
+        <li>
+          <a href={gamePlayHref('sling')}>Sling · Today’s Tower</a>
+          <span>the real one, where your best run today counts; the Tower Book test-climbs any day ahead</span>
         </li>
         <li>
           <a href={gamePlayHref('wobblerun')}>Wobble Run · Today’s Gauntlet</a>

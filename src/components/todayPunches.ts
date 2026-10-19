@@ -24,6 +24,8 @@ import { caveDay, dailyCave } from '../games/lander/daily'
 import { keptRun as keptCaveRun } from '../games/lander/runStore'
 import { courseDay, dailyCourse } from '../games/marblerun/daily'
 import { keptRun } from '../games/marblerun/runStore'
+import { dailyTower, towerDay } from '../games/sling/daily'
+import { keptRun as keptTowerRun } from '../games/sling/runStore'
 import { dailyHills, hillsDay } from '../games/swoop/daily'
 import { keptRun as keptHillsRun } from '../games/swoop/runStore'
 import { dailyGauntlet, gauntletDay } from '../games/wobblerun/daily'
@@ -323,6 +325,27 @@ function hillsPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   }
 }
 
+function towerPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
+  const vday = towerDay()
+  const tower = dailyTower(vday)
+  const serverRun = server?.results.tower?.score ?? null
+  // The viewer's own best run on this device (never another player's, nor one climbed signed out while they're signed in).
+  const runTime = keptTowerRun(vday, viewer)?.time ?? null
+  const runWords = serverRun != null ? formatLeaderboardScore('sling', serverRun) : runTime != null ? boardTime('sling', runTime) : null
+  const done = runWords != null || Boolean(server?.done.tower)
+  return {
+    kicker: `Today’s Tower #${tower.n}`,
+    title: tower.name,
+    done,
+    mine: runWords ? `${runWords} run` : done ? 'Done' : null,
+    short: runWords,
+    carry: null,
+    share: runWords ? `${tower.name} ${runWords}` : null,
+    medal: medalFor('sling', paceMsOf(tower.pace), serverRun != null ? msOfScore(serverRun) : runTime != null ? Math.round(runTime * 1000) : null),
+    paceMs: paceMsOf(tower.pace),
+  }
+}
+
 function gauntletPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
   const vday = gauntletDay()
   const gauntlet = dailyGauntlet(vday)
@@ -352,6 +375,7 @@ function punchDay(key: TodayKey, day: string, server: TodayServer | null, viewer
   if (key === 'cave') return cavePunch(server, viewer)
   if (key === 'hills') return hillsPunch(server, viewer)
   if (key === 'gauntlet') return gauntletPunch(server, viewer)
+  if (key === 'tower') return towerPunch(server, viewer)
   if (key === 'plates') return platesPunch(server, viewer)
   return pourPunch(server, viewer)
 }

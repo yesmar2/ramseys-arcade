@@ -82,6 +82,7 @@ const ADMIN_TITLES: Record<AdminSection, string> = {
   caves: 'Cave Book',
   hills: 'Hills Book',
   gauntlets: 'Gauntlet Book',
+  towers: 'Tower Book',
   pours: 'Pour Book',
   trophies: 'Trophies',
 }
@@ -139,6 +140,7 @@ const GAME_KINDS: Readonly<Record<string, string>> = {
   lander: 'daily cave-flying game',
   swoop: 'daily hill-gliding game',
   wobblerun: 'daily obstacle race',
+  sling: 'daily tower-climbing game',
 }
 
 /** What kind of game it is, in searchable words ("asteroid shooter"), when it has a kind written. */
@@ -221,6 +223,7 @@ const RACE_WORDS: readonly [string, string][] = [
   ['lander', 'a cave to fly down'],
   ['swoop', 'a run over the hills'],
   ['wobblerun', 'a gauntlet to the star'],
+  ['sling', 'a tower to fling up'],
 ]
 
 /**

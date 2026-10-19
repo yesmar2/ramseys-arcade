@@ -7,6 +7,8 @@ import { pourPlanSvg } from '../games/halffull/planSvg'
 import { dailyTrack } from '../games/hotlap/daily'
 import { CAVE_COLOURS, caveView } from '../games/lander/cavePicture'
 import { landerDay } from '../games/lander/runs'
+import { slingDay } from '../games/sling/runs'
+import { TowerPostcard } from '../games/sling/TowerPostcard'
 import { HillsPostcard } from '../games/swoop/HillsPostcard'
 import { swoopDay } from '../games/swoop/runs'
 import { dailyGauntlet } from '../games/wobblerun/daily'
@@ -231,6 +233,11 @@ function HillsPicture({ day }: { day: string }) {
   return <HillsPostcard hills={swoopDay(day).hills} w={W} h={H} />
 }
 
+/** A stretch of the day's tower at dusk, its postcard (sling/TowerPostcard.tsx). */
+function TowerPicture({ day }: { day: string }) {
+  return <TowerPostcard tower={slingDay(day).tower} w={W} h={H} />
+}
+
 /** The day's rounds to the Blip star as a trail of badges, Blip at the start (wobblerun/GauntletDrawing.tsx). */
 function GauntletPicture({ day }: { day: string }) {
   const gauntlet = dailyGauntlet(day)
@@ -246,6 +253,7 @@ export function DayPicture({ daily, day }: { daily: TodayKey; day: string }) {
   if (daily === 'cave') return <CavePicture day={day} />
   if (daily === 'hills') return <HillsPicture day={day} />
   if (daily === 'gauntlet') return <GauntletPicture day={day} />
+  if (daily === 'tower') return <TowerPicture day={day} />
   if (daily === 'plates') return <PlatesPicture plan={platePlan(day)} width={W} height={H} className="day-picture__plates" />
   return <CoursePicture />
 }

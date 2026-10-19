@@ -68,6 +68,7 @@ const RACE_TOURNAMENT_GAMES: Record<RaceEventGame, LazyPage<CourseProps>> = {
   lander: lazyPage(() => import('../games/lander/LanderGame').then((m) => m.LanderGame)),
   swoop: lazyPage(() => import('../games/swoop/SwoopGame').then((m) => m.SwoopGame)),
   wobblerun: lazyPage(() => import('../games/wobblerun/WobbleRunGame').then((m) => m.WobbleRunGame)),
+  sling: lazyPage(() => import('../games/sling/SlingGame').then((m) => m.SlingGame)),
 }
 
 export function TournamentPlayPage({

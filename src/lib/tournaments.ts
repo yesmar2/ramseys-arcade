@@ -139,7 +139,7 @@ export const EVENT_GAMES = [
  * are anyone's; older ones a Plus host's (PlanLimits.anyCourse). The API checks it all (tournaments.ts
  * eventCourse).
  */
-export const RACE_EVENT_GAMES = ['hotlap', 'marblerun', 'lander', 'swoop', 'wobblerun'] as const
+export const RACE_EVENT_GAMES = ['hotlap', 'marblerun', 'lander', 'swoop', 'wobblerun', 'sling'] as const
 export type RaceEventGame = (typeof RACE_EVENT_GAMES)[number]
 
 export type EventGame = (typeof EVENT_GAMES)[number] | RaceEventGame

@@ -1,0 +1,28 @@
+import { ArchiveGate } from '../components/archive/ArchiveGate'
+import { FIRST_DAY, towerDay, testRunDay } from '../games/sling/daily'
+import { SlingGame } from '../games/sling/SlingGame'
+import { useRoute } from '../hooks/useHashRoute'
+
+const isDay = (day: string | undefined): day is string => typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
+
+/**
+ * Sling's page: today's tower. With ?day=YYYY-MM-DD, a past day's from the Past tab, climbed again onto its
+ * All time board; or today's or one still to come, from the admin's Tower Book, as an admin's test run
+ * (SlingGame sends anyone else to today's). A day before the first isn't shown, and one older than a week is
+ * Plus's (components/archive/ArchiveGate.tsx).
+ */
+export function SlingPage() {
+  const route = useRoute()
+  const asked = route.name === 'gamePlay' ? route.day : undefined
+  const day = isDay(asked) && asked >= FIRST_DAY && asked < towerDay() ? asked : null
+  const test = testRunDay(asked)
+  // ?lab=1: the test tower, an admin's (runs.ts LAB_DAY).
+  const lab = !day && !test && route.name === 'gamePlay' && route.lab === true
+  return (
+    <main className="game-page game-page--fullscreen">
+      <ArchiveGate slug="sling" day={day}>
+        <SlingGame key={day ?? (lab ? 'lab' : 'today')} practiceDay={day} testDay={test} lab={lab} />
+      </ArchiveGate>
+    </main>
+  )
+}

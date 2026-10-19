@@ -1,6 +1,7 @@
 import { isGameListed } from '../data/games'
 import { TODAY_FROM as CAVE_FROM } from '../games/lander/daily'
 import { TODAY_FROM as COURSE_FROM } from '../games/marblerun/daily'
+import { TODAY_FROM as TOWER_FROM } from '../games/sling/daily'
 import { TODAY_FROM as HILLS_FROM } from '../games/swoop/daily'
 import { TODAY_FROM as GAUNTLET_FROM } from '../games/wobblerun/daily'
 import { API_BASE, authHeaders } from './auth'
@@ -52,6 +53,7 @@ const COURSE_ON_TICKET = COURSE_FROM != null && isGameListed('marblerun')
 const CAVE_ON_TICKET = CAVE_FROM != null && isGameListed('lander')
 const HILLS_ON_TICKET = HILLS_FROM != null && isGameListed('swoop')
 const GAUNTLET_ON_TICKET = GAUNTLET_FROM != null && isGameListed('wobblerun')
+const TOWER_ON_TICKET = TOWER_FROM != null && isGameListed('sling')
 /** Where a lap or a run can be beaten and taken back: "Today’s Track or Today’s Course", and so on. */
 const RUN_DAILIES = [
   'Today’s Track',
@@ -59,6 +61,7 @@ const RUN_DAILIES = [
   ...(CAVE_ON_TICKET ? ['Today’s Cave'] : []),
   ...(HILLS_ON_TICKET ? ['Today’s Hills'] : []),
   ...(GAUNTLET_ON_TICKET ? ['Today’s Gauntlet'] : []),
+  ...(TOWER_ON_TICKET ? ['Today’s Tower'] : []),
 ]
 const runDailies = RUN_DAILIES.length > 2 ? `${RUN_DAILIES.slice(0, -1).join(', ')} or ${RUN_DAILIES.at(-1)}` : RUN_DAILIES.join(' or ')
 
@@ -72,7 +75,7 @@ export const TOPIC_GROUPS: readonly { title: string; topics: readonly TopicInfo[
         hint: 'Once, before the day ends, on a day you haven’t kept yet. Never at night.',
         offWarning: 'A day you miss ends your streak, so keep an eye on the Dailies.',
       },
-      COURSE_ON_TICKET || CAVE_ON_TICKET || HILLS_ON_TICKET || GAUNTLET_ON_TICKET
+      COURSE_ON_TICKET || CAVE_ON_TICKET || HILLS_ON_TICKET || GAUNTLET_ON_TICKET || TOWER_ON_TICKET
         ? {
             topic: 'today-lap',
             label: 'A friend beats your lap or your run',

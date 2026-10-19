@@ -116,6 +116,16 @@ export const DAILY_WORDS: Record<string, DailyWords> = {
     past: 'board',
     hudPast: 'Past gauntlet · not ranked',
   },
+  // Sling's day is a tower to climb: "tower" names it and counts it, and you climb it.
+  sling: {
+    course: 'tower',
+    today: 'Today’s tower',
+    pastTab: 'Past towers',
+    verb: 'Climb',
+    playToday: 'Climb today’s tower',
+    past: 'board',
+    hudPast: 'Past tower · not ranked',
+  },
 }
 
 const FALLBACK: DailyWords = {

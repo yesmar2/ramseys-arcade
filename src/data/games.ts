@@ -1,5 +1,6 @@
 import type { DeviceType } from '../lib/device'
 import { formatDeviceList } from '../lib/device'
+import { LIVE_SITE } from '../lib/liveSite'
 
 /** What kind of game it is, for the home page's tabs. */
 export type GameTag = 'arcade' | 'puzzle' | 'quick' | 'sport'
@@ -327,6 +328,20 @@ export const games: Game[] = [
     // everywhere. The API's ON_DECK_GAMES too. (`onDeck: LIVE_SITE`, lib/liveSite.ts, holds one back on the live
     // site alone.)
     onDeck: true,
+  },
+  {
+    name: 'Sling',
+    slug: 'sling',
+    tags: ['arcade', 'quick'],
+    description:
+      'A new tower every day, the same for everyone. Drag back and let go to fling Blip up it, peg to peg, past sliders, clay pegs, brambles, bugs and sweepers: fling past a peg to skip it, miss and you float back down. Beat the blue blip.',
+    accent: PALETTE.green,
+    playable: true,
+    inDevelopment: true,
+    daily: true,
+    // On staging from 2026-10-19 ("i think i like sling the best so far so let's implement that"); held back on
+    // the live site until Ramsey says, as the API's LIVE_ON_DECK_GAMES holds it.
+    onDeck: LIVE_SITE,
   },
 ]
 

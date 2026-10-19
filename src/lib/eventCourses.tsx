@@ -3,10 +3,12 @@ import { art as caveArt, title as caveTitle } from '../components/archive/CaveAr
 import { art as courseArt, title as courseTitle } from '../components/archive/CourseArchive'
 import { art as gauntletArt, title as gauntletTitle } from '../components/archive/GauntletArchive'
 import { art as hillsArt, title as hillsTitle } from '../components/archive/HillsArchive'
+import { art as towerArt, title as towerTitle } from '../components/archive/TowerArchive'
 import { art as trackArt, title as trackTitle } from '../components/archive/TrackArchive'
 import { dayOfTrack, FIRST_DAY as HOTLAP_FIRST, trackDay, trackNumber } from '../games/hotlap/daily'
 import { caveDay, caveNumber, dayOfCave, FIRST_DAY as LANDER_FIRST } from '../games/lander/daily'
 import { courseDay, courseNumber, dayOfCourse, FIRST_DAY as MARBLERUN_FIRST } from '../games/marblerun/daily'
+import { dayOfTower, FIRST_DAY as SLING_FIRST, towerDay, towerNumber } from '../games/sling/daily'
 import { dayOfHills, FIRST_DAY as SWOOP_FIRST, hillsDay, hillsNumber } from '../games/swoop/daily'
 import { dayOfGauntlet, FIRST_DAY as WOBBLERUN_FIRST, gauntletDay, gauntletNumber } from '../games/wobblerun/daily'
 import type { RaceEventGame } from './tournaments'
@@ -38,6 +40,7 @@ export const EVENT_COURSES: Record<RaceEventGame, EventCourseSource> = {
   lander: { today: () => caveDay(), first: LANDER_FIRST, numberOf: caveNumber, dayOf: dayOfCave, title: caveTitle, art: caveArt },
   swoop: { today: () => hillsDay(), first: SWOOP_FIRST, numberOf: hillsNumber, dayOf: dayOfHills, title: hillsTitle, art: hillsArt },
   wobblerun: { today: () => gauntletDay(), first: WOBBLERUN_FIRST, numberOf: gauntletNumber, dayOf: dayOfGauntlet, title: gauntletTitle, art: gauntletArt },
+  sling: { today: () => towerDay(), first: SLING_FIRST, numberOf: towerNumber, dayOf: dayOfTower, title: towerTitle, art: towerArt },
 }
 
 /** A day, YYYY-MM-DD, `n` days before another. */

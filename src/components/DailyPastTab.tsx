@@ -16,6 +16,7 @@ const PourArchive = lazyPage(() => import('./archive/PourArchive').then((m) => m
 const CourseArchive = lazyPage(() => import('./archive/CourseArchive').then((m) => m.CourseArchive))
 const CaveArchive = lazyPage(() => import('./archive/CaveArchive').then((m) => m.CaveArchive))
 const HillsArchive = lazyPage(() => import('./archive/HillsArchive').then((m) => m.HillsArchive))
+const TowerArchive = lazyPage(() => import('./archive/TowerArchive').then((m) => m.TowerArchive))
 const GauntletArchive = lazyPage(() => import('./archive/GauntletArchive').then((m) => m.GauntletArchive))
 const PlatesArchive = lazyPage(() => import('./archive/PlatesArchive').then((m) => m.PlatesArchive))
 
@@ -30,6 +31,7 @@ const LISTS: Record<string, typeof TrackArchive> = {
   lander: CaveArchive,
   swoop: HillsArchive,
   wobblerun: GauntletArchive,
+  sling: TowerArchive,
 }
 
 /** While a game's cards are on their way: the tab's title and a row of cards' shapes, so nothing jumps when they come. */

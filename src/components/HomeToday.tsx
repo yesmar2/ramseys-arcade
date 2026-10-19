@@ -48,6 +48,7 @@ const ACCENT: Record<TodayKey, string> = {
   cave: '#a48af0',
   hills: '#f2706a',
   gauntlet: '#f27bb0',
+  tower: '#5fdca8',
   plates: '#4aa8e8',
 }
 
@@ -61,6 +62,7 @@ const GO: Record<TodayKey, string> = {
   cave: 'Fly it',
   hills: 'Swoop it',
   gauntlet: 'Run it',
+  tower: 'Climb it',
   plates: 'Balance',
 }
 

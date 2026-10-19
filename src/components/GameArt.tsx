@@ -1755,6 +1755,87 @@ function Blip({
   )
 }
 
+/** Sling's pegs up the shaft, x and y (y down), zigzagging the way a day's tower does; the third is gold, a boost peg. */
+const SLING_PEGS: Array<[number, number, string]> = [
+  [12.6, 27.4, '#dfe6f2'],
+  [26.4, 21.2, '#dfe6f2'],
+  [15.4, 14.2, '#f5b942'],
+  [24.8, 5.6, '#dfe6f2'],
+]
+/** Blip's dotted way up from the second peg toward the third, rising, then over its top. */
+const SLING_TRAIL = [0.12, 0.24, 0.36, 0.48, 0.6].map((t) => [26.4 - t * 8.6, 19.6 - t * 9.2 + t * t * 3.2] as const)
+
+/**
+ * Sling: Blip flung up the day's tower at dusk, past a bramble bar's gap, his dotted trail behind him, the
+ * blue blip hanging on the peg below; the shaft's walls in the day's green with their lit edge, seam and row of
+ * blips, as the game draws them, and a flag on the wall.
+ */
+function Sling({ id }: { id: Id }) {
+  const hue = PALETTE.green
+  const wall = mixColor(hue, '#0e1230', 0.45)
+  const deep = mixColor(hue, '#0e1230', 0.68)
+  const edge = mixColor(hue, '#ffffff', 0.5)
+  const seam = mixColor(hue, '#0e1230', 0.62)
+  const blip = mixColor(hue, '#ffffff', 0.3)
+  return (
+    <>
+      <Backdrop
+        id={id}
+        stops={[
+          [0, '#0a0e29'],
+          [0.8, '#47306b'],
+        ]}
+      />
+      <Stars
+        points={[
+          [9.6, 3.2, 0.14],
+          [30.4, 4.6, 0.16],
+          [12.8, 9.6, 0.12, 0.5],
+          [28.2, 12.4, 0.13, 0.45],
+        ]}
+      />
+      <Moon id={id} cx={36} cy={5} r={2.2} />
+      {/* Far towers in the day's colour. */}
+      <path d="M0.4 31 V12 L2.4 9.6 L4.4 12 V31 Z M36.2 31 V15 L38 12.8 L39.8 15 V31 Z" fill={mixColor(hue, '#1b1745', 0.72)} />
+      {/* The shaft, and its walls. */}
+      <rect x="7.4" y="-1" width="25.2" height="33" fill="#0e1230" opacity="0.42" />
+      {[
+        [5.4, 7.4],
+        [32.6, 32.6],
+      ].map(([x, inner], i) => (
+        <g key={x}>
+          <rect x={x} y="-1" width="2" height="33" fill={wall} />
+          <rect x={i ? 33.8 : 5.4} y="-1" width="0.8" height="33" fill={deep} />
+          <rect x={i ? inner : inner - 0.3} y="-1" width="0.3" height="33" fill={edge} />
+          <rect x={i ? 33.3 : 6.4} y="-1" width="0.3" height="33" fill={seam} />
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
+            <circle key={k} cx={i ? 33.45 : 6.55} cy={k * 4.2 + (i ? 2.1 : 0)} r="0.32" fill={blip} />
+          ))}
+        </g>
+      ))}
+      {/* A flag on the wall. */}
+      <path d="M7.2 24 V20.6" {...line('#e7eef3', 0.2, 0.8)} />
+      <path d="M7.2 20.6 L9.2 21.2 L7.2 21.8 Z" fill="#f5b942" />
+      {/* A bramble bar across, with its gap where Blip went through. */}
+      <rect x="7.4" y="17.2" width="5.6" height="0.9" rx="0.3" fill="#e0637a" />
+      <rect x="20.8" y="17.2" width="11.8" height="0.9" rx="0.3" fill="#e0637a" />
+      {SLING_PEGS.map(([x, y, c]) => (
+        <g key={x}>
+          <circle cx={x} cy={y} r="1.2" fill="#8794ad" />
+          <circle cx={x} cy={y} r="1.02" fill={c} />
+          <circle cx={x - 0.32} cy={y - 0.34} r="0.36" fill="#fff" opacity="0.4" />
+        </g>
+      ))}
+      {/* The blue blip hanging on the peg below, and Blip's way up. */}
+      <Blip id={id} name="blue-spark" x={26.4} y={23.4} s={0.27} c={BLIP_BLUE} opacity={0.55} />
+      {SLING_TRAIL.map(([x, y], i) => (
+        <circle key={x} cx={x} cy={y} r="0.28" fill="#9ff7e2" opacity={0.25 + i * 0.12} />
+      ))}
+      <Blip id={id} name="spark" x={17.2} y={12.6} s={0.34} rot={-12} c={BLIP_MINT} />
+    </>
+  )
+}
+
 /** The soda sea's bubbles: x, y, radius. */
 const SODA_BUBBLES = [
   [2.8, 28.3, 0.42],
@@ -2000,6 +2081,7 @@ const SCENES: Record<string, Scene> = {
   pileup: Pileup,
   swoop: Swoop,
   wobblerun: WobbleRun,
+  sling: Sling,
 }
 
 /** Whether a game has a picture yet. */

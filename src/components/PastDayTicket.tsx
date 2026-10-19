@@ -7,6 +7,7 @@ import { glassNames } from '../games/halffull/planSvg'
 import { dailyTrack, trackNumber } from '../games/hotlap/daily'
 import { dailyCave } from '../games/lander/daily'
 import { dailyCourse } from '../games/marblerun/daily'
+import { dailyTower } from '../games/sling/daily'
 import { dailyHills } from '../games/swoop/daily'
 import { dailyGauntlet } from '../games/wobblerun/daily'
 import { dailyTabHref, gamePlayHref } from '../hooks/useHashRoute'
@@ -58,6 +59,10 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
     const hills = dailyHills(day)
     return { kicker: `Hills #${hills.n}`, title: hills.name, play: `${gamePlayHref('swoop')}?day=${day}`, page: dailyTabHref('swoop', 'past', day) }
   }
+  if (key === 'tower') {
+    const tower = dailyTower(day)
+    return { kicker: `Tower #${tower.n}`, title: tower.name, play: `${gamePlayHref('sling')}?day=${day}`, page: dailyTabHref('sling', 'past', day) }
+  }
   if (key === 'gauntlet') {
     const gauntlet = dailyGauntlet(day)
     return { kicker: `Gauntlet #${gauntlet.n}`, title: gauntlet.name, play: `${gamePlayHref('wobblerun')}?day=${day}`, page: dailyTabHref('wobblerun', 'past', day) }
@@ -69,7 +74,7 @@ function courseOf(key: TodayKey, day: string): { kicker: string; title: string; 
 /** A racing daily's medal that day (lib/raceMedals.ts): your best then, against the day's blue. */
 function medalOf(key: TodayKey, day: string, score: number): Medal | null {
   const game =
-    key === 'track' ? 'hotlap' : key === 'course' ? 'marblerun' : key === 'cave' ? 'lander' : key === 'hills' ? 'swoop' : key === 'gauntlet' ? 'wobblerun' : null
+    key === 'track' ? 'hotlap' : key === 'course' ? 'marblerun' : key === 'cave' ? 'lander' : key === 'hills' ? 'swoop' : key === 'gauntlet' ? 'wobblerun' : key === 'tower' ? 'sling' : null
   const pace =
     key === 'track'
       ? dailyTrack(day).pace
@@ -81,7 +86,9 @@ function medalOf(key: TodayKey, day: string, score: number): Medal | null {
             ? dailyHills(day).pace
             : key === 'gauntlet'
               ? dailyGauntlet(day).pace
-              : null
+              : key === 'tower'
+                ? dailyTower(day).pace
+                : null
   // The racing dailies keep a million less the ms (their score.ts).
   return game == null || pace == null ? null : medalFor(game, paceMsOf(pace), 1_000_000 - score)
 }
@@ -156,6 +163,7 @@ export function PastDayTicket({
     cave: useDailyDays('lander', name),
     hills: useDailyDays('swoop', name),
     gauntlet: useDailyDays('wobblerun', name),
+    tower: useDailyDays('sling', name),
     plates: useDailyDays('centroid', name),
   }
   // The day's card as the API counted it, a game hidden since too (Ace Chase's hole was on it until 2026-10-05): the

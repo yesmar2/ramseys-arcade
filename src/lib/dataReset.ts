@@ -15,6 +15,7 @@ const PLAYED_KEYS = [
   'skermix-device-bests',
   'skermix-pending-runs',
   'skermix-swoop-runs',
+  'skermix-sling-runs',
   'skermix-marblerun-runs',
   'skermix-lander-runs',
   'skermix-wobblerun-runs',

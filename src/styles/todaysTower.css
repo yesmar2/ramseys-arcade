@@ -1,0 +1,15 @@
+/*
+ * Sling's tower on Today's Tower (TodaysTowerCard.tsx): a stretch of the day's tower at dusk, its postcard
+ * (TowerPostcard.tsx), covering the screen. The same in either theme.
+ */
+.evp-screen.tct__screen {
+  background: #0a0e29;
+}
+
+.tct-plan {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}

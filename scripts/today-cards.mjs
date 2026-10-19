@@ -62,6 +62,7 @@ const COURSE_ACCENT = '#d774f0'
 const CAVE_ACCENT = '#a48af0'
 const HILLS_ACCENT = '#f2706a'
 const GAUNTLET_ACCENT = '#f27bb0'
+const TOWER_ACCENT = '#5fdca8'
 
 /* ---------- a PNG from pixels, for the hole's shaded green ---------- */
 
@@ -435,6 +436,16 @@ function card(day, size) {
       }),
     )
   }
+  if (day.tower) {
+    panels.push(
+      panel(size, {
+        kicker: `SLING · TOWER #${day.tower.n}`,
+        accent: TOWER_ACCENT,
+        name: day.tower.name,
+        picture: h('img', { src: day.tower.picture, width: size.picW, height: size.picH }),
+      }),
+    )
+  }
   const count = COUNT_WORDS[panels.length]
   const mark = wordmark(38)
   return h(
@@ -495,6 +506,10 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   // The gauntlet's picture is its rounds to the Blip star, from the plan's round code: no engine needed.
   const { dailyGauntlet } = await server.ssrLoadModule('/src/games/wobblerun/daily.ts')
   const { gauntletSvg } = await server.ssrLoadModule('/src/games/wobblerun/gauntletPicture.ts')
+  // The tower's picture is its postcard's, an SVG of its own (sling/towerPicture.ts): no engine needed.
+  const { dailyTower, laidNumber: towerLaid } = await server.ssrLoadModule('/src/games/sling/daily.ts')
+  const { plannedTower } = await server.ssrLoadModule('/src/games/sling/sim.ts')
+  const { towerSvg } = await server.ssrLoadModule('/src/games/sling/towerPicture.ts')
   const { mixColor } = await server.ssrLoadModule('/src/lib/color.ts')
   const { gamePlayHref } = await server.ssrLoadModule('/src/hooks/useHashRoute.ts')
   // A day's card is that day's ticket (lib/today.ts liveDailies): each daily from the day it joined, while its
@@ -564,6 +579,11 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
         const daily = dailyGauntlet(day)
         info.gauntlet = { n: daily.n, name: daily.name, picture: svgUrl(gauntletSvg(daily, size.picW, size.picH)) }
       }
+      if (live.has('tower')) {
+        const daily = dailyTower(day)
+        const tower = plannedTower(towerLaid(daily), daily.attempt)
+        info.tower = { n: daily.n, name: daily.name, picture: svgUrl(towerSvg(tower, size.picW, size.picH)) }
+      }
       const tree = card(info, size)
       const kept = join(CACHE, `${createHash('sha256').update(JSON.stringify(tree)).digest('hex').slice(0, 24)}.png`)
       let png
@@ -610,6 +630,10 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
       if (info.gauntlet) {
         dailies.push(`Today’s Gauntlet #${info.gauntlet.n}, ${info.gauntlet.name}`)
         links.push({ href: gamePlayHref('wobblerun'), label: `Run Today’s Gauntlet #${info.gauntlet.n}` })
+      }
+      if (info.tower) {
+        dailies.push(`Today’s Tower #${info.tower.n}, ${info.tower.name}`)
+        links.push({ href: gamePlayHref('sling'), label: `Climb Today’s Tower #${info.tower.n}` })
       }
       const count = COUNT_WORDS[dailies.length]
       const description =

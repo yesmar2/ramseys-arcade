@@ -16,7 +16,7 @@ import { noteTicketsPaid } from './tickets'
  */
 
 /** The dailies whose past courses keep All time boards. */
-export type TrackGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop' | 'wobblerun'
+export type TrackGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop' | 'wobblerun' | 'sling'
 
 export type TrackLapFigure = { name: string; score: number; avatarId?: string; skin?: string }
 

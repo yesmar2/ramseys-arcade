@@ -1,0 +1,21 @@
+/*
+ * The admin's Tower Book (AdminTowerBook.tsx), on the Track Book's layout (adminBooks.css): each day's tower as
+ * its postcard (TowerPostcard.tsx), a stretch of it at dusk.
+ */
+
+.twb-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border-radius: 0.7rem;
+  background: #0a0e29;
+}
+
+.tb-feature .twb-map {
+  border-radius: 0.9rem;
+}
+
+.twb-note {
+  margin-top: 1rem;
+}

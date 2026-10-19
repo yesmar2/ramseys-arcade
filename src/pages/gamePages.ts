@@ -28,6 +28,7 @@ export const GAME_PAGES: Record<string, LazyPage<object>> = {
   putt: lazyPage(() => import('./PuttPage').then((m) => m.PuttPage)),
   snake: lazyPage(() => import('./SnakePage').then((m) => m.SnakePage)),
   stacker: lazyPage(() => import('./StackerPage').then((m) => m.StackerPage)),
+  sling: lazyPage(() => import('./SlingPage').then((m) => m.SlingPage)),
   swoop: lazyPage(() => import('./SwoopPage').then((m) => m.SwoopPage)),
   wobblerun: lazyPage(() => import('./WobbleRunPage').then((m) => m.WobbleRunPage)),
 }

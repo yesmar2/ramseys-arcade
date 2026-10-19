@@ -104,8 +104,8 @@ export type Route =
  * courses, Lander's planned caves, Swoop's planned hills, Wobble Run's planned gauntlets, Half Full's days, and
  * every trophy and egg.
  */
-export type AdminSection = 'holes' | 'tracks' | 'courses' | 'caves' | 'hills' | 'gauntlets' | 'pours' | 'trophies'
-const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', 'caves', 'hills', 'gauntlets', 'pours', 'trophies']
+export type AdminSection = 'holes' | 'tracks' | 'courses' | 'caves' | 'hills' | 'gauntlets' | 'towers' | 'pours' | 'trophies'
+const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', 'caves', 'hills', 'gauntlets', 'towers', 'pours', 'trophies']
 
 /** Fired after in-app navigation has changed the URL. */
 export const ROUTE_EVENT = 'skermix:route'

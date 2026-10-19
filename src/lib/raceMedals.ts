@@ -16,14 +16,14 @@ import { formatLeaderboardScore } from './leaderboardFormat'
  * (RaceMedal MedalLadder), and nothing says "all four": platinum is "the top medal".
  */
 
-export type RaceGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop' | 'wobblerun'
+export type RaceGame = 'hotlap' | 'marblerun' | 'lander' | 'swoop' | 'wobblerun' | 'sling'
 export type Medal = 'bronze' | 'silver' | 'gold' | 'platinum'
 
 export const MEDALS: readonly Medal[] = ['bronze', 'silver', 'gold', 'platinum']
 
 export const MEDAL_NAMES: Record<Medal, string> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' }
 
-const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ball', lander: 'blue ship', swoop: 'blue bird', wobblerun: 'blue blip' }
+const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ball', lander: 'blue ship', swoop: 'blue bird', wobblerun: 'blue blip', sling: 'blue blip' }
 
 /**
  * How much faster than the day's blue each medal past bronze is, in each game: silver one step, gold two,
@@ -49,7 +49,7 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * in both: his best Hot Lap laps had landed 13 to 25% under the blue car (17% the middle day, 12.8% that day, short of
  * gold at 14%), and no one's Marble Run had reached platinum's 36% (the best 34.5%; his 30.8% that day was gold).
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.13, wobblerun: 0.12 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.13, wobblerun: 0.12, sling: 0.1 }
 
 /**
  * How many of the game's steps faster than the blue each medal is. Platinum stays three, where it was tuned to
@@ -71,7 +71,7 @@ export const MEDAL_RUNGS: Record<Medal, number> = { bronze: 1.2, silver: 1.8, go
 export const MEDAL_TICKETS: Record<Medal, number> = { bronze: 5, silver: 8, gold: 11, platinum: 15 }
 
 export function isRaceGame(slug: string): slug is RaceGame {
-  return slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop' || slug === 'wobblerun'
+  return slug === 'hotlap' || slug === 'marblerun' || slug === 'lander' || slug === 'swoop' || slug === 'wobblerun' || slug === 'sling'
 }
 
 /** The day's blue, as a run's report names it: "blue ship". */

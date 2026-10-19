@@ -51,6 +51,7 @@ export const LEADERBOARD_GAMES = [
   'pileup',
   'swoop',
   'wobblerun',
+  'sling',
 ] as const
 export type LeaderboardGame = (typeof LEADERBOARD_GAMES)[number]
 

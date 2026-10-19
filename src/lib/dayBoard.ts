@@ -174,6 +174,17 @@ const LOADERS: Record<string, () => Promise<DayCourse>> = {
       board: trackBoardOf('wobblerun', gauntletNumber),
     }
   },
+  async sling() {
+    const { FIRST_DAY, towerDay, towerNumber, dailyTower } = await import('../games/sling/daily')
+    return {
+      first: FIRST_DAY,
+      today: () => towerDay(),
+      title: (day) => `#${towerNumber(day)} ${dailyTower(day).name}`,
+      anchor: (day) => day,
+      playHref: (day) => `${gamePlayHref('sling')}?day=${day}`,
+      board: trackBoardOf('sling', towerNumber),
+    }
+  },
 }
 
 const loaded = new Map<string, Promise<DayCourse>>()

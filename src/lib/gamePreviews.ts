@@ -52,6 +52,7 @@ export const DAY_PREVIEWS: Record<string, () => Promise<{ createDayPreview(day: 
   hotlap: () => import('../games/hotlap/preview'),
   lander: () => import('../games/lander/preview'),
   marblerun: () => import('../games/marblerun/preview'),
+  sling: () => import('../games/sling/preview'),
   swoop: () => import('../games/swoop/preview'),
   wobblerun: () => import('../games/wobblerun/preview'),
 }

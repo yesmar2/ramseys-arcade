@@ -473,6 +473,33 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       },
     ],
   },
+  sling: {
+    goal: 'Fling Blip up today’s tower, peg to peg, to the top peg, fastest. A new tower comes every day at midnight, New York time.',
+    controls: [
+      { does: 'Aim and fling', touch: 'Drag back anywhere, let go', keys: 'Drag back with the mouse, or ← → aim, ↑ ↓ power, Space' },
+      { does: 'Start the run again', touch: '↻', keys: 'R' },
+    ],
+    scores: [
+      { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
+      { what: 'Fling past a peg', pts: 'skips it', sub: 'Blip grabs near the top of his flight' },
+      { what: 'A miss, a bramble, a bug or a sweeper', pts: 'floats you back', sub: 'to the peg you left' },
+      { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('sling') },
+    ],
+    ends: 'At the top peg. Climb it as often as you like.',
+    tip: 'Blip grabs a peg as his flight tops out or as he falls past it, so aim a little above the peg you want. Every tower is the day’s own mix: sliders and carousels move, clay pegs crumble if you wait, brambles leave a gap to fling through, an updraft carries you up a tall gap, and a gold boost peg flings harder.',
+    counts: [
+      {
+        what: 'Today’s tower',
+        kind: 'counts',
+        sub: 'Your best run today goes on today’s board, your week and your rank.',
+      },
+      {
+        what: 'Past towers',
+        kind: 'board',
+        sub: `Your best run goes on that tower’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
+      },
+    ],
+  },
   wobblerun: {
     goal: 'Run Blip through today’s gauntlet and grab the star at the top, fastest. A new gauntlet comes every day at midnight, New York time.',
     controls: [
