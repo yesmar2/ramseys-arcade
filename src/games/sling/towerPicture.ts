@@ -3,10 +3,11 @@ import { mulberry32, pegAt, TW, type Tower } from './sim'
 
 /*
  * A day's tower as a picture, for its cards (the home row, Today's Tower, past days, the tomorrow tease, the day's
- * share card): a stretch of its middle, drawn the way the game draws it at dusk (scene.ts): the sky with its
- * stars and moon, far towers, the shaft's walls in the day's colour with their lit edge, seam and blips, the
- * pegs as they are at the go, a bramble bar or a bug or two if the stretch has them, and Blip in the air between
- * two pegs with his dotted trail, the blue blip hanging on the peg below. One SVG string, so the share-card
+ * share card): a stretch of its middle, drawn the way the game draws it at dusk (scene.ts, the storybook look):
+ * the sky with its stars, moon and clouds, far towers, the shaft's stone walls in the day's colour with their
+ * lit edge and ivy, the pegs as they are at the go (wooden knobs with brass rings), a bramble bar or a bug or two
+ * if the stretch has them, and Blip, big, in the air between two pegs with his trail of gold glints, the blue
+ * blip hanging on the peg below. One SVG string, so the share-card
  * script (scripts/today-cards.mjs) draws exactly what the site does, with no engine and no browser.
  */
 
@@ -38,8 +39,8 @@ const n1 = (v: number) => String(Math.round(v * 10) / 10)
 export function towerSvg(tower: Tower, w: number, h: number): string {
   const C = towerColours(tower.hue)
   const r = mulberry32(tower.n * 13 + 5)
-  // The stretch: about 560 units of the middle, the shaft filling most of the picture's width.
-  const k = Math.min((w * 0.86) / TW, h / 420)
+  // The stretch: about 300 units of the middle, close in as the game's camera is, the shaft filling the width.
+  const k = Math.min((w * 0.92) / TW, h / 300)
   const mid = tower.height * 0.48
   const ox = (w - TW * k) / 2
   const X = (x: number) => ox + x * k
@@ -51,7 +52,17 @@ export function towerSvg(tower: Tower, w: number, h: number): string {
   out.push(`<rect width="${w}" height="${h}" fill="url(#sky)"/>`)
   for (let i = 0; i < 40; i++) out.push(`<circle cx="${n1(r() * w)}" cy="${n1(r() * h * 0.8)}" r="${n1(0.6 + r() * 1.1)}" fill="#fff" opacity="${n1(0.3 + r() * 0.5)}"/>`)
   out.push(`<circle cx="${n1(w * 0.86)}" cy="${n1(h * 0.16)}" r="${n1(h * 0.06)}" fill="${C.moon}"/>`)
-  for (const [colour, rate] of [[C.far, 0.5], [C.mid, 0.3]] as const) {
+  for (let i = 0; i < 4; i++) {
+    const cx = r() * w
+    const cy = h * (0.1 + r() * 0.7)
+    const cw = w * (0.14 + r() * 0.12)
+    out.push(
+      `<g fill="#463f82" opacity="0.45"><ellipse cx="${n1(cx)}" cy="${n1(cy)}" rx="${n1(cw * 0.5)}" ry="${n1(cw * 0.16)}"/>` +
+        `<ellipse cx="${n1(cx - cw * 0.18)}" cy="${n1(cy - cw * 0.08)}" rx="${n1(cw * 0.22)}" ry="${n1(cw * 0.16)}"/>` +
+        `<ellipse cx="${n1(cx + cw * 0.14)}" cy="${n1(cy - cw * 0.1)}" rx="${n1(cw * 0.26)}" ry="${n1(cw * 0.19)}"/></g>`,
+    )
+  }
+  for (const [colour, rate] of [[C.far, 0.62], [C.mid, 0.5]] as const) {
     for (let i = 0; i < 6; i++) {
       const tw = w * (0.06 + r() * 0.06)
       const tx = r() * w
@@ -59,18 +70,28 @@ export function towerSvg(tower: Tower, w: number, h: number): string {
       out.push(`<path d="M${n1(tx)} ${h} V${n1(top)} L${n1(tx + tw / 2)} ${n1(top - tw * 0.7)} L${n1(tx + tw)} ${n1(top)} V${h} Z" fill="${colour}"/>`)
     }
   }
-  // The shaft, its walls.
-  const wall = 22 * k
+  // The shaft, its stone walls: blocks in rows with mortar between, staggered, a lit inner edge, ivy climbing.
+  const wall = 30 * k
+  const row = 26 * k
   out.push(`<rect x="${n1(X(0))}" y="0" width="${n1(TW * k)}" height="${h}" fill="#0e1230" opacity="0.42"/>`)
   for (const side of [0, 1]) {
     const inner = side ? X(TW) : X(0)
     const left = side ? inner : inner - wall
     out.push(`<rect x="${n1(left)}" y="0" width="${n1(wall)}" height="${h}" fill="${C.wall}"/>`)
-    out.push(`<rect x="${n1(side ? inner + wall * 0.62 : left)}" y="0" width="${n1(wall * 0.38)}" height="${h}" fill="${C.wallDeep}"/>`)
+    for (let y = 0, n = 0; y < h + row; y += row, n++) {
+      out.push(`<rect x="${n1(left)}" y="${n1(y)}" width="${n1(wall)}" height="${n1(2 * k)}" fill="${C.wallDeep}"/>`)
+      out.push(`<rect x="${n1(left + wall * (n % 2 ? 0.35 : 0.7))}" y="${n1(y - row)}" width="${n1(2 * k)}" height="${n1(row)}" fill="${C.wallDeep}"/>`)
+    }
     out.push(`<rect x="${n1(side ? inner : inner - 3 * k)}" y="0" width="${n1(3 * k)}" height="${h}" fill="${C.edge}"/>`)
-    const seam = side ? inner + wall * 0.36 : inner - wall * 0.36
-    out.push(`<rect x="${n1(seam - 1.5 * k)}" y="0" width="${n1(3 * k)}" height="${h}" fill="${C.seam}"/>`)
-    for (let y = side ? 23 * k : 0; y < h; y += 46 * k) out.push(`<circle cx="${n1(seam)}" cy="${n1(y)}" r="${n1(2.8 * k)}" fill="${C.blip}"/>`)
+    const out1 = side ? 1 : -1
+    const vine: string[] = []
+    for (let y = -10; y < h + 10; y += 6) vine.push(`${vine.length ? 'L' : 'M'}${n1(inner + out1 * (8 + 6 * Math.sin(y / (37 * k) + side * 2)) * k)} ${n1(y)}`)
+    out.push(`<path d="${vine.join(' ')}" fill="none" stroke="#2f8a4c" stroke-width="${n1(2.2 * k)}"/>`)
+    for (let y = 0, n = 0; y < h; y += 31 * k, n++) {
+      const px = inner + out1 * (8 + 6 * Math.sin(y / (37 * k) + side * 2)) * k
+      const tilt = n % 2 ? 1 : -1
+      out.push(`<ellipse cx="${n1(px + out1 * tilt * 5 * k)}" cy="${n1(y)}" rx="${n1(5 * k)}" ry="${n1(3 * k)}" fill="#3fae63" transform="rotate(${tilt * 34} ${n1(px + out1 * tilt * 5 * k)} ${n1(y)})"/>`)
+    }
   }
   for (const br of tower.brambles) {
     if (!inView(br.y)) continue
@@ -87,9 +108,11 @@ export function towerSvg(tower: Tower, w: number, h: number): string {
     const at = pegAt(pg, 0)
     if (!inView(at.y)) return
     if (below < 0 && at.y > mid - 140) below = i
-    const fill = pg.kind === 'clay' ? '#d98a5f' : pg.kind === 'boost' || pg.kind === 'top' ? '#f5b942' : C.peg
-    out.push(`<circle cx="${n1(X(at.x))}" cy="${n1(Y(at.y))}" r="${n1(10.6 * k)}" fill="${C.pegLine}"/>`)
-    out.push(`<circle cx="${n1(X(at.x))}" cy="${n1(Y(at.y))}" r="${n1(9 * k)}" fill="${fill}"/>`)
+    const wood = pg.kind === 'peg' || pg.kind === 'slide' || pg.kind === 'orbit'
+    const fill = pg.kind === 'clay' ? '#d98a5f' : pg.kind === 'boost' || pg.kind === 'top' ? '#f5b942' : '#c08a52'
+    out.push(`<circle cx="${n1(X(at.x))}" cy="${n1(Y(at.y))}" r="${n1(12.8 * k)}" fill="${wood ? '#e9c46a' : C.pegLine}"/>`)
+    out.push(`<circle cx="${n1(X(at.x))}" cy="${n1(Y(at.y))}" r="${n1(11 * k)}" fill="${fill}"/>`)
+    out.push(`<circle cx="${n1(X(at.x) - 3.3 * k)}" cy="${n1(Y(at.y) - 3.5 * k)}" r="${n1(4 * k)}" fill="#fff" opacity="0.35"/>`)
   })
   const from = pegAt(tower.pegs[Math.max(0, below)]!, 0)
   const to = pegAt(tower.pegs[Math.min(tower.pegs.length - 1, Math.max(0, below) + 1)]!, 0)
@@ -98,7 +121,12 @@ export function towerSvg(tower: Tower, w: number, h: number): string {
   const arc = (f: number) => ({ x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f + Math.sin(f * Math.PI) * 70 })
   for (let i = 0; i < 9; i++) {
     const p = arc(0.1 + i * 0.07)
-    out.push(`<circle cx="${n1(X(p.x))}" cy="${n1(Y(p.y))}" r="${n1(2.4 * k)}" fill="#9ff7e2" opacity="${n1(0.2 + i * 0.07)}"/>`)
+    const g = (2.4 + i * 0.3) * k
+    const x = X(p.x)
+    const y = Y(p.y)
+    out.push(
+      `<path d="M${n1(x)} ${n1(y - g)} L${n1(x + g * 0.3)} ${n1(y - g * 0.3)} L${n1(x + g)} ${n1(y)} L${n1(x + g * 0.3)} ${n1(y + g * 0.3)} L${n1(x)} ${n1(y + g)} L${n1(x - g * 0.3)} ${n1(y + g * 0.3)} L${n1(x - g)} ${n1(y)} L${n1(x - g * 0.3)} ${n1(y - g * 0.3)} Z" fill="#ffd166" opacity="${n1(0.25 + i * 0.08)}"/>`,
+    )
   }
   const at = arc(0.78)
   out.push(blipSvg(X(at.x), Y(at.y), k, '#34c6a8', 1, false))
@@ -108,7 +136,7 @@ export function towerSvg(tower: Tower, w: number, h: number): string {
 
 /** Blip, as the game draws him: hanging (arms up) or flying (arms out). */
 function blipSvg(x: number, y: number, k: number, body: string, opacity: number, hanging: boolean): string {
-  const s = k * 1.15
+  const s = k * 1.6
   const arms = hanging ? 'M-5 -6 L-2 -16 M5 -6 L2 -16' : 'M-7 -3 L-12 -9 M7 -3 L12 -9'
   return (
     `<g transform="translate(${n1(x)} ${n1(y)}) scale(${n1(s)})" opacity="${opacity}">` +

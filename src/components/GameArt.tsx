@@ -1756,27 +1756,32 @@ function Blip({
 }
 
 /** Sling's pegs up the shaft, x and y (y down), zigzagging the way a day's tower does; the third is gold, a boost peg. */
-const SLING_PEGS: Array<[number, number, string]> = [
-  [12.6, 27.4, '#dfe6f2'],
-  [26.4, 21.2, '#dfe6f2'],
-  [15.4, 14.2, '#f5b942'],
-  [24.8, 5.6, '#dfe6f2'],
+const SLING_PEGS: Array<[number, number, boolean]> = [
+  [13.4, 27.6, false],
+  [26, 21.4, false],
+  [15.6, 13.6, true],
+  [24.6, 4.8, false],
 ]
-/** Blip's dotted way up from the second peg toward the third, rising, then over its top. */
-const SLING_TRAIL = [0.12, 0.24, 0.36, 0.48, 0.6].map((t) => [26.4 - t * 8.6, 19.6 - t * 9.2 + t * t * 3.2] as const)
+/** Blip's trail of gold glints up from the second peg toward the third, rising, then over its top. */
+const SLING_TRAIL = [0.12, 0.24, 0.36, 0.48, 0.6].map((t) => [26 - t * 8.4, 19.6 - t * 9.4 + t * t * 3.2] as const)
+/** The ivy's line up an inner wall edge, `out` the way off the wall (−1 left, 1 right). */
+const slingVine = (edge: number, out: number) =>
+  Array.from({ length: 34 }, (_, i) => `${i ? 'L' : 'M'}${(edge + out * (0.8 + 0.6 * Math.sin(i * 0.9 + out))).toFixed(2)} ${(i - 1).toFixed(2)}`).join(' ')
+
+/** A four-point glint, `r` across, at (x, y). */
+const glint = (x: number, y: number, r: number) =>
+  `M${x} ${y - r} L${x + r * 0.3} ${y - r * 0.3} L${x + r} ${y} L${x + r * 0.3} ${y + r * 0.3} L${x} ${y + r} L${x - r * 0.3} ${y + r * 0.3} L${x - r} ${y} L${x - r * 0.3} ${y - r * 0.3} Z`
 
 /**
- * Sling: Blip flung up the day's tower at dusk, past a bramble bar's gap, his dotted trail behind him, the
- * blue blip hanging on the peg below; the shaft's walls in the day's green with their lit edge, seam and row of
- * blips, as the game draws them, and a flag on the wall.
+ * Sling: Blip flung up the day's tower at dusk, big, past a bramble bar's gap, his trail of gold glints behind him,
+ * the blue blip hanging on the peg below; the shaft's stone walls in the day's green with their mortar, lit edge
+ * and ivy, wooden pegs with brass rings, a cloud going by and a flag on the wall: the storybook look the game has.
  */
 function Sling({ id }: { id: Id }) {
   const hue = PALETTE.green
   const wall = mixColor(hue, '#0e1230', 0.45)
-  const deep = mixColor(hue, '#0e1230', 0.68)
+  const mortar = mixColor(hue, '#0e1230', 0.68)
   const edge = mixColor(hue, '#ffffff', 0.5)
-  const seam = mixColor(hue, '#0e1230', 0.62)
-  const blip = mixColor(hue, '#ffffff', 0.3)
   return (
     <>
       <Backdrop
@@ -1788,50 +1793,66 @@ function Sling({ id }: { id: Id }) {
       />
       <Stars
         points={[
-          [9.6, 3.2, 0.14],
-          [30.4, 4.6, 0.16],
+          [10.4, 3.2, 0.14],
+          [29.6, 4.6, 0.16],
           [12.8, 9.6, 0.12, 0.5],
           [28.2, 12.4, 0.13, 0.45],
         ]}
       />
       <Moon id={id} cx={36} cy={5} r={2.2} />
+      {/* A cloud going by. */}
+      <g fill="#463f82" opacity="0.5">
+        <ellipse cx="20" cy="9.4" rx="6.4" ry="1.6" />
+        <ellipse cx="18" cy="8.5" rx="2.8" ry="1.7" />
+        <ellipse cx="21.6" cy="8.3" rx="3.2" ry="2" />
+      </g>
       {/* Far towers in the day's colour. */}
-      <path d="M0.4 31 V12 L2.4 9.6 L4.4 12 V31 Z M36.2 31 V15 L38 12.8 L39.8 15 V31 Z" fill={mixColor(hue, '#1b1745', 0.72)} />
-      {/* The shaft, and its walls. */}
-      <rect x="7.4" y="-1" width="25.2" height="33" fill="#0e1230" opacity="0.42" />
-      {[
-        [5.4, 7.4],
-        [32.6, 32.6],
-      ].map(([x, inner], i) => (
+      <path d="M0.4 31 V14 L2.4 11.6 L4.4 14 V31 Z M36.2 31 V17 L38 14.8 L39.8 17 V31 Z" fill={mixColor(hue, '#1b1745', 0.72)} />
+      {/* The shaft, and its stone walls: rows of blocks, the joints staggered, a lit inner edge, ivy climbing. */}
+      <rect x="8.2" y="-1" width="23.6" height="33" fill="#0e1230" opacity="0.42" />
+      {[5.2, 31.8].map((x, side) => (
         <g key={x}>
-          <rect x={x} y="-1" width="2" height="33" fill={wall} />
-          <rect x={i ? 33.8 : 5.4} y="-1" width="0.8" height="33" fill={deep} />
-          <rect x={i ? inner : inner - 0.3} y="-1" width="0.3" height="33" fill={edge} />
-          <rect x={i ? 33.3 : 6.4} y="-1" width="0.3" height="33" fill={seam} />
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((k) => (
-            <circle key={k} cx={i ? 33.45 : 6.55} cy={k * 4.2 + (i ? 2.1 : 0)} r="0.32" fill={blip} />
+          <rect x={x} y="-1" width="3" height="33" fill={wall} />
+          {Array.from({ length: 13 }, (_, row) => (
+            <g key={row}>
+              <rect x={x} y={row * 2.6 - 0.1} width="3" height="0.22" fill={mortar} />
+              <rect x={x + (row % 2 ? 1 : 2)} y={row * 2.6 - 2.6} width="0.22" height="2.6" fill={mortar} />
+            </g>
+          ))}
+          <rect x={side ? 31.8 : 7.9} y="-1" width="0.3" height="33" fill={edge} />
+          <path d={slingVine(side ? 31.8 : 8.2, side ? 1 : -1)} {...line('#2f8a4c', 0.22)} />
+          {[2, 6.2, 10.4, 14.6, 18.8, 23, 27.2].map((y, k) => (
+            <ellipse
+              key={y}
+              cx={(side ? 31.8 : 8.2) + (side ? 1 : -1) * (1.3 + (k % 2) * 0.5)}
+              cy={y}
+              rx="0.55"
+              ry="0.32"
+              fill="#3fae63"
+              transform={`rotate(${k % 2 ? 34 : -34} ${(side ? 31.8 : 8.2) + (side ? 1 : -1) * (1.3 + (k % 2) * 0.5)} ${y})`}
+            />
           ))}
         </g>
       ))}
       {/* A flag on the wall. */}
-      <path d="M7.2 24 V20.6" {...line('#e7eef3', 0.2, 0.8)} />
-      <path d="M7.2 20.6 L9.2 21.2 L7.2 21.8 Z" fill="#f5b942" />
+      <path d="M8.1 24 V20.6" {...line('#e7eef3', 0.2, 0.8)} />
+      <path d="M8.1 20.6 L10.1 21.2 L8.1 21.8 Z" fill="#f5b942" />
       {/* A bramble bar across, with its gap where Blip went through. */}
-      <rect x="7.4" y="17.2" width="5.6" height="0.9" rx="0.3" fill="#e0637a" />
-      <rect x="20.8" y="17.2" width="11.8" height="0.9" rx="0.3" fill="#e0637a" />
-      {SLING_PEGS.map(([x, y, c]) => (
+      <rect x="8.2" y="17.4" width="5.2" height="0.9" rx="0.3" fill="#e0637a" />
+      <rect x="20.6" y="17.4" width="11.2" height="0.9" rx="0.3" fill="#e0637a" />
+      {SLING_PEGS.map(([x, y, boost]) => (
         <g key={x}>
-          <circle cx={x} cy={y} r="1.2" fill="#8794ad" />
-          <circle cx={x} cy={y} r="1.02" fill={c} />
-          <circle cx={x - 0.32} cy={y - 0.34} r="0.36" fill="#fff" opacity="0.4" />
+          <circle cx={x} cy={y} r="1.42" fill={boost ? '#8794ad' : '#e9c46a'} />
+          <circle cx={x} cy={y} r="1.22" fill={boost ? '#f5b942' : '#c08a52'} />
+          <circle cx={x - 0.38} cy={y - 0.4} r="0.42" fill="#fff" opacity="0.35" />
         </g>
       ))}
-      {/* The blue blip hanging on the peg below, and Blip's way up. */}
-      <Blip id={id} name="blue-spark" x={26.4} y={23.4} s={0.27} c={BLIP_BLUE} opacity={0.55} />
+      {/* The blue blip hanging on the peg below, and Blip's glints up. */}
+      <Blip id={id} name="blue-spark" x={26} y={23.8} s={0.34} c={BLIP_BLUE} opacity={0.55} />
       {SLING_TRAIL.map(([x, y], i) => (
-        <circle key={x} cx={x} cy={y} r="0.28" fill="#9ff7e2" opacity={0.25 + i * 0.12} />
+        <path key={x} d={glint(x, y, 0.32 + i * 0.06)} fill="#ffd166" opacity={0.3 + i * 0.13} />
       ))}
-      <Blip id={id} name="spark" x={17.2} y={12.6} s={0.34} rot={-12} c={BLIP_MINT} />
+      <Blip id={id} name="spark" x={17.6} y={11.8} s={0.46} rot={-12} c={BLIP_MINT} />
     </>
   )
 }

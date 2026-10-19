@@ -56,7 +56,7 @@ import {
   type GhostRun,
   type SlingDay,
 } from './runs'
-import { TowerScene, type Aim, type SceneLook } from './scene'
+import { TowerScene, type Aim } from './scene'
 import { formatRun, formatSlingBoardScore, missWords, skipWords, slingBoardScore, slingMsFromBoardScore } from './score'
 import { cloneBlip, DT, FLOATING, FLYING, GHOST_EVERY, GOOD_HANDS, HANGING, makeHands, newBlip, step, type Blip, type Fling } from './sim'
 import { TestResultCard, TestStartCard } from './TestCards'
@@ -546,7 +546,7 @@ function SlingDayGame({
     holder.append(canvas)
     let scene: TowerScene
     try {
-      scene = new TowerScene(canvas, tower, lookAsked())
+      scene = new TowerScene(canvas, tower)
     } catch {
       canvas.remove()
       setNoCanvas(true)
@@ -1076,16 +1076,6 @@ function SlingDayGame({
       </div>
     </section>
   )
-}
-
-/** The look on trial, from localStorage `skermix-sling-look` = a|b|c (scene.ts SceneLook): A unless set. */
-function lookAsked(): SceneLook {
-  try {
-    const look = localStorage.getItem('skermix-sling-look')
-    return look === 'b' || look === 'c' ? look : 'a'
-  } catch {
-    return 'a'
-  }
 }
 
 /** Dev only: localStorage `skermix-sling-dev-day` = YYYY-MM-DD climbs that day's tower, to look over the plan. */

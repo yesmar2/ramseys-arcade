@@ -5,14 +5,15 @@ import { bugAt, CATCH, CLAY_FOR, HANG, mulberry32, pegAt, sweeperAt, TW, type To
 
 /*
  * Sling on a 2D canvas: the day's tower from the front, the camera climbing with Blip. The sky follows the site's
- * theme (an afternoon in light, dusk with stars in dark), with far towers in the day's colour behind. The shaft's
- * two walls are washed in the day's colour (sim.ts TOWER_HUES), as Swoop's hills are: a lit inner edge, a band
- * of the colour, and a seam down each with a row of blips in it. Pegs are round knobs; sliders run on a rail,
+ * theme (an afternoon in light, dusk with stars in dark), with clouds drifting by and a town of far towers in the
+ * day's colour at the foot. The camera is in close, so Blip is big (on a phone it pans with him). The shaft's two
+ * walls are stone blocks in the day's colour (sim.ts TOWER_HUES), a lit inner edge and ivy climbing them: the
+ * storybook look Ramsey picked (2026-10-19). Pegs are wooden knobs with a brass ring; sliders run on a rail,
  * carousel pegs round a hub, clay pegs are terracotta and shake as they go, boost pegs are gold with a chevron.
  * Brambles are thorny bars with a gap, bugs buzz side to side, sweepers turn on a hub, updrafts are a fan with
  * air rising. The flags split the run on the walls; the top is a chequered band. Blip is the site's mint Blip;
  * the blue blip is the racing dailies' blue, and anyone else's run is a ghost's outline, cyan (or amber, your own
- * best), with whose run it is over it.
+ * best), with whose run it is over it. Blip leaves a trail of gold glints in the air.
  *
  * Only fills and strokes, never shadowBlur, so a phone's canvas keeps up.
  */
@@ -119,19 +120,13 @@ export type SceneFrame = {
 type Bit = { x: number; y: number; vx: number; vy: number; life: number; color: string }
 type Floater = { x: number; y: number; text: string; life: number; good: boolean }
 
-/** The shaft fills this much of the screen's width at most, with room either side for the walls and the view. */
-const VIEW_W = TW + 110
-const VIEW_H = 700
-
 /**
- * The looks on trial (2026-10-19, Ramsey: "can we make the graphics a little better? like a bigger blip"): A the
- * first, B the camera in close (Blip about twice the size, the view panning with him on a narrow screen), C B's
- * camera with a storybook tower (stone and ivy, wooden pegs, clouds, a sparkle trail).
+ * How much of the tower the camera shows across and up, in world units: close in, so Blip is big (Ramsey picked C,
+ * "storybook", of three looks on 2026-10-19, after "can we make the graphics a little better? like a bigger
+ * blip"). On a phone the shaft is wider than the screen, and the view pans with Blip.
  */
-export type SceneLook = 'a' | 'b' | 'c'
-/** How much of the tower B and C show across and up, in world units. */
-const CLOSE_W = 300
-const CLOSE_H = 540
+const VIEW_W = 300
+const VIEW_H = 540
 
 export class TowerScene {
   private readonly canvas: HTMLCanvasElement
@@ -142,7 +137,6 @@ export class TowerScene {
   private H = 0
   private dpr = 1
   private cam = { x: TW / 2, y: 0, snap: true }
-  private readonly look: SceneLook
   private C: Palette
   private sky: HTMLCanvasElement | null = null
   private time = 0
@@ -153,8 +147,7 @@ export class TowerScene {
   private stars: { x: number; y: number; s: number }[]
   private farTowers: { x: number; w: number; h: number; far: boolean }[]
 
-  constructor(canvas: HTMLCanvasElement, tower: Tower, look: SceneLook = 'a') {
-    this.look = look
+  constructor(canvas: HTMLCanvasElement, tower: Tower) {
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Sling: no 2D canvas')
     this.canvas = canvas
@@ -170,9 +163,6 @@ export class TowerScene {
   }
 
   private clouds: { x: number; y: number; w: number; rate: number }[]
-  private get close() {
-    return this.look !== 'a'
-  }
 
   resize(w: number, h: number) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -199,9 +189,9 @@ export class TowerScene {
 
   /** Pixels to a world unit, and where the shaft's left wall is on the screen. */
   private get k() {
-    return this.close ? Math.min(this.W / CLOSE_W, this.H / CLOSE_H) : Math.min(this.W / VIEW_W, this.H / VIEW_H)
+    return Math.min(this.W / VIEW_W, this.H / VIEW_H)
   }
-  /** Where the shaft's left wall is: centred when the shaft fits, else panned with Blip (B and C on a phone). */
+  /** Where the shaft's left wall is: centred when the shaft fits, else panned with Blip (on a phone). */
   private get ox() {
     const k = this.k
     const need = (TW + 50) * k
@@ -270,9 +260,9 @@ export class TowerScene {
     if (!this.sky) this.paintSky()
     if (this.sky) ctx.drawImage(this.sky, 0, 0, W, H)
     this.drawStars()
-    if (this.look === 'c') this.drawClouds()
+    this.drawClouds()
     this.drawFar()
-    this.drawShaft(f)
+    this.drawShaft()
     this.drawFans(f.t)
     this.drawPegs(f)
     this.drawHazards(f.t)
@@ -363,7 +353,7 @@ export class TowerScene {
 
   /* ---------- the shaft ---------- */
 
-  /** Clouds drifting by in the sky, slower than the shaft (C). */
+  /** Clouds drifting by in the sky, slower than the shaft. */
   private drawClouds() {
     const { ctx, W, H, C } = this
     ctx.fillStyle = C.dark ? 'rgba(70, 64, 130, 0.45)' : 'rgba(255, 255, 255, 0.85)'
@@ -380,55 +370,9 @@ export class TowerScene {
     }
   }
 
-  private drawShaft(f: SceneFrame) {
-    if (this.look === 'c') return this.drawStoneShaft()
-    const { ctx, H, C } = this
-    const k = this.k
-    const x0 = this.sx(0)
-    const x1 = this.sx(TW)
-    ctx.fillStyle = C.shaft
-    ctx.fillRect(x0, 0, x1 - x0, H)
-    const wall = 22 * k
-    const bottom = Math.min(H, this.sy(-30))
-    for (const side of [0, 1]) {
-      const inner = side ? x1 : x0
-      const outer = side ? x1 + wall : x0 - wall
-      const left = Math.min(inner, outer)
-      ctx.fillStyle = C.wall
-      ctx.fillRect(left, 0, wall, bottom)
-      // the band of the day's colour, deeper toward the outside
-      ctx.fillStyle = C.wallDeep
-      ctx.fillRect(side ? inner + wall * 0.62 : outer, 0, wall * 0.38, bottom)
-      // the lit inner edge
-      ctx.fillStyle = C.edge
-      ctx.fillRect(side ? inner : inner - 3 * k, 0, 3 * k, bottom)
-      // a seam down it with a row of blips, as Swoop's hills have
-      const seamX = side ? inner + wall * 0.36 : inner - wall * 0.36
-      ctx.fillStyle = C.seam
-      ctx.fillRect(seamX - 1.5 * k, 0, 3 * k, bottom)
-      ctx.fillStyle = C.blip
-      const every = 46
-      const first = Math.floor((this.cam.y - H / k) / every) * every
-      for (let y = first; y < this.cam.y + H / k; y += every) {
-        const py = this.sy(y + (side ? every / 2 : 0))
-        if (py > bottom) continue
-        ctx.beginPath()
-        ctx.arc(seamX, py, 2.8 * k, 0, TAU)
-        ctx.fill()
-      }
-    }
-    // The floor at the foot of the tower.
-    if (bottom < H) {
-      ctx.fillStyle = C.wallDeep
-      ctx.fillRect(x0 - wall, bottom, x1 - x0 + wall * 2, H - bottom)
-      ctx.fillStyle = C.edge
-      ctx.fillRect(x0 - wall, bottom, x1 - x0 + wall * 2, 3 * k)
-    }
-    void f
-  }
 
-  /** C's shaft: walls of stone blocks in the day's colour, mortar between, a lit inner edge and ivy climbing it. */
-  private drawStoneShaft() {
+  /** The shaft: walls of stone blocks in the day's colour, mortar between, a lit inner edge and ivy climbing it. */
+  private drawShaft() {
     const { ctx, H, C } = this
     const k = this.k
     const x0 = this.sx(0)
@@ -581,7 +525,7 @@ export class TowerScene {
       const at = pegAt(pg, t)
       let px = this.sx(at.x)
       const py = this.sy(at.y)
-      const R = (pg.kind === 'top' ? 12 : 9) * (this.close ? 1.25 : 1) * k
+      const R = (pg.kind === 'top' ? 15 : 11) * k
       if (pg.kind === 'clay' && f.blip.on && f.blip.peg === i) px += Math.sin(this.time * 60) * Math.min(1, f.blip.held / CLAY_FOR) * 2.2 * k
       if (i === next && f.mode === 'play') {
         // The next peg: a faint ring, how near you need to get.
@@ -593,7 +537,8 @@ export class TowerScene {
         ctx.stroke()
         ctx.setLineDash([])
       }
-      const wood = this.look === 'c' && (pg.kind === 'peg' || pg.kind === 'slide' || pg.kind === 'orbit')
+      // Plain pegs are wooden knobs with a brass ring; clay, boost and the top keep their own colours.
+      const wood = pg.kind === 'peg' || pg.kind === 'slide' || pg.kind === 'orbit'
       const fill = pg.kind === 'clay' ? CLAY : pg.kind === 'boost' || pg.kind === 'top' ? GOLD : wood ? '#c08a52' : C.peg
       ctx.fillStyle = wood ? '#e9c46a' : C.pegLine
       ctx.beginPath()
@@ -769,7 +714,7 @@ export class TowerScene {
   /** Blip, the site's mint mascot: hanging by his arms from a peg, or tucked in the air. */
   private blipAt(x: number, y: number, on: boolean, vx: number, vy: number, look: 'blip' | 'blue' | 'ghost' | 'mine', alpha: number) {
     const { ctx, C } = this
-    const k = this.k * (this.close ? 1.45 : 1.05)
+    const k = this.k * 1.45
     const px = this.sx(x)
     const py = this.sy(y)
     ctx.save()
@@ -924,31 +869,25 @@ export class TowerScene {
   }
 
   private drawTrail(dt: number) {
-    const { ctx, C } = this
+    const { ctx } = this
     for (const d of this.trail) d.life -= dt * 2.2
     this.trail = this.trail.filter((d) => d.life > 0).slice(-26)
+    // A trail of gold glints behind Blip in the air.
     for (const d of this.trail) {
-      if (this.look === 'c') {
-        const r = 4.5 * this.k * d.life
-        const x = this.sx(d.x)
-        const y = this.sy(d.y)
-        ctx.fillStyle = `rgba(255, 209, 102, ${d.life * 0.8})`
-        ctx.beginPath()
-        ctx.moveTo(x, y - r)
-        ctx.lineTo(x + r * 0.3, y - r * 0.3)
-        ctx.lineTo(x + r, y)
-        ctx.lineTo(x + r * 0.3, y + r * 0.3)
-        ctx.lineTo(x, y + r)
-        ctx.lineTo(x - r * 0.3, y + r * 0.3)
-        ctx.lineTo(x - r, y)
-        ctx.lineTo(x - r * 0.3, y - r * 0.3)
-        ctx.closePath()
-        ctx.fill()
-        continue
-      }
-      ctx.fillStyle = C.dark ? `rgba(159, 247, 226, ${d.life * 0.45})` : `rgba(31, 155, 132, ${d.life * 0.4})`
+      const r = 4.5 * this.k * d.life
+      const x = this.sx(d.x)
+      const y = this.sy(d.y)
+      ctx.fillStyle = `rgba(255, 209, 102, ${d.life * 0.8})`
       ctx.beginPath()
-      ctx.arc(this.sx(d.x), this.sy(d.y), 2.6 * this.k * (this.close ? 1.4 : 1) * d.life, 0, TAU)
+      ctx.moveTo(x, y - r)
+      ctx.lineTo(x + r * 0.3, y - r * 0.3)
+      ctx.lineTo(x + r, y)
+      ctx.lineTo(x + r * 0.3, y + r * 0.3)
+      ctx.lineTo(x, y + r)
+      ctx.lineTo(x - r * 0.3, y + r * 0.3)
+      ctx.lineTo(x - r, y)
+      ctx.lineTo(x - r * 0.3, y - r * 0.3)
+      ctx.closePath()
       ctx.fill()
     }
   }
