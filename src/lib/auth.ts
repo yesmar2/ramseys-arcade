@@ -11,6 +11,7 @@ import {
   rememberClaimToken,
   setPlayerNameLocal,
 } from './leaderboard'
+import { forgetPlayedHere } from './dataReset'
 import { clearActiveGroup } from './groups'
 import { isImpersonating } from './impersonate'
 import { hashString } from './seededRandom'
@@ -498,6 +499,25 @@ export async function logoutAccount() {
   clearAllClaimTokens()
   clearActiveGroup()
   clearTournamentIdentity()
+  announceAccountId(accountBefore)
+  emitAuth()
+}
+
+/**
+ * Delete the signed-in account for good (the API's deleteAccount.ts); `confirm` is its tag as typed, or DELETE
+ * when it has none. Then this browser lets it go as signing out does, and forgets this account's tag and what
+ * the device kept from playing too, as none of it is anyone's now.
+ */
+export async function deleteAccount(confirm: string): Promise<void> {
+  await authApi<{ deleted: boolean }>('/auth/delete-account', { method: 'POST', body: JSON.stringify({ confirm }) })
+  const accountBefore = currentAccountId()
+  if (accountBefore) forgetAccountTag(accountBefore)
+  setSessionToken(null, { emit: false })
+  clearPlayerNameLocal()
+  clearAllClaimTokens()
+  clearActiveGroup()
+  clearTournamentIdentity()
+  forgetPlayedHere()
   announceAccountId(accountBefore)
   emitAuth()
 }

@@ -1190,6 +1190,17 @@ html[data-theme='light'] .site-menu__row-lead--hot {
   text-decoration: none;
 }
 
+/* Account's row turns the menu to Delete my account (DeleteAccount.tsx): a button dressed as the row above it. */
+.site-menu__setting-button {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .site-menu__setting-go {
   display: inline-flex;
   align-items: center;

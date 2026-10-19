@@ -46,8 +46,17 @@ export function forgetScoresFromBefore(resetAt: number | null | undefined): void
   try {
     const seen = Number(localStorage.getItem(SEEN_KEY) ?? 0)
     if (seen >= resetAt) return
-    for (const key of PLAYED_KEYS) localStorage.removeItem(key)
+    forgetPlayedHere()
     localStorage.setItem(SEEN_KEY, String(resetAt))
+  } catch {
+    /* a private window keeps nothing to forget */
+  }
+}
+
+/** Forget what this device kept from playing, now: after a reset (above), or a deleted account (lib/auth). */
+export function forgetPlayedHere(): void {
+  try {
+    for (const key of PLAYED_KEYS) localStorage.removeItem(key)
   } catch {
     /* a private window keeps nothing to forget */
   }

@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode, type Ref } fro
 import { useTickets } from '../lib/tickets'
 import { daysLeftLabel, liveSeason, useSeason } from '../lib/season'
 import { seasonHasStandings } from '../lib/seasonStandings'
+import { DeleteAccountPanel } from './DeleteAccount'
 import { TicketGlyph } from './prizes/Ticket'
 import { SeasonPatch } from './season/SeasonLook'
 import { createPortal } from 'react-dom'
@@ -130,7 +131,7 @@ export function SiteMenu({
   signingOut: boolean
 }) {
   // The inbox and Settings open in place of the menu, each a sheet of its own with a way back.
-  const [view, setView] = useState<'menu' | 'inbox' | 'settings'>('menu')
+  const [view, setView] = useState<'menu' | 'inbox' | 'settings' | 'delete'>('menu')
   const isFresh = useInboxLook(notes, view === 'inbox')
   // The pressed row goes as the sheet changes, so focus moves with it: to the way back, or back to the close.
   const [turned, setTurned] = useState(false)
@@ -139,7 +140,7 @@ export function SiteMenu({
     const panel = document.getElementById(id)
     panel?.querySelector<HTMLElement>(view === 'menu' ? '.site-menu__close' : '.site-menu__back')?.focus()
   }, [view, turned, id])
-  const turnTo = (next: 'menu' | 'inbox' | 'settings') => {
+  const turnTo = (next: 'menu' | 'inbox' | 'settings' | 'delete') => {
     setTurned(true)
     setView(next)
   }
@@ -339,6 +340,33 @@ export function SiteMenu({
     )
   }
 
+  // Delete my account, from the foot of Settings (DeleteAccount.tsx): its back goes to Settings.
+  if (view === 'delete') {
+    return createPortal(
+      <div className="site-menu" role="presentation">
+        <button type="button" className="site-menu__scrim" aria-label="Close menu" onClick={onClose} />
+        <div id={id} ref={panelRef} className="site-menu__panel" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+          <span className="site-menu__grab" aria-hidden="true" />
+          <div className="site-menu__top site-menu__top--inbox">
+            <button type="button" className="site-menu__back" aria-label="Back to settings" onClick={() => turnTo('settings')}>
+              <ChevronRightIcon />
+            </button>
+            <h2 id={titleId} className="site-menu__inbox-title">
+              Delete your account
+            </h2>
+            <button type="button" className="site-menu__close" aria-label="Close menu" onClick={onClose}>
+              <CloseIcon />
+            </button>
+          </div>
+          <div className="site-menu__body">
+            <DeleteAccountPanel tag={name} onClose={onClose} />
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )
+  }
+
   // Settings, behind their own row: the theme, the sounds and the music, what tells you, the small print.
   if (view === 'settings') {
     return createPortal(
@@ -392,6 +420,15 @@ export function SiteMenu({
                 </a>
               ) : null}
               <DevImpersonateControl variant="drawer" />
+              {signedIn ? (
+                <button type="button" className="site-menu__setting site-menu__setting-link site-menu__setting-button" onClick={() => turnTo('delete')}>
+                  <span className="site-menu__cap">Account</span>
+                  <span className="site-menu__setting-go">
+                    Delete my account
+                    <ChevronRightIcon />
+                  </span>
+                </button>
+              ) : null}
             </section>
 
             <nav className="site-menu__foot" aria-label="About">

@@ -153,7 +153,11 @@ export function PrivacyPage() {
         <li>Choose a different public player name before submitting scores</li>
         <li>Turn alerts off, or choose which ones you get, in your notification settings</li>
         <li>Cancel Plus any time from the Plus page</li>
-        <li>Request account or score removal by contacting us</li>
+        <li>
+          Delete your account any time, from the menu: Settings, then Delete my account. It removes your account,
+          your tag, your scores and everything kept with them. Feedback you sent stays, without your name on it.
+        </li>
+        <li>Ask us to remove a score by contacting us</li>
       </ul>
 
       <h2>Changes</h2>
