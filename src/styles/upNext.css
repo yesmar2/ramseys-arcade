@@ -159,6 +159,59 @@ html[data-theme='dark'] .upnext {
   color: #5a3c00;
 }
 
+/* A record held: the game's middle in a gold medal with a crown, gold rays on the game's colour, in both themes. */
+.unx__band--medal {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--unx-accent, var(--accent)) 45%, #0c1218), #0c1218 72%);
+}
+
+.unx__band--medal::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(255, 210, 122, 0.13) 0 7deg, transparent 7deg 20deg);
+}
+
+.unx__medal {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 7.2rem;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  padding: 0.4rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff1c2, #e7b955 30%, #a8781c 55%, #f5d68a 80%, #b9862a);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(12, 18, 24, 0.6);
+}
+
+.unx__medal-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(90, 60, 0, 0.4);
+}
+
+.unx__medal-face > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.unx__medal-crown {
+  position: absolute;
+  top: -0.95rem;
+  left: 50%;
+  width: 2.1rem;
+  height: 1.4rem;
+  transform: translateX(-50%);
+  color: #f5d68a;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
 .unx__body {
   flex: 1 1 auto;
   display: flex;
@@ -672,9 +725,13 @@ html[data-theme='dark'] .unx--season {
   }
 }
 
-/* ---------- a phone: the cards stacked, a game's picture down their left ---------- */
+/*
+ * ---------- a phone: the cards stacked, a game's picture down their left ----------
+ * Up to 46rem, not just a phone's 36: two by two from 36rem gave cards under 300px, Blip's answers and the chase's
+ * names squeezed into them, on a big phone or one turned sideways (Ramsey's son's, 2026-10-19).
+ */
 
-@media (max-width: 36rem) {
+@media (max-width: 46rem) {
   .upnext {
     gap: 0.75rem;
   }
@@ -723,6 +780,10 @@ html[data-theme='dark'] .unx--season {
 
   .unx:not(.unx--season) .unx__chip {
     display: none;
+  }
+
+  .unx__medal {
+    width: 5.6rem;
   }
 
   .unx__body {

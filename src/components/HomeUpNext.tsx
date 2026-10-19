@@ -42,12 +42,37 @@ const PlayIcon = () => (
 const skel = (w: string) => ({ '--skel-w': w }) as CSSProperties
 
 /** A game's picture across the top of a card, its name (or what the card is) on a chip over it. */
-function Band({ slug, chip, gold = false }: { slug: string; chip: string; gold?: boolean }) {
+function Band({ slug, chip }: { slug: string; chip: string }) {
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? 'var(--accent)')
   return (
     <a className="unx__band" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accent } as CSSProperties}>
       <GameArt slug={slug} shape="card" fallback={<GameThumbArt slug={slug} accent={accent} />} />
-      <span className={`unx__chip${gold ? ' unx__chip--gold' : ''}`}>{chip}</span>
+      <span className="unx__chip">{chip}</span>
+    </a>
+  )
+}
+
+const CrownIcon = () => (
+  <svg className="unx__medal-crown" viewBox="0 0 24 16" fill="currentColor" aria-hidden="true">
+    <path d="M1 4l5.5 4.5L12 1l5.5 7.5L23 4l-2.2 11H3.2z" />
+  </svg>
+)
+
+/*
+ * A record's picture: the middle of the game's picture in a gold medal with a crown, gold rays behind it on the
+ * game's own colour (B on the "Record card pictures" mock, 2026-10-19). The game's whole 4:3 scene cut to the
+ * band sliced its characters through, Crosswalk's Blip worst, and on a phone more so: Ramsey, "it's just the
+ * images that are the problem".
+ */
+function MedalBand({ slug }: { slug: string }) {
+  const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? 'var(--accent)')
+  return (
+    <a className="unx__band unx__band--medal" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accent } as CSSProperties}>
+      <span className="unx__medal">
+        <CrownIcon />
+        <GameThumbArt slug={slug} accent={accent} className="unx__medal-face" />
+      </span>
+      <span className="unx__chip unx__chip--gold">Your record</span>
     </a>
   )
 }
@@ -198,11 +223,15 @@ const HELD_GAMES = 3
 
 /**
  * A record you hold on one of the games you played last (records are all time, and your group's when one is
- * picked): the one the most players are on. Undefined while it isn't known, null with none.
+ * picked): the one the most players are on. Never on the game the row opens with (`lead`): one card a game
+ * (Ramsey, 2026-10-19: "i don't like when there are two cards for the same game"). Undefined while it isn't
+ * known, null with none.
  */
-function useHeldRecord(name: string, recent: readonly string[]): Held | null | undefined {
+function useHeldRecord(name: string, recent: readonly string[], lead: string | null): Held | null | undefined {
   const groupId = useActiveGroup()
-  const games = recent.filter((slug) => (GAMES_WITH_RECORDS as readonly string[]).includes(slug) && isGameListed(slug) && !isDailyGame(slug)).slice(0, HELD_GAMES)
+  const games = recent
+    .filter((slug) => slug !== lead && (GAMES_WITH_RECORDS as readonly string[]).includes(slug) && isGameListed(slug) && !isDailyGame(slug))
+    .slice(0, HELD_GAMES)
   const asked = games.join(',')
   const key = name ? `${groupId ?? ''}|${name}|${asked}` : ''
   const [found, setFound] = useState<{ key: string; held: Held | null } | null>(null)
@@ -246,7 +275,7 @@ function RecordCard({ held, name }: { held: Held; name: string }) {
   const second = record.second ?? null
   return (
     <article className="unx" aria-labelledby={`unx-record-${slug}`}>
-      <Band slug={slug} chip="Your record" gold />
+      <MedalBand slug={slug} />
       <div className="unx__body">
         <p className="unx__kick unx__kick--defend">Defend it</p>
         <h3 id={`unx-record-${slug}`} className="unx__title">
@@ -382,7 +411,7 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
   const name = normalizePlayerName(usePlayerName())
   const slug = heroSlug(device, recent)
   const { rung, loading } = useRung(slug, name)
-  const held = useHeldRecord(name, recent)
+  const held = useHeldRecord(name, recent, slug)
   const store = useSeason()
   const [gaveUp, setGaveUp] = useState(false)
   const seasonUnknown = !store.loaded && !store.season && !gaveUp
