@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { prizeById } from '../../data/prizes'
-import type { Avatar, AvatarBadge } from '../../lib/avatars'
+import { PIN_DISC, PIN_EDGE, PIN_GLYPHS } from '../../lib/avatarArt'
+import type { Avatar, AvatarBadge, AvatarPin } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
 import { FROST, SPACE, sparklePath } from '../../lib/seasonArt'
@@ -52,8 +53,7 @@ import {
   type SnakeTail,
 } from '../../lib/skinArt'
 import { BLIP_SKIN_PICTURES } from '../../lib/blipSkinPictures'
-import { FrostPatch } from './ColdSnapArt'
-import { ArtShapes, MissionPatch, Moonhopper, Rocket } from './SeasonArt'
+import { ArtShapes, Moonhopper, Rocket } from './SeasonArt'
 import { SeasonPatch } from './SeasonLook'
 import { WINTER_LOOKS_DRAW } from './WinterRewardArt'
 
@@ -212,6 +212,29 @@ function FinishArt({ badge, size }: { badge: AvatarBadge; size: number }) {
   )
 }
 
+/**
+ * A pin: a badge wearing it, the pin drawn bigger than it sits on your card so it's the thing you see
+ * (the season's patch, the level badge, isn't what you get).
+ */
+function PinArt({ pin, size }: { pin: AvatarPin; size: number }) {
+  const avatar: Avatar = { kind: 'mono', letters: 1, pattern: 'plain', body: 4, detail: 0, badge: 'bold', ring: null, pin: null }
+  const art = PIN_GLYPHS[pin]
+  return (
+    <svg width={size} height={size} viewBox="-2 0 68 68" aria-hidden="true">
+      <AvatarArt avatar={avatar} name="ACE" />
+      {art ? (
+        <g transform="translate(48 48) scale(1.6)">
+          <path d={PIN_EDGE} fill="#0f1720" />
+          <path d={PIN_DISC} fill={art.color} />
+          {art.parts.map((d, i) => (
+            <path key={i} d={d} fill={art.glyph} />
+          ))}
+        </g>
+      ) : null}
+    </svg>
+  )
+}
+
 function CardArt({ theme, size }: { theme: string; size: number }) {
   const id = `ra${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   return (
@@ -232,8 +255,8 @@ function CardArt({ theme, size }: { theme: string; size: number }) {
 }
 
 const DRAW: Record<string, (size: number) => ReactNode> = {
-  's1': (size) => <MissionPatch label="S1" size={size} />,
-  's2': (size) => <FrostPatch label="S2" size={size} />,
+  's1': (size) => <PinArt pin="s1" size={size} />,
+  's2': (size) => <PinArt pin="s2" size={size} />,
   'nm-starlight': (size) => (
     <Board size={size}>
       <NamePlate fill={SPACE.night}>
