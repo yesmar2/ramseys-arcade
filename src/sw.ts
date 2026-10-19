@@ -4,6 +4,7 @@ import {
   cleanupOutdatedCaches,
   createHandlerBoundToURL,
   precacheAndRoute,
+  type PrecacheEntry,
 } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { APP_NAME } from './lib/brand'
@@ -18,8 +19,85 @@ import { APP_NAME } from './lib/brand'
 
 declare const self: ServiceWorkerGlobalScope
 
-precacheAndRoute(self.__WB_MANIFEST)
+/*
+ * The list is every file the release built. The app's shell (index.html and what it loads to start) is installed
+ * with the worker. The rest is marked LATER (vite.config.ts shellOnly) and kept below as it's used.
+ */
+const LATER = 'later'
+const listed = self.__WB_MANIFEST
+const isLater = (entry: string | PrecacheEntry): entry is PrecacheEntry =>
+  typeof entry !== 'string' && entry.revision === LATER
+precacheAndRoute(listed.filter((entry) => !isLater(entry)))
 cleanupOutdatedCaches()
+
+/*
+ * Every other file a release builds (a page, a game, its pictures and sounds) is kept the first time it's used, so
+ * it plays offline from then on. A new visitor's phone downloads the pages it opens, not every game. Their names
+ * change whenever what's in them does, so a kept copy never needs checking. The page hands over what it loaded before
+ * this worker took charge (lib/offlineCopy.ts), which Workbox's router keeps through these same routes.
+ */
+const KEPT = 'blipka-kept'
+/** This release's files outside the shell, as paths ("/assets/…"). */
+const LATER_FILES = new Set(listed.filter(isLater).map((entry) => `/${entry.url}`))
+/** A built file's name without its hash, which stays the same from one release to the next. */
+const nameOf = (path: string) => path.replace(/-[\w-]{8,}(\.\w+)$/, '$1')
+
+const ownFolder = (folder: string) => ({ url }: { url: URL }) =>
+  url.origin === self.location.origin && url.pathname.startsWith(folder)
+
+registerRoute(ownFolder('/assets/'), async ({ request, event }) => {
+  const cache = await caches.open(KEPT)
+  const kept = await cache.match(request)
+  if (kept) return kept
+  const response = await fetch(request)
+  if (response.status === 200) event.waitUntil(cache.put(request, response.clone()).catch(() => {}))
+  return response
+})
+
+// The font keeps its name when it changes, so the kept copy is served while a fresh one is fetched for next time.
+const FONTS = 'blipka-fonts'
+registerRoute(ownFolder('/fonts/'), async ({ request, event }) => {
+  const cache = await caches.open(FONTS)
+  const kept = await cache.match(request)
+  const fresh = fetch(request).then(async (response) => {
+    if (response.status === 200) await cache.put(request, response.clone()).catch(() => {})
+    return response
+  })
+  if (!kept) return fresh
+  event.waitUntil(fresh.then(() => undefined, () => undefined))
+  return kept
+})
+
+/*
+ * A release renames the files whose insides changed. What this device kept and this release renamed (in a game
+ * it has played) comes again under its new name before this worker takes over, so the game still plays offline.
+ * A name several files share (each game's preview.js) brings each of them this device hasn't kept: a few small
+ * files more.
+ */
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(KEPT).then(async (cache) => {
+      const kept = new Set((await cache.keys()).map((request) => new URL(request.url).pathname))
+      const renamed = new Set([...kept].filter((path) => !LATER_FILES.has(path)).map(nameOf))
+      const wanted = [...LATER_FILES].filter((path) => !kept.has(path) && renamed.has(nameOf(path)))
+      for (let i = 0; i < wanted.length; i += 6) {
+        await Promise.all(wanted.slice(i, i + 6).map((path) => cache.add(path).catch(() => {})))
+      }
+    }),
+  )
+})
+
+// Once this worker is in charge, what past releases built and this one didn't goes.
+self.addEventListener('activate', (event) => {
+  if (!LATER_FILES.size) return
+  event.waitUntil(
+    caches.open(KEPT).then(async (cache) => {
+      for (const request of await cache.keys()) {
+        if (!LATER_FILES.has(new URL(request.url).pathname)) await cache.delete(request)
+      }
+    }),
+  )
+})
 
 // Single-page app: anything not precached falls back to the shell. Not the pages the server answers itself,
 // the coming-soon page and the gate's /__gate (middleware.js), or a browser with this worker would only ever

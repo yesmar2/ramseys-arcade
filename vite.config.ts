@@ -1,6 +1,43 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import { VitePWA, type VitePWAOptions } from 'vite-plugin-pwa'
+
+/**
+ * What index.html loads to start: its script, the modules it preloads and its styles. Read when the bundle is
+ * written, which comes before vite-plugin-pwa builds the worker (its closeBundle).
+ */
+let shellAssets: Set<string> | null = null
+
+function shellAssetsPlugin(): Plugin {
+  return {
+    name: 'blipka:shell-assets',
+    apply: 'build',
+    writeBundle(_options, bundle) {
+      const html = bundle['index.html']
+      if (!html || html.type !== 'asset') return
+      const source = typeof html.source === 'string' ? html.source : new TextDecoder().decode(html.source)
+      shellAssets = new Set([...source.matchAll(/\/(assets\/[^"'\s>]+)/g)].map((match) => match[1]!))
+    },
+  }
+}
+
+type ManifestTransform = NonNullable<NonNullable<VitePWAOptions['injectManifest']>['manifestTransforms']>[number]
+
+/**
+ * The worker's list. Of the built files in /assets, the ones index.html loads to start are installed with the
+ * worker. The rest are marked 'later' (src/sw.ts LATER), so the worker knows a release's files without fetching
+ * them. Beside index.html, only what the app itself needs is listed: no icons or pictures.
+ */
+const shellOnly: ManifestTransform = (entries) => {
+  // The dev server's worker, which has no bundle.
+  if (!shellAssets) return { manifest: entries, warnings: [] }
+  if (shellAssets.size === 0) throw new Error('index.html loads nothing from /assets/, so the app shell is unknown')
+  const shell = shellAssets
+  const manifest = entries
+    .filter((entry) => entry.url.startsWith('assets/') || /\.(html|js|svg|ico|webmanifest)$/.test(entry.url))
+    .map((entry) => (entry.url.startsWith('assets/') && !shell.has(entry.url) ? { ...entry, revision: 'later' } : entry))
+  return { manifest, warnings: [] }
+}
 
 /**
  * The origin pages are published at, for the canonical link and share image
@@ -31,6 +68,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      shellAssetsPlugin(),
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
@@ -38,14 +76,10 @@ export default defineConfig(({ mode }) => {
         strategies: 'injectManifest',
         srcDir: 'src',
         filename: 'sw.ts',
-        includeAssets: [
-          'favicon.svg',
-          'apple-touch-icon.png',
-          'pwa-192.png',
-          'pwa-512.png',
-          'pwa-maskable-512.png',
-          'badge-96.png',
-        ],
+        // The PNG icons are for installing and for notifications, which the browser fetches itself; offline play
+        // doesn't need them, and the worker downloaded them all again on every install.
+        includeAssets: ['favicon.svg'],
+        includeManifestIcons: false,
         manifest: {
           name: 'Blipka',
           short_name: 'Blipka',
@@ -81,24 +115,16 @@ export default defineConfig(({ mode }) => {
         },
         // Routing, cleanup and claim now live in src/sw.ts.
         injectManifest: {
-          // Share images are for link unfurlers, not the offline shell. Ace Chase and Hot Lap are drawn with a
-          // 3D engine (about a fifth of everything else put together, and its own chunk now two games share),
-          // so each downloads when someone opens it, not with the app. Wobble Run's page and its scene chunk
-          // (the renderer with the obstacle engine, rounds and bots its preview shares) wait to be opened too.
-          // The coming-soon page is for the people the gate stops (middleware.js), never the app's offline copy.
-          globIgnores: [
-            '**/node_modules/**/*',
-            'og.png',
-            'og/**',
-            'soon.html',
-            'soon/**',
-            'assets/AceChaseGame-*',
-            'assets/HotLapGame-*',
-            'assets/WobbleRunPage-*',
-            'assets/WobbleScene-*',
-            'assets/three.module-*',
-          ],
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
+          /*
+           * A worker installs the app's shell alone: index.html, what it loads to start, and the small files
+           * beside it. Every page, game, picture and sound is kept the first time it's used instead (src/sw.ts),
+           * and so is the font, so a first visit downloads what it opens rather than every game (about 1.7 MB of
+           * them). Share images are for link unfurlers, and the coming-soon page is for the people the gate stops
+           * (middleware.js): neither is ever the app's offline copy.
+           */
+          globIgnores: ['**/node_modules/**/*', 'og.png', 'og/**', 'soon.html', 'soon/**'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,wav,webmanifest}'],
+          manifestTransforms: [shellOnly],
         },
         /*
          * The worker runs in dev too, otherwise push is untestable without a

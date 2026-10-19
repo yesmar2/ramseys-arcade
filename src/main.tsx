@@ -28,6 +28,7 @@ import { bootAnalytics } from './lib/analytics'
 import { bootErrorReports } from './lib/errorReports'
 import { bootFocusReveal } from './lib/focusReveal'
 import { bootGate } from './lib/gate'
+import { bootOfflineCopy } from './lib/offlineCopy'
 import { SiteErrorBoundary } from './components/SiteErrorBoundary'
 
 bootErrorReports()
@@ -38,6 +39,7 @@ bootFeedSync()
 bootAnalytics()
 bootFocusReveal()
 bootGate()
+bootOfflineCopy()
 
 /*
  * Pages and games load as their own chunks (App.tsx). A release renames
@@ -47,12 +49,15 @@ bootGate()
  *
  * Right after a release the new service worker may still be installing, and
  * until it takes over a reload gets the old shell again, which fails the same
- * way (the 3D games' chunks are never in the old worker's cache). So the
+ * way (the old worker keeps only the chunks this browser has used). So the
  * reload waits for it, up to eight seconds. The failed import goes on to the
  * error screen meanwhile, as the "dynamically imported module" error that
  * errorReports leaves out.
  */
 window.addEventListener('vite:preloadError', () => {
+  // Offline there's no release to fetch: the chunk is one this device hasn't kept yet, and the error screen says
+  // so, then reloads once the connection is back (SiteErrorBoundary).
+  if (navigator.onLine === false) return
   const key = 'skermix-chunk-reload'
   let last = 0
   try {
