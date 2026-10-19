@@ -672,9 +672,13 @@ html[data-theme='dark'] .unx--season {
   }
 }
 
-/* ---------- a phone: the cards stacked, a game's picture down their left ---------- */
+/*
+ * ---------- a phone: the cards stacked, a game's picture down their left ----------
+ * Up to 46rem, not just a phone's 36: two by two from 36rem gave cards under 300px, Blip's answers and the chase's
+ * names squeezed into them, on a big phone or one turned sideways (Ramsey's son's, 2026-10-19).
+ */
 
-@media (max-width: 36rem) {
+@media (max-width: 46rem) {
   .upnext {
     gap: 0.75rem;
   }

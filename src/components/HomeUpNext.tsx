@@ -198,11 +198,15 @@ const HELD_GAMES = 3
 
 /**
  * A record you hold on one of the games you played last (records are all time, and your group's when one is
- * picked): the one the most players are on. Undefined while it isn't known, null with none.
+ * picked): the one the most players are on. Never on the game the row opens with (`lead`): one card a game
+ * (Ramsey, 2026-10-19: "i don't like when there are two cards for the same game"). Undefined while it isn't
+ * known, null with none.
  */
-function useHeldRecord(name: string, recent: readonly string[]): Held | null | undefined {
+function useHeldRecord(name: string, recent: readonly string[], lead: string | null): Held | null | undefined {
   const groupId = useActiveGroup()
-  const games = recent.filter((slug) => (GAMES_WITH_RECORDS as readonly string[]).includes(slug) && isGameListed(slug) && !isDailyGame(slug)).slice(0, HELD_GAMES)
+  const games = recent
+    .filter((slug) => slug !== lead && (GAMES_WITH_RECORDS as readonly string[]).includes(slug) && isGameListed(slug) && !isDailyGame(slug))
+    .slice(0, HELD_GAMES)
   const asked = games.join(',')
   const key = name ? `${groupId ?? ''}|${name}|${asked}` : ''
   const [found, setFound] = useState<{ key: string; held: Held | null } | null>(null)
@@ -382,7 +386,7 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
   const name = normalizePlayerName(usePlayerName())
   const slug = heroSlug(device, recent)
   const { rung, loading } = useRung(slug, name)
-  const held = useHeldRecord(name, recent)
+  const held = useHeldRecord(name, recent, slug)
   const store = useSeason()
   const [gaveUp, setGaveUp] = useState(false)
   const seasonUnknown = !store.loaded && !store.season && !gaveUp
