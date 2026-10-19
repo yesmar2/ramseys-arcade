@@ -35,7 +35,7 @@ import { GhostPicker } from '../../components/GhostPicker'
 import { useRaceTag } from '../../lib/raceGhost'
 import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
 import { ordinal } from '../../lib/scoreboard'
-import { paceNotes, type PaceCall } from './calls'
+import { inCall, paceNotes, type PaceCall } from './calls'
 import { dayWords, msUntilNextTrack, trackDay, trackNumber, trackState, untilWords } from './daily'
 import { newDonuts, spinDonuts, type Donuts } from './donuts'
 import { bestLapOf, claimLap, Ghost, hotlapCourse, keepBestLap, progressOf, type Course, type GhostLap } from './lap'
@@ -189,13 +189,14 @@ const snapshot = (g: Game): Ui => ({
   call: callFor(g),
 })
 
-/** Metres from the car to where a corner turns in. */
+/** Metres from the car to where a corner turns in: none once it's in the corner, which stays on the card till it's out. */
 function callDistance(track: Track, call: PaceCall, index: number) {
+  if (inCall(track, call, index)) return 0
   const d = track.s[call.from]! - track.s[index]!
   return d < 0 ? d + track.length : d
 }
 
-/** While racing, the next corner, once it's within CALL_FROM of the car. */
+/** While racing, the corner the car is in, or else the next one once it's within CALL_FROM of the car. */
 function callFor(g: Game): number {
   if (g.phase !== 'racing') return -1
   const notes = paceNotes(g.track)
@@ -454,6 +455,7 @@ function HotLapDay({
   const mapRef = useRef<HTMLCanvasElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
   const speedRef = useRef<HTMLElement>(null)
+  const callCardRef = useRef<HTMLDivElement>(null)
   const callFarRef = useRef<HTMLElement>(null)
   const callBarRef = useRef<HTMLElement>(null)
   /** The call on the card as last drawn: the loop counts down only that one's distance. */
@@ -861,13 +863,16 @@ function HotLapDay({
         const text = String(Math.round(run.v * 2.237))
         if (speedRef.current.textContent !== text) speedRef.current.textContent = text
       }
-      // The call's distance counts down; the card itself changes with the corner, below.
+      // The call's distance counts down, and goes once the car is in the corner; the card itself changes with the
+      // corner, below.
       const called = callShownRef.current
       if (called >= 0 && callFarRef.current && callBarRef.current) {
-        const d = callDistance(track, paceNotes(track).calls[called]!, run.index)
+        const corner = paceNotes(track).calls[called]!
+        const d = callDistance(track, corner, run.index)
         const text = callMetres(d)
         if (callFarRef.current.textContent !== text) callFarRef.current.textContent = text
         callBarRef.current.style.transform = `scaleX(${Math.min(1, d / CALL_FROM).toFixed(3)})`
+        callCardRef.current?.classList.toggle('is-in', inCall(track, corner, run.index))
       }
 
       // The rest of the heads-up changes only when something happens: the lights, a sector, the ghost, a corner.
@@ -1144,7 +1149,12 @@ function HotLapDay({
             ) : null}
 
             {call ? (
-              <div key={ui.call} className={`hotlap__call hotlap__call--${call.grade}`} aria-hidden="true">
+              <div
+                key={ui.call}
+                ref={callCardRef}
+                className={`hotlap__call hotlap__call--${call.grade}${inCall(g.track, call, g.run.index) ? ' is-in' : ''}`}
+                aria-hidden="true"
+              >
                 <svg className="hotlap__call-shape" viewBox="-6 -6 112 112">
                   <path className="hotlap__call-glow" d={call.line} />
                   <path d={call.line} />

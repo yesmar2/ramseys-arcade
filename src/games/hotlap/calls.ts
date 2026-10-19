@@ -7,11 +7,12 @@
  * (sim.ts cornerSpeeds, clear of its ends, where the next piece's bend reaches in): under 45 mph it's
  * sharp, or a hairpin if it turns most of the way round; under 70, medium; faster, fast; and a kink the car
  * could take faster than it can go, flat out, is easy. Then one more thing to know: a corner straight
- * after it ("into sharp right"), one that closes up or opens out partway ("tightens", "opens"), a long one
+ * after it ("into sharp right"), or one so soon after that its own card would come too late to read
+ * ("then sharp right"), one that closes up or opens out partway ("tightens", "opens"), a long one
  * ("long"), or else just its name. And its shape, from the track itself: straight in, the corner,
- * straight out, turned so the way in points up.
+ * straight out, turned so the way in points up. A corner's card stays up till the car is out of it.
  */
-import { CAR, cornerSpeeds, type Track } from './sim.ts'
+import { CAR, cornerSpeeds, speedPlan, type Track } from './sim.ts'
 
 export type Grade = 'hairpin' | 'sharp' | 'medium' | 'fast' | 'easy'
 
@@ -22,7 +23,7 @@ export type PaceCall = {
   grade: Grade
   /** "Sharp left". */
   word: string
-  /** "into medium right", "tightens", "opens", "long", or the corner's name. */
+  /** "into medium right", "then medium right", "tightens", "opens", "long", or the corner's name. */
   more: string
   /** Its shape in a 100 × 100 box, the way in pointing up: the line, and the arrowhead at its end. */
   line: string
@@ -31,7 +32,7 @@ export type PaceCall = {
 
 export type PaceNotes = {
   calls: PaceCall[]
-  /** For each point of the track, the call whose turn-in comes next. */
+  /** For each point of the track, the call to show there: the corner it's in, or else the one whose turn-in comes next. */
   next: Int16Array
 }
 
@@ -39,6 +40,13 @@ export type PaceNotes = {
 const JOIN = 8
 /** m: a corner this soon after another is called with it. */
 const INTO = 30
+/**
+ * s at the pace car's speed: a corner coming this soon after the one before is said on that one's card too ("then
+ * sharp right"). Its own card only comes once the car is out of the corner before, and less is too little to read it.
+ */
+const THEN = 2
+/** m: past this, no gap is under THEN seconds, even at the car's fastest. */
+const THEN_REACH = 160
 /** m of corner that make it a long one. */
 const LONG = 150
 /** Degrees round that make a sharp corner a hairpin. */
@@ -85,7 +93,14 @@ function metresOn(track: Track, a: number, b: number) {
 
 function callTrack(track: Track): PaceNotes {
   const own = cornerSpeeds(track)
+  const plan = speedPlan(track)
   const { n } = track
+  // Seconds from point a to point b at the pace car's speed (the points are a metre apart).
+  const secondsOn = (a: number, b: number) => {
+    let t = 0
+    for (let i = a % n; i !== b % n; i = (i + 1) % n) t += 1 / Math.max(5, plan[i]!)
+    return t
+  }
   // Pieces turning the same way, close enough, are one corner.
   const groups: Piece[][] = []
   for (const piece of track.corners) {
@@ -119,7 +134,10 @@ function callTrack(track: Track): PaceNotes {
     const to = last.to
     const after = (k + 1) % groups.length
     let more = first.name
-    if (metresOn(track, to, groups[after]![0]!.from) <= INTO) more = `into ${wordOf(after).toLowerCase()}`
+    const nextFrom = groups[after]![0]!.from
+    const gap = metresOn(track, to, nextFrom)
+    if (gap <= INTO) more = `into ${wordOf(after).toLowerCase()}`
+    else if (gap <= THEN_REACH && secondsOn(to, nextFrom) < THEN) more = `then ${wordOf(after).toLowerCase()}`
     else if (pieces.slice(1).some((p) => p.r < first.r * 0.75)) more = 'tightens'
     else if (pieces.length > 1 && last.r > first.r * 1.33) more = 'opens'
     else if (metresOn(track, from, to) >= LONG) more = 'long'
@@ -133,7 +151,21 @@ function callTrack(track: Track): PaceNotes {
     while (k < calls.length && calls[calls.length - 1 - k]!.from > i) k++
     next[i] = k === 0 ? 0 : (calls.length - k) % calls.length
   }
+  /*
+   * In a corner, its own call, until the car is out of it. The card used to move on to the next corner at the turn-in,
+   * so through most corners it showed the one after, and over half the metres spent in corners that one turned the
+   * other way: a left with "Medium right" on the card (Ramsey, 2026-10-19: "seems like they are wrong sometimes").
+   * The corner after a close one is still said on its card ("into sharp right").
+   */
+  calls.forEach((call, j) => {
+    for (let i = call.from; i !== call.to; i = (i + 1) % n) next[i] = j
+  })
   return { calls, next }
+}
+
+/** Whether point `index` is in the corner `call`, from its turn-in up to its exit. */
+export function inCall(track: Track, call: PaceCall, index: number): boolean {
+  return metresOn(track, call.from, index) < metresOn(track, call.from, call.to)
 }
 
 const r1 = (v: number) => Math.round(v * 10) / 10

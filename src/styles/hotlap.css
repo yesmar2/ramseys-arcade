@@ -350,6 +350,11 @@ html[data-theme='dark'] .hotlap--fullscreen {
   text-transform: uppercase;
 }
 
+/* In the corner it calls: the distance goes, and the bar is empty, till the car is out and the next corner's card comes. */
+.hotlap__call.is-in .hotlap__call-far {
+  visibility: hidden;
+}
+
 .hotlap__call-bar {
   position: absolute;
   left: 1em;

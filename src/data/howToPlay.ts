@@ -334,7 +334,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('hotlap') },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
-    tip: 'The call under the clock names the next corner and counts down to it: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
+    tip: 'The call under the clock names the corner coming, counts down to it and stays till you’re through: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',
     counts: [
       {
         what: 'Today’s track',
