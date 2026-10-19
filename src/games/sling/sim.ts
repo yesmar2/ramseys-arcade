@@ -468,7 +468,7 @@ export function tryFling(tw: Tower, b: Blip, f: Fling, want = -1): { to: number;
  * as safe. With no safe shot yet (a bug or a sweeper in the way), they wait a beat and look again.
  */
 export type HandsStyle = { aim: number; skip: boolean; wait: number }
-export const BLUE_HANDS: HandsStyle = { aim: 1.6, skip: false, wait: 0.12 }
+export const BLUE_HANDS: HandsStyle = { aim: 2.4, skip: false, wait: 0.12 }
 /** A good player's hands: quicker, and taking a skip when one's on: the dev autopilot's. */
 export const GOOD_HANDS: HandsStyle = { aim: 0.6, skip: true, wait: 0.08 }
 
@@ -504,7 +504,8 @@ export function makeHands(tw: Tower, style: HandsStyle): (b: Blip) => Fling | nu
     }
     if (since < 0) {
       since = b.t
-      lookAt = b.t + style.aim
+      // On clay, line up quicker than it crumbles.
+      lookAt = b.t + (tw.pegs[b.p]!.kind === 'clay' ? Math.min(style.aim, CLAY_FOR - 0.5) : style.aim)
     }
     if (b.t < lookAt) return null
     const clay = tw.pegs[b.p]!.kind === 'clay'
@@ -575,8 +576,8 @@ export function paceRun(tw: Tower): Climb {
 }
 
 /** A blue blip at the top in this many seconds makes the tower fair: not a sprint, not a slog. */
-export const PACE_FROM = 48
-export const PACE_TO = 80
+export const PACE_FROM = 60
+export const PACE_TO = 110
 
 /** Tower `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): laid the same on every device. */
 export function plannedTower(n: number, attempt: number): Tower {
