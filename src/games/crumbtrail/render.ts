@@ -1,4 +1,5 @@
 import { paintFruit, type FruitArt } from '../fruitArt'
+import { keptEpoch, watchKept } from '../keptPictures'
 import { paintBug, type BugName } from '../mazeBugs'
 import { drawBlip, drawBlipCaught } from '../pellets/blip'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
@@ -162,7 +163,8 @@ let starField: { key: string; height: number; layers: HTMLCanvasElement[] } | nu
 
 function starFieldFor(w: number, h: number, dpr: number, dark: boolean) {
   const ink = inkColor()
-  const key = `${w}x${h}:${dpr}:${dark}:${ink}`
+  // Painted again whenever the browser may have wiped it (keptPictures.ts).
+  const key = `${w}x${h}:${dpr}:${dark}:${ink}:${keptEpoch()}`
   if (starField?.key === key) return starField
   const width = Math.floor(w * dpr)
   const height = Math.floor(h * dpr)
@@ -170,6 +172,7 @@ function starFieldFor(w: number, h: number, dpr: number, dark: boolean) {
   const span = height / dpr
   const layers = STAR_LAYERS.map(([layer, , density], i) => {
     const canvas = starField?.layers[i] ?? document.createElement('canvas')
+    watchKept(canvas)
     canvas.width = width
     canvas.height = height
     const sc = canvas.getContext('2d')
@@ -468,7 +471,8 @@ function paintWallRows(layer: WallLayer, s: GameState, dark: boolean, cell: numb
 }
 
 function wallLayerFor(s: GameState, dark: boolean, cell: number, dpr: number): WallLayer {
-  const key = `${s.cols}x${s.rows}:${cell}:${dark}:${dpr}`
+  // All of it painted again whenever the browser may have wiped it (keptPictures.ts), not only the rows coming in.
+  const key = `${s.cols}x${s.rows}:${cell}:${dark}:${dpr}:${keptEpoch()}`
   let layer = wallLayers.get(s.seed)
   if (layer && wallLayers.size > 1) {
     // Last drawn goes last, so the one given up for a new run is the one drawn longest ago.
@@ -493,6 +497,8 @@ function wallLayerFor(s: GameState, dark: boolean, cell: number, dpr: number): W
     }
     layer.key = key
     layer.dpr = dpr
+    watchKept(layer.canvas)
+    watchKept(layer.spare)
     layer.pitch = Math.max(1, Math.round(cell * dpr))
     const width = Math.ceil(s.cols * cell * dpr)
     const height = s.rows * layer.pitch
@@ -542,11 +548,12 @@ function drawWalls(g: Gfx) {
 let crumbStamp: { key: string; canvas: HTMLCanvasElement; half: number } | null = null
 
 function crumbStampFor(r: number, dpr: number, colour: string) {
-  const key = `${r}:${dpr}:${colour}`
+  const key = `${r}:${dpr}:${colour}:${keptEpoch()}`
   if (crumbStamp?.key === key) return crumbStamp
   // Whole pixels, with room round the dot for its soft edge.
   const size = Math.ceil((r + 1) * dpr) * 2
   const canvas = crumbStamp?.canvas ?? document.createElement('canvas')
+  watchKept(canvas)
   canvas.width = size
   canvas.height = size
   const half = size / 2 / dpr

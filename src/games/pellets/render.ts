@@ -1,4 +1,5 @@
 import { paintFruit } from '../fruitArt'
+import { keptEpoch, watchKept } from '../keptPictures'
 import { paintBug, type BugName } from '../mazeBugs'
 import { playHeader } from '../playHeader'
 import { inkColor, isDarkTheme, playfieldColor } from '../../lib/theme'
@@ -353,9 +354,11 @@ function paintStatic(g: Gfx, canvas: HTMLCanvasElement, w: number, h: number, dp
 }
 
 function drawStatic(g: Gfx, w: number, h: number, dpr: number) {
-  const key = `${w}x${h}@${dpr}:${g.cell}:${g.ox}:${g.oy}:${g.dark}:${playfieldColor()}`
+  // Painted again whenever the browser may have wiped it (keptPictures.ts).
+  const key = `${w}x${h}@${dpr}:${g.cell}:${g.ox}:${g.oy}:${g.dark}:${playfieldColor()}:${keptEpoch()}`
   if (!staticLayer || staticLayer.key !== key || staticLayer.open !== g.s.open) {
     const canvas = staticLayer?.canvas ?? document.createElement('canvas')
+    watchKept(canvas)
     paintStatic(g, canvas, w, h, dpr)
     staticLayer = { key, open: g.s.open, canvas }
   }

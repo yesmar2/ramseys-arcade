@@ -26,7 +26,9 @@
  * bug's own colour inside the ink, so they still show on the dark ground.
  */
 
-export type BugName = 'snatch' | 'sly' | 'shady' | 'grumble' | 'pester' | 'car'
+import { keptEpoch } from './keptPictures'
+
+export type BugName ='snatch' | 'sly' | 'shady' | 'grumble' | 'pester' | 'car'
 
 export type BugPose = {
   /**
@@ -516,6 +518,8 @@ function clockStep(name: BugName, pose: BugPose): { step: number; t: number } | 
 
 /** Each bug as it looks right now, drawn once at the size it is on screen and kept: a frame copies it. */
 const sprites = new Map<string, HTMLCanvasElement | null>()
+/** The kept pictures' epoch the sprites were drawn at (keptPictures.ts): when it moves on, they're drawn again. */
+let spritesEpoch = keptEpoch()
 
 /**
  * A bug on a canvas, `size` pixels tall, centred on (x, y), from a picture of
@@ -540,6 +544,10 @@ export function paintBug(ctx: CanvasRenderingContext2D, name: BugName, x: number
     clock?.step ?? '',
     Math.round(devicePerUnit * 100),
   ].join('|')
+  if (spritesEpoch !== keptEpoch()) {
+    sprites.clear()
+    spritesEpoch = keptEpoch()
+  }
   let sprite = sprites.get(key)
   if (sprite === undefined) {
     if (sprites.size > 400) sprites.clear()
@@ -547,7 +555,9 @@ export function paintBug(ctx: CanvasRenderingContext2D, name: BugName, x: number
     const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.ceil(REACH_X * 2 * devicePerUnit))
     canvas.height = Math.max(1, Math.ceil(REACH_Y * 2 * devicePerUnit))
-    const g = canvas.getContext('2d')
+    // Kept in the computer's memory rather than on the graphics chip, where a restart of its graphics can wipe
+    // it with nothing to say so: a frame copying it still finds it on the chip, uploaded once.
+    const g = canvas.getContext('2d', { willReadFrequently: true })
     if (g) {
       g.setTransform(devicePerUnit, 0, 0, devicePerUnit, REACH_X * devicePerUnit, REACH_Y * devicePerUnit)
       paintParts(g, name, drawn, devicePerUnit)
