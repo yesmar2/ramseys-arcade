@@ -81,7 +81,7 @@ export function AdminTowerBook() {
             Test tower: every section →
           </a>
           <p className="tb-feature__next">
-            Every section once, bottom to top: sliders, carousel, clay, brambles, bugs, updraft, boost, sweepers. A new one each load.
+            Every section once, bottom to top: sliders, carousel, clay, brambles, bugs, updraft, boost, sweepers, blinkers, gusts, bumpers and shifting brambles. A new one each load.
           </p>
         </div>
         {todays ? (

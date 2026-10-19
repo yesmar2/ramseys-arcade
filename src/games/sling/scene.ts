@@ -1,7 +1,7 @@
 import { mixColor } from '../../lib/color'
 import { isDarkTheme } from '../../lib/theme'
 import type { GhostPose } from './runs'
-import { bugAt, CATCH, CLAY_FOR, HANG, mulberry32, pegAt, sweeperAt, TW, type Tower } from './sim'
+import { blinkPhase, bugAt, CATCH, CLAY_FOR, gapAt, HANG, mulberry32, pegAt, solidAt, sweeperAt, TW, type Tower } from './sim'
 
 /*
  * Sling on a 2D canvas: the day's tower from the front, the camera climbing with Blip. The sky follows the site's
@@ -24,6 +24,8 @@ const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi 
 /** Blip's colours: the site's mascot (components/BlipFigure.tsx). */
 const BLIP = { body: '#34c6a8', shade: '#1f9b84', feet: '#167a69', ink: '#0f2f2a', cheek: 'rgba(255, 143, 179, 0.75)', spark: '#f2fffb' }
 const CLAY = '#d98a5f'
+/** The bumpers' pink, and their white rim. */
+const BUMPER = '#ff6fae'
 const GOLD = '#f5b942'
 
 type Palette = {
@@ -144,6 +146,8 @@ export class TowerScene {
   private floaters: Floater[] = []
   private trail: { x: number; y: number; life: number }[] = []
   private squash = 0
+  /** A moment after a bumper bounces Blip: they all swell a little. */
+  private boing = 0
   private stars: { x: number; y: number; s: number }[]
   private farTowers: { x: number; w: number; h: number; far: boolean }[]
 
@@ -215,9 +219,19 @@ export class TowerScene {
     return 1 / Math.max(0.01, this.k)
   }
 
-  /** Something happened at (x, y): a grab, a skip, a miss, a prick, a bump, a sweep, a crumble. */
-  event(kind: 'grab' | 'skip' | 'miss' | 'prick' | 'bump' | 'swept' | 'crumble' | 'fling' | 'boost', x: number, y: number) {
+  /** Something happened at (x, y): a grab, a skip, a miss, a prick, a bump, a sweep, a crumble, a bumper's bounce. */
+  event(kind: 'grab' | 'skip' | 'miss' | 'prick' | 'bump' | 'swept' | 'crumble' | 'fling' | 'boost' | 'bounce', x: number, y: number) {
     const C = this.C
+    if (kind === 'bounce') {
+      this.floaters.push({ x, y: y + 22, text: 'Boing!', life: 0.7, good: true })
+      this.boing = 0.25
+      for (let i = 0; i < 8; i++) {
+        const a = Math.random() * TAU
+        const sp = 60 + Math.random() * 100
+        this.bits.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.4, color: BUMPER })
+      }
+      return
+    }
     if (kind === 'grab' || kind === 'skip') {
       this.squash = 1
       for (let i = 0; i < (kind === 'skip' ? 14 : 6); i++) {
@@ -264,8 +278,10 @@ export class TowerScene {
     this.drawFar()
     this.drawShaft()
     this.drawFans(f.t)
+    this.drawGusts(f.t)
     this.drawPegs(f)
     this.drawHazards(f.t)
+    this.drawBumpers()
     this.drawFlags(f)
     this.drawTop()
 
@@ -279,6 +295,7 @@ export class TowerScene {
       this.drawBlip(b.x, b.y, b.on, b.floating, b.vx, b.vy)
     }
     this.squash = Math.max(0, this.squash - dt * 5)
+    this.boing = Math.max(0, this.boing - dt)
     this.drawBits(dt)
     this.drawFloaters(dt)
   }
@@ -526,6 +543,48 @@ export class TowerScene {
       let px = this.sx(at.x)
       const py = this.sy(at.y)
       const R = (pg.kind === 'top' ? 15 : 11) * k
+      // A blinker: solid, with a ring running down till it fades; faded, a dashed outline filling in as it comes back.
+      // Held, it stays.
+      if (pg.blink) {
+        const held = f.blip.on && f.blip.peg === i && f.mode === 'play'
+        const P = pg.blink.on + pg.blink.off
+        const phase = blinkPhase(pg, t)
+        if (!held && !solidAt(pg, t)) {
+          const back = (phase * P - pg.blink.on) / pg.blink.off
+          ctx.strokeStyle = '#e9c46a'
+          ctx.globalAlpha = 0.35 + 0.5 * back
+          ctx.lineWidth = 1.8 * k
+          ctx.setLineDash([2.5 * k, 3 * k])
+          ctx.beginPath()
+          ctx.arc(px, py, R, 0, TAU)
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.fillStyle = 'rgba(192, 138, 82, 0.5)'
+          ctx.beginPath()
+          ctx.arc(px, py, R * back, 0, TAU)
+          ctx.fill()
+          ctx.globalAlpha = 1
+          if (i === next && f.mode === 'play') {
+            ctx.strokeStyle = C.dark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(26, 43, 60, 0.18)'
+            ctx.lineWidth = 1.5 * k
+            ctx.setLineDash([2 * k, 4 * k])
+            ctx.beginPath()
+            ctx.arc(px, py - HANG * 0.5 * k, CATCH * k, 0, TAU)
+            ctx.stroke()
+            ctx.setLineDash([])
+          }
+          continue
+        }
+        if (!held) {
+          const left = 1 - (phase * P) / pg.blink.on
+          ctx.strokeStyle = left < 0.3 ? C.bad : '#fff4d6'
+          ctx.lineWidth = 2.2 * k
+          ctx.lineCap = 'round'
+          ctx.beginPath()
+          ctx.arc(px, py, R + 5 * k, -Math.PI / 2, -Math.PI / 2 + TAU * left)
+          ctx.stroke()
+        }
+      }
       if (pg.kind === 'clay' && f.blip.on && f.blip.peg === i) px += Math.sin(this.time * 60) * Math.min(1, f.blip.held / CLAY_FOR) * 2.2 * k
       if (i === next && f.mode === 'play') {
         // The next peg: a faint ring, how near you need to get.
@@ -579,7 +638,13 @@ export class TowerScene {
     for (const br of this.tower.brambles) {
       if (!this.onScreen(br.y)) continue
       const y = this.sy(br.y)
-      for (const [a, b] of [[0, br.gx0], [br.gx1, TW]] as const) {
+      const gap = gapAt(br, t)
+      if (br.shift) {
+        // A shifting bar's gap slides along a faint track: where it goes.
+        ctx.fillStyle = C.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(26, 43, 60, 0.08)'
+        ctx.fillRect(this.sx(br.gx0 - br.shift.amp), y - 1.5 * k, (br.gx1 - br.gx0 + br.shift.amp * 2) * k, 3 * k)
+      }
+      for (const [a, b] of [[0, gap.gx0], [gap.gx1, TW]] as const) {
         if (b - a < 2) continue
         const x0 = this.sx(a)
         const x1 = this.sx(b)
@@ -631,6 +696,74 @@ export class TowerScene {
       ctx.beginPath()
       ctx.arc(cx, cy, 6 * k, 0, TAU)
       ctx.fill()
+    }
+  }
+
+  /** The bumpers: pink posts with a white rim and a star, swelling a moment when one bounces Blip. */
+  private drawBumpers() {
+    const { ctx } = this
+    const k = this.k
+    const swell = 1 + this.boing * 0.4
+    for (const bp of this.tower.bumpers) {
+      if (!this.onScreen(bp.y)) continue
+      const x = this.sx(bp.x)
+      const y = this.sy(bp.y)
+      const R = bp.r * k * swell
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
+      ctx.beginPath()
+      ctx.arc(x + 2 * k, y + 3 * k, R, 0, TAU)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.arc(x, y, R, 0, TAU)
+      ctx.fill()
+      ctx.fillStyle = BUMPER
+      ctx.beginPath()
+      ctx.arc(x, y, R * 0.8, 0, TAU)
+      ctx.fill()
+      ctx.fillStyle = '#ffd1e6'
+      ctx.beginPath()
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5
+        const rr = i % 2 ? R * 0.18 : R * 0.42
+        if (i) ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr)
+        else ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr)
+      }
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+
+  /** Gusts: a faint band with streaks of wind blowing across it, the way it pushes. */
+  private drawGusts(t: number) {
+    const { ctx, C } = this
+    const k = this.k
+    for (const g of this.tower.gusts) {
+      if (!this.onScreen(g.y0, 300) && !this.onScreen(g.y1, 300)) continue
+      const top = this.sy(g.y1)
+      const bottom = this.sy(g.y0)
+      ctx.fillStyle = C.dark ? 'rgba(180, 200, 255, 0.05)' : 'rgba(26, 43, 60, 0.04)'
+      ctx.fillRect(this.sx(0), top, TW * k, bottom - top)
+      ctx.strokeStyle = C.dark ? 'rgba(200, 215, 255, 0.4)' : 'rgba(60, 90, 130, 0.35)'
+      ctx.lineWidth = 2 * k
+      ctx.lineCap = 'round'
+      const dir = Math.sign(g.push)
+      const lanes = 6
+      for (let i = 0; i < lanes; i++) {
+        const y = g.y0 + ((i + 0.5) / lanes) * (g.y1 - g.y0)
+        const x = (((t * 160 * dir + i * 73) % TW) + TW) % TW
+        const py = this.sy(y)
+        ctx.beginPath()
+        ctx.moveTo(this.sx(x), py)
+        ctx.lineTo(this.sx(x - dir * 34), py)
+        ctx.stroke()
+        // a chevron at the streak's head, pointing the way the wind blows
+        ctx.beginPath()
+        ctx.moveTo(this.sx(x - dir * 6), py - 5 * k)
+        ctx.lineTo(this.sx(x), py)
+        ctx.lineTo(this.sx(x - dir * 6), py + 5 * k)
+        ctx.stroke()
+      }
     }
   }
 

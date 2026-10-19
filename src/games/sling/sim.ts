@@ -68,9 +68,15 @@ export type Peg = {
   y: number
   slide?: { amp: number; w: number; ph: number }
   orbit?: { r: number; w: number; ph: number }
+  /** A blinker: solid for `on` seconds of every `on + off`, from `ph` in; it holds still while Blip hangs on it. */
+  blink?: { on: number; off: number; ph: number }
 }
-/** A bramble bar across the shaft at `y`, with a gap from gx0 to gx1. */
-export type Bramble = { y: number; gx0: number; gx1: number }
+/** A bramble bar across the shaft at `y`, with a gap from gx0 to gx1; a shifting one's gap slides `amp` each way. */
+export type Bramble = { y: number; gx0: number; gx1: number; shift?: { amp: number; w: number; ph: number } }
+/** A gust: a band of wind from y0 up to y1 that pushes Blip sideways in the air (`push` units/s², + to the right). */
+export type Gust = { y0: number; y1: number; push: number }
+/** A bumper: a round springy post that bounces Blip off. */
+export type Bumper = { x: number; y: number; r: number }
 /** A bug patrolling side to side between x0 and x1 at `y`. */
 export type Bug = { y: number; x0: number; x1: number; w: number; ph: number }
 /** An updraft: a column of air from y0 up to y1 between x0 and x1 that carries Blip up. */
@@ -78,7 +84,20 @@ export type Fan = { x0: number; x1: number; y0: number; y1: number }
 /** A sweeper: two arms from a hub, `len` each way, turning at `w`. */
 export type Sweeper = { x: number; y: number; len: number; w: number; ph: number }
 
-export type SectionKind = 'steps' | 'sliders' | 'carousel' | 'clay' | 'brambles' | 'bugs' | 'updraft' | 'boost' | 'sweepers'
+export type SectionKind =
+  | 'steps'
+  | 'sliders'
+  | 'carousel'
+  | 'clay'
+  | 'brambles'
+  | 'bugs'
+  | 'updraft'
+  | 'boost'
+  | 'sweepers'
+  | 'blinkers'
+  | 'gusts'
+  | 'bumpers'
+  | 'shifters'
 /** What players call each section. */
 export const SECTION_NAMES: Record<SectionKind, string> = {
   steps: 'Steps',
@@ -90,6 +109,10 @@ export const SECTION_NAMES: Record<SectionKind, string> = {
   updraft: 'Updraft',
   boost: 'Boost',
   sweepers: 'Sweepers',
+  blinkers: 'Blinkers',
+  gusts: 'Gusts',
+  bumpers: 'Bumpers',
+  shifters: 'Shifting brambles',
 }
 
 export type Tower = {
@@ -104,6 +127,8 @@ export type Tower = {
   bugs: Bug[]
   fans: Fan[]
   sweepers: Sweeper[]
+  gusts: Gust[]
+  bumpers: Bumper[]
   /** The sections from the bottom up: where each starts (its first peg) and what it is. */
   sections: { kind: SectionKind; from: number }[]
   /** The pegs a run is split at (FLAG_AT of the way up). */
@@ -132,20 +157,47 @@ export function bugAt(b: Bug, t: number): number {
 }
 /** A sweeper's angle at moment `t`. */
 export const sweeperAt = (s: Sweeper, t: number) => s.w * t + s.ph
+/** A bramble bar's gap at moment `t`: a shifting one's slides side to side. */
+export function gapAt(br: Bramble, t: number): { gx0: number; gx1: number } {
+  if (!br.shift) return br
+  const d = br.shift.amp * Math.sin(br.shift.w * t + br.shift.ph)
+  return { gx0: br.gx0 + d, gx1: br.gx1 + d }
+}
+/** Whether a blinker is solid at moment `t` (any other peg always is). */
+export function solidAt(pg: Peg, t: number): boolean {
+  if (!pg.blink) return true
+  const P = pg.blink.on + pg.blink.off
+  return (((t + pg.blink.ph) % P) + P) % P < pg.blink.on
+}
+/** A blinker's part of its cycle at moment `t`, 0 to 1: under on/(on+off) it's solid. */
+export function blinkPhase(pg: Peg, t: number): number {
+  if (!pg.blink) return 0
+  const P = pg.blink.on + pg.blink.off
+  return ((((t + pg.blink.ph) % P) + P) % P) / P
+}
 
 const SECTION_POOL: SectionKind[] = ['sliders', 'carousel', 'clay', 'brambles', 'bugs', 'updraft', 'boost', 'sweepers']
+/**
+ * From tower #MORE_FROM, four more sections join the pool (blinkers, gusts, bumpers, shifting brambles) and a tower
+ * has eight of the twelve, not seven of the eight (Ramsey, 2026-10-19: "maybe it needs to be a tad harder, and more
+ * obsticle type things"). Tower #1 was played as it was laid, and keeps it.
+ */
+const MORE_POOL: SectionKind[] = [...SECTION_POOL, 'blinkers', 'gusts', 'bumpers', 'shifters']
+export const MORE_FROM = 2
 
 /**
  * A tower: three steps to start, then seven of the eight sections in an order of the day's, each a little
  * harder than the one before, two more steps, and the top. `only`, a test tower of these sections in this order.
  */
-export function layTower(seed: number, attempt: number, only?: SectionKind[]): Tower {
+export function layTower(seed: number, attempt: number, only?: SectionKind[], more = false): Tower {
   const r = mulberry32(seed * 7919 + attempt * 104729 + 17)
   const pegs: Peg[] = [{ kind: 'peg', x: TW / 2, y: 0 }]
   const brambles: Bramble[] = []
   const bugs: Bug[] = []
   const fans: Fan[] = []
   const sweepers: Sweeper[] = []
+  const gusts: Gust[] = []
+  const bumpers: Bumper[] = []
   const sections: { kind: SectionKind; from: number }[] = []
   let y = 0
   let x = TW / 2
@@ -223,16 +275,57 @@ export function layTower(seed: number, attempt: number, only?: SectionKind[]): T
         sweepers.push({ x: 90 + r() * 180, y: (y + ny) / 2, len: 58 + r() * 12 + hard * 8, w: (1.1 + r() * 0.5 + hard * 0.3) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 })
         add({ kind: 'peg', x: nx, y: ny })
       }
+    } else if (kind === 'blinkers') {
+      // Pegs that fade in and out: grab one while it's solid. Each keeps its own beat.
+      const count = 4
+      for (let i = 0; i < count; i++) {
+        const on = 1.5 - hard * 0.3 + r() * 0.4
+        add({ kind: 'peg', x: across(70), y: y + 150 + r() * 45, blink: { on, off: 0.9 + hard * 0.3 + r() * 0.3, ph: r() * 3 } })
+      }
+    } else if (kind === 'gusts') {
+      // A band of wind across each gap, the other way to the last: aim into it.
+      const count = 4
+      let dir = r() < 0.5 ? -1 : 1
+      for (let i = 0; i < count; i++) {
+        const nx = across(60)
+        const ny = y + 165 + r() * 40
+        gusts.push({ y0: y + 25, y1: ny - 25, push: dir * (380 + r() * 140 + hard * 120) })
+        dir = -dir
+        add({ kind: 'peg', x: nx, y: ny })
+      }
+    } else if (kind === 'bumpers') {
+      // Round bumpers near the straight way up: fling round them, or off them.
+      const count = 4
+      for (let i = 0; i < count; i++) {
+        const nx = across(70)
+        const ny = y + 180 + r() * 40
+        const t = 0.4 + r() * 0.2
+        const bx = Math.max(40, Math.min(TW - 40, x + (nx - x) * t + (r() - 0.5) * 70))
+        bumpers.push({ x: bx, y: y + (ny - y) * t + 10, r: 14 + r() * 5 + hard * 3 })
+        add({ kind: 'peg', x: nx, y: ny })
+      }
+    } else if (kind === 'shifters') {
+      // Bramble bars whose gap slides side to side: fling as it comes under you.
+      const count = 4
+      for (let i = 0; i < count; i++) {
+        const nx = across(60)
+        const ny = y + 180 + r() * 40
+        const gap = 150 - hard * 20
+        const amp = 55 + r() * 25
+        const mid = Math.max(gap / 2 + amp + 10, Math.min(TW - gap / 2 - amp - 10, (x + nx) / 2))
+        brambles.push({ y: (y + ny) / 2, gx0: mid - gap / 2, gx1: mid + gap / 2, shift: { amp, w: (0.8 + r() * 0.4 + hard * 0.2) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 } })
+        add({ kind: 'peg', x: nx, y: ny })
+      }
     }
   }
   lay('steps', 0)
   const order = only ?? (() => {
-    const pool = SECTION_POOL.slice()
+    const pool = (more ? MORE_POOL : SECTION_POOL).slice()
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(r() * (i + 1))
       ;[pool[i], pool[j]] = [pool[j]!, pool[i]!]
     }
-    return pool.slice(0, 7)
+    return pool.slice(0, more ? 8 : 7)
   })()
   order.forEach((kind, level) => lay(kind, level))
   sections.push({ kind: 'steps', from: pegs.length })
@@ -250,6 +343,8 @@ export function layTower(seed: number, attempt: number, only?: SectionKind[]): T
     bugs,
     fans,
     sweepers,
+    gusts,
+    bumpers,
     sections,
     flags: FLAG_AT.map((f) => Math.round(topIndex * f)),
     height: pegs[topIndex]!.y,
@@ -258,7 +353,7 @@ export function layTower(seed: number, attempt: number, only?: SectionKind[]): T
 
 /** Every section once, bottom to top, on a tower of its own each load: the admin's test tower. */
 export function labTower(seed: number): Tower {
-  return { ...layTower(seed, 0, SECTION_POOL), n: 0 }
+  return { ...layTower(seed, 0, MORE_POOL, true), n: 0 }
 }
 
 /* ----------------------------------------------------------------- Blip --- */
@@ -305,7 +400,7 @@ export type Fling = { ang: number; pw: number }
  * What a step did: flung, grabbed (a peg, or one past the next: a skip), floated back after a miss, a prick,
  * a bump or a sweep, a clay peg crumbling, a flag passed, or over the top.
  */
-export type StepEvent = 'fling' | 'grab' | 'skip' | 'miss' | 'prick' | 'bump' | 'swept' | 'crumble' | 'finish' | { flag: number } | null
+export type StepEvent = 'fling' | 'grab' | 'skip' | 'miss' | 'prick' | 'bump' | 'swept' | 'crumble' | 'bounce' | 'finish' | { flag: number } | null
 
 const isGone = (b: Blip, i: number) => b.gone !== null && b.gone.i === i && b.t < b.gone.until
 
@@ -372,6 +467,7 @@ export function step(tw: Tower, b: Blip, fling: Fling | null): StepEvent {
   for (const f of tw.fans) {
     if (b.x > f.x0 && b.x < f.x1 && b.y > f.y0 && b.y < f.y1 && b.vy < FAN_TOP) b.vy = Math.min(FAN_TOP, b.vy + FAN_PUSH * DT)
   }
+  for (const g of tw.gusts) if (b.y > g.y0 && b.y < g.y1) b.vx += g.push * DT
   b.x += b.vx * DT
   b.y += b.vy * DT
   if (b.x < BR) {
@@ -383,7 +479,30 @@ export function step(tw: Tower, b: Blip, fling: Fling | null): StepEvent {
     b.vx = -Math.abs(b.vx) * 0.7
   }
   for (const br of tw.brambles) {
-    if (Math.abs(b.y - br.y) < 5 + BR * 0.8 && (b.x < br.gx0 + BR * 0.6 || b.x > br.gx1 - BR * 0.6)) return floatBack(b, 'prick')
+    if (Math.abs(b.y - br.y) >= 5 + BR * 0.8) continue
+    const gap = gapAt(br, t)
+    if (b.x < gap.gx0 + BR * 0.6 || b.x > gap.gx1 - BR * 0.6) return floatBack(b, 'prick')
+  }
+  for (const bp of tw.bumpers) {
+    const dx = b.x - bp.x
+    const dy = b.y - bp.y
+    const d = Math.hypot(dx, dy)
+    if (d >= bp.r + BR || d === 0) continue
+    // Bounced off along the way out of it, a little livelier than it came in.
+    const nx = dx / d
+    const ny = dy / d
+    const along = b.vx * nx + b.vy * ny
+    if (along < 0) {
+      b.vx -= 2 * along * nx
+      b.vy -= 2 * along * ny
+      const speed = Math.hypot(b.vx, b.vy)
+      const want = Math.max(speed * 1.05, 380)
+      b.vx *= want / speed
+      b.vy *= want / speed
+    }
+    b.x = bp.x + nx * (bp.r + BR)
+    b.y = bp.y + ny * (bp.r + BR)
+    return 'bounce'
   }
   for (const bug of tw.bugs) {
     if (Math.abs(b.y - bug.y) < 30 && Math.hypot(bugAt(bug, t) - b.x, bug.y - b.y) < 13 + BR) return floatBack(b, 'bump')
@@ -404,6 +523,7 @@ export function step(tw: Tower, b: Blip, fling: Fling | null): StepEvent {
     for (let i = hi; i >= lo; i--) {
       if (i === b.p && b.air < 0.25) continue
       if (isGone(b, i)) continue
+      if (!solidAt(tw.pegs[i]!, t)) continue
       const at = pegAt(tw.pegs[i]!, t)
       if (Math.hypot(at.x - b.x, at.y - HANG * 0.5 - b.y) <= CATCH) {
         const before = b.best
@@ -581,7 +701,7 @@ export const PACE_TO = 110
 
 /** Tower `n`'s try `attempt`, as the plan chose it (dailyPlan.ts): laid the same on every device. */
 export function plannedTower(n: number, attempt: number): Tower {
-  return layTower(n, attempt)
+  return layTower(n, attempt, undefined, n >= MORE_FROM)
 }
 
 /** Tower `n` from scratch: the first try the blue blip climbs clean in a fair time. */

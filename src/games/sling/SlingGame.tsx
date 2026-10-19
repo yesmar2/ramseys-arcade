@@ -686,6 +686,10 @@ function SlingDayGame({
               const d = splitShown(g, ev.flag)
               sayRef.current(`Flag ${ev.flag + 1} · ${d == null ? formatRun(b.splits[ev.flag]!) : gapText(d)}`)
             }
+          } else if (ev === 'bounce') {
+            scene.event('bounce', b.x, b.y)
+            sfx('boing')
+            haptic('hit')
           } else if (ev === 'miss' || ev === 'prick' || ev === 'bump' || ev === 'swept' || ev === 'crumble') {
             scene.event(ev, b.x, b.y)
             sfx(ev === 'miss' ? 'miss' : 'hit')

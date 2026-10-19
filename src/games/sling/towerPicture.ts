@@ -1,5 +1,5 @@
 import { mixColor } from '../../lib/color'
-import { mulberry32, pegAt, TW, type Tower } from './sim'
+import { gapAt, mulberry32, pegAt, TW, type Tower } from './sim'
 
 /*
  * A day's tower as a picture, for its cards (the home row, Today's Tower, past days, the tomorrow tease, the day's
@@ -93,9 +93,24 @@ export function towerSvg(tower: Tower, w: number, h: number): string {
       out.push(`<ellipse cx="${n1(px + out1 * tilt * 5 * k)}" cy="${n1(y)}" rx="${n1(5 * k)}" ry="${n1(3 * k)}" fill="#3fae63" transform="rotate(${tilt * 34} ${n1(px + out1 * tilt * 5 * k)} ${n1(y)})"/>`)
     }
   }
+  for (const g of tower.gusts) {
+    // A gust's streaks, the way it blows.
+    if (!inView(g.y0) && !inView(g.y1)) continue
+    const dir = Math.sign(g.push)
+    for (let i = 0; i < 4; i++) {
+      const y = Y(g.y0 + ((i + 0.5) / 4) * (g.y1 - g.y0))
+      const x = X(60 + i * 70)
+      out.push(`<path d="M${n1(x - dir * 30 * k)} ${n1(y)} H${n1(x)} M${n1(x - dir * 6 * k)} ${n1(y - 5 * k)} L${n1(x)} ${n1(y)} L${n1(x - dir * 6 * k)} ${n1(y + 5 * k)}" fill="none" stroke="#c8d7ff" stroke-opacity="0.45" stroke-width="${n1(2 * k)}" stroke-linecap="round"/>`)
+    }
+  }
+  for (const bp of tower.bumpers) {
+    if (!inView(bp.y)) continue
+    out.push(`<circle cx="${n1(X(bp.x))}" cy="${n1(Y(bp.y))}" r="${n1(bp.r * k)}" fill="#fff"/><circle cx="${n1(X(bp.x))}" cy="${n1(Y(bp.y))}" r="${n1(bp.r * k * 0.8)}" fill="#ff6fae"/>`)
+  }
   for (const br of tower.brambles) {
     if (!inView(br.y)) continue
-    for (const [a, b] of [[0, br.gx0], [br.gx1, TW]] as const) {
+    const gap = gapAt(br, 0)
+    for (const [a, b] of [[0, gap.gx0], [gap.gx1, TW]] as const) {
       if (b - a > 2) out.push(`<rect x="${n1(X(a))}" y="${n1(Y(br.y) - 4 * k)}" width="${n1((b - a) * k)}" height="${n1(8 * k)}" rx="${n1(3 * k)}" fill="${C.thorn}"/>`)
     }
   }
