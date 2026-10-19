@@ -5,7 +5,7 @@ import { forgetScoresFromBefore } from './dataReset'
 import { api } from './leaderboard'
 
 /*
- * The season: a stretch of about nine weeks with a theme (Season 1 is Space Race, seven weeks from Nov 14), a free
+ * The season: a stretch of about nine weeks with a theme (Season 1 is Space Race, from launch on Oct 31), a free
  * pass of 30 levels moved by every ticket won in it, and looks to win on the way. The levels go on past the
  * last, each paying tickets (Ramsey, 2026-10-11): said quietly in a run's season line, and out loud at every
  * tenth (quietReward). The API's seasons.ts
@@ -187,7 +187,7 @@ function keep(answer: SeasonAnswer) {
 const DAY_MS = 86_400_000
 
 /**
- * A season kept as still to come that has reached its first day since (seen on Nov 13, opened on Nov 14): live,
+ * A season kept as still to come that has reached its first day since (seen on Oct 30, opened on Oct 31): live,
  * as the API will say, with its days left from now (the API's seasonInfo). So the first paint is the season's,
  * rather than the arcade's until the answer comes. A preview kept is live already, and one not yet begun waits.
  */

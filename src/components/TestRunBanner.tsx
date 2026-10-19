@@ -15,10 +15,10 @@ import '../styles/testRun.css'
  */
 
 const HIDDEN_KEY = 'skermix-testrun-note'
-/** The last week: a note hidden before this comes back once. */
-const REMIND_FROM = Date.UTC(2026, 10, 7, 5, 0, 0)
-/** A reset from Nov 13 on is the launch one: after it there's nothing left to warn about. */
-const LAUNCH_RESET_FROM = Date.UTC(2026, 10, 13, 5, 0, 0)
+/** The last week (from Oct 24, New York): a note hidden before this comes back once. */
+const REMIND_FROM = Date.UTC(2026, 9, 24, 4, 0, 0)
+/** A reset from Oct 30 on is the launch one: after it there's nothing left to warn about. */
+const LAUNCH_RESET_FROM = Date.UTC(2026, 9, 30, 4, 0, 0)
 
 function hiddenNow(now: number): boolean {
   try {
@@ -47,7 +47,7 @@ export function TestRunBanner() {
     <aside className="testrun" aria-label="Test run">
       <span className="testrun__kicker">Test run</span>
       <p className="testrun__text">
-        Scores, tickets and progress reset on Nov 14, when Blipka opens. Your account and tag stay.
+        Scores, tickets and progress reset on Oct 31, when Blipka opens. Your account and tag stay.
       </p>
       <button type="button" className="testrun__tell" onClick={() => openFeedback('problem')}>
         Found a bug? Tell us
