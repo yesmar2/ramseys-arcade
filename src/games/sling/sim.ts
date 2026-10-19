@@ -30,12 +30,12 @@ export const VMAX = 1150
 export const G = 1500
 /** Blip's radius; how near a peg he grabs it; and he grabs only once he's rising slower than GRAB_VY. */
 export const BR = 11
-export const CATCH = 24
-export const GRAB_VY = 250
+export const CATCH = 34
+export const GRAB_VY = 420
 /** How far under his peg Blip hangs. */
 export const HANG = 17
 /** A clay peg crumbles this long after it's grabbed, and is back this long after. */
-export const CLAY_FOR = 1.4
+export const CLAY_FOR = 2.2
 export const CLAY_BACK = 3
 /** A boost peg's fling is this much harder. */
 export const BOOST = 1.32
@@ -169,14 +169,14 @@ export function layTower(seed: number, attempt: number, only?: SectionKind[]): T
       const count = 4
       for (let i = 0; i < count; i++) {
         const amp = 45 + r() * 20 + hard * 15
-        add({ kind: 'slide', x: 110 + r() * 140, y: y + 140 + r() * 50, slide: { amp, w: (0.9 + r() * 0.5 + hard * 0.4) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 } })
+        add({ kind: 'slide', x: 110 + r() * 140, y: y + 140 + r() * 50, slide: { amp, w: (0.7 + r() * 0.4 + hard * 0.3) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 } })
       }
     } else if (kind === 'carousel') {
       const count = 3
       for (let i = 0; i < count; i++) {
         const rad = 45 + r() * 15
         const hub = 100 + r() * 160
-        add({ kind: 'orbit', x: hub, y: y + 170 + r() * 40, orbit: { r: rad, w: (1.0 + r() * 0.5 + hard * 0.4) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 } })
+        add({ kind: 'orbit', x: hub, y: y + 170 + r() * 40, orbit: { r: rad, w: (0.8 + r() * 0.4 + hard * 0.3) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 } })
       }
     } else if (kind === 'clay') {
       const count = 4
@@ -187,7 +187,7 @@ export function layTower(seed: number, attempt: number, only?: SectionKind[]): T
         const nx = across(60)
         const ny = y + 175 + r() * 40
         // The bar halfway up, its gap somewhere between the two pegs: the way through.
-        const gap = 120 - hard * 30
+        const gap = 155 - hard * 25
         const mid = Math.max(gap / 2 + 14, Math.min(TW - gap / 2 - 14, (x + nx) / 2 + (r() - 0.5) * 90))
         brambles.push({ y: (y + ny) / 2 + (r() - 0.5) * 20, gx0: mid - gap / 2, gx1: mid + gap / 2 })
         add({ kind: 'peg', x: nx, y: ny })
@@ -197,7 +197,7 @@ export function layTower(seed: number, attempt: number, only?: SectionKind[]): T
       for (let i = 0; i < count; i++) {
         const nx = across(60)
         const ny = y + 165 + r() * 40
-        bugs.push({ y: (y + ny) / 2, x0: 30, x1: TW - 30, w: (1.3 + r() * 0.6 + hard * 0.5) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 })
+        bugs.push({ y: (y + ny) / 2, x0: 30, x1: TW - 30, w: (0.9 + r() * 0.5 + hard * 0.3) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 })
         add({ kind: 'peg', x: nx, y: ny })
       }
     } else if (kind === 'updraft') {
@@ -213,14 +213,14 @@ export function layTower(seed: number, attempt: number, only?: SectionKind[]): T
       add({ kind: 'peg', x: across(), y: y + 150 + r() * 40 })
     } else if (kind === 'boost') {
       add({ kind: 'boost', x: 120 + r() * 120, y: y + 150 + r() * 40 })
-      add({ kind: 'peg', x: Math.max(60, Math.min(TW - 60, x + (r() - 0.5) * 160)), y: y + 500 + r() * 50 + hard * 30 })
+      add({ kind: 'peg', x: Math.max(60, Math.min(TW - 60, x + (r() - 0.5) * 160)), y: y + 440 + r() * 40 + hard * 25 })
       add({ kind: 'peg', x: across(), y: y + 150 + r() * 40 })
     } else if (kind === 'sweepers') {
       const count = 3
       for (let i = 0; i < count; i++) {
         const nx = across(60)
         const ny = y + 200 + r() * 40
-        sweepers.push({ x: 90 + r() * 180, y: (y + ny) / 2, len: 70 + r() * 15 + hard * 10, w: (1.5 + r() * 0.6 + hard * 0.4) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 })
+        sweepers.push({ x: 90 + r() * 180, y: (y + ny) / 2, len: 58 + r() * 12 + hard * 8, w: (1.1 + r() * 0.5 + hard * 0.3) * (r() < 0.5 ? -1 : 1), ph: r() * Math.PI * 2 })
         add({ kind: 'peg', x: nx, y: ny })
       }
     }
@@ -468,7 +468,7 @@ export function tryFling(tw: Tower, b: Blip, f: Fling, want = -1): { to: number;
  * as safe. With no safe shot yet (a bug or a sweeper in the way), they wait a beat and look again.
  */
 export type HandsStyle = { aim: number; skip: boolean; wait: number }
-export const BLUE_HANDS: HandsStyle = { aim: 1.05, skip: false, wait: 0.12 }
+export const BLUE_HANDS: HandsStyle = { aim: 1.6, skip: false, wait: 0.12 }
 /** A good player's hands: quicker, and taking a skip when one's on: the dev autopilot's. */
 export const GOOD_HANDS: HandsStyle = { aim: 0.6, skip: true, wait: 0.08 }
 

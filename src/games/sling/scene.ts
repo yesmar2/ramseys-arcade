@@ -1,7 +1,7 @@
 import { mixColor } from '../../lib/color'
 import { isDarkTheme } from '../../lib/theme'
 import type { GhostPose } from './runs'
-import { bugAt, CLAY_FOR, HANG, mulberry32, pegAt, sweeperAt, TW, type Tower } from './sim'
+import { bugAt, CATCH, CLAY_FOR, HANG, mulberry32, pegAt, sweeperAt, TW, type Tower } from './sim'
 
 /*
  * Sling on a 2D canvas: the day's tower from the front, the camera climbing with Blip. The sky follows the site's
@@ -123,6 +123,16 @@ type Floater = { x: number; y: number; text: string; life: number; good: boolean
 const VIEW_W = TW + 110
 const VIEW_H = 700
 
+/**
+ * The looks on trial (2026-10-19, Ramsey: "can we make the graphics a little better? like a bigger blip"): A the
+ * first, B the camera in close (Blip about twice the size, the view panning with him on a narrow screen), C B's
+ * camera with a storybook tower (stone and ivy, wooden pegs, clouds, a sparkle trail).
+ */
+export type SceneLook = 'a' | 'b' | 'c'
+/** How much of the tower B and C show across and up, in world units. */
+const CLOSE_W = 300
+const CLOSE_H = 540
+
 export class TowerScene {
   private readonly canvas: HTMLCanvasElement
   private readonly ctx: CanvasRenderingContext2D
@@ -131,7 +141,8 @@ export class TowerScene {
   private W = 0
   private H = 0
   private dpr = 1
-  private cam = { y: 0, snap: true }
+  private cam = { x: TW / 2, y: 0, snap: true }
+  private readonly look: SceneLook
   private C: Palette
   private sky: HTMLCanvasElement | null = null
   private time = 0
@@ -142,7 +153,8 @@ export class TowerScene {
   private stars: { x: number; y: number; s: number }[]
   private farTowers: { x: number; w: number; h: number; far: boolean }[]
 
-  constructor(canvas: HTMLCanvasElement, tower: Tower) {
+  constructor(canvas: HTMLCanvasElement, tower: Tower, look: SceneLook = 'a') {
+    this.look = look
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Sling: no 2D canvas')
     this.canvas = canvas
@@ -154,6 +166,12 @@ export class TowerScene {
     const r = mulberry32(tower.n * 31 + 7)
     this.stars = Array.from({ length: 90 }, () => ({ x: r(), y: r(), s: 0.6 + r() * 1.2 }))
     this.farTowers = Array.from({ length: 14 }, (_, i) => ({ x: r() * 1.4 - 0.2, w: 0.05 + r() * 0.07, h: 0.25 + r() * 0.5, far: i % 2 === 0 }))
+    this.clouds = Array.from({ length: 9 }, () => ({ x: r(), y: r(), w: 0.18 + r() * 0.22, rate: 0.04 + r() * 0.08 }))
+  }
+
+  private clouds: { x: number; y: number; w: number; rate: number }[]
+  private get close() {
+    return this.look !== 'a'
   }
 
   resize(w: number, h: number) {
@@ -181,10 +199,16 @@ export class TowerScene {
 
   /** Pixels to a world unit, and where the shaft's left wall is on the screen. */
   private get k() {
-    return Math.min(this.W / VIEW_W, this.H / VIEW_H)
+    return this.close ? Math.min(this.W / CLOSE_W, this.H / CLOSE_H) : Math.min(this.W / VIEW_W, this.H / VIEW_H)
   }
+  /** Where the shaft's left wall is: centred when the shaft fits, else panned with Blip (B and C on a phone). */
   private get ox() {
-    return (this.W - TW * this.k) / 2
+    const k = this.k
+    const need = (TW + 50) * k
+    if (need <= this.W) return (this.W - TW * k) / 2
+    const half = this.W / (2 * k)
+    const x = Math.max(half - 25, Math.min(TW + 25 - half, this.cam.x))
+    return this.W / 2 - x * k
   }
   sx(x: number) {
     return this.ox + x * this.k
@@ -232,15 +256,21 @@ export class TowerScene {
     // The camera: a little over Blip on a peg, looking up at what's next; on Blip in the air.
     const focus = f.mode === 'menu' && f.ghost && !f.calm ? f.ghost.y : f.blip.y
     const want = focus + (f.blip.on || f.mode === 'menu' ? 120 : 60)
+    const wantX = f.mode === 'menu' && f.ghost && !f.calm ? f.ghost.x : f.blip.x
     if (this.cam.snap) {
       this.cam.y = want
+      this.cam.x = wantX
       this.cam.snap = false
-    } else this.cam.y += (want - this.cam.y) * (1 - Math.exp(-4 * dt))
+    } else {
+      this.cam.y += (want - this.cam.y) * (1 - Math.exp(-4 * dt))
+      this.cam.x += (wantX - this.cam.x) * (1 - Math.exp(-3 * dt))
+    }
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     if (!this.sky) this.paintSky()
     if (this.sky) ctx.drawImage(this.sky, 0, 0, W, H)
     this.drawStars()
+    if (this.look === 'c') this.drawClouds()
     this.drawFar()
     this.drawShaft(f)
     this.drawFans(f.t)
@@ -333,7 +363,25 @@ export class TowerScene {
 
   /* ---------- the shaft ---------- */
 
+  /** Clouds drifting by in the sky, slower than the shaft (C). */
+  private drawClouds() {
+    const { ctx, W, H, C } = this
+    ctx.fillStyle = C.dark ? 'rgba(70, 64, 130, 0.45)' : 'rgba(255, 255, 255, 0.85)'
+    for (const c of this.clouds) {
+      const span = H * 1.6
+      const y = ((((c.y * span + this.cam.y * this.k * c.rate) % span) + span) % span) - H * 0.3
+      const x = ((c.x * W + this.time * 6 * c.rate * 10) % (W * 1.3)) - W * 0.15
+      const w = c.w * Math.min(W, 700)
+      ctx.beginPath()
+      ctx.ellipse(x, y, w * 0.5, w * 0.16, 0, 0, TAU)
+      ctx.ellipse(x - w * 0.18, y - w * 0.08, w * 0.22, w * 0.16, 0, 0, TAU)
+      ctx.ellipse(x + w * 0.14, y - w * 0.1, w * 0.26, w * 0.19, 0, 0, TAU)
+      ctx.fill()
+    }
+  }
+
   private drawShaft(f: SceneFrame) {
+    if (this.look === 'c') return this.drawStoneShaft()
     const { ctx, H, C } = this
     const k = this.k
     const x0 = this.sx(0)
@@ -377,6 +425,80 @@ export class TowerScene {
       ctx.fillRect(x0 - wall, bottom, x1 - x0 + wall * 2, 3 * k)
     }
     void f
+  }
+
+  /** C's shaft: walls of stone blocks in the day's colour, mortar between, a lit inner edge and ivy climbing it. */
+  private drawStoneShaft() {
+    const { ctx, H, C } = this
+    const k = this.k
+    const x0 = this.sx(0)
+    const x1 = this.sx(TW)
+    ctx.fillStyle = C.shaft
+    ctx.fillRect(x0, 0, x1 - x0, H)
+    const wall = 30 * k
+    const bottom = Math.min(H, this.sy(-30))
+    const row = 26
+    const first = Math.floor((this.cam.y - H / k) / row) * row
+    const leaf = C.dark ? '#3fae63' : '#3d9a52'
+    const vine = C.dark ? '#2f8a4c' : '#2f7a40'
+    for (const side of [0, 1]) {
+      const left = side ? x1 : x0 - wall
+      ctx.fillStyle = C.wall
+      ctx.fillRect(left, 0, wall, bottom)
+      // mortar: a line under each row of blocks, and between the blocks, staggered row to row
+      ctx.fillStyle = C.wallDeep
+      for (let y = first; y < this.cam.y + H / k + row; y += row) {
+        const py = this.sy(y)
+        if (py > bottom) continue
+        ctx.fillRect(left, py, wall, 2 * k)
+        const stagger = Math.round(y / row) % 2 === 0 ? 0.35 : 0.7
+        ctx.fillRect(left + wall * stagger, py - row * k, 2 * k, row * k)
+        // a lighter top on each block, for a bevel
+        ctx.fillStyle = C.blip
+        ctx.globalAlpha = 0.25
+        ctx.fillRect(left, py - row * k + 2 * k, wall, 2 * k)
+        ctx.globalAlpha = 1
+        ctx.fillStyle = C.wallDeep
+      }
+      // the lit inner edge
+      ctx.fillStyle = C.edge
+      ctx.fillRect(side ? x1 : x0 - 3 * k, 0, 3 * k, bottom)
+      // ivy up the inner edge: a vine wandering on the wall, leaves along it
+      const inner = side ? x1 : x0
+      const out = side ? 1 : -1
+      ctx.strokeStyle = vine
+      ctx.lineWidth = 2.2 * k
+      ctx.beginPath()
+      const top = this.cam.y + H / k + 40
+      const from = this.cam.y - H / k - 40
+      let started = false
+      for (let y = Math.floor(from / 8) * 8; y < top; y += 8) {
+        const px = inner + out * (8 + 6 * Math.sin(y / 37 + side * 2)) * k
+        const py = this.sy(y)
+        if (py > bottom) continue
+        if (!started) {
+          ctx.moveTo(px, py)
+          started = true
+        } else ctx.lineTo(px, py)
+      }
+      ctx.stroke()
+      ctx.fillStyle = leaf
+      for (let y = Math.floor(from / 31) * 31; y < top; y += 31) {
+        const px = inner + out * (8 + 6 * Math.sin(y / 37 + side * 2)) * k
+        const py = this.sy(y)
+        if (py > bottom) continue
+        const tilt = Math.sin(y * 1.7) > 0 ? 1 : -1
+        ctx.beginPath()
+        ctx.ellipse(px + out * tilt * 5 * k, py, 5 * k, 3 * k, tilt * 0.6, 0, TAU)
+        ctx.fill()
+      }
+    }
+    if (bottom < H) {
+      ctx.fillStyle = C.wallDeep
+      ctx.fillRect(x0 - wall, bottom, x1 - x0 + wall * 2, H - bottom)
+      ctx.fillStyle = C.edge
+      ctx.fillRect(x0 - wall, bottom, x1 - x0 + wall * 2, 3 * k)
+    }
   }
 
   private onScreen(y: number, pad = 80) {
@@ -459,7 +581,7 @@ export class TowerScene {
       const at = pegAt(pg, t)
       let px = this.sx(at.x)
       const py = this.sy(at.y)
-      const R = (pg.kind === 'top' ? 12 : 9) * k
+      const R = (pg.kind === 'top' ? 12 : 9) * (this.close ? 1.25 : 1) * k
       if (pg.kind === 'clay' && f.blip.on && f.blip.peg === i) px += Math.sin(this.time * 60) * Math.min(1, f.blip.held / CLAY_FOR) * 2.2 * k
       if (i === next && f.mode === 'play') {
         // The next peg: a faint ring, how near you need to get.
@@ -467,12 +589,13 @@ export class TowerScene {
         ctx.lineWidth = 1.5 * k
         ctx.setLineDash([2 * k, 4 * k])
         ctx.beginPath()
-        ctx.arc(px, py - HANG * 0.5 * k, 24 * k, 0, TAU)
+        ctx.arc(px, py - HANG * 0.5 * k, CATCH * k, 0, TAU)
         ctx.stroke()
         ctx.setLineDash([])
       }
-      const fill = pg.kind === 'clay' ? CLAY : pg.kind === 'boost' || pg.kind === 'top' ? GOLD : C.peg
-      ctx.fillStyle = C.pegLine
+      const wood = this.look === 'c' && (pg.kind === 'peg' || pg.kind === 'slide' || pg.kind === 'orbit')
+      const fill = pg.kind === 'clay' ? CLAY : pg.kind === 'boost' || pg.kind === 'top' ? GOLD : wood ? '#c08a52' : C.peg
+      ctx.fillStyle = wood ? '#e9c46a' : C.pegLine
       ctx.beginPath()
       ctx.arc(px, py, R + 1.6 * k, 0, TAU)
       ctx.fill()
@@ -646,7 +769,7 @@ export class TowerScene {
   /** Blip, the site's mint mascot: hanging by his arms from a peg, or tucked in the air. */
   private blipAt(x: number, y: number, on: boolean, vx: number, vy: number, look: 'blip' | 'blue' | 'ghost' | 'mine', alpha: number) {
     const { ctx, C } = this
-    const k = this.k * 1.05
+    const k = this.k * (this.close ? 1.45 : 1.05)
     const px = this.sx(x)
     const py = this.sy(y)
     ctx.save()
@@ -805,9 +928,27 @@ export class TowerScene {
     for (const d of this.trail) d.life -= dt * 2.2
     this.trail = this.trail.filter((d) => d.life > 0).slice(-26)
     for (const d of this.trail) {
+      if (this.look === 'c') {
+        const r = 4.5 * this.k * d.life
+        const x = this.sx(d.x)
+        const y = this.sy(d.y)
+        ctx.fillStyle = `rgba(255, 209, 102, ${d.life * 0.8})`
+        ctx.beginPath()
+        ctx.moveTo(x, y - r)
+        ctx.lineTo(x + r * 0.3, y - r * 0.3)
+        ctx.lineTo(x + r, y)
+        ctx.lineTo(x + r * 0.3, y + r * 0.3)
+        ctx.lineTo(x, y + r)
+        ctx.lineTo(x - r * 0.3, y + r * 0.3)
+        ctx.lineTo(x - r, y)
+        ctx.lineTo(x - r * 0.3, y - r * 0.3)
+        ctx.closePath()
+        ctx.fill()
+        continue
+      }
       ctx.fillStyle = C.dark ? `rgba(159, 247, 226, ${d.life * 0.45})` : `rgba(31, 155, 132, ${d.life * 0.4})`
       ctx.beginPath()
-      ctx.arc(this.sx(d.x), this.sy(d.y), 2.6 * this.k * d.life, 0, TAU)
+      ctx.arc(this.sx(d.x), this.sy(d.y), 2.6 * this.k * (this.close ? 1.4 : 1) * d.life, 0, TAU)
       ctx.fill()
     }
   }

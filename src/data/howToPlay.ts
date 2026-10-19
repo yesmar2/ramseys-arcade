@@ -486,7 +486,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('sling') },
     ],
     ends: 'At the top peg. Climb it as often as you like.',
-    tip: 'Blip grabs a peg as his flight tops out or as he falls past it, so aim a little above the peg you want. Every tower is the day’s own mix: sliders and carousels move, clay pegs crumble if you wait, brambles leave a gap to fling through, an updraft carries you up a tall gap, and a gold boost peg flings harder.',
+    tip: 'The dotted line shows where a fling goes: line its top up with the peg you want. Blip grabs a peg as his flight slows near the top, or as he falls past it. Every tower is the day’s own mix: sliders and carousels move, clay pegs crumble if you wait, brambles leave a gap to fling through, an updraft carries you up a tall gap, and a gold boost peg flings harder.',
     counts: [
       {
         what: 'Today’s tower',
