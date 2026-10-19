@@ -2043,3 +2043,266 @@ a.season-skinchip__in:focus-visible {
     transform: translateY(-6px);
   }
 }
+
+/* ---------- what comes next: the Season page's "Coming next" card, the home card's line, the changeover ---------- */
+
+/*
+ * Space Race's own tokens, for a part of a page drawn in its look while another season dresses the page (the
+ * changeover card shows the season just ended inside the new one's). They're :root's, said again.
+ */
+.season-space-race {
+  --space-night: #101634;
+  --space-panel: #1a2252;
+  --space-line: #2e3a78;
+  --space-violet: #8a6ad4;
+  --space-orange: #f2813a;
+  --space-star: #f4f0ff;
+  --space-text: #d6d9f2;
+  --space-muted: #a5abd6;
+  --space-font: 'Orbitron', var(--font-display);
+  --space-violet-rgb: 138, 106, 212;
+  --space-orange-rgb: 242, 129, 58;
+  --space-star-rgb: 244, 240, 255;
+  --space-on-accent: #1a0e05;
+}
+
+.season-next {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  margin-top: 1.2rem;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background: var(--space-night);
+  border: 1px solid rgba(var(--space-orange-rgb), 0.4);
+  color: var(--space-text);
+}
+
+.season-next__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.6rem 1.8rem;
+  min-width: 0;
+}
+
+.season-next__head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.season-next__kick,
+.season-wrap__kick {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--space-orange);
+}
+
+.season-next__name {
+  margin: 0;
+  font-family: var(--space-font);
+  font-size: clamp(1.7rem, 3vw, 2.1rem);
+  line-height: 1.1;
+  color: #ffffff;
+  text-shadow: 0 0 18px rgba(var(--space-orange-rgb), 0.5);
+}
+
+.season-next__line {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.season-next__keep {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--space-muted);
+}
+
+.season-next__skins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.season-next__skins li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  text-align: center;
+}
+
+.season-next__skins b {
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.season-next__skins span {
+  font-size: 0.75rem;
+  color: var(--space-muted);
+}
+
+.season-next__art {
+  position: relative;
+  min-height: 15rem;
+}
+
+.season-next__art > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 52rem) {
+  .season-next {
+    grid-template-columns: 1fr;
+  }
+
+  .season-next__art {
+    order: -1;
+    min-height: 0;
+    aspect-ratio: 16 / 7;
+  }
+
+  .season-next__text {
+    padding: 1.2rem 1.1rem;
+  }
+}
+
+/* The home's season card, in the season's last week: the next season's name, in its own accent. */
+.unx__next {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--space-orange-rgb), 0.14);
+  border: 1px solid rgba(var(--space-orange-rgb), 0.45);
+  color: var(--space-orange);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.unx__next::before {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* The changeover: the season just ended in its look, then the new one in its own. */
+.panel.season-wrap {
+  padding: 0;
+  overflow: hidden;
+}
+
+.season-wrap__card {
+  display: flex;
+  flex-direction: column;
+}
+
+.season-wrap__last {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.3rem 1.5rem;
+  background: var(--space-night);
+  color: var(--space-text);
+}
+
+.season-wrap__last .season-wrap__kick {
+  font-family: var(--space-font);
+}
+
+.season-wrap__title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.season-wrap__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.season-wrap__stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--space-star-rgb), 0.06);
+}
+
+.season-wrap__stats dt {
+  font-size: 0.75rem;
+  color: var(--space-muted);
+}
+
+.season-wrap__stats dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.season-wrap__new {
+  position: relative;
+  height: 11rem;
+  background: var(--space-night);
+}
+
+.season-wrap__art > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.season-wrap__now {
+  position: absolute;
+  top: 0.9rem;
+  left: 1.5rem;
+  text-shadow: 0 2px 8px rgba(5, 10, 25, 0.8);
+}
+
+.season-wrap__name {
+  margin: 0;
+  font-family: var(--space-font);
+  font-size: 2rem;
+  line-height: 1.1;
+  color: #ffffff;
+  text-shadow: 0 0 18px rgba(var(--space-orange-rgb), 0.6), 0 2px 8px rgba(5, 10, 25, 0.8);
+}
+
+.season-wrap__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.1rem 1.5rem 1.4rem;
+}
+
+.season-wrap__foot p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.season-wrap__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}

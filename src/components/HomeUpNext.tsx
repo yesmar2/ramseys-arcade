@@ -21,6 +21,7 @@ import { BlipPoll } from './BlipPoll'
 import { GameArt } from './GameArt'
 import { GameThumbArt } from './GameThumbArt'
 import { SeasonScene } from './season/SeasonLook'
+import { nextSeasonSoon } from './season/NextSeason'
 import '../styles/upNext.css'
 
 /*
@@ -294,6 +295,8 @@ function SeasonCard({ wide = false }: { wide?: boolean }) {
   const next = p.level < season.levels ? rewardAt(store.rewards, p.level + 1) : null
   const extra = !next && p.level >= season.levels && p.toNext != null ? extraTickets(season, p.level + 1) : null
   const into = p.level > 0 ? Math.round(p.fraction * season.perLevel) : 0
+  // In the season's last week, the next one's name: seasons run back to back.
+  const soon = nextSeasonSoon(season, store.next)
   const line = !you
     ? `Win tickets in any game to climb a free pass of ${season.levels} levels${wide ? ', with looks and ships to win on the way' : ''}.`
     : p.level <= 0
@@ -317,6 +320,7 @@ function SeasonCard({ wide = false }: { wide?: boolean }) {
         <h3 id="unx-season" className="unx__title">
           {season.name}
         </h3>
+        {soon && store.next ? <p className={`unx__next season-${store.next.slug}`}>{soon}</p> : null}
         {you && p.level > 0 ? (
           <div className="unx__level">
             <b>Level {p.level}</b>

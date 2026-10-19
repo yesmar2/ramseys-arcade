@@ -120,11 +120,42 @@ export type SeasonPlus = {
   buyable: boolean
 }
 
+/**
+ * The season after this one, shown ahead of it (Ramsey picked my recommendations, 2026-10-19): the Season page's
+ * "Coming next" card all season, and its name on the home's season card in the last week.
+ */
+export type SeasonNext = {
+  id: number
+  slug: string
+  name: string
+  /** YYYY-MM-DD. */
+  firstDay: string
+  lastDay: string
+  startsAt: number
+  daysUntil: number
+  skins: SeasonReward[]
+  plusSkins: SeasonReward[]
+}
+
+/** How the season before went for you, for the changeover card in the new one's first month. */
+export type SeasonWrap = {
+  id: number
+  slug: string
+  name: string
+  level: number
+  place: number | null
+  field: number
+  /** Looks and skins from it you keep. */
+  kept: number
+}
+
 type SeasonAnswer = {
   season: SeasonInfo | null
   rewards: SeasonReward[]
   plus?: SeasonPlus | null
   you: SeasonYou | null
+  next?: SeasonNext | null
+  wrap?: SeasonWrap
   /** Only on the Season page's asking (catchup): they take more reading than the header wants. */
   standings?: SeasonStandings
   goals?: SeasonGoal[]
@@ -142,11 +173,11 @@ const STALE_MS = 60_000
 /** The last answer, kept on this device: the season and its rewards, and whose `you` it was. */
 const KEPT_KEY = 'skermix-season'
 
-type Kept = { answer: Pick<SeasonAnswer, 'season' | 'rewards' | 'plus' | 'you'>; account: string | null }
+type Kept = { answer: Pick<SeasonAnswer, 'season' | 'rewards' | 'plus' | 'you' | 'next'>; account: string | null }
 
 function keep(answer: SeasonAnswer) {
   try {
-    const kept: Kept = { answer: { season: answer.season, rewards: answer.rewards, plus: answer.plus, you: answer.you }, account: currentAccountId() ?? null }
+    const kept: Kept = { answer: { season: answer.season, rewards: answer.rewards, plus: answer.plus, you: answer.you, next: answer.next }, account: currentAccountId() ?? null }
     localStorage.setItem(KEPT_KEY, JSON.stringify(kept))
   } catch {
     /* a private window keeps nothing: the page waits for the API */
@@ -178,7 +209,7 @@ function kept(): Store {
     const mine = account != null && account === currentAccountId()
     // Whether Pass+ is owned is the account's too: another player on this device hasn't bought it.
     const plus = answer.plus ? { ...answer.plus, owned: mine && answer.plus.owned } : answer.plus
-    return { ...empty, season: started(answer.season), rewards: answer.rewards, plus, you: mine ? answer.you : null }
+    return { ...empty, season: started(answer.season), rewards: answer.rewards, plus, you: mine ? answer.you : null, next: answer.next ?? null }
   } catch {
     return empty
   }
@@ -320,8 +351,13 @@ const HEADLINERS: Record<number, readonly [string, string, string]> = {
 }
 
 export function headlinersOf(season: SeasonInfo, plus: SeasonPlus): SeasonReward[] {
-  const skins = plus.rewards.filter((r) => r.kind === 'skin')
-  const named = HEADLINERS[season.id]
+  return headlinersFor(season.id, plus.rewards)
+}
+
+/** A season's three headliners from its Pass+ row's rewards, by its id (the next season's too). */
+export function headlinersFor(seasonId: number, plusRewards: SeasonReward[]): SeasonReward[] {
+  const skins = plusRewards.filter((r) => r.kind === 'skin')
+  const named = HEADLINERS[seasonId]
   if (named) {
     const found = named.map((id) => skins.find((r) => r.id === id)).filter((r): r is SeasonReward => r != null)
     if (found.length === 3) return found
@@ -432,7 +468,7 @@ export function useSpotlight(game: string): boolean {
 }
 
 /** A board day, YYYY-MM-DD, as "Oct 31". */
-function dayWords(day: string): string {
+export function dayWords(day: string): string {
   const [y, m, d] = day.split('-').map(Number)
   return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }

@@ -3,6 +3,7 @@ import { EasterEggs } from './components/EasterEggs'
 import { PendingRunsSaver } from './components/PendingRunsSaver'
 import { SeasonDressing } from './components/season/SeasonDressing'
 import { LevelUpMoment } from './components/season/LevelUpMoment'
+import { SeasonWrapMoment } from './components/season/NextSeason'
 import { MilestoneMoment } from './components/MilestoneMoment'
 import { FriendsWeekMoment } from './components/FriendsWeekMoment'
 import { defaultPeriod } from './lib/defaultPeriod'
@@ -211,6 +212,7 @@ function App() {
       <PendingRunsSaver />
       <SeasonDressing />
       <LevelUpMoment />
+      <SeasonWrapMoment />
       <MilestoneMoment />
       <FriendsWeekMoment />
     </>

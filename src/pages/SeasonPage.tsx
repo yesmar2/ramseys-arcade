@@ -36,6 +36,7 @@ import { starTile } from '../lib/seasonArt'
 import { seasonFeed, seasonLines, useSeasonStandings } from '../lib/seasonStandings'
 import { StandingsList } from '../components/StandingsList'
 import { askForSeasonFont } from '../components/season/SeasonDressing'
+import { NextSeasonCard } from '../components/season/NextSeason'
 import { useTickets } from '../lib/tickets'
 import '../styles/season.css'
 
@@ -879,6 +880,7 @@ export function SeasonPage() {
           <SkinsCard free={skins} plus={plusSkins} level={level} owned={owned} plusOwned={Boolean(store.plus?.owned)} />
         ) : null}
       </div>
+      {store.next && season.status !== 'over' ? <NextSeasonCard next={store.next} season={season} /> : null}
     </PageShell>
   )
 }
