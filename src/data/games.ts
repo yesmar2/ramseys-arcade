@@ -1,6 +1,5 @@
 import type { DeviceType } from '../lib/device'
 import { formatDeviceList } from '../lib/device'
-import { LIVE_SITE } from '../lib/liveSite'
 
 /** What kind of game it is, for the home page's tabs. */
 export type GameTag = 'arcade' | 'puzzle' | 'quick' | 'sport'
@@ -339,9 +338,8 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
     daily: true,
-    // On staging from 2026-10-19 ("i think i like sling the best so far so let's implement that"); held back on
-    // the live site until Ramsey says, as the API's LIVE_ON_DECK_GAMES holds it.
-    onDeck: LIVE_SITE,
+    // On staging from 2026-10-19 ("i think i like sling the best so far so let's implement that"), and released on
+    // the live site the same day ("yes release it on live").
   },
 ]
 
