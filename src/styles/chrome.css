@@ -860,6 +860,82 @@ html[data-theme='light'] .site-menu__scrim {
   text-underline-offset: 0.2em;
 }
 
+/* Your place each period, as on the player card's foot (.pc-pip): the header's number is the one marked. */
+.site-menu__card-ranks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.site-menu__card-where {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: color-mix(in srgb, var(--card-accent) 60%, var(--ink));
+}
+
+.site-menu__card-where .site-menu__card-how {
+  flex: none;
+}
+
+.site-menu__places {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.3rem;
+}
+
+.site-menu__place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  padding: 0.35rem 0 0.3rem;
+  border-radius: 0.7rem;
+  border: 1px solid transparent;
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.site-menu__place b {
+  min-height: 1.25rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-menu__place b .skel-line {
+  --skel-w: 2rem;
+}
+
+.site-menu__place span {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.site-menu__place--top b {
+  color: var(--sb-gold-ink);
+}
+
+.site-menu__place--on {
+  border-color: color-mix(in srgb, var(--card-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--card-accent) 14%, transparent);
+}
+
+.site-menu__place:hover,
+.site-menu__place:focus-visible {
+  background: rgba(var(--ink-rgb), 0.1);
+}
+
 .site-menu__card-acts {
   display: flex;
   gap: 0.5rem;

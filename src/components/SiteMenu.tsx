@@ -1,7 +1,8 @@
 import { useEffect, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { useTickets } from '../lib/tickets'
 import { daysLeftLabel, liveSeason, useSeason } from '../lib/season'
-import { seasonHasStandings } from '../lib/seasonStandings'
+import { seasonHasStandings, useSeasonTab } from '../lib/seasonStandings'
+import { usePeriodRanks } from '../hooks/useProfileBoards'
 import { DeleteAccountPanel } from './DeleteAccount'
 import { TicketGlyph } from './prizes/Ticket'
 import { SeasonPatch } from './season/SeasonLook'
@@ -23,10 +24,10 @@ import { AVATARS_ENABLED, avatarWashColor, resolveAvatar } from '../lib/avatars'
 import { APP_NAME } from '../lib/brand'
 import { openFeedback } from '../lib/feedback'
 import { inkOn, readableFill } from '../lib/color'
-import { groupsIndexHref } from '../lib/groups'
+import { groupsIndexHref, useActiveGroup } from '../lib/groups'
 import { ordinal, periodWord } from '../lib/profileMath'
 import { setTheme, themeLabel, type Theme } from '../lib/theme'
-import type { LeaderboardPeriod } from '../lib/leaderboard'
+import { PERIOD_LABELS, VISIBLE_LEADERBOARD_PERIODS, type LeaderboardPeriod } from '../lib/leaderboard'
 import type { TrophySummary } from '../lib/trophies'
 import {
   BellIcon,
@@ -60,6 +61,55 @@ import { StationSelect } from './StationSelect'
 
 /** The themes, in the order the picker shows them. */
 const THEME_CHOICES: Theme[] = ['light', 'dark']
+
+const PLACE_LABELS: Partial<Record<LeaderboardPeriod, string>> = { weekly: 'Week', monthly: 'Month', all: 'All time', season: 'Season' }
+
+/**
+ * Your place for each period, as the player card's foot has them (PlayerCard's pips): the header's number is one
+ * of them, whichever the boards were last on, and it's marked. Each opens your card at that period.
+ */
+function MenuPlaces({ name, period, onClose }: { name: string; period: LeaderboardPeriod; onClose: () => void }) {
+  const ranks = usePeriodRanks(name, useActiveGroup())
+  const periods: readonly LeaderboardPeriod[] = useSeasonTab() ? [...VISIBLE_LEADERBOARD_PERIODS, 'season'] : VISIBLE_LEADERBOARD_PERIODS
+  return (
+    <nav className="site-menu__places sb-scope" aria-label="Your place by period">
+      {periods.map((p) => {
+        const row = ranks[p]
+        const r = row?.rank ?? null
+        const on = p === period
+        const label = !row
+          ? PERIOD_LABELS[p]
+          : r != null
+            ? `${ordinal(r)} ${periodWord(p)}`
+            : p === 'all'
+              ? 'Not on the boards all time: dailies don’t count all time'
+              : `Not on the boards ${periodWord(p)} yet`
+        return (
+          <a
+            key={p}
+            className={`site-menu__place${on ? ' site-menu__place--on' : ''}${r != null && r <= 3 ? ' site-menu__place--top' : ''}`}
+            href={rankHref(undefined, p)}
+            aria-current={on ? 'true' : undefined}
+            aria-label={label}
+            title={label}
+            onClick={onClose}
+          >
+            <b aria-hidden="true">
+              {!row ? (
+                <span className="skel-line" />
+              ) : r != null ? (
+                `#${r > 9999 ? `${Math.floor(r / 1000)}k` : r.toLocaleString()}`
+              ) : (
+                '–'
+              )}
+            </b>
+            <span aria-hidden="true">{PLACE_LABELS[p] ?? PERIOD_LABELS[p]}</span>
+          </a>
+        )
+      })}
+    </nav>
+  )
+}
 
 export type MenuStanding = {
   loading: boolean
@@ -169,7 +219,6 @@ export function SiteMenu({
 
   const tagged = signedIn && Boolean(name)
   const accent = tagged && AVATARS_ENABLED ? avatarWashColor(resolveAvatar(avatarId, name)) : undefined
-  const word = periodWord(standing.period)
   // The rank line says where you stand; the points behind it are on How your rank works.
   const facts = [
     trophies.total > 0 ? `${trophies.total} ${trophies.total === 1 ? 'trophy' : 'trophies'}` : null,
@@ -210,29 +259,19 @@ export function SiteMenu({
               </button>
             ) : null}
           </span>
-          <span className="site-menu__card-line">
-            {impersonating ? (
-              'Acting as this player for testing'
-            ) : standing.loading ? (
-              <span className="skel-line" aria-hidden="true" />
-            ) : standing.rank != null ? (
-              `${ordinal(standing.rank)} ${standing.where} ${word}`
-            ) : (
-              `Not on the boards ${word} yet`
-            )}
-          </span>
-          {!impersonating && !standing.loading && standing.rank != null ? (
-            <a className="site-menu__card-how" href={rankHowHref(undefined, standing.period)} onClick={onClose}>
-              How your rank works ›
-            </a>
-          ) : !impersonating && !standing.loading && standing.period === 'all' ? (
-            // Someone who only plays the dailies is never on the all-time boards (lib/allTime.ts): say why, not "yet".
-            <a className="site-menu__card-how" href={rankHowHref(undefined, standing.period)} onClick={onClose}>
-              Dailies don’t count all time ›
-            </a>
-          ) : null}
+          {impersonating ? <span className="site-menu__card-line">Acting as this player for testing</span> : null}
           {facts.length > 0 ? <span className="site-menu__card-facts">{facts.join(' · ')}</span> : null}
         </div>
+      </div>
+      {/* Where you stand, every period: the header's number is the one marked. */}
+      <div className="site-menu__card-ranks">
+        <p className="site-menu__card-where">
+          Your places {standing.where}
+          <a className="site-menu__card-how" href={rankHowHref(undefined, standing.period)} onClick={onClose}>
+            How ranks work ›
+          </a>
+        </p>
+        <MenuPlaces name={name} period={standing.period} onClose={onClose} />
       </div>
       <div className="site-menu__card-acts">
         <a className="site-menu__card-cta" href={rankHref(undefined, standing.period)} onClick={onClose}>
