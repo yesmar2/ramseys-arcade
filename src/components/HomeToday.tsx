@@ -225,15 +225,16 @@ function RaceCard({
               New
             </span>
           ) : badge === 'spotlight' ? (
+            // What the season's spotlight means to a player, said on it (Ramsey's pick, "Launch UX picks", 2026-10-20).
             <span className="season-spot season-spot--day" aria-hidden="true">
-              Spotlight
+              Season skins
             </span>
           ) : null}
           {/* The day's name on its picture, and which of the game's days it is. */}
           <span className="home-day__on">
             <span className="home-day__name">
               {p.title}
-              {badge ? <span className="visually-hidden"> ({badge})</span> : null}
+              {badge ? <span className="visually-hidden"> ({badge === 'spotlight' ? 'season skins' : badge})</span> : null}
             </span>
             <span className="home-day__course">{p.kicker.replace(/^Today’s\s+/, '')}</span>
           </span>

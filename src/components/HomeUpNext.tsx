@@ -329,8 +329,9 @@ function SeasonCard({ wide = false }: { wide?: boolean }) {
   const into = p.level > 0 ? Math.round(p.fraction * season.perLevel) : 0
   // In the season's last week, the next one's name: seasons run back to back.
   const soon = nextSeasonSoon(season, store.next)
+  // Signed out, what tickets are, said where a first-timer meets them (Ramsey's pick, "Launch UX picks", 2026-10-20).
   const line = !you
-    ? `Win tickets in any game to climb a free pass of ${season.levels} levels${wide ? ', with looks and ships to win on the way' : ''}.`
+    ? `Every game wins you tickets: spend them on looks, and they climb a free pass of ${season.levels} levels.`
     : p.level <= 0
       ? 'Win a ticket in any game to start the pass.'
       : next && p.toNext != null

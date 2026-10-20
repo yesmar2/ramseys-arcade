@@ -352,7 +352,7 @@ export function WallTile({
         : newFlag && game.inDevelopment
           ? { label: 'New', kind: 'new' }
           : spotlight
-            ? { label: 'Spotlight', kind: 'spotlight' }
+            ? { label: 'Season skins', kind: 'spotlight' }
             : null
   const fmt = (score: number) => formatLeaderboardScore(game.slug, score)
   // Your best and place are the period's: on a daily, that's its day points (leaderboardFormat isDayPointsBoard).

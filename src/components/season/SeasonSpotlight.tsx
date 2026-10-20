@@ -35,7 +35,7 @@ export function SpotlightCard({ slug, name }: { slug: string; name: string }) {
           ? yours
             ? `The ${skin.name} is yours, for ${name}.`
             : `The ${skin.name}, ${aSkin(skin.what)}, is at Level ${skin.level} of the pass.`
-          : `${name} is in this season’s spotlight.`}
+          : `${name} has skins to win on this season’s free pass.`}
       </span>
       <span className="season-spotcard__go">See the pass</span>
     </a>
@@ -56,7 +56,8 @@ export function SeasonWelcomeCard({ season }: { season: SeasonInfo }) {
         <b>
           Season {season.id} · {season.name}
         </b>
-        Win tickets in any game to climb a free pass of {season.levels} levels.
+        {/* What tickets are, said where a first-timer meets them (Ramsey's pick, "Launch UX picks", 2026-10-20). */}
+        Every game wins you tickets: spend them on looks, and they climb a free pass of {season.levels} levels.
       </span>
       <span className="season-spotcard__go">See the pass</span>
     </a>

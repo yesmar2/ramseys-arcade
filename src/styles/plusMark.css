@@ -47,6 +47,39 @@ html[data-theme='light'] .plus-mark svg {
   stroke-linejoin: round;
 }
 
+/* Tapped, it says what it is (PlusMark's tip): a fingertip's room around the star, which doesn't move it. */
+.plus-mark--tap {
+  cursor: pointer;
+}
+
+.plus-mark--tap::before {
+  content: '';
+  position: absolute;
+  inset: -0.45rem;
+}
+
+.plus-mark__tip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: min(17rem, calc(100vw - 1.5rem));
+}
+
+.plus-mark__tip-title {
+  font-weight: 800;
+}
+
+.plus-mark__tip-link {
+  margin-top: 0.15rem;
+  font-weight: 800;
+  text-decoration: none;
+  color: #8a4b05;
+}
+
+html[data-theme='dark'] .plus-mark__tip-link {
+  color: #ffd27a;
+}
+
 /* As an icon: the menu's Plus row (components/SiteMenu.tsx), and the Plus page's at its own size. */
 .plus-mark--icon {
   top: 0;
