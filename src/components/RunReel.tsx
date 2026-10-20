@@ -12,6 +12,7 @@ import {
 import { prizeById } from '../data/prizes'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { prizesHref } from '../hooks/useHashRoute'
+import { useFirstTime } from '../lib/firstTimes'
 import { ordinal } from '../lib/profileMath'
 import { MEDAL_NAMES, type Medal } from '../lib/raceMedals'
 import type {
@@ -27,7 +28,7 @@ import type {
   ReportTier,
   ReportTone,
 } from '../lib/runReport'
-import { loudLevelUp, type SeasonRun } from '../lib/season'
+import { liveSeason, loudLevelUp, useSeason, type SeasonRun } from '../lib/season'
 import { sfx } from '../lib/sound'
 import { useTickets, type RunTickets } from '../lib/tickets'
 import { BlipFigure } from './BlipFigure'
@@ -537,12 +538,15 @@ function useRollUp(from: number, to: number, delay: number): number {
  * The tickets the run paid: the ticket itself, big, then what made it up a line at a time, each with a click, and
  * the new total rolling up. Under it, the next step of the ladder or the day's cap, the prize being saved for,
  * and the season's pass when the run moved it without reaching a level (a level gets a step of its own).
+ * A player's very first tickets wear a New tag and say what tickets are for, once (lib/firstTimes.ts).
  */
 export function ReelTickets({ paid, game, medal = null, season = null }: { paid: RunTickets; game: string; medal?: Medal | null; season?: SeasonRun | null }) {
   const { goal: goalId, balance } = useTickets()
   const goal = prizeById(goalId)
   // The store may not have caught up with this save yet; the save's own answer is the newer.
   const total = Math.max(balance, paid.balance)
+  const first = useFirstTime('tickets', total - paid.earned <= 0)
+  const passOn = liveSeason(useSeason()) != null
   const rows = paid.lines.map((line) => ({ label: lineLabel(paid, line, game, medal), amount: line.amount }))
   const shown = useRollUp(total - paid.earned, total, 700 + rows.length * 260)
   useEffect(() => {
@@ -558,10 +562,26 @@ export function ReelTickets({ paid, game, medal = null, season = null }: { paid:
       className="reel-tix"
       main={
         <div className="reel-tix__top">
-          <p className="reel__kick">Tickets</p>
+          <p className="reel__kick">
+            Tickets
+            {first ? (
+              <>
+                {' '}
+                <span className="reel-new">New</span>
+              </>
+            ) : null}
+          </p>
           <div className="reel-tix__stub">
             <TicketStub amount={paid.earned} width={208} fan={paid.earned >= 15 ? 2 : paid.earned >= 8 ? 1 : 0} />
           </div>
+          {/* The words the home page's season card uses for them, so a first-timer hears it one way. */}
+          {first ? (
+            <p className="reel-tix__first">
+              {passOn
+                ? 'Every game wins you tickets: spend them on looks, and they climb the season’s free pass.'
+                : 'Every game wins you tickets: spend them on looks at the prize counter.'}
+            </p>
+          ) : null}
         </div>
       }
       side={
@@ -596,7 +616,7 @@ export function ReelTickets({ paid, game, medal = null, season = null }: { paid:
             </a>
           ) : (
             <a className="reel-link" href={prizesHref()}>
-              Spend them at the prize counter ›
+              {first ? 'Open the prize counter ›' : 'Spend them at the prize counter ›'}
             </a>
           )}
           {season ? <SeasonRunLine run={season} /> : null}

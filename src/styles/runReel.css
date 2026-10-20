@@ -1091,6 +1091,30 @@ html[data-theme='light'] .panel.reel--ask {
   animation: reel-ticket 0.6s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
 }
 
+/* Something met for the first time (lib/firstTimes.ts): the arcade's mint, news on any page's colour. */
+.reel-new {
+  display: inline-block;
+  margin-left: 0.3rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  background: #34c6a8;
+  color: #0c1218;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  vertical-align: 0.1em;
+}
+
+.reel-tix__first {
+  max-width: 19rem;
+  margin: 0.85rem 0 0;
+  color: var(--reel-ink);
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-wrap: balance;
+  animation: reel-rise 0.4s 0.5s ease-out both;
+}
+
 .reel-tix__body {
   display: flex;
   flex-direction: column;

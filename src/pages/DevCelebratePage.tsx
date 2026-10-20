@@ -295,6 +295,19 @@ const SAMPLE_TICKETS: Partial<Record<string, RunTickets>> = {
     capped: 0,
     todayLeft: 180,
   },
+  // A player's very first tickets: the total is what this run paid (the New tag, lib/firstTimes.ts).
+  first: {
+    earned: 3,
+    lines: [{ reason: 'run', amount: 3 }],
+    balance: 3,
+    reached: { at: 46, tickets: 3 },
+    next: { at: 69, tickets: 5 },
+    base: 1,
+    step: 3,
+    paidBefore: 0,
+    capped: 0,
+    todayLeft: 197,
+  },
   best: {
     earned: 15,
     lines: [
@@ -949,6 +962,8 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
   })
   return [
     arcadeReel('quiet', 'An ordinary run', facts(318, {}), 'Run over', 'Flattened by traffic'),
+    // Its New tag shows once per browser: clear localStorage's skermix-firsts to see it again.
+    arcadeReel('first', 'A first run’s first tickets', facts(52, {}), 'Run over', 'Flattened by traffic'),
     arcadeReel('best', 'A personal best', facts(440, {}), 'Run over', 'Fell in the water'),
     arcadeReel(
       'top',
