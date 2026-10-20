@@ -214,6 +214,26 @@ export async function fetchClientErrors() {
   return (await api<{ errors: AdminClientError[] }>('/admin/client-errors?limit=100')).errors
 }
 
+/**
+ * Where an error spike's push goes (the API's errorAlerts.ts): how many of the admins' devices have push on, what
+ * counts as a spike, and when each kind last went.
+ */
+export type ErrorAlerts = {
+  devices: number
+  spike: { site: { count: number; players: number }; api: { count: number } }
+  windowMinutes: number
+  lastAlert: { site: number | null; api: number | null }
+}
+
+export function fetchErrorAlerts() {
+  return api<ErrorAlerts>('/admin/alerts')
+}
+
+/** A test push to the admins' devices. */
+export function sendTestAlert() {
+  return api<{ devices: number; sent: number }>('/admin/alerts/test', { method: 'POST' })
+}
+
 export async function fetchFeedback() {
   return (await api<{ feedback: AdminFeedback[] }>('/admin/feedback?limit=100')).feedback
 }

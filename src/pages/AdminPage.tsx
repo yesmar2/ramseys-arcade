@@ -16,16 +16,19 @@ import {
   fetchAdminWhoami,
   fetchBans,
   fetchClientErrors,
+  fetchErrorAlerts,
   fetchFeedback,
   fetchOpenFlags,
   fetchRunCheck,
   grantTickets,
   liftBan,
+  sendTestAlert,
   settleFlag,
   type AdminBan,
   type AdminClientError,
   type AdminFeedback,
   type AdminFlag,
+  type ErrorAlerts,
   type RunCheck,
 } from '../lib/admin'
 import { capitalName, HUNT_ANCHORS, huntDay, huntPick, huntTestHref, huntWhere, msUntilNextBug } from '../lib/bugHunt'
@@ -498,6 +501,7 @@ function ErrorsCard() {
       <p className="adm-card__sub" id="adm-errors">
         What broke in players’ browsers in the last 30 days, the latest first. The same error again counts up.
       </p>
+      <ErrorAlertsLine />
       {error ? <p className="adm-fail">{error}</p> : null}
       {items && !items.length ? <p className="adm-note">Nothing has broken lately.</p> : null}
       {items?.length ? (
@@ -524,6 +528,55 @@ function ErrorsCard() {
         </ul>
       ) : null}
     </section>
+  )
+}
+
+/**
+ * Where an error spike's push goes (the API's errorAlerts.ts): the admins' devices that have push on, at any hour.
+ * A test push shows it arrives.
+ */
+function ErrorAlertsLine() {
+  const [alerts, setAlerts] = useState<ErrorAlerts | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    fetchErrorAlerts().then(setAlerts, (err: unknown) =>
+      setError(err instanceof Error ? err.message : 'Couldn’t read where alerts go'),
+    )
+  }, [])
+  const onTest = async () => {
+    setBusy(true)
+    setNote(null)
+    setError(null)
+    try {
+      const { sent } = await sendTestAlert()
+      setNote(sent ? `Sent to ${sent} ${sent === 1 ? 'device' : 'devices'}.` : 'No device took it: none of yours has push on.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Couldn’t send it')
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (!alerts) return error ? <p className="adm-fail">{error}</p> : null
+  const { spike, windowMinutes, devices } = alerts
+  return (
+    <>
+      <p className="adm-note">
+        A spike pushes you, at any hour and at most once an hour for each: {spike.site.count} site errors from{' '}
+        {spike.site.players} players, or {spike.api.count} failed API answers, within {windowMinutes} minutes.{' '}
+        {devices
+          ? `${devices} of your ${devices === 1 ? 'devices gets' : 'devices get'} them.`
+          : 'None of your devices has push on yet: on your phone, turn Push on for anything in Settings → Notifications, then send a test.'}
+      </p>
+      <div className="adm-form">
+        <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={busy} onClick={() => void onTest()}>
+          {busy ? 'Sending…' : 'Send me a test alert'}
+        </button>
+      </div>
+      {note ? <p className="adm-note">{note}</p> : null}
+      {error ? <p className="adm-fail">{error}</p> : null}
+    </>
   )
 }
 
