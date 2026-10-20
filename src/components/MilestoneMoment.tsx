@@ -37,7 +37,7 @@ const EARNED: Record<number, { chip: string; wear: AvatarWear | null }> = {
   3: { chip: '10 tickets for the prize counter', wear: null },
   7: { chip: 'The Dailies pin is yours', wear: { pin: 'today' } },
   14: { chip: '25 tickets for the prize counter', wear: null },
-  30: { chip: 'The gold badge finish is yours', wear: { prize: 'gilded' } },
+  30: { chip: 'The Gold avatar is yours', wear: { prize: 'gilded' } },
   100: { chip: 'The “Every Day” title is yours', wear: { prize: 't-everyday' } },
 }
 

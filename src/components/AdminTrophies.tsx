@@ -94,7 +94,7 @@ const TODAY_REWARD_NOTES: Record<number, string> = {
   3: '10 tickets.',
   7: 'The Dailies pin, a punched ticket on deep orange. The flame pin stays for playing any game seven days in a row.',
   14: '25 tickets.',
-  30: 'The Gold badge finish. Never for sale: it isn’t on the counter, and the API refuses to trade for it.',
+  30: 'The Gold avatar. Never for sale: it isn’t on the counter, and the API refuses to trade for it.',
   100: 'The “Every Day” title, on a plate in lights. Never for sale.',
 }
 
@@ -401,7 +401,7 @@ export function AdminTrophies() {
           </li>
         </ul>
         <p className="adm-note">
-          The looks bought with tickets (card themes, titles, name styles and more) are all at the{' '}
+          The looks bought with tickets (avatars, name styles, backgrounds and more) are all at the{' '}
           <a href={prizesHref()}>prize counter</a>.
         </p>
       </section>

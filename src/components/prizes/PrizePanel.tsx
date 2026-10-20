@@ -1,25 +1,15 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
-import { plateTier, PRIZE_KINDS, PRIZES, prizeById, TICKETS_A_DAY, type Prize } from '../../data/prizes'
-import { useAuth } from '../../hooks/useAuth'
-import {
-  avatarWashColor,
-  encodeAvatar,
-  isWearing,
-  setLocalAvatarId,
-  wearPrize,
-  wornPrize,
-  type Avatar,
-} from '../../lib/avatars'
+import { plateTier, PRIZE_KINDS, PRIZES, prizeById, type Prize } from '../../data/prizes'
+import { avatarWashColor, isWearing, wearPrize, wornPrize, type Avatar } from '../../lib/avatars'
 import { moveChoice } from '../../lib/choiceKeys'
 import { useGlobalRank } from '../../lib/globalRank'
-import { setPlayerAvatar } from '../../lib/leaderboard'
-import { setTicketGoal, tradePrize, useTickets } from '../../lib/tickets'
+import { useTickets } from '../../lib/tickets'
 import { Panel, PanelHead } from '../Panel'
 import { AvatarArt, PlayerAvatar } from '../PlayerAvatar'
 import { PlayerName } from '../PlayerName'
 import { ReportConfetti } from '../RunReport'
-import { openSiteMenu } from '../siteNav'
 import { CardBackdrop, PrizeArt } from './PrizeArt'
+import { PrizeActions } from './PrizeActions'
 import { SignArt } from './SignArt'
 import { TicketGlyph } from './Ticket'
 
@@ -32,7 +22,7 @@ import { TicketGlyph } from './Ticket'
 
 type View = 'badge' | 'board' | 'card'
 
-const VIEW_LABELS: Record<View, string> = { badge: 'Badge', board: 'On a board', card: 'On your card' }
+const VIEW_LABELS: Record<View, string> = { badge: 'Avatar', board: 'On a board', card: 'On your card' }
 
 function viewsFor(prize: Prize): View[] {
   switch (prize.kind) {
@@ -45,17 +35,6 @@ function viewsFor(prize: Prize): View[] {
     default:
       return ['card']
   }
-}
-
-function errorText(err: unknown): string {
-  const code = (err as { code?: string }).code
-  const status = (err as { status?: number }).status
-  if (code === 'NOT_ENOUGH_TICKETS') return 'Not enough tickets for that yet.'
-  if (code === 'ALREADY_OWNED') return 'That one’s yours already.'
-  if (code === 'PRIZE_NOT_OWNED') return 'That’s a prize you haven’t traded for yet.'
-  if (status === 401) return 'Sign in first.'
-  if (status === 403 || status === 409) return 'Only the owner of this tag can change how it looks. Sign in first.'
-  return err instanceof Error ? err.message : 'That didn’t go through. Try again.'
 }
 
 /** A player card, small: the theme behind it, the badge, the tag (or its neon sign) and the title under it. */
@@ -103,27 +82,20 @@ export function PrizePanel({
   onClose: () => void
 }) {
   const titleId = useId()
-  const { signedIn, signedOut, loading: authLoading } = useAuth()
   const tickets = useTickets()
   const standing = useGlobalRank()
   const views = viewsFor(prize)
   const [view, setView] = useState<View>(views[0] ?? 'badge')
-  const [confirming, setConfirming] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null)
   const [burst, setBurst] = useState(0)
 
   const tag = name || 'YOU'
   const owned = tickets.owned.includes(prize.id)
-  const worn = isWearing(avatar, prize.id)
-  const balance = signedIn ? tickets.balance : 0
-  const afford = balance >= prize.price
   const saving = tickets.goal === prize.id
   const tryOn = wearPrize(avatar, prize.kind, prize.id)
   const shownView = views.includes(view) ? view : views[0]
-  // What a streak earns isn't on the counter, so it isn't among the ones to flick through.
-  const siblings = PRIZES.filter((p) => p.kind === prize.kind && (!p.earned || p.id === prize.id))
-  // A long list (there are two dozen titles) scrolls in its own box, kept on the one picked.
+  // What's earned, or retired, isn't on the counter, so it isn't among the ones to flick through.
+  const siblings = PRIZES.filter((p) => p.kind === prize.kind && ((!p.earned && !p.retired) || p.id === prize.id))
+  // A long list scrolls in its own box, kept on the one picked.
   const variantsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const box = variantsRef.current
@@ -135,115 +107,12 @@ export function PrizePanel({
   }, [prize.id])
   const standingLine = standing.rank != null ? `#${standing.rank} in the standings` : undefined
 
-  const pick = (id: string) => {
-    setConfirming(false)
-    setNote(null)
-    onPick(id)
-  }
-
-  const putOn = async (id: string | null) => {
-    const saved = await setPlayerAvatar(name, encodeAvatar(wearPrize(avatar, prize.kind, id)))
-    setLocalAvatarId(name, saved)
-  }
-
-  const act = async (run: () => Promise<void>, done?: string) => {
-    setBusy(true)
-    setNote(null)
-    try {
-      await run()
-      if (done) setNote({ text: done, ok: true })
-    } catch (err) {
-      setNote({ text: errorText(err), ok: false })
-    } finally {
-      setBusy(false)
-      setConfirming(false)
-    }
-  }
-
-  const trade = () =>
-    act(
-      async () => {
-        await tradePrize(prize.id)
-        if (name) await putOn(prize.id)
-        if (prize.kind === 'confetti') setBurst((b) => b + 1)
-      },
-      name ? 'It’s yours, and you’re wearing it.' : 'It’s yours. Pick a tag to wear it.',
-    )
-
-  const toGo = prize.price - balance
-  const days = Math.max(1, Math.ceil(toGo / TICKETS_A_DAY))
-
-  let status: string
-  if (signedOut) status = 'Sign in to collect tickets. Every saved run pays some.'
-  // A session whose account isn't known yet: never Sign in.
-  else if (!signedIn) status = authLoading ? 'Checking your tickets…' : 'Couldn’t reach your account just now.'
-  else if (owned) status = worn ? 'Yours, and you’re wearing it.' : 'Yours for good. Wear it any time.'
-  else if (afford) status = `You have ${balance.toLocaleString()} tickets, so ${(balance - prize.price).toLocaleString()} left after.`
-  else status = `You have ${balance.toLocaleString()}. ${toGo.toLocaleString()} to go, about ${days === 1 ? 'a day' : `${days} days`} of play.`
-
-  const primary = (() => {
-    if (signedOut) return <button type="button" className="panel__btn" onClick={openSiteMenu}>Sign in</button>
-    if (!signedIn) {
-      return (
-        <span className="panel__btn skel-btn" aria-hidden="true">
-          Save for it
-        </span>
-      )
-    }
-    if (owned) {
-      if (!name) return <button type="button" className="panel__btn" onClick={openSiteMenu}>Pick a tag to wear it</button>
-      if (worn) return <button type="button" className="panel__btn" disabled>Wearing it</button>
-      return (
-        <button type="button" className="panel__btn" disabled={busy} onClick={() => void act(() => putOn(prize.id), 'You’re wearing it.')}>
-          {busy ? 'Putting it on…' : 'Wear it'}
-        </button>
-      )
-    }
-    if (afford) {
-      return (
-        <button type="button" className="panel__btn" disabled={busy} onClick={() => setConfirming(true)}>
-          <TicketGlyph size={18} />
-          Trade {prize.price.toLocaleString()} tickets
-        </button>
-      )
-    }
-    if (saving) return <button type="button" className="panel__btn" disabled>Saving for it</button>
-    return (
-      <button type="button" className="panel__btn" disabled={busy} onClick={() => void act(() => setTicketGoal(prize.id), 'Saving for it. Every run shows how close you are.')}>
-        Save for it
-      </button>
-    )
-  })()
-
-  const secondary = (() => {
-    if (owned && worn && name) {
-      return (
-        <button type="button" className="panel__btn panel__btn--ghost" disabled={busy} onClick={() => void act(() => putOn(null), 'Taken off. It’s still yours.')}>
-          Take it off
-        </button>
-      )
-    }
-    if (!owned && saving && !afford) {
-      return (
-        <button type="button" className="panel__btn panel__btn--ghost" disabled={busy} onClick={() => void act(() => setTicketGoal(null))}>
-          Stop saving
-        </button>
-      )
-    }
-    return (
-      <button type="button" className="panel__btn panel__btn--ghost" onClick={onClose}>
-        Back to the counter
-      </button>
-    )
-  })()
-
   return (
     <Panel
       wide
       className="prize-panel"
       labelledBy={titleId}
       onClose={onClose}
-      scrimCloses={!busy}
       style={{ '--celeb-accent': '#ff8552', '--hero-ink': '#3a1406' } as CSSProperties}
       backdrop={burst ? <ReportConfetti key={burst} accent="#ff8552" kind={prize.kind === 'confetti' ? prize.id : null} /> : null}
     >
@@ -313,7 +182,7 @@ export function PrizePanel({
               {siblings.map((p) => {
                 const mine = tickets.owned.includes(p.id)
                 return (
-                  <button key={p.id} type="button" className="prize-variant" aria-pressed={p.id === prize.id} onClick={() => pick(p.id)}>
+                  <button key={p.id} type="button" className="prize-variant" aria-pressed={p.id === prize.id} onClick={() => onPick(p.id)}>
                     <PrizeArt prize={p} avatar={avatar} name={tag} width={66} />
                     <span className="prize-variant__name">{p.name}</span>
                     <span className="prize-variant__price">{mine ? (isWearing(avatar, p.id) ? 'Wearing' : 'Yours') : p.price.toLocaleString()}</span>
@@ -325,44 +194,24 @@ export function PrizePanel({
           <p className="prize-info__blurb">{prize.blurb}</p>
           {owned ? (
             <p className="prize-info__price prize-info__price--yours">Yours</p>
-          ) : (
+          ) : prize.earned || prize.retired ? null : (
             <p className="prize-info__price">
               <TicketGlyph size={34} />
               <b>{prize.price.toLocaleString()}</b> tickets
             </p>
           )}
-          {note?.ok ? null : (
-            <p className={`prize-info__status${owned ? ' prize-info__status--ok' : signedIn && !afford ? ' prize-info__status--go' : ''}`}>{status}</p>
-          )}
-          {/* On a phone the sheet scrolls, the prizes' grid and all: these stay pinned at its foot (counter.css), with
-              what a press of them said. */}
-          <div className="prize-info__foot">
-            {note ? (
-              <p className={`prize-info__note${note.ok ? ' prize-info__note--ok' : ''}`} role={note.ok ? 'status' : 'alert'}>
-                {note.text}
-              </p>
-            ) : null}
-            {confirming ? (
-              <div className="prize-confirm">
-                <p className="prize-confirm__q">
-                  Trade {prize.price.toLocaleString()} tickets for {prize.name}?
-                </p>
-                <div className="panel__actions prize-confirm__acts">
-                  <button type="button" className="panel__btn" disabled={busy} onClick={() => void trade()}>
-                    {busy ? 'Trading…' : 'Yes, trade'}
-                  </button>
-                  <button type="button" className="panel__btn panel__btn--ghost" disabled={busy} onClick={() => setConfirming(false)}>
-                    Not now
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="panel__actions prize-info__acts">
-                {primary}
-                {secondary}
-              </div>
-            )}
-          </div>
+          <PrizeActions
+            key={prize.id}
+            prize={prize}
+            avatar={avatar}
+            name={name}
+            onTraded={prize.kind === 'confetti' ? () => setBurst((b) => b + 1) : undefined}
+            fallback={
+              <button type="button" className="panel__btn panel__btn--ghost" onClick={onClose}>
+                Back to the counter
+              </button>
+            }
+          />
           <p className="prize-info__fine">Looks only: it never changes a score. Once it’s traded it’s yours for good.</p>
         </div>
       </div>

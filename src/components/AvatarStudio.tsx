@@ -516,7 +516,7 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
               prizeCount === 0 ? (
                 <div className="studio__prizes-empty">
                   <p>
-                    Name styles, titles, card themes and confetti come from the prize counter, for the tickets every run pays. What you
+                    Name styles, backgrounds, confetti and signs come from the prize counter, for the tickets every run pays. What you
                     trade for goes on here.
                   </p>
                   <a className="panel__btn" href={prizesHref()}>

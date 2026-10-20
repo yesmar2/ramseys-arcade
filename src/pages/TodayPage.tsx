@@ -341,7 +341,7 @@ function Rewards({ current, best }: { current: number; best: number }) {
     <section className="today-rewards" aria-labelledby="today-rewards-title">
       <div className="today-rewards__head">
         <h2 id="today-rewards-title">Streak rewards</h2>
-        <p>Looks for your badge, never score. Only a streak earns them.</p>
+        <p>Looks for your avatar, never score. Only a streak earns them.</p>
       </div>
       <ol className="today-rewards__list">
         {TODAY_MILESTONES.map((m) => {

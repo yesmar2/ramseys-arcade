@@ -1,29 +1,36 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { PageShell } from '../components/PageShell'
+import { PlayerAvatar } from '../components/PlayerAvatar'
+import { PlayerName } from '../components/PlayerName'
+import { ReportConfetti } from '../components/RunReport'
+import { HangarBays } from '../components/prizes/HangarBays'
+import { PrizeActions } from '../components/prizes/PrizeActions'
 import { LedCounter, PrizeArt } from '../components/prizes/PrizeArt'
-import { SignArt } from '../components/prizes/SignArt'
+import { PlayerCardMini, PrizePanel } from '../components/prizes/PrizePanel'
 import { TicketGlyph } from '../components/prizes/Ticket'
-import { PrizePanel } from '../components/prizes/PrizePanel'
 import { openSiteMenu } from '../components/siteNav'
+import { FOR_SALE, PRIZE_KINDS, PRIZES, prizeById, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
 import { ticketsHref } from '../hooks/useHashRoute'
-import { FOR_SALE, PRIZE_KINDS, prizeById, SHELVES, SIGNS, TICKETS_A_DAY, type Prize, type PrizeKind } from '../data/prizes'
 import { useAuth } from '../hooks/useAuth'
 import { useLiveEvents } from '../hooks/useLiveEvents'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { isWearing, resolveAvatar } from '../lib/avatars'
-import { prizeGlow } from '../lib/prizeArt'
+import { isWearing, resolveAvatar, wearPrize, wornPrize, type Avatar } from '../lib/avatars'
+import { moveChoice } from '../lib/choiceKeys'
+import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName } from '../lib/leaderboard'
+import { prizeGlow } from '../lib/prizeArt'
+import { useSeason } from '../lib/season'
+import { HANGAR_SKINS } from '../lib/skins'
 import { useTickets } from '../lib/tickets'
 import '../styles/counter.css'
-import { HangarBays } from '../components/prizes/HangarBays'
+import '../styles/fitting.css'
 
 /**
- * The prize counter: where tickets trade for looks. Every prize stands in the
- * case wearing your own badge or tag, with its price on a paper tag; the
- * signs, your tag in lights, hang on the wall above, dearest at the top. Pick
- * one to try it on and trade for it. Nothing here changes a score, and
- * tickets can't be bought.
+ * The prize counter, as a fitting room: you on one side, your player card and your row on a board, and on the
+ * other a tab for each place a prize goes. Pick one and you're wearing it there before you trade for it. On a
+ * phone, a pick opens the prize's own sheet instead, which tries it on the same way. Nothing here changes a
+ * score, and tickets can't be bought. Titles aren't here: they're earned (a season, a streak), never traded for.
  */
 
 /** What pays, along the hero's foot. The day's event pays only while the arcade's own events run. */
@@ -58,44 +65,112 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   )
 }
 
-type Filter = 'all' | Exclude<PrizeKind, 'sign'>
+type Slot = Exclude<PrizeKind, 'title'> | 'skin'
 
-const FILTERS: Filter[] = ['all', 'finish', 'name', 'card', 'confetti', 'title']
+/** The fitting room's tabs: each a place a prize goes, and what it looks like there. */
+const SLOTS: { id: Slot; where: string }[] = [
+  { id: 'finish', where: 'The circle by your tag, on every board you’re on.' },
+  { id: 'name', where: 'How your tag is written on the boards.' },
+  { id: 'card', where: 'Behind your player card.' },
+  { id: 'confetti', where: 'Goes up when you top a board or win an event.' },
+  { id: 'sign', where: 'Your tag in lights, across your player card.' },
+  { id: 'skin', where: 'Your ship, car or snake in its game. Your ghost and your row on the boards wear it too.' },
+]
+
+function slotLabel(slot: Slot): string {
+  return slot === 'skin' ? 'Skins' : PRIZE_KINDS[slot].many
+}
+
+/** The kinds the "wearing" list goes through, in the order they sit on you. */
+const WEAR_ROWS: PrizeKind[] = ['finish', 'name', 'title', 'card', 'confetti', 'sign']
 
 function daysOfPlay(tickets: number) {
   const days = Math.max(1, Math.ceil(tickets / TICKETS_A_DAY))
   return days === 1 ? 'about a day of play' : `about ${days} days of play`
 }
 
+/** Phones and narrow windows: a pick opens the prize's sheet, since the fitting room's "you" is out of sight. */
+function useNarrow(): boolean {
+  const query = '(max-width: 899px)'
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches)
+  useEffect(() => {
+    const mq = window.matchMedia?.(query)
+    if (!mq) return
+    const on = () => setNarrow(mq.matches)
+    on()
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return narrow
+}
+
+/** What you have on of a kind, by name: a finish is the badge itself, the rest are worn. */
+function wornOf(avatar: Avatar, kind: PrizeKind): Prize | null {
+  if (kind === 'finish') return prizeById(avatar.badge)
+  return prizeById(wornPrize(avatar, kind))
+}
+
 export function PrizeCounterPage() {
   const { signedIn, signedOut } = useAuth()
   const name = normalizePlayerName(usePlayerName())
   const tickets = useTickets()
+  const standing = useGlobalRank()
+  const season = useSeason().season
   const avatarId = useMyAvatarId(name)
   const avatar = useMemo(() => resolveAvatar(avatarId, name || 'YOU'), [avatarId, name])
   const tag = name || 'YOU'
   const owned = useMemo(() => new Set(tickets.owned), [tickets.owned])
-  const [filter, setFilter] = useState<Filter>('all')
+  const narrow = useNarrow()
+  // Sent here for a skin, from its card on a board or a game's skin picker: the Skins tab, its bay lit.
+  const [slot, setSlot] = useState<Slot>(() => (typeof window !== 'undefined' && window.location.hash.startsWith('#hangar') ? 'skin' : 'finish'))
+  const [tryingId, setTryingId] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [burst, setBurst] = useState(0)
   const goal = prizeById(tickets.goal)
   const balance = signedIn ? tickets.balance : 0
   // The arcade's own events can be paused (/admin, Site events): then there's no day's event to pay for.
   const { official } = useLiveEvents('')
   const eventOn = official.some((t) => t.cadence === 'daily')
   const event = eventOn ? 'today’s event, ' : ''
-  const shown = FOR_SALE.filter((p) => p.kind !== 'sign' && (filter === 'all' || p.kind === filter))
-  // Yours of the case's: what a streak or a season's pass gave isn't in it.
-  const ownedCount = FOR_SALE.filter((p) => p.kind !== 'sign' && owned.has(p.id)).length
+
+  const trying = prizeById(tryingId)
+  const shown = trying ? wearPrize(avatar, trying.kind, trying.id) : avatar
 
   const counts = useMemo(() => {
-    const out: Record<string, number> = { all: 0 }
-    for (const p of FOR_SALE) {
-      if (p.kind === 'sign') continue
-      out.all = (out.all ?? 0) + 1
-      out[p.kind] = (out[p.kind] ?? 0) + 1
-    }
+    const out: Partial<Record<Slot, number>> = { skin: HANGAR_SKINS.length }
+    for (const p of FOR_SALE) if (p.kind !== 'title') out[p.kind] = (out[p.kind] ?? 0) + 1
     return out
   }, [])
+
+  const pick = (p: Prize) => {
+    if (narrow) {
+      setOpenId(p.id)
+      return
+    }
+    const again = tryingId === p.id
+    setTryingId(again ? null : p.id)
+    if (!again && p.kind === 'confetti') setBurst((b) => b + 1)
+  }
+
+  // The prize you're saving for: its tab, and on a wide screen it's on you.
+  const showGoal = () => {
+    if (!goal) return
+    if (goal.kind !== 'title') setSlot(goal.kind)
+    pick(goal)
+  }
+
+  const forSale = slot === 'skin' ? [] : FOR_SALE.filter((p) => p.kind === slot).sort((a, b) => a.price - b.price)
+  // Earned, never traded for: yours ones, the streaks', and what this season's pass gives. Later seasons' stay a surprise.
+  const seasonMark = season ? `Season ${season.id}’s` : null
+  const earned =
+    slot === 'skin'
+      ? []
+      : PRIZES.filter(
+          (p) =>
+            p.kind === slot &&
+            p.earned &&
+            (owned.has(p.id) || /streak/.test(p.earned.by) || (seasonMark != null && p.earned.by.startsWith(seasonMark))),
+        )
 
   const tagFor = (p: Prize) => {
     if (owned.has(p.id)) {
@@ -106,48 +181,45 @@ export function PrizeCounterPage() {
         </span>
       )
     }
+    if (p.earned) return <span className="fit-tile__earned">{p.earned.short}</span>
     const short = signedIn && p.price > balance
     return (
-      <span className={`counter-tag${goal?.id === p.id ? ' counter-tag--goal' : short ? ' counter-tag--short' : ''}`}>
-        <TicketGlyph size={17} />
+      <span className={`counter-tag fit-tile__tag${goal?.id === p.id ? ' counter-tag--goal' : short ? ' counter-tag--short' : ''}`}>
+        <TicketGlyph size={16} />
         {p.price.toLocaleString()}
       </span>
     )
   }
 
-  const item = (p: Prize) => {
+  const tile = (p: Prize) => {
     const mine = owned.has(p.id)
-    const toGo = signedIn && !mine ? p.price - balance : 0
     return (
-      <li key={p.id} className="counter-item">
+      <li key={p.id} className="fit-tile-wrap">
         <button
           type="button"
-          className="counter-item__btn"
-          onClick={() => setOpenId(p.id)}
-          aria-label={`${p.name}, ${PRIZE_KINDS[p.kind].one.toLowerCase()}. ${mine ? (isWearing(avatar, p.id) ? 'Yours, and you’re wearing it' : 'Yours') : `${p.price.toLocaleString()} tickets`}`}
+          className={`fit-tile${p.earned && !mine ? ' fit-tile--earned' : ''}`}
+          aria-pressed={!narrow && tryingId === p.id}
+          onClick={() => pick(p)}
+          aria-label={`${p.name}. ${mine ? (isWearing(avatar, p.id) ? 'Yours, and you’re wearing it' : 'Yours') : p.earned ? p.earned.by : `${p.price.toLocaleString()} tickets`}. Try it on`}
         >
-          <span className="counter-item__stage">
-            {goal?.id === p.id && !mine ? (
-              <span className="counter-ribbon">
-                <Icon name="star" size={12} />
-                Saving for
-              </span>
-            ) : null}
+          {goal?.id === p.id && !mine ? (
+            <span className="counter-ribbon">
+              <Icon name="star" size={12} />
+              Saving for
+            </span>
+          ) : null}
+          <span className="fit-tile__stage">
             <span className="counter-item__spot" style={{ '--spot': prizeGlow(p, avatar) } as CSSProperties} />
-            <PrizeArt className="counter-item__art" prize={p} avatar={avatar} name={tag} width={150} />
+            <PrizeArt className="fit-tile__art" prize={p} avatar={avatar} name={tag} width={slot === 'card' || slot === 'sign' ? 190 : 130} />
           </span>
-          <span className="counter-item__plank" aria-hidden="true" />
-          <span className={`counter-item__hang${mine ? ' counter-item__hang--yours' : ''}`}>{tagFor(p)}</span>
-          <span className="counter-item__name">{p.name}</span>
-          <span className="counter-item__kind">{PRIZE_KINDS[p.kind].one}</span>
-          <span className="counter-item__note">{toGo > 0 ? `${toGo.toLocaleString()} to go` : ''}</span>
+          <span className="fit-tile__name">{p.name}</span>
+          {tagFor(p)}
         </button>
       </li>
     )
   }
 
   const open = prizeById(openId)
-  const wall = [...SIGNS].reverse()
 
   return (
     <PageShell innerClassName="lb-page__inner counter-page">
@@ -159,16 +231,18 @@ export function PrizeCounterPage() {
               Prize counter
             </span>
             <h1 className="counter-title" id="counter-title">
-              Play for tickets.
+              Try it on.
               <br />
-              <em>Pick a prize.</em>
+              <em>Trade for it.</em>
             </h1>
             <p className="counter-lede">
-              Every game you play pays out tickets. Trade them here for looks that show on the boards: badge finishes, name styles, card themes, confetti,
-              titles, and signs that put your tag in lights. Earned by playing, never bought.
+              Every game you play pays out tickets. Trade them here for looks that show on the boards: avatars, name styles, backgrounds,
+              confetti, signs and skins. Pick one and you’re wearing it before you trade. Earned by playing, never bought.
             </p>
+          </div>
+          <div className="counter-hero__mine">
             {signedIn ? (
-              <div className="counter-hero__row">
+              <>
                 <div className="counter-led">
                   <LedCounter value={balance} width={200} />
                   <span className="counter-led__side">
@@ -180,7 +254,7 @@ export function PrizeCounterPage() {
                   </span>
                 </div>
                 {goal ? (
-                  <button type="button" className="counter-goal" onClick={() => setOpenId(goal.id)}>
+                  <button type="button" className="counter-goal" onClick={showGoal}>
                     <span className="counter-goal__top">
                       <PrizeArt prize={goal} avatar={avatar} name={tag} width={58} />
                       <span className="counter-goal__txt">
@@ -207,60 +281,24 @@ export function PrizeCounterPage() {
                 ) : (
                   <p className="counter-goal counter-goal--none">
                     <span className="counter-goal__cap">Saving for</span>
-                    <span>Pick a prize and save for it: every run shows how close you are.</span>
+                    <span>Try something on and save for it: every run shows how close you are.</span>
                   </p>
                 )}
-              </div>
+              </>
             ) : signedOut ? (
-              <div className="counter-hero__row">
+              <>
                 <button type="button" className="counter-signin" onClick={openSiteMenu}>
                   Sign in to collect tickets
                 </button>
                 <span className="counter-signin__note">Playing is free. Tickets are kept on your account, with your scores.</span>
-              </div>
+              </>
             ) : (
               // A session whose account isn't known yet: the room your tickets and your goal take, and no Sign in.
-              <div className="counter-hero__row" aria-hidden="true">
-                <span className="counter-led skel-btn" style={{ width: '24.25rem', maxWidth: '100%' }} />
-                <span className="counter-goal skel-btn" />
-              </div>
+              <>
+                <span className="counter-led skel-btn" aria-hidden="true" />
+                <span className="counter-goal skel-btn" aria-hidden="true" />
+              </>
             )}
-          </div>
-          <div className="counter-wall">
-            <span className="counter-wall__cap">Top of the wall</span>
-            <ul className="counter-wall__signs" aria-label="Signs">
-              {wall.map((s) => {
-                const mine = owned.has(s.id)
-                const toGo = signedIn && !mine ? s.price - balance : 0
-                return (
-                  <li key={s.id} className="counter-wall__item">
-                    <button
-                      type="button"
-                      className="counter-wall__sign"
-                      onClick={() => setOpenId(s.id)}
-                      aria-label={`${s.name}, sign. ${mine ? (isWearing(avatar, s.id) ? 'Yours, and you’re wearing it' : 'Yours') : `${s.price.toLocaleString()} tickets`}`}
-                    >
-                      <SignArt sign={s.id} name={tag} width={220} />
-                    </button>
-                    <div className="counter-wall__row">
-                      <span className="counter-wall__name">{s.name}</span>
-                      {mine ? (
-                        <span className="counter-stamp">
-                          <Icon name="check" size={14} />
-                          {isWearing(avatar, s.id) ? 'Wearing' : 'Yours'}
-                        </span>
-                      ) : (
-                        <span className={`counter-tag counter-tag--wall${goal?.id === s.id ? ' counter-tag--goal' : ''}`}>
-                          <TicketGlyph size={15} />
-                          {s.price.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                    {toGo > 0 ? <span className="counter-wall__note">{toGo.toLocaleString()} to go</span> : null}
-                  </li>
-                )
-              })}
-            </ul>
           </div>
         </div>
         <ul className="counter-band" aria-label="What pays tickets">
@@ -276,41 +314,114 @@ export function PrizeCounterPage() {
         </ul>
       </section>
 
-      <HangarBays />
+      <div className="fit">
+        <aside className="fit-you" aria-label={trying ? `You, trying on ${trying.name}` : 'You, as you are'}>
+          <span className="fit-you__cap">{trying ? 'Trying on' : 'You, wearing it'}</span>
+          <div className="fit-you__card">
+            <PlayerCardMini avatar={shown} name={tag} line={standing.rank != null ? `#${standing.rank} in the standings` : undefined} />
+          </div>
+          <div className="fit-row">
+            <span className="fit-row__cap">On a board</span>
+            <div className="fit-row__me">
+              <span className="fit-row__rank">{standing.rank ?? '–'}</span>
+              <PlayerAvatar avatar={shown} name={tag} size="md" />
+              <PlayerName className="fit-row__name" name={tag} style={wornPrize(shown, 'name')} />
+            </div>
+          </div>
 
-      <div className="counter-head">
-        <h2 className="counter-head__title">In the case</h2>
-        <span className="counter-head__sub">
-          {counts.all} prizes{signedIn && ownedCount ? ` · ${ownedCount} yours` : ''}
-        </span>
-        <div className="counter-chips" role="group" aria-label="Show">
-          {FILTERS.map((f) => (
-            <button key={f} type="button" className="counter-chip" aria-pressed={filter === f} onClick={() => setFilter(f)}>
-              {f === 'all' ? 'All' : PRIZE_KINDS[f].many}
-              <span>{counts[f]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="counter-case">
-        <span className="counter-case__glass" aria-hidden="true" />
-        {SHELVES.map((shelf) => {
-          const items = shown.filter(shelf.holds).sort((a, b) => b.price - a.price)
-          if (!items.length) return null
-          return (
-            <section key={shelf.id} className={`counter-shelf counter-shelf--${shelf.id}`} aria-label={shelf.label}>
-              <div className="counter-shelf__head">
-                <h3 className="counter-shelf__label">{shelf.label}</h3>
-                <span className="counter-shelf__range">{shelf.range}</span>
-                <span className="counter-shelf__count">
-                  {items.length} {items.length === 1 ? 'prize' : 'prizes'}
-                </span>
+          {trying ? (
+            <div className="fit-try" key={trying.id}>
+              <div className="fit-try__head">
+                <span className="fit-try__kind">{PRIZE_KINDS[trying.kind].one}</span>
+                <b className="fit-try__name">{trying.name}</b>
+                {owned.has(trying.id) || trying.earned || trying.retired ? null : (
+                  <span className="counter-tag fit-tile__tag">
+                    <TicketGlyph size={16} />
+                    {trying.price.toLocaleString()}
+                  </span>
+                )}
               </div>
-              <ul className="counter-shelf__items">{items.map(item)}</ul>
-            </section>
-          )
-        })}
+              <p className="fit-try__blurb">{trying.blurb}</p>
+              {trying.kind === 'confetti' ? (
+                <button type="button" className="fit-try__burst" onClick={() => setBurst((b) => b + 1)}>
+                  Let it go again
+                </button>
+              ) : null}
+              <PrizeActions
+                prize={trying}
+                avatar={avatar}
+                name={name}
+                onTraded={trying.kind === 'confetti' ? () => setBurst((b) => b + 1) : undefined}
+                fallback={
+                  <button type="button" className="panel__btn panel__btn--ghost" onClick={() => setTryingId(null)}>
+                    Put it back
+                  </button>
+                }
+              />
+            </div>
+          ) : (
+            <p className="fit-you__hint">Pick anything to try it on. Nothing changes for anyone else until it’s yours and you put it on.</p>
+          )}
+
+          <dl className="fit-wear">
+            {WEAR_ROWS.map((kind) => {
+              const now = wornOf(avatar, kind)
+              const next = trying?.kind === kind && trying.id !== now?.id ? trying : null
+              // A title only shows when you have one on: they're earned, not at the counter.
+              if (kind === 'title' && !now && !next) return null
+              return (
+                <div key={kind} className="fit-wear__row">
+                  <dt>{PRIZE_KINDS[kind].one}</dt>
+                  <dd>
+                    {now ? now.name : <span className="fit-wear__none">None</span>}
+                    {next ? <span className="fit-wear__next"> → {next.name}</span> : null}
+                  </dd>
+                </div>
+              )
+            })}
+          </dl>
+        </aside>
+
+        <section className="fit-shop" aria-label="Prizes">
+          <div className="fit-tabs" role="tablist" aria-label="Where it goes" onKeyDown={moveChoice}>
+            {SLOTS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                id={`fit-tab-${s.id}`}
+                aria-controls="fit-panel"
+                aria-selected={slot === s.id}
+                tabIndex={slot === s.id ? 0 : -1}
+                className="fit-tab"
+                onClick={() => setSlot(s.id)}
+              >
+                {slotLabel(s.id)}
+                <span>{counts[s.id] ?? 0}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="fit-panel" id="fit-panel" role="tabpanel" aria-labelledby={`fit-tab-${slot}`}>
+            <div className="fit-panel__head">
+              <h2 className="fit-panel__title">{slotLabel(slot)}</h2>
+              <p className="fit-panel__where">{SLOTS.find((s) => s.id === slot)?.where}</p>
+            </div>
+            {slot === 'skin' ? (
+              <HangarBays />
+            ) : (
+              <>
+                <ul className={`fit-grid fit-grid--${slot}`}>{forSale.map(tile)}</ul>
+                {earned.length ? (
+                  <div className="fit-earned">
+                    <h3 className="fit-earned__title">Earned, never traded for</h3>
+                    <ul className={`fit-grid fit-grid--${slot} fit-grid--earned`}>{earned.map(tile)}</ul>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+        </section>
       </div>
 
       <section className="counter-rules" id="how-tickets-work" aria-label="How tickets work">
@@ -326,7 +437,7 @@ export function PrizeCounterPage() {
             <Icon name="sparkle" />
             Looks, never score
           </span>
-          <p>A prize changes how you look, never a score or a place. Rings and pins still only come from playing well.</p>
+          <p>A prize changes how you look, never a score or a place. Rings, pins and titles still only come from playing well.</p>
         </div>
         <div className="counter-rule">
           <span className="counter-rule__t">
@@ -351,15 +462,13 @@ export function PrizeCounterPage() {
         </div>
       </section>
 
-      {open ? (
-        <PrizePanel
-          prize={open}
-          avatar={avatar}
-          name={name}
-          onPick={setOpenId}
-          onClose={() => setOpenId(null)}
-        />
+      {burst ? (
+        <div className="fit-burst" aria-hidden="true">
+          <ReportConfetti key={burst} accent="#ff8552" kind={trying?.kind === 'confetti' ? trying.id : null} />
+        </div>
       ) : null}
+
+      {open ? <PrizePanel prize={open} avatar={avatar} name={name} onPick={setOpenId} onClose={() => setOpenId(null)} /> : null}
     </PageShell>
   )
 }

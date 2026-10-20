@@ -12,7 +12,7 @@ import { TicketGlyph } from './Ticket'
 import '../../styles/hangarBays.css'
 
 /*
- * The Hangar, at the prize counter: skins for good, not a season's, each a game's ship, car or tail in a lit
+ * The Hangar, the prize counter's Skins tab: skins for good, not a season's, each a game's ship, car or tail in a lit
  * bay, traded for tickets (the API's prizes.ts has the prices, lib/skins.ts HANGAR_SKINS the skins). Roll one
  * out and it's worn at once; your ghost, your row on the boards and your challenge links wear it too. A
  * season's skins stay its pass's: the Hangar never has them.
@@ -135,13 +135,8 @@ export function HangarBays() {
   }
 
   return (
-    <section className="hangar-bays" id="hangar" aria-labelledby="hangar-bays-title">
-      <div className="hangar-bays__head">
-        <h2 id="hangar-bays-title" className="hangar-bays__title">
-          The Hangar
-        </h2>
-        <p className="hangar-bays__sub">Skins for good, not just for a season. Wear one and your ghost, your row on the boards and your challenge links wear it too.</p>
-      </div>
+    // The counter's Skins tab, which says what they are above it.
+    <div className="hangar-bays" id="hangar">
       {note ? (
         <p className={`hangar-bays__note${note.ok ? ' hangar-bays__note--ok' : ''}`} role="status">
           {note.text}
@@ -156,11 +151,11 @@ export function HangarBays() {
             <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <path d="M12 7.5v4.5l3 2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
-          <b className="hbay__name">More bays soon</b>
+          <b className="hbay__name">More skins soon</b>
           <span className="hbay__what">New skins roll in from time to time. A season’s own are on its pass.</span>
         </li>
       </ul>
       {confirmPanel}
-    </section>
+    </div>
   )
 }

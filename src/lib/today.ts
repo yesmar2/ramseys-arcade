@@ -222,9 +222,9 @@ export function dayMarks(done: number, rule: { need: number; count: number }): {
 /** What a streak earns, once an account (the API's TODAY_MILESTONES): looks and tickets, never score. */
 export const TODAY_MILESTONES: readonly { day: number; prize: string }[] = [
   { day: 3, prize: '10 tickets' },
-  { day: 7, prize: 'The Dailies pin for your badge' },
+  { day: 7, prize: 'The Dailies pin for your avatar' },
   { day: 14, prize: '25 tickets' },
-  { day: 30, prize: 'The gold badge finish' },
+  { day: 30, prize: 'The Gold avatar' },
   { day: 100, prize: 'The “Every Day” title' },
 ]
 

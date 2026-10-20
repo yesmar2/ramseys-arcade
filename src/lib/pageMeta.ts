@@ -474,7 +474,7 @@ export function pageMeta(route: Route): PageMeta {
         ...site,
         title: titled('Prize counter'),
         description:
-          'Every run pays tickets. Trade them at the prize counter for looks that show on the boards: badge finishes, name styles, card themes, confetti and titles. Earned by playing, never bought.',
+          'Every run pays tickets. Trade them at the prize counter for looks that show on the boards: avatars, name styles, backgrounds, confetti, signs and skins. Earned by playing, never bought.',
         path: prizesHref(),
       }
     case 'tickets':
@@ -485,7 +485,7 @@ export function pageMeta(route: Route): PageMeta {
         // The season of the day (Space Race, then Cold Snap from Jan 5), as the prerender's build sees it.
         title: titled(`Season ${seasonOn().id}: ${seasonOn().name}`),
         description:
-          'A free season pass of 30 levels. Every ticket you win in any game moves you up, with ships, badges and titles to win on the way. Looks only, never score.',
+          'A free season pass of 30 levels. Every ticket you win in any game moves you up, with ships, avatars and titles to win on the way. Looks only, never score.',
         path: seasonHref(),
         // Not on the sitemap until the season starts with the launch.
         noindex: true,
