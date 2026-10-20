@@ -275,6 +275,106 @@ html[data-theme='dark'] .brand-mark__dark {
   color: inherit;
 }
 
+/*
+ * A board's period tabs and whose boards, together (.board-picks): on a desk they sit side by side as they are, the
+ * wrapper adding no box. On a phone, with the chip there, they're one box: the tabs, then "Among …" as its second
+ * line (C of the "Phone Period + Group Picker" canvas, 2026-10-20). A banner's chip shows only on a phone
+ * (--phone); on a desk it's with the banner's buttons (--desk).
+ */
+.board-picks {
+  display: contents;
+}
+
+.site-scope__lead,
+.site-scope--phone {
+  display: none;
+}
+
+@media (max-width: 42rem) {
+  .site-scope--phone {
+    display: block;
+  }
+
+  .site-scope--desk {
+    display: none;
+  }
+
+  .board-picks:has(> .site-scope) {
+    --picks-line: rgba(var(--ink-rgb), 0.08);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 1.5rem;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(var(--ink-rgb), 0.07);
+    background: rgba(var(--surface-rgb), 0.62);
+  }
+
+  .gb-board__head--page .board-picks:has(> .site-scope),
+  .rbk-tabhead .board-picks:has(> .site-scope) {
+    margin-top: 0;
+  }
+
+  .gb-banner .board-picks:has(> .site-scope) {
+    --picks-line: var(--banner-chip-border);
+    margin-top: 0.35rem;
+    border-color: var(--banner-chip-border);
+    background: var(--banner-chip-bg);
+  }
+
+  .board-picks:has(> .site-scope) > .seg {
+    width: 100%;
+    margin: 0;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .board-picks > .site-scope {
+    width: 100%;
+    border-top: 1px solid var(--picks-line);
+  }
+
+  .board-picks > .site-scope .site-scope__btn,
+  .board-picks > .site-scope .site-scope__btn--group {
+    width: 100%;
+    min-height: 2.7rem;
+    padding: 0 1rem;
+    justify-content: flex-start;
+    gap: 0.55rem;
+    border: 0;
+    border-radius: 0 0 1.4rem 1.4rem;
+    background: transparent;
+  }
+
+  .board-picks > .site-scope .site-scope__btn:hover,
+  .board-picks > .site-scope .site-scope__btn:focus-visible,
+  .board-picks > .site-scope .site-scope__btn[aria-expanded='true'] {
+    background: rgba(var(--ink-rgb), 0.05);
+  }
+
+  .board-picks > .site-scope .site-scope__lead {
+    display: inline;
+    margin-right: 0.2rem;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .board-picks > .site-scope--banner .site-scope__lead {
+    color: inherit;
+    opacity: 0.75;
+  }
+
+  .board-picks > .site-scope .site-scope__among {
+    flex: 1;
+    max-width: none;
+    text-align: left;
+  }
+}
+
 /* It opens toward the side with room: under the chip's right edge, or its left one near a phone's left side. */
 .site-scope__pop {
   position: absolute;

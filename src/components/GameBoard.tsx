@@ -163,8 +163,10 @@ function BoardHead({
           {title}
         </h2>
       ) : null}
-      <PeriodTabs slug={slug} period={period} />
-      <BoardsAmong />
+      <div className="board-picks">
+        <PeriodTabs slug={slug} period={period} />
+        <BoardsAmong />
+      </div>
       {count ? <span className="gb-board__count">{count}</span> : null}
       {findRef ? (
         <span className="gb-board__find" ref={findRef}>

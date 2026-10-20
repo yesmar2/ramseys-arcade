@@ -241,7 +241,11 @@ function Banner({
             recordLede(game, record, period, entries, shut)
           )}
         </p>
-        <PeriodTabs game={game} recordId={recordId} period={period} />
+        {/* On a phone the group is the tabs' second line; on a desk it's with the banner's buttons. */}
+        <div className="board-picks">
+          <PeriodTabs game={game} recordId={recordId} period={period} />
+          <BoardsAmong className="site-scope--banner site-scope--phone" />
+        </div>
         <div className="home-banner__acts">
           {canPlay ? (
             <a className="home-banner__cta" href={play.href}>
@@ -266,7 +270,7 @@ function Banner({
             }
             url={recordHref(game, recordId, period)}
           />
-          <BoardsAmong className="site-scope--banner" />
+          <BoardsAmong className="site-scope--banner site-scope--desk" />
         </div>
       </div>
       <a className="home-banner__art gb-banner__art" href={play.href} tabIndex={-1} aria-hidden="true">

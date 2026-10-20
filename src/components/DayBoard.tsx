@@ -242,7 +242,11 @@ function Banner({
             </>
           )}
         </p>
-        <PeriodTabs slug={slug} />
+        {/* On a phone the group is the tabs' second line; on a desk it's with the banner's buttons. */}
+        <div className="board-picks">
+          <PeriodTabs slug={slug} />
+          <BoardsAmong className="site-scope--banner site-scope--phone" />
+        </div>
         <div className="home-banner__acts">
           <a className="home-banner__ghost" href={dailyTabHref(slug, 'past', course ? course.anchor(day) : day)}>
             {words.pastTab}
@@ -253,7 +257,7 @@ function Banner({
             label={`${game.name}, ${dayWords}: the ${BOARD_NAMES.ranked} board on ${APP_NAME}.`}
             url={dayBoardHref(slug, day)}
           />
-          <BoardsAmong className="site-scope--banner" />
+          <BoardsAmong className="site-scope--banner site-scope--desk" />
         </div>
         <p className="gb-closes">
           <TrophyIcon />

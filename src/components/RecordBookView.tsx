@@ -498,8 +498,10 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
           )}
         </div>
         <div className="rbk-tabhead__picks">
-          <PeriodTabs game={game} period={period} />
-          <BoardsAmong />
+          <div className="board-picks">
+            <PeriodTabs game={game} period={period} />
+            <BoardsAmong />
+          </div>
         </div>
       </div>
 

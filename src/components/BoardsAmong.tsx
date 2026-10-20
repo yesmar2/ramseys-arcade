@@ -191,6 +191,8 @@ export function BoardsAmong({ className }: { className?: string }) {
           setOpen((was) => !was)
         }}
       >
+        {/* Said only on a phone, where the chip is the tabs' second line (.board-picks, chrome.css). */}
+        <span className="site-scope__lead">Among</span>
         <span className="site-scope__mark">
           <PeopleIcon />
         </span>

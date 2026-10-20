@@ -449,8 +449,10 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
             )}
           </p>
           <div className="sb-hero__row">
-            <PeriodTabs active={period} season={seasonTab} />
-            <BoardsAmong />
+            <div className="board-picks">
+              <PeriodTabs active={period} season={seasonTab} />
+              <BoardsAmong />
+            </div>
             <p className="sb-closes">
               <TrophyIcon />
               <span>{copy.closes}</span>

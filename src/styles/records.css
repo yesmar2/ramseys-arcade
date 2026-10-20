@@ -1708,6 +1708,7 @@ html[data-theme='light'] .rbk-plq__you--mine {
 @media (max-width: 720px) {
   .rbk-tabhead__picks {
     flex-wrap: wrap;
+    width: 100%;
   }
 }
 
