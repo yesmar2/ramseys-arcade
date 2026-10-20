@@ -61,6 +61,9 @@ export const SITE_DESCRIPTION = `${SITE_LINE} Quick, free original games that st
 
 export const DEFAULT_IMAGE = '/og.png'
 
+/** The Dailies page's card: the day's races as lanes (scripts/gen-og-images.mjs dailiesCard). */
+export const DAILIES_IMAGE = '/og/dailies.png'
+
 /** The origin pages are published at; the build bakes it in, dev uses wherever it runs. */
 export function siteOrigin(): string {
   const local = typeof window !== 'undefined' ? window.location.origin : ''
@@ -497,6 +500,7 @@ export function pageMeta(route: Route): PageMeta {
         title: titled(route.day ? `Dailies · ${archiveDayWords(route.day)}` : 'Dailies'),
         description: dailiesDescription(),
         path: todayHref(route.day),
+        image: DAILIES_IMAGE,
         // A past day's ticket is the viewer's own: only the page itself is for search.
         ...(route.day ? { noindex: true } : {}),
       }

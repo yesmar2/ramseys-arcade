@@ -120,6 +120,41 @@ function challengeCard(game) {
   )
 }
 
+const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight']
+
+/**
+ * The Dailies page's card: the day's races as lanes in their own colours, and what they are. Drawn again with
+ * `node scripts/gen-og-images.mjs dailies` when a race joins or leaves the ticket.
+ */
+function dailiesCard(races) {
+  const lane = 30
+  const gap = (300 - 80 - races.length * lane) / Math.max(1, races.length - 1)
+  // Each lane's racer is at its own place, its colour trailing behind it, short of the chequered line.
+  const reach = [176, 128, 206, 150, 190, 118, 166, 140]
+  const lanes = races
+    .map((game, i) => {
+      const y = 205 + i * (lane + gap)
+      const end = 136 + reach[i % reach.length]
+      return [
+        `<defs><linearGradient id="trail${i}" x1="0" x2="1"><stop offset="0" stop-color="${game.accent}" stop-opacity="0"/><stop offset="1" stop-color="${game.accent}"/></linearGradient></defs>`,
+        `<rect x="136" y="${y}" width="${end - 136}" height="${lane}" rx="${lane / 2}" fill="url(#trail${i})"/>`,
+        `<circle cx="${end - lane / 2}" cy="${y + lane / 2}" r="${lane / 2}" fill="${game.accent}"/>`,
+      ].join('\n  ')
+    })
+    .join('\n  ')
+  const squares = []
+  for (let row = 0; row < 30; row++) squares.push(`<rect x="${358 + (row % 2) * 8}" y="${195 + row * 8}" width="8" height="8" fill="${TEXT}" opacity="0.85"/>`)
+  const finish = squares.join('')
+  return frame(`
+  <rect x="96" y="165" width="300" height="300" rx="56" fill="#1b2f2b"/>
+  ${finish}
+  ${lanes}
+  <text x="454" y="205" font-family="${FONT}" font-size="26" font-weight="700" letter-spacing="5" fill="${TEAL}">THE DAILIES</text>
+  ${lines([`${COUNT_WORDS[races.length] ?? races.length} races,`, 'new every day.'], 452, 300, 84, 92, TEXT, 700)}
+  ${lines(['The same for everyone, free in your browser.'], 454, 470, 30, 0, MUTED)}
+  ${signoff('· no ads, just play')}`)
+}
+
 async function render(svg, file) {
   await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(file)
   console.log('wrote', file)
@@ -132,16 +167,25 @@ const server = await createServer({
   appType: 'custom',
   server: { middlewareMode: true, hmr: false, watch: null },
 })
-// `npm run icons:og` draws them all; `node scripts/gen-og-images.mjs challenges` only the challenge cards, `site` only the site's.
+// `npm run icons:og` draws them all; `node scripts/gen-og-images.mjs challenges` only the challenge cards, `site` only
+// the site's, `dailies` only the Dailies page's.
 const only = process.argv[2]
 try {
   const { games } = await server.ssrLoadModule('/src/data/games.ts')
   const { howToPlayFor } = await server.ssrLoadModule('/src/data/howToPlay.ts')
+  const { TODAY_DAILIES } = await server.ssrLoadModule('/src/lib/today.ts')
+  // The ticket's races as the Dailies page lists them: off the ticket (`until`), hidden or on deck, they're left out.
+  const races = TODAY_DAILIES.filter((daily) => !daily.until)
+    .map((daily) => games.find((game) => game.slug === daily.slug))
+    .filter((game) => game && !game.hidden && !game.onDeck)
   mkdirSync('public/og/challenge', { recursive: true })
   if (only === 'site') {
     await render(siteCard(), 'public/og.png')
+  } else if (only === 'dailies') {
+    await render(dailiesCard(races), 'public/og/dailies.png')
   } else if (only !== 'challenges') {
     await render(siteCard(), 'public/og.png')
+    await render(dailiesCard(races), 'public/og/dailies.png')
     for (const game of games) {
       if (game.hidden) continue
       // The goal under the blurb, unless the blurb already says it (Putt's opens with it).
@@ -150,7 +194,7 @@ try {
       await render(gameCard(game, said ? '' : goal), `public/og/${game.slug}.png`)
     }
   }
-  for (const game of only === 'site' ? [] : games) {
+  for (const game of only === 'site' || only === 'dailies' ? [] : games) {
     if (game.hidden) continue
     await render(challengeCard(game), `public/og/challenge/${game.slug}.png`)
   }

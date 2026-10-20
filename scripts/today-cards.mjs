@@ -636,9 +636,10 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
         links.push({ href: gamePlayHref('sling'), label: `Climb Today’s Tower #${info.tower.n}` })
       }
       const count = COUNT_WORDS[dailies.length]
+      // What they are first: a chat's preview shows a line or two, and the card shows the day's names anyway.
       const description =
-        `${dailies.slice(0, -1).join('; ')}; and ${dailies[dailies.length - 1]}. ` +
-        `${count.charAt(0).toUpperCase()}${count.slice(1)} quick games, the same for everyone, free in your browser with no ads.`
+        `${count.charAt(0).toUpperCase()}${count.slice(1)} quick games, the same for everyone, free in your browser with no ads. ` +
+        `${dailies.slice(0, -1).join('; ')}; and ${dailies[dailies.length - 1]}.`
       const meta = { path: `/today/${day}`, title, description, image: `/og/today/${day}.png` }
       const content = { heading: title, paragraphs: [description], links }
       const file = outFile(meta.path)

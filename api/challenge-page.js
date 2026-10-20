@@ -1,5 +1,5 @@
 import { ownReadHeaders } from './_gate.js'
-import { challengeWords, originOf, queryOf, readChallenge, readGames, SLUG } from './_og/challenge.js'
+import { challengeWords, ID, originOf, queryOf, readChallenge, readGames, SLUG } from './_og/challenge.js'
 
 /*
  * GET /c/<game>/<id> (vercel.json rewrites it here): the game's prerendered
@@ -78,17 +78,26 @@ export default async function handler(req, res) {
   }
 
   let html = template
+  // The link itself, whatever the API said: a preview that's tapped (Facebook goes by og:url) leads to the
+  // challenge, not to the game's page the template names.
+  const id = query.get('id') ?? ''
+  const link = challenge
+    ? `${origin}/c/${challenge.game}/${challenge.id}`
+    : SLUG.test(game) && ID.test(id)
+      ? `${origin}/c/${game}/${id}`
+      : null
+  if (link) {
+    html = stamp(html, /(<link\s+rel="canonical"\s+href=")[^"]*(")/, esc(link))
+    html = stamp(html, /(<meta\s+property="og:url"\s+content=")[^"]*(")/, esc(link))
+  }
   if (challenge) {
     const words = challengeWords(challenge, games[challenge.game])
     const brand = /<meta\s+property="og:site_name"\s+content="([^"]*)"/.exec(template)?.[1] || 'Blipka'
-    const url = `${origin}/c/${challenge.game}/${challenge.id}`
     const image = `${origin}/api/challenge-card?game=${encodeURIComponent(challenge.game)}&id=${challenge.id}`
     html = stamp(html, /(<title>)[^<]*(<\/title>)/, esc(`${words.title} · ${brand}`))
     html = stamp(html, /(<meta\s+name="description"\s+content=")[^"]*(")/, esc(words.description))
-    html = stamp(html, /(<link\s+rel="canonical"\s+href=")[^"]*(")/, esc(url))
     html = stamp(html, /(<meta\s+property="og:title"\s+content=")[^"]*(")/, esc(words.title))
     html = stamp(html, /(<meta\s+property="og:description"\s+content=")[^"]*(")/, esc(words.description))
-    html = stamp(html, /(<meta\s+property="og:url"\s+content=")[^"]*(")/, esc(url))
     html = stamp(html, /(<meta\s+property="og:image"\s+content=")[^"]*(")/, esc(image))
   }
   // Somebody's link to somebody, never a search result, even on the site's own shell.

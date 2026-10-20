@@ -72,17 +72,21 @@ export default async function handler(req, res) {
   }
 
   let html = shell
+  // The link itself, whatever the API said: a preview that's tapped (Facebook goes by og:url) leads where the link
+  // does, not to the home page the shell's tags name.
+  if (EVENT_ID.test(id) && name.trim()) {
+    const url = `${origin}/e/${encodeURIComponent(id)}/${encodeURIComponent(name)}`
+    html = stamp(html, /(<link\s+rel="canonical"\s+href=")[^"]*(")/, esc(url))
+    html = stamp(html, /(<meta\s+property="og:url"\s+content=")[^"]*(")/, esc(url))
+  }
   const words = event ? eventWords(event, name, games) : null
   if (words) {
     const brand = /<meta\s+property="og:site_name"\s+content="([^"]*)"/.exec(shell)?.[1] || 'Blipka'
-    const url = `${origin}/e/${encodeURIComponent(id)}/${encodeURIComponent(name)}`
     const image = `${origin}/api/event-card?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`
     html = stamp(html, /(<title>)[^<]*(<\/title>)/, esc(`${words.heading} · ${brand}`))
     html = stamp(html, /(<meta\s+name="description"\s+content=")[^"]*(")/, esc(words.description))
-    html = stamp(html, /(<link\s+rel="canonical"\s+href=")[^"]*(")/, esc(url))
     html = stamp(html, /(<meta\s+property="og:title"\s+content=")[^"]*(")/, esc(words.heading))
     html = stamp(html, /(<meta\s+property="og:description"\s+content=")[^"]*(")/, esc(words.description))
-    html = stamp(html, /(<meta\s+property="og:url"\s+content=")[^"]*(")/, esc(url))
     html = stamp(html, /(<meta\s+property="og:image"\s+content=")[^"]*(")/, esc(image))
   }
   // Somebody's place, sent to somebody: never a search result.
