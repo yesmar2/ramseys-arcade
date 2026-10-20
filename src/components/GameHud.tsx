@@ -12,6 +12,7 @@ import { dailyWords } from '../lib/dailyWords'
 import { pastKind, usePastPlayTitle, type PastPlay } from '../lib/pastPlay'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { ChallengeChip } from './ChallengeTarget'
+import { FirstMoveHint } from './FirstMoveHint'
 import { Panel, PanelHead } from './Panel'
 import { PastPlayChip } from './PastPlay'
 
@@ -202,6 +203,9 @@ export function GamePlayChrome({
         <FullscreenToggle />
         {children}
       </div>
+      {/* A game's first run shows its move. The game draws this again as its run starts, pauses and ends, so the
+          getter read here is current. */}
+      <FirstMoveHint key={slug} slug={slug} live={resolveInRun(inRun) && !paused} />
     </>
   )
 }

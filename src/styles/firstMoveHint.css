@@ -1,0 +1,435 @@
+/*
+ * A game's first move, shown once on its first run (components/FirstMoveHint.tsx): a finger doing the move over
+ * the play area, and a line of words under it. It takes no press: every touch goes through to the game.
+ *
+ * The finger is light, with a dark hairline round it and its paths, so it reads on a dark playfield and on a
+ * light one alike, whatever the theme: some games keep their own colours in both (Half Full is peach). The
+ * words sit on a dark pill. Where it goes comes from the game's entry (data/firstMoves.ts), as --first-move-x
+ * and --first-move-y: the finger's middle.
+ */
+
+.first-move {
+  --first-move-x: 50%;
+  --first-move-y: 62%;
+  /* One beat for the finger's move and the words' pulse, so they go together. */
+  --first-move-beat: 2.4s;
+  --first-move-light: 231, 238, 243;
+  --first-move-dark: 12, 18, 24;
+  --first-move-glow: 52, 198, 168;
+  --first-move-hairline: 0 0 0 1px rgba(var(--first-move-dark), 0.38);
+  position: absolute;
+  inset: 0;
+  /* Over the playfield and its readouts (.play-readout is 8), under the game's own buttons (.game-play-chrome, 13). */
+  z-index: 10;
+  overflow: hidden;
+  pointer-events: none;
+  animation: first-move-in 0.3s ease-out both;
+}
+
+.first-move--tap,
+.first-move--swipe {
+  --first-move-beat: 1.6s;
+}
+
+@keyframes first-move-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- the finger ---------- */
+
+/* A point at the finger's middle: the finger and what's drawn with it hang off it. */
+.first-move__spot {
+  position: absolute;
+  left: var(--first-move-x);
+  top: var(--first-move-y);
+  width: 0;
+  height: 0;
+}
+
+.first-move__finger {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  box-sizing: border-box;
+  border: 2px solid rgba(var(--first-move-light), 0.85);
+  border-radius: 50%;
+  background: rgba(var(--first-move-light), 0.22);
+  box-shadow:
+    var(--first-move-hairline),
+    0 0 18px rgba(var(--first-move-glow), 0.55);
+}
+
+.first-move svg {
+  position: absolute;
+  overflow: visible;
+  fill: none;
+  stroke: rgb(var(--first-move-light));
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 1px rgba(var(--first-move-dark), 0.6));
+}
+
+.first-move__trail {
+  stroke-opacity: 0.55;
+  stroke-dasharray: 3 7;
+}
+
+.first-move__head {
+  stroke-opacity: 0.7;
+}
+
+/*
+ * Drag: the finger slides across and back over a faint path with a head at each end. Up and down, the same
+ * turned on its side. Still, it waits in the middle of its path.
+ */
+.first-move__arc {
+  left: -115px;
+  top: -46px;
+  width: 230px;
+  height: 60px;
+}
+
+.first-move--up .first-move__arc {
+  left: -46px;
+  top: -115px;
+  width: 60px;
+  height: 230px;
+}
+
+.first-move--drag .first-move__finger {
+  animation: first-move-drag var(--first-move-beat) ease-in-out infinite;
+}
+
+.first-move--drag.first-move--up .first-move__finger {
+  animation-name: first-move-drag-up;
+}
+
+@keyframes first-move-drag {
+  0%,
+  100% {
+    transform: translateX(-62px);
+  }
+  50% {
+    transform: translateX(62px);
+  }
+}
+
+@keyframes first-move-drag-up {
+  0%,
+  100% {
+    transform: translateY(62px);
+  }
+  50% {
+    transform: translateY(-62px);
+  }
+}
+
+/* Tap: the finger presses where it is, and a ring spreads from the press. Still, it's just the finger. */
+.first-move__ripple {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  box-sizing: border-box;
+  border: 2px solid rgba(var(--first-move-light), 0.7);
+  border-radius: 50%;
+  box-shadow: var(--first-move-hairline);
+  opacity: 0;
+}
+
+.first-move--tap .first-move__finger {
+  animation: first-move-tap var(--first-move-beat) ease-out infinite;
+}
+
+.first-move--tap .first-move__ripple {
+  animation: first-move-ripple var(--first-move-beat) ease-out infinite;
+}
+
+@keyframes first-move-tap {
+  0%,
+  30%,
+  100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(0.8);
+  }
+}
+
+@keyframes first-move-ripple {
+  0%,
+  14% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  18% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  60%,
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Hold: the finger presses and stays while a ring fills round it, then lets go. Still, the ring is full. */
+.first-move__ring {
+  left: -38px;
+  top: -38px;
+  width: 76px;
+  height: 76px;
+  /* The ring fills from the top, clockwise. */
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.first-move__ring-track {
+  stroke-opacity: 0.25;
+}
+
+.first-move__ring-fill {
+  stroke: rgb(var(--first-move-glow));
+  stroke-width: 3;
+  /* Once round: 2π × 32. */
+  stroke-dasharray: 201;
+  stroke-dashoffset: 0;
+}
+
+.first-move--hold .first-move__finger {
+  animation: first-move-press var(--first-move-beat) ease-in-out infinite;
+}
+
+.first-move--hold .first-move__ring-fill {
+  animation: first-move-fill var(--first-move-beat) linear infinite;
+}
+
+@keyframes first-move-press {
+  0%,
+  80%,
+  100% {
+    transform: scale(1);
+  }
+  12%,
+  70% {
+    transform: scale(0.84);
+  }
+}
+
+@keyframes first-move-fill {
+  0%,
+  12% {
+    stroke-dashoffset: 201;
+    opacity: 1;
+  }
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  80% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 201;
+    opacity: 0;
+  }
+}
+
+/* Swipe: a quick stroke along an arrow, then again. Still, the finger sits on the arrow. */
+.first-move__arrow {
+  left: -75px;
+  top: -12px;
+  width: 150px;
+  height: 24px;
+}
+
+.first-move--swipe .first-move__finger {
+  animation: first-move-swipe var(--first-move-beat) ease-in-out infinite;
+}
+
+@keyframes first-move-swipe {
+  0% {
+    transform: translateX(-52px);
+    opacity: 0;
+  }
+  12% {
+    transform: translateX(-52px);
+    opacity: 1;
+  }
+  46% {
+    transform: translateX(52px);
+    opacity: 1;
+  }
+  60%,
+  100% {
+    transform: translateX(52px);
+    opacity: 0;
+  }
+}
+
+/*
+ * Pull (a slingshot): the finger comes down from where it touched, drawing a band back, and lets go; a chevron
+ * over the spot shows the way the fling goes. Still, it's drawn back, band out, the chevron showing.
+ */
+.first-move__anchor {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 2px solid rgba(var(--first-move-light), 0.7);
+  border-radius: 50%;
+  box-shadow: var(--first-move-hairline);
+}
+
+.first-move__band {
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 2px;
+  height: 52px;
+  background: repeating-linear-gradient(to bottom, rgba(var(--first-move-light), 0.55) 0 3px, transparent 3px 10px);
+  filter: drop-shadow(0 0 1px rgba(var(--first-move-dark), 0.6));
+}
+
+.first-move__fling {
+  left: -12px;
+  top: -40px;
+  width: 24px;
+  height: 16px;
+}
+
+.first-move--pull .first-move__finger {
+  transform: translateY(52px);
+  animation: first-move-pull var(--first-move-beat) ease-in-out infinite;
+}
+
+.first-move--pull .first-move__band {
+  animation: first-move-band var(--first-move-beat) ease-in-out infinite;
+}
+
+.first-move--pull .first-move__fling {
+  animation: first-move-fling var(--first-move-beat) ease-out infinite;
+}
+
+@keyframes first-move-pull {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50%,
+  60% {
+    transform: translateY(52px);
+    opacity: 1;
+  }
+  68%,
+  100% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+@keyframes first-move-band {
+  0%,
+  10% {
+    height: 0;
+  }
+  50%,
+  60% {
+    height: 52px;
+  }
+  64%,
+  100% {
+    height: 0;
+  }
+}
+
+@keyframes first-move-fling {
+  0%,
+  60% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  68% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+  90%,
+  100% {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+}
+
+/* ---------- the words ---------- */
+
+/* Across the play area, 20px under the finger: half its 44px and the gap below its middle. */
+.first-move__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--first-move-y) + 42px);
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+}
+
+/* No finger (a computer, or buttons off the play area): the words stand where it would have been. */
+.first-move--words-only .first-move__line {
+  top: var(--first-move-y);
+  transform: translateY(-50%);
+}
+
+/* A game that says where its words go (data/firstMoves.ts wordsAt), with a finger or without. */
+.first-move--words-at .first-move__line {
+  top: var(--first-move-words-y);
+  transform: translateY(-50%);
+}
+
+.first-move__words {
+  max-width: 100%;
+  margin: 0;
+  padding: 0.4375rem 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(231, 238, 243, 0.25);
+  border-radius: 999px;
+  background: rgba(12, 18, 24, 0.78);
+  color: #e7eef3;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  animation: first-move-pulse var(--first-move-beat) ease-in-out infinite;
+}
+
+@keyframes first-move-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Motion turned down: the finger and its words hold still, all there, in the poses above. */
+@media (prefers-reduced-motion: reduce) {
+  .first-move,
+  .first-move * {
+    animation: none !important;
+  }
+}
