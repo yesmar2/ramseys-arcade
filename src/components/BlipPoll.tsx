@@ -43,6 +43,8 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
   const { view, status, earned, won } = usePoll(signedIn)
   const [sending, setSending] = useState<number | null>(null)
   const [failed, setFailed] = useState(false)
+  // Answered here, just now: the results' bars grow in from nothing, rather than appearing already filled.
+  const [fresh, setFresh] = useState(false)
 
   // No question (before the first day), or the API couldn't say: no card, rather than a broken one.
   if (status === 'error' || (status === 'ready' && !view?.today)) return null
@@ -60,6 +62,7 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
     setSending(i)
     setFailed(false)
     answerPoll(i)
+      .then(() => setFresh(true))
       .catch(() => setFailed(true))
       .finally(() => setSending(null))
   }
@@ -73,7 +76,7 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
   return (
     <section
       id={inSheet ? undefined : 'blip-poll'}
-      className={`blip-poll${voted ? ' blip-poll--voted' : ''}${inSheet ? ' blip-poll--sheet' : ''}${card ? ' blip-poll--card' : ''}`}
+      className={`blip-poll${voted ? ' blip-poll--voted' : ''}${voted && fresh ? ' blip-poll--fresh' : ''}${sending != null ? ' blip-poll--sending' : ''}${inSheet ? ' blip-poll--sheet' : ''}${card ? ' blip-poll--card' : ''}`}
       aria-labelledby={headingId}
     >
       <BlipFigure className="blip-poll__blip" mood={voted ? 'happy' : 'hi'} />
@@ -136,11 +139,13 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
           })}
         </ul>
       ) : (
-        <ul className="blip-poll__opts">
+        <ul className="blip-poll__opts" aria-busy={sending != null}>
           {today.options.map((option, i) => (
             <li key={option}>
               <button type="button" className="blip-poll__opt" onClick={() => pickAnswer(i)} disabled={sending != null} aria-busy={sending === i}>
                 {option}
+                {/* The answer on its way: a turning ring on it while the others fade, as the counts come. */}
+                {sending === i ? <span className="blip-poll__spin" aria-hidden="true" /> : null}
               </button>
             </li>
           ))}
@@ -163,7 +168,9 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
       {today && !voted ? (
         <p className="blip-poll__foot">
           {card ? <TicketGlyph size={18} className="blip-poll__ticket" /> : null}
-          {failed ? (
+          {sending != null && !failed ? (
+            'Counting your answer…'
+          ) : failed ? (
             'That didn’t go through: try again.'
           ) : signedOut ? (
             <button type="button" className="blip-poll__signin" onClick={openSiteMenu}>

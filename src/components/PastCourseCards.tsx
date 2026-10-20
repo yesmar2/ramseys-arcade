@@ -1,7 +1,7 @@
 import type { MouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { getGame, isRankedGame } from '../data/games'
 import { useDeliberatePress } from '../hooks/useDeliberatePress'
-import { dailyTabHref, gamePlayHref, rankHowHref, tournamentHref } from '../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, rankHowHref } from '../hooks/useHashRoute'
 import { useRankFor } from '../hooks/useProfileBoards'
 import { archiveDayWords } from '../lib/archive'
 import { fitCardToSpace } from '../lib/cardFit'
@@ -10,7 +10,6 @@ import { dailyWords, type PastKind } from '../lib/dailyWords'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { leavePlay, type PastFact } from '../lib/pastPlay'
 import { ordinal } from '../lib/scoreboard'
-import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { GamePanelBody } from './PauseControls'
 import { RunLabel, runLabelWords } from './RunLabel'
 import '../styles/pastCourse.css'
@@ -236,11 +235,6 @@ export function PastCourseStart({
 }) {
   const words = dailyWords(slug)
   const backHref = back ?? dailyTabHref(slug, 'past', course)
-  // In an event raced on this course (TournamentPlayPage), the run is the event's, as on the game's own start card
-  // there: its tries say so (GamePanelBody), and the way back is to the event. What a run does for the course's own
-  // board, its tickets and today's course isn't said, and the walk to other courses would leave the event.
-  const event = useTournamentPlay()
-  const leaveHref = event ? tournamentHref(event.tournamentId) : backHref
   const tapThrough = !onStart
   const said = kicker ?? pastKicker(slug, day)
   return (
@@ -258,16 +252,16 @@ export function PastCourseStart({
         {blurb ? <p className="game-card__blurb">{blurb}</p> : null}
       </div>
       {art}
-      {event ? null : <PastLabelBox slug={slug} kind={kind} sub={labelSub} />}
+      <PastLabelBox slug={slug} kind={kind} sub={labelSub} />
       <GamePanelBody
         slug={slug}
         personalBest={0}
         past={{ href: backHref, kind, facts }}
         extraMeta={extraMeta}
         tools={
-          (note && !event) || tools ? (
+          note || tools ? (
             <>
-              {note && !event ? <p className="past-card__note">{note}</p> : null}
+              {note ? <p className="past-card__note">{note}</p> : null}
               {tools}
             </>
           ) : undefined
@@ -285,11 +279,11 @@ export function PastCourseStart({
           {startDisabled ? null : <Play />}
           {startDisabled ? 'Checking who’s signed in…' : (startLabel ?? `${words.verb} it`)}
         </button>
-        <a className="panel__btn panel__btn--ghost past-card__link" href={leaveHref} onPointerDown={holdPress} onClick={leaveLink(leaveHref)}>
-          {event ? 'Back to event' : `Back to ${words.pastTab.toLowerCase()}`}
+        <a className="panel__btn panel__btn--ghost past-card__link" href={backHref} onPointerDown={holdPress} onClick={leaveLink(backHref)}>
+          Back to {words.pastTab.toLowerCase()}
         </a>
       </div>
-      {!event && (walk?.prev || walk?.next) ? (
+      {walk?.prev || walk?.next ? (
         <nav className="past-card__walk" aria-label={`Other ${words.pastTab.toLowerCase()}`}>
           {walk.prev ? (
             <a href={walk.prev.href} onPointerDown={holdPress}>
@@ -307,7 +301,7 @@ export function PastCourseStart({
           )}
         </nav>
       ) : null}
-      {today && !event ? <TodayCounts slug={slug} today={today} boxed={false} /> : null}
+      {today ? <TodayCounts slug={slug} today={today} boxed={false} /> : null}
     </div>
   )
 }
