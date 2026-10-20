@@ -172,6 +172,14 @@ html[data-theme='light'] .gh-hero {
   text-transform: uppercase;
 }
 
+/*
+ * On a game's warm or green tint the dark theme's grey fell under 4.5:1 (4.2 on Hot Lap’s, 4.4 on Half Full’s with a quarter): a third nearer the ink.
+ * The plain tags only: the lead, the note and the season's keep their own colours.
+ */
+html[data-theme='dark'] .gh-tag:not(.gh-tag--lead):not(.gh-tag--note):not(.season-tag) {
+  color: color-mix(in srgb, var(--muted) 65%, var(--ink));
+}
+
 .gh-tag--lead,
 .gh-tag--note {
   background: color-mix(in srgb, var(--gh-accent) 16%, transparent);

@@ -100,6 +100,8 @@ export function SiteHeader() {
   const badgeRef = useRef<PlayerBadgeHandle>(null)
   // Whatever opened the menu (the chip, or the tab bar's You) gets focus back when it closes.
   const openerRef = useRef<HTMLElement | null>(null)
+  // Opened by a "Pick a gamer tag" link (openTagPicker): focus goes to the tag field, not the Close.
+  const focusTagRef = useRef(false)
   const menuTitleId = useId()
   const menuId = 'site-menu'
 
@@ -117,8 +119,9 @@ export function SiteHeader() {
 
   // A page can ask for the menu, to sign in from where the reason to is.
   useEffect(() => {
-    const open = () => {
+    const open = (e: Event) => {
       openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      focusTagRef.current = (e as CustomEvent<{ focus?: string } | null>).detail?.focus === 'tag'
       setMenuOpen(true)
     }
     window.addEventListener(OPEN_MENU_EVENT, open)
@@ -190,7 +193,10 @@ export function SiteHeader() {
       }
     }
     window.addEventListener('keydown', onKey)
-    panelRef.current?.querySelector<HTMLElement>('.site-menu__close')?.focus()
+    // A "Pick a gamer tag" link opens it on the tag field (the badge focuses and selects it); else on the Close.
+    if (focusTagRef.current && badgeRef.current) badgeRef.current.openTagEdit()
+    else panelRef.current?.querySelector<HTMLElement>('.site-menu__close')?.focus()
+    focusTagRef.current = false
     const opener = openerRef.current
     return () => {
       unlockScroll()
@@ -349,7 +355,11 @@ export function SiteHeader() {
                 aria-expanded={menuOpen}
                 aria-controls={menuId}
                 aria-haspopup="dialog"
-                onClick={toggleMenu}
+                onClick={() => {
+                  // Signed in with no tag yet, it says Pick a tag: the menu opens on the tag field.
+                  if (signedIn && !menuOpen) focusTagRef.current = true
+                  toggleMenu()
+                }}
               >
                 <UserIcon />
                 {signedIn ? 'Pick a tag' : 'Sign in'}

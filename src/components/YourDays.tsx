@@ -9,7 +9,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { archiveDayWords, useDailyDays } from '../lib/archive'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { addDays, boardDay } from '../lib/rankHow'
-import { openSiteMenu } from './siteNav'
+import { openSiteMenu, openTagPicker } from './siteNav'
 import '../styles/yourDays.css'
 
 /*
@@ -157,7 +157,7 @@ export function YourDaysCard({ slug }: { slug: FunDaily }) {
       ) : signedIn ? (
         // Signed in without a tag: your days are your tag's, and the menu is where you pick one.
         <p className="yd__note">
-          <button type="button" className="yd__link" onClick={openSiteMenu}>
+          <button type="button" className="yd__link" onClick={openTagPicker}>
             Pick a gamer tag
           </button>{' '}
           to keep your days here: how many you've played, how many in a row, your best and your average.

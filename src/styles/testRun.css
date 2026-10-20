@@ -23,10 +23,10 @@
   line-height: 1.4;
 }
 
-/* The amber deepened, so its words still read on the light page (4.5:1). */
+/* The amber deepened, so its words still read on the light page (4.5:1): the kicker on its pill too (70% held 3.9). */
 html[data-theme='light'] .testrun {
   --testrun: #b77a06;
-  --testrun-ink: color-mix(in srgb, var(--testrun) 70%, var(--ink));
+  --testrun-ink: color-mix(in srgb, var(--testrun) 55%, var(--ink));
 }
 
 .testrun__kicker {

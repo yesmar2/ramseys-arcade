@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { rankHref, tournamentCreateHref, tournamentHref } from '../hooks/useHashRoute'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   bestScore,
@@ -42,7 +42,7 @@ export function EventGames({ games }: { games: GameCardState[] }) {
       {games.map(({ slug, href, status, course }) => {
         const accent = gameAccent(slug)
         return (
-          <li key={slug} className="evp-card evp-game" style={{ '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties}>
+          <li key={slug} className="evp-card evp-game" style={{ '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties}>
             <EventScreen slug={slug} href={href} />
             <div className="evp-game__foot">
               <span className="evp-game__text">
@@ -400,7 +400,7 @@ export function GameBests({ detail }: { detail: TournamentDetail }) {
 export function NextEventCard({ t }: { t: TournamentSummary }) {
   const accent = eventAccent(t.games)
   return (
-    <a className="evp-card evp-next evp-wash" href={tournamentHref(t.id)} style={{ '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties}>
+    <a className="evp-card evp-next evp-wash" href={tournamentHref(t.id)} style={{ '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties}>
       <p className="evp-kick evp-kick--live">
         <span className="evp-dot" aria-hidden="true" />
         {t.cadence === 'weekly'

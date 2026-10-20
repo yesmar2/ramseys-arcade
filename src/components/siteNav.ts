@@ -42,6 +42,11 @@ export function openSiteMenu() {
   window.dispatchEvent(new Event(OPEN_MENU_EVENT))
 }
 
+/** The menu, opened on its gamer tag field: what a "Pick a gamer tag" link means, where the menu would focus its Close. */
+export function openTagPicker() {
+  window.dispatchEvent(new CustomEvent<{ focus: 'tag' }>(OPEN_MENU_EVENT, { detail: { focus: 'tag' } }))
+}
+
 /** Fired on window to open the header's avatar studio with something already on: a look a page just showed you won. */
 export const OPEN_STUDIO_EVENT = 'skermix:open-studio'
 

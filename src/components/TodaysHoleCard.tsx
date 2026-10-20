@@ -5,7 +5,7 @@ import { drawHolePlan } from '../games/acechase/holePlan'
 import { formatTries } from '../games/acechase/score'
 import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import {
   PLACE_NAME,
   dailyDay,
@@ -121,7 +121,7 @@ export function TodaysHoleCard() {
   const solved = dayResult(progress, server?.you)
   const tries = progress?.tries ?? 0
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#2eb8a0')
-  const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
+  const style = { '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties
   return (
     <section className="evp-card evp-daily thc" style={style} aria-labelledby="thc-title">
       <div className="evp-daily__screen">

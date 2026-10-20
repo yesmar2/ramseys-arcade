@@ -468,6 +468,11 @@ a.sb-row__link:focus-visible {
   text-transform: uppercase;
 }
 
+/* The dark theme's brand ink held 4.4:1 on the chip's wash: a fifth lighter. */
+html[data-theme='dark'] .sb-row__you {
+  color: color-mix(in srgb, var(--sb-brand-ink) 80%, #ffffff);
+}
+
 .sb-row__bar {
   grid-area: bar;
   position: relative;
@@ -1057,7 +1062,8 @@ a.sb-board__name::after {
 .sb-board__place--open .sb-board__who,
 .sb-board__place--open .sb-board__score {
   color: var(--muted);
-  opacity: 0.7;
+  /* Fainter than a held place, and still 4.5:1 (at 0.7 the dark theme's held 4.2). */
+  opacity: 0.85;
 }
 
 .sb-board__you {

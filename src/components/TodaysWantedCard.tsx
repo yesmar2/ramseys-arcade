@@ -9,7 +9,7 @@ import type { WantedBug } from '../games/findbug/wanted'
 import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { PlayIcon } from './chromeIcons'
@@ -93,7 +93,7 @@ export function TodaysWantedCard() {
   const result = run?.result
   const started = Boolean(run && !result)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#34aeb4')
-  const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
+  const style = { '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties
   return (
     <section className="evp-card evp-daily twc" style={style} aria-labelledby="twc-title">
       <div className="evp-daily__screen">

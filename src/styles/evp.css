@@ -137,7 +137,8 @@ html[data-theme='light'] .evp-wash {
   padding: 0 1.4rem;
   border: 0;
   border-radius: 999px;
-  background: var(--e);
+  /* The game's colour, moved where its ink wouldn't read on it (readableFill: Swoop's red held 4.0:1). */
+  background: var(--e-fill, var(--e));
   color: var(--e-ink);
   font: inherit;
   font-size: 1rem;

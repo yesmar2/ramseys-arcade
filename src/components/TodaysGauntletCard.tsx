@@ -7,7 +7,7 @@ import { formatRun } from '../games/wobblerun/score'
 import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { ordinal } from '../lib/profileMath'
@@ -74,7 +74,7 @@ export function TodaysGauntletCard() {
   const kept = viewer === null ? keptRun(day, null) : null
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#e85d9a')
-  const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
+  const style = { '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties
   return (
     <section className="evp-card evp-daily tcg" style={style} aria-labelledby="tcg-title">
       <div className="evp-daily__screen">

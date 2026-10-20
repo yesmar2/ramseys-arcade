@@ -209,7 +209,8 @@ html[data-theme='dark'] .panel {
   padding: 0 1.4rem;
   border: 0;
   border-radius: 999px;
-  background: var(--panel-accent);
+  /* A game's card fills it with the shade of its colour its ink reads on (gameAccentStyle's --hero-fill). */
+  background: var(--hero-fill, var(--panel-accent));
   color: var(--panel-on-accent);
   font-family: var(--font-display);
   font-size: 1rem;

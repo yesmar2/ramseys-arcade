@@ -8,7 +8,7 @@ import { useTodayBoard, type TodayBoard } from '../games/dead-center/todayBoard'
 import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { resolveGameAccent } from '../lib/theme'
 import { PlayIcon } from './chromeIcons'
@@ -125,7 +125,7 @@ export function TodaysPlatesCard() {
   const go = played ? 'Play again' : started ? 'Carry on' : 'Play'
   const tag = `Today’s Plates ${dayTag(day)}`
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#4aa8e8')
-  const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
+  const style = { '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties
   return (
     <section className="evp-card evp-daily tpc" style={style} aria-labelledby="tplc-title">
       <div className="evp-daily__screen">

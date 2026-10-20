@@ -24,7 +24,7 @@ import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { medalKind } from './PodiumMedal'
 import { PlayerName } from './PlayerName'
-import { openSiteMenu } from './siteNav'
+import { openSiteMenu, openTagPicker } from './siteNav'
 
 /** The house records worth a plaque on the front page, in the order they hang. */
 const PLAQUES: SiteRecordId[] = ['day-streak', 'days-played', 'games-in-a-day', 'boards-topped']
@@ -161,7 +161,7 @@ function Standings({
           ) : signedIn ? (
             <>
               {/* Signed in with no tag yet: it's a tag that's missing, picked in the menu, as on the Dailies page. */}
-              <button type="button" className="hb-note__signin" onClick={openSiteMenu}>
+              <button type="button" className="hb-note__signin" onClick={openTagPicker}>
                 Pick a gamer tag
               </button>{' '}
               and your scores count here.

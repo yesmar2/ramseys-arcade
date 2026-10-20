@@ -38,7 +38,7 @@ import { useTrackRecordsAsked } from '../lib/trackBoards'
 import { ChevronRightIcon, FlameIcon } from './chromeIcons'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
-import { openSiteMenu } from './siteNav'
+import { openSiteMenu, openTagPicker } from './siteNav'
 import { HolePlan } from './TodaysHoleCard'
 import '../styles/dailyRecords.css'
 import '../styles/todaysTrack.css'
@@ -698,7 +698,7 @@ function RecordsBody({
                 </p>
               ) : signedIn && !viewer.name ? (
                 <p className="rbk-tabhead__line">
-                  <button type="button" className="rbk-tabhead__signin" onClick={openSiteMenu}>
+                  <button type="button" className="rbk-tabhead__signin" onClick={openTagPicker}>
                     Pick a gamer tag
                   </button>{' '}
                   to see how close you are

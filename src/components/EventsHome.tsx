@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { rankHref, tournamentCreateHref, tournamentHref, tournamentPlayHref } from '../hooks/useHashRoute'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
   eventDay,
@@ -35,7 +35,7 @@ import { openSiteMenu } from './siteNav'
 
 function accentStyle(games: string[]): CSSProperties {
   const accent = eventAccent(games)
-  return { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
+  return { '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties
 }
 
 function Icon({ children }: { children: ReactNode }) {

@@ -8,7 +8,7 @@ import { formatRun } from '../games/swoop/score'
 import { useAccountId } from '../hooks/useAccountId'
 import { gamePlayHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
-import { inkOn } from '../lib/color'
+import { inkOn, readableFill } from '../lib/color'
 import { normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { ordinal } from '../lib/profileMath'
@@ -75,7 +75,7 @@ export function TodaysHillsCard() {
   const kept = viewer === null ? keptRun(day, null) : null
   const href = gamePlayHref(SLUG)
   const accent = resolveGameAccent(SLUG, getGame(SLUG)?.accent ?? '#e8564f')
-  const style = { '--e': accent, '--e-ink': inkOn(accent) } as CSSProperties
+  const style = { '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties
   return (
     <section className="evp-card evp-daily tch" style={style} aria-labelledby="tch-title">
       <div className="evp-daily__screen">

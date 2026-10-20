@@ -475,6 +475,12 @@ html[data-theme] .gh-tag.season-tag {
   color: var(--muted);
 }
 
+/* On a game's tint (the Garage row on its page) the dark theme's grey fell under 4.5:1 (4.4 on Hot Lap's): a third nearer the ink. */
+html[data-theme='dark'] .skin-tile:not(.skin-tile--on) .skin-tile__note,
+html[data-theme='dark'] .skin-tile--locked .skin-tile__name {
+  color: color-mix(in srgb, var(--muted) 65%, var(--ink));
+}
+
 .skin-tile--shop {
   border-style: dashed;
 }

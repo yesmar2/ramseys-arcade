@@ -30,7 +30,7 @@ import { BoardEmpty } from './BoardChrome'
 import { ChevronRightIcon, SparkleIcon } from './chromeIcons'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
-import { openSiteMenu } from './siteNav'
+import { openSiteMenu, openTagPicker } from './siteNav'
 
 /*
  * One game's records: its page's Records tab (Ramsey picked B of the "Game page: board and records" canvas,
@@ -487,7 +487,7 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
               ) : signedIn && !you ? (
                 // Signed in with no tag: the menu is where you pick one. Neither line while the account isn't known yet.
                 <p className="rbk-tabhead__line">
-                  <button type="button" className="rbk-tabhead__signin" onClick={openSiteMenu}>
+                  <button type="button" className="rbk-tabhead__signin" onClick={openTagPicker}>
                     Pick a gamer tag
                   </button>{' '}
                   to see how close you are
