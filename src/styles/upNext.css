@@ -1,24 +1,24 @@
 /*
- * Up next for you (components/HomeUpNext.tsx), under today's ticket: the top pick big (the game's whole picture,
- * the three around you on its board, one big Play) and the rest as a list of rows beside it, or under it on a
- * narrower screen (C on the "Up Next Looks" canvas, 2026-10-20). A first visit's row is still cards: the season's,
- * deep space in both themes as the season's panels are (season.css), and Blip's question in his band.
+ * Up next for you (components/HomeUpNext.tsx): a row of poster cards under today's ticket (B on the "Up Next Looks"
+ * canvas, 2026-10-20), each the game's whole picture with what it's about over its foot, then one way on. Blip's
+ * question (BlipPoll.tsx) takes the same frame, Blip in his own mint picture; the season's card is deep space in
+ * both themes, as the season's panels are (season.css). On a phone the first two cards, one under the other.
  */
 
 .upnext {
-  --unx-band: 9.4rem;
   --unx-kick: #0f7d6c;
   --unx-defend: #b8322c;
   --unx-you: #9a4316;
   /* The ticket's deep orange, as dark as it must be to read on the card (#e0602e held 3.6:1). */
   --unx-you-score: #c15328;
-  --unx-row: #f4f8fa;
   --unx-you-row: #fff1e8;
-  --unx-you-edge: rgba(193, 83, 40, 0.35);
-  --unx-line: #e3ebf0;
+  --unx-row: #f4f8fa;
+  --unx-gold-row: linear-gradient(135deg, #fff4d2, #fdf9ec);
+  --unx-gold-edge: rgba(168, 124, 12, 0.18);
+  --unx-gold-text: #5a3c00;
+  --unx-gold-sub: #8a5a00;
   --unx-track: #e5edf2;
   --unx-shadow: 0 12px 30px rgba(var(--shade-rgb), 0.08);
-  --unx-chip: rgba(255, 255, 255, 0.94);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -30,13 +30,14 @@ html[data-theme='dark'] .upnext {
   --unx-defend: #ff8a83;
   --unx-you: #ffb38f;
   --unx-you-score: #ff9b70;
-  --unx-row: #223240;
   --unx-you-row: #3a2418;
-  --unx-you-edge: #7a3b25;
-  --unx-line: #243441;
+  --unx-row: #223240;
+  --unx-gold-row: linear-gradient(135deg, #3b3119, #2a2517);
+  --unx-gold-edge: rgba(245, 185, 66, 0.25);
+  --unx-gold-text: #ffd27a;
+  --unx-gold-sub: #e8bb5e;
   --unx-track: #26364a;
   --unx-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
-  --unx-chip: rgba(10, 16, 22, 0.82);
 }
 
 .upnext__head {
@@ -61,11 +62,30 @@ html[data-theme='dark'] .upnext {
   color: var(--muted);
 }
 
+/*
+ * All in one row, however many there are today (HomeUpNext sets the count as a class: a :has() count here was
+ * rewritten by the build's minifier into an :is() that outweighed the phone rules).
+ */
 .upnext__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
   align-items: stretch;
+}
+
+.upnext__grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upnext__grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Narrower, four go two by two; three stay across, still wide enough. */
+@media (max-width: 75rem) {
+  .upnext__grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ---------- a card ---------- */
@@ -81,17 +101,23 @@ html[data-theme='dark'] .upnext {
   color: var(--ink);
 }
 
-/* A game's picture across the top, cropped to the band. */
-.unx__band {
+/* The game's whole picture, 4:3 and uncut, what the card is about over its foot. */
+.unx__pic {
   position: relative;
-  display: block;
   flex: none;
-  height: var(--unx-band);
+  aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--unx-accent, var(--accent)) 30%, #10161e), #0c1218);
+  background: color-mix(in srgb, var(--unx-accent, var(--accent)) 30%, #10161e);
 }
 
-.unx__band > svg {
+.unx__pic-art {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.unx__pic-art > svg {
   position: absolute;
   inset: 0;
   display: block;
@@ -99,13 +125,33 @@ html[data-theme='dark'] .upnext {
   height: 100%;
 }
 
-.unx__body {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  min-width: 0;
-  padding: 1rem 1.15rem 1.15rem;
+/* A game with no picture yet: its mark. */
+.unx__pic-art > .inline-thumb {
+  --inline-thumb-size: 40%;
+}
+
+/*
+ * A dark fall at the picture's foot for its words, in both themes; in the dark one it falls into the card. A fade
+ * to white over a dark scene, in the light theme, read as fog.
+ */
+.unx__pic::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 62%;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(8, 12, 18, 0), rgba(8, 12, 18, 0.55) 45%, rgba(8, 12, 18, 0.9));
+}
+
+html[data-theme='dark'] .unx__pic::after {
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--surface) 70%, transparent) 50%, var(--surface));
+}
+
+.unx__over {
+  position: absolute;
+  inset: auto 1.15rem 0.7rem;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .unx__kick {
@@ -117,17 +163,59 @@ html[data-theme='dark'] .upnext {
   color: var(--unx-kick);
 }
 
-.unx__kick--defend {
-  color: var(--unx-defend);
-}
-
 .unx__title {
-  margin: -0.25rem 0 0;
+  margin: 0.15rem 0 0;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: -0.01em;
-  line-height: 1.22;
+  line-height: 1.15;
+}
+
+/* Over the picture's dark foot, the dark theme's colours in both. */
+.unx__over .unx__kick {
+  color: #5fdcc5;
+}
+
+.unx__over .unx__kick--defend {
+  color: #ff8a83;
+}
+
+.unx__over .unx__title {
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* "Your record" with a crown, in gold on the record's picture. */
+.unx__chip {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff1c2, #e7b955 40%, #b9862a);
+  color: #3d2800;
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.unx__chip svg {
+  width: 0.95rem;
+  height: 0.65rem;
+}
+
+.unx__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.85rem 1.15rem 1.15rem;
 }
 
 .unx__line {
@@ -137,20 +225,20 @@ html[data-theme='dark'] .upnext {
   color: var(--muted);
 }
 
-/* The one way on, at the card's foot. */
+/* The one way on, across the card's foot. */
 .unx__go {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.45rem;
-  align-self: flex-start;
-  min-height: 2.5rem;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
   margin-top: auto;
   box-sizing: border-box;
   padding: 0 1.15rem;
   border-radius: 999px;
   background: var(--ticket, #ff8552);
   color: var(--ticket-ink, #3a1406);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 800;
   text-decoration: none;
   white-space: nowrap;
@@ -171,554 +259,121 @@ html[data-theme='dark'] .upnext {
   height: 0.7rem;
 }
 
-/* ---------- the top pick, big, and the list beside it ---------- */
+/* ---------- the chase: the three around you, as the board has them ---------- */
 
-.upnext__lay {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 1.25rem;
-  align-items: stretch;
-}
-
-.unx-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  min-width: 0;
-  border-radius: 1.5rem;
-  overflow: hidden;
-  background: var(--surface);
-  box-shadow: var(--unx-shadow);
-  color: var(--ink);
-}
-
-/* The game's whole picture, as tall as the words beside it. */
-.unx-head__pic {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 19rem;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--unx-accent, var(--accent)) 30%, #10161e);
-}
-
-.unx-head__pic > svg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* A game with no picture yet: its mark, big. */
-.unx-head__pic > .inline-thumb {
-  --inline-thumb-size: 9rem;
-}
-
-.unx-head__body {
+.unx__ladder {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  min-width: 0;
-  padding: 1.6rem 1.5rem 1.5rem;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.unx-head__title {
-  margin: 0 0 0.5rem;
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-}
-
-.unx-head__line {
-  margin: 0 0 0.75rem;
-  font-size: 0.95rem;
-  line-height: 1.45;
+.unx__rung {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.6rem;
   color: var(--muted);
 }
 
-/* The three around you, as the board has them. */
-.unx-head__board {
+.unx__rung-who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unx__rung-score {
+  flex: none;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.unx__rung--hi .unx__rung-score {
+  color: var(--unx-kick);
+}
+
+.unx__rung--you {
+  background: var(--unx-you-row);
+  color: var(--unx-you);
+  font-weight: 800;
+}
+
+.unx__rung--you .unx__rung-score {
+  font-weight: 800;
+  color: var(--unx-you-score);
+}
+
+/* ---------- a record's two at the top ---------- */
+
+.unx__rows {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  margin: 0 0 0.85rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.unx-head__row {
+.unx__row {
   display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 2.75rem;
-  box-sizing: border-box;
-  padding: 0.5rem 0.9rem;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
   border-radius: 0.75rem;
-  font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-
-.unx-head__name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink);
-}
-
-.unx-head__score {
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.unx-head__row--hi .unx-head__score {
-  color: var(--unx-kick);
-}
-
-.unx-head__row--you {
-  background: var(--unx-you-row);
-  box-shadow: inset 0 0 0 1.5px var(--unx-you-edge);
-  font-weight: 800;
-}
-
-.unx-head__row--you,
-.unx-head__row--you .unx-head__name {
-  color: var(--unx-you);
-}
-
-.unx-head__row--you .unx-head__score {
-  color: var(--unx-you-score);
-}
-
-.unx-head__go {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  min-height: 3.25rem;
-  margin-top: auto;
-  box-sizing: border-box;
-  padding: 0 1.25rem;
-  border-radius: 999px;
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
-  font-size: 1.02rem;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.unx-head__go:hover,
-.unx-head__go:focus-visible {
-  background: var(--ticket-deep, #e0602e);
-}
-
-.unx-head__go:focus-visible {
-  outline: 2px solid var(--ticket-deep, #e0602e);
-  outline-offset: 2px;
-}
-
-.unx-head__go svg {
-  width: 0.8rem;
-  height: 0.8rem;
-}
-
-/* The list: one panel, its rows sharing out its height beside the top pick. */
-.upnext__list {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border-radius: 1.5rem;
-  overflow: hidden;
-  background: var(--surface);
-  box-shadow: var(--unx-shadow);
-  color: var(--ink);
-}
-
-.upnext__list > * + * {
-  border-top: 1px solid var(--unx-line);
-}
-
-.unx-row {
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: 3.75rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.9rem;
-  min-width: 0;
-  padding: 1.1rem 1.25rem;
-}
-
-.unx-row__pic {
-  position: relative;
-  display: block;
-  width: 3.75rem;
-  height: 3.75rem;
-}
-
-.unx-row__tile {
-  --inline-thumb-size: 3.75rem;
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border-radius: 1rem;
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--unx-accent, var(--accent)) 75%, transparent),
-    0 6px 14px rgba(var(--shade-rgb), 0.18);
-}
-
-.unx-row__tile > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* A record you hold: the game in a gold ring, a crown on top. */
-.unx-row__pic--medal .unx-row__tile {
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 3px #e7b955,
-    0 0 0 4.5px rgba(90, 60, 0, 0.35),
-    0 6px 14px rgba(var(--shade-rgb), 0.18);
-}
-
-.unx-row__crown {
-  position: absolute;
-  top: -0.75rem;
-  left: 50%;
-  z-index: 1;
-  width: 1.45rem;
-  height: 0.95rem;
-  transform: translateX(-50%);
-  color: #f5d68a;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
-}
-
-.unx-row__pic--season {
-  overflow: hidden;
-  border-radius: 1rem;
-  background: var(--space-night);
-}
-
-.unx-row__pic--season > svg {
-  position: absolute;
-  inset: 0;
-}
-
-.unx-row__text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
-.unx-row__text .unx__kick {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.unx__kick--season {
-  color: var(--unx-you);
-}
-
-.unx-row__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 800;
-  line-height: 1.22;
-  letter-spacing: -0.01em;
-}
-
-.unx-row__sub {
-  margin: 0.1rem 0 0;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: var(--muted);
-}
-
-.unx-row__sub--clamp {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.unx-row__bar {
-  display: block;
-  height: 6px;
-  margin-top: 0.35rem;
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--unx-track);
-}
-
-.unx-row__bar > span {
-  display: block;
-  height: 100%;
-  border-radius: 6px;
-  background: var(--ticket-deep, #e0602e);
-}
-
-/* The next season's name in the season's last week: in the row's ink, its dot in the season's colour. */
-.unx-row .unx__next {
-  margin-top: 0.2rem;
-  color: var(--ink);
-}
-
-.unx-row .unx__next::before {
-  background: var(--space-orange);
-}
-
-.unx-row__go {
-  display: grid;
-  place-items: center;
-  width: 2.9rem;
-  height: 2.9rem;
-  border-radius: 50%;
-  background: var(--ticket, #ff8552);
-  color: var(--ticket-ink, #3a1406);
-}
-
-.unx-row__go:hover,
-.unx-row__go:focus-visible {
-  background: var(--ticket-deep, #e0602e);
-}
-
-.unx-row__go:focus-visible {
-  outline: 2px solid var(--ticket-deep, #e0602e);
-  outline-offset: 2px;
-}
-
-.unx-row__go svg {
-  width: 1rem;
-  height: 1rem;
-  margin-left: 0.12rem;
-}
-
-.unx-row__go--more {
   background: var(--unx-row);
-  color: var(--ink);
-}
-
-.unx-row__go--more:hover,
-.unx-row__go--more:focus-visible {
-  background: var(--unx-track);
-}
-
-.unx-row__go--more svg {
-  width: 1.2rem;
-  height: 1.2rem;
-  margin-left: 0;
-}
-
-/* Blip's question as a row: Blip in a mint disc on the left, his answers as pills, as tall answered as not. */
-.blip-poll--row {
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: 3.75rem minmax(0, 1fr);
-  align-content: center;
-  column-gap: 0.9rem;
-  row-gap: 0.3rem;
-  padding: 1.1rem 1.25rem;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-html[data-theme='dark'] .blip-poll--row {
-  background: transparent;
-}
-
-/* Its own border reset, so the list's line above it again. */
-.upnext__list > .blip-poll--row:not(:first-child) {
-  border-top: 1px solid var(--unx-line);
-}
-
-.blip-poll--row > * {
-  grid-column: 2;
-}
-
-.blip-poll--row .blip-poll__blip {
-  position: static;
-  grid-column: 1;
-  grid-row: 1 / span 4;
-  align-self: start;
-  width: 3.75rem;
-  height: 3.75rem;
-  box-sizing: border-box;
-  padding: 0.45rem 0.55rem 0.35rem;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 62%, #c9f1e5, #e4f8f2);
-  filter: none;
-}
-
-html[data-theme='dark'] .blip-poll--row .blip-poll__blip {
-  background: radial-gradient(circle at 50% 62%, #1f5045, #16302c);
-}
-
-.blip-poll--row .blip-poll__q {
-  padding-right: 0;
-  font-size: 1.05rem;
-}
-
-.blip-poll--row .blip-poll__opts,
-.blip-poll--row .blip-poll__res {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
-  gap: 0.45rem;
-  margin-top: 0.35rem;
-}
-
-.blip-poll--row .blip-poll__opt {
-  height: 100%;
-  min-height: 2.5rem;
-  padding: 0.35rem 0.8rem;
-  border-radius: 999px;
   font-size: 0.88rem;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-.blip-poll--row .blip-poll__opt[aria-busy='true'] {
-  padding-inline: 1.9rem;
+.unx__row-place {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--muted);
 }
 
-.blip-poll--row .blip-poll__spin {
-  right: 0.6rem;
+.unx__row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.blip-poll--row .blip-poll__bar {
-  min-height: 2.5rem;
-  padding: 0 0.8rem;
-  border-radius: 999px;
-  font-size: 0.84rem;
+.unx__row-value {
+  color: var(--muted);
 }
 
-/* A share's fill, square-ended inside its pill: a round end on a short one read as a blob. */
-.blip-poll--row .blip-poll__fill {
-  border-radius: 0;
+.unx__row--you {
+  background: var(--unx-gold-row);
+  box-shadow: inset 0 0 0 1px var(--unx-gold-edge);
 }
 
-.blip-poll--row .blip-poll__foot {
-  margin-top: 0.2rem;
-  font-size: 0.8rem;
+.unx__row--you .unx__row-place {
+  color: var(--unx-gold-sub);
 }
 
-/* While they come: the same frames, shimmering. */
-.unx-head--skel .unx-head__pic,
-.unx-row--skel .unx-row__pic {
-  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
-  background-size: 200% 100%;
-  animation: lb-skel-shine 1.15s ease-in-out infinite;
+.unx__row--you .unx__row-value {
+  color: var(--unx-gold-text);
 }
 
-.unx-row--skel .unx-row__pic {
-  border-radius: 1rem;
-}
-
-.unx-head--skel .unx-head__row {
-  background: rgba(var(--ink-rgb), 0.05);
-}
-
-.unx-head__go.unx-head__go--skel {
-  color: transparent;
-  background: rgba(var(--ink-rgb), 0.1);
-}
-
-.unx-row__go.unx-row__go--skel {
-  background: rgba(var(--ink-rgb), 0.1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .unx-head--skel .unx-head__pic,
-  .unx-row--skel .unx-row__pic {
-    animation: none;
-  }
-}
-
-/* Narrower: the list under the top pick. */
-@media (max-width: 64rem) {
-  .upnext__lay {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.85rem;
-  }
-}
+/* ---------- Blip's question, in the same frame, Blip in his own picture ---------- */
 
 /*
- * A phone: the picture across the top pick's top. In the dark theme its headline sits over the picture's foot, the
- * picture fading into the card; in the light one a fade to white is a fog over a dark scene, so it starts under it.
- */
-@media (max-width: 40rem) {
-  .unx-head {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .unx-head__pic {
-    min-height: 0;
-    aspect-ratio: 4 / 3;
-  }
-
-  .unx-head__pic::after {
-    content: '';
-    position: absolute;
-    inset: auto 0 0;
-    height: 50%;
-    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--surface) 85%, transparent) 55%, var(--surface));
-  }
-
-  .unx-head__body {
-    position: relative;
-    z-index: 1;
-    margin-top: -3.6rem;
-    padding: 0 1rem 1rem;
-    gap: 0.4rem;
-  }
-
-  .unx-head__title {
-    font-size: 1.75rem;
-  }
-
-  html:not([data-theme='dark']) .unx-head__pic::after {
-    content: none;
-  }
-
-  html:not([data-theme='dark']) .unx-head__body {
-    margin-top: 0;
-    padding-top: 1rem;
-  }
-
-  .unx-head__row {
-    min-height: 2.6rem;
-    font-size: 0.92rem;
-  }
-
-  .unx-row,
-  .blip-poll--row {
-    padding: 0.95rem 1rem;
-    column-gap: 0.8rem;
-  }
-
-  .unx-row__title,
-  .blip-poll--row .blip-poll__q {
-    font-size: 1rem;
-  }
-}
-
-/* ---------- Blip's question, in the same frame, Blip in his band ---------- */
-
-/*
- * BlipPoll's card look: his band across the top with "Blip asks" on a chip over it, the answers (or, answered, how
- * everyone answered) two by two, yesterday's in a box, and the foot at the card's foot. Answered or not, it's the
- * same height, so the row doesn't stretch when you answer.
+ * BlipPoll's card look: a 4:3 mint picture of Blip across the top with "Blip asks" and the question over its foot,
+ * the answers (or, answered, how everyone answered) two by two, yesterday's in a box, and the foot at the card's
+ * foot. Answered or not, it's the same height, so the row doesn't stretch when you answer. The picture is the
+ * card's ::before, as tall as three quarters of the card's width: the top padding (a percentage, of that same
+ * width) brings the words up over its foot.
  */
 .blip-poll--card {
-  padding: calc(var(--unx-band) + 1rem) 1.15rem 1.15rem;
+  container-type: inline-size;
+  padding: calc(75% - 3.6rem) 1.15rem 1.15rem;
   gap: 0.65rem;
   border: 0;
   border-radius: 1.5rem;
@@ -731,8 +386,10 @@ html[data-theme='dark'] .blip-poll--row .blip-poll__blip {
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: var(--unx-band);
-  background: radial-gradient(circle at 50% 62%, #c9f1e5 0%, #e4f8f2 60%, #eefbf7 100%);
+  aspect-ratio: 4 / 3;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, var(--surface)),
+    radial-gradient(circle at 50% 42%, #c9f1e5 0%, #e4f8f2 60%, #eefbf7 100%);
 }
 
 html[data-theme='dark'] .blip-poll--card {
@@ -740,35 +397,36 @@ html[data-theme='dark'] .blip-poll--card {
 }
 
 html[data-theme='dark'] .blip-poll--card::before {
-  background: radial-gradient(circle at 50% 62%, #1f5045 0%, #183a34 58%, #16302c 100%);
+  background:
+    linear-gradient(180deg, transparent 50%, var(--surface)),
+    radial-gradient(circle at 50% 42%, #1f5045 0%, #183a34 58%, #16302c 100%);
 }
 
 .blip-poll--card .blip-poll__blip {
-  top: calc(var(--unx-band) - 8.1rem);
+  top: 1rem;
   right: auto;
   left: 50%;
-  width: 7.6rem;
-  height: 7.95rem;
+  width: 34%;
+  max-width: 8rem;
+  height: auto;
+  aspect-ratio: 22 / 23;
   transform: translateX(-50%);
 }
 
-/* "Blip asks · #7" on a chip over his band, as the other cards' chips sit. */
+/* Over his picture, which would otherwise paint over them: it's positioned, and they're not. */
+.blip-poll--card > :not(.blip-poll__blip) {
+  position: relative;
+}
+
 .blip-poll--card .blip-poll__who {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  z-index: 1;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  background: var(--unx-chip);
   color: var(--unx-kick);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.13em;
 }
 
 .blip-poll--card .blip-poll__q {
+  margin-top: -0.4rem;
   padding-right: 0;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
 }
 
 /* Its answers two by two, and how everyone answered the same way, so answering doesn't change its height. */
@@ -805,6 +463,20 @@ html[data-theme='dark'] .blip-poll--card::before {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A narrow card (three across on a tablet): one answer a line, or a share beside it cuts its words to "Ph…". */
+@container (max-width: 17rem) {
+  .blip-poll--card .blip-poll__opts,
+  .blip-poll--card .blip-poll__res {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .blip-poll--card .blip-poll__opt,
+  .blip-poll--card .blip-poll__bar {
+    min-height: 2.35rem;
+  }
 }
 
 /* Yesterday's answer, in a box with its share as a bar. */
@@ -864,6 +536,14 @@ html[data-theme='dark'] .blip-poll--card::before {
   vertical-align: -0.2em;
 }
 
+/* Your answer's tick, before it on a card's results. */
+.blip-poll__mine {
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-right: 0.3rem;
+  vertical-align: -0.08em;
+}
+
 /* ---------- the season: deep space in both themes ---------- */
 
 .unx--season {
@@ -876,31 +556,25 @@ html[data-theme='dark'] .unx--season {
   border: 1px solid var(--space-line);
 }
 
-.unx--season .unx__band {
+.unx--season .unx__pic {
   background: var(--space-night);
 }
 
-/* The scene fades into the card's night at its foot. */
-.unx--season .unx__band::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 2.9rem;
-  background: linear-gradient(180deg, rgba(var(--space-night-rgb), 0), var(--space-night));
+/* The scene falls into the card's night at its foot. */
+.unx--season .unx__pic::after,
+html[data-theme='dark'] .unx--season .unx__pic::after {
+  background: linear-gradient(180deg, rgba(var(--space-night-rgb), 0), rgba(var(--space-night-rgb), 0.7) 50%, var(--space-night));
 }
 
-.unx--season .unx__body {
-  padding-top: 0.75rem;
-}
-
-.unx--season .unx__kick {
+.unx--season .unx__over .unx__kick {
   font-family: var(--space-font);
   font-size: 0.66rem;
   letter-spacing: 0.16em;
   color: var(--space-orange);
 }
 
-.unx--season .unx__title {
+.unx--season .unx__over .unx__title {
+  margin-top: 0.3rem;
   font-family: var(--space-font);
   font-size: 1.45rem;
   font-weight: 700;
@@ -965,22 +639,15 @@ html[data-theme='dark'] .unx--season {
   grid-column: span 2;
 }
 
-/* The scene down the card's left half, the pitch on its right. */
+/* The scene down the card's left half, its name over its foot, the pitch on its right. */
 .unx--season.unx--wide {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-.unx--season.unx--wide .unx__band {
-  height: auto;
+.unx--season.unx--wide .unx__pic {
+  aspect-ratio: auto;
   min-height: 15rem;
-}
-
-.unx--season.unx--wide .unx__band::after {
-  inset: 0 0 0 auto;
-  width: 3.5rem;
-  height: auto;
-  background: linear-gradient(90deg, rgba(var(--space-night-rgb), 0), var(--space-night));
 }
 
 .unx--season.unx--wide .unx__body {
@@ -988,11 +655,12 @@ html[data-theme='dark'] .unx--season {
   padding: 1.6rem 1.8rem;
 }
 
-.unx--season.unx--wide .unx__title {
+.unx--season.unx--wide .unx__over .unx__title {
   font-size: 1.9rem;
 }
 
 .unx--season.unx--wide .unx__go {
+  align-self: flex-start;
   margin-top: 0.4rem;
 }
 
@@ -1004,13 +672,17 @@ html[data-theme='dark'] .unx--season {
 
 /* ---------- while a card comes ---------- */
 
-.unx--skel .unx__band {
+.unx--skel .unx__pic {
   background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.04), rgba(var(--ink-rgb), 0.09), rgba(var(--ink-rgb), 0.04)) #0c1218;
   background-size: 200% 100%;
   animation: lb-skel-shine 1.15s ease-in-out infinite;
 }
 
-.unx--skel.unx--season .unx__band {
+.unx--skel .unx__pic::after {
+  content: none;
+}
+
+.unx--skel.unx--season .unx__pic {
   background-color: var(--space-night);
 }
 
@@ -1024,15 +696,16 @@ html[data-theme='dark'] .unx--season {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .unx--skel .unx__band {
+  .unx--skel .unx__pic {
     animation: none;
   }
 }
 
 /*
- * ---------- a phone: the cards stacked, a game's picture down their left ----------
+ * ---------- a phone: the first two cards, one under the other ----------
  * Up to 46rem, not just a phone's 36: two by two from 36rem gave cards under 300px, Blip's answers and the chase's
- * names squeezed into them, on a big phone or one turned sideways (Ramsey's son's, 2026-10-19).
+ * names squeezed into them, on a big phone or one turned sideways (Ramsey's son's, 2026-10-19). Ramsey, 2026-10-20:
+ * "maybe we just don't have as many cards for mobile, and they just are verticle".
  */
 
 @media (max-width: 46rem) {
@@ -1048,36 +721,24 @@ html[data-theme='dark'] .unx--season {
     display: none;
   }
 
-  .upnext__grid {
+  .upnext__grid,
+  .upnext__grid--2,
+  .upnext__grid--4,
+  .upnext--first .upnext__grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.85rem;
   }
 
+  .upnext:not(.upnext--first) .upnext__grid > :nth-child(n + 3) {
+    display: none;
+  }
+
   .unx__body {
-    gap: 0.45rem;
-    padding: 0.85rem 0.9rem 0.95rem;
+    padding: 0.8rem 1rem 1rem;
   }
 
-  .unx__title {
-    font-size: 1.05rem;
-  }
-
-  .unx__line {
-    font-size: 0.8rem;
-  }
-
-  .unx__go {
-    min-height: 2.75rem;
-    padding: 0 1rem;
-    font-size: 0.88rem;
-  }
-
-  .unx--season .unx__band {
-    height: 6.5rem;
-  }
-
-  .upnext--first .upnext__grid {
-    grid-template-columns: minmax(0, 1fr);
+  .unx__over {
+    inset: auto 1rem 0.65rem;
   }
 
   .unx--wide {
@@ -1088,61 +749,21 @@ html[data-theme='dark'] .unx--season {
     display: flex;
   }
 
-  .unx--season.unx--wide .unx__band {
+  .unx--season.unx--wide .unx__pic {
+    aspect-ratio: 4 / 3;
     min-height: 0;
   }
 
-  .unx--season.unx--wide .unx__band::after {
-    inset: auto 0 0;
-    width: auto;
-    height: 2.9rem;
-    background: linear-gradient(180deg, rgba(var(--space-night-rgb), 0), var(--space-night));
-  }
-
   .unx--season.unx--wide .unx__body {
-    padding: 0.75rem 0.9rem 0.95rem;
+    padding: 0.8rem 1rem 1rem;
   }
 
-  .unx--season.unx--wide .unx__title {
-    font-size: 1.3rem;
+  .unx--season.unx--wide .unx__over .unx__title {
+    font-size: 1.45rem;
   }
 
-  /* Blip back on the card's edge, as everywhere else, with room over the card for him, and his chip a line. */
   .blip-poll--card {
-    margin-top: 1.1rem;
-    padding-top: 1.25rem;
-    overflow: visible;
+    padding-inline: 1rem;
+    padding-bottom: 1rem;
   }
-
-  .blip-poll--card::before {
-    content: none;
-  }
-
-  .blip-poll--card .blip-poll__blip {
-    top: -1.6rem;
-    right: 0.9rem;
-    left: auto;
-    width: 3.2rem;
-    height: 3.35rem;
-    transform: none;
-  }
-
-  .blip-poll--card .blip-poll__who {
-    position: static;
-    padding: 0;
-    background: none;
-  }
-
-  .blip-poll--card .blip-poll__q {
-    padding-right: 2.6rem;
-    font-size: 1.1rem;
-  }
-}
-
-/* Your answer's tick, before it on a card's results. */
-.blip-poll__mine {
-  width: 0.8rem;
-  height: 0.8rem;
-  margin-right: 0.3rem;
-  vertical-align: -0.08em;
 }
