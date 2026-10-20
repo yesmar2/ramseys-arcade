@@ -81,7 +81,14 @@ html[data-theme='dark'] .upnext {
 
 /* Narrower, two by two; one left over at the end takes the row's width, its picture down its left. */
 @media (max-width: 75rem) {
-  .upnext:not(.upnext--first) .upnext__grid,
+  /*
+   * Two rules, not one list: the build's minifier wraps a list holding a :has() in :is(), which takes the :has()
+   * one's weight for both, and three cards then stayed two by two on a phone, past the 46rem rules below.
+   */
+  .upnext:not(.upnext--first) .upnext__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .upnext:not(.upnext--first) .upnext__grid:has(> :nth-child(4)) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
