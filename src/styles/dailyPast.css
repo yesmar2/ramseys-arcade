@@ -193,7 +193,12 @@ html[data-theme='dark'] .dp-tip {
   gap: 1.25rem;
 }
 
-.pc {
+/*
+ * The player card’s hero is .pc too (PlayerCard.tsx, a <section>): these rules gave it this card’s padding,
+ * background, border and corners. So they’re the past courses’ cards’ alone, and :where keeps them as specific
+ * as before.
+ */
+.pc:where(li) {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -207,11 +212,11 @@ html[data-theme='dark'] .dp-tip {
   transition: border-color 0.15s ease;
 }
 
-.pc:focus {
+.pc:where(li):focus {
   outline: none;
 }
 
-.pc:hover {
+.pc:where(li):hover {
   border-color: rgba(var(--ink-rgb), 0.16);
 }
 
@@ -1149,7 +1154,7 @@ html[data-theme='dark'] .phm-line {
     gap: 0.75rem;
   }
 
-  .pc {
+  .pc:where(li) {
     border-radius: 1.375rem;
   }
 
