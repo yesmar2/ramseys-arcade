@@ -5,6 +5,7 @@ import { SeasonPatch } from '../components/season/SeasonLook'
 import { UseSkin } from '../components/season/SkinPicker'
 import { openAvatarStudio, openSiteMenu } from '../components/siteNav'
 import { getGame } from '../data/games'
+import { prizeById } from '../data/prizes'
 import { useAuth } from '../hooks/useAuth'
 import { gameHref, plusHref, rankHowHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
@@ -769,7 +770,9 @@ export function SeasonPage() {
     if (reward.kind === 'skin') return reward.game && owned.includes(reward.id) ? <UseSkin game={reward.game} id={reward.id} /> : null
     if (!avatar || !AVATARS_ENABLED) return null
     if (reward.kind === 'pin') return isPin(reward.id) ? <WearLook reward={reward} avatar={avatar} /> : null
-    if (reward.kind === 'prize') return owned.includes(reward.id) ? <WearLook reward={reward} avatar={avatar} /> : null
+    // A title or a sign has nowhere to show now that the player card has neither (2026-10-20): nothing to wear.
+    const shows = !['title', 'sign'].includes(prizeById(reward.id)?.kind ?? '')
+    if (reward.kind === 'prize') return shows && owned.includes(reward.id) ? <WearLook reward={reward} avatar={avatar} /> : null
     return null
   }
 

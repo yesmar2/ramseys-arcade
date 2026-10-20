@@ -72,8 +72,11 @@ type AvatarStudioProps = {
 
 type Tab = 'mark' | 'colour' | 'flair' | 'prizes'
 
-/** What the Prizes tab puts on, in its order: everything from the counter but a finish, which is a badge. */
-const WORN_KINDS: Exclude<PrizeKind, 'finish'>[] = ['name', 'card', 'foil', 'confetti', 'title', 'sign']
+/**
+ * What the Prizes tab puts on, in its order: what shows on the boards and the player card. A finish is a badge,
+ * and titles and signs show nowhere now that the card has neither (2026-10-20), so they aren't offered.
+ */
+const WORN_KINDS: Exclude<PrizeKind, 'finish' | 'title' | 'sign'>[] = ['name', 'card', 'foil', 'confetti']
 
 const NONE_LABELS: Record<Exclude<PrizeKind, 'finish'>, string> = {
   name: 'Plain',
@@ -207,7 +210,8 @@ export function AvatarStudio({ name, current, wear, onSaved, onClose }: AvatarSt
   const finishLocked = isFinishBadge(draft.badge) && !owned.has(draft.badge) && saved.badge !== draft.badge
   const lockedFinish = finishLocked ? prizeById(draft.badge) : null
   const blocked = Boolean(trying) || finishLocked
-  const prizeCount = PRIZES.filter((p) => p.kind !== 'finish' && owned.has(p.id)).length
+  // What the tab offers to put on: titles and signs aren't, as they show nowhere.
+  const prizeCount = PRIZES.filter((p) => (WORN_KINDS as readonly PrizeKind[]).includes(p.kind) && owned.has(p.id)).length
 
   const save = async () => {
     if (busy || blocked) return

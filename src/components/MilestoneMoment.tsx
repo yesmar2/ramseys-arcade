@@ -38,7 +38,8 @@ const EARNED: Record<number, { chip: string; wear: AvatarWear | null }> = {
   7: { chip: 'The Dailies pin is yours', wear: { pin: 'today' } },
   14: { chip: '25 tickets for the prize counter', wear: null },
   30: { chip: 'The Gold avatar is yours', wear: { prize: 'gilded' } },
-  100: { chip: 'The “Every Day” title is yours', wear: { prize: 't-everyday' } },
+  // A title has nowhere to show now that the player card has no plate for one (2026-10-20): nothing to put on.
+  100: { chip: 'The “Every Day” title is yours', wear: null },
 }
 
 function seenKey(account: string, day: number): string {
