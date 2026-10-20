@@ -155,6 +155,47 @@ function dailiesCard(races) {
   ${signoff('· no ads, just play')}`)
 }
 
+const GOLD = '#f0b43c'
+
+/** A head and shoulders, centred on `x`, the head at `y`. */
+function bust(x, y, head, fill, opacity = 1) {
+  const body = head * 1.8
+  return `<circle cx="${x}" cy="${y}" r="${head}" fill="${fill}" opacity="${opacity}"/>
+  <path d="M${x - body} ${y + head + body + 14} a${body} ${body} 0 0 1 ${body * 2} 0 Z" fill="${fill}" opacity="${opacity}"/>`
+}
+
+/** A group's invite (/groups/<id>?invite=…), in the words its Share button sends with it (GroupDetail.tsx). */
+function groupCard() {
+  return frame(`
+  <rect x="96" y="165" width="300" height="300" rx="56" fill="${TEAL}"/>
+  ${bust(176, 268, 24, TEXT, 0.72)}
+  ${bust(316, 268, 24, TEXT, 0.72)}
+  ${bust(246, 290, 32, TEXT)}
+  <text x="454" y="205" font-family="${FONT}" font-size="26" font-weight="700" letter-spacing="5" fill="${TEAL}">YOU’RE INVITED</text>
+  ${lines(['Join my group'], 452, 300, 88, 0, TEXT, 700)}
+  ${lines(['The same boards, with just us on them.'], 454, 380, 34, 0, MUTED)}
+  ${signoff('· plays in your browser')}`)
+}
+
+/** A player's card (/rank/<TAG>/<period>), in the words its Share button sends with it (RankPage.tsx). */
+function playerCard() {
+  return frame(
+    `
+  <rect x="96" y="165" width="300" height="300" rx="56" fill="${GOLD}"/>
+  <circle cx="246" cy="315" r="100" fill="none" stroke="${TEXT}" stroke-width="12"/>
+  <clipPath id="ring"><circle cx="246" cy="315" r="88"/></clipPath>
+  <g clip-path="url(#ring)">
+    <circle cx="246" cy="286" r="36" fill="${TEXT}"/>
+    <path d="M152 436 a94 94 0 0 1 188 0 Z" fill="${TEXT}"/>
+  </g>
+  <text x="454" y="205" font-family="${FONT}" font-size="26" font-weight="700" letter-spacing="5" fill="${GOLD}">PLAYER CARD</text>
+  ${lines(['Respect…', 'or revenge?'], 452, 300, 84, 92, TEXT, 700)}
+  ${lines(['See where they stand, game by game.'], 454, 470, 30, 0, MUTED)}
+  ${signoff('· plays in your browser')}`,
+    GOLD,
+  )
+}
+
 async function render(svg, file) {
   await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(file)
   console.log('wrote', file)
@@ -168,7 +209,7 @@ const server = await createServer({
   server: { middlewareMode: true, hmr: false, watch: null },
 })
 // `npm run icons:og` draws them all; `node scripts/gen-og-images.mjs challenges` only the challenge cards, `site` only
-// the site's, `dailies` only the Dailies page's.
+// the site's, `dailies` only the Dailies page's, `shared` only a group invite's and a player card's.
 const only = process.argv[2]
 try {
   const { games } = await server.ssrLoadModule('/src/data/games.ts')
@@ -183,9 +224,14 @@ try {
     await render(siteCard(), 'public/og.png')
   } else if (only === 'dailies') {
     await render(dailiesCard(races), 'public/og/dailies.png')
+  } else if (only === 'shared') {
+    await render(groupCard(), 'public/og/group.png')
+    await render(playerCard(), 'public/og/player.png')
   } else if (only !== 'challenges') {
     await render(siteCard(), 'public/og.png')
     await render(dailiesCard(races), 'public/og/dailies.png')
+    await render(groupCard(), 'public/og/group.png')
+    await render(playerCard(), 'public/og/player.png')
     for (const game of games) {
       if (game.hidden) continue
       // The goal under the blurb, unless the blurb already says it (Putt's opens with it).
@@ -194,7 +240,7 @@ try {
       await render(gameCard(game, said ? '' : goal), `public/og/${game.slug}.png`)
     }
   }
-  for (const game of only === 'site' || only === 'dailies' ? [] : games) {
+  for (const game of only === 'site' || only === 'dailies' || only === 'shared' ? [] : games) {
     if (game.hidden) continue
     await render(challengeCard(game), `public/og/challenge/${game.slug}.png`)
   }

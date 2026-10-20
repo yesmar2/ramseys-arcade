@@ -6,6 +6,8 @@
   "rewrites": [
     { "source": "/c/:game/:id", "destination": "/api/challenge-page?game=:game&id=:id" },
     { "source": "/e/:id/:name", "destination": "/api/event-page?id=:id&name=:name" },
+    { "source": "/groups/:path*", "destination": "/groups/index.html" },
+    { "source": "/rank/:path*", "destination": "/rank/index.html" },
     { "source": "/((?!api/|_vercel/|assets/).*)", "destination": "/index.html" }
   ],
   "headers": [

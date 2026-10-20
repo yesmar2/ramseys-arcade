@@ -77,8 +77,8 @@ function outFile(path) {
 function robotsTxt() {
   return [
     'User-agent: *',
-    'Disallow: /rank',
-    'Disallow: /groups',
+    // Not /rank or /groups: a player's card and a group's invite are sent to people, and the chat apps that honour
+    // robots.txt (X, LinkedIn) would show no preview. Their pages say noindex instead (sharedPages below).
     'Disallow: /stats',
     'Disallow: /admin',
     // The clue to the Staff Only door (/admin to anyone not an admin), an easter egg.
@@ -216,6 +216,37 @@ try {
   }
   mkdirSync(join(DIST, 'og/challenge'), { recursive: true })
   writeFileSync(join(DIST, 'og/challenge/games.json'), JSON.stringify(cardGames))
+  /*
+   * Somebody's own page, sent to somebody: a group's invite (/groups/<id>?invite=…) and a player's card
+   * (/rank/<TAG>/<period>). Each unfurls as what it is, in the words its Share button sends with it
+   * (GroupDetail.tsx, RankPage.tsx), where the home page's tags stood in; vercel.json serves these two for every
+   * address under them. noindex keeps them out of search. Without an og:url or canonical, a preview goes to the
+   * link that was sent: one shared address would take every invite to the groups page, without its invite.
+   */
+  const sharedPages = [
+    {
+      path: '/groups',
+      title: `You’re invited to a group on ${APP_NAME}`,
+      description: `The site’s boards with just the group on them, game by game. Quick original games that play right here in your browser, free and with no ads.`,
+      image: '/og/group.png',
+    },
+    {
+      path: '/rank',
+      title: `A player card on ${APP_NAME}`,
+      description: `Where they stand on ${APP_NAME}: their place, their best games and their trophies. Quick original games that play right here in your browser, free and with no ads.`,
+      image: '/og/player.png',
+    },
+  ]
+  for (const meta of sharedPages) {
+    const content = { heading: meta.title, paragraphs: [meta.description], links: [{ href: '/', label: `Play on ${APP_NAME}` }] }
+    const html = pageHtml(meta, content)
+      .replace(/\s*<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/, '')
+      .replace(/\s*<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/, '')
+      .replace('</head>', '  <meta name="robots" content="noindex" />\n  </head>')
+    const file = outFile(meta.path)
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, html)
+  }
   // A day's share link, /today/<day>, and the card of the day it unfurls into (today-cards.mjs). A card
   // that can't be drawn mustn't stop the site shipping: without them, a day's link unfurls as the site does.
   try {
