@@ -58,7 +58,7 @@ export function BlipHello({ onGameScreen }: { onGameScreen: boolean }) {
   const [out, setOut] = useState(false)
   const [open, setOpen] = useState(false)
   const today = view?.today ?? null
-  const due = Boolean(today && today.pick == null && !onGameScreen && route.name !== 'admin')
+  const due = Boolean(today && today.pick == null && !onGameScreen && route.name !== 'admin' && route.name !== 'blipQuestions')
 
   useEffect(() => {
     if (!due || !today) return
@@ -102,6 +102,12 @@ export function BlipHello({ onGameScreen }: { onGameScreen: boolean }) {
     window.addEventListener(OPEN_MENU_EVENT, onMenu)
     return () => window.removeEventListener(OPEN_MENU_EVENT, onMenu)
   }, [open])
+
+  // Following a link out of the sheet (yesterday's, to Blip's questions) puts it away.
+  const path = window.location.pathname
+  useEffect(() => {
+    setOpen(false)
+  }, [path])
 
   // Leaving for a game's screen puts it all away.
   useEffect(() => {

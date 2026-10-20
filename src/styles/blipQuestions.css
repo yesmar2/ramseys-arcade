@@ -1,0 +1,185 @@
+/*
+ * Blip's questions (/blip, pages/BlipQuestionsPage.tsx): today's card on top, then the past questions as cards
+ * of their own, their answers as the home card's bars (blipPoll.css) in Blip's mint.
+ */
+
+.lb-page__inner.bq-page {
+  --blip: #34c6a8;
+  --blip-ink: #13715f;
+  width: min(100% - 2rem, 58rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem 0 3rem;
+}
+
+html[data-theme='dark'] .lb-page__inner.bq-page {
+  --blip-ink: #7fe3c4;
+}
+
+.bq-head__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bq-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.bq-lede {
+  margin: 0;
+  max-width: 40rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+.bq-lede b {
+  color: var(--blip-ink);
+}
+
+/* Today's, as the home page asks it: room above for Blip perched on it. */
+.bq-today {
+  width: min(100%, 30rem);
+  padding-top: 1.4rem;
+}
+
+.bq-sub {
+  margin: 0.75rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.bq-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bq-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 1rem;
+  border-radius: 1.1rem;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  box-shadow: var(--shadow-soft);
+}
+
+.bq-card__day {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blip-ink);
+}
+
+.bq-card__q {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* The answer most picked: its share in Blip's ink. */
+.bq-card__bar--top .blip-poll__pct {
+  color: var(--blip-ink);
+}
+
+.bq-card__bar--top.blip-poll__bar--mine .blip-poll__pct {
+  color: inherit;
+}
+
+.bq-card__foot {
+  margin: auto 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.bq-card__skel-q {
+  margin-bottom: 0.2rem;
+}
+
+.bq-card__skel-bar {
+  display: block;
+  height: 2.35rem;
+  border-radius: 0.7rem;
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.bq-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bq-more p,
+.bq-end {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.bq-btn {
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ink-rgb), 0.18);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bq-btn:hover {
+  border-color: rgba(var(--ink-rgb), 0.32);
+}
+
+.bq-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.bq-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1.4rem 1.5rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.bq-note p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.bq-signin {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}

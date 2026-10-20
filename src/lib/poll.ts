@@ -97,6 +97,16 @@ export function openBlipPoll() {
   window.dispatchEvent(new Event(OPEN_BLIP_EVENT))
 }
 
+/** A past question, as it finished: how everyone answered, and the player's answer (null: not theirs, or a visitor). */
+export type PastPoll = PollQuestion & PollCounts & { pick: number | null }
+
+export type PastPolls = { today: number | null; polls: PastPoll[]; next: number | null; answers: number | null }
+
+/** Blip's past questions, newest first, a page at a time: from yesterday's, or older than `before`'s. */
+export function fetchPastPolls(before?: number | null): Promise<PastPolls> {
+  return api<PastPolls>(`/poll/past${before ? `?before=${before}` : ''}`)
+}
+
 /** "38%": a share of the answers, rounded. */
 export function share(count: number, total: number): string {
   return `${total ? Math.round((count * 100) / total) : 0}%`

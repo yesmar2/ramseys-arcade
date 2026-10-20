@@ -68,6 +68,7 @@ const RankHowPage = lazyPage(() => import('./pages/RankHowPage').then((m) => m.R
 const StatsPage = lazyPage(() => import('./pages/StatsPage').then((m) => m.StatsPage))
 const PrizeCounterPage = lazyPage(() => import('./pages/PrizeCounterPage').then((m) => m.PrizeCounterPage))
 const TicketHistoryPage = lazyPage(() => import('./pages/TicketHistoryPage').then((m) => m.TicketHistoryPage))
+const BlipQuestionsPage = lazyPage(() => import('./pages/BlipQuestionsPage').then((m) => m.BlipQuestionsPage))
 const SeasonPage = lazyPage(() => import('./pages/SeasonPage').then((m) => m.SeasonPage))
 /** The Today page, in a chunk of its own with the dailies' plans. */
 const TodayPage = lazyPage(() => import('./pages/TodayPage').then((m) => m.TodayPage))
@@ -256,6 +257,7 @@ const PAGE_PRELOADS: { test: RegExp; page: { preload: () => Promise<void> } }[] 
   { test: /^\/how-ranks-work(?:[/?#]|$)/, page: RankHowPage },
   { test: /^\/stats(?:[/?#]|$)/, page: StatsPage },
   { test: /^\/prizes\/tickets(?:[/?#]|$)/, page: TicketHistoryPage },
+  { test: /^\/blip(?:[/?#]|$)/, page: BlipQuestionsPage },
   { test: /^\/prizes(?:[/?#]|$)/, page: PrizeCounterPage },
   { test: /^\/season(?:[/?#]|$)/, page: SeasonPage },
   // The Dailies page, and its old address that inbox notes and day shares still use.
@@ -288,6 +290,7 @@ function Screen({ route }: { route: ReturnType<typeof useRoute> }) {
   if (route.name === 'stats') return <StatsPage />
   if (route.name === 'prizes') return <PrizeCounterPage />
   if (route.name === 'tickets') return <TicketHistoryPage />
+  if (route.name === 'blipQuestions') return <BlipQuestionsPage />
   if (route.name === 'season') return <SeasonPage />
   if (route.name === 'today') return <TodayPage />
   if (route.name === 'notificationSettings') return <NotificationSettingsPage />

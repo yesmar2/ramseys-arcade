@@ -3,6 +3,7 @@ import { howToPlayFor, howToPlaySentences } from '../data/howToPlay'
 import {
   aboutHref,
   adminHref,
+  blipQuestionsHref,
   dailyTabHref,
   dayBoardHref,
   gameHref,
@@ -482,6 +483,8 @@ export function pageMeta(route: Route): PageMeta {
       }
     case 'tickets':
       return { ...site, title: titled('Your tickets'), path: ticketsHref(), noindex: true }
+    case 'blipQuestions':
+      return { ...site, title: titled('Blip’s questions'), path: blipQuestionsHref(), noindex: true }
     case 'season':
       return {
         ...site,

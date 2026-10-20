@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { blipQuestionsHref } from '../hooks/useHashRoute'
 import { answerPoll, blipSet, share, usePoll } from '../lib/poll'
 import { BlipFigure } from './BlipFigure'
 import { BlipSet } from './BlipSet'
@@ -36,8 +37,9 @@ function SkelMore({ w }: { w: string }) {
  * `look="card"`: a card of the home page's Up next for you row (HomeUpNext.tsx), as tall answered as not, so the
  * row beside it doesn't stretch when you answer: the answers and the results two by two, yesterday's in a box, and
  * Blip's set as a line under them (the set itself shows only when an answer wins one of it).
+ * `onPastPage`: on Blip's questions page (BlipQuestionsPage.tsx), where yesterday's is the first card under it.
  */
-export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 'card' }) {
+export function BlipPoll({ inSheet = false, look, onPastPage = false }: { inSheet?: boolean; look?: 'card'; onPastPage?: boolean }) {
   const card = look === 'card'
   const { signedIn, signedOut } = useAuth()
   const { view, status, earned, won } = usePoll(signedIn)
@@ -153,7 +155,7 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
       )}
       {/* On the home page's card, yesterday's answer before the foot, in a box with its share as a bar. */}
       {card && today && yesterday && top >= 0 ? (
-        <div className="blip-poll__ago">
+        <a className="blip-poll__ago" href={blipQuestionsHref()} aria-label={`Yesterday: ${yesterday.q} ${yesterday.options[top]}, ${share(yesterday.counts[top]!, yesterday.total)}. See all of Blip’s questions`}>
           <span className="blip-poll__ago-row">
             <span className="blip-poll__ago-q">Yesterday: {yesterday.q}</span>
             <b>
@@ -163,7 +165,7 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
           <span className="blip-poll__ago-bar" aria-hidden="true">
             <span style={{ width: share(yesterday.counts[top]!, yesterday.total) }} />
           </span>
-        </div>
+        </a>
       ) : null}
       {today && !voted ? (
         <p className="blip-poll__foot">
@@ -202,9 +204,12 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
         </p>
       ) : null}
       {voted && answers != null && (!card || won) ? <BlipSet answers={answers} won={won} /> : null}
-      {!card && yesterday && top >= 0 ? (
+      {!card && !onPastPage && yesterday && top >= 0 ? (
         <p className="blip-poll__then">
-          <b>Yesterday:</b> {yesterday.q} {yesterday.options[top]}, {share(yesterday.counts[top]!, yesterday.total)}.
+          <b>Yesterday:</b> {yesterday.q} {yesterday.options[top]}, {share(yesterday.counts[top]!, yesterday.total)}.{' '}
+          <a className="blip-poll__past" href={blipQuestionsHref()}>
+            Past questions
+          </a>
         </p>
       ) : null}
       {!card && voted && view?.tomorrow ? <p className="blip-poll__next">Tomorrow: {view.tomorrow}</p> : null}

@@ -85,6 +85,8 @@ export type Route =
   | { name: 'prizes' }
   /** Your tickets: every one in and out, a day at a time (lib/ticketHistory.ts). */
   | { name: 'tickets' }
+  /** Blip's questions: today's, and every one before it with how everyone answered (lib/poll.ts). */
+  | { name: 'blipQuestions' }
   /** The season's page: its pass, levels and rewards (lib/season.ts). */
   | { name: 'season' }
   /** The Dailies page (the Today set's): today's ticket, your days, the streak's rewards and your friends' day; with `day`, a past day's ticket. */
@@ -390,6 +392,11 @@ export function prizesHref() {
 /** Your tickets, every one in and out: the prize counter's history. */
 export function ticketsHref() {
   return '/prizes/tickets'
+}
+
+/** Blip's questions: today's, and the ones before it with how everyone answered. */
+export function blipQuestionsHref() {
+  return '/blip'
 }
 
 /** The season's page: its pass and what's on it. */
@@ -718,6 +725,7 @@ export function parseUrl(pathname: string, search: string): Route {
   if (path === 'stats') return { name: 'stats' }
   if (path === 'prizes') return { name: 'prizes' }
   if (path === 'prizes/tickets') return { name: 'tickets' }
+  if (path === 'blip') return { name: 'blipQuestions' }
   if (path === 'season') return { name: 'season' }
   // Notifications are all the settings there are so far, so /settings is them too.
   if (path === 'settings' || path === 'settings/notifications') return { name: 'notificationSettings' }

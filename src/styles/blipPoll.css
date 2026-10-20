@@ -645,3 +645,21 @@ html[data-theme='dark'] .blip-poll__bar--mine .blip-poll__you {
     transition: none;
   }
 }
+
+/* To Blip's questions (/blip), after yesterday's result. */
+.blip-poll__past {
+  color: var(--blip-ink);
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+/* The home page's card: yesterday's box leads to Blip's questions. */
+a.blip-poll__ago {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.blip-poll__ago:hover .blip-poll__ago-q,
+a.blip-poll__ago:focus-visible .blip-poll__ago-q {
+  text-decoration: underline;
+}
