@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { getGame, isRankedGame } from '../data/games'
 import { howToPlayFor } from '../data/howToPlay'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
-import { boardPlaceHref, recordsPlaceHref } from '../hooks/useHashRoute'
+import { boardPlaceHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useBoardRecord } from '../hooks/useBoardRecord'
 import { fitCardToSpace } from '../lib/cardFit'
@@ -11,16 +11,13 @@ import { LEADERBOARD_GAMES, type LeaderboardGame } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { pastKind, type PastPlay } from '../lib/pastPlay'
 import { deviceBestSavable } from '../lib/personalBest'
-import { gameHasRecords } from '../lib/records'
+import { isMuted } from '../lib/sound'
 import { useTournamentPlay } from '../tournaments/TournamentPlayContext'
 import { Panel, PanelHead } from './Panel'
 import { PastFacts } from './PastPlay'
 import { RunLabel } from './RunLabel'
 import { ScoreGuide } from './ScoreGuide'
-import { SoundPackSelect } from './SoundPackSelect'
-import { HapticsToggle } from './HapticsToggle'
-import { NowPlaying } from './NowPlaying'
-import { SoundToggle } from './SoundToggle'
+import { SoundSheet } from './SoundSheet'
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -115,6 +112,10 @@ export function PauseOverlay({
  * With `past`, the run is on a daily's past course: today's bests aren't its, so
  * the course's own figures stand in for them, and the board link goes to the
  * course's row on the daily's past tab rather than the week's board.
+ *
+ * `primary` is the card's own button (Start, or the pause card's Resume and the
+ * rest): it goes between the figures and the card's other ways on, so it comes
+ * first under the figures.
  */
 export function GamePanelBody({
   slug,
@@ -124,6 +125,7 @@ export function GamePanelBody({
   past,
   extraMeta,
   tools,
+  primary,
 }: {
   slug: string
   personalBest: number
@@ -134,6 +136,7 @@ export function GamePanelBody({
   past?: PastPlay | null
   extraMeta?: ReactNode
   tools?: ReactNode
+  primary?: ReactNode
 }) {
   const allTime = useBoardRecord(slug)
   const { signedOut } = useAuth()
@@ -143,10 +146,6 @@ export function GamePanelBody({
   const daily = game?.daily === true
   // A daily just for fun places nobody (data/games.ts Game.ranked): no 1st, no board, no records.
   const ranked = isRankedGame(slug)
-  // A daily's records are on its page's Records tab, not in the record books.
-  const hasRecords = ranked && (daily || gameHasRecords(slug))
-  const recordsLink = recordsPlaceHref(slug)
-  const recordsLabel = daily ? 'Records' : 'Record books'
   // In an event with a set number of tries: how many are left, and when one counts.
   const tournament = useTournamentPlay()
   const tries = tournament && tournament.maxAttempts != null ? tournament : null
@@ -154,11 +153,10 @@ export function GamePanelBody({
   const showRecord = !hideRecord && !past && ranked
   // A past course's board link: its row, which holds its board (or its day, where it has none).
   const boardLink = past ? past.href : board && ranked ? boardPlaceHref(slug) : null
-  const boardLabel = past
-    ? pastKind(slug, past.kind) === 'board'
-      ? `This ${dailyWords(slug).course}’s ${BOARD_NAMES.allTime} board`
-      : dailyWords(slug).pastTab
-    : 'Leaderboard'
+  const pastBoard = past ? pastKind(slug, past.kind) === 'board' : false
+  const boardLabel = past ? (pastBoard ? `This ${dailyWords(slug).course}’s ${BOARD_NAMES.allTime} board` : dailyWords(slug).pastTab) : 'Leaderboard'
+  // On the button, short: the label above is its name for a screen reader and its tip.
+  const boardText = past && !pastBoard ? dailyWords(slug).pastTab : 'Board'
 
   return (
     <>
@@ -198,78 +196,88 @@ export function GamePanelBody({
         </p>
       ) : null}
       {tools}
-      <div className="game-pause-actions">
-        {/* The song on its own line (the note, the song, Skip); the other chips share the next. */}
-        <NowPlaying slug={slug} game={game?.name} style={gameAccentStyle(slug)} />
-        <div className="game-sound-row">
-          <SoundToggle className="game-sound--bare" />
-          <SoundPackSelect />
-          {/* Renders nothing where there is no motor to buzz. */}
-          <HapticsToggle />
-        </div>
-        {game && howToPlayFor(slug) ? <ScoreGuide slug={slug} game={game.name} style={gameAccentStyle(slug)} /> : null}
-        {boardLink ? (
-          <a
-            className="game-pause-btn game-pause-board"
-            href={boardLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={boardLabel}
-            title={boardLabel}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M8 21h8M12 17v4M7 4h10v3a5 5 0 0 1-5 5h0a5 5 0 0 1-5-5V4z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M17 6h2.2a1.8 1.8 0 0 1 0 3.6H17M7 6H4.8a1.8 1.8 0 0 0 0 3.6H7"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-        ) : null}
-        {hasRecords ? (
-          <a
-            className="game-pause-btn game-pause-board"
-            href={recordsLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={recordsLabel}
-            title={recordsLabel}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <svg className="game-pause-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M5 4.5h5.2a2.3 2.3 0 0 1 2.3 2.3V20a1.7 1.7 0 0 0-1.7-1.7H5V4.5z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M19 4.5h-5.2a2.3 2.3 0 0 0-2.3 2.3V20a1.7 1.7 0 0 1 1.7-1.7H19V4.5z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-        ) : null}
-      </div>
+      {primary}
+      <GameCardPills slug={slug} board={boardLink ? { href: boardLink, label: boardLabel, text: boardText } : null} />
     </>
+  )
+}
+
+/**
+ * The card's other ways on, each with its name, under its own button: How to play, the board, and Sound,
+ * whose panel holds the music, the sound pack and the buzz (A of the "Launch UX picks" canvas's start card,
+ * Ramsey's pick on 2026-10-20). They were seven round icons and a slider, and NEON, the trophy and the book
+ * didn't say what they did. The board opens in a tab of its own, so a paused run waits; the record books
+ * went from the card (the game's page has them, and the tab bar's Records).
+ *
+ * `board.label` names the board link for a screen reader and its tip; `board.text` is what the button says.
+ */
+export function GameCardPills({ slug, board = null }: { slug: string; board?: { href: string; label: string; text: string } | null }) {
+  const game = getGame(slug)
+  const style = gameAccentStyle(slug)
+  const [sound, setSound] = useState(false)
+  const muted = isMuted()
+
+  return (
+    <div className="game-pause-actions game-pills">
+      {game && howToPlayFor(slug) ? <ScoreGuide slug={slug} game={game.name} style={style} look="pill" /> : null}
+      {board ? (
+        <a
+          className="game-pill"
+          href={board.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={board.label === board.text ? undefined : board.label}
+          title={board.label}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <svg className="game-pill__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M8 21h8M12 17v4M7 4h10v3a5 5 0 0 1-5 5h0a5 5 0 0 1-5-5V4z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M17 6h2.2a1.8 1.8 0 0 1 0 3.6H17M7 6H4.8a1.8 1.8 0 0 0 0 3.6H7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {board.text}
+        </a>
+      ) : null}
+      {/* Opened as the press lands, as How to play is, so the press never reaches the playfield behind. */}
+      <button
+        type="button"
+        className="game-pill"
+        aria-haspopup="dialog"
+        aria-expanded={sound}
+        onPointerDown={(e) => {
+          e.stopPropagation()
+          setSound(true)
+        }}
+        onClick={(e) => {
+          if (e.detail === 0) setSound(true)
+        }}
+      >
+        <svg className="game-pill__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 10v4h3.2L12 18.5V5.5L7.2 10H4z" fill="currentColor" />
+          {muted ? (
+            <path d="M15.2 9.2l5.6 5.6M20.8 9.2l-5.6 5.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          ) : (
+            <path d="M15.2 9.4a3.4 3.4 0 0 1 0 5.2M17.6 7.2a6.4 6.4 0 0 1 0 9.6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          )}
+        </svg>
+        Sound
+        {muted ? <span className="visually-hidden">, off</span> : null}
+      </button>
+      {sound ? <SoundSheet slug={slug} game={game?.name} style={style} onClose={() => setSound(false)} /> : null}
+    </div>
   )
 }
 
@@ -362,24 +370,26 @@ export function GamePauseOverlay({
           past={past}
           extraMeta={extraMeta}
           tools={tools}
+          primary={
+            <div className="game-card__actions">
+              <button type="button" className="panel__btn" onClick={onResume}>
+                Resume
+              </button>
+              {canRestart ? (
+                <button type="button" className="panel__btn panel__btn--ghost" onClick={() => setConfirming(true)}>
+                  Restart
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="panel__btn panel__btn--ghost"
+                onClick={() => window.dispatchEvent(new Event('arcade:leave-confirm'))}
+              >
+                {leaveLabel}
+              </button>
+            </div>
+          }
         />
-        <div className="game-card__actions">
-          <button type="button" className="panel__btn" onClick={onResume}>
-            Resume
-          </button>
-          {canRestart ? (
-            <button type="button" className="panel__btn panel__btn--ghost" onClick={() => setConfirming(true)}>
-              Restart
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="panel__btn panel__btn--ghost"
-            onClick={() => window.dispatchEvent(new Event('arcade:leave-confirm'))}
-          >
-            {leaveLabel}
-          </button>
-        </div>
         <p className="game-card__hint">{canRestart ? 'Esc or P to resume, R to restart' : 'Esc or P to resume'}</p>
       </PauseOverlay>
       {paused && confirming ? (

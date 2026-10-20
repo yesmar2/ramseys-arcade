@@ -8,10 +8,12 @@ type ScoreGuideProps = {
   game?: string
   /** Colour tokens for the panel, usually the game's accent. */
   style?: CSSProperties
+  /** The round "i", or the start and pause cards' named button (PauseControls GameCardPills). */
+  look?: 'icon' | 'pill'
 }
 
 /** In-game How to play panel, opened from the start and pause cards. */
-export function ScoreGuide({ slug, game, style }: ScoreGuideProps) {
+export function ScoreGuide({ slug, game, style, look = 'icon' }: ScoreGuideProps) {
   const [open, setOpen] = useState(false)
   const titleId = useId()
 
@@ -29,8 +31,9 @@ export function ScoreGuide({ slug, game, style }: ScoreGuideProps) {
     <>
       <button
         type="button"
-        className="patriot__info"
-        aria-label="How to play"
+        className={look === 'pill' ? 'game-pill' : 'patriot__info'}
+        aria-label={look === 'pill' ? undefined : 'How to play'}
+        aria-haspopup="dialog"
         aria-expanded={open}
         onPointerDown={(e) => {
           e.stopPropagation()
@@ -41,7 +44,16 @@ export function ScoreGuide({ slug, game, style }: ScoreGuideProps) {
           if (e.detail === 0) setOpen((v) => !v)
         }}
       >
-        i
+        {look === 'pill' ? (
+          <>
+            <span className="game-pill__i" aria-hidden="true">
+              i
+            </span>
+            How to play
+          </>
+        ) : (
+          'i'
+        )}
       </button>
       {panel}
     </>

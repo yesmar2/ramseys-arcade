@@ -9,7 +9,7 @@ import { GamePanelBody } from './PauseControls'
 
 /**
  * The first screen of a game: the game's name and what it is, your best and
- * the record, the sound and the rules, and Start. It is the pause card's
+ * the record, Start, then the rules, the board and the sound. It is the pause card's
  * twin (the same card in the panel kit, in the game's colour), so stopping
  * a run lands where the run began.
  *
@@ -44,10 +44,18 @@ export function GameStartCard({
         {blurb ? <p className="game-card__blurb">{blurb}</p> : null}
       </div>
       <ChallengeTarget slug={slug} />
-      <GamePanelBody slug={slug} personalBest={personalBest} extraMeta={extraMeta} tools={tools} />
-      <button type="button" className="panel__btn game-card__start">
-        {challenge ? 'Take it on' : 'Start'}
-      </button>
+      {/* Start under the figures, then How to play, the board and Sound (A of "Launch UX picks", 2026-10-20). */}
+      <GamePanelBody
+        slug={slug}
+        personalBest={personalBest}
+        extraMeta={extraMeta}
+        tools={tools}
+        primary={
+          <button type="button" className="panel__btn game-card__start">
+            {challenge ? 'Take it on' : 'Start'}
+          </button>
+        }
+      />
     </div>
   )
 }

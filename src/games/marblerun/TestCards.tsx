@@ -95,10 +95,12 @@ export function TestStartCard({ marble, best }: { marble: MarbleDay; best: numbe
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
           </>
         }
+        primary={
+          <button type="button" className="panel__btn game-card__start">
+            Start
+          </button>
+        }
       />
-      <button type="button" className="panel__btn game-card__start">
-        Start
-      </button>
       <CourseNav n={marble.n} />
     </div>
   )
@@ -130,10 +132,12 @@ export function LabStartCard({ best }: { best: number | null }) {
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
           </>
         }
+        primary={
+          <button type="button" className="panel__btn game-card__start">
+            Start
+          </button>
+        }
       />
-      <button type="button" className="panel__btn game-card__start">
-        Start
-      </button>
       <nav className="marblerun-test__nav" aria-label="Back to the Course Book">
         <span />
         <a href={adminHref('courses')} onPointerDown={holdPress}>

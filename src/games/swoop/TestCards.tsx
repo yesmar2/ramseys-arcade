@@ -107,10 +107,12 @@ export function TestStartCard({ swoop, best }: { swoop: SwoopDay; best: number |
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
           </>
         }
+        primary={
+          <button type="button" className="panel__btn game-card__start">
+            Start
+          </button>
+        }
       />
-      <button type="button" className="panel__btn game-card__start">
-        Start
-      </button>
       {swoop.day === LAB_DAY ? <LabNav /> : <HillsNav n={swoop.n} />}
     </div>
   )

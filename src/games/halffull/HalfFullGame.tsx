@@ -14,19 +14,15 @@ import '../../styles/halffull.css'
 import '../../styles/todaysPour.css'
 import { GamePlayChrome } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
-import { HapticsToggle } from '../../components/HapticsToggle'
-import { NowPlaying } from '../../components/NowPlaying'
 import { PastCourseResult, PastCourseStart, type PastWalkLink, type TodayCourse } from '../../components/PastCourseCards'
 import { PastPlayChip } from '../../components/PastPlay'
+import { GameCardPills } from '../../components/PauseControls'
 import { RunLabel } from '../../components/RunLabel'
-import { ScoreGuide } from '../../components/ScoreGuide'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { useShare } from '../../components/SharePanel'
 
 /** The way on to the next of today's dailies, with the day's ticket it brings. */
 const NextDaily = lazy(() => import('../../components/NextDaily'))
-import { SoundPackSelect } from '../../components/SoundPackSelect'
-import { SoundToggle } from '../../components/SoundToggle'
 import { isGameListed } from '../../data/games'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
@@ -1029,18 +1025,9 @@ function untilNext(ms: number): string {
   return h > 0 ? `${h}h ${mins % 60}m` : `${mins}m`
 }
 
+/** How to play and Sound, under the card's own buttons, as every game's card has them (A of "Launch UX picks"). */
 function SoundRow() {
-  return (
-    <div className="game-pause-actions">
-      <NowPlaying slug={SLUG} game="Half Full" style={gameAccentStyle(SLUG)} />
-      <div className="game-sound-row">
-        <SoundToggle className="game-sound--bare" />
-        <SoundPackSelect />
-        <HapticsToggle />
-      </div>
-      <ScoreGuide slug={SLUG} game="Half Full" style={gameAccentStyle(SLUG)} />
-    </div>
-  )
+  return <GameCardPills slug={SLUG} />
 }
 
 /** The day's five as squares, each with how full it was. */
@@ -1148,7 +1135,6 @@ function StartCard({
         </div>
       ) : null}
       {sum ? <Marks results={kept} /> : claimSum ? <Marks results={claimableKept} label="The five pours made here signed out" /> : null}
-      <SoundRow />
       <div className="game-card__actions">
         {done ? (
           <>
@@ -1195,6 +1181,7 @@ function StartCard({
           </button>
         )}
       </div>
+      <SoundRow />
       {waiting ? (
         <p className="halffull-card__note" role="status">
           Checking who’s signed in…

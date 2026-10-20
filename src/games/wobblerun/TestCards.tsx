@@ -170,10 +170,12 @@ export function TestStartCard({ wobble, best, chips }: { wobble: WobbleDay; best
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
           </>
         }
+        primary={
+          <button type="button" className="panel__btn game-card__start">
+            Start
+          </button>
+        }
       />
-      <button type="button" className="panel__btn game-card__start">
-        Start
-      </button>
       <GauntletNav n={wobble.n} />
     </div>
   )

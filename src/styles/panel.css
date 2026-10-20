@@ -809,6 +809,77 @@ html[data-theme='dark'] .game-card {
   padding-inline: 0.85rem;
 }
 
+/*
+ * Under Start (or Resume): How to play, the board and Sound, each with its name (PauseControls GameCardPills).
+ * As wide as their words and sharing the row out; on the narrowest cards the icons give way first. The row
+ * measures itself, so a card's own width decides, not the screen's.
+ */
+.game-card .game-pause-actions.game-pills {
+  container-type: inline-size;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.game-pill {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-line, rgba(var(--ink-rgb), 0.12));
+  background: var(--panel-fill, rgba(var(--ink-rgb), 0.05));
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.game-pill:hover,
+.game-pill:focus-visible {
+  border-color: rgba(var(--ink-rgb), 0.26);
+}
+
+.game-pill__icon {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.game-pill__i {
+  flex: none;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1.6px solid currentColor;
+  border-radius: 50%;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.68rem;
+  font-style: italic;
+  font-weight: 700;
+}
+
+@container (max-width: 17.5rem) {
+  .game-pill {
+    padding: 0 0.55rem;
+  }
+
+  .game-pill__icon,
+  .game-pill__i {
+    display: none;
+  }
+}
+
 .game-card__start {
   width: 100%;
   margin-top: 0.1rem;

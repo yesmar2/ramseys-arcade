@@ -86,10 +86,12 @@ export function TestStartCard({ lander, best }: { lander: LanderDay; best: numbe
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
           </>
         }
+        primary={
+          <button type="button" className="panel__btn game-card__start">
+            Start
+          </button>
+        }
       />
-      <button type="button" className="panel__btn game-card__start">
-        Start
-      </button>
       <CaveNav n={lander.n} />
     </div>
   )

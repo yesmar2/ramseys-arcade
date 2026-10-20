@@ -87,10 +87,12 @@ export function TestStartCard({ course, ghost }: { course: Course; ghost: number
             <Row label="Pace car">{formatLap(course.paceLap.time)}</Row>
           </>
         }
+        primary={
+          <button type="button" className="panel__btn game-card__start">
+            Start
+          </button>
+        }
       />
-      <button type="button" className="panel__btn game-card__start">
-        Start
-      </button>
       <TrackNav n={course.n} />
     </div>
   )
