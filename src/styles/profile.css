@@ -265,6 +265,18 @@ html[data-theme='dark'] .pbest__flag {
   color: color-mix(in srgb, var(--accent) 70%, var(--ink));
 }
 
+/*
+ * On the light theme the glass over a dark game was grey enough to hold the gold to 3.9:1 and the top ten's teal
+ * to 2.8: frostier, and the teal deeper.
+ */
+html[data-theme='light'] .pbest__flag {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme='light'] .pbest__flag--ten {
+  color: color-mix(in srgb, var(--accent) 50%, var(--ink));
+}
+
 html[data-theme='dark'] .pbest__flag--gold {
   color: #f5c451;
 }
@@ -1330,6 +1342,11 @@ html[data-theme='light'] .pgames__all {
   font-weight: 800;
   color: color-mix(in srgb, var(--accent) 70%, var(--ink));
   text-decoration: none;
+}
+
+/* On the light page's white card 70% held 4.0:1: the 62% the site's teal links read at (4.6). */
+html[data-theme='light'] .prival__link {
+  color: color-mix(in srgb, var(--accent) 62%, var(--ink));
 }
 
 .prival__link:hover,

@@ -10,7 +10,8 @@
   --unx-kick: #0f7d6c;
   --unx-defend: #b8322c;
   --unx-you: #9a4316;
-  --unx-you-score: #e0602e;
+  /* The ticket's deep orange, as dark as it must be to read on the card (#e0602e held 3.6:1). */
+  --unx-you-score: #c15328;
   --unx-row: #f4f8fa;
   --unx-gold-row: linear-gradient(135deg, #fff4d2, #fdf9ec);
   --unx-gold-edge: rgba(168, 124, 12, 0.18);

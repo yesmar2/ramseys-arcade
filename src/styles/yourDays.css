@@ -45,6 +45,11 @@
   cursor: pointer;
 }
 
+/* The light page takes the game's shade for small words (hub.css --gh-accent-ink): its own colour held 1.8 to 2:1. */
+html[data-theme='light'] .yd__link {
+  color: var(--gh-accent-ink, color-mix(in srgb, var(--accent) 62%, var(--ink)));
+}
+
 .yd__skel {
   display: grid;
   gap: 0.6rem;

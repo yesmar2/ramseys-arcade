@@ -73,6 +73,15 @@ html[data-theme='dark'] .grp {
   color: color-mix(in srgb, var(--g) 70%, var(--ink));
 }
 
+/*
+ * On the light page the teal kicker held 3.5:1 on its card, and the link 3.8 on white: a group's own shade that
+ * reads (groupStyle's --g-text, lib/groupPages.ts), or with no group, the site's teal at 54%.
+ */
+html[data-theme='light'] .grp-kick,
+html[data-theme='light'] .grp-link {
+  color: var(--g-text, color-mix(in srgb, var(--g) 54%, var(--ink)));
+}
+
 .grp-copy {
   margin: 0;
   font-size: 0.92rem;

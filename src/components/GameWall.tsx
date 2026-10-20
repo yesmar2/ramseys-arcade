@@ -7,6 +7,7 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerBests } from '../hooks/usePlayerBests'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { moveChoice } from '../lib/choiceKeys'
+import { tileText } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
@@ -339,6 +340,7 @@ export function WallTile({
   const spotlight = isSpotlight(liveSeason(useSeason()), game.slug)
   const style = {
     '--tile-accent': accent,
+    '--tile-text': tileText(accent),
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
   const flag = game.comingSoon

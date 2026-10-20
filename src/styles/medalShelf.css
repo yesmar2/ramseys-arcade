@@ -156,6 +156,11 @@
   white-space: nowrap;
 }
 
+/* On the light theme's gold-washed line it held 2.9:1: toward black, which keeps it gold. */
+html[data-theme='light'] .ms__plus a {
+  color: color-mix(in srgb, #f5b942 56%, #000);
+}
+
 @media (max-width: 48rem) {
   .ms {
     grid-template-columns: minmax(0, 1fr);
@@ -197,6 +202,19 @@
 
 .pcm--locked .pcm__next {
   color: color-mix(in srgb, #f5b942 70%, var(--ink));
+}
+
+/*
+ * On the light theme's card the cyan held 3.1:1 and the gold 2.8: the cyan nearer the ink, and the gold toward
+ * black, which keeps it gold (toward the ink it turns khaki).
+ */
+html[data-theme='light'] .pcm__next {
+  color: color-mix(in srgb, #9fe8f2 38%, var(--ink));
+}
+
+html[data-theme='light'] .pcm__next--all,
+html[data-theme='light'] .pcm--locked .pcm__next {
+  color: color-mix(in srgb, #f5b942 56%, #000);
 }
 
 /* The medal in a card's picture corner. */

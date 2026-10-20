@@ -1066,6 +1066,12 @@ a.sb-board__name::after {
   opacity: 0.85;
 }
 
+/* The light theme's grey held 4.4:1 at 0.85 on the white card (4.1 under a hover's shade): 0.92. */
+html[data-theme='light'] .sb-board__place--open .sb-board__who,
+html[data-theme='light'] .sb-board__place--open .sb-board__score {
+  opacity: 0.92;
+}
+
 .sb-board__you {
   grid-area: you;
   display: flex;
@@ -1504,6 +1510,11 @@ html[data-theme="light"] .sb-grab__pts {
   text-transform: uppercase;
   backdrop-filter: blur(6px);
   pointer-events: none;
+}
+
+/* On the light theme's pale banner its glass is lighter, and its label held 4.2:1 at 0.78. */
+html[data-theme='light'] .gb-marquee {
+  color: rgba(244, 248, 251, 0.92);
 }
 
 .gb-marquee b {

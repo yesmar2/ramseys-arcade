@@ -11,6 +11,7 @@ import { usePlayerName } from '../hooks/usePlayerName'
 import { useIsPlayer, useScoresAt } from '../hooks/useProfileBoards'
 import { useDailyDays, useStandingsAbove } from '../hooks/useRankHow'
 import { useScoreboard, type ScoreboardData } from '../hooks/useScoreboard'
+import { mixColor, readableText } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { appendGroupQuery, scopeWhere, useActiveGroup, useScopeName } from '../lib/groups'
 import {
@@ -261,6 +262,15 @@ function Thumb({ slug, className }: { slug: string; className?: string }) {
   return <GameThumbArt slug={slug} accent={gameAccent(slug)} className={`rh-thumb${className ? ` ${className}` : ''}`} />
 }
 
+/**
+ * A game's colour as --g, and as words on the light page's white cards (rankHow.css .rh-tag, today's circle): its
+ * 70% mix with the ink, deepened only where it must be to read. Most games' come back as the mix.
+ */
+function gameVars(slug: string): CSSProperties {
+  const accent = gameAccent(slug)
+  return { '--g': accent, '--g-text': readableText(mixColor(accent, '#1a2b3c', 0.3), '#ffffff') } as CSSProperties
+}
+
 /* ---------- step 1: the games rank their players ---------- */
 
 function Fields({ placed, who }: { placed: Placed[]; who: Who }) {
@@ -269,7 +279,7 @@ function Fields({ placed, who }: { placed: Placed[]; who: Who }) {
       {placed.map((p) => {
         const strip = fieldStrip(p.place, p.total)
         return (
-          <li key={p.slug} className="rh-card rh-field" style={{ '--g': gameAccent(p.slug) } as CSSProperties}>
+          <li key={p.slug} className="rh-card rh-field" style={gameVars(p.slug)}>
             <Thumb slug={p.slug} className="rh-field__thumb" />
             <h3 className="rh-field__name">
               {gameName(p.slug)}
@@ -794,7 +804,7 @@ function Dailies({
   const anyDays = works.some((w) => w.played != null)
   const name = gameName(work.slug)
   return (
-    <div className="rh-card rh-daily" style={{ '--g': gameAccent(work.slug) } as CSSProperties}>
+    <div className="rh-card rh-daily" style={gameVars(work.slug)}>
       {works.length > 1 ? (
         <div className="rh-pick" role="group" aria-label="Which daily">
           {works.map((w) => (

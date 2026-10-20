@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { gamePlayableOn, getGame, isDailyGame, type Game } from '../data/games'
 import { boardPlaceHref, gameHref, gamePlayHref, leaderboardHref } from '../hooks/useHashRoute'
 import type { GameBest } from '../hooks/useProfileBoards'
+import { tileText } from '../lib/color'
 import { useDeviceType } from '../lib/device'
 import { hasGamePreview } from '../lib/gamePreviews'
 import { standingsGames } from '../lib/allTime'
@@ -50,7 +51,7 @@ function Cabinet({
   withSeason: boolean
 }) {
   const accent = resolveGameAccent(game.slug, game.accent)
-  const style = { '--tile-accent': accent } as CSSProperties
+  const style = { '--tile-accent': accent, '--tile-text': tileText(accent) } as CSSProperties
   // A daily has no all-time board (lib/allTime.ts): its line is its place in its other period instead.
   const daily = isDailyGame(game.slug)
   // Looking at all time, a daily stands at its place this month, and says it counts toward the week and the month only

@@ -1450,6 +1450,11 @@ html[data-theme='dark'] .rbk {
   color: var(--sb-gold-ink, var(--brass-title));
 }
 
+/* The boards' gold is worked out for white, and held 4.4:1 down on the light brass: the brass's own title ink. */
+html[data-theme='light'] .rbk-plq__you--mine {
+  color: var(--brass-title, var(--sb-gold-ink));
+}
+
 .rbk-plq__you--quiet {
   color: var(--brass-quiet);
 }

@@ -998,6 +998,11 @@ html[data-theme="dark"] .hb-panel {
   color: color-mix(in srgb, var(--accent) 70%, var(--ink));
 }
 
+/* On the light page's white panel 70% held 4.0:1: the 62% the site's teal links read at (4.6). */
+html[data-theme="light"] .hb-panel__head .home-section__more {
+  color: color-mix(in srgb, var(--accent) 62%, var(--ink));
+}
+
 /* The record book's line under its head. */
 .hb-panel__note {
   margin: -0.4rem 0 0;
@@ -1148,6 +1153,14 @@ html[data-theme="light"] .hb-row__rank--bronze {
   text-transform: uppercase;
 }
 
+/*
+ * On the light page the chip's wash, over your row's, held the ticket orange to 3.9:1: deepened toward black,
+ * which keeps it orange.
+ */
+html[data-theme="light"] .hb-row__you {
+  color: color-mix(in srgb, var(--ticket-text, #c2461d) 88%, #000);
+}
+
 .hb-row--skel {
   pointer-events: none;
 }
@@ -1184,6 +1197,11 @@ html[data-theme="light"] .hb-row__rank--bronze {
   text-decoration: underline;
   text-underline-offset: 0.18em;
   cursor: pointer;
+}
+
+/* On the light page's grey note 80% held 3.1:1. */
+html[data-theme="light"] .hb-note__signin {
+  color: color-mix(in srgb, var(--accent) 56%, var(--ink));
 }
 
 .hb-empty {
@@ -1714,7 +1732,8 @@ html[data-theme="light"] .gband__kicker {
   --wall-a: color-mix(in srgb, var(--tile-accent) 30%, #ffffff);
   --wall-b: color-mix(in srgb, var(--tile-accent) 16%, #ffffff);
   --wall-scrim: rgba(246, 249, 251, 0.94);
-  --wall-accent-ink: color-mix(in srgb, var(--tile-accent) 62%, var(--ink));
+  /* Its words in its game's colour: tileText's shade (lib/color.ts), set with the colour, where 62% wouldn't read. */
+  --wall-accent-ink: var(--tile-text, color-mix(in srgb, var(--tile-accent) 62%, var(--ink)));
   --wall-you-ink: color-mix(in srgb, var(--accent) 70%, var(--ink));
   position: relative;
   display: flex;
@@ -1926,6 +1945,18 @@ html[data-theme="dark"] .wall-tile__flag {
   color: #f4f8fb;
 }
 
+/*
+ * On the light theme the glass over a dark game was grey enough to hold New to 3.3:1: frostier, and New in the
+ * tile's shade that reads (--wall-accent-ink).
+ */
+html[data-theme="light"] .wall-tile__flag {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .wall-tile__flag--new {
+  color: var(--wall-accent-ink);
+}
+
 .wall-tile__flag--soon {
   color: var(--muted);
 }
@@ -1947,6 +1978,12 @@ html[data-theme="dark"] .wall-tile__flag--soon {
 html[data-theme="dark"] .wall-tile__flag--daily,
 html[data-theme="dark"] .wall-tile__flag--weekly {
   color: var(--flag-dot);
+}
+
+/* On the frostier glass the gold and teal held 3.0 and 3.9:1 at 62%: toward black, which keeps them gold and teal. */
+html[data-theme="light"] .wall-tile__flag--daily,
+html[data-theme="light"] .wall-tile__flag--weekly {
+  color: color-mix(in srgb, var(--flag-dot) 53%, #000);
 }
 
 .wall-tile__flag--daily::before,

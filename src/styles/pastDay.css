@@ -150,6 +150,11 @@ a.pds__day:focus-visible {
   color: var(--ticket-text, #c2461d);
 }
 
+/* On the light theme's shaded day (the one the page shows) the orange held 4.4:1: a touch toward black. */
+html[data-theme='light'] .pds__day--today:not(.pds__day--kept):not(.pds__day--full) .pds__mark {
+  color: color-mix(in srgb, var(--ticket-text, #c2461d) 96%, #000);
+}
+
 /* The day the page shows. */
 .pds__day--on {
   background:

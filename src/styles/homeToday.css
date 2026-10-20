@@ -374,8 +374,11 @@ html[data-theme='dark'] .home-day::before {
  * and under it, outside that link, the way straight into the race.
  */
 .home-day__race {
-  /* Its colour as text: the daily's own in the dark, darker in the light, where it would be too pale to read. */
-  --day-text: color-mix(in srgb, var(--day) 45%, var(--ink));
+  /*
+   * Its colour as text: the daily's own in the dark, darker in the light, where it would be too pale to read: at
+   * 43%, every daily's colour reads on its chip (4.6:1 for the palest, Sling's green, which held 4.4 at 45%).
+   */
+  --day-text: color-mix(in srgb, var(--day) 43%, var(--ink));
   display: flex;
   flex-direction: column;
   min-width: 0;

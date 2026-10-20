@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { getGame, isGameListed } from '../data/games'
 import { ALL_TIME_GAMES } from './allTime'
-import { inkOn } from './color'
+import { inkOn, mixColor, readableText } from './color'
 import {
   api,
   normalizePlayerName,
@@ -32,10 +32,18 @@ export function groupAccent(id: string): string {
   return GROUP_ACCENTS[n] ?? GROUP_ACCENTS[0]
 }
 
-/** A group's colour and the ink that reads on it, for a page or a card in it. */
+/** A group's colour and the ink that reads on it, for a page or a card in it, and its words on the light theme. */
 export function groupStyle(id: string): CSSProperties {
   const accent = groupAccent(id)
-  return { '--g': accent, '--g-ink': inkOn(accent, '#06201a') } as CSSProperties
+  // Its words (groups.css): its 70% mix with the ink, deepened only where it must be to read (4.5:1) on its banner,
+  // 13% of it over white, and on the "nobody yet" card, the site's teal (15%) whatever the group. The red, blue
+  // and violet come back as the mix.
+  const onBanner = readableText(mixColor(accent, '#1a2b3c', 0.3), mixColor(accent, '#ffffff', 0.87))
+  return {
+    '--g': accent,
+    '--g-ink': inkOn(accent, '#06201a'),
+    '--g-text': readableText(onBanner, mixColor('#2eb8a0', '#ffffff', 0.85)),
+  } as CSSProperties
 }
 
 /** The group and code in an invite link, however it was pasted. */

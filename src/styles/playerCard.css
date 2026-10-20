@@ -496,7 +496,11 @@
 
 /* ---------- the hero ---------- */
 
-.pc {
+/*
+ * The past courses' cards are .pc too (dailyPast.css, a <li>): on them this rule's light words went onto their
+ * white card in the light theme (1.1:1). So it's the hero's alone, and :where keeps it as specific as before.
+ */
+.pc:where(section) {
   --banner-chip-border: rgba(255, 255, 255, 0.3);
   --banner-chip-bg: rgba(0, 0, 0, 0.28);
   --banner-chip-ink: #eef4f8;

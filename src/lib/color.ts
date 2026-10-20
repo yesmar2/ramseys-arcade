@@ -150,6 +150,15 @@ export function bannerText(accent: string): string {
   return readableText(accent, mixColor(accent, '#ffffff', 0.62))
 }
 
+/**
+ * A game tile's words in its colour on the light theme (home.css --wall-accent-ink): the tile's mix of it with the
+ * ink (62%), deepened only where it must be to read on the tile and on its scores, which lie on a 94% scrim over the
+ * game's picture (read where the picture is darkest). The yellows, greens and cyans held 3.6 to 3.9:1 on the tile.
+ */
+export function tileText(accent: string): string {
+  return readableText(mixColor(accent, '#1a2b3c', 0.38), mixColor('#f6f9fb', '#000000', 0.06))
+}
+
 /** The dark banner's own light mix of a colour for its words (55% with white, home.css). */
 const darkBannerWords = (accent: string) => mixColor(accent, '#ffffff', 0.45)
 
