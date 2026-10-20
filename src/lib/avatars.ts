@@ -93,6 +93,8 @@ export const AVATAR_BADGES = [
   'lava',
   'holo',
   'aurora',
+  // A showpiece from the counter, moving (2026-10-20; PlayerAvatar draws it).
+  'plasma',
   // Earned by a 30-day Today streak (lib/today.ts), never traded for.
   'gilded',
   // Season 1's pass (lib/season.ts).
@@ -128,6 +130,7 @@ export const BADGE_LABELS: Record<AvatarBadge, string> = {
   lava: 'Lava',
   holo: 'Holo',
   aurora: 'Aurora',
+  plasma: 'Plasma',
   gilded: 'Gold',
   orbit: 'Orbit',
   ringed: 'Ringed planet',

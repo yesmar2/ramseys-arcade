@@ -55,6 +55,8 @@ function finishRim(badge: AvatarBadge): string {
       return 'rgba(255,138,61,0.35)'
     case 'aurora':
       return 'rgba(126,240,196,0.3)'
+    case 'plasma':
+      return 'rgba(255,122,198,0.45)'
     case 'gilded':
       return 'rgba(255,244,200,0.5)'
     case 'orbit':
@@ -135,6 +137,8 @@ function monoInks(avatar: Avatar): { pattern: string; letter: string; line: stri
       return { pattern: '', letter: '#fff0dc', line: '#ff8a3d' }
     case 'aurora':
       return { pattern: '', letter: '#eafff6', line: '#3ee08f' }
+    case 'plasma':
+      return { pattern: '', letter: '#ffffff', line: '#ffd36b' }
     case 'gilded':
       return { pattern: '', letter: '#3a2604', line: '#fff1c2' }
     case 'orbit':
@@ -615,6 +619,39 @@ function FinishSurface({ avatar, uid }: { avatar: Avatar; uid: string }) {
           {AURORA_STARS.map(([x, y, r]) => (
             <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="#fff" opacity="0.85" />
           ))}
+        </>
+      )
+    case 'plasma':
+      // A lava lamp of colour: two sets of blobs turning against each other, on a big avatar only (prizes.css
+      // .mv-spin; a board's small rows hold it still, playerCard.css).
+      return (
+        <>
+          <defs>
+            <radialGradient id={`${uid}plasma`} cx="0.5" cy="0.5" r="0.6">
+              <stop offset="0" stopColor="#3a1f5c" />
+              <stop offset="1" stopColor="#1a0c2e" />
+            </radialGradient>
+            <filter id={`${uid}soft`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2.4" />
+            </filter>
+            <clipPath id={`${uid}disc`}>
+              <path d={BADGE_ART.disc} />
+            </clipPath>
+          </defs>
+          <path d={BADGE_ART.disc} fill={`url(#${uid}plasma)`} />
+          <g clipPath={`url(#${uid}disc)`}>
+            <g className="mv mv-spin" filter={`url(#${uid}soft)`}>
+              <circle cx="22" cy="24" r="10" fill="#ff6aa0" />
+              <circle cx="44" cy="40" r="11" fill="#7a5cff" />
+              <circle cx="28" cy="48" r="8" fill="#3be0ff" />
+              <rect x="8" y="8" width="48" height="48" fill="none" />
+            </g>
+            <g className="mv mv-spin mv-spin--back" filter={`url(#${uid}soft)`} opacity="0.85">
+              <circle cx="42" cy="20" r="7" fill="#ffd36b" />
+              <circle cx="20" cy="40" r="7" fill="#ff6aa0" />
+              <rect x="8" y="8" width="48" height="48" fill="none" />
+            </g>
+          </g>
         </>
       )
     case 'gilded':

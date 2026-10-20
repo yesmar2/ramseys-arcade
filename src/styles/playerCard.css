@@ -532,6 +532,11 @@
   filter: blur(8px) saturate(1.1);
 }
 
+/* A moving background holds still in the blurred sky: the card in front of it moves. */
+.pc__sky-art .mv {
+  animation: none !important;
+}
+
 .pc__shade {
   position: absolute;
   inset: 0;

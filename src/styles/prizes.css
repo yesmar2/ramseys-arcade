@@ -99,6 +99,63 @@ html[data-theme='dark'] .pname--ember {
   filter: drop-shadow(0 0 4px rgba(255, 90, 31, 0.55));
 }
 
+/* The starters (2026-10-20). Bold: heavy letters with a drop under them. */
+.pname--bold {
+  font-weight: 900;
+  text-shadow: 0 2px 0 rgba(var(--ink-rgb), 0.22);
+}
+
+html[data-theme='dark'] .pname--bold,
+.fac .pname--bold,
+.studio__card .pname--bold {
+  color: #ffffff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Mint: fresh green. */
+.pname--mint {
+  color: #0f8a66;
+}
+
+html[data-theme='dark'] .pname--mint,
+.fac .pname--mint,
+.studio__card .pname--mint {
+  color: #7af0c4;
+}
+
+/* Sunrise: orange into pink, like the sky at dawn. */
+.pname--sunrise {
+  background: linear-gradient(90deg, #e8673a, #d6337f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme='dark'] .pname--sunrise,
+.fac .pname--sunrise,
+.studio__card .pname--sunrise {
+  background-image: linear-gradient(90deg, #ffb347, #ff5f8f);
+}
+
+/* Chalk: written in chalk, a little dusty at the edges. */
+.pname--chalk {
+  color: #46505c;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0.6px 0.4px 0 rgba(var(--ink-rgb), 0.18),
+    -0.5px -0.3px 0 rgba(var(--ink-rgb), 0.12);
+}
+
+html[data-theme='dark'] .pname--chalk,
+.fac .pname--chalk,
+.studio__card .pname--chalk {
+  color: #f1eee4;
+  text-shadow:
+    0.6px 0.4px 0 rgba(255, 255, 255, 0.28),
+    -0.5px -0.3px 0 rgba(255, 255, 255, 0.18),
+    0 0 3px rgba(255, 255, 255, 0.15);
+}
+
 /* Season 1's (Space Race, its pass). Starlight: the tag lit like a star, with one beside it. */
 .pname--starlight {
   color: #3b2f8f;
@@ -901,5 +958,96 @@ a.run-tix__total {
 @media (max-width: 40rem) {
   .run-tix {
     margin-inline: 1.35rem;
+  }
+}
+
+/*
+ * The showpieces that move (prizes/CardThemes.tsx WarpDrive and NightDrive, PlayerAvatar's Plasma): by transform
+ * and opacity alone. Still for anyone who turns motion down; the profile's blurred sky holds still too
+ * (playerCard.css), since a blur over a moving picture would be redrawn every frame.
+ */
+.mv-warp {
+  animation: mv-warp 1.8s linear infinite;
+}
+
+@keyframes mv-warp {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--d, 200px));
+    opacity: 0;
+  }
+}
+
+/* A line across the road, from the horizon to the foot, quicker as it comes. */
+.mv-road {
+  animation: mv-road 2.4s linear infinite;
+}
+
+@keyframes mv-road {
+  0% {
+    transform: translateY(calc(var(--g, 100px) * 0.06));
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(calc(var(--g, 100px) * 0.14));
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(calc(var(--g, 100px) * 0.28));
+  }
+  75% {
+    transform: translateY(calc(var(--g, 100px) * 0.55));
+  }
+  100% {
+    transform: translateY(var(--g, 100px));
+  }
+}
+
+.mv-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mv-glow 4s ease-in-out infinite;
+}
+
+@keyframes mv-glow {
+  50% {
+    transform: scale(1.06);
+    opacity: 0.32;
+  }
+}
+
+.mv-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mv-spin 9s linear infinite;
+}
+
+.mv-spin--back {
+  animation-duration: 6s;
+  animation-direction: reverse;
+}
+
+@keyframes mv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A moving avatar (Plasma) moves big, on the card; a board's small rows hold it still. */
+.player-avatar--xs .mv,
+.player-avatar--sm .mv,
+.player-avatar--md .mv {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mv {
+    animation: none !important;
   }
 }

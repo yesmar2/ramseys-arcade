@@ -459,6 +459,11 @@ const KIND_COLOURS: Record<string, string[]> = {
   'cf-hearts': ['#ff5f7a', '#ff7ac1', '#e24139', '#ffb3c7'],
   'cf-pixels': ['#2fe3cf', '#ff4fa8', '#ffd23f', '#6c8cff', '#b86bff', '#45d36b'],
   'cf-fireworks': ['#ff5fa2', '#2fe3cf', '#ffd36e', '#7fc8ff', '#ff8552', '#b86bff'],
+  // The starters (2026-10-20).
+  'cf-sparkles': ['#fff3b0', '#ffffff', '#ffe07a', '#b3d7ff'],
+  'cf-ribbons': ['#ff5f8f', '#5fd6e8', '#ffd36b', '#8be08f', '#b99cff'],
+  'cf-leaves': ['#e8673a', '#f2c14e', '#c2410c', '#d98a2b'],
+  'cf-bolts': ['#ffd36b', '#ffe58a', '#fff3b0'],
   // Season 1's (Space Race, its pass).
   'cf-stardust': ['#f5b942', '#ffe7a3', '#8a6ad4', '#f2813a', '#b9a6f0', '#ffffff'],
   'cf-shooting': ['#ffffff', '#ffe7a3', '#b9a6f0', '#f5b942'],
@@ -1012,7 +1017,7 @@ export function ReportConfetti({ accent, kind, metal = null }: { accent: string;
         ctx.save()
         ctx.globalAlpha = fade
         ctx.translate(p.x, p.y)
-        if (style === 'cf-stardust') {
+        if (style === 'cf-stardust' || style === 'cf-sparkles') {
           // Stardust twinkles as it falls, square to the screen.
           ctx.globalAlpha = fade * (0.55 + 0.45 * Math.sin((t + p.delay * 7) / 80))
           ctx.fillStyle = p.color
@@ -1053,6 +1058,42 @@ export function ReportConfetti({ accent, kind, metal = null }: { accent: string;
             ctx.fill()
           } else if (style === 'cf-hearts') {
             heartShape(ctx, p.h * 0.55)
+            ctx.fill()
+          } else if (style === 'cf-ribbons') {
+            // A curl of ribbon, drawn as a line.
+            ctx.strokeStyle = p.color
+            ctx.lineWidth = 2.6
+            ctx.lineCap = 'round'
+            ctx.beginPath()
+            ctx.moveTo(0, -p.h)
+            ctx.quadraticCurveTo(p.w, -p.h / 2, 0, 0)
+            ctx.quadraticCurveTo(-p.w, p.h / 2, 0, p.h)
+            ctx.stroke()
+          } else if (style === 'cf-leaves') {
+            // A leaf: pointed at both ends, a vein down it.
+            const r = p.h * 0.7
+            ctx.beginPath()
+            ctx.moveTo(0, -r)
+            ctx.quadraticCurveTo(r * 0.75, 0, 0, r)
+            ctx.quadraticCurveTo(-r * 0.75, 0, 0, -r)
+            ctx.fill()
+            ctx.strokeStyle = 'rgba(80,30,6,0.35)'
+            ctx.lineWidth = 0.8
+            ctx.beginPath()
+            ctx.moveTo(0, -r * 0.8)
+            ctx.lineTo(0, r * 0.8)
+            ctx.stroke()
+          } else if (style === 'cf-bolts') {
+            // A lightning bolt.
+            const r = p.h * 0.8
+            ctx.beginPath()
+            ctx.moveTo(r * 0.15, -r)
+            ctx.lineTo(-r * 0.45, r * 0.1)
+            ctx.lineTo(-r * 0.02, r * 0.1)
+            ctx.lineTo(-r * 0.2, r)
+            ctx.lineTo(r * 0.45, -r * 0.15)
+            ctx.lineTo(r * 0.05, -r * 0.15)
+            ctx.closePath()
             ctx.fill()
           } else if (style === 'cf-tickets') {
             ticketShape(ctx, p.h * 1.3, p.h * 0.72)

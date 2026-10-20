@@ -362,6 +362,49 @@ function StyledTag({ style, name, x, y, size, id }: { style: string; name: strin
           </text>
         </>
       )
+    // The starters (2026-10-20).
+    case 'nm-bold':
+      return (
+        <>
+          <text {...at} y={y + 2} fontFamily={FONT} fontWeight={900} fill="#000000" opacity="0.5">
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={900} fill="#ffffff">
+            {name}
+          </text>
+        </>
+      )
+    case 'nm-mint':
+      return (
+        <text {...at} fontFamily={FONT} fontWeight={800} fill="#7af0c4">
+          {name}
+        </text>
+      )
+    case 'nm-sunrise':
+      return (
+        <>
+          <defs>
+            <linearGradient id={`${id}r`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#ffb347" />
+              <stop offset="1" stopColor="#ff5f8f" />
+            </linearGradient>
+          </defs>
+          <text {...at} fontFamily={FONT} fontWeight={800} fill={`url(#${id}r)`}>
+            {name}
+          </text>
+        </>
+      )
+    case 'nm-chalk':
+      return (
+        <>
+          <text {...at} x={x + 0.6} y={y + 0.4} fontFamily={FONT} fontWeight={700} fill="#ffffff" opacity="0.3">
+            {name}
+          </text>
+          <text {...at} fontFamily={FONT} fontWeight={700} fill="#f1eee4" letterSpacing={1.6}>
+            {name}
+          </text>
+        </>
+      )
     case 'nm-ember':
       return (
         <>
@@ -687,7 +730,7 @@ function Splashdown() {
   )
 }
 
-const POPPER_SEEDS: Record<string, number> = { 'cf-tickets': 3, 'cf-stars': 9, 'cf-hearts': 14, 'cf-pixels': 5, 'cf-stardust': 31, 'cf-shooting': 17 }
+const POPPER_SEEDS: Record<string, number> = { 'cf-tickets': 3, 'cf-stars': 9, 'cf-hearts': 14, 'cf-pixels': 5, 'cf-stardust': 31, 'cf-shooting': 17, 'cf-sparkles': 23, 'cf-ribbons': 8, 'cf-leaves': 12, 'cf-bolts': 19 }
 
 /** A four-point sparkle, for Stardust and the shooting stars. */
 function sparkle4(x: number, y: number, s: number) {
@@ -775,6 +818,41 @@ function Popper({ kind, id }: { kind: string; id: string }) {
       const c = PIXEL_COLOURS[Math.floor(rnd() * PIXEL_COLOURS.length)]!
       const size = 4 + Math.floor(rnd() * 3) * 1.5
       bits.push(<rect key={i} x={Math.round(x)} y={Math.round(y)} width={size} height={size} fill={c} />)
+    } else if (kind === 'cf-sparkles') {
+      const c = ['#fff3b0', '#ffffff', '#ffe07a'][Math.floor(rnd() * 3)]!
+      bits.push(<path key={i} d={sparkle4(x, y, 3 + rnd() * 3.5)} fill={c} />)
+    } else if (kind === 'cf-ribbons') {
+      const c = ['#ff5f8f', '#5fd6e8', '#ffd36b', '#8be08f', '#b99cff'][Math.floor(rnd() * 5)]!
+      bits.push(
+        <path
+          key={i}
+          d={`M${x.toFixed(1)} ${(y - 7).toFixed(1)}q4 3.5 0 7q-4 3.5 0 7`}
+          fill="none"
+          stroke={c}
+          strokeWidth="2"
+          strokeLinecap="round"
+          transform={`rotate(${(rot % 60) - 30} ${x.toFixed(1)} ${y.toFixed(1)})`}
+        />,
+      )
+    } else if (kind === 'cf-leaves') {
+      const c = ['#e8673a', '#f2c14e', '#c2410c', '#d98a2b'][Math.floor(rnd() * 4)]!
+      const r = 4 + rnd() * 3
+      bits.push(<path key={i} d={`M0 ${-r}Q${r * 0.75} 0 0 ${r}Q${-r * 0.75} 0 0 ${-r}Z`} fill={c} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot})`} />)
+    } else if (kind === 'cf-bolts') {
+      if (i % 2 === 0) {
+        const r = 6 + rnd() * 3
+        bits.push(
+          <path
+            key={i}
+            d={`M${0.15 * r} ${-r}L${-0.45 * r} ${0.1 * r}H${-0.02 * r}L${-0.2 * r} ${r}L${0.45 * r} ${-0.15 * r}H${0.05 * r}Z`}
+            fill="#ffd36b"
+            stroke="#c28a12"
+            strokeWidth="0.8"
+            strokeLinejoin="round"
+            transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(rot % 50) - 25})`}
+          />,
+        )
+      }
     } else if (kind === 'cf-stardust') {
       const c = ['#f5b942', '#ffe7a3', '#b9a6f0', '#f2813a'][Math.floor(rnd() * 4)]!
       bits.push(<path key={i} d={sparkle4(x, y, 3.5 + rnd() * 3.5)} fill={c} />)

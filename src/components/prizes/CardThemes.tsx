@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { DeepField, LaunchPad, MissionControl, NebulaCard, Porthole, SpaceStation } from './SeasonCardThemes'
 import { SnowGlobe } from './PlusCardThemes'
 import { FrozenLake, IceCave, NorthernLights, PineForest, SkiLodge, Snowfield } from './WinterCardThemes'
@@ -250,6 +250,115 @@ function Sunset({ w, h, s, id }: ThemeProps) {
   )
 }
 
+/* ---------- the showpieces: backgrounds that move (2026-10-20) ---------- */
+
+/*
+ * They move by CSS (prizes.css, the `mv-` classes), by transform and opacity alone, so a card costs next to
+ * nothing to keep moving; the hero's blurred sky behind the card holds still (playerCard.css), and so does
+ * everything for anyone who turns motion down.
+ */
+
+/** Warp drive: stars streaking out from the middle, as at light speed. */
+function WarpDrive({ w, h, s, id }: ThemeProps) {
+  const cx = w / 2
+  const cy = h * 0.4
+  const reach = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy))
+  const rnd = seeded(41)
+  const streaks: ReactNode[] = []
+  const count = Math.round(Math.min(48, 18 + (w * h) / (9000 * s * s)))
+  for (let i = 0; i < count; i++) {
+    const a = rnd() * 360
+    const start = reach * 0.08 + rnd() * reach * 0.3
+    const len = (14 + rnd() * 26) * s
+    const delay = -(rnd() * 1.8)
+    const c = i % 5 === 0 ? '#9fd8ff' : i % 7 === 0 ? '#ffd0f4' : '#ffffff'
+    const motion = { animationDelay: `${delay.toFixed(2)}s`, '--d': `${f1(reach)}px` } as CSSProperties
+    streaks.push(
+      <g key={i} transform={`translate(${f1(cx)} ${f1(cy)}) rotate(${a.toFixed(0)})`}>
+        <line className="mv mv-warp" x1={f1(start)} y1="0" x2={f1(start + len)} y2="0" stroke={c} strokeWidth={f1(1.4 * s)} strokeLinecap="round" style={motion} />
+      </g>,
+    )
+  }
+  return (
+    <>
+      <defs>
+        <radialGradient id={`${id}warp`} cx={f1(cx / w)} cy={f1(cy / h)} r="0.75">
+          <stop offset="0" stopColor="#2a3a8a" />
+          <stop offset="0.35" stopColor="#141a44" />
+          <stop offset="1" stopColor="#03040c" />
+        </radialGradient>
+      </defs>
+      <rect width={w} height={h} fill={`url(#${id}warp)`} />
+      <path d={starPath(w, h, Math.round((w * h) / (3200 * s * s)), 0.9 * s, 12)} fill="#fff" opacity="0.5" />
+      {streaks}
+      <circle cx={f1(cx)} cy={f1(cy)} r={f1(18 * s)} fill="#b3c8ff" opacity="0.18" />
+    </>
+  )
+}
+
+/** Night drive: the sunset grid rolling on toward a glowing sun. */
+function NightDrive({ w, h, s, id }: ThemeProps) {
+  const hy = h * 0.6
+  const r = Math.min(h * 0.24, w * 0.32)
+  const cx = w / 2
+  const cy = hy - r * 0.2
+  const bars: ReactNode[] = []
+  for (let k = 0; k < 5; k++) {
+    const y = cy - r * 0.34 + k * r * 0.12
+    bars.push(<rect key={k} x={cx - r - 2} y={f1(y)} width={2 * r + 4} height={f1(r * (0.022 + k * 0.016))} fill="#000" />)
+  }
+  const step = 70 * s
+  let lanes = ''
+  const n = Math.ceil(Math.max(cx, w - cx) / (step * 0.2)) + 1
+  for (let i = -n; i <= n; i++) lanes += `M${f1(cx + i * step * 0.2)} ${f1(hy)}L${f1(cx + i * step * 2.6)} ${f1(h + step)}`
+  // Each line across the road rolls from the horizon to the foot, quicker as it comes, the next one behind it.
+  const rows: ReactNode[] = []
+  const ROWS = 6
+  for (let k = 0; k < ROWS; k++) {
+    const motion = { animationDelay: `${(-k * (2.4 / ROWS)).toFixed(2)}s`, '--g': `${f1(h - hy)}px` } as CSSProperties
+    rows.push(<path key={k} className="mv mv-road" d={`M0 ${f1(hy)}H${w}`} stroke="#ff6fb8" strokeWidth={f1(1.6 * s)} style={motion} />)
+  }
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${id}sky`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#12082e" />
+          <stop offset="0.6" stopColor="#3a1466" />
+          <stop offset="1" stopColor="#c23a86" />
+        </linearGradient>
+        <linearGradient id={`${id}sun`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffe27a" />
+          <stop offset="0.55" stopColor="#ff8a4a" />
+          <stop offset="1" stopColor="#ff3f8e" />
+        </linearGradient>
+        <linearGradient id={`${id}fade`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#12062a" stopOpacity="0.95" />
+          <stop offset="1" stopColor="#12062a" stopOpacity="0" />
+        </linearGradient>
+        <mask id={`${id}m`}>
+          <rect width={w} height={h} fill="#fff" />
+          {bars}
+        </mask>
+        <clipPath id={`${id}ground`}>
+          <rect y={hy} width={w} height={h - hy} />
+        </clipPath>
+      </defs>
+      <rect width={w} height={hy} fill={`url(#${id}sky)`} />
+      <path d={starPath(w, hy * 0.6, Math.round((w * hy) / (2600 * s * s)), 1.1 * s, 7)} fill="#fff" opacity="0.7" />
+      <circle className="mv mv-glow" cx={f1(cx)} cy={f1(cy)} r={f1(r * 1.22)} fill="#ff4f8b" opacity="0.2" />
+      <circle cx={f1(cx)} cy={f1(cy)} r={f1(r)} fill={`url(#${id}sun)`} mask={`url(#${id}m)`} />
+      <rect y={hy} width={w} height={h - hy} fill="#12062a" />
+      <g clipPath={`url(#${id}ground)`}>
+        <path d={lanes} stroke="#ff4fa8" strokeWidth={5 * s} opacity="0.2" fill="none" />
+        <path d={lanes} stroke="#ff6fb8" strokeWidth={1.5 * s} fill="none" />
+        {rows}
+        <rect y={hy} width={w} height={(h - hy) * 0.35} fill={`url(#${id}fade)`} />
+      </g>
+      <path d={`M0 ${f1(hy)}H${w}`} stroke="#ffb3d9" strokeWidth={1.6 * s} />
+    </>
+  )
+}
+
 /* ---------- Asteroids' rocks, drifting ---------- */
 
 /** A rock's outline, as Asteroids draws them, around (0, 0) at radius 1. */
@@ -458,6 +567,10 @@ export function ThemeDrawing({ theme, w, h, s, id }: ThemeProps & { theme: strin
       return <IceCave w={w} h={h} s={s} id={id} />
     case 'cd-northern-lights':
       return <NorthernLights w={w} h={h} s={s} id={id} />
+    case 'cd-warp':
+      return <WarpDrive w={w} h={h} s={s} id={id} />
+    case 'cd-nightdrive':
+      return <NightDrive w={w} h={h} s={s} id={id} />
     default:
       return <Carpet w={w} h={h} s={s} id={id} />
   }
