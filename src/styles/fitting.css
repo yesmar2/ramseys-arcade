@@ -61,8 +61,10 @@
   container-type: inline-size;
 }
 
-.fit-you__card .prize-card {
-  min-height: 12.5rem;
+.fit-you__card {
+  display: flex;
+  justify-content: center;
+  padding: 0.4rem 0 0.2rem;
 }
 
 .fit-you__hint {
@@ -246,7 +248,7 @@
 }
 
 .fit-wear__none {
-  color: #6f8597;
+  color: #8fa3b4;
   font-weight: 500;
 }
 
@@ -297,7 +299,7 @@
 
 .fit-tab span {
   font-size: 0.78rem;
-  color: #6f8597;
+  color: #8fa3b4;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

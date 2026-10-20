@@ -736,57 +736,19 @@ a.run-tix__total {
   text-decoration: none;
 }
 
-/* ---------- the player card wearing its prizes ---------- */
-
-.pcard--themed {
-  --banner-ink: #f4f7fa;
-  --banner-muted: #d3dde4;
-  --banner-faint: #b8c7d2;
-  --banner-hover: #ffffff;
-  --banner-chip-bg: rgba(12, 18, 24, 0.55);
-  --banner-chip-ink: #f4f7fa;
-  --banner-chip-hover: rgba(12, 18, 24, 0.75);
-  position: relative;
-  overflow: hidden;
-}
-
-/*
- * The card is dark in both themes, so its colour's shades are the dark theme's in either: its words the light
- * shade, and the deep one the trophy counts and the edit button are drawn in on their white. Weighty enough to win
- * over both themes' banner shades (home.css), which are worked out for the banner's own washes.
- */
-.home-banner.pcard.pcard--themed {
-  --banner-accent-ink: color-mix(in srgb, var(--hero-accent) 55%, #fff);
-  --banner-mid: color-mix(in srgb, var(--hero-accent) 34%, #0b1620);
-}
-
-.pcard__theme {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.pcard--themed > .pcard__main,
-.pcard--themed > .pcard__strip {
-  position: relative;
-  z-index: 1;
-}
-
 /*
  * A themed card is always dark under its shade, and the prize counter's stage and the avatar studio's card
  * preview always dark, so a name
  * style reads there as it does on the dark theme, whichever theme the page is in.
  */
 .studio__card .pname--outline,
-.pcard--themed .pname--outline,
+.fac .pname--outline,
 .prize-stage .pname--outline {
   -webkit-text-stroke-color: #e7eef3;
 }
 
 .studio__card .pname--neon,
-.pcard--themed .pname--neon {
+.fac .pname--neon {
   color: #fff4fa;
   text-shadow:
     0 0 3px #ff5fa2,
@@ -795,12 +757,12 @@ a.run-tix__total {
 }
 
 .studio__card .pname--candy,
-.pcard--themed .pname--candy {
+.fac .pname--candy {
   background-image: linear-gradient(90deg, #ff7ac1, #ffd36e 50%, #7fc8ff);
 }
 
 .studio__card .pname--retro,
-.pcard--themed .pname--retro {
+.fac .pname--retro {
   color: #ffe07a;
   text-shadow:
     1px 1px 0 #ff5fa2,
@@ -808,7 +770,7 @@ a.run-tix__total {
 }
 
 .studio__card .pname--glitch,
-.pcard--themed .pname--glitch {
+.fac .pname--glitch {
   color: #f4f7fb;
   text-shadow:
     -1.5px 0 rgba(255, 61, 110, 0.9),
@@ -816,13 +778,13 @@ a.run-tix__total {
 }
 
 .studio__card .pname--ember,
-.pcard--themed .pname--ember {
+.fac .pname--ember {
   background-image: linear-gradient(180deg, #ffe08a, #ff8a3d 55%, #ff3d1f);
   filter: drop-shadow(0 0 4px rgba(255, 90, 31, 0.55));
 }
 
 .studio__card .pname--starlight,
-.pcard--themed .pname--starlight,
+.fac .pname--starlight,
 .prize-stage .pname--starlight {
   color: #ffffff;
   text-shadow:
@@ -831,54 +793,54 @@ a.run-tix__total {
 }
 
 .studio__card .pname--starlight::after,
-.pcard--themed .pname--starlight::after,
+.fac .pname--starlight::after,
 .prize-stage .pname--starlight::after {
   color: #f5b942;
 }
 
 .studio__card .pname--countdown,
-.pcard--themed .pname--countdown,
+.fac .pname--countdown,
 .prize-stage .pname--countdown {
   color: #ff9a52;
   text-shadow: 0 0 8px rgba(242, 129, 58, 0.55);
 }
 
 .studio__card .pname--nebula,
-.pcard--themed .pname--nebula,
+.fac .pname--nebula,
 .prize-stage .pname--nebula {
   background-image: linear-gradient(90deg, #ff7ac1, #b49cec 60%, #8f96ff);
   filter: drop-shadow(0 0 4px rgba(180, 156, 236, 0.5));
 }
 
 .studio__card .pname--aurora,
-.pcard--themed .pname--aurora,
+.fac .pname--aurora,
 .prize-stage .pname--aurora {
   background-image: linear-gradient(100deg, #5fe0c8, #5cc8ec 34%, #a68cf2 68%, #ff8fcf);
   filter: drop-shadow(0 0 4px rgba(95, 224, 200, 0.45)) drop-shadow(0 0 8px rgba(138, 106, 212, 0.35));
 }
 
 .studio__card .pname--telemetry,
-.pcard--themed .pname--telemetry,
+.fac .pname--telemetry,
 .prize-stage .pname--telemetry {
   background-image: repeating-linear-gradient(180deg, #7dffaf 0 2px, #45d36b 2px 3px);
   filter: drop-shadow(0 0 4px rgba(69, 211, 107, 0.55));
 }
 
 .studio__card .pname--telemetry::after,
-.pcard--themed .pname--telemetry::after,
+.fac .pname--telemetry::after,
 .prize-stage .pname--telemetry::after {
   background: #7dffaf;
 }
 
 .studio__card .pname--wormhole,
-.pcard--themed .pname--wormhole,
+.fac .pname--wormhole,
 .prize-stage .pname--wormhole {
   background-image: conic-gradient(from 0deg at 50% 50%, #c58bff, #4fe3ff 90deg, #7a5cff 180deg, #ff5fd8 270deg, #c58bff);
   filter: drop-shadow(0 0 1.5px #12002a) drop-shadow(0 0 2px #12002a) drop-shadow(0 0 8px rgba(214, 92, 214, 0.6));
 }
 
 .studio__card .pname--frost,
-.pcard--themed .pname--frost,
+.fac .pname--frost,
 .prize-stage .pname--frost {
   color: #f4fbff;
   text-shadow:
@@ -887,20 +849,20 @@ a.run-tix__total {
 }
 
 .studio__card .pname--frostbite,
-.pcard--themed .pname--frostbite,
+.fac .pname--frostbite,
 .prize-stage .pname--frostbite {
   background-image: linear-gradient(180deg, #ffffff 0 26%, #7fd0ff 44%, #3fa0e8);
 }
 
 .studio__card .pname--glacier,
-.pcard--themed .pname--glacier,
+.fac .pname--glacier,
 .prize-stage .pname--glacier {
   background-image: linear-gradient(180deg, #dff4ff, #7fc8ff 50%, #3a7fd0);
   filter: drop-shadow(0 0 4px rgba(58, 127, 208, 0.55));
 }
 
 .studio__card .pname--hoarfrost,
-.pcard--themed .pname--hoarfrost,
+.fac .pname--hoarfrost,
 .prize-stage .pname--hoarfrost {
   color: #dff2ff;
   -webkit-text-stroke: 0;
@@ -912,7 +874,7 @@ a.run-tix__total {
 }
 
 .studio__card .pname--polar,
-.pcard--themed .pname--polar,
+.fac .pname--polar,
 .prize-stage .pname--polar {
   -webkit-text-stroke-color: #4aa8e8;
   text-shadow:
@@ -921,38 +883,18 @@ a.run-tix__total {
 }
 
 .studio__card .pname--crystal,
-.pcard--themed .pname--crystal,
+.fac .pname--crystal,
 .prize-stage .pname--crystal {
   background-image: linear-gradient(135deg, #e8f8ff 0 25%, #7fd0ff 25% 45%, #dff4ff 45% 60%, #4aa8e8 60% 80%, #c9eeff 80%);
   filter: drop-shadow(0 0 3px rgba(232, 107, 208, 0.5));
 }
 
 .studio__card .pname--prism,
-.pcard--themed .pname--prism,
+.fac .pname--prism,
 .prize-stage .pname--prism {
   background-image: linear-gradient(90deg, #ff5a6a, #ff9a3d 20%, #ffe14d 40%, #4fe07a 60%, #4fa8ff 80%, #b678ff);
   -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.45);
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.35));
-}
-
-.pcard__name--sign {
-  line-height: 0;
-  margin-top: 0.4rem;
-}
-
-.pcard__name--sign svg {
-  max-width: 100%;
-  height: auto;
-}
-
-.pcard__title {
-  margin-top: 0.55rem;
-}
-
-@media (max-width: 640px) {
-  .pcard__name--sign svg {
-    width: 15rem;
-  }
 }
 
 /* The report's own phone padding (report.css). */

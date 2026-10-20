@@ -1,0 +1,805 @@
+/*
+ * The player card (components/PlayerCard.tsx, FullArtCard.tsx): a trading card, full art, standing tilted on its
+ * own sky, with where the player stands and a hand of small cards beside it. Dark in both themes: the sky is
+ * their background, and the words sit on it shaded. Ramsey picked H2 + P2 of the "Player card hero redesign"
+ * canvas (2026-10-20).
+ */
+
+/* ---------- the full-art card (also the prize counter's fitting room) ---------- */
+
+.fac {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 18.75rem;
+  aspect-ratio: 5 / 7;
+  border-radius: 1.35rem;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: #121a22;
+  color: #eef4f8;
+  box-shadow: 0 40px 80px -24px rgba(0, 0, 0, 0.95);
+}
+
+.fac--plain {
+  background:
+    radial-gradient(120% 80% at 30% 15%, color-mix(in srgb, var(--hero-accent, #2eb8a0) 70%, #ffffff 0%), transparent 70%),
+    linear-gradient(160deg, color-mix(in srgb, var(--hero-accent, #2eb8a0) 60%, #0c1218), #0c1218);
+}
+
+.fac--gold {
+  border-color: #f2c14e;
+  box-shadow:
+    0 0 36px -8px rgba(242, 193, 78, 0.6),
+    0 40px 80px -24px rgba(0, 0, 0, 0.95);
+}
+
+.fac__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* A game's picture standing in for a background is busier than one: it sits back behind the avatar. */
+.fac--game .fac__art {
+  filter: saturate(0.85) brightness(0.62);
+}
+
+.fac__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 54%;
+  background: linear-gradient(transparent, rgba(8, 10, 16, 0.75) 35%, rgba(8, 10, 16, 0.95));
+  pointer-events: none;
+}
+
+.fac__top {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fac__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.6rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.58);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fac--gold .fac__chip:first-child {
+  color: #f5c95a;
+}
+
+.fac__avatar {
+  position: absolute;
+  left: 50%;
+  top: 31%;
+  transform: translate(-50%, -50%);
+}
+
+.fac__avatar .player-avatar {
+  width: 7.5rem;
+  height: 7.5rem;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
+}
+
+.fac__foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem 0.85rem;
+}
+
+.fac__name {
+  display: block;
+  min-width: 0;
+}
+
+.fac__line {
+  font-size: 0.84rem;
+  color: #dfe8ee;
+}
+
+.fac__pips {
+  display: block;
+  margin-top: 0.3rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* Small, trying a prize on: the prize's sheet and the counter's fitting room (PrizePanel's PlayerCardMini). */
+.prize-fac {
+  width: 13.5rem;
+  margin: 0 auto;
+}
+
+.prize-fac .fac__avatar .player-avatar {
+  width: 5.6rem;
+  height: 5.6rem;
+}
+
+.prize-fac__name {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the hero ---------- */
+
+.pc {
+  --banner-chip-border: rgba(255, 255, 255, 0.3);
+  --banner-chip-bg: rgba(0, 0, 0, 0.28);
+  --banner-chip-ink: #eef4f8;
+  --banner-chip-hover: rgba(255, 255, 255, 0.12);
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  border: 1px solid #1f2b37;
+  background: #0c1218;
+  color: #eef4f8;
+  box-shadow: var(--shadow-soft);
+}
+
+.pc__sky {
+  position: absolute;
+  inset: -2rem;
+}
+
+.pc--plain .pc__sky {
+  background:
+    radial-gradient(80% 90% at 20% 20%, color-mix(in srgb, var(--hero-accent, #2eb8a0) 55%, transparent), transparent 70%),
+    #0c1218;
+}
+
+.pc__sky-art {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: blur(8px) saturate(1.1);
+}
+
+.pc__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(8, 10, 16, 0.35) 0%, rgba(8, 10, 16, 0.72) 36%, rgba(8, 10, 16, 0.88) 100%);
+  pointer-events: none;
+}
+
+.pc__back {
+  position: absolute;
+  z-index: 2;
+  top: 1rem;
+  left: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0 0.8rem 0 0.6rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pc__main {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 3rem;
+  padding: 3.4rem 2.8rem 2.2rem;
+}
+
+.pc__card {
+  transform: rotate(-3deg);
+}
+
+.pc__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.55rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+/* The card is dark whatever the page: the Plus mark in its bright gold. The tag goes without it, since the
+   card's corner says Plus. */
+html[data-theme='light'] .fac .plus-mark svg {
+  fill: #f5b942;
+  stroke: none;
+}
+
+.pc__name .plus-mark {
+  display: none;
+}
+
+/* Your own avatar opens the studio. */
+.pc__avatar {
+  position: relative;
+  display: block;
+}
+
+.pc__avatar--btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.pc__avatar--btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+}
+
+.pc__edit {
+  position: absolute;
+  right: 0.1rem;
+  bottom: 0.2rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #0c1218;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  color: #fff;
+}
+
+.pc__edit svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* A place for each period, along the card's foot. */
+.pc-pips {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.pc-pip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  padding: 0.2rem 0;
+  border-radius: 0.5rem;
+  color: #eef4f8;
+  text-decoration: none;
+}
+
+.pc-pip b {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  min-height: 1.2rem;
+}
+
+.pc-pip span {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a9b8c5;
+  white-space: nowrap;
+}
+
+.pc-pip--top b {
+  color: #f5c95a;
+}
+
+.pc-pip--on {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pc-pip:hover,
+.pc-pip:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ---------- beside the card ---------- */
+
+.pc__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  min-width: 0;
+}
+
+.pc__words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pc__head {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.pc__hot {
+  color: #ffd08a;
+}
+
+.pc__sub {
+  margin: 0;
+  font-size: 1rem;
+  color: #dfe8ee;
+}
+
+.pc__plus {
+  color: #f5c95a;
+  font-weight: 700;
+}
+
+.pc__skel {
+  --skel-bg: rgba(255, 255, 255, 0.14);
+}
+
+/* How far up the board, past the top ten. */
+.pc-bar {
+  max-width: 28rem;
+  margin-top: 0.4rem;
+}
+
+.pc-bar__track {
+  position: relative;
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.pc-bar__track i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--hero-fill, #3fc9a8);
+}
+
+.pc-bar__tick {
+  position: absolute;
+  top: -0.25rem;
+  width: 2px;
+  height: 1rem;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.pc-bar__words {
+  position: relative;
+  display: block;
+  height: 1.1rem;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: #c7d4dd;
+}
+
+.pc-bar__words span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* ---------- the hand of small cards ---------- */
+
+.pc-hand {
+  display: flex;
+  margin: 0;
+  padding: 0.5rem 0 0.6rem 0.4rem;
+  list-style: none;
+}
+
+.pc-mini {
+  flex: none;
+  position: relative;
+  transition: transform 0.18s ease;
+}
+
+.pc-mini + .pc-mini {
+  margin-left: -0.9rem;
+}
+
+.pc-mini:nth-child(1) {
+  transform: rotate(-6deg) translateY(0.4rem);
+}
+
+.pc-mini:nth-child(2) {
+  transform: rotate(-2deg);
+}
+
+.pc-mini:nth-child(3) {
+  transform: rotate(2deg);
+}
+
+.pc-mini:nth-child(4) {
+  transform: rotate(6deg) translateY(0.4rem);
+}
+
+.pc-mini:hover,
+.pc-mini:focus-within {
+  z-index: 2;
+  transform: rotate(0) translateY(-0.5rem);
+}
+
+.pc-mini__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 9.25rem;
+  height: 13rem;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: radial-gradient(circle at 50% 35%, #263a4c, #0d151c 75%);
+  color: #eef4f8;
+  text-decoration: none;
+  box-shadow: 0 22px 40px -16px rgba(0, 0, 0, 0.95);
+}
+
+.pc-mini__card:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.pc-mini__cap {
+  position: absolute;
+  z-index: 2;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pc-mini__art {
+  position: absolute;
+  inset: 0 0 3.4rem;
+  display: grid;
+  place-items: center;
+}
+
+.pc-mini__foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: auto;
+  padding: 1.2rem 0.65rem 0.6rem;
+  background: linear-gradient(transparent, rgba(8, 10, 16, 0.92) 40%);
+}
+
+.pc-mini__foot b {
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.pc-mini__foot span {
+  font-size: 0.72rem;
+  color: #dfe8ee;
+  line-height: 1.3;
+}
+
+/* Best at: the game's picture, the whole card. */
+.pc-mini--game .pc-mini__art {
+  inset: 0;
+}
+
+.pc-mini--game .pc-mini__art svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Race medals: three, fanned. */
+.pc-mini--medals .pc-mini__card {
+  background: radial-gradient(circle at 50% 35%, #3a3424, #14110c 75%);
+}
+
+.pc-mini__medal {
+  position: absolute;
+}
+
+.pc-mini__medal--l {
+  left: 0.6rem;
+  top: 2.6rem;
+  transform: rotate(-14deg);
+}
+
+.pc-mini__medal--r {
+  right: 0.6rem;
+  top: 2.6rem;
+  transform: rotate(14deg);
+}
+
+.pc-mini__medal--c {
+  left: 50%;
+  top: 1.7rem;
+  transform: translateX(-50%);
+}
+
+/* The Dailies streak: a flame and the day. */
+.pc-mini--streak .pc-mini__card {
+  background: linear-gradient(160deg, #ff9a5c, #c2410c 70%, #7a2406);
+}
+
+.pc-mini--streak .pc-mini__art {
+  grid-auto-flow: row;
+  align-content: center;
+  justify-items: center;
+  padding-top: 1rem;
+}
+
+.pc-mini__flame {
+  width: 3.4rem;
+  height: 3.4rem;
+  fill: #fff3c4;
+}
+
+.pc-mini__big {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  line-height: 1;
+  color: #fff;
+}
+
+.pc-mini--streak .pc-mini__foot {
+  background: none;
+}
+
+/* Trophies: the proudest, in its tone, on the dark (the shelf's own dark tones in both themes). */
+.pc-mini--trophies {
+  --tr-gold: #f5c542;
+  --tr-silver: #c4d0d9;
+  --tr-bronze: #e0955c;
+  --tr-week: #45d3ba;
+  --tr-month: #b99cff;
+  --tr-hunt: #86d77f;
+  --tr-secret: #ff8cc8;
+}
+
+.pc-mini__trophy .trophy-art {
+  width: 5.2rem;
+  height: 5.2rem;
+}
+
+.pc-mini__trophy .trophy-art svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- the buttons and the facts ---------- */
+
+.pc__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem 1.2rem;
+}
+
+.pc__buttons {
+  margin: 0;
+}
+
+.pc .pcard__arrow {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.45rem;
+}
+
+.pc__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: #c7d4dd;
+}
+
+.pc__facts b {
+  color: #fff;
+}
+
+.pc__how {
+  color: #7fe3cd;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pc__how:hover,
+.pc__how:focus-visible {
+  text-decoration: underline;
+}
+
+/* The parts of the page the hand leads to stop clear of the header. */
+#best,
+#trophies,
+#hangar {
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
+}
+
+/* ---------- narrower ---------- */
+
+@media (max-width: 1100px) {
+  .pc__main {
+    gap: 2rem;
+    padding: 3.2rem 2rem 2rem;
+  }
+
+  .fac {
+    width: 16.5rem;
+  }
+
+  .fac__avatar .player-avatar {
+    width: 6.6rem;
+    height: 6.6rem;
+  }
+
+  .pc__name {
+    font-size: 2.2rem;
+  }
+
+  .pc-mini__card {
+    width: 8.25rem;
+    height: 11.6rem;
+  }
+}
+
+/* A phone, or a narrow window: the card on its sky at the top, then the words and the hand. */
+@media (max-width: 760px) {
+  .pc {
+    border-radius: 1.3rem;
+  }
+
+  .pc__shade {
+    background: linear-gradient(rgba(8, 10, 16, 0.3), rgba(8, 10, 16, 0.6) 40%, rgba(8, 10, 16, 0.9) 62%);
+  }
+
+  .pc__main {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 1.4rem;
+    padding: 3.4rem 1rem 1.2rem;
+  }
+
+  .fac {
+    width: min(15rem, 72vw);
+  }
+
+  .fac__avatar .player-avatar {
+    width: 6rem;
+    height: 6rem;
+  }
+
+  .pc__name {
+    font-size: 2rem;
+  }
+
+  .pc__side {
+    width: 100%;
+    gap: 1.1rem;
+  }
+
+  .pc__head {
+    font-size: 1.6rem;
+  }
+
+  .pc__sub {
+    font-size: 0.92rem;
+  }
+
+  .pc-hand {
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .pc-mini + .pc-mini {
+    margin-left: -0.7rem;
+  }
+
+  .pc-mini__card {
+    width: min(6.4rem, 22vw);
+    height: auto;
+    aspect-ratio: 9.25 / 13;
+    border-radius: 0.7rem;
+  }
+
+  .pc-mini__cap {
+    font-size: 0.48rem;
+    top: 0.35rem;
+    left: 0.35rem;
+    padding: 0.15rem 0.35rem;
+  }
+
+  .pc-mini__art {
+    inset: 0 0 2.6rem;
+  }
+
+  .pc-mini__foot {
+    padding: 0.8rem 0.4rem 0.4rem;
+  }
+
+  .pc-mini__foot b {
+    font-size: 0.78rem;
+  }
+
+  .pc-mini__foot span {
+    display: none;
+  }
+
+  /* One medal, the best held, on a phone's small card. */
+  .pc-mini__medal--l,
+  .pc-mini__medal--r {
+    display: none;
+  }
+
+  .pc-mini__medal--c {
+    top: 1.4rem;
+    scale: 0.75;
+  }
+
+  .pc-mini__flame {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
+  .pc-mini__big {
+    font-size: 1.8rem;
+  }
+
+  .pc-mini__trophy .trophy-art {
+    width: 3.4rem;
+    height: 3.4rem;
+  }
+
+  .pc-mini--skins .pc-mini__art svg {
+    width: 3.8rem;
+    height: 3.8rem;
+  }
+
+  .pc__acts {
+    justify-content: center;
+  }
+
+  .pc__facts {
+    margin-left: 0;
+    justify-content: center;
+    text-align: center;
+  }
+}

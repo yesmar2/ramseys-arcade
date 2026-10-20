@@ -47,50 +47,6 @@ html[data-theme='light'] .plus-mark svg {
   stroke-linejoin: round;
 }
 
-/* A card in a theme from the prize counter is dark whatever the page: the bright gold. */
-html[data-theme='light'] .pcard--themed .plus-mark svg {
-  fill: #f5b942;
-  stroke: none;
-}
-
-/* A player card's big name goes without it: the card says "Plus member" under it instead. */
-.pcard__name .plus-mark {
-  display: none;
-}
-
-/* On a member's player card, under the name: who's on Plus, and the way to it (components/PlayerCard.tsx). */
-.pcard-plus {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: fit-content;
-  margin-top: 0.35rem;
-  padding: 0.2rem 0.7rem 0.2rem 0.45rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: #8a4b05;
-  background: rgba(245, 185, 66, 0.2);
-  box-shadow: inset 0 0 0 1px rgba(242, 129, 58, 0.35);
-  text-decoration: none;
-}
-
-.pcard-plus .plus-mark {
-  top: 0;
-  margin-left: 0;
-}
-
-.pcard-plus:hover,
-.pcard-plus:focus-visible {
-  background: rgba(245, 185, 66, 0.32);
-}
-
-/* Dark pages, and a card in a theme from the prize counter, which is dark whatever the page. */
-html[data-theme='dark'] .pcard-plus,
-.pcard--themed .pcard-plus {
-  color: #ffd27a;
-}
-
 /* As an icon: the menu's Plus row (components/SiteMenu.tsx), and the Plus page's at its own size. */
 .plus-mark--icon {
   top: 0;

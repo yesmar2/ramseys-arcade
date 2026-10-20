@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
-import { plateTier, PRIZE_KINDS, PRIZES, prizeById, type Prize } from '../../data/prizes'
+import { PRIZE_KINDS, PRIZES, type Prize } from '../../data/prizes'
 import { avatarWashColor, isWearing, wearPrize, wornPrize, type Avatar } from '../../lib/avatars'
 import { moveChoice } from '../../lib/choiceKeys'
 import { useGlobalRank } from '../../lib/globalRank'
@@ -8,9 +8,9 @@ import { Panel, PanelHead } from '../Panel'
 import { AvatarArt, PlayerAvatar } from '../PlayerAvatar'
 import { PlayerName } from '../PlayerName'
 import { ReportConfetti } from '../RunReport'
-import { CardBackdrop, PrizeArt } from './PrizeArt'
+import { FullArtCard } from '../FullArtCard'
+import { PrizeArt } from './PrizeArt'
 import { PrizeActions } from './PrizeActions'
-import { SignArt } from './SignArt'
 import { TicketGlyph } from './Ticket'
 
 /*
@@ -37,32 +37,21 @@ function viewsFor(prize: Prize): View[] {
   }
 }
 
-/** A player card, small: the theme behind it, the badge, the tag (or its neon sign) and the title under it. */
+/**
+ * The player's trading card, small, as their profile shows it (FullArtCard): the background behind it, the
+ * avatar and the tag in its style, trying on whatever's picked.
+ */
 export function PlayerCardMini({ avatar, name, line }: { avatar: Avatar; name: string; line?: string }) {
-  const card = wornPrize(avatar, 'card')
-  const title = prizeById(wornPrize(avatar, 'title'))
-  const sign = wornPrize(avatar, 'sign')
-  const wash = avatarWashColor(avatar)
   return (
-    <div className="prize-card" style={{ '--wash': wash } as CSSProperties}>
-      {card ? <CardBackdrop className="prize-card__theme" theme={card} width={380} height={236} scale={1.05} /> : null}
-      <span className={`prize-card__shade${card ? ' prize-card__shade--theme' : ''}`} aria-hidden="true" />
-      <span className="prize-card__tile">
-        <svg viewBox="0 0 64 64" width="92" height="92" aria-hidden="true" focusable="false">
-          <AvatarArt avatar={avatar} name={name} />
-        </svg>
-      </span>
-      <span className="prize-card__text">
-        <span className="prize-card__kicker">Player card</span>
-        {sign ? (
-          <SignArt sign={sign} name={name} width={190} wires={false} />
-        ) : (
-          <PlayerName className="prize-card__name" name={name} style={wornPrize(avatar, 'name')} />
-        )}
-        {title ? <span className={`prize-plate prize-plate--${plateTier(title)}`}>{title.name}</span> : null}
-        {line ? <span className="prize-card__line">{line}</span> : null}
-      </span>
-    </div>
+    <FullArtCard
+      className="prize-fac"
+      theme={wornPrize(avatar, 'card')}
+      game={null}
+      style={{ '--hero-accent': avatarWashColor(avatar) } as CSSProperties}
+      avatar={<PlayerAvatar avatar={avatar} name={name} size="xl" />}
+      chip={line}
+      name={<PlayerName className="prize-fac__name" name={name} style={wornPrize(avatar, 'name')} />}
+    />
   )
 }
 

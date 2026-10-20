@@ -61,7 +61,7 @@ function boardRows(best: GameBest, rows: BoardRow[], line: { rank: number; label
  * board's players (the all-time rank's places), with the player's best run on it. A daily's all-time board is
  * its day points, not a run (leaderboardFormat isDayPointsBoard), so the dailies are left out.
  */
-function bestGame(bests: Record<string, GameBest>, places: Partial<Record<string, GlobalGamePlace>> | null): GameBest | null {
+export function bestGame(bests: Record<string, GameBest>, places: Partial<Record<string, GlobalGamePlace>> | null): GameBest | null {
   const asPlayers = Object.values(bests)
     .filter((b) => !isDailyGame(b.slug))
     .map((b) => {
@@ -151,7 +151,7 @@ export function ProfileBestBoard({
   const style = { '--tile-accent': accent, '--tile-ink': inkOn(accent), '--tile-fill': readableFill(accent) } as CSSProperties
 
   return (
-    <section className="pbest" style={style} aria-labelledby="pbest-title">
+    <section className="pbest" id="best" style={style} aria-labelledby="pbest-title">
       <a className="pbest__screen" href={gamePlayHref(best.slug)} tabIndex={-1} aria-hidden="true">
         <span className="wall-tile__art">
           <GameArt slug={best.slug} shape="card" fallback={<GameThumbArt slug={best.slug} accent={accent} />} />

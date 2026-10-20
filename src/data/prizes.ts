@@ -26,7 +26,8 @@ export type Prize = {
   earned?: { by: string; short: string }
   /**
    * Off the counter for good: never traded for or saved for again, but still worn by anyone who has it. The
-   * titles that were for tickets are retired, since a title is earned now (the API's prizes.ts says so too).
+   * titles that were for tickets are retired, since a title is earned now, and so are the signs, since the
+   * player card has none any more (the API's prizes.ts says so too).
    */
   retired?: true
 }
@@ -96,10 +97,10 @@ export const PRIZES: readonly Prize[] = [
   { id: 't-egg', kind: 'title', name: 'Easter Egg', price: 1000, blurb: LIT, retired: true },
   { id: 't-extralife', kind: 'title', name: 'Extra Life', price: 1200, blurb: LIT, retired: true },
   { id: 't-finalboss', kind: 'title', name: 'Final Boss', price: 1500, blurb: LIT, retired: true },
-  { id: 'sign-led', kind: 'sign', name: 'LED board', price: 4000, blurb: 'Your tag in lit dots on a scoreboard, across your player card.' },
-  { id: 'sign-marquee', kind: 'sign', name: 'Marquee', price: 6500, blurb: 'Your tag in lights, ringed with bulbs like a show’s opening night.' },
-  { id: 'sign', kind: 'sign', name: 'Neon sign', price: 10_000, blurb: 'Your tag in lit tubes across your player card.' },
-  { id: 'sign-rooftop', kind: 'sign', name: 'Rooftop', price: 15_000, blurb: 'Your tag in giant neon on a rooftop over the city at night.' },
+  { id: 'sign-led', kind: 'sign', name: 'LED board', price: 4000, blurb: 'Your tag in lit dots on a scoreboard, across your player card.', retired: true },
+  { id: 'sign-marquee', kind: 'sign', name: 'Marquee', price: 6500, blurb: 'Your tag in lights, ringed with bulbs like a show’s opening night.', retired: true },
+  { id: 'sign', kind: 'sign', name: 'Neon sign', price: 10_000, blurb: 'Your tag in lit tubes across your player card.', retired: true },
+  { id: 'sign-rooftop', kind: 'sign', name: 'Rooftop', price: 15_000, blurb: 'Your tag in giant neon on a rooftop over the city at night.', retired: true },
   // Earned by a Today streak, never traded for (the API's prizes.ts has them too).
   {
     id: 'gilded',
@@ -307,9 +308,6 @@ export function isWornPrizeId(id: string): boolean {
   const prize = byId.get(id)
   return !!prize && prize.kind !== 'finish'
 }
-
-/** The signs on the wall above the counter, cheapest first. */
-export const SIGNS: readonly Prize[] = PRIZES.filter((p) => p.kind === 'sign' && !p.earned).sort((a, b) => a.price - b.price)
 
 /** How a title's plate is made: plain, enamel from 300 tickets, in lights from 900. */
 export type PlateTier = 'plain' | 'enamel' | 'lit'

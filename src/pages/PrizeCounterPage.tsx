@@ -31,6 +31,7 @@ import '../styles/fitting.css'
  * other a tab for each place a prize goes. Pick one and you're wearing it there before you trade for it. On a
  * phone, a pick opens the prize's own sheet instead, which tries it on the same way. Nothing here changes a
  * score, and tickets can't be bought. Titles aren't here: they're earned (a season, a streak), never traded for.
+ * Nor are signs: the player card has none any more (2026-10-20).
  */
 
 /** What pays, along the hero's foot. The day's event pays only while the arcade's own events run. */
@@ -65,7 +66,7 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   )
 }
 
-type Slot = Exclude<PrizeKind, 'title'> | 'skin'
+type Slot = Exclude<PrizeKind, 'title' | 'sign'> | 'skin'
 
 /** The fitting room's tabs: each a place a prize goes, and what it looks like there. */
 const SLOTS: { id: Slot; where: string }[] = [
@@ -73,7 +74,6 @@ const SLOTS: { id: Slot; where: string }[] = [
   { id: 'name', where: 'How your tag is written on the boards.' },
   { id: 'card', where: 'Behind your player card.' },
   { id: 'confetti', where: 'Goes up when you top a board or win an event.' },
-  { id: 'sign', where: 'Your tag in lights, across your player card.' },
   { id: 'skin', where: 'Your ship, car or snake in its game. Your ghost and your row on the boards wear it too.' },
 ]
 
@@ -138,7 +138,7 @@ export function PrizeCounterPage() {
 
   const counts = useMemo(() => {
     const out: Partial<Record<Slot, number>> = { skin: HANGAR_SKINS.length }
-    for (const p of FOR_SALE) if (p.kind !== 'title') out[p.kind] = (out[p.kind] ?? 0) + 1
+    for (const p of FOR_SALE) if (p.kind !== 'title' && p.kind !== 'sign') out[p.kind] = (out[p.kind] ?? 0) + 1
     return out
   }, [])
 
@@ -155,7 +155,7 @@ export function PrizeCounterPage() {
   // The prize you're saving for: its tab, and on a wide screen it's on you.
   const showGoal = () => {
     if (!goal) return
-    if (goal.kind !== 'title') setSlot(goal.kind)
+    if (goal.kind !== 'title' && goal.kind !== 'sign') setSlot(goal.kind)
     pick(goal)
   }
 
@@ -210,7 +210,7 @@ export function PrizeCounterPage() {
           ) : null}
           <span className="fit-tile__stage">
             <span className="counter-item__spot" style={{ '--spot': prizeGlow(p, avatar) } as CSSProperties} />
-            <PrizeArt className="fit-tile__art" prize={p} avatar={avatar} name={tag} width={slot === 'card' || slot === 'sign' ? 190 : 130} />
+            <PrizeArt className="fit-tile__art" prize={p} avatar={avatar} name={tag} width={slot === 'card' ? 190 : 130} />
           </span>
           <span className="fit-tile__name">{p.name}</span>
           {tagFor(p)}
@@ -237,7 +237,7 @@ export function PrizeCounterPage() {
             </h1>
             <p className="counter-lede">
               Every game you play pays out tickets. Trade them here for looks that show on the boards: avatars, name styles, backgrounds,
-              confetti, signs and skins. Pick one and you’re wearing it before you trade. Earned by playing, never bought.
+              confetti and skins. Pick one and you’re wearing it before you trade. Earned by playing, never bought.
             </p>
           </div>
           <div className="counter-hero__mine">
@@ -367,8 +367,8 @@ export function PrizeCounterPage() {
             {WEAR_ROWS.map((kind) => {
               const now = wornOf(avatar, kind)
               const next = trying?.kind === kind && trying.id !== now?.id ? trying : null
-              // A title only shows when you have one on: they're earned, not at the counter.
-              if (kind === 'title' && !now && !next) return null
+              // A title or a sign only shows when you have one on: titles are earned, and signs are retired.
+              if ((kind === 'title' || kind === 'sign') && !now && !next) return null
               return (
                 <div key={kind} className="fit-wear__row">
                   <dt>{PRIZE_KINDS[kind].one}</dt>

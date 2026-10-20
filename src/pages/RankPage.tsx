@@ -7,7 +7,7 @@ import { PageShell } from '../components/PageShell'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PlayerCard } from '../components/PlayerCard'
 import { ProfileViews } from '../components/ProfileViews'
-import { ProfileBestBoard } from '../components/ProfileBestBoard'
+import { bestGame, ProfileBestBoard } from '../components/ProfileBestBoard'
 import { ProfileGames } from '../components/ProfileGames'
 import { ProfileRival } from '../components/ProfileRival'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -323,6 +323,7 @@ export function RankPage({
               howHref={rankHowHref(isSelf ? undefined : viewedName, period)}
               stats={isSelf && signedIn ? { streak, href: statsHref() } : null}
               avatarId={avatarId}
+              best={bests ? bestGame(bests, allTime?.byGame ?? null) : null}
             />
             </div>
 

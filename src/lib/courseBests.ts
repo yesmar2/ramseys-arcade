@@ -77,3 +77,35 @@ export function useCourseBests(game: string | null): ReadonlyMap<number, number>
   }, [game])
   return bests
 }
+
+/** How many of each race medal a player holds, counted by the API from their course bests: anyone's to see. */
+export type MedalCounts = { platinum: number; gold: number; silver: number; bronze: number }
+
+/**
+ * A player's medals, counted, for their player card (Ramsey made the counts public, 2026-10-20; the times stay
+ * the player's own). Asked again when a run keeps a new best on this device. Null until it's in.
+ */
+export function useMedalCounts(name: string): MedalCounts | null {
+  const [got, setGot] = useState<{ name: string; medals: MedalCounts } | null>(null)
+  const [ask, setAsk] = useState(0)
+  useEffect(() => {
+    const again = () => setAsk((n) => n + 1)
+    window.addEventListener(COURSE_BEST_EVENT, again)
+    return () => window.removeEventListener(COURSE_BEST_EVENT, again)
+  }, [])
+  useEffect(() => {
+    if (!name) return
+    let live = true
+    api<{ medals: MedalCounts }>(`/course-bests/medals?name=${encodeURIComponent(name)}`)
+      .then((r) => {
+        if (live) setGot({ name, medals: r.medals })
+      })
+      .catch(() => {
+        if (live) setGot({ name, medals: { platinum: 0, gold: 0, silver: 0, bronze: 0 } })
+      })
+    return () => {
+      live = false
+    }
+  }, [name, ask])
+  return got?.name === name ? got.medals : null
+}
