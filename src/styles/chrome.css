@@ -168,13 +168,13 @@ html[data-theme='dark'] .brand-mark__dark {
   min-height: 2.6rem;
 }
 
-/* ---------- what the boards show ---------- */
+/* ---------- whose boards: beside a board's period tabs (BoardsAmong) ---------- */
 
-/* It gives way faster than your chip: a group's name clips before your tag does. */
 .site-scope {
   position: relative;
-  flex: 0 3 auto;
+  flex: none;
   min-width: 0;
+  max-width: 100%;
 }
 
 .site-scope__btn {
@@ -183,8 +183,8 @@ html[data-theme='dark'] .brand-mark__dark {
   gap: 0.5rem;
   max-width: 100%;
   box-sizing: border-box;
-  min-height: 2.6rem;
-  padding: 0 0.85rem 0 0.8rem;
+  min-height: 2.5rem;
+  padding: 0 0.8rem 0 0.75rem;
   border-radius: 999px;
   border: 1px solid rgba(var(--ink-rgb), 0.09);
   background: rgba(var(--ink-rgb), 0.045);
@@ -214,10 +214,6 @@ html[data-theme='dark'] .brand-mark__dark {
   flex: none;
 }
 
-.site-scope__period {
-  flex: none;
-}
-
 .site-scope__mark {
   color: color-mix(in srgb, var(--accent) 75%, var(--ink));
 }
@@ -239,16 +235,16 @@ html[data-theme='dark'] .brand-mark__dark {
 .site-scope__among {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 9rem;
+  max-width: 10rem;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--muted);
-  font-weight: 650;
 }
 
 /* A group's tint, your friends' blue: the name in it, mixed toward the ink so small words keep 4.5:1. */
 .site-scope__btn--group {
   --scope-tint: var(--accent);
+  border-color: color-mix(in srgb, var(--scope-tint) 45%, transparent);
+  background: color-mix(in srgb, var(--scope-tint) 11%, transparent);
 }
 
 .site-scope__btn--friends {
@@ -260,41 +256,32 @@ html[data-theme='dark'] .brand-mark__dark {
   font-weight: 750;
 }
 
-/* The phone's two lines (below): shown only there. */
-.site-scope__stack {
-  display: none;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-  line-height: 1.12;
-  text-align: left;
-}
-
-.site-scope__who {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 800;
+.site-scope__btn--group .site-scope__mark {
   color: color-mix(in srgb, var(--scope-tint) 55%, var(--ink));
 }
 
-.site-scope__when {
-  margin-top: 0.06rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--muted);
+/* On a game's coloured banner it's one of the banner's own chips, whatever is picked. */
+.site-scope--banner .site-scope__btn,
+.site-scope--banner .site-scope__btn--group {
+  min-height: 2.8rem;
+  border-color: var(--banner-chip-border);
+  background: var(--banner-chip-bg);
+  color: var(--banner-chip-ink);
 }
 
-.site-scope__skel {
-  --skel-w: 4rem;
+.site-scope--banner .site-scope__btn .site-scope__among,
+.site-scope--banner .site-scope__btn .site-scope__mark,
+.site-scope--banner .site-scope__btn .site-scope__chev {
+  color: inherit;
 }
 
+/* It opens toward the side with room: under the chip's right edge, or its left one near a phone's left side. */
 .site-scope__pop {
   position: absolute;
-  top: calc(100% + 0.6rem);
+  top: calc(100% + 0.5rem);
   right: 0;
   z-index: 70;
-  width: 21rem;
+  width: min(21rem, calc(100vw - 2rem));
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -304,6 +291,11 @@ html[data-theme='dark'] .brand-mark__dark {
   background: var(--surface);
   border: 1px solid rgba(var(--ink-rgb), 0.14);
   box-shadow: var(--shadow-lift);
+}
+
+.site-scope__pop--start {
+  left: 0;
+  right: auto;
 }
 
 .site-scope__cap {
@@ -1361,14 +1353,6 @@ html[data-theme='dark'] .site-menu__sounds .chips__item--active {
     display: block;
   }
 
-  .site-scope__btn:not(.site-scope__btn--group) .site-scope__among {
-    display: none;
-  }
-
-  .site-scope__among {
-    max-width: 6rem;
-  }
-
   .site-you__name {
     display: none;
   }
@@ -1430,11 +1414,6 @@ html[data-theme='dark'] .site-menu__sounds .chips__item--active {
     gap: 0.4rem;
   }
 
-  .site-scope {
-    order: 1;
-    position: static;
-  }
-
   .site-bar .site-search {
     order: 2;
   }
@@ -1445,42 +1424,6 @@ html[data-theme='dark'] .site-menu__sounds .chips__item--active {
     left: 0;
     right: 0;
     width: auto;
-  }
-
-  .site-scope__btn {
-    padding: 0 0.7rem;
-    font-size: 0.84rem;
-  }
-
-  .site-scope__among {
-    display: none;
-  }
-
-  /*
-   * With a group on, the chip says whose boards they are: there's no room for the name beside the period, so it
-   * takes the period's place, the period small under it, in the group's tint (A, "Group on the phone header").
-   */
-  .site-scope__btn--group {
-    gap: 0.45rem;
-    padding: 0 0.7rem 0 0.95rem;
-    border-color: color-mix(in srgb, var(--scope-tint) 45%, transparent);
-    background: color-mix(in srgb, var(--scope-tint) 11%, transparent);
-  }
-
-  .site-scope__btn--group .site-scope__mark,
-  .site-scope__btn--group .site-scope__period {
-    display: none;
-  }
-
-  .site-scope__btn--group .site-scope__stack {
-    display: flex;
-  }
-
-  .site-scope__pop {
-    left: 0;
-    right: 0;
-    width: auto;
-    top: calc(100% + 0.5rem);
   }
 
   .site-tabs {

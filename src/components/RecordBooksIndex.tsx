@@ -31,6 +31,7 @@ import { BoardEmpty } from './BoardChrome'
 import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
+import { BoardsAmong } from './BoardsAmong'
 
 /*
  * The record books' front page: how many records nobody holds yet, and a few
@@ -229,6 +230,7 @@ export function RecordBooksIndex() {
             <a className="sb-ghost" href={siteRecordsHref()}>
               The house book
             </a>
+            <BoardsAmong />
           </div>
         </div>
 

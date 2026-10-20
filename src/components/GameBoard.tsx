@@ -29,6 +29,7 @@ import { BoardPlayers, BoardRuns } from './BoardPlayers'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
 import { RaceGhostButton } from './RaceGhostButton'
+import { BoardsAmong } from './BoardsAmong'
 import { useAuth } from '../hooks/useAuth'
 import { RACE_GHOST_GAMES } from '../lib/raceGhost'
 
@@ -163,6 +164,7 @@ function BoardHead({
         </h2>
       ) : null}
       <PeriodTabs slug={slug} period={period} />
+      <BoardsAmong />
       {count ? <span className="gb-board__count">{count}</span> : null}
       {findRef ? (
         <span className="gb-board__find" ref={findRef}>

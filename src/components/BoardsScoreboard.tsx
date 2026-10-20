@@ -34,6 +34,7 @@ import { GameThumbArt } from './GameThumbArt'
 import { PeriodLabel } from './PeriodLabel'
 import { SkinMark } from './season/SkinMark'
 import { StandingsList, TrophyIcon, type StandingsFeed } from './StandingsList'
+import { BoardsAmong } from './BoardsAmong'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
@@ -449,6 +450,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
           </p>
           <div className="sb-hero__row">
             <PeriodTabs active={period} season={seasonTab} />
+            <BoardsAmong />
             <p className="sb-closes">
               <TrophyIcon />
               <span>{copy.closes}</span>

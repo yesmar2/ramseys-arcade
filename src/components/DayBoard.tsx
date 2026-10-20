@@ -33,6 +33,7 @@ import { RaceGhostButton } from './RaceGhostButton'
 import { RunLabel } from './RunLabel'
 import { ShareBoardButton } from './ShareBoardButton'
 import { openSiteMenu } from './siteNav'
+import { BoardsAmong } from './BoardsAmong'
 import '../styles/dayBoard.css'
 
 /*
@@ -252,6 +253,7 @@ function Banner({
             label={`${game.name}, ${dayWords}: the ${BOARD_NAMES.ranked} board on ${APP_NAME}.`}
             url={dayBoardHref(slug, day)}
           />
+          <BoardsAmong className="site-scope--banner" />
         </div>
         <p className="gb-closes">
           <TrophyIcon />

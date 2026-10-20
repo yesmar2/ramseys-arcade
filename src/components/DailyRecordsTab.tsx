@@ -40,6 +40,7 @@ import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
 import { openSiteMenu, openTagPicker } from './siteNav'
 import { HolePlan } from './TodaysHoleCard'
+import { BoardsAmong } from './BoardsAmong'
 import '../styles/dailyRecords.css'
 import '../styles/todaysTrack.css'
 
@@ -707,10 +708,13 @@ function RecordsBody({
             </>
           )}
         </div>
-        <a className="gh-more drt-head__link" href={dailyTabHref(slug, 'past')}>
-          {intro.link}
-          <ChevronRightIcon />
-        </a>
+        <div className="rbk-tabhead__picks">
+          <a className="gh-more drt-head__link" href={dailyTabHref(slug, 'past')}>
+            {intro.link}
+            <ChevronRightIcon />
+          </a>
+          <BoardsAmong />
+        </div>
       </div>
 
       {loading ? (

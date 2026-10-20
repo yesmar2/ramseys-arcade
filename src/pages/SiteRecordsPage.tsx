@@ -5,6 +5,7 @@ import { PageShell } from '../components/PageShell'
 import { PlayerMark } from '../components/PlayerMark'
 import { RecordPlaque, shareOf, type PlaqueYou } from '../components/RecordPlaque'
 import { ShareBoardButton } from '../components/ShareBoardButton'
+import { BoardsAmong } from '../components/BoardsAmong'
 import { getGame, PALETTE } from '../data/games'
 import { homeHref, rankHref, recordsIndexHref, siteRecordsHref, type Route } from '../hooks/useHashRoute'
 import { useMyAvatarId } from '../hooks/useMyAvatarId'
@@ -249,6 +250,7 @@ export function SiteRecordsPage() {
                 label={`The house records on ${APP_NAME}: who keeps turning up.`}
                 url={siteRecordsHref()}
               />
+              <BoardsAmong className="site-scope--banner" />
             </div>
           </div>
           {/* A wall of cabinets, for the whole arcade, with the longest streak on the marquee. */}

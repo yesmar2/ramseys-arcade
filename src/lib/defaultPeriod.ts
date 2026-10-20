@@ -28,7 +28,7 @@ export function storedDefaultPeriod(): LeaderboardPeriod {
       }
     }
     // The season is the site's period too while a season has standings: the header puts it back to the week when
-    // there's none (SiteScopeControl).
+    // there's none (useSiteScopeKeeper).
     if (value && isPeriod(value)) return coerceVisiblePeriod(value)
   } catch {
     /* ignore quota / private mode */

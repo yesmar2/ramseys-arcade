@@ -44,6 +44,7 @@ import { GameThumbArt } from './GameThumbArt'
 import { PlayerMark } from './PlayerMark'
 import { ShareBoardButton } from './ShareBoardButton'
 import { PlayerName } from './PlayerName'
+import { BoardsAmong } from './BoardsAmong'
 
 /*
  * One record. The banner is its game at the scale of the page, with the
@@ -265,6 +266,7 @@ function Banner({
             }
             url={recordHref(game, recordId, period)}
           />
+          <BoardsAmong className="site-scope--banner" />
         </div>
       </div>
       <a className="home-banner__art gb-banner__art" href={play.href} tabIndex={-1} aria-hidden="true">

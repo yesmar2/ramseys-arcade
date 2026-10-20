@@ -26,7 +26,7 @@ import { PendingInvitesStrip } from './PendingInvitesStrip'
 import { PlayerAvatar } from './PlayerAvatar'
 import type { PlayerBadgeHandle } from './PlayerBadge'
 import { SiteMenu } from './SiteMenu'
-import { SiteScopeControl } from './SiteScopeControl'
+import { useSiteScopeKeeper } from './BoardsAmong'
 import { SiteSearch } from './SiteSearch'
 import { SiteTabs } from './SiteTabs'
 import { navActive, OPEN_MENU_EVENT, OPEN_STUDIO_EVENT, siteNavLinks } from './siteNav'
@@ -52,13 +52,15 @@ function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
 
 /**
  * The site's header, on every page but a game screen: one floating bar with
- * the name, the places, search, what the boards show, and you. You opens your
- * menu. On a phone the bar keeps only the name, the boards and search, and the
- * places and You move to a tab bar along the bottom.
+ * the name, the places, search and you. You opens your menu. On a phone the
+ * bar keeps only the name, the Dailies and search, and the places and You
+ * move to a tab bar along the bottom.
  */
 export function SiteHeader() {
   const route = useRoute()
   const routeKey = JSON.stringify(route)
+  // What the boards show is picked on the boards (BoardsAmong); the header still puts it right on every page.
+  useSiteScopeKeeper()
   const { signedIn, signedOut, loading: authLoading } = useAuth()
   const impersonation = useImpersonation()
   const { rank, avatarId: rankAvatarId } = useGlobalRank()
@@ -268,8 +270,6 @@ export function SiteHeader() {
         <div className="site-bar__end">
           {tagged ? <TodayChip here={route.name === 'today'} /> : null}
           <SiteSearch />
-          {/* On every page, as Ramsey asked: one whose boards are its own keeps the choice for the rest (SiteScopeControl). */}
-          <SiteScopeControl />
 
           <div className="site-bar__you">
             {signedIn ? <NotificationBell notes={notes} onWear={wear} /> : null}

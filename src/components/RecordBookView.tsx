@@ -31,6 +31,7 @@ import { ChevronRightIcon, SparkleIcon } from './chromeIcons'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
 import { openSiteMenu, openTagPicker } from './siteNav'
+import { BoardsAmong } from './BoardsAmong'
 
 /*
  * One game's records: its page's Records tab (Ramsey picked B of the "Game page: board and records" canvas,
@@ -496,7 +497,10 @@ export function RecordBookView({ game, period }: { game: string; period: Leaderb
             </>
           )}
         </div>
-        <PeriodTabs game={game} period={period} />
+        <div className="rbk-tabhead__picks">
+          <PeriodTabs game={game} period={period} />
+          <BoardsAmong />
+        </div>
       </div>
 
       {data.loading ? (

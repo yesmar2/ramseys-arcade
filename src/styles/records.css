@@ -1690,6 +1690,26 @@ html[data-theme='dark'] .rbk {
   margin-top: 0;
 }
 
+/* The period's tabs, and whose records (BoardsAmong) beside them: one line on a desk, the heading wraps first. */
+.rbk-tabhead__picks {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  .rbk-tabhead__picks {
+    flex-wrap: wrap;
+  }
+}
+
+.rbk-acts > .site-scope {
+  align-self: center;
+}
+
 /*
  * The records as one list (the "Records, more ideas" canvas, A), in the Board tab's rows: each group under its
  * name, a row a record with the best, who holds it and since when, and your best. Yours are lit gold; a run of
