@@ -6,7 +6,7 @@ import '../styles/playerCard.css'
 /*
  * A player's trading card, full art: their background from the prize counter fills it (or, without one, the
  * picture of their best game), their avatar in the middle, and along the foot their tag, a line about them and
- * a place for each period. The edge is gold for a top-three place. Ramsey picked the full-art card from the
+ * a place for each period. The edge is gold for a top-three place, and a season's card foil sweeps over it all. Ramsey picked the full-art card from the
  * "Player card hero redesign" canvas (T1, then H2 + P2, 2026-10-20); the profile's card (PlayerCard.tsx) stands
  * it on its own sky, and the prize counter's fitting room shows it trying things on.
  */
@@ -36,6 +36,7 @@ export function FullArtCard({
   corner,
   line,
   pips,
+  foil,
   gold = false,
   className,
   style,
@@ -55,6 +56,8 @@ export function FullArtCard({
   line?: ReactNode
   /** Along the foot: a place for each period. */
   pips?: ReactNode
+  /** A card foil from a season's pass (prizes/FoilArt.tsx): a sheen that sweeps over the whole card. */
+  foil?: string | null
   gold?: boolean
   className?: string
   style?: CSSProperties
@@ -75,6 +78,7 @@ export function FullArtCard({
         {line ? <span className="fac__line">{line}</span> : null}
         {pips ? <span className="fac__pips">{pips}</span> : null}
       </span>
+      {foil ? <span className={`fac__foil fac__foil--${foil}`} aria-hidden="true" /> : null}
     </div>
   )
 }

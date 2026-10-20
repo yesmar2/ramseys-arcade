@@ -50,6 +50,7 @@ export function PlayerCardMini({ avatar, name, line }: { avatar: Avatar; name: s
       style={{ '--hero-accent': avatarWashColor(avatar) } as CSSProperties}
       avatar={<PlayerAvatar avatar={avatar} name={name} size="xl" />}
       chip={line}
+      foil={wornPrize(avatar, 'foil')}
       name={<PlayerName className="prize-fac__name" name={name} style={wornPrize(avatar, 'name')} />}
     />
   )

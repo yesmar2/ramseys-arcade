@@ -96,6 +96,10 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
     case 'nm-countdown':
     case 'sign-liftoff':
       return 'rgba(242,129,58,0.22)'
+    case 'fl-liftoff':
+      return 'rgba(214,150,255,0.26)'
+    case 'fl-frost':
+      return 'rgba(160,220,255,0.26)'
     case 'supernova':
     case 'cf-stardust':
       return 'rgba(245,185,66,0.22)'

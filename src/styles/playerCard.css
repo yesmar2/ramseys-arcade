@@ -126,6 +126,96 @@
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+/*
+ * A card foil from a season's pass (prizes/FoilArt.tsx): a sheen sweeping over the whole card every few seconds,
+ * over whatever background is under it. The sweep moves by transform alone, so it costs the page next to nothing;
+ * with motion turned down it stays put, mid-card.
+ */
+.fac__foil {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.fac__foil::after {
+  content: '';
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: -50%;
+  width: 200%;
+  mix-blend-mode: screen;
+  animation: fac-sweep 4.2s ease-in-out infinite;
+}
+
+@keyframes fac-sweep {
+  0% {
+    transform: translateX(-60%);
+  }
+  55%,
+  100% {
+    transform: translateX(60%);
+  }
+}
+
+@keyframes fac-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Liftoff (Space Race): a rainbow sheen, and stars twinkling over the card. */
+.fac__foil--fl-liftoff::after {
+  background: linear-gradient(110deg, transparent 38%, rgba(255, 170, 240, 0.4) 45%, rgba(140, 220, 255, 0.46) 50%, rgba(255, 240, 170, 0.4) 55%, transparent 62%);
+}
+
+.fac__foil--fl-liftoff::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 24%, #fff 0 1.4px, transparent 3px),
+    radial-gradient(circle at 84% 34%, #fff 0 1.6px, transparent 3.5px),
+    radial-gradient(circle at 70% 70%, #fff0aa 0 1.4px, transparent 3px),
+    radial-gradient(circle at 22% 62%, #fff 0 1.2px, transparent 2.6px),
+    radial-gradient(circle at 46% 12%, #ffd0f4 0 1.2px, transparent 2.6px),
+    radial-gradient(circle at 90% 88%, #fff 0 1.2px, transparent 2.6px);
+  animation: fac-twinkle 1.8s ease-in-out infinite;
+}
+
+/* Frost (Cold Snap): frost in from the corners, and an icy sheen. */
+.fac__foil--fl-frost::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 0 0, rgba(225, 246, 255, 0.72) 0, rgba(200, 235, 255, 0.3) 16%, transparent 32%),
+    radial-gradient(circle at 100% 0, rgba(225, 246, 255, 0.55) 0, rgba(200, 235, 255, 0.2) 12%, transparent 26%),
+    radial-gradient(circle at 100% 100%, rgba(225, 246, 255, 0.5) 0, rgba(200, 235, 255, 0.18) 14%, transparent 28%),
+    radial-gradient(circle at 0 100%, rgba(225, 246, 255, 0.45) 0, transparent 22%);
+}
+
+.fac__foil--fl-frost::after {
+  background: linear-gradient(110deg, transparent 40%, rgba(170, 230, 255, 0.45) 46%, rgba(255, 255, 255, 0.6) 50%, rgba(170, 230, 255, 0.42) 54%, transparent 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fac__foil::after,
+  .fac__foil::before {
+    animation: none;
+  }
+
+  .fac__foil::after {
+    transform: translateX(0);
+  }
+}
+
 /* Small, trying a prize on: the prize's sheet and the counter's fitting room (PrizePanel's PlayerCardMini). */
 .prize-fac {
   width: 13.5rem;

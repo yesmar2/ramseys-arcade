@@ -1,11 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { fetchFlair, flairNote, type Flair } from '../lib/avatarFlair'
-import { FINISH_IDS, plateTier, PRIZE_KINDS, PRIZES, prizeById, type PrizeKind } from '../data/prizes'
+import { FINISH_IDS, PRIZE_KINDS, PRIZES, prizeById, type PrizeKind } from '../data/prizes'
 import { prizesHref } from '../hooks/useHashRoute'
 import {
   AVATAR_COLORS,
   AVATAR_EMBLEMS,
-  avatarWashColor,
   AVATAR_PATTERNS,
   AVATAR_PINS,
   AVATAR_RINGS,
@@ -37,8 +36,8 @@ import { LockIcon, SparkleIcon } from './chromeIcons'
 import { Panel, PanelHead } from './Panel'
 import { AvatarArt } from './PlayerAvatar'
 import { PlayerName } from './PlayerName'
-import { CardBackdrop, PrizeArt } from './prizes/PrizeArt'
-import { SignArt } from './prizes/SignArt'
+import { PrizeArt } from './prizes/PrizeArt'
+import { PlayerCardMini } from './prizes/PrizePanel'
 
 /** Flair to put on as the studio opens: what a trophy just unlocked, or a look the season's pass gave. */
 export type AvatarWear = { ring?: AvatarRing; pin?: AvatarPin; prize?: string }
@@ -74,7 +73,7 @@ type AvatarStudioProps = {
 type Tab = 'mark' | 'colour' | 'flair' | 'prizes'
 
 /** What the Prizes tab puts on, in its order: everything from the counter but a finish, which is a badge. */
-const WORN_KINDS: Exclude<PrizeKind, 'finish'>[] = ['name', 'title', 'card', 'confetti', 'sign']
+const WORN_KINDS: Exclude<PrizeKind, 'finish'>[] = ['name', 'card', 'foil', 'confetti', 'title', 'sign']
 
 const NONE_LABELS: Record<Exclude<PrizeKind, 'finish'>, string> = {
   name: 'Plain',
@@ -82,6 +81,7 @@ const NONE_LABELS: Record<Exclude<PrizeKind, 'finish'>, string> = {
   card: 'Your colour',
   confetti: 'The usual',
   sign: 'No sign',
+  foil: 'No foil',
 }
 
 function Mark({ avatar, name, size, className }: { avatar: Avatar; name: string; size: number; className?: string }) {
@@ -93,30 +93,17 @@ function Mark({ avatar, name, size, className }: { avatar: Avatar; name: string;
 }
 
 /**
- * The Prizes tab's preview: your player card, small, as what you wear dresses it. Its theme behind, your
- * badge, your tag in its style (or the neon sign), and your title under it. Most of what the counter
- * sells shows on the card rather than the badge, so the badge alone would show no change.
+ * The Prizes tab's preview: your trading card, small, as your profile shows it (PrizePanel's PlayerCardMini):
+ * the background, your avatar, your tag in its style and any foil over it, with the confetti you'd win with.
+ * Most of what the counter sells shows on the card rather than the badge, so the badge alone would show no
+ * change.
  */
 function CardPreview({ avatar, name }: { avatar: Avatar; name: string }) {
-  const theme = wornPrize(avatar, 'card')
-  const title = prizeById(wornPrize(avatar, 'title'))
-  const sign = wornPrize(avatar, 'sign')
   const confetti = prizeById(wornPrize(avatar, 'confetti'))
   return (
-    <div className="studio__card" style={{ '--wash': avatarWashColor(avatar) } as CSSProperties}>
-      {theme ? <CardBackdrop className="studio__card-theme" theme={theme} width={320} height={190} /> : null}
-      <span className={`studio__card-shade${theme ? ' studio__card-shade--theme' : ''}`} aria-hidden="true" />
-      <Mark className="studio__card-badge" avatar={avatar} name={name} size={80} />
-      <span className="studio__card-text">
-        <span className="studio__card-kicker">Your player card</span>
-        {sign ? (
-          <SignArt sign={sign} name={name} width={150} wires={false} />
-        ) : (
-          <PlayerName className="studio__card-name" name={name} style={wornPrize(avatar, 'name')} />
-        )}
-        {title ? <span className={`prize-plate prize-plate--${plateTier(title)}`}>{title.name}</span> : <span className="studio__card-none">No title</span>}
-        {confetti ? <span className="studio__card-note">{confetti.name} confetti when you win</span> : null}
-      </span>
+    <div className="studio__card">
+      <PlayerCardMini avatar={avatar} name={name} />
+      {confetti ? <span className="studio__card-note">{confetti.name} confetti when you win</span> : null}
     </div>
   )
 }

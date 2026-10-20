@@ -4,6 +4,7 @@ import { PIN_DISC, PIN_EDGE, PIN_GLYPHS } from '../../lib/avatarArt'
 import type { Avatar, AvatarBadge, AvatarPin } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
+import { FoilCard } from '../prizes/FoilArt'
 import { FROST, SPACE, sparklePath } from '../../lib/seasonArt'
 import greenFlashPicture from '../../assets/season/green-flash.webp'
 import moonBuggyPicture from '../../assets/season/moon-buggy.webp'
@@ -311,6 +312,17 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
           <Spark x={x + 28} y={y - 13} s={5} c={c} />
         </g>
       ))}
+    </Board>
+  ),
+  // Level 28 of both passes: a card foil, on a little card leaning back.
+  'fl-liftoff': (size) => (
+    <Board size={size}>
+      <FoilCard foil="fl-liftoff" x={29} y={12} w={42} />
+    </Board>
+  ),
+  'fl-frost': (size) => (
+    <Board size={size}>
+      <FoilCard foil="fl-frost" x={29} y={12} w={42} />
     </Board>
   ),
   'sign-liftoff': (size) => (

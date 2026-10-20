@@ -66,7 +66,7 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   )
 }
 
-type Slot = Exclude<PrizeKind, 'title' | 'sign'> | 'skin'
+type Slot = Exclude<PrizeKind, 'title' | 'sign' | 'foil'> | 'skin'
 
 /** The fitting room's tabs: each a place a prize goes, and what it looks like there. */
 const SLOTS: { id: Slot; where: string }[] = [
@@ -82,7 +82,7 @@ function slotLabel(slot: Slot): string {
 }
 
 /** The kinds the "wearing" list goes through, in the order they sit on you. */
-const WEAR_ROWS: PrizeKind[] = ['finish', 'name', 'title', 'card', 'confetti', 'sign']
+const WEAR_ROWS: PrizeKind[] = ['finish', 'name', 'title', 'card', 'foil', 'confetti', 'sign']
 
 function daysOfPlay(tickets: number) {
   const days = Math.max(1, Math.ceil(tickets / TICKETS_A_DAY))
@@ -138,7 +138,7 @@ export function PrizeCounterPage() {
 
   const counts = useMemo(() => {
     const out: Partial<Record<Slot, number>> = { skin: HANGAR_SKINS.length }
-    for (const p of FOR_SALE) if (p.kind !== 'title' && p.kind !== 'sign') out[p.kind] = (out[p.kind] ?? 0) + 1
+    for (const p of FOR_SALE) if (p.kind !== 'title' && p.kind !== 'sign' && p.kind !== 'foil') out[p.kind] = (out[p.kind] ?? 0) + 1
     return out
   }, [])
 
@@ -155,7 +155,7 @@ export function PrizeCounterPage() {
   // The prize you're saving for: its tab, and on a wide screen it's on you.
   const showGoal = () => {
     if (!goal) return
-    if (goal.kind !== 'title' && goal.kind !== 'sign') setSlot(goal.kind)
+    if (goal.kind !== 'title' && goal.kind !== 'sign' && goal.kind !== 'foil') setSlot(goal.kind)
     pick(goal)
   }
 
@@ -367,8 +367,8 @@ export function PrizeCounterPage() {
             {WEAR_ROWS.map((kind) => {
               const now = wornOf(avatar, kind)
               const next = trying?.kind === kind && trying.id !== now?.id ? trying : null
-              // A title or a sign only shows when you have one on: titles are earned, and signs are retired.
-              if ((kind === 'title' || kind === 'sign') && !now && !next) return null
+              // A title, a foil or a sign only shows when you have one on: titles and foils are earned, signs retired.
+              if ((kind === 'title' || kind === 'foil' || kind === 'sign') && !now && !next) return null
               return (
                 <div key={kind} className="fit-wear__row">
                   <dt>{PRIZE_KINDS[kind].one}</dt>

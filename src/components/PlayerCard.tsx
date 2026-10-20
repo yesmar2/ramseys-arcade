@@ -482,6 +482,7 @@ export function PlayerCard({
           }
           line={line}
           pips={pips}
+          foil={wornPrize(look, 'foil')}
         />
 
         <div className="pc__side">

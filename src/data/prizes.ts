@@ -3,14 +3,15 @@
  * look, never a score: an avatar (a finish for the avatar's badge), a style
  * for the tag on the boards, a background behind the player card, confetti
  * for a win, and the signs, which put the tag itself in lights. Titles under
- * the tag are earned, never traded for: the ones that were are retired.
+ * the tag are earned, never traded for: the ones that were are retired. So are
+ * the signs. A card foil, a sheen over the player card, comes from a pass.
  *
  * The API owns the ids and prices (its `src/prizes.ts`); keep them in step.
  * A finish is worn as the avatar's badge (lib/avatars.ts), so its id is the
  * badge's word. The rest ride in the avatar string's worn part.
  */
 
-export type PrizeKind = 'finish' | 'name' | 'card' | 'confetti' | 'title' | 'sign'
+export type PrizeKind = 'finish' | 'name' | 'card' | 'confetti' | 'title' | 'sign' | 'foil'
 
 export type Prize = {
   id: string
@@ -39,6 +40,7 @@ export const PRIZE_KINDS: Record<PrizeKind, { one: string; many: string }> = {
   confetti: { one: 'Confetti', many: 'Confetti' },
   title: { one: 'Title', many: 'Titles' },
   sign: { one: 'Sign', many: 'Signs' },
+  foil: { one: 'Card foil', many: 'Card foils' },
 }
 
 const TITLE = 'A title under your tag on your player card.'
@@ -138,7 +140,7 @@ export const PRIZES: readonly Prize[] = [
       ['cd-nebula', 'card', 'Nebula', 29, 'Your card in a nebula’s clouds of pink and violet, stars being born in them.'],
       ['cf-stardust', 'confetti', 'Stardust', 7, `Twinkling stars ${CONFETTI}`],
       ['cf-shooting', 'confetti', 'Shooting stars', 20, `Shooting stars across the screen ${CONFETTI}`],
-      ['sign-liftoff', 'sign', 'Liftoff', 28, 'Your tag in lights beside a rocket lifting off.'],
+      ['fl-liftoff', 'foil', 'Liftoff foil', 28, 'A rainbow sheen and twinkling stars sweep across your player card, over any background.'],
     ] as const
   ).map(
     ([id, kind, name, level, blurb]): Prize => ({
@@ -207,7 +209,7 @@ export const PRIZES: readonly Prize[] = [
       ['cd-pine-forest', 'card', 'Pine forest', 29, 'Your card in a pine forest deep in snow, a lantern lit among the trees.'],
       ['cf-snowfall', 'confetti', 'Snowfall', 7, `Snowflakes drifting down ${CONFETTI}`],
       ['cf-snowballs', 'confetti', 'Snowballs', 20, `Snowballs flying in, trailing powder, ${CONFETTI}`],
-      ['sign-cold-snap', 'sign', 'Cold Snap', 28, 'Your tag in lights, hung with icicles, the snow coming down.'],
+      ['fl-frost', 'foil', 'Frost foil', 28, 'Frost creeps in from your player card’s corners, and an icy sheen sweeps across it.'],
     ] as const
   ).map(
     ([id, kind, name, level, blurb]): Prize => ({
@@ -288,6 +290,26 @@ export const PRIZES: readonly Prize[] = [
     price: 0,
     blurb: `Paper streamers curl out across the screen ${CONFETTI}`,
     earned: { by: 'Plus, January 2027', short: 'Plus' },
+  },
+  // The passes' level-28 signs, until the player card lost its sign (2026-10-20): the foils took their place.
+  // Kept, retired, for whoever has one (the API's prizes.ts).
+  {
+    id: 'sign-liftoff',
+    kind: 'sign',
+    name: 'Liftoff',
+    price: 0,
+    blurb: 'Your tag in lights beside a rocket lifting off.',
+    earned: { by: 'Season 1’s pass, level 28', short: 'Season 1' },
+    retired: true,
+  },
+  {
+    id: 'sign-cold-snap',
+    kind: 'sign',
+    name: 'Cold Snap',
+    price: 0,
+    blurb: 'Your tag in lights, hung with icicles, the snow coming down.',
+    earned: { by: 'Season 2’s pass, level 28', short: 'Season 2' },
+    retired: true,
   },
 ]
 

@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react'
+import { FoilCard } from './FoilArt'
 import { plateTier, prizeById, type Prize } from '../../data/prizes'
 import { wearPrize, type Avatar } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
@@ -456,6 +457,13 @@ function ShelfArt({ prize, avatar, name }: { prize: Prize; avatar: Avatar; name:
       return <Popper kind={prize.id} id={id} />
     case 'title':
       return <TitleOnShelf prize={prize} id={id} />
+    case 'foil':
+      return (
+        <>
+          <Shadow rx={34} />
+          <FoilCard foil={prize.id} x={54} y={44} w={52} />
+        </>
+      )
     default:
       return (
         <svg x="4" y="16" width={SIGN_W * 0.345} height={signHeight(true) * 0.345} viewBox={`0 0 ${SIGN_W} ${signHeight(true)}`} overflow="visible">
