@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { getGame, isDailyGame, isGameListed } from '../data/games'
 import { useAuth } from '../hooks/useAuth'
 import { gamePlayHref, seasonHref } from '../hooks/useHashRoute'
@@ -18,6 +18,7 @@ import { fetchGameRecords, GAMES_WITH_RECORDS, type RecordSummary } from '../lib
 import { daysLeftLabel, extraTickets, liveSeason, rewardAt, rewardPhrase, seasonProgress, seasonTop, useSeason } from '../lib/season'
 import { resolveGameAccent } from '../lib/theme'
 import { BlipPoll } from './BlipPoll'
+import { GameArt } from './GameArt'
 import { GameThumbArt } from './GameThumbArt'
 import { SeasonScene } from './season/SeasonLook'
 import { nextSeasonSoon } from './season/NextSeason'
@@ -26,10 +27,10 @@ import '../styles/upNext.css'
 /*
  * Up next for you, under today's ticket (D on the "Home page redesign" canvas, 2026-10-15): a row of cards picked
  * from your own games. The place you're after on the game you played last (or, with no score on it, the game
- * itself, to jump back in), a record you hold and could lose, Blip's question of the day, and the season's pass:
- * three or four of them across the row, never fewer than three (FEWEST_CARDS: more games fill it out). Each card
- * has one way on. It took the place of the banner that used to open the page for anyone who'd played before
- * (HomeHero.tsx keeps a first visit's welcome).
+ * itself, to jump back in) leads, big; beside it or under it a list of a record you hold and could lose, Blip's
+ * question of the day and the season's pass, never fewer than three in all (FEWEST_CARDS: more games fill it out).
+ * Each has one way on. It took the place of the banner that used to open the page for anyone who'd played before
+ * (HomeHero.tsx keeps a first visit's welcome, and this file the first visit's season card beside Blip's).
  */
 
 const PlayIcon = () => (
@@ -40,158 +41,230 @@ const PlayIcon = () => (
 
 const skel = (w: string) => ({ '--skel-w': w }) as CSSProperties
 
-/*
- * A game's picture across the top of a card: the middle of the game's picture in a rounded tile lit in its colour,
- * on a soft dot pattern (B on the "Up Next Pictures" mock, 2026-10-19), the record's medal's sibling. The whole 4:3
- * scene cut to the band sliced its characters through (Ramsey: "i still don't like the image on those cards
- * either"). No chip over it, or over the medal: in the band's middle a picture ran into the chip on the narrower
- * cards, and the chip only said what the words under it say.
- */
-function Band({ slug }: { slug: string }) {
-  const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? 'var(--accent)')
-  return (
-    <a className="unx__band unx__band--tile" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accent } as CSSProperties}>
-      <GameThumbArt slug={slug} accent={accent} className="unx__tile" />
-    </a>
-  )
-}
+const ChevronIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 5l7 7-7 7" />
+  </svg>
+)
 
 const CrownIcon = () => (
-  <svg className="unx__medal-crown" viewBox="0 0 24 16" fill="currentColor" aria-hidden="true">
+  <svg className="unx-row__crown" viewBox="0 0 24 16" fill="currentColor" aria-hidden="true">
     <path d="M1 4l5.5 4.5L12 1l5.5 7.5L23 4l-2.2 11H3.2z" />
   </svg>
 )
 
+const accentOf = (slug: string) => resolveGameAccent(slug, getGame(slug)?.accent ?? 'var(--accent)')
+
 /*
- * A record's picture: the middle of the game's picture in a gold medal with a crown, gold rays behind it on the
- * game's own colour (B on the "Record card pictures" mock, 2026-10-19). The game's whole 4:3 scene cut to the
- * band sliced its characters through, Crosswalk's Blip worst, and on a phone more so: Ramsey, "it's just the
- * images that are the problem".
+ * The row's top pick, big (C on the "Up Next Looks" canvas, 2026-10-20): the game's whole picture, the three around
+ * you on its board as rows, and one big Play. Beside it on a wide screen, under it on a narrow one, the rest of the
+ * row as a list (UpRow). Ramsey: three cards or fewer "didn't look right" spread across the page as equal cards;
+ * a headliner and a list look whole with two rows or three.
  */
-function MedalBand({ slug }: { slug: string }) {
-  const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? 'var(--accent)')
+function HeadPic({ slug }: { slug: string }) {
   return (
-    <a className="unx__band unx__band--medal" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accent } as CSSProperties}>
-      <span className="unx__medal">
-        <CrownIcon />
-        <GameThumbArt slug={slug} accent={accent} className="unx__medal-face" />
-      </span>
+    <a className="unx-head__pic" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accentOf(slug) } as CSSProperties}>
+      <GameArt slug={slug} shape="card" fallback={<GameThumbArt slug={slug} accent={accentOf(slug)} />} />
     </a>
   )
 }
 
-/** The three around you on the board, in score order: who's behind, you, and the place you're after (or, on top, you). */
-function ChaseSlots({ slug, rung }: { slug: string; rung: Rung }) {
-  const s = slots(rung)
-  if (!s) return null
-  const fmt = (score: number) => formatLeaderboardScore(slug, score)
-  const said = [s.lo, s.mid, s.hi]
-    .filter((p): p is Place => p != null)
-    .map((p) => `${p === rung.you ? 'you' : p.name} ${fmt(p.score)} in ${ordinal(p.place)}`)
-    .join(', ')
-  const slot = (p: Place | null, at: 'lo' | 'mid' | 'hi') =>
-    p ? (
-      <span className={`unx__slot unx__slot--${at}${p === rung.you ? ' unx__slot--you' : ''}`}>
-        <span className="unx__slot-who">
-          {ordinal(p.place)} · {p === rung.you ? 'You' : p.name}
-        </span>
-        <b className="unx__slot-score">{fmt(p.score)}</b>
-        <span className="unx__slot-bar" />
-      </span>
-    ) : (
-      <span className={`unx__slot unx__slot--${at}`} />
-    )
+function HeadGo({ slug }: { slug: string }) {
   return (
-    <div className="unx__chase" role="img" aria-label={said}>
-      {slot(s.lo, 'lo')}
-      {slot(s.mid, 'mid')}
-      {slot(s.hi, 'hi')}
-    </div>
+    <a className="unx-head__go" href={gamePlayHref(slug)}>
+      <PlayIcon />
+      Play {getGame(slug)?.name ?? slug}
+    </a>
   )
 }
 
-/** The place you're after on the game you played last, with the players either side, and the way in. */
-function ChaseCard({ slug, rung }: { slug: string; rung: Rung }) {
+/** The place you're after on the game you played last: the three around you on its board, and the way in. */
+function ChaseHead({ slug, rung }: { slug: string; rung: Rung }) {
   const game = getGame(slug)!
-  const { you, above, below } = rung
-  const gap = above ? above.score - you.score : 0
-  // A daily's rung is today's board, so its top is 1st today: a record is a course's best across all time.
-  const daily = isDailyGame(slug)
-  const kicker = above ? (above.place === 1 && !daily ? 'Your next record' : 'Your next place') : daily ? 'Your place' : 'Your record'
-  const target = above ? (above.place === 1 ? (daily ? '1st today' : 'the record') : ordinal(above.place)) : ''
-  const title = above
-    ? gap > 0
-      ? `${gapBetween(slug, above.score, you.score)} from ${target}`
-      : `Tied with ${above.name} for ${ordinal(above.place)}`
-    : daily
-      ? `1st today on ${game.name}`
-      : `You hold the ${game.name} record`
-  // Tied with the player under you is a tie you got to first, not "0 behind".
-  const belowGap = below ? you.score - below.score : 0
-  const line = below
-    ? belowGap > 0
-      ? `${below.name} is ${gapBetween(slug, you.score, below.score)} behind you.`
-      : `${below.name} is tied with you, and you got there first.`
-    : null
+  const s = slots(rung)!
+  const fmt = (score: number) => formatLeaderboardScore(slug, score)
+  const rows = [s.hi, s.mid, s.lo].filter((p): p is Place => p != null)
   return (
-    <article className="unx" aria-labelledby={`unx-chase-${slug}`}>
-      <Band slug={slug} />
-      <div className="unx__body">
-        <p className="unx__kick">{kicker}</p>
-        <h3 id={`unx-chase-${slug}`} className="unx__title">
-          {title}
+    <article className="unx-head" aria-labelledby={`unx-head-${slug}`}>
+      <HeadPic slug={slug} />
+      <div className="unx-head__body">
+        <p className="unx__kick">
+          {game.name} · {chaseKicker(slug, rung)}
+        </p>
+        <h3 id={`unx-head-${slug}`} className="unx-head__title">
+          {chaseTitle(slug, rung)}
         </h3>
-        <ChaseSlots slug={slug} rung={rung} />
-        {line ? <p className="unx__line">{line}</p> : null}
-        <a className="unx__go" href={gamePlayHref(slug)}>
-          <PlayIcon />
-          Play {game.name}
-        </a>
+        <ol className="unx-head__board" aria-label={`${game.name} board around you`}>
+          {rows.map((p) => {
+            const you = p === rung.you
+            return (
+              <li key={`${p.place}-${p.name}`} className={`unx-head__row${you ? ' unx-head__row--you' : ''}${p === s.hi && !you ? ' unx-head__row--hi' : ''}`}>
+                <span className="unx-head__place">{ordinal(p.place)}</span>
+                <span className="unx-head__name">{you ? 'You' : p.name}</span>
+                <b className="unx-head__score">{fmt(p.score)}</b>
+              </li>
+            )
+          })}
+        </ol>
+        <HeadGo slug={slug} />
       </div>
     </article>
   )
 }
 
 /** The game you played last (or today's pick), when you've no place on its board to chase: straight back in. */
-function PickCard({ slug, kicker }: { slug: string; kicker: string }) {
+function PickHead({ slug, kicker }: { slug: string; kicker: string }) {
   const game = getGame(slug)!
   return (
-    <article className="unx" aria-labelledby={`unx-pick-${slug}`}>
-      <Band slug={slug} />
-      <div className="unx__body">
+    <article className="unx-head" aria-labelledby={`unx-head-${slug}`}>
+      <HeadPic slug={slug} />
+      <div className="unx-head__body">
         <p className="unx__kick">{kicker}</p>
-        <h3 id={`unx-pick-${slug}`} className="unx__title">
+        <h3 id={`unx-head-${slug}`} className="unx-head__title">
           {game.name}
         </h3>
-        <p className="unx__line">{game.description}</p>
-        <a className="unx__go" href={gamePlayHref(slug)}>
-          <PlayIcon />
-          Play {game.name}
-        </a>
+        <p className="unx-head__line">{game.description}</p>
+        <HeadGo slug={slug} />
       </div>
     </article>
   )
 }
 
-/** A card still coming: the same frame, its words shimmering. */
-function SkelCard({ dark = false, wide = false }: { dark?: boolean; wide?: boolean }) {
+function HeadSkel() {
   return (
-    <article className={`unx unx--skel${dark ? ' unx--season' : ''}${wide ? ' unx--wide' : ''}`} aria-hidden="true">
-      <span className="unx__band" />
-      <div className="unx__body">
+    <article className="unx-head unx-head--skel" aria-hidden="true">
+      <span className="unx-head__pic" />
+      <div className="unx-head__body">
+        <p className="unx__kick">
+          <span className="skel-line" style={skel('9rem')} />
+        </p>
+        <p className="unx-head__title">
+          <span className="skel-line" style={skel('12rem')} />
+        </p>
+        <span className="unx-head__board">
+          <span className="unx-head__row" />
+          <span className="unx-head__row" />
+          <span className="unx-head__row" />
+        </span>
+        <span className="unx-head__go unx-head__go--skel">Play</span>
+      </div>
+    </article>
+  )
+}
+
+/** "Your next place", or "Your record" when you're on top: what the chase is after. */
+function chaseKicker(slug: string, { above }: Rung): string {
+  // A daily's rung is today's board, so its top is 1st today: a record is a course's best across all time.
+  const daily = isDailyGame(slug)
+  return above ? (above.place === 1 && !daily ? 'Your next record' : 'Your next place') : daily ? 'Your place' : 'Your record'
+}
+
+function chaseTitle(slug: string, { you, above }: Rung): string {
+  const game = getGame(slug)!
+  const daily = isDailyGame(slug)
+  if (!above) return daily ? `1st today on ${game.name}` : `You hold the ${game.name} record`
+  const target = above.place === 1 ? (daily ? '1st today' : 'the record') : ordinal(above.place)
+  return above.score - you.score > 0 ? `${gapBetween(slug, above.score, you.score)} from ${target}` : `Tied with ${above.name} for ${ordinal(above.place)}`
+}
+
+/** Who's behind you, in words. Tied with the player under you is a tie you got to first, not "0 behind". */
+function chaseBehind(slug: string, { you, below }: Rung): string | null {
+  if (!below) return null
+  return you.score - below.score > 0 ? `${below.name} is ${gapBetween(slug, you.score, below.score)} behind you.` : `${below.name} is tied with you, and you got there first.`
+}
+
+/* ---------- the list beside it ---------- */
+
+/** A row of the list: a picture, what it's about in a line or two, and one round way on. */
+function UpRow({
+  id,
+  pic,
+  kicker,
+  kickClass,
+  title,
+  sub,
+  go,
+}: {
+  id: string
+  pic: ReactNode
+  kicker: ReactNode
+  kickClass?: string
+  title: ReactNode
+  sub?: ReactNode
+  go: { href: string; label: string; look?: 'play' | 'more' }
+}) {
+  return (
+    <article className="unx-row" aria-labelledby={id}>
+      {pic}
+      <div className="unx-row__text">
+        <p className={`unx__kick${kickClass ? ` ${kickClass}` : ''}`}>{kicker}</p>
+        <h3 id={id} className="unx-row__title">
+          {title}
+        </h3>
+        {sub}
+      </div>
+      <a className={`unx-row__go${go.look === 'more' ? ' unx-row__go--more' : ''}`} href={go.href} aria-label={go.label}>
+        {go.look === 'more' ? <ChevronIcon /> : <PlayIcon />}
+      </a>
+    </article>
+  )
+}
+
+function RowTile({ slug }: { slug: string }) {
+  return (
+    <a className="unx-row__pic" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true" style={{ '--unx-accent': accentOf(slug) } as CSSProperties}>
+      <GameThumbArt slug={slug} accent={accentOf(slug)} className="unx-row__tile" />
+    </a>
+  )
+}
+
+/** A game further down the row: its board's chase in a line, or with no place on it, the game itself. */
+function ChaseRow({ slug, rung }: { slug: string; rung: Rung }) {
+  const game = getGame(slug)!
+  const behind = chaseBehind(slug, rung)
+  return (
+    <UpRow
+      id={`unx-row-${slug}`}
+      pic={<RowTile slug={slug} />}
+      kicker={`${game.name} · ${chaseKicker(slug, rung)}`}
+      title={chaseTitle(slug, rung)}
+      sub={behind ? <p className="unx-row__sub">{behind}</p> : null}
+      go={{ href: gamePlayHref(slug), label: `Play ${game.name}` }}
+    />
+  )
+}
+
+function PickRow({ slug, kicker }: { slug: string; kicker: string }) {
+  const game = getGame(slug)!
+  return (
+    <UpRow
+      id={`unx-row-${slug}`}
+      pic={<RowTile slug={slug} />}
+      kicker={kicker}
+      title={game.name}
+      sub={<p className="unx-row__sub unx-row__sub--clamp">{game.description}</p>}
+      go={{ href: gamePlayHref(slug), label: `Play ${game.name}` }}
+    />
+  )
+}
+
+/** A row still coming: the same frame, its words shimmering. */
+function RowSkel() {
+  return (
+    <article className="unx-row unx-row--skel" aria-hidden="true">
+      <span className="unx-row__pic" />
+      <div className="unx-row__text">
         <p className="unx__kick">
           <span className="skel-line" style={skel('7rem')} />
         </p>
-        <p className="unx__title">
-          <span className="skel-line" style={skel('11rem')} />
+        <p className="unx-row__title">
+          <span className="skel-line" style={skel('10rem')} />
         </p>
-        <p className="unx__line">
-          <span className="skel-line" style={skel('90%')} />
-          <br />
-          <span className="skel-line" style={skel('60%')} />
+        <p className="unx-row__sub">
+          <span className="skel-line" style={skel('80%')} />
         </p>
-        <span className="unx__go unx__go--skel">Play</span>
       </div>
+      <span className="unx-row__go unx-row__go--skel" />
     </article>
   )
 }
@@ -271,53 +344,45 @@ function useHeldRecord(name: string, recent: readonly string[], lead: string | n
   return readHeld(key)
 }
 
-function RecordCard({ held, name }: { held: Held; name: string }) {
+/*
+ * A record you hold, in a row: the game's middle in a gold medal with a crown (B on the "Record card pictures"
+ * mock, 2026-10-19), and the words the card had ("it's just the images that are the problem, not the text").
+ */
+function RecordRow({ held }: { held: Held }) {
   const { slug, record } = held
   const game = getGame(slug)
   const top = record.top!
   const second = record.second ?? null
   return (
-    <article className="unx" aria-labelledby={`unx-record-${slug}`}>
-      <MedalBand slug={slug} />
-      <div className="unx__body">
-        <p className="unx__kick unx__kick--defend">Defend it</p>
-        <h3 id={`unx-record-${slug}`} className="unx__title">
-          {record.label} on {game?.name ?? slug}
-        </h3>
-        <ol className="unx__rows">
-          <li className="unx__row unx__row--you">
-            <span className="unx__row-place">1st</span>
-            <b className="unx__row-name">{name} · you</b>
-            <b className="unx__row-value">{recordValue(record, top.score)}</b>
-          </li>
-          {second ? (
-            <li className="unx__row">
-              <span className="unx__row-place">2nd</span>
-              <span className="unx__row-name">{second.name}</span>
-              <span className="unx__row-value">{recordValue(record, second.score)}</span>
-            </li>
-          ) : null}
-        </ol>
-        <p className="unx__line">
+    <UpRow
+      id={`unx-record-${slug}`}
+      pic={
+        <a className="unx-row__pic unx-row__pic--medal" href={gamePlayHref(slug)} tabIndex={-1} aria-hidden="true">
+          <CrownIcon />
+          <GameThumbArt slug={slug} accent={accentOf(slug)} className="unx-row__tile" />
+        </a>
+      }
+      kicker={`${game?.name ?? slug} · Defend it`}
+      kickClass="unx__kick--defend"
+      title={`${record.label}: ${recordValue(record, top.score)}`}
+      sub={
+        <p className="unx-row__sub">
           {second
             ? second.score === top.score
               ? `${second.name} is tied with you.`
               : `${second.name} is ${recordGap(record, top.score, second.score)} behind.`
             : 'Nobody else is on it yet.'}
         </p>
-        <a className="unx__go" href={gamePlayHref(slug)}>
-          <PlayIcon />
-          Play {game?.name ?? slug}
-        </a>
-      </div>
-    </article>
+      }
+      go={{ href: gamePlayHref(slug), label: `Play ${game?.name ?? slug}` }}
+    />
   )
 }
 
 /* ---------- the season ---------- */
 
-/** The season's pass: your level and what's next on it, or for a first visit (`wide`, beside Blip), what it is. */
-function SeasonCard({ wide = false }: { wide?: boolean }) {
+/** Where you are on the season's pass, and what's next on it, in words. */
+function useSeasonPass() {
   const store = useSeason()
   const season = liveSeason(store)
   if (!season) return null
@@ -341,6 +406,14 @@ function SeasonCard({ wide = false }: { wide?: boolean }) {
           : p.level >= top
             ? 'You’ve reached the top of the pass.'
             : 'Every ticket you win moves you up.'
+  return { store, season, you, p, into, soon, line }
+}
+
+/** The season's pass, for a first visit (wide, beside Blip): what it is. */
+function SeasonCard({ wide = false }: { wide?: boolean }) {
+  const pass = useSeasonPass()
+  if (!pass) return null
+  const { store, season, you, p, into, soon, line } = pass
   return (
     <article className={`unx unx--season${wide ? ' unx--wide' : ''}`} aria-labelledby="unx-season">
       <a className="unx__band" href={seasonHref()} tabIndex={-1} aria-hidden="true">
@@ -369,6 +442,62 @@ function SeasonCard({ wide = false }: { wide?: boolean }) {
         <a className="unx__go" href={seasonHref()}>
           See the pass
         </a>
+      </div>
+    </article>
+  )
+}
+
+/** The season's pass in a row: its scene, your level with a bar (or what it is, before you're on it), and the way to it. */
+function SeasonRow() {
+  const pass = useSeasonPass()
+  if (!pass) return null
+  const { store, season, you, p, into, soon, line } = pass
+  const onIt = you != null && p.level > 0
+  return (
+    <UpRow
+      id="unx-season"
+      pic={
+        <a className="unx-row__pic unx-row__pic--season" href={seasonHref()} tabIndex={-1} aria-hidden="true">
+          <SeasonScene slug={season.slug} />
+        </a>
+      }
+      kicker={`Season ${season.id} · ${daysLeftLabel(season)}`}
+      kickClass="unx__kick--season"
+      title={onIt ? `${season.name} · Level ${p.level}` : season.name}
+      sub={
+        <>
+          {soon && store.next ? <p className={`unx__next season-${store.next.slug}`}>{soon}</p> : null}
+          {onIt ? (
+            <span className="unx-row__bar" role="img" aria-label={`${into} of ${season.perLevel} tickets to the next level`}>
+              <span style={{ width: `${Math.round(p.fraction * 100)}%` }} />
+            </span>
+          ) : null}
+          <p className="unx-row__sub">{line}</p>
+        </>
+      }
+      go={{ href: seasonHref(), label: 'See the pass', look: 'more' }}
+    />
+  )
+}
+
+/** The first visit's season card still coming: the same frame, its words shimmering. */
+function SkelCard() {
+  return (
+    <article className="unx unx--skel unx--season unx--wide" aria-hidden="true">
+      <span className="unx__band" />
+      <div className="unx__body">
+        <p className="unx__kick">
+          <span className="skel-line" style={skel('7rem')} />
+        </p>
+        <p className="unx__title">
+          <span className="skel-line" style={skel('11rem')} />
+        </p>
+        <p className="unx__line">
+          <span className="skel-line" style={skel('90%')} />
+          <br />
+          <span className="skel-line" style={skel('60%')} />
+        </p>
+        <span className="unx__go unx__go--skel">Play</span>
       </div>
     </article>
   )
@@ -438,7 +567,7 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
   const { rung: fillRung, loading: fillLoading } = useRung(playedFill?.slug ?? null, name)
   // A first visit has nothing of its own to pick from yet: the season, wide, and Blip's question, after the games.
   if (first) {
-    const wide = season ? <SeasonCard key="season" wide /> : seasonUnknown ? <SkelCard key="season" dark wide /> : null
+    const wide = season ? <SeasonCard key="season" wide /> : seasonUnknown ? <SkelCard key="season" /> : null
     return (
       <section className={`upnext upnext--first${wide ? '' : ' upnext--alone'}`} aria-label="The season and Blip’s question">
         <div className="upnext__grid">
@@ -452,17 +581,17 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
 
   const lastPlayed = recent.includes(slug)
   const kicker = lastPlayed ? 'Jump back in' : slug === newestSlug(device) ? 'New in the arcade' : 'Today’s pick'
-  const lead = loading ? <SkelCard key="chase" /> : rung && slots(rung) ? <ChaseCard key="chase" slug={slug} rung={rung} /> : <PickCard key="chase" slug={slug} kicker={kicker} />
-  const record = held ? <RecordCard key="record" held={held} name={name} /> : null
-  const seasonCard = season ? <SeasonCard key="season" /> : seasonUnknown ? <SkelCard key="season" dark /> : null
-  // Last in the row, so a season that turns out to be off hands its place to a game rather than moving the row.
+  const lead = loading ? <HeadSkel /> : rung && slots(rung) ? <ChaseHead slug={slug} rung={rung} /> : <PickHead slug={slug} kicker={kicker} />
+  const record = held ? <RecordRow key="record" held={held} /> : null
+  const seasonRow = season ? <SeasonRow key="season" /> : seasonUnknown ? <RowSkel key="season" /> : null
+  // Last in the list, so a season that turns out to be off hands its place to a game rather than moving the rows.
   const fillers = fill.map((f) =>
     f === playedFill && fillLoading ? (
-      <SkelCard key={`fill-${f.slug}`} />
+      <RowSkel key={`fill-${f.slug}`} />
     ) : f === playedFill && fillRung && slots(fillRung) ? (
-      <ChaseCard key={`fill-${f.slug}`} slug={f.slug} rung={fillRung} />
+      <ChaseRow key={`fill-${f.slug}`} slug={f.slug} rung={fillRung} />
     ) : (
-      <PickCard key={`fill-${f.slug}`} slug={f.slug} kicker={f.kicker} />
+      <PickRow key={`fill-${f.slug}`} slug={f.slug} kicker={f.kicker} />
     ),
   )
   return (
@@ -475,12 +604,14 @@ export function HomeUpNext({ first = false }: { first?: boolean }) {
           {record ? 'Picked from your games and your records' : fill.some((f) => !f.played) ? 'Picked for you' : 'Picked from your games'}
         </span>
       </div>
-      <div className="upnext__grid">
+      <div className="upnext__lay">
         {lead}
-        {record}
-        <BlipPoll key="blip" look="card" />
-        {seasonCard}
-        {fillers}
+        <div className="upnext__list">
+          {record}
+          <BlipPoll key="blip" look="row" />
+          {seasonRow}
+          {fillers}
+        </div>
       </div>
     </section>
   )

@@ -35,10 +35,14 @@ function SkelMore({ w }: { w: string }) {
  * `inSheet`: the same card in Blip's hello (BlipHello.tsx), answered where you are rather than on the home page.
  * `look="card"`: a card of the home page's Up next for you row (HomeUpNext.tsx), as tall answered as not, so the
  * row beside it doesn't stretch when you answer: the answers and the results two by two, yesterday's in a box, and
- * Blip's set as a line under them (the set itself shows only when an answer wins one of it).
+ * Blip's set as a line under them (the set itself shows only when an answer wins one of it). `look="row"`: a row
+ * of the list beside Up next's headliner, Blip in a mint disc on its left and his answers as pills, as tall answered
+ * as not, without yesterday's.
  */
-export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 'card' }) {
+export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 'card' | 'row' }) {
   const card = look === 'card'
+  // The card and the row both keep to one height, answered or not, and leave yesterday's and tomorrow's off.
+  const compact = card || look === 'row'
   const { signedIn, signedOut } = useAuth()
   const { view, status, earned, won } = usePoll(signedIn)
   const [sending, setSending] = useState<number | null>(null)
@@ -76,7 +80,7 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
   return (
     <section
       id={inSheet ? undefined : 'blip-poll'}
-      className={`blip-poll${voted ? ' blip-poll--voted' : ''}${voted && fresh ? ' blip-poll--fresh' : ''}${sending != null ? ' blip-poll--sending' : ''}${inSheet ? ' blip-poll--sheet' : ''}${card ? ' blip-poll--card' : ''}`}
+      className={`blip-poll${voted ? ' blip-poll--voted' : ''}${voted && fresh ? ' blip-poll--fresh' : ''}${sending != null ? ' blip-poll--sending' : ''}${inSheet ? ' blip-poll--sheet' : ''}${card ? ' blip-poll--card' : ''}${look === 'row' ? ' blip-poll--row' : ''}`}
       aria-labelledby={headingId}
     >
       <BlipFigure className="blip-poll__blip" mood={voted ? 'happy' : 'hi'} />
@@ -87,7 +91,7 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
         ) : (
           <span aria-hidden="true">
             <span className="skel-line" style={skel('80%')} />
-            <SkelMore w="45%" />
+            {compact ? null : <SkelMore w="45%" />}
           </span>
         )}
       </h3>
@@ -108,9 +112,9 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
           ) : null}
           <p className="blip-poll__foot" aria-hidden="true">
             <span className="skel-line" style={skel('75%')} />
-            {card ? null : <SkelMore w="40%" />}
+            {compact ? null : <SkelMore w="40%" />}
           </p>
-          {card ? null : (
+          {compact ? null : (
             <p className="blip-poll__then" aria-hidden="true">
               <span className="skel-line" style={skel('95%')} />
               <br />
@@ -129,9 +133,9 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
                 <span className="blip-poll__fill" style={{ width: pct }} />
                 <span className="blip-poll__label">
                   {/* Two by two on a card, a narrow bar cuts "· you" off: there, a tick before the answer says it. */}
-                  {mine && card ? <MineMark /> : null}
+                  {mine && compact ? <MineMark /> : null}
                   {option}
-                  {mine ? card ? <span className="visually-hidden"> (your answer)</span> : <span className="blip-poll__you"> · you</span> : null}
+                  {mine ? compact ? <span className="visually-hidden"> (your answer)</span> : <span className="blip-poll__you"> · you</span> : null}
                 </span>
                 <span className="blip-poll__pct">{pct}</span>
               </li>
@@ -167,7 +171,7 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
       ) : null}
       {today && !voted ? (
         <p className="blip-poll__foot">
-          {card ? <TicketGlyph size={18} className="blip-poll__ticket" /> : null}
+          {compact ? <TicketGlyph size={18} className="blip-poll__ticket" /> : null}
           {sending != null && !failed ? (
             'Counting your answer…'
           ) : failed ? (
@@ -190,24 +194,24 @@ export function BlipPoll({ inSheet = false, look }: { inSheet?: boolean; look?: 
       ) : null}
       {voted ? (
         <p className="blip-poll__foot">
-          {card ? <TicketGlyph size={18} className="blip-poll__ticket" /> : null}
+          {compact ? <TicketGlyph size={18} className="blip-poll__ticket" /> : null}
           {today.total === 1 ? 'The first answer' : `${(today.total ?? 0).toLocaleString()} answers`}
           {earned > 0 ? <b> · +{earned} tickets</b> : null}
           {/* The card's set, as a line: how far to the next of it. */}
-          {card && !won && toward?.next ? (
+          {compact && !won && toward?.next ? (
             <>
               {' '}· {toward.more} more to the {toward.next.name}
             </>
           ) : null}
         </p>
       ) : null}
-      {voted && answers != null && (!card || won) ? <BlipSet answers={answers} won={won} /> : null}
-      {!card && yesterday && top >= 0 ? (
+      {voted && answers != null && (!compact || won) ? <BlipSet answers={answers} won={won} /> : null}
+      {!compact && yesterday && top >= 0 ? (
         <p className="blip-poll__then">
           <b>Yesterday:</b> {yesterday.q} {yesterday.options[top]}, {share(yesterday.counts[top]!, yesterday.total)}.
         </p>
       ) : null}
-      {!card && voted && view?.tomorrow ? <p className="blip-poll__next">Tomorrow: {view.tomorrow}</p> : null}
+      {!compact && voted && view?.tomorrow ? <p className="blip-poll__next">Tomorrow: {view.tomorrow}</p> : null}
     </section>
   )
 }

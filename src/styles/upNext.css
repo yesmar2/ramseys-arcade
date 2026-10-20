@@ -1,8 +1,8 @@
 /*
- * Up next for you (components/HomeUpNext.tsx): a row of cards under today's ticket, each a picture across its top
- * and one way on. Blip's question (BlipPoll.tsx) takes the same frame here, Blip standing in his own band; the
- * season's card is deep space in both themes, as the season's panels are (season.css). On a phone the cards
- * stack, a game's picture down their left.
+ * Up next for you (components/HomeUpNext.tsx), under today's ticket: the top pick big (the game's whole picture,
+ * the three around you on its board, one big Play) and the rest as a list of rows beside it, or under it on a
+ * narrower screen (C on the "Up Next Looks" canvas, 2026-10-20). A first visit's row is still cards: the season's,
+ * deep space in both themes as the season's panels are (season.css), and Blip's question in his band.
  */
 
 .upnext {
@@ -13,10 +13,9 @@
   /* The ticket's deep orange, as dark as it must be to read on the card (#e0602e held 3.6:1). */
   --unx-you-score: #c15328;
   --unx-row: #f4f8fa;
-  --unx-gold-row: linear-gradient(135deg, #fff4d2, #fdf9ec);
-  --unx-gold-edge: rgba(168, 124, 12, 0.18);
-  --unx-gold-text: #5a3c00;
-  --unx-gold-sub: #8a5a00;
+  --unx-you-row: #fff1e8;
+  --unx-you-edge: rgba(193, 83, 40, 0.35);
+  --unx-line: #e3ebf0;
   --unx-track: #e5edf2;
   --unx-shadow: 0 12px 30px rgba(var(--shade-rgb), 0.08);
   --unx-chip: rgba(255, 255, 255, 0.94);
@@ -32,10 +31,9 @@ html[data-theme='dark'] .upnext {
   --unx-you: #ffb38f;
   --unx-you-score: #ff9b70;
   --unx-row: #223240;
-  --unx-gold-row: linear-gradient(135deg, #3b3119, #2a2517);
-  --unx-gold-edge: rgba(245, 185, 66, 0.25);
-  --unx-gold-text: #ffd27a;
-  --unx-gold-sub: #e8bb5e;
+  --unx-you-row: #3a2418;
+  --unx-you-edge: #7a3b25;
+  --unx-line: #243441;
   --unx-track: #26364a;
   --unx-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
   --unx-chip: rgba(10, 16, 22, 0.82);
@@ -70,44 +68,6 @@ html[data-theme='dark'] .upnext {
   align-items: stretch;
 }
 
-/* All in one row on a wide screen, however many there are today: two, three or four. */
-.upnext:not(.upnext--first) .upnext__grid:has(> :nth-child(4)) {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.upnext:not(.upnext--first) .upnext__grid:not(:has(> :nth-child(3))) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-/* Narrower, two by two; one left over at the end takes the row's width, its picture down its left. */
-@media (max-width: 75rem) {
-  /*
-   * Two rules, not one list: the build's minifier wraps a list holding a :has() in :is(), which takes the :has()
-   * one's weight for both, and three cards then stayed two by two on a phone, past the 46rem rules below.
-   */
-  .upnext:not(.upnext--first) .upnext__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid:has(> :nth-child(4)) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid > :last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd){
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd) .unx__band {
-    height: auto;
-    min-height: 13rem;
-  }
-}
-
 /* ---------- a card ---------- */
 
 .unx {
@@ -137,101 +97,6 @@ html[data-theme='dark'] .upnext {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-/* A game: its middle in a rounded tile lit in its colour, on a soft dot pattern, in both themes. */
-.unx__band--tile {
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--unx-accent, var(--accent)) 50%, #0c1218), #0c1218 74%);
-}
-
-.unx__band--tile::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(color-mix(in srgb, var(--unx-accent, var(--accent)) 55%, transparent) 1.2px, transparent 1.6px);
-  background-size: 16px 16px;
-  opacity: 0.35;
-  -webkit-mask-image: radial-gradient(circle at 50% 55%, #000 15%, transparent 70%);
-  mask-image: radial-gradient(circle at 50% 55%, #000 15%, transparent 70%);
-}
-
-.unx__tile {
-  --inline-thumb-size: 7.2rem;
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: var(--inline-thumb-size);
-  height: var(--inline-thumb-size);
-  overflow: hidden;
-  border: 0;
-  border-radius: 1.6rem;
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--unx-accent, var(--accent)) 70%, #fff 10%),
-    0 0 0 6px rgba(12, 18, 24, 0.55),
-    0 10px 26px rgba(0, 0, 0, 0.5),
-    0 0 40px color-mix(in srgb, var(--unx-accent, var(--accent)) 45%, transparent);
-}
-
-.unx__tile > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* A record held: the game's middle in a gold medal with a crown, gold rays on the game's colour, in both themes. */
-.unx__band--medal {
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--unx-accent, var(--accent)) 45%, #0c1218), #0c1218 72%);
-}
-
-.unx__band--medal::before {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(255, 210, 122, 0.13) 0 7deg, transparent 7deg 20deg);
-}
-
-.unx__medal {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 7.2rem;
-  aspect-ratio: 1;
-  box-sizing: border-box;
-  padding: 0.4rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #fff1c2, #e7b955 30%, #a8781c 55%, #f5d68a 80%, #b9862a);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(12, 18, 24, 0.6);
-}
-
-.unx__medal-face {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border: 0;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px rgba(90, 60, 0, 0.4);
-}
-
-.unx__medal-face > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.unx__medal-crown {
-  position: absolute;
-  top: -0.95rem;
-  left: 50%;
-  width: 2.1rem;
-  height: 1.4rem;
-  transform: translateX(-50%);
-  color: #f5d68a;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
 
 .unx__body {
@@ -306,135 +171,543 @@ html[data-theme='dark'] .upnext {
   height: 0.7rem;
 }
 
-/* ---------- the chase: the three around you ---------- */
+/* ---------- the top pick, big, and the list beside it ---------- */
 
-.unx__chase {
+.upnext__lay {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: end;
-  margin-top: 0.1rem;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: stretch;
 }
 
-.unx__slot {
+.unx-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  min-width: 0;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--unx-shadow);
+  color: var(--ink);
+}
+
+/* The game's whole picture, as tall as the words beside it. */
+.unx-head__pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 19rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--unx-accent, var(--accent)) 30%, #10161e);
+}
+
+.unx-head__pic > svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A game with no picture yet: its mark, big. */
+.unx-head__pic > .inline-thumb {
+  --inline-thumb-size: 9rem;
+}
+
+.unx-head__body {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.5rem;
   min-width: 0;
+  padding: 1.6rem 1.5rem 1.5rem;
 }
 
-.unx__slot--lo {
-  align-items: flex-start;
+.unx-head__title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
 }
 
-.unx__slot--mid {
-  align-items: center;
-  text-align: center;
-}
-
-.unx__slot--hi {
-  align-items: flex-end;
-  text-align: right;
-}
-
-.unx__slot-who {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.72rem;
+.unx-head__line {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
   color: var(--muted);
 }
 
-.unx__slot-score {
-  font-size: 1rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.unx__slot-bar {
-  display: block;
-  align-self: stretch;
-  height: 5px;
-  background: var(--unx-track);
-}
-
-.unx__slot--lo .unx__slot-bar {
-  border-radius: 5px 0 0 5px;
-}
-
-.unx__slot--mid .unx__slot-bar {
-  background: linear-gradient(90deg, var(--unx-track), var(--ticket, #ff8552));
-}
-
-.unx__slot--hi .unx__slot-bar {
-  border-radius: 0 5px 5px 0;
-  background: var(--accent);
-}
-
-.unx__slot--hi .unx__slot-score {
-  color: var(--unx-kick);
-}
-
-.unx__slot--you .unx__slot-who {
-  font-weight: 800;
-  color: var(--unx-you);
-}
-
-.unx__slot--you .unx__slot-score {
-  color: var(--unx-you-score);
-}
-
-/* ---------- a record's two at the top ---------- */
-
-.unx__rows {
+/* The three around you, as the board has them. */
+.unx-head__board {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  margin: 0.1rem 0 0;
+  margin: 0 0 0.85rem;
   padding: 0;
   list-style: none;
 }
 
-.unx__row {
+.unx-head__row {
   display: grid;
-  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.5rem 0.65rem;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  padding: 0.5rem 0.9rem;
   border-radius: 0.75rem;
-  background: var(--unx-row);
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-}
-
-.unx__row-place {
-  font-size: 0.75rem;
-  font-weight: 800;
   color: var(--muted);
 }
 
-.unx__row-name {
+.unx-head__name {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.unx-head__score {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.unx-head__row--hi .unx-head__score {
+  color: var(--unx-kick);
+}
+
+.unx-head__row--you {
+  background: var(--unx-you-row);
+  box-shadow: inset 0 0 0 1.5px var(--unx-you-edge);
+  font-weight: 800;
+}
+
+.unx-head__row--you,
+.unx-head__row--you .unx-head__name {
+  color: var(--unx-you);
+}
+
+.unx-head__row--you .unx-head__score {
+  color: var(--unx-you-score);
+}
+
+.unx-head__go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 3.25rem;
+  margin-top: auto;
+  box-sizing: border-box;
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+  font-size: 1.02rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.unx-head__go:hover,
+.unx-head__go:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+}
+
+.unx-head__go:focus-visible {
+  outline: 2px solid var(--ticket-deep, #e0602e);
+  outline-offset: 2px;
+}
+
+.unx-head__go svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+/* The list: one panel, its rows sharing out its height beside the top pick. */
+.upnext__list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--unx-shadow);
+  color: var(--ink);
+}
+
+.upnext__list > * + * {
+  border-top: 1px solid var(--unx-line);
+}
+
+.unx-row {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 3.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+  padding: 1.1rem 1.25rem;
+}
+
+.unx-row__pic {
+  position: relative;
+  display: block;
+  width: 3.75rem;
+  height: 3.75rem;
+}
+
+.unx-row__tile {
+  --inline-thumb-size: 3.75rem;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1rem;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--unx-accent, var(--accent)) 75%, transparent),
+    0 6px 14px rgba(var(--shade-rgb), 0.18);
+}
+
+.unx-row__tile > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A record you hold: the game in a gold ring, a crown on top. */
+.unx-row__pic--medal .unx-row__tile {
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3px #e7b955,
+    0 0 0 4.5px rgba(90, 60, 0, 0.35),
+    0 6px 14px rgba(var(--shade-rgb), 0.18);
+}
+
+.unx-row__crown {
+  position: absolute;
+  top: -0.75rem;
+  left: 50%;
+  z-index: 1;
+  width: 1.45rem;
+  height: 0.95rem;
+  transform: translateX(-50%);
+  color: #f5d68a;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.unx-row__pic--season {
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--space-night);
+}
+
+.unx-row__pic--season > svg {
+  position: absolute;
+  inset: 0;
+}
+
+.unx-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.unx-row__text .unx__kick {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.unx__row-value {
+.unx__kick--season {
+  color: var(--unx-you);
+}
+
+.unx-row__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
+}
+
+.unx-row__sub {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
   color: var(--muted);
 }
 
-.unx__row--you {
-  background: var(--unx-gold-row);
-  box-shadow: inset 0 0 0 1px var(--unx-gold-edge);
+.unx-row__sub--clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.unx__row--you .unx__row-place {
-  color: var(--unx-gold-sub);
+.unx-row__bar {
+  display: block;
+  height: 6px;
+  margin-top: 0.35rem;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--unx-track);
 }
 
-.unx__row--you .unx__row-value {
-  color: var(--unx-gold-text);
+.unx-row__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--ticket-deep, #e0602e);
+}
+
+/* The next season's name in the season's last week: in the row's ink, its dot in the season's colour. */
+.unx-row .unx__next {
+  margin-top: 0.2rem;
+  color: var(--ink);
+}
+
+.unx-row .unx__next::before {
+  background: var(--space-orange);
+}
+
+.unx-row__go {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 50%;
+  background: var(--ticket, #ff8552);
+  color: var(--ticket-ink, #3a1406);
+}
+
+.unx-row__go:hover,
+.unx-row__go:focus-visible {
+  background: var(--ticket-deep, #e0602e);
+}
+
+.unx-row__go:focus-visible {
+  outline: 2px solid var(--ticket-deep, #e0602e);
+  outline-offset: 2px;
+}
+
+.unx-row__go svg {
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.12rem;
+}
+
+.unx-row__go--more {
+  background: var(--unx-row);
+  color: var(--ink);
+}
+
+.unx-row__go--more:hover,
+.unx-row__go--more:focus-visible {
+  background: var(--unx-track);
+}
+
+.unx-row__go--more svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: 0;
+}
+
+/* Blip's question as a row: Blip in a mint disc on the left, his answers as pills, as tall answered as not. */
+.blip-poll--row {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 3.75rem minmax(0, 1fr);
+  align-content: center;
+  column-gap: 0.9rem;
+  row-gap: 0.3rem;
+  padding: 1.1rem 1.25rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-theme='dark'] .blip-poll--row {
+  background: transparent;
+}
+
+/* Its own border reset, so the list's line above it again. */
+.upnext__list > .blip-poll--row:not(:first-child) {
+  border-top: 1px solid var(--unx-line);
+}
+
+.blip-poll--row > * {
+  grid-column: 2;
+}
+
+.blip-poll--row .blip-poll__blip {
+  position: static;
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  align-self: start;
+  width: 3.75rem;
+  height: 3.75rem;
+  box-sizing: border-box;
+  padding: 0.45rem 0.55rem 0.35rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 62%, #c9f1e5, #e4f8f2);
+  filter: none;
+}
+
+html[data-theme='dark'] .blip-poll--row .blip-poll__blip {
+  background: radial-gradient(circle at 50% 62%, #1f5045, #16302c);
+}
+
+.blip-poll--row .blip-poll__q {
+  padding-right: 0;
+  font-size: 1.05rem;
+}
+
+.blip-poll--row .blip-poll__opts,
+.blip-poll--row .blip-poll__res {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.blip-poll--row .blip-poll__opt {
+  height: 100%;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.blip-poll--row .blip-poll__opt[aria-busy='true'] {
+  padding-inline: 1.9rem;
+}
+
+.blip-poll--row .blip-poll__spin {
+  right: 0.6rem;
+}
+
+.blip-poll--row .blip-poll__bar {
+  min-height: 2.5rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  font-size: 0.84rem;
+}
+
+/* A share's fill, square-ended inside its pill: a round end on a short one read as a blob. */
+.blip-poll--row .blip-poll__fill {
+  border-radius: 0;
+}
+
+.blip-poll--row .blip-poll__foot {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+}
+
+/* While they come: the same frames, shimmering. */
+.unx-head--skel .unx-head__pic,
+.unx-row--skel .unx-row__pic {
+  background: linear-gradient(90deg, rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.1), rgba(var(--ink-rgb), 0.05));
+  background-size: 200% 100%;
+  animation: lb-skel-shine 1.15s ease-in-out infinite;
+}
+
+.unx-row--skel .unx-row__pic {
+  border-radius: 1rem;
+}
+
+.unx-head--skel .unx-head__row {
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.unx-head__go.unx-head__go--skel {
+  color: transparent;
+  background: rgba(var(--ink-rgb), 0.1);
+}
+
+.unx-row__go.unx-row__go--skel {
+  background: rgba(var(--ink-rgb), 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unx-head--skel .unx-head__pic,
+  .unx-row--skel .unx-row__pic {
+    animation: none;
+  }
+}
+
+/* Narrower: the list under the top pick. */
+@media (max-width: 64rem) {
+  .upnext__lay {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+}
+
+/*
+ * A phone: the picture across the top pick's top. In the dark theme its headline sits over the picture's foot, the
+ * picture fading into the card; in the light one a fade to white is a fog over a dark scene, so it starts under it.
+ */
+@media (max-width: 40rem) {
+  .unx-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .unx-head__pic {
+    min-height: 0;
+    aspect-ratio: 4 / 3;
+  }
+
+  .unx-head__pic::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 50%;
+    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--surface) 85%, transparent) 55%, var(--surface));
+  }
+
+  .unx-head__body {
+    position: relative;
+    z-index: 1;
+    margin-top: -3.6rem;
+    padding: 0 1rem 1rem;
+    gap: 0.4rem;
+  }
+
+  .unx-head__title {
+    font-size: 1.75rem;
+  }
+
+  html:not([data-theme='dark']) .unx-head__pic::after {
+    content: none;
+  }
+
+  html:not([data-theme='dark']) .unx-head__body {
+    margin-top: 0;
+    padding-top: 1rem;
+  }
+
+  .unx-head__row {
+    min-height: 2.6rem;
+    font-size: 0.92rem;
+  }
+
+  .unx-row,
+  .blip-poll--row {
+    padding: 0.95rem 1rem;
+    column-gap: 0.8rem;
+  }
+
+  .unx-row__title,
+  .blip-poll--row .blip-poll__q {
+    font-size: 1rem;
+  }
 }
 
 /* ---------- Blip's question, in the same frame, Blip in his band ---------- */
@@ -775,47 +1048,9 @@ html[data-theme='dark'] .unx--season {
     display: none;
   }
 
-  .upnext__grid,
-  .upnext:not(.upnext--first) .upnext__grid,
-  .upnext:not(.upnext--first) .upnext__grid:has(> :nth-child(4)),
-  .upnext:not(.upnext--first) .upnext__grid:not(:has(> :nth-child(3))) {
+  .upnext__grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.85rem;
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd):not(.unx--season) {
-    grid-template-columns: 7.4rem minmax(0, 1fr);
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid > .unx:last-child:nth-child(odd) .unx__band {
-    min-height: 100%;
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid > .unx--season:last-child:nth-child(odd) {
-    display: flex;
-  }
-
-  .upnext:not(.upnext--first) .upnext__grid > .unx--season:last-child:nth-child(odd) .unx__band {
-    min-height: 0;
-  }
-
-  .unx:not(.unx--season) {
-    display: grid;
-    grid-template-columns: 7.4rem minmax(0, 1fr);
-  }
-
-  .unx:not(.unx--season) .unx__band {
-    height: auto;
-    min-height: 100%;
-  }
-
-  .unx__medal {
-    width: 5.6rem;
-  }
-
-  .unx__tile {
-    --inline-thumb-size: 5.6rem;
-    border-radius: 1.25rem;
   }
 
   .unx__body {
