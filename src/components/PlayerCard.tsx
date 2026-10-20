@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent, ReactNode } from 'react'
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import { getGame } from '../data/games'
 import { navigate, rankHref, todayHref } from '../hooks/useHashRoute'
 import { neighboursOf, type GameBest, type PeriodRanks } from '../hooks/useProfileBoards'
@@ -7,6 +7,7 @@ import { parseAvatar, wornPrize } from '../lib/avatars'
 import { bannerText, inkOn, readableFill, shelfTextDark } from '../lib/color'
 import { useMedalCounts, type MedalCounts } from '../lib/courseBests'
 import { useHeldHeight } from '../lib/heldShape'
+import { useStickers } from '../lib/stickers'
 import { PERIOD_LABELS, VISIBLE_LEADERBOARD_PERIODS, type GlobalRankResult, type LeaderboardPeriod } from '../lib/leaderboard'
 import { usePlusMember } from '../lib/plus'
 import { barPosition, ordinal, periodWord, scoreWithUnit, shareLines, talksInPlaces } from '../lib/profileMath'
@@ -23,6 +24,7 @@ import { PlayerName } from './PlayerName'
 import { PlusMark } from './PlusMark'
 import { MedalIcon } from './RaceMedal'
 import { RewardArt } from './season/RewardArt'
+import { StickerAlbum } from './StickerAlbum'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/playerCard.css'
 
@@ -245,7 +247,8 @@ function jumpTo(id: string) {
  * The top of a player's page: their trading card, full art, standing tilted on its own sky (the card's
  * background, blurred, across the whole top), and beside it where they stand this period and a hand of small
  * cards: what they're best at, their race medals, on your own card your Dailies streak, and their trophies or
- * skins, each a way to that part of the page. Ramsey picked H2 + P2 of the "Player card hero redesign" canvas
+ * skins, each a way to that part of the page. The card turns over to its back, the sticker album (B3 of the
+ * "New prize kinds" canvas). Ramsey picked H2 + P2 of the "Player card hero redesign" canvas
  * (2026-10-20). No sign and no title: those are retired from the counter.
  */
 export function PlayerCard({
@@ -308,6 +311,9 @@ export function PlayerCard({
   const member = usePlusMember(name)
   const skins = useHangarSkins(name, isSelf)
   const medals = useMedalCounts(name)
+  const album = useStickers(name, isSelf)
+  // The card turns over to its back, the sticker album.
+  const [flipped, setFlipped] = useState(false)
   const word = periodWord(period)
   // Without a background, their best game's picture fills the card.
   const bestSlug = best && hasGameArt(best.slug) ? best.slug : null
@@ -483,6 +489,9 @@ export function PlayerCard({
           line={line}
           pips={pips}
           foil={wornPrize(look, 'foil')}
+          back={<StickerAlbum album={album} isSelf={isSelf} />}
+          flipped={flipped}
+          onFlip={() => setFlipped((f) => !f)}
         />
 
         <div className="pc__side">

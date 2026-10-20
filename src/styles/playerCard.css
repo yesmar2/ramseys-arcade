@@ -216,6 +216,265 @@
   }
 }
 
+/*
+ * The card turns over (FullArtCard's `back`): the front and the back are two faces of one card, the back the
+ * sticker album (StickerAlbum.tsx). With motion turned down it swaps without the turn.
+ */
+.fac-scene {
+  position: relative;
+  flex: none;
+  width: 18.75rem;
+  aspect-ratio: 5 / 7;
+  perspective: 1400px;
+}
+
+.fac-scene__turn {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.fac-scene--back .fac-scene__turn {
+  transform: rotateY(180deg);
+}
+
+.fac-scene .fac {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.fac--back {
+  transform: rotateY(180deg);
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.07) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    linear-gradient(160deg, #1d2350, #12162e);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fac-scene__turn {
+    transition: none;
+  }
+}
+
+.fac__top-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fac__turn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.58);
+  color: #fff;
+  cursor: pointer;
+}
+
+.fac__turn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.fac__turn:hover,
+.fac__turn:focus-visible {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.fac__turn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.fac__top--back {
+  left: auto;
+}
+
+/* ---------- the sticker album, on the back ---------- */
+
+.album {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.75rem 0.6rem;
+  color: #eef4f8;
+}
+
+.album__head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-right: 2.4rem;
+  min-height: 2rem;
+}
+
+.album__title {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.album__title b {
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.album__title span {
+  font-size: 0.72rem;
+  color: #b8c4ff;
+  white-space: nowrap;
+}
+
+.album__turn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.album__bar {
+  display: block;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.album__bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #ffd36b;
+}
+
+.album__grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-height: 0;
+}
+
+.album__grid li {
+  display: flex;
+  min-height: 0;
+}
+
+.album__cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.2rem;
+  border-radius: 0.6rem;
+  border: 1.5px dashed rgba(184, 196, 255, 0.35);
+  background: none;
+  color: rgba(184, 196, 255, 0.7);
+  font: inherit;
+  cursor: pointer;
+  min-height: 0;
+}
+
+.album__cell--got {
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.album__cell[aria-pressed='true'] {
+  outline: 2px solid #ffd36b;
+  outline-offset: -1px;
+}
+
+.album__cell:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.album__cell b {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.album__short {
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.album__num {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.3rem;
+  font-size: 0.5rem;
+  font-weight: 800;
+  color: rgba(184, 196, 255, 0.55);
+}
+
+.album__art {
+  width: 70%;
+  height: auto;
+  max-height: 88%;
+}
+
+.album__foot {
+  margin: 0;
+  min-height: 2.1em;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #c7d4dd;
+  text-align: center;
+}
+
+.album__foot b {
+  color: #fff;
+}
+
+.album--wait {
+  justify-content: center;
+  align-items: center;
+}
+
+/* A sticker, die-cut: a white edge all round its shape, and its drop. */
+.sticker {
+  overflow: visible;
+  filter:
+    drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff)
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45));
+}
+
 /* Small, trying a prize on: the prize's sheet and the counter's fitting room (PrizePanel's PlayerCardMini). */
 .prize-fac {
   width: 13.5rem;
@@ -752,7 +1011,8 @@ html[data-theme='light'] .fac .plus-mark svg {
     padding: 3.2rem 2rem 2rem;
   }
 
-  .fac {
+  .fac,
+  .fac-scene {
     width: 16.5rem;
   }
 
@@ -788,7 +1048,8 @@ html[data-theme='light'] .fac .plus-mark svg {
     padding: 3.4rem 1rem 1.2rem;
   }
 
-  .fac {
+  .fac,
+  .fac-scene {
     width: min(15rem, 72vw);
   }
 

@@ -1,4 +1,5 @@
 import { getGame } from '../data/games'
+import { STICKER_PAGES } from '../data/stickers'
 import { PRIZE_KINDS, prizeById } from '../data/prizes'
 import { bugForDay } from './bugHuntPick'
 import { scoreText } from './gameBoard'
@@ -233,6 +234,11 @@ function otherRow(line: LedgerLine): HistoryRow {
         sub: level ? `Season ${level[1]}` : goal ? `Season ${goal[1]}` : null,
         words: level ? `Level ${level[2]}` : 'A season goal',
       }
+    }
+    case 'stickers': {
+      // A full page of the sticker album on the back of the player card (data/stickers.ts), once a page.
+      const page = STICKER_PAGES.find((p) => `page:${p.id}` === line.ref)
+      return { ...row, game: null, icon: 'ticket', title: 'Sticker album', sub: page ? page.name : null, words: 'A full page' }
     }
     case 'poll': {
       const n = /^poll:(\d+)$/.exec(line.ref)?.[1]

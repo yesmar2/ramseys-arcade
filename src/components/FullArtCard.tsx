@@ -37,6 +37,9 @@ export function FullArtCard({
   line,
   pips,
   foil,
+  back,
+  flipped = false,
+  onFlip,
   gold = false,
   className,
   style,
@@ -58,18 +61,39 @@ export function FullArtCard({
   pips?: ReactNode
   /** A card foil from a season's pass (prizes/FoilArt.tsx): a sheen that sweeps over the whole card. */
   foil?: string | null
+  /** The card's back (the sticker album, StickerAlbum.tsx): the card turns over to it. */
+  back?: ReactNode
+  flipped?: boolean
+  /** Turns the card over: a button in its top corner, front and back. */
+  onFlip?: () => void
   gold?: boolean
   className?: string
   style?: CSSProperties
 }) {
-  return (
-    <div className={`fac${gold ? ' fac--gold' : ''}${theme ? '' : game ? ' fac--game' : ' fac--plain'}${className ? ` ${className}` : ''}`} style={style}>
+  const turn = onFlip ? (
+    <button type="button" className="fac__turn" onClick={onFlip} aria-label={flipped ? 'Turn the card back to the front' : 'Turn the card over: the sticker album'}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+        <path d="M20 4v7h-7" />
+      </svg>
+    </button>
+  ) : null
+  const front = (
+    <div
+      className={`fac${gold ? ' fac--gold' : ''}${theme ? '' : game ? ' fac--game' : ' fac--plain'}${!back && className ? ` ${className}` : ''}`}
+      style={back ? undefined : style}
+      aria-hidden={back && flipped ? true : undefined}
+      inert={back && flipped ? true : undefined}
+    >
       <CardArt className="fac__art" theme={theme} game={game} />
       <span className="fac__fade" aria-hidden="true" />
-      {chip || corner ? (
+      {chip || corner || turn ? (
         <span className="fac__top">
           {chip ? <span className="fac__chip">{chip}</span> : <span />}
-          {corner ? <span className="fac__chip fac__chip--corner">{corner}</span> : null}
+          <span className="fac__top-end">
+            {corner ? <span className="fac__chip fac__chip--corner">{corner}</span> : null}
+            {turn}
+          </span>
         </span>
       ) : null}
       <span className="fac__avatar">{avatar}</span>
@@ -79,6 +103,18 @@ export function FullArtCard({
         {pips ? <span className="fac__pips">{pips}</span> : null}
       </span>
       {foil ? <span className={`fac__foil fac__foil--${foil}`} aria-hidden="true" /> : null}
+    </div>
+  )
+  if (!back) return front
+  return (
+    <div className={`fac-scene${flipped ? ' fac-scene--back' : ''}${className ? ` ${className}` : ''}`} style={style}>
+      <div className="fac-scene__turn">
+        {front}
+        <div className={`fac fac--back${gold ? ' fac--gold' : ''}`} aria-hidden={flipped ? undefined : true} inert={flipped ? undefined : true}>
+          {back}
+          {turn ? <span className="fac__top fac__top--back">{turn}</span> : null}
+        </div>
+      </div>
     </div>
   )
 }
