@@ -418,6 +418,11 @@ function PassPlus({
       live = false
     }
   }, [plus.owned])
+  // A free week that's been cancelled has no first payment coming, so no Gold Pass with it: it's to buy on its
+  // own, as for anyone, or Plus kept on (Ramsey, 2026-10-21, on staging: "Included with your Plus" showed after he
+  // cancelled).
+  const freeWeekEnding = plusInfo?.you?.status === 'trialing' && plusInfo.you.cancelsAtEnd ? plusInfo.you : null
+  const comingWithPlus = onPlus && !freeWeekEnding
   const firstBonus = plus.rewards.find((r) => r.level > season.levels)?.id
   const headliners = headlinersOf(season, plus)
   // The Gold row's rewards your level has reached: yours the moment the Gold Pass is.
@@ -491,7 +496,7 @@ function PassPlus({
             <span className="season-plus__owned">
               <CheckBadge /> {plus.via === 'plus' ? 'Included with your Plus' : 'Yours this season'}
             </span>
-          ) : onPlus ? (
+          ) : comingWithPlus ? (
             // Plus's free week gives nothing kept for good: Pass+ comes with its first payment, for as long as Plus lasts.
             <span className="season-plus__soon">Included with your Plus from its first payment, when the free week ends</span>
           ) : (
@@ -514,7 +519,18 @@ function PassPlus({
                 ) : null}
               </div>
               <a className="season-plus__member" href={plusHref()}>
-                {freeWeekFor(plusInfo) && plusInfo ? (
+                {freeWeekEnding ? (
+                  <>
+                    <b>Or keep Plus</b>
+                    <small>
+                      Your free week ends
+                      {freeWeekEnding.renewsAt
+                        ? ` on ${new Date(freeWeekEnding.renewsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                        : ''}
+                      . Kept on, every season’s Gold Pass comes with its first payment.
+                    </small>
+                  </>
+                ) : freeWeekFor(plusInfo) && plusInfo ? (
                   <>
                     <b>Or try Plus free for a week</b>
                     <small>
