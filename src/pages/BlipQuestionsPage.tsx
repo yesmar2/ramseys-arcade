@@ -4,14 +4,14 @@ import { PageShell } from '../components/PageShell'
 import { openSiteMenu } from '../components/siteNav'
 import { useAuth } from '../hooks/useAuth'
 import { archiveDayWords } from '../lib/archive'
-import { answerPastPoll, blipSet, fetchPastPolls, share, type PastPoll } from '../lib/poll'
+import { answerPastPoll, fetchPastPolls, share, type PastPoll } from '../lib/poll'
 import '../styles/blipPoll.css'
 import '../styles/blipQuestions.css'
 
 /*
- * Blip's questions (/blip): today's beside the page's head, as the home page asks it, and every one before it
- * under them, newest first, with how everyone answered and your answer lit. Ramsey, 2026-10-20: "we need a page
- * to see past polls/questions". A page of them at a time, from the API's GET /poll/past. One you missed can still
+ * Blip's questions (/blip): today's under the page's head, centred, as the home page asks it, and every one
+ * before it under them, newest first, with how everyone answered and your answer lit. Ramsey, 2026-10-20: "we
+ * need a page to see past polls/questions". A page of them at a time, from the API's GET /poll/past. One you missed can still
  * be answered (2026-10-21: "we should let people still vote on older ones too"), for no tickets: its answers
  * show once you've given yours, as today's do.
  */
@@ -57,9 +57,6 @@ export function BlipQuestionsPage() {
   // A late answer's question, as the API now has it, in place of the one on show.
   const answered = (poll: PastPoll) => setLoad((s) => ({ ...s, polls: s.polls.map((p) => (p.n === poll.n ? poll : p)) }))
 
-  const answers = signedIn ? load.answers : null
-  const toward = answers != null ? blipSet(answers) : null
-
   return (
     <PageShell innerClassName="lb-page__inner bq-page">
       <div className="bq-top">
@@ -70,13 +67,6 @@ export function BlipQuestionsPage() {
           <p className="bq-lede">
             One a day, about anything. Missed one? You can still answer it: the tickets are for the day’s question.
           </p>
-          {/* Nothing to say at none: today's card says how near the next of his set is. */}
-          {answers ? (
-            <p className="bq-count">
-              You’ve answered <b>{answers.toLocaleString()}</b> on the day
-              {toward?.next ? `, ${toward.more} more to the ${toward.next.name}` : ''}.
-            </p>
-          ) : null}
         </section>
         <div className="bq-today">
           <BlipPoll onPastPage />
