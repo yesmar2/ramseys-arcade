@@ -5,6 +5,7 @@ import type { Avatar, AvatarBadge, AvatarPin } from '../../lib/avatars'
 import { AvatarArt } from '../PlayerAvatar'
 import { ThemeDrawing } from '../prizes/CardThemes'
 import { FoilCard } from '../prizes/FoilArt'
+import { StickerArt } from '../StickerArt'
 import { FROST, SPACE, sparklePath } from '../../lib/seasonArt'
 import greenFlashPicture from '../../assets/season/green-flash.webp'
 import moonBuggyPicture from '../../assets/season/moon-buggy.webp'
@@ -323,6 +324,17 @@ const DRAW: Record<string, (size: number) => ReactNode> = {
   'fl-frost': (size) => (
     <Board size={size}>
       <FoilCard foil="fl-frost" x={29} y={12} w={42} />
+    </Board>
+  ),
+  // The top of each Gold Pass, where its title was (2026-10-21).
+  'fl-nebula': (size) => (
+    <Board size={size}>
+      <FoilCard foil="fl-nebula" x={29} y={12} w={42} />
+    </Board>
+  ),
+  'fl-aurora': (size) => (
+    <Board size={size}>
+      <FoilCard foil="fl-aurora" x={29} y={12} w={42} />
     </Board>
   ),
   'sign-liftoff': (size) => (
@@ -706,6 +718,14 @@ export function RewardArt({ reward, size }: { reward: RewardLike; size: number }
       <Board size={size}>
         <Tickets amount={reward.amount ?? 0} />
       </Board>
+    )
+  }
+  // A sticker for the album on the card's back: the sticker itself, as the album shows it.
+  if (reward.kind === 'sticker' && reward.id) {
+    return (
+      <span className="reward-sticker" style={{ width: size, height: size }}>
+        <StickerArt id={reward.id} size={Math.round(size * 0.78)} />
+      </span>
     )
   }
   // A title: its plate. The pass sends titles as prizes, so the catalogue says which they are.

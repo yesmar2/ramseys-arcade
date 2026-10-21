@@ -96,7 +96,7 @@ export async function keepPlusMembership(): Promise<PlusYou> {
 
 /**
  * This month's members' looks by name, for a line that says what comes with Plus: "this month's members'
- * look (the Founding Member title)". "The month's look" alone left Ramsey asking what it was (2026-10-21).
+ * look (the Founder foil)". "The month's look" alone left Ramsey asking what it was (2026-10-21).
  */
 export function membersLookWords(info: PlusInfo | null): string {
   const looks = (info?.looks ?? []).map((l) => `the ${l.name} ${l.what.toLowerCase()}`)
@@ -106,7 +106,7 @@ export function membersLookWords(info: PlusInfo | null): string {
 }
 
 /**
- * The last day a membership gives Founding Member (the API's MEMBERS_LOOKS: October to December 2026). Looks
+ * The last day a membership gives the Founder foil (the API's MEMBERS_LOOKS: October to December 2026). Looks
  * come with the first payment, so a free week has to start a week before it.
  */
 export const FOUNDER_UNTIL = '2026-12-31'

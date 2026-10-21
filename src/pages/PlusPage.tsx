@@ -297,7 +297,7 @@ export function PlusPage() {
   const trialDays = info?.trialDays ?? 7
   const onFreeWeek = member && you?.status === 'trialing'
   const today = boardDay()
-  // Founding Member, while the months that give it last: a free week has to start a week sooner, as looks come with the first payment.
+  // The Founder foil, while the months that give it last: a free week has to start a week sooner, as looks come with the first payment.
   const founder = today <= FOUNDER_UNTIL
   const founderBy = freeWeek ? daysBefore(FOUNDER_UNTIL, trialDays) : FOUNDER_UNTIL
   const friend = useAFriend(signedIn && !member)
@@ -554,7 +554,7 @@ export function PlusPage() {
                 </div>
                 {founder ? (
                   <p className="plus-hero__founder">
-                    {loading ? <Skel w="19rem" /> : `Join by ${dayWords(founderBy)} and the Founding Member title is yours for good.`}
+                    {loading ? <Skel w="19rem" /> : `Join by ${dayWords(founderBy)} and the Founder foil is yours for good.`}
                   </p>
                 ) : null}
                 <p className="plus-fine">

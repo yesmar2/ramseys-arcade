@@ -225,7 +225,7 @@ export const TODAY_MILESTONES: readonly { day: number; prize: string }[] = [
   { day: 7, prize: 'The Dailies pin for your avatar' },
   { day: 14, prize: '25 tickets' },
   { day: 30, prize: 'The Gold avatar' },
-  { day: 100, prize: 'The “Every Day” title' },
+  { day: 100, prize: 'The Every Day foil for your player card' },
 ]
 
 /** The API's word changed. */

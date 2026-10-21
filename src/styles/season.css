@@ -1144,6 +1144,13 @@ html[data-theme='dark'] .season-tile__got {
   height: 5.5rem;
 }
 
+/* A pass sticker (RewardArt): the sticker as the album shows it, in the middle of its tile. */
+.reward-sticker {
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
 .season-tile__name {
   font-size: 0.95rem;
   font-weight: 700;

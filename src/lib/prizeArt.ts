@@ -100,6 +100,13 @@ export function prizeGlow(prize: Prize, avatar: Avatar): string {
       return 'rgba(214,150,255,0.26)'
     case 'fl-frost':
       return 'rgba(160,220,255,0.26)'
+    case 'fl-nebula':
+      return 'rgba(224,140,255,0.26)'
+    case 'fl-aurora':
+      return 'rgba(110,240,190,0.24)'
+    case 'fl-everyday':
+    case 'fl-founder':
+      return 'rgba(247,201,72,0.26)'
     case 'supernova':
     case 'cf-stardust':
       return 'rgba(245,185,66,0.22)'

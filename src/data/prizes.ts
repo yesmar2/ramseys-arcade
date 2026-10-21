@@ -326,6 +326,40 @@ export const PRIZES: readonly Prize[] = [
     earned: { by: 'Season 2’s pass, level 28', short: 'Season 2' },
     retired: true,
   },
+  // The foils that took the place of titles (2026-10-21), since a title showed nowhere: the top of each Gold Pass,
+  // a 100-day streak and the founders' Plus (the API's prizes.ts). Whoever has one of those titles keeps it.
+  {
+    id: 'fl-nebula',
+    kind: 'foil',
+    name: 'Nebula foil',
+    price: 0,
+    blurb: 'Clouds of pink and violet drift across your player card, stars glinting in them.',
+    earned: { by: 'Season 1’s Gold Pass, level 35', short: 'Gold' },
+  },
+  {
+    id: 'fl-aurora',
+    kind: 'foil',
+    name: 'Aurora foil',
+    price: 0,
+    blurb: 'Northern lights ripple across the top of your player card, green into violet.',
+    earned: { by: 'Season 2’s Gold Pass, level 35', short: 'Gold' },
+  },
+  {
+    id: 'fl-everyday',
+    kind: 'foil',
+    name: 'Every Day foil',
+    price: 0,
+    blurb: 'A gold edge round your player card, and embers rising up it. A hundred days of Dailies.',
+    earned: { by: 'A 100-day Dailies streak', short: '100 days' },
+  },
+  {
+    id: 'fl-founder',
+    kind: 'foil',
+    name: 'Founder foil',
+    price: 0,
+    blurb: 'Your player card framed in brushed gold, a slow shine going round. For the arcade’s first members.',
+    earned: { by: 'Plus, while the arcade opened (Oct–Dec 2026)', short: 'Plus' },
+  },
 ]
 
 const byId = new Map(PRIZES.map((p) => [p.id, p]))

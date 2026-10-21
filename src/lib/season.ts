@@ -15,7 +15,8 @@ import { api } from './leaderboard'
  * drawing the arcade without it and then switching once the API answers.
  */
 
-export type SeasonRewardKind = 'pin' | 'prize' | 'tickets' | 'skin'
+/** A sticker is the album's (data/stickers.ts): the pass's free row gives one where a title was (2026-10-21). */
+export type SeasonRewardKind = 'pin' | 'prize' | 'tickets' | 'skin' | 'sticker'
 
 export type SeasonReward = {
   level: number
@@ -427,7 +428,7 @@ export function quietLevelsWords(rewards: readonly SeasonReward[]): string {
   return `${first === last ? `Level ${first}` : `Levels ${first}–${last}`}: +${total.toLocaleString()} tickets`
 }
 
-/** A reward in a phrase: "the Moonhopper", "the Liftoff title", "50 bonus tickets". */
+/** A reward in a phrase: "the Moonhopper", "the Moon sticker", "50 bonus tickets". */
 export function rewardPhrase(reward: SeasonReward): string {
   switch (reward.kind) {
     case 'tickets':

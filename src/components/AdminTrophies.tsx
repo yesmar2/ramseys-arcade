@@ -95,7 +95,7 @@ const TODAY_REWARD_NOTES: Record<number, string> = {
   7: 'The Dailies pin, a punched ticket on deep orange. The flame pin stays for playing any game seven days in a row.',
   14: '25 tickets.',
   30: 'The Gold avatar. Never for sale: it isn’t on the counter, and the API refuses to trade for it.',
-  100: 'The “Every Day” title, on a plate in lights. Never for sale.',
+  100: 'The Every Day foil: a gold edge and rising embers over the player card. Never for sale.',
 }
 
 const EGGS: { key: string; name: string; how: string; does: string; clue: string; secret: string }[] = [

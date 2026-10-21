@@ -205,6 +205,138 @@
   background: linear-gradient(110deg, transparent 40%, rgba(170, 230, 255, 0.45) 46%, rgba(255, 255, 255, 0.6) 50%, rgba(170, 230, 255, 0.42) 54%, transparent 60%);
 }
 
+/* Nebula (Space Race's Gold Pass): clouds of pink and violet drifting slowly across the card. */
+.fac__foil--fl-nebula::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(ellipse 48% 28% at 24% 26%, rgba(255, 128, 214, 0.7), rgba(255, 128, 214, 0.25) 45%, transparent 72%),
+    radial-gradient(ellipse 44% 26% at 78% 68%, rgba(150, 110, 255, 0.7), rgba(150, 110, 255, 0.25) 45%, transparent 72%),
+    radial-gradient(ellipse 32% 20% at 58% 44%, rgba(255, 190, 240, 0.4), transparent 70%),
+    radial-gradient(circle at 74% 20%, #fff 0 1.3px, transparent 3px),
+    radial-gradient(circle at 30% 80%, #ffd0f4 0 1.2px, transparent 2.8px);
+  mix-blend-mode: screen;
+  animation: fac-drift 16s ease-in-out infinite alternate;
+}
+
+.fac__foil--fl-nebula::after {
+  background: linear-gradient(110deg, transparent 42%, rgba(255, 184, 236, 0.3) 48%, rgba(184, 156, 255, 0.3) 52%, transparent 58%);
+  animation-duration: 6s;
+}
+
+@keyframes fac-drift {
+  0% {
+    transform: translate(-6%, -3%) rotate(-3deg);
+  }
+  100% {
+    transform: translate(6%, 4%) rotate(3deg);
+  }
+}
+
+/* Aurora (Cold Snap's Gold Pass): ribbons of green and violet rippling across the top of the card. */
+.fac__foil--fl-aurora::before {
+  content: '';
+  position: absolute;
+  top: -6%;
+  left: -30%;
+  width: 160%;
+  height: 46%;
+  background:
+    radial-gradient(ellipse 30% 30% at 20% 50%, rgba(95, 240, 176, 0.85), rgba(95, 240, 176, 0.3) 50%, transparent 72%),
+    radial-gradient(ellipse 26% 26% at 46% 38%, rgba(95, 240, 176, 0.75), rgba(95, 240, 176, 0.25) 50%, transparent 72%),
+    radial-gradient(ellipse 28% 30% at 72% 56%, rgba(180, 140, 255, 0.75), rgba(180, 140, 255, 0.25) 50%, transparent 72%),
+    radial-gradient(ellipse 22% 26% at 92% 44%, rgba(95, 240, 176, 0.65), transparent 72%);
+  mix-blend-mode: screen;
+  transform-origin: 50% 0;
+  animation: fac-ripple 7s ease-in-out infinite alternate;
+}
+
+.fac__foil--fl-aurora::after {
+  background: linear-gradient(110deg, transparent 44%, rgba(200, 255, 240, 0.32) 50%, transparent 56%);
+  animation-duration: 5.5s;
+}
+
+@keyframes fac-ripple {
+  0% {
+    transform: translateX(-8%) scaleY(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(8%) scaleY(1.1);
+    opacity: 1;
+  }
+}
+
+/* Every Day (a 100-day streak): a gold edge, and embers rising up the card from its foot. */
+.fac__foil--fl-everyday {
+  box-shadow:
+    inset 0 0 0 3px rgba(245, 197, 66, 0.85),
+    inset 0 0 18px rgba(255, 160, 60, 0.45);
+}
+
+.fac__foil--fl-everyday::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 18% 20%, #ffb347 0 1.8px, transparent 3.6px),
+    radial-gradient(circle at 42% 64%, #ffd36b 0 1.4px, transparent 3px),
+    radial-gradient(circle at 66% 32%, #ff8a3d 0 1.8px, transparent 3.6px),
+    radial-gradient(circle at 84% 78%, #ffd36b 0 1.4px, transparent 3px),
+    radial-gradient(circle at 30% 88%, #ff8a3d 0 1.2px, transparent 2.6px),
+    radial-gradient(circle at 74% 6%, #ffb347 0 1.2px, transparent 2.6px);
+  animation: fac-rise 6s linear infinite;
+}
+
+.fac__foil--fl-everyday::after {
+  background: linear-gradient(110deg, transparent 44%, rgba(255, 224, 138, 0.38) 50%, transparent 56%);
+}
+
+@keyframes fac-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-200%);
+    opacity: 0;
+  }
+}
+
+/* Founder (Plus while the arcade opened): a frame of brushed gold, a slow shine going over it. */
+.fac__foil--fl-founder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 7px;
+  background: repeating-linear-gradient(90deg, #b8913c 0 1px, #e8c66a 1px 3px, #cfa64e 3px 4px), #d4af5a;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  box-shadow: inset 0 0 0 1px rgba(255, 240, 184, 0.6);
+}
+
+.fac__foil--fl-founder::after {
+  background: linear-gradient(110deg, transparent 40%, rgba(255, 244, 204, 0.5) 49%, rgba(255, 244, 204, 0.5) 51%, transparent 60%);
+  animation-duration: 8s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fac__foil::after,
   .fac__foil::before {
