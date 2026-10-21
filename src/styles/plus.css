@@ -237,6 +237,12 @@ html[data-theme='light'] .plus {
   color: var(--muted);
 }
 
+/* While Plus's answer is on its way, the line's two bars stack as its words will. */
+.plus-have__line .skel-line {
+  display: block;
+  margin: 0.35em 0;
+}
+
 /* A member's ways on: the card and receipts (or keeping Plus), and cancelling, plain but a button all the same. */
 .plus-have__btns {
   flex-basis: 100%;

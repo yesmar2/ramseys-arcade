@@ -406,6 +406,7 @@ function PassPlus({
   const looks = plus.rewards.length - skins.length
   const gameList = skinGames.length > 1 ? `${skinGames.slice(0, -1).join(', ')} and ${skinGames[skinGames.length - 1]}` : (skinGames[0] ?? '')
   const [plusInfo, setPlusInfo] = useState<PlusInfo | null>(null)
+  const [plusInfoFailed, setPlusInfoFailed] = useState(false)
   useEffect(() => {
     if (plus.owned) return
     let live = true
@@ -413,11 +414,16 @@ function PassPlus({
       .then((info) => {
         if (live) setPlusInfo(info)
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (live) setPlusInfoFailed(true)
+      })
     return () => {
       live = false
     }
   }, [plus.owned])
+  // Plus's answer in (or given up on): until then what hangs on it holds its place, rather than guessing and
+  // changing (Ramsey, 2026-10-21: "Included with…" showed a moment before the buttons).
+  const plusKnown = plusInfo != null || plusInfoFailed
   // A free week that's been cancelled has no first payment coming, so no Gold Pass with it: it's to buy on its
   // own, as for anyone, or Plus kept on (Ramsey, 2026-10-21, on staging: "Included with your Plus" showed after he
   // cancelled).
@@ -496,6 +502,11 @@ function PassPlus({
             <span className="season-plus__owned">
               <CheckBadge /> {plus.via === 'plus' ? 'Included with your Plus' : 'Yours this season'}
             </span>
+          ) : onPlus && !plusKnown ? (
+            // On Plus, but whether its free week goes on or was cancelled isn't known yet: the shape, not a guess.
+            <span className="season-plus__soon skel-btn" aria-hidden="true">
+              Included with your Plus from its first payment, when the free week ends
+            </span>
           ) : comingWithPlus ? (
             // Plus's free week gives nothing kept for good: Pass+ comes with its first payment, for as long as Plus lasts.
             <span className="season-plus__soon">Included with your Plus from its first payment, when the free week ends</span>
@@ -514,7 +525,17 @@ function PassPlus({
                   <span className="season-plus__soon">On sale soon · {price} for the season</span>
                 )}
                 <a className="season-plus__member" href={plusHref()}>
-                {freeWeekEnding ? (
+                {!plusKnown ? (
+                  // Which of Plus's offers this is (a free week, joining, keeping it on) waits for Plus's answer.
+                  <>
+                    <b>
+                      <span className="skel-line" style={{ '--skel-w': '9rem' } as CSSProperties} aria-hidden="true" />
+                    </b>
+                    <small>
+                      <span className="skel-line" style={{ '--skel-w': '15rem' } as CSSProperties} aria-hidden="true" />
+                    </small>
+                  </>
+                ) : freeWeekEnding ? (
                   <>
                     <b>Or keep Plus</b>
                     <small>

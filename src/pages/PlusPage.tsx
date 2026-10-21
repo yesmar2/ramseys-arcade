@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
 import { PlusGlyph } from '../components/PlusMark'
 import { RewardArt } from '../components/season/RewardArt'
@@ -60,8 +60,25 @@ function daysBefore(iso: string, n: number): string {
   return out
 }
 
-/** The member card: your own tag with the mark, as a member's would read. */
-function MemberCard({ name, member, founder, line }: { name: string; member: boolean; founder: boolean; line: { small: string; big: string } }) {
+/** A text's place while what it says is still on its way: a shimmering bar about its width (list.css). */
+function Skel({ w }: { w: string }) {
+  return <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} aria-hidden="true" />
+}
+
+/** The member card: your own tag with the mark, as a member's would read. `pending`: its foot not known yet. */
+function MemberCard({
+  name,
+  member,
+  founder,
+  line,
+  pending = false,
+}: {
+  name: string
+  member: boolean
+  founder: boolean
+  line: { small: string; big: string }
+  pending?: boolean
+}) {
   return (
     <figure className="plus-card" aria-label={member ? 'Your Plus member card' : 'A Plus member card, with your tag on it'}>
       <div className="plus-card__top">
@@ -79,8 +96,14 @@ function MemberCard({ name, member, founder, line }: { name: string; member: boo
         {founder ? <span className="plus-card__title">Founding Member</span> : null}
       </div>
       <span className="plus-card__line">
-        {line.small}
-        <b>{line.big}</b>
+        {pending ? (
+          <Skel w="9rem" />
+        ) : (
+          <>
+            {line.small}
+            <b>{line.big}</b>
+          </>
+        )}
       </span>
     </figure>
   )
@@ -259,6 +282,9 @@ export function PlusPage() {
 
   const you = info?.you ?? null
   const member = isPlus || you?.plan === 'plus'
+  // Plus's answer (GET /plus) not in yet: what depends on it holds its place, rather than saying what it would say
+  // without it and changing ("You're on Plus", then "Your free week of Plus": Ramsey, 2026-10-21).
+  const loading = !info && !infoFailed
   const currency = info?.currency ?? 'usd'
   const monthly = info?.prices?.month ?? info?.price ?? 299
   const yearly = info?.prices?.year ?? null
@@ -460,7 +486,20 @@ export function PlusPage() {
               Plus includes every season’s Gold Pass, every past daily and a few things only members get. Playing stays free for
               everyone.
             </p>
-            {member ? (
+            {member && loading ? (
+              // A member's block in the shapes it will have: which kind of member, and its buttons, aren't known yet.
+              <div className="plus-have" aria-hidden="true">
+                <span className="plus-have__tag skel-btn">Your free week of Plus</span>
+                <span className="plus-have__line">
+                  <Skel w="100%" />
+                  <Skel w="62%" />
+                </span>
+                <div className="plus-have__btns">
+                  <span className="plus-btn plus-btn--go skel-btn">Card and receipts</span>
+                  <span className="plus-btn plus-btn--quiet skel-btn">Cancel Plus</span>
+                </div>
+              </div>
+            ) : member ? (
               <div className="plus-have">
                 <span className="plus-have__tag">{onFreeWeek ? 'Your free week of Plus' : 'You’re on Plus'}</span>
                 {you?.renewsAt ? (
@@ -510,10 +549,14 @@ export function PlusPage() {
                 <div className="plus-go">
                   {join()}
                   <span className="plus-go__after">
-                    {after ? `${after} ` : ''}Cancel any time; what you’ve won stays yours.
+                    {loading ? <Skel w="15rem" /> : `${after ? `${after} ` : ''}Cancel any time; what you’ve won stays yours.`}
                   </span>
                 </div>
-                {founder ? <p className="plus-hero__founder">Join by {dayWords(founderBy)} and the Founding Member title is yours for good.</p> : null}
+                {founder ? (
+                  <p className="plus-hero__founder">
+                    {loading ? <Skel w="19rem" /> : `Join by ${dayWords(founderBy)} and the Founding Member title is yours for good.`}
+                  </p>
+                ) : null}
                 <p className="plus-fine">
                   Renews automatically every {unit} until you cancel, which you can do here any time. By joining you agree to the{' '}
                   <a href={termsHref()}>Terms</a>.
@@ -522,7 +565,7 @@ export function PlusPage() {
             )}
           </div>
           <div className="plus-hero__card">
-            <MemberCard name={yourName || 'YOUR TAG'} member={member} founder={founder} line={cardLine} />
+            <MemberCard name={yourName || 'YOUR TAG'} member={member} founder={founder} line={cardLine} pending={member && loading} />
           </div>
         </section>
 
@@ -542,7 +585,17 @@ export function PlusPage() {
                 {gold ? 'The Gold Pass is one season’s paid row. Plus includes it every season, and everything else here.' : 'Everything about playing is free. Plus adds the rest.'}
               </p>
             </div>
-            {!member && yearly != null ? (
+            {!member && loading ? (
+              // The switch's place while the prices come: a year's isn't known before them.
+              <div className="plus-every" aria-hidden="true">
+                <button type="button" className="skel-btn" disabled tabIndex={-1}>
+                  Monthly
+                </button>
+                <button type="button" className="skel-btn" disabled tabIndex={-1}>
+                  Yearly
+                </button>
+              </div>
+            ) : !member && yearly != null ? (
               <div className="plus-every" role="group" aria-label="How to pay for Plus">
                 <button type="button" aria-pressed={!byYear} onClick={() => setEvery('month')}>
                   Monthly
@@ -605,7 +658,15 @@ export function PlusPage() {
                       <strong>{price}</strong>/{unit}
                     </span>
                     <span className="plus-cmp__what">
-                      {freeWeek && !member ? `First ${trialDays} days free` : byYear ? `About ${money(Math.round(yearly / 12), currency)} a month` : 'Cancel any time'}
+                      {loading ? (
+                        <Skel w="7rem" />
+                      ) : freeWeek && !member ? (
+                        `First ${trialDays} days free`
+                      ) : byYear ? (
+                        `About ${money(Math.round(yearly / 12), currency)} a month`
+                      ) : (
+                        'Cancel any time'
+                      )}
                     </span>
                     {member ? <span className="plus-cmp__pill plus-cmp__pill--plus">You’re on Plus</span> : join(true)}
                   </th>
