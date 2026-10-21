@@ -1246,12 +1246,26 @@ html[data-theme='dark'] .season-tile__got {
   gap: 0.3rem;
 }
 
-/* Two ways to it: Pass+ for the season, once, or Plus, which includes every season's. */
+/* Two ways to it: Pass+ for the season, once, or Plus, which includes every season's. Side by side, of a height,
+   and under them what buying gives at once. */
 .season-plus__ways {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.season-plus__pair {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: stretch;
   gap: 0.6rem;
+}
+
+/* On sale soon is a pill, not a box: it sits in the middle of the pair's height. */
+.season-plus__pair > .season-plus__soon {
+  align-self: center;
 }
 
 .season-plus__buy,
@@ -1368,14 +1382,6 @@ html[data-theme='light'] .season-track__bonus span {
   color: color-mix(in srgb, var(--space-orange) 60%, var(--ink));
 }
 
-/* The Gold Pass to buy, and under it what buying it gives at once. */
-.season-plus__way {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.3rem;
-}
-
 .season-plus__now {
   font-size: 0.78rem;
   font-weight: 700;
@@ -1477,7 +1483,8 @@ html[data-theme='light'] .season-tile.season-tile--sought {
 
   .season-plus__buy,
   .season-plus__member,
-  .season-plus__way {
+  .season-plus__ways,
+  .season-plus__pair {
     width: 100%;
   }
 }

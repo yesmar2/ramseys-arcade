@@ -501,7 +501,9 @@ function PassPlus({
             <span className="season-plus__soon">Included with your Plus from its first payment, when the free week ends</span>
           ) : (
             <div className="season-plus__ways">
-              <div className="season-plus__way">
+              {/* The two ways to it side by side and of a height (Ramsey, 2026-10-21: "I don't love the look of the
+                  buttons not lining up"); what buying gives at once goes under them both. */}
+              <div className="season-plus__pair">
                 {plus.buyable ? (
                   // Until a session's account is known, neither buying nor signing in.
                   <button type="button" className="season-plus__buy" onClick={() => void buy()} disabled={busy || (!signedIn && !signedOut)}>
@@ -511,14 +513,7 @@ function PassPlus({
                 ) : (
                   <span className="season-plus__soon">On sale soon · {price} for the season</span>
                 )}
-                {/* What buying it gives at once, said by the buying: the Gold row's rewards your level has reached. */}
-                {signedIn && reached > 0 ? (
-                  <span className="season-plus__now">
-                    {reached} {reached === 1 ? 'reward' : 'rewards'} reached already, yours at once
-                  </span>
-                ) : null}
-              </div>
-              <a className="season-plus__member" href={plusHref()}>
+                <a className="season-plus__member" href={plusHref()}>
                 {freeWeekEnding ? (
                   <>
                     <b>Or keep Plus</b>
@@ -547,7 +542,14 @@ function PassPlus({
                     </small>
                   </>
                 )}
-              </a>
+                </a>
+              </div>
+              {/* What buying it gives at once, said by the buying: the Gold row's rewards your level has reached. */}
+              {plus.buyable && signedIn && reached > 0 ? (
+                <span className="season-plus__now">
+                  {reached} {reached === 1 ? 'reward' : 'rewards'} reached already, yours at once with the Gold Pass
+                </span>
+              ) : null}
             </div>
           )}
         </div>
