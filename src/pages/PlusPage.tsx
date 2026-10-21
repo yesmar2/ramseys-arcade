@@ -17,6 +17,7 @@ import {
   fetchPlus,
   FOUNDER_UNTIL,
   freeWeekFor,
+  keepPlusMembership,
   managePlusMembership,
   membersLookWords,
   money,
@@ -141,8 +142,8 @@ export function PlusPage() {
   // GET /plus didn't answer: nothing can be bought, so the button says so rather than waiting for good.
   const [infoFailed, setInfoFailed] = useState(false)
   const [busy, setBusy] = useState(false)
-  // Which of a member's two buttons is opening Stripe's page, so only it says "Opening…".
-  const [opening, setOpening] = useState<'manage' | 'cancel' | null>(null)
+  // Which of a member's two buttons is busy, so only it says so.
+  const [opening, setOpening] = useState<'manage' | 'cancel' | 'keep' | null>(null)
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
   /** By the month or the year: the month unless asked. */
   const [every, setEvery] = useState<PlusInterval>('month')
@@ -218,6 +219,30 @@ export function PlusPage() {
       window.clearTimeout(timer)
     }
   }, [])
+
+  // Kept on, right here: no trip to Stripe's page, which has no way back once it's done.
+  const keep = async () => {
+    setBusy(true)
+    setOpening('keep')
+    setNote(null)
+    try {
+      const kept = await keepPlusMembership()
+      setInfo((was) => (was ? { ...was, you: kept } : was))
+      setNote({
+        ok: true,
+        text: kept.renewsAt
+          ? kept.status === 'trialing'
+            ? `Plus is on again. Your free week goes on, and your first payment is on ${day(kept.renewsAt)}.`
+            : `Plus is on again. It renews on ${day(kept.renewsAt)}.`
+          : 'Plus is on again.',
+      })
+    } catch (err) {
+      setNote({ ok: false, text: err instanceof Error ? err.message : 'Couldn’t keep Plus on just now' })
+    } finally {
+      setBusy(false)
+      setOpening(null)
+    }
+  }
 
   const go = async (open: () => Promise<string>, which: 'manage' | 'cancel' | null = null) => {
     setBusy(true)
@@ -449,17 +474,23 @@ export function PlusPage() {
                         : `Renews on ${day(you.renewsAt)}.`}
                   </span>
                 ) : null}
-                {/* Cancelling is a button of its own, straight to Stripe's cancel step and back here; the card and
-                    the receipts are Stripe's page, where a cancelled membership can be kept on too. */}
+                {/* Cancelling goes straight to Stripe's cancel step and back here, and keeping a cancelled one on is
+                    done here outright: Stripe's own page has no way back once either's done. The card and the
+                    receipts are Stripe's page. */}
                 {you?.source === 'stripe' ? (
                   <div className="plus-have__btns">
+                    {you.cancelsAtEnd ? (
+                      <button type="button" className="plus-btn plus-btn--go" disabled={busy} onClick={() => void keep()}>
+                        {opening === 'keep' ? 'Keeping it on…' : 'Keep Plus'}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      className="plus-btn plus-btn--go"
+                      className={`plus-btn ${you.cancelsAtEnd ? 'plus-btn--quiet' : 'plus-btn--go'}`}
                       disabled={busy}
                       onClick={() => void go(() => managePlusMembership(), 'manage')}
                     >
-                      {opening === 'manage' ? 'Opening…' : you.cancelsAtEnd ? 'Keep Plus' : 'Card and receipts'}
+                      {opening === 'manage' ? 'Opening…' : 'Card and receipts'}
                     </button>
                     {you.cancelsAtEnd ? null : (
                       <button

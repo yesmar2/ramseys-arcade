@@ -89,6 +89,11 @@ export async function managePlusMembership(to?: 'cancel'): Promise<string> {
   return (await api<{ url: string }>('/plus/manage', { method: 'POST', body: JSON.stringify(to ? { to } : {}) })).url
 }
 
+/** A cancelled membership kept on before it ends, here rather than on Stripe's page: where it stands then. */
+export async function keepPlusMembership(): Promise<PlusYou> {
+  return (await api<{ you: PlusYou }>('/plus/keep', { method: 'POST', body: '{}' })).you
+}
+
 /**
  * This month's members' looks by name, for a line that says what comes with Plus: "this month's members'
  * look (the Founding Member title)". "The month's look" alone left Ramsey asking what it was (2026-10-21).
