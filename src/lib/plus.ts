@@ -81,9 +81,23 @@ export async function confirmPlusMembership(session: string): Promise<{ member: 
   return api<{ member: boolean; you: PlusYou }>('/plus/confirm', { method: 'POST', body: JSON.stringify({ session }) })
 }
 
-/** Stripe's portal for your membership (the card, receipts, cancelling): its page's address. */
-export async function managePlusMembership(): Promise<string> {
-  return (await api<{ url: string }>('/plus/manage', { method: 'POST', body: '{}' })).url
+/**
+ * Stripe's portal for your membership (the card, receipts, cancelling): its page's address. `'cancel'` opens
+ * its cancel step, which comes back to the Plus page (?left=done) once it's done.
+ */
+export async function managePlusMembership(to?: 'cancel'): Promise<string> {
+  return (await api<{ url: string }>('/plus/manage', { method: 'POST', body: JSON.stringify(to ? { to } : {}) })).url
+}
+
+/**
+ * This month's members' looks by name, for a line that says what comes with Plus: "this month's members'
+ * look (the Founding Member title)". "The month's look" alone left Ramsey asking what it was (2026-10-21).
+ */
+export function membersLookWords(info: PlusInfo | null): string {
+  const looks = (info?.looks ?? []).map((l) => `the ${l.name} ${l.what.toLowerCase()}`)
+  if (!looks.length) return 'this month’s members’ look'
+  const names = looks.length === 1 ? looks[0] : `${looks.slice(0, -1).join(', ')} and ${looks[looks.length - 1]}`
+  return `this month’s members’ ${looks.length === 1 ? 'look' : 'looks'} (${names})`
 }
 
 /**

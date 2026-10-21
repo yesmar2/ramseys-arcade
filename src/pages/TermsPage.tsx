@@ -81,8 +81,8 @@ export function TermsPage() {
           look) arrive with the first payment, not during the free week.
         </li>
         <li>
-          <strong>Cancelling.</strong> You can cancel any time from the Plus page (“Manage or
-          cancel”). Plus then lasts until the end of the period you’ve paid for and does not
+          <strong>Cancelling.</strong> You can cancel any time from the Plus page (“Cancel
+          Plus”). Plus then lasts until the end of the period you’ve paid for and does not
           renew. Anything Plus gave you to keep stays yours after it ends.
         </li>
         <li>

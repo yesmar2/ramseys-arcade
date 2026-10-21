@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { PageShell } from '../components/PageShell'
 import { PlusGlyph } from '../components/PlusMark'
 import { RewardArt } from '../components/season/RewardArt'
@@ -18,6 +18,7 @@ import {
   FOUNDER_UNTIL,
   freeWeekFor,
   managePlusMembership,
+  membersLookWords,
   money,
   perSeason,
   seasonWeeks,
@@ -134,9 +135,14 @@ export function PlusPage() {
   const season = liveSeason(seasonStore)
   const pass = seasonStore.plus ?? null
   const [info, setInfo] = useState<PlusInfo | null>(null)
+  // The latest, for a note written when a payment's answer comes back (this month's looks, by name).
+  const infoRef = useRef<PlusInfo | null>(null)
+  infoRef.current = info
   // GET /plus didn't answer: nothing can be bought, so the button says so rather than waiting for good.
   const [infoFailed, setInfoFailed] = useState(false)
   const [busy, setBusy] = useState(false)
+  // Which of a member's two buttons is opening Stripe's page, so only it says "Opening…".
+  const [opening, setOpening] = useState<'manage' | 'cancel' | null>(null)
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
   /** By the month or the year: the month unless asked. */
   const [every, setEvery] = useState<PlusInterval>('month')
@@ -179,7 +185,7 @@ export function PlusPage() {
             : you.status === 'trialing'
               ? {
                   ok: true,
-                  text: 'Welcome to Plus. Your free week has started: every past daily is open now. This season’s Gold Pass and the month’s look come with your first payment.',
+                  text: `Welcome to Plus. Your free week has started: every past daily is open now. This season’s Gold Pass and ${membersLookWords(infoRef.current)} come with your first payment.`,
                 }
               : { ok: true, text: 'Welcome to Plus. Every past daily is open, and this season’s Gold Pass is yours: what your level has reached is in your hangar and Prizes now.' },
         )
@@ -187,13 +193,41 @@ export function PlusPage() {
       .catch(() => setNote({ ok: false, text: 'Couldn’t check the payment just now. If it went through, Plus starts shortly.' }))
   }, [])
 
-  const go = async (open: () => Promise<string>) => {
+  // Back from Stripe's cancel step: said at once, and asked again until the membership shows it (Stripe's
+  // message to the API can be a moment behind the way back here).
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search)
+    if (query.get('left') !== 'done') return
+    window.history.replaceState(window.history.state, '', window.location.pathname)
+    setNote({ ok: true, text: 'Plus is cancelled, and nothing more will be charged.' })
+    let live = true
+    let tries = 0
+    let timer = 0
+    const ask = () => {
+      fetchPlus()
+        .then((next) => {
+          if (!live) return
+          setInfo(next)
+          if (!next.you?.cancelsAtEnd && ++tries < 6) timer = window.setTimeout(ask, 1500)
+        })
+        .catch(() => undefined)
+    }
+    ask()
+    return () => {
+      live = false
+      window.clearTimeout(timer)
+    }
+  }, [])
+
+  const go = async (open: () => Promise<string>, which: 'manage' | 'cancel' | null = null) => {
     setBusy(true)
+    setOpening(which)
     setNote(null)
     try {
       window.location.assign(await open())
     } catch (err) {
       setBusy(false)
+      setOpening(null)
       setNote({ ok: false, text: err instanceof Error ? err.message : 'Couldn’t open that page' })
     }
   }
@@ -409,16 +443,35 @@ export function PlusPage() {
                     {onFreeWeek
                       ? you.cancelsAtEnd
                         ? `Your free week ends on ${day(you.renewsAt)}, and Plus with it. Nothing is charged.`
-                        : `Your free week ends on ${day(you.renewsAt)}, with your first payment. This season’s Gold Pass and the month’s look come with it.`
+                        : `Your free week ends on ${day(you.renewsAt)}, with your first payment. This season’s Gold Pass and ${membersLookWords(info)} come with it.`
                       : you.cancelsAtEnd
                         ? `Ends on ${day(you.renewsAt)}: what you’ve won stays yours.`
                         : `Renews on ${day(you.renewsAt)}.`}
                   </span>
                 ) : null}
+                {/* Cancelling is a button of its own, straight to Stripe's cancel step and back here; the card and
+                    the receipts are Stripe's page, where a cancelled membership can be kept on too. */}
                 {you?.source === 'stripe' ? (
-                  <button type="button" className="plus-btn plus-btn--go" disabled={busy} onClick={() => void go(managePlusMembership)}>
-                    {busy ? 'Opening…' : 'Manage or cancel'}
-                  </button>
+                  <div className="plus-have__btns">
+                    <button
+                      type="button"
+                      className="plus-btn plus-btn--go"
+                      disabled={busy}
+                      onClick={() => void go(() => managePlusMembership(), 'manage')}
+                    >
+                      {opening === 'manage' ? 'Opening…' : you.cancelsAtEnd ? 'Keep Plus' : 'Card and receipts'}
+                    </button>
+                    {you.cancelsAtEnd ? null : (
+                      <button
+                        type="button"
+                        className="plus-btn plus-btn--quiet"
+                        disabled={busy}
+                        onClick={() => void go(() => managePlusMembership('cancel'), 'cancel')}
+                      >
+                        {opening === 'cancel' ? 'Opening…' : 'Cancel Plus'}
+                      </button>
+                    )}
+                  </div>
                 ) : null}
               </div>
             ) : (
@@ -565,8 +618,8 @@ export function PlusPage() {
               <div className="plus-faq__one">
                 <h3>What happens after the free week?</h3>
                 <p>
-                  Your first payment, and with it the month’s look and this season’s Gold Pass, for as long as you’re a member. Cancel
-                  before the week ends and you pay nothing.
+                  Your first payment, and with it {membersLookWords(info)} and this season’s Gold Pass, for as long as you’re a
+                  member. Cancel before the week ends and you pay nothing.
                 </p>
               </div>
             ) : null}

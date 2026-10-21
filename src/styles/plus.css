@@ -237,6 +237,33 @@ html[data-theme='light'] .plus {
   color: var(--muted);
 }
 
+/* A member's ways on: the card and receipts (or keeping Plus), and cancelling, plain but a button all the same. */
+.plus-have__btns {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.plus-btn--quiet {
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.plus-btn--quiet:hover:not(:disabled) {
+  border-color: rgba(var(--ink-rgb), 0.3);
+}
+
+.plus-btn--quiet:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.plus-btn--quiet:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
 .plus-hero__card {
   display: flex;
   justify-content: center;
