@@ -5,11 +5,14 @@ import { seasonHasStandings, useSeasonTab } from '../lib/seasonStandings'
 import { usePeriodRanks } from '../hooks/useProfileBoards'
 import { DeleteAccountPanel } from './DeleteAccount'
 import { TicketGlyph } from './prizes/Ticket'
+import { BlipFigure } from './BlipFigure'
+import { usePoll } from '../lib/poll'
 import { SeasonPatch } from './season/SeasonLook'
 import { createPortal } from 'react-dom'
 import {
   aboutHref,
   adminHref,
+  blipQuestionsHref,
   notificationSettingsHref,
   plusHref,
   privacyHref,
@@ -196,6 +199,8 @@ export function SiteMenu({
   }
   const isAdmin = useIsAdmin()
   const tickets = useTickets()
+  // Blip's question of the day, for his row: asked, or answered (then his questions page, with everyone's).
+  const blip = usePoll(signedIn).view?.today ?? null
   const seasonStore = useSeason()
   const season = liveSeason(seasonStore)
   const { isPlus, signedOut, loading: authLoading } = useAuth()
@@ -552,6 +557,18 @@ export function SiteMenu({
                     'Trade tickets for looks',
                     prizesHref(),
                     tickets.loaded ? tickets.balance.toLocaleString() : null,
+                  )
+                : null}
+              {/*
+               * Blip's questions: the one way to them that's always there. On a phone, the home page's Up next shows
+               * two cards, and Blip's is often the third (Ramsey, 2026-10-21: "i'll never have a link to the poll page").
+               */}
+              {blip
+                ? row(
+                    <BlipFigure size={22} mood={blip.pick != null ? 'happy' : 'hi'} />,
+                    'Blip’s questions',
+                    blip.pick != null ? 'See how everyone answered' : `Today: ${blip.q}`,
+                    blipQuestionsHref(),
                   )
                 : null}
               {/* Plus, quietly, beside what it adds to: the free week said where it's still to be had. */}

@@ -9,6 +9,7 @@ import {
   rankHref,
   recordsIndexHref,
   standingsHref,
+  blipQuestionsHref,
   prizesHref, statsHref,
   termsHref,
   tournamentCreateHref,
@@ -72,6 +73,9 @@ export function Footer() {
                 <a href={`${homeHref()}#games`} onClick={toWall}>
                   All games
                 </a>
+              </li>
+              <li>
+                <a href={blipQuestionsHref()}>Blip’s questions</a>
               </li>
             </ul>
           </div>
