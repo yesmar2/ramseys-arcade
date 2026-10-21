@@ -33,7 +33,10 @@ import {
  * a molten pool along a floor, the shortcut's tunnel, and the landing pad riding its lift.
  *
  * It draws only with fills and strokes, never shadowBlur or overlapping circle fills, so a phone's canvas
- * keeps up. The cave is always dark, whatever the site's theme: it's underground.
+ * keeps up. Nothing in a frame is one shape across the whole screen, nor cut to one: a laptop's graphics chip
+ * fills those slowly, however little of them shows. The walls, their light and the air go a few stretches at a
+ * time (PIECE), and the grid is drawn only where it's in the air. The cave is always dark, whatever the site's
+ * theme: it's underground.
  */
 
 /** The colours underground. */
@@ -61,6 +64,39 @@ const C = {
   earth: '#3b7be0',
   land: '#4fbf7a',
 } as const
+
+/** The rock's colour, C.rock, as numbers, for the walls' light laid over it. */
+const ROCK = [11, 7, 22] as const
+
+/**
+ * The walls' light, as bands out into the rock from the wall line, widest first: how far out (m), and how strong.
+ * The last is the lit edge itself. Each band is drawn solid, in the rock's colour with the light laid over it once
+ * for every band it's under, so where two walls' light meets it's no brighter than either.
+ */
+const GLOW = [
+  [2.2, 0.035],
+  [1.65, 0.04],
+  [1.15, 0.05],
+  [0.7, 0.07],
+  [0.22, 1],
+] as const
+
+/**
+ * How many of a wall's 1.5 m stretches are filled at a time. A shape across the whole screen is slow to fill on
+ * a laptop's graphics chip, however thin it is, so the walls, their light and the air go a few stretches at a time.
+ */
+const PIECE = 6
+
+/** A wall in view: each of its points on the screen, and the way into the rock from it, a metre long on the screen. */
+type Wall = { x: number[]; y: number[]; ux: number[]; uy: number[] }
+
+/** The cave in view, on the screen: its tunnels (two walls each, the air between), round ends and rooms. */
+type CaveShape = {
+  tunnels: [Wall, Wall][]
+  /** The cave's own tunnel's ends are lit round; the test cave's shortcut's aren't. */
+  ends: { x: number; y: number; r: number; lit: boolean }[]
+  rooms: { x: number; y: number; w: number; h: number }[]
+}
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
@@ -330,10 +366,14 @@ export class CaveScene {
 
   /* ---------- the cave ---------- */
 
-  private wallColor(y: number, alpha: number) {
+  private wallRgb(y: number) {
     const box = this.cave.box
     const f = clamp((box[3] - y) / (box[3] - box[2]), 0, 1)
-    const c = C.wallTop.map((v, i) => Math.round(lerp(v, C.wallDeep[i]!, f)))
+    return C.wallTop.map((v, i) => Math.round(lerp(v, C.wallDeep[i]!, f)))
+  }
+
+  private wallColor(y: number, alpha: number) {
+    const c = this.wallRgb(y)
     return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`
   }
 
@@ -356,85 +396,160 @@ export class CaveScene {
     return [Math.max(0, lo - 1), Math.min(N.length - 1, hi + 1)]
   }
 
-  /**
-   * The cave in view as two walls: a line down each side, `r` out from the middle. `air` is the space between
-   * them, with the round ends of the tunnel and the two rooms; `edge` is every wall line, to stroke.
-   */
-  private caveShapes(span: [number, number]) {
-    const { cave, cam, W, H } = this
-    const N = cave.nodes
-    const left: [number, number][] = []
-    const right: [number, number][] = []
-    for (let i = span[0]; i <= span[1]; i++) {
+  /** One tunnel's two walls, from node `lo` to `hi`: a line down each side, `r` out from the middle. */
+  private wallsOf(N: readonly CaveNode[], lo: number, hi: number): [Wall, Wall] {
+    const { cam } = this
+    const left: Wall = { x: [], y: [], ux: [], uy: [] }
+    const right: Wall = { x: [], y: [], ux: [], uy: [] }
+    for (let i = lo; i <= hi; i++) {
       const a = N[Math.max(0, i - 1)]!
       const b = N[Math.min(N.length - 1, i + 1)]!
       const L = Math.hypot(b.x - a.x, b.y - a.y) || 1
       const nx = -(b.y - a.y) / L
       const ny = (b.x - a.x) / L
       const p = N[i]!
-      left.push([this.sx(p.x + nx * p.r), this.sy(p.y + ny * p.r)])
-      right.push([this.sx(p.x - nx * p.r), this.sy(p.y - ny * p.r)])
+      left.x.push(this.sx(p.x + nx * p.r))
+      left.y.push(this.sy(p.y + ny * p.r))
+      left.ux.push(nx * cam.k)
+      left.uy.push(-ny * cam.k)
+      right.x.push(this.sx(p.x - nx * p.r))
+      right.y.push(this.sy(p.y - ny * p.r))
+      right.ux.push(-nx * cam.k)
+      right.uy.push(ny * cam.k)
     }
-    const air = new Path2D()
-    const edge = new Path2D()
-    if (left.length) {
-      air.moveTo(left[0]![0], left[0]![1])
-      for (const q of left) air.lineTo(q[0], q[1])
-      for (let i = right.length - 1; i >= 0; i--) air.lineTo(right[i]![0], right[i]![1])
-      air.closePath()
-      edge.moveTo(left[0]![0], left[0]![1])
-      for (const q of left) edge.lineTo(q[0], q[1])
-      edge.moveTo(right[0]![0], right[0]![1])
-      for (const q of right) edge.lineTo(q[0], q[1])
-    }
-    // The tunnel's two ends are round, where they open into the rooms.
+    return [left, right]
+  }
+
+  /** The cave in view: the tunnel's two walls, its round ends where it opens into the rooms, and the rooms. */
+  private caveShape(span: [number, number]): CaveShape {
+    const { cave, cam, W, H } = this
+    const N = cave.nodes
+    const shape: CaveShape = { tunnels: [], ends: [], rooms: [] }
+    if (span[1] > span[0]) shape.tunnels.push(this.wallsOf(N, span[0], span[1]))
     for (const i of [0, N.length - 1]) {
       if (i < span[0] || i > span[1]) continue
       const p = N[i]!
-      air.moveTo(this.sx(p.x) + p.r * cam.k, this.sy(p.y))
-      air.arc(this.sx(p.x), this.sy(p.y), p.r * cam.k, 0, Math.PI * 2)
-      edge.moveTo(this.sx(p.x) + p.r * cam.k, this.sy(p.y))
-      edge.arc(this.sx(p.x), this.sy(p.y), p.r * cam.k, 0, Math.PI * 2)
+      shape.ends.push({ x: this.sx(p.x), y: this.sy(p.y), r: p.r * cam.k, lit: true })
     }
     for (const m of cave.rooms) {
       if (m.x1 < cam.x - W / 2 / cam.k - 4 || m.x0 > cam.x + W / 2 / cam.k + 4) continue
       if (m.y1 < cam.y - H / 2 / cam.k - 4 || m.y0 > cam.y + H / 2 / cam.k + 4) continue
-      air.rect(this.sx(m.x0), this.sy(m.y1), (m.x1 - m.x0) * cam.k, (m.y1 - m.y0) * cam.k)
-      edge.rect(this.sx(m.x0), this.sy(m.y1), (m.x1 - m.x0) * cam.k, (m.y1 - m.y0) * cam.k)
+      shape.rooms.push({ x: this.sx(m.x0), y: this.sy(m.y1), w: (m.x1 - m.x0) * cam.k, h: (m.y1 - m.y0) * cam.k })
     }
-    // The test cave's shortcut: a tunnel of its own, traced the same way round so its air joins the cave's.
-    for (const B of cave.lab?.branches ?? []) this.tunnelShape(B, air, edge)
-    return { air, edge }
+    // The test cave's shortcut: a tunnel of its own, whole, its ends round but unlit.
+    for (const B of cave.lab?.branches ?? []) {
+      if (B.length < 2) continue
+      shape.tunnels.push(this.wallsOf(B, 0, B.length - 1))
+      for (const p of [B[0]!, B[B.length - 1]!]) shape.ends.push({ x: this.sx(p.x), y: this.sy(p.y), r: p.r * cam.k, lit: false })
+    }
+    return shape
   }
 
-  /** A whole tunnel's two walls and round ends, added to the cave's air and edges. */
-  private tunnelShape(N: readonly CaveNode[], air: Path2D, edge: Path2D) {
-    const { cam } = this
-    const left: [number, number][] = []
-    const right: [number, number][] = []
-    for (let i = 0; i < N.length; i++) {
-      const a = N[Math.max(0, i - 1)]!
-      const b = N[Math.min(N.length - 1, i + 1)]!
-      const L = Math.hypot(b.x - a.x, b.y - a.y) || 1
-      const nx = -(b.y - a.y) / L
-      const ny = (b.x - a.x) / L
-      const p = N[i]!
-      left.push([this.sx(p.x + nx * p.r), this.sy(p.y + ny * p.r)])
-      right.push([this.sx(p.x - nx * p.r), this.sy(p.y - ny * p.r)])
+  /** Whether a piece reaching `reach` pixels round its points shows on the screen. */
+  private pieceShows(w: Wall, i: number, j: number, reach: number) {
+    let x0 = Infinity
+    let x1 = -Infinity
+    let y0 = Infinity
+    let y1 = -Infinity
+    for (let q = i; q <= j; q++) {
+      x0 = Math.min(x0, w.x[q]!)
+      x1 = Math.max(x1, w.x[q]!)
+      y0 = Math.min(y0, w.y[q]!)
+      y1 = Math.max(y1, w.y[q]!)
     }
-    if (!left.length) return
-    air.moveTo(left[0]![0], left[0]![1])
-    for (const q of left) air.lineTo(q[0], q[1])
-    for (let i = right.length - 1; i >= 0; i--) air.lineTo(right[i]![0], right[i]![1])
-    air.closePath()
-    edge.moveTo(left[0]![0], left[0]![1])
-    for (const q of left) edge.lineTo(q[0], q[1])
-    edge.moveTo(right[0]![0], right[0]![1])
-    for (const q of right) edge.lineTo(q[0], q[1])
-    for (const p of [N[0]!, N[N.length - 1]!]) {
-      air.moveTo(this.sx(p.x) + p.r * cam.k, this.sy(p.y))
-      air.arc(this.sx(p.x), this.sy(p.y), p.r * cam.k, 0, Math.PI * 2)
+    return x1 > -reach && x0 < this.W + reach && y1 > -reach && y0 < this.H + reach
+  }
+
+  /**
+   * A band along a wall, from `d0` to `d1` metres out into the rock, in the fill already set, a few stretches at
+   * a time (PIECE). Each piece runs one stretch into the next, so they join without a seam.
+   */
+  private band(w: Wall, d0: number, d1: number) {
+    const { ctx } = this
+    const n = w.x.length
+    const reach = Math.max(Math.abs(d0), Math.abs(d1)) * this.cam.k + 2
+    for (let i = 0; i < n - 1; i += PIECE) {
+      const j = Math.min(n - 1, i + PIECE + 1)
+      if (!this.pieceShows(w, i, j, reach)) continue
+      ctx.beginPath()
+      for (let q = i; q <= j; q++) ctx.lineTo(w.x[q]! + w.ux[q]! * d1, w.y[q]! + w.uy[q]! * d1)
+      for (let q = j; q >= i; q--) ctx.lineTo(w.x[q]! + w.ux[q]! * d0, w.y[q]! + w.uy[q]! * d0)
+      ctx.fill()
     }
+  }
+
+  /** A tunnel's air, between its two walls, in the fill already set, a few stretches at a time. */
+  private tunnelAir([left, right]: [Wall, Wall]) {
+    const { ctx } = this
+    const n = left.x.length
+    for (let i = 0; i < n - 1; i += PIECE) {
+      const j = Math.min(n - 1, i + PIECE + 1)
+      if (!this.pieceShows(left, i, j, 2) && !this.pieceShows(right, i, j, 2)) continue
+      ctx.beginPath()
+      for (let q = i; q <= j; q++) ctx.lineTo(left.x[q]!, left.y[q]!)
+      for (let q = j; q >= i; q--) ctx.lineTo(right.x[q]!, right.y[q]!)
+      ctx.fill()
+    }
+  }
+
+  /** The air in view as one shape, for the test cave's things to be cut to. */
+  private airPath(shape: CaveShape) {
+    const air = new Path2D()
+    for (const [left, right] of shape.tunnels) {
+      const n = left.x.length
+      for (let q = 0; q < n; q++) air.lineTo(left.x[q]!, left.y[q]!)
+      for (let q = n - 1; q >= 0; q--) air.lineTo(right.x[q]!, right.y[q]!)
+      air.closePath()
+    }
+    for (const e of shape.ends) {
+      air.moveTo(e.x + e.r, e.y)
+      air.arc(e.x, e.y, e.r, 0, Math.PI * 2)
+    }
+    for (const m of shape.rooms) air.rect(m.x, m.y, m.w, m.h)
+    return air
+  }
+
+  /**
+   * Where a line across the screen runs through the air, as [from, to] pairs along it: down the screen at x = `c`,
+   * or across it at y = `c`. The grid's lines are drawn only there, rather than cut to the air's shape, which is
+   * slow on a laptop's graphics chip.
+   */
+  private airAlong(shape: CaveShape, c: number, down: boolean): number[] {
+    const spans: [number, number][] = []
+    const cut: number[] = []
+    for (const [left, right] of shape.tunnels) {
+      // Round the tunnel's outline, left wall down and right wall back, where it crosses the line.
+      const n = left.x.length
+      const u = (q: number) => (q < n ? (down ? left.x[q]! : left.y[q]!) : down ? right.x[2 * n - 1 - q]! : right.y[2 * n - 1 - q]!)
+      const v = (q: number) => (q < n ? (down ? left.y[q]! : left.x[q]!) : down ? right.y[2 * n - 1 - q]! : right.x[2 * n - 1 - q]!)
+      cut.length = 0
+      for (let q = 0; q < 2 * n; q++) {
+        const r = (q + 1) % (2 * n)
+        const a = u(q)
+        const b = u(r)
+        if (a <= c !== b <= c) cut.push(v(q) + ((c - a) / (b - a)) * (v(r) - v(q)))
+      }
+      cut.sort((a, b) => a - b)
+      for (let q = 0; q + 1 < cut.length; q += 2) spans.push([cut[q]!, cut[q + 1]!])
+    }
+    for (const e of shape.ends) {
+      const d = c - (down ? e.x : e.y)
+      if (Math.abs(d) >= e.r) continue
+      const half = Math.sqrt(e.r * e.r - d * d)
+      const mid = down ? e.y : e.x
+      spans.push([mid - half, mid + half])
+    }
+    for (const m of shape.rooms) {
+      const [a0, a1, b0, b1] = down ? [m.x, m.x + m.w, m.y, m.y + m.h] : [m.y, m.y + m.h, m.x, m.x + m.w]
+      if (c > a0 && c < a1) spans.push([b0, b1])
+    }
+    spans.sort((a, b) => a[0] - b[0])
+    const out: number[] = []
+    for (const [a, b] of spans) {
+      if (out.length && a <= out[out.length - 1]!) out[out.length - 1] = Math.max(out[out.length - 1]!, b)
+      else out.push(a, b)
+    }
+    return out
   }
 
   private drawCave(f: SceneFrame) {
@@ -442,59 +557,91 @@ export class CaveScene {
     // The rock.
     ctx.fillStyle = C.rock
     ctx.fillRect(0, 0, W, H)
-    if (this.fleck) {
-      ctx.save()
-      const ox = (-cam.x * cam.k) % 96
-      const oy = (cam.y * cam.k) % 96
-      ctx.translate(ox, oy)
-      ctx.fillStyle = this.fleck
-      ctx.fillRect(-ox - 96, -oy - 96, W + 192, H + 192)
-      ctx.restore()
-    }
 
     const span = this.spanInView()
     const wall = this.wallColor(cam.y, 1)
-    const { air, edge } = this.caveShapes(span)
-    // Light spilling off the walls into the rock, then the lit edge; the air then covers the inner halves.
+    const shape = this.caveShape(span)
+    // Light spilling off the walls into the rock, then the lit edge, each band solid (GLOW); the flecks in the
+    // rock go over the light, under the edge. The air then covers the bands' inner ends.
+    const [wr, wg, wb] = this.wallRgb(cam.y)
+    let [r, g, b]: number[] = [...ROCK]
+    GLOW.forEach(([out, alpha], layer) => {
+      r = lerp(r, wr!, alpha)
+      g = lerp(g, wg!, alpha)
+      b = lerp(b, wb!, alpha)
+      if (layer === GLOW.length - 1) this.drawFleck()
+      ctx.fillStyle = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+      for (const [left, right] of shape.tunnels) {
+        this.band(left, -0.3, out)
+        this.band(right, -0.3, out)
+      }
+      const o = out * cam.k
+      for (const e of shape.ends) {
+        if (!e.lit) continue
+        ctx.beginPath()
+        ctx.arc(e.x, e.y, e.r + o, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      for (const m of shape.rooms) {
+        ctx.beginPath()
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(m.x - o, m.y - o, m.w + 2 * o, m.h + 2 * o, o)
+        else ctx.rect(m.x - o, m.y - o, m.w + 2 * o, m.h + 2 * o)
+        ctx.fill()
+      }
+    })
+    // The lit edge's line, as the things drawn after it have always had it: the turning bar's hub is ringed in it.
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
-    for (const [width, alpha] of [
-      [4.4, 0.035],
-      [3.3, 0.04],
-      [2.3, 0.05],
-      [1.4, 0.07],
-      [0.44, 1],
-    ] as const) {
-      ctx.lineWidth = width * cam.k
-      ctx.strokeStyle = alpha === 1 ? wall : this.wallColor(cam.y, alpha)
-      ctx.stroke(edge)
-    }
+    ctx.lineWidth = 0.44 * cam.k
     ctx.fillStyle = C.air
-    ctx.fill(air)
+    for (const t of shape.tunnels) this.tunnelAir(t)
+    for (const e of shape.ends) {
+      ctx.beginPath()
+      ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    for (const m of shape.rooms) ctx.fillRect(m.x, m.y, m.w, m.h)
 
-    // A grid in the air, every 4 m, fixed to the cave.
-    ctx.save()
-    ctx.clip(air)
-    ctx.strokeStyle = C.grid
-    ctx.lineWidth = 1
-    ctx.beginPath()
+    // A grid in the air, every 4 m, fixed to the cave: a pixel wide, drawn only where each line is in the air.
+    ctx.fillStyle = C.grid
     const step = 4
     const x0 = Math.floor((cam.x - W / 2 / cam.k) / step) * step
     const x1 = cam.x + W / 2 / cam.k
     const y0 = Math.floor((cam.y - H / 2 / cam.k) / step) * step
     const y1 = cam.y + H / 2 / cam.k
+    const columns: number[] = []
     for (let x = x0; x <= x1; x += step) {
-      ctx.moveTo(Math.round(this.sx(x)) + 0.5, 0)
-      ctx.lineTo(Math.round(this.sx(x)) + 0.5, H)
+      const px = Math.round(this.sx(x))
+      columns.push(px)
+      const along = this.airAlong(shape, px + 0.5, true)
+      for (let i = 0; i < along.length; i += 2) {
+        const a = Math.max(0, along[i]!)
+        const z = Math.min(H, along[i + 1]!)
+        if (z > a) ctx.fillRect(px, a, 1, z - a)
+      }
     }
+    // The lines across stop either side of each line down, so where they cross is no brighter than either.
     for (let y = y0; y <= y1 + step; y += step) {
-      ctx.moveTo(0, Math.round(this.sy(y)) + 0.5)
-      ctx.lineTo(W, Math.round(this.sy(y)) + 0.5)
+      const py = Math.round(this.sy(y))
+      const along = this.airAlong(shape, py + 0.5, false)
+      for (let i = 0; i < along.length; i += 2) {
+        let a = Math.max(0, along[i]!)
+        const z = Math.min(W, along[i + 1]!)
+        for (const px of columns) {
+          if (px + 1 <= a || px >= z) continue
+          if (px > a) ctx.fillRect(a, py, px - a, 1)
+          a = px + 1
+        }
+        if (z > a) ctx.fillRect(a, py, z - a, 1)
+      }
     }
-    ctx.stroke()
-    ctx.restore()
-    this.drawLava(air)
-    this.drawLabAir(air)
+    if (cave.lab) {
+      // Made only when something's in view to be cut to it.
+      let path: Path2D | null = null
+      const air = () => (path ??= this.airPath(shape))
+      this.drawLava(air)
+      this.drawLabAir(air)
+    }
 
     // Pillars: rock, lit round the edge.
     for (const p of cave.pillars) {
@@ -514,6 +661,19 @@ export class CaveScene {
     this.drawLabSolids()
     this.drawGates(f)
     this.drawPads()
+  }
+
+  /** Flecks in the rock, staying put with it. */
+  private drawFleck() {
+    const { ctx, cam, W, H } = this
+    if (!this.fleck) return
+    ctx.save()
+    const ox = (-cam.x * cam.k) % 96
+    const oy = (cam.y * cam.k) % 96
+    ctx.translate(ox, oy)
+    ctx.fillStyle = this.fleck
+    ctx.fillRect(-ox - 96, -oy - 96, W + 192, H + 192)
+    ctx.restore()
   }
 
   private drawGates(f: SceneFrame) {
@@ -545,7 +705,7 @@ export class CaveScene {
       }
       // Its number, over its middle.
       ctx.globalAlpha = passed ? 0.6 : 0.9
-      ctx.font = `700 ${Math.max(11, 0.75 * cam.k)}px ${this.font}`
+      ctx.font = `700 ${Math.round(Math.max(11, 0.75 * cam.k))}px ${this.font}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       const label = i === cave.gates.length - 1 ? 'ROOM' : `${i + 1}`
@@ -584,7 +744,7 @@ export class CaveScene {
         ctx.fillStyle = on ? '#fff4d6' : 'rgba(255, 179, 71, 0.35)'
         ctx.fill()
       }
-      ctx.font = `800 ${Math.max(11, 0.8 * cam.k)}px ${this.font}`
+      ctx.font = `800 ${Math.round(Math.max(11, 0.8 * cam.k))}px ${this.font}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'alphabetic'
       ctx.fillStyle = pad.end ? C.pad : 'rgba(255, 179, 71, 0.6)'
@@ -839,7 +999,7 @@ export class CaveScene {
     if (words > 0) {
       ctx.save()
       ctx.globalAlpha = words
-      ctx.font = `800 ${Math.max(12, 0.85 * cam.k)}px ${this.font}`
+      ctx.font = `800 ${Math.round(Math.max(12, 0.85 * cam.k))}px ${this.font}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'alphabetic'
       ctx.fillStyle = C.star
@@ -996,7 +1156,7 @@ export class CaveScene {
       ctx.globalAlpha = 1
     }
     // Whose run it is, on a dark pill over it.
-    ctx.font = `700 ${Math.max(11, 0.62 * cam.k)}px ${this.font}`
+    ctx.font = `700 ${Math.round(Math.max(11, 0.62 * cam.k))}px ${this.font}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
     const tx = this.sx(g.x)
@@ -1081,7 +1241,7 @@ export class CaveScene {
    * molten layer lying along the floor, its top rolling a little, glowing up into the air with embers rising
    * off it. It's drawn over the air, and only where there's air: the rock under it stays rock.
    */
-  private drawLava(air: Path2D) {
+  private drawLava(air: () => Path2D) {
     const { ctx, cam } = this
     const lava = this.cave.lab?.lava
     if (!lava?.length) return
@@ -1092,7 +1252,7 @@ export class CaveScene {
       if (x1 < 0 || x0 > this.W || top - 4 * cam.k > this.H || top + cam.k < 0) continue
       const pulse = 0.85 + 0.15 * Math.sin(this.time * 1.7)
       ctx.save()
-      ctx.clip(air)
+      ctx.clip(air())
       const surface = (x: number) => top + Math.sin(((x - this.W / 2) / cam.k + this.cam.x) * 1.3 + this.time * 1.6) * 0.07 * cam.k
       const body = new Path2D()
       body.moveTo(x0, this.sy(l.y1 - 1.6))
@@ -1136,24 +1296,33 @@ export class CaveScene {
   }
 
   /** In the air: water with a moving surface and bubbles, the low-gravity bubble's shimmer, and the vents' steam. */
-  private drawLabAir(air: Path2D) {
+  private drawLabAir(air: () => Path2D) {
     const lab = this.cave.lab
     if (!lab) return
     const { ctx, cam, W, H } = this
-    ctx.save()
-    ctx.clip(air)
+    // Cut to the air once something's in view to be: the cut is slow, on a laptop's graphics chip.
+    let cut = false
+    const inAir = () => {
+      if (cut) return
+      cut = true
+      ctx.save()
+      ctx.clip(air())
+    }
     for (const p of lab.pools) {
       const x0 = this.sx(p.x0)
       const x1 = this.sx(p.x1)
       const top = this.sy(p.y)
-      if (x1 < 0 || x0 > W || top > H) continue
+      // Down to the pool's floor, where the water stops (sim.ts labField), not on through the air under it.
+      const floor = Math.min(H + 10, this.sy(p.y0))
+      if (x1 < 0 || x0 > W || top > H || floor < 0) continue
+      inAir()
       // The surface rolls, a little.
       const wave = (x: number) => top + Math.sin(((x - W / 2) / cam.k + cam.x) * 0.9 + this.time * 2.2) * 0.12 * cam.k
       const body = new Path2D()
-      body.moveTo(x0, H + 10)
+      body.moveTo(x0, floor)
       for (let x = x0; x < x1; x += 6) body.lineTo(x, wave(x))
       body.lineTo(x1, wave(x1))
-      body.lineTo(x1, H + 10)
+      body.lineTo(x1, floor)
       body.closePath()
       const deep = ctx.createLinearGradient(0, top, 0, top + 14 * cam.k)
       deep.addColorStop(0, 'rgba(70, 160, 255, 0.42)')
@@ -1173,8 +1342,10 @@ export class CaveScene {
       for (let i = 0; i < 26; i++) {
         const bx = lerp(p.x0, p.x1, rnd())
         const rise = (rnd() * 14 + this.time * (0.8 + rnd() * 0.8)) % 14
+        const size = Math.max(1.2, (0.08 + rnd() * 0.1) * cam.k)
+        if (p.y - 14 + rise < p.y0) continue
         ctx.beginPath()
-        ctx.arc(this.sx(bx + Math.sin(this.time * 2 + i) * 0.2), this.sy(p.y - 14 + rise), Math.max(1.2, (0.08 + rnd() * 0.1) * cam.k), 0, Math.PI * 2)
+        ctx.arc(this.sx(bx + Math.sin(this.time * 2 + i) * 0.2), this.sy(p.y - 14 + rise), size, 0, Math.PI * 2)
         ctx.fill()
       }
     }
@@ -1183,6 +1354,7 @@ export class CaveScene {
       const cy = this.sy(b.y)
       const r = b.r * cam.k
       if (cx + r < 0 || cx - r > W || cy + r < 0 || cy - r > H) continue
+      inAir()
       const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r)
       glow.addColorStop(0, 'rgba(120, 230, 255, 0.10)')
       glow.addColorStop(1, 'rgba(120, 230, 255, 0.02)')
@@ -1210,7 +1382,7 @@ export class CaveScene {
         ctx.arc(this.sx(x), this.sy(y), Math.max(1, 0.07 * cam.k), 0, Math.PI * 2)
         ctx.fill()
       }
-      ctx.font = `700 ${Math.max(10, 0.6 * cam.k)}px ${this.font}`
+      ctx.font = `700 ${Math.round(Math.max(10, 0.6 * cam.k))}px ${this.font}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = 'rgba(160, 235, 255, 0.55)'
@@ -1224,6 +1396,7 @@ export class CaveScene {
       const ox = this.sx(v.x)
       const oy = this.sy(v.y)
       if (Math.hypot(ox - W / 2, oy - H / 2) > Math.hypot(W, H) / 2 + v.reach * cam.k) continue
+      inAir()
       // Its nozzle: a grate in the rock, warm while it blows.
       ctx.save()
       ctx.translate(ox, oy)
@@ -1252,7 +1425,7 @@ export class CaveScene {
         ctx.fill()
       }
     }
-    ctx.restore()
+    if (cut) ctx.restore()
   }
 
   /** The things that move and crash a ship: the crushers, in hazard stripes, and the turning bar. */
@@ -1369,7 +1542,7 @@ export class CaveScene {
     const tilt = Math.abs(ship.a)
     const ok = speed <= LAND_SPEED && tilt <= LAND_ANGLE
     ctx.save()
-    ctx.font = `700 ${Math.max(12, 0.7 * cam.k)}px ${this.font}`
+    ctx.font = `700 ${Math.round(Math.max(12, 0.7 * cam.k))}px ${this.font}`
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = ok ? C.passed : C.bad
