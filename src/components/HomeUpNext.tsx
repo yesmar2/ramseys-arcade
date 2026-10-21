@@ -28,9 +28,9 @@ import '../styles/upNext.css'
  * Up next for you, under today's ticket (D on the "Home page redesign" canvas, 2026-10-15): a row of cards picked
  * from your own games. The place you're after on the game you played last (or, with no score on it, the game
  * itself, to jump back in), a record you hold and could lose, Blip's question of the day, and the season's pass:
- * three or four of them across the row, never fewer than three (FEWEST_CARDS: more games fill it out), and on a
- * phone the first two, one under the other (upNext.css). Each card has one way on. It took the place of the banner that used to open the page for anyone who'd played before
- * (HomeHero.tsx keeps a first visit's welcome).
+ * always four of them across the row (FEWEST_CARDS: more games fill it out), and on a phone the first two, one
+ * under the other (upNext.css). Each card has one way on. It took the place of the banner that used to open the
+ * page for anyone who'd played before (HomeHero.tsx keeps a first visit's welcome).
  */
 
 const PlayIcon = () => (
@@ -353,11 +353,12 @@ const SEASON_WAIT_MS = 4000
 
 /*
  * The fewest cards the row shows: two spread thin across the page (Ramsey, 2026-10-16: "it looks a little funny
- * when there is only two, i think we always need to have at least 3"). With no record held, no season on or no
- * question from Blip, more games fill it out. The Standings card that used to fill in went because it repeated
- * the Standings further down the page.
+ * when there is only two, i think we always need to have at least 3"), and then three (2026-10-21: "i think
+ * there should be 4 cards always in the Up Next for you on desktop, i don't like how it looks with just 3"). With
+ * no record held, no season on or no question from Blip, more games fill it out. The Standings card that used to
+ * fill in went because it repeated the Standings further down the page. A phone shows only the first two.
  */
-const FEWEST_CARDS = 3
+const FEWEST_CARDS = 4
 
 type Filler = { slug: string; kicker: string; played: boolean }
 
