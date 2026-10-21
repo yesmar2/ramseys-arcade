@@ -153,17 +153,27 @@ export function BlipPoll({ inSheet = false, look, onPastPage = false }: { inShee
           ))}
         </ul>
       )}
-      {/* On the home page's card, yesterday's answer before the foot, in a box with its share as a bar. */}
-      {card && today && yesterday && top >= 0 ? (
-        <a className="blip-poll__ago" href={blipQuestionsHref()} aria-label={`Yesterday: ${yesterday.q} ${yesterday.options[top]}, ${share(yesterday.counts[top]!, yesterday.total)}. See all of Blip’s questions`}>
+      {/*
+       * On the home page's card, yesterday's answer before the foot, in a box with its share as a bar, leading to
+       * Blip's questions. A day nobody answered is still there (on a quiet day it was the only way to the page),
+       * asking for an answer: past ones can be answered late.
+       */}
+      {card && today && yesterday ? (
+        <a
+          className="blip-poll__ago"
+          href={blipQuestionsHref()}
+          aria-label={
+            top >= 0
+              ? `Yesterday: ${yesterday.q} ${yesterday.options[top]}, ${share(yesterday.counts[top]!, yesterday.total)}. See all of Blip’s questions`
+              : `Yesterday: ${yesterday.q} Nobody answered it yet: answer it on Blip’s questions`
+          }
+        >
           <span className="blip-poll__ago-row">
             <span className="blip-poll__ago-q">Yesterday: {yesterday.q}</span>
-            <b>
-              {yesterday.options[top]} {share(yesterday.counts[top]!, yesterday.total)}
-            </b>
+            <b>{top >= 0 ? `${yesterday.options[top]} ${share(yesterday.counts[top]!, yesterday.total)}` : 'Answer it ›'}</b>
           </span>
           <span className="blip-poll__ago-bar" aria-hidden="true">
-            <span style={{ width: share(yesterday.counts[top]!, yesterday.total) }} />
+            <span style={{ width: top >= 0 ? share(yesterday.counts[top]!, yesterday.total) : '0%' }} />
           </span>
         </a>
       ) : null}
@@ -204,11 +214,12 @@ export function BlipPoll({ inSheet = false, look, onPastPage = false }: { inShee
         </p>
       ) : null}
       {voted && answers != null && (!card || won) ? <BlipSet answers={answers} won={won} /> : null}
-      {!card && !onPastPage && yesterday && top >= 0 ? (
+      {!card && !onPastPage && yesterday ? (
         <p className="blip-poll__then">
-          <b>Yesterday:</b> {yesterday.q} {yesterday.options[top]}, {share(yesterday.counts[top]!, yesterday.total)}.{' '}
+          <b>Yesterday:</b> {yesterday.q}{' '}
+          {top >= 0 ? `${yesterday.options[top]}, ${share(yesterday.counts[top]!, yesterday.total)}. ` : 'Nobody answered it yet. '}
           <a className="blip-poll__past" href={blipQuestionsHref()}>
-            Past questions
+            {top >= 0 ? 'Past questions' : 'Answer it'}
           </a>
         </p>
       ) : null}
