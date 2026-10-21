@@ -4,14 +4,16 @@ import { PageShell } from '../components/PageShell'
 import { openSiteMenu } from '../components/siteNav'
 import { useAuth } from '../hooks/useAuth'
 import { archiveDayWords } from '../lib/archive'
-import { blipSet, fetchPastPolls, share, type PastPoll } from '../lib/poll'
+import { answerPastPoll, blipSet, fetchPastPolls, share, type PastPoll } from '../lib/poll'
 import '../styles/blipPoll.css'
 import '../styles/blipQuestions.css'
 
 /*
- * Blip's questions (/blip): today's on top, as the home page asks it, and every one before it under it, newest
- * first, with how everyone answered and your answer lit. Ramsey, 2026-10-20: "we need a page to see past
- * polls/questions". A page of them at a time, from the API's GET /poll/past.
+ * Blip's questions (/blip): today's beside the page's head, as the home page asks it, and every one before it
+ * under them, newest first, with how everyone answered and your answer lit. Ramsey, 2026-10-20: "we need a page
+ * to see past polls/questions". A page of them at a time, from the API's GET /poll/past. One you missed can still
+ * be answered (2026-10-21: "we should let people still vote on older ones too"), for no tickets: its answers
+ * show once you've given yours, as today's do.
  */
 
 type Load = { polls: PastPoll[]; next: number | null; answers: number | null; status: 'loading' | 'ready' | 'error'; more: 'idle' | 'loading' | 'error' }
@@ -52,31 +54,33 @@ export function BlipQuestionsPage() {
       })
   }
 
+  // A late answer's question, as the API now has it, in place of the one on show.
+  const answered = (poll: PastPoll) => setLoad((s) => ({ ...s, polls: s.polls.map((p) => (p.n === poll.n ? poll : p)) }))
+
   const answers = signedIn ? load.answers : null
   const toward = answers != null ? blipSet(answers) : null
 
   return (
     <PageShell innerClassName="lb-page__inner bq-page">
-      <section className="bq-head" aria-labelledby="bq-title">
-        <div className="bq-head__text">
+      <div className="bq-top">
+        <section className="bq-head" aria-labelledby="bq-title">
           <h1 className="bq-title" id="bq-title">
             Blip’s questions
           </h1>
           <p className="bq-lede">
-            One a day, about anything. Here’s how everyone answered.
-            {answers != null ? (
-              <>
-                {' '}
-                You’ve answered <b>{answers.toLocaleString()}</b>
-                {toward?.next ? `, ${toward.more} more to the ${toward.next.name}` : ''}.
-              </>
-            ) : null}
+            One a day, about anything. Missed one? You can still answer it: the tickets are for the day’s question.
           </p>
+          {/* Nothing to say at none: today's card says how near the next of his set is. */}
+          {answers ? (
+            <p className="bq-count">
+              You’ve answered <b>{answers.toLocaleString()}</b> on the day
+              {toward?.next ? `, ${toward.more} more to the ${toward.next.name}` : ''}.
+            </p>
+          ) : null}
+        </section>
+        <div className="bq-today">
+          <BlipPoll onPastPage />
         </div>
-      </section>
-
-      <div className="bq-today">
-        <BlipPoll onPastPage />
       </div>
 
       <h2 className="bq-sub">Before today</h2>
@@ -108,7 +112,7 @@ export function BlipQuestionsPage() {
         <>
           <ul className="bq-list">
             {load.polls.map((poll) => (
-              <PastCard key={poll.n} poll={poll} signedIn={signedIn} />
+              <PastCard key={poll.n} poll={poll} signedIn={signedIn} onAnswered={answered} />
             ))}
           </ul>
           {load.next ? (
@@ -136,35 +140,81 @@ export function BlipQuestionsPage() {
   )
 }
 
-/** A past question: its day, the question, everyone's answers as bars with the most picked marked and yours lit. */
-function PastCard({ poll, signedIn }: { poll: PastPoll; signedIn: boolean }) {
+/**
+ * A past question: its day, the question, and everyone's answers as bars with the most picked marked and yours
+ * lit. One a signed-in player missed is its answers to pick from instead, until they pick; a visitor sees the bars.
+ */
+function PastCard({ poll, signedIn, onAnswered }: { poll: PastPoll; signedIn: boolean; onAnswered: (poll: PastPoll) => void }) {
+  const [sending, setSending] = useState<number | null>(null)
+  const [failed, setFailed] = useState(false)
+  // Answered here, just now: the bars grow in from nothing, as today's card's do.
+  const [fresh, setFresh] = useState(false)
+  const asking = signedIn && poll.pick == null
   const most = poll.total ? Math.max(...poll.counts) : -1
+
+  const pickAnswer = (i: number) => {
+    if (sending != null) return
+    setSending(i)
+    setFailed(false)
+    answerPastPoll(poll.n, i)
+      .then((next) => {
+        setFresh(true)
+        onAnswered(next)
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setSending(null))
+  }
+
   return (
-    <li className="bq-card">
+    <li
+      className={`bq-card${asking ? ' bq-card--ask' : ''}${fresh ? ' blip-poll--fresh' : ''}${sending != null ? ' blip-poll--sending' : ''}`}
+    >
       <p className="bq-card__day">
         #{poll.n} · {archiveDayWords(poll.day)}
       </p>
       <h3 className="bq-card__q">{poll.q}</h3>
-      <ul className="blip-poll__res bq-card__res" aria-label="How everyone answered">
-        {poll.options.map((option, i) => {
-          const mine = i === poll.pick
-          const top = poll.counts[i] === most
-          const pct = share(poll.counts[i] ?? 0, poll.total)
-          return (
-            <li key={option} className={`blip-poll__bar${mine ? ' blip-poll__bar--mine' : ''}${top ? ' bq-card__bar--top' : ''}`}>
-              <span className="blip-poll__fill" style={{ width: pct }} />
-              <span className="blip-poll__label">
+      {asking ? (
+        <ul className="blip-poll__opts" aria-busy={sending != null}>
+          {poll.options.map((option, i) => (
+            <li key={option}>
+              <button type="button" className="blip-poll__opt" onClick={() => pickAnswer(i)} disabled={sending != null} aria-busy={sending === i}>
                 {option}
-                {mine ? <span className="blip-poll__you"> · you</span> : null}
-              </span>
-              <span className="blip-poll__pct">{pct}</span>
+                {sending === i ? <span className="blip-poll__spin" aria-hidden="true" /> : null}
+              </button>
             </li>
-          )
-        })}
-      </ul>
+          ))}
+        </ul>
+      ) : (
+        <ul className="blip-poll__res bq-card__res" aria-label="How everyone answered">
+          {poll.options.map((option, i) => {
+            const mine = i === poll.pick
+            const top = poll.counts[i] === most
+            const pct = share(poll.counts[i] ?? 0, poll.total)
+            return (
+              <li key={option} className={`blip-poll__bar${mine ? ' blip-poll__bar--mine' : ''}${top ? ' bq-card__bar--top' : ''}`}>
+                <span className="blip-poll__fill" style={{ width: pct }} />
+                <span className="blip-poll__label">
+                  {option}
+                  {mine ? <span className="blip-poll__you"> · you</span> : null}
+                </span>
+                <span className="blip-poll__pct">{pct}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
       <p className="bq-card__foot">
-        {poll.total === 0 ? 'No answers' : poll.total === 1 ? '1 answer' : `${poll.total.toLocaleString()} answers`}
-        {signedIn && poll.pick == null ? ' · you missed this one' : ''}
+        {asking
+          ? sending != null && !failed
+            ? 'Counting your answer…'
+            : failed
+              ? 'That didn’t go through: try again.'
+              : 'You missed this one. Answer to see how everyone did.'
+          : poll.total === 0
+            ? 'No answers'
+            : poll.total === 1
+              ? '1 answer'
+              : `${poll.total.toLocaleString()} answers`}
       </p>
     </li>
   )

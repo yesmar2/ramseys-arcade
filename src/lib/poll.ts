@@ -16,7 +16,7 @@ export type PollView = {
   yesterday: (PollQuestion & PollCounts) | null
   tomorrow: string | null
   tickets: number
-  /** How many of his questions the player has answered, ever, toward Blip's set; null for a visitor. */
+  /** How many of his questions the player has answered on their day, ever, toward Blip's set; null for a visitor. */
   answers?: number | null
 }
 
@@ -105,6 +105,12 @@ export type PastPolls = { today: number | null; polls: PastPoll[]; next: number 
 /** Blip's past questions, newest first, a page at a time: from yesterday's, or older than `before`'s. */
 export function fetchPastPolls(before?: number | null): Promise<PastPolls> {
   return api<PastPolls>(`/poll/past${before ? `?before=${before}` : ''}`)
+}
+
+/** Answer a past question, late: for no tickets and not toward Blip's set. The question with everyone's answers. */
+export async function answerPastPoll(n: number, pick: number): Promise<PastPoll> {
+  const { poll } = await api<{ poll: PastPoll }>(`/poll/past/${n}`, { method: 'POST', body: JSON.stringify({ pick }) })
+  return poll
 }
 
 /** "38%": a share of the answers, rounded. */

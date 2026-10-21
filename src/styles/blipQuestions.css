@@ -1,12 +1,12 @@
 /*
- * Blip's questions (/blip, pages/BlipQuestionsPage.tsx): today's card on top, then the past questions as cards
- * of their own, their answers as the home card's bars (blipPoll.css) in Blip's mint.
+ * Blip's questions (/blip, pages/BlipQuestionsPage.tsx): the head with today's card beside it, then the past
+ * questions as cards of their own, their answers as the home card's bars and buttons (blipPoll.css) in Blip's
+ * mint. As wide as the site's other pages (.lb-page__inner).
  */
 
 .lb-page__inner.bq-page {
   --blip: #34c6a8;
   --blip-ink: #13715f;
-  width: min(100% - 2rem, 58rem);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -17,7 +17,21 @@ html[data-theme='dark'] .lb-page__inner.bq-page {
   --blip-ink: #7fe3c4;
 }
 
-.bq-head__text {
+/* The head, and today's card beside it on a wide screen, under it on a narrow one. */
+.bq-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem 2.5rem;
+  align-items: end;
+}
+
+@media (min-width: 52rem) {
+  .bq-top {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+  }
+}
+
+.bq-head {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -40,13 +54,20 @@ html[data-theme='dark'] .lb-page__inner.bq-page {
   color: color-mix(in srgb, var(--ink) 82%, transparent);
 }
 
-.bq-lede b {
+.bq-count {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.bq-count b {
   color: var(--blip-ink);
 }
 
 /* Today's, as the home page asks it: room above for Blip perched on it. */
 .bq-today {
-  width: min(100%, 30rem);
+  min-width: 0;
   padding-top: 1.4rem;
 }
 
@@ -86,6 +107,12 @@ html[data-theme='dark'] .lb-page__inner.bq-page {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--blip-ink);
+}
+
+/* One you missed, still to answer: a touch of Blip's mint, as today's card has. */
+.bq-card--ask {
+  background: color-mix(in srgb, var(--blip) 6%, var(--surface));
+  border-color: color-mix(in srgb, var(--blip) 30%, transparent);
 }
 
 .bq-card__q {
