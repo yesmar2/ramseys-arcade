@@ -872,25 +872,33 @@ function paintOverlays(ctx: Ctx, scene: Scene, cam: Camera, field: Field, o: Ove
 
 // ------------------------------------------------------------------ layers
 
-/** One pass of a 3×3 box blur, in place. Only ever run on a thumbnail. */
+/**
+ * One pass of a 3×3 box blur, in place: each colour the mean of it and its neighbours (as many as there are, at
+ * an edge). Only ever run on a thumbnail. Summed along each row first and then down the columns: the same sums,
+ * and the same means to the last bit, for a third of the adding (a scene change spent 10 to 20 ms here).
+ */
 function boxBlur(px: Uint8ClampedArray, w: number, h: number) {
-  const src = new Uint8ClampedArray(px)
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      for (let c = 0; c < 3; c++) {
-        let sum = 0
-        let n = 0
-        for (let dy = -1; dy <= 1; dy++) {
-          const yy = y + dy
-          if (yy < 0 || yy >= h) continue
-          for (let dx = -1; dx <= 1; dx++) {
-            const xx = x + dx
-            if (xx < 0 || xx >= w) continue
-            sum += src[(yy * w + xx) * 4 + c]
-            n++
-          }
-        }
-        px[(y * w + x) * 4 + c] = sum / n
+  const rows = new Uint16Array(w * h)
+  for (let c = 0; c < 3; c++) {
+    // Each pixel with its left and right neighbours, from this colour as it was before the pass.
+    for (let y = 0; y < h; y++) {
+      const o = y * w
+      for (let x = 0; x < w; x++) {
+        let sum = px[(o + x) * 4 + c]
+        if (x > 0) sum += px[(o + x - 1) * 4 + c]
+        if (x < w - 1) sum += px[(o + x + 1) * 4 + c]
+        rows[o + x] = sum
+      }
+    }
+    // Then with the rows above and below, and the mean over all of them.
+    for (let y = 0; y < h; y++) {
+      const o = y * w
+      const across = (y > 0 ? 1 : 0) + 1 + (y < h - 1 ? 1 : 0)
+      for (let x = 0; x < w; x++) {
+        let sum = rows[o + x]
+        if (y > 0) sum += rows[o - w + x]
+        if (y < h - 1) sum += rows[o + w + x]
+        px[(o + x) * 4 + c] = sum / (((x > 0 ? 1 : 0) + 1 + (x < w - 1 ? 1 : 0)) * across)
       }
     }
   }
