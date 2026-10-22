@@ -33,7 +33,9 @@ import {
   type AdminFeedback,
   type AdminFlag,
   type ErrorAlerts,
+  type PushService,
   type RunCheck,
+  type TestAlert,
 } from '../lib/admin'
 import { capitalName, HUNT_ANCHORS, huntDay, huntPick, huntTestHref, huntWhere, msUntilNextBug } from '../lib/bugHunt'
 import { lazyPage } from '../lib/lazyPage'
@@ -677,27 +679,65 @@ function ErrorsCard() {
   )
 }
 
+/** What kind of device each push service means, in plain words. */
+const PUSH_DEVICE: Record<PushService, string> = {
+  apple: 'an iPhone or iPad (from the Home Screen), or Safari on a Mac',
+  google: 'Chrome, on Android or a computer',
+  microsoft: 'Edge on Windows',
+  mozilla: 'Firefox',
+  other: 'another browser',
+}
+
+/** A device in plain words: the kind kept when its push was turned on ("Chrome on an Android phone"), else its push service's. */
+function deviceWords(d: { service: PushService; device?: string | null }) {
+  return d.device || PUSH_DEVICE[d.service]
+}
+
+const NO_KEYS = 'This server has no push keys, so it can’t send any. Staging never has them: test alerts on blipka.com.'
+
+/** What a test push found, device by device: "Sent to 1 device" alone left Ramsey asking which one (2026-10-22). */
+function testWords({ devices, sent, pushReady, results }: TestAlert): string[] {
+  if (pushReady === false) return [`Nothing went. ${NO_KEYS}`]
+  if (!devices) return ['No device took it: none of yours has push on.']
+  if (!results) return [`Sent to ${sent} ${sent === 1 ? 'device' : 'devices'}.`]
+  const lines = results.map((r) =>
+    r.ok
+      ? `Taken for ${deviceWords(r)}.`
+      : r.status === 404 || r.status === 410
+        ? `Turned down for ${deviceWords(r)} (${r.status}): it threw its subscription away, so it’s off the list now.`
+        : `Turned down for ${deviceWords(r)}${r.status ? ` (${r.status})` : ''}.`,
+  )
+  if (sent) {
+    lines.push(
+      'If one didn’t show it, that subscription is an old one, or the device has Blipka’s notifications off. On the device you want, turn Alerts on this device off and on again in Settings → Notifications, then test again.',
+    )
+  }
+  return lines
+}
+
 /**
- * Where an error spike's push goes (the API's errorAlerts.ts): the admins' devices that have push on, at any hour.
- * A test push shows it arrives.
+ * Where an error spike's push goes (the API's errorAlerts.ts): the admins' devices that have push on, at any hour,
+ * each by the kind of device it is. A test push shows it arrives.
  */
 function ErrorAlertsLine() {
   const [alerts, setAlerts] = useState<ErrorAlerts | null>(null)
-  const [note, setNote] = useState<string | null>(null)
+  const [note, setNote] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  useEffect(() => {
+  const load = useCallback(() => {
     fetchErrorAlerts().then(setAlerts, (err: unknown) =>
       setError(err instanceof Error ? err.message : 'Couldn’t read where alerts go'),
     )
   }, [])
+  useEffect(load, [load])
   const onTest = async () => {
     setBusy(true)
     setNote(null)
     setError(null)
     try {
-      const { sent } = await sendTestAlert()
-      setNote(sent ? `Sent to ${sent} ${sent === 1 ? 'device' : 'devices'}.` : 'No device took it: none of yours has push on.')
+      setNote(testWords(await sendTestAlert()))
+      // A device that threw its subscription away has just come off the list.
+      load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Couldn’t send it')
     } finally {
@@ -705,22 +745,39 @@ function ErrorAlertsLine() {
     }
   }
   if (!alerts) return error ? <p className="adm-fail">{error}</p> : null
-  const { spike, windowMinutes, devices } = alerts
+  const { spike, windowMinutes, devices, pushReady, deviceList } = alerts
+  const admins = new Set(deviceList?.map((d) => d.email)).size
   return (
     <>
       <p className="adm-note">
         A spike pushes you, at any hour and at most once an hour for each: {spike.site.count} site errors from{' '}
         {spike.site.players} players, or {spike.api.count} failed API answers, within {windowMinutes} minutes.{' '}
-        {devices
-          ? `${devices} of your ${devices === 1 ? 'devices gets' : 'devices get'} them.`
-          : 'None of your devices has push on yet: on your phone, turn Push on for anything in Settings → Notifications, then send a test.'}
+        {pushReady === false
+          ? NO_KEYS
+          : devices
+            ? `${devices === 1 ? 'It goes to 1 device' : `It goes to ${devices} devices`}${deviceList?.length ? ':' : '.'}`
+            : 'None of your devices has push on yet: on your phone, turn on Alerts on this device in Settings → Notifications, then send a test.'}
       </p>
+      {pushReady !== false && deviceList?.length ? (
+        <ul className="adm-devices">
+          {deviceList.map((d, i) => (
+            <li key={i}>
+              {deviceWords(d)}, turned on {ago(d.lastSeenAt)}
+              {admins > 1 ? ` (${d.email})` : ''}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="adm-form">
         <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={busy} onClick={() => void onTest()}>
           {busy ? 'Sending…' : 'Send me a test alert'}
         </button>
       </div>
-      {note ? <p className="adm-note">{note}</p> : null}
+      {note?.map((line, i) => (
+        <p key={i} className="adm-note">
+          {line}
+        </p>
+      ))}
       {error ? <p className="adm-fail">{error}</p> : null}
     </>
   )
