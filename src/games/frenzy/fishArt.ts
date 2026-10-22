@@ -602,7 +602,12 @@ function drawBiolume(
   }
 }
 
-/** Draw one fish; bioluminescent bits are pushed to `glows` in the fish's own frame. */
+/**
+ * Draw one fish; bioluminescent bits are pushed to `glows` in the fish's own frame. `glowOver`, for a fish being
+ * painted on a picture of its own: its light in the deep is added to what's under it ('lighter'), the water and
+ * all, which a picture of the fish alone can't hold. So that part is handed to `glowOver` to draw where the fish
+ * goes, between the fish's back (up to its outline) and its front (fins over the body, mouth, eye).
+ */
 export function drawFish(
   ctx: CanvasRenderingContext2D,
   art: FishArt,
@@ -610,6 +615,7 @@ export function drawFish(
   seed: number,
   glows: Glow[] | null,
   paint: FishPaint,
+  glowOver?: (draw: (g: CanvasRenderingContext2D) => void) => void,
 ) {
   const L = pose.length
   const H = L * art.height * (1 + 0.45 * pose.puff)
@@ -711,7 +717,8 @@ export function drawFish(
   ctx.strokeStyle = outline
   ctx.stroke()
 
-  drawBiolume(ctx, art, paint, L, H, pose, seed, lineW, glows)
+  if (glowOver && (pose.biolume ?? 0) > 0.02) glowOver((g) => drawBiolume(g, art, paint, L, H, pose, seed, lineW, glows))
+  else drawBiolume(ctx, art, paint, L, H, pose, seed, lineW, glows)
 
   if (pose.puff > 0.3) {
     ctx.beginPath()

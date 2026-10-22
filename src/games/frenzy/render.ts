@@ -972,6 +972,117 @@ function drawBoat(ctx: CanvasRenderingContext2D, v: View) {
   ctx.restore()
 }
 
+/*
+ * Fish on pictures of their own. A fish is a few dozen small shapes, most of them outlined, and a laptop's graphics
+ * chip pays dearly for each: the shallows' schools took Frenzy's frame to three times Crosswalk's (2026-10-22). The
+ * computer's own processor gets through small shapes quickly. So a fish of everyday size is painted on a canvas the
+ * processor paints, lined up with the screen's pixels, and goes into the frame as one copy. One fading in or out
+ * (its parts see-through over each other) or too big to gain from it is drawn straight onto the screen as before.
+ */
+
+/** The most pixels across a fish's picture; a bigger fish is drawn straight onto the screen. */
+const PICTURE_MAX = 320
+
+type Picture = { canvas: HTMLCanvasElement; g: CanvasRenderingContext2D }
+
+/** The pictures, used in turn by each frame's fish, from the first again at each frame. */
+const pictures: Picture[] = []
+let picturesUsed = 0
+
+function nextPicture(side: number): Picture | null {
+  let p = pictures[picturesUsed]
+  if (!p) {
+    const canvas = document.createElement('canvas')
+    // Painted by the processor, not the graphics chip: the point of it.
+    const g = canvas.getContext('2d', { willReadFrequently: true })
+    if (!g) return null
+    p = { canvas, g }
+    pictures.push(p)
+  }
+  picturesUsed++
+  // The whole canvas goes to the graphics chip at each copy, so it's kept to the fish's size, in steps of 16
+  // pixels so that a fish growing or the next one along seldom has it made again.
+  const size = Math.ceil(side / 16) * 16
+  if (p.canvas.width !== size || p.canvas.height !== size) {
+    p.canvas.width = size
+    p.canvas.height = size
+  }
+  return p
+}
+
+/**
+ * Draw a fish with `paint` on a picture of its own, if it can be: in its own frame, at (x, y), turned by `angle`,
+ * squeezed by `squeeze`, all of it within `radius` CSS pixels of (x, y). False, having drawn nothing, when it
+ * should go straight onto the screen.
+ */
+function onPicture(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  squeeze: number,
+  radius: number,
+  paint: (g: CanvasRenderingContext2D, glowOver: (draw: (g: CanvasRenderingContext2D) => void) => void) => void,
+): boolean {
+  const m = ctx.getTransform()
+  // Only onto a frame drawn square on, as renderGame sets it, and laid over it as it is.
+  if (m.b !== 0 || m.c !== 0 || m.a !== m.d || ctx.globalCompositeOperation !== 'source-over') return false
+  const k = m.a
+  const cx = m.e + x * k
+  const cy = m.f + y * k
+  const side = Math.ceil(2 * radius * k) + 4
+  if (side > PICTURE_MAX) return false
+  const pic = nextPicture(side)
+  if (!pic) return false
+  // On the screen's whole pixels, so the copy lands pixel for pixel.
+  const left = Math.floor(cx - radius * k) - 2
+  const top = Math.floor(cy - radius * k) - 2
+  const g = pic.g
+  g.setTransform(1, 0, 0, 1, 0, 0)
+  g.clearRect(0, 0, side, side)
+  g.globalAlpha = 1
+  g.globalCompositeOperation = 'source-over'
+  // The fish's open lines end as the screen's drawing has it.
+  g.lineCap = ctx.lineCap
+  g.lineJoin = ctx.lineJoin
+  g.miterLimit = ctx.miterLimit
+  g.setTransform(k, 0, 0, k, m.e - left, m.f - top)
+  g.translate(x, y)
+  g.rotate(angle)
+  g.scale(1, squeeze)
+  const put = () => {
+    ctx.save()
+    ctx.globalAlpha = 1
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.drawImage(pic.canvas, 0, 0, side, side, left, top, side, side)
+    ctx.restore()
+  }
+  paint(g, (draw) => {
+    // The fish's back goes on, then its light over it and the water straight onto the screen, then its front,
+    // painted on the same picture afresh.
+    put()
+    ctx.save()
+    ctx.globalAlpha = 1
+    ctx.translate(x, y)
+    ctx.rotate(angle)
+    ctx.scale(1, squeeze)
+    ctx.lineJoin = g.lineJoin
+    draw(ctx)
+    ctx.restore()
+    const at = g.getTransform()
+    g.setTransform(1, 0, 0, 1, 0, 0)
+    g.clearRect(0, 0, side, side)
+    g.setTransform(at)
+  })
+  put()
+  return true
+}
+
+/** How far from its middle a fish's drawing reaches: tail, fins, bill and lure, with room for the outlines. */
+function drawnReach(art: FishArt, length: number) {
+  return length * (0.5 + (art.bill ?? 0) + (art.lure ? 0.25 : 0)) + 2.2 * length * art.height + 4
+}
+
 function drawOne(
   ctx: CanvasRenderingContext2D,
   v: View,
@@ -987,20 +1098,26 @@ function drawOne(
   if (x < -reach * 1.5 || x > v.w + reach * 1.5 || y < -reach || y > v.h + reach) return
   const alpha = o.alpha ?? 1
   const local: Glow[] = []
-  ctx.save()
-  ctx.globalAlpha = alpha
-  ctx.translate(x, y)
-  ctx.rotate(at.angle)
-  ctx.scale(1, rollScale(at.roll))
-  drawFish(
-    ctx,
-    art,
-    { length: reach, swim: at.swim, amp: o.amp ?? 0.9, mouth: at.mouth, lookX: 1, lookY: 0.05, alarm: o.alarm ?? 0, puff: 0, time: v.s.time, biolume: lumAt(at.y) },
-    at.seed,
-    local,
-    paintFor(art, pal, o.fill, o.threat !== undefined),
-  )
-  ctx.restore()
+  const pose = { length: reach, swim: at.swim, amp: o.amp ?? 0.9, mouth: at.mouth, lookX: 1, lookY: 0.05, alarm: o.alarm ?? 0, puff: 0, time: v.s.time, biolume: lumAt(at.y) }
+  const paint = paintFor(art, pal, o.fill, o.threat !== undefined)
+  const squeeze = rollScale(at.roll)
+  // Not while it rolls over to turn, squeezed toward a sliver, nor with a bill or a lure: the processor draws an
+  // outline that thin, or a point that fine, a little fainter than the graphics chip does.
+  const pictured =
+    alpha === 1 &&
+    Math.abs(squeeze) >= 0.95 &&
+    !art.bill &&
+    !art.lure &&
+    onPicture(ctx, x, y, at.angle, squeeze, drawnReach(art, reach), (g, glowOver) => drawFish(g, art, pose, at.seed, local, paint, glowOver))
+  if (!pictured) {
+    ctx.save()
+    ctx.globalAlpha = alpha
+    ctx.translate(x, y)
+    ctx.rotate(at.angle)
+    ctx.scale(1, squeeze)
+    drawFish(ctx, art, pose, at.seed, local, paint)
+    ctx.restore()
+  }
   placeLights(local, x, y, at.angle, at.roll, alpha)
   // A threat's red glow, stronger as it comes for you.
   if (o.threat !== undefined) lights.push({ x, y, r: reach * 0.95, color: DANGER, strength: (0.22 + 0.4 * o.threat) * alpha })
@@ -1266,6 +1383,11 @@ function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette, skin: str
   const blip = skin === BLIP_FISH
   for (let i = 0; i < 3; i++) {
     const lx = bx - 22 - (2 - i) * 31
+    // A life still held, on a picture of its own (onPicture); a spent one, see-through, straight on.
+    if (!blip && i < s.lives) {
+      const pose = { length: 18, swim: s.time * 4 + i, amp: 0.6, mouth: 0, lookX: 1, lookY: 0, alarm: 0, puff: 0, time: s.time }
+      if (onPicture(ctx, lx, by + bh / 2, 0, 1, drawnReach(art, 18), (g) => drawFish(g, art, pose, i, null, paintFor(art, pal, 0.55)))) continue
+    }
     ctx.save()
     ctx.globalAlpha = i < s.lives ? 1 : 0.25
     ctx.translate(lx, by + bh / 2)
@@ -1305,6 +1427,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   const pal = paletteNow()
   const v: View = { s, w: width, h: height, ppu: s.ppu, x0: s.camX - width / 2 / s.ppu, y0: s.camY - height / 2 / s.ppu }
   lights = []
+  picturesUsed = 0
   ctx.fillStyle = css(pal.deep)
   ctx.fillRect(0, 0, width, height)
   drawSky(ctx, v, pal)
