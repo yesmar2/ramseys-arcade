@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { Suspense, useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { AdminLaunchList } from '../components/AdminLaunchList'
 import { AdminReset } from '../components/AdminReset'
 import { AdminPlayers } from '../components/AdminPlayers'
@@ -13,6 +13,8 @@ import { useAuth } from '../hooks/useAuth'
 import { adminHref, gamePlayHref, homeHref, type AdminSection } from '../hooks/useHashRoute'
 import {
   banTag,
+  clearClientErrors,
+  clearFeedback,
   fetchAdminWhoami,
   fetchBans,
   fetchClientErrors,
@@ -22,6 +24,8 @@ import {
   fetchRunCheck,
   grantTickets,
   liftBan,
+  removeClientError,
+  removeFeedback,
   sendTestAlert,
   settleFlag,
   type AdminBan,
@@ -290,16 +294,30 @@ function useList<T>(load: () => Promise<T[]>) {
   return { items, setItems, error, setError, refresh }
 }
 
-function CardHead({ title, count, onRefresh }: { title: string; count: number | null; onRefresh: () => void }) {
+/** A card's title and count, with Refresh and any other buttons for the whole list (`children`) beside it. */
+function CardHead({
+  title,
+  count,
+  onRefresh,
+  children,
+}: {
+  title: string
+  count: number | null
+  onRefresh: () => void
+  children?: ReactNode
+}) {
   return (
     <div className="adm-card__head">
       <h2 className="adm-card__title">
         {title}
         {count ? <span className="adm-card__count">{count}</span> : null}
       </h2>
-      <button type="button" className="panel__btn panel__btn--ghost adm-small" onClick={onRefresh}>
-        Refresh
-      </button>
+      <div className="adm-card__btns">
+        {children}
+        <button type="button" className="panel__btn panel__btn--ghost adm-small" onClick={onRefresh}>
+          Refresh
+        </button>
+      </div>
     </div>
   )
 }
@@ -458,13 +476,67 @@ function BugHuntCard() {
 }
 
 function FeedbackCard() {
-  const { items, error, refresh } = useList<AdminFeedback>(fetchFeedback)
+  const { items, setItems, error, setError, refresh } = useList<AdminFeedback>(fetchFeedback)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [done, setDone] = useState<string | null>(null)
+
+  const onRemove = async (f: AdminFeedback) => {
+    setBusy(f.id)
+    setError(null)
+    setDone(null)
+    try {
+      await removeFeedback(f.id)
+      setItems((list) => list?.filter((row) => row.id !== f.id) ?? null)
+    } catch (err) {
+      setError(errorText(err, 'Couldn’t remove that one'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Up to the newest shown: a message sent since the list loaded stays, to be read first.
+  const onClear = async () => {
+    if (!items?.length || !window.confirm('Remove all the feedback? This can’t be undone.')) return
+    setBusy('all')
+    setError(null)
+    setDone(null)
+    try {
+      const { removed } = await clearFeedback(Math.max(...items.map((f) => f.createdAt)))
+      setDone(`Removed ${removed.toLocaleString()} ${removed === 1 ? 'message' : 'messages'}.`)
+      refresh()
+    } catch (err) {
+      setError(errorText(err, 'Couldn’t remove them'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <section className="adm-card" aria-labelledby="adm-feedback">
-      <CardHead title="Feedback" count={items?.length ?? null} onRefresh={refresh} />
+      <CardHead
+        title="Feedback"
+        count={items?.length ?? null}
+        onRefresh={() => {
+          setDone(null)
+          refresh()
+        }}
+      >
+        {items && items.length > 1 ? (
+          <button
+            type="button"
+            className="panel__btn panel__btn--ghost panel__btn--danger adm-small"
+            disabled={busy != null}
+            onClick={() => void onClear()}
+          >
+            Remove all
+          </button>
+        ) : null}
+      </CardHead>
       <p className="adm-card__sub" id="adm-feedback">
         What players sent from Tell us (Send feedback in the menu, Suggest a game and Something broke in the footer), the latest first.
+        Remove one once you’ve dealt with it.
       </p>
+      {done ? <p className="adm-note">{done}</p> : null}
       {error ? <p className="adm-fail">{error}</p> : null}
       {items && !items.length ? <p className="adm-note">Nothing yet.</p> : null}
       {items?.length ? (
@@ -485,6 +557,16 @@ function FeedbackCard() {
                   </details>
                 ) : null}
               </div>
+              <div className="adm-row__acts">
+                <button
+                  type="button"
+                  className="panel__btn panel__btn--ghost adm-small"
+                  disabled={busy === f.id || busy === 'all'}
+                  onClick={() => void onRemove(f)}
+                >
+                  Remove
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -494,14 +576,68 @@ function FeedbackCard() {
 }
 
 function ErrorsCard() {
-  const { items, error, refresh } = useList<AdminClientError>(fetchClientErrors)
+  const { items, setItems, error, setError, refresh } = useList<AdminClientError>(fetchClientErrors)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [done, setDone] = useState<string | null>(null)
+
+  const onRemove = async (e: AdminClientError) => {
+    setBusy(e.fingerprint)
+    setError(null)
+    setDone(null)
+    try {
+      await removeClientError(e.fingerprint)
+      setItems((list) => list?.filter((row) => row.fingerprint !== e.fingerprint) ?? null)
+    } catch (err) {
+      setError(errorText(err, 'Couldn’t remove that one'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Up to the newest shown: an error that has happened again since the list loaded stays.
+  const onClear = async () => {
+    if (!items?.length || !window.confirm('Remove every site error? Any that happen again will come back.')) return
+    setBusy('all')
+    setError(null)
+    setDone(null)
+    try {
+      const { removed } = await clearClientErrors(Math.max(...items.map((e) => e.lastAt)))
+      setDone(`Removed ${removed.toLocaleString()} ${removed === 1 ? 'error' : 'errors'}.`)
+      refresh()
+    } catch (err) {
+      setError(errorText(err, 'Couldn’t remove them'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <section className="adm-card" aria-labelledby="adm-errors">
-      <CardHead title="Site errors" count={items?.length ?? null} onRefresh={refresh} />
+      <CardHead
+        title="Site errors"
+        count={items?.length ?? null}
+        onRefresh={() => {
+          setDone(null)
+          refresh()
+        }}
+      >
+        {items && items.length > 1 ? (
+          <button
+            type="button"
+            className="panel__btn panel__btn--ghost panel__btn--danger adm-small"
+            disabled={busy != null}
+            onClick={() => void onClear()}
+          >
+            Remove all
+          </button>
+        ) : null}
+      </CardHead>
       <p className="adm-card__sub" id="adm-errors">
-        What broke in players’ browsers in the last 30 days, the latest first. The same error again counts up.
+        What broke in players’ browsers in the last 30 days, the latest first. The same error again counts up. Remove
+        one once it’s fixed: if it happens again, it comes back.
       </p>
       <ErrorAlertsLine />
+      {done ? <p className="adm-note">{done}</p> : null}
       {error ? <p className="adm-fail">{error}</p> : null}
       {items && !items.length ? <p className="adm-note">Nothing has broken lately.</p> : null}
       {items?.length ? (
@@ -522,6 +658,16 @@ function ErrorsCard() {
                     {e.stack ? <pre>{e.stack}</pre> : null}
                   </details>
                 ) : null}
+              </div>
+              <div className="adm-row__acts">
+                <button
+                  type="button"
+                  className="panel__btn panel__btn--ghost adm-small"
+                  disabled={busy === e.fingerprint || busy === 'all'}
+                  onClick={() => void onRemove(e)}
+                >
+                  Remove
+                </button>
               </div>
             </li>
           ))}

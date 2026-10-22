@@ -30,9 +30,16 @@ html[data-theme='dark'] .adm {
 
 .adm-card__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.6rem 1rem;
+}
+
+.adm-card__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .adm-card__title {

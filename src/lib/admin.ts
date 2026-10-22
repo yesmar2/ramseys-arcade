@@ -214,6 +214,16 @@ export async function fetchClientErrors() {
   return (await api<{ errors: AdminClientError[] }>('/admin/client-errors?limit=100')).errors
 }
 
+/** One error off the list, once it's fixed: it comes back if it happens again. */
+export function removeClientError(fingerprint: string) {
+  return api<{ removed: boolean }>(`/admin/client-errors/${encodeURIComponent(fingerprint)}`, { method: 'DELETE' })
+}
+
+/** Every error up to `before`, the newest the list shows: one that has happened since stays. */
+export function clearClientErrors(before: number) {
+  return api<{ removed: number }>('/admin/client-errors/clear', { method: 'POST', body: JSON.stringify({ before }) })
+}
+
 /**
  * Where an error spike's push goes (the API's errorAlerts.ts): how many of the admins' devices have push on, what
  * counts as a spike, and when each kind last went.
@@ -236,6 +246,16 @@ export function sendTestAlert() {
 
 export async function fetchFeedback() {
   return (await api<{ feedback: AdminFeedback[] }>('/admin/feedback?limit=100')).feedback
+}
+
+/** One message off the list, once it's dealt with: gone for good. */
+export function removeFeedback(id: string) {
+  return api<{ removed: boolean }>(`/admin/feedback/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+/** Every message up to `before`, the newest the list shows: one sent since stays. */
+export function clearFeedback(before: number) {
+  return api<{ removed: number }>('/admin/feedback/clear', { method: 'POST', body: JSON.stringify({ before }) })
 }
 
 /**
