@@ -2,7 +2,7 @@ import { APP_NAME, SITE_HOST } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
 import { termsHref } from '../hooks/useHashRoute'
 
-const UPDATED = 'October 5, 2026'
+const UPDATED = 'October 22, 2026'
 
 export function PrivacyPage() {
   return (
@@ -45,6 +45,13 @@ export function PrivacyPage() {
           server what went wrong: the error, the page’s address without anything after the “?”,
           your browser type and the site’s version. It doesn’t include your name or account. We
           keep these for 30 days to fix problems.
+        </li>
+        <li>
+          <strong>Shares.</strong> When you share something from the site, we note that a share
+          happened: what kind of link it was (a day’s card, a challenge, a record and so on), the
+          game it was about, whether it went by your share sheet or was copied, and your account if
+          you’re signed in. Never who you sent it to or the words with it. It helps us see what
+          people pass on.
         </li>
         <li>
           <strong>Feedback.</strong> If you send us an idea or tell us something broke, we keep what

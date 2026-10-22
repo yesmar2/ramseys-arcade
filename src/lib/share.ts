@@ -1,3 +1,6 @@
+import { canonicalGameSlug } from '../hooks/useHashRoute'
+import { SESSION_KEY } from './accountEvents'
+import { API_BASE } from './auth'
 import { detectDeviceType } from './device'
 
 /*
@@ -8,6 +11,9 @@ import { detectDeviceType } from './device'
  * in, and Windows drops the words when a link goes with them. When neither
  * works, useShare (SharePanel.tsx) opens the kit's panel: the words, the
  * link with Copy, and the usual places.
+ *
+ * Each share that goes is counted (noteShare), for the admin page's numbers:
+ * the kind of link and its game, never the words or who it went to.
  */
 
 /** What goes out: the words, and the link on its own line after them, unless the words already end with it. */
@@ -72,10 +78,54 @@ export async function shareOrCopy(message: ShareMessage): Promise<ShareOutcome> 
   if (usesShareSheet()) {
     try {
       await navigator.share(message.url ? { title: message.text, text: message.text, url: message.url } : { text: message.text })
+      noteShare(message, 'sheet')
       return 'shared'
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled'
     }
   }
-  return (await copyToClipboard(shareBody(message))) ? 'copied' : 'failed'
+  if (!(await copyToClipboard(shareBody(message)))) return 'failed'
+  noteShare(message, 'copy')
+  return 'copied'
+}
+
+/** How a share went: the device's share sheet, the clipboard, or one of the share panel's places (Email, X…). */
+export type ShareHow = 'sheet' | 'copy' | 'place'
+
+/** Paths whose second part names the game they're about: /games/swoop, /c/snake/…, /records/pileup/…. */
+const GAME_PATHS = new Set(['games', 'c', 'records', 'leaderboards'])
+
+/**
+ * What a shared link is, for the count: the first part of its path ('today', 'c', 'e', 'records', …) and the
+ * game when the path names one. The link is the message's, or its words' last line as the dailies send it.
+ */
+export function shareKind({ text, url }: ShareMessage): { kind: string; game: string | null } {
+  const last = text.trim().split('\n').at(-1)?.trim() ?? ''
+  const link = url || (/^https?:\/\/\S+$/.test(last) ? last : '')
+  if (!link) return { kind: 'text', game: null }
+  try {
+    const [first = 'home', second] = new URL(link, window.location.origin).pathname.split('/').filter(Boolean)
+    const kind = first.toLowerCase().slice(0, 24)
+    return { kind, game: GAME_PATHS.has(kind) && second ? canonicalGameSlug(decodeURIComponent(second)) : null }
+  } catch {
+    return { kind: 'link', game: null }
+  }
+}
+
+/**
+ * Tell the API a share went (its shares.ts), for the admin page's numbers. Sent and forgotten: it never holds
+ * up or breaks the share it's counting.
+ */
+export function noteShare(message: ShareMessage, how: ShareHow) {
+  try {
+    const session = localStorage.getItem(SESSION_KEY)
+    void fetch(`${API_BASE}/shares`, {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json', ...(session ? { Authorization: `Bearer ${session}` } : {}) },
+      body: JSON.stringify({ ...shareKind(message), how }),
+    }).catch(() => {})
+  } catch {
+    /* a count must never get in a share's way */
+  }
 }
