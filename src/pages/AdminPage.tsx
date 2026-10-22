@@ -688,6 +688,11 @@ const PUSH_DEVICE: Record<PushService, string> = {
   other: 'another browser',
 }
 
+/** A device in plain words: the kind kept when its push was turned on ("Chrome on an Android phone"), else its push service's. */
+function deviceWords(d: { service: PushService; device?: string | null }) {
+  return d.device || PUSH_DEVICE[d.service]
+}
+
 const NO_KEYS = 'This server has no push keys, so it can’t send any. Staging never has them: test alerts on blipka.com.'
 
 /** What a test push found, device by device: "Sent to 1 device" alone left Ramsey asking which one (2026-10-22). */
@@ -697,10 +702,10 @@ function testWords({ devices, sent, pushReady, results }: TestAlert): string[] {
   if (!results) return [`Sent to ${sent} ${sent === 1 ? 'device' : 'devices'}.`]
   const lines = results.map((r) =>
     r.ok
-      ? `Taken for ${PUSH_DEVICE[r.service]}.`
+      ? `Taken for ${deviceWords(r)}.`
       : r.status === 404 || r.status === 410
-        ? `Turned down for ${PUSH_DEVICE[r.service]} (${r.status}): it threw its subscription away, so it’s off the list now.`
-        : `Turned down for ${PUSH_DEVICE[r.service]}${r.status ? ` (${r.status})` : ''}.`,
+        ? `Turned down for ${deviceWords(r)} (${r.status}): it threw its subscription away, so it’s off the list now.`
+        : `Turned down for ${deviceWords(r)}${r.status ? ` (${r.status})` : ''}.`,
   )
   if (sent) {
     lines.push(
@@ -757,7 +762,7 @@ function ErrorAlertsLine() {
         <ul className="adm-devices">
           {deviceList.map((d, i) => (
             <li key={i}>
-              {PUSH_DEVICE[d.service]}, turned on {ago(d.lastSeenAt)}
+              {deviceWords(d)}, turned on {ago(d.lastSeenAt)}
               {admins > 1 ? ` (${d.email})` : ''}
             </li>
           ))}

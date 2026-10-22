@@ -227,8 +227,12 @@ export function clearClientErrors(before: number) {
 /** The push service a device's alerts go through, which says what kind of device it is (the API's errorAlerts.ts). */
 export type PushService = 'apple' | 'google' | 'microsoft' | 'mozilla' | 'other'
 
-/** One of the admins' devices with push on: what kind it is, whose, and when it was added and last turned on. */
-export type AlertDevice = { service: PushService; email: string; addedAt: number; lastSeenAt: number }
+/**
+ * One of the admins' devices with push on: its push service, the kind of device it is ("Chrome on an Android
+ * phone"; null for one that turned push on before that was kept, or from an older API), whose it is, and when it
+ * was added and last turned on.
+ */
+export type AlertDevice = { service: PushService; device?: string | null; email: string; addedAt: number; lastSeenAt: number }
 
 /**
  * Where an error spike's push goes (the API's errorAlerts.ts): how many of the admins' devices have push on, what
@@ -253,7 +257,7 @@ export type TestAlert = {
   devices: number
   sent: number
   pushReady?: boolean
-  results?: { service: PushService; ok: boolean; status: number | null }[]
+  results?: { service: PushService; device?: string | null; ok: boolean; status: number | null }[]
 }
 
 /** A test push to the admins' devices. */
