@@ -224,12 +224,21 @@ export function clearClientErrors(before: number) {
   return api<{ removed: number }>('/admin/client-errors/clear', { method: 'POST', body: JSON.stringify({ before }) })
 }
 
+/** The push service a device's alerts go through, which says what kind of device it is (the API's errorAlerts.ts). */
+export type PushService = 'apple' | 'google' | 'microsoft' | 'mozilla' | 'other'
+
+/** One of the admins' devices with push on: what kind it is, whose, and when it was added and last turned on. */
+export type AlertDevice = { service: PushService; email: string; addedAt: number; lastSeenAt: number }
+
 /**
  * Where an error spike's push goes (the API's errorAlerts.ts): how many of the admins' devices have push on, what
- * counts as a spike, and when each kind last went.
+ * counts as a spike, and when each kind last went. `pushReady` is false where the API has no push keys (staging);
+ * it and `deviceList` are missing from an older API.
  */
 export type ErrorAlerts = {
   devices: number
+  pushReady?: boolean
+  deviceList?: AlertDevice[]
   spike: { site: { count: number; players: number }; api: { count: number } }
   windowMinutes: number
   lastAlert: { site: number | null; api: number | null }
@@ -239,9 +248,17 @@ export function fetchErrorAlerts() {
   return api<ErrorAlerts>('/admin/alerts')
 }
 
+/** What a test push found: each device's push service took it, or turned it down with an HTTP status. */
+export type TestAlert = {
+  devices: number
+  sent: number
+  pushReady?: boolean
+  results?: { service: PushService; ok: boolean; status: number | null }[]
+}
+
 /** A test push to the admins' devices. */
 export function sendTestAlert() {
-  return api<{ devices: number; sent: number }>('/admin/alerts/test', { method: 'POST' })
+  return api<TestAlert>('/admin/alerts/test', { method: 'POST' })
 }
 
 export async function fetchFeedback() {
