@@ -5,19 +5,15 @@ import { starChime } from './chime'
 /*
  * Fireflies: a pond at dusk, and fireflies over it that each glow in a colour
  * and sing a note of their own. A run is a string of nights. Each night hangs
- * five paper lanterns across the sky and every round you win lights one; with
+ * five paper lanterns across the sky and every tune got right lights one; with
  * all five lit the lanterns ring out, and the next night brings a newcomer or
- * a new trick.
+ * more trading of places.
  *
- * A night is made of three kinds of round:
- * - A tune: the fireflies sing it and you tap it back. It carries on from
- *   night to night, a note longer every time, and a slip in it ends the run.
- * - Catch: for eight seconds they blink on at random; tap each one while it's
- *   lit. Enough catches light the lantern.
- * - Follow: one glows gold, then they all go pale and trade places; tap the
- *   one you followed.
- * A Catch or a Follow that goes wrong costs only its lantern, and the night
- * plays on until the string is full.
+ * Every round is a tune: the fireflies sing it and you tap it back. It
+ * carries on from night to night, a note longer every time, and a slip in it
+ * ends the run. From the second night some of them trade places
+ * before a tune, so a note has to be followed by its colour and its sound,
+ * not its spot.
  *
  * Now and then a shooting star crosses the sky over the pond, and a tap on it
  * catches it: an easter egg, with nothing in it for the score.
@@ -30,65 +26,27 @@ import { starChime } from './chime'
 
 export type Phase =
   | 'menu'
-  /** A beat before a round, its name on the pond: a tune, a Catch, a Follow, a new night. */
+  /** A beat before a tune, and a new night's name on the pond. */
   | 'intro'
   /** A tune: the fireflies sing it. */
   | 'watch'
   /** A tune: tap it back. */
   | 'input'
-  /** Catch: tap them while they're lit. */
-  | 'catch'
-  /** Follow: the one to follow glows gold. */
-  | 'show'
-  /** Follow: they go pale and trade places. */
-  | 'swirl'
-  /** Follow: tap the one you followed. */
-  | 'pick'
-  /** A round won: its lantern lights. */
+  /** A tune got right: its lantern lights. */
   | 'win'
-  /** A Catch or a Follow that went wrong: no lantern, and on to the next round. */
-  | 'lost'
   /** Every lantern lit: they ring out, one by one, and the night ends. */
   | 'chime'
   /** A tune slipped: the run is over. */
   | 'fail'
   | 'gameover'
 
-/** What a round asks of you. */
-export type Kind = 'tune' | 'catch' | 'follow'
-
 /** Fireflies at the start of a run. */
 export const START_FLIES = 4
 export const MAX_FLIES = 6
-/** Lanterns on a night's string: one for each round won, and a full string ends the night. */
+/** Lanterns on a night's string: one for each tune got right, and a full string ends the night. */
 export const LANTERNS = 5
 /** Notes in the first tune; every tune after is one longer, night after night. */
 export const FIRST_TUNE = 3
-/** How long a Catch lasts, and the catches that light its lantern. */
-export const CATCH_TIME = 8
-export const CATCH_GOAL = 8
-/** Taps on a dark firefly that end a Catch early, so it can't be won by tapping everything. */
-export const CATCH_MISSES = 3
-/** What finding the firefly you followed is worth. */
-export const FOLLOW_POINTS = 3
-
-/*
- * The order of a night's rounds: three tunes, a Catch and a Follow, dealt out
- * differently from one night to the next. A lost Catch or Follow leaves its
- * lantern dark, and the night goes on round its plan until all five are lit.
- */
-const PLANS: readonly (readonly Kind[])[] = [
-  ['tune', 'tune', 'catch', 'tune', 'follow'],
-  ['tune', 'catch', 'tune', 'follow', 'tune'],
-  ['tune', 'follow', 'tune', 'catch', 'tune'],
-]
-
-/** The round a night plays after `played` rounds of it. */
-export function kindOf(night: number, played: number): Kind {
-  const plan = PLANS[(night - 1) % PLANS.length]!
-  return plan[played % plan.length]!
-}
-
 /*
  * Each firefly keeps its colour and its note wherever it flies: the six notes
  * of the pentatonic scale the sound packs already play for a pad, so any tune
@@ -106,8 +64,7 @@ export const FLY_COLORS = [
 
 /*
  * Where fireflies hover, in field units. The first four keep to the corners;
- * the fifth and sixth, who join later, take the middle. In a Follow the keys
- * go by these places, not by firefly.
+ * the fifth and sixth, who join later, take the middle.
  */
 const SLOTS: readonly (readonly [number, number])[] = [
   [0.15, 0.09],
@@ -129,44 +86,13 @@ const JOIN_INTRO = 1.8
 const SWAP_INTRO = 1.5
 const SWAP_TIME = 1.25
 const JOIN_TIME = 1.5
-const CATCH_INTRO = 1.6
-const FOLLOW_INTRO = 1.3
-/** How long the one to follow glows gold. */
-const SHOW_TIME = 1.4
-/** The fade to pale before the first trade. */
-const PALE_TIME = 0.45
 const WIN_TIME = 1.15
-const LOST_TIME = 1.5
 /** The lanterns ring this far apart when a night's string is full. */
 export const CHIME_GAP = 0.2
 const FAIL_TIME = 2
 /** How long after a slip the fireflies scatter and the lanterns start to go out. */
 const SCATTER_AFTER = 0.75
 const FIRST_REST = 0.9
-
-/** How long a firefly stays lit in a Catch: shorter every night. */
-export function catchWindow(night: number) {
-  return Math.max(0.5, 0.95 - 0.11 * (night - 1))
-}
-
-/**
- * How many trades a Follow makes, and how quick each is: more and quicker every night. Ramsey found it "too
- * easy" (2026-10-11) at 3 trades of a second each the first night: now 4 of 0.85 s, down to 0.45 s.
- */
-function followTrades(night: number) {
-  return Math.min(9, 3 + night)
-}
-function followTradeTime(night: number) {
-  return Math.max(0.45, 0.85 - 0.08 * (night - 1))
-}
-
-/** How many pairs trade at once in a Follow: from the second night often two, from the fourth now and then three. */
-function followPairs(night: number, flies: number) {
-  const r = Math.random()
-  if (night >= 4 && flies >= 6 && r < 0.3) return 3
-  if (night >= 2 && flies >= 4 && r < 0.6) return 2
-  return 1
-}
 
 /** Pairs that trade places before a tune: none the first night, one a tune after, two from the fourth. */
 function tuneTrades(night: number, tuneOfNight: number) {
@@ -186,13 +112,9 @@ export type Fly = {
   flare: number
   /** Seconds its light holds at full before fading. */
   hold: number
-  /** Catch: seconds it stays lit and catchable; 0 when it's dark. */
-  open: number
-  /** How long its catch window was when it opened, for the ring that closes on it. */
-  window: number
   /** 0 to 1: the red of a wrong tap on it. */
   wrong: number
-  /** Set on the one that should have been tapped, when a tune slips or a Follow is lost: it circles itself. */
+  /** Set on the one that should have been tapped when a tune slips: it circles itself. */
   hint: number
   /** When it arrived, for fading in. */
   born: number
@@ -226,11 +148,9 @@ export type GameState = {
   best: number
   /** The night, from 1. */
   night: number
-  /** Rounds played this night, won or lost. */
+  /** Tunes played this night. */
   played: number
-  /** The round under way, or the one about to start. */
-  kind: Kind
-  /** Whether the coming round has been set up: its trades made, its tune dealt. */
+  /** Whether the coming tune has been set up: its trades made, its notes dealt. */
   ready: boolean
   /** Tunes got right over the whole run. */
   tunes: number
@@ -248,16 +168,6 @@ export type GameState = {
   /** When the lanterns begin to go out after a slip; 0 until then. */
   dimAt: number
   scattered: boolean
-  /** Catch: when it ends, when the next firefly lights, the last to light, catches and misses. */
-  catchEnd: number
-  nextFlash: number
-  lastFlash: number
-  caught: number
-  misses: number
-  /** Follow: the firefly to follow, the trades still to come, and the one tapped. */
-  target: number
-  trades: number
-  picked: number
   /** What the pond is doing, in a word or two. */
   message: string
   ripples: Ripple[]
@@ -283,7 +193,6 @@ export type Snapshot = {
   score: number
   best: number
   night: number
-  kind: Kind
   /** Tunes got right over the run. */
   tunes: number
   /** Notes in the tune being played, or the next one. */
@@ -292,7 +201,6 @@ export type Snapshot = {
   entered: number
   /** Lanterns lit tonight. */
   lanterns: number
-  caught: number
   message: string
 }
 
@@ -387,11 +295,6 @@ export function reflectionDrop(unit: number) {
   return 60 * unit
 }
 
-/** Whether the fireflies are pale, all alike, so the one being followed has to be kept track of by eye. */
-export function isPale(s: GameState) {
-  return s.phase === 'swirl' || s.phase === 'pick'
-}
-
 /* ---- The night. ---- */
 
 function loadBest() {
@@ -404,8 +307,6 @@ function newFly(id: number, time: number): Fly {
     slot: id,
     flare: 0,
     hold: 0,
-    open: 0,
-    window: 0,
     wrong: 0,
     hint: 0,
     born: time,
@@ -428,7 +329,6 @@ export function createInitialState(w = 390, h = 700): GameState {
     best: loadBest(),
     night: 1,
     played: 0,
-    kind: kindOf(1, 0),
     ready: false,
     tunes: 0,
     seq: [],
@@ -441,14 +341,6 @@ export function createInitialState(w = 390, h = 700): GameState {
     chimed: 0,
     dimAt: 0,
     scattered: false,
-    catchEnd: 0,
-    nextFlash: 0,
-    lastFlash: -1,
-    caught: 0,
-    misses: 0,
-    target: -1,
-    trades: 0,
-    picked: -1,
     message: '',
     ripples: [],
     sparks: [],
@@ -482,19 +374,12 @@ export function startGame(prev: GameState): GameState {
   }
 }
 
-/** Tunes already played tonight, which is every tune before this round: a slipped one ends the run. */
-function tunesTonight(s: GameState) {
-  let n = 0
-  for (let i = 0; i < s.played; i++) if (kindOf(s.night, i) === 'tune') n++
-  return n
-}
-
 /**
- * Set up the coming round and hold on its name for a moment: a newcomer at the
- * start of a night, trades before a tune, a tune dealt one note longer.
+ * Set up the coming tune and hold a moment before it: a newcomer at the start
+ * of a night, trades before a tune, the tune dealt one note longer.
  */
 function beginRound(s: GameState): GameState {
-  const flies = s.flies.map((f) => ({ ...f, hint: 0, open: 0 }))
+  const flies = s.flies.map((f) => ({ ...f, hint: 0 }))
   let intro = INTRO
   let message = 'Watch'
   let joined = -1
@@ -522,27 +407,18 @@ function beginRound(s: GameState): GameState {
     }
   }
 
-  let seq = s.seq
-  if (s.kind === 'tune') {
-    const trades = nightStart ? 0 : tuneTrades(s.night, tunesTonight(s))
-    if (trades > 0) {
-      tradePlaces(s, flies, trades, SWAP_TIME)
-      intro = SWAP_INTRO
-      message = 'Two trade places'
-      sfx('whoosh')
-    }
-    const len = FIRST_TUNE + s.tunes
-    seq = s.seq.slice()
-    while (seq.length < len) seq.push(Math.floor(Math.random() * flies.length))
-    // A newcomer sings the new note, so it is heard the night it arrives.
-    if (joined >= 0) seq[len - 1] = joined
-  } else if (s.kind === 'catch') {
-    intro = Math.max(intro, CATCH_INTRO)
-    message = nightStart ? `${message} · Catch` : 'Catch them while they’re lit'
-  } else {
-    intro = Math.max(intro, FOLLOW_INTRO)
-    message = nightStart ? `${message} · Follow` : 'Follow the gold one'
+  const trades = nightStart ? 0 : tuneTrades(s.night, s.played)
+  if (trades > 0) {
+    tradePlaces(s, flies, trades, SWAP_TIME)
+    intro = SWAP_INTRO
+    message = trades === 1 ? 'Two trade places' : 'They trade places'
+    sfx('whoosh')
   }
+  const len = FIRST_TUNE + s.tunes
+  const seq = s.seq.slice()
+  while (seq.length < len) seq.push(Math.floor(Math.random() * flies.length))
+  // A newcomer sings the new note, so it is heard the night it arrives.
+  if (joined >= 0) seq[len - 1] = joined
 
   return {
     ...s,
@@ -550,9 +426,6 @@ function beginRound(s: GameState): GameState {
     seq,
     watchIdx: 0,
     inputIdx: 0,
-    caught: 0,
-    misses: 0,
-    picked: -1,
     phase: 'intro',
     ready: true,
     timer: intro,
@@ -560,27 +433,8 @@ function beginRound(s: GameState): GameState {
   }
 }
 
-/** The round begins in earnest once its name has shown. */
-function startRound(s: GameState): GameState {
-  if (s.kind === 'tune') return { ...s, phase: 'watch', timer: 0.15, message: 'Watch' }
-  if (s.kind === 'catch') {
-    return { ...s, phase: 'catch', catchEnd: s.time + CATCH_TIME, nextFlash: s.time + 0.35, lastFlash: -1, message: '' }
-  }
-  // Follow: one firefly lights gold, the rest wait dim.
-  const flies = s.flies.map((f) => ({ ...f }))
-  const target = flies[Math.floor(Math.random() * flies.length)]!
-  target.flare = 1
-  target.hold = SHOW_TIME
-  sfx('pad', target.id)
-  return { ...s, flies, target: target.id, phase: 'show', timer: SHOW_TIME, message: 'Follow the gold one' }
-}
-
-/** A round done: its lantern lights, or doesn't. */
-function finishRound(s: GameState, won: boolean, message: string): GameState {
-  if (!won) {
-    sfx('miss')
-    return { ...s, phase: 'lost', timer: LOST_TIME, message }
-  }
+/** A tune got right: its lantern lights. */
+function lightLantern(s: GameState): GameState {
   sfx('good')
   const lit = Math.min(LANTERNS, s.lit + 1)
   return {
@@ -589,11 +443,11 @@ function finishRound(s: GameState, won: boolean, message: string): GameState {
     litAt: [...s.litAt, s.time + 0.25],
     phase: 'win',
     timer: WIN_TIME,
-    message: lit >= LANTERNS ? 'Every lantern lit' : message,
+    message: lit >= LANTERNS ? 'Every lantern lit' : 'A lantern lights',
   }
 }
 
-/** After a round: the night's next, or with the string full, the lanterns ring. */
+/** After a tune: the night's next, or with the string full, the lanterns ring. */
 function nextRound(state: GameState): GameState {
   const s = { ...state, played: state.played + 1 }
   if (s.lit >= LANTERNS) {
@@ -606,17 +460,16 @@ function nextRound(state: GameState): GameState {
       message: `Night ${s.night} · the lanterns ring`,
     }
   }
-  return beginRound({ ...s, kind: kindOf(s.night, s.played), ready: false })
+  return beginRound({ ...s, ready: false })
 }
 
-/** A new night: a fresh string of lanterns, and the first round of its plan. */
+/** A new night: a fresh string of lanterns, and its first tune. */
 function nextNight(state: GameState): GameState {
   const night = state.night + 1
   return beginRound({
     ...state,
     night,
     played: 0,
-    kind: kindOf(night, 0),
     ready: false,
     lit: 0,
     litAt: [],
@@ -636,23 +489,11 @@ function tradePair(s: GameState, a: Fly, b: Fly, dur: number) {
   b.slot = slot
 }
 
-/**
- * `pairs` pairs of fireflies trade places at once, none of them in two
- * trades. `keep`, when given, is a firefly that is in the first pair more
- * often than not, so the one being followed doesn't just sit still.
- */
-function tradePlaces(s: GameState, flies: Fly[], pairs: number, dur: number, keep = -1) {
+/** `pairs` pairs of fireflies trade places at once, none of them in two trades. */
+function tradePlaces(s: GameState, flies: Fly[], pairs: number, dur: number) {
   const free = flies.slice()
-  const take = (prefer = -1) => {
-    const at = prefer >= 0 && free.some((f) => f.id === prefer) ? free.findIndex((f) => f.id === prefer) : Math.floor(Math.random() * free.length)
-    return free.splice(at, 1)[0]!
-  }
-  for (let i = 0; i < pairs && free.length >= 2; i++) {
-    // The one being followed is in most trades, so it moves rather than waits for the others to.
-    const a = take(i === 0 && keep >= 0 && Math.random() < 0.75 ? keep : -1)
-    const b = take()
-    tradePair(s, a, b, dur)
-  }
+  const take = () => free.splice(Math.floor(Math.random() * free.length), 1)[0]!
+  for (let i = 0; i < pairs && free.length >= 2; i++) tradePair(s, take(), take(), dur)
 }
 
 /** A firefly lights up and sings its note. */
@@ -701,75 +542,18 @@ export function tapFly(state: GameState, id: number): GameState {
   s.inputIdx += 1
   s.score += 1
   if (s.inputIdx < s.seq.length) return s
-  return finishRound({ ...s, tunes: s.tunes + 1 }, true, 'A lantern lights')
+  return lightLantern({ ...s, tunes: s.tunes + 1 })
 }
 
-/** A firefly tapped in a Catch: caught while it's lit, a miss while it's dark. */
-export function catchFly(state: GameState, id: number): GameState {
-  if (state.phase !== 'catch') return state
-  const s: GameState = { ...state }
-  const flies = s.flies.map((f) => ({ ...f }))
-  s.flies = flies
-  const fly = flies.find((f) => f.id === id)
-  if (!fly) return state
-  if (fly.open > 0) {
-    fly.open = 0
-    sing(s, flies, id, 0.12)
-    s.caught += 1
-    s.score += 1
-    return s
-  }
-  fly.wrong = 1
-  s.misses += 1
-  if (s.misses >= CATCH_MISSES) {
-    for (const f of flies) f.open = 0
-    return finishRound(s, false, 'Too many misses · no lantern')
-  }
-  sfx('tap')
-  return s
-}
-
-/** The firefly tapped at the end of a Follow. */
-export function pickFly(state: GameState, id: number): GameState {
-  if (state.phase !== 'pick') return state
-  const s: GameState = { ...state, picked: id }
-  const flies = s.flies.map((f) => ({ ...f }))
-  s.flies = flies
-  if (id === s.target) {
-    sing(s, flies, id, 0.5)
-    s.score += FOLLOW_POINTS
-    return finishRound(s, true, 'Found it · a lantern lights')
-  }
-  const fly = flies.find((f) => f.id === id)
-  if (fly) fly.wrong = 1
-  const right = flies.find((f) => f.id === s.target)
-  if (right) {
-    right.hint = 1
-    right.flare = 1
-    right.hold = 0.6
-  }
-  return finishRound(s, false, 'Lost it · no lantern')
-}
-
-/**
- * A key, 1 to 6 as 0 to 5. In a tune or a Catch each firefly keeps its
- * number wherever it flies; at the end of a Follow, when the fireflies are
- * pale and alike, the numbers go by place instead.
- */
+/** A key, 1 to 6 as 0 to 5: each firefly keeps its number wherever it flies. */
 export function pressKey(state: GameState, n: number): GameState {
-  if (state.phase === 'input') return tapFly(state, n)
-  if (state.phase === 'catch') return catchFly(state, n)
-  if (state.phase === 'pick') {
-    const fly = state.flies.find((f) => f.slot === n)
-    return fly ? pickFly(state, fly.id) : state
-  }
-  return state
+  return tapFly(state, n)
 }
 
 /** A tap on the pond, in the stage's pixels: the nearest firefly within reach, if any. */
 export function tapAt(state: GameState, x: number, y: number): GameState {
   const taps = [...state.taps, { x, y, t: state.time }]
-  if (state.phase !== 'input' && state.phase !== 'catch' && state.phase !== 'pick') return { ...state, taps }
+  if (state.phase !== 'input') return { ...state, taps }
   const layout = pondLayout(state.stageW, state.stageH, state.stageTop)
   let best: Fly | null = null
   let bestD = Infinity
@@ -782,10 +566,7 @@ export function tapAt(state: GameState, x: number, y: number): GameState {
     }
   }
   const s = { ...state, taps }
-  if (!best) return s
-  if (s.phase === 'input') return tapFly(s, best.id)
-  if (s.phase === 'catch') return catchFly(s, best.id)
-  return pickFly(s, best.id)
+  return best ? tapFly(s, best.id) : s
 }
 
 function scatter(s: GameState) {
@@ -798,32 +579,11 @@ function scatter(s: GameState) {
   })
 }
 
-/** The Catch's clock: fireflies light up at random, one or two at a time, until time's up. */
-function tickCatch(s: GameState): GameState {
-  if (s.time >= s.catchEnd) {
-    s.flies = s.flies.map((f) => ({ ...f, open: 0 }))
-    const won = s.caught >= CATCH_GOAL
-    return finishRound(s, won, won ? `Caught ${s.caught} · a lantern lights` : `Caught ${s.caught} of ${CATCH_GOAL} · no lantern`)
-  }
-  const lit = s.flies.filter((f) => f.open > 0).length
-  if (s.time < s.nextFlash || lit >= 2 || s.time > s.catchEnd - 0.35) return s
-  const dark = s.flies.filter((f) => f.open <= 0 && !f.trip)
-  const fresh = dark.filter((f) => f.id !== s.lastFlash)
-  const pool = fresh.length ? fresh : dark
-  if (!pool.length) return s
-  const pick = pool[Math.floor(Math.random() * pool.length)]!
-  const window = catchWindow(s.night)
-  s.flies = s.flies.map((f) => (f.id === pick.id ? { ...f, open: window, window, flare: 1, hold: window } : f))
-  s.lastFlash = pick.id
-  s.nextFlash = s.time + 0.42 + Math.random() * 0.3
-  return s
-}
-
 export function tick(state: GameState, dt: number): GameState {
   const s: GameState = { ...state, time: state.time + dt }
   let changed = false
   for (const f of s.flies) {
-    if (f.flare > 0 || f.hold > 0 || f.open > 0 || f.wrong > 0 || (f.trip && s.time - f.trip.t0 >= f.trip.dur)) {
+    if (f.flare > 0 || f.hold > 0 || f.wrong > 0 || (f.trip && s.time - f.trip.t0 >= f.trip.dur)) {
       changed = true
       break
     }
@@ -833,7 +593,6 @@ export function tick(state: GameState, dt: number): GameState {
       const next = { ...f }
       if (next.hold > 0) next.hold = Math.max(0, next.hold - dt)
       else next.flare = Math.max(0, next.flare - dt * 2.6)
-      if (next.open > 0) next.open = Math.max(0, next.open - dt)
       next.wrong = Math.max(0, next.wrong - dt * 0.9)
       if (next.trip && s.time - next.trip.t0 >= next.trip.dur) next.trip = null
       return next
@@ -845,13 +604,12 @@ export function tick(state: GameState, dt: number): GameState {
   if (s.star && s.time - s.star.t0 > STAR_TIME) s.star = null
   if (s.starBurst && s.time - s.starBurst.t > STAR_BURST_TIME) s.starBurst = null
 
-  if (s.phase === 'menu' || s.phase === 'gameover' || s.phase === 'input' || s.phase === 'pick') return s
-  if (s.phase === 'catch') return tickCatch(s)
+  if (s.phase === 'menu' || s.phase === 'gameover' || s.phase === 'input') return s
   s.timer -= dt
   switch (s.phase) {
     case 'intro':
       if (s.timer > 0) return s
-      return s.ready ? startRound(s) : beginRound(s)
+      return s.ready ? { ...s, phase: 'watch', timer: 0.15, message: 'Watch' } : beginRound(s)
     case 'watch': {
       if (s.timer > 0) return s
       const len = s.seq.length
@@ -863,21 +621,7 @@ export function tick(state: GameState, dt: number): GameState {
       s.timer = noteLength(len) + NOTE_GAP
       return s
     }
-    case 'show':
-      if (s.timer > 0) return s
-      return { ...s, phase: 'swirl', timer: PALE_TIME, trades: followTrades(s.night), message: 'Keep your eye on it' }
-    case 'swirl': {
-      if (s.timer > 0) return s
-      if (s.trades <= 0) return { ...s, phase: 'pick', message: 'Which one was it?' }
-      const flies = s.flies.map((f) => ({ ...f }))
-      const dur = followTradeTime(s.night)
-      // From the second night, often two pairs trade at once (followPairs).
-      tradePlaces(s, flies, followPairs(s.night, flies.length), dur, s.target)
-      if (s.trades === followTrades(s.night)) sfx('whoosh')
-      return { ...s, flies, trades: s.trades - 1, timer: dur + 0.06 }
-    }
     case 'win':
-    case 'lost':
       return s.timer > 0 ? s : nextRound(s)
     case 'chime': {
       // The lanterns ring along the string, a note and a point each.
@@ -906,12 +650,10 @@ export function toSnapshot(s: GameState): Snapshot {
     score: s.score,
     best: s.best,
     night: s.night,
-    kind: s.kind,
     tunes: s.tunes,
     tune: s.seq.length || FIRST_TUNE + s.tunes,
     entered: s.inputIdx,
     lanterns: s.lit,
-    caught: s.caught,
     message: s.message,
   }
 }
@@ -954,19 +696,16 @@ export function starHead(star: Star, age: number) {
 
 /**
  * Whether a star may set off now. Never so it would cross while the fireflies
- * sing a tune, show the gold one or fly to new places, which are all for
- * watching: so while a tune is tapped back, in a Catch, at a Follow's pick, or
- * in a pause between rounds with time enough left for it to cross.
+ * sing a tune or fly to new places, which are both for watching: so while a
+ * tune is tapped back, or in a pause between tunes with time enough left for
+ * it to cross.
  */
 function skyFree(s: GameState) {
   switch (s.phase) {
     case 'input':
-    case 'catch':
-    case 'pick':
       return true
     case 'intro':
     case 'win':
-    case 'lost':
     case 'chime':
       return s.timer >= STAR_TIME && !s.flies.some((f) => f.trip)
     default:

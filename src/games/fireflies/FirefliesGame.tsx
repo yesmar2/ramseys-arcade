@@ -219,12 +219,12 @@ export function FirefliesGame() {
         if (stateRef.current.phase === 'menu' && performance.now() >= startGrace.current) restart()
         return
       }
-      // 1 to 6, on the digits or the keypad: each firefly's own number, or its place's at the end of a Follow.
+      // 1 to 6, on the digits or the keypad: each firefly's own number, wherever it flies.
       const match = /^(?:Digit|Numpad)([1-6])$/.exec(e.code)
       if (!match) return
       const n = Number(match[1]) - 1
       const phase = stateRef.current.phase
-      if (n >= MAX_FLIES || (phase !== 'input' && phase !== 'catch' && phase !== 'pick')) return
+      if (n >= MAX_FLIES || phase !== 'input') return
       e.preventDefault()
       stateRef.current = pressKey(stateRef.current, n)
       setUi(toSnapshot(stateRef.current))

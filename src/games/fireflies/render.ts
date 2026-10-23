@@ -1,6 +1,5 @@
 import { isDarkTheme } from '../../lib/theme'
 import {
-  CATCH_GOAL,
   CHIME_GAP,
   FLY_COLORS,
   LANTERNS,
@@ -8,7 +7,6 @@ import {
   STAR_TIME,
   flySpot,
   hash,
-  isPale,
   pondLayout,
   reflectionDrop,
   starHead,
@@ -16,16 +14,6 @@ import {
   type GameState,
   type Layout,
 } from './game'
-
-/** Every firefly's light while a Follow has them all alike. */
-const PALE = { line: '#dfe5ff', light: '#e9eeff' }
-/** The light of the one to follow. */
-const GOLD = '#ffd36b'
-
-/** A firefly's colours, unless a Follow has made them all alike. */
-function colorsOf(s: GameState, f: Fly) {
-  return isPale(s) ? PALE : FLY_COLORS[f.id]!
-}
 
 const TAU = Math.PI * 2
 const FONT = '"Outfit", system-ui, sans-serif'
@@ -451,7 +439,7 @@ function drawWater(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: 
     const ry = spot.y + drop
     if (ry < bank + 4 || ry > h + 20) continue
     const lvl = 0.3 + 0.7 * f.flare
-    glow(ctx, colorsOf(s, f).light, spot.x + Math.sin(s.time * 3 + i) * 2, ry, (18 + 30 * f.flare) * unit, 0.35 * lvl * a, 1.7)
+    glow(ctx, FLY_COLORS[f.id]!.light, spot.x + Math.sin(s.time * 3 + i) * 2, ry, (18 + 30 * f.flare) * unit, 0.35 * lvl * a, 1.7)
   }
   // Rings where a firefly sang.
   ctx.lineWidth = 1.3
@@ -485,7 +473,7 @@ function lanternRing(s: GameState, i: number) {
   return t > 0 && t < 1 ? Math.sin(t * Math.PI) : 0
 }
 
-/** The string of paper lanterns across the sky: one lights for every round won, and five end the night. */
+/** The string of paper lanterns across the sky: one lights for every tune got right, and five end the night. */
 function drawLanterns(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: Palette) {
   const { x0, y0, cx, cy, x1, y1 } = L.string
   const k = clamp(L.unit, 0.6, 1.3)
@@ -563,19 +551,6 @@ function hasKeys() {
   return finePointer
 }
 
-/** The one to follow wears gold while it's shown, and again when the Follow is settled. */
-function isGold(s: GameState, f: Fly) {
-  if (s.kind !== 'follow' || f.id !== s.target) return false
-  return s.phase === 'show' || s.phase === 'win' || s.phase === 'lost'
-}
-
-/** What a firefly's key reads: its own number, or in a Follow's last moment, its place's. */
-function keyLabel(s: GameState, f: Fly): string | null {
-  if (s.phase === 'show' || s.phase === 'swirl') return null
-  if (s.phase === 'pick') return String(f.slot + 1)
-  return String(f.id + 1)
-}
-
 function drawFlies(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: Palette, keys: boolean) {
   // Fireflies are drawn a size up from the rest of the pond: they're what you're looking at.
   const u = L.unit * 1.2
@@ -585,14 +560,9 @@ function drawFlies(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: 
     const a = flyAlpha(s, f)
     if (a <= 0) return
     const { x, y } = spots[i]!
-    const light = colorsOf(s, f).light
+    const light = FLY_COLORS[f.id]!.light
     const idle = 0.34 + 0.06 * Math.sin(s.time * 2.1 + f.phase)
     const lvl = idle + (1 - idle) * f.flare
-    if (isGold(s, f)) {
-      const pulse = 0.85 + 0.15 * Math.sin(s.time * 6)
-      glow(ctx, GOLD, x, y, 110 * u, 0.4 * pulse * a)
-      glow(ctx, GOLD, x, y, 44 * u, 0.7 * pulse * a)
-    }
     if (f.flare > 0.02) glow(ctx, light, x, y, (70 + 70 * f.flare) * u, 0.22 * f.flare * a)
     glow(ctx, light, x, y, (22 + 26 * f.flare) * u, (0.45 + 0.5 * lvl) * a)
     glow(ctx, '#ffffff', x, y + u, (5 + 5 * f.flare) * u, (0.35 + 0.6 * f.flare) * a)
@@ -615,25 +585,7 @@ function drawFlies(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: 
     const a = flyAlpha(s, f)
     if (a <= 0) return
     const { x, y } = spots[i]!
-    const c = colorsOf(s, f)
-    // In a Catch, a ring closes in on a lit firefly as its moment runs out.
-    if (f.open > 0 && f.window > 0) {
-      ctx.globalAlpha = a * 0.9
-      ctx.strokeStyle = rgba(c.light, 0.9)
-      ctx.lineWidth = 2.5 * u
-      ctx.beginPath()
-      ctx.arc(x, y, (16 + 26 * (f.open / f.window)) * u, 0, TAU)
-      ctx.stroke()
-    }
-    // The one to follow, ringed in gold while it's shown and when it's found.
-    if (isGold(s, f)) {
-      ctx.globalAlpha = a
-      ctx.strokeStyle = rgba(GOLD, 0.9)
-      ctx.lineWidth = 2.5 * u
-      ctx.beginPath()
-      ctx.arc(x, y, 30 * u, 0, TAU)
-      ctx.stroke()
-    }
+    const c = FLY_COLORS[f.id]!
     ctx.globalAlpha = a
     const flap = 0.45 + 0.55 * Math.abs(Math.sin(s.time * 26 + f.phase * 5))
     ctx.fillStyle = rgba(c.light, 0.16)
@@ -654,8 +606,8 @@ function drawFlies(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: 
     ctx.beginPath()
     ctx.arc(x, y - 10.5 * u, 2.2 * u, 0, TAU)
     ctx.fill()
-    // After a slip, or a lost Follow, the one it should have been circles itself.
-    if (f.hint > 0 && (s.phase === 'fail' || s.phase === 'gameover' || s.phase === 'lost')) {
+    // After a slip, the one it should have been circles itself.
+    if (f.hint > 0 && (s.phase === 'fail' || s.phase === 'gameover')) {
       const pulse = 0.5 + 0.5 * Math.sin(s.time * 10)
       ctx.strokeStyle = rgba('#ffffff', 0.5 + 0.4 * pulse)
       ctx.lineWidth = 2
@@ -664,7 +616,7 @@ function drawFlies(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: 
       ctx.stroke()
     }
     // On a keyboard, each firefly's key rides under it.
-    const label = keys ? keyLabel(s, f) : null
+    const label = keys ? String(f.id + 1) : null
     if (label) {
       ctx.globalAlpha = a * 0.7
       ctx.font = `600 ${Math.round(11 * clamp(u, 0.8, 1.3))}px ${FONT}`
@@ -725,16 +677,12 @@ function drawTaps(ctx: CanvasRenderingContext2D, s: GameState, L: Layout) {
   ctx.globalAlpha = 1
 }
 
-/** What the pond is doing, under it: watch, your turn, a Catch's count, a lantern lit. */
+/** What the pond is doing, under it: watch, your turn, a lantern lit. */
 function drawStatus(ctx: CanvasRenderingContext2D, s: GameState, L: Layout, pal: Palette) {
   if (s.phase === 'menu' || s.phase === 'gameover') return
   let text = s.message
   if (s.phase === 'watch') text = `Watch · ${s.seq.length} notes`
   else if (s.phase === 'input') text = `Your turn · ${s.inputIdx} of ${s.seq.length}`
-  else if (s.phase === 'catch') {
-    const left = Math.max(0, Math.ceil(s.catchEnd - s.time))
-    text = `Catch · ${s.caught} of ${CATCH_GOAL} · ${left}s`
-  }
   if (!text) return
   const size = Math.round(15 * clamp(L.unit, 0.85, 1.25))
   ctx.font = `600 ${size}px ${FONT}`

@@ -168,7 +168,7 @@ const EGGS: { key: string; name: string; how: string; does: string; clue: string
     name: 'A shooting star over the pond',
     how: 'In Fireflies, tap or click a shooting star while it crosses the sky over the pond. The first comes 40 to 90 seconds into a run, and another every 40 to 90 seconds of play after that. Each takes 1.2 seconds to cross.',
     does: 'The star bursts into sparkles where its head was, with a soft falling chime. Stars keep coming after it’s found; catching one just sparkles again. It costs nothing but the moment spent tapping, and never counts as a tap on a firefly.',
-    clue: 'The star itself: faint, quick and rare, crossing behind the lanterns. It never crosses while the fireflies sing a tune or while the gold one is shown or swirls, only while you’re tapping, in a Catch, at a Follow’s pick, or between rounds.',
+    clue: 'The star itself: faint, quick and rare, crossing behind the lanterns. It never crosses while the fireflies sing a tune or trade places, only while you’re tapping one back or between tunes.',
     secret: 'Shooting Star',
   },
   {

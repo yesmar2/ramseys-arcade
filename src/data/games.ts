@@ -234,7 +234,7 @@ export const games: Game[] = [
     name: 'Fireflies',
     slug: 'fireflies',
     tags: ['puzzle', 'quick'],
-    description: 'Sing their tunes back. Catch them lit. Follow the gold one.',
+    description: 'Sing their tunes back, a note longer every time, even as they trade places.',
     accent: PALETTE.violet,
     playable: true,
   },

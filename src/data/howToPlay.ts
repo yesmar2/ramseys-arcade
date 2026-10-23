@@ -288,12 +288,10 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
     scores: [
       { what: 'Note sung back', pts: '+1' },
-      { what: 'Firefly caught in a Catch', pts: '+1' },
-      { what: 'The one you followed', pts: '+3' },
       { what: 'All five lanterns lit', pts: '+5' },
     ],
     ends: 'One wrong note in a tune.',
-    tip: 'A lost Catch or Follow only leaves its lantern dark.',
+    tip: 'From the second night some trade places before a tune. Follow each note by its colour and its sound, not its spot.',
   },
   acechase: {
     goal: 'Stop the ball on today’s bullseye in as few tries as you can. A new hole comes every day at midnight, New York time.',
