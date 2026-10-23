@@ -398,6 +398,12 @@ html[data-theme='dark'] .brand-mark__dark {
   right: auto;
 }
 
+/* On a game's banner, which cuts off what hangs out of it: over the page, put under the chip by BoardsAmong. */
+.site-scope__pop--float {
+  position: fixed;
+  right: auto;
+}
+
 .site-scope__cap {
   margin: 0;
   font-size: 0.66rem;

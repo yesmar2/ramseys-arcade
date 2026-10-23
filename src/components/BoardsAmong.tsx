@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { applySitePeriod, applySiteGroup, useRoute } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useFriends } from '../hooks/useFriends'
@@ -123,6 +123,7 @@ export function BoardsAmong({ className }: { className?: string }) {
   const [fromStart, setFromStart] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -143,10 +144,33 @@ export function BoardsAmong({ className }: { className?: string }) {
     }
   }, [open])
 
+  // A game's banner cuts off whatever hangs out of it: there the choices float over the page, under the chip,
+  // and go with it as the page scrolls.
+  const float = Boolean(className?.includes('site-scope--banner'))
+  useLayoutEffect(() => {
+    if (!open || !float) return
+    const place = () => {
+      const box = btnRef.current?.getBoundingClientRect()
+      const pop = popRef.current
+      if (!box || !pop) return
+      const w = pop.offsetWidth
+      const left = fromStart ? box.left : box.right - w
+      pop.style.left = `${Math.round(Math.max(16, Math.min(left, document.documentElement.clientWidth - 16 - w)))}px`
+      pop.style.top = `${Math.round(box.bottom + 8)}px`
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open, float, fromStart])
+
   // Opened low on a phone, the choices would hang under its tab bar: the page comes up to show them.
   useEffect(() => {
     if (!open) return
-    const pop = ref.current?.querySelector('.site-scope__pop')
+    const pop = popRef.current
     const tabs = document.querySelector('.site-tabs')
     if (!pop) return
     const floor = tabs && getComputedStyle(tabs).position === 'fixed' ? tabs.getBoundingClientRect().top : window.innerHeight
@@ -202,7 +226,12 @@ export function BoardsAmong({ className }: { className?: string }) {
         </span>
       </button>
       {open ? (
-        <div className={`site-scope__pop${fromStart ? ' site-scope__pop--start' : ''}`} role="dialog" aria-label="Whose boards">
+        <div
+          ref={popRef}
+          className={`site-scope__pop${fromStart ? ' site-scope__pop--start' : ''}${float ? ' site-scope__pop--float' : ''}`}
+          role="dialog"
+          aria-label="Whose boards"
+        >
           <p className="site-scope__cap">Boards show</p>
           <ul className="site-scope__groups">
             <li>
