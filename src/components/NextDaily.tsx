@@ -5,6 +5,7 @@ import { useDeliberatePress } from '../hooks/useDeliberatePress'
 import { gamePlayHref, navigate, todayHref } from '../hooks/useHashRoute'
 import { dailyWords } from '../lib/dailyWords'
 import { exitFullscreen } from '../lib/fullscreen'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { GameArt } from './GameArt'
 import { ReelButton } from './RunReel'
 import type { ReportAction } from './RunReport'
@@ -118,7 +119,8 @@ export function NextDailyView({
             <span className="next-daily__poster-art" aria-hidden="true">
               <GameArt slug={next.slug} shape="card" className="next-daily__art" />
             </span>
-            <a className="reel-btn reel-btn--play next-daily__race" href={href} onClick={go(href)}>
+            {/* In the colour of the game it starts, as that game's page wears it: not this one's, the reel's. */}
+            <a className="reel-btn reel-btn--play next-daily__race" style={gameAccentStyle(next.slug)} href={href} onClick={go(href)}>
               {verb} {next.game}
             </a>
           </div>
