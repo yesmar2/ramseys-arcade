@@ -363,7 +363,7 @@ function MarbleRunDay({
    * own (TestCards.tsx LabStartCard).
    */
   lab?: boolean
-  /** With `test`, the course as a water slide (runs.ts slideDay): its edges curve up, with a rail along the top. */
+  /** With `test`, the course as a water slide (runs.ts slideDay): its edges curve up high. */
   slide?: boolean
   /** A past course's day as the API has it, for its cards: who was 1st, and you. */
   itsDay?: ItsDay

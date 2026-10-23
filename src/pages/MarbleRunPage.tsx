@@ -11,7 +11,7 @@ const isDay = (day: string | undefined): day is string => typeof day === 'string
  * admin's test run (MarbleRunGame sends anyone else to today's). A day before the first isn't shown, and
  * one older than a week is Plus's (components/archive/ArchiveGate.tsx). With ?lab=1, the test track, an
  * admin's: every new kind of piece in one course (sim.ts labCourse). With ?slide=1, today's course (or a test
- * day's) as a water slide, its edges curved up and railed (sim.ts slideCourse), an admin's test run too.
+ * day's) as a water slide, its edges curved up high (sim.ts slideCourse), an admin's test run too.
  */
 export function MarbleRunPage() {
   const route = useRoute()
