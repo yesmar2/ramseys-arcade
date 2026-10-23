@@ -69,8 +69,8 @@ export function makeSim(): Sim<GameState> {
     for (const pad of s.pads) {
       const target = pad.target
       const view = seen.get(pad.id)
-      // A target nearly back down is let go.
-      if (!target || target.hit || !view || clock < view.ready || target.rise < 0.25) continue
+      // A target nearly back down is let go, and a spiky one is never gone for.
+      if (!target || target.hit || target.kind === 'spiky' || !view || clock < view.ready || target.rise < 0.25) continue
       if (!pick || sooner(target, pick.target)) pick = { id: pad.id, target, view }
     }
     if (!pick) return s

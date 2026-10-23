@@ -317,7 +317,7 @@ export function WhackGame() {
                   gameSlug="pop"
                   score={ui.score}
                   title="Time’s up"
-                  subtitle={`${ui.hits} hits`}
+                  subtitle={`${ui.hits} hits${ui.spiked ? ` · ${ui.spiked} spiky popped` : ''}`}
                   previousBest={Math.max(previousBestRef.current, apiBest)}
                   onDone={toMenu}
                 />

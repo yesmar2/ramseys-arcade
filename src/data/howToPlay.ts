@@ -155,7 +155,7 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
   },
   pop: {
-    goal: 'Pop bubbles before they fade.',
+    goal: 'Pop bubbles before they fade, but never the spiky ones.',
     controls: [
       { does: 'Pop', touch: 'Tap', keys: 'Click' },
     ],
@@ -164,9 +164,10 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       { what: 'Its bright center', pts: '+30' },
       { what: 'Gold bubble', pts: '+25', sub: 'center +70' },
       { what: 'Pops in a row', pts: 'up to +20 more' },
+      { what: 'Spiky bubble', pts: '−25', sub: 'and your streak' },
     ],
     ends: 'After 45 seconds.',
-    tip: 'Let a bubble fade and your streak resets.',
+    tip: 'Let a bubble fade and your streak resets, but leave the spiky ones alone: they fade for free.',
   },
   pellets: {
     goal: 'Clear the maze, level after level, and keep away from the bugs.',

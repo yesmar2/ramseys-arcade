@@ -19,7 +19,8 @@ import { isDarkTheme, playfieldColor } from '../../lib/theme'
  * carries a bright core in its middle where a tap pays the centre price, wears
  * a ring that runs down with the time it has left, sags as it goes, and bursts
  * into droplets when it is caught — a ring and a star for a centre, sparks for
- * gold, a fizzle for one let go. The core is exactly the centre the scoring
+ * gold, a fizzle for one let go. A spiky one is a dark burr instead, and goes
+ * up in smoke if you are unwise enough to pop it. The core is exactly the centre the scoring
  * always used, and what is drawn is exactly what can be hit.
  */
 
@@ -97,6 +98,75 @@ function drawCountdown(ctx: CanvasRenderingContext2D, state: GameState, w: numbe
 
 /* ---- Bubbles. ---- */
 
+/** Spikes round a spiky bubble. */
+const SPIKES = 10
+
+/**
+ * A spiky bubble: a dark burr with points all round, not a soap film. Its
+ * points reach exactly as far as a tap can catch it, so what looks like it
+ * would prick you does. It has no bright core, since it pays no centre.
+ */
+function drawSpiky(
+  ctx: CanvasRenderingContext2D,
+  target: Target,
+  w: number,
+  h: number,
+  top: number,
+  dark: boolean,
+  time: number,
+) {
+  const spot = bubbleSpot(target, w, h, top)
+  const { x, y } = spot
+  const size = spot.r
+  const R = bubbleRadius(w, h, top)
+  const hue = target.hue
+  const sagging = target.age >= target.life * 0.6
+  const fade = sagging ? clamp01(0.25 + target.rise * 0.9) : 1
+  const body = size * 0.66
+  // It turns slowly, and its points breathe in and out a little.
+  const turn = time * 0.5 + target.sway
+  const breathe = 1 + Math.sin(time * 5 + target.sway) * 0.03
+
+  ctx.save()
+  ctx.globalAlpha = fade
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  for (let i = 0; i < SPIKES * 2; i++) {
+    const a = turn + (i / (SPIKES * 2)) * TAU
+    const d = i % 2 === 0 ? size * breathe : body
+    const px = x + Math.cos(a) * d
+    const py = y + Math.sin(a) * d
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  const fill = ctx.createRadialGradient(x - size * 0.25, y - size * 0.3, size * 0.05, x, y, size)
+  fill.addColorStop(0, hsla(hue, 26, dark ? 44 : 40, 1))
+  fill.addColorStop(1, hsla(hue, 30, dark ? 22 : 18, 1))
+  ctx.fillStyle = fill
+  ctx.fill()
+  ctx.strokeStyle = dark ? hsla(hue, 40, 72, 0.9) : hsla(hue, 30, 12, 0.9)
+  ctx.lineWidth = Math.max(1.5, R * 0.045)
+  ctx.stroke()
+
+  // Light on it, so it still reads as round.
+  ctx.strokeStyle = dark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.5)'
+  ctx.lineWidth = Math.max(2, R * 0.06)
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.arc(x, y, body * 0.62, Math.PI * 1.1, Math.PI * 1.4)
+  ctx.stroke()
+
+  // The time it has left, as on any bubble.
+  const left = clamp01(1 - target.age / target.life)
+  ctx.strokeStyle = dark ? 'rgba(231, 238, 243, 0.34)' : 'rgba(26, 43, 60, 0.3)'
+  ctx.lineWidth = Math.max(1.5, R * 0.045)
+  ctx.beginPath()
+  ctx.arc(x, y, size + Math.max(4, R * 0.14), -Math.PI / 2, -Math.PI / 2 + TAU * left)
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawBubble(
   ctx: CanvasRenderingContext2D,
   target: Target,
@@ -106,6 +176,10 @@ function drawBubble(
   dark: boolean,
   time: number,
 ) {
+  if (target.kind === 'spiky') {
+    drawSpiky(ctx, target, w, h, top, dark, time)
+    return
+  }
   const spot = bubbleSpot(target, w, h, top)
   const { x, y } = spot
   const size = spot.r
@@ -221,6 +295,33 @@ function drawBurst(ctx: CanvasRenderingContext2D, b: Burst, w: number, h: number
       ctx.arc(x + dx, y + dy, s, 0, TAU)
     }
     ctx.fill()
+    return
+  }
+
+  if (b.kind === 'spike') {
+    // A spiky one popped: a puff of dark smoke, and its points flung off.
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU + noise(b.seed, i) * 0.8
+      const d = r * (0.2 + out * 0.6)
+      const s = r * (0.35 + noise(b.seed, i + 7) * 0.2) * (0.7 + out * 0.6)
+      circle(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d - out * r * 0.5, s)
+      ctx.fillStyle = hsla(hue, 12, dark ? 52 : 38, (1 - t) * 0.35)
+      ctx.fill()
+    }
+    ctx.fillStyle = hsla(hue, 30, dark ? 60 : 22, 1 - t)
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU + noise(b.seed, i + 30) * 0.4
+      const d = r * (0.7 + out * 0.9)
+      const px = x + Math.cos(a) * d
+      const py = y + Math.sin(a) * d + t * t * r * 0.5
+      const s = R * 0.13 * (1 - t * 0.7)
+      ctx.beginPath()
+      ctx.moveTo(px + Math.cos(a) * s, py + Math.sin(a) * s)
+      ctx.lineTo(px + Math.cos(a + 2.4) * s * 0.45, py + Math.sin(a + 2.4) * s * 0.45)
+      ctx.lineTo(px + Math.cos(a - 2.4) * s * 0.45, py + Math.sin(a - 2.4) * s * 0.45)
+      ctx.closePath()
+      ctx.fill()
+    }
     return
   }
 

@@ -142,7 +142,7 @@ export const games: Game[] = [
     name: 'Pop',
     slug: 'pop',
     tags: ['quick', 'arcade'],
-    description: 'Pop the bubbles before they fade. Center hits score more.',
+    description: 'Pop the bubbles before they fade, and leave the spiky ones alone. Center hits score more.',
     accent: PALETTE.teal,
     playable: true,
   },

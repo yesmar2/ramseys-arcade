@@ -3,7 +3,12 @@ import { sfx } from '../../lib/sound'
 
 export type Phase = 'menu' | 'playing' | 'gameover'
 
-export type TargetKind = 'normal' | 'gold'
+/**
+ * A spiky bubble is the one to leave alone: popping it costs points and the
+ * streak, and letting it fade costs nothing. Its spikes, not its colour, say
+ * which it is, so it reads the same to every eye.
+ */
+export type TargetKind = 'normal' | 'gold' | 'spiky'
 
 /**
  * A bubble. `rise` is how blown up it is, 0 to 1.
@@ -61,7 +66,7 @@ export type Floater = {
  * What a bubble leaves: a pop, a centre pop, a gold one, a fizzle when it goes
  * unpopped, and the last few bursting when the clock runs out.
  */
-export type BurstKind = 'pop' | 'center' | 'gold' | 'fizzle' | 'end'
+export type BurstKind = 'pop' | 'center' | 'gold' | 'fizzle' | 'end' | 'spike'
 
 export type Burst = {
   id: number
@@ -92,6 +97,7 @@ export type Snapshot = {
   streak: number
   centerStreakBest: number
   hits: number
+  spiked: number
 }
 
 export type GameState = {
@@ -105,6 +111,8 @@ export type GameState = {
   /** Peak center streak this run. */
   centerStreakBest: number
   hits: number
+  /** Spiky bubbles popped this run. */
+  spiked: number
   pads: Pad[]
   spawnTimer: number
   floaters: Floater[]
@@ -135,6 +143,8 @@ export const PAD_INNER = 0.42
 
 /** The colours bubbles come in. Gold is its own; nothing plain is near it. */
 const BUBBLE_HUES = [198, 172, 348, 272, 128, 236]
+/** A spiky bubble's colour: a dark plum, though its spikes are what mark it. */
+export const SPIKY_HUE = 292
 const ROUND_SECS = 45
 const SCORE_HIT = 10
 const SCORE_CENTER = 30
@@ -145,6 +155,10 @@ const STREAK_BONUS_CAP = 20
 const HIT_RISE = 0.16
 /** A streak this long is worth telling the player they have lost. */
 const STREAK_WORTH = 3
+/** What popping a spiky bubble costs. A run's score never goes below nothing. */
+const SPIKY_COST = 25
+/** No spiky bubbles while a round is finding its feet. */
+const SPIKY_FROM = 5
 
 const BURST_LIFE: Record<BurstKind, number> = {
   pop: 0.45,
@@ -152,6 +166,7 @@ const BURST_LIFE: Record<BurstKind, number> = {
   gold: 0.65,
   fizzle: 0.35,
   end: 0.5,
+  spike: 0.6,
 }
 
 let nextId = 1
@@ -179,6 +194,7 @@ export function createInitialState(): GameState {
     centerStreak: 0,
     centerStreakBest: 0,
     hits: 0,
+    spiked: 0,
     pads: emptyPads(),
     spawnTimer: 0.4,
     floaters: [],
@@ -340,15 +356,31 @@ function findRoom(state: GameState, size: number): { fx: number; fy: number } | 
   return null
 }
 
+/** How many spiky bubbles can be up at once: one, then two once the round is busy. */
+function maxSpiky(elapsed: number) {
+  if (elapsed < SPIKY_FROM) return 0
+  return elapsed / ROUND_SECS > 0.45 ? 2 : 1
+}
+
+/** How often a new bubble comes up spiky, growing through the round. */
+function spikyChance(elapsed: number) {
+  const t = Math.min(1, elapsed / ROUND_SECS)
+  return 0.14 + t * 0.12
+}
+
 function spawnTarget(state: GameState, elapsed: number): GameState {
-  const up = state.pads.filter((p) => p.target && !p.target.hit).length
-  if (up >= maxUp(elapsed)) return { ...state, spawnTimer: 0.12 }
+  const up = state.pads.filter((p) => p.target && !p.target.hit)
+  // Spiky bubbles come on top of the ones to pop, so there are as many of those as ever.
+  const spikies = up.filter((p) => p.target!.kind === 'spiky').length
+  const goodUp = up.length - spikies
+  const spiky = spikies < maxSpiky(elapsed) && Math.random() < spikyChance(elapsed)
+  if (!spiky && goodUp >= maxUp(elapsed)) return { ...state, spawnTimer: 0.12 }
   const free = state.pads.filter((p) => !p.target)
   if (!free.length) return { ...state, spawnTimer: 0.12 }
 
-  const gold = Math.random() < 0.12
+  const gold = !spiky && Math.random() < 0.12
   // Gold comes a touch smaller and quicker, as it always went quicker.
-  const size = gold ? 0.88 : 0.88 + Math.random() * 0.24
+  const size = gold ? 0.88 : spiky ? 0.92 + Math.random() * 0.16 : 0.88 + Math.random() * 0.24
   const room = findRoom(state, size)
   if (!room) return { ...state, spawnTimer: 0.12 }
 
@@ -356,10 +388,11 @@ function spawnTarget(state: GameState, elapsed: number): GameState {
   const speed = driftSpeed(elapsed) * (gold ? 1.25 : 1)
   const heading = -Math.PI / 2 + (Math.random() - 0.5) * 1.4
   const target: Target = {
-    kind: gold ? 'gold' : 'normal',
-    hue: gold ? 42 : BUBBLE_HUES[Math.floor(Math.random() * BUBBLE_HUES.length)]!,
+    kind: gold ? 'gold' : spiky ? 'spiky' : 'normal',
+    hue: gold ? 42 : spiky ? SPIKY_HUE : BUBBLE_HUES[Math.floor(Math.random() * BUBBLE_HUES.length)]!,
     age: 0,
-    life: targetLife(elapsed) * (gold ? 0.85 : 1),
+    // A spiky one hangs about longer, so it is in the way.
+    life: targetLife(elapsed) * (gold ? 0.85 : spiky ? 1.5 : 1),
     rise: 0,
     hit: false,
     hitAge: 0,
@@ -371,7 +404,8 @@ function spawnTarget(state: GameState, elapsed: number): GameState {
     sway: Math.random() * Math.PI * 2,
   }
   const pads = state.pads.map((p) => (p.id === slot ? { ...p, target } : p))
-  return { ...state, pads, spawnTimer: spawnInterval(elapsed) }
+  // A spiky one does not hold up the next bubble to pop.
+  return { ...state, pads, spawnTimer: spiky ? 0.12 : spawnInterval(elapsed) }
 }
 
 /** Carry a bubble along its drift, turning it back off the field's edges. */
@@ -430,7 +464,8 @@ export function hitHole(state: GameState, zone: number, w: number, h: number): G
   let best: number | null = null
   let bestD = Infinity
   for (const pad of state.pads) {
-    if (!liveTarget(pad.target)) continue
+    // A key cannot aim, so it never lands on a spiky bubble.
+    if (!liveTarget(pad.target) || pad.target!.kind === 'spiky') continue
     const spot = bubbleSpot(pad.target!, w, h, state.stageTop)
     const inCol = Math.min(PAD_COLS - 1, Math.floor(((spot.x - f.x) / f.w) * PAD_COLS))
     const inRow = Math.min(PAD_ROWS - 1, Math.floor(((spot.y - f.y) / f.h) * PAD_ROWS))
@@ -457,6 +492,7 @@ export function hitPad(
   if (!liveTarget(pad?.target ?? null)) return state
 
   const target = pad!.target!
+  if (target.kind === 'spiky') return popSpiky(state, padId, w, h)
   const spot = bubbleSpot(target, w, h, state.stageTop)
   const center = dist != null && dist <= spot.r * PAD_INNER
   const gold = target.kind === 'gold'
@@ -507,6 +543,41 @@ export function hitPad(
     centerStreak,
     centerStreakBest,
     hits: state.hits + 1,
+  }
+}
+
+/** A spiky bubble popped: it costs points and the streak, and goes up in smoke. */
+function popSpiky(state: GameState, padId: number, w: number, h: number): GameState {
+  const target = state.pads.find((p) => p.id === padId)!.target!
+  const spot = bubbleSpot(target, w, h, state.stageTop)
+  const u = spot.x / Math.max(1, w)
+  const v = spot.y / Math.max(1, h)
+  const R = bubbleRadius(w, h, state.stageTop)
+  const cost = Math.min(SPIKY_COST, state.score)
+  sfx('hurt')
+  return {
+    ...state,
+    pads: state.pads.map((p) =>
+      p.id !== padId || !p.target ? p : { ...p, target: { ...p.target, hit: true, hitAge: 0 } },
+    ),
+    floaters: [
+      ...state.floaters,
+      {
+        id: uid(),
+        u,
+        v,
+        hue: target.hue,
+        text: `OUCH −${SPIKY_COST}`,
+        tone: 'lost',
+        life: 1,
+        max: 1,
+      } satisfies Floater,
+    ].slice(-8),
+    bursts: [...state.bursts, burst(u, v, spot.r / R, 'spike', target.hue)].slice(-12),
+    score: state.score - cost,
+    streak: 0,
+    centerStreak: 0,
+    spiked: state.spiked + 1,
   }
 }
 
@@ -565,9 +636,11 @@ export function tick(state: GameState, dt: number): GameState {
       target.rise = Math.max(0, target.rise - dt * 4.2)
       if (target.rise <= 0.08) {
         pads.push({ ...pad, target: null })
-        // Let go unpopped: it fizzles, and a streak worth having says so.
         const gone = burstFor(s, target, 'fizzle')
         s.bursts = [...s.bursts, gone].slice(-12)
+        // A spiky one left alone is the right call, and costs nothing.
+        if (target.kind === 'spiky') continue
+        // Let go unpopped: it fizzles, and a streak worth having says so.
         if (s.streak >= STREAK_WORTH) {
           s.floaters = [
             ...s.floaters,
@@ -625,5 +698,6 @@ export function toSnapshot(s: GameState): Snapshot {
     streak: s.streak,
     centerStreakBest: s.centerStreakBest,
     hits: s.hits,
+    spiked: s.spiked,
   }
 }
