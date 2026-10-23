@@ -47,10 +47,10 @@ bootOfflineCopy()
  * yet asks for a chunk that is gone. One reload picks up the new shell; the
  * timestamp keeps a broken deploy from reloading forever.
  *
- * Right after a release the new service worker may still be installing, and
- * until it takes over a reload gets the old shell again, which fails the same
- * way (the old worker keeps only the chunks this browser has used). So the
- * reload waits for it, up to eight seconds. The failed import goes on to the
+ * A reload asks the server for the shell (src/sw.ts), but a worker from
+ * before that change, or one whose server was slow to answer, opens the old
+ * shell again until the new worker takes over. So the reload waits for it,
+ * up to eight seconds. The failed import goes on to the
  * error screen meanwhile, as the "dynamically imported module" error that
  * errorReports leaves out.
  */

@@ -7,13 +7,20 @@ import { reportError } from '../lib/errorReports'
  * It sits outside the app, so its buttons load the page afresh rather than
  * route.
  */
-export class SiteErrorBoundary extends Component<{ children: ReactNode }, { broken: boolean; offline: boolean }> {
-  state = { broken: false, offline: false }
+/** A page's file that didn't come: offline, or gone in a release since this tab opened (main.tsx reloads). */
+const MISSING_FILE = /dynamically imported module|Importing a module script failed|error loading dynamically/i
 
-  static getDerivedStateFromError() {
+export class SiteErrorBoundary extends Component<
+  { children: ReactNode },
+  { broken: boolean; offline: boolean; updated: boolean }
+> {
+  state = { broken: false, offline: false, updated: false }
+
+  static getDerivedStateFromError(error: unknown) {
     // Offline, what failed is most likely a page or game this device hasn't kept yet: they're kept as they're
     // first used (src/sw.ts).
-    return { broken: true, offline: typeof navigator !== 'undefined' && navigator.onLine === false }
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false
+    return { broken: true, offline, updated: !offline && MISSING_FILE.test(String(error)) }
   }
 
   componentDidCatch(error: unknown) {
@@ -24,20 +31,24 @@ export class SiteErrorBoundary extends Component<{ children: ReactNode }, { brok
 
   render() {
     if (!this.state.broken) return this.props.children
-    const { offline } = this.state
+    const { offline, updated } = this.state
     return (
       <main className="site-broken">
         <div className="panel" role="alert">
           <div className="panel__head">
             <div className="panel__heading">
-              <h1 className="panel__title">{offline ? "You're offline" : 'Something went wrong'}</h1>
+              <h1 className="panel__title">
+                {offline ? "You're offline" : updated ? 'The site was just updated' : 'Something went wrong'}
+              </h1>
             </div>
           </div>
           <div className="panel__body">
             <p className="panel__text">
               {offline
                 ? "This page isn't saved on this device yet. It opens as soon as you're back online, and plays offline after that."
-                : 'This page hit a problem. Reloading usually sorts it out.'}
+                : updated
+                  ? 'This page is getting the new version. If it doesn’t open in a few seconds, reload.'
+                  : 'This page hit a problem. Reloading usually sorts it out.'}
             </p>
           </div>
           <div className="panel__actions">

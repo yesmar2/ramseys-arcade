@@ -99,14 +99,42 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-// Single-page app: anything not precached falls back to the shell. Not the pages the server answers itself,
-// the coming-soon page and the gate's /__gate (middleware.js), or a browser with this worker would only ever
-// open the app at those addresses.
+/*
+ * A page opened by address (or reloaded) asks the server first, and opens the installed shell only offline, on a
+ * server error, or when the server takes longer than SHELL_WAIT. Opening the installed shell first opened the
+ * release before the last one until this worker's successor had installed itself: its pages' files are gone from
+ * the server, so a page not opened before broke on every reload until then (Ramsey, 2026-10-23: "pressed it like
+ * 5 times and it finally loaded"). The server's answer starts while this worker wakes (navigation preload).
+ * Not the pages the server answers itself, the coming-soon page and the gate's /__gate (middleware.js), which
+ * always go to the server.
+ */
+const SHELL_WAIT = 3000
+const installedShell = createHandlerBoundToURL('/index.html')
 registerRoute(
-  new NavigationRoute(createHandlerBoundToURL('/index.html'), {
-    denylist: [/^\/soon\.html(?:\?|$)/, /^\/__gate(?:\?|$)/],
-  }),
+  new NavigationRoute(
+    async (options) => {
+      const event = options.event as FetchEvent
+      const preloaded = Promise.resolve(event.preloadResponse).catch(() => undefined)
+      event.waitUntil(preloaded)
+      try {
+        const fresh = await Promise.race([
+          preloaded.then((response) => (response as Response | undefined) ?? fetch(options.request)),
+          new Promise<undefined>((done) => setTimeout(done, SHELL_WAIT)),
+        ])
+        // A redirect (to the site's own address) comes back opaque, status 0, and the browser follows it.
+        if (fresh && fresh.status < 500) return fresh
+      } catch {
+        /* offline */
+      }
+      return installedShell(options)
+    },
+    { denylist: [/^\/soon\.html(?:\?|$)/, /^\/__gate(?:\?|$)/] },
+  ),
 )
+
+self.addEventListener('activate', (event) => {
+  if (self.registration.navigationPreload) event.waitUntil(self.registration.navigationPreload.enable())
+})
 
 // Matches the old `registerType: 'autoUpdate'` behaviour.
 self.skipWaiting()
