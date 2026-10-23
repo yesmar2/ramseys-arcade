@@ -355,6 +355,21 @@ html[data-theme='dark'] .about-highlight__icon {
   }
 }
 
+/* The questions people ask about the site (lib/aboutQuestions.ts): the story's card, headed like the page's kicker. */
+.about-faq__title {
+  margin: 0;
+  padding-top: clamp(1.25rem, 3vw, 1.85rem);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--info-accent-ink);
+}
+
+.about-faq__title + .about-part {
+  padding-top: 0.75rem;
+}
+
 .about-part__title {
   position: relative;
   align-self: start;

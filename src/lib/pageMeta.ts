@@ -38,6 +38,7 @@ import { FRIENDS_SCOPE, groupHref, groupsIndexHref } from './groups'
 import { LEADERBOARD_GAMES, type LeaderboardGame } from './leaderboard'
 import { numberWord } from './numberWord'
 import { gameHasRecords } from './records'
+import { aboutQuestions } from './aboutQuestions'
 
 /**
  * What each page tells the outside world: the tab title, the description
@@ -54,6 +55,13 @@ export type PageMeta = {
   image: string
   /** A page that is somebody's own, or needs an invite, stays out of search. */
   noindex?: boolean
+  /**
+   * The page search should know this one by, when this one says the same thing: a game's play page repeats its
+   * game page's words, so its canonical link is the game page's and it isn't in the sitemap (2026-10-23).
+   */
+  canonicalPath?: string
+  /** Searchable but thin (a game's records, its past courses): left out of the sitemap so the full pages lead. */
+  sitemap?: false
 }
 
 export const SITE_TAGLINE = 'Simple games, no ads, just play'
@@ -263,7 +271,8 @@ function dailiesDescription(): string {
 function dailyTabMeta(slug: string, tab: 'past' | 'records'): PageMeta {
   const name = gameName(slug)
   const { course, pastTab, verb, past } = dailyWords(slug)
-  const meta = gameMeta(slug, dailyTabHref(slug, tab))
+  // A tab's words are a line or two: searchable, but not the page to lead with (PageMeta.sitemap).
+  const meta: PageMeta = { ...gameMeta(slug, dailyTabHref(slug, tab)), sitemap: false }
   const board = past === 'board'
   if (tab === 'past') {
     return {
@@ -303,6 +312,12 @@ function gameRecordsPath(slug: string) {
 
 function visibleGames() {
   return games.filter((game) => isListedGame(game))
+}
+
+/** The dailies the site lists, races first, as the Dailies page shows them. */
+function dailyGames() {
+  const dailies = visibleGames().filter((game) => game.daily && game.playable)
+  return [...dailies.filter((game) => isRankedGame(game.slug)), ...dailies.filter((game) => !isRankedGame(game.slug))]
 }
 
 /**
@@ -432,17 +447,22 @@ export function pageContent(route: Route): PageContent {
       if (!game || game.hidden) break
       return { heading, paragraphs: [meta.description], links: gameContentLinks(game) }
     }
-    // The day's dailies, each a way in.
+    // The day's dailies, each a way in: its own page, by what kind of game it is.
     case 'today':
       return {
         heading,
         paragraphs: [meta.description],
         links: [
-          ...visibleGames()
-            .filter((game) => game.daily && game.playable)
-            .map((game) => ({ href: gamePlayHref(game.slug), label: `Play ${game.name}` })),
+          ...dailyGames().map((game) => ({ href: gameHref(game.slug), label: `${game.name}: ${gameKind(game.slug) ?? 'daily game'}` })),
           ...siteLinks(),
         ],
+      }
+    // What the site is, then its questions answered, as the page asks them (lib/aboutQuestions.ts).
+    case 'about':
+      return {
+        heading,
+        paragraphs: [meta.description, arcadeLine(), ...aboutQuestions().map(({ q, a }) => `${q} ${a}`)],
+        links: [...gameLinks(), ...siteLinks()],
       }
     case 'leaderboards':
     case 'recordsIndex':
@@ -634,6 +654,7 @@ export function pageMeta(route: Route): PageMeta {
       if (route.board === 'records' && !isDailyGame(route.slug)) {
         return {
           ...gameMeta(route.slug, gameRecordsPath(route.slug)),
+          sitemap: false,
           title: titled(`${gameName(route.slug)} records`),
           description: `${gameName(route.slug)} records on ${APP_NAME}: the best runs ever set, and who set them.`,
         }
@@ -646,7 +667,9 @@ export function pageMeta(route: Route): PageMeta {
       if ((route.track || route.hole || route.day) && isDailyGame(route.slug)) {
         return { ...gameMeta(route.slug, gamePlayHref(route.slug), 'Play'), noindex: true }
       }
-      return dailyMeta(route.slug) ?? gameMeta(route.slug, gamePlayHref(route.slug), 'Play')
+      // A day's own puzzle page ("Today's Pour") says something of its own; any other play page repeats its game
+      // page, which search should know it by.
+      return dailyMeta(route.slug) ?? { ...gameMeta(route.slug, gamePlayHref(route.slug), 'Play'), canonicalPath: gameHref(route.slug) }
     // A friend's challenge link, in the words of its prerendered page (scripts/prerender.mjs), hidden games too.
     // Somebody's link to somebody, never a search result.
     case 'challenge': {
@@ -688,6 +711,57 @@ export function pageStructuredData(route: Route, origin: string): Record<string,
       '@context': 'https://schema.org',
       '@graph': [
         { '@type': 'WebSite', '@id': `${origin}/#site`, name: APP_NAME, url: `${origin}/`, description: SITE_DESCRIPTION, inLanguage: 'en', publisher: { '@id': orgId } },
+        org,
+      ],
+    }
+  }
+  // The About page's questions, answered (lib/aboutQuestions.ts): what AI tools are asked about the site.
+  if (route.name === 'about') {
+    return {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'FAQPage',
+          '@id': `${origin}${aboutHref()}#faq`,
+          url: `${origin}${aboutHref()}`,
+          mainEntity: aboutQuestions().map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+          publisher: { '@id': orgId },
+        },
+        org,
+      ],
+    }
+  }
+  // The Dailies page: the list of the day's games, races first, each by what kind of game it is.
+  if (route.name === 'today' && !route.day) {
+    const url = `${origin}${todayHref()}`
+    return {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'CollectionPage',
+          '@id': `${url}#page`,
+          url,
+          name: pageMeta(route).title,
+          description: dailiesDescription(),
+          isAccessibleForFree: true,
+          publisher: { '@id': orgId },
+          mainEntity: {
+            '@type': 'ItemList',
+            itemListElement: dailyGames().map((game, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              item: {
+                '@type': 'VideoGame',
+                '@id': `${origin}${gameHref(game.slug)}#game`,
+                name: game.name,
+                url: `${origin}${gameHref(game.slug)}`,
+                ...(gameKind(game.slug) ? { genre: capital(gameKind(game.slug)!) } : {}),
+                gamePlatform: 'Web browser',
+                isAccessibleForFree: true,
+              },
+            })),
+          },
+        },
         org,
       ],
     }

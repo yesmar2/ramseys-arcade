@@ -35,7 +35,8 @@ export function applyPageMeta(meta: PageMeta) {
   upsertMeta('property', 'og:description', meta.description)
   upsertMeta('property', 'og:url', url)
   upsertMeta('property', 'og:image', `${origin}${meta.image}`)
-  upsertLink('canonical', url)
+  // A page that repeats another (a game's play page) is known by that one (PageMeta.canonicalPath).
+  upsertLink('canonical', `${origin}${meta.canonicalPath ?? meta.path}`)
   if (meta.noindex) upsertMeta('name', 'robots', 'noindex')
   else removeMeta('name', 'robots')
 }

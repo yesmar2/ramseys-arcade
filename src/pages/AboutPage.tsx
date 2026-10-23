@@ -11,6 +11,7 @@ import {
   todayHref,
   tournamentsHref,
 } from '../hooks/useHashRoute'
+import { aboutQuestions } from '../lib/aboutQuestions'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { toWall } from '../lib/scrollToPlace'
 import '../styles/info.css'
@@ -154,6 +155,19 @@ export function AboutPage() {
             </p>
           </div>
         </div>
+
+        {/* What people ask about the site, answered plainly: the same words search engines and AI tools read. */}
+        <section className="about-story about-faq" aria-labelledby="about-faq-title">
+          <h2 id="about-faq-title" className="about-faq__title">
+            Questions
+          </h2>
+          {aboutQuestions().map(({ q, a }) => (
+            <div key={q} className="about-part">
+              <h3 className="about-part__title">{q}</h3>
+              <p>{a}</p>
+            </div>
+          ))}
+        </section>
 
         {/* The last part with the way back it offers, as buttons: the home page's wall of games, and today's dailies. */}
         <div className="about-cta">

@@ -54,7 +54,8 @@ function pageHtml(meta, content) {
   let html = shell
   html = stamp(html, /(<title>)[^<]*(<\/title>)/, esc(meta.title))
   html = stamp(html, /(<meta\s+name="description"\s+content=")[^"]*(")/, esc(meta.description))
-  html = stamp(html, /(<link\s+rel="canonical"\s+href=")[^"]*(")/, url)
+  // A page that repeats another (a game's play page) is known by that one; a share still opens this one (og:url).
+  html = stamp(html, /(<link\s+rel="canonical"\s+href=")[^"]*(")/, `${origin}${meta.canonicalPath ?? meta.path}`)
   html = stamp(html, /(<meta\s+property="og:title"\s+content=")[^"]*(")/, esc(meta.title))
   html = stamp(html, /(<meta\s+property="og:description"\s+content=")[^"]*(")/, esc(meta.description))
   html = stamp(html, /(<meta\s+property="og:url"\s+content=")[^"]*(")/, url)
@@ -138,10 +139,13 @@ const server = await createServer({
 try {
   const { llmsText, pageContent, pageMeta, pageStructuredData, publicRoutes } = await server.ssrLoadModule('/src/lib/pageMeta.ts')
   const paths = []
+  /** The sitemap's: every page written, but a page known by another or a thin one (PageMeta.sitemap) left out. */
+  const listed = []
   for (const route of publicRoutes()) {
     const meta = pageMeta(route)
     if (meta.noindex || paths.includes(meta.path)) continue
     paths.push(meta.path)
+    if (!meta.canonicalPath && meta.sitemap !== false) listed.push(meta.path)
     const file = outFile(meta.path)
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, withStructuredData(pageHtml(meta, pageContent(route)), pageStructuredData(route, origin)))
@@ -257,7 +261,7 @@ try {
     console.warn('prerender: no day cards this build:', err)
   }
   writeFileSync(join(DIST, 'robots.txt'), robotsTxt())
-  writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml(paths))
+  writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml(listed))
   // The site in plain Markdown for AI tools (llmstxt.org), from the same listed games.
   writeFileSync(join(DIST, 'llms.txt'), llmsText(origin))
   const soon = writeSoonPage()
