@@ -1,11 +1,13 @@
 import { chosenSkin } from './skins'
-import { getGame, isRankedGame } from '../data/games'
+import { getGame, isDailyGame, isRankedGame } from '../data/games'
 import { noteTicketsPaid, type RunTickets } from './tickets'
 import { noteSeasonRun, type SeasonRun } from './season'
 import { boardPlayer, gapBetween, gapFigure, scoreUnit, type BoardPlayer } from './gameBoard'
 import { refreshGlobalRank } from './globalRank'
 import { getSessionToken } from './auth'
-import { FRIENDS_SCOPE } from './groups'
+import { cachedMyGroups, FRIENDS_SCOPE, storedActiveGroup } from './groups'
+import { currentSeason } from './season'
+import { seasonHasStandings } from './seasonStandings'
 import {
   addLeaderboardScore,
   api,
@@ -155,7 +157,17 @@ export type RunFacts = {
   season?: SeasonRun | null
   /** The period's board among the player's friends, after the save (signed in only). */
   friends?: FriendFacts | null
+  /**
+   * Whose board `board` is, when it isn't everyone's: the group the boards were set to (BoardsAmong) as it was
+   * read, by name, or 'Friends'. The board read follows the site's group; the words now say so.
+   */
+  among?: string | null
+  /** The player's place on the game's board in each period the boards have a tab for, among the same players. */
+  places?: PeriodPlace[] | null
 }
+
+/** A place on one period's board after the run, and whether the run moved the player up it (or onto it). */
+export type PeriodPlace = { period: LeaderboardPeriod; place: number | null; up: boolean }
 
 /**
  * The period's board among the player and their friends (the API's `group=friends`), after the save: the
@@ -227,9 +239,20 @@ function scopeLabel(board: string, copy: PeriodCopy): string {
   return copy.noun ? `${board} ${copy.phrase}` : `${board}, all time`
 }
 
-function boardLabel(slug: string, copy: PeriodCopy): string {
-  return scopeLabel(gameName(slug), copy)
+/** The game's board and period as a place; among a group, the group's: Office Pool this month. */
+function boardLabel(slug: string, copy: PeriodCopy, among: string | null = null): string {
+  return scopeLabel(among ?? gameName(slug), copy)
 }
+
+/** A place on the board, said in a ribbon: 2nd on Crosswalk this month, 2nd in Office Pool this month. */
+function placeOnLabel(f: RunFacts, copy: PeriodCopy): string {
+  const among = f.among ?? null
+  if (!among) return `on ${boardLabel(f.slug, copy)}`
+  return among === FRIENDS_AMONG ? `among your friends ${copy.phrase}` : `in ${boardLabel(f.slug, copy, among)}`
+}
+
+/** How the friends' board is named on the card (BoardsAmong says the same). */
+const FRIENDS_AMONG = 'Friends'
 
 /* ---------- the lines ---------- */
 
@@ -275,7 +298,7 @@ type BoardRead = {
 function boardLine(f: RunFacts, copy: PeriodCopy): BoardRead | null {
   const { slug } = f
   const b = f.board
-  const label = boardLabel(slug, copy)
+  const label = boardLabel(slug, copy, f.among ?? null)
   const mine = b?.you
   if (!b || !mine) {
     // The board didn't read: the standings still know the place, when they cover the board's period.
@@ -487,7 +510,8 @@ export function composeReport(f: RunFacts): RunReportData {
     lead = f.period !== 'all' ? 'all-time' : 'board'
   } else if (board?.newTop) {
     tier = 'big'
-    ribbon = { icon: 'crown', text: 'Top of the board', tone: 'gold' }
+    const top = !f.among ? 'the board' : f.among === FRIENDS_AMONG ? 'your friends' : f.among
+    ribbon = { icon: 'crown', text: `Top of ${top}`, tone: 'gold' }
     lead = 'board'
   } else if (bookTop && topBook) {
     tier = 'big'
@@ -496,7 +520,7 @@ export function composeReport(f: RunFacts): RunReportData {
   } else if (boardPodium) {
     tier = 'big'
     metal = boardPodium === 2 ? 'silver' : 'bronze'
-    ribbon = { icon: 'up', text: `${ordinal(boardPodium)} on ${boardLabel(f.slug, copy)}`, tone: 'gold' }
+    ribbon = { icon: 'up', text: `${ordinal(boardPodium)} ${placeOnLabel(f, copy)}`, tone: 'gold' }
     metalLine = 'board'
     lead = 'board'
   } else if (bookPodium) {
@@ -518,7 +542,7 @@ export function composeReport(f: RunFacts): RunReportData {
     ribbon = { icon: 'up', text: 'New personal best', tone: 'accent' }
   } else if (board?.climbed && board.place <= 10) {
     tier = 'lit'
-    ribbon = { icon: 'up', text: `${ordinal(board.place)} ${copy.phrase}`, tone: 'accent' }
+    ribbon = { icon: 'up', text: f.among ? `${ordinal(board.place)} ${placeOnLabel(f, copy)}` : `${ordinal(board.place)} ${copy.phrase}`, tone: 'accent' }
   } else if (books.length) {
     tier = 'lit'
     const rank = shelf[0]!.hit.rank
@@ -556,7 +580,7 @@ export function composeReport(f: RunFacts): RunReportData {
   const race: ReportRace | null =
     (board?.newTop || boardPodium) && board && f.board
       ? {
-          title: `${gameName(f.slug)} · ${copy.phrase}`,
+          title: `${f.among ?? gameName(f.slug)} · ${copy.phrase}`,
           rows: f.board.top.map((p) => ({
             place: p.place,
             name: p.name,
@@ -604,6 +628,8 @@ export type ReportBoardRow = {
 /** Where a saved run landed on its board, under its score on the reel's first page. */
 export type ReportBoardCard = {
   label: string
+  /** The board is a group's (or your friends'): its label is the group's name, with the people mark. */
+  among?: boolean
   /** The place in words (55th), or what a bracket's match came to (Won). */
   value: string
   gold: boolean
@@ -611,6 +637,25 @@ export type ReportBoardCard = {
   move: string | null
   detail: string | null
   rows: ReportBoardRow[]
+  /** Your place in each period along the card's foot, the rows' period boxed; null when there's no strip. */
+  periods?: ReportPeriodCell[] | null
+}
+
+/** One period's place in the board card's strip (Ramsey picked B, 2026-10-23): Week 1st ▲. */
+export type ReportPeriodCell = { period: LeaderboardPeriod; label: string; value: string; on: boolean; up: boolean }
+
+const PERIOD_CELL: Partial<Record<LeaderboardPeriod, string>> = { weekly: 'Week', monthly: 'Month', season: 'Season', all: 'All time' }
+
+/** The strip's cells: only with two periods or more to set side by side, and the rows' own among them. */
+function periodCells(f: RunFacts, place: number): ReportPeriodCell[] | null {
+  const places = f.places ?? []
+  if (places.length < 2 || !places.some((p) => p.period === f.period)) return null
+  return places.map((p) => {
+    const on = p.period === f.period
+    // The rows' period says what the card's big place says, whatever a read of its own came to.
+    const at = on ? place : p.place
+    return { period: p.period, label: PERIOD_CELL[p.period] ?? p.period, value: at ? ordinal(at) : '–', on, up: p.up }
+  })
 }
 
 /** The rows around the run's player: the podium when they're on it, else the one above, them, and the one below. */
@@ -648,7 +693,10 @@ export function boardCard(f: RunFacts, line: ReportLine | null): ReportBoardCard
   const move = you ? (before == null ? ((b?.field ?? 0) > 1 ? 'new on the board' : null) : place < before ? `up from ${ordinal(before)}` : null) : null
   // The line's own words, less the climb the move already says.
   const detail = line.detail?.replace(/^up from \d+(st|nd|rd|th)(, | · )?/, '') || null
-  return { label: line.label, value: ordinal(place), gold: place === 1, move, detail, rows: withRun(f, aroundRows(f, null)) }
+  const periods = periodCells(f, place)
+  // With the strip saying the period, the label says only whose board it is: the game's, or the group's.
+  const label = periods ? (f.among ?? gameName(f.slug)) : line.label
+  return { label, among: Boolean(f.among), value: ordinal(place), gold: place === 1, move, detail, rows: withRun(f, aroundRows(f, null)), periods }
 }
 
 /**
@@ -706,7 +754,7 @@ export function chaseFacts(f: RunFacts): ReportChase | null {
   const b = f.board
   const you = b?.you
   if (!b || !you || !isRankedGame(f.slug)) return null
-  const label = boardLabel(f.slug, periodCopy(f.period))
+  const label = boardLabel(f.slug, periodCopy(f.period), f.among ?? null)
   // A racing daily's gaps read as its clock does, and its boards keep a million less the ms: a gap in score is ms.
   const race = isRaceGame(f.slug)
   const clock = race || isTimeBoard(f.slug)
@@ -800,6 +848,35 @@ async function readBoardFacts(slug: string, period: LeaderboardPeriod, me: strin
   }
 }
 
+/**
+ * The periods the board card's strip sets side by side: those a game's board has a tab for (week, month, the
+ * season while it has standings, all time). A daily's board is the day's, and its week and month are day
+ * points, not places a run takes: no strip.
+ */
+function stripPeriods(slug: string): LeaderboardPeriod[] {
+  if (isDailyGame(slug)) return []
+  return ['weekly', 'monthly', ...(seasonHasStandings(currentSeason()) ? (['season'] as const) : []), 'all']
+}
+
+/** Whether a run on this game gets the board card's strip of periods, so the card's shape can hold its room. */
+export function hasPeriodStrip(slug: string): boolean {
+  return isRankedGame(slug) && stripPeriods(slug).length > 1
+}
+
+/** The player's place on a period's board, among the players the boards are set to; null when not on it or unread. */
+function readPlace(slug: string, period: LeaderboardPeriod, me: string): Promise<number | null> {
+  return getPlayerBoard(slug, period, me, { limit: 1, around: 0 })
+    .then((b) => b.you?.place ?? null)
+    .catch(() => null)
+}
+
+/** The boards' group by name, as BoardsAmong says it; null for everyone. */
+function amongName(groupId: string | null): string | null {
+  if (!groupId) return null
+  if (groupId === FRIENDS_SCOPE) return FRIENDS_AMONG
+  return cachedMyGroups().find((g) => g.id === groupId)?.name ?? 'Your group'
+}
+
 /** A friends' board read this deep at most: past it, nobody's counting who went past whom. */
 const FRIENDS_READ = 50
 
@@ -890,16 +967,23 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   const me = normalizePlayerName(name)
   // A daily just for fun places nobody (data/games.ts Game.ranked): no standings or board to read around it.
   const ranked = isRankedGame(slug)
+  // The board card's strip of periods (stripPeriods), and the group the boards are set to. The save's answer
+  // has every period's place among everyone; among a group they're read, before the save and after it.
+  const strip = ranked ? stripPeriods(slug) : []
+  const group = strip.length ? storedActiveGroup() : null
+  const others = (read: (p: LeaderboardPeriod) => Promise<number | null>) =>
+    group ? Promise.all(strip.map((p) => (p === period ? Promise.resolve(null) : read(p)))) : Promise.resolve(null)
   // Where they stood before this run, on the Standings and on the game's board: their place, and their best
   // on it, which says which friends a run goes past (readFriendFacts). Null when the read failed.
-  const [priorOverall, prior] = ranked
+  const [priorOverall, prior, groupBefore] = ranked
     ? await Promise.all([
         fetchGlobalRank(me, standingsPeriod).catch(() => null),
         getPlayerBoard(slug, period, me, { limit: 1, around: 0 })
           .then((b) => ({ place: b.you?.place ?? null, score: b.you?.score ?? null }))
           .catch(() => null),
+        others((p) => readPlace(slug, p, me)),
       ])
-    : [null, null]
+    : [null, null, null]
   const priorPlace = prior?.place ?? null
   // The skin the game drew the player in: the one chosen for it, if they own it (lib/skins.ts).
   const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours, plates, skin: chosenSkin(slug) })
@@ -925,15 +1009,28 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
   await whenRunAchievementsSettled()
   const hits = takeRunAchievements()
 
-  const [board, overall, books, friends] = ranked
+  const [board, overall, books, friends, groupAfter] = ranked
     ? await Promise.all([
         readBoardFacts(slug, period, me, priorPlace).catch(() => null),
         fetchGlobalRank(me, standingsPeriod).catch(() => null),
         readBookFacts(slug, me, hits),
         // Friends are a signed-in player's; without the read before the save, who was passed can't be told.
         getSessionToken() && prior ? readFriendFacts(slug, period, me, prior.score).catch(() => null) : Promise.resolve(null),
+        others((p) => readPlace(slug, p, me)),
       ])
-    : [null, null, [], null]
+    : [null, null, [], null, null]
+
+  // Read after the board: a group the API refused was dropped back to everyone on the way (withGroupFallback).
+  const among = ranked ? amongName(storedActiveGroup()) : null
+  const amongGroup = Boolean(group && among)
+  const places: PeriodPlace[] | null = strip.length
+    ? strip.map((p, i) => {
+        // The rows' period: as the card says it, from the board read.
+        const at = p === period ? (board?.you?.place ?? null) : amongGroup ? (groupAfter?.[i] ?? null) : (saved.bestRanks?.[p] ?? null)
+        const was = p === period ? (board?.before ?? null) : amongGroup ? (groupBefore?.[i] ?? null) : (saved.previousBestRanks?.[p] ?? null)
+        return { period: p, place: at, up: at != null && (was == null || at < was) }
+      })
+    : null
 
   return {
     slug,
@@ -951,6 +1048,8 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
     tickets: saved.tickets ?? null,
     season: saved.season ?? null,
     friends,
+    among,
+    places,
     // Your own challenge played back is just a run.
     challenge:
       saved.challenge && saved.challenge.outcome !== 'own'

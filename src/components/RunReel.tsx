@@ -23,6 +23,7 @@ import type {
   ReportIcon,
   ReportLine,
   ReportMetal,
+  ReportPeriodCell,
   ReportRibbon,
   ReportStandings,
   ReportTier,
@@ -279,6 +280,42 @@ function ReelBoardRows({ rows, label }: { rows: ReportBoardRow[]; label: string 
   )
 }
 
+/** The mark beside a group's board label: whose board this is, as BoardsAmong draws it. */
+function AmongMark() {
+  return (
+    <svg className="reel-place__among" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" />
+      <path d="M16 4.8a3.2 3.2 0 0 1 0 6.4" />
+      <path d="M18 14.7c1.9.7 3 2.5 3 5.3" />
+    </svg>
+  )
+}
+
+/**
+ * Your place in every period along the card's foot (Ramsey picked B, 2026-10-23: "I like B"): the rows' period
+ * boxed, ▲ where the run moved you up. Nothing to tap: the reel goes on under it as anywhere else.
+ */
+function ReelPeriods({ cells }: { cells: ReportPeriodCell[] }) {
+  return (
+    <ul className="reel-periods" aria-label="Your place in each period">
+      {cells.map((cell) => (
+        <li key={cell.period} className={`reel-periods__cell${cell.on ? ' reel-periods__cell--on' : ''}`}>
+          <span className="reel-periods__place">
+            {cell.value}
+            {cell.up ? (
+              <span className="reel-periods__up" aria-label=", up">
+                ▲
+              </span>
+            ) : null}
+          </span>
+          <span className="reel-periods__label">{cell.label}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** How far a place came: up from 71st. */
 function ReelMove({ words }: { words: string }) {
   return (
@@ -351,12 +388,16 @@ export function ReelPlace({ card, compact = false, arrived = false }: { card: Re
       aria-label={card.label}
     >
       <div className="reel-place__head">
-        <span className="reel-place__label">{card.label}</span>
+        <span className="reel-place__label">
+          {card.among ? <AmongMark /> : null}
+          {card.label}
+        </span>
         {card.move ? <ReelMove words={card.move} /> : null}
       </div>
       <p className="reel-place__value">{card.value}</p>
       {card.detail ? <p className="reel-place__detail">{capital(card.detail)}</p> : null}
       {card.rows.length ? <ReelBoardRows rows={card.rows} label={card.label} /> : null}
+      {card.periods ? <ReelPeriods cells={card.periods} /> : null}
     </section>
   )
 }
@@ -365,7 +406,7 @@ export function ReelPlace({ card, compact = false, arrived = false }: { card: Re
  * The board's card while the save is out: its shape, quietly shimmering, so the score has its place beside it from
  * the start and nothing moves when the board lands (Ramsey: "it pops to the left when it loads the board").
  */
-function ReelPlaceSkeleton({ compact = false }: { compact?: boolean }) {
+function ReelPlaceSkeleton({ compact = false, strip = false }: { compact?: boolean; strip?: boolean }) {
   return (
     <section className={`reel-place reel-place--loading${compact ? ' reel-place--compact' : ''}`} aria-busy="true" aria-label="Finding your place on the board">
       <div className="reel-place__head">
@@ -383,6 +424,15 @@ function ReelPlaceSkeleton({ compact = false }: { compact?: boolean }) {
           </li>
         ))}
       </ol>
+      {strip ? (
+        <ul className="reel-periods" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <li key={i} className="reel-periods__cell">
+              <span className="reel-skel reel-skel--cell" />
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   )
 }
@@ -882,6 +932,8 @@ export type ReelInput = {
   boardCompact?: boolean
   /** A board is on its way while the save is out: its card's shape holds the place beside the score. */
   boardLoading?: boolean
+  /** The board on its way will have its strip of periods (runReport hasPeriodStrip): its shape holds that too. */
+  boardStrip?: boolean
   /** The board came in after its shape stood in: it fades in where that was, without an entrance of its own. */
   boardWaited?: boolean
   /** A friend the run went past on the friends' board: a page of its own, face to face. */
@@ -926,7 +978,7 @@ export function reelSteps(input: ReelInput): ReelStep[] {
     saved && input.board ? (
       <ReelPlace card={input.board} compact={input.boardCompact} arrived={input.boardWaited} />
     ) : phase === 'pending' && input.boardLoading ? (
-      <ReelPlaceSkeleton compact={input.boardCompact} />
+      <ReelPlaceSkeleton compact={input.boardCompact} strip={input.boardStrip} />
     ) : null
   const side = ladder || board ? (
     <div className="reel-run__side">

@@ -982,6 +982,40 @@ function reelSamples(tag: ReactNode, signIn: ReactNode): ReelSample[] {
       'The train got you',
     ),
     arcadeReel('silver', 'Onto the podium, 2nd', facts(436, { board: climbTo(436), priorBest: 350 }), 'Run over', 'The train got you'),
+    // The board card's strip of periods, among everyone, and among a group the boards are set to.
+    arcadeReel(
+      'periods',
+      'Every period’s place',
+      facts(436, {
+        board: climbTo(436),
+        priorBest: 350,
+        places: [
+          { period: 'weekly', place: 1, up: true },
+          { period: 'monthly', place: 2, up: true },
+          { period: 'season', place: 4, up: true },
+          { period: 'all', place: 38, up: true },
+        ],
+      }),
+      'Run over',
+      'The train got you',
+    ),
+    arcadeReel(
+      'group',
+      'A group’s board',
+      facts(436, {
+        board: climbTo(436),
+        priorBest: 350,
+        among: 'Office Pool',
+        places: [
+          { period: 'weekly', place: 1, up: true },
+          { period: 'monthly', place: 2, up: true },
+          { period: 'season', place: 3, up: false },
+          { period: 'all', place: 5, up: true },
+        ],
+      }),
+      'Run over',
+      'The train got you',
+    ),
     arcadeReel(
       'friend',
       'A friend gone past',
