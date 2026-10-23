@@ -391,22 +391,25 @@ export function heightAt(p: Piece, u: number, v: number): number {
 }
 
 /**
- * A water slide's side: the track curves up over its outer SLIDE_W (or 0.6 of its half width, on most pieces), to
- * SLIDE_H at its edge (less, as much less as it's narrower), gently at first and steep at the top. No rail: a ball
- * that comes at it too fast goes over (Ramsey: "the sides should be higher but the balls can fly out still").
+ * A water slide's trough: the track is rounded right across, a part of a circle, from its middle up to SLIDE_H at its
+ * edges (Ramsey: "rounded like a water slide"), gently near the middle and steep at the top. On track narrower than
+ * SLIDE_FULL either side, its sides are as much lower. No rail: a ball that comes at a side too fast goes over
+ * (Ramsey: "the sides should be higher but the balls can fly out still").
  */
-export const SLIDE_W = 2.2
-export const SLIDE_H = 3
+export const SLIDE_H = 2.8
+export const SLIDE_FULL = 3
 
 /** Up a water slide's side more than this, the turning help and the steadying are off (handsTilt). */
-const SLIDE_HELP_OFF = 0.05
+const SLIDE_HELP_OFF = 0.2
 
-/** How far a water slide's track is raised `v` across a piece, `u` along it: nothing through its middle. */
+/** How far a water slide's track is raised `v` across a piece, `u` along it: nothing at its middle. */
 export function slideLip(p: Piece, u: number, v: number): number {
   const hw = halfWidth(p, clamp(u, 0, p.len))
-  const w = Math.min(SLIDE_W, hw * 0.6)
-  const t = (Math.abs(v) - (hw - w)) / w
-  return t > 0 ? ((SLIDE_H * w) / SLIDE_W) * t * t * t : 0
+  const h = SLIDE_H * Math.min(1, hw / SLIDE_FULL)
+  // The circle through the middle and both edges' tops.
+  const r = (hw * hw + h * h) / (2 * h)
+  const q = r * r - v * v
+  return q > 0 ? r - Math.sqrt(q) : r
 }
 
 /** Which way is up off a piece's track at a ground-plane point. */
