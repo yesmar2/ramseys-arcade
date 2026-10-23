@@ -1,4 +1,4 @@
-import { challengeWhen, clearActiveChallenge, playingSlug, useActiveChallenge } from '../lib/challenges'
+import { challengeWhen, clearActiveChallenge, playingSlug, racesGhost, useActiveChallenge } from '../lib/challenges'
 import { scoreUnit } from '../lib/gameBoard'
 import { getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { formatLeaderboardScore, isInvertedBoard } from '../lib/leaderboardFormat'
@@ -19,6 +19,8 @@ export function ChallengeTarget({ slug }: { slug: string }) {
   const figure = formatLeaderboardScore(slug, challenge.score)
   const unit = scoreUnit(slug, challenge.score)
   const beaten = challenge.best != null && challenge.best > challenge.score
+  // A racing daily's from today: their ghost flies beside you, free with the link.
+  const ghost = !own && racesGhost(challenge)
   return (
     <div className="game-card__challenge">
       <button
@@ -38,7 +40,7 @@ export function ChallengeTarget({ slug }: { slug: string }) {
       </button>
       <span className="game-card__challenger">
         <PlayerAvatar avatarId={challenge.avatarId} name={challenge.name} size="sm" />
-        {own ? 'Your challenge' : `${challenge.name} challenges you`}
+        {own ? 'Your challenge' : ghost ? `${challenge.name} dares you to race their ghost` : `${challenge.name} challenges you`}
         {/* The picture alone: on the start card, a press starts the run. */}
         <SkinMark skin={challenge.skin} plain />
       </span>

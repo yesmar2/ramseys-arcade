@@ -3,6 +3,7 @@ import { api, ApiError } from '../../lib/leaderboard'
 import { launchWarp } from '../../lib/ghostWarp'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE } from './sim'
+import { ghostOfQuery } from '../../lib/raceGhost'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's is), for everyone to race: on today's course, today's
@@ -89,7 +90,7 @@ export async function fetchNextGhost(course: number, tag: string): Promise<NextG
  */
 export async function fetchPlayerGhost(course: number, tag: string): Promise<NextGhost | 'plus' | null> {
   try {
-    const reply = await api<GhostReply & { place?: number }>(`/tracks/marblerun/${course}/ghost?of=${encodeURIComponent(tag)}`, { cache: 'no-cache' })
+    const reply = await api<GhostReply & { place?: number }>(`/tracks/marblerun/${course}/ghost?${ghostOfQuery('marblerun', tag)}`, { cache: 'no-cache' })
     const ghost = toGhost(reply)
     return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
   } catch (e) {

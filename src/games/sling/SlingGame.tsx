@@ -12,7 +12,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { dailyTabHref, gamePlayHref, navigate } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate, todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useAdminState } from '../../lib/admin'
@@ -233,7 +233,7 @@ const gapTone = (d: number | null) => (d == null || Math.abs(d) < 0.005 ? '' : d
 function runShareLine(sling: SlingDay, time: number, pace: number, misses: number): string {
   const gap = Math.abs(time - pace)
   const against = gap < 0.005 ? 'tied with the blue blip' : time < pace ? `beat the blue blip by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue blip`
-  return [`Sling · Today’s Tower #${sling.n} 🧗`, `${sling.name}: ${formatRun(time)}, ${against}, ${missWords(misses)}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join('\n')
+  return [`Sling · Today’s Tower #${sling.n} 🧗`, `${sling.name}: ${formatRun(time)}, ${against}, ${missWords(misses)}`, `${window.location.origin}${todayShareHref(sling.day)}`].join('\n')
 }
 
 /** A drag's fling: back from where the finger is to where it went down, as hard as it's long. */

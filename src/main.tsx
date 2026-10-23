@@ -29,6 +29,7 @@ import { bootErrorReports } from './lib/errorReports'
 import { bootFocusReveal } from './lib/focusReveal'
 import { bootGate } from './lib/gate'
 import { bootOfflineCopy } from './lib/offlineCopy'
+import { bootAppUpdate, noteNewRelease } from './lib/appUpdate'
 import { SiteErrorBoundary } from './components/SiteErrorBoundary'
 
 bootErrorReports()
@@ -40,60 +41,16 @@ bootAnalytics()
 bootFocusReveal()
 bootGate()
 bootOfflineCopy()
+bootAppUpdate()
 
 /*
- * Pages and games load as their own chunks (App.tsx). A release renames
- * them, so a tab opened before it that then opens a page it has not loaded
- * yet asks for a chunk that is gone. One reload picks up the new shell; the
- * timestamp keeps a broken deploy from reloading forever.
- *
- * A reload asks the server for the shell (src/sw.ts), but a worker from
- * before that change, or one whose server was slow to answer, opens the old
- * shell again until the new worker takes over. So the reload waits for it,
- * up to eight seconds. The failed import goes on to the
- * error screen meanwhile, as the "dynamically imported module" error that
- * errorReports leaves out.
+ * Pages and games load as their own chunks (App.tsx). A release renames them, so a tab opened before it that then
+ * asks for one it hasn't loaded finds it gone. Pages and parts handle that themselves (lib/lazyPage.ts); any other
+ * chunk gone means the next link tapped opens on the new release (lib/appUpdate.ts), never a reload under a game.
  */
 window.addEventListener('vite:preloadError', () => {
-  // Offline there's no release to fetch: the chunk is one this device hasn't kept yet, and the error screen says
-  // so, then reloads once the connection is back (SiteErrorBoundary).
-  if (navigator.onLine === false) return
-  const key = 'skermix-chunk-reload'
-  let last = 0
-  try {
-    last = Number(sessionStorage.getItem(key) ?? 0)
-  } catch {
-    /* storage may be off; reload once anyway */
-  }
-  if (Date.now() - last < 30_000) return
-  try {
-    sessionStorage.setItem(key, String(Date.now()))
-  } catch {
-    /* as above */
-  }
-  void newShellReady(8000).then(() => window.location.reload())
+  if (navigator.onLine !== false) noteNewRelease()
 })
-
-/** Resolves once a release's service worker, if one is on its way, has taken over (or `ms` have passed). */
-async function newShellReady(ms: number) {
-  try {
-    const registration = await navigator.serviceWorker?.getRegistration()
-    if (!registration) return
-    await registration.update().catch(() => {})
-    const incoming = registration.installing ?? registration.waiting
-    if (!incoming) return
-    await new Promise<void>((done) => {
-      const timer = window.setTimeout(done, ms)
-      incoming.addEventListener('statechange', () => {
-        if (incoming.state !== 'activated' && incoming.state !== 'redundant') return
-        window.clearTimeout(timer)
-        done()
-      })
-    })
-  } catch {
-    /* no worker to wait for: a plain reload */
-  }
-}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

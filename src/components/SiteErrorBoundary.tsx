@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { isMissingFile, reloadIntoNewRelease } from '../lib/appUpdate'
 import { reportError } from '../lib/errorReports'
 
 /**
@@ -7,9 +8,6 @@ import { reportError } from '../lib/errorReports'
  * It sits outside the app, so its buttons load the page afresh rather than
  * route.
  */
-/** A page's file that didn't come: offline, or gone in a release since this tab opened (main.tsx reloads). */
-const MISSING_FILE = /dynamically imported module|Importing a module script failed|error loading dynamically/i
-
 export class SiteErrorBoundary extends Component<
   { children: ReactNode },
   { broken: boolean; offline: boolean; updated: boolean }
@@ -20,11 +18,14 @@ export class SiteErrorBoundary extends Component<
     // Offline, what failed is most likely a page or game this device hasn't kept yet: they're kept as they're
     // first used (src/sw.ts).
     const offline = typeof navigator !== 'undefined' && navigator.onLine === false
-    return { broken: true, offline, updated: !offline && MISSING_FILE.test(String(error)) }
+    return { broken: true, offline, updated: !offline && isMissingFile(error) }
   }
 
   componentDidCatch(error: unknown) {
     reportError(error)
+    // A file gone in a release since this tab opened: the page reloads onto the new one, showing it's on its way.
+    // One that won't (it reloaded a moment ago, and the release itself is broken) says so.
+    if (this.state.updated && !reloadIntoNewRelease()) this.setState({ updated: false })
     // Back online, the page it couldn't fetch can come.
     if (navigator.onLine === false) window.addEventListener('online', () => window.location.reload(), { once: true })
   }
@@ -32,13 +33,20 @@ export class SiteErrorBoundary extends Component<
   render() {
     if (!this.state.broken) return this.props.children
     const { offline, updated } = this.state
+    if (updated) {
+      return (
+        <main className="site-broken" aria-busy="true">
+          <p className="panel__text">Getting the latest version…</p>
+        </main>
+      )
+    }
     return (
       <main className="site-broken">
         <div className="panel" role="alert">
           <div className="panel__head">
             <div className="panel__heading">
               <h1 className="panel__title">
-                {offline ? "You're offline" : updated ? 'The site was just updated' : 'Something went wrong'}
+                {offline ? "You're offline" : 'Something went wrong'}
               </h1>
             </div>
           </div>
@@ -46,9 +54,7 @@ export class SiteErrorBoundary extends Component<
             <p className="panel__text">
               {offline
                 ? "This page isn't saved on this device yet. It opens as soon as you're back online, and plays offline after that."
-                : updated
-                  ? 'This page is getting the new version. If it doesn’t open in a few seconds, reload.'
-                  : 'This page hit a problem. Reloading usually sorts it out.'}
+                : 'This page hit a problem. Reloading usually sorts it out.'}
             </p>
           </div>
           <div className="panel__actions">

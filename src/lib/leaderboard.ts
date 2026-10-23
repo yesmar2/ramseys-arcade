@@ -1,3 +1,4 @@
+import { trackWrite } from './appUpdate'
 import { applyBoardScope, storedActiveGroup, withGroupFallback } from './groups'
 import { announceSecrets, type SecretFound } from './secrets'
 import type { RunTickets } from './tickets'
@@ -176,7 +177,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     /* ignore */
   }
-  const res = await fetch(`${API_BASE}${path}`, {
+  const request = fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -186,6 +187,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   })
+  // A save on its way holds off the switch to a new release, which would cut it off (lib/appUpdate.ts).
+  if (init?.method && init.method !== 'GET') trackWrite(request)
+  const res = await request
   if (!res.ok) {
     let message = `API error ${res.status}`
     let code: string | undefined

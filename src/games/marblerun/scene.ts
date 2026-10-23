@@ -514,7 +514,7 @@ export class MarbleScene {
 
     for (const p of course.solid) {
       const hw = (u: number) => halfWidth(p, u)
-      // A water slide's sides take more columns, closer together toward the edges where they curve up.
+      // A water slide takes more columns, closer together toward the edges where it curves up steeply.
       const cols = p.slide ? 19 : p.pipe || p.rollers || p.bank ? 13 : 7
       const narrow = p.w1 < 3.4 || p.w0 < 3.4
       // The top: shaded by its slopes, its grid running on from piece to piece; a kicker glows amber.
@@ -1256,7 +1256,8 @@ export class MarbleScene {
     const under =
       f.mode === 'menu' || b.loop ? null : this.slabs.length ? supportAt(this.course, b.x, b.z, b.y, clock) : surfaceAt(this.course, b.x, b.z, b.y)
     if (under) {
-      const high = b.y - BALL_R - under.y
+      // Rolling, it's on the track, though up a water slide's side its middle is more than its radius above it.
+      const high = b.air ? b.y - BALL_R - under.y : 0
       const size = 1.6 + Math.min(4, high) * 0.35
       const p = under.p
       const pos = this.pool.geometry.attributes.position!
@@ -1360,6 +1361,19 @@ export class MarbleScene {
     const focus = this.focus.set(b.x, this.followY, b.z)
     const eye = this.eye.set(b.x - fx * dist, this.followY + height, b.z - fz * dist)
     const look = this.look.set(b.x + fx * 3.2, this.followY + 0.35, b.z + fz * 3.2)
+    // In a water slide the camera stays in the trough, over its floor: not out past a tall side, or under it.
+    if (course.slide && s && !b.loop) {
+      const p = s.p
+      const l = local(p, eye.x, eye.z)
+      const room = halfWidth(p, Math.max(0, Math.min(p.len, l.u))) * 0.6
+      if (Math.abs(l.v) > room) {
+        const [x, z] = point(p, l.u, Math.sign(l.v) * room)
+        eye.x = x
+        eye.z = z
+      }
+      const lm = local(p, eye.x, eye.z)
+      eye.y = Math.max(eye.y, heightAt(p, lm.u, lm.v) + 1.6)
+    }
     // The world leans the way it's tilted: turn the camera the other way round the ball. Side to side it
     // leans half as far as the tilt; forward and back much less, so the track ahead stays in view.
     this.shownTilt.lerp(this.wantTilt.set(f.tilt.x, f.tilt.z), 1 - Math.exp(-dt * 10))

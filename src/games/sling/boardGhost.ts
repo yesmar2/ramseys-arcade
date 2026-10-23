@@ -3,6 +3,7 @@ import { launchWarp } from '../../lib/ghostWarp'
 import { chosenSkin } from '../../lib/skins'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE, GHOST_STRIDE, HANG, TW, type Tower } from './sim'
+import { ghostOfQuery } from '../../lib/raceGhost'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's, Marble Run's and Lander's are), for everyone to race:
@@ -103,7 +104,7 @@ export async function fetchNextGhost(course: number, tag: string): Promise<NextG
  */
 export async function fetchPlayerGhost(course: number, tag: string): Promise<NextGhost | 'plus' | null> {
   try {
-    const reply = await api<GhostReply & { place?: number }>(`/tracks/sling/${course}/ghost?of=${encodeURIComponent(tag)}`, { cache: 'no-cache' })
+    const reply = await api<GhostReply & { place?: number }>(`/tracks/sling/${course}/ghost?${ghostOfQuery('sling', tag)}`, { cache: 'no-cache' })
     const ghost = toGhost(reply)
     return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
   } catch (e) {

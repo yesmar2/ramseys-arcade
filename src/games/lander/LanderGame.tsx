@@ -11,7 +11,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { dailyTabHref, gamePlayHref, navigate } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate, todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useAdminState } from '../../lib/admin'
@@ -321,7 +321,7 @@ const gateName = (lander: LanderDay, i: number) => (i === lander.cave.gates.leng
 function runShareLine(lander: LanderDay, time: number, pace: number, crashes: number): string {
   const gap = Math.abs(time - pace)
   const against = gap < 0.005 ? 'tied with the blue ship' : time < pace ? `beat the blue ship by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue ship`
-  return [`Lander · Today’s Cave #${lander.n} 🚀`, `${lander.name}: ${formatRun(time)}, ${against}, ${crashWords(crashes)}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join(
+  return [`Lander · Today’s Cave #${lander.n} 🚀`, `${lander.name}: ${formatRun(time)}, ${against}, ${crashWords(crashes)}`, `${window.location.origin}${todayShareHref(lander.day)}`].join(
     '\n',
   )
 }

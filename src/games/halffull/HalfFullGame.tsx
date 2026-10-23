@@ -1,5 +1,4 @@
 import {
-  lazy,
   Suspense,
   useCallback,
   useEffect,
@@ -10,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
+import { lazyPart } from '../../lib/lazyPage'
 import '../../styles/halffull.css'
 import '../../styles/todaysPour.css'
 import { GamePlayChrome } from '../../components/GameHud'
@@ -22,7 +22,7 @@ import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { useShare } from '../../components/SharePanel'
 
 /** The way on to the next of today's dailies, with the day's ticket it brings. */
-const NextDaily = lazy(() => import('../../components/NextDaily'))
+const NextDaily = lazyPart(() => import('../../components/NextDaily'))
 import { isGameListed } from '../../data/games'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'

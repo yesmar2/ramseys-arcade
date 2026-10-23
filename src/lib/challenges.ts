@@ -3,6 +3,7 @@ import { getGame } from '../data/games'
 import { scoreText } from './gameBoard'
 import { api, getClaimToken, normalizePlayerName } from './leaderboard'
 import { formatLeaderboardScore, isInvertedBoard } from './leaderboardFormat'
+import { boardDay } from './rankHow'
 
 /*
  * Challenges: one saved run, sent to a friend to beat.
@@ -24,6 +25,9 @@ export type Challenge = {
   replyTo?: string | null
   /** The season skin the run was played in (lib/skins.ts). */
   skin?: string
+  /** A racing daily's: the course its run was on, and that day (YYYY-MM-DD). Its sender's ghost races there. */
+  course?: number
+  day?: string
 }
 
 /** What the API made of a run saved against a challenge. */
@@ -44,6 +48,14 @@ export function challengeHref(game: string, id: string): string {
 export function challengeUrl(game: string, id: string): string {
   const origin = typeof window === 'undefined' ? '' : window.location.origin
   return `${origin}${challengeHref(game, id)}`
+}
+
+/**
+ * A racing daily's challenge from today: the link races its sender's ghost (Ramsey picked "race my ghost"
+ * links, 2026-10-23), free to whoever has it. One from another day only sets the time to beat.
+ */
+export function racesGhost(challenge: Pick<Challenge, 'course' | 'day'>, now = Date.now()): boolean {
+  return typeof challenge.course === 'number' && challenge.day === boardDay(now)
 }
 
 export async function fetchChallenge(id: string): Promise<Challenge> {
@@ -174,6 +186,16 @@ export function challengeOutcome(challenge: { score: number }, score: number): {
 export function challengeMessage(slug: string, score: number): string {
   if (isInvertedBoard(slug)) return `I did ${gameName(slug)} in ${scoreText(slug, score)}. Can you beat it?`
   return `I got ${scoreText(slug, score)} on ${gameName(slug)}. Can you beat it?`
+}
+
+/**
+ * A racing daily's share with its run's challenge link: the run's lines (`line`, whose last line is a link to
+ * the day), then the link that races your ghost.
+ */
+export function ghostShareText(line: string, url: string): string {
+  const lines = line.split('\n')
+  if (lines.length > 1 && /^https?:\/\//.test(lines[lines.length - 1]!)) lines.pop()
+  return [...lines, `Race my ghost 👻 ${url}`].join('\n')
 }
 
 /** The line that goes back with a beaten one. */

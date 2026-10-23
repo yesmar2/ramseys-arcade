@@ -32,7 +32,7 @@ const slidDays = new Map<string, MarbleDay>()
 
 /**
  * A day's course as a water slide (sim.ts slideCourse), an admin's try (MarbleRunGame `slide`): its edges curve up
- * with a rail along the top. Everything else is the day's: its name, its blue ball and its board's ghost, both
+ * high. Everything else is the day's: its name, its blue ball and its board's ghost, both
  * rolled on the plain course.
  */
 export function slideDay(day: string): MarbleDay {

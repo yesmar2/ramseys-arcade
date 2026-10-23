@@ -12,7 +12,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { dailyTabHref, gamePlayHref, navigate } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate, todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useAdminState } from '../../lib/admin'
@@ -296,7 +296,7 @@ const gapTone = (d: number | null) => (d == null || Math.abs(d) < 0.005 ? '' : d
 function runShareLine(swoop: SwoopDay, time: number, pace: number, clean: number): string {
   const gap = Math.abs(time - pace)
   const against = gap < 0.005 ? 'tied with the blue bird' : time < pace ? `beat the blue bird by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue bird`
-  return [`Swoop · Today’s Hills #${swoop.n} 🐦`, `${swoop.name}: ${formatRun(time)}, ${against}, ${cleanWords(clean)}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join(
+  return [`Swoop · Today’s Hills #${swoop.n} 🐦`, `${swoop.name}: ${formatRun(time)}, ${against}, ${cleanWords(clean)}`, `${window.location.origin}${todayShareHref(swoop.day)}`].join(
     '\n',
   )
 }

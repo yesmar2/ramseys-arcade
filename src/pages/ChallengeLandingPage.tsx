@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react'
 import { PageShell } from '../components/PageShell'
 import { getGame } from '../data/games'
 import { gameHref, gamePlayHref, homeHref, navigate } from '../hooks/useHashRoute'
-import { fetchChallenge, setActiveChallenge } from '../lib/challenges'
+import { fetchChallenge, racesGhost, setActiveChallenge } from '../lib/challenges'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { ApiError } from '../lib/leaderboard'
+import { withRace } from '../lib/raceGhost'
 
 /** How long before the wait gets a word: the arcade's server sleeps when nobody's about. */
 const SLOW_MS = 3500
 
 /**
  * A friend's challenge link. It reads the challenge, makes it this tab's for
- * the game, and goes straight on to the game's start card, which names it.
+ * the game, and goes straight on to the game's start card, which names it;
+ * a racing daily's from today, with its sender's ghost to race.
  * A link that no longer leads anywhere still leads to the game, or to all of
  * them when the link names a game the arcade doesn't have.
  */
@@ -30,7 +32,9 @@ export function ChallengeLandingPage({ slug, id }: { slug: string; id: string })
       .then((challenge) => {
         if (cancelled) return
         setActiveChallenge(challenge)
-        navigate(gamePlayHref(challenge.game), { replace: true })
+        // A racing daily's from today races its sender's ghost (lib/raceGhost.ts): their tag is the pick.
+        const play = gamePlayHref(challenge.game)
+        navigate(racesGhost(challenge) ? withRace(play, challenge.name) : play, { replace: true })
       })
       .catch((err: unknown) => {
         if (cancelled) return

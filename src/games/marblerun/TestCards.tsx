@@ -96,7 +96,7 @@ export function TestStartCard({ marble, best, slide = false }: { marble: MarbleD
         <h2 className="game-card__title game-card__title--big">{marble.name}</h2>
         <p className="game-card__blurb">
           {slide
-            ? `${whenWords(marble.day)}, with sides that curve up and a rail along the top: much harder to fall off. The blue ball rolls the plain course. Runs here aren’t saved.`
+            ? `${whenWords(marble.day)}, with tall sides that curve up: much harder to fall off, but too fast round a turn and you still fly out. The blue ball rolls the plain course. Runs here aren’t saved.`
             : `${whenWords(marble.day)}. Runs here aren’t saved: they go on no board, and your best here is gone when you close the tab.`}
         </p>
       </div>
