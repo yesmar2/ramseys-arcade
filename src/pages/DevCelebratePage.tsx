@@ -929,10 +929,12 @@ function landerReel(key: string, label: string, season: SeasonRun): ReelSample {
       season,
       recap: runRecap({ score: { value: format(49), label: 'New personal best', best: true }, lines: [place], medal: 'silver', tickets: 3, season }),
       poster: <NextDailyView variant="poster" slug="lander" punches={SAMPLE_PUNCHES} done={2} total={6} playAgain={{ label: 'Play again' }} />,
-      secondary: { label: 'Challenge a friend', icon: 'flag' },
+      // A racing daily's Share run, a link that races your ghost: on the last page, and on the run's page for a new best.
+      secondary: { label: 'Share run', icon: 'share' },
+      secondaryLook: 'share',
+      dare: { label: `Dare a friend to beat ${format(49)}`, icon: 'share' },
       who: <ReportWho name="VERA" text="Saved as VERA" />,
       links: [
-        { label: 'Share', onClick: () => {} },
         { label: 'Board', onClick: () => {} },
         { label: 'Records', onClick: () => {} },
       ],

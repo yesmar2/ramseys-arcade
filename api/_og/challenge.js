@@ -10,7 +10,7 @@
 import { WORDMARK } from './wordmark.js'
 
 /**
- * @typedef {{ id: string, game: string, name: string, score: number, createdAt: number, replyTo: string | null, skin?: string }} Challenge
+ * @typedef {{ id: string, game: string, name: string, score: number, createdAt: number, replyTo: string | null, skin?: string, course?: number, day?: string }} Challenge
  * @typedef {{ name: string, accent: string, unit: [string, string] | null, clock: 'tenths' | 'hundredths' | 'seconds' | null, base: number, percent?: boolean }} GameInfo
  * @typedef {{ headers: Record<string, string | string[] | undefined>, url?: string }} Req
  */
@@ -127,6 +127,26 @@ export function unitOf(info, score) {
   return score === 1 ? one : many
 }
 
+/** What each racing daily calls a day's course, as its start card says it: Today's Cave #2. */
+const COURSE_WORDS = /** @type {Record<string, string>} */ ({
+  hotlap: 'Track',
+  lander: 'Cave',
+  marblerun: 'Course',
+  swoop: 'Hills',
+  sling: 'Tower',
+  wobblerun: 'Gauntlet',
+})
+
+/**
+ * A racing daily's challenge races its sender's ghost on its course (Ramsey picked "race my ghost" links,
+ * 2026-10-23): "Cave #2", or null for any other game's.
+ * @param {Challenge} challenge
+ */
+export function ghostCourse(challenge) {
+  const word = COURSE_WORDS[challenge.game]
+  return word && Number.isInteger(challenge.course) ? `${word} #${challenge.course}` : null
+}
+
 /**
  * What the link says about itself.
  * @param {Challenge} challenge
@@ -136,10 +156,22 @@ export function challengeWords(challenge, info) {
   const game = info?.name ?? challenge.game
   const score = figure(info, challenge.score)
   const unit = unitOf(info, challenge.score)
+  const course = ghostCourse(challenge)
+  if (course) {
+    return {
+      game,
+      score,
+      unit,
+      course,
+      title: `${challenge.name}’s ghost is waiting on ${game}`,
+      description: `Race ${challenge.name}’s ${score} on ${course}, free. It plays right here in your browser, no account needed.`,
+    }
+  }
   return {
     game,
     score,
     unit,
+    course: null,
     title: `${challenge.name} challenges you on ${game}`,
     description: `Beat ${score}${unit ? ` ${unit}` : ''}. It plays right here in your browser, no account needed.`,
   }
@@ -153,6 +185,9 @@ export const TEAL = '#2eb8a0'
 export const TEXT = '#f4faf8'
 export const MUTED = '#a9c4be'
 const FLAG = 'M196 390 V240 M196 240 H306 L286 280 L306 320 H196'
+/** A racing daily's tile: the ghost's run as a dotted line to its ship, in the same 300px tile. */
+const TRAIL = 'M150 420 C 210 405, 175 330, 245 315 S 315 260, 322 232'
+const SHIP = 'M346 196 L330 252 L322 232 L302 226 Z'
 
 /**
  * An element for Satori, which takes React's shape without React.
@@ -241,7 +276,18 @@ export function challengeCard(challenge, info, origin) {
   const skin = origin && challenge?.skin && /^[a-z0-9-]{1,40}$/.test(challenge.skin) ? `${origin}/og/skins/${challenge.skin}.png` : null
 
   let column
-  if (challenge) {
+  let foot = '· plays in your browser'
+  const ghost = challenge ? challengeWords(challenge, info) : null
+  if (challenge && ghost?.course) {
+    // A racing daily's: their ghost, its time, and where it runs.
+    const size = Math.min(150, Math.floor(COLUMN / (ghost.score.length * 0.6)))
+    column = [
+      text({ fontSize: 26, fontWeight: 700, letterSpacing: 5, color: accent }, `${challenge.name.toUpperCase()}’S GHOST`),
+      text({ marginTop: 18, fontSize: size, fontWeight: 700, lineHeight: 1, letterSpacing: -2, color: lift(accent) }, ghost.score),
+      text({ marginTop: 22, fontSize: 40, color: MUTED }, `${ghost.game} · ${ghost.course}`),
+    ]
+    foot = '· race it free in your browser'
+  } else if (challenge) {
     const words = challengeWords(challenge, info)
     // "Beat " and the figure on one line, as large as the column allows.
     const size = Math.min(128, Math.floor(COLUMN / ((5 + words.score.length) * 0.6)))
@@ -306,7 +352,12 @@ export function challengeCard(challenge, info, origin) {
           h(
             'svg',
             { width: 300, height: 300, viewBox: '96 165 300 300' },
-            h('path', { d: FLAG, fill: 'none', stroke: TEXT, strokeWidth: 20, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.96 }),
+            ...(ghost?.course
+              ? [
+                  h('path', { d: TRAIL, fill: 'none', stroke: TEXT, strokeWidth: 18, strokeLinecap: 'round', strokeDasharray: '1 30', opacity: 0.9 }),
+                  h('path', { d: SHIP, fill: TEXT, opacity: 0.96 }),
+                ]
+              : [h('path', { d: FLAG, fill: 'none', stroke: TEXT, strokeWidth: 20, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.96 })]),
           ),
         ),
     h('div', { style: { position: 'absolute', left: 454, top: 170, width: COLUMN, display: 'flex', flexDirection: 'column' } }, ...column),
@@ -314,7 +365,7 @@ export function challengeCard(challenge, info, origin) {
       'div',
       { style: { position: 'absolute', left: 456, top: FOOT - mark.lift, display: 'flex', alignItems: 'baseline' } },
       mark.element,
-      h('span', { style: { marginLeft: 18, fontSize: 30, color: MUTED } }, '· plays in your browser'),
+      h('span', { style: { marginLeft: 18, fontSize: 30, color: MUTED } }, foot),
     ),
   )
 }

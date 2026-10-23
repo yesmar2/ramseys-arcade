@@ -11,7 +11,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { dailyTabHref, gamePlayHref, navigate } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate, todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useAdminState } from '../../lib/admin'
@@ -285,7 +285,7 @@ function runShareLine(marble: MarbleDay, time: number, pace: number, falls: numb
   const gap = Math.abs(time - pace)
   const against = gap < 0.005 ? 'tied with the blue ball' : time < pace ? `beat the blue ball by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue ball`
   const fell = falls === 0 ? 'no falls' : falls === 1 ? '1 fall' : `${falls} falls`
-  return [`Marble Run · Today’s Course #${marble.n} 🔮`, `${marble.name}: ${formatRun(time)}, ${against}, ${fell}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join('\n')
+  return [`Marble Run · Today’s Course #${marble.n} 🔮`, `${marble.name}: ${formatRun(time)}, ${against}, ${fell}`, `${window.location.origin}${todayShareHref(marble.day)}`].join('\n')
 }
 
 /** Today's course and its number, the run its ghost rolls (the #1's, your best, or the blue ball's), and when the next course comes. */

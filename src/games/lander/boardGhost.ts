@@ -3,6 +3,7 @@ import { api, ApiError } from '../../lib/leaderboard'
 import { launchWarp } from '../../lib/ghostWarp'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE, GHOST_STRIDE, inAir, nearestNode, WRECKED, wrap, type Breach, type Cave } from './sim'
+import { ghostOfQuery } from '../../lib/raceGhost'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's and Marble Run's are), for everyone to race: in today's
@@ -105,7 +106,7 @@ export async function fetchNextGhost(cave: number, tag: string): Promise<NextGho
  */
 export async function fetchPlayerGhost(cave: number, tag: string): Promise<NextGhost | 'plus' | null> {
   try {
-    const reply = await api<GhostReply & { place?: number }>(`/tracks/lander/${cave}/ghost?of=${encodeURIComponent(tag)}`, { cache: 'no-cache' })
+    const reply = await api<GhostReply & { place?: number }>(`/tracks/lander/${cave}/ghost?${ghostOfQuery('lander', tag)}`, { cache: 'no-cache' })
     const ghost = toGhost(reply)
     return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
   } catch (e) {

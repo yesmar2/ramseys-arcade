@@ -7,11 +7,14 @@ import { useImpersonation } from '../hooks/useImpersonation'
 import { useSaveWait } from '../hooks/useSaveWait'
 import { boardPlaceHref, gameHref, leaderboardHref, navigate, recordsPlaceHref } from '../hooks/useHashRoute'
 import { archiveDayWords } from '../lib/archive'
+import { RACE_GHOST_GAMES } from '../lib/raceGhost'
 import { currentAccountId, linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
 import {
   challengeMessage,
   challengeOutcome,
+  challengeUrl,
   createChallenge,
+  ghostShareText,
   noteChallengeRun,
   replyMessage,
   useActiveChallenge,
@@ -583,6 +586,11 @@ export function ScoreSaveCard({
   let moment: ReactNode = null
   let who: ReactNode = null
   let links: ReportLink[] = []
+  /** A racing daily's Share run (Ramsey picked it, 2026-10-23): a pill in place of the Share link. */
+  const ghostShare = Boolean(shareLine) && RACE_GHOST_GAMES.has(gameSlug)
+  let shareRun: ReportAction | null = null
+  /** It sends a link that races your ghost, not only the run's lines. */
+  let shareDares = false
 
   if (phase === 'needAuth') {
     // The other runs kept on this device go on with it.
@@ -739,6 +747,27 @@ export function ScoreSaveCard({
             .finally(() => setSending(false))
         },
       }
+    } else if (ghostShare && shareLine) {
+      // A racing daily's run goes on as a link that races your ghost, with the run's own lines.
+      const line = shareLine
+      shareRun = {
+        label: sending ? 'Making the link…' : lineShare.copied ? 'Copied' : 'Share run',
+        icon: 'share',
+        disabled: sending,
+        onClick: () => {
+          setSending(true)
+          setSendError(null)
+          createChallenge({ game: gameSlug, scoreId: runId, name: savedAs })
+            .then((made) => {
+              lineShare.share({ text: ghostShareText(line, challengeUrl(gameSlug, made.id)) })
+              setChallenged(true)
+            })
+            .catch(() => setSendError('Couldn’t make the link. Try again in a moment.'))
+            .finally(() => setSending(false))
+        },
+      }
+      secondary = shareRun
+      shareDares = true
     } else {
       secondary = {
         label: sending ? 'Making the link…' : challengeCopied ? 'Copied' : 'Challenge a friend',
@@ -780,8 +809,13 @@ export function ScoreSaveCard({
     }
   }
   // A daily's run goes on whether it's saved or not, as the other dailies' cards send theirs:
-  // the phone's own share sheet, or copied to paste anywhere.
-  if (shareLine) {
+  // the phone's own share sheet, or copied to paste anywhere. A racing daily's is a pill, not a link.
+  if (shareLine && ghostShare && !secondary) {
+    const line = shareLine
+    shareRun = { label: lineShare.copied ? 'Copied' : 'Share run', icon: 'share', onClick: () => lineShare.share({ text: line }) }
+    secondary = shareRun
+  }
+  if (shareLine && !shareRun) {
     links = [{ label: lineShare.copied ? 'Copied' : 'Share', icon: 'share', onClick: () => lineShare.share({ text: shareLine }) }, ...links]
   }
 
@@ -902,6 +936,12 @@ export function ScoreSaveCard({
     blockFirst: unsaved,
     primary: playAgain,
     secondary,
+    secondaryLook: secondary && secondary === shareRun ? 'share' : 'ghost',
+    // A new best or a new medal is the moment to send it: the same Share on the run's own page, while it's news.
+    dare:
+      shareRun && shareDares && (medalNew || bestLine?.tone === 'accent')
+        ? { ...shareRun, label: sending ? 'Making the link…' : lineShare.copied ? 'Copied' : `Dare a friend to beat ${said}` }
+        : null,
     who,
     links,
   })

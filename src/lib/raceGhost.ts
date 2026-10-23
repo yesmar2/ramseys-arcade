@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { activeChallenge } from './challenges'
 
 /*
  * Race any ghost (Ramsey picked it, 2026-10-11: a Race button on every board row, and a "Who do you race?"
@@ -61,4 +62,14 @@ export function useRaceTag(game: string, course: number): string | null {
 /** A play link with a ghost to race: `href` plus ?race=TAG. */
 export function withRace(href: string, tag: string): string {
   return `${href}${href.includes('?') ? '&' : '?'}race=${encodeURIComponent(tag)}`
+}
+
+/**
+ * The ghost route's query for `tag`'s run: ?of=TAG, and the challenge link this tab opened when it's TAG's, which
+ * opens their ghost to anyone (the API's challengeOpensGhost). Without one, anyone's but the #1's is Plus's.
+ */
+export function ghostOfQuery(game: string, tag: string): string {
+  const challenge = activeChallenge(game)
+  const dare = challenge && challenge.name.toUpperCase() === tag.toUpperCase() ? `&challenge=${encodeURIComponent(challenge.id)}` : ''
+  return `of=${encodeURIComponent(tag)}${dare}`
 }

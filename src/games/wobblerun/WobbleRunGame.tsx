@@ -12,7 +12,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useAccountId } from '../../hooks/useAccountId'
 import { useAuth } from '../../hooks/useAuth'
 import { useGamePause } from '../../hooks/useGamePause'
-import { dailyTabHref, gamePlayHref, navigate } from '../../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate, todayShareHref } from '../../hooks/useHashRoute'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
 import { useAdminState } from '../../lib/admin'
@@ -357,7 +357,7 @@ const gapTone = (d: number | null) => (d == null || Math.abs(d) < 0.005 ? '' : d
 function runShareLine(wobble: WobbleDay, time: number, pace: number, splashes: number): string {
   const gap = Math.abs(time - pace)
   const against = gap < 0.005 ? 'tied with the blue blip' : time < pace ? `beat the blue blip by ${gap.toFixed(2)}s` : `${gap.toFixed(2)}s off the blue blip`
-  return [`Wobble Run · Today’s Gauntlet #${wobble.n} 🌟`, `${wobble.name}: ${formatRun(time)}, ${against}, ${splashWords(splashes)}`, `${window.location.origin}${gamePlayHref(SLUG)}`].join(
+  return [`Wobble Run · Today’s Gauntlet #${wobble.n} 🌟`, `${wobble.name}: ${formatRun(time)}, ${against}, ${splashWords(splashes)}`, `${window.location.origin}${todayShareHref(wobble.day)}`].join(
     '\n',
   )
 }

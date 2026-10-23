@@ -1647,6 +1647,44 @@ html[data-theme='light'] .reel-btn--ghost:focus-visible {
   background: color-mix(in srgb, var(--reel-ink) 5%, var(--surface));
 }
 
+/*
+ * A racing daily's Share run, which sends a link that races your ghost: filled in the page's own light kick
+ * colour, so it reads as a thing to do and not the next game's Race (Ramsey picked A + B, 2026-10-23).
+ */
+.reel-btn--share {
+  background: var(--reel-kick);
+  color: #141026;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+/* The light theme's kick can be pale or deep by the page's tone: a soft tint of the game's colour reads either way. */
+html[data-theme='light'] .reel-btn--share {
+  background: color-mix(in srgb, var(--celeb-accent, #34c6a8) 24%, #ffffff);
+  color: #142231;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--celeb-accent, #34c6a8) 45%, transparent);
+}
+
+.reel-btn--share:hover,
+.reel-btn--share:focus-visible {
+  filter: brightness(1.06);
+}
+
+/* The run's own page: its Share under the run and its board, while it's news. */
+.reel-dare {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+  /* It rises once the medal has landed, after the run it sends. */
+  animation: reel-rise 0.45s 1.1s both;
+}
+
+.reel-dare .reel-btn {
+  width: 100%;
+  max-width: 26rem;
+  min-height: 3.4rem;
+}
+
 .reel-btn:disabled {
   opacity: 0.55;
   cursor: default;

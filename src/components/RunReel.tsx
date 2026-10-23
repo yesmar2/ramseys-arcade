@@ -699,7 +699,7 @@ export function ReelSeason({ run }: { run: SeasonRun }) {
 }
 
 /** A reel's button: the run's last presses don't reach it (useDeliberatePress), nor the tail of a step's tap. */
-export function ReelButton({ action, variant = 'play' }: { action: ReportAction; variant?: 'play' | 'ghost' }) {
+export function ReelButton({ action, variant = 'play' }: { action: ReportAction; variant?: 'play' | 'ghost' | 'share' }) {
   const allow = useContext(ReelPress)
   const className = `reel-btn reel-btn--${variant}`
   const label = (
@@ -847,6 +847,7 @@ export function ReelNext({
   blockFirst = false,
   primary,
   secondary = null,
+  secondaryLook = 'ghost',
   who,
   links,
 }: {
@@ -857,6 +858,8 @@ export function ReelNext({
   blockFirst?: boolean
   primary: ReportAction
   secondary?: ReportAction | null
+  /** How the second button looks: outlined, or a racing daily's Share run, filled. */
+  secondaryLook?: 'ghost' | 'share'
   who?: ReactNode
   links?: ReportLink[]
 }) {
@@ -885,7 +888,7 @@ export function ReelNext({
         <>
           <ReelRecap items={recap} variant="list" />
           {poster && !blockFirst ? asked : null}
-          {secondary ? <ReelButton action={secondary} variant="ghost" /> : null}
+          {secondary ? <ReelButton action={secondary} variant={secondaryLook} /> : null}
           {who || links?.length ? (
             <div className="reel-next__meta">
               {who ? <span className="report__who">{who}</span> : <span />}
@@ -962,6 +965,9 @@ export type ReelInput = {
   blockFirst?: boolean
   primary: ReportAction
   secondary?: ReportAction | null
+  secondaryLook?: 'ghost' | 'share'
+  /** A racing daily's good run (a new best, a medal): its Share on the run's own page, while it's news. */
+  dare?: ReportAction | null
   who?: ReactNode
   links?: ReportLink[]
 }
@@ -986,7 +992,29 @@ export function reelSteps(input: ReelInput): ReelStep[] {
       {board}
     </div>
   ) : null
-  const steps: ReelStep[] = [{ key: 'run', tone: 'run', body: <ReelSplit className="reel-split--run" main={<ReelRun {...run} />} side={side} /> }]
+  const steps: ReelStep[] = [
+    {
+      key: 'run',
+      tone: 'run',
+      body: (
+        <ReelSplit
+          className="reel-split--run"
+          main={
+            <>
+              <ReelRun {...run} />
+              {/* Under the score and its medal, where a phone sees it before the ladder and the board. */}
+              {saved && input.dare ? (
+                <div className="reel-dare">
+                  <ReelButton action={input.dare} variant="share" />
+                </div>
+              ) : null}
+            </>
+          }
+          side={side}
+        />
+      ),
+    },
+  ]
   if (phase === 'pending') steps.push({ key: 'wait', tone: 'run', body: <ReelWait slow={Boolean(input.slow)} words={input.wait} /> })
   if (phase === 'ask' && input.ask) {
     steps.push({ key: 'ask', tone: 'ask', body: <div className="reel-ask">{input.ask}</div>, goLabel: input.askGoLabel, focus: input.askFocus })
@@ -1009,6 +1037,7 @@ export function reelSteps(input: ReelInput): ReelStep[] {
         blockFirst={input.blockFirst}
         primary={input.primary}
         secondary={input.secondary}
+        secondaryLook={input.secondaryLook}
         who={input.who}
         links={input.links}
       />

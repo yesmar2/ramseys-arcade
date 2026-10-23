@@ -4,6 +4,7 @@ import { chosenSkin } from '../../lib/skins'
 import type { GhostRun } from './runStore'
 import { GHOST_RATE, GHOST_STRIDE, GROUNDED, newPose, solidPose } from './engine/sim'
 import type { Course } from './engine/types'
+import { ghostOfQuery } from '../../lib/raceGhost'
 
 /*
  * The #1's ghost (the API's lapGhosts.ts, as Hot Lap's, Marble Run's, Lander's and Swoop's are), for everyone to
@@ -109,7 +110,7 @@ export async function fetchNextGhost(gauntlet: number, tag: string): Promise<Nex
  */
 export async function fetchPlayerGhost(gauntlet: number, tag: string): Promise<NextGhost | 'plus' | null> {
   try {
-    const reply = await api<GhostReply & { place?: number }>(`/tracks/wobblerun/${gauntlet}/ghost?of=${encodeURIComponent(tag)}`, { cache: 'no-cache' })
+    const reply = await api<GhostReply & { place?: number }>(`/tracks/wobblerun/${gauntlet}/ghost?${ghostOfQuery('wobblerun', tag)}`, { cache: 'no-cache' })
     const ghost = toGhost(reply)
     return ghost && typeof reply.place === 'number' && reply.place >= 1 ? { ...ghost, place: reply.place } : null
   } catch (e) {
