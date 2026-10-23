@@ -333,6 +333,15 @@ export function clearFeedback(before: number) {
   return api<{ removed: number }>('/admin/feedback/clear', { method: 'POST', body: JSON.stringify({ before }) })
 }
 
+/** Whether new feedback pushes to the admins' devices (the API's feedbackAlerts.ts): on unless turned off. */
+export async function fetchFeedbackPush() {
+  return (await api<{ on: boolean }>('/admin/feedback-push')).on
+}
+
+export async function setFeedbackPush(on: boolean) {
+  return (await api<{ on: boolean }>('/admin/feedback-push', { method: 'POST', body: JSON.stringify({ on }) })).on
+}
+
 /**
  * The coming-soon page's launch list (the API's launchList.ts): who asked to hear when Blipka opens, the latest
  * first; whether the API can send email at all (Resend set up on Render); how many one send mails; and the email.

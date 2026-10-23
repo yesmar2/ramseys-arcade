@@ -22,6 +22,7 @@ import {
   fetchClientErrors,
   fetchErrorAlerts,
   fetchFeedback,
+  fetchFeedbackPush,
   fetchOpenFlags,
   fetchRunCheck,
   FLAG_KINDS,
@@ -30,6 +31,7 @@ import {
   removeClientError,
   removeFeedback,
   sendTestAlert,
+  setFeedbackPush,
   settleFlag,
   type AdminBan,
   type AdminClientError,
@@ -682,6 +684,7 @@ function FeedbackCard() {
         What players sent from Tell us (Send feedback in the menu, Suggest a game and Something broke in the footer), the latest first.
         Remove one once you’ve dealt with it.
       </p>
+      <FeedbackPushLine />
       {done ? <p className="adm-note">{done}</p> : null}
       {error ? <p className="adm-fail">{error}</p> : null}
       {items && !items.length ? <p className="adm-note">Nothing yet.</p> : null}
@@ -718,6 +721,47 @@ function FeedbackCard() {
         </ul>
       ) : null}
     </section>
+  )
+}
+
+/**
+ * Whether new feedback pushes to the admins' devices (the API's feedbackAlerts.ts), with the switch: on unless
+ * turned off, the first message at once and any more within five minutes together. Nothing shows with an API
+ * from before it.
+ */
+function FeedbackPushLine() {
+  const [on, setOn] = useState<boolean | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    fetchFeedbackPush().then(setOn, (err: unknown) => {
+      if (!(err instanceof ApiError && err.status === 404)) setError('Couldn’t read whether new feedback pushes you.')
+    })
+  }, [])
+  const flip = () => {
+    if (on == null || busy) return
+    setBusy(true)
+    setError(null)
+    setFeedbackPush(!on)
+      .then(setOn)
+      .catch(() => setError('That didn’t go through. Try again.'))
+      .finally(() => setBusy(false))
+  }
+  if (on == null) return error ? <p className="adm-fail">{error}</p> : null
+  return (
+    <>
+      <p className="adm-note">
+        {on
+          ? 'New feedback pushes to your devices, the ones listed under Site errors: the first message at once, then any more within five minutes together.'
+          : 'New feedback doesn’t push to your devices. It still comes here.'}
+      </p>
+      <div className="adm-form">
+        <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={busy} onClick={flip}>
+          {busy ? 'Saving…' : on ? 'Stop the pushes' : 'Push me new feedback'}
+        </button>
+      </div>
+      {error ? <p className="adm-fail">{error}</p> : null}
+    </>
   )
 }
 
