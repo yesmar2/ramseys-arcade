@@ -978,10 +978,29 @@ function drawBoat(ctx: CanvasRenderingContext2D, v: View) {
  * computer's own processor gets through small shapes quickly. So a fish of everyday size is painted on a canvas the
  * processor paints, lined up with the screen's pixels, and goes into the frame as one copy. One fading in or out
  * (its parts see-through over each other) or too big to gain from it is drawn straight onto the screen as before.
+ *
+ * "Still a little choppy when things get busy" (2026-10-22), on his laptop's screen at twice the density. So a
+ * picture is kept to its fish, a box round it turned as it's turned, since all of it is copied on its way to the
+ * screen, and its canvas is made again only when outgrown or far too big, since a canvas made again costs the
+ * processor and the graphics chip both. And in a frame bigger than his 1536 x 730 window's at that density, where
+ * every fish is bigger and the graphics chip has more to fill, pictures take more of the work (bigFrame).
  */
 
-/** The most pixels across a fish's picture; a bigger fish is drawn straight onto the screen. */
+/**
+ * The most pixels across the square round a fish's reach for it to go on a picture; a bigger fish is drawn straight
+ * onto the screen.
+ */
 const PICTURE_MAX = 320
+
+/** His laptop's 1536 x 730 window at twice the density, in pixels: the frame `PICTURE_MAX` was set for. */
+const LAPTOP_FRAME = 3072 * 1460
+
+/**
+ * How much bigger than `LAPTOP_FRAME` this frame is, across (1 when it's no bigger). A bigger frame's pictures
+ * may be that much bigger across, and a fish's light in the deep goes on a picture too: there it's the graphics
+ * chip that falls behind, where in a smaller frame it's the processor, painting the pictures.
+ */
+let bigFrame = 1
 
 type Picture = { canvas: HTMLCanvasElement; g: CanvasRenderingContext2D }
 
@@ -989,7 +1008,7 @@ type Picture = { canvas: HTMLCanvasElement; g: CanvasRenderingContext2D }
 const pictures: Picture[] = []
 let picturesUsed = 0
 
-function nextPicture(side: number): Picture | null {
+function nextPicture(w: number, h: number): Picture | null {
   let p = pictures[picturesUsed]
   if (!p) {
     const canvas = document.createElement('canvas')
@@ -1000,20 +1019,45 @@ function nextPicture(side: number): Picture | null {
     pictures.push(p)
   }
   picturesUsed++
-  // The whole canvas goes to the graphics chip at each copy, so it's kept to the fish's size, in steps of 16
-  // pixels so that a fish growing or the next one along seldom has it made again.
-  const size = Math.ceil(side / 16) * 16
-  if (p.canvas.width !== size || p.canvas.height !== size) {
-    p.canvas.width = size
-    p.canvas.height = size
+  // Made again, in steps of 32 pixels, only when the drawing has outgrown it or it's over three times the size
+  // needed, so a fish turning, or the next one along, seldom has it made again.
+  const c = p.canvas
+  if (c.width < w || c.height < h || c.width * c.height > 3 * w * h + 8192) {
+    c.width = Math.ceil(w / 32) * 32
+    c.height = Math.ceil(h / 32) * 32
   }
   return p
 }
 
 /**
+ * How far a drawing reaches in its own frame, in CSS pixels: forward (+x, a fish's nose), back, up (-y) and
+ * down. Its box.
+ */
+type Box = { front: number; back: number; top: number; bottom: number }
+
+/**
+ * A fish's box, with room to spare, since nothing of it may be cut off (fishbounds.mjs in the 2026-10-22 check
+ * drew every look at every pose against it): its nose and bill in front; behind, its tail round the tail's root
+ * or a long fin swept back; to each side, the body as it waves and the tallest fin, or the tail swung round, or
+ * the lure. Four pixels more all round for the outlines.
+ */
+export function drawnBox(art: FishArt, length: number, amp: number): Box {
+  const H = length * art.height
+  const T = H * art.tailSize
+  const wave = 0.17 * amp * H
+  const side = Math.max(0.5 * H + wave + 1.13 * art.dorsalSize * H, wave + 1.4 * T, art.lure ? 1.3 * H : 0) + 4
+  return {
+    front: length / 2 + 0.15 * H + (art.bill ?? 0) * length + (art.lure ? 0.3 * length : 0) + 4,
+    back: length / 2 + Math.max(1.4 * T, 1.3 * H) + 4,
+    top: side,
+    bottom: side,
+  }
+}
+
+/**
  * Draw a fish with `paint` on a picture of its own, if it can be: in its own frame, at (x, y), turned by `angle`,
- * squeezed by `squeeze`, all of it within `radius` CSS pixels of (x, y). False, having drawn nothing, when it
- * should go straight onto the screen.
+ * squeezed by `squeeze`, all of it within `radius` CSS pixels of (x, y) and inside `box`. False, having drawn
+ * nothing, when it should go straight onto the screen.
  */
 function onPicture(
   ctx: CanvasRenderingContext2D,
@@ -1022,24 +1066,43 @@ function onPicture(
   angle: number,
   squeeze: number,
   radius: number,
+  box: Box,
   paint: (g: CanvasRenderingContext2D, glowOver: (draw: (g: CanvasRenderingContext2D) => void) => void) => void,
 ): boolean {
   const m = ctx.getTransform()
   // Only onto a frame drawn square on, as renderGame sets it, and laid over it as it is.
   if (m.b !== 0 || m.c !== 0 || m.a !== m.d || ctx.globalCompositeOperation !== 'source-over') return false
   const k = m.a
+  if (Math.ceil(2 * radius * k) + 4 > PICTURE_MAX * bigFrame) return false
   const cx = m.e + x * k
   const cy = m.f + y * k
-  const side = Math.ceil(2 * radius * k) + 4
-  if (side > PICTURE_MAX) return false
-  const pic = nextPicture(side)
-  if (!pic) return false
+  // The box's corners on the screen, turned and squeezed with the fish.
+  const cos = Math.cos(angle) * k
+  const sin = Math.sin(angle) * k
+  let x0 = Infinity
+  let x1 = -Infinity
+  let y0 = Infinity
+  let y1 = -Infinity
+  for (const bx of [box.front, -box.back]) {
+    for (const by of [-box.top * squeeze, box.bottom * squeeze]) {
+      const px = cx + cos * bx - sin * by
+      const py = cy + sin * bx + cos * by
+      if (px < x0) x0 = px
+      if (px > x1) x1 = px
+      if (py < y0) y0 = py
+      if (py > y1) y1 = py
+    }
+  }
   // On the screen's whole pixels, so the copy lands pixel for pixel.
-  const left = Math.floor(cx - radius * k) - 2
-  const top = Math.floor(cy - radius * k) - 2
+  const left = Math.floor(x0) - 2
+  const top = Math.floor(y0) - 2
+  const w = Math.ceil(x1) + 2 - left
+  const h = Math.ceil(y1) + 2 - top
+  const pic = nextPicture(w, h)
+  if (!pic) return false
   const g = pic.g
   g.setTransform(1, 0, 0, 1, 0, 0)
-  g.clearRect(0, 0, side, side)
+  g.clearRect(0, 0, w, h)
   g.globalAlpha = 1
   g.globalCompositeOperation = 'source-over'
   // The fish's open lines end as the screen's drawing has it.
@@ -1054,24 +1117,45 @@ function onPicture(
     ctx.save()
     ctx.globalAlpha = 1
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.drawImage(pic.canvas, 0, 0, side, side, left, top, side, side)
+    ctx.drawImage(pic.canvas, 0, 0, w, h, left, top, w, h)
     ctx.restore()
   }
   paint(g, (draw) => {
-    // The fish's back goes on, then its light over it and the water straight onto the screen, then its front,
-    // painted on the same picture afresh.
+    // The fish's back goes on, then its light over it and the water, then its front, painted on the same picture
+    // afresh. The light adds to what's under it ('lighter'): straight onto the screen, or in a big frame painted,
+    // adding, on a clear picture of its own, and that picture added in, the same sums.
     put()
-    ctx.save()
-    ctx.globalAlpha = 1
-    ctx.translate(x, y)
-    ctx.rotate(angle)
-    ctx.scale(1, squeeze)
-    ctx.lineJoin = g.lineJoin
-    draw(ctx)
-    ctx.restore()
+    const glow = bigFrame > 1 ? nextPicture(w, h) : null
+    if (glow) {
+      const gg = glow.g
+      gg.setTransform(1, 0, 0, 1, 0, 0)
+      gg.clearRect(0, 0, w, h)
+      gg.globalAlpha = 1
+      gg.globalCompositeOperation = 'source-over'
+      gg.lineCap = g.lineCap
+      gg.lineJoin = g.lineJoin
+      gg.miterLimit = g.miterLimit
+      gg.setTransform(g.getTransform())
+      draw(gg)
+      ctx.save()
+      ctx.globalAlpha = 1
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(glow.canvas, 0, 0, w, h, left, top, w, h)
+      ctx.restore()
+    } else {
+      ctx.save()
+      ctx.globalAlpha = 1
+      ctx.translate(x, y)
+      ctx.rotate(angle)
+      ctx.scale(1, squeeze)
+      ctx.lineJoin = g.lineJoin
+      draw(ctx)
+      ctx.restore()
+    }
     const at = g.getTransform()
     g.setTransform(1, 0, 0, 1, 0, 0)
-    g.clearRect(0, 0, side, side)
+    g.clearRect(0, 0, w, h)
     g.setTransform(at)
   })
   put()
@@ -1108,7 +1192,7 @@ function drawOne(
     Math.abs(squeeze) >= 0.95 &&
     !art.bill &&
     !art.lure &&
-    onPicture(ctx, x, y, at.angle, squeeze, drawnReach(art, reach), (g, glowOver) => drawFish(g, art, pose, at.seed, local, paint, glowOver))
+    onPicture(ctx, x, y, at.angle, squeeze, drawnReach(art, reach), drawnBox(art, reach, pose.amp), (g, glowOver) => drawFish(g, art, pose, at.seed, local, paint, glowOver))
   if (!pictured) {
     ctx.save()
     ctx.globalAlpha = alpha
@@ -1386,7 +1470,7 @@ function drawBar(ctx: CanvasRenderingContext2D, v: View, pal: Palette, skin: str
     // A life still held, on a picture of its own (onPicture); a spent one, see-through, straight on.
     if (!blip && i < s.lives) {
       const pose = { length: 18, swim: s.time * 4 + i, amp: 0.6, mouth: 0, lookX: 1, lookY: 0, alarm: 0, puff: 0, time: s.time }
-      if (onPicture(ctx, lx, by + bh / 2, 0, 1, drawnReach(art, 18), (g) => drawFish(g, art, pose, i, null, paintFor(art, pal, 0.55)))) continue
+      if (onPicture(ctx, lx, by + bh / 2, 0, 1, drawnReach(art, 18), drawnBox(art, 18, pose.amp), (g) => drawFish(g, art, pose, i, null, paintFor(art, pal, 0.55)))) continue
     }
     ctx.save()
     ctx.globalAlpha = i < s.lives ? 1 : 0.25
@@ -1428,6 +1512,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, s: GameState, width: n
   const v: View = { s, w: width, h: height, ppu: s.ppu, x0: s.camX - width / 2 / s.ppu, y0: s.camY - height / 2 / s.ppu }
   lights = []
   picturesUsed = 0
+  bigFrame = Math.max(1, Math.sqrt((cw * ch) / LAPTOP_FRAME))
   ctx.fillStyle = css(pal.deep)
   ctx.fillRect(0, 0, width, height)
   drawSky(ctx, v, pal)
