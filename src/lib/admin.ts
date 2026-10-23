@@ -141,6 +141,22 @@ export type AdminFlag = {
   createdAt: number
 }
 
+/** What each kind of flag means (the API's scoreFlags.ts). */
+export const FLAG_KINDS: Record<string, string> = {
+  outlier: 'Far past the best',
+  'near-cap': 'At the edge of possible',
+}
+
+/** "just now", "12 min ago", "5 h ago", "3 days ago". */
+export function adminAgo(at: number) {
+  const minutes = Math.round((Date.now() - at) / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 48) return `${hours} h ago`
+  return `${Math.round(hours / 24)} days ago`
+}
+
 export type AdminBan = {
   name: string
   reason: string | null

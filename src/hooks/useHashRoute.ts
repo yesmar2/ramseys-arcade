@@ -106,8 +106,58 @@ export type Route =
  * courses, Lander's planned caves, Swoop's planned hills, Wobble Run's planned gauntlets, Half Full's days, and
  * every trophy and egg.
  */
-export type AdminSection = 'holes' | 'tracks' | 'courses' | 'caves' | 'hills' | 'gauntlets' | 'towers' | 'pours' | 'trophies'
-const ADMIN_SECTIONS: readonly AdminSection[] = ['holes', 'tracks', 'courses', 'caves', 'hills', 'gauntlets', 'towers', 'pours', 'trophies']
+/** The admin page's sections (AdminPage.tsx NAV), each /admin/<section>; the overview is /admin. */
+export type AdminSection =
+  | 'feedback'
+  | 'errors'
+  | 'flags'
+  | 'players'
+  | 'tickets'
+  | 'bans'
+  | 'runs'
+  | 'events'
+  | 'season'
+  | 'blip'
+  | 'alerts'
+  | 'launch'
+  | 'reset'
+  | 'dailies'
+  | 'holes'
+  | 'tracks'
+  | 'courses'
+  | 'caves'
+  | 'hills'
+  | 'gauntlets'
+  | 'towers'
+  | 'pours'
+  | 'hunt'
+  | 'trophies'
+const ADMIN_SECTIONS: readonly AdminSection[] = [
+  'feedback',
+  'errors',
+  'flags',
+  'players',
+  'tickets',
+  'bans',
+  'runs',
+  'events',
+  'season',
+  'blip',
+  'alerts',
+  'launch',
+  'reset',
+  'dailies',
+  'holes',
+  'tracks',
+  'courses',
+  'caves',
+  'hills',
+  'gauntlets',
+  'towers',
+  'pours',
+  'hunt',
+  'trophies',
+]
 
 /** Fired after in-app navigation has changed the URL. */
 export const ROUTE_EVENT = 'skermix:route'
@@ -375,7 +425,7 @@ export function plusHref() {
   return '/plus'
 }
 
-/** Site errors, flagged scores and bans, for admins; with `section`, one of the admin's other tabs. */
+/** The admin page's overview; with `section`, one of its sections (AdminPage.tsx). */
 export function adminHref(section?: AdminSection) {
   return section ? `/admin/${section}` : '/admin'
 }

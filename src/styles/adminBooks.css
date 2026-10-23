@@ -1,66 +1,11 @@
 /*
- * The admin's tabs, its Daily games card, the daily games' books (AdminHoleBook, AdminTrackBook,
+ * The admin's Today's dailies card, the daily games' books (AdminHoleBook, AdminTrackBook,
  * AdminPourBook): every planned day of Ace Chase's Today's Hole and Hot Lap's Today's Track, and Half
- * Full's days; and the Trophies tab (AdminTrophies). Cards are the admin page's own (.adm-card,
- * admin.css); the switches are the site's (.seg, .chips).
+ * Full's days; and the Trophies section (AdminTrophies). Cards are the admin page's own (.adm-card,
+ * admin.css); the switches are the site's (.seg, .chips). The sidebar is adminLayout.css.
  */
 
-.adm-tabs.seg {
-  width: min(100%, 46rem);
-}
-
-/* On a phone the tabs go three to a row, every one in view on a line of its own, not squeezed into one row. */
-@media (max-width: 36rem) {
-  .adm-tabs.seg {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-radius: 1.2rem;
-  }
-
-  .adm-tabs .seg__item {
-    padding: 0.4rem 0.3rem;
-    font-size: 0.78rem;
-    white-space: nowrap;
-  }
-}
-
-/* ---------- the Daily games card ---------- */
-
-.adm-books {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.adm-book {
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.9rem 1rem;
-  border-radius: 1rem;
-  border: 1px solid var(--panel-line);
-  background: var(--panel-fill);
-  color: var(--ink);
-  text-decoration: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.adm-book:hover,
-.adm-book:focus-visible {
-  border-color: color-mix(in srgb, var(--panel-accent) 55%, transparent);
-  background: color-mix(in srgb, var(--panel-accent) 8%, var(--surface));
-}
-
-.adm-book b {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-
-.adm-book span {
-  font-size: 0.85rem;
-  line-height: 1.4;
-  color: var(--muted);
-}
+/* ---------- the Today's dailies card ---------- */
 
 .adm-links {
   display: grid;

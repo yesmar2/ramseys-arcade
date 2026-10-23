@@ -80,6 +80,21 @@ export function titled(name: string) {
 
 /** The admin's tabs past the overview, by the names their pages give them (AdminPage). */
 const ADMIN_TITLES: Record<AdminSection, string> = {
+  feedback: 'Feedback',
+  errors: 'Site errors',
+  flags: 'Flagged scores',
+  players: 'Who’s playing',
+  tickets: 'Tickets',
+  bans: 'Bans',
+  runs: 'Run check',
+  events: 'Site events',
+  season: 'Season and Gold Pass',
+  blip: 'Blip’s questions',
+  alerts: 'Error alerts',
+  launch: 'Launch list',
+  reset: 'Reset test data',
+  dailies: 'Today’s dailies',
+  hunt: 'Bug hunt',
   holes: 'Hole Book',
   tracks: 'Track Book',
   courses: 'Course Book',

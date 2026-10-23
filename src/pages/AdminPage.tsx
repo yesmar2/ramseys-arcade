@@ -1,18 +1,19 @@
-import { Suspense, useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { AdminLaunchList } from '../components/AdminLaunchList'
-import { AdminNumbers } from '../components/AdminNumbers'
+import { AdminOverview } from '../components/AdminOverview'
 import { AdminReset } from '../components/AdminReset'
 import { AdminPlayers } from '../components/AdminPlayers'
 import { AdminSiteEvents } from '../components/AdminSiteEvents'
 import { AdminSeasonPreview } from '../components/AdminSeasonPreview'
 import { AdminTrophies } from '../components/AdminTrophies'
-import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
 import { StaffOnlyDoor } from '../components/StaffOnlyDoor'
 import { getGame } from '../data/games'
+import { AdminInboxContext, useAdminInbox, useAdminInboxLoader, type AdminInbox } from '../hooks/useAdminInbox'
 import { useAuth } from '../hooks/useAuth'
-import { adminHref, gamePlayHref, homeHref, type AdminSection } from '../hooks/useHashRoute'
+import { adminHref, gamePlayHref, type AdminSection } from '../hooks/useHashRoute'
 import {
+  adminAgo,
   banTag,
   clearClientErrors,
   clearFeedback,
@@ -23,6 +24,7 @@ import {
   fetchFeedback,
   fetchOpenFlags,
   fetchRunCheck,
+  FLAG_KINDS,
   grantTickets,
   liftBan,
   removeClientError,
@@ -45,6 +47,7 @@ import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { refreshTickets } from '../lib/tickets'
 import '../styles/admin.css'
 import '../styles/adminBooks.css'
+import '../styles/adminLayout.css'
 
 // The books draw every planned day, so each comes in a chunk of its own, when it's opened.
 const AdminHoleBook = lazyPage(() => import('../components/AdminHoleBook').then((m) => m.AdminHoleBook))
@@ -57,89 +60,149 @@ const AdminGauntletBook = lazyPage(() => import('../components/AdminGauntletBook
 const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
 const AdminBlipPolls = lazyPage(() => import('../components/AdminBlipPolls').then((m) => m.AdminBlipPolls))
 
-const SECTIONS: { section?: AdminSection; label: string; title: string; blurb: string }[] = [
+type NavItem = {
+  section?: AdminSection
+  label: string
+  /** The game a daily's book is for, said beside it. */
+  game?: string
+  title: string
+  /**
+   * Said under the title. A section that's one card has none: the card's own head names it, and the page's
+   * title is there for screen readers.
+   */
+  blurb?: string
+}
+
+/**
+ * The sidebar's sections, grouped by the job they're for (pick A of the "Admin page redesign" canvas,
+ * 2026-10-23: Ramsey found one long page of cards under ten tabs "getting little confusing").
+ */
+const NAV: { label?: string; items: NavItem[] }[] = [
   {
-    label: 'Overview',
-    title: 'Admin',
-    blurb:
-      'What players sent, what broke in their browsers, scores that looked wrong on the way in, tickets, banned tags, what the daily games have planned, and where the bug is hiding.',
+    items: [{ label: 'Overview', title: 'Overview', blurb: 'How the arcade is doing, what needs you, and what’s on today.' }],
   },
   {
-    section: 'holes',
-    label: 'Hole Book',
-    title: 'Hole Book',
-    blurb: 'Every planned day of Ace Chase’s Today’s Hole: its green from above, how hard it is next to the rest, and the way in.',
+    label: 'Needs you',
+    items: [
+      { section: 'feedback', label: 'Feedback', title: 'Feedback' },
+      { section: 'errors', label: 'Site errors', title: 'Site errors' },
+      { section: 'flags', label: 'Flagged scores', title: 'Flagged scores' },
+    ],
   },
   {
-    section: 'tracks',
-    label: 'Track Book',
-    title: 'Track Book',
-    blurb: 'Every planned day of Hot Lap’s Today’s Track, to test drive ahead of its day.',
+    label: 'Players',
+    items: [
+      { section: 'players', label: 'Who’s playing', title: 'Who’s playing' },
+      { section: 'tickets', label: 'Tickets', title: 'Tickets' },
+      { section: 'bans', label: 'Bans', title: 'Bans' },
+      { section: 'runs', label: 'Run check', title: 'Run check' },
+    ],
   },
   {
-    section: 'courses',
-    label: 'Course Book',
-    title: 'Course Book',
-    blurb: 'Every planned day of Marble Run’s Today’s Course, to test run ahead of its day.',
+    label: 'Site',
+    items: [
+      { section: 'events', label: 'Site events', title: 'Site events' },
+      { section: 'season', label: 'Season and Gold Pass', title: 'Season and Gold Pass' },
+      { section: 'blip', label: 'Blip’s questions', title: 'Blip’s questions' },
+      { section: 'alerts', label: 'Error alerts', title: 'Error alerts' },
+    ],
   },
   {
-    section: 'caves',
-    label: 'Cave Book',
-    title: 'Cave Book',
-    blurb: 'Every planned day of Lander’s Today’s Cave, to test fly ahead of its day.',
+    label: 'Launch',
+    items: [
+      { section: 'launch', label: 'Launch list', title: 'Launch list' },
+      { section: 'reset', label: 'Reset test data', title: 'Reset test data' },
+    ],
   },
   {
-    section: 'hills',
-    label: 'Hills Book',
-    title: 'Hills Book',
-    blurb: 'Every planned day of Swoop’s Today’s Hills, to test fly ahead of its day.',
+    label: 'Daily games',
+    items: [
+      { section: 'dailies', label: 'Today’s dailies', title: 'Today’s dailies' },
+      {
+        section: 'holes',
+        label: 'Hole Book',
+        game: 'acechase',
+        title: 'Hole Book',
+        blurb: 'Every planned day of Ace Chase’s Today’s Hole: its green from above, how hard it is next to the rest, and the way in.',
+      },
+      {
+        section: 'tracks',
+        label: 'Track Book',
+        game: 'hotlap',
+        title: 'Track Book',
+        blurb: 'Every planned day of Hot Lap’s Today’s Track, to test drive ahead of its day.',
+      },
+      {
+        section: 'courses',
+        label: 'Course Book',
+        game: 'marblerun',
+        title: 'Course Book',
+        blurb: 'Every planned day of Marble Run’s Today’s Course, to test run ahead of its day.',
+      },
+      {
+        section: 'caves',
+        label: 'Cave Book',
+        game: 'lander',
+        title: 'Cave Book',
+        blurb: 'Every planned day of Lander’s Today’s Cave, to test fly ahead of its day.',
+      },
+      {
+        section: 'hills',
+        label: 'Hills Book',
+        game: 'swoop',
+        title: 'Hills Book',
+        blurb: 'Every planned day of Swoop’s Today’s Hills, to test fly ahead of its day.',
+      },
+      {
+        section: 'towers',
+        label: 'Tower Book',
+        game: 'sling',
+        title: 'Tower Book',
+        blurb: 'Every planned day of Sling’s Today’s Tower, to test climb ahead of its day, and the test tower.',
+      },
+      {
+        section: 'gauntlets',
+        label: 'Gauntlet Book',
+        game: 'wobblerun',
+        title: 'Gauntlet Book',
+        blurb: 'Every planned day of Wobble Run’s Today’s Gauntlet, its rounds and their tiers, to test run ahead of its day.',
+      },
+      {
+        section: 'pours',
+        label: 'Pour Book',
+        game: 'halffull',
+        title: 'Pour Book',
+        blurb: 'Every day of Half Full’s Today’s Pour: its five glasses, how hard it came out for its weekday, and any day that missed.',
+      },
+      { section: 'hunt', label: 'Bug hunt', title: 'Bug hunt' },
+    ],
   },
   {
-    section: 'towers',
-    label: 'Tower Book',
-    title: 'Tower Book',
-    blurb: 'Every planned day of Sling’s Today’s Tower, to test climb ahead of its day, and the test tower.',
-  },
-  {
-    section: 'gauntlets',
-    label: 'Gauntlet Book',
-    title: 'Gauntlet Book',
-    blurb: 'Every planned day of Wobble Run’s Today’s Gauntlet, its rounds and their tiers, to test run ahead of its day.',
-  },
-  {
-    section: 'pours',
-    label: 'Pour Book',
-    title: 'Pour Book',
-    blurb: 'Every day of Half Full’s Today’s Pour: its five glasses, how hard it came out for its weekday, and any day that missed.',
-  },
-  {
-    section: 'trophies',
-    label: 'Trophies',
-    title: 'Trophies and easter eggs',
-    blurb: 'Everything a player can win or find, and exactly what earns it: the trophies, the secret ones, the easter eggs, and the rings and pins.',
+    items: [
+      {
+        section: 'trophies',
+        label: 'Trophies and eggs',
+        title: 'Trophies and easter eggs',
+        blurb: 'Everything a player can win or find, and exactly what earns it: the trophies, the secret ones, the easter eggs, and the rings and pins.',
+      },
+    ],
   },
 ]
 
+/** Every section, with the group it's in. */
+const NAV_ITEMS = NAV.flatMap((group) => group.items.map((item) => ({ ...item, group: group.label })))
+
 /*
- * The admin's page: what players sent, what broke in their browsers, scores
- * that looked wrong on the way in, tickets, and banned tags; and, a tab each,
- * the daily games' books of what's planned (/admin/holes, /admin/tracks,
- * /admin/courses, /admin/caves, /admin/hills, /admin/gauntlets, /admin/pours) and every trophy, secret, easter egg and bit of flair there is
- * (/admin/trophies). It opens for the emails in the API's ADMIN_EMAILS
- * (Render): the API is asked, and it's the API that answers every card.
- * Anyone else finds the Staff Only door (StaffOnlyDoor.tsx), an easter egg, and nothing of what's behind it.
+ * The admin's page: a sidebar of sections (NAV) beside the one that's open, the overview at /admin
+ * (AdminOverview.tsx) and each section at /admin/<section>. On a phone the sidebar folds into one button.
+ * It opens for the emails in the API's ADMIN_EMAILS (Render): the API is asked, and it's the API that answers
+ * every card. Anyone else finds the Staff Only door (StaffOnlyDoor.tsx), an easter egg, and nothing of what's
+ * behind it.
  */
 
 type Gate = 'checking' | 'signedOut' | 'notAdmin' | 'failed' | 'ready'
 
-function ago(at: number) {
-  const minutes = Math.round((Date.now() - at) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 48) return `${hours} h ago`
-  return `${Math.round(hours / 24)} days ago`
-}
+const ago = adminAgo
 
 function gameName(slug: string) {
   return getGame(slug)?.name ?? slug
@@ -152,7 +215,15 @@ function errorText(err: unknown, fallback: string) {
 export function AdminPage({ section }: { section?: AdminSection }) {
   const { account, loading } = useAuth()
   const [gate, setGate] = useState<Gate>('checking')
-  const here = SECTIONS.find((s) => s.section === section) ?? SECTIONS[0]!
+  const [menuOpen, setMenuOpen] = useState(false)
+  const here = NAV_ITEMS.find((item) => item.section === section) ?? NAV_ITEMS[0]!
+  const { inbox, refresh } = useAdminInboxLoader(gate === 'ready', section)
+  const inboxValue = useMemo(() => ({ inbox, refresh }), [inbox, refresh])
+
+  // A section picked from the phone's menu closes the menu behind it.
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [section])
 
   useEffect(() => {
     if (loading) return
@@ -188,98 +259,200 @@ export function AdminPage({ section }: { section?: AdminSection }) {
     return <PageShell innerClassName="lb-page__inner">{null}</PageShell>
   }
 
+  if (gate === 'failed') {
+    return (
+      <PageShell innerClassName="lb-page__inner">
+        <div className="adm">
+          <h1 className="adm-head__title">Admin</h1>
+          <section className="adm-card">
+            <p className="adm-note">Couldn’t reach the API. Try again in a moment.</p>
+          </section>
+        </div>
+      </PageShell>
+    )
+  }
+
   return (
     <PageShell innerClassName="lb-page__inner">
-      <PageBanner
-        size="compact"
-        crumbs={
-          section
-            ? [{ href: homeHref(), label: 'Home' }, { href: adminHref(), label: 'Admin' }, { label: here.title }]
-            : [{ href: homeHref(), label: 'Home' }, { label: 'Admin' }]
-        }
-        kicker={gate === 'ready' ? 'Admins only' : undefined}
-        title={gate === 'ready' ? here.title : 'Admin'}
-        blurb={gate === 'ready' ? here.blurb : undefined}
-      />
-      <div className="adm">
-        {gate === 'ready' ? (
-          <>
-            <nav className="seg adm-tabs" aria-label="Admin" style={{ '--seg-count': SECTIONS.length } as CSSProperties}>
-              {SECTIONS.map((s) => (
-                <a
-                  key={s.label}
-                  className={`seg__item${s === here ? ' seg__item--active' : ''}`}
-                  href={adminHref(s.section)}
-                  aria-current={s === here ? 'page' : undefined}
-                >
-                  {s.label}
-                </a>
-              ))}
-            </nav>
-            {section === 'holes' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Hole Book…</p>}>
-                <AdminHoleBook />
-              </Suspense>
-            ) : section === 'tracks' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Track Book…</p>}>
-                <AdminTrackBook />
-              </Suspense>
-            ) : section === 'courses' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Course Book…</p>}>
-                <AdminCourseBook />
-              </Suspense>
-            ) : section === 'caves' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Cave Book…</p>}>
-                <AdminCaveBook />
-              </Suspense>
-            ) : section === 'hills' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Hills Book…</p>}>
-                <AdminHillsBook />
-              </Suspense>
-            ) : section === 'towers' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Tower Book…</p>}>
-                <AdminTowerBook />
-              </Suspense>
-            ) : section === 'gauntlets' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Gauntlet Book…</p>}>
-                <AdminGauntletBook />
-              </Suspense>
-            ) : section === 'pours' ? (
-              <Suspense fallback={<p className="adm-note">Opening the Pour Book…</p>}>
-                <AdminPourBook />
-              </Suspense>
-            ) : section === 'trophies' ? (
-              <AdminTrophies />
-            ) : (
-              <>
-                <AdminNumbers />
-                <AdminPlayers />
-                <AdminSiteEvents />
-                <AdminSeasonPreview />
-                <DailyGamesCard />
-                <BugHuntCard />
-                <AdminBlipPolls />
-                <AdminLaunchList />
-                <AdminReset />
-                <FeedbackCard />
-                <ErrorsCard />
-                <FlagsCard />
-                <RunCheckCard />
-                <TicketsCard />
-                <BansCard />
-              </>
-            )}
-          </>
-        ) : (
-          <section className="adm-card">
-            <p className="adm-note">
-              Couldn’t reach the API. Try again in a moment.
-            </p>
-          </section>
-        )}
-      </div>
+      <AdminInboxContext.Provider value={inboxValue}>
+        <div className="adm adm-layout">
+          <AdminNav here={here} inbox={inbox} open={menuOpen} onToggle={() => setMenuOpen((open) => !open)} />
+          <div className="adm-main">
+            <header className="adm-head">
+              <p className="adm-head__kicker">Admins only{here.group ? ` · ${here.group}` : ''}</p>
+              <h1 className={here.blurb ? 'adm-head__title' : 'visually-hidden'}>{here.title}</h1>
+              {here.blurb ? <p className="adm-head__blurb">{here.blurb}</p> : null}
+            </header>
+            <SectionBody section={section} />
+          </div>
+        </div>
+      </AdminInboxContext.Provider>
     </PageShell>
   )
+}
+
+function ChevronDown() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+
+/** What a section's sidebar entry says beside it: how many wait, or how a switch stands. */
+function navBadge(section: AdminSection | undefined, inbox: AdminInbox): { text: string; hot?: boolean } | null {
+  const waiting = (list: unknown[] | null) => (list?.length ? { text: list.length.toLocaleString(), hot: true } : null)
+  switch (section) {
+    case 'feedback':
+      return waiting(inbox.feedback)
+    case 'errors':
+      return waiting(inbox.errors)
+    case 'flags':
+      return waiting(inbox.flags)
+    case 'events':
+      return inbox.siteEvents == null ? null : { text: inbox.siteEvents ? 'On' : 'Paused' }
+    case 'launch':
+      return inbox.launchList ? { text: inbox.launchList.toLocaleString() } : null
+    default:
+      return null
+  }
+}
+
+/** The sidebar: every section by its group, with what waits. On a phone, one button that opens it. */
+function AdminNav({ here, inbox, open, onToggle }: { here: NavItem; inbox: AdminInbox; open: boolean; onToggle: () => void }) {
+  const waiting = (inbox.feedback?.length ?? 0) + (inbox.errors?.length ?? 0) + (inbox.flags?.length ?? 0)
+  return (
+    <nav className={`adm-nav${open ? ' adm-nav--open' : ''}`} aria-label="Admin">
+      <button type="button" className="adm-nav__toggle" aria-expanded={open} aria-controls="adm-nav-list" onClick={onToggle}>
+        <span className="adm-nav__now">{here.label}</span>
+        {waiting ? <span className="adm-nav__badge adm-nav__badge--hot">{waiting.toLocaleString()} need you</span> : null}
+        <ChevronDown />
+      </button>
+      <div className="adm-nav__list" id="adm-nav-list">
+        {NAV.map((group, i) => (
+          <div key={group.label ?? `group-${i}`} className="adm-nav__group">
+            {group.label ? <p className="adm-nav__head">{group.label}</p> : null}
+            <ul>
+              {group.items.map((item) => {
+                const badge = navBadge(item.section, inbox)
+                const current = item.section === here.section
+                return (
+                  <li key={item.label}>
+                    <a
+                      className={`adm-nav__item${current ? ' adm-nav__item--here' : ''}`}
+                      href={adminHref(item.section)}
+                      aria-current={current ? 'page' : undefined}
+                    >
+                      <span className="adm-nav__label">{item.label}</span>
+                      {item.game ? <span className="adm-nav__game">{gameName(item.game)}</span> : null}
+                      {badge ? <span className={`adm-nav__badge${badge.hot ? ' adm-nav__badge--hot' : ''}`}>{badge.text}</span> : null}
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </nav>
+  )
+}
+
+/** A book, in the chunk of its own it comes in. */
+function Book({ name, children }: { name: string; children: ReactNode }) {
+  return <Suspense fallback={<p className="adm-note">Opening the {name}…</p>}>{children}</Suspense>
+}
+
+/** What a section holds. */
+function SectionBody({ section }: { section?: AdminSection }) {
+  switch (section) {
+    case undefined:
+      return <AdminOverview />
+    case 'feedback':
+      return <FeedbackCard />
+    case 'errors':
+      return <ErrorsCard />
+    case 'flags':
+      return <FlagsCard />
+    case 'players':
+      return <AdminPlayers />
+    case 'tickets':
+      return <TicketsCard />
+    case 'bans':
+      return <BansCard />
+    case 'runs':
+      return <RunCheckCard />
+    case 'events':
+      return <AdminSiteEvents />
+    case 'season':
+      return <AdminSeasonPreview />
+    case 'blip':
+      return (
+        <Book name="questions">
+          <AdminBlipPolls />
+        </Book>
+      )
+    case 'alerts':
+      return <AlertsCard />
+    case 'launch':
+      return <AdminLaunchList />
+    case 'reset':
+      return <AdminReset />
+    case 'dailies':
+      return <DailyGamesCard />
+    case 'holes':
+      return (
+        <Book name="Hole Book">
+          <AdminHoleBook />
+        </Book>
+      )
+    case 'tracks':
+      return (
+        <Book name="Track Book">
+          <AdminTrackBook />
+        </Book>
+      )
+    case 'courses':
+      return (
+        <Book name="Course Book">
+          <AdminCourseBook />
+        </Book>
+      )
+    case 'caves':
+      return (
+        <Book name="Cave Book">
+          <AdminCaveBook />
+        </Book>
+      )
+    case 'hills':
+      return (
+        <Book name="Hills Book">
+          <AdminHillsBook />
+        </Book>
+      )
+    case 'towers':
+      return (
+        <Book name="Tower Book">
+          <AdminTowerBook />
+        </Book>
+      )
+    case 'gauntlets':
+      return (
+        <Book name="Gauntlet Book">
+          <AdminGauntletBook />
+        </Book>
+      )
+    case 'pours':
+      return (
+        <Book name="Pour Book">
+          <AdminPourBook />
+        </Book>
+      )
+    case 'hunt':
+      return <BugHuntCard />
+    case 'trophies':
+      return <AdminTrophies />
+  }
 }
 
 /** A card's list, loaded when it mounts and again on Refresh. */
@@ -326,53 +499,19 @@ function CardHead({
   )
 }
 
-/** The daily games' books, and the pages that try things out ahead of players. */
+/** Today's real dailies, beside the books in the sidebar that try any day ahead of players. */
 function DailyGamesCard() {
   return (
     <section className="adm-card" aria-labelledby="adm-daily">
       <div className="adm-card__head">
         <h2 className="adm-card__title" id="adm-daily">
-          Daily games
+          Today’s dailies
         </h2>
       </div>
       <p className="adm-card__sub">
-        What the daily games have planned, day by day, and pages to try things on. A hole on trial, a test drive, a
-        past day’s pour and the bug hunt’s test mode keep nothing.
+        The real ones, where your runs count. Each game’s book, in the sidebar, tries any day ahead of players: a hole
+        on trial, a test drive, a past day’s pour and the bug hunt’s test mode keep nothing.
       </p>
-      <div className="adm-books">
-        <a className="adm-book" href={adminHref('holes')}>
-          <b>Hole Book</b>
-          <span>Ace Chase: every planned Today’s Hole, how hard it is, and the way in</span>
-        </a>
-        <a className="adm-book" href={adminHref('tracks')}>
-          <b>Track Book</b>
-          <span>Hot Lap: every planned Today’s Track, to test drive</span>
-        </a>
-        <a className="adm-book" href={adminHref('courses')}>
-          <b>Course Book</b>
-          <span>Marble Run: every planned Today’s Course, to test run</span>
-        </a>
-        <a className="adm-book" href={adminHref('caves')}>
-          <b>Cave Book</b>
-          <span>Lander: every planned Today’s Cave, to test fly</span>
-        </a>
-        <a className="adm-book" href={adminHref('hills')}>
-          <b>Hills Book</b>
-          <span>Swoop: every planned Today’s Hills, to test fly</span>
-        </a>
-        <a className="adm-book" href={adminHref('towers')}>
-          <b>Tower Book</b>
-          <span>Sling: every planned Today’s Tower, to test climb, and the test tower</span>
-        </a>
-        <a className="adm-book" href={adminHref('gauntlets')}>
-          <b>Gauntlet Book</b>
-          <span>Wobble Run: every planned Today’s Gauntlet, to test run, and the test course</span>
-        </a>
-        <a className="adm-book" href={adminHref('pours')}>
-          <b>Pour Book</b>
-          <span>Half Full: every day’s glasses, how hard each came out, and any day off its band</span>
-        </a>
-      </div>
       <ul className="adm-links">
         <li>
           <a href={gamePlayHref('acechase')}>Ace Chase · Today’s Hole</a>
@@ -481,6 +620,7 @@ function BugHuntCard() {
 
 function FeedbackCard() {
   const { items, setItems, error, setError, refresh } = useList<AdminFeedback>(fetchFeedback)
+  const { refresh: recount } = useAdminInbox()
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
 
@@ -491,6 +631,7 @@ function FeedbackCard() {
     try {
       await removeFeedback(f.id)
       setItems((list) => list?.filter((row) => row.id !== f.id) ?? null)
+      recount()
     } catch (err) {
       setError(errorText(err, 'Couldn’t remove that one'))
     } finally {
@@ -508,6 +649,7 @@ function FeedbackCard() {
       const { removed } = await clearFeedback(Math.max(...items.map((f) => f.createdAt)))
       setDone(`Removed ${removed.toLocaleString()} ${removed === 1 ? 'message' : 'messages'}.`)
       refresh()
+      recount()
     } catch (err) {
       setError(errorText(err, 'Couldn’t remove them'))
     } finally {
@@ -581,6 +723,7 @@ function FeedbackCard() {
 
 function ErrorsCard() {
   const { items, setItems, error, setError, refresh } = useList<AdminClientError>(fetchClientErrors)
+  const { refresh: recount } = useAdminInbox()
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
 
@@ -591,6 +734,7 @@ function ErrorsCard() {
     try {
       await removeClientError(e.fingerprint)
       setItems((list) => list?.filter((row) => row.fingerprint !== e.fingerprint) ?? null)
+      recount()
     } catch (err) {
       setError(errorText(err, 'Couldn’t remove that one'))
     } finally {
@@ -608,6 +752,7 @@ function ErrorsCard() {
       const { removed } = await clearClientErrors(Math.max(...items.map((e) => e.lastAt)))
       setDone(`Removed ${removed.toLocaleString()} ${removed === 1 ? 'error' : 'errors'}.`)
       refresh()
+      recount()
     } catch (err) {
       setError(errorText(err, 'Couldn’t remove them'))
     } finally {
@@ -638,9 +783,8 @@ function ErrorsCard() {
       </CardHead>
       <p className="adm-card__sub" id="adm-errors">
         What broke in players’ browsers in the last 30 days, the latest first. The same error again counts up. Remove
-        one once it’s fixed: if it happens again, it comes back.
+        one once it’s fixed: if it happens again, it comes back. A spike of them pushes you (Error alerts).
       </p>
-      <ErrorAlertsLine />
       {done ? <p className="adm-note">{done}</p> : null}
       {error ? <p className="adm-fail">{error}</p> : null}
       {items && !items.length ? <p className="adm-note">Nothing has broken lately.</p> : null}
@@ -785,10 +929,22 @@ function ErrorAlertsLine() {
   )
 }
 
-/** What each kind of flag means (the API's scoreFlags.ts). */
-const FLAG_KINDS: Record<string, string> = {
-  outlier: 'Far past the best',
-  'near-cap': 'At the edge of possible',
+/** Where a spike of errors pushes you, with a test: its own section (Error alerts), out of Site errors. */
+function AlertsCard() {
+  return (
+    <section className="adm-card" aria-labelledby="adm-alerts">
+      <div className="adm-card__head">
+        <h2 className="adm-card__title" id="adm-alerts">
+          Error alerts
+        </h2>
+      </div>
+      <p className="adm-card__sub">
+        A push to your devices when the site starts breaking: a run of site errors from several players, or of failed API
+        answers, in a few minutes.
+      </p>
+      <ErrorAlertsLine />
+    </section>
+  )
 }
 
 /**
@@ -849,6 +1005,7 @@ function RunCheckCard() {
 
 function FlagsCard() {
   const { items, setItems, error, setError, refresh } = useList<AdminFlag>(fetchOpenFlags)
+  const { refresh: recount } = useAdminInbox()
   const [busy, setBusy] = useState<string | null>(null)
 
   const settle = async (flag: AdminFlag, voidScore: boolean) => {
@@ -857,6 +1014,7 @@ function FlagsCard() {
     try {
       await settleFlag(flag, voidScore)
       setItems((list) => list?.filter((f) => f.id !== flag.id) ?? null)
+      recount()
     } catch (err) {
       setError(errorText(err, 'Couldn’t settle that one'))
     } finally {

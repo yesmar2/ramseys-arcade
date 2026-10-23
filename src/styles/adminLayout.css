@@ -1,0 +1,322 @@
+/*
+ * The admin page's frame (AdminPage.tsx): a sidebar of sections beside the one that's open, pick A of the "Admin
+ * page redesign" canvas (2026-10-23), and the overview's Needs you and Today on the site (AdminOverview.tsx). On a
+ * phone the sidebar folds into one button that opens it.
+ */
+
+.adm-layout {
+  grid-template-columns: 15.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 1.75rem;
+}
+
+.adm-main {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+/* ---------- the page's head ---------- */
+
+.adm-head {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.adm-head__kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adm-head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.3rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.adm-head__blurb {
+  margin: 0;
+  max-width: 46rem;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- the sidebar ---------- */
+
+.adm-nav {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.2rem 0.25rem 1rem 0;
+}
+
+.adm-nav__toggle {
+  display: none;
+}
+
+.adm-nav__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.adm-nav__group ul {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-nav__head {
+  margin: 0 0 0.2rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adm-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.2rem;
+  padding: 0 0.75rem;
+  border-radius: 0.8rem;
+  color: var(--ink);
+  font-size: 0.93rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.adm-nav__item:hover,
+.adm-nav__item:focus-visible {
+  background: var(--panel-fill);
+}
+
+.adm-nav__item--here,
+.adm-nav__item--here:hover,
+.adm-nav__item--here:focus-visible {
+  background: color-mix(in srgb, var(--panel-accent) 17%, transparent);
+  color: var(--panel-accent-ink);
+}
+
+.adm-nav__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.adm-nav__game {
+  flex: none;
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: var(--muted);
+}
+
+.adm-nav__badge {
+  flex: none;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--panel-fill);
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.adm-nav__badge--hot {
+  background: var(--panel-danger);
+  color: #fff;
+}
+
+html[data-theme='dark'] .adm-nav__badge--hot {
+  color: #2a0a10;
+}
+
+/* ---------- the overview ---------- */
+
+.adm-needs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+/* Tall enough from the start for a label, two lines and a line under them, so nothing moves when they arrive. */
+.adm-need {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 8.75rem;
+  box-sizing: border-box;
+  padding: 1.05rem 1.2rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--panel-line);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.adm-need:hover,
+.adm-need:focus-visible {
+  border-color: color-mix(in srgb, var(--panel-accent) 55%, transparent);
+}
+
+.adm-need--some {
+  border-color: color-mix(in srgb, var(--panel-danger) 45%, var(--panel-line));
+}
+
+.adm-need__label,
+.adm-today__label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adm-need--some .adm-need__label {
+  color: var(--panel-danger);
+}
+
+.adm-need__title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.98rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.adm-need__sub {
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.adm-today {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.adm-today__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 0.95rem;
+  background: var(--panel-fill);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.adm-today__tile b {
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.adm-today__tile > span:last-child {
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.adm-today__tile:hover b,
+.adm-today__tile:focus-visible b {
+  color: var(--panel-accent-ink);
+}
+
+/* ---------- a narrow screen: the sidebar behind one button ---------- */
+
+@media (max-width: 60rem) {
+  .adm-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .adm-nav {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .adm-nav__toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    min-height: 3rem;
+    padding: 0 1.1rem;
+    border: 1px solid var(--panel-line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 800;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .adm-nav__now {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .adm-nav__toggle svg {
+    flex: none;
+    transition: transform 0.15s ease;
+  }
+
+  .adm-nav--open .adm-nav__toggle svg {
+    transform: rotate(180deg);
+  }
+
+  .adm-nav__list {
+    display: none;
+    margin-top: 0.6rem;
+    padding: 0.9rem 0.6rem;
+    border: 1px solid var(--panel-line);
+    border-radius: 1.2rem;
+    background: var(--surface);
+  }
+
+  .adm-nav--open .adm-nav__list {
+    display: flex;
+  }
+
+  .adm-nav__item {
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 46rem) {
+  .adm-needs,
+  .adm-today {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm-need,
+  .adm-nav__toggle svg {
+    transition: none;
+  }
+}
