@@ -37,12 +37,12 @@ function whenWords(day: string) {
 
 const fallWords = (falls: number) => (falls === 0 ? 'no falls' : falls === 1 ? '1 fall' : `${falls} falls`)
 
-/** The courses either side, and the way back to the book. A tap here isn't a tap to start. */
-function CourseNav({ n }: { n: number }) {
+/** The courses either side (as water slides, from one), and the way back to the book. A tap here isn't a tap to start. */
+function CourseNav({ n, slide = false }: { n: number; slide?: boolean }) {
   return (
     <nav className="marblerun-test__nav" aria-label="Other courses">
       {n > 1 ? (
-        <a href={courseRunHref(dayOfCourse(n - 1))} onPointerDown={holdPress}>
+        <a href={courseRunHref(dayOfCourse(n - 1), slide)} onPointerDown={holdPress}>
           ‹ #{n - 1}
         </a>
       ) : (
@@ -52,7 +52,7 @@ function CourseNav({ n }: { n: number }) {
         Course Book
       </a>
       {n < PLANNED_COURSES ? (
-        <a href={courseRunHref(dayOfCourse(n + 1))} onPointerDown={holdPress}>
+        <a href={courseRunHref(dayOfCourse(n + 1), slide)} onPointerDown={holdPress}>
           #{n + 1} ›
         </a>
       ) : (
@@ -71,17 +71,33 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-/** A test run's start card: like the game's own, it starts on a tap anywhere but its links. */
-export function TestStartCard({ marble, best }: { marble: MarbleDay; best: number | null }) {
+/** The same course the other way: as a water slide, or plain. */
+function SlideSwitch({ day, slide }: { day: string; slide: boolean }) {
+  return (
+    <p className="game-card__note">
+      <a href={courseRunHref(day, !slide)} onPointerDown={holdPress}>
+        {slide ? 'Roll it plain' : 'Roll it as a water slide'}
+      </a>
+    </p>
+  )
+}
+
+/**
+ * A test run's start card: like the game's own, it starts on a tap anywhere but its links. With `slide`, the
+ * course as a water slide (runs.ts slideDay).
+ */
+export function TestStartCard({ marble, best, slide = false }: { marble: MarbleDay; best: number | null; slide?: boolean }) {
   return (
     <div ref={fitCardToSpace} className="game-card game-card--start marblerun-test" style={gameAccentStyle(SLUG)}>
       <div className="game-card__head">
         <span className="game-card__kicker">
-          Test run · course {marble.n} of {PLANNED_COURSES}
+          {slide ? 'Water slide' : 'Test run'} · course {marble.n} of {PLANNED_COURSES}
         </span>
         <h2 className="game-card__title game-card__title--big">{marble.name}</h2>
         <p className="game-card__blurb">
-          {whenWords(marble.day)}. Runs here aren’t saved: they go on no board, and your best here is gone when you close the tab.
+          {slide
+            ? `${whenWords(marble.day)}, with sides that curve up and a rail along the top: much harder to fall off. The blue ball rolls the plain course. Runs here aren’t saved.`
+            : `${whenWords(marble.day)}. Runs here aren’t saved: they go on no board, and your best here is gone when you close the tab.`}
         </p>
       </div>
       <GamePanelBody
@@ -101,7 +117,8 @@ export function TestStartCard({ marble, best }: { marble: MarbleDay; best: numbe
           </button>
         }
       />
-      <CourseNav n={marble.n} />
+      <SlideSwitch day={marble.day} slide={slide} />
+      <CourseNav n={marble.n} slide={slide} />
     </div>
   )
 }
@@ -212,6 +229,7 @@ export function LabResultCard({
 /** After a test run: its time, against your best here and the blue ball's. */
 export function TestResultCard({
   marble,
+  slide = false,
   time,
   falls,
   best,
@@ -220,6 +238,7 @@ export function TestResultCard({
   onDone,
 }: {
   marble: MarbleDay
+  slide?: boolean
   time: number
   falls: number
   best: number
@@ -242,7 +261,7 @@ export function TestResultCard({
     >
       <div className="game-card__head">
         <span className="game-card__kicker">
-          Test run · #{marble.n} {marble.name}
+          {slide ? 'Water slide' : 'Test run'} · #{marble.n} {marble.name}
         </span>
         <h2 className="game-card__title game-card__title--big">{formatRun(time)}</h2>
         <p className="game-card__blurb">
@@ -275,7 +294,7 @@ export function TestResultCard({
         </button>
       </div>
       {/* On to the next one, or back, without going through the start card. */}
-      <CourseNav n={marble.n} />
+      <CourseNav n={marble.n} slide={slide} />
     </div>
   )
 }

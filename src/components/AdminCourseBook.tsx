@@ -134,6 +134,9 @@ export function AdminCourseBook() {
                 <a className="panel__btn adm-small" href={courseRunHref(todays.day)}>
                   Test run
                 </a>
+                <a className="panel__btn panel__btn--ghost adm-small" href={courseRunHref(todays.day, true)}>
+                  As a water slide
+                </a>
                 <a className="panel__btn panel__btn--ghost adm-small" href={gamePlayHref(SLUG)}>
                   Roll it for real
                 </a>

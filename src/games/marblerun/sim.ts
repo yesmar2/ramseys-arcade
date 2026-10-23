@@ -170,6 +170,8 @@ export type Spec = {
   bank?: number
   /** A bowl or a chute: raised on both sides, by this × the distance from the middle, squared. */
   pipe?: number
+  /** A water slide's sides (slideCourse): curving up along both edges (slideLip). */
+  slide?: boolean
   rollers?: Rollers
   posts?: readonly { u: number; v: number; r: number }[]
   railL?: boolean
@@ -370,6 +372,7 @@ export function heightAt(p: Piece, u: number, v: number): number {
   if (u <= 0) y = p.y0 + p.m0 * u
   else if (u >= p.len) y = p.y1 + p.m1 * (u - p.len)
   else y = hermite(p.y0, p.m0 * p.len, p.y1, p.m1 * p.len, u / p.len)
+  if (p.slide) y += slideLip(p, u, v)
   if (p.bank || p.pipe || p.rollers) {
     const e = ease(p, clamp(u, 0, p.len))
     // A banked curve is raised on its outside.
@@ -383,6 +386,21 @@ export function heightAt(p: Piece, u: number, v: number): number {
     }
   }
   return y
+}
+
+/**
+ * A water slide's side: the track curves up over its outer SLIDE_W (or 0.6 of its half width, on a narrow piece),
+ * to SLIDE_H at its edge (less, as much less as it's narrower), with a rail along the top.
+ */
+export const SLIDE_W = 1.8
+export const SLIDE_H = 1.2
+
+/** How far a water slide's track is raised `v` across a piece, `u` along it: nothing through its middle. */
+export function slideLip(p: Piece, u: number, v: number): number {
+  const hw = halfWidth(p, clamp(u, 0, p.len))
+  const w = Math.min(SLIDE_W, hw * 0.6)
+  const t = (Math.abs(v) - (hw - w)) / w
+  return t > 0 ? ((SLIDE_H * w) / SLIDE_W) * t * t : 0
 }
 
 /** Which way is up off a piece's track at a ground-plane point. */
@@ -1817,6 +1835,23 @@ export function plannedCourse(n: number, attempt: number, timing?: readonly numb
   if (!course) throw new Error(`Marble Run: course #${n} try ${attempt} doesn't lay`)
   if (timing?.length) applyTiming(course, timing)
   return course
+}
+
+/**
+ * A course laid again as a water slide, an admin's try (runs.ts slideDay): every stretch of track curves up at
+ * its edges (slideLip) with a rail along the top, so a ball rides up the side of a turn instead of off it.
+ * Jumps' gaps and their slabs, and loops, are as they were; so is a fork's lane round the hole, railed but flat,
+ * as the side would tip a ball off its plank. The day's course itself is untouched: its pace ball, plan and
+ * boards are the plain course's.
+ */
+export function slideCourse(course: Course, timing?: readonly number[]): Course {
+  const pieces = course.pieces.map((p): Piece => {
+    if (p.gap || p.kind === 'loop') return { ...p }
+    return { ...p, slide: !p.hole, railL: true, railR: true }
+  })
+  const slid = makeCourse(pieces, { key: `${course.key}:slide`, name: course.name, order: course.order })
+  if (timing?.length) applyTiming(slid, timing)
+  return slid
 }
 
 /**

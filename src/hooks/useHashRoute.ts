@@ -71,7 +71,7 @@ export type Route =
    * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive. `lab`: a racing daily's test
    * course, every new kind of obstacle in one, `?lab=1`, from the admin's Cave Book or Course Book.
    */
-  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean; race?: string }
+  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean; slide?: boolean; race?: string }
   /** A friend's challenge link, `/c/<game>/<id>` (lib/challenges.ts): it opens the challenge, then its game. */
   | { name: 'challenge'; slug: string; id: string }
   | { name: 'authVerify'; token: string }
@@ -694,7 +694,8 @@ export function hrefForRoute(
             : route.hole
               ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}`
               : gamePlayHref(route.slug)
-      return route.race ? `${play}${play.includes('?') ? '&' : '?'}race=${encodeURIComponent(route.race)}` : play
+      const slid = route.slide ? `${play}${play.includes('?') ? '&' : '?'}slide=1` : play
+      return route.race ? `${slid}${slid.includes('?') ? '&' : '?'}race=${encodeURIComponent(route.race)}` : slid
     }
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
@@ -936,6 +937,8 @@ export function parseUrl(pathname: string, search: string): Route {
     const track = params.get('track')?.trim()
     const day = params.get('day')?.trim()
     const lab = params.get('lab') === '1'
+    // Marble Run's course as a water slide, an admin's test run.
+    const slide = params.get('slide') === '1'
     // A racing daily's ghost to race: a board row's Race (lib/raceGhost.ts).
     const race = params.get('race')?.trim()
     return {
@@ -945,6 +948,7 @@ export function parseUrl(pathname: string, search: string): Route {
       ...(track ? { track } : {}),
       ...(day ? { day } : {}),
       ...(lab ? { lab } : {}),
+      ...(slide ? { slide } : {}),
       ...(race ? { race } : {}),
     }
   }

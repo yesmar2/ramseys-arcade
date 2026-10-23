@@ -19,6 +19,7 @@ import {
   platformPose,
   point,
   RAIL_H,
+  slideLip,
   supportAt,
   surfaceAt,
   type Ball,
@@ -513,7 +514,8 @@ export class MarbleScene {
 
     for (const p of course.solid) {
       const hw = (u: number) => halfWidth(p, u)
-      const cols = p.pipe || p.rollers || p.bank ? 13 : 7
+      // A water slide's sides take more columns, closer together toward the edges where they curve up.
+      const cols = p.slide ? 19 : p.pipe || p.rollers || p.bank ? 13 : 7
       const narrow = p.w1 < 3.4 || p.w0 < 3.4
       // The top: shaded by its slopes, its grid running on from piece to piece; a kicker glows amber.
       const top = (u: number, v: number): ReturnType<At> => {
@@ -523,7 +525,10 @@ export class MarbleScene {
         else if (narrow) c = c.lerp(edgeColor, 0.12)
         return [x, heightAt(p, u, v), z, c, v / 2, (p.d0 + u) / 2]
       }
-      const across = (u: number, j: number) => -hw(u) + (2 * hw(u) * j) / (cols - 1)
+      const across = (u: number, j: number) => {
+        const a = (2 * j) / (cols - 1) - 1
+        return hw(u) * (p.slide ? Math.sign(a) * Math.abs(a) ** 0.6 : a)
+      }
       const hole = p.hole
       if (!hole) sheet(surface, p, cols, (u, j) => top(u, across(u, j)))
       else {
@@ -550,7 +555,8 @@ export class MarbleScene {
         sheet(skirts, p, 2, (u, j) => {
           const v = side * hw(u)
           const [x, z] = point(p, u, v)
-          return [x, heightAt(p, u, v) - j * DEPTH, z, j ? skirtLow : skirtTop]
+          // Under a water slide's side, down past the track's middle.
+          return [x, heightAt(p, u, v) - j * (DEPTH + (p.slide ? slideLip(p, u, v) : 0)), z, j ? skirtLow : skirtTop]
         })
         if (side < 0 ? p.railL : p.railR) {
           sheet(railWalls, p, 2, (u, j) => {

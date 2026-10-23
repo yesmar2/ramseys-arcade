@@ -1,7 +1,7 @@
 import { standIn } from './boardGhost'
 import { dailyCourse, laidNumber, type DailyCourse } from './daily'
 import type { GhostRun } from './runStore'
-import { GHOST_RATE, labCourse, paceRun, plannedCourse, type Course } from './sim'
+import { GHOST_RATE, labCourse, paceRun, plannedCourse, slideCourse, type Course } from './sim'
 
 export * from './runStore'
 
@@ -24,6 +24,24 @@ export function marbleDay(day: string): MarbleDay {
     found = { ...daily, course: plannedCourse(laidNumber(daily), daily.attempt, daily.timing) }
     if (laidDays.size > 2) laidDays.clear()
     laidDays.set(day, found)
+  }
+  return found
+}
+
+const slidDays = new Map<string, MarbleDay>()
+
+/**
+ * A day's course as a water slide (sim.ts slideCourse), an admin's try (MarbleRunGame `slide`): its edges curve up
+ * with a rail along the top. Everything else is the day's: its name, its blue ball and its board's ghost, both
+ * rolled on the plain course.
+ */
+export function slideDay(day: string): MarbleDay {
+  let found = slidDays.get(day)
+  if (!found) {
+    const plain = marbleDay(day)
+    found = { ...plain, course: slideCourse(plain.course, plain.timing) }
+    if (slidDays.size > 2) slidDays.clear()
+    slidDays.set(day, found)
   }
   return found
 }

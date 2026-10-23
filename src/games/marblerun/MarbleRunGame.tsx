@@ -42,7 +42,7 @@ import { courseDay, courseNumber, msUntilNextCourse, untilWords } from './daily'
 import { CourseMap } from './map'
 import { onItsDayFact, type ItsDay } from './pastDay'
 import { PastCourseRunResult, PracticeStartCard } from './PracticeCards'
-import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, labDay, marbleDay, paceOf, practiceBest, type GhostRun, type MarbleDay } from './runs'
+import { claimRun, Ghost, keepBestRun, keepPracticeRun, keptRun, labDay, marbleDay, paceOf, practiceBest, slideDay, type GhostRun, type MarbleDay } from './runs'
 import { MarbleScene } from './scene'
 import { formatMarblerunBoardScore, formatRun, marblerunBoardScore, marblerunMsFromBoardScore } from './score'
 import { MedalRow } from '../../components/RaceMedal'
@@ -340,6 +340,7 @@ function MarbleRunDay({
   practice = false,
   test = false,
   lab = false,
+  slide = false,
   itsDay,
   pastBoard = null,
   onNewDay,
@@ -362,6 +363,8 @@ function MarbleRunDay({
    * own (TestCards.tsx LabStartCard).
    */
   lab?: boolean
+  /** With `test`, the course as a water slide (runs.ts slideDay): its edges curve up, with a rail along the top. */
+  slide?: boolean
   /** A past course's day as the API has it, for its cards: who was 1st, and you. */
   itsDay?: ItsDay
   /** A past course's All time board: signed in, a run on it goes there, under a run of its own. */
@@ -374,7 +377,7 @@ function MarbleRunDay({
   const viewer = useAccountId()
   const { signedIn } = useAuth()
   const playerName = normalizePlayerName(usePlayerName())
-  const marble = lab ? labDay() : marbleDay(day)
+  const marble = lab ? labDay() : slide ? slideDay(day) : marbleDay(day)
   const pace = marble.pace
   /** The test track's best run while it's open: kept nowhere else. */
   const labBest = useRef<number | null>(null)
@@ -1267,7 +1270,7 @@ function MarbleRunDay({
                 lab ? (
                   <LabStartCard best={practiceBestTime} />
                 ) : test ? (
-                  <TestStartCard marble={marble} best={practiceBestTime} />
+                  <TestStartCard marble={marble} best={practiceBestTime} slide={slide} />
                 ) : pastPlay ? (
                   <PracticeStartCard marble={marble} kind={pastKind} facts={pastPlay.facts ?? []} tiles={<>{extra}{ghostPick}</>} board={board} />
                 ) : (
@@ -1280,6 +1283,7 @@ function MarbleRunDay({
                 ) : test ? (
                   <TestResultCard
                     marble={marble}
+                    slide={slide}
                     time={run.time}
                     falls={run.falls}
                     best={practiceBestTime ?? run.time}
@@ -1364,14 +1368,25 @@ function PastMarbleRun({ day }: { day: string }) {
  * Marble Run on today's course, mounted again for the next when midnight brings it; with `practiceDay`, a past
  * day's course from the past tab, onto its All time board; with `testDay`, today's course or one still to come,
  * test run from the admin's Course Book; with `lab`, the test track of new pieces (runs.ts labDay), from the
- * Course Book too. A test run and the test track are only an admin's: anyone else is sent to today's course,
- * with a word about why when the course's day hasn't come, or when it was the test track.
+ * Course Book too; with `slide`, today's course or `testDay`'s as a water slide (runs.ts slideDay), a test run.
+ * A test run and the test track are only an admin's: anyone else is sent to today's course, with a word about
+ * why when the course's day hasn't come, or when it was the test track.
  */
-export function MarbleRunGame({ practiceDay, testDay, lab = false }: { practiceDay?: string | null; testDay?: string | null; lab?: boolean }) {
+export function MarbleRunGame({
+  practiceDay,
+  testDay,
+  lab = false,
+  slide = false,
+}: {
+  practiceDay?: string | null
+  testDay?: string | null
+  lab?: boolean
+  slide?: boolean
+}) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? courseDay() }))
   const admin = useAdminState()
   const { loading } = useAuth()
-  const adminOnly = Boolean(testDay) || lab
+  const adminOnly = Boolean(testDay) || lab || slide
   // Sent away only once we know: signed in (or not), and the API has said this account isn't an admin.
   const shut = adminOnly && admin === false && !loading
   useEffect(() => {
@@ -1379,6 +1394,10 @@ export function MarbleRunGame({ practiceDay, testDay, lab = false }: { practiceD
   }, [shut])
   if (practiceDay) return <PastMarbleRun key={`practice-${practiceDay}`} day={practiceDay} />
   if (lab && admin === true) return <MarbleRunDay key="lab" day="lab" practice lab onNewDay={() => {}} />
+  if (slide && admin === true) {
+    const slid = testDay ?? today.day
+    return <MarbleRunDay key={`slide-${slid}`} day={slid} practice test slide onNewDay={() => {}} />
+  }
   if (testDay && admin === true) return <MarbleRunDay key={`test-${testDay}`} day={testDay} practice test onNewDay={() => {}} />
   // Still signing in, or still asking the API whether this account is an admin.
   if (adminOnly && !shut) return null
