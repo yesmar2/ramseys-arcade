@@ -301,6 +301,8 @@ export type Course = {
   length: number
   /** Bumpers, hammers and arms, slabs, loops and forks: only a course with any has these. */
   extras?: Extras
+  /** Laid as a water slide (slideCourse). */
+  slide?: boolean
 }
 
 /** Where a piece's middle heads, `u` metres along it. */
@@ -395,6 +397,9 @@ export function heightAt(p: Piece, u: number, v: number): number {
  */
 export const SLIDE_W = 2.2
 export const SLIDE_H = 3
+
+/** Up a water slide's side more than this, the turning help and the steadying are off (handsTilt). */
+const SLIDE_HELP_OFF = 0.05
 
 /** How far a water slide's track is raised `v` across a piece, `u` along it: nothing through its middle. */
 export function slideLip(p: Piece, u: number, v: number): number {
@@ -932,7 +937,7 @@ export function step(course: Course, b: Ball, tilt: Tilt, most = TILT_MAX): Ball
       b.vx -= was.vx
       b.vz -= was.vz
     }
-    const [nx, ny, nz] = slab ? LEVEL : normalAt(s.p, b.x, b.z)
+    const [nx, ny, nz] = slab ? LEVEL : s.p.slide ? restOn(s, b.x, b.z).n : normalAt(s.p, b.x, b.z)
     // Ice and mud change the tilt's pull and the drag where they are; a boost pad pushes (below).
     const zone = s.p.zones ? zoneAt(s.p, s.u, s.v) : null
     let ex = gx
@@ -991,17 +996,19 @@ export function step(course: Course, b: Ball, tilt: Tilt, most = TILT_MAX): Ball
     const s2 = slabs ? supportAt(course, b.x, b.z, b.y - BALL_R + 0.5, t0 + DT) : surfaceAt(course, b.x, b.z, b.y - BALL_R + 0.5)
     // Where the track falls away faster than the ball would fall, or ends, it leaves it.
     const fly = b.y + b.vy * DT + 0.5 * gy * DT * DT
-    if (!s2 || fly > s2.y + BALL_R + 0.003) {
+    const on = s2 ? restOn(s2, b.x, b.z) : null
+    const rest = on ? on.rest : BALL_R
+    if (!s2 || fly > s2.y + rest + 0.003) {
       b.air = true
       b.y = fly
       b.vy += gy * DT
       b.flight = 0
     } else {
-      b.y = s2.y + BALL_R
+      b.y = s2.y + rest
       b.groundY = s2.y
       b.support = s2
       // Along the new stretch of track at the same speed.
-      const [mx, my, mz] = s2.plat ? LEVEL : normalAt(s2.p, b.x, b.z)
+      const [mx, my, mz] = on!.n
       const sp0 = Math.hypot(b.vx, b.vy, b.vz)
       const vm = b.vx * mx + b.vy * my + b.vz * mz
       b.vx -= vm * mx
@@ -1032,12 +1039,16 @@ export function step(course: Course, b: Ball, tilt: Tilt, most = TILT_MAX): Ball
     b.y += b.vy * DT
     b.z += b.vz * DT
     b.flight += DT
-    const under = slabs ? supportAt(course, b.x, b.z, bottom + 0.05, t0 + DT) : surfaceAt(course, b.x, b.z, bottom + 0.05)
-    if (under && b.y - BALL_R <= under.y) {
-      b.y = under.y + BALL_R
+    // A water slide's steep side can be above the ball's bottom where it meets it.
+    const reach = course.slide ? b.y : bottom + 0.05
+    const under = slabs ? supportAt(course, b.x, b.z, reach, t0 + DT) : surfaceAt(course, b.x, b.z, reach)
+    const on = under ? restOn(under, b.x, b.z) : null
+    const rest = on ? on.rest : BALL_R
+    if (under && b.y - rest <= under.y) {
+      b.y = under.y + rest
       b.groundY = under.y
       b.support = under
-      const [nx, ny, nz] = under.plat ? LEVEL : normalAt(under.p, b.x, b.z)
+      const [nx, ny, nz] = on!.n
       const vn = b.vx * nx + b.vy * ny + b.vz * nz
       const hard = -vn > HARD_LANDING
       if (vn < 0) {
@@ -1066,6 +1077,49 @@ export function step(course: Course, b: Ball, tilt: Tilt, most = TILT_MAX): Ball
   b.t = t0 + DT
   if (!b.finished) crossLines(course, b, px, pz, t0)
   return b
+}
+
+/** A ball on a water slide is tried this many places either side of its middle for where it touches (restOn). */
+const SLIDE_SAMPLES = 8
+
+/**
+ * How high a ball's middle over (x, z) sits over the track there, and which way is up off the track where it
+ * touches it: its radius, and the slope under its middle; but up a water slide's side (slideCourse), which
+ * steepens as it rises, the ball touches it off to the side, higher, and the slope there is what pushes it.
+ */
+function restOn(s: Surface, x: number, z: number): { rest: number; n: readonly [number, number, number] } {
+  const p = s.p
+  if (s.plat) return { rest: BALL_R, n: LEVEL }
+  if (!p.slide) return { rest: BALL_R, n: normalAt(p, x, z) }
+  const l = local(p, x, z)
+  const hw = halfWidth(p, clamp(l.u, 0, p.len))
+  const y0 = heightAt(p, l.u, l.v)
+  let rest = BALL_R
+  let at = 0
+  let edge = false
+  for (let i = 1; i <= SLIDE_SAMPLES; i++) {
+    const k = (BALL_R * i) / SLIDE_SAMPLES
+    for (const dv of [-k, k]) {
+      // No track past the edge to touch: over the top, the ball rolls on the edge itself.
+      const v = clamp(l.v + dv, -hw, hw)
+      const d = v - l.v
+      const r = heightAt(p, l.u, v) - y0 + Math.sqrt(BALL_R * BALL_R - d * d)
+      if (r > rest) {
+        rest = r
+        at = d
+        edge = v !== l.v + dv
+      }
+    }
+  }
+  if (at === 0) return { rest, n: normalAt(p, x, z) }
+  const [cx, cz] = point(p, l.u, l.v + at)
+  if (!edge) return { rest, n: normalAt(p, cx, cz) }
+  // On the edge: up is from the edge to the ball's middle.
+  const ex = x - cx
+  const ey = y0 + rest - heightAt(p, l.u, l.v + at)
+  const ez = z - cz
+  const el = Math.hypot(ex, ey, ez)
+  return { rest, n: [ex / el, ey / el, ez / el] }
 }
 
 function collide(course: Course, b: Ball) {
@@ -1851,6 +1905,7 @@ export function slideCourse(course: Course, timing?: readonly number[]): Course 
     return { ...p, slide: !p.hole }
   })
   const slid = makeCourse(pieces, { key: `${course.key}:slide`, name: course.name, order: course.order })
+  slid.slide = true
   if (timing?.length) applyTiming(slid, timing)
   return slid
 }
@@ -2318,11 +2373,13 @@ export function handsTilt(
   const fz = Math.sin(h)
   const rx = -fz
   const rz = fx
+  // Up a water slide's side, the side does the helping: the marble swings up it and back as a ball would.
+  const wall = s && s.p.slide && !s.plat ? slideLip(s.p, s.u, s.v) > SLIDE_HELP_OFF : false
   // The curve's pull where the marble is, toward its middle, less what the track's own slope gives that way.
   // On ice there's no help: it slides wide.
   let hx = 0
   let hz = 0
-  if (help > 0 && s && !b.air && s.p.kind === 'arc' && zoneUnder(s)?.kind !== 'ice') {
+  if (help > 0 && s && !b.air && !wall && s.p.kind === 'arc' && zoneUnder(s)?.kind !== 'ice') {
     const c = headingAt(s.p, clamp(s.u, 0, s.p.len))
     const nx = -Math.sin(c)
     const nz = Math.cos(c)
@@ -2336,7 +2393,7 @@ export function handsTilt(
   // Steadying (`steady`, per second): that share of the marble's slide across the track taken off by itself, as a
   // thumb a moment late can't. It keeps the line the marble is on rather than steering it anywhere; not on ice, a
   // slab, or in the air.
-  if (steady > 0 && s && !b.air && !s.plat && zoneUnder(s)?.kind !== 'ice') {
+  if (steady > 0 && s && !b.air && !s.plat && !wall && zoneUnder(s)?.kind !== 'ice') {
     const c = headingAt(s.p, clamp(s.u, 0, s.p.len))
     const nx = -Math.sin(c)
     const nz = Math.cos(c)

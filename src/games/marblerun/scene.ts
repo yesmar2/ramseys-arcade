@@ -1256,7 +1256,8 @@ export class MarbleScene {
     const under =
       f.mode === 'menu' || b.loop ? null : this.slabs.length ? supportAt(this.course, b.x, b.z, b.y, clock) : surfaceAt(this.course, b.x, b.z, b.y)
     if (under) {
-      const high = b.y - BALL_R - under.y
+      // Rolling, it's on the track, though up a water slide's side its middle is more than its radius above it.
+      const high = b.air ? b.y - BALL_R - under.y : 0
       const size = 1.6 + Math.min(4, high) * 0.35
       const p = under.p
       const pos = this.pool.geometry.attributes.position!
