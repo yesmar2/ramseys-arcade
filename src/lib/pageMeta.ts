@@ -155,8 +155,8 @@ const GAME_KINDS: Readonly<Record<string, string>> = {
   halffull: 'daily pouring puzzle',
   acechase: 'daily trick-shot golf game',
   hotlap: 'daily racing game',
-  marblerun: 'daily marble race',
-  lander: 'daily cave-flying game',
+  marblerun: 'daily marble racing game',
+  lander: 'daily spaceship landing game',
   swoop: 'daily hill-gliding game',
   wobblerun: 'daily obstacle race',
   sling: 'daily tower-climbing game',
@@ -253,7 +253,7 @@ function dailiesDescription(): string {
   const races = RACE_WORDS.filter(([slug]) => isDailyGame(slug) && isRankedGame(slug) && isGameListed(slug)).map(([, words]) => words)
   const count = numberWord(races.length)
   const list = races.length > 1 ? `${races.slice(0, -1).join(', ')} and ${races.at(-1)}` : (races[0] ?? '')
-  return `The Dailies: ${count} races, new every day and the same for everyone. ${list.charAt(0).toUpperCase()}${list.slice(1)}. Play any two to keep your streak going, all ${count} for a Full ticket, and three daily puzzles just for fun.`
+  return `Free daily racing games with no ads: ${count} races, new every day and the same for everyone. ${list.charAt(0).toUpperCase()}${list.slice(1)}. Play any two to keep your streak going, all ${count} for a Full ticket, and three daily puzzles just for fun.`
 }
 
 /**
@@ -515,7 +515,8 @@ export function pageMeta(route: Route): PageMeta {
       return {
         ...site,
         // A past day picked on the page is known by its day: "Dailies · Mon, Sep 28".
-        title: titled(route.day ? `Dailies · ${archiveDayWords(route.day)}` : 'Dailies'),
+        // The page itself as people search for it (2026-10-23): nobody had "daily racing game" in a browser.
+        title: titled(route.day ? `Dailies · ${archiveDayWords(route.day)}` : 'Dailies · Free daily racing games'),
         description: dailiesDescription(),
         path: todayHref(route.day),
         image: DAILIES_IMAGE,
