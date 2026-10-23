@@ -404,6 +404,14 @@ html[data-theme='dark'] .brand-mark__dark {
   right: auto;
 }
 
+/*
+ * The banner keeps what's in it on a layer of its own (isolation), so the menu can't rise past what comes after
+ * it: while it's open the banner comes up over the page, under the header (30) and a phone's tab bar.
+ */
+.home-banner:has(.site-scope__pop--float) {
+  z-index: 20;
+}
+
 .site-scope__cap {
   margin: 0;
   font-size: 0.66rem;
