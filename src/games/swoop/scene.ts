@@ -150,6 +150,13 @@ const HILL_PIECE = 240
 const LINE_NARROWEST = 8
 const LINE_WIDEST = 32
 const LINE_TURN = 0.07
+/**
+ * A line's pieces are filled together in runs about this wide, in the canvas's own pixels: one shape a run, the
+ * same outline. Each fill costs the graphics process a little, and on a 2x screen a frame had 500 to 1,000 pieces,
+ * 6 to 7 ms of an 18 ms frame on Ramsey's laptop. Runs this wide cost about a quarter of that; much wider ones cost
+ * more again, as a shape costs by the size of its box.
+ */
+const LINE_RUN = 256
 const BLIPS_AT = 8.6
 const BLIP_EVERY = 3.2
 
@@ -473,10 +480,10 @@ export class HillsScene {
     ctx.fillStyle = grad
     for (const p of pieces) this.fillUnder(p.xs, p.ys)
     // The lines along the hills, each a band as thick across the line as a stroke would be, cut in four-cornered
-    // pieces a column of the canvas wide: shapes that simple a graphics chip fills fast. Each costs a little, so
-    // a column is as wide as the hill lets it be, narrow over a tight crest and wide down a slope, turning no more
-    // than LINE_TURN from the one before so the bend never shows. The columns meet on whole pixels, so the pieces
-    // join without a seam.
+    // pieces a column of the canvas wide. A column is as wide as the hill lets it be, narrow over a tight crest and
+    // wide down a slope, turning no more than LINE_TURN from the one before so the bend never shows. The columns
+    // meet on whole pixels, and the pieces are filled together in runs about LINE_RUN wide: one shape a run, along
+    // its top and back along its bottom, a few dozen fills a frame where each piece was one.
     const { dpr } = this
     const at = (x: number) => {
       const i = clamp(Math.floor((x - xs[0]!) / 5), 0, xs.length - 2)
@@ -516,20 +523,34 @@ export class HillsScene {
     const tall = this.canvas.height / dpr
     const line = (dy: number, colour: string, width: number) => {
       ctx.fillStyle = colour
+      // The pieces from column `from` to column `to`, as one shape.
+      const run = (from: number, to: number) => {
+        ctx.beginPath()
+        ctx.moveTo(cols[from]!, mid[from]! + dy - across[from]! * width)
+        for (let c = from + 1; c <= to; c++) ctx.lineTo(cols[c]!, mid[c]! + dy - across[c]! * width)
+        for (let c = to; c >= from; c--) ctx.lineTo(cols[c]!, mid[c]! + dy + across[c]! * width)
+        ctx.closePath()
+        ctx.fill()
+      }
+      let start = -1
       for (let c = 0; c + 1 < cols.length; c++) {
         const a0 = across[c]! * width
         const a1 = across[c + 1]! * width
         const y0 = mid[c]! + dy
         const y1 = mid[c + 1]! + dy
-        if (Math.max(y0 + a0, y1 + a1) < 0 || Math.min(y0 - a0, y1 - a1) > tall) continue
-        ctx.beginPath()
-        ctx.moveTo(cols[c]!, y0 - a0)
-        ctx.lineTo(cols[c + 1]!, y1 - a1)
-        ctx.lineTo(cols[c + 1]!, y1 + a1)
-        ctx.lineTo(cols[c]!, y0 + a0)
-        ctx.closePath()
-        ctx.fill()
+        // A piece off the screen isn't drawn: the run before it ends there.
+        if (Math.max(y0 + a0, y1 + a1) < 0 || Math.min(y0 - a0, y1 - a1) > tall) {
+          if (start >= 0) run(start, c)
+          start = -1
+          continue
+        }
+        if (start < 0) start = c
+        if ((cols[c + 1]! - cols[start]!) * dpr >= LINE_RUN) {
+          run(start, c + 1)
+          start = -1
+        }
       }
+      if (start >= 0) run(start, cols.length - 1)
     }
     // The turf: a lighter band just under the surface.
     line(Math.max(2, 0.55 * k), C.turf, Math.max(3, 1.1 * k))
