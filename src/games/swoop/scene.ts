@@ -354,8 +354,12 @@ export class HillsScene {
     return (px - this.W * LEAD) / this.cam.k + this.cam.x
   }
 
+  /**
+   * True to the hills (1.2 m) where it's big enough to see, never under a floor. A tall phone's camera is out so far
+   * that 13 px drew the bird twice its size against the hills; 10 px there keeps it about one and a half times.
+   */
   private birdSize() {
-    return Math.max(13, 1.2 * this.cam.k)
+    return Math.max(this.H > this.W ? 10 : 13, 1.2 * this.cam.k)
   }
 
   /* ---------- the sky ---------- */
