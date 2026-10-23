@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { AdminLaunchList } from '../components/AdminLaunchList'
+import { AdminNumbers } from '../components/AdminNumbers'
 import { AdminReset } from '../components/AdminReset'
 import { AdminPlayers } from '../components/AdminPlayers'
 import { AdminSiteEvents } from '../components/AdminSiteEvents'
@@ -251,6 +252,7 @@ export function AdminPage({ section }: { section?: AdminSection }) {
               <AdminTrophies />
             ) : (
               <>
+                <AdminNumbers />
                 <AdminPlayers />
                 <AdminSiteEvents />
                 <AdminSeasonPreview />

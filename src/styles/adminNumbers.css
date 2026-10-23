@@ -1,0 +1,166 @@
+/*
+ * The admin page's three numbers (components/AdminNumbers.tsx): three big figures with their aims, a table of
+ * the weeks, and a line of what got shared. The verdict colours are a green, an amber and the panel's red,
+ * each deep enough on the light theme's surface and bright enough on the dark one's to read as text.
+ */
+
+.adn {
+  --adn-good: #157347;
+  --adn-close: #8a5a00;
+  --adn-low: var(--panel-danger);
+}
+
+html[data-theme='dark'] .adn {
+  --adn-good: #52c98f;
+  --adn-close: #f0b44c;
+}
+
+/* ---------- the three ---------- */
+
+.adn-bigs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+}
+
+.adn-big {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 1rem 1.1rem 0.95rem;
+  border-radius: 1rem;
+  background: var(--panel-fill);
+}
+
+.adn-big__label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adn-big__value {
+  margin: 0.1rem 0 0.15rem;
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.adn-big__line {
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.adn-big__aim {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.adn-big__aim i {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.adn-big__aim--good {
+  color: var(--adn-good);
+}
+
+.adn-big__aim--close {
+  color: var(--adn-close);
+}
+
+.adn-big__aim--low {
+  color: var(--adn-low);
+}
+
+/* ---------- week by week ---------- */
+
+.adn-weeks {
+  margin-top: 1.2rem;
+  overflow-x: auto;
+}
+
+.adn-weeks table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.adn-weeks caption {
+  margin-bottom: 0.4rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.adn-weeks th,
+.adn-weeks td {
+  padding: 0.5rem 0.65rem;
+  border-top: 1px solid var(--panel-line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.adn-weeks thead th {
+  border-top: 0;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adn-weeks tbody th {
+  font-weight: 700;
+}
+
+.adn-weeks__now {
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--panel-fill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.adn-weeks__soft {
+  color: var(--muted);
+}
+
+.adn-kinds {
+  margin: 0.9rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.adn-kinds b {
+  color: var(--ink);
+}
+
+@media (max-width: 46rem) {
+  .adn-bigs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .adn-big__value {
+    font-size: 2.2rem;
+  }
+}

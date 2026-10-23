@@ -210,6 +210,44 @@ export function fetchPlayerStats(includeSeeded: boolean) {
   return api<PlayerStats>(`/admin/players${includeSeeded ? '?seeded=1' : ''}`)
 }
 
+/** A week of joiners, Monday to Sunday: how many still played in their second week (days 7 to 13 after joining). */
+export type LaunchCohort = {
+  from: string
+  to: string
+  players: number
+  back: number
+  /** done: every joiner's second week is over. soFar: it has begun for some. tooSoon: for none yet. */
+  state: 'done' | 'soFar' | 'tooSoon'
+}
+
+/** The three numbers to watch from launch (the API's launchNumbers.ts): do new players stay, share, pay. */
+export type LaunchNumbers = {
+  day: string
+  stayed: { players: number; back: number; from: string | null; to: string | null; cohorts: LaunchCohort[] }
+  shared: {
+    /** The last 7 days. */
+    players: number
+    sharers: number
+    shares: number
+    signedOut: number
+    kinds: { kind: string; shares: number }[]
+    weeks: { from: string; shares: number; sharers: number; players: number }[]
+  }
+  paying: {
+    /** The last 30 days' players. */
+    players: number
+    paying: number
+    plus: number
+    trial: number
+    goldPass: number
+    season: { id: number; name: string } | null
+  }
+}
+
+export function fetchLaunchNumbers() {
+  return api<LaunchNumbers>('/admin/launch-numbers')
+}
+
 export async function fetchClientErrors() {
   return (await api<{ errors: AdminClientError[] }>('/admin/client-errors?limit=100')).errors
 }

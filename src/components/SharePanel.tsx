@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
-import { COPIED_MS, copyToClipboard, shareBody, shareOrCopy, type ShareMessage } from '../lib/share'
+import { COPIED_MS, copyToClipboard, noteShare, shareBody, shareOrCopy, type ShareMessage } from '../lib/share'
 import { Panel, PanelHead } from './Panel'
 
 /*
@@ -69,6 +69,7 @@ export function SharePanel({ text, url, title = 'Share', kicker, game, cards, ca
   const copy = () => {
     void copyToClipboard(body).then((ok) => {
       if (!ok) return
+      noteShare({ text, url }, 'copy')
       setCopied(true)
       window.clearTimeout(timer.current)
       timer.current = window.setTimeout(() => setCopied(false), COPIED_MS)
@@ -78,6 +79,8 @@ export function SharePanel({ text, url, title = 'Share', kicker, game, cards, ca
   const encodedBody = encodeURIComponent(body)
   const subject = encodeURIComponent(words.split('\n')[0] ?? '')
   const sheet = typeof navigator.share === 'function'
+  // Messages, Email, X and Facebook open elsewhere, so a tap on one is as near as the count can get.
+  const placed = () => noteShare({ text, url }, 'place')
 
   return (
     <Panel labelledBy={titleId} onClose={onClose} style={game ? gameAccentStyle(game) : undefined} className="challenge-share">
@@ -109,16 +112,19 @@ export function SharePanel({ text, url, title = 'Share', kicker, game, cards, ca
               type="button"
               className="panel__btn panel__btn--ghost"
               onClick={() => {
-                void navigator.share(url ? { title: text, text, url } : { text }).catch(() => {})
+                void navigator
+                  .share(url ? { title: text, text, url } : { text })
+                  .then(() => noteShare({ text, url }, 'sheet'))
+                  .catch(() => {})
               }}
             >
               Share…
             </button>
           ) : null}
-          <a className="panel__btn panel__btn--ghost" href={`sms:?&body=${encodedBody}`}>
+          <a className="panel__btn panel__btn--ghost" href={`sms:?&body=${encodedBody}`} onClick={placed}>
             Messages
           </a>
-          <a className="panel__btn panel__btn--ghost" href={`mailto:?subject=${subject}&body=${encodedBody}`}>
+          <a className="panel__btn panel__btn--ghost" href={`mailto:?subject=${subject}&body=${encodedBody}`} onClick={placed}>
             Email
           </a>
           <a
@@ -126,6 +132,7 @@ export function SharePanel({ text, url, title = 'Share', kicker, game, cards, ca
             href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(words)}${link ? `&url=${encodeURIComponent(link)}` : ''}`}
             target="_blank"
             rel="noreferrer"
+            onClick={placed}
           >
             X / Twitter
           </a>
@@ -135,6 +142,7 @@ export function SharePanel({ text, url, title = 'Share', kicker, game, cards, ca
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`}
               target="_blank"
               rel="noreferrer"
+              onClick={placed}
             >
               Facebook
             </a>
