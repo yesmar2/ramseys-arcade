@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { lazyPart } from '../lib/lazyPage'
 import { useRoute } from '../hooks/useHashRoute'
 import { currentAccountId, subscribeAccountId } from '../lib/auth'
 import { fetchFriendsWeek, wonFriendsWeek, type FriendsWeek } from '../lib/friendsWeek'
@@ -6,7 +7,7 @@ import { claimMoment, markMomentsSeen, momentSeen, panelOpen, releaseMoment } fr
 import { addDays, boardDay, weekStart } from '../lib/rankHow'
 
 // Loaded when there's a week won to show: the takeover and its confetti stay off the first page load.
-const FriendsWeekTakeover = lazy(() => import('./FriendsWeekTakeover').then((m) => ({ default: m.FriendsWeekTakeover })))
+const FriendsWeekTakeover = lazyPart(() => import('./FriendsWeekTakeover').then((m) => ({ default: m.FriendsWeekTakeover })))
 
 /*
  * Won last week among your friends: the whole screen, once (Ramsey, 2026-10-11: "go with your picks", A ·

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getGame, isDailyGame } from '../data/games'
 import { boardPeriodFor } from '../lib/allTime'
+import { takeNewRelease } from '../lib/appUpdate'
 import {
   DEFAULT_PERIOD_EVENT,
   defaultPeriod,
@@ -632,7 +633,10 @@ function onDocumentClick(event: MouseEvent) {
   }
   if (url.origin !== window.location.origin) return
   event.preventDefault()
-  navigate(resolveInAppHref(url.href))
+  const href = resolveInAppHref(url.href)
+  // A release has come since this tab opened: this link opens as a full page load, onto it (lib/appUpdate.ts).
+  if (takeNewRelease(href)) return
+  navigate(href)
 }
 
 let routerBooted = false

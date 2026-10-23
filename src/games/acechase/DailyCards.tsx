@@ -1,11 +1,12 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { lazyPart } from '../../lib/lazyPage'
 import { SignInButton } from '../../components/SignInWays'
 import { TicketGlyph } from '../../components/prizes/Ticket'
 import { StreakPushAsk } from '../../components/PushAsk'
 import { SeasonRunLine } from '../../components/season/SeasonRun'
 
 /** The way on to the next of today's dailies, with the day's ticket it brings. */
-const NextDaily = lazy(() => import('../../components/NextDaily'))
+const NextDaily = lazyPart(() => import('../../components/NextDaily'))
 import { RunLabel } from '../../components/RunLabel'
 import { TagSlots } from '../../components/RunReport'
 import { useShare } from '../../components/SharePanel'

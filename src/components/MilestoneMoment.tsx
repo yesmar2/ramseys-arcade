@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { lazyPart } from '../lib/lazyPage'
 import { useRoute } from '../hooks/useHashRoute'
 import { currentAccountId, subscribeAccountId } from '../lib/auth'
 import { claimMoment, markMomentsSeen, momentSeen, panelOpen, releaseMoment } from '../lib/moments'
@@ -9,7 +10,7 @@ import { openAvatarStudio } from './siteNav'
 import type { SpotlightData } from './Spotlight'
 
 // Loaded when there's one to show: the confetti it shares with the run report stays off the first page load.
-const Spotlight = lazy(() => import('./Spotlight').then((m) => ({ default: m.Spotlight })))
+const Spotlight = lazyPart(() => import('./Spotlight').then((m) => ({ default: m.Spotlight })))
 
 /*
  * A Dailies streak milestone, the whole screen, once (Ramsey, 2026-10-11: "go with your picks", B · Spotlight

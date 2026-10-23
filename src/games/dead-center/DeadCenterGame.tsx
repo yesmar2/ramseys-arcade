@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { lazyPart } from '../../lib/lazyPage'
 import '../../styles/centroid.css'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
@@ -42,7 +43,7 @@ import { useTodayBoard, type TodayBoard } from './todayBoard'
 import { chromeTakesKey } from '../keys'
 
 /** The way on to the next of today's dailies, with the day's ticket it brings. */
-const NextDaily = lazy(() => import('../../components/NextDaily'))
+const NextDaily = lazyPart(() => import('../../components/NextDaily'))
 
 const SLUG = 'centroid'
 

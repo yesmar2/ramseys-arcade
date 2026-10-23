@@ -1,4 +1,5 @@
-import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Fragment, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { lazyPart } from '../lib/lazyPage'
 import { getGame, isDailyGame, isRankedGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
@@ -72,7 +73,7 @@ import { useShare } from './SharePanel'
 import { WinTakeover } from './WinTakeover'
 
 /** The way on to the next daily: only a daily's report shows it, and it brings the day's ticket with it. */
-const NextDaily = lazy(() => import('./NextDaily'))
+const NextDaily = lazyPart(() => import('./NextDaily'))
 
 type ScoreSaveProps = {
   gameSlug: string
