@@ -465,6 +465,9 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
           feed={periodFeed(period, data)}
           you={you}
           how={rankHowHref(undefined, period)}
+          // All time leaves the dailies out (lib/allTime.ts), so a player's games here can be fewer than this
+          // month's: Ramsey saw 12 here and 17 on the month (2026-10-26).
+          sub={period === 'all' ? 'The daily races count toward the week and the month, not all time.' : null}
           last={last}
           lines={lines}
           focusable
