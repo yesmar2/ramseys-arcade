@@ -200,9 +200,10 @@ export const games: Game[] = [
     description: 'Glowberry with no way out. Climb forever. Don’t settle in.',
     accent: PALETTE.green,
     playable: true,
-    // Held back from the launch and out the Saturday after, so there's a new game a week in (Ramsey, 2026-10-26):
-    // a "Coming" tile till then, and Plus members play it from launch day. The API's LAUNCH_DAYS says the same.
-    launchDay: '2026-11-07',
+    // Held back from the launch and out three Saturdays after, so there's a new game a few weeks in (Ramsey,
+    // 2026-10-26: "can we make it say coming nov 21st"): a "Coming Nov 21" tile till then, and Plus members play it
+    // the week before. The API's LAUNCH_DAYS says the same.
+    launchDay: '2026-11-21',
   },
   {
     name: 'Fidget',
@@ -285,10 +286,6 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
     daily: true,
-    // Off at launch, with no "Coming soon" either, while Ramsey may still change it (2026-10-26: "let's just leave
-    // marble run off (without coming soon) for now"). The Dailies are four races till it's back; the API's
-    // ON_DECK_GAMES has it too. Bringing back a daily needs its `from` (lib/today.ts) moved to that day.
-    onDeck: true,
   },
   {
     name: 'Lander',

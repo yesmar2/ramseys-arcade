@@ -245,12 +245,12 @@ function gameName(slug: string) {
 
 /** Each race on the Dailies ticket in a few words, in the ticket's order (lib/today.ts TODAY_DAILIES). */
 const RACE_WORDS: readonly [string, string][] = [
-  ['hotlap', 'a lap'],
-  ['marblerun', 'a marble course'],
-  ['lander', 'a cave to fly down'],
   ['swoop', 'a run over the hills'],
-  ['wobblerun', 'a gauntlet to the star'],
+  ['lander', 'a cave to fly down'],
+  ['hotlap', 'a lap'],
   ['sling', 'a tower to fling up'],
+  ['marblerun', 'a marble course'],
+  ['wobblerun', 'a gauntlet to the star'],
 ]
 
 /**

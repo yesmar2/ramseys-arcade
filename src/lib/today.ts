@@ -71,13 +71,14 @@ export const RACES_ONLY_FROM = '2026-10-06'
  */
 export const TODAY_DAILIES: readonly TodayDaily[] = [
   // The races in Ramsey's order (2026-10-14: "i want swoop to be the first daily shown, then lander, then race
-  // game, then marble run"); the API's today.ts lists them the same way.
+  // game, then marble run"), with Sling's tower before Marble Run since 2026-10-26 ("put it as the 5th game, so
+  // it's last in order"); the API's today.ts lists them the same way.
   { key: 'hills', slug: 'swoop', label: 'Hills', emoji: '🐦', better: 'higher', from: HILLS_FROM },
   { key: 'cave', slug: 'lander', label: 'Cave', emoji: '🚀', better: 'higher', from: CAVE_FROM },
   { key: 'track', slug: 'hotlap', label: 'Track', emoji: '🏎️', better: 'higher', from: '' },
-  { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
-  // Sling's tower joined the races the day the game came, after Marble Run (the API's today.ts says the same).
+  // Sling's tower joined the races the day the game came (the API's today.ts says the same).
   { key: 'tower', slug: 'sling', label: 'Tower', emoji: '🧗', better: 'higher', from: TOWER_FROM },
+  { key: 'course', slug: 'marblerun', label: 'Marble', emoji: '🔮', better: 'higher', from: COURSE_FROM },
   // Wobble Run's gauntlet joined the races the day the game came, the fifth (the API's today.ts says the same).
   { key: 'gauntlet', slug: 'wobblerun', label: 'Wobble', emoji: '🌟', better: 'higher', from: GAUNTLET_FROM },
   { key: 'hole', slug: 'acechase', label: 'Hole', emoji: '⛳', better: 'lower', from: '', until: PUZZLES_UNTIL },
