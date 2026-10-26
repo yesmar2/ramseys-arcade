@@ -686,6 +686,7 @@ export function pageMeta(route: Route): PageMeta {
     }
     case 'authVerify':
     case 'authDiscord':
+    case 'authGoogle':
       return { ...site, title: titled('Signing in'), path: homeHref(), noindex: true }
     case 'devCelebrate':
       return { ...site, title: titled('Celebrate (dev)'), path: homeHref(), noindex: true }

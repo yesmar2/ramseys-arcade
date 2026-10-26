@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { fetchAuthConfigStrict, getSessionToken, signInWithDiscordCode, type AuthConfig } from './auth'
+import { fetchAuthConfigStrict, getSessionToken, signInWithDiscordCode, signInWithGoogleIdToken, type AuthConfig } from './auth'
 
 /*
  * The ways in: Google, Discord, and a code by email. The API says which it can do (GET /auth/config), and
@@ -359,4 +359,92 @@ function handBack(answer: Answer): Promise<boolean> {
     }
     channel?.postMessage(answer)
   })
+}
+
+/* ---------- Google by the tab ---------- */
+
+/*
+ * Google's button opens a popup that hands the account back to this page and closes. On an iPhone or iPad
+ * (every browser there is Safari underneath) that popup can stick on a blank white page once the account is
+ * picked, with no way back; the installed app's popups open in another browser altogether. There the button
+ * takes this tab to Google instead, Google posts its token to the API (/auth/google/return), and the API sends
+ * the tab on to /auth/google with the token after the #, where it signs in and goes back to the page it left.
+ *
+ * The trip's nonce goes into the token Google signs, so a token that comes back has to carry it: one posted
+ * by anyone else, to sign this browser in as them, doesn't.
+ */
+
+const GOOGLE_TRIP_KEY = 'skermix-google-signin'
+/** The trip is readied when the button is drawn, which can be a while before it's pressed. */
+const GOOGLE_TRIP_TTL_MS = 6 * 60 * 60_000
+
+type GoogleTrip = { nonce: string; back: string; at: number }
+
+export type GoogleReturn = { kind: 'signed-in'; back: string } | { kind: 'cancelled'; back: string } | { kind: 'stale' }
+
+/** Where the popup goes wrong: an iPhone or iPad, and the installed app. */
+export function googleByTab(): boolean {
+  if (typeof window === 'undefined') return false
+  const ios =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    // iPadOS asks for desktop sites as a Mac; a Mac has no touch screen.
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  return ios || installedApp()
+}
+
+export function googleReturnUri(apiBase: string): string {
+  return `${apiBase}/auth/google/return`
+}
+
+/** Ready a trip from this page: the nonce for Google's button. One a page, so every button on it shares it. */
+let googleNonce: string | null = null
+export function startGoogleTrip(): string {
+  googleNonce ??= crypto.randomUUID()
+  const trip: GoogleTrip = {
+    nonce: googleNonce,
+    back: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    at: Date.now(),
+  }
+  try {
+    localStorage.setItem(GOOGLE_TRIP_KEY, JSON.stringify(trip))
+  } catch {
+    /* the return page says the sign-in ran out */
+  }
+  return googleNonce
+}
+
+function takeGoogleTrip(): GoogleTrip | null {
+  try {
+    const raw = localStorage.getItem(GOOGLE_TRIP_KEY)
+    localStorage.removeItem(GOOGLE_TRIP_KEY)
+    const trip = raw ? (JSON.parse(raw) as Partial<GoogleTrip> | null) : null
+    if (!trip || typeof trip.nonce !== 'string' || typeof trip.back !== 'string' || typeof trip.at !== 'number') return null
+    return { nonce: trip.nonce, back: trip.back, at: trip.at }
+  } catch {
+    return null
+  }
+}
+
+/** The nonce inside Google's token. The API checks the token's signature; this only reads it. */
+function tokenNonce(idToken: string): string | null {
+  try {
+    const part = idToken.split('.')[1] ?? ''
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '='))
+    const nonce = (JSON.parse(json) as { nonce?: unknown }).nonce
+    return typeof nonce === 'string' ? nonce : null
+  } catch {
+    return null
+  }
+}
+
+/** On /auth/google: the token after the #. Throws if the API refuses it. */
+export async function finishGoogleReturn(hash: string): Promise<GoogleReturn> {
+  const credential = new URLSearchParams(hash.replace(/^#/, '')).get('credential')
+  const trip = takeGoogleTrip()
+  if (!trip || Date.now() - trip.at > GOOGLE_TRIP_TTL_MS) return { kind: 'stale' }
+  if (!credential) return { kind: 'cancelled', back: trip.back }
+  if (tokenNonce(credential) !== trip.nonce) return { kind: 'stale' }
+  await signInWithGoogleIdToken(credential)
+  rememberSignInWay('google')
+  return { kind: 'signed-in', back: trip.back }
 }

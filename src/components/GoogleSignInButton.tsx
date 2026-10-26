@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { fetchAuthConfig, signInWithGoogleIdToken } from '../lib/auth'
-import { rememberSignInWay } from '../lib/signInWays'
+import { API_BASE, fetchAuthConfig, signInWithGoogleIdToken } from '../lib/auth'
+import { googleByTab, googleReturnUri, rememberSignInWay, startGoogleTrip } from '../lib/signInWays'
 
 type GoogleCredentialResponse = {
   credential?: string
@@ -12,6 +12,9 @@ type GoogleAccountsId = {
     callback: (response: GoogleCredentialResponse) => void
     auto_select?: boolean
     cancel_on_tap_outside?: boolean
+    ux_mode?: 'popup' | 'redirect'
+    login_uri?: string
+    nonce?: string
   }) => void
   renderButton: (
     parent: HTMLElement,
@@ -145,8 +148,11 @@ export function GoogleSignInButton({
         await withTimeout(loadGisScript(), LOAD_TIMEOUT_MS)
         if (cancelled || !hostRef.current || !window.google?.accounts?.id) return
         hostRef.current.innerHTML = ''
+        // Where the popup sticks on a white page, the press takes this tab to Google and back (lib/signInWays).
+        const byTab = googleByTab()
         window.google.accounts.id.initialize({
           client_id: clientId,
+          ...(byTab ? { ux_mode: 'redirect', login_uri: googleReturnUri(API_BASE), nonce: startGoogleTrip() } : {}),
           callback: async (response) => {
             const idToken = response.credential
             if (!idToken) {

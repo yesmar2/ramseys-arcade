@@ -78,6 +78,8 @@ export type Route =
   | { name: 'authVerify'; token: string }
   /** Where Discord sends a player back after signing in (pages/DiscordReturnPage). */
   | { name: 'authDiscord' }
+  /** Where Google's sign-in comes back to when it went by the tab, not a popup (pages/GoogleReturnPage). */
+  | { name: 'authGoogle' }
   | { name: 'about' }
   | { name: 'plus' }
   /** `section`: one of the admin's tabs past the overview: a daily game's book, or the trophies. */
@@ -910,6 +912,7 @@ export function parseUrl(pathname: string, search: string): Route {
   if (path === 'tournaments/create') return { name: 'tournamentCreate' }
 
   if (path === 'auth/discord') return { name: 'authDiscord' }
+  if (path === 'auth/google') return { name: 'authGoogle' }
 
   const authVerifyMatch = /^auth\/verify\/([^/]+)$/.exec(path)
   if (authVerifyMatch) {
