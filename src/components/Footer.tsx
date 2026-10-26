@@ -1,4 +1,4 @@
-import { games, isListedGame } from '../data/games'
+import { games, isComingSoon, isListedGame } from '../data/games'
 import { openFeedback } from '../lib/feedback'
 import {
   aboutHref,
@@ -34,7 +34,7 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
  */
 export function Footer() {
   const year = new Date().getFullYear()
-  const shelf = games.filter((g) => isListedGame(g) && !g.comingSoon).slice(0, 6)
+  const shelf = games.filter((g) => isListedGame(g) && !isComingSoon(g)).slice(0, 6)
   // The arcade's own events can be paused (/admin, Site events): then none is listed, and no link offers them.
   const { official } = useLiveEvents('')
   // Standings and Profile open at the period you picked: a stale one in their address would switch the site back.

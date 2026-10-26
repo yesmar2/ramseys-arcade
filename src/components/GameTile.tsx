@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import type { Game } from '../data/games'
+import { comingWords, isComingSoon, type Game } from '../data/games'
 import { gameHref } from '../hooks/useHashRoute'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
 import { GameThumbArt } from './GameThumbArt'
@@ -37,6 +37,7 @@ export function GameTile({
 
   const hideOnPhone =
     !showOnAllDevices && Boolean(game.devices && !game.devices.includes('phone'))
+  const coming = isComingSoon(game)
 
   return (
     <li className={hideOnPhone ? 'game-grid__item--no-phone' : undefined}>
@@ -44,12 +45,12 @@ export function GameTile({
         className="game-tile game-tile--thumb"
         href={href ?? gameHref(game.slug)}
         style={style}
-        aria-label={game.comingSoon ? `${game.name}, coming soon` : game.name}
+        aria-label={coming ? `${game.name}, ${comingWords(game).toLowerCase()}` : game.name}
       >
         <GameThumbArt slug={game.slug} accent={accent} shape="card" />
         <h3 className="game-tile__title">{game.name}</h3>
-        {game.comingSoon ? (
-          <span className="game-tile__status">Coming soon</span>
+        {coming ? (
+          <span className="game-tile__status">{comingWords(game)}</span>
         ) : best ? (
           <span className="game-tile__best">
             <span className="game-tile__best-k">Best</span>

@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { TAG_LABELS, wallGames, type Game, type GameTag } from '../data/games'
+import { comingWords, isComingSoon, TAG_LABELS, wallGames, type Game, type GameTag } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useBoardLeaders, type BoardLeader } from '../hooks/useBoardLeaders'
 import { gameHref, gamePlayHref } from '../hooks/useHashRoute'
@@ -37,7 +37,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 function inTab(game: Game, tab: Tab) {
   if (tab === 'all') return true
-  if (tab === 'new') return Boolean(game.inDevelopment || game.comingSoon)
+  if (tab === 'new') return Boolean(game.inDevelopment || isComingSoon(game))
   return Boolean(game.tags?.includes(tab))
 }
 
@@ -160,7 +160,7 @@ function arrangeWall(list: Game[], lead: string | null, spanOf: (g: Game) => Spa
 
 /** Still being tuned, or on its way: the games with a row of their own. */
 function isFresh(game: Game) {
-  return Boolean(game.inDevelopment || game.comingSoon)
+  return Boolean(game.inDevelopment || isComingSoon(game))
 }
 
 const ONE: Span = { w: 1, h: 1 }
@@ -343,8 +343,8 @@ export function WallTile({
     '--tile-text': tileText(accent),
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
-  const flag = game.comingSoon
-    ? { label: 'Coming soon', kind: 'soon' }
+  const flag = isComingSoon(game)
+    ? { label: comingWords(game), kind: 'soon' }
     : daily
       ? { label: 'Today’s event', kind: 'daily' }
       : weekly

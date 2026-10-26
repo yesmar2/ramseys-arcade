@@ -200,6 +200,9 @@ export const games: Game[] = [
     description: 'Glowberry with no way out. Climb forever. Don’t settle in.',
     accent: PALETTE.green,
     playable: true,
+    // Held back from the launch and out the Saturday after, so there's a new game a week in (Ramsey, 2026-10-26):
+    // a "Coming" tile till then, and Plus members play it from launch day. The API's LAUNCH_DAYS says the same.
+    launchDay: '2026-11-07',
   },
   {
     name: 'Fidget',
@@ -282,6 +285,10 @@ export const games: Game[] = [
     playable: true,
     inDevelopment: true,
     daily: true,
+    // Off at launch, with no "Coming soon" either, while Ramsey may still change it (2026-10-26: "let's just leave
+    // marble run off (without coming soon) for now"). The Dailies are four races till it's back; the API's
+    // ON_DECK_GAMES has it too. Bringing back a daily needs its `from` (lib/today.ts) moved to that day.
+    onDeck: true,
   },
   {
     name: 'Lander',
@@ -380,6 +387,24 @@ export function isGameInDevelopment(slug: string) {
   return getGame(slug)?.inDevelopment === true
 }
 
+/** Today on the boards' clock, New York's (lib/rankHow.ts boardDay), kept here so this file imports none of lib. */
+const launchClock = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/**
+ * Whether a game is still to come: flagged coming soon, or a new game before its launch day. It shows as a
+ * "Coming" tile and stays out of the picks; from its launch day it's like any other, with no release needed.
+ */
+export function isComingSoon(game: Pick<Game, 'comingSoon' | 'launchDay'>, now = Date.now()): boolean {
+  return Boolean(game.comingSoon || (game.launchDay && launchClock.format(new Date(now)) < game.launchDay))
+}
+
+const launchDayFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+
+/** A coming game's tag: "Coming Nov 7" when it has a launch day, else "Coming soon". */
+export function comingWords(game: Pick<Game, 'launchDay'>): string {
+  return game.launchDay ? `Coming ${launchDayFormat.format(new Date(`${game.launchDay}T12:00:00Z`))}` : 'Coming soon'
+}
+
 export function gamePlayableOn(game: Game, device: DeviceType) {
   if (game.hidden) return false
   if (!game.playable) return false
@@ -426,7 +451,7 @@ const HOME_ORDER: readonly string[] = [
 
 /** Lower sorts earlier. Titles that are not finished go to the back. */
 function homeRank(game: Game): number {
-  if (game.comingSoon) return 3000
+  if (isComingSoon(game)) return 3000
   if (game.inDevelopment) return 2000
   const placed = HOME_ORDER.indexOf(game.slug)
   return placed === -1 ? 1000 : placed

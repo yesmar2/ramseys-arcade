@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { deviceRequirementLabel, isRankedGame, TAG_LABELS, type Game } from '../data/games'
+import { comingWords, deviceRequirementLabel, isComingSoon, isRankedGame, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, gamePlayHref, homeHref } from '../hooks/useHashRoute'
 import { APP_NAME } from '../lib/brand'
 import { inkOn, readableFill } from '../lib/color'
 import { dailyWords } from '../lib/dailyWords'
 import { hasDayPreview, hasGamePreview } from '../lib/gamePreviews'
+import { archiveDayWords } from '../lib/archive'
+import { earlyFrom, earlyStage, launchDayOf } from '../lib/earlyAccess'
 import { useScope } from '../lib/groups'
 import type { LeaderboardEntry } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -105,7 +107,14 @@ export function GameHubHero({
 
   const tags = (game.tags ?? []).map((tag) => TAG_LABELS[tag])
   const where = `${deviceRequirementLabel(game) ?? 'Phone or desk'} · Free to play`
-  const kicker = game.comingSoon ? 'Coming soon' : game.inDevelopment ? 'New' : null
+  const kicker = isComingSoon(game) ? comingWords(game) : game.inDevelopment ? 'New' : null
+  // A new game before its launch day (lib/earlyAccess.ts): when everyone plays it, and Plus members' week first.
+  const launch = launchDayOf(game.slug)
+  const launchLine = launch
+    ? earlyStage(game.slug) === 'early'
+      ? `Plus members are playing it a week early. Everyone can play from ${archiveDayWords(launch)}.`
+      : `Out ${archiveDayWords(launch)}. Plus members can play it a week early, from ${archiveDayWords(earlyFrom(launch))}.`
+    : null
   const daily = Boolean(game.daily)
   const ranked = isRankedGame(game.slug)
   const playLabel = daily ? dailyPlayLabel(game.slug) : `Play ${game.name}`
@@ -175,6 +184,8 @@ export function GameHubHero({
                 ? 'Coming soon. The screen shows what it will be.'
                 : (deviceRequirementLabel(game) ?? `${game.name} isn’t available on this device.`)}
             </p>
+          ) : launchLine ? (
+            <p className="gh-hero__hint">{launchLine}</p>
           ) : null}
         </div>
         <p className="gh-hero__where">
