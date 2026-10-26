@@ -17,7 +17,7 @@ import { secretByNumber } from '../lib/secrets'
 import { chosenSkin, SKINS, type Skin } from '../lib/skins'
 import { metalTone, trophyCase, trophyTone, type TrophyAward, type TrophyCaseKind } from '../lib/trophies'
 import { CardArt, FullArtCard } from './FullArtCard'
-import { GameArt, hasGameArt } from './GameArt'
+import { GameArt } from './GameArt'
 import { useHangarSkins } from './Hangar'
 import { BackChevronIcon } from './PageBackLink'
 import { PlayerName } from './PlayerName'
@@ -58,20 +58,6 @@ function caseWords(kind: TrophyCaseKind, isSelf: boolean): string {
   const span = kind.period === 'season' ? 'a season' : kind.period === 'monthly' ? 'a month' : 'a week'
   if (kind.rank > 3) return `Top ten of ${span}${times}`
   return `${ordinal(kind.rank)} of ${span}${times}`
-}
-
-/**
- * The player's best games with a picture, best first: by the most points they hold on a game's board in any
- * period on the card, so a daily (which counts toward the week and the month only) can lead too.
- */
-function bestGames(boards: (GlobalRankResult | null | undefined)[], n: number): string[] {
-  const best = new Map<string, number>()
-  for (const board of boards) {
-    for (const [slug, at] of Object.entries(board?.byGame ?? {})) {
-      if (at && hasGameArt(slug)) best.set(slug, Math.max(best.get(slug) ?? 0, at.points))
-    }
-  }
-  return [...best.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([slug]) => slug)
 }
 
 /** A period in a word, under its place along the card's foot: four fit across a phone's card. */
@@ -315,9 +301,8 @@ export function PlayerCard({
   // The card turns over to its back, the sticker album.
   const [flipped, setFlipped] = useState(false)
   const word = periodWord(period)
-  // Without a background, their best game's picture fills the card.
-  const bestSlug = best && hasGameArt(best.slug) ? best.slug : null
-  const game = theme ? null : (bestSlug ?? bestGames([...Object.values(ranks), data], 1)[0] ?? null)
+  // Without a background, their own constellation fills the card: a star for each trophy (CardStars.tsx).
+  const trophyCount = trophies ? trophies.length : null
   // A Season place after all time while the season has standings (and whenever the card is the season's), known
   // before the API answers as the period tabs know it, so the pips are drawn once rather than three then four.
   const withSeason = useSeasonTab() || period === 'season'
@@ -460,9 +445,9 @@ export function PlayerCard({
   }
 
   return (
-    <section className={`pc${gold ? ' pc--gold' : ''}${theme || game ? '' : ' pc--plain'}`} style={style} aria-label={isSelf ? 'Your player card' : `${name}'s player card`}>
+    <section className={`pc${gold ? ' pc--gold' : ''}`} style={style} aria-label={isSelf ? 'Your player card' : `${name}'s player card`}>
       <div className="pc__sky" aria-hidden="true">
-        <CardArt className="pc__sky-art" theme={theme} game={game} wide />
+        <CardArt className="pc__sky-art" theme={theme} tag={name} trophies={trophyCount} wide />
       </div>
       <span className="pc__shade" aria-hidden="true" />
       {backHref ? (
@@ -476,8 +461,9 @@ export function PlayerCard({
         <FullArtCard
           className="pc__card"
           gold={gold}
+          tag={name}
           theme={theme}
-          game={game}
+          trophies={trophyCount}
           avatar={avatar}
           chip={loading ? null : rank != null ? `#${rank.toLocaleString()} ${word}` : `Not on ${word} yet`}
           corner={member ? <PlusMark name={name} /> : null}

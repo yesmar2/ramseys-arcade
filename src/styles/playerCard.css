@@ -21,12 +21,6 @@
   box-shadow: 0 40px 80px -24px rgba(0, 0, 0, 0.95);
 }
 
-.fac--plain {
-  background:
-    radial-gradient(120% 80% at 30% 15%, color-mix(in srgb, var(--hero-accent, #2eb8a0) 70%, #ffffff 0%), transparent 70%),
-    linear-gradient(160deg, color-mix(in srgb, var(--hero-accent, #2eb8a0) 60%, #0c1218), #0c1218);
-}
-
 .fac--gold {
   border-color: #f2c14e;
   box-shadow:
@@ -42,9 +36,28 @@
   display: block;
 }
 
-/* A game's picture standing in for a background is busier than one: it sits back behind the avatar. */
-.fac--game .fac__art {
-  filter: saturate(0.85) brightness(0.62);
+/* Without a background, their constellation (CardStars.tsx): its stamp in the site's face, and the stars fade in once the trophies are counted. */
+.cstars__stamp {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.cstars__shape {
+  animation: cstars-in 0.6s ease-out both;
+}
+
+@keyframes cstars-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cstars__shape {
+    animation: none;
+  }
 }
 
 .fac__fade {
@@ -649,12 +662,6 @@
 .pc__sky {
   position: absolute;
   inset: -2rem;
-}
-
-.pc--plain .pc__sky {
-  background:
-    radial-gradient(80% 90% at 20% 20%, color-mix(in srgb, var(--hero-accent, #2eb8a0) 55%, transparent), transparent 70%),
-    #0c1218;
 }
 
 .pc__sky-art {

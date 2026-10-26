@@ -1,11 +1,11 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { GameArt } from './GameArt'
+import { CardStars } from './CardStars'
 import { CardBackdrop } from './prizes/PrizeArt'
 import '../styles/playerCard.css'
 
 /*
- * A player's trading card, full art: their background from the prize counter fills it (or, without one, the
- * picture of their best game), their avatar in the middle, and along the foot their tag, a line about them and
+ * A player's trading card, full art: their background from the prize counter fills it (or, without one, their
+ * own constellation, CardStars.tsx), their avatar in the middle, and along the foot their tag, a line about them and
  * a place for each period. The edge is gold for a top-three place, and a season's card foil sweeps over it all. Ramsey picked the full-art card from the
  * "Player card hero redesign" canvas (T1, then H2 + P2, 2026-10-20); the profile's card (PlayerCard.tsx) stands
  * it on its own sky, and the prize counter's fitting room shows it trying things on.
@@ -15,22 +15,31 @@ import '../styles/playerCard.css'
 const CARD_W = 300
 const CARD_H = 420
 
-/** The background behind a card: their card theme, else their best game's picture, else nothing (the accent wash). */
-export function CardArt({ theme, game, className, wide = false }: { theme: string | null; game: string | null; className?: string; wide?: boolean }) {
-  if (theme) {
-    return wide ? (
-      <CardBackdrop className={className} theme={theme} width={1600} height={640} scale={1.5} />
-    ) : (
-      <CardBackdrop className={className} theme={theme} width={CARD_W} height={CARD_H} scale={1.1} />
-    )
-  }
-  return game ? <GameArt slug={game} shape="card" className={className} /> : null
+/** The background behind a card: their card theme, else their constellation, drawn from their tag and trophies. */
+export function CardArt({
+  theme,
+  tag,
+  trophies,
+  className,
+  wide = false,
+}: {
+  theme: string | null
+  tag: string
+  /** How many trophies they have, for the constellation's stars; null while they load. */
+  trophies: number | null
+  className?: string
+  wide?: boolean
+}) {
+  const [w, h] = wide ? [1600, 640] : [CARD_W, CARD_H]
+  if (theme) return <CardBackdrop className={className} theme={theme} width={w} height={h} scale={wide ? 1.5 : 1.1} />
+  return <CardStars className={className} tag={tag} trophies={trophies} width={w} height={h} wide={wide} />
 }
 
 export function FullArtCard({
   name,
+  tag,
   theme,
-  game,
+  trophies,
   avatar,
   chip,
   corner,
@@ -46,9 +55,11 @@ export function FullArtCard({
 }: {
   /** The tag, drawn in its name style by the caller (`name` is a node). */
   name: ReactNode
+  /** The tag as text: without a theme, it shapes their constellation. */
+  tag: string
   theme: string | null
-  /** Without a theme: the slug of the game whose picture fills the card. */
-  game: string | null
+  /** Without a theme: how many trophies they have, a star each; null while they load. */
+  trophies: number | null
   /** The avatar, drawn by the caller: a button to the studio on your own card. */
   avatar: ReactNode
   /** Top left: the place on screen. */
@@ -80,12 +91,12 @@ export function FullArtCard({
   ) : null
   const front = (
     <div
-      className={`fac${gold ? ' fac--gold' : ''}${theme ? '' : game ? ' fac--game' : ' fac--plain'}${!back && className ? ` ${className}` : ''}`}
+      className={`fac${gold ? ' fac--gold' : ''}${!back && className ? ` ${className}` : ''}`}
       style={back ? undefined : style}
       aria-hidden={back && flipped ? true : undefined}
       inert={back && flipped ? true : undefined}
     >
-      <CardArt className="fac__art" theme={theme} game={game} />
+      <CardArt className="fac__art" theme={theme} tag={tag} trophies={trophies} />
       <span className="fac__fade" aria-hidden="true" />
       {chip || corner || turn ? (
         <span className="fac__top">

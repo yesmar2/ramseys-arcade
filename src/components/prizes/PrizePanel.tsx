@@ -3,6 +3,7 @@ import { PRIZE_KINDS, PRIZES, type Prize } from '../../data/prizes'
 import { avatarWashColor, isWearing, wearPrize, wornPrize, type Avatar } from '../../lib/avatars'
 import { moveChoice } from '../../lib/choiceKeys'
 import { useGlobalRank } from '../../lib/globalRank'
+import { fetchTrophySummary } from '../../lib/trophies'
 import { useTickets } from '../../lib/tickets'
 import { Panel, PanelHead } from '../Panel'
 import { AvatarArt, PlayerAvatar } from '../PlayerAvatar'
@@ -37,16 +38,33 @@ function viewsFor(prize: Prize): View[] {
   }
 }
 
+/** How many trophies a player has, for their card's constellation: null until the API answers. */
+function useTrophyCount(name: string): number | null {
+  const [count, setCount] = useState<{ name: string; n: number } | null>(null)
+  useEffect(() => {
+    let live = true
+    void fetchTrophySummary(name).then((summary) => {
+      if (live) setCount({ name, n: summary.total })
+    })
+    return () => {
+      live = false
+    }
+  }, [name])
+  return count && count.name === name ? count.n : null
+}
+
 /**
- * The player's trading card, small, as their profile shows it (FullArtCard): the background behind it, the
- * avatar and the tag in its style, trying on whatever's picked.
+ * The player's trading card, small, as their profile shows it (FullArtCard): the background behind it (or their
+ * constellation), the avatar and the tag in its style, trying on whatever's picked.
  */
 export function PlayerCardMini({ avatar, name, line }: { avatar: Avatar; name: string; line?: string }) {
+  const trophies = useTrophyCount(name)
   return (
     <FullArtCard
       className="prize-fac"
+      tag={name}
       theme={wornPrize(avatar, 'card')}
-      game={null}
+      trophies={trophies}
       style={{ '--hero-accent': avatarWashColor(avatar) } as CSSProperties}
       avatar={<PlayerAvatar avatar={avatar} name={name} size="xl" />}
       chip={line}
