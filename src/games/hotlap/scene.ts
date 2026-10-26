@@ -105,6 +105,8 @@ export class HotLapScene {
   private readonly terrain: Terrain | null
   private readonly textures: THREE.Texture[] = []
   private readonly lettered: [THREE.CanvasTexture, Paint][] = []
+  /** Every painted picture and how to paint it again, for when the graphics restart (restored, below). */
+  private readonly painted: [THREE.CanvasTexture, Paint][] = []
   private readonly car: CarModel
   /** The ghost as it's drawn now: the Indy car's, or a skin's when the #1 drove in one. */
   private ghostCar: CarModel
@@ -159,6 +161,7 @@ export class HotLapScene {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
     renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer = renderer
+    canvas.addEventListener('webglcontextrestored', this.restored)
 
     this.scene.fog = new THREE.Fog(NEON.fog, 90, 1000)
     this.buildSky()
@@ -180,14 +183,24 @@ export class HotLapScene {
     // Signs are painted before the display face may have arrived; paint them again once it has.
     void Promise.all([document.fonts.load(`800 60px ${FONT}`), document.fonts.load(`700 40px ${FONT}`)])
       .then(() => {
-        if (this.disposed) return
-        for (const [tex, draw] of this.lettered) {
-          const c = tex.image as HTMLCanvasElement
-          draw(c.getContext('2d')!, c.width, c.height)
-          tex.needsUpdate = true
-        }
+        if (!this.disposed) repaint(this.lettered)
       })
       .catch(() => {})
+  }
+
+  /**
+   * The graphics restarted (a laptop waking, a driver hiccup, a phone short of memory): three.js loads every
+   * picture onto the new context again, from its canvas. Those canvases are painted again first, in case they
+   * went blank along with it, and the paint's reflections, which lived only on the old context, are made again.
+   * Without this the ground's grid, the glow down the edges, the kerbs and the boards came back black and
+   * stayed so till a reload (Ramsey, 2026-10-26: "some of the line assets and things are missing").
+   */
+  private readonly restored = () => {
+    if (this.disposed) return
+    repaint(this.painted)
+    // The plain's grid is a copy of the ground's, sharing its canvas, with its own upload.
+    for (const tex of this.textures) tex.needsUpdate = true
+    this.buildReflections()
   }
 
   /* ---------- the world ---------- */
@@ -196,11 +209,13 @@ export class HotLapScene {
     const c = document.createElement('canvas')
     c.width = w
     c.height = h
-    draw(c.getContext('2d')!, w, h)
+    // Kept in memory rather than on the graphics card, so the browser can't drop what it holds.
+    draw(c.getContext('2d', { willReadFrequently: true })!, w, h)
     const tex = new THREE.CanvasTexture(c)
     tex.colorSpace = THREE.SRGBColorSpace
     tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
     this.textures.push(tex)
+    this.painted.push([tex, draw])
     if (hasText) this.lettered.push([tex, draw])
     return tex
   }
@@ -1162,8 +1177,10 @@ export class HotLapScene {
         map.dispose()
         const at = this.textures.indexOf(map)
         if (at >= 0) this.textures.splice(at, 1)
-        const lettered = this.lettered.findIndex(([tex]) => tex === map)
-        if (lettered >= 0) this.lettered.splice(lettered, 1)
+        for (const list of [this.lettered, this.painted]) {
+          const i = list.findIndex(([tex]) => tex === map)
+          if (i >= 0) list.splice(i, 1)
+        }
       }
       this.ghostTag = null
     }
@@ -1286,6 +1303,7 @@ export class HotLapScene {
 
   dispose() {
     this.disposed = true
+    this.renderer.domElement.removeEventListener('webglcontextrestored', this.restored)
     this.scene.traverse((o) => {
       const mesh = o as THREE.Mesh
       mesh.geometry?.dispose()
@@ -1296,6 +1314,15 @@ export class HotLapScene {
     this.scene.environment?.dispose()
     this.renderer.dispose()
     this.renderer.forceContextLoss()
+  }
+}
+
+/** Paint pictures again on their own canvases, and load them onto the graphics card again. */
+function repaint(list: [THREE.CanvasTexture, Paint][]) {
+  for (const [tex, draw] of list) {
+    const c = tex.image as HTMLCanvasElement
+    draw(c.getContext('2d')!, c.width, c.height)
+    tex.needsUpdate = true
   }
 }
 
