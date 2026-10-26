@@ -7,7 +7,7 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
-import { boardTime } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { courseDay, courseNumber, dailyCourse, FIRST_DAY } from './daily'
 import type { MarbleDay } from './runs'
@@ -138,6 +138,8 @@ export function PastCourseRunResult({
       n={marble.n}
       day={marble.day}
       name={marble.name}
+      medals={{ paceMs: paceMsOf(marble.pace) }}
+      walk={walkFor(marble.day)}
       kicker={`Past course #${marble.n} · ${marble.name}`}
       figure={boardTime(SLUG, time)}
       score={score}

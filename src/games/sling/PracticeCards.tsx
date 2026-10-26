@@ -7,7 +7,7 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
-import { boardTime } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyTower, FIRST_DAY, towerDay, towerNumber } from './daily'
 import type { SlingDay } from './runs'
@@ -136,6 +136,8 @@ export function PastTowerResult({
       n={sling.n}
       day={sling.day}
       name={sling.name}
+      medals={{ paceMs: paceMsOf(sling.pace) }}
+      walk={walkFor(sling.day)}
       kicker={`Past tower #${sling.n} · ${sling.name}`}
       figure={boardTime(SLUG, time)}
       score={score}

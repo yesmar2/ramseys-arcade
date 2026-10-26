@@ -101,6 +101,8 @@ type ScoreSaveProps = {
    * run's medals (lib/raceMedals.ts) on the report (RaceReport).
    */
   medalPace?: number
+  /** The day's own platinum, where its course sets one (Hot Lap's tracks: hotlap/medalLap.ts). */
+  medalPlatinum?: number
   medalFormat?: (seconds: number) => string
   /** A racing daily's course, "Today's Cave #6": over the score when the run won nothing, else under it. */
   kicker?: string
@@ -174,6 +176,7 @@ export function ScoreSaveCard({
   plates,
   shareLine,
   medalPace,
+  medalPlatinum,
   medalFormat,
   kicker,
   tomorrow,
@@ -551,9 +554,9 @@ export function ScoreSaveCard({
     const ms = 1_000_000 - score
     const previousMs = bestBefore && bestBefore > 0 ? 1_000_000 - bestBefore : null
     const boards = Boolean(data?.friend || data?.race)
-    const fine = boards || needsThousandths([ms, previousMs, medalPace, ...Object.values(medalTimes(gameSlug, medalPace))], medalFormat)
+    const fine = boards || needsThousandths([ms, previousMs, medalPace, ...Object.values(medalTimes(gameSlug, medalPace, medalPlatinum))], medalFormat)
     const format = fine ? (seconds: number) => boardTime(gameSlug, seconds) : medalFormat
-    return { game: gameSlug, paceMs: medalPace, format, ms, previousMs }
+    return { game: gameSlug, paceMs: medalPace, platinumMs: medalPlatinum ?? null, format, ms, previousMs }
   })()
   // The run as this card says it in a sentence: 74 points, 1:00.90.
   const said = race ? race.format(race.ms / 1000) : scoreText(gameSlug, score)
@@ -828,8 +831,8 @@ export function ScoreSaveCard({
   const seasonMoved = saved && facts?.season && (facts.season.added > 0 || facts.season.levelUp.length > 0) ? facts.season : null
   const raceSub = race ? raceSubWords(ribbon ? (kicker ?? title) : title, race.ms, race.previousMs, race.format) : null
   // A racing daily's medal: the one the day's best now holds, and whether this run won it.
-  const medalHeld = race ? medalFor(race.game, race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms)) : null
-  const medalNew = race && medalHeld && medalBeats(medalHeld, medalFor(race.game, race.paceMs, race.previousMs)) ? medalHeld : null
+  const medalHeld = race ? medalFor(race.game, race.paceMs, Math.min(race.ms, race.previousMs ?? race.ms), race.platinumMs) : null
+  const medalNew = race && medalHeld && medalBeats(medalHeld, medalFor(race.game, race.paceMs, race.previousMs, race.platinumMs)) ? medalHeld : null
   // First in the standings takes the whole screen, once, over the reel, in the standings' own period.
   const standingsPeriod = facts?.standingsPeriod ?? period
   const takeover =
@@ -904,7 +907,15 @@ export function ScoreSaveCard({
       scoreTone: data?.scoreTone ?? (unsavedWin ? 'gold' : 'plain'),
       medal: medalNew,
       ladder: race ? (
-        <MedalLadder game={race.game} paceMs={race.paceMs} ms={race.ms} previousMs={race.previousMs} format={race.format} signedOut={phase === 'needAuth'} />
+        <MedalLadder
+          game={race.game}
+          paceMs={race.paceMs}
+          platinumMs={race.platinumMs}
+          ms={race.ms}
+          previousMs={race.previousMs}
+          format={race.format}
+          signedOut={phase === 'needAuth'}
+        />
       ) : null,
     },
     board,

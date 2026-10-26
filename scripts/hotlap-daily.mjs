@@ -11,6 +11,8 @@
 //                                                                by today's track maker (landmarks stay put)
 //   node scripts/hotlap-daily.mjs repace                     every day's pace car driven again, each day's track
 //                                                                as it is: only the laps are written again
+//   node scripts/hotlap-daily.mjs medals                     every day's platinum worked out again (medalLap.ts),
+//                                                                after a change to how it's worked out
 //
 // Day 1 (2026-09-26) is the classic track. Each later day's track is the first that passes courses.ts's
 // checks among seeds made from the day's number. Days already in the plan are never made again, even if
@@ -18,8 +20,8 @@
 // and insert, hills and remake only ever change days that haven't come yet. A made day gets its hills from its
 // line, so the same line always gets the same hills.
 //
-// Every command that writes the plan also writes the API's src/hotlapPace.ts, each day's blue car, which
-// the API pays laps by (its ticketLadders.ts), and its src/courseNames.ts (course-names.mjs), each track's
+// Every command that writes the plan also works out each day's platinum again (medalLap.ts platinumOf), and
+// writes the API's src/hotlapPace.ts, each day's blue car and platinum, which the API pays laps by (its ticketLadders.ts), and its src/courseNames.ts (course-names.mjs), each track's
 // name for the record books: commit both in the API repo too (branch master). From a worktree, set API_DIR
 // to the API's checkout, as the other plan scripts take it.
 import fs from 'node:fs'
@@ -38,6 +40,7 @@ const API_PACE = join(process.env.API_DIR ?? join(root, '../ramseys-arcade-api')
 const C = await import(COURSES.href)
 const S = await import(SIM.href)
 const { hashString } = await import(SEEDS.href)
+const { platinumOf } = await import(new URL('../src/games/hotlap/medalLap.ts', import.meta.url).href)
 
 const FIRST_DAY = '2026-09-26'
 /**
@@ -67,16 +70,20 @@ const todayInNewYork = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
 function writePlan(entries) {
+  // Each day's platinum, from its track as it now is (medalLap.ts).
+  for (const [i, e] of entries.entries()) e.platinum = platinumOf(i + 1, S.buildTrack(C.decodeCourse(e.course), shapeOf(e)), e.pace)
   const lines = entries.map(
-    (e) => `  { name: '${e.name}', course: '${e.course}', pace: ${e.pace}${e.heading ? `, heading: ${e.heading}` : ''}${e.hills ? `, hills: '${e.hills}'` : ''} },`,
+    (e) =>
+      `  { name: '${e.name}', course: '${e.course}', pace: ${e.pace}, platinum: ${e.platinum}${e.heading ? `, heading: ${e.heading}` : ''}${e.hills ? `, hills: '${e.hills}'` : ''} },`,
   )
   const text = `// Written by scripts/hotlap-daily.mjs: Hot Lap's track for each day from the first (${FIRST_DAY}), each
 // checked to close, keep clear of itself and give the pace car and a driver on the limit a clean lap.
 // \`pace\` is the pace car's lap in milliseconds: the blue car's, as the game drives it (lap.ts hotlapCourse).
+// \`platinum\` is the lap that takes platinum, in milliseconds, set track by track (medalLap.ts platinumOf).
 // Days are only ever added at the end, never made again: a day that's been played stays the track it was.
 // A landmark (landmarks.ts, a real circuit's layout) may be put on a day to come, and carries which way it
 // faces on the map and its hills.
-export type PlannedTrack = { name: string; course: string; pace: number; heading?: number; hills?: string }
+export type PlannedTrack = { name: string; course: string; pace: number; platinum: number; heading?: number; hills?: string }
 
 export const DAILY_TRACKS: PlannedTrack[] = [
 ${lines.join('\n')}
@@ -99,17 +106,26 @@ function writeApiPace(entries) {
     console.log('no API repo beside this one (set API_DIR): its src/hotlapPace.ts was not written')
     return
   }
-  const rows = []
-  for (let i = 0; i < entries.length; i += 10) rows.push(`  ${entries.slice(i, i + 10).map((e) => e.pace).join(', ')},`)
+  const rows = (key) => {
+    const out = []
+    for (let i = 0; i < entries.length; i += 10) out.push(`  ${entries.slice(i, i + 10).map((e) => e[key]).join(', ')},`)
+    return out.join('\n')
+  }
   const text = `// Written by the site's scripts/hotlap-daily.mjs from its src/games/hotlap/dailyPlan.ts: each planned day's
-// blue car (its pace car's lap), in milliseconds, from the first day on. Hot Lap's ticket ladder goes by it
-// (ticketLadders.ts), so a lap is paid by the day's own blue car, whatever the site sends. Past the last
+// blue car (its pace car's lap) and platinum, in milliseconds, from the first day on. Hot Lap's ticket ladder goes
+// by them (ticketLadders.ts), so a lap is paid by the day's own medals, whatever the site sends. Past the last
 // planned day the days come round again, as the site's dailyTrack has them. Don't edit it by hand: the
 // script writes it again whenever the plan changes.
 export const HOTLAP_FIRST_DAY = '${FIRST_DAY}'
 
 export const HOTLAP_PACE_MS: readonly number[] = [
-${rows.join('\n')}
+${rows('pace')}
+]
+
+// Each day's platinum: the lap that takes it, set track by track (the site's medalLap.ts). Bronze, silver and
+// gold sit between the blue car and it (ticketLadders.ts hotlapLadder).
+export const HOTLAP_PLATINUM_MS: readonly number[] = [
+${rows('platinum')}
 ]
 `
   fs.writeFileSync(API_PACE, text)
@@ -274,6 +290,11 @@ if (command === 'plan') {
   }
   writePlan(plan)
   console.log(`from day ${from} (${day}): ${kinds.rolling} rolling, ${kinds.hilly} hilly, ${kinds.big} big, ${kinds.flat} flat; ${kinds.kept} kept as they were`)
+} else if (command === 'medals') {
+  // Every day keeps its track and its blue car; only its platinum is worked out again, as writePlan does.
+  const plan = await readPlan()
+  writePlan(plan)
+  console.log(`${plan.length} days' platinum worked out again`)
 } else if (command === 'repace') {
   // Every day keeps its track (its line, name, heading and hills); only its pace car's lap is driven again, on
   // the track as the game builds it, and written to the millisecond. A lap that moves by more than a hundredth's
@@ -295,5 +316,5 @@ if (command === 'plan') {
   writePlan(plan)
   console.log(`${plan.length} days paced again: ${moved} laps moved, by ${most} ms at most; every track kept as it was`)
 } else {
-  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file] | insert YYYY-MM-DD <landmark> | hills YYYY-MM-DD | remake YYYY-MM-DD | repace')
+  console.log('usage: node scripts/hotlap-daily.mjs plan [days] | show YYYY-MM-DD | sheet [from] [count] [file] | insert YYYY-MM-DD <landmark> | hills YYYY-MM-DD | remake YYYY-MM-DD | repace | medals')
 }

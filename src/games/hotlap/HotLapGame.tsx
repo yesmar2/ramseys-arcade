@@ -304,7 +304,15 @@ function TrackTiles({
       <strong>{boardTime('hotlap', ghost)}</strong>
     </div>
   )
-  if (past) return chase
+  // A past track's medals are yours there for good (lib/courseBests.ts): what the next one takes.
+  if (past) {
+    return (
+      <>
+        {chase}
+        <MedalRow game="hotlap" paceMs={paceMsOf(course.pace)} platinumMs={course.platinumMs} bestMs={bestMs} past />
+      </>
+    )
+  }
   return (
     <>
       <div className="game-pause-meta__row hotlap-track">
@@ -314,7 +322,7 @@ function TrackTiles({
         <strong>{course.name}</strong>
       </div>
       {chase}
-      <MedalRow game="hotlap" paceMs={paceMsOf(course.pace)} bestMs={bestMs} />
+      <MedalRow game="hotlap" paceMs={paceMsOf(course.pace)} platinumMs={course.platinumMs} bestMs={bestMs} />
       {test ? (
         <div className="game-pause-meta__row">
           <span>Its day</span>
@@ -1281,6 +1289,7 @@ function HotLapDay({
                     pace={Math.round(pace.time * 1000)}
                     shareLine={lapShareLine(course, lap.time, pace.time)}
                     medalPace={paceMsOf(course.pace)}
+                    medalPlatinum={course.platinumMs}
                     medalFormat={formatLap}
                     kicker={`Today’s Track #${course.n}`}
                     tomorrow={<TomorrowTrack day={course.day} />}

@@ -148,7 +148,7 @@ function leadOf(p: Punch, standing: DayStanding | null | undefined): string | nu
 function MedalLine({ p }: { p: Punch }) {
   if (!isRaceGame(p.slug) || p.paceMs == null) return null
   const held = p.medal ?? null
-  const next = nextMedal(p.slug, p.paceMs, held)
+  const next = nextMedal(p.slug, p.paceMs, held, p.platinumMs)
   return (
     <span className="home-day__medal">
       {held ? <MedalIcon medal={held} size={16} /> : null}

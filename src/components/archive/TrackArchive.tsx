@@ -34,6 +34,7 @@ export const title = (day: string) => `#${trackNumber(day)} ${dailyTrack(day).na
 
 /** The day's blue car, for your medal that day. */
 const pace = (day: string) => dailyTrack(day).pace
+const platinum = (day: string) => dailyTrack(day).platinumMs
 
 export function art(day: string) {
   const track = dailyTrack(day)
@@ -59,6 +60,7 @@ export function TrackArchive() {
       art,
       boards,
       pace,
+      platinum,
       courseNumber: trackNumber,
     }),
     [today, boards],

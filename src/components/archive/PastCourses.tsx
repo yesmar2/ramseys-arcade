@@ -258,7 +258,7 @@ function PastCard({
   const rankedGame = isRankedGame(slug)
   const you = showYou ? (entry?.you ?? null) : null
   // A racing daily's medal that day: your best then against the day's blue (they keep a million less the ms).
-  const medal = you && source.pace && isRaceGame(slug) ? medalFor(slug, paceMsOf(source.pace(day)), 1_000_000 - you.score) : null
+  const medal = you && source.pace && isRaceGame(slug) ? medalFor(slug, paceMsOf(source.pace(day)), 1_000_000 - you.score, source.platinum?.(day)) : null
   let ranked: ReactNode
   if (daysState === 'wait') ranked = <Waiting />
   else if (daysState === 'failed') ranked = <Unknown />
@@ -370,7 +370,8 @@ export function PastCourses({ source }: { source: PastSource }) {
       const tries = [bests?.get(source.courseNumber(day)) ?? null, fromScore(byDay.get(day)?.you?.score), fromScore(boards?.rows?.get(day)?.you?.score)]
       const ms = tries.reduce<number | null>((best, t) => (t != null && t > 0 && (best == null || t < best) ? t : best), null)
       const paceMs = paceMsOf(source.pace(day))
-      out.set(day, { ms, medal: medalFor(race, paceMs, ms), paceMs })
+      const platinumMs = source.platinum?.(day) ?? null
+      out.set(day, { ms, medal: medalFor(race, paceMs, ms, platinumMs), paceMs, platinumMs })
     }
     return out
   }, [race, source, allCourses, bests, byDay, boards?.rows])

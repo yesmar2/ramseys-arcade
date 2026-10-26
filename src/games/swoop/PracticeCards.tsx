@@ -7,7 +7,7 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
-import { boardTime } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyHills, FIRST_DAY, hillsDay, hillsNumber } from './daily'
 import type { SwoopDay } from './runs'
@@ -136,6 +136,8 @@ export function PastHillsResult({
       n={swoop.n}
       day={swoop.day}
       name={swoop.name}
+      medals={{ paceMs: paceMsOf(swoop.pace) }}
+      walk={walkFor(swoop.day)}
       kicker={`Past hills #${swoop.n} · ${swoop.name}`}
       figure={boardTime(SLUG, time)}
       score={score}

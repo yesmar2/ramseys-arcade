@@ -80,6 +80,8 @@ export type Punch = {
   medal?: Medal | null
   /** A racing daily's blue time for the day, in ms: what its medals are measured from (lib/raceMedals.ts medalTimes). */
   paceMs?: number
+  /** Its own platinum, where its course sets one (Hot Lap's tracks). */
+  platinumMs?: number
 }
 
 /** A board score's time in ms: the racing dailies keep a million less the ms (their score.ts). */
@@ -185,8 +187,9 @@ function trackPunch(server: TodayServer | null, viewer: Viewer): PunchDay {
     short: lapWords,
     carry: null,
     share: lapWords ? `${track.name} ${lapWords}` : null,
-    medal: medalFor('hotlap', paceMsOf(track.pace), serverLap != null ? msOfScore(serverLap) : lapTime != null ? Math.round(lapTime * 1000) : null),
+    medal: medalFor('hotlap', paceMsOf(track.pace), serverLap != null ? msOfScore(serverLap) : lapTime != null ? Math.round(lapTime * 1000) : null, track.platinumMs),
     paceMs: paceMsOf(track.pace),
+    platinumMs: track.platinumMs,
   }
 }
 

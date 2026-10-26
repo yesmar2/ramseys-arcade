@@ -330,7 +330,8 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     scores: [
       { what: 'Your score', pts: 'your best lap today', sub: 'fastest wins the day' },
       { what: 'A cut across the grass', pts: 'no time', sub: 'the lap can’t count' },
-      { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('hotlap') },
+      // Each track sets its own (games/hotlap/medalLap.ts): platinum near a quick lap of it, the rest between.
+      { what: 'Medals', pts: 'bronze to platinum', sub: 'set for each track: platinum is a lap near the best there, the others between it and the blue car' },
     ],
     ends: 'At the line, one lap from the start. Drive it as often as you like.',
     tip: 'The call under the clock names the corner coming, counts down to it and stays till you’re through: orange means brake hard. Brake in a straight line, then squeeze back on the gas as the corner opens out. The ghost is the lap to beat.',

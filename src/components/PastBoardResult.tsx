@@ -1,21 +1,28 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { getGame } from '../data/games'
 import { useAccountId } from '../hooks/useAccountId'
 import { useAuth } from '../hooks/useAuth'
-import { prizesHref } from '../hooks/useHashRoute'
+import { dailyTabHref, gamePlayHref, navigate, prizesHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useSaveWait } from '../hooks/useSaveWait'
 import { linkCurrentNameToAccount, recallAccountTag } from '../lib/auth'
 import { inArchive } from '../lib/archive'
 import { archivedWhy, capitalWord, verbDone, verbHasDone } from '../lib/dailyPast'
 import { bestWord, BOARD_NAMES, dailyWords, type PastKind } from '../lib/dailyWords'
+import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { ApiError, getLastPlayerName, normalizePlayerName } from '../lib/leaderboard'
 import { allTimeBoardName, playersWords, RECORD_TICKETS } from '../lib/pastBoards'
 import { leavePlay } from '../lib/pastPlay'
+import { boardTime, isRaceGame, MEDAL_NAMES, medalBeats, medalFor } from '../lib/raceMedals'
+import type { ReportBoardCard, ReportBoardRow, ReportRibbon, ReportTier } from '../lib/runReport'
 import { ordinal } from '../lib/scoreboard'
 import { saveTrackLap, type TrackBoard, type TrackGame, type TrackLapResult } from '../lib/trackBoards'
-import { PastCourseResult, type PastBoardRow, type TodayCourse } from './PastCourseCards'
-import { TicketGlyph } from './prizes/Ticket'
-import { ReportSignIn, TagSlots } from './RunReport'
+import type { PastWalkLink, TodayCourse } from './PastCourseCards'
+import { TicketStub } from './prizes/Ticket'
+import { MedalLadder } from './RaceMedal'
+import { RunLabel } from './RunLabel'
+import { ReportSignIn, TagSlots, type ReportAction, type ReportLink } from './RunReport'
+import { ReelButton, reelSteps, RunReel, type ReelBadge } from './RunReel'
 import '../styles/pastCourse.css'
 
 /*
@@ -26,6 +33,12 @@ import '../styles/pastCourse.css'
  * run played as one account waits for that account (lib/deviceRuns.ts). Played signed out it was practice and
  * stays so; signing in on the card is for the runs after it. A course in the archive, older than a week
  * (lib/archive.ts), has its board closed: every run there is practice. Each game fills in its own words and figures.
+ *
+ * It ends as today's run does, on the whole screen (RunReel.tsx), after Ramsey found the old card wanting
+ * (2026-10-26: "it doesn't show what medal you get, and you have to go back to do the next/prev track. it's also
+ * not using the full screen celebrations we have"): the time with the course's medal ladder and its board beside
+ * it, a new medal big under the time and a record lit up; the record's tickets; then Race again, the next
+ * course, the one before, the past tab and today's.
  */
 
 /** What became of a past course's run: saved to its board, or why not. */
@@ -99,7 +112,7 @@ function RunTag({ slug }: { slug: string }) {
 /**
  * A few rows of the course's board: the top three, or the top two and you when you're further down. Right
  * after a save, before the board's been asked again, the save's own figures: the record and you. For a run
- * that was practice, only the record: the card has signing in to show under it.
+ * that was practice, only the record: the reel has signing in to show after it.
  */
 function boardRows(
   board: TrackBoard | null,
@@ -107,24 +120,53 @@ function boardRows(
   me: string | null,
   practice: boolean,
   fmt: (score: number) => string,
-): PastBoardRow[] {
+): ReportBoardRow[] {
+  const record = (place: number) => (place === 1 ? 'Record' : null)
   if (result && board?.you?.score !== result.best) {
-    const rows: PastBoardRow[] = [{ place: 1, name: result.record.name, result: fmt(result.record.score), record: true, you: result.place === 1 }]
-    if (result.place > 1) rows.push({ place: result.place, name: result.name, result: fmt(result.best), you: true })
+    const rows: ReportBoardRow[] = [{ place: 1, name: result.record.name, score: fmt(result.record.score), you: result.place === 1, note: record(1) }]
+    if (result.place > 1) rows.push({ place: result.place, name: result.name, score: fmt(result.best), you: true })
     return rows
   }
   if (!board) return []
   const you = me ? board.you : null
   const below = you !== null && you.place > 3
-  const rows: PastBoardRow[] = board.entries.slice(0, practice ? 1 : below ? 2 : 3).map((e, i) => ({
+  const rows: ReportBoardRow[] = board.entries.slice(0, practice ? 1 : below ? 2 : 3).map((e, i) => ({
     place: i + 1,
     name: e.name,
-    result: fmt(e.score),
-    record: i === 0,
+    score: fmt(e.score),
     you: e.name === me,
+    note: record(i + 1),
+    ...(e.avatarId ? { avatarId: e.avatarId } : {}),
   }))
-  if (below && me && !practice) rows.push({ place: you.place, name: me, result: fmt(you.score), you: true })
+  if (below && me && !practice) rows.push({ place: you.place, name: me, score: fmt(you.score), you: true })
   return rows
+}
+
+/** Taking a course's record pays once: its tickets, as a page of the reel. */
+function RecordTickets({ earned, course }: { earned: number; course: string }) {
+  return (
+    <div className="reel-split reel-split--solo reel-tix">
+      <div className="reel-split__main">
+        <div className="reel-tix__top">
+          <p className="reel__kick">Tickets</p>
+          <div className="reel-tix__stub">
+            <TicketStub amount={earned} width={208} fan={earned >= 15 ? 2 : earned >= 8 ? 1 : 0} />
+          </div>
+          <p className="reel-tix__first">For the {course} record. A record pays once.</p>
+          <a
+            className="reel-link"
+            href={prizesHref()}
+            onClick={(e) => {
+              e.preventDefault()
+              leavePlay(prizesHref())
+            }}
+          >
+            Spend them at the prize counter ›
+          </a>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function PastBoardResult({
@@ -135,6 +177,8 @@ export function PastBoardResult({
   kicker,
   figure,
   score,
+  medals,
+  walk,
   pace,
   fmt,
   gap,
@@ -154,9 +198,16 @@ export function PastBoardResult({
   name: string
   kicker?: string
   /** The run's result, big: "1:19.80". */
-  figure: ReactNode
-  /** The run as the board keeps it. */
+  figure: string
+  /** The run as the board keeps it: a million less its ms. */
   score: number
+  /**
+   * The course's medals (lib/raceMedals.ts): its blue's time, and its own platinum where it has one (Hot Lap's
+   * tracks). Shown as its ladder beside the time, a new one big under it.
+   */
+  medals?: { paceMs: number; platinumMs?: number | null }
+  /** The courses either side, to race next without going back to the past tab. */
+  walk?: { prev?: PastWalkLink | null; next?: PastWalkLink | null }
   /** The run against the blue one, a sentence: "You beat the blue car by 1.20s." */
   pace: string
   /** A board score as the board shows it: "1:19.80". */
@@ -185,8 +236,12 @@ export function PastBoardResult({
   savedRef.current = onSaved
   /** Your place and best on the board as the run went out: what it moved you up from. */
   const beforeRef = useRef<TrackBoard['you']>(null)
+  /** Your best here before this run, in ms, as the card opened: what a medal is new against. */
+  const [previousMs] = useState(() => (known != null ? 1_000_000 - known : null))
   const words = dailyWords(slug)
   const runWord = bestWord(slug)
+  const titleId = useId()
+  const playRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     shown.current = true
@@ -253,47 +308,49 @@ export function PastBoardResult({
   const kind: PastKind = save.phase === 'practice' ? 'practice' : 'board'
   const me = result?.name ?? (signedIn && !otherAccount && name ? name : null)
   const boardName = allTimeBoardName(courseName)
-  /** "3rd All time on Seneca Glen": a place on the course's All time board. */
-  const placed = (place: number) => `${ordinal(place)} ${BOARD_NAMES.allTime} on ${courseName}`
 
-  // Where the run went, and what it did there.
-  let headline: ReactNode | undefined
-  let line: ReactNode = pace
+  // The run's medal on the course (lib/raceMedals.ts): the one your best here now holds, and whether this run won it.
+  const ms = 1_000_000 - score
+  const race = medals && isRaceGame(slug) ? { game: slug, ...medals } : null
+  const medalHeld = race ? medalFor(race.game, race.paceMs, Math.min(ms, previousMs ?? ms), race.platinumMs) : null
+  const medalNew = race && medalHeld && medalBeats(medalHeld, medalFor(race.game, race.paceMs, previousMs, race.platinumMs)) ? medalHeld : null
+
+  // Where the run went on the course's All time board, and what it did there: the board's card beside the time.
+  const improved = result != null && result.best === score
+  let place: number | null = null
+  let value = ''
+  let move: string | null = null
+  let detail: string | null = null
+  /** What the reel asks before the run can go on the board: the sign-in, or a tag. */
+  let ask: ReactNode = null
+  /** A word on a run that isn't going on the board. */
   let status: ReactNode = null
-  if (pending) {
-    status = (
-      <p className="past-save__line" role="status">
-        Putting it on {boardName}…
-      </p>
-    )
-  } else if (result && result.best === score) {
+  if (result) {
+    place = result.place
+    value = ordinal(result.place)
     const before = beforeRef.current
-    headline = placed(result.place)
-    if (result.tookRecord) line = `${capitalWord(words.course)} record! Nobody has ${verbHasDone(slug)} ${courseName} faster. ${pace}`
+    if (!improved) detail = `Your best here, ${fmt(result.best)}, is still quicker.`
+    else if (result.tookRecord) detail = `Nobody has ${verbHasDone(slug)} ${courseName} faster.`
     else if (before && before.score < score) {
-      line = (
-        <>
-          {before.place > result.place ? `Up from ${ordinal(before.place)}: ` : null}
-          <b>{gap(score - before.score)} quicker</b> than your old best here, {fmt(before.score)}. {pace}
-        </>
-      )
+      if (before.place > result.place) move = `Up from ${ordinal(before.place)}`
+      detail = `${gap(score - before.score)} quicker than your old best here, ${fmt(before.score)}.`
     } else {
-      line = `Your first ${runWord} on its ${BOARD_NAMES.allTime} board. ${pace}`
+      move = 'New on the board'
+      detail = `Your first ${runWord} on its ${BOARD_NAMES.allTime} board.`
     }
-  } else if (result) {
-    headline = `Still ${placed(result.place)}`
-    line = `Your best here, ${fmt(result.best)}, is still quicker.`
   } else if (save.phase === 'stands' && board?.you) {
-    headline = `Still ${placed(board.you.place)}`
-    line = `Your best here, ${fmt(board.you.score)}, stands: this ${runWord} was ${gap(board.you.score - score)} slower.`
+    place = board.you.place
+    value = ordinal(board.you.place)
+    detail = `Your best here, ${fmt(board.you.score)}, stands: this ${runWord} was ${gap(board.you.score - score)} slower.`
   } else if (save.phase === 'practice') {
-    // Its own headline says nothing was saved; signing in is for the runs to come, where the board is open.
-    if (archived) status = <p className="past-save__line">{archivedWhy(slug)}</p>
-    else status = signedOut ? <ReportSignIn lead={`Sign in and your next ${runWord}s here go on ${boardName}.`} onSignedIn={() => undefined} /> : null
-  } else {
-    headline = `Not on its ${BOARD_NAMES.allTime} board yet`
+    value = 'Practice'
+    detail = archived ? archivedWhy(slug) : 'Nothing was saved.'
+    // Signing in is for the runs to come, where the board is open.
+    if (!archived && signedOut) status = <ReportSignIn lead={`Sign in and your next ${runWord}s here go on ${boardName}.`} onSignedIn={() => undefined} />
+  } else if (!pending) {
+    value = 'Not on it yet'
     if (save.phase === 'signedOut') {
-      status = <ReportSignIn lead={`Sign in and this ${runWord} goes on ${boardName}.`} onSignedIn={() => undefined} />
+      ask = <ReportSignIn lead={`Sign in and this ${runWord} goes on ${boardName}.`} onSignedIn={() => undefined} />
     } else if (save.phase === 'otherAccount') {
       const tag = typeof owner === 'string' ? recallAccountTag(owner) : ''
       const did = capitalWord(verbDone(slug))
@@ -302,14 +359,14 @@ export function PastBoardResult({
           {tag ? `${did} as ${tag}. Sign in as ${tag} to put it on ${boardName}.` : `${did} as another account. Sign in as that account to put it on ${boardName}.`}
         </p>
       )
-    } else if (save.phase === 'noTag') status = <RunTag slug={slug} />
+    } else if (save.phase === 'noTag') ask = <RunTag slug={slug} />
     else if (save.phase === 'failed') status = <p className="panel__error">{save.error}</p>
   }
 
   // How far off the record your best is, and what taking it pays.
   const record = result ? result.record : (board?.entries[0] ?? null)
   const best = Math.max(score, result?.best ?? 0, known ?? 0)
-  let note: ReactNode = null
+  let note: string | null = null
   if (record && !result?.tookRecord) {
     if (me && record.name === me && record.score >= best) note = 'You hold its record.'
     else if (record.score === best) note = `Tied with ${record.name}’s record, ${fmt(record.score)}: only a quicker ${runWord} takes it.`
@@ -318,45 +375,94 @@ export function PastBoardResult({
     } else if (kind === 'practice') note = `That’s quicker than ${record.name}’s record, ${fmt(record.score)}.`
   }
 
-  // Taking a course's record pays, once a course.
-  const paid = result?.tickets?.earned ? (
-    <p className="past-save__tix">
-      <TicketGlyph size={20} />
-      <span>
-        <b>+{result.tickets.earned} tickets</b> for the {words.course} record.{' '}
-        <a
-          href={prizesHref()}
-          onClick={(e) => {
-            e.preventDefault()
-            leavePlay(prizesHref())
-          }}
-        >
-          Prize counter ›
-        </a>
-      </span>
-    </p>
-  ) : null
-
   const rows = boardRows(board, result, me, kind === 'practice', fmt)
   const players = result?.drivers ?? board?.drivers ?? 0
+  const boardCard: ReportBoardCard | null =
+    value && (rows.length > 0 || place != null)
+      ? {
+          label: `${BOARD_NAMES.allTime} · ${courseName}`,
+          value,
+          gold: place === 1,
+          move,
+          detail: [detail, players > 0 ? playersWords(slug, players) : null].filter(Boolean).join(' · ') || null,
+          rows,
+        }
+      : null
+
+  // How the run's page lights up: a record the loudest, then a new top medal; a new best or a new medal lit.
+  const tookRecord = Boolean(result?.tookRecord)
+  const ribbon: ReportRibbon | null = tookRecord
+    ? { icon: 'crown', text: `${capitalWord(words.course)} record!`, tone: 'gold' }
+    : improved && beforeRef.current
+      ? { icon: 'up', text: 'New best here', tone: 'accent' }
+      : null
+  const tier: ReportTier = tookRecord || medalNew === 'platinum' ? 'big' : ribbon || medalNew ? 'lit' : 'quiet'
+  const earned = result?.tickets?.earned ?? 0
+  const format = (seconds: number) => boardTime(slug, seconds)
+
+  const pastHref = dailyTabHref(slug, 'past', slug === 'hotlap' ? n : day)
+  const again: ReportAction = { label: holding ? 'Saving…' : `${words.verb} again`, busy: holding, onClick: onAgain, buttonRef: playRef }
+  const next: ReportAction | null = walk?.next ? { label: `Next: ${walk.next.label}`, href: walk.next.href } : null
+  const links: ReportLink[] = [
+    ...(walk?.prev ? [{ label: `‹ ${walk.prev.label}`, onClick: () => navigate(walk.prev!.href) }] : []),
+    { label: words.pastTab, onClick: () => leavePlay(pastHref) },
+    { label: today.name ? `${words.today}: ${today.name}` : words.today, onClick: () => leavePlay(today.href ?? gamePlayHref(slug)) },
+  ]
+  const recap: ReelBadge[] = [{ key: 'score', kind: 'score', value: figure, label: improved ? 'New best here' : courseName, icon: improved ? 'up' : 'target' }]
+  if (medalHeld) recap.push({ key: 'medal', kind: 'medal', medal: medalHeld, value: MEDAL_NAMES[medalHeld], label: 'Your medal here' })
+  if (place != null) recap.push({ key: 'place', kind: 'place', value: ordinal(place), label: `${BOARD_NAMES.allTime} · ${courseName}` })
+  if (earned > 0) recap.push({ key: 'tickets', kind: 'tickets', value: `+${earned}`, label: 'Tickets' })
+  const block = [status, note ? <p className="past-save__line">{note}</p> : null, <RunLabel kind={kind} slug={slug} />].filter(Boolean)
+
+  const steps = reelSteps({
+    phase: pending ? 'pending' : ask ? 'ask' : 'saved',
+    slow: waited,
+    wait: { said: `Putting it on ${boardName}…`, slow: `Still putting it on ${boardName}…` },
+    run: {
+      titleId,
+      tier,
+      ribbon,
+      eyebrow: kicker ?? `Past ${words.course} #${n} · ${courseName}`,
+      score: figure,
+      unit: '',
+      sub: pace,
+      scoreTone: tookRecord ? 'gold' : improved ? 'accent' : 'plain',
+      medal: medalNew,
+      ladder: race ? (
+        <MedalLadder game={race.game} paceMs={race.paceMs} platinumMs={race.platinumMs} ms={ms} previousMs={previousMs} format={format} past />
+      ) : null,
+    },
+    board: boardCard,
+    boardCompact: Boolean(race),
+    boardLoading: pending && !signedOut,
+    tickets: earned > 0 ? <RecordTickets earned={earned} course={words.course} /> : null,
+    ask,
+    askGoLabel: save.phase === 'noTag' ? 'Skip' : 'Not now',
+    recap,
+    block: block.map((bit, i) => <Fragment key={i}>{bit}</Fragment>),
+    // Race again, and the next course under it, as big: the way on without going back to the past tab.
+    poster: (
+      <div className="reel-next__plain">
+        <ReelButton action={again} />
+        {next ? <ReelButton action={next} variant="ghost" /> : null}
+      </div>
+    ),
+    primary: again,
+    links,
+  })
+  const accentStyle = gameAccentStyle(slug)
+  const accent = String((accentStyle as Record<string, string>)['--celeb-accent'] ?? '#2eb8a0')
   return (
-    <PastCourseResult
-      slug={slug}
-      course={slug === 'hotlap' ? n : day}
-      day={day}
-      kind={kind}
-      kicker={kicker}
-      figure={figure}
-      headline={headline}
-      line={line}
-      board={rows.length > 0 ? { title: `${BOARD_NAMES.allTime} · ${courseName}`, count: playersWords(slug, players), rows } : null}
-      note={note}
-      today={today}
-      againBusy={holding}
-      onAgain={onAgain}
-    >
-      {status}
-      {paid}
-    </PastCourseResult>
+    <RunReel
+      label={`${ribbon?.text ?? courseName}, ${figure}`}
+      style={accentStyle}
+      accent={accent}
+      game={getGame(slug)?.name ?? slug}
+      tier={tier}
+      steps={steps}
+      primaryRef={playRef}
+      leave={{ label: 'Leave', onClick: () => leavePlay(pastHref) }}
+      onEscape={save.phase === 'noTag' ? undefined : onAgain}
+    />
   )
 }

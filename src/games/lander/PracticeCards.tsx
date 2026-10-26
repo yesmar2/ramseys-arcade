@@ -7,7 +7,7 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
-import { boardTime } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { caveDay, caveNumber, dailyCave, FIRST_DAY } from './daily'
 import type { LanderDay } from './runs'
@@ -136,6 +136,8 @@ export function PastCaveResult({
       n={lander.n}
       day={lander.day}
       name={lander.name}
+      medals={{ paceMs: paceMsOf(lander.pace) }}
+      walk={walkFor(lander.day)}
       kicker={`Past cave #${lander.n} · ${lander.name}`}
       figure={boardTime(SLUG, time)}
       score={score}

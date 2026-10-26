@@ -6,7 +6,7 @@ import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
 import type { PastFact } from '../../lib/pastPlay'
-import { boardTime } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyGauntlet, FIRST_DAY, gauntletDay, gauntletNumber } from './daily'
 import { gauntletDayHref } from './links'
@@ -134,6 +134,8 @@ export function PastGauntletResult({
       n={wobble.n}
       day={wobble.day}
       name={wobble.name}
+      medals={{ paceMs: paceMsOf(wobble.pace) }}
+      walk={walkFor(wobble.day)}
       kicker={`Past gauntlet #${wobble.n} · ${wobble.name}`}
       figure={boardTime(SLUG, time)}
       score={score}

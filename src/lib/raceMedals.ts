@@ -48,6 +48,7 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * Hot Lap's step went to 5% and Marble Run's to 10% on 2026-10-14, when Ramsey found gold and platinum "too hard"
  * in both: his best Hot Lap laps had landed 13 to 25% under the blue car (17% the middle day, 12.8% that day, short of
  * gold at 14%), and no one's Marble Run had reached platinum's 36% (the best 34.5%; his 30.8% that day was gold).
+ * Since 2026-10-26 every Hot Lap track sets its own platinum (hotlap/medalLap.ts), so its step is only a fallback.
  */
 export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.13, wobblerun: 0.12, sling: 0.1 }
 
@@ -124,9 +125,15 @@ export function needsThousandths(times: readonly (number | null | undefined)[], 
 
 /**
  * Each medal's time on a day, in ms: the slowest that still takes it. The same sums as the API's
- * ticketLadders.ts steps, so a medal and its tickets come together.
+ * ticketLadders.ts raceMedalTimes, so a medal and its tickets come together. A course with a platinum of its own
+ * (Hot Lap's tracks, set track by track since 2026-10-26: hotlap/medalLap.ts) has bronze, silver and gold spaced
+ * between the blue and it as the steps would be: bronze 1.2/3 of the way down, silver 1.8/3, gold 2.4/3.
  */
-export function medalTimes(game: RaceGame, paceMs: number): Record<Medal, number> {
+export function medalTimes(game: RaceGame, paceMs: number, platinumMs?: number | null): Record<Medal, number> {
+  if (platinumMs && platinumMs < paceMs) {
+    const at = (medal: Medal) => Math.round(paceMs - ((paceMs - platinumMs) * MEDAL_RUNGS[medal]) / MEDAL_RUNGS.platinum)
+    return { bronze: at('bronze'), silver: at('silver'), gold: at('gold'), platinum: at('platinum') }
+  }
   const step = MEDAL_STEP[game]
   return {
     bronze: Math.round(paceMs * (1 - MEDAL_RUNGS.bronze * step)),
@@ -136,19 +143,19 @@ export function medalTimes(game: RaceGame, paceMs: number): Record<Medal, number
   }
 }
 
-/** The best medal a time in ms takes against a day's blue, or none. */
-export function medalFor(game: RaceGame, paceMs: number, ms: number | null | undefined): Medal | null {
+/** The best medal a time in ms takes against a day's blue (and its own platinum, where it has one), or none. */
+export function medalFor(game: RaceGame, paceMs: number, ms: number | null | undefined, platinumMs?: number | null): Medal | null {
   if (ms == null || !Number.isFinite(ms) || ms <= 0) return null
-  const times = medalTimes(game, paceMs)
+  const times = medalTimes(game, paceMs, platinumMs)
   let best: Medal | null = null
   for (const medal of MEDALS) if (ms <= times[medal]) best = medal
   return best
 }
 
 /** The next medal up from the one held (the first, with none) and its time; none once platinum is held. */
-export function nextMedal(game: RaceGame, paceMs: number, held: Medal | null): { medal: Medal; ms: number } | null {
+export function nextMedal(game: RaceGame, paceMs: number, held: Medal | null, platinumMs?: number | null): { medal: Medal; ms: number } | null {
   const medal = MEDALS[held ? MEDALS.indexOf(held) + 1 : 0]
-  return medal ? { medal, ms: medalTimes(game, paceMs)[medal] } : null
+  return medal ? { medal, ms: medalTimes(game, paceMs, platinumMs)[medal] } : null
 }
 
 /** What a medal is for, in words: "beating the blue car", "beating the blue car by 12%". */

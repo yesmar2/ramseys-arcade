@@ -89,8 +89,9 @@ function medalOf(key: TodayKey, day: string, score: number): Medal | null {
               : key === 'tower'
                 ? dailyTower(day).pace
                 : null
-  // The racing dailies keep a million less the ms (their score.ts).
-  return game == null || pace == null ? null : medalFor(game, paceMsOf(pace), 1_000_000 - score)
+  // The racing dailies keep a million less the ms (their score.ts). Hot Lap's tracks each set their own platinum.
+  const platinum = key === 'track' ? dailyTrack(day).platinumMs : null
+  return game == null || pace == null ? null : medalFor(game, paceMsOf(pace), 1_000_000 - score, platinum)
 }
 
 /** A daily on the day's ticket, as its tile shows it. */

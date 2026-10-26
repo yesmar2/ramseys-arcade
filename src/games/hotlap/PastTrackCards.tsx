@@ -1,12 +1,13 @@
 import { useMemo, type ReactNode } from 'react'
 import { PastBoardResult } from '../../components/PastBoardResult'
-import { PastCourseStart } from '../../components/PastCourseCards'
+import { PastCourseStart, type PastWalkLink } from '../../components/PastCourseCards'
+import { MedalRow } from '../../components/RaceMedal'
 import { useIsAdmin } from '../../lib/admin'
 import { inArchive } from '../../lib/archive'
 import { archivedWhy } from '../../lib/dailyPast'
 import { BOARD_NAMES, type PastKind } from '../../lib/dailyWords'
 import { allTimeBoardName, RECORD_TICKETS } from '../../lib/pastBoards'
-import { boardTime } from '../../lib/raceMedals'
+import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyTrack, dayOfTrack, PLANNED_TRACKS, trackDay, trackNumber, trackState } from './daily'
 import type { Course } from './lap'
@@ -51,6 +52,24 @@ function paceWords(time: number, pace: number): string {
 }
 
 /**
+ * The tracks either side of a past one, a walk away from its cards: the next only while it's a past one too,
+ * unless you're an admin, who may test-drive what's to come.
+ */
+function useTrackWalk(n: number): { prev: PastWalkLink | null; next: PastWalkLink | null } {
+  const admin = useIsAdmin()
+  return useMemo(
+    () => ({
+      prev: n > 1 ? { label: `#${n - 1} ${trackName(n - 1)}`, href: trackDriveHref(n - 1) } : null,
+      next:
+        n < PLANNED_TRACKS && (admin || trackState(n + 1) === 'past')
+          ? { label: `#${n + 1} ${trackName(n + 1)}`, href: trackDriveHref(n + 1) }
+          : null,
+    }),
+    [n, admin],
+  )
+}
+
+/**
  * A past track's start card: what it is, that a lap here goes on its All time board and not your rank (or,
  * signed out, is practice), its Ranked and All time boards' figures, and the way back to its row. Like
  * the game's own, a tap anywhere but its links starts the lap. The tracks either side are a walk away:
@@ -70,19 +89,9 @@ export function PastTrackStart({
   /** "Who do you race?" (components/GhostPicker.tsx). */
   ghostPick?: ReactNode
 }) {
-  const admin = useIsAdmin()
   const { n, name } = course
   const today = useMemo(() => dailyTrack(trackDay()).name, [])
-  const walk = useMemo(
-    () => ({
-      prev: n > 1 ? { label: `#${n - 1} ${trackName(n - 1)}`, href: trackDriveHref(n - 1) } : null,
-      next:
-        n < PLANNED_TRACKS && (admin || trackState(n + 1) === 'past')
-          ? { label: `#${n + 1} ${trackName(n + 1)}`, href: trackDriveHref(n + 1) }
-          : null,
-    }),
-    [n, admin],
-  )
+  const walk = useTrackWalk(n)
   // To the thousandth, as its boards' laps on the card are, and kept on one line.
   const pace = `Blue\u00a0car:\u00a0${boardTime(SLUG, course.paceLap.time)}.`
   // Practice says how a lap here would count instead, in the note as the other dailies' past cards do.
@@ -106,6 +115,10 @@ export function PastTrackStart({
           : undefined
       }
       facts={figures.facts}
+      // Its medals: your best here lights them, and the next one says what it takes.
+      extraMeta={
+        <MedalRow game={SLUG} paceMs={paceMsOf(course.pace)} platinumMs={course.platinumMs} bestMs={board?.you ? 1_000_000 - board.you.score : null} past />
+      }
       note={note}
       startLabel={figures.played ? 'Race it again' : 'Race it'}
       today={{ name: today }}
@@ -143,6 +156,7 @@ export function PastTrackResult({
   onAgain: () => void
 }) {
   const today = useMemo(() => dailyTrack(trackDay()).name, [])
+  const walk = useTrackWalk(course.n)
   return (
     <PastBoardResult
       slug={SLUG}
@@ -151,6 +165,8 @@ export function PastTrackResult({
       name={course.name}
       figure={boardTime(SLUG, time)}
       score={score}
+      medals={{ paceMs: paceMsOf(course.pace), platinumMs: course.platinumMs }}
+      walk={walk}
       pace={paceWords(time, course.paceLap.time)}
       fmt={lapOf}
       gap={formatLapMs}

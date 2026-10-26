@@ -40,15 +40,29 @@ export function MedalIcon({ medal, size = 18, dim = false, className }: { medal:
  * A racing daily's medals on its start card: the four, those won today lit, and the time the next one takes,
  * to the thousandth as the card's other times are (boardTime): a medal is taken by the millisecond.
  */
-export function MedalRow({ game, paceMs, bestMs }: { game: RaceGame; paceMs: number; bestMs: number | null }) {
-  const held = medalFor(game, paceMs, bestMs)
-  const next = nextMedal(game, paceMs, held)
+export function MedalRow({
+  game,
+  paceMs,
+  platinumMs = null,
+  bestMs,
+  past = false,
+}: {
+  game: RaceGame
+  paceMs: number
+  /** The course's own platinum, where it has one (Hot Lap's tracks). */
+  platinumMs?: number | null
+  bestMs: number | null
+  /** A past course's: your best there holds them, not today's. */
+  past?: boolean
+}) {
+  const held = medalFor(game, paceMs, bestMs, platinumMs)
+  const next = nextMedal(game, paceMs, held, platinumMs)
   const won = held ? MEDALS.indexOf(held) : -1
   const format = (seconds: number) => boardTime(game, seconds)
-  const said = `${held ? `${MEDAL_NAMES[held]} won today. ` : ''}${next ? `Next, ${MEDAL_NAMES[next.medal]}: ${format(next.ms / 1000)}` : 'That’s the top medal'}`
+  const said = `${held ? `${MEDAL_NAMES[held]} ${past ? 'won here' : 'won today'}. ` : ''}${next ? `Next, ${MEDAL_NAMES[next.medal]}: ${format(next.ms / 1000)}` : 'That’s the top medal'}`
   // A tile on the start card: what's next in its label, the time it takes as its figure, the four under it.
   return (
-    <div className="game-pause-meta__row race-medals-row" title={medalTitle(game, paceMs, format)}>
+    <div className="game-pause-meta__row race-medals-row" title={medalTitle(game, paceMs, format, platinumMs)}>
       <span aria-hidden="true">{next ? `Next medal · ${MEDAL_NAMES[next.medal]}` : 'Top medal won'}</span>
       <strong aria-label={said}>{next ? format(next.ms / 1000) : 'Platinum'}</strong>
       <div className="race-medals__icons" aria-hidden="true">
@@ -70,33 +84,42 @@ export function MedalRow({ game, paceMs, bestMs }: { game: RaceGame; paceMs: num
 export function MedalLadder({
   game,
   paceMs,
+  platinumMs = null,
   ms,
   previousMs,
   format,
   signedOut = false,
+  past = false,
 }: {
   game: RaceGame
   paceMs: number
+  /** The course's own platinum, where it has one (Hot Lap's tracks). */
+  platinumMs?: number | null
   ms: number
   previousMs: number | null
   format: (seconds: number) => string
   signedOut?: boolean
+  /**
+   * A past course's: `previousMs` is your best there before this run, and the medals are yours there for good
+   * (your medal collection, lib/courseBests.ts). They pay no tickets: only today's course does.
+   */
+  past?: boolean
 }) {
-  const before = medalFor(game, paceMs, previousMs)
+  const before = medalFor(game, paceMs, previousMs, platinumMs)
   const bestMs = previousMs != null && previousMs > 0 ? Math.min(ms, previousMs) : ms
-  const held = medalFor(game, paceMs, bestMs)
+  const held = medalFor(game, paceMs, bestMs, platinumMs)
   const fresh = held != null && medalBeats(held, before)
-  const next = nextMedal(game, paceMs, held)
-  const times = medalTimes(game, paceMs)
+  const next = nextMedal(game, paceMs, held, platinumMs)
+  const times = medalTimes(game, paceMs, platinumMs)
   const won = held ? MEDALS.indexOf(held) : -1
   const blue = blueOf(game)
   const then = next ? `${MEDAL_NAMES[next.medal]} is ` : ''
   const gap = next ? raceGapWords(bestMs - next.ms) : ''
   const at = next ? format(next.ms / 1000) : ''
   return (
-    <section className="medal-ladder" aria-label="Today’s medals">
+    <section className={`medal-ladder${past ? ' medal-ladder--past' : ''}`} aria-label={past ? 'Its medals' : 'Today’s medals'}>
       <div className="medal-ladder__head">
-        <span className="medal-ladder__title">Today’s medals</span>
+        <span className="medal-ladder__title">{past ? 'Its medals' : 'Today’s medals'}</span>
         <span className="medal-ladder__blue">
           {blue.charAt(0).toUpperCase() + blue.slice(1)} {format(paceMs / 1000)}
         </span>
@@ -111,20 +134,22 @@ export function MedalLadder({
               <MedalIcon medal={medal} dim={state !== 'won'} size={30} />
               <span className="medal-ladder__name">
                 {MEDAL_NAMES[medal]}
-                {state === 'won' ? <span className="visually-hidden">, won today</span> : null}
+                {state === 'won' ? <span className="visually-hidden">{past ? ', won here' : ', won today'}</span> : null}
               </span>
               <span className="medal-ladder__time">{format(times[medal] / 1000)}</span>
-              <span className="medal-ladder__tix">
-                <TicketGlyph size={16} dim={state === 'later'} />
-                {MEDAL_TICKETS[medal]}
-                <span className="visually-hidden"> tickets{state === 'won' && signedOut ? ' once you sign in' : ''}</span>
-              </span>
+              {past ? null : (
+                <span className="medal-ladder__tix">
+                  <TicketGlyph size={16} dim={state === 'later'} />
+                  {MEDAL_TICKETS[medal]}
+                  <span className="visually-hidden"> tickets{state === 'won' && signedOut ? ' once you sign in' : ''}</span>
+                </span>
+              )}
             </li>
           )
         })}
       </ol>
       <p className="medal-ladder__said">
-        {!held ? 'No medal yet. ' : fresh ? `${MEDAL_NAMES[held]}! ` : `Your best has ${MEDAL_NAMES[held]}. `}
+        {!held ? 'No medal yet. ' : fresh ? `${MEDAL_NAMES[held]}! ` : `Your best${past ? ' here' : ''} has ${MEDAL_NAMES[held]}. `}
         {next ? (
           <>
             {then}
@@ -139,7 +164,7 @@ export function MedalLadder({
 }
 
 /** Every medal's time, for the row's tip: "Bronze 57.748s · Silver 54.282s · Gold 50.816s · Platinum 47.350s". */
-function medalTitle(game: RaceGame, paceMs: number, format: (seconds: number) => string): string {
-  const times = medalTimes(game, paceMs)
+function medalTitle(game: RaceGame, paceMs: number, format: (seconds: number) => string, platinumMs?: number | null): string {
+  const times = medalTimes(game, paceMs, platinumMs)
   return MEDALS.map((m) => `${MEDAL_NAMES[m]} ${format(times[m] / 1000)}`).join(' · ')
 }

@@ -15,7 +15,7 @@ import '../../styles/medalShelf.css'
  */
 
 /** Your medal on one course: your best time on it (ms, none if not raced), what it takes, and the next one. */
-export type CourseMedal = { ms: number | null; medal: Medal | null; paceMs: number }
+export type CourseMedal = { ms: number | null; medal: Medal | null; paceMs: number; platinumMs?: number | null }
 
 export type MedalFilter = 'all' | 'short' | 'none'
 
@@ -125,7 +125,7 @@ export function MedalShelf({
 
 /** A card's four medals, yours lit, and what the next one takes; on a course over a week old without Plus, that it's Plus's. */
 export function CardMedals({ game, slug, medal, locked }: { game: RaceGame; slug: string; medal: CourseMedal; locked: boolean }) {
-  const next = nextMedal(game, medal.paceMs, medal.medal)
+  const next = nextMedal(game, medal.paceMs, medal.medal, medal.platinumMs)
   let words: string
   if (!next) words = 'All four'
   else if (locked) words = medal.ms == null ? 'Race it with Plus' : `Plus to go for ${MEDAL_NAMES[next.medal].toLowerCase()}`
@@ -156,6 +156,6 @@ export function CardBadge({ medal }: { medal: Medal }) {
 
 /** What a card's play button says when a medal is there to chase. */
 export function chaseWords(game: RaceGame, medal: CourseMedal): string | null {
-  const next = nextMedal(game, medal.paceMs, medal.medal)
+  const next = nextMedal(game, medal.paceMs, medal.medal, medal.platinumMs)
   return next ? `Go for ${MEDAL_NAMES[next.medal].toLowerCase()}` : null
 }
