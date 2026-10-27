@@ -51,9 +51,10 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * Since 2026-10-26 every Hot Lap track sets its own platinum (hotlap/medalLap.ts), so its step is only a fallback.
  * Swoop's went from 13% to 10.5% on 2026-10-27, when Ramsey found its platinum "too hard": his best runs on the
  * seven hills to then landed 29.6 to 43.3% under the blue bird (33.8% the middle day), and he held platinum's 39%
- * on three. At 31.5% he holds it on six, today's (#22, 31.8%) by a quarter of a second.
+ * on three. At 31.5% he holds it on six, today's (#22, 31.8%) by a quarter of a second. He found that "a little
+ * too easy" the same day, so it's 12% a step (platinum 36%): he holds it on four of the seven, gold on all of them.
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.105, wobblerun: 0.12, sling: 0.1 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.12, wobblerun: 0.12, sling: 0.1 }
 
 /**
  * How many of the game's steps faster than the blue each medal is. Platinum stays three, where it was tuned to
@@ -63,7 +64,7 @@ export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0
  * Wobble Run's still are). Lander's step went to 10%
  * and Swoop's to 13% the same day, when he found their platinum "a little too easy": his best Lander days had
  * landed 27 to 28% under the blue ship (platinum was 24%), his best Swoop days 36 to 38% under the blue bird
- * (platinum was 36%). Lander's are 12, 18, 24, 30 now; Swoop's 13, 19, 25, 32 (16, 23, 31, 39 until 2026-10-27). The API's ticketLadders.ts
+ * (platinum was 36%). Lander's are 12, 18, 24, 30 now; Swoop's 14, 22, 29, 36 (16, 23, 31, 39 until 2026-10-27). The API's ticketLadders.ts
  * RACE_MEDAL_RUNGS and RACE_MEDAL_STEP are the same.
  */
 export const MEDAL_RUNGS: Record<Medal, number> = { bronze: 1.2, silver: 1.8, gold: 2.4, platinum: 3 }
