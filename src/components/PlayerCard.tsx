@@ -25,6 +25,7 @@ import { PlusMark } from './PlusMark'
 import { MedalIcon } from './RaceMedal'
 import { RewardArt } from './season/RewardArt'
 import { StickerAlbum } from './StickerAlbum'
+import { StickerArt } from './StickerArt'
 import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/playerCard.css'
 
@@ -184,28 +185,42 @@ function Mini({
   sub,
   href,
   onClick,
+  onPress,
   children,
 }: {
   kind: string
   cap: string
   title: ReactNode
   sub: ReactNode
-  href: string
+  /** Where it leads; without one it's a button, `onPress`. */
+  href?: string
   onClick?: (e: MouseEvent<HTMLAnchorElement>) => void
+  onPress?: (e: MouseEvent<HTMLButtonElement>) => void
   children: ReactNode
 }) {
+  const inside = (
+    <>
+      <span className="pc-mini__cap">{cap}</span>
+      <span className="pc-mini__art" aria-hidden="true">
+        {children}
+      </span>
+      <span className="pc-mini__foot">
+        <b>{title}</b>
+        <span>{sub}</span>
+      </span>
+    </>
+  )
   return (
     <li className={`pc-mini pc-mini--${kind}`}>
-      <a className="pc-mini__card" href={href} onClick={onClick}>
-        <span className="pc-mini__cap">{cap}</span>
-        <span className="pc-mini__art" aria-hidden="true">
-          {children}
-        </span>
-        <span className="pc-mini__foot">
-          <b>{title}</b>
-          <span>{sub}</span>
-        </span>
-      </a>
+      {href ? (
+        <a className="pc-mini__card" href={href} onClick={onClick}>
+          {inside}
+        </a>
+      ) : (
+        <button type="button" className="pc-mini__card" onClick={onPress}>
+          {inside}
+        </button>
+      )}
     </li>
   )
 }
@@ -234,7 +249,7 @@ function jumpTo(id: string) {
  * background, blurred, across the whole top), and beside it where they stand this period and a hand of small
  * cards: what they're best at, their race medals, on your own card your Dailies streak, and their trophies or
  * skins, each a way to that part of the page. The card turns over to its back, the sticker album (B3 of the
- * "New prize kinds" canvas). Ramsey picked H2 + P2 of the "Player card hero redesign" canvas
+ * "New prize kinds" canvas), and the hand's last card, Stickers, turns it too (2026-10-27). Ramsey picked H2 + P2 of the "Player card hero redesign" canvas
  * (2026-10-20). No sign and no title: those are retired from the counter.
  */
 export function PlayerCard({
@@ -312,7 +327,7 @@ export function PlayerCard({
   const rank = data.rank
   const gold = !loading && rank != null && rank <= 3
   // The hand waits for what it shows: its room is held while it loads when this device saw it before.
-  const handHeld = useHeldHeight<HTMLUListElement>(`pc-hand-${name}`, trophies === null || skins === null || medals === null)
+  const handHeld = useHeldHeight<HTMLUListElement>(`pc-hand-${name}`, trophies === null || skins === null || medals === null || album === null)
 
   const hrefFor = (p: LeaderboardPeriod) => rankHref(isSelf ? undefined : name, p)
   const go = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -432,8 +447,42 @@ export function PlayerCard({
       </Mini>,
     )
   }
+  // Stickers: the album is the card's back, so this one turns the card over. Its only other way in is the card's
+  // corner button, so it always has a place: the last of the four.
+  let stickers: ReactNode = null
+  const pasted = album ? album.pages.reduce((n, p) => n + p.stickers.filter((st) => p.got.has(st.id)).length, 0) : 0
+  if (album && (pasted > 0 || isSelf)) {
+    const slots = album.pages.reduce((n, p) => n + p.stickers.length, 0)
+    // The furthest they've got on the first page they've started (a season's page opens the album while it runs).
+    const page = album.pages.find((p) => p.stickers.some((st) => p.got.has(st.id)))
+    const shown = page ? [...page.stickers].reverse().find((st) => page.got.has(st.id)) : album.pages[0]?.stickers[0]
+    const flip = (e: MouseEvent<HTMLButtonElement>) => {
+      setFlipped((f) => !f)
+      // On a phone the card is above the hand: bring it back into view to be seen turning.
+      const card = e.currentTarget.closest('.pc')?.querySelector('.pc__card')
+      const at = card?.getBoundingClientRect()
+      if (card && at && (at.top < 64 || at.bottom > window.innerHeight)) card.scrollIntoView({ behavior: glide(), block: 'center' })
+    }
+    stickers = (
+      <Mini
+        key="stickers"
+        kind="stickers"
+        cap="Stickers"
+        title={pasted ? `${pasted} ${pasted === 1 ? 'sticker' : 'stickers'}` : 'No stickers yet'}
+        sub={flipped ? 'Turn back to the card' : `of ${slots} · Turn it over`}
+        onPress={flip}
+      >
+        {shown ? <StickerArt id={shown.id} size={84} className={pasted ? undefined : 'pc-mini__sticker--none'} /> : null}
+        <svg className="pc-mini__turn" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+          <path d="M20 4v7h-7" />
+        </svg>
+      </Mini>
+    )
+  }
+  const room = stickers ? 3 : 4
   const owned = skins ? SKINS.filter((s) => skins.includes(s.id)) : []
-  if (owned.length && hand.length < 4) {
+  if (owned.length && hand.length < room) {
     // Your own card shows a skin you play in first.
     const order = (s: Skin) => (isSelf && chosenSkin(s.game) === s.id ? -1000 : 0) - SKINS.indexOf(s)
     const top = [...owned].sort((a, b) => order(a) - order(b))[0]!
@@ -493,7 +542,8 @@ export function PlayerCard({
           </div>
 
           <ul className="pc-hand" ref={handHeld.ref} style={handHeld.style} aria-label={isSelf ? 'Your highlights' : `${name}'s highlights`}>
-            {hand.slice(0, 4)}
+            {hand.slice(0, room)}
+            {stickers}
           </ul>
 
           <div className="pc__acts">
