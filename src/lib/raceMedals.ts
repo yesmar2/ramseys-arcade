@@ -64,10 +64,23 @@ export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0
  * Wobble Run's still are). Lander's step went to 10%
  * and Swoop's to 13% the same day, when he found their platinum "a little too easy": his best Lander days had
  * landed 27 to 28% under the blue ship (platinum was 24%), his best Swoop days 36 to 38% under the blue bird
- * (platinum was 36%). Lander's are 12, 18, 24, 30 now; Swoop's 14, 22, 29, 36 (16, 23, 31, 39 until 2026-10-27). The API's ticketLadders.ts
+ * (platinum was 36%). Lander's are 12, 18, 24, 30 now; Swoop's were 14, 22, 29, 36 (16, 23, 31, 39 until 2026-10-27) till its rungs and Hot Lap's went closer (CLOSE_RUNGS). The API's ticketLadders.ts
  * RACE_MEDAL_RUNGS and RACE_MEDAL_STEP are the same.
  */
 export const MEDAL_RUNGS: Record<Medal, number> = { bronze: 1.2, silver: 1.8, gold: 2.4, platinum: 3 }
+
+/**
+ * Swoop's and Hot Lap's rungs, closer again (Ramsey, 2026-10-27, once Swoop's platinum sat right at 36%: "the
+ * other medals should be closer together i think. i think the same for hot lap"). Bronze is 70% of platinum's
+ * lead on the blue, silver 80%, gold 90%: Swoop's are 25, 29, 32 and 36%, and a Hot Lap track's sit a second or
+ * so apart. The API's ticketLadders.ts CLOSE_RUNGS is the same.
+ */
+const CLOSE_RUNGS: Record<Medal, number> = { bronze: 2.1, silver: 2.4, gold: 2.7, platinum: 3 }
+
+/** A game's rungs: how many of its steps faster than the blue each medal is. */
+export function medalRungs(game: RaceGame): Record<Medal, number> {
+  return game === 'swoop' || game === 'hotlap' ? CLOSE_RUNGS : MEDAL_RUNGS
+}
 
 /**
  * What a day's best at each medal pays in tickets, once a day: the API's ticketLadders.ts steps, the same in
@@ -86,7 +99,7 @@ export function blueOf(game: RaceGame): string {
 
 /** A medal's lead on the blue, in percent: 12 for Lander's bronze, 18 for its silver, 30 for its platinum. */
 export function medalPercent(game: RaceGame, medal: Medal): number {
-  return Math.round(MEDAL_RUNGS[medal] * MEDAL_STEP[game] * 100)
+  return Math.round(medalRungs(game)[medal] * MEDAL_STEP[game] * 100)
 }
 
 /**
@@ -131,19 +144,20 @@ export function needsThousandths(times: readonly (number | null | undefined)[], 
  * Each medal's time on a day, in ms: the slowest that still takes it. The same sums as the API's
  * ticketLadders.ts raceMedalTimes, so a medal and its tickets come together. A course with a platinum of its own
  * (Hot Lap's tracks, set track by track since 2026-10-26: hotlap/medalLap.ts) has bronze, silver and gold spaced
- * between the blue and it as the steps would be: bronze 1.2/3 of the way down, silver 1.8/3, gold 2.4/3.
+ * between the blue and it as the game's rungs would be (medalRungs): bronze 2.1/3 of the way down, silver 2.4/3, gold 2.7/3.
  */
 export function medalTimes(game: RaceGame, paceMs: number, platinumMs?: number | null): Record<Medal, number> {
+  const rungs = medalRungs(game)
   if (platinumMs && platinumMs < paceMs) {
-    const at = (medal: Medal) => Math.round(paceMs - ((paceMs - platinumMs) * MEDAL_RUNGS[medal]) / MEDAL_RUNGS.platinum)
+    const at = (medal: Medal) => Math.round(paceMs - ((paceMs - platinumMs) * rungs[medal]) / rungs.platinum)
     return { bronze: at('bronze'), silver: at('silver'), gold: at('gold'), platinum: at('platinum') }
   }
   const step = MEDAL_STEP[game]
   return {
-    bronze: Math.round(paceMs * (1 - MEDAL_RUNGS.bronze * step)),
-    silver: Math.round(paceMs * (1 - MEDAL_RUNGS.silver * step)),
-    gold: Math.round(paceMs * (1 - MEDAL_RUNGS.gold * step)),
-    platinum: Math.round(paceMs * (1 - MEDAL_RUNGS.platinum * step)),
+    bronze: Math.round(paceMs * (1 - rungs.bronze * step)),
+    silver: Math.round(paceMs * (1 - rungs.silver * step)),
+    gold: Math.round(paceMs * (1 - rungs.gold * step)),
+    platinum: Math.round(paceMs * (1 - rungs.platinum * step)),
   }
 }
 
