@@ -22,7 +22,7 @@ import { GameThumbGlyph } from './GameThumbArt'
 import { PlayerAvatar } from './PlayerAvatar'
 import { FlameIcon, SlidersIcon } from './chromeIcons'
 import { PushToggle } from './PushToggle'
-import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, SeasonTrophy, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/inbox.css'
 
 export type { NotificationsState }
@@ -106,11 +106,13 @@ function TrophyTile({ trophy }: { trophy: NonNullable<AppNotification['meta']['t
     )
   }
   const tone = period === 'event' ? 'gold' : rank <= 3 ? (['gold', 'silver', 'bronze'] as const)[rank - 1] : period === 'weekly' ? 'week' : 'month'
-  // A season's is drawn as a month's: its cup, or its ribbon.
+  // A season's podium is the season's own trophy; the rest of its top ten take a month's ribbon.
   const drawn = period === 'season' || period === 'monthly' ? 'monthly' : 'weekly'
   const art =
     period === 'event' ? (
       <EventCup size="sm" />
+    ) : period === 'season' && rank <= 3 ? (
+      <SeasonTrophy season={trophy.n ?? 1} rank={rank} size="sm" />
     ) : rank <= 3 ? (
       drawn === 'monthly' ? (
         <MonthlyTrophyCup tone={(['gold', 'silver', 'bronze'] as const)[rank - 1]!} size="sm" />

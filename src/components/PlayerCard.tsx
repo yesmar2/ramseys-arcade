@@ -26,7 +26,7 @@ import { MedalIcon } from './RaceMedal'
 import { RewardArt } from './season/RewardArt'
 import { StickerAlbum } from './StickerAlbum'
 import { StickerArt } from './StickerArt'
-import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, SeasonTrophy, SecretArt, TopTenRibbon, WeeklyMedal } from './TrophyArt'
 import '../styles/playerCard.css'
 
 function Skel({ w }: { w: string }) {
@@ -40,7 +40,8 @@ function CaseArt({ kind }: { kind: TrophyCaseKind }) {
   if (kind.period === 'hunt') return <HuntSetJar size="md" />
   const tone = kind.period === 'monthly' || kind.period === 'season' ? 'monthly' : 'weekly'
   if (kind.rank > 3) return <TopTenRibbon tone={tone} rank={kind.rank} size="md" />
-  return kind.period === 'monthly' || kind.period === 'season' ? <MonthlyTrophyCup tone={metalTone(kind.rank)} size="md" /> : <WeeklyMedal rank={kind.rank} size="md" />
+  if (kind.period === 'season') return <SeasonTrophy season={kind.season ?? 1} rank={kind.rank} size="md" />
+  return kind.period === 'monthly' ? <MonthlyTrophyCup tone={metalTone(kind.rank)} size="md" /> : <WeeklyMedal rank={kind.rank} size="md" />
 }
 
 /**

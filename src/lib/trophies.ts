@@ -141,6 +141,8 @@ export type TrophyCaseKind = {
   count: number
   /** A secret's number (lib/secrets.ts): each secret is a kind of its own. */
   secret?: number
+  /** A season podium's newest season, whose trophy the case draws. */
+  season?: number
 }
 
 /** Where each kind stands in the case, the proudest first: a win, then podiums, full sets, secrets, top tens. */
@@ -163,13 +165,40 @@ export function trophyCase(trophies: TrophyAward[]): TrophyCaseKind[] {
     if (had) {
       had.kind.count++
       had.kind.rank = Math.min(had.kind.rank, t.rank)
+      if (t.period === 'season') had.kind.season = Math.max(had.kind.season ?? 0, t.periodKey)
     } else {
       const kind: TrophyCaseKind = { key, period: t.period, rank: t.rank, count: 1 }
       if (t.period === 'secret') kind.secret = t.periodKey
+      if (t.period === 'season') kind.season = t.periodKey
       kinds.set(key, { kind, order })
     }
   }
   return [...kinds.values()].sort((a, b) => a.order - b.order).map((k) => k.kind)
+}
+
+/**
+ * How rare a trophy is, the rarest lowest: the arcade's podiums (a season's, a month's, a week's, each by place),
+ * then an event won, then the top tens of a season, a month and a week, with a bug hunt set and a secret among them.
+ */
+function rarity(t: TrophyAward): number {
+  if (t.rank <= 3 && t.period === 'season') return t.rank
+  if (t.rank <= 3 && t.period === 'monthly') return 3 + t.rank
+  if (t.rank <= 3 && t.period === 'weekly') return 6 + t.rank
+  if (t.period === 'event') return 10
+  if (t.period === 'season') return 11
+  if (t.period === 'monthly') return 12
+  if (t.period === 'hunt') return 13
+  if (t.period === 'weekly') return 14
+  return 15
+}
+
+/** The trophy the shelf gives pride of place: the rarest, the newest of those. */
+export function proudestTrophy(trophies: TrophyAward[]): TrophyAward | null {
+  let best: TrophyAward | null = null
+  for (const t of trophies) {
+    if (!best || rarity(t) < rarity(best) || (rarity(t) === rarity(best) && t.awardedAt > best.awardedAt)) best = t
+  }
+  return best
 }
 
 export function sortTrophies(trophies: TrophyAward[]) {

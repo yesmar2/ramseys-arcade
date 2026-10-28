@@ -4,11 +4,14 @@ import '../styles/trophies.css'
 
 /*
  * The arcade's trophies, drawn the way the house draws its games: an outline
- * with a faint fill of its own colour, on a 48 grid. An event's winner gets a
- * cup; a month's podium a cup with its place on it; a week's podium a medal;
- * the rest of a top ten a rosette with its place; the all-time podium,
- * which only the boards show, a star; and each secret (lib/secrets.ts) its
- * own picture, with a question mark for one not found yet. Colour comes from
+ * with a faint fill of its own colour, on a 48 grid. Each kind has a shape of
+ * its own: an event's winner gets a wide cup on a nameplate block; a month's
+ * podium a tall lidded trophy with its place on it; a season's podium the
+ * season's own trophy; a week's podium a medal on a crossed ribbon; the rest
+ * of a top ten a rosette with its place; the all-time podium, which only the
+ * boards show, a star; and each secret (lib/secrets.ts) its own picture in a
+ * round pin, with an empty pin for one not found yet. Small, the fine details
+ * (the nameplate, a milled rim, the bug's legs) drop out. Colour comes from
  * the tone class (trophies.css), so each one follows the theme.
  */
 
@@ -40,58 +43,87 @@ function Numeral({ n, x = 24, y, size }: { n: number | string; x?: number; y: nu
   )
 }
 
-function CupShape({ place }: { place?: number }) {
-  return (
-    <>
-      <path className="trophy-art__fill" d="M15 8h18v9a9 9 0 0 1-18 0Z" />
-      <path d="M15 11H9v3a6 6 0 0 0 6 6M33 11h6v3a6 6 0 0 1-6 6" />
-      <path d="M24 26v7M17 40h14M19 40l1.5-7h7l1.5 7" />
-      {place ? <Numeral n={place} y={20.6} size={10.5} /> : null}
-    </>
-  )
-}
-
-/** An event won: the whole cup, no place on it, because first is the only place an event gives one. */
+/** An event won: a wide two-handled cup on a block with a nameplate, because an event has a name. No place on it: first is the only place an event gives one. */
 export function EventCup({ size = 'md' }: { size?: TrophyArtSize }) {
   return (
     <Art tone="gold" size={size}>
-      <CupShape />
+      <path className="trophy-art__fill" d="M13 6h22v9a11 11 0 0 1-22 0Z" />
+      <path d="M13 9H8v3a7 7 0 0 0 6.6 7M35 9h5v3a7 7 0 0 1-6.6 7" />
+      <path d="M24 26v4M19.5 30h9" />
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="12" y="33" width="24" height="10" rx="2" />
+      {size === 'sm' ? null : <path d="M17 38h14" />}
     </Art>
   )
 }
 
-/** A month's podium: a cup in its metal, with its place on the bowl where there is room to read it. */
+/** A month's podium: a tall trophy with a lid and a long stem, in its metal, its place on the bowl where there is room to read it. */
 export function MonthlyTrophyCup({ tone, size = 'md' }: { tone: MetalTone; size?: TrophyArtSize }) {
   return (
     <Art tone={tone} size={size}>
-      <CupShape place={size === 'sm' ? undefined : PLACE[tone]} />
+      <circle className="trophy-art__fill" cx="24" cy="5" r="2.2" />
+      <path d="M24 7.2v1.6M17 11q7-4.5 14 0" />
+      <path className="trophy-art__fill" d="M15.5 11h17v5a8.5 8.5 0 0 1-17 0Z" />
+      <path d="M15.5 13H12v1.5a5 5 0 0 0 5 4.8M32.5 13H36v1.5a5 5 0 0 1-5 4.8" />
+      <path d="M24 24.5v8.5" />
+      {size === 'sm' ? null : <circle className="trophy-art__fill" cx="24" cy="28.7" r="1.9" />}
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M17 33h14l2.5 10h-19Z" />
+      {size === 'sm' ? null : <Numeral n={PLACE[tone]} y={19.6} size={8.5} />}
     </Art>
   )
 }
 
-/** A week's podium: a medal on its strap. Small, the disc grows so its number still reads. */
+/**
+ * A season's podium: the season's own trophy in its metal, standing on a plinth with its place on it. Space
+ * Race (season 1) is a rocket and Cold Snap (season 2) an ice crystal; a season not drawn yet gets the rocket.
+ */
+export function SeasonTrophy({ season, rank, size = 'md' }: { season: number; rank: number; size?: TrophyArtSize }) {
+  return (
+    <Art tone={metalTone(rank)} size={size}>
+      {season === 2 ? (
+        <>
+          <path className="trophy-art__fill trophy-art__fill--soft" d="M24 4.5 35.3 11v13L24 30.5 12.7 24v-13Z" />
+          <path d="M24 4.5v26M12.7 11l22.6 13M12.7 24l22.6-13" />
+          {size === 'sm' ? null : <path d="M20.8 7.2 24 9.4l3.2-2.2M20.8 27.8 24 25.6l3.2 2.2" />}
+          <path d="M24 30.5V35" />
+        </>
+      ) : (
+        <>
+          <path className="trophy-art__fill" d="M24 3c5.5 4.5 7.5 10.5 7.5 17.5V28h-15v-7.5C16.5 13.5 18.5 7.5 24 3Z" />
+          <circle cx="24" cy="15" r="3.4" />
+          <path d="M16.5 20 11.5 26v4h5M31.5 20l5 6v4h-5" />
+          {size === 'sm' ? null : <path className="trophy-art__fill trophy-art__fill--soft" d="M20.5 28l3.5 5 3.5-5" />}
+        </>
+      )}
+      <rect className="trophy-art__fill trophy-art__fill--soft" x="13" y="35" width="22" height="8" rx="2" />
+      {size === 'sm' ? null : <Numeral n={rank} y={41.6} size={7} />}
+    </Art>
+  )
+}
+
+/** A week's podium: a medal on a crossed ribbon, with a milled rim. Small, the disc grows so its number still reads. */
 export function WeeklyMedal({ rank, size = 'md' }: { rank: number; size?: TrophyArtSize }) {
   const tone = metalTone(rank)
   return (
     <Art tone={tone} size={size}>
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M13 3h8l5 13h-8Z" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M35 3h-8l-5 13h8Z" />
       {size === 'sm' ? (
         <>
-          <path d="M16 3l5.5 11.5M32 3l-5.5 11.5" />
-          <circle className="trophy-art__fill" cx="24" cy="29" r="15" />
-          <Numeral n={rank} y={35.2} size={17} />
+          <circle className="trophy-art__fill" cx="24" cy="30" r="14" />
+          <Numeral n={rank} y={36} size={17} />
         </>
       ) : (
         <>
-          <path d="M16 5l5 13M32 5l-5 13" />
-          <circle className="trophy-art__fill" cx="24" cy="29" r="12" />
-          <Numeral n={rank} y={33.6} size={13} />
+          <circle className="trophy-art__fill" cx="24" cy="30" r="12.5" />
+          <circle className="trophy-art__mill" cx="24" cy="30" r="9.2" />
+          <Numeral n={rank} y={34} size={11.5} />
         </>
       )}
     </Art>
   )
 }
 
-/** The rest of a top ten: a rosette with its place, teal for a week and violet for a month. */
+/** The rest of a top ten: a rosette with a beaded edge and its place, teal for a week and violet for a month. */
 export function TopTenRibbon({
   tone = 'weekly',
   size = 'md',
@@ -103,21 +135,43 @@ export function TopTenRibbon({
 }) {
   return (
     <Art tone={tone === 'monthly' ? 'month' : 'week'} size={size}>
-      <circle className="trophy-art__fill trophy-art__fill--soft" cx="24" cy="19" r="12" />
-      <path d="M17 29l-4 14 6-3 3 5 2-13M31 29l4 14-6-3-3 5-2-13" />
-      {rank ? <Numeral n={rank} y={23.3} size={12} /> : null}
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M17.5 28 13 43l5.5-2.5 3 4.5 2.5-15Z" />
+      <path className="trophy-art__fill trophy-art__fill--soft" d="M30.5 28 35 43l-5.5-2.5-3 4.5-2.5-15Z" />
+      {size === 'sm' ? (
+        <>
+          <circle className="trophy-art__fill" cx="24" cy="18" r="13" />
+          {rank ? <Numeral n={rank} y={rank >= 10 ? 22.6 : 23.6} size={rank >= 10 ? 13 : 15} /> : null}
+        </>
+      ) : (
+        <>
+          <circle className="trophy-art__bead" cx="24" cy="18" r="12.5" />
+          <circle className="trophy-art__fill" cx="24" cy="18" r="9.5" />
+          {rank ? <Numeral n={rank} y={22} size={11} /> : null}
+        </>
+      )}
     </Art>
   )
 }
 
-/** A month of the bug hunt caught in full: all ten, and a bug in a jar to show for it. */
+/** A month of the bug hunt caught in full: all ten, and a bug in a jar to show for it, air holes in the lid and a label for its month. */
 export function HuntSetJar({ size = 'md' }: { size?: TrophyArtSize }) {
   return (
     <Art tone="hunt" size={size}>
-      <rect x="15" y="5" width="18" height="6" rx="2" />
+      <rect x="14.5" y="4.5" width="19" height="6.5" rx="2" />
       <path className="trophy-art__fill trophy-art__fill--soft" d="M17 11v2.6c-3.4 2-5.4 5.4-5.4 9.4v13a6 6 0 0 0 6 6h12.8a6 6 0 0 0 6-6V23c0-4-2-7.4-5.4-9.4V11" />
-      <circle className="trophy-art__fill" cx="24" cy="30.5" r="5.5" />
-      <path d="M24 25v11M21.6 25.6l-2.4-3.2M26.4 25.6l2.4-3.2" />
+      {size === 'sm' ? (
+        <>
+          <ellipse className="trophy-art__fill" cx="24" cy="25" rx="5" ry="6" />
+          <path d="M24 19v12M19.5 22.5l-3-2M28.5 22.5l3-2M19.5 28l-3 2M28.5 28l3 2" />
+        </>
+      ) : (
+        <>
+          <path className="trophy-art__dots" d="M19 7.75h.01M24 7.75h.01M29 7.75h.01" />
+          <ellipse className="trophy-art__fill" cx="24" cy="23.5" rx="4.2" ry="5.2" />
+          <path d="M24 18.3v10.4M20.2 21l-2.8-1.8M27.8 21l2.8-1.8M19.8 24.5h-2.8M28.2 24.5h2.8M20.4 27.6l-2.4 2M27.6 27.6l2.4 2" />
+          <rect className="trophy-art__fill" x="16" y="33" width="16" height="6" rx="1.5" />
+        </>
+      )}
     </Art>
   )
 }
@@ -351,21 +405,44 @@ const SECRET_ART: Record<number, ReactNode> = {
   ),
 }
 
-/** A secret trophy: its own picture, in the secrets' rose. */
+/**
+ * A secret trophy: its own picture, in the secrets' rose, set in a round pin with a milled rim so it reads as
+ * something won. Small, the pin drops away and the picture keeps the room.
+ */
 export function SecretArt({ n, size = 'md' }: { n: number; size?: TrophyArtSize }) {
+  const picture = SECRET_ART[n] ?? <Numeral n="?" y={32} size={24} />
   return (
     <Art tone="secret" size={size}>
-      {SECRET_ART[n] ?? <Numeral n="?" y={32} size={24} />}
+      {size === 'sm' ? (
+        picture
+      ) : (
+        <>
+          <circle className="trophy-art__fill trophy-art__fill--soft" cx="24" cy="24" r="21" />
+          <circle className="trophy-art__mill" cx="24" cy="24" r="18.2" />
+          <g className="trophy-art__pin" transform="translate(24 24) scale(0.66) translate(-24 -24)">
+            {picture}
+          </g>
+        </>
+      )}
     </Art>
   )
 }
 
-/** A secret not found yet: only a question mark. */
+/** A secret not found yet: the empty pin, the size of a found one, with a question mark. */
 export function SecretUnknown({ size = 'md' }: { size?: TrophyArtSize }) {
   return (
     <Art tone="hidden" size={size}>
-      <circle cx="24" cy="24" r="16" strokeDasharray="4 4" />
-      <Numeral n="?" y={32} size={24} />
+      {size === 'sm' ? (
+        <>
+          <circle cx="24" cy="24" r="16" strokeDasharray="4 4" />
+          <Numeral n="?" y={32} size={24} />
+        </>
+      ) : (
+        <>
+          <circle cx="24" cy="24" r="21" strokeDasharray="4 4" />
+          <Numeral n="?" y={31} size={20} />
+        </>
+      )}
     </Art>
   )
 }

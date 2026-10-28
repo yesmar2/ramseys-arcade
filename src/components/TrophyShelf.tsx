@@ -1,17 +1,20 @@
 import { useState, type ReactNode } from 'react'
 import { tournamentCreateHref } from '../hooks/useHashRoute'
 import { ordinal } from '../lib/profileMath'
-import { summarizeTrophies, trophyTone, type TrophyAward } from '../lib/trophies'
+import { proudestTrophy, summarizeTrophies, trophyTone, type TrophyAward } from '../lib/trophies'
 import { medalKind } from './PodiumMedal'
 import { SET_SIZE } from '../lib/bugHuntPick'
 import { numberWord } from '../lib/numberWord'
 import { secretByNumber, SECRETS } from '../lib/secrets'
 import { useSeason } from '../lib/season'
 import { seasonHasStandings } from '../lib/seasonStandings'
-import { EventCup, HuntSetJar, MonthlyTrophyCup, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal, type TrophyArtSize } from './TrophyArt'
+import { EventCup, HuntSetJar, MonthlyTrophyCup, SeasonTrophy, SecretArt, SecretUnknown, TopTenRibbon, WeeklyMedal, type TrophyArtSize } from './TrophyArt'
 
-/** Board trophies shown before "Show all": three rows on a phone, two on a wide screen with your open place. */
-const BOARD_SHOWN = 9
+/** Board trophies shown before "Show all": two rows on a wide screen with your open place, four on a phone. */
+const BOARD_SHOWN = 11
+
+/** A shelf this full gives its rarest trophy pride of place over the ledges. */
+const PRIDE_FROM = 3
 
 function TrophyIcon({ trophy, size = 'md' }: { trophy: TrophyAward; size?: TrophyArtSize }) {
   const kind = medalKind(trophy.rank)
@@ -19,6 +22,7 @@ function TrophyIcon({ trophy, size = 'md' }: { trophy: TrophyAward; size?: Troph
   if (trophy.period === 'event') return <EventCup size={size} />
   if (trophy.period === 'hunt') return <HuntSetJar size={size} />
   if (trophy.period === 'secret') return <SecretArt n={trophy.periodKey} size={size} />
+  if (trophy.period === 'season' && kind) return <SeasonTrophy season={trophy.periodKey} rank={trophy.rank} size={size} />
   if (trophy.period === 'monthly' || trophy.period === 'season') return kind ? <MonthlyTrophyCup tone={kind} size={size} /> : <TopTenRibbon tone="monthly" rank={trophy.rank} size={size} />
   return kind ? <WeeklyMedal rank={trophy.rank} size={size} /> : <TopTenRibbon tone="weekly" rank={trophy.rank} size={size} />
 }
@@ -62,38 +66,82 @@ function trophyHaul(t: TrophyAward, isSelf: boolean): string | null {
   return t.games === 1 ? 'on 1 game' : `over ${t.games} games`
 }
 
+/** What a trophy is, in a few words: the event's name, the set's month, the secret's name, or its place. */
+function trophyTitle(t: TrophyAward): string {
+  if (t.period === 'event') return t.eventTitle ?? 'An event'
+  if (t.period === 'hunt') return `${setMonthOf(t.periodKey)}’s full set`
+  if (t.period === 'secret') return secretByNumber(t.periodKey)?.name ?? 'A secret'
+  return `${ordinal(t.rank)} of the ${t.period === 'season' ? 'season' : t.period === 'monthly' ? 'month' : 'week'}`
+}
+
+/** When it was for, in full; a secret's is the day it was found. */
+function whenLineOf(t: TrophyAward): string {
+  const when = trophyWhen(t)
+  return t.period === 'secret' ? `Found ${when}` : when
+}
+
 /**
- * A trophy in its own lit nook of the cabinet, spotlit in its colour, with
- * what it was and when under it. What it was won with is in the trophy's hover
- * text, and read out.
+ * When it was for, short enough for a trophy's small plate: a week by its Monday (the title already says week),
+ * a month without its year unless it was another year's. The hover text keeps the full words.
  */
-function Item({ trophy, isSelf }: { trophy: TrophyAward; isSelf: boolean }) {
-  const isEvent = trophy.period === 'event'
-  const isSet = trophy.period === 'hunt'
-  const isSecret = trophy.period === 'secret'
-  const title = isEvent
-    ? (trophy.eventTitle ?? 'An event')
-    : isSet
-      ? `${setMonthOf(trophy.periodKey)}’s full set`
-      : isSecret
-        ? (secretByNumber(trophy.periodKey)?.name ?? 'A secret')
-        : `${ordinal(trophy.rank)} of the ${trophy.period === 'season' ? 'season' : trophy.period === 'monthly' ? 'month' : 'week'}`
-  const when = trophyWhen(trophy)
-  const whenLine = isSecret ? `Found ${when}` : when
+function plateWhenOf(t: TrophyAward): string {
+  if (t.period === 'weekly') return trophyWhen(t).replace(/^Week of /, '')
+  if (t.period === 'monthly' || t.period === 'hunt') {
+    const y = Math.floor(t.periodKey / 100)
+    return y === new Date().getFullYear() ? setMonthOf(t.periodKey) : trophyWhen(t)
+  }
+  return whenLineOf(t)
+}
+
+/**
+ * A trophy standing on the cabinet's glass ledge, lit from below in its
+ * colour, with a small plate under it saying what it was and when. The same
+ * event won more than once stands once, tagged ×N, with every date in its
+ * hover text. What it was won with is in the hover text too, and read out.
+ */
+function Item({ trophy, isSelf, wins }: { trophy: TrophyAward; isSelf: boolean; wins?: TrophyAward[] }) {
+  const title = trophyTitle(trophy)
+  const whenLine = whenLineOf(trophy)
   const haul = trophyHaul(trophy, isSelf)
+  const times = wins && wins.length > 1 ? wins.length : 0
+  const hover = times
+    ? [title, `won ${numberWord(times)} times: ${wins!.map(trophyWhen).join(', ')}`]
+    : [title, whenLine, haul]
   return (
-    <li className="pshelf__cell" title={[title, whenLine, haul].filter(Boolean).join(' · ')}>
-      <span className={`pshelf__niche trophy-tone--${trophyTone(trophy.period, trophy.rank)}`}>
+    <li className="pshelf__item" title={hover.filter(Boolean).join(' · ')}>
+      <span className={`pshelf__stand trophy-tone--${trophyTone(trophy.period, trophy.rank)}`}>
         <TrophyIcon trophy={trophy} size="lg" />
+        {times ? (
+          <span className="pshelf__times" aria-hidden="true">
+            ×{times}
+          </span>
+        ) : null}
       </span>
-      <span className="pshelf__cell-name">{title}</span>
-      <span className="pshelf__cell-when">{whenLine}</span>
-      {haul ? <span className="pshelf__sr">{haul}</span> : null}
+      <span className="pshelf__plate">
+        <span className="pshelf__plate-name">{title}</span>
+        <span className="pshelf__plate-when">{plateWhenOf(trophy)}</span>
+      </span>
+      {times ? <span className="pshelf__sr">Won {numberWord(times)} times.</span> : haul ? <span className="pshelf__sr">{haul}</span> : null}
     </li>
   )
 }
 
-/** One of the cabinet's shelves: its name and a count along a rule, then its nooks. */
+/** A gap on the ledge: this week's open place, or the secrets still hidden. Its plate is quieter. */
+function Gap({ art, name, when }: { art: ReactNode; name: string; when: string }) {
+  return (
+    <li className="pshelf__item pshelf__item--gap">
+      <span className="pshelf__stand trophy-tone--hidden" aria-hidden="true">
+        {art}
+      </span>
+      <span className="pshelf__plate">
+        <span className="pshelf__plate-name">{name}</span>
+        <span className="pshelf__plate-when">{when}</span>
+      </span>
+    </li>
+  )
+}
+
+/** One of the cabinet's ledges: its name and a count along a rule, then its trophies standing on the glass. */
 function Section({ name, count, children, after }: { name: string; count: string; children?: ReactNode; after?: ReactNode }) {
   return (
     <section className="pshelf__section" aria-label={name}>
@@ -102,21 +150,33 @@ function Section({ name, count, children, after }: { name: string; count: string
         <span className="pshelf__sec-rule" aria-hidden="true" />
         <span className="pshelf__sec-count">{count}</span>
       </div>
-      {children ? <ol className="pshelf__grid">{children}</ol> : null}
+      {children ? <ol className="pshelf__ledge">{children}</ol> : null}
       {after}
     </section>
   )
 }
 
+/** Events won, one each by name: the same event won again stands once, with all its wins, newest first. */
+function eventWins(events: TrophyAward[]): TrophyAward[][] {
+  const byName = new Map<string, TrophyAward[]>()
+  for (const t of events) {
+    const key = (t.eventTitle ?? t.id).trim().toLowerCase()
+    const wins = byName.get(key)
+    if (wins) wins.push(t)
+    else byName.set(key, [t])
+  }
+  return [...byName.values()]
+}
+
 /**
- * The trophy shelf: a dark display cabinet, each trophy lit in a nook of its
- * own, with event wins on one shelf, full months of the bug hunt on another,
- * secrets on a third and top-ten finishes of a week, a month or a season on
- * the last, newest first. Your own shelf keeps a nook open for this week, and
- * shows how many secrets are still hidden. With nothing on it yet, it says how
- * things get onto it; for most of the arcade that is winning an event among
- * friends or catching a month of bugs, since the top ten of everyone is a
- * small club.
+ * The trophy shelf: a dark display cabinet with glass ledges, the rarest
+ * trophy given pride of place on a pedestal above them. Event wins stand on
+ * one ledge, full months of the bug hunt on another, secrets on a third and
+ * top-ten finishes of a week, a month or a season on the last, newest first.
+ * Your own shelf keeps a gap open for this week, and one for the secrets
+ * still hidden. With nothing on it yet, it says how things get onto it; for
+ * most of the arcade that is winning an event among friends or catching a
+ * month of bugs, since the top ten of everyone is a small club.
  */
 export function TrophyShelf({
   trophies,
@@ -150,6 +210,8 @@ export function TrophyShelf({
   const hidden = isSelf ? SECRETS.filter((x) => !secrets.some((t) => t.periodKey === x.n)) : []
   const boards = trophies.filter((t) => t.period === 'weekly' || t.period === 'monthly' || t.period === 'season').sort(newest)
   const shownBoards = showAll ? boards : boards.slice(0, BOARD_SHOWN)
+  const pride = trophies.length >= PRIDE_FROM ? proudestTrophy(trophies) : null
+  const prideHaul = pride ? trophyHaul(pride, isSelf) : null
   const s = summarizeTrophies(trophies)
   const bits = [
     s.events > 0 ? `${s.events} ${s.events === 1 ? 'event' : 'events'} won` : null,
@@ -233,10 +295,22 @@ export function TrophyShelf({
         </div>
       ) : (
         <div className="pshelf__cabinet">
+          {pride ? (
+            <div className="pshelf__pride">
+              <span className={`pshelf__pedestal trophy-tone--${trophyTone(pride.period, pride.rank)}`} aria-hidden="true">
+                <TrophyIcon trophy={pride} size="lg" />
+              </span>
+              <span className="pshelf__pride-words">
+                <span className="pshelf__pride-cap">Pride of place</span>
+                <span className="pshelf__pride-name">{trophyTitle(pride)}</span>
+                <span className="pshelf__pride-when">{[whenLineOf(pride), prideHaul].filter(Boolean).join(' · ')}</span>
+              </span>
+            </div>
+          ) : null}
           {events.length > 0 ? (
             <Section name="Events won" count={String(events.length)}>
-              {events.map((t) => (
-                <Item key={t.id} trophy={t} isSelf={isSelf} />
+              {eventWins(events).map((wins) => (
+                <Item key={wins[0]!.id} trophy={wins[0]!} isSelf={isSelf} wins={wins} />
               ))}
             </Section>
           ) : null}
@@ -248,27 +322,17 @@ export function TrophyShelf({
             </Section>
           ) : null}
           {secrets.length > 0 || hidden.length > 0 ? (
-            <Section
-              name="Secrets"
-              count={isSelf ? `${secrets.length} of ${SECRETS.length}` : String(secrets.length)}
-              after={
-                hidden.length > 0 ? (
-                  <div className="pshelf__minis">
-                    <span className="pshelf__minis-row" aria-hidden="true">
-                      {hidden.map((x) => (
-                        <span key={x.n} className="pshelf__mini">
-                          <SecretUnknown size="sm" />
-                        </span>
-                      ))}
-                    </span>
-                    <span className="pshelf__minis-note">
-                      {hidden.length === 1 ? 'One still hidden.' : `${hidden.length} still hidden.`}
-                    </span>
-                  </div>
-                ) : null
-              }
-            >
-              {secrets.length > 0 ? secrets.map((t) => <Item key={t.id} trophy={t} isSelf={isSelf} />) : null}
+            <Section name="Secrets" count={isSelf ? `${secrets.length} of ${SECRETS.length}` : String(secrets.length)}>
+              {secrets.map((t) => (
+                <Item key={t.id} trophy={t} isSelf={isSelf} />
+              ))}
+              {hidden.length > 0 ? (
+                <Gap
+                  art={<SecretUnknown size="lg" />}
+                  name={hidden.length === 1 ? 'One to find' : `${hidden.length} to find`}
+                  when="Hidden about"
+                />
+              ) : null}
             </Section>
           ) : null}
           {boards.length > 0 || isSelf ? (
@@ -286,15 +350,7 @@ export function TrophyShelf({
               {shownBoards.map((t) => (
                 <Item key={t.id} trophy={t} isSelf={isSelf} />
               ))}
-              {isSelf ? (
-                <li className="pshelf__cell pshelf__cell--open">
-                  <span className="pshelf__niche pshelf__niche--open" aria-hidden="true">
-                    +
-                  </span>
-                  <span className="pshelf__cell-name">This week</span>
-                  <span className="pshelf__cell-when">Still open</span>
-                </li>
-              ) : null}
+              {isSelf ? <Gap art={<span className="pshelf__open">+</span>} name="This week" when="Still open" /> : null}
             </Section>
           ) : null}
         </div>

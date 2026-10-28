@@ -91,6 +91,29 @@ html[data-theme='dark'] {
   fill-opacity: 0.16;
 }
 
+/* A medal's or a secret pin's milled rim: fine ticks round the disc. */
+.trophy-art__mill {
+  stroke-width: 1.4px;
+  stroke-dasharray: 1 2.2;
+}
+
+/* A rosette's beaded edge: round dots at even steps all the way round (15 on a 12.5 ring). */
+.trophy-art__bead {
+  stroke-width: 5px;
+  stroke-dasharray: 0.01 5.226;
+  stroke-opacity: 0.55;
+}
+
+/* The air holes in a bug hunt jar's lid. */
+.trophy-art__dots {
+  stroke-width: 2.6px;
+}
+
+/* A secret's picture is drawn at two-thirds inside its pin, so its lines are drawn heavier to match. */
+.trophy-art__pin {
+  stroke-width: 3.2px;
+}
+
 .trophy-art__num {
   fill: currentColor;
   stroke: none;

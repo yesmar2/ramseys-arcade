@@ -846,9 +846,9 @@ html[data-theme='light'] .pgames__all {
 
 /*
  * The cabinet: dark in both themes, like a real display case, so the trophies
- * inside take the dark theme's brighter tones and its light words. Each trophy
- * stands in a nook of its own, spotlit from above in its colour, with its name
- * and when under it.
+ * inside take the dark theme's brighter tones and its light words. Its rarest
+ * trophy stands on a pedestal at the top; the rest stand side by side on lit
+ * glass ledges, each with a small plate under it saying what and when.
  */
 .pshelf__cabinet {
   --tr-gold: #f5c542;
@@ -903,130 +903,233 @@ html[data-theme='light'] .pgames__all {
   background: rgba(231, 238, 243, 0.09);
 }
 
-.pshelf__grid {
+/* Pride of place: the rarest trophy, big, spotlit from above on a pedestal, with what it is beside it. */
+.pshelf__pride {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 0.15rem 0.35rem 1.1rem;
+  border-bottom: 1px solid rgba(231, 238, 243, 0.07);
+}
+
+.pshelf__pedestal {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  justify-content: center;
+  width: 10.5rem;
+  height: 9.5rem;
+  box-sizing: border-box;
+  padding-bottom: 0.85rem;
+  background: radial-gradient(ellipse 50% 70% at 50% 0%, color-mix(in srgb, var(--tr-tone) 24%, transparent), transparent 75%);
+}
+
+/* The pedestal's block. */
+.pshelf__pedestal::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 8.5rem;
+  height: 0.85rem;
+  transform: translateX(-50%);
+  border-radius: 0.25rem 0.25rem 0.12rem 0.12rem;
+  background: linear-gradient(180deg, #2b3640, #1a232b);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.pshelf__pedestal .trophy-art svg {
+  width: 7.5rem;
+  height: 7.5rem;
+}
+
+.pshelf__pride-words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.pshelf__pride-cap {
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tr-gold);
+}
+
+.pshelf__pride-name {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.pshelf__pride-when {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #9bb0be;
+}
+
+/*
+ * A ledge: trophies side by side, each row the same height, so a strip of lit
+ * glass (drawn once per row, the full width) runs under every row's trophies,
+ * with a shadow below it.
+ */
+.pshelf__ledge {
+  --ledge-row: 9.5rem;
+  --ledge-gap: 1.1rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
-  gap: 0.9rem 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(5.6rem, 1fr));
+  grid-auto-rows: var(--ledge-row);
+  gap: var(--ledge-gap) 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  background: linear-gradient(
+      180deg,
+      transparent 5.1rem,
+      rgba(190, 225, 255, 0.34) 5.1rem,
+      rgba(190, 225, 255, 0.1) 5.4rem,
+      rgba(0, 0, 0, 0.38) 5.4rem,
+      transparent 6.2rem
+    )
+    0 0 / 100% calc(var(--ledge-row) + var(--ledge-gap)) repeat-y;
 }
 
-.pshelf__cell {
+.pshelf__item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
   min-width: 0;
   text-align: center;
 }
 
-.pshelf__niche {
+/* Where a trophy stands: on the glass (the ledge's strip at 5.1rem), lit from below in its colour. */
+.pshelf__stand {
   position: relative;
   display: flex;
+  flex: none;
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  height: 6.25rem;
-  margin-bottom: 0.3rem;
+  height: 5.4rem;
   box-sizing: border-box;
-  padding-bottom: 0.8rem;
-  border-radius: 0.9rem;
-  background:
-    radial-gradient(ellipse 72% 62% at 50% 0%, color-mix(in srgb, var(--tr-tone) 24%, transparent), transparent 72%),
-    linear-gradient(180deg, #0a1015, #121c25);
-  box-shadow:
-    inset 0 9px 18px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px color-mix(in srgb, var(--tr-tone) 30%, transparent);
+  padding-bottom: 0.3rem;
+  background: radial-gradient(ellipse 46% 30% at 50% 94%, color-mix(in srgb, var(--tr-tone) 34%, transparent), transparent 72%);
 }
 
-/* The trophy's shadow on the nook's floor. */
-.pshelf__niche::after {
-  content: '';
-  position: absolute;
-  bottom: 0.55rem;
-  left: 50%;
-  width: 3.1rem;
-  height: 0.5rem;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  pointer-events: none;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), transparent);
-}
-
-.pshelf__niche .trophy-art {
+.pshelf__stand .trophy-art {
   position: relative;
   z-index: 1;
 }
 
-/* This week's nook on your own shelf: empty, waiting. */
-.pshelf__niche--open {
-  align-items: center;
-  padding: 0;
-  background: none;
-  box-shadow: none;
-  border: 1.5px dashed rgba(231, 238, 243, 0.2);
-  font-size: 1.6rem;
-  font-weight: 500;
-  color: #9bb0be;
+/* The same event won again: how many times, on a tag in its colour. */
+.pshelf__times {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.3rem;
+  z-index: 2;
+  padding: 0.05rem 0.4rem;
+  border-radius: 99px;
+  background: var(--tr-tone);
+  color: #0c141a;
+  font-size: 0.66rem;
+  font-weight: 800;
 }
 
-.pshelf__niche--open::after {
-  display: none;
+.pshelf__plate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  max-width: calc(100% - 0.5rem);
+  margin-top: 0.8rem;
+  box-sizing: border-box;
+  padding: 0.25rem 0.4rem 0.3rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(180deg, #26313b, #1b242c);
+  box-shadow: inset 0 0 0 1px rgba(231, 238, 243, 0.08);
 }
 
-.pshelf__cell-name {
+.pshelf__plate-name {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 800;
   line-height: 1.2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
-.pshelf__cell-when {
+.pshelf__plate-when {
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.7rem;
+  font-size: 0.67rem;
   font-weight: 600;
   color: #9bb0be;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The secrets you haven't found: a row of small dark nooks, and how many. */
-.pshelf__minis {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  margin-top: 0.75rem;
+/* A gap on the ledge (this week's place, the secrets still hidden): no light, a plain outlined plate. */
+.pshelf__item--gap .pshelf__stand {
+  background: none;
 }
 
-.pshelf__minis-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+.pshelf__item--gap .trophy-art {
+  opacity: 0.8;
 }
 
-.pshelf__mini {
-  display: grid;
-  place-items: center;
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: 0.55rem;
-  background: #0a1015;
-  box-shadow:
-    inset 0 3px 8px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px rgba(231, 238, 243, 0.07);
-  opacity: 0.75;
+.pshelf__item--gap .pshelf__plate {
+  background: none;
+  box-shadow: inset 0 0 0 1px rgba(231, 238, 243, 0.12);
 }
 
-.pshelf__minis-note {
-  font-size: 0.74rem;
-  font-weight: 600;
+.pshelf__item--gap .pshelf__plate-name {
   color: #9bb0be;
+}
+
+.pshelf__open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.6rem;
+  height: 3.6rem;
+  margin-bottom: 0.25rem;
+  box-sizing: border-box;
+  border: 1.5px dashed rgba(231, 238, 243, 0.22);
+  border-radius: 50%;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #9bb0be;
+}
+
+@media (max-width: 560px) {
+  .pshelf__pride {
+    gap: 0.9rem;
+  }
+
+  .pshelf__pedestal {
+    width: 7rem;
+    height: 7rem;
+    padding-bottom: 0.7rem;
+  }
+
+  .pshelf__pedestal::after {
+    width: 5.8rem;
+    height: 0.7rem;
+  }
+
+  .pshelf__pedestal .trophy-art svg {
+    width: 5.2rem;
+    height: 5.2rem;
+  }
+
+  .pshelf__pride-name {
+    font-size: 1.25rem;
+  }
 }
 
 .pshelf__cabinet .pshelf__more {
