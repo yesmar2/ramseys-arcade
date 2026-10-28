@@ -53,8 +53,11 @@ const BLUE: Record<RaceGame, string> = { hotlap: 'blue car', marblerun: 'blue ba
  * seven hills to then landed 29.6 to 43.3% under the blue bird (33.8% the middle day), and he held platinum's 39%
  * on three. At 31.5% he holds it on six, today's (#22, 31.8%) by a quarter of a second. He found that "a little
  * too easy" the same day, so it's 12% a step (platinum 36%): he holds it on four of the seven, gold on all of them.
+ * Sling's went from 10% to 12% (platinum 30% to 36%) on 2026-10-28, when its platinum was "way to easy": his
+ * second try on day 10 beat it by 7s (59.28, 37.4% under the blue blip), after a first "really bad" one that
+ * nearly had it. At 36% that run holds it by 1.3s; his best on the ten towers to then landed 21 to 57% under.
  */
-export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.12, wobblerun: 0.12, sling: 0.1 }
+export const MEDAL_STEP: Record<RaceGame, number> = { hotlap: 0.05, marblerun: 0.1, lander: 0.1, swoop: 0.12, wobblerun: 0.12, sling: 0.12 }
 
 /**
  * How many of the game's steps faster than the blue each medal is. Platinum stays three, where it was tuned to
