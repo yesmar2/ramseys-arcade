@@ -12,7 +12,11 @@ import { CAR, load, speedPlan, type Track } from './sim.ts'
  * (the middle pulled tight between the edges), driven on the limit of grip and with the engine's own pull out of
  * each corner. His best laps were 95.8% of it on those seven, give or take 2% (the blue car's were 79%, give or
  * take 5%), so platinum is that share of it and half a second more. Bronze, silver and gold sit between the blue
- * car and platinum as the other races' do (lib/raceMedals.ts MEDAL_RUNGS).
+ * car and platinum (lib/raceMedals.ts medalRungs).
+ *
+ * On 2026-10-28 (track 33, Ember Bends, a run of quick S-bends) his lap was 90.7% of the quick lap and beat
+ * platinum by 3s ("platinum on todays race track was too easy again"): the line here doesn't cut chicanes as
+ * straight as he does. So that track is his lap too, and the share is his laps' middle on all eight (95.2%).
  */
 
 /** Platinum on the tracks Ramsey has driven at his best (his best lap there, from production, + 500 ms), by track. */
@@ -24,10 +28,11 @@ export const PLATINUM_FROM_LAPS: Readonly<Record<number, number>> = {
   29: 51_017, // Oct 24: 50.517
   30: 49_192, // Oct 25: 48.692
   31: 51_392, // Oct 26: 50.892
+  33: 44_133, // Oct 28: 43.633
 }
 
-/** His best laps on those tracks as a share of the quick lap worked out for each. */
-export const QUICK_LAP_SHARE = 0.9584
+/** His best laps on those tracks as a share of the quick lap worked out for each: the middle of the eight. */
+export const QUICK_LAP_SHARE = 0.952
 /** Platinum is this much slower than the share of the quick lap: "about a half second slower than my best runs". */
 export const PLATINUM_SLACK_MS = 500
 
