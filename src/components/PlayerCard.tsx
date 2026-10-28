@@ -379,7 +379,7 @@ export function PlayerCard({
   const bestGame = best ? getGame(best.slug) : null
   const line = best && bestGame ? `Best at ${bestGame.name} · ${placeWords(best.rank, best.total)}` : null
 
-  // The hand: up to four, in this order, each only when there's something to show.
+  // The hand: up to four, in this order, each only when there's something to show, then Stickers as a fifth.
   const hand: ReactNode[] = []
   if (best && bestGame) {
     hand.push(
@@ -448,7 +448,7 @@ export function PlayerCard({
     )
   }
   // Stickers: the album is the card's back, so this one turns the card over. Its only other way in is the card's
-  // corner button, so it always has a place: the last of the four.
+  // corner button, so it always has a place: a fifth card after the four (2026-10-28, so Trophies stays on your own).
   let stickers: ReactNode = null
   const pasted = album ? album.pages.reduce((n, p) => n + p.stickers.filter((st) => p.got.has(st.id)).length, 0) : 0
   if (album && (pasted > 0 || isSelf)) {
@@ -480,7 +480,7 @@ export function PlayerCard({
       </Mini>
     )
   }
-  const room = stickers ? 3 : 4
+  const room = 4
   const owned = skins ? SKINS.filter((s) => skins.includes(s.id)) : []
   if (owned.length && hand.length < room) {
     // Your own card shows a skin you play in first.

@@ -827,6 +827,8 @@ html[data-theme='light'] .fac .plus-mark svg {
   flex-direction: column;
   gap: 1.4rem;
   min-width: 0;
+  /* The hand's cards size to this column (cqi), so five fit beside the card at any width. */
+  container-type: inline-size;
 }
 
 .pc__words {
@@ -944,8 +946,39 @@ html[data-theme='light'] .fac .plus-mark svg {
   transform: rotate(6deg) translateY(0.4rem);
 }
 
-.pc-mini:hover,
-.pc-mini:focus-within {
+/* Five in the hand (Stickers after the four): a wider fan. */
+.pc-mini:first-child:nth-last-child(5) {
+  transform: rotate(-7deg) translateY(0.6rem);
+}
+
+.pc-mini:nth-child(2):nth-last-child(4) {
+  transform: rotate(-3.5deg) translateY(0.1rem);
+}
+
+.pc-mini:nth-child(3):nth-last-child(3) {
+  transform: rotate(0);
+}
+
+.pc-mini:nth-child(4):nth-last-child(2) {
+  transform: rotate(3.5deg) translateY(0.1rem);
+}
+
+.pc-mini:nth-child(5):last-child {
+  transform: rotate(7deg) translateY(0.6rem);
+}
+
+/* Where the side is narrower than the hand, the cards overlap more rather than run past it; the last keeps its width. */
+.pc-mini {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.pc-mini:last-child {
+  flex-shrink: 0;
+}
+
+.pc-hand .pc-mini:hover,
+.pc-hand .pc-mini:focus-within {
   z-index: 2;
   transform: rotate(0) translateY(-0.5rem);
 }
@@ -954,8 +987,8 @@ html[data-theme='light'] .fac .plus-mark svg {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 9.25rem;
-  height: 13rem;
+  width: min(9.25rem, 21.5cqi);
+  aspect-ratio: 9.25 / 13;
   overflow: hidden;
   border-radius: 0.9rem;
   border: 2px solid rgba(255, 255, 255, 0.22);
@@ -1181,6 +1214,33 @@ button.pc-mini__card {
   scroll-margin-top: calc(var(--header-h) + 1.5rem);
 }
 
+/* A narrow column beside the card (a window between a phone's and a computer's): the hand's words at a phone's size. */
+@container (max-width: 33rem) {
+  .pc-mini__cap {
+    font-size: 0.5rem;
+    top: 0.35rem;
+    left: 0.35rem;
+    padding: 0.15rem 0.4rem;
+    white-space: nowrap;
+  }
+
+  .pc-mini__art {
+    inset: 0 0 2.6rem;
+  }
+
+  .pc-mini__foot {
+    padding: 0.8rem 0.45rem 0.45rem;
+  }
+
+  .pc-mini__foot b {
+    font-size: 0.82rem;
+  }
+
+  .pc-mini__foot span {
+    display: none;
+  }
+}
+
 /* ---------- narrower ---------- */
 
 @media (max-width: 1100px) {
@@ -1204,8 +1264,7 @@ button.pc-mini__card {
   }
 
   .pc-mini__card {
-    width: 8.25rem;
-    height: 11.6rem;
+    width: min(8.25rem, 21.5cqi);
   }
 }
 
@@ -1263,9 +1322,7 @@ button.pc-mini__card {
   }
 
   .pc-mini__card {
-    width: min(6.4rem, 22vw);
-    height: auto;
-    aspect-ratio: 9.25 / 13;
+    width: min(5.8rem, 21.5cqi);
     border-radius: 0.7rem;
   }
 
