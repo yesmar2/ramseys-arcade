@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { comingWords, deviceRequirementLabel, isComingSoon, isRankedGame, TAG_LABELS, type Game } from '../data/games'
 import { gameHref, gamePlayHref, homeHref } from '../hooks/useHashRoute'
+import { useAuth } from '../hooks/useAuth'
+import { useIsAdmin } from '../lib/admin'
 import { APP_NAME } from '../lib/brand'
 import { inkOn, readableFill } from '../lib/color'
 import { dailyWords } from '../lib/dailyWords'
@@ -110,11 +112,18 @@ export function GameHubHero({
   const kicker = isComingSoon(game) ? comingWords(game) : game.inDevelopment ? 'New' : null
   // A new game before its launch day (lib/earlyAccess.ts): when everyone plays it, and Plus members' week first.
   const launch = launchDayOf(game.slug)
-  const launchLine = launch
-    ? earlyStage(game.slug) === 'early'
+  const launchLine =
+    launch && earlyStage(game.slug) === 'early'
       ? `Plus members are playing it a week early. Everyone can play from ${archiveDayWords(launch)}.`
-      : `Out ${archiveDayWords(launch)}. Plus members can play it a week early, from ${archiveDayWords(earlyFrom(launch))}.`
-    : null
+      : null
+  // Till it's yours to play, a date card stands where Play would (A on Ramsey's pick, 2026-10-28: "I think it needs
+  // to be more obvious that it's coming Nov 21st"): everyone's before the early week, and in it everyone's but Plus
+  // members'. An admin gets a small way in under it.
+  const { isPlus } = useAuth()
+  const admin = useIsAdmin()
+  const soon = launch && !(earlyStage(game.slug) === 'early' && isPlus) ? launch : null
+  const toGo = soon ? Math.round((Date.parse(`${soon}T12:00:00Z`) - Date.parse(`${boardDay()}T12:00:00Z`)) / 86_400_000) : 0
+  const soonMonth = soon ? new Date(`${soon}T12:00:00Z`).toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) : ''
   const daily = Boolean(game.daily)
   const ranked = isRankedGame(game.slug)
   const playLabel = daily ? dailyPlayLabel(game.slug) : `Play ${game.name}`
@@ -161,7 +170,18 @@ export function GameHubHero({
           </h1>
           <p className="gh-hero__blurb">{game.description}</p>
           <div className="gh-hero__acts">
-            {canPlay ? (
+            {soon ? (
+              <p className="gh-soon">
+                <span className="gh-soon__cal" aria-hidden="true">
+                  <span>{soonMonth}</span>
+                  <b>{Number(soon.slice(8))}</b>
+                </span>
+                <span className="gh-soon__words">
+                  <b>Coming {archiveDayWords(soon)}</b>
+                  <span>{toGo === 1 ? 'Tomorrow' : `${toGo} days to go`}</span>
+                </span>
+              </p>
+            ) : canPlay ? (
               <a ref={ctaRef} className="gh-play" href={playHref}>
                 <PlayIcon />
                 {playLabel}
@@ -184,6 +204,20 @@ export function GameHubHero({
                 ? 'Coming soon. The screen shows what it will be.'
                 : (deviceRequirementLabel(game) ?? `${game.name} isn’t available on this device.`)}
             </p>
+          ) : soon ? (
+            <p className="gh-hero__hint">
+              {earlyStage(game.slug) === 'early'
+                ? 'Plus members are playing it now, a week early.'
+                : `Plus members play it a week early, from ${archiveDayWords(earlyFrom(soon))}.`}
+              {admin ? (
+                <>
+                  {' '}
+                  <a className="gh-soon__admin" href={playHref}>
+                    Play early (admin)
+                  </a>
+                </>
+              ) : null}
+            </p>
           ) : launchLine ? (
             <p className="gh-hero__hint">{launchLine}</p>
           ) : null}
@@ -197,7 +231,7 @@ export function GameHubHero({
       {/* The game on its screen (a daily's, today): its thumb until the first frame is down. */}
       <a
         className={screenClass}
-        href={canPlay ? playHref : gameHref(game.slug)}
+        href={canPlay && !soon ? playHref : gameHref(game.slug)}
         tabIndex={-1}
         aria-hidden="true"
         data-hunt={`g-screen-${game.slug}`}
@@ -223,10 +257,10 @@ export function GameHubHero({
             {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}
           </span>
         ) : null}
-        {canPlay ? <span className="gh-screen__start">Press start</span> : null}
+        {canPlay && !soon ? <span className="gh-screen__start">Press start</span> : null}
       </a>
 
-      {canPlay && typeof document !== 'undefined'
+      {canPlay && !soon && typeof document !== 'undefined'
         ? createPortal(
             <a
               className={`gh-float${floating ? ' gh-float--on' : ''}`}
