@@ -12,7 +12,9 @@ import '../styles/dailyPast.css'
 /*
  * A new game's play page before its launch day (lib/earlyAccess.ts): Plus members play it the week before,
  * admins any time, and anyone else gets this card in its place, saying when it launches and when Plus
- * members can play it. Until it's known who's signed in, nothing shows.
+ * members can play it. Until it's known who's signed in, the card shows too: it's the answer for nearly everyone,
+ * and a blank page while the API is asked read as a broken one (Ramsey, 2026-10-28: "it brings me to an empty
+ * screen").
  */
 export function EarlyGate({ slug, children }: { slug: string; children: ReactNode }) {
   const stage = earlyStage(slug)
@@ -20,7 +22,6 @@ export function EarlyGate({ slug, children }: { slug: string; children: ReactNod
   const { isPlus } = useAuth()
   const launch = launchDayOf(slug)
   if (!launch || !stage || open === true) return <>{children}</>
-  if (open === undefined) return null
   const name = getGame(slug)?.name ?? slug
   const when = archiveDayWords(launch)
   const early = archiveDayWords(earlyFrom(launch))

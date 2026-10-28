@@ -48,7 +48,9 @@ function inTab(game: Game, tab: Tab) {
  * next one placed is the first that touches no tile of its own colour in
  * any of those layouts. When that runs into a corner, a few seeded runs try
  * other clean choices and the arrangement with the fewest clashes wins. A
- * lead, when one is given, goes first whatever happens.
+ * lead, when one is given, goes first whatever happens, and a game still to
+ * come goes last (Ramsey, 2026-10-28: "we should put it at the bottom of the
+ * game list").
  */
 const WALL_COLUMNS = [6, 5, 4, 3, 2]
 
@@ -132,7 +134,10 @@ function arrangeOnce(
   const leadAt = pool.findIndex((g) => g.slug === lead)
   if (leadAt >= 0) take(leadAt)
   while (pool.length) {
+    // A game still to come waits for every game you can play, whatever its colour.
+    const playableLeft = pool.some((g) => !isComingSoon(g))
     const scored = pool.map((g) => {
+      if (playableLeft && isComingSoon(g)) return Infinity
       let clashes = 0
       layouts.forEach((placed, li) => {
         const at = placeIn(g, placed, WALL_COLUMNS[li]!)
@@ -343,7 +348,8 @@ export function WallTile({
     '--tile-text': tileText(accent),
     animationDelay: `${Math.min(index, 12) * 0.04}s`,
   } as CSSProperties
-  const flag = isComingSoon(game)
+  const coming = isComingSoon(game)
+  const flag = coming
     ? { label: comingWords(game), kind: 'soon' }
     : daily
       ? { label: 'Today’s event', kind: 'daily' }
@@ -386,8 +392,13 @@ export function WallTile({
     <li className="wall__cell" data-hunt={hunt}>
       <div className="wall-tile" style={style}>
         {/* The screen is the way straight in: a tap on it opens the game itself, not its page (the launch review's
-            "fewer taps to play"). The game plays on it under a pointer, as ever. */}
-        <a className="wall-tile__screen" href={gamePlayHref(game.slug)} aria-label={`Play ${game.name}`}>
+            "fewer taps to play"). The game plays on it under a pointer, as ever. A game still to come can't be
+            played yet, so its screen goes to its page, which says when. */}
+        <a
+          className="wall-tile__screen"
+          href={coming ? gameHref(game.slug) : gamePlayHref(game.slug)}
+          aria-label={coming ? `${game.name}, ${comingWords(game).toLowerCase()}` : `Play ${game.name}`}
+        >
           <span className="wall-tile__art" aria-hidden="true">
             <GameArt slug={game.slug} shape="card" fallback={<GameThumbArt slug={game.slug} accent={accent} />} />
           </span>
@@ -428,10 +439,12 @@ export function WallTile({
               <span className="wall-tile__score-hint">The scores didn’t load.</span>
             )}
           </span>
-          <span className="wall-tile__play" aria-hidden="true">
-            <PlayGlyph />
-            <span className="wall-tile__play-word">Play</span>
-          </span>
+          {coming ? null : (
+            <span className="wall-tile__play" aria-hidden="true">
+              <PlayGlyph />
+              <span className="wall-tile__play-word">Play</span>
+            </span>
+          )}
         </a>
         <a className="wall-tile__info" href={gameHref(game.slug)} aria-label={label}>
           <span className="wall-tile__title" aria-hidden="true">
