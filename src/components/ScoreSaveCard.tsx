@@ -592,8 +592,10 @@ export function ScoreSaveCard({
   /** A racing daily's Share run (Ramsey picked it, 2026-10-23): a pill in place of the Share link. */
   const ghostShare = Boolean(shareLine) && RACE_GHOST_GAMES.has(gameSlug)
   let shareRun: ReportAction | null = null
-  /** It sends a link that races your ghost, not only the run's lines. */
-  let shareDares = false
+  /** A saved run's way to a friend, also on the run's own page: no waiting for the last page to send it. */
+  let sendRun: ReportAction | null = null
+  /** It sends a run to beat (a ghost to race, a challenge), not a reply or a friend's name, so news can say Dare. */
+  let sendDares = false
 
   if (phase === 'needAuth') {
     // The other runs kept on this device go on with it.
@@ -770,7 +772,7 @@ export function ScoreSaveCard({
         },
       }
       secondary = shareRun
-      shareDares = true
+      sendDares = true
     } else {
       secondary = {
         label: sending ? 'Making the link…' : challengeCopied ? 'Copied' : 'Challenge a friend',
@@ -789,7 +791,9 @@ export function ScoreSaveCard({
             .finally(() => setSending(false))
         },
       }
+      sendDares = true
     }
+    sendRun = secondary
     if (sendError) moment = <p className="panel__error">{sendError}</p>
     else if (challenged) moment = <PushAsk reason="challenge" />
   }
@@ -948,11 +952,15 @@ export function ScoreSaveCard({
     primary: playAgain,
     secondary,
     secondaryLook: secondary && secondary === shareRun ? 'share' : 'ghost',
-    // A new best or a new medal is the moment to send it: the same Share on the run's own page, while it's news.
+    // Every saved run can go to a friend from its own page, not only the last one (a tester, 2026-10-29, didn't
+    // want to wait to share): the same button as the last page's. A new best or a new medal says Dare, while it's news.
     dare:
-      shareRun && shareDares && (medalNew || bestLine?.tone === 'accent')
-        ? { ...shareRun, label: sending ? 'Making the link…' : lineShare.copied ? 'Copied' : `Dare a friend to beat ${said}` }
-        : null,
+      sendRun && sendDares && (medalNew || bestLine?.tone === 'accent')
+        ? {
+            ...sendRun,
+            label: sending ? 'Making the link…' : (sendRun === shareRun ? lineShare.copied : challengeCopied) ? 'Copied' : `Dare a friend to beat ${said}`,
+          }
+        : sendRun,
     who,
     links,
   })
