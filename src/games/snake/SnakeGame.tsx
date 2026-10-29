@@ -497,6 +497,7 @@ export function SnakeGame() {
               slug="snake"
               value={chaseValue}
               elapsedMs={ui.waiting || runStartRef.current == null ? null : performance.now() - runStartRef.current}
+              runKey={runStartRef.current ?? 0}
             />
           ) : null}
 

@@ -1278,7 +1278,14 @@ export type Snapshot = {
   /** Milliseconds into the run it became a Leviathan; null if it never did. */
   leviathanMs: number | null
   serial: number
+  /** Milliseconds into the run, on the clock Leviathan is timed by (paused time left out). */
+  elapsedMs: number
+  /** Growth toward Leviathan, 0 to LEVIATHAN_GROWTH: every size's bar so far, and this one's. */
+  growth: number
 }
+
+/** All the growth from Fry to Leviathan. */
+export const LEVIATHAN_GROWTH = GROW_NEED.reduce((sum, n) => sum + n, 0)
 
 export function toSnapshot(s: GameState): Snapshot {
   return {
@@ -1293,5 +1300,10 @@ export function toSnapshot(s: GameState): Snapshot {
     frenzies: s.frenzies,
     leviathanMs: s.leviathanAt === null ? null : Math.round(s.leviathanAt * 1000),
     serial: s.serial,
+    elapsedMs: Math.round(s.elapsed * 1000),
+    growth:
+      s.player.size >= MAX_SIZE
+        ? LEVIATHAN_GROWTH
+        : GROW_NEED.slice(0, s.player.size).reduce((sum, n) => sum + n, 0) + Math.min(s.bar, GROW_NEED[s.player.size]!),
   }
 }

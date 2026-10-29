@@ -6,6 +6,8 @@ import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
+import { useChase } from '../../lib/chase'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -255,6 +257,11 @@ export function AsteroidsGame() {
   const tournamentRef = useRef(tournament)
   tournamentRef.current = tournament
   const challenge = useActiveChallenge('asteroids')
+  // A record being chased (Chase a record, beside Play): its chip takes the place under the score.
+  const chase = useChase('asteroids')
+  const chaseRunRef = useRef(0)
+  /** This run's wave clears, for a chased wave's book (ms by wave). */
+  const chaseClearsRef = useRef(new Map<number, number>())
   const offeredScore = useRef<number | null>(null)
   const comboRecordKey = useRef<string | null>(null)
   const previousBestRef = useRef(getPersonalBest('asteroids'))
@@ -511,6 +518,8 @@ export function AsteroidsGame() {
     comboRecordKey.current = null
     clearRunAchievements()
     if (!intoMenu) beginRun('asteroids')
+    chaseRunRef.current += 1
+    chaseClearsRef.current = new Map()
     setBookRows([])
     // After a run, the books are looked at afresh: it may have moved them. From the start card, what was
     // looked at while it was up is this run's.
@@ -674,11 +683,17 @@ export function AsteroidsGame() {
     }
   }
 
-  // The wave's record and its countdown, under the score while you play it.
+  // The wave's record and its countdown, under the score while you play it: the chased record's chip instead, when
+  // one is chased.
   const recordGlance =
-    ui.phase === 'playing' && !tournament && !isRunAssisted()
+    ui.phase === 'playing' && !tournament && !isRunAssisted() && !chase
       ? glancesRef.current.get(asteroidsWaveTimeRecordId(ui.wave) ?? '') ?? null
       : null
+  if (ui.phase === 'waveClear' && !chaseClearsRef.current.has(ui.lastWave)) {
+    chaseClearsRef.current.set(ui.lastWave, Math.round(ui.lastWaveTime * 1000))
+  }
+  const chasing = chase != null && ui.phase === 'playing' && !paused
+  const underScore = recordGlance != null || chasing
 
   return (
     <section
@@ -713,6 +728,20 @@ export function AsteroidsGame() {
             >
               {ui.score}
             </PlayReadoutScore>
+            {chasing && chase ? (
+              <ChaseBar
+                slug="asteroids"
+                compact
+                value={chase.recordId === 'score' ? ui.score : chase.recordId === ASTEROIDS_HIGHEST_COMBO_ID ? ui.runComboBest : 0}
+                elapsedMs={0}
+                runKey={chaseRunRef.current}
+                lap={{
+                  wave: ui.wave,
+                  inWaveMs: ui.time * 1000,
+                  clearedMs: chase.goal != null ? (chaseClearsRef.current.get(chase.goal) ?? null) : null,
+                }}
+              />
+            ) : null}
             {recordGlance ? (
               <WaveRecordChip
                 glance={recordGlance}
@@ -747,7 +776,7 @@ export function AsteroidsGame() {
               ui.buffShield > 0 ||
               ui.buffSlow > 0) ? (
               <div
-                className={`asteroids__buffs${recordGlance ? (challenge != null ? ' asteroids__buffs--under-low' : ' asteroids__buffs--under') : ''}`}
+                className={`asteroids__buffs${underScore ? (challenge != null ? ' asteroids__buffs--under-low' : ' asteroids__buffs--under') : ''}`}
                 aria-label="Active powerups"
               >
                 {(

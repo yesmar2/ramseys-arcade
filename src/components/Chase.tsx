@@ -2,13 +2,23 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { useActiveChallenge } from '../lib/challenges'
 import { canChase, clearChase, setChase, useChase, type Chase } from '../lib/chase'
-import { chaseReading } from '../lib/chaseReading'
+import { chaseReading, type ChaseLap } from '../lib/chaseReading'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { getLeaderboard, type LeaderboardEntry } from '../lib/leaderboard'
 import {
+  ASTEROIDS_HIGHEST_COMBO_ID,
+  CROSSWALK_LONGEST_CHAIN_ID,
+  CROSSWALK_MOST_COINS_ID,
+  CROSSWALK_NEAR_MISSES_ID,
   fetchGameRecords,
   formatRecordMs,
+  FRENZY_CHAIN_ID,
+  FRENZY_FISH_ID,
+  FRENZY_FRENZIES_ID,
+  FRENZY_LEVIATHAN_ID,
   LONGEST_CHAIN_ID,
+  parseAsteroidsWaveFromRecordId,
+  parseCrosswalkRowFromRecordId,
   parseSnakeLengthFromRecordId,
   SNAKE_LONGEST_ID,
   type RecordSummary,
@@ -17,22 +27,68 @@ import { Panel, PanelHead } from './Panel'
 
 /*
  * Chasing a record (lib/chase.ts): the sheet that picks one, the box on the
- * start card that names it, and the pace bar under the score during the run.
+ * start card that names it, and the pace bar during the run.
  */
 
-/** Where a race's clock starts counting from: Snake's length when it sets off (games/snake START_SEGMENTS). */
-const RACE_FROM: Record<string, number> = { snake: 3 }
+/** Frenzy's growth from Fry to Leviathan, the bar's units (games/frenzy GROW_NEED, summed). */
+const FRENZY_GROWTH = 125
+
+/**
+ * What each game offers to chase. A race is a "fastest to" book: `from` is where its clock's count starts
+ * (Snake's length when it sets off, games/snake START_SEGMENTS) and `step` names one step of it for the pace
+ * words. The numbers to beat are the game's board and the books named in `counts`.
+ */
+const SETUP: Record<string, { from: number; step: string | null; race: (r: RecordSummary) => Partial<Chase> | null; counts: string[] }> = {
+  snake: {
+    from: 3,
+    step: 'a bite',
+    race: (r) => {
+      const goal = parseSnakeLengthFromRecordId(r.id)
+      return goal == null ? null : { short: `Length ${goal}`, goal }
+    },
+    counts: [SNAKE_LONGEST_ID, LONGEST_CHAIN_ID],
+  },
+  crosswalk: {
+    from: 0,
+    step: 'a row',
+    race: (r) => {
+      const goal = parseCrosswalkRowFromRecordId(r.id)
+      return goal == null ? null : { short: `Row ${goal}`, goal }
+    },
+    counts: [CROSSWALK_MOST_COINS_ID, CROSSWALK_LONGEST_CHAIN_ID, CROSSWALK_NEAR_MISSES_ID],
+  },
+  // A wave's book is its clear, timed from the wave's start: a lap, not a race from the run's start.
+  asteroids: {
+    from: 0,
+    step: null,
+    race: (r) => {
+      const goal = parseAsteroidsWaveFromRecordId(r.id)
+      return goal == null ? null : { short: `Wave ${goal}`, goal, kind: 'lap' }
+    },
+    counts: [ASTEROIDS_HIGHEST_COMBO_ID],
+  },
+  frenzy: {
+    from: 0,
+    step: null,
+    race: (r) => (r.id === FRENZY_LEVIATHAN_ID ? { short: 'Leviathan', goal: FRENZY_GROWTH } : null),
+    counts: [FRENZY_FISH_ID, FRENZY_CHAIN_ID, FRENZY_FRENZIES_ID],
+  },
+}
+
+/** The names Snake's books had in the sheet first; every other book goes by its own, less "in a run". */
+const COUNT_NAMES: Record<string, string> = { [`snake:${SNAKE_LONGEST_ID}`]: 'Longest snake' }
 
 function raceFrom(slug: string): number {
-  return RACE_FROM[slug] ?? 0
+  return SETUP[slug]?.from ?? 0
 }
 
 /** "2.27s a bite": the record's even pace, which the bar measures a run against. */
 function paceWords(slug: string, chase: Chase): string | null {
-  if (chase.unit !== 'ms' || chase.target == null || chase.goal == null) return null
+  const step = SETUP[slug]?.step
+  if (!step || chase.kind === 'lap' || chase.unit !== 'ms' || chase.target == null || chase.goal == null) return null
   const steps = chase.goal - raceFrom(slug)
   if (steps <= 0) return null
-  return `${(chase.target / steps / 1000).toFixed(2)}s a bite`
+  return `${(chase.target / steps / 1000).toFixed(2)}s ${step}`
 }
 
 /** A game's records worth chasing, in the sheet's two groups. */
@@ -41,24 +97,21 @@ function chaseOptions(
   records: RecordSummary[],
   top: LeaderboardEntry | null,
 ): { races: Chase[]; counts: Chase[] } {
+  const setup = SETUP[slug]
+  if (!setup) return { races: [], counts: [] }
   const races: Chase[] = []
+  for (const r of records) {
+    const race = setup.race(r)
+    if (race) races.push({ game: slug, recordId: r.id, short: r.label, unit: 'ms', target: r.top?.score ?? null, name: r.top?.name, ...race })
+  }
+  races.sort((a, b) => (a.goal ?? 0) - (b.goal ?? 0))
   const counts: Chase[] = []
-  if (slug === 'snake') {
-    for (const r of records) {
-      const goal = parseSnakeLengthFromRecordId(r.id)
-      if (goal == null) continue
-      races.push({ game: slug, recordId: r.id, short: `Length ${goal}`, unit: 'ms', target: r.top?.score ?? null, goal, name: r.top?.name })
-    }
-    races.sort((a, b) => (a.goal ?? 0) - (b.goal ?? 0))
-    if (top) counts.push({ game: slug, recordId: 'score', short: 'Best score', unit: 'count', target: top.score, name: top.name })
-    const named: [string, string][] = [
-      [SNAKE_LONGEST_ID, 'Longest snake'],
-      [LONGEST_CHAIN_ID, 'Longest chain'],
-    ]
-    for (const [id, short] of named) {
-      const r = records.find((x) => x.id === id)
-      if (r?.top) counts.push({ game: slug, recordId: id, short, unit: 'count', target: r.top.score, name: r.top.name })
-    }
+  if (top) counts.push({ game: slug, recordId: 'score', short: 'Best score', unit: 'count', target: top.score, name: top.name })
+  for (const id of setup.counts) {
+    const r = records.find((x) => x.id === id)
+    if (!r?.top) continue
+    const short = COUNT_NAMES[`${slug}:${id}`] ?? r.label.replace(/ in a run$/, '')
+    counts.push({ game: slug, recordId: id, short, unit: 'count', target: r.top.score, name: r.top.name })
   }
   return { races, counts }
 }
@@ -237,52 +290,73 @@ export function ChaseTarget({ slug }: { slug: string }) {
 }
 
 /**
- * The pace bar under the score, through the run (A of the canvas). A race
- * puts your mark beside the record's even pace and says how far ahead or
- * behind you were at your last bite; a number to beat fills toward it.
+ * The pace bar through the run (A of the canvas). A race puts your mark beside
+ * the record's even pace and says how far ahead or behind you were at your
+ * last step; a lap counts the record's time down through its wave; a number to
+ * beat fills toward it.
  *
- * `value` is the run's figure in the record's terms (a length, a score, a
- * chain); `elapsedMs` is the record's own clock, null till the run sets off.
+ * `value` is the run's figure in the record's terms (a length, a row, a score);
+ * `elapsedMs` the record's own clock, null till the run sets off; `runKey`
+ * changes with each new run. Snake shows it whole under its board; the other
+ * games, `compact`, on one line under the score, where a challenge's chip goes.
  */
-export function ChaseBar({ slug, value, elapsedMs }: { slug: string; value: number; elapsedMs: number | null }) {
+export function ChaseBar({
+  slug,
+  value,
+  elapsedMs,
+  runKey,
+  lap,
+  compact = false,
+}: {
+  slug: string
+  value: number
+  elapsedMs: number | null
+  runKey: number
+  lap?: ChaseLap
+  compact?: boolean
+}) {
   const chase = useChase(slug)
   const challenged = useActiveChallenge(slug) != null
   const from = raceFrom(slug)
-  // The last step forward and when it came, and when the goal was reached: the run's splits.
+  // The last step and when it came, and when the goal was reached: the run's splits.
+  const run = useRef(runKey)
   const last = useRef<{ value: number; at: number } | null>(null)
   const reached = useRef<number | null>(null)
-  if (elapsedMs == null || value < (last.current?.value ?? from)) {
+  if (run.current !== runKey || elapsedMs == null) {
+    run.current = runKey
     last.current = null
     reached.current = null
-  } else if (value > (last.current?.value ?? from)) {
+  }
+  if (elapsedMs != null && value !== (last.current?.value ?? from)) {
     last.current = { value, at: elapsedMs }
     if (chase?.goal != null && value >= chase.goal && reached.current == null) reached.current = elapsedMs
   }
   if (!chase) return null
-  const { head, status, tone, you, pace, end } = chaseReading(chase, {
+  const { head, brief, status, tone, you, pace, end } = chaseReading(chase, {
     from,
     value,
     elapsedMs,
     last: last.current,
     reached: reached.current,
     paceWords: paceWords(slug, chase),
+    lap,
   })
 
   return (
     <div
-      className={`chase-bar chase-bar--${tone}${challenged ? ' chase-bar--low' : ''}`}
+      className={`chase-bar chase-bar--${tone}${compact ? ' chase-bar--compact' : ''}${challenged ? ' chase-bar--low' : ''}`}
       style={{ '--chase-you': you, '--chase-pace': pace ?? 0 } as CSSProperties}
       aria-hidden="true"
     >
       <span className="chase-bar__top">
-        <span className="chase-bar__head">{head}</span>
+        <span className="chase-bar__head">{compact ? brief : head}</span>
         <b className="chase-bar__status">{status}</b>
       </span>
       <span className="chase-bar__track">
         <span className="chase-bar__fill" />
         {pace != null ? <span className="chase-bar__pace" /> : null}
         <span className="chase-bar__you" />
-        <span className="chase-bar__end">{end}</span>
+        {compact || !end ? null : <span className="chase-bar__end">{end}</span>}
       </span>
     </div>
   )

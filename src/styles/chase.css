@@ -378,6 +378,44 @@ html[data-theme='dark'] .chase-target {
   color: #b9c6d2;
 }
 
+/*
+ * One line under the score (Space Rocks, Crosswalk, Frenzy): what's chased, the bar, and the reading, the size
+ * and place of a friend's challenge chip. Their play has no edge to sit beside the way Snake's board has.
+ */
+.chase-bar--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  width: auto;
+  max-width: calc(100% - 1.5rem);
+  height: 2.2rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.chase-bar--compact .chase-bar__top {
+  display: contents;
+}
+
+.chase-bar--compact .chase-bar__head {
+  order: 0;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+.chase-bar--compact .chase-bar__track {
+  order: 1;
+  flex: none;
+  width: 4.5rem;
+  margin: 0 0.5rem;
+}
+
+.chase-bar--compact .chase-bar__status {
+  order: 2;
+  font-size: 0.85rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gh-chase,
   .chase-bar__fill,

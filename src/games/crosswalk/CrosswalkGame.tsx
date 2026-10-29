@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
+import { useChase } from '../../lib/chase'
 import {
   GamePlayChrome,
   PlayReadout,
@@ -26,6 +28,9 @@ import {
   CROSSWALK_ROW_MILESTONE_MAX,
   CROSSWALK_ROW_MILESTONE_MIN,
   CROSSWALK_ROW_MILESTONE_STEP,
+  CROSSWALK_LONGEST_CHAIN_ID,
+  CROSSWALK_MOST_COINS_ID,
+  CROSSWALK_NEAR_MISSES_ID,
   submitCrosswalkFastestRow,
   submitCrosswalkMostTickets,
   submitCrosswalkLongestChain,
@@ -89,6 +94,17 @@ export function CrosswalkGame() {
   const callsRecordedRef = useRef(false)
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  // A record being chased (Chase a record, beside Play): its chip goes under the score. Rows are the score, and the
+  // races' figure.
+  const chase = useChase('crosswalk')
+  const chaseValue =
+    chase?.recordId === CROSSWALK_MOST_COINS_ID
+      ? ui.runTickets
+      : chase?.recordId === CROSSWALK_LONGEST_CHAIN_ID
+        ? ui.bestChain
+        : chase?.recordId === CROSSWALK_NEAR_MISSES_ID
+          ? ui.nearMisses
+          : ui.score
   const pausedRef = useRef(false)
   pausedRef.current = paused
 
@@ -469,6 +485,15 @@ export function CrosswalkGame() {
                 </PlayReadoutStats>
               ) : null}
             </PlayReadout>
+            {ui.phase === 'playing' && !paused ? (
+              <ChaseBar
+                slug="crosswalk"
+                compact
+                value={chaseValue}
+                elapsedMs={runStartRef.current == null ? null : performance.now() - runStartRef.current}
+                runKey={runStartRef.current ?? 0}
+              />
+            ) : null}
 
             <div className="crosswalk__overlay">
               <GamePauseOverlay

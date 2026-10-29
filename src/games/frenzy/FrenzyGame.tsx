@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import '../../styles/frenzy.css'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
+import { useChase } from '../../lib/chase'
 import { GameStage } from '../../components/GameStage'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
@@ -110,6 +112,19 @@ export function FrenzyGame() {
   const previousBestRef = useRef(getPersonalBest('frenzy'))
   const pausable = ui.phase === 'playing' && !saveOpen
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
+  // A record being chased (Chase a record, beside Play): its chip goes under the score. The race to Leviathan is
+  // measured in growth, on the clock Leviathan is timed by.
+  const chase = useChase('frenzy')
+  const chaseValue =
+    chase?.recordId === 'score'
+      ? ui.score
+      : chase?.recordId === FRENZY_FISH_ID
+        ? ui.eaten
+        : chase?.recordId === FRENZY_CHAIN_ID
+          ? ui.bestChain
+          : chase?.recordId === FRENZY_FRENZIES_ID
+            ? ui.frenzies
+            : ui.growth
   const pausedRef = useRef(false)
   pausedRef.current = paused
   // The player's own skin, if they chose one (lib/skins.ts): looks only.
@@ -426,6 +441,9 @@ export function FrenzyGame() {
               </PlayReadoutStats>
             ) : null}
           </PlayReadout>
+          {inRun && !paused ? (
+            <ChaseBar slug="frenzy" compact value={chaseValue} elapsedMs={ui.elapsedMs} runKey={ui.serial} />
+          ) : null}
 
           <div className="frenzy__overlay">
             <GamePauseOverlay

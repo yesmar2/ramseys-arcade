@@ -13,7 +13,7 @@ const EVENT = 'arcade-chase'
 const KEEP_MS = 12 * 60 * 60 * 1000
 
 /** The games with records worth chasing in a run. */
-export const CHASE_GAMES: ReadonlySet<string> = new Set(['snake'])
+export const CHASE_GAMES: ReadonlySet<string> = new Set(['snake', 'asteroids', 'crosswalk', 'frenzy'])
 
 export function canChase(slug: string): boolean {
   return CHASE_GAMES.has(slug)
@@ -29,8 +29,13 @@ export type Chase = {
   unit: 'ms' | 'count'
   /** The time or number to beat; null when nobody has set one yet. */
   target: number | null
-  /** For a race: where it ends (a length, for Snake). */
+  /** For a race: where it ends (a length, a row, a growth; for a lap, the wave). */
   goal?: number
+  /**
+   * `lap`: the time is one stretch of the run, not the run to `goal` (Asteroids' clear of one wave), so it is
+   * timed from that wave's start rather than paced from the run's.
+   */
+  kind?: 'lap'
   /** Whose it is. */
   name?: string
 }
