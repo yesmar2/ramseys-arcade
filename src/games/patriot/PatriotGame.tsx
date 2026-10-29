@@ -5,6 +5,7 @@ import { GameStage } from '../../components/GameStage'
 import { GameStartCard } from '../../components/GameStartCard'
 import { PauseButton, GamePauseOverlay } from '../../components/PauseControls'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
@@ -19,6 +20,7 @@ import {
   pushRunAchievement,
 } from '../../lib/runAchievements'
 import {
+  PATRIOT_DIRECT_STREAK_ID,
   LONGEST_CHAIN_ID,
   PATRIOT_CLEAN_WAVES_ID,
   submitPatriotDirectStreak,
@@ -406,6 +408,21 @@ export function PatriotGame() {
               </PlayReadoutStats>
             )}
           </PlayReadout>
+          {/* A record being chased (Chase a record, beside Play): its chip under the score. */}
+          {inPlay && !paused ? (
+            <ChaseBar
+              slug="patriot"
+              compact
+              values={{
+                score: ui.score,
+                [PATRIOT_DIRECT_STREAK_ID]: ui.directStreakBest,
+                [LONGEST_CHAIN_ID]: ui.chainBest,
+                [PATRIOT_CLEAN_WAVES_ID]: ui.cleanWavesBest,
+              }}
+              elapsedMs={0}
+              runKey={0}
+            />
+          ) : null}
 
           {/* A column down the left edge, under the run's figures. */}
           {inPlay &&

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
 import {
   GamePlayChrome,
   PlayReadout,
@@ -23,6 +24,7 @@ import {
   pushRunAchievement,
 } from '../../lib/runAchievements'
 import {
+  PELLETS_CRUMB_STREAK_ID,
   PELLETS_CRUMB_STREAK_MIN,
   PELLETS_MAZES_ID,
   shouldCelebrateRecordSubmit,
@@ -376,6 +378,10 @@ export function PelletsGame() {
                 </PlayReadoutStats>
               ) : null}
             </PlayReadout>
+            {/* A record being chased (Chase a record, beside Play): its chip under the score. */}
+            {ui.phase === 'playing' && !paused ? (
+              <ChaseBar slug="pellets" compact values={{ score: ui.score, [PELLETS_CRUMB_STREAK_ID]: ui.crumbStreakBest, [PELLETS_MAZES_ID]: ui.level - 1 }} elapsedMs={0} runKey={0} />
+            ) : null}
 
             {inRun && !paused && !saveOpen ? (
               <button

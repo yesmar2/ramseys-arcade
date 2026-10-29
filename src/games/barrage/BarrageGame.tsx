@@ -6,6 +6,7 @@ import { GameStage } from '../../components/GameStage'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
 import { GameStartCard } from '../../components/GameStartCard'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
 import { GamePauseOverlay, PauseButton } from '../../components/PauseControls'
 import { ScoreSaveCard } from '../../components/ScoreSaveCard'
 import { TournamentScoreCard } from '../../components/TournamentScoreCard'
@@ -434,6 +435,10 @@ export function BarrageGame() {
                 ) : null}
               </PlayReadoutStats>
             </PlayReadout>
+            {/* A record being chased (Chase a record, beside Play): its chip under the score. */}
+            {ui.phase === 'playing' && !paused ? (
+              <ChaseBar slug="barrage" compact values={{ score: ui.score, [BARRAGE_GRAZES_ID]: ui.grazes, [BARRAGE_WAVE_ID]: ui.wave }} elapsedMs={0} runKey={0} />
+            ) : null}
 
             {ui.phase !== 'menu' && ui.phase !== 'gameover' && !paused ? (
               <button

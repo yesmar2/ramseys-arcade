@@ -7,6 +7,8 @@ import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { getLeaderboard, type LeaderboardEntry } from '../lib/leaderboard'
 import {
   ASTEROIDS_HIGHEST_COMBO_ID,
+  BARRAGE_GRAZES_ID,
+  BARRAGE_WAVE_ID,
   CROSSWALK_LONGEST_CHAIN_ID,
   CROSSWALK_MOST_COINS_ID,
   CROSSWALK_NEAR_MISSES_ID,
@@ -20,6 +22,14 @@ import {
   parseAsteroidsWaveFromRecordId,
   parseCrosswalkRowFromRecordId,
   parseSnakeLengthFromRecordId,
+  PATRIOT_CLEAN_WAVES_ID,
+  PATRIOT_DIRECT_STREAK_ID,
+  PELLETS_CRUMB_STREAK_ID,
+  PELLETS_MAZES_ID,
+  PILEUP_COMBO_ID,
+  PILEUP_FOURS_ID,
+  PILEUP_ROWS_ID,
+  PILEUP_SHAKE_ID,
   SNAKE_LONGEST_ID,
   type RecordSummary,
 } from '../lib/records'
@@ -73,6 +83,11 @@ const SETUP: Record<string, { from: number; step: string | null; race: (r: Recor
     race: (r) => (r.id === FRENZY_LEVIATHAN_ID ? { short: 'Leviathan', goal: FRENZY_GROWTH } : null),
     counts: [FRENZY_FISH_ID, FRENZY_CHAIN_ID, FRENZY_FRENZIES_ID],
   },
+  // No clock books: their best score and their run books (Ramsey's four next, 2026-10-29).
+  barrage: { from: 0, step: null, race: () => null, counts: [BARRAGE_GRAZES_ID, BARRAGE_WAVE_ID] },
+  pileup: { from: 0, step: null, race: () => null, counts: [PILEUP_FOURS_ID, PILEUP_ROWS_ID, PILEUP_COMBO_ID, PILEUP_SHAKE_ID] },
+  patriot: { from: 0, step: null, race: () => null, counts: [PATRIOT_DIRECT_STREAK_ID, LONGEST_CHAIN_ID, PATRIOT_CLEAN_WAVES_ID] },
+  pellets: { from: 0, step: null, race: () => null, counts: [PELLETS_CRUMB_STREAK_ID, PELLETS_MAZES_ID] },
 }
 
 /** The names Snake's books had in the sheet first; every other book goes by its own, less "in a run". */
@@ -313,7 +328,8 @@ export function ChaseTarget({ slug }: { slug: string }) {
  */
 export function ChaseBar({
   slug,
-  value,
+  value: one,
+  values,
   elapsedMs,
   runKey,
   lap,
@@ -321,7 +337,9 @@ export function ChaseBar({
   above = 0,
 }: {
   slug: string
-  value: number
+  /** The run's figure for the chased record; or, in `values`, each record's by its id (`score` for the board). */
+  value?: number
+  values?: Record<string, number>
   elapsedMs: number | null
   runKey: number
   lap?: ChaseLap
@@ -332,6 +350,7 @@ export function ChaseBar({
   const chase = useChase(slug)
   const challenged = useActiveChallenge(slug) != null
   const from = raceFrom(slug)
+  const value = (values && chase ? values[chase.recordId] : one) ?? 0
   // The last step and when it came, and when the goal was reached: the run's splits.
   const run = useRef(runKey)
   const last = useRef<{ value: number; at: number } | null>(null)

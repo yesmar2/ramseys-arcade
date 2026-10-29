@@ -13,7 +13,16 @@ const EVENT = 'arcade-chase'
 const KEEP_MS = 12 * 60 * 60 * 1000
 
 /** The games with records worth chasing in a run. */
-export const CHASE_GAMES: ReadonlySet<string> = new Set(['snake', 'asteroids', 'crosswalk', 'frenzy'])
+export const CHASE_GAMES: ReadonlySet<string> = new Set([
+  'snake',
+  'asteroids',
+  'crosswalk',
+  'frenzy',
+  'barrage',
+  'pileup',
+  'patriot',
+  'pellets',
+])
 
 export function canChase(slug: string): boolean {
   return CHASE_GAMES.has(slug)

@@ -1,6 +1,7 @@
 import '../../styles/pileup.css'
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
 import { GamePlayChrome, PlayReadout, PlayReadoutScore } from '../../components/GameHud'
 import { GameStage } from '../../components/GameStage'
 import { PlayReadoutStats, PlayStat } from '../../components/PlayStats'
@@ -51,12 +52,14 @@ import { chromeTakesKey, controlTakesKey } from '../keys'
 /**
  * Where the page's own score and buttons end, measured from the top of the
  * play area, so the strip of boxes can sit under them. They move with the safe
- * area on a notched phone, which the canvas has no other way to know.
+ * area on a notched phone, which the canvas has no other way to know. A chased
+ * record's chip (components/Chase.tsx) counts too: the strip and the well make
+ * room for it rather than going under it.
  */
 function measureTop(play: HTMLElement): number {
   const top = play.getBoundingClientRect().top
   let bottom = 0
-  play.querySelectorAll('.play-readout__score, .play-stats, .game-play-chrome').forEach((el) => {
+  play.querySelectorAll('.play-readout__score, .play-stats, .game-play-chrome, .chase-bar').forEach((el) => {
     const r = el.getBoundingClientRect()
     if (r.height > 0 && r.bottom - top < play.clientHeight * 0.4) bottom = Math.max(bottom, r.bottom - top)
   })
@@ -634,6 +637,21 @@ export function PileupGame() {
                 <PlayStat label="Rows" value={ui.rows} />
               </PlayReadoutStats>
             </PlayReadout>
+            {/* A record being chased (Chase a record, beside Play): its chip under the score, up the whole visit,
+                since the strip and the well move down for it (measureTop) and shouldn't jump. */}
+            <ChaseBar
+              slug="pileup"
+              compact
+              values={{
+                score: ui.score,
+                [PILEUP_FOURS_ID]: ui.fours,
+                [PILEUP_ROWS_ID]: ui.rows,
+                [PILEUP_COMBO_ID]: ui.bestCombo,
+                [PILEUP_SHAKE_ID]: ui.bestShake,
+              }}
+              elapsedMs={0}
+              runKey={0}
+            />
 
             {playing && !paused ? (
               <>
