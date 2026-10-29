@@ -17,13 +17,14 @@ import {
 
 /*
  * The waves whose clear Asteroids times in a book, and the lengths Snake times a growth to: every wave to 20, and
- * 30, 50, 75 and 100 (the API's records.ts ASTEROIDS_WAVE_BOOKS and SNAKE_LENGTH_BOOKS). Both were trimmed on
- * 2026-10-13 (Ramsey: "yes, all of it"), the waves to every fifth, because past the first few nobody reached them;
- * every wave came back on 2026-10-29 ("let's have wave records for the first ten at least, or just don't show wave
- * records for waves that haven't been reached yet"), with the Records tab folding the unreached ones into one line.
+ * every tenth length from 30 to 100 (the API's records.ts ASTEROIDS_WAVE_BOOKS and SNAKE_LENGTH_BOOKS). Both were
+ * trimmed on 2026-10-13 (Ramsey: "yes, all of it") because past the first few nobody reached them; both came back
+ * on 2026-10-29 ("let's have wave records for the first ten at least, or just don't show wave records for waves
+ * that haven't been reached yet", then "for snake, there should be fastest to 40, 50, etc every ten"), with the
+ * Records tab folding the unreached ones into one line.
  */
 export const ASTEROIDS_WAVE_BOOKS: readonly number[] = Array.from({ length: 20 }, (_, i) => i + 1)
-export const SNAKE_LENGTH_BOOKS: readonly number[] = [30, 50, 75, 100]
+export const SNAKE_LENGTH_BOOKS: readonly number[] = [30, 40, 50, 60, 70, 80, 90, 100]
 export const CROSSWALK_ROW_MILESTONE_MIN = 50
 export const CROSSWALK_ROW_MILESTONE_MAX = 200
 export const CROSSWALK_ROW_MILESTONE_STEP = 25
