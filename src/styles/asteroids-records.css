@@ -96,3 +96,11 @@
     opacity: 0.6;
   }
 }
+
+/*
+ * The powerups go under every chip under the score: a friend's challenge, the wave's record, a chased record
+ * (AsteroidsGame chipsAbove, set with the class). styles.css puts them under one or two; these chips can be three.
+ */
+.asteroids__buffs.asteroids__buffs--under[style*='--chips-above'] {
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 0.4rem + var(--chips-above) * 2.5rem);
+}

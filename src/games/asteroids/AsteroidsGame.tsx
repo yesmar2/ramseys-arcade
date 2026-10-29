@@ -683,17 +683,23 @@ export function AsteroidsGame() {
     }
   }
 
-  // The wave's record and its countdown, under the score while you play it: the chased record's chip instead, when
-  // one is chased.
+  // The wave's record and its countdown, under the score while you play it, but for the wave being chased: the
+  // chased record's chip counts that one down.
+  const chasingWave = chase?.recordId === asteroidsWaveTimeRecordId(ui.wave)
   const recordGlance =
-    ui.phase === 'playing' && !tournament && !isRunAssisted() && !chase
+    ui.phase === 'playing' && !tournament && !isRunAssisted() && !chasingWave
       ? glancesRef.current.get(asteroidsWaveTimeRecordId(ui.wave) ?? '') ?? null
       : null
   if (ui.phase === 'waveClear' && !chaseClearsRef.current.has(ui.lastWave)) {
     chaseClearsRef.current.set(ui.lastWave, Math.round(ui.lastWaveTime * 1000))
   }
   const chasing = chase != null && ui.phase === 'playing' && !paused
-  const underScore = recordGlance != null || chasing
+  /**
+   * Chips under the score that the powerups go under: the wave's record and the chased record, and with either, a
+   * friend's challenge over them (alone, the challenge leaves the powerups where they were).
+   */
+  const ownChips = (recordGlance ? 1 : 0) + (chasing ? 1 : 0)
+  const chipsAbove = ownChips > 0 ? ownChips + (challenge != null ? 1 : 0) : 0
 
   return (
     <section
@@ -732,6 +738,7 @@ export function AsteroidsGame() {
               <ChaseBar
                 slug="asteroids"
                 compact
+                above={recordGlance ? 1 : 0}
                 value={chase.recordId === 'score' ? ui.score : chase.recordId === ASTEROIDS_HIGHEST_COMBO_ID ? ui.runComboBest : 0}
                 elapsedMs={0}
                 runKey={chaseRunRef.current}
@@ -776,7 +783,8 @@ export function AsteroidsGame() {
               ui.buffShield > 0 ||
               ui.buffSlow > 0) ? (
               <div
-                className={`asteroids__buffs${underScore ? (challenge != null ? ' asteroids__buffs--under-low' : ' asteroids__buffs--under') : ''}`}
+                className={`asteroids__buffs${chipsAbove > 0 ? ' asteroids__buffs--under' : ''}`}
+                style={chipsAbove > 0 ? ({ '--chips-above': chipsAbove } as CSSProperties) : undefined}
                 aria-label="Active powerups"
               >
                 {(

@@ -105,6 +105,10 @@ function chaseOptions(
     if (race) races.push({ game: slug, recordId: r.id, short: r.label, unit: 'ms', target: r.top?.score ?? null, name: r.top?.name, ...race })
   }
   races.sort((a, b) => (a.goal ?? 0) - (b.goal ?? 0))
+  // Up to the furthest one anyone holds, and the next: past that nobody has got, they're all the same story (as the
+  // Records tab folds them), and twenty waves would bury the rest.
+  const furthest = races.findLastIndex((r) => r.target != null)
+  races.splice(furthest + 2)
   const counts: Chase[] = []
   if (top) counts.push({ game: slug, recordId: 'score', short: 'Best score', unit: 'count', target: top.score, name: top.name })
   for (const id of setup.counts) {
@@ -149,7 +153,9 @@ export function ChaseSheet({ slug, href, onClose }: { slug: string; href?: strin
     const figure = chase.target == null ? null : chase.unit === 'ms' ? formatRecordMs(chase.target) : chase.target.toLocaleString()
     const sub =
       chase.target == null
-        ? 'Nobody yet. Get there to set it.'
+        ? chase.kind === 'lap'
+          ? 'Nobody yet. Clear it to set it.'
+          : 'Nobody yet. Get there to set it.'
         : [chase.name, paceWords(slug, chase)].filter(Boolean).join(' · ')
     const body = (
       <>
@@ -258,7 +264,12 @@ export function ChaseTarget({ slug }: { slug: string }) {
         ? `${chase.short}: nobody yet`
         : `${chase.short} in ${formatRecordMs(chase.target)}`
       : `${chase.short}: ${chase.target?.toLocaleString() ?? '–'}`
-  const sub = chase.target == null ? 'Get there first to set it' : [chase.name, paceWords(slug, chase)].filter(Boolean).join(' · ')
+  const sub =
+    chase.target == null
+      ? chase.kind === 'lap'
+        ? 'Clear it first to set it'
+        : 'Get there first to set it'
+      : [chase.name, paceWords(slug, chase)].filter(Boolean).join(' · ')
   return (
     <div className="chase-target">
       <span className="chase-target__flag">
@@ -307,6 +318,7 @@ export function ChaseBar({
   runKey,
   lap,
   compact = false,
+  above = 0,
 }: {
   slug: string
   value: number
@@ -314,6 +326,8 @@ export function ChaseBar({
   runKey: number
   lap?: ChaseLap
   compact?: boolean
+  /** The game's own chips under the score, over this one (a friend's challenge is counted here). */
+  above?: number
 }) {
   const chase = useChase(slug)
   const challenged = useActiveChallenge(slug) != null
@@ -344,8 +358,8 @@ export function ChaseBar({
 
   return (
     <div
-      className={`chase-bar chase-bar--${tone}${compact ? ' chase-bar--compact' : ''}${challenged ? ' chase-bar--low' : ''}`}
-      style={{ '--chase-you': you, '--chase-pace': pace ?? 0 } as CSSProperties}
+      className={`chase-bar chase-bar--${tone}${compact ? ' chase-bar--compact' : ''}`}
+      style={{ '--chase-you': you, '--chase-pace': pace ?? 0, '--chase-above': above + (challenged ? 1 : 0) } as CSSProperties}
       aria-hidden="true"
     >
       <span className="chase-bar__top">

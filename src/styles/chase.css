@@ -244,7 +244,8 @@ html[data-theme='dark'] .chase-target {
   --chase-behind: #ffad7a;
   --chase-won: #f5b942;
   position: absolute;
-  top: calc(var(--readout-middle) + var(--score-size) / 2 + 0.5rem);
+  /* Under the score, and under any chips there already: a friend's challenge, Space Rocks' wave record. */
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 0.5rem + var(--chase-above, 0) * 2.6rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 8;
@@ -263,11 +264,6 @@ html[data-theme='dark'] .chase-target {
   pointer-events: none;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-}
-
-/* Under a friend's challenge chip, when there is one too. */
-.chase-bar--low {
-  top: calc(var(--readout-middle) + var(--score-size) / 2 + 3.1rem);
 }
 
 /*

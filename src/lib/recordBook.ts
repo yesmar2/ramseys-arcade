@@ -565,15 +565,20 @@ export function bookHead(
 /**
  * What a record nobody holds says for a period: nobody has got this far (a clock's), or nobody has set it.
  * `nobody` is a group's, with a group's boards (lib/groups.ts scopeNobody): "Nobody in OFFICE holds it yet."
+ * A clock's milestone short of one somebody holds has been got past, only not timed yet (a book newer than the
+ * runs, like Space Rocks' waves 1 to 4 from 2026-10-29): `reached` says so.
  */
-export function openWords(kind: RecordKind, period: LeaderboardPeriod, nobody = 'Nobody'): string {
+export function openWords(kind: RecordKind, period: LeaderboardPeriod, nobody = 'Nobody', reached = false): string {
   const when = periodWords(period)
-  if (kind === 'clock') return `${nobody} has got this far${when || ' yet'}.`
+  if (kind === 'clock') return reached ? `${nobody} has set a time${when || ' yet'}.` : `${nobody} has got this far${when || ' yet'}.`
   return when ? `${nobody} has set it${when}.` : `${nobody} holds it yet.`
 }
 
 /** A record on the list, or a run of them nobody holds yet, which the list folds into one line. */
-export type BookItem = { kind: 'held'; record: RecordSummary } | { kind: 'open'; records: RecordSummary[]; label: string }
+export type BookItem =
+  | { kind: 'held'; record: RecordSummary }
+  /** `reached`: a clock's milestones short of one somebody holds (lib/recordBook openWords). */
+  | { kind: 'open'; records: RecordSummary[]; label: string; reached?: boolean }
 
 /**
  * The open records' line: one's own short label, or a run's first and last ("Wave 9 to 20", "150 to 200
@@ -612,6 +617,13 @@ export function bookItems(group: RecordGroup): BookItem[] {
     }
   }
   close()
+  // A clock's open milestones before a held one have been got past, only not timed.
+  if (group.kind === 'clock') {
+    const lastHeld = items.findLastIndex((item) => item.kind === 'held')
+    items.forEach((item, i) => {
+      if (item.kind === 'open' && i < lastHeld) item.reached = true
+    })
+  }
   return items
 }
 

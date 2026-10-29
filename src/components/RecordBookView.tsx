@@ -264,7 +264,7 @@ function Group({
                   <div className="rbl-row__link">
                     <span className="rbc-what">
                       <span className="rbl-row__label">{item.label}</span>
-                      <span className="rbc-held">{openWords(group.kind, period, nobody)}</span>
+                      <span className="rbc-held">{openWords(group.kind, period, nobody, item.reached)}</span>
                     </span>
                     <span className="rbc-bar" aria-hidden="true">
                       <span className="rbc-bar__track" />
@@ -288,7 +288,7 @@ function Group({
                   <span className="rbl-row__label">{item.label}</span>
                   <span className="rbl-open">
                     <SparkleIcon />
-                    <span>{openWords(group.kind, period, nobody)}</span>
+                    <span>{openWords(group.kind, period, nobody, item.reached)}</span>
                     {playHref ? (
                       <a className="rbl-open__go" href={playHref}>
                         Be the first
