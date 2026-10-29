@@ -1,4 +1,5 @@
 import { formatLeaderboardScore } from './leaderboardFormat'
+import { setPlatinumFor } from './setPlatinum'
 
 /*
  * Medals on the racing dailies (Hot Lap, Marble Run, Lander, Swoop, Wobble Run): how a day's best went against
@@ -148,9 +149,12 @@ export function needsThousandths(times: readonly (number | null | undefined)[], 
  * ticketLadders.ts raceMedalTimes, so a medal and its tickets come together. A course with a platinum of its own
  * (Hot Lap's tracks, set track by track since 2026-10-26: hotlap/medalLap.ts) has bronze, silver and gold spaced
  * between the blue and it as the game's rungs would be (medalRungs): bronze 2.1/3 of the way down, silver 2.4/3, gold 2.7/3.
+ * A course an admin has driven to set its platinum (lib/setPlatinum.ts) goes by theirs, in any race, over the
+ * one handed in.
  */
-export function medalTimes(game: RaceGame, paceMs: number, platinumMs?: number | null): Record<Medal, number> {
+export function medalTimes(game: RaceGame, paceMs: number, planned?: number | null): Record<Medal, number> {
   const rungs = medalRungs(game)
+  const platinumMs = setPlatinumFor(game, paceMs) ?? planned
   if (platinumMs && platinumMs < paceMs) {
     const at = (medal: Medal) => Math.round(paceMs - ((paceMs - platinumMs) * rungs[medal]) / rungs.platinum)
     return { bronze: at('bronze'), silver: at('silver'), gold: at('gold'), platinum: at('platinum') }

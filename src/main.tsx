@@ -31,6 +31,7 @@ import { bootFocusReveal } from './lib/focusReveal'
 import { bootGate } from './lib/gate'
 import { bootOfflineCopy } from './lib/offlineCopy'
 import { bootAppUpdate, noteNewRelease } from './lib/appUpdate'
+import { bootSetPlatinums } from './lib/setPlatinum'
 import { SiteErrorBoundary } from './components/SiteErrorBoundary'
 
 bootErrorReports()
@@ -43,6 +44,7 @@ bootFocusReveal()
 bootGate()
 bootOfflineCopy()
 bootAppUpdate()
+bootSetPlatinums()
 
 /*
  * Pages and games load as their own chunks (App.tsx). A release renames them, so a tab opened before it that then

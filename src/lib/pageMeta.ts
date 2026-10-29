@@ -110,6 +110,7 @@ const ADMIN_TITLES: Record<AdminSection, string> = {
   hills: 'Hills Book',
   gauntlets: 'Gauntlet Book',
   towers: 'Tower Book',
+  platinum: 'Set platinum',
   pours: 'Pour Book',
   trophies: 'Trophies',
 }

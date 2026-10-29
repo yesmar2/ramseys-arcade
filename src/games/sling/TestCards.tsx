@@ -8,6 +8,7 @@ import { dayOfTower, towerDay, PLANNED_TOWERS } from './daily'
 import { towerRunHref } from './links'
 import { LAB_DAY, type SlingDay } from './runs'
 import { missWords, formatRun } from './score'
+import { SetPlatinumRow } from '../../components/SetPlatinumRow'
 
 /*
  * The cards of an admin's test run (/games/sling/play?day=YYYY-MM-DD for today's tower or some still to come,
@@ -105,6 +106,7 @@ export function TestStartCard({ sling, best }: { sling: SlingDay; best: number |
           <>
             <Row label="Blue blip">{formatRun(sling.pace)}</Row>
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
+            {sling.day !== LAB_DAY ? <SetPlatinumRow game="sling" course={sling.n} pace={sling.pace} format={formatRun} /> : null}
           </>
         }
         primary={
@@ -159,8 +161,9 @@ export function TestResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue blip">{formatRun(sling.pace)}</Row>
+        {sling.day !== LAB_DAY ? <SetPlatinumRow game="sling" course={sling.n} pace={sling.pace} ms={Math.round(time * 1000)} format={formatRun} /> : null}
       </div>
-      <p className="game-card__note">A test run: not saved.</p>
+      <p className="game-card__note">A test run: on no board. Your best here sets platinum, half a second slower.</p>
       <div className="game-card__actions">
         <button
           type="button"

@@ -9,6 +9,7 @@ import { courseRunHref } from './links'
 import type { MarbleDay } from './runs'
 import { formatRun } from './score'
 import { LAB_PIECES, LAB_PIECES_IN_WORDS } from './sim'
+import { SetPlatinumRow } from '../../components/SetPlatinumRow'
 
 /*
  * The cards of an admin's test run (/games/marblerun/play?day=YYYY-MM-DD for today's course or one still to
@@ -109,6 +110,7 @@ export function TestStartCard({ marble, best, slide = false }: { marble: MarbleD
           <>
             <Row label="Blue ball">{formatRun(marble.pace)}</Row>
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
+            <SetPlatinumRow game="marblerun" course={marble.n} pace={marble.pace} format={formatRun} />
           </>
         }
         primary={
@@ -271,8 +273,9 @@ export function TestResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue ball">{formatRun(marble.pace)}</Row>
+        <SetPlatinumRow game="marblerun" course={marble.n} pace={marble.pace} ms={Math.round(time * 1000)} format={formatRun} />
       </div>
-      <p className="game-card__note">A test run: not saved.</p>
+      <p className="game-card__note">A test run: on no board. Your best here sets platinum, half a second slower.</p>
       <div className="game-card__actions">
         <button
           type="button"

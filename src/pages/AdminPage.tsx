@@ -57,6 +57,7 @@ const AdminTrackBook = lazyPage(() => import('../components/AdminTrackBook').the
 const AdminCourseBook = lazyPage(() => import('../components/AdminCourseBook').then((m) => m.AdminCourseBook))
 const AdminCaveBook = lazyPage(() => import('../components/AdminCaveBook').then((m) => m.AdminCaveBook))
 const AdminTowerBook = lazyPage(() => import('../components/AdminTowerBook').then((m) => m.AdminTowerBook))
+const AdminSetPlatinum = lazyPage(() => import('../components/AdminSetPlatinum').then((m) => m.AdminSetPlatinum))
 const AdminHillsBook = lazyPage(() => import('../components/AdminHillsBook').then((m) => m.AdminHillsBook))
 const AdminGauntletBook = lazyPage(() => import('../components/AdminGauntletBook').then((m) => m.AdminGauntletBook))
 const AdminPourBook = lazyPage(() => import('../components/AdminPourBook').then((m) => m.AdminPourBook))
@@ -120,6 +121,12 @@ const NAV: { label?: string; items: NavItem[] }[] = [
     label: 'Daily games',
     items: [
       { section: 'dailies', label: 'Today’s dailies', title: 'Today’s dailies' },
+      {
+        section: 'platinum',
+        label: 'Set platinum',
+        title: 'Set platinum',
+        blurb: 'Each race’s course today and the six days after: drive one, and its platinum is your best there and half a second.',
+      },
       {
         section: 'holes',
         label: 'Hole Book',
@@ -430,6 +437,12 @@ function SectionBody({ section }: { section?: AdminSection }) {
       return (
         <Book name="Hills Book">
           <AdminHillsBook />
+        </Book>
+      )
+    case 'platinum':
+      return (
+        <Book name="Set platinum list">
+          <AdminSetPlatinum />
         </Book>
       )
     case 'towers':

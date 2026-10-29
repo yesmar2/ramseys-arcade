@@ -34,6 +34,7 @@ import { AllTimeIcon, CrownIcon, InfoIcon, PracticeIcon, RankedIcon } from '../p
 import { PlayerAvatar } from '../PlayerAvatar'
 import { PlayerName } from '../PlayerName'
 import '../../styles/dailyPast.css'
+import { useSetPlatinums } from '../../lib/setPlatinum'
 
 /*
  * A daily's past courses, the past tab of its page: a card for every course before today's, newest first,
@@ -362,7 +363,9 @@ export function PastCourses({ source }: { source: PastSource }) {
   // and the course's All time board, against its blue (lib/raceMedals.ts).
   const race = isRaceGame(slug) && source.pace && source.courseNumber && viewer.state === 'in' ? slug : null
   const bests = useCourseBests(race)
+  const platinums = useSetPlatinums()
   const medals = useMemo(() => {
+    void platinums
     if (!race || !source.pace || !source.courseNumber) return null
     const out = new Map<string, CourseMedal>()
     for (const day of allCourses) {
@@ -374,7 +377,7 @@ export function PastCourses({ source }: { source: PastSource }) {
       out.set(day, { ms, medal: medalFor(race, paceMs, ms, platinumMs), paceMs, platinumMs })
     }
     return out
-  }, [race, source, allCourses, bests, byDay, boards?.rows])
+  }, [race, source, allCourses, bests, byDay, boards?.rows, platinums])
   const [filter, setFilter] = useState<MedalFilter>('all')
   const courses = useMemo(
     () => (medals && filter !== 'all' ? allCourses.filter((day) => medalFilterKeeps(filter, medals.get(day))) : allCourses),

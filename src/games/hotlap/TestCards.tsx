@@ -8,6 +8,7 @@ import { dayWords, PLANNED_TRACKS, trackDay } from './daily'
 import type { Course } from './lap'
 import { trackDriveHref } from './pastTrack'
 import { formatLap } from './score'
+import { SetPlatinumRow } from '../../components/SetPlatinumRow'
 
 /*
  * The cards of an admin's test drive (/games/hotlap/play?track=<n> for today's track or one still to
@@ -85,6 +86,7 @@ export function TestStartCard({ course, ghost }: { course: Course; ghost: number
           <>
             <Row label="Blue car">{formatLap(ghost)}</Row>
             <Row label="Pace car">{formatLap(course.paceLap.time)}</Row>
+            <SetPlatinumRow game="hotlap" course={course.n} pace={course.pace} planned={course.platinumMs} format={formatLap} />
           </>
         }
         primary={
@@ -137,8 +139,9 @@ export function TestResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This lap' : formatLap(best)}</Row>
         <Row label="Pace car">{formatLap(course.paceLap.time)}</Row>
+        <SetPlatinumRow game="hotlap" course={course.n} pace={course.pace} planned={course.platinumMs} ms={Math.round(time * 1000)} format={formatLap} />
       </div>
-      <p className="game-card__note">A test lap: not saved.</p>
+      <p className="game-card__note">A test lap: on no board. Your best here sets platinum, half a second slower.</p>
       <div className="game-card__actions">
         <button
           type="button"

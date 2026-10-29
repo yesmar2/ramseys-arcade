@@ -8,6 +8,7 @@ import { caveDay, dayOfCave, PLANNED_CAVES } from './daily'
 import { caveRunHref } from './links'
 import type { LanderDay } from './runs'
 import { crashWords, formatRun } from './score'
+import { SetPlatinumRow } from '../../components/SetPlatinumRow'
 
 /*
  * The cards of an admin's test flight (/games/lander/play?day=YYYY-MM-DD for today's cave or one still to
@@ -84,6 +85,7 @@ export function TestStartCard({ lander, best }: { lander: LanderDay; best: numbe
           <>
             <Row label="Blue ship">{formatRun(lander.pace)}</Row>
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
+            <SetPlatinumRow game="lander" course={lander.n} pace={lander.pace} format={formatRun} />
           </>
         }
         primary={
@@ -235,8 +237,9 @@ export function TestResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue ship">{formatRun(lander.pace)}</Row>
+        <SetPlatinumRow game="lander" course={lander.n} pace={lander.pace} ms={Math.round(time * 1000)} format={formatRun} />
       </div>
-      <p className="game-card__note">A test flight: not saved.</p>
+      <p className="game-card__note">A test flight: on no board. Your best here sets platinum, half a second slower.</p>
       <div className="game-card__actions">
         <button
           type="button"

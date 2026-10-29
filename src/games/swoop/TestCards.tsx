@@ -8,6 +8,7 @@ import { dayOfHills, hillsDay, PLANNED_HILLS } from './daily'
 import { hillsRunHref } from './links'
 import { LAB_DAY, type SwoopDay } from './runs'
 import { cleanWords, formatRun } from './score'
+import { SetPlatinumRow } from '../../components/SetPlatinumRow'
 
 /*
  * The cards of an admin's test run (/games/swoop/play?day=YYYY-MM-DD for today's hills or some still to come,
@@ -105,6 +106,7 @@ export function TestStartCard({ swoop, best }: { swoop: SwoopDay; best: number |
           <>
             <Row label="Blue bird">{formatRun(swoop.pace)}</Row>
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
+            {swoop.day !== LAB_DAY ? <SetPlatinumRow game="swoop" course={swoop.n} pace={swoop.pace} format={formatRun} /> : null}
           </>
         }
         primary={
@@ -159,8 +161,9 @@ export function TestResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue bird">{formatRun(swoop.pace)}</Row>
+        {swoop.day !== LAB_DAY ? <SetPlatinumRow game="swoop" course={swoop.n} pace={swoop.pace} ms={Math.round(time * 1000)} format={formatRun} /> : null}
       </div>
-      <p className="game-card__note">A test run: not saved.</p>
+      <p className="game-card__note">A test run: on no board. Your best here sets platinum, half a second slower.</p>
       <div className="game-card__actions">
         <button
           type="button"

@@ -132,6 +132,7 @@ export type AdminSection =
   | 'hills'
   | 'gauntlets'
   | 'towers'
+  | 'platinum'
   | 'pours'
   | 'hunt'
   | 'trophies'
@@ -157,6 +158,7 @@ const ADMIN_SECTIONS: readonly AdminSection[] = [
   'hills',
   'gauntlets',
   'towers',
+  'platinum',
   'pours',
   'hunt',
   'trophies',

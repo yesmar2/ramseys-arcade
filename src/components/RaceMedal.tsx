@@ -1,6 +1,7 @@
 import { blueOf, boardTime, MEDAL_NAMES, MEDAL_TICKETS, MEDALS, medalBeats, medalFor, medalTimes, nextMedal, raceGapWords, type Medal, type RaceGame } from '../lib/raceMedals'
 import { TicketGlyph } from './prizes/Ticket'
 import '../styles/raceMedals.css'
+import { useSetPlatinums } from '../lib/setPlatinum'
 
 /*
  * A racing daily's medal (lib/raceMedals.ts): a disc on a ribbon, in its metal. Platinum has a sparkle on it,
@@ -55,6 +56,8 @@ export function MedalRow({
   /** A past course's: your best there holds them, not today's. */
   past?: boolean
 }) {
+  // Drawn again when an admin's set platinums come in (lib/setPlatinum.ts).
+  useSetPlatinums()
   const held = medalFor(game, paceMs, bestMs, platinumMs)
   const next = nextMedal(game, paceMs, held, platinumMs)
   const won = held ? MEDALS.indexOf(held) : -1
@@ -105,6 +108,7 @@ export function MedalLadder({
    */
   past?: boolean
 }) {
+  useSetPlatinums()
   const before = medalFor(game, paceMs, previousMs, platinumMs)
   const bestMs = previousMs != null && previousMs > 0 ? Math.min(ms, previousMs) : ms
   const held = medalFor(game, paceMs, bestMs, platinumMs)

@@ -36,6 +36,7 @@ import { dailyDay, dayProgress, subscribeDaily, syncDaily, todaysHole } from '..
 import type { Viewer } from '../lib/deviceRuns'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { numberWord } from '../lib/numberWord'
+import { useSetPlatinums } from '../lib/setPlatinum'
 import {
   alsoDailies,
   dayMarks,
@@ -417,6 +418,8 @@ export type Ticket = {
  */
 export function useTicket(viewer: Viewer): Ticket {
   const [, refresh] = useReducer((n: number) => n + 1, 0)
+  // Drawn again when an admin's set platinums come in: its medals go by them (lib/setPlatinum.ts).
+  useSetPlatinums()
   // The day as the clock has it at this drawing (drawn again at least every 30 s, below): just after midnight it's
   // the new day's ticket at once, never yesterday's results judged against the new day's blues.
   const day = dailyDay()

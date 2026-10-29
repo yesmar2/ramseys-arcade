@@ -13,6 +13,7 @@ import type { RoundLetter } from './gauntletPicture'
 import { gauntletRunHref } from './links'
 import { freshGauntletSeed, labRoundAfter, type LabPick, type WobbleDay } from './runs'
 import { formatRun, splashWords } from './score'
+import { SetPlatinumRow } from '../../components/SetPlatinumRow'
 
 /*
  * The cards of an admin's test run (/games/wobblerun/play?track=<n>, or ?day=YYYY-MM-DD, for today's gauntlet or
@@ -168,6 +169,7 @@ export function TestStartCard({ wobble, best, chips }: { wobble: WobbleDay; best
             {chips}
             <Row label="Blue blip">{formatRun(wobble.pace)}</Row>
             <Row label="Your best here">{best != null ? formatRun(best) : '–'}</Row>
+            <SetPlatinumRow game="wobblerun" course={wobble.n} pace={wobble.pace} format={formatRun} />
           </>
         }
         primary={
@@ -222,8 +224,9 @@ export function TestResultCard({
       <div className="game-pause-meta">
         <Row label="Your best here">{improved ? 'This run' : formatRun(best)}</Row>
         <Row label="Blue blip">{formatRun(wobble.pace)}</Row>
+        <SetPlatinumRow game="wobblerun" course={wobble.n} pace={wobble.pace} ms={Math.round(time * 1000)} format={formatRun} />
       </div>
-      <p className="game-card__note">A test run: not saved.</p>
+      <p className="game-card__note">A test run: on no board. Your best here sets platinum, half a second slower.</p>
       <div className="game-card__actions">
         <button
           type="button"
