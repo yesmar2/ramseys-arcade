@@ -305,7 +305,8 @@ const CLOCKS: Partial<Record<string, ClockBook>> = {
 
 const GROUPS: Record<RecordKind, { title: string; sub: string }> = {
   course: { title: 'Course records', sub: 'The best on each one, from its day on.' },
-  streaks: { title: 'Streaks', sub: 'Days played in a row, and strong runs in a row.' },
+  // "Scores over … in a row" is off for now (the API's records.ts THRESHOLD_STREAKS_ON, 2026-10-29).
+  streaks: { title: 'Streaks', sub: 'Days played in a row, and the most of a kind in a row.' },
   run: { title: 'Best in a run', sub: 'The most anyone has managed in a single run.' },
   clock: { title: 'Against the clock', sub: 'The fastest times.' },
 }
