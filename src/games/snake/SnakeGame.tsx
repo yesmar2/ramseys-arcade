@@ -55,7 +55,7 @@ import {
   type GameState,
   type Snapshot,
 } from './game'
-import { renderGame } from './render'
+import { CHASE_ROOM, renderGame } from './render'
 import { useSkinInto } from '../../lib/skins'
 import { beginRun } from '../../lib/runSession'
 import { chromeTakesKey, controlTakesKey } from '../keys'
@@ -108,6 +108,8 @@ export function SnakeGame() {
   const chase = useChase('snake')
   const chaseValue =
     chase?.recordId === 'score' ? ui.score : chase?.recordId === LONGEST_CHAIN_ID ? ui.bestChain : ui.length
+  const chasingRef = useRef(false)
+  chasingRef.current = chase != null
 
   useEffect(() => {
     let raf = 0
@@ -139,7 +141,7 @@ export function SnakeGame() {
         const h = parent?.clientHeight || 0
         if (w > 0 && h > 0) {
           const ctx = canvas.getContext('2d')
-          if (ctx) renderGame(ctx, stateRef.current, w, h, skinRef.current)
+          if (ctx) renderGame(ctx, stateRef.current, w, h, skinRef.current, chasingRef.current ? CHASE_ROOM : 0)
         }
       }
 

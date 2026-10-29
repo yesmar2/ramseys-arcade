@@ -1190,7 +1190,18 @@ function drawTank(ctx: CanvasRenderingContext2D, sk: Skin, v: View, s: GameState
 // Frame -------------------------------------------------------------------------
 
 /** Draw a frame. `playerSkin`: the player's chosen skin (lib/skins.ts), drawn on their own snake only; previews pass none. */
-export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number, playerSkin: string | null = null) {
+/** The room a chased record's pace bar takes under the board (components/Chase.tsx ChaseBar, chase.css). */
+export const CHASE_ROOM = 74
+
+export function renderGame(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  w: number,
+  h: number,
+  playerSkin: string | null = null,
+  /** Height kept free between the board and the tank: a chased record's pace bar, clear of the play. */
+  roomUnder = 0,
+) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   if (ctx.canvas.width !== Math.floor(w * dpr) || ctx.canvas.height !== Math.floor(h * dpr)) {
     ctx.canvas.width = Math.floor(w * dpr)
@@ -1217,7 +1228,7 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
   // height instead, so this costs it nothing.
   const pad = Math.max(PANEL_PAD + 2, Math.min(w, h) * 0.03)
   const boardW = w - pad * 2
-  const boardH = h - pad - header - footer
+  const boardH = h - pad - header - footer - roomUnder
   const cell = Math.max(1, Math.min(boardW / s.cols, boardH / s.rows))
   const gridW = cell * s.cols
   const gridH = cell * s.rows
@@ -1245,6 +1256,18 @@ export function renderGame(ctx: CanvasRenderingContext2D, state: GameState, w: n
       host.dataset.readoutMiddle = String(middle)
       host.style.setProperty('--readout-middle', `${middle}px`)
     }
+    // And the middle of the spare height between the board and the tank, a phone's strip by the thumbs, where a
+    // chased record's pace bar (components/Chase.tsx) sits clear of the board (chase.css). A short screen has no
+    // spare height, so while a record is chased the board leaves `roomUnder` for it.
+    const below = oy + gridH + PANEL_PAD
+    const spare = Math.max(0, Math.round(h - footer - below))
+    const under = String(Math.round(below + spare / 2))
+    if (host.dataset.underMiddle !== under) {
+      host.dataset.underMiddle = under
+      host.style.setProperty('--under-middle', `${under}px`)
+    }
+    const room = spare >= CHASE_ROOM - 6 ? 'under' : 'none'
+    if (host.dataset.boardRoom !== room) host.dataset.boardRoom = room
   }
 
   const v: View = { cell, ox, oy, gridW, gridH }

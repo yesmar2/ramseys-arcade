@@ -270,6 +270,16 @@ html[data-theme='dark'] .chase-target {
   top: calc(var(--readout-middle) + var(--score-size) / 2 + 3.1rem);
 }
 
+/*
+ * Clear of the board where there is room under it: a phone's spare height between the board and the boost tank
+ * (Snake's render.ts writes data-board-room and --under-middle). Over the board's top rows, it hid the play
+ * (Ramsey, 2026-10-29: "the progress bar kinda screws up the view of the game on mobile").
+ */
+[data-board-room='under'] > .chase-bar {
+  top: var(--under-middle);
+  transform: translate(-50%, -50%);
+}
+
 .chase-bar__top {
   display: flex;
   align-items: baseline;
