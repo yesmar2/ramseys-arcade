@@ -14,6 +14,7 @@ import { useScope } from '../lib/groups'
 import type { LeaderboardEntry } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { boardDay } from '../lib/rankHow'
+import { ChaseButton } from './Chase'
 import { DevicesIcon, PlayIcon } from './chromeIcons'
 import { GameHubHowTo } from './GameHubHowTo'
 import { GamePreview } from './GamePreview'
@@ -182,10 +183,14 @@ export function GameHubHero({
                 </span>
               </p>
             ) : canPlay ? (
-              <a ref={ctaRef} className="gh-play" href={playHref}>
-                <PlayIcon />
-                {playLabel}
-              </a>
+              <>
+                <a ref={ctaRef} className="gh-play" href={playHref}>
+                  <PlayIcon />
+                  {playLabel}
+                </a>
+                {/* A record to chase in the run, picked here and carried to the play page (lib/chase.ts). */}
+                <ChaseButton slug={game.slug} href={playHref} className="gh-chase" />
+              </>
             ) : null}
             <GameHubHowTo game={game} className="gh-ghost" />
             <ShareBoardButton

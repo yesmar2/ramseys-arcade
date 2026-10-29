@@ -122,6 +122,8 @@ export type Snapshot = {
   /** The run's longest chain: fruit eaten one after another while each one's ring still ran. */
   bestChain: number
   deathCause: DeathCause | null
+  /** Still waiting for the first move, before the record clock (fastest to a length) starts. */
+  waiting: boolean
 }
 
 export type GameState = {
@@ -1506,5 +1508,6 @@ export function toSnapshot(s: GameState): Snapshot {
     chain: s.chain,
     bestChain: s.bestChain,
     deathCause: s.deathCause,
+    waiting: s.waiting,
   }
 }

@@ -3,8 +3,10 @@ import { getGame } from '../data/games'
 import { usePersonalBest } from '../hooks/usePersonalBest'
 import { fitCardToSpace } from '../lib/cardFit'
 import { useActiveChallenge } from '../lib/challenges'
+import { useChase } from '../lib/chase'
 import { gameAccentStyle } from '../lib/gameAccentStyle'
 import { ChallengeTarget } from './ChallengeTarget'
+import { ChaseTarget } from './Chase'
 import { GamePanelBody } from './PauseControls'
 
 /**
@@ -36,6 +38,7 @@ export function GameStartCard({
   const personalBest = usePersonalBest(slug)
   const blurb = getGame(slug)?.description
   const challenge = useActiveChallenge(slug)
+  const chase = useChase(slug)
 
   return (
     <div ref={fitCardToSpace} className="game-card game-card--start" style={gameAccentStyle(slug)}>
@@ -44,6 +47,8 @@ export function GameStartCard({
         {blurb ? <p className="game-card__blurb">{blurb}</p> : null}
       </div>
       <ChallengeTarget slug={slug} />
+      {/* A record picked with Chase a record, beside Play on the game's page (lib/chase.ts). */}
+      <ChaseTarget slug={slug} />
       {/* Start under the figures, then How to play, the board and Sound (A of "Launch UX picks", 2026-10-20). */}
       <GamePanelBody
         slug={slug}
@@ -52,7 +57,7 @@ export function GameStartCard({
         tools={tools}
         primary={
           <button type="button" className="panel__btn game-card__start">
-            {challenge ? 'Take it on' : 'Start'}
+            {challenge ? 'Take it on' : chase ? 'Chase it' : 'Start'}
           </button>
         }
       />

@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { AdminWaveSkip } from '../../components/AdminWaveSkip'
+import { ChaseBar } from '../../components/Chase'
 import {
   GamePlayChrome,
   PlayReadout,
@@ -20,6 +21,7 @@ import { TournamentScoreCard } from '../../components/TournamentScoreCard'
 import { useGamePause } from '../../hooks/useGamePause'
 import { usePersonalBest } from '../../hooks/usePersonalBest'
 import { usePlayerName } from '../../hooks/usePlayerName'
+import { useChase } from '../../lib/chase'
 import { haptic } from '../../lib/haptics'
 import { getPersonalBest } from '../../lib/personalBest'
 import { normalizePlayerName } from '../../lib/leaderboard'
@@ -102,6 +104,10 @@ export function SnakeGame() {
   const { paused, toggle: togglePause, resume } = useGamePause(pausable)
   const pausedRef = useRef(false)
   pausedRef.current = paused
+  // A record being chased (Chase a record, beside Play): its pace bar runs under the score.
+  const chase = useChase('snake')
+  const chaseValue =
+    chase?.recordId === 'score' ? ui.score : chase?.recordId === LONGEST_CHAIN_ID ? ui.bestChain : ui.length
 
   useEffect(() => {
     let raf = 0
@@ -484,6 +490,13 @@ export function SnakeGame() {
               ) : null}
             </PlayReadoutStats>
           </PlayReadout>
+          {ui.phase === 'playing' && !paused ? (
+            <ChaseBar
+              slug="snake"
+              value={chaseValue}
+              elapsedMs={ui.waiting || runStartRef.current == null ? null : performance.now() - runStartRef.current}
+            />
+          ) : null}
 
           <div className="snake__overlay">
             <GamePauseOverlay

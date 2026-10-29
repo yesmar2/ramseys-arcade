@@ -1,0 +1,377 @@
+/*
+ * Chasing a record (components/Chase.tsx): Chase a record beside Play on a
+ * game's page, the sheet that picks one, the box on the start card, and the
+ * pace bar under the score through the run.
+ */
+
+/* ---------- beside Play, on the game's page ---------- */
+
+.gh-chase {
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.6rem;
+  box-sizing: border-box;
+  padding: 0 1.3rem 0 1.05rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.gh-chase svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+}
+
+.gh-chase:hover,
+.gh-chase:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+
+/* Where Play takes a row of its own (hub.css), Chase takes the next, a little shorter. */
+@media (max-width: 56rem) {
+  .gh-hero__acts .gh-chase {
+    flex: 1 1 100%;
+    min-height: 3.2rem;
+  }
+}
+
+/* ---------- the sheet ---------- */
+
+.chase-sheet__body {
+  gap: 0.7rem;
+  padding-bottom: 1.4rem;
+}
+
+.chase-sheet__lede,
+.chase-sheet__note {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.chase-sheet__retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--panel-accent-ink);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chase-sheet__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chase-sheet__cap {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chase-sheet__row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 3.6rem;
+  box-sizing: border-box;
+  padding: 0.45rem 1rem;
+  border: 2px solid rgba(var(--ink-rgb), 0.14);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.chase-sheet__row:hover,
+.chase-sheet__row:focus-visible {
+  border-color: color-mix(in srgb, var(--panel-accent) 60%, transparent);
+}
+
+.chase-sheet__row--on {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--panel-accent) 10%, var(--surface));
+}
+
+.chase-sheet__row--open {
+  border-style: dashed;
+}
+
+.chase-sheet__what {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.chase-sheet__what span {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.chase-sheet__figure {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chase-sheet__off {
+  align-self: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- on the start card ---------- */
+
+.chase-target {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.6rem 0.7rem 0.85rem;
+  border-radius: 1rem;
+  background: #1a2b3c;
+  color: #fff;
+  text-align: left;
+}
+
+html[data-theme='dark'] .chase-target {
+  background: #0b1218;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.chase-target__flag svg {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  color: #f5b942;
+}
+
+.chase-target__words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.chase-target__cap {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b9c6d2;
+}
+
+.chase-target__sub {
+  font-size: 0.82rem;
+  color: #b9c6d2;
+}
+
+.chase-target__change,
+.chase-target__x {
+  flex: none;
+  pointer-events: auto;
+  border: 0;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chase-target__change {
+  align-self: flex-start;
+  min-height: 2rem;
+  margin-bottom: -0.35rem;
+  padding: 0;
+  background: none;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: underline;
+}
+
+.chase-target__x {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.chase-target__x svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.chase-target__change:focus-visible,
+.chase-target__x:focus-visible {
+  outline: 2px solid #f5b942;
+  outline-offset: 2px;
+}
+
+/* ---------- under the score, during the run ---------- */
+
+.chase-bar {
+  --chase-ahead: #8cc8ff;
+  --chase-behind: #ffad7a;
+  --chase-won: #f5b942;
+  position: absolute;
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(21rem, calc(100% - 1.5rem));
+  box-sizing: border-box;
+  padding: 0.5rem 0.8rem 0.55rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 16, 22, 0.74);
+  color: #e9f0f4;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* Under a friend's challenge chip, when there is one too. */
+.chase-bar--low {
+  top: calc(var(--readout-middle) + var(--score-size) / 2 + 3.1rem);
+}
+
+.chase-bar__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.chase-bar__head {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #b9c6d2;
+  font-weight: 600;
+}
+
+.chase-bar__status {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.chase-bar--ahead .chase-bar__status {
+  color: var(--chase-ahead);
+}
+
+.chase-bar--behind .chase-bar__status {
+  color: var(--chase-behind);
+}
+
+.chase-bar--won .chase-bar__status {
+  color: var(--chase-won);
+}
+
+.chase-bar__track {
+  position: relative;
+  height: 1rem;
+  margin-right: 1.7rem;
+}
+
+.chase-bar__track::before,
+.chase-bar__fill {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  height: 0.3rem;
+  border-radius: 99px;
+}
+
+.chase-bar__track::before {
+  right: 0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.chase-bar__fill {
+  width: calc(var(--chase-you) * 100%);
+  background: #3ecf8e;
+  transition: width 0.2s ease;
+}
+
+.chase-bar--won .chase-bar__fill {
+  background: var(--chase-won);
+}
+
+.chase-bar__you,
+.chase-bar__pace {
+  position: absolute;
+  top: 0;
+  width: 1rem;
+  height: 1rem;
+  margin-left: -0.5rem;
+  box-sizing: border-box;
+  border-radius: 50%;
+}
+
+.chase-bar__you {
+  left: calc(var(--chase-you) * 100%);
+  background: #3ecf8e;
+  border: 2px solid #fff;
+  transition: left 0.2s ease;
+}
+
+/* The record's even pace: a hollow mark that moves with the clock. */
+.chase-bar__pace {
+  left: calc(var(--chase-pace) * 100%);
+  border: 2px dashed #b9c6d2;
+  background: rgba(10, 16, 22, 0.6);
+}
+
+.chase-bar__end {
+  position: absolute;
+  left: calc(100% + 0.4rem);
+  top: -0.05rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #b9c6d2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gh-chase,
+  .chase-bar__fill,
+  .chase-bar__you {
+    transition: none;
+  }
+}
