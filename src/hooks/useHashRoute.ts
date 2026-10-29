@@ -72,7 +72,7 @@ export type Route =
    * Bug's Today's Wanted, `?day=YYYY-MM-DD`, played again from the archive. `lab`: a racing daily's test
    * course, every new kind of obstacle in one, `?lab=1`, from the admin's Cave Book or Course Book.
    */
-  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean; slide?: boolean; race?: string }
+  | { name: 'gamePlay'; slug: string; hole?: string; track?: string; day?: string; lab?: boolean; slide?: boolean; race?: string; test?: boolean }
   /** A friend's challenge link, `/c/<game>/<id>` (lib/challenges.ts): it opens the challenge, then its game. */
   | { name: 'challenge'; slug: string; id: string }
   | { name: 'authVerify'; token: string }
@@ -703,7 +703,8 @@ export function hrefForRoute(
               ? `${gamePlayHref(route.slug)}?hole=${encodeURIComponent(route.hole)}`
               : gamePlayHref(route.slug)
       const slid = route.slide ? `${play}${play.includes('?') ? '&' : '?'}slide=1` : play
-      return route.race ? `${slid}${slid.includes('?') ? '&' : '?'}race=${encodeURIComponent(route.race)}` : slid
+      const raced = route.race ? `${slid}${slid.includes('?') ? '&' : '?'}race=${encodeURIComponent(route.race)}` : slid
+      return route.test ? `${raced}${raced.includes('?') ? '&' : '?'}test=1` : raced
     }
     case 'tournamentPlay':
       return tournamentPlayHref(route.id, route.game, route.invite)
@@ -950,6 +951,8 @@ export function parseUrl(pathname: string, search: string): Route {
     const slide = params.get('slide') === '1'
     // A racing daily's ghost to race: a board row's Race (lib/raceGhost.ts).
     const race = params.get('race')?.trim()
+    // An admin's test run on a past day too, not its practice: Set platinum drives any day (lib/setPlatinum.ts).
+    const test = params.get('test') === '1'
     return {
       name: 'gamePlay',
       slug,
@@ -959,6 +962,7 @@ export function parseUrl(pathname: string, search: string): Route {
       ...(lab ? { lab } : {}),
       ...(slide ? { slide } : {}),
       ...(race ? { race } : {}),
+      ...(test ? { test } : {}),
     }
   }
 

@@ -27,7 +27,7 @@ function whenWords(day: string) {
   if (day === LAB_DAY) return 'Test hills, laid the new way: new ones each time you load the page'
   if (day === hillsDay()) return 'Today’s hills'
   const date = new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
-  return `Come ${date}`
+  return day < hillsDay() ? `Was ${date}` : `Come ${date}`
 }
 
 /** The hills either side, and the way back to the book. A tap here isn't a tap to start. */

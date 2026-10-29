@@ -125,7 +125,7 @@ const NAV: { label?: string; items: NavItem[] }[] = [
         section: 'platinum',
         label: 'Set platinum',
         title: 'Set platinum',
-        blurb: 'Each race’s course today and the six days after: drive one, and its platinum is your best there and half a second.',
+        blurb: 'Every day of each race, past and to come: drive one, and its platinum is your best there and half a second.',
       },
       {
         section: 'holes',

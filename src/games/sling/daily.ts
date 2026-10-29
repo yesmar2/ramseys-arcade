@@ -56,10 +56,10 @@ export function dayOfTower(n: number): string {
  * A day whose tower an admin may test fly (the play page's ?day=, from the Tower Book): today's, or some still
  * to come that the plan has laid; null for anything else. A past day is practice, and anyone's.
  */
-export function testRunDay(asked: string | undefined, today = towerDay()): string | null {
+export function testRunDay(asked: string | undefined, today = towerDay(), anyDay = false): string | null {
   if (!asked || !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return null
   const n = towerNumber(asked)
-  return asked >= today && n >= 1 && n <= PLANNED_TOWERS && dayOfTower(n) === asked ? asked : null
+  return (anyDay || asked >= today) && n >= 1 && n <= PLANNED_TOWERS && dayOfTower(n) === asked ? asked : null
 }
 
 export type DailyTower = {

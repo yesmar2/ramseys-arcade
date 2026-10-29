@@ -15,8 +15,10 @@ const isDay = (day: string | undefined): day is string => typeof day === 'string
 export function WobbleRunPage() {
   const route = useRoute()
   const asked = route.name === 'gamePlay' ? (route.day ?? trackDay(route.track)) : undefined
-  const day = isDay(asked) && asked >= FIRST_DAY && asked < gauntletDay() ? asked : null
-  const test = testRunDay(asked)
+  // ?test=1: an admin's test run on any planned day, past ones too (Set platinum), rather than its practice.
+  const forced = route.name === 'gamePlay' && route.test === true
+  const day = !forced && isDay(asked) && asked >= FIRST_DAY && asked < gauntletDay() ? asked : null
+  const test = testRunDay(asked, undefined, forced)
   // ?lab=1: the test course, every round at every tier, an admin's (runs.ts LAB_DAY).
   const lab = !day && !test && route.name === 'gamePlay' && route.lab === true
   return (

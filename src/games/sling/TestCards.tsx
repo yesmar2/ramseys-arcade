@@ -27,7 +27,7 @@ function whenWords(day: string) {
   if (day === LAB_DAY) return 'Test tower, every section once: a new one each time you load the page'
   if (day === towerDay()) return 'Today’s tower'
   const date = new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
-  return `Come ${date}`
+  return day < towerDay() ? `Was ${date}` : `Come ${date}`
 }
 
 /** The tower either side, and the way back to the book. A tap here isn't a tap to start. */

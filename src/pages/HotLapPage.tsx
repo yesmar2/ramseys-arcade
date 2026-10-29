@@ -12,10 +12,12 @@ import { useRoute } from '../hooks/useHashRoute'
 export function HotLapPage() {
   const route = useRoute()
   const testDay = route.name === 'gamePlay' ? testDriveDay(route.track) : null
+  // ?test=1: an admin's test drive on a past track too, rather than its practice (Set platinum).
+  const forced = route.name === 'gamePlay' && route.test === true
   return (
     <main className="game-page game-page--fullscreen">
-      <ArchiveGate slug="hotlap" day={testDay} course={testDay ? trackNumber(testDay) : undefined}>
-        <HotLapGame testDay={testDay} />
+      <ArchiveGate slug="hotlap" day={forced ? null : testDay} course={testDay && !forced ? trackNumber(testDay) : undefined}>
+        <HotLapGame testDay={testDay} forceTest={forced} />
       </ArchiveGate>
     </main>
   )

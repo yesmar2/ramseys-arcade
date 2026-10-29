@@ -33,7 +33,7 @@ const afterRunStyle = (): CSSProperties => ({ ...gameAccentStyle(SLUG), pointerE
 function whenWords(day: string) {
   if (day === courseDay()) return 'Today’s course'
   const date = new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
-  return `Comes ${date}`
+  return day < courseDay() ? `Was ${date}` : `Comes ${date}`
 }
 
 const fallWords = (falls: number) => (falls === 0 ? 'no falls' : falls === 1 ? '1 fall' : `${falls} falls`)

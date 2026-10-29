@@ -69,10 +69,10 @@ export function trackDay(track: string | undefined): string | undefined {
  * A day whose gauntlet an admin may test run (the play page's ?day= or ?track=, from the Gauntlet Book): today's,
  * or one still to come that the plan has laid; null for anything else. A past day is practice, and anyone's.
  */
-export function testRunDay(asked: string | undefined, today = gauntletDay()): string | null {
+export function testRunDay(asked: string | undefined, today = gauntletDay(), anyDay = false): string | null {
   if (!asked || !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return null
   const n = gauntletNumber(asked)
-  return asked >= today && n >= 1 && n <= PLANNED_GAUNTLETS && dayOfGauntlet(n) === asked ? asked : null
+  return (anyDay || asked >= today) && n >= 1 && n <= PLANNED_GAUNTLETS && dayOfGauntlet(n) === asked ? asked : null
 }
 
 export type DailyGauntlet = {

@@ -56,10 +56,10 @@ export function dayOfHills(n: number): string {
  * A day whose hills an admin may test fly (the play page's ?day=, from the Hills Book): today's, or some still
  * to come that the plan has laid; null for anything else. A past day is practice, and anyone's.
  */
-export function testRunDay(asked: string | undefined, today = hillsDay()): string | null {
+export function testRunDay(asked: string | undefined, today = hillsDay(), anyDay = false): string | null {
   if (!asked || !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return null
   const n = hillsNumber(asked)
-  return asked >= today && n >= 1 && n <= PLANNED_HILLS && dayOfHills(n) === asked ? asked : null
+  return (anyDay || asked >= today) && n >= 1 && n <= PLANNED_HILLS && dayOfHills(n) === asked ? asked : null
 }
 
 export type DailyHills = {

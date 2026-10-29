@@ -55,10 +55,10 @@ export function dayOfCourse(n: number): string {
  * A day whose course an admin may test run (the play page's ?day=, from the Course Book): today's, or one
  * still to come that the plan has laid out; null for anything else. A past day is practice, and anyone's.
  */
-export function testRunDay(asked: string | undefined, today = courseDay()): string | null {
+export function testRunDay(asked: string | undefined, today = courseDay(), anyDay = false): string | null {
   if (!asked || !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return null
   const n = courseNumber(asked)
-  return asked >= today && n >= 1 && n <= PLANNED_COURSES && dayOfCourse(n) === asked ? asked : null
+  return (anyDay || asked >= today) && n >= 1 && n <= PLANNED_COURSES && dayOfCourse(n) === asked ? asked : null
 }
 
 export type DailyCourse = {

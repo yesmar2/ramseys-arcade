@@ -1341,7 +1341,7 @@ function PastTrackDay({ day }: { day: string }) {
  * still to come, is a test drive, and only an admin's: anyone else is sent to today's track, with a word
  * about why when the track's day hasn't come.
  */
-export function HotLapGame({ testDay }: { testDay?: string | null }) {
+export function HotLapGame({ testDay, forceTest = false }: { testDay?: string | null; forceTest?: boolean }) {
   const [today, setToday] = useState<{ day: string; notice?: string }>(() => ({ day: devDay() ?? trackDay() }))
   const admin = useAdminState()
   const { loading } = useAuth()
@@ -1352,7 +1352,8 @@ export function HotLapGame({ testDay }: { testDay?: string | null }) {
   useEffect(() => {
     if (shut) navigate(gamePlayHref(SLUG), { replace: true })
   }, [shut])
-  if (testDay && state === 'past') return <PastTrackDay key={`past-${testDay}`} day={testDay} />
+  // A past track's practice, unless an admin asked to test drive it (?test=1): then it waits to hear they are one.
+  if (testDay && state === 'past' && (!forceTest || (admin === false && !loading))) return <PastTrackDay key={`past-${testDay}`} day={testDay} />
   if (testDay && admin === true) return <HotLapDay key={`test-${testDay}`} day={testDay} test onNewDay={() => {}} />
   // Still signing in, or still asking the API whether this account is an admin.
   if (testDay && !shut) return null

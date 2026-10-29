@@ -26,7 +26,7 @@ const holdPress = (e: ReactPointerEvent) => e.stopPropagation()
 function whenWords(day: string) {
   if (day === caveDay()) return 'Today’s cave'
   const date = new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
-  return `Comes ${date}`
+  return day < caveDay() ? `Was ${date}` : `Comes ${date}`
 }
 
 /** The caves either side, and the way back to the book. A tap here isn't a tap to start. */

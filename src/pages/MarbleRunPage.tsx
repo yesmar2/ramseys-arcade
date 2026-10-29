@@ -16,8 +16,10 @@ const isDay = (day: string | undefined): day is string => typeof day === 'string
 export function MarbleRunPage() {
   const route = useRoute()
   const asked = route.name === 'gamePlay' ? route.day : undefined
-  const day = isDay(asked) && asked >= FIRST_DAY && asked < courseDay() ? asked : null
-  const test = testRunDay(asked)
+  // ?test=1: an admin's test run on any planned day, past ones too (Set platinum), rather than its practice.
+  const forced = route.name === 'gamePlay' && route.test === true
+  const day = !forced && isDay(asked) && asked >= FIRST_DAY && asked < courseDay() ? asked : null
+  const test = testRunDay(asked, undefined, forced)
   const lab = !day && !test && route.name === 'gamePlay' && route.lab === true
   const slide = !day && !lab && route.name === 'gamePlay' && route.slide === true
   return (

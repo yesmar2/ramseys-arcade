@@ -56,10 +56,10 @@ export function dayOfCave(n: number): string {
  * A day whose cave an admin may test fly (the play page's ?day=, from the Cave Book): today's, or one still
  * to come that the plan has dug; null for anything else. A past day is practice, and anyone's.
  */
-export function testRunDay(asked: string | undefined, today = caveDay()): string | null {
+export function testRunDay(asked: string | undefined, today = caveDay(), anyDay = false): string | null {
   if (!asked || !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return null
   const n = caveNumber(asked)
-  return asked >= today && n >= 1 && n <= PLANNED_CAVES && dayOfCave(n) === asked ? asked : null
+  return (anyDay || asked >= today) && n >= 1 && n <= PLANNED_CAVES && dayOfCave(n) === asked ? asked : null
 }
 
 export type DailyCave = {
