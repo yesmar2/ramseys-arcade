@@ -118,7 +118,7 @@ export type TodayServerDay = {
 export type TodayFreezes = { held: number; max: number; every: number; next: number }
 
 /** The first day there were Dailies to keep (the API's TODAY_SINCE), for when the API hasn't said: signed out. */
-export const TODAY_SINCE_FALLBACK = '2026-09-27'
+export const TODAY_SINCE_FALLBACK = '2026-10-16'
 
 export type TodayServer = {
   /** The boards' day, YYYY-MM-DD. */

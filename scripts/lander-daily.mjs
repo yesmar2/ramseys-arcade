@@ -22,7 +22,7 @@ import { caveDepth, caveThings, firstGoodCave, paceRun, plannedCave } from '../s
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAN = join(root, 'src/games/lander/dailyPlan.ts')
 const API = join(process.env.API_DIR ?? join(root, '../ramseys-arcade-api'), 'src/landerPace.ts')
-const FIRST_DAY = '2026-09-30'
+const FIRST_DAY = '2026-10-16'
 
 function readPlan() {
   if (!existsSync(PLAN)) return []

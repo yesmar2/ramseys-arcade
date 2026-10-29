@@ -7,14 +7,15 @@
 import { DAILY_CAVES } from './dailyPlan.ts'
 
 /** Day 1, Lander's first cave (the API's landerPace.ts LANDER_FIRST_DAY). */
-export const FIRST_DAY = '2026-09-30'
+// Every race's day #1 since Ramsey, 2026-10-29: "reset all the dailies so that they only have 7 or 14 days
+// back" (he picked 14 and numbering from #1): launch day, Oct 30, is #15. It was 2026-09-30.
+export const FIRST_DAY = '2026-10-16'
 
 /**
  * The first day Today's Cave is on the Dailies card (lib/today.ts), as the API's today.ts LANDER_TODAY_FROM
- * has it: the day after the game came, since a day's card is judged as it began and its first day's began
- * with five.
+ * has it: the races' day #1, as every race's is since Oct 16 became it.
  */
-export const TODAY_FROM: string | null = '2026-10-01'
+export const TODAY_FROM: string | null = '2026-10-16'
 const TZ = 'America/New_York'
 
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })

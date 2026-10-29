@@ -22,7 +22,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAN = join(root, 'src/games/sling/dailyPlan.ts')
 const ROUTES = join(root, 'src/games/sling/blueRoutes.ts')
 const API = join(process.env.API_DIR ?? join(root, '../ramseys-arcade-api'), 'src/slingPace.ts')
-const FIRST_DAY = '2026-10-19'
+const FIRST_DAY = '2026-10-16'
 
 function readPlan() {
   if (!existsSync(PLAN)) return []

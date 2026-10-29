@@ -23,7 +23,7 @@ const paceMs = (flight) => Math.round(flight.time * BLUE_PACE * 1000)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAN = join(root, 'src/games/swoop/dailyPlan.ts')
 const API = join(process.env.API_DIR ?? join(root, '../ramseys-arcade-api'), 'src/swoopPace.ts')
-const FIRST_DAY = '2026-10-06'
+const FIRST_DAY = '2026-10-16'
 
 function readPlan() {
   if (!existsSync(PLAN)) return []

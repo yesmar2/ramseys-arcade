@@ -450,16 +450,16 @@ export function daysTotal(days: PlayedDay[]): number | null {
  * A day before it wasn't a day's board yet, so it's drawn as before the daily began, not as a day missed.
  */
 const DAYS_COUNT_FROM: Partial<Record<string, string>> = {
-  hotlap: '2026-09-26',
+  hotlap: '2026-10-16',
   acechase: '2026-09-27',
   findbug: '2026-09-27',
   halffull: '2026-09-28',
   centroid: '2026-10-06',
-  marblerun: '2026-09-29',
-  lander: '2026-09-30',
-  swoop: '2026-10-06',
+  marblerun: '2026-10-16',
+  lander: '2026-10-16',
+  swoop: '2026-10-16',
   wobblerun: '2026-10-09',
-  sling: '2026-10-19',
+  sling: '2026-10-16',
 }
 
 /**

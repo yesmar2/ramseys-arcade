@@ -7,14 +7,16 @@
 import { DAILY_HILLS } from './dailyPlan.ts'
 
 /** Day 1, Swoop's first hills (the API's swoopPace.ts SWOOP_FIRST_DAY). */
-export const FIRST_DAY = '2026-10-06'
+// Every race's day #1 since Ramsey, 2026-10-29: "reset all the dailies so that they only have 7 or 14 days
+// back" (he picked 14 and numbering from #1): launch day, Oct 30, is #15. It was 2026-10-06.
+export const FIRST_DAY = '2026-10-16'
 
 /**
  * The first day Today's Hills are on the Dailies card (lib/today.ts), as the API's today.ts SWOOP_TODAY_FROM
  * has it: the day the game came, as Marble Run's was, since a daily isn't on the games wall and the card is
  * the way to it (Ramsey, 2026-10-06: "i don't see swoop on the dailies").
  */
-export const TODAY_FROM: string | null = '2026-10-06'
+export const TODAY_FROM: string | null = '2026-10-16'
 const TZ = 'America/New_York'
 
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })

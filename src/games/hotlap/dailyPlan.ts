@@ -1,4 +1,4 @@
-// Written by scripts/hotlap-daily.mjs: Hot Lap's track for each day from the first (2026-09-26), each
+// Written by scripts/hotlap-daily.mjs: Hot Lap's track for each day from the first (2026-10-16), each
 // checked to close, keep clear of itself and give the pace car and a driver on the limit a clean lap.
 // `pace` is the pace car's lap in milliseconds: the blue car's, as the game drives it (lap.ts hotlapCourse).
 // `platinum` is the lap that takes platinum, in milliseconds, set track by track (medalLap.ts platinumOf).

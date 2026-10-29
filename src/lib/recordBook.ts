@@ -30,7 +30,7 @@ type RecordLike = { id: string; unit: 'ms' | 'count' }
  * are pour-N, not day-N, because these words go by the record's id and a pour's number is a percent.
  */
 const COURSE_FIRST_DAY: Partial<Record<string, string>> = {
-  hotlap: '2026-09-26',
+  hotlap: '2026-10-16',
   acechase: '2026-09-25',
   findbug: '2026-09-27',
   // Half Full #1: the same day as the game's daily.ts FIRST_DAY and the API's halffull/launch.ts.

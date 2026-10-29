@@ -9,7 +9,9 @@ import { DAILY_TRACKS, type PlannedTrack } from './dailyPlan.ts'
 import type { Piece, TrackShape } from './sim.ts'
 
 /** Day 1, the classic track. */
-export const FIRST_DAY = '2026-09-26'
+// Every race's day #1 since Ramsey, 2026-10-29: "reset all the dailies so that they only have 7 or 14 days
+// back" (he picked 14 and numbering from #1): launch day, Oct 30, is #15. It was 2026-09-26.
+export const FIRST_DAY = '2026-10-16'
 const TZ = 'America/New_York'
 
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })

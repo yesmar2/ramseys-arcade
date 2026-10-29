@@ -42,7 +42,7 @@ const S = await import(SIM.href)
 const { hashString } = await import(SEEDS.href)
 const { platinumOf } = await import(new URL('../src/games/hotlap/medalLap.ts', import.meta.url).href)
 
-const FIRST_DAY = '2026-09-26'
+const FIRST_DAY = '2026-10-16'
 /**
  * A pace car's lap as the plan keeps it: in milliseconds, as the boards keep laps, so the blue car on a card,
  * its medals and the API's tickets all go by the lap it drives (66.367s, not 66.37s).

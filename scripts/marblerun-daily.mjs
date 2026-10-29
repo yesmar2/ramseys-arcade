@@ -21,7 +21,7 @@ import { coursePieces, firstGoodCourse, paceRun, plannedCourse } from '../src/ga
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAN = join(root, 'src/games/marblerun/dailyPlan.ts')
 const API = join(process.env.API_DIR ?? join(root, '../ramseys-arcade-api'), 'src/marblerunPace.ts')
-const FIRST_DAY = '2026-09-29'
+const FIRST_DAY = '2026-10-16'
 
 function readPlan() {
   if (!existsSync(PLAN)) return []
