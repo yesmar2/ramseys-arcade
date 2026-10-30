@@ -13,8 +13,8 @@ import { gatePassword, makePass, PASS_COOKIE, PASS_DAYS, passFromCookies, passVa
  *
  * Two settings on Vercel (Production), each doing nothing while it's unset, so this file changes nothing on
  * its own:
- * - SITE_PASSWORD closes the site behind the gate. Set it and redeploy to close; delete it and redeploy to open.
- *   Changing it signs everyone out.
+ * - SITE_PASSWORD closed the site behind the gate until launch. The site is open for good now, whatever it says
+ *   (api/_gate.js gatePassword).
  * - CANONICAL_HOST is the address the site goes by (blipka.com). Any other address on production (the old
  *   ramseys-arcade.vercel.app) answers with a permanent redirect to it, path and all. Its www twin is left to
  *   Vercel's domain setting, whichever way that goes.

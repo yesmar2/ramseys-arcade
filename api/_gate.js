@@ -12,9 +12,13 @@ export const PASS_COOKIE = 'blipka-pass'
 /** How long a pass lasts: a tester types the password once a month, not once a visit. */
 export const PASS_DAYS = 30
 
-/** The gate's password; null when the gate is open (no SITE_PASSWORD on this deployment). */
+/**
+ * The gate's password; null when the gate is open. Blipka opened on Oct 30, 2026, and the gate stays open
+ * whatever SITE_PASSWORD says: deleting it on Vercel asked Ramsey for a two-factor code he didn't have. To close
+ * the site again, read `process.env.SITE_PASSWORD?.trim() || null` here as before.
+ */
 export function gatePassword() {
-  return process.env.SITE_PASSWORD?.trim() || null
+  return null
 }
 
 /**
