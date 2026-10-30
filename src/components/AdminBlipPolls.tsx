@@ -3,15 +3,18 @@ import { api } from '../lib/leaderboard'
 import type { PollQuestion } from '../lib/poll'
 
 /*
- * Blip's questions on /admin: today's and the two weeks after, as planned (the API's pollPlan.ts) or as edited
- * here. Any of them can be edited for its day, or put back to the plan's; a past day's can't, its answers are in.
+ * Blip's questions on /admin: today's and the ones to come, as planned (the API's pollPlan.ts) or as changed here.
+ * Any of them can be edited for its day, or put back to the plan's. One to come can move a day sooner or later, or
+ * come out, and each after it then comes a day sooner (Ramsey, 2026-10-30: "can you add ability to reorder
+ * questions and delete them in admin?"). Today's stays where it is, and a past day's can't change: their answers are in.
  */
 
-const DAYS = 14
+const DAYS = 30
 
 const dayWords = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 
-type List = { today: number; polls: PollQuestion[] }
+/** `total`: how many questions there are before they come round again (an API from before moving them says none). */
+type List = { today: number; total?: number; polls: PollQuestion[] }
 
 function Editor({ poll, onDone }: { poll: PollQuestion; onDone: (next: PollQuestion | null) => void }) {
   const [q, setQ] = useState(poll.q)
@@ -88,15 +91,41 @@ export function AdminBlipPolls() {
   const [list, setList] = useState<List | null>(null)
   const [error, setError] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
+  const [count, setCount] = useState(DAYS)
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(false)
-    api<List>(`/poll/admin?count=${DAYS}`)
+    api<List>(`/poll/admin?count=${count}`)
       .then(setList)
       .catch(() => setError(true))
-  }, [])
+  }, [count])
 
   useEffect(load, [load])
+
+  /** A question to come, a day sooner or later, or out: the API answers with the list as it now stands. */
+  const change = async (poll: PollQuestion, action: 'sooner' | 'later' | 'remove') => {
+    if (busy) return
+    if (action === 'remove' && !window.confirm(`Delete “${poll.q}”? Blip won’t ask it again, and each question after it comes a day sooner.`)) return
+    setBusy(true)
+    setNote(null)
+    setEditing(null)
+    try {
+      const next = await api<List>(`/poll/admin/${poll.n}/${action === 'remove' ? 'remove' : 'move'}`, {
+        method: 'POST',
+        body: JSON.stringify(action === 'remove' ? { count } : { by: action === 'sooner' ? -1 : 1, count }),
+      })
+      setList(next)
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : 'Couldn’t change it')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const total = list?.total ?? null
+  const last = list && total != null ? list.today + total - 1 : null
 
   return (
     <section className="adm-card" aria-labelledby="adm-polls">
@@ -106,42 +135,90 @@ export function AdminBlipPolls() {
         </h2>
       </div>
       <p className="adm-card__sub">
-        Today’s question and the two weeks after it, as planned or as edited here. Edit any of them for its day; signed-in
-        players answer once, for 5 tickets. A question that’s been edited can go back to the plan’s.
+        Today’s question and the ones to come. Move one a day sooner or later, or delete it, and each question after it
+        comes a day sooner; today’s stays put, since its answers may be in. Edit any of them for its day, and an edited one
+        can go back to the plan’s. Signed-in players answer once, for 5 tickets.
       </p>
+      {note ? <p className="adm-note">{note}</p> : null}
       {error ? (
         <p className="adm-note">Couldn’t load the questions.</p>
       ) : !list ? (
         <p className="adm-note">Loading…</p>
       ) : (
-        <ul className="adm-list">
-          {list.polls.map((poll) => (
-            <li key={poll.n} className="adm-row adm-row--stack">
-              <div className="adm-row__main">
-                <b className="adm-row__title">
-                  {poll.n === list.today ? 'Today' : dayWords.format(new Date(`${poll.day}T12:00:00Z`))} · #{poll.n} · {poll.q}
-                  {poll.edited ? ' (edited)' : ''}
-                </b>
-                <span className="adm-row__sub">{poll.options.join(' · ')}</span>
-              </div>
-              {editing === poll.n ? (
-                <Editor
-                  poll={poll}
-                  onDone={(next) => {
-                    setEditing(null)
-                    if (next) setList((l) => (l ? { ...l, polls: l.polls.map((p) => (p.n === next.n ? next : p)) } : l))
-                  }}
-                />
-              ) : (
-                <div className="adm-row__acts">
-                  <button type="button" className="panel__btn panel__btn--ghost adm-small" onClick={() => setEditing(poll.n)}>
-                    Edit
-                  </button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="adm-list">
+            {/* A round at most: past it the questions come round again, as the ones above. */}
+            {list.polls.filter((poll) => last == null || poll.n <= last).map((poll) => {
+              // A question to come can move or come out; today's can't.
+              const coming = last != null && poll.n > list.today
+              return (
+                <li key={poll.n} className="adm-row adm-row--stack">
+                  <div className="adm-row__main">
+                    <b className="adm-row__title">
+                      {poll.n === list.today ? 'Today' : dayWords.format(new Date(`${poll.day}T12:00:00Z`))} · #{poll.n} · {poll.q}
+                      {poll.edited ? ' (edited)' : ''}
+                    </b>
+                    <span className="adm-row__sub">{poll.options.join(' · ')}</span>
+                  </div>
+                  {editing === poll.n ? (
+                    <Editor
+                      poll={poll}
+                      onDone={(next) => {
+                        setEditing(null)
+                        if (next) setList((l) => (l ? { ...l, polls: l.polls.map((p) => (p.n === next.n ? next : p)) } : l))
+                      }}
+                    />
+                  ) : (
+                    <div className="adm-row__acts">
+                      {coming ? (
+                        <>
+                          <button
+                            type="button"
+                            className="panel__btn panel__btn--ghost adm-small"
+                            disabled={busy || poll.n === list.today + 1}
+                            aria-label={`Move “${poll.q}” a day sooner`}
+                            title="A day sooner"
+                            onClick={() => void change(poll, 'sooner')}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="panel__btn panel__btn--ghost adm-small"
+                            disabled={busy || poll.n === last}
+                            aria-label={`Move “${poll.q}” a day later`}
+                            title="A day later"
+                            onClick={() => void change(poll, 'later')}
+                          >
+                            ↓
+                          </button>
+                        </>
+                      ) : null}
+                      <button type="button" className="panel__btn panel__btn--ghost adm-small" disabled={busy} onClick={() => setEditing(poll.n)}>
+                        Edit
+                      </button>
+                      {coming ? (
+                        <button
+                          type="button"
+                          className="panel__btn panel__btn--ghost adm-small"
+                          disabled={busy}
+                          onClick={() => void change(poll, 'remove')}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+          {total != null && count < Math.min(total, 120) ? (
+            <button type="button" className="panel__btn panel__btn--ghost adm-small" onClick={() => setCount(Math.min(total, 120))}>
+              Show all {total}
+            </button>
+          ) : null}
+        </>
       )}
     </section>
   )
