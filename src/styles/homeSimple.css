@@ -301,7 +301,6 @@ html[data-theme="dark"] .home-races__sub {
   padding: 1.1rem 1.15rem;
   border-radius: 1.2rem;
   border: 1px solid rgba(160, 170, 255, 0.16);
-  background: #161b3d;
   color: #e7eef3;
   text-decoration: none;
 }
@@ -398,6 +397,56 @@ html[data-theme="dark"] .home-races__sub {
   .hsn__line {
     grid-column: 1 / -1;
     font-size: 0.78rem;
+  }
+}
+
+/* ---------- the season card's sky: a ringed planet over the stars (HomeSeasonCard.tsx HsnSky) ---------- */
+
+.hsn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: #141a3e;
+  background-image:
+    radial-gradient(circle at 88% 10%, rgba(var(--space-violet-rgb), 0.38), transparent 58%),
+    radial-gradient(circle at 0% 100%, rgba(var(--space-orange-rgb), 0.14), transparent 50%),
+    var(--season-stars-dark, none);
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: auto, auto, 260px 260px;
+}
+
+.hsn > :not(.hsn__planet) {
+  position: relative;
+  z-index: 1;
+}
+
+.hsn__planet {
+  position: absolute;
+  z-index: 0;
+  right: -2.4rem;
+  top: -1.9rem;
+  width: 11rem;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.hsn .hsn__name {
+  font-family: var(--space-font);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 14px rgba(var(--space-violet-rgb), 0.6);
+}
+
+/* On a phone's slim line, a smaller planet, and the bar stops short of it. */
+@media (max-width: 36rem) {
+  .hsn__planet {
+    right: -1.4rem;
+    top: -1.7rem;
+    width: 7.5rem;
+    opacity: 0.85;
+  }
+
+  .hsn__level {
+    margin-right: 3.6rem;
   }
 }
 

@@ -1,10 +1,35 @@
 import { seasonHref } from '../hooks/useHashRoute'
 import { daysLeftLabel, liveSeason, seasonProgress, useSeason } from '../lib/season'
+import { SPACE } from '../lib/seasonArt'
+
+/*
+ * The card's sky, behind its words: a ringed planet in the top corner over the season's stars (Ramsey, 2026-11-04:
+ * "can the space race card be jazzed up a little, like have a space like background", then "ringed planet works",
+ * A of three tried: the planet, a nebula, a moon with a rocket).
+ */
+function HsnSky() {
+  return (
+    <svg className="hsn__planet" viewBox="0 0 200 160" aria-hidden="true">
+      <circle cx="120" cy="70" r="46" fill={SPACE.violet} />
+      <path d="M80 52 Q120 38 162 58" stroke="#a48be0" strokeWidth="7" fill="none" opacity="0.55" />
+      <path d="M86 86 Q120 96 160 82" stroke="#6a4fb8" strokeWidth="6" fill="none" opacity="0.6" />
+      <ellipse cx="120" cy="70" rx="88" ry="17" fill="none" stroke={SPACE.amber} strokeWidth="4" transform="rotate(-16 120 70)" opacity="0.9" />
+      <circle cx="120" cy="70" r="46" fill="url(#hsn-shade)" />
+      <defs>
+        <radialGradient id="hsn-shade" cx="0.32" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.18" />
+          <stop offset="0.6" stopColor="#000" stopOpacity="0" />
+          <stop offset="1" stopColor="#000" stopOpacity="0.35" />
+        </radialGradient>
+      </defs>
+    </svg>
+  )
+}
 
 /**
  * The season on the simple home's rail (2 on the "Home: one games grid" canvas, 2026-11-04): its name, your level
  * with a bar to the next and the tickets it takes, and the way to the pass. Deep space in both themes, as the
- * season's own panels are. On a phone it's one slim line over the Standings (home.css .hsn).
+ * season's own panels are, with a ringed planet over its stars. On a phone it's one slim line over the Standings (home.css .hsn).
  */
 export function HomeSeasonCard() {
   const store = useSeason()
@@ -22,6 +47,7 @@ export function HomeSeasonCard() {
         : 'You’ve reached the top of the pass.'
   return (
     <a className="hsn" href={seasonHref()} aria-label={`${season.name}: ${you && p.level > 0 ? `level ${p.level}. ` : ''}${line}`} data-hunt="home-onnow">
+      <HsnSky />
       <span className="hsn__kick">
         Season {season.id} · {daysLeftLabel(season)}
       </span>
