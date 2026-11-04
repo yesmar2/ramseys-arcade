@@ -131,20 +131,21 @@ const SITE_ANCHORS: HuntAnchor[] = ([
   {
     id: 'home-hero',
     page: 'on the home page',
-    thing: 'today’s ticket',
-    lesson: 'Today’s ticket is the day’s races, new every day and the same for everyone. Any two keep your streak going, and all of them make a Full ticket.',
+    thing: 'today’s races',
+    lesson: 'Today’s races are new every day and the same for everyone. Any two keep your streak going, and all of them make a Full ticket.',
   },
   {
+    // On now left the home page (2026-11-04); its place in the list is the season's card now, so the days' order holds.
     id: 'home-onnow',
     page: 'on the home page',
-    thing: 'today’s event, under On now',
-    lesson: 'On now is today’s event, this week’s weekly and last week’s winners. Join one and your runs count toward it.',
+    thing: 'the season’s card',
+    lesson: 'Every game wins you tickets, and they climb the season’s pass, a level at a time.',
   },
   {
     id: 'home-wall',
     page: 'on the home page',
-    thing: 'the first game on the wall',
-    lesson: 'The wall has every game in the arcade. The chips above it sort them into arcade, puzzle, quick play and sport.',
+    thing: 'the first game in the list',
+    lesson: 'The home page has every game in the arcade, the ones you played lately first.',
   },
   {
     id: 'home-standings',
@@ -153,10 +154,11 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     lesson: 'The Standings rank everyone by their ten best ranked games. A better place on any of them can move you up.',
   },
   {
+    // The house records left the home page (2026-11-04); its place in the list is the games' heading now.
     id: 'home-records',
     page: 'on the home page',
-    thing: 'the house records',
-    lesson: 'House records are the arcade’s own: the most days played in a row, the most days played, the most games in a day. Beat one and your tag goes up there.',
+    thing: 'the Games heading',
+    lesson: 'Every game has a page of its own, a tap away: its board, its records and how to play.',
   },
   {
     id: 'home-groups',

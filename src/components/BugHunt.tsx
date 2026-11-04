@@ -676,12 +676,13 @@ function Stats({ stats }: { stats: HuntStats }) {
 }
 
 /** The front page's line on today's hunt: who's loose, the clue, and a hint. */
-export function BugHuntStrip() {
+export function BugHuntStrip({ compact = false }: { compact?: boolean } = {}) {
   const { pick, stats, server, msLeft } = useHunt()
   const name = capitalName(pick.bug)
   const count = countWords(server, pick.bug.name, stats)
+  // On the simple home's rail, a row: the bug, who's loose (or caught), and your bugs (bughunt.css .hunt-strip--row).
   return (
-    <section className={`hunt-strip${stats.foundToday ? ' hunt-strip--found' : ''}`} aria-label="Daily bug hunt">
+    <section className={`hunt-strip${stats.foundToday ? ' hunt-strip--found' : ''}${compact ? ' hunt-strip--row' : ''}`} aria-label="Daily bug hunt">
       {/* The bug opens your bugs too, for a finger or a mouse. Your bugs, beside it, is the one button the keyboard and
           a screen reader meet: the picture was a second one by the same name. */}
       <span className="hunt-strip__mark" aria-hidden="true" onClick={openBugHunt}>

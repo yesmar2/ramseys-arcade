@@ -47,11 +47,14 @@ function Standings({
   you,
   players,
   group,
+  lead = 2,
 }: {
   board: GlobalBoardResult | null
   you: string
   players: number
   group?: string | null
+  /** How many of the top stay on the list when you're further down: two in the boards' panel, three on the rail. */
+  lead?: number
 }) {
   const period = useDefaultPeriod()
   const { nobody } = useScope()
@@ -66,7 +69,7 @@ function Standings({
   const behind = rank != null ? nearby.find((n) => n.rank === rank + 1) : undefined
   // Ranked, but under the top four: the top two, the player above you (when they're not one of those two), and you.
   const below = Boolean(you) && rank != null && entries.length > 0 && !top.some((e) => e.name === you)
-  const shown = below ? entries.slice(0, 2) : top
+  const shown = below ? entries.slice(0, lead) : top
   const lastShown = shown[shown.length - 1]
   const aboveRow: GlobalBoardEntry | null =
     below && ahead && lastShown && ahead.rank > lastShown.rank
@@ -256,6 +259,39 @@ function RecordBook({ slug, records }: { slug: string; records: RecordSummary[] 
             ))}
       </ul>
     </article>
+  )
+}
+
+/**
+ * The Standings alone, on the simple home's rail (S1 on the "Home: one games grid" canvas, Ramsey, 2026-11-04):
+ * the top three, then the player just above you and you, as the Boards page's rows have them.
+ */
+export function HomeStandings() {
+  const period = useDefaultPeriod()
+  const groupId = useActiveGroup()
+  const group = useScope().name
+  const you = normalizePlayerName(usePlayerName())
+  const [board, setBoard] = useState<GlobalBoardResult | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setBoard(null)
+    fetchGlobalBoard(5, period)
+      .then((result) => {
+        if (!cancelled) setBoard(result)
+      })
+      .catch(() => {
+        if (!cancelled) setBoard({ totalPlayers: 0, entries: [] })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [period, groupId])
+
+  return (
+    <div className="hb-rail">
+      <Standings board={board} you={you} players={board?.totalPlayers ?? 0} group={group} lead={3} />
+    </div>
   )
 }
 

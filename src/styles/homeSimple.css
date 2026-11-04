@@ -1,0 +1,477 @@
+/*
+ * The simple home (pages/HomePage.tsx), 2 on the "Home: one games grid" canvas with S1's Standings (2026-11-04):
+ * today's races and the games down the page, a rail beside them with the season, the Standings, the bug hunt and
+ * groups. One column under 64rem, the rail's parts between the races and the games.
+ */
+
+/*
+ * Wide, two columns: the races and the games on the left, the rail on the right. Narrower, the columns fold away
+ * (display: contents) and the parts line up in one: the races, the season and the Standings, the games, then the
+ * bug hunt and groups.
+ */
+.home-simple__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: 2rem;
+  align-items: start;
+}
+
+.home-simple__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  min-width: 0;
+}
+
+.home-simple__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.home-simple__part {
+  min-width: 0;
+}
+
+@media (max-width: 64rem) {
+  .home-simple__grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.1rem;
+  }
+
+  .home-simple__main,
+  .home-simple__side {
+    display: contents;
+  }
+
+  .home-simple__part--races {
+    order: 1;
+  }
+
+  .home-simple__part--season {
+    order: 2;
+  }
+
+  .home-simple__part--standings {
+    order: 3;
+  }
+
+  .home-simple__part--wall {
+    order: 4;
+    margin: 1rem 0 0.4rem;
+  }
+
+  .home-simple__part--hunt {
+    order: 5;
+  }
+
+  .home-simple__part--groups {
+    order: 6;
+  }
+}
+
+/* A part with nothing to show (no season on) leaves no gap. */
+.home-simple__part:empty {
+  display: none;
+}
+
+/* ---------- today's races: a head, then a tile each ---------- */
+
+.home-races {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.home-races__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.home-races__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.home-races__sub {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.home-races__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: auto;
+  flex: none;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+html[data-theme="dark"] .home-races__open {
+  color: #5fdcc5;
+}
+
+.home-races__open svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.home-races__row {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-races__race {
+  display: flex;
+  min-width: 0;
+}
+
+.home-races__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.home-races__pic {
+  border-radius: 0.9rem;
+  box-shadow: 0 1px 2px rgba(var(--shade-rgb), 0.08);
+}
+
+.home-races__tile:hover .home-races__pic,
+.home-races__tile:focus-visible .home-races__pic {
+  outline: 2px solid color-mix(in srgb, var(--day, var(--accent)) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.home-races__tile:focus-visible {
+  outline: none;
+}
+
+.home-races__name {
+  margin-top: 0.15rem;
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.home-races__line {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.1rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.home-races__line .home-day__medal {
+  font-size: 0.8rem;
+}
+
+.home-races__race--done .home-races__did {
+  color: color-mix(in srgb, #e6ac39 70%, var(--ink));
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .home-races__race--done .home-races__did {
+  color: #f5b942;
+}
+
+/* On a phone the races swipe, out to the screen's edge. */
+@media (max-width: 36rem) {
+  .home-races__row {
+    display: flex;
+    gap: 0.6rem;
+    margin-right: -0.625rem;
+    padding-right: 0.625rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .home-races__row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-races__race {
+    flex: 0 0 8.25rem;
+    scroll-snap-align: start;
+  }
+
+  .home-races__title {
+    font-size: 1.2rem;
+  }
+}
+
+/* ---------- the games: the screen and the name ---------- */
+
+/* Beside the rail the games run four across, five on a wide screen; under it, the wall's own columns. */
+@media (min-width: 64.01rem) {
+  .home-simple .wall__grid--simple {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 100rem) {
+  .home-simple .wall__grid--simple {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.wall-tile--plain .wall-tile__scores,
+.wall-tile--plain .wall-tile__kind,
+.wall-tile--plain .wall-tile__lines {
+  display: none;
+}
+
+.wall-tile--plain .wall-tile__info {
+  padding-bottom: 0.15rem;
+}
+
+/* ---------- the season: deep space, in both themes ---------- */
+
+.hsn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1.1rem 1.15rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(160, 170, 255, 0.16);
+  background: #161b3d;
+  color: #e7eef3;
+  text-decoration: none;
+}
+
+.hsn:hover,
+.hsn:focus-visible {
+  border-color: rgba(160, 170, 255, 0.4);
+}
+
+.hsn:focus-visible {
+  outline: 2px solid #a8b2ff;
+  outline-offset: 2px;
+}
+
+.hsn__kick {
+  color: #ffb38f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hsn__name {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.hsn__level {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.hsn__level b {
+  flex: none;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.hsn__bar {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #262c5a;
+  overflow: hidden;
+}
+
+.hsn__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #ff8552;
+}
+
+.hsn__line {
+  color: #b9c1ea;
+  font-size: 0.85rem;
+}
+
+.hsn__more {
+  color: #5fdcc5;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+/* On a phone, one slim line over the Standings: the season's name, your level and its bar. */
+@media (max-width: 36rem) {
+  .hsn {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.15rem 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 1rem;
+  }
+
+  .hsn__kick,
+  .hsn__more {
+    display: none;
+  }
+
+  .hsn__name {
+    color: #ffb38f;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .hsn__level b {
+    font-size: 1rem;
+  }
+
+  .hsn__line {
+    grid-column: 1 / -1;
+    font-size: 0.78rem;
+  }
+}
+
+/* ---------- the Standings on the rail ---------- */
+
+.hb-rail .hb-panel {
+  padding: 1rem 1rem 1.05rem;
+  border-radius: 1.2rem;
+  gap: 0.6rem;
+}
+
+.hb-rail .hb-panel__head {
+  flex-wrap: wrap;
+}
+
+/* ---------- the bug hunt as a row ---------- */
+
+.hunt-strip--row {
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem 0.6rem 0.6rem;
+  border-radius: 1.1rem;
+}
+
+.hunt-strip--row .hunt-strip__mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.8rem;
+}
+
+.hunt-strip--row .hunt-strip__art {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.hunt-strip--row .hunt-strip__title {
+  font-size: 0.92rem;
+}
+
+.hunt-strip--row .hunt-strip__clue,
+.hunt-strip--row .hunt-strip__count {
+  display: none;
+}
+
+.hunt-strip--row .hunt-btn {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.82rem;
+}
+
+/* ---------- groups and events as a row ---------- */
+
+.gband-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem 0.75rem 0.75rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.gband-row:hover,
+.gband-row:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.gband-row__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.8rem;
+  background: var(--playfield);
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+html[data-theme="dark"] .gband-row__icon {
+  color: #5fdcc5;
+}
+
+.gband-row__icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.gband-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.gband-row__title {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.gband-row__line {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gband-row__chev {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--muted);
+}

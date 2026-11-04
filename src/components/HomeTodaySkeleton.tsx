@@ -90,3 +90,39 @@ export function HomeTodaySkeleton() {
     </section>
   )
 }
+
+/** The simple home's row of races while its code comes (HomeToday.tsx HomeRaces): the same head and tiles. */
+export function HomeRacesSkeleton() {
+  const day = boardDay()
+  const n = Math.max(1, liveDailies(day).length)
+  return (
+    <section className="home-races home-races--skel" aria-busy="true" aria-labelledby="home-races-skel-title">
+      <div className="home-races__head">
+        <h2 id="home-races-skel-title" className="home-races__title">
+          Today’s races
+        </h2>
+        <span className="home-races__sub">
+          <span className="skel-line" style={skel('7rem')} />
+        </span>
+        <a className="home-races__open" href={todayHref()}>
+          Open Dailies
+        </a>
+      </div>
+      <ul className="home-races__row" style={{ '--n': n } as CSSProperties} aria-hidden="true">
+        {Array.from({ length: n }, (_, i) => (
+          <li key={i} className="home-races__race">
+            <span className="home-races__tile">
+              <span className="home-day__pic home-races__pic home-day__pic--skel" />
+              <span className="home-races__name">
+                <span className="skel-line" style={skel('5rem')} />
+              </span>
+              <span className="home-races__line">
+                <span className="skel-line" style={skel('6rem')} />
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

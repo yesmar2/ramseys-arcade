@@ -65,7 +65,7 @@ function BracketArt() {
  * and events to run on it. Someone without a group gets the pitch and a way to
  * start one; someone in groups gets them by name, and making an event leads.
  */
-export function HomeGroupsBand() {
+export function HomeGroupsBand({ compact = false }: { compact?: boolean } = {}) {
   const { signedIn } = useAuth()
   const name = normalizePlayerName(usePlayerName())
   const [groups, setGroups] = useState<GroupPublic[]>(() => (name ? cachedMyGroups() : []))
@@ -89,6 +89,30 @@ export function HomeGroupsBand() {
   }, [signedIn, name])
 
   const mine = signedIn ? groups.slice(0, 3) : []
+
+  // On the simple home's rail, a row: your groups by name, or what a group is, and the way to them.
+  if (compact) {
+    return (
+      <a className="gband-row" href={groupsIndexHref()} data-hunt="home-groups">
+        <span className="gband-row__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="9" r="3" />
+            <circle cx="17" cy="10" r="2.5" />
+            <path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 19c0-2 1.5-3.5 4-3.5" />
+          </svg>
+        </span>
+        <span className="gband-row__text">
+          <b className="gband-row__title">Groups and events</b>
+          <span className="gband-row__line">
+            {mine.length > 0 ? mine.map((g) => g.name).join(' · ') : 'Boards with friends, events to host'}
+          </span>
+        </span>
+        <svg className="gband-row__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </a>
+    )
+  }
 
   return (
     <section className="gband" aria-labelledby="gband-title" data-hunt="home-groups">

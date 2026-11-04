@@ -269,6 +269,85 @@ function RaceCard({
   )
 }
 
+/**
+ * One race on the simple home's row: the day's picture with its name on it, and under it one line, how you did or
+ * the next medal to take. The tile is the way straight in; once it's run, it opens the daily's page.
+ */
+function RaceTile({ p, day }: { p: Punch; day: string }) {
+  const held = p.medal ?? null
+  return (
+    <li className={`home-races__race${p.done ? ' home-races__race--done' : ''}`} style={{ '--day': ACCENT[p.key] } as CSSProperties}>
+      <a className="home-races__tile" href={p.done ? gameHref(p.slug) : gamePlayHref(p.slug)}>
+        <span className="home-day__pic home-races__pic">
+          <span className="home-day__art" aria-hidden="true">
+            <PartErrorBoundary fallback={null}>
+              <Suspense fallback={<span className="home-day__pic-wait" />}>
+                <DayPicture daily={p.key} day={day} />
+              </Suspense>
+            </PartErrorBoundary>
+          </span>
+          {p.done ? (
+            <span className="home-day__stamp" aria-hidden="true">
+              <CheckIcon />
+            </span>
+          ) : p.fresh ? (
+            <span className="home-day__new" aria-hidden="true">
+              New
+            </span>
+          ) : null}
+        </span>
+        <span className="home-races__name">{p.title}</span>
+        <span className="home-races__line">
+          {p.done ? (
+            <>
+              {held ? <MedalIcon medal={held} size={14} /> : null}
+              <span className="home-races__did">{held ? `${MEDAL_NAMES[held]} · ` : ''}{p.short ?? 'Done'}</span>
+            </>
+          ) : (
+            <MedalLine p={p} />
+          )}
+        </span>
+      </a>
+    </li>
+  )
+}
+
+/**
+ * Today's races on the simple home (2 on the "Home: one games grid" canvas, Ramsey, 2026-11-04: "i like 2"): the
+ * day, your streak and the way to the Dailies over a row of the races, one tile each. No stub: the Dailies page
+ * keeps the ticket.
+ */
+export function HomeRaces() {
+  const { signedIn } = useAuth()
+  const viewer = useAccountId()
+  const ticket = useTicket(viewer)
+  const { day, punches, total } = ticket
+  if (!total) return null
+  const streak = signedIn && ticket.server && ticket.current > 0 ? `${ticket.current}-day streak` : null
+  return (
+    <section className="home-races" aria-labelledby="home-races-title" data-hunt="home-hero">
+      <div className="home-races__head">
+        <h2 id="home-races-title" className="home-races__title">
+          Today’s races
+        </h2>
+        <span className="home-races__sub">
+          {shortDate(day)}
+          {streak ? ` · ${streak}` : ''}
+        </span>
+        <a className="home-races__open" href={todayHref()}>
+          Open Dailies
+          <ChevronIcon />
+        </a>
+      </div>
+      <ul className="home-races__row" style={{ '--n': total } as CSSProperties}>
+        {punches.map((p) => (
+          <RaceTile key={p.key} p={p} day={day} />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export function HomeToday() {
   const { signedIn, signedOut } = useAuth()
   // Who's looking: each punch is theirs, and never another account's that played on this device.

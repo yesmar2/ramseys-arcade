@@ -15,6 +15,7 @@ import { useGlobalRank } from '../lib/globalRank'
 import { normalizePlayerName, PERIOD_LABELS, type GlobalGamePlace, type LeaderboardPeriod } from '../lib/leaderboard'
 import { ordinal, periodWord } from '../lib/profileMath'
 import { formatBoardScore, formatLeaderboardScore } from '../lib/leaderboardFormat'
+import { useRecentGames } from '../lib/lastPlayed'
 import { isSpotlight, liveSeason, useSeason } from '../lib/season'
 import { resolveGameAccent } from '../lib/theme'
 import { AlsoToday } from './AlsoToday'
@@ -170,6 +171,18 @@ function isFresh(game: Game) {
 
 const ONE: Span = { w: 1, h: 1 }
 
+/**
+ * The floor your way (the simple home, 2026-11-04): the games you played lately, latest first, then the newest you
+ * haven't tried, then the rest in the shelf's order.
+ */
+function yoursFirst(list: Game[], recent: readonly string[]): Game[] {
+  const slugs = list.map((g) => g.slug)
+  const played = recent.filter((slug) => slugs.includes(slug))
+  const fresh = list.filter((g) => isFresh(g) && !isComingSoon(g) && !played.includes(g.slug)).map((g) => g.slug)
+  const first = [...new Set([...played, ...fresh])]
+  return [...first.map((slug) => list.find((g) => g.slug === slug)!), ...list.filter((g) => !first.includes(g.slug))]
+}
+
 /** The places in a cabinet's high-score table: its players, each at their best. */
 const PLACES = ['1st', '2nd', '3rd']
 
@@ -218,7 +231,7 @@ const ChevronIcon = () => (
  * floor. Tabs along the top cut the wall by what kind of game it is, and say
  * how many of each.
  */
-export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean } = {}) {
+export function GameWall({ puzzles: withPuzzles = false, simple = false }: { puzzles?: boolean; simple?: boolean } = {}) {
   const device = useDeviceType()
   const cleaned = normalizePlayerName(usePlayerName())
   const period = useDefaultPeriod()
@@ -233,9 +246,11 @@ export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean }
   const viewer = useAccountId()
   const { also } = useTicket(viewer)
 
+  const recent = useRecentGames()
+
   const all = wallGames(device)
   const shown = all.filter((g) => inTab(g, tab))
-  const floor = arrangeWall(shown, null, () => ONE)
+  const floor = arrangeWall(simple ? yoursFirst(shown, recent) : shown, null, () => ONE)
   const puzzles = withPuzzles && (tab === 'all' || tab === 'puzzle') && also.length > 0
   // Today's event's game and the weekly's wear their badges on the wall.
   const dailySlug = official.find((t) => t.cadence === 'daily')?.games[0] ?? null
@@ -254,18 +269,20 @@ export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean }
       weekly={weekly.has(game.slug)}
       newFlag={isFresh(game)}
       preview
+      plain={simple}
       hunt={index === 0 ? 'home-wall' : undefined}
     />
   )
 
   return (
     <section className="wall" id="games" aria-labelledby="games-heading">
-      <div className="wall__bar">
+      <div className="wall__bar" data-hunt={simple ? 'home-records' : undefined}>
         <h2 id="games-heading" className="wall__title">
           Games
         </h2>
-        <span className="wall__count">{shown.length} on the floor</span>
+        <span className="wall__count">{simple ? 'Yours first' : `${shown.length} on the floor`}</span>
         {/* Tabs over the wall: one Tab stop, and the arrow keys move along them (lib/choiceKeys.ts). */}
+        {simple ? null : (
         <div className="chips wall__tabs" role="tablist" aria-label="Kind of game" onKeyDown={moveChoice}>
           {TABS.map((t) => {
             const count = all.filter((g) => inTab(g, t.id)).length
@@ -286,9 +303,10 @@ export function GameWall({ puzzles: withPuzzles = false }: { puzzles?: boolean }
             )
           })}
         </div>
+        )}
       </div>
       {floor.length > 0 || puzzles ? (
-        <ul className="wall__grid">
+        <ul className={`wall__grid${simple ? ' wall__grid--simple' : ''}`}>
           {floor.map((g, i) => cabinet(g, i))}
           {puzzles ? (
             // Two cabinets wide at any width, the puzzles one under another (a phone's three side by side), as the
@@ -315,6 +333,7 @@ export function WallTile({
   newFlag = true,
   preview = false,
   hunt,
+  plain = false,
 }: {
   game: Game
   index: number
@@ -337,6 +356,8 @@ export function WallTile({
   hunt?: string
   /** Let a game that can play itself do so on the screen, over its thumb. */
   preview?: boolean
+  /** Just the screen and the name: no scores under it or over it (the simple home). */
+  plain?: boolean
 }) {
   const period = useDefaultPeriod()
   const you = normalizePlayerName(usePlayerName())
@@ -390,7 +411,7 @@ export function WallTile({
 
   return (
     <li className="wall__cell" data-hunt={hunt}>
-      <div className="wall-tile" style={style}>
+      <div className={`wall-tile${plain ? ' wall-tile--plain' : ''}`} style={style}>
         {/* The screen is the way straight in: a tap on it opens the game itself, not its page (the launch review's
             "fewer taps to play"). The game plays on it under a pointer, as ever. A game still to come can't be
             played yet, so its screen goes to its page, which says when. */}
