@@ -255,8 +255,10 @@ html[data-theme="dark"] .home-races__sub {
     display: none;
   }
 
+  /* Wide enough that each race has a place of its own for the row to stop at, the last at its end, so the race
+     the row stops on is the one that plays (GamePreview's rail): at under two to a screen, every one gets a turn. */
   .home-races__race {
-    flex: 0 0 8.25rem;
+    flex: 0 0 13.5rem;
     scroll-snap-align: start;
   }
 

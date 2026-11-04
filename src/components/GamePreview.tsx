@@ -53,20 +53,32 @@ function pickRail(row: HTMLElement) {
   let best: RailTile | null = null
   if (rail.shown) {
     const box = row.getBoundingClientRect()
-    const mid = (box.left + box.right) / 2
-    let most = 0
-    let gap = Infinity
-    for (const t of rail.tiles) {
+    // The turn goes to the tile leading the row, where a swipe that snaps leaves the one it was after, and once
+    // the row is at its end, to the last tile all in view. The tile nearest the middle used to have it, and that
+    // never picked the first tile or the last: at either end the one beside it sits nearer the middle (Ramsey,
+    // 2026-11-04: "the previews don't seem to play for the first daily and the last daily").
+    const room = row.scrollWidth - row.clientWidth
+    const atEnd = room > 0 && row.scrollLeft >= room - 2
+    const seen = (t: RailTile) => {
       const r = t.el.getBoundingClientRect()
-      const seen = Math.max(0, Math.min(r.right, box.right) - Math.max(r.left, box.left)) / (r.width || 1)
-      const off = Math.abs((r.left + r.right) / 2 - mid)
-      if (seen > most + 0.01 || (seen >= most - 0.01 && off < gap)) {
-        best = t
-        most = Math.max(most, seen)
-        gap = off
-      }
+      return Math.max(0, Math.min(r.right, box.right) - Math.max(r.left, box.left)) / (r.width || 1)
     }
-    if (most < 0.5) best = null
+    const left = (t: RailTile) => t.el.getBoundingClientRect().left
+    const whole = [...rail.tiles].filter((t) => seen(t) >= 0.9).sort((a, b) => left(a) - left(b))
+    if (whole.length) {
+      best = atEnd ? whole[whole.length - 1]! : whole[0]!
+    } else {
+      // None all in view (a tile wider than the row): the one most in view, if it's at least half.
+      let most = 0
+      for (const t of rail.tiles) {
+        const s = seen(t)
+        if (s > most) {
+          best = t
+          most = s
+        }
+      }
+      if (most < 0.5) best = null
+    }
   }
   for (const t of rail.tiles) {
     t.play(t === best)
