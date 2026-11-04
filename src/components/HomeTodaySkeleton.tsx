@@ -116,9 +116,6 @@ export function HomeRacesSkeleton() {
               <span className="home-races__name">
                 <span className="skel-line" style={skel('5rem')} />
               </span>
-              <span className="home-races__line">
-                <span className="skel-line" style={skel('6rem')} />
-              </span>
             </span>
           </li>
         ))}

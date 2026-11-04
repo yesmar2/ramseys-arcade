@@ -270,11 +270,16 @@ function RaceCard({
 }
 
 /**
- * One race on the simple home's row: the day's picture with its name on it, and under it one line, how you did or
- * the next medal to take. The tile is the way straight in; once it's run, it opens the daily's page.
+ * One race on the simple home's row: the day's picture with its medal big on it, the one you hold lit or else the
+ * next to take as its outline, and the race's name under it (B of the three tried, Ramsey, 2026-11-04: "maybe
+ * medal on the picture, do we even need the time on it?": no, the race's start card has the times). The tile is
+ * the way straight in; once it's run, it opens the daily's page.
  */
 function RaceTile({ p, day }: { p: Punch; day: string }) {
   const held = p.medal ?? null
+  const next = isRaceGame(p.slug) && p.paceMs != null ? nextMedal(p.slug, p.paceMs, held, p.platinumMs) : null
+  const badge = held ?? next?.medal ?? null
+  const said = held ? `${MEDAL_NAMES[held]} won` : next ? `next medal ${MEDAL_NAMES[next.medal]}` : p.done ? 'raced' : null
   return (
     <li className={`home-races__race${p.done ? ' home-races__race--done' : ''}`} style={{ '--day': ACCENT[p.key] } as CSSProperties}>
       <a className="home-races__tile" href={p.done ? gameHref(p.slug) : gamePlayHref(p.slug)}>
@@ -295,17 +300,15 @@ function RaceTile({ p, day }: { p: Punch; day: string }) {
               New
             </span>
           ) : null}
+          {badge ? (
+            <span className={`home-races__badge${held ? '' : ` home-day__medal-next home-day__medal-next--${badge}`}`} aria-hidden="true">
+              <MedalIcon medal={badge} size={30} dim={!held} />
+            </span>
+          ) : null}
         </span>
-        <span className="home-races__name">{p.title}</span>
-        <span className="home-races__line">
-          {p.done ? (
-            <>
-              {held ? <MedalIcon medal={held} size={14} /> : null}
-              <span className="home-races__did">{held ? `${MEDAL_NAMES[held]} · ` : ''}{p.short ?? 'Done'}</span>
-            </>
-          ) : (
-            <MedalLine p={p} />
-          )}
+        <span className="home-races__name">
+          {p.title}
+          {said ? <span className="visually-hidden">, {said}</span> : null}
         </span>
       </a>
     </li>

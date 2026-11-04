@@ -145,8 +145,7 @@ html[data-theme="dark"] .home-races__open {
 }
 
 /* The ticket's softer words, as dark as they must be on its stub to read. */
-html[data-theme="dark"] .home-races__sub,
-html[data-theme="dark"] .home-races__line {
+html[data-theme="dark"] .home-races__sub {
   color: #e8b79c;
 }
 
@@ -203,28 +202,41 @@ html[data-theme="dark"] .home-races__line {
   text-overflow: ellipsis;
 }
 
-.home-races__line {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  min-height: 1.1rem;
-  overflow: hidden;
-  color: #8a4a2a;
-  font-size: 0.8rem;
-  white-space: nowrap;
+/* The medal, big on the picture's foot: the one you hold lit, else the next to take as its outline in its metal. */
+.home-races__badge {
+  position: absolute;
+  right: 0.45rem;
+  bottom: 0.45rem;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: rgba(10, 16, 22, 0.72);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.home-races__line .home-day__medal {
-  font-size: 0.8rem;
+.home-races__badge svg {
+  width: 2rem;
+  height: 2rem;
 }
 
-.home-races__race--done .home-races__did {
-  color: color-mix(in srgb, #e6ac39 70%, var(--ink));
-  font-weight: 700;
+/* On the dark of its disc, the outline in each metal's light shade, in either theme. */
+.home-races__badge.home-day__medal-next {
+  color: #e0a06a;
 }
 
-html[data-theme="dark"] .home-races__race--done .home-races__did {
-  color: #f5b942;
+.home-races__badge.home-day__medal-next--silver {
+  color: #c3ccd4;
+}
+
+.home-races__badge.home-day__medal-next--gold {
+  color: #f4c53e;
+}
+
+.home-races__badge.home-day__medal-next--platinum {
+  color: #7fe3f0;
 }
 
 /* On a phone the races swipe, out to the screen's edge. */
