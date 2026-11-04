@@ -80,11 +80,29 @@
 
 /* ---------- today's races: a head, then a tile each ---------- */
 
+/*
+ * The races on the ticket's own warm stub colour (C of the three tried, Ramsey, 2026-11-04: "the dailies kinda
+ * blend into the background a little", then "C, ticket colours"), the one block of it on the page: the day's
+ * thing, apart from the games.
+ */
 .home-races {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   min-width: 0;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: 1.4rem;
+  border: 1px solid rgba(224, 96, 46, 0.22);
+  background: linear-gradient(180deg, #ffdfc8 0%, #ffeee1 40%, #fff7f0 100%);
+  box-shadow: 0 14px 30px -18px rgba(224, 96, 46, 0.45);
+  color: #3a1406;
+}
+
+html[data-theme="dark"] .home-races {
+  border-color: rgba(255, 140, 95, 0.28);
+  background: linear-gradient(180deg, #4b2a18 0%, #37231b 45%, #2b1f1b 100%);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.6);
+  color: #fff3ea;
 }
 
 .home-races__head {
@@ -104,7 +122,7 @@
 .home-races__sub {
   min-width: 0;
   overflow: hidden;
-  color: var(--muted);
+  color: #8a4a2a;
   font-size: 0.9rem;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -116,14 +134,20 @@
   gap: 0.2rem;
   margin-left: auto;
   flex: none;
-  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  color: #c2410c;
   font-size: 0.9rem;
   font-weight: 700;
   text-decoration: none;
 }
 
 html[data-theme="dark"] .home-races__open {
-  color: #5fdcc5;
+  color: #ffab85;
+}
+
+/* The ticket's softer words, as dark as they must be on its stub to read. */
+html[data-theme="dark"] .home-races__sub,
+html[data-theme="dark"] .home-races__line {
+  color: #e8b79c;
 }
 
 .home-races__open svg {
@@ -151,7 +175,7 @@ html[data-theme="dark"] .home-races__open {
   gap: 0.35rem;
   flex: 1;
   min-width: 0;
-  color: var(--ink);
+  color: inherit;
   text-decoration: none;
 }
 
@@ -185,7 +209,7 @@ html[data-theme="dark"] .home-races__open {
   gap: 0.3rem;
   min-height: 1.1rem;
   overflow: hidden;
-  color: var(--muted);
+  color: #8a4a2a;
   font-size: 0.8rem;
   white-space: nowrap;
 }
@@ -475,3 +499,4 @@ html[data-theme="dark"] .gband-row__icon {
   height: 1.1rem;
   color: var(--muted);
 }
+
