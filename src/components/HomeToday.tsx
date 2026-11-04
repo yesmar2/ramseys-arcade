@@ -290,6 +290,14 @@ function RaceTile({ p, day }: { p: Punch; day: string }) {
                 <DayPicture daily={p.key} day={day} />
               </Suspense>
             </PartErrorBoundary>
+            {/* The race played over its picture, under a pointer or, on a phone, on the tile the row comes to rest
+                on, one at a time (Ramsey, 2026-11-04: "sure", to bringing them back): the day's own where the game
+                can draw it, else its own preview. */}
+            {hasDayPreview(p.slug) ? (
+              <GamePreview slug={p.slug} day={day} className="home-day__preview" rail />
+            ) : hasGamePreview(p.slug) ? (
+              <GamePreview slug={p.slug} className="home-day__preview" rail />
+            ) : null}
           </span>
           {p.done ? (
             <span className="home-day__stamp" aria-hidden="true">
