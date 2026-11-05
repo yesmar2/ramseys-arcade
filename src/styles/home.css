@@ -3235,8 +3235,11 @@ html[data-theme="dark"] .home-banner__hint--error {
     font-size: 0.8rem;
   }
 
-  /* The boards: the top three of the standings, you under them, and the house records. */
-  .home-rail .hb-rows > .hb-row:nth-child(n + 4):not(.hb-row--you):not(.hb-row--gap),
+  /*
+   * The boards: the top three of the standings, you under them, and the house records. The simple home's
+   * Standings card (hb-panel--link) keeps all its rows, the top five (Ramsey, 2026-11-05).
+   */
+  .home-rail .hb-panel:not(.hb-panel--link) .hb-rows > .hb-row:nth-child(n + 4):not(.hb-row--you):not(.hb-row--gap),
   .home-rail .hb-note,
   .home-rail .hb-panel--book {
     display: none;

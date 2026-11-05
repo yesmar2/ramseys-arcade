@@ -38,8 +38,8 @@ function spotlightGame(): string | null {
 }
 
 /**
- * The Standings in the canvas's shape (D on the "Home page redesign" canvas): the top four, or with you further down,
- * the top two, then the player just above you and you. Each name has a bar against the leader's, and no points:
+ * The Standings in the canvas's shape (D on the "Home page redesign" canvas): the top four (five on the simple
+ * home's rail), or with you further down, the top two (three), then the player just above you and you. Each name has a bar against the leader's, and no points:
  * those stay on the full Standings list, a tap away (Ramsey, 2026-09-29). Under them, who's next up, in words.
  */
 function Standings({
@@ -48,6 +48,7 @@ function Standings({
   players,
   group,
   lead = 2,
+  count = 4,
   link = false,
 }: {
   board: GlobalBoardResult | null
@@ -56,6 +57,8 @@ function Standings({
   group?: string | null
   /** How many of the top stay on the list when you're further down: two in the boards' panel, three on the rail. */
   lead?: number
+  /** The top shown when you're among them, or signed out: four in the boards' panel, five on the rail. */
+  count?: number
   /**
    * The whole card is the way to the full Standings, with no Full board link and no line under the rows (the
    * rail's: Ramsey, 2026-11-05: "we don't need the text at the bottom that says 'You lead ...' ... i don't think
@@ -71,7 +74,7 @@ function Standings({
   const entries = board?.entries ?? []
   const empty = board != null && entries.length === 0
   const leader = entries[0]?.score ?? 0
-  const top = entries.slice(0, 4)
+  const top = entries.slice(0, count)
   const ahead = rank != null ? nearby.find((n) => n.rank === rank - 1) : undefined
   const behind = rank != null ? nearby.find((n) => n.rank === rank + 1) : undefined
   // Ranked, but under the top four: the top two, the player above you (when they're not one of those two), and you.
@@ -312,7 +315,7 @@ export function HomeStandings() {
 
   return (
     <div className="hb-rail">
-      <Standings board={board} you={you} players={board?.totalPlayers ?? 0} group={group} lead={3} link />
+      <Standings board={board} you={you} players={board?.totalPlayers ?? 0} group={group} lead={3} count={5} link />
     </div>
   )
 }

@@ -112,21 +112,14 @@ html[data-theme="dark"] .home-races {
   gap: 0.75rem;
 }
 
+/* The title on one line, and Open Dailies at the end of it: no date or streak between (Ramsey, 2026-11-05). */
 .home-races__title {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: -0.01em;
-}
-
-.home-races__sub {
-  min-width: 0;
-  overflow: hidden;
-  color: #8a4a2a;
-  font-size: 0.9rem;
   white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .home-races__open {
@@ -143,11 +136,6 @@ html[data-theme="dark"] .home-races {
 
 html[data-theme="dark"] .home-races__open {
   color: #ffab85;
-}
-
-/* The ticket's softer words, as dark as they must be on its stub to read. */
-html[data-theme="dark"] .home-races__sub {
-  color: #e8b79c;
 }
 
 .home-races__open svg {

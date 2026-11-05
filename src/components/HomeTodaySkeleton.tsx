@@ -101,9 +101,6 @@ export function HomeRacesSkeleton() {
         <h2 id="home-races-skel-title" className="home-races__title">
           Today’s races
         </h2>
-        <span className="home-races__sub">
-          <span className="skel-line" style={skel('7rem')} />
-        </span>
         <a className="home-races__open" href={todayHref()}>
           Open Dailies
         </a>

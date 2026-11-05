@@ -329,22 +329,18 @@ function RaceTile({ p, day }: { p: Punch; day: string }) {
  * keeps the ticket.
  */
 export function HomeRaces() {
-  const { signedIn } = useAuth()
   const viewer = useAccountId()
   const ticket = useTicket(viewer)
   const { day, punches, total } = ticket
   if (!total) return null
-  const streak = signedIn && ticket.server && ticket.current > 0 ? `${ticket.current}-day streak` : null
+  // No date or streak beside the title: on a phone the title wrapped for them (Ramsey, 2026-11-05). The Dailies
+  // page keeps both.
   return (
     <section className="home-races" aria-labelledby="home-races-title" data-hunt="home-hero">
       <div className="home-races__head">
         <h2 id="home-races-title" className="home-races__title">
           Today’s races
         </h2>
-        <span className="home-races__sub">
-          {shortDate(day)}
-          {streak ? ` · ${streak}` : ''}
-        </span>
         <a className="home-races__open" href={todayHref()}>
           Open Dailies
           <ChevronIcon />
