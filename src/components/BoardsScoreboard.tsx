@@ -111,9 +111,8 @@ function periodFeed(period: LeaderboardPeriod, data: ReturnType<typeof useScoreb
 /*
  * A card a game (Ramsey, 2026-11-05: the table was "kinda confusing to read", then "let's see C" of three tried:
  * each game's leader and you, the top three as medal chips, a card a game). Each card is a little board: the
- * game, its top three on discs of their metal, and you under them, your place and the score that takes a higher
- * one. The game's name is the card's link, stretched over it (everyBoard.css); a skin beside a name opens its own
- * card over it.
+ * game and its top three on discs of their metal. The game's name is the card's link, stretched over it
+ * (everyBoard.css); a skin beside a name opens its own card over it.
  */
 
 const METAL = ['gold', 'silver', 'bronze'] as const
@@ -138,10 +137,11 @@ function BoardCard({
   const cell = standing ? youCell(line, standing, best, next) : null
   const place = standing?.byGame[line.slug]?.place ?? null
   const players = line.players == null ? '' : `${line.players.toLocaleString()} ${line.players === 1 ? 'player' : 'players'}`
-  // You on it, in words, and what's next under them: the score that takes a higher place.
+  // You on it, in words, and the score that takes a higher place: said with the card's link, not shown on it
+  // (Ramsey, 2026-11-05: "let's take of the text at the bottom of the every board cards"). Your name in the top
+  // three is in the brand's colour.
   const mine = !standing ? null : place === 1 ? 'You lead it' : place ? `You’re ${ordinal(place)}` : cell?.tone === 'hint' ? cell.b : 'Not played yet'
   const then = place && place > 1 ? (cell?.b ?? '') : ''
-  const tone = place ? 'on' : 'off'
   // A daily's week is in points, which its own board shows: here it is names.
   const score = (n: number) => (line.points ? '' : lineScore(line, n))
   const podium = line.top.map((t, i) => `${ordinal(i + 1)} ${t.name}${score(t.score) ? ` ${score(t.score)}` : ''}`).join(', ')
@@ -171,12 +171,6 @@ function BoardCard({
           </li>
         ))}
       </ol>
-      {mine ? (
-        <p className={`eb-card__you eb-card__you--${tone}`} aria-hidden="true">
-          <b>{mine}</b>
-          {then ? <small>{then}</small> : null}
-        </p>
-      ) : null}
     </li>
   )
 }
@@ -203,9 +197,7 @@ function EveryBoard({
           <h2 id="sb-boards-title" className="sb-h2">
             Every board
           </h2>
-          <p className="sb-sub">
-            Best run per player{copy.noun ? ` ${copy.phrase}` : ', all time'}. Pick a game for the full list.
-          </p>
+          {/* No line under it of what the cards show (Ramsey, 2026-11-05): the cards say it. */}
         </div>
         {!data.loading ? (
           <span className="sb-count">

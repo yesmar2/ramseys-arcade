@@ -1,7 +1,8 @@
 /*
  * The Boards page's Every board list: a card a game (Ramsey, 2026-11-05: the table was "kinda confusing to read",
- * then "let's see C" of three tried). Each card is a little board: the game, its top three on discs of their
- * metal, and you under them (BoardsScoreboard.tsx BoardCard). Four across on a wide screen, one on a phone.
+ * then "let's see C" of three tried). Each card is a little board: the game and its top three on discs of their
+ * metal, your name among them in the brand's colour (BoardsScoreboard.tsx BoardCard). Four across on a wide
+ * screen, one on a phone.
  */
 
 .eb-cards {
@@ -165,30 +166,6 @@
 
 .eb-card__row--you b {
   color: var(--sb-brand-ink);
-}
-
-/* You on it: your place, and what's next under it. */
-.eb-card__you {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  margin: auto 0 0;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--sb-line);
-}
-
-.eb-card__you b {
-  font-size: 0.92rem;
-  font-weight: 800;
-}
-
-.eb-card__you--on b {
-  color: var(--sb-brand-ink);
-}
-
-.eb-card__you--off b {
-  color: var(--muted);
-  font-weight: 650;
 }
 
 .eb-card--skel .eb-card__top {
