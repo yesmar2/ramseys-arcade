@@ -5,6 +5,7 @@ import { glide } from '../lib/scrollToPlace'
 import { ordinal, type LastFinal, type Standing, type YouStanding } from '../lib/scoreboard'
 import { PlayerMark } from './PlayerMark'
 import { PlayerName } from './PlayerName'
+import type { Podium } from './PodiumPrize'
 
 /*
  * The standings as a list: the top ten, and everyone below them a press at a time, in place, with a box to
@@ -77,6 +78,7 @@ function StandingRow({
   you,
   href,
   deep = false,
+  podium = null,
 }: {
   row: RowData
   leaderScore: number
@@ -84,9 +86,11 @@ function StandingRow({
   href: string
   /** Past the fifth: a phone shows the top five and your own row, not the rest. */
   deep?: boolean
+  podium?: Podium | null
 }) {
   const mine = Boolean(you) && row.name === you
   const medal = MEDALS[row.rank - 1]
+  const prize = podium?.(row.rank) ?? null
   const width = leaderScore > 0 ? Math.max(2, (row.score / leaderScore) * 100) : 0
   const cls = [
     'sb-row',
@@ -99,7 +103,14 @@ function StandingRow({
   return (
     <li className={cls}>
       <a className="sb-row__link" href={href}>
-        <span className="sb-row__ord">{ordinal(row.rank).toUpperCase()}</span>
+        {prize ? (
+          <span className="sb-row__ord sb-row__ord--prize" title={prize.label}>
+            {prize.art}
+            <span className="visually-hidden">{prize.label}</span>
+          </span>
+        ) : (
+          <span className="sb-row__ord">{ordinal(row.rank).toUpperCase()}</span>
+        )}
         <PlayerMark name={row.name} avatarId={row.avatarId} className="sb-row__mark" />
         <span className="sb-row__who">
           <PlayerName className="sb-row__name" name={row.name} avatarId={row.avatarId} />
@@ -164,6 +175,7 @@ export function StandingsList({
   last = null,
   foot = null,
   focusable = false,
+  podium = null,
   hunt,
   id,
 }: {
@@ -179,6 +191,8 @@ export function StandingsList({
   /** A line under the list. */
   foot?: ReactNode
   focusable?: boolean
+  /** What each of the top three takes when the period closes, drawn in place of their place (PodiumPrize.tsx). */
+  podium?: Podium | null
   /** The bug hunt's spot (data-hunt). */
   hunt?: string
   id?: string
@@ -343,7 +357,7 @@ export function StandingsList({
         found.length ? (
           <ol className="sb-rows" aria-label={`Players matching ${find.trim()}`}>
             {found.map((row) => (
-              <StandingRow key={row.name} row={row} leaderScore={leaderScore} you={you} href={feed.rowHref(row.name)} />
+              <StandingRow key={row.name} row={row} leaderScore={leaderScore} podium={podium} you={you} href={feed.rowHref(row.name)} />
             ))}
           </ol>
         ) : (
@@ -361,6 +375,7 @@ export function StandingsList({
               key={row.name}
               row={row}
               leaderScore={leaderScore}
+              podium={podium}
               you={you}
               href={feed.rowHref(row.name)}
               deep={!opened && row.rank > 5}
@@ -384,6 +399,7 @@ export function StandingsList({
                   avatarId: below.avatarId,
                 }}
                 leaderScore={leaderScore}
+                podium={podium}
                 you={you}
                 href={feed.rowHref(below.name)}
               />

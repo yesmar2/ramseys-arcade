@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { useHeldHeight, useHeldShape } from '../lib/heldShape'
+import { useHeldShape } from '../lib/heldShape'
 import { getGame } from '../data/games'
 import { useScoreboard } from '../hooks/useScoreboard'
 import { boardPlaceHref, gamePlayHref, leaderboardHref, rankHowHref, rankHref } from '../hooks/useHashRoute'
@@ -14,8 +14,6 @@ import {
   type LeaderboardPeriod,
 } from '../lib/leaderboard'
 import {
-  headline,
-  lede,
   lineScore,
   ordinal,
   periodCopy,
@@ -35,6 +33,7 @@ import { PeriodLabel } from './PeriodLabel'
 import { SkinMark } from './season/SkinMark'
 import { StandingsList, TrophyIcon, type StandingsFeed } from './StandingsList'
 import { BoardsAmong } from './BoardsAmong'
+import { boardPodium } from './PodiumPrize'
 
 /*
  * The boards page: one scoreboard for the period instead of two tabs. The
@@ -379,10 +378,6 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const lines = period === 'season' ? prizeLines(data.prizes, data.totalPlayers, season?.id ?? null, Boolean(groupId)) : null
   // The group by name, said again once the list of your groups comes with it.
   const group = useScope().name
-  const head = headline(copy, data.standings, data.totalPlayers)
-  // The headline and its line wrap as the names in them do: held at last time's height while they load.
-  const title = useHeldHeight<HTMLHeadingElement>(`boards-title-${period}`, data.loading)
-  const ledeHeld = useHeldHeight<HTMLParagraphElement>(`boards-lede-${period}`, data.loading)
   const closed = copy.last
   const last = closed
     ? {
@@ -403,7 +398,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   useEffect(() => {
     if (settled) setDrawn(true)
   }, [settled])
-  const below = title.known || drawn || settled
+  const below = drawn || settled
 
   if (data.error) {
     return (
@@ -417,36 +412,14 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
     <div className="sb">
       <section className="sb-hero" aria-labelledby="sb-title">
         <div className="sb-hero__text">
+          {/* No headline of who leads, and no line of how many play (Ramsey, 2026-11-05): the period, then the list. */}
+          <h1 id="sb-title" className="visually-hidden">
+            Boards
+          </h1>
           <p className="sb-kicker">
             {copy.live ? <span className="sb-kicker__dot" aria-hidden="true" /> : null}
             {copy.kicker}
             {group ? ` · ${group}` : ''}
-          </p>
-          <h1 id="sb-title" className="sb-title" ref={title.ref} style={title.style}>
-            {data.loading ? (
-              <span className="skel-line sb-title__skel" style={{ '--skel-w': '14ch' } as CSSProperties} />
-            ) : (
-              <>
-                {head.name ? <span className="sb-title__lead">{head.name}</span> : null}
-                {head.rest}
-              </>
-            )}
-          </h1>
-          <p className="sb-lede" ref={ledeHeld.ref} style={ledeHeld.style}>
-            {data.loading ? (
-              <>
-                <span className="skel-line" style={{ '--skel-w': '22rem' } as CSSProperties} />
-                {/* A first look has no height kept for it: the line runs to two lines as a rule, so it holds two. */}
-                {ledeHeld.known ? null : (
-                  <>
-                    <br />
-                    <span className="skel-line" style={{ '--skel-w': '13rem' } as CSSProperties} />
-                  </>
-                )}
-              </>
-            ) : (
-              lede(copy, period, data.standings, data.totalPlayers, data.boards)
-            )}
           </p>
           <div className="sb-hero__row">
             <div className="board-picks">
@@ -470,6 +443,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
           sub={period === 'all' ? 'The daily races count toward the week and the month, not all time.' : null}
           last={last}
           lines={lines}
+          podium={groupId ? null : boardPodium({ period, seasonId: season?.id ?? null, cupPlaces: lines?.cup ?? null })}
           focusable
         />
       </section>

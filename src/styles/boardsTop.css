@@ -1,0 +1,103 @@
+/*
+ * A standings list's top three, bigger (Ramsey, 2026-11-05: "i'd like the top 3 players to be highlighted a little
+ * better in the list, maybe just bigger?", A of three tried: the three bigger, a podium of cards, stepped). Each
+ * holds the trophy its place takes when the period closes (PodiumPrize.tsx), or, where there's none to take (a
+ * group's boards), its place on a disc of its metal. The Boards page's and the Season page's lists; last time's
+ * top five under them stay as they are.
+ */
+
+.sb-standings .sb-rows:not(.sb-rows--last) > .sb-row--gold {
+  --sb-medal: var(--sb-gold);
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > .sb-row--silver {
+  --sb-medal: var(--sb-silver);
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > .sb-row--bronze {
+  --sb-medal: var(--sb-bronze);
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__link {
+  min-height: 4.3rem;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--sb-medal) 20%, transparent), color-mix(in srgb, var(--sb-medal) 4%, transparent) 75%);
+}
+
+/* The rows held while the list loads are the size the top three come in at. */
+.sb-standings .sb-rows:not(.sb-rows--last) > .sb-row--skel:nth-child(-n + 3) .sb-row__link {
+  min-height: 4.3rem;
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--bronze, .sb-row--skel:nth-child(3)) {
+  margin-bottom: 0.45rem;
+}
+
+/* The trophy it takes, where its place was. */
+.sb-row__ord--prize {
+  display: grid;
+  place-items: center;
+}
+
+.sb-row__ord--prize .trophy-art svg {
+  width: 2.6rem;
+  height: 2.6rem;
+}
+
+/* No trophy to take: its place on a disc of its metal. */
+.sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__ord:not(.sb-row__ord--prize) {
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 50%;
+  background: var(--sb-medal);
+  color: #2a1d05;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__mark {
+  --pmark: 2.8rem;
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__name {
+  font-size: 1.18rem;
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__pts {
+  font-size: 1.35rem;
+}
+
+.sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__bar {
+  height: 0.7rem;
+}
+
+@media (min-width: 42.01rem) {
+  .sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__link {
+    grid-template-columns: 2.7rem 2.8rem minmax(0, 12rem) minmax(0, 1fr) 5.6rem;
+  }
+}
+
+@media (max-width: 42rem) {
+  .sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__link {
+    grid-template-columns: 2.6rem 2.8rem minmax(0, 1fr) auto;
+  }
+
+  .sb-row__ord--prize .trophy-art svg {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__bar {
+    height: 0.4rem;
+  }
+
+  .sb-standings .sb-rows:not(.sb-rows--last) > :is(.sb-row--gold, .sb-row--silver, .sb-row--bronze) .sb-row__who {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+}

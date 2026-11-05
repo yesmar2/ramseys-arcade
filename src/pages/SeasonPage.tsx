@@ -36,6 +36,7 @@ import {
 import { starTile } from '../lib/seasonArt'
 import { seasonFeed, seasonLines, useSeasonStandings } from '../lib/seasonStandings'
 import { StandingsList } from '../components/StandingsList'
+import { boardPodium } from '../components/PodiumPrize'
 import { askForSeasonFont } from '../components/season/SeasonDressing'
 import { NextSeasonCard } from '../components/season/NextSeason'
 import { useTickets } from '../lib/tickets'
@@ -638,6 +639,7 @@ function SeasonStandingsCard({ season }: { season: SeasonInfo }) {
         sub="Points from your ten best games, this season only"
         how={rankHowHref(undefined, 'season')}
         lines={seasonLines(data)}
+        podium={boardPodium({ period: 'season', seasonId: season.id, cupPlaces: seasonLines(data)?.cup ?? null })}
         foot={
           season.status === 'over'
             ? `${season.name} is over: its cups and trophies are on their shelves.`
