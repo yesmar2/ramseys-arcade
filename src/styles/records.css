@@ -12,11 +12,12 @@
   gap: 1rem;
 }
 
+/* The page's first row now, with no words over it (Ramsey, 2026-11-05), as the Boards page's period row is. */
 .rbk-acts {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
-  margin-top: 1.9rem;
+  margin-top: 0.5rem;
 }
 
 /* ---------- cards of short lists ---------- */

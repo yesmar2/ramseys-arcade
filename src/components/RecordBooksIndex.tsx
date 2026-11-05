@@ -7,14 +7,13 @@ import { useRecordBooks } from '../hooks/useRecordBooks'
 import { rankHref, recordsPlaceHref, siteRecordsHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
-import { useActiveGroup, useScope } from '../lib/groups'
+import { useActiveGroup } from '../lib/groups'
 import { houseHolderLine, houseHolders } from '../lib/houseBook'
 import { normalizePlayerName } from '../lib/leaderboard'
 import {
   bookHolders,
   bookRecordHref,
   bookRecords,
-  booksHeadline,
   booksHeld,
   closestToInk,
   coverRecord,
@@ -59,15 +58,6 @@ function dayOf(at: number) {
   } catch {
     return ''
   }
-}
-
-function QuillIcon() {
-  return (
-    <svg className="sb-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 4c-6 1-11 5-13 12l-2 4 4-2c7-2 11-7 12-13z" />
-      <path d="M7 16l5-5" />
-    </svg>
-  )
 }
 
 function ChevronIcon() {
@@ -123,15 +113,12 @@ export function RecordBooksIndex() {
   const me = normalizePlayerName(usePlayerName())
   const myAvatar = useMyAvatarId(me)
   const groupId = useActiveGroup()
-  // The boards' group, when they show one: every book here is then the group's, and so is who holds none.
-  const scope = useScope()
   const data = useRecordBooks(me, groupId)
   // A holder's card opens at the period you picked.
   const period = useDefaultPeriod()
   // Every count, list and cover here is of the books' own records, so a daily's courses weigh in nowhere.
   const books = data.books.map(({ game, records }) => ({ game, records: bookRecords(game, records) }))
   const all = books.flatMap((b) => b.records)
-  const head = booksHeadline(all)
   const holders = holderCounts(all)
   // The card's six, each at a place shared between equal counts; a tie its last place carries past them is named under it.
   const shownHolders = holders.slice(0, 6)
@@ -141,10 +128,8 @@ export function RecordBooksIndex() {
   const inBooks = booksHeld(books)
   const topCount = holders[0]?.count ?? 0
   const avatars = new Map(all.filter((r) => r.top).map((r) => [normalizePlayerName(r.top!.name), r.top!.avatarId]))
-  const held = all.filter((r) => r.top).length
   // The records nobody holds yet, one game at a time, so the few shown aren't all one book's.
   const openByGame = books.map(({ game, records }) => records.filter((r) => !r.top).map((record) => ({ game, record })))
-  const openCount = openByGame.reduce((n, list) => n + list.length, 0)
   const openPicks: { game: string; record: RecordSummary }[] = []
   for (let round = 0; openPicks.length < 6 && openByGame.some((list) => list.length > round); round++) {
     for (const list of openByGame) if (list[round] && openPicks.length < 6) openPicks.push(list[round]!)
@@ -160,8 +145,6 @@ export function RecordBooksIndex() {
   // While the books load, each part holds the room it took last time on this device (lib/heldShape.ts), so
   // nothing below it moves when they come.
   const loading = data.loading
-  const title = useHeldHeight<HTMLHeadingElement>('records-title', loading)
-  const lede = useHeldHeight<HTMLParagraphElement>('records-lede', loading)
   const heldHolders = useHeldShape('records-holders', loading ? undefined : Math.min(6, holders.length), 6)
   // The card as a whole too: a tie named under its rows comes with them.
   const standingsCard = useHeldHeight<HTMLDivElement>('records-standings', loading)
@@ -182,41 +165,13 @@ export function RecordBooksIndex() {
     <div className="sb rbk">
       <section className="sb-hero" aria-labelledby="rbk-title">
         <div className="sb-hero__text">
-          <p className="sb-kicker">
-            <QuillIcon />
-            Hall of fame · all time
-            {scope.name ? ` · ${scope.name}` : ''}
-          </p>
-          <h1 id="rbk-title" className="sb-title" ref={title.ref} style={title.style}>
-            {data.loading ? (
-              <span className="skel-line sb-title__skel" style={{ '--skel-w': '14ch' } as CSSProperties} />
-            ) : openCount ? (
-              // Something to go and take leads; who holds the most is beside it.
-              <>
-                <span className="sb-title__lead">{openCount}</span> {openCount === 1 ? 'record is' : 'records are'} up for grabs
-              </>
-            ) : (
-              <>
-                {head.name ? <span className="sb-title__lead">{head.name}</span> : null}
-                {head.rest}
-              </>
-            )}
+          {/*
+           * No chip, headline or line over the buttons, as the Boards page has none (Ramsey, 2026-11-05: "on the
+           * records page, let's take off the text at the top of the page, like we did for the boards page").
+           */}
+          <h1 id="rbk-title" className="visually-hidden">
+            Record books
           </h1>
-          <p className="sb-lede" ref={lede.ref} style={lede.style}>
-            {data.loading ? (
-              // The same words as below, its numbers shimmering: it wraps as it will once they come.
-              <>
-                <span className="skel-line" style={{ '--skel-w': '1.4em' } as CSSProperties} /> of them have a name in ink,
-                across <span className="skel-line" style={{ '--skel-w': '1em' } as CSSProperties} /> games. The books keep the
-                best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each
-                until someone beats it.
-              </>
-            ) : openCount ? (
-              `${scope.nobody} holds them yet: the first to do it puts their name in the book. ${held} more have a name in ink already, across ${books.length} games, each until someone beats it.`
-            ) : (
-              `${held} of them have a name in ink, across ${books.length} games. The books keep the best of everything: the fastest clears, the best single runs and the longest streaks, with a name beside each until someone beats it.`
-            )}
-          </p>
           <div className="rbk-acts">
             {openPicks.length ? (
               <a className="sb-cta" href={`${recordBookHref(openPicks[0]!.game)}#up-for-grabs`}>
