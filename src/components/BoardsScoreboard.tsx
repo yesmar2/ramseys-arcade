@@ -367,6 +367,27 @@ function UpForGrabs({ period, copy, boards, loading }: { period: LeaderboardPeri
 
 /* ---------- the page ---------- */
 
+/** The tip beside the Standings' title: the period (live, while it is), when it closes and what that hands out. */
+function PeriodTip({ copy, group }: { copy: PeriodCopy; group: string | null | undefined }) {
+  const name = copy.kicker.replace(/^Live · /, '')
+  return (
+    <>
+      <span className="sb-tip__name">
+        {copy.live ? <span className="sb-kicker__dot" aria-hidden="true" /> : null}
+        {copy.live ? 'Live · ' : ''}
+        {name.charAt(0).toUpperCase() + name.slice(1)}
+        {group ? ` · ${group}` : ''}
+      </span>
+      {copy.closes ? (
+        <span className="sb-tip__line">
+          <TrophyIcon />
+          <span>{copy.closes}</span>
+        </span>
+      ) : null}
+    </>
+  )
+}
+
 export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
@@ -413,29 +434,24 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
     <div className="sb">
       <section className="sb-hero" aria-labelledby="sb-title">
         <div className="sb-hero__text">
-          {/* No headline of who leads, and no line of how many play (Ramsey, 2026-11-05): the period, then the list. */}
+          {/*
+           * No headline of who leads, no line of how many play, and no Live chip: the period, then the list. When
+           * it closes and what it hands out are in the tip beside the Standings' title (Ramsey, 2026-11-05).
+           */}
           <h1 id="sb-title" className="visually-hidden">
             Boards
           </h1>
-          <p className="sb-kicker">
-            {copy.live ? <span className="sb-kicker__dot" aria-hidden="true" /> : null}
-            {copy.kicker}
-            {group ? ` · ${group}` : ''}
-          </p>
           <div className="sb-hero__row">
             <div className="board-picks">
               <PeriodTabs active={period} season={seasonTab} />
               <BoardsAmong />
             </div>
-            <p className="sb-closes">
-              <TrophyIcon />
-              <span>{copy.closes}</span>
-            </p>
           </div>
         </div>
         <StandingsList
           id="standings"
           hunt="boards-standings"
+          tip={<PeriodTip copy={copy} group={group} />}
           feed={periodFeed(period, data)}
           you={you}
           how={rankHowHref(undefined, period)}

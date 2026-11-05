@@ -4,6 +4,7 @@ import { useHeldShape } from '../lib/heldShape'
 import { glide } from '../lib/scrollToPlace'
 import { ordinal, type LastFinal, type Standing, type YouStanding } from '../lib/scoreboard'
 import { PlayerMark } from './PlayerMark'
+import { InfoTip } from './InfoTip'
 import { PlayerName } from './PlayerName'
 import type { Podium } from './PodiumPrize'
 
@@ -178,6 +179,7 @@ export function StandingsList({
   foot = null,
   focusable = false,
   podium = null,
+  tip = null,
   hunt,
   id,
 }: {
@@ -195,6 +197,8 @@ export function StandingsList({
   focusable?: boolean
   /** What each of the top three takes when the period closes, drawn in place of their place (PodiumPrize.tsx). */
   podium?: Podium | null
+  /** A tip beside the title, on an "i": the Boards page's period, when it closes and what it hands out. */
+  tip?: ReactNode
   /** The bug hunt's spot (data-hunt). */
   hunt?: string
   id?: string
@@ -309,6 +313,11 @@ export function StandingsList({
             `${totalPlayers.toLocaleString()} ${totalPlayers === 1 ? 'player' : 'players'}`
           )}
         </span>
+        {tip ? (
+          <InfoTip label="About this board" className="sb-standings__tip" tipClassName="sb-scope sb-tip">
+            {tip}
+          </InfoTip>
+        ) : null}
         {/* The points beside each name are the one figure this list keeps; what makes them is there. */}
         {how ? (
           <a className="sb-standings__how" href={how}>

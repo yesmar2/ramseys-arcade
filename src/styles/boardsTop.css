@@ -7,6 +7,68 @@
  * fourth and fifth their top ten ribbons.
  */
 
+/*
+ * The Boards page's top is the period and whose boards, with no Live chip over them; the period, when it closes
+ * and what it hands out are in a tip on an "i" beside the Standings' title (Ramsey, 2026-11-05: "let's get rid of
+ * the Live chip at the top, and put the week/month/etc info into a tooltip").
+ */
+@media (min-width: 64rem) {
+  .sb-hero__row {
+    margin-top: 0.5rem;
+  }
+}
+
+.sb-standings__tip.infotip--i {
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 0.78rem;
+}
+
+/* On a phone the title, the count, the "i" and How your rank works still share a line. */
+@media (max-width: 42rem) {
+  .sb-standings__head:has(.sb-standings__tip) {
+    column-gap: 0.45rem;
+    padding: 0 0.35rem;
+  }
+}
+
+@media (max-width: 42rem) {
+  .sb-standings__head .sb-standings__how {
+    padding: 0.28rem 0.6rem;
+    font-size: 0.76rem;
+  }
+}
+
+.sb-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sb-tip__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--sb-brand-ink);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sb-tip__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: var(--muted);
+}
+
+.sb-tip__line .sb-icon {
+  flex: none;
+  margin-top: 0.05rem;
+  color: var(--sb-gold-ink);
+}
+
 .sb-rows--last .sb-row__ord--prize .trophy-art svg {
   width: 2.15rem;
   height: 2.15rem;
