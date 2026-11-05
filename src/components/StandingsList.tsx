@@ -208,7 +208,12 @@ export function StandingsList({
   // The feed's asks, as of the latest render: the effects below go by its key, not by these changing.
   const asks = useRef(feed)
   asks.current = feed
-  const [more, setMore] = useState<Standing[]>([])
+  // Show more's players, kept with the list they were asked for: a new period's or group's list comes without
+  // them on its first draw. Cleared only after it (an effect), they were drawn once beside the new list, a
+  // name in both twice over, and React left rows of the old list on the page, over its first place (Ramsey,
+  // 2026-11-05: "the 8th and 10th place are showing above 1st place").
+  const [moreOf, setMoreOf] = useState<{ list: Standing[]; rows: Standing[] }>({ list: standings, rows: [] })
+  const more = moreOf.list === standings ? moreOf.rows : []
   const [loadingMore, setLoadingMore] = useState(false)
   // A phone shows the top five until asked for more; a link to the standings is asking.
   const [opened, setOpened] = useState(() => focusable && focusFromUrl() === 'standings')
@@ -218,7 +223,6 @@ export function StandingsList({
 
   // A new period or group is a new list.
   useEffect(() => {
-    setMore([])
     setFind('')
     setFound(null)
   }, [standings])
@@ -260,16 +264,24 @@ export function StandingsList({
     return () => window.removeEventListener(ROUTE_EVENT, focus)
   }, [loading, focusable])
 
-  const rows = [...standings, ...more]
+  // Each name once, whatever the pages that came: a name twice is two rows React can't tell apart.
+  const onList = new Set(standings.map((row) => row.name))
+  const rows = [...standings, ...more.filter((row) => !onList.has(row.name))]
   const left = Math.max(0, totalPlayers - rows.length)
   const showMore = async () => {
     setOpened(true)
     if (loadingMore || left === 0) return
     setLoadingMore(true)
+    // The list this press is for: a page that comes after another period's list is in is dropped.
+    const list = standings
     try {
       const page = await asks.current.more(rows.length, MORE_STANDINGS)
       const have = new Set(rows.map((row) => row.name))
-      setMore((prev) => [...prev, ...page.filter((row) => !have.has(row.name))])
+      setMoreOf((prev) =>
+        prev.list === list
+          ? { list, rows: [...prev.rows, ...page.filter((row) => !have.has(row.name))] }
+          : { list, rows: page.filter((row) => !have.has(row.name)) },
+      )
     } catch {
       // The button stays; another press tries again.
     } finally {
