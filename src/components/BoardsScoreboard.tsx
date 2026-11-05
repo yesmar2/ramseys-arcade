@@ -17,7 +17,6 @@ import {
   lineScore,
   ordinal,
   periodCopy,
-  phoneLine,
   youCell,
   type BoardLine,
   type BoardTop,
@@ -54,14 +53,6 @@ function accentOf(slug: string) {
 
 function nameOf(slug: string) {
   return getGame(slug)?.name ?? slug
-}
-
-function CrownIcon() {
-  return (
-    <svg className="sb-icon sb-icon--crown" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" />
-    </svg>
-  )
 }
 
 function ChevronIcon() {
@@ -117,31 +108,17 @@ function periodFeed(period: LeaderboardPeriod, data: ReturnType<typeof useScoreb
 
 /* ---------- every board ---------- */
 
-function Place({ line, top, place, you }: { line: BoardLine; top: BoardTop | undefined; place: number; you: string }) {
-  if (!top) {
-    return (
-      <span className={`sb-board__place sb-board__place--${place} sb-board__place--open`}>
-        <span className="sb-board__who">–</span>
-        <span className="sb-board__score">Open</span>
-      </span>
-    )
-  }
-  const mine = Boolean(you) && top.name === you
-  return (
-    <span className={`sb-board__place sb-board__place--${place}`}>
-      <span className={`sb-board__who${mine ? ' sb-board__who--you' : ''}`}>
-        {place === 1 ? <CrownIcon /> : null}
-        <span>{top.name}</span>
-        {/* The skin the run was played in, as every game's own board shows it. */}
-        <SkinMark skin={top.skin} />
-      </span>
-      {/* A daily's week is in points, which its own board shows: here it is names. */}
-      {line.points ? null : <span className="sb-board__score">{lineScore(line, top.score)}</span>}
-    </span>
-  )
-}
+/*
+ * A card a game (Ramsey, 2026-11-05: the table was "kinda confusing to read", then "let's see C" of three tried:
+ * each game's leader and you, the top three as medal chips, a card a game). Each card is a little board: the
+ * game, its top three on discs of their metal, and you under them, your place and the score that takes a higher
+ * one. The game's name is the card's link, stretched over it (everyBoard.css); a skin beside a name opens its own
+ * card over it.
+ */
 
-function BoardRow({
+const METAL = ['gold', 'silver', 'bronze'] as const
+
+function BoardCard({
   line,
   period,
   you,
@@ -159,50 +136,51 @@ function BoardRow({
   const accent = accentOf(line.slug)
   const name = nameOf(line.slug)
   const cell = standing ? youCell(line, standing, best, next) : null
+  const place = standing?.byGame[line.slug]?.place ?? null
   const players = line.players == null ? '' : `${line.players.toLocaleString()} ${line.players === 1 ? 'player' : 'players'}`
-  const podium = line.top
-    .map((t, i) => `${ordinal(i + 1)} ${t.name}${line.points ? '' : ` ${lineScore(line, t.score)}`}`)
-    .join(', ')
-  const label = [
-    `${name} board`,
-    players,
-    podium,
-    cell
-      ? cell.tone === 'on'
-        ? [`You: ${cell.a.replace('#', 'number ')}`, cell.b].filter(Boolean).join('. ')
-        : cell.b
-      : '',
-  ]
-    .filter(Boolean)
-    .join('. ')
+  // You on it, in words, and what's next under them: the score that takes a higher place.
+  const mine = !standing ? null : place === 1 ? 'You lead it' : place ? `You’re ${ordinal(place)}` : cell?.tone === 'hint' ? cell.b : 'Not played yet'
+  const then = place && place > 1 ? (cell?.b ?? '') : ''
+  const tone = place ? 'on' : 'off'
+  // A daily's week is in points, which its own board shows: here it is names.
+  const score = (n: number) => (line.points ? '' : lineScore(line, n))
+  const podium = line.top.map((t, i) => `${ordinal(i + 1)} ${t.name}${score(t.score) ? ` ${score(t.score)}` : ''}`).join(', ')
+  const label = [`${name} board`, players, podium, mine ? [mine, then].filter(Boolean).join('. ') : ''].filter(Boolean).join('. ')
   return (
-    <li className="sb-board">
-      {/* The game's name is the line's link, stretched over it (boards.css); a skin on it opens its own card. */}
-      <div className="sb-board__link">
-        <GameThumbArt slug={line.slug} accent={accent} className="sb-board__thumb" />
-        <a className="sb-board__name" href={boardPlaceHref(line.slug, period)} aria-label={label}>
-          <span className="sb-board__title">{name}</span>
-          {players ? <span className="sb-board__players">{players}</span> : null}
+    <li className="eb-card">
+      <div className="eb-card__head">
+        <GameThumbArt slug={line.slug} accent={accent} className="eb-card__thumb" />
+        <a className="eb-card__name" href={boardPlaceHref(line.slug, period)} aria-label={label}>
+          <b>{name}</b>
+          {players ? <small>{players}</small> : null}
         </a>
-        {[0, 1, 2].map((i) => (
-          <Place key={i} line={line} top={line.top[i]} place={i + 1} you={you} />
-        ))}
-        {cell ? (
-          <span className={`sb-board__you sb-board__you--${cell.tone}`}>
-            <span className="sb-board__you-a">{cell.a}</span>
-            {cell.b ? <span className="sb-board__you-b">{cell.b}</span> : null}
-          </span>
-        ) : null}
-        <span className={`sb-board__line${cell?.tone === 'on' ? ' sb-board__line--on' : ''}`}>
-          {phoneLine(line, standing, cell)}
-        </span>
-        <span className="sb-board__go" aria-hidden="true">
+        <span className="eb-card__go" aria-hidden="true">
           <ChevronIcon />
         </span>
       </div>
+      <ol className="eb-card__top" aria-hidden="true">
+        {line.top.slice(0, 3).map((t, i) => (
+          <li key={t.name} className={`eb-card__row eb-card__row--${METAL[i]}${you && t.name === you ? ' eb-card__row--you' : ''}`}>
+            <i>{i + 1}</i>
+            <span className="eb-card__who">
+              <b>{t.name}</b>
+              {/* The skin the run was played in, as every game's own board shows it. */}
+              <SkinMark skin={t.skin} />
+            </span>
+            {score(t.score) ? <small>{score(t.score)}</small> : null}
+          </li>
+        ))}
+      </ol>
+      {mine ? (
+        <p className={`eb-card__you eb-card__you--${tone}`} aria-hidden="true">
+          <b>{mine}</b>
+          {then ? <small>{then}</small> : null}
+        </p>
+      ) : null}
     </li>
   )
 }
+
 
 function EveryBoard({
   period,
@@ -216,7 +194,6 @@ function EveryBoard({
   you: string
 }) {
   const played = data.boards.filter((b) => b.top.length > 0)
-  const withYou = Boolean(data.you)
   const heldBoards = useHeldShape(`boards-played-${period}`, data.loading ? undefined : played.length, 12)
   const when = copy.noun ? ` ${copy.phrase}` : ''
   return (
@@ -236,45 +213,39 @@ function EveryBoard({
           </span>
         ) : null}
       </div>
-      <div className={`sb-table${withYou ? ' sb-table--you' : ''}`}>
-        <div className="sb-table__head" aria-hidden="true">
-          <span className="sb-table__board">Game</span>
-          <span className="sb-table__place sb-table__place--1">1st</span>
-          <span className="sb-table__place sb-table__place--2">2nd</span>
-          <span className="sb-table__place sb-table__place--3">3rd</span>
-          {withYou ? <span className="sb-table__you">You</span> : null}
-        </div>
-        {data.loading ? (
-          <ul className="sb-table__rows" aria-busy="true">
-            {Array.from({ length: Math.max(1, heldBoards) }, (_, i) => (
-              <li key={i} className="sb-board sb-board--skel">
-                <span className="sb-board__link">
-                  <span className="sb-board__thumb sb-board__thumb--skel" />
-                  <span className="sb-board__name">
-                    <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : played.length ? (
-          <ul className="sb-table__rows">
-            {played.map((line) => (
-              <BoardRow
-                key={line.slug}
-                line={line}
-                period={period}
-                you={you}
-                standing={data.you}
-                best={data.bests[line.slug]}
-                next={data.nexts[line.slug]}
-              />
-            ))}
-          </ul>
-        ) : (
-          <p className="sb-table__none">No board has a run{when} yet. Every one of them is up for grabs.</p>
-        )}
-      </div>
+      {data.loading ? (
+        <ul className="eb-cards" aria-busy="true">
+          {Array.from({ length: Math.max(1, heldBoards) }, (_, i) => (
+            <li key={i} className="eb-card eb-card--skel">
+              <span className="eb-card__head">
+                <span className="eb-card__thumb eb-card__thumb--skel" />
+                <span className="skel-line" style={{ '--skel-w': '6rem' } as CSSProperties} />
+              </span>
+              <span className="eb-card__top">
+                {[0, 1, 2].map((k) => (
+                  <span key={k} className="skel-line" style={{ '--skel-w': `${9 - k}rem` } as CSSProperties} />
+                ))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : played.length ? (
+        <ul className="eb-cards">
+          {played.map((line) => (
+            <BoardCard
+              key={line.slug}
+              line={line}
+              period={period}
+              you={you}
+              standing={data.you}
+              best={data.bests[line.slug]}
+              next={data.nexts[line.slug]}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="sb-table__none">No board has a run{when} yet. Every one of them is up for grabs.</p>
+      )}
     </section>
   )
 }

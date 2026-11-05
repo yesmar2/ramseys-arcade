@@ -1,0 +1,203 @@
+/*
+ * The Boards page's Every board list: a card a game (Ramsey, 2026-11-05: the table was "kinda confusing to read",
+ * then "let's see C" of three tried). Each card is a little board: the game, its top three on discs of their
+ * metal, and you under them (BoardsScoreboard.tsx BoardCard). Four across on a wide screen, one on a phone.
+ */
+
+.eb-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.85rem;
+  list-style: none;
+  margin: 1.4rem 0 0;
+  padding: 0;
+}
+
+.eb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.9rem 1rem 0.95rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--sb-line);
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.15s ease;
+}
+
+.eb-card:has(.eb-card__name:hover) {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.eb-card:has(.eb-card__name:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.eb-card__head {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 1rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.eb-card__thumb {
+  --inline-thumb-size: 2.75rem;
+}
+
+.eb-card__thumb--skel {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.8rem;
+  background: rgba(var(--ink-rgb), 0.07);
+}
+
+/* The game's name is the card's link, stretched over the whole card. */
+.eb-card__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.eb-card__name:focus-visible {
+  outline: none;
+}
+
+.eb-card__name::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.eb-card__name b {
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eb-card small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.eb-card__go {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.eb-card:has(.eb-card__name:hover) .eb-card__go {
+  color: var(--ink);
+  transform: translateX(2px);
+}
+
+/* The top three, each on a disc of its metal. */
+.eb-card__top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.eb-card__row {
+  --chip: var(--sb-gold);
+  display: grid;
+  grid-template-columns: 1.45rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+}
+
+.eb-card__row--silver {
+  --chip: var(--sb-silver);
+}
+
+.eb-card__row--bronze {
+  --chip: var(--sb-bronze);
+}
+
+.eb-card__row i {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  background: var(--chip);
+  color: #2a1d05;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.eb-card__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.eb-card__who b {
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A skin beside a name opens its own card, over the card's link. */
+.eb-card__who > :not(b) {
+  position: relative;
+  z-index: 2;
+  flex: none;
+}
+
+.eb-card__row--you b {
+  color: var(--sb-brand-ink);
+}
+
+/* You on it: your place, and what's next under it. */
+.eb-card__you {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: auto 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--sb-line);
+}
+
+.eb-card__you b {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.eb-card__you--on b {
+  color: var(--sb-brand-ink);
+}
+
+.eb-card__you--off b {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.eb-card--skel .eb-card__top {
+  gap: 0.55rem;
+}
+
+@media (max-width: 42rem) {
+  .eb-cards {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+}
