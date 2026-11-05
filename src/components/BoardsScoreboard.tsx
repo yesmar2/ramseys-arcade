@@ -387,6 +387,7 @@ export function BoardsScoreboard({ period }: { period: LeaderboardPeriod }) {
         title: closed.title,
         note: closed.note,
         rowHref: (name: string) => rankHref(name, closed.period),
+        podium: boardPodium({ period: closed.period, final: true }),
       }
     : null
   // A first look has no shapes kept for this page (lib/heldShape.ts), and the standings may come as ten rows or

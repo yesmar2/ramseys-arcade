@@ -68,6 +68,8 @@ export type StandingsLast = {
   title: string
   note: string
   rowHref: (name: string) => string
+  /** What each place took (PodiumPrize.tsx). */
+  podium?: Podium | null
 }
 
 type RowData = { rank: number; name: string; score: number; games: number; avatarId?: string }
@@ -455,7 +457,7 @@ export function StandingsList({
           </div>
           <ol className="sb-rows sb-rows--last">
             {last.rows.slice(0, 5).map((row) => (
-              <StandingRow key={row.name} row={row} leaderScore={lastTop} you={you} href={last.rowHref(row.name)} />
+              <StandingRow key={row.name} row={row} leaderScore={lastTop} podium={last.podium} you={you} href={last.rowHref(row.name)} />
             ))}
           </ol>
         </div>
