@@ -48,6 +48,7 @@ function Standings({
   players,
   group,
   lead = 2,
+  link = false,
 }: {
   board: GlobalBoardResult | null
   you: string
@@ -55,6 +56,12 @@ function Standings({
   group?: string | null
   /** How many of the top stay on the list when you're further down: two in the boards' panel, three on the rail. */
   lead?: number
+  /**
+   * The whole card is the way to the full Standings, with no Full board link and no line under the rows (the
+   * rail's: Ramsey, 2026-11-05: "we don't need the text at the bottom that says 'You lead ...' ... i don't think
+   * we need the 'Full Board' link in the standings card either. the card can just be the link").
+   */
+  link?: boolean
 }) {
   const period = useDefaultPeriod()
   const { nobody } = useScope()
@@ -118,18 +125,33 @@ function Standings({
       : null
 
   return (
-    <article className="hb-panel hb-panel--standings" data-hunt="home-standings">
+    <article className={`hb-panel hb-panel--standings${link ? ' hb-panel--link' : ''}`} data-hunt="home-standings">
       <div className="hb-panel__head">
-        <h3 className="hb-panel__title">Standings</h3>
+        <h3 className="hb-panel__title">
+          {link ? (
+            // Stretched over the card (homeSimple.css), so a press anywhere on it opens the Standings.
+            <a className="hb-panel__link" href={standingsHref(period)}>
+              Standings
+            </a>
+          ) : (
+            'Standings'
+          )}
+        </h3>
         {board && players > 0 ? (
           <span className="hb-panel__sub">
             {PERIOD_LABELS[period]}
             {group ? ` · ${group}` : ''} · {players.toLocaleString()} {players === 1 ? 'player' : 'players'}
           </span>
         ) : null}
-        <a className="home-section__more" href={standingsHref(period)}>
-          Full board ›
-        </a>
+        {link ? (
+          <span className="hb-panel__go" aria-hidden="true">
+            ›
+          </span>
+        ) : (
+          <a className="home-section__more" href={standingsHref(period)}>
+            Full board ›
+          </a>
+        )}
       </div>
       {board == null ? (
         <ol className="hb-rows" aria-hidden="true">
@@ -153,7 +175,7 @@ function Standings({
           {yourRow ? row(yourRow) : null}
         </ol>
       )}
-      {next ? (
+      {link ? null : next ? (
         <p className="hb-next">{next}</p>
       ) : you && rank != null ? null : empty && you ? null : (
         // Not under an empty board as well: its own line already says the first score takes #1.
@@ -290,7 +312,7 @@ export function HomeStandings() {
 
   return (
     <div className="hb-rail">
-      <Standings board={board} you={you} players={board?.totalPlayers ?? 0} group={group} lead={3} />
+      <Standings board={board} you={you} players={board?.totalPlayers ?? 0} group={group} lead={3} link />
     </div>
   )
 }

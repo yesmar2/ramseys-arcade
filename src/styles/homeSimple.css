@@ -16,10 +16,11 @@
   align-items: start;
 }
 
+/* The games' heading close under the races (Ramsey, 2026-11-05: "too far apart, spacing seems off"). */
 .home-simple__main {
   display: flex;
   flex-direction: column;
-  gap: 2.25rem;
+  gap: 1.4rem;
   min-width: 0;
 }
 
@@ -61,7 +62,7 @@
 
   .home-simple__part--wall {
     order: 4;
-    margin: 1rem 0 0.4rem;
+    margin: 0.5rem 0 0.4rem;
   }
 
   .home-simple__part--hunt {
@@ -460,6 +461,53 @@ html[data-theme="dark"] .home-races__sub {
 
 .hb-rail .hb-panel__head {
   flex-wrap: wrap;
+}
+
+/* The whole card is the way to the Standings: its title's link stretched over it, a chevron where Full board was. */
+.hb-panel--link {
+  position: relative;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.hb-panel--link:has(.hb-panel__link:hover) {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.hb-panel--link:has(.hb-panel__link:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.hb-panel__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hb-panel__link:focus-visible {
+  outline: none;
+}
+
+.hb-panel__link::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.hb-panel__go {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.hb-panel--link:has(.hb-panel__link:hover) .hb-panel__go {
+  color: var(--ink);
+  transform: translateX(2px);
 }
 
 /* ---------- the bug hunt as a row ---------- */
