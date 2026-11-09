@@ -168,6 +168,13 @@ export class HillsScene {
   private W = 0
   private H = 0
   private dpr = 1
+  /**
+   * How much of its full size the canvas is (1 at 640 px across or more): a home tile's preview is a fifth of a
+   * screen, so the bird, flags and words keep their floors in that share and the tile looks like the game shrunk
+   * down, not the bird at a screen's size over little hills (Ramsey, 2026-11-09: "the size of the bird in swoop
+   * preview is way too big. it should look like the game"). Every game screen is 640 px or more on its long side.
+   */
+  private fit = 1
   private cam = { x: 0, y: 0, k: 8, snap: true }
   private C: Palette
   private sky: HTMLCanvasElement | null = null
@@ -202,6 +209,7 @@ export class HillsScene {
     this.W = Math.round(w)
     this.H = Math.round(h)
     this.dpr = dpr
+    this.fit = clamp(Math.max(this.W, this.H) / 640, 0.25, 1)
     this.canvas.width = Math.max(1, Math.round(this.W * dpr))
     this.canvas.height = Math.max(1, Math.round(this.H * dpr))
     this.sky = null
@@ -366,7 +374,7 @@ export class HillsScene {
    * that 13 px drew the bird twice its size against the hills; 10 px there keeps it about one and a half times.
    */
   private birdSize() {
-    return Math.max(this.H > this.W ? 10 : 13, 1.2 * this.cam.k)
+    return Math.max((this.H > this.W ? 10 : 13) * this.fit, 1.2 * this.cam.k)
   }
 
   /* ---------- the sky ---------- */
@@ -654,10 +662,10 @@ export class HillsScene {
       if (px < -40 || px > W + 40) return
       const passed = f.mode !== 'menu' && f.flag >= i
       const y = this.sy(heightAt(this.hills, x))
-      const pole = Math.max(36, 5.5 * cam.k)
+      const pole = Math.max(36 * this.fit, 5.5 * cam.k)
       ctx.strokeStyle = C.ink
       ctx.globalAlpha = 0.7
-      ctx.lineWidth = Math.max(2, 0.18 * cam.k)
+      ctx.lineWidth = Math.max(2 * this.fit, 0.18 * cam.k)
       ctx.beginPath()
       ctx.moveTo(px, y)
       ctx.lineTo(px, y - pole)
@@ -670,7 +678,7 @@ export class HillsScene {
       ctx.lineTo(px, y - pole * 0.64)
       ctx.closePath()
       ctx.fill()
-      ctx.font = `800 ${textSize(Math.max(11, pole * 0.22))}px ${this.font}`
+      ctx.font = `800 ${textSize(Math.max(11 * this.fit, pole * 0.22))}px ${this.font}`
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = C.paper
@@ -681,8 +689,8 @@ export class HillsScene {
     const fx = this.sx(finish)
     if (fx > -80 && fx < W + 80) {
       const y = this.sy(heightAt(this.hills, finish))
-      const tall = Math.max(60, 9 * cam.k)
-      const wide = Math.max(10, 1.2 * cam.k)
+      const tall = Math.max(60 * this.fit, 9 * cam.k)
+      const wide = Math.max(10 * this.fit, 1.2 * cam.k)
       ctx.fillStyle = C.ink
       ctx.globalAlpha = 0.8
       ctx.fillRect(fx - wide * 0.15, y - tall, wide * 0.3, tall)
@@ -694,7 +702,7 @@ export class HillsScene {
           ctx.fillRect(fx + wide * 0.15 + q * cell, y - tall + r * cell, cell, cell)
         }
       }
-      ctx.font = `800 ${textSize(Math.max(12, tall * 0.13))}px ${this.font}`
+      ctx.font = `800 ${textSize(Math.max(12 * this.fit, tall * 0.13))}px ${this.font}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'alphabetic'
       ctx.fillStyle = C.ink
@@ -966,7 +974,7 @@ export class HillsScene {
       }
       const t = 1 - f.life
       ctx.globalAlpha = clamp(f.life * 2, 0, 1)
-      const size = textSize(Math.max(16, 1.6 * cam.k))
+      const size = textSize(Math.max(16 * this.fit, 1.6 * cam.k))
       ctx.font = `800 ${size}px ${this.font}`
       ctx.lineWidth = size * 0.28
       ctx.strokeStyle = C.paper
