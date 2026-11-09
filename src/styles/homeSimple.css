@@ -182,8 +182,39 @@ html[data-theme="dark"] .home-races__open {
   outline: none;
 }
 
-.home-races__name {
+/* The race's name, and your place on its day at the line's end once you've raced it. */
+.home-races__line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
   margin-top: 0.15rem;
+}
+
+.home-races__place {
+  flex: none;
+  margin-left: auto;
+  color: #9a4a22;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-races__place--first {
+  color: #a15c07;
+}
+
+html[data-theme="dark"] .home-races__place {
+  color: #e8b89b;
+}
+
+html[data-theme="dark"] .home-races__place--first {
+  color: #f4c53e;
+}
+
+.home-races__name {
+  min-width: 0;
   overflow: hidden;
   font-size: 0.95rem;
   font-weight: 800;

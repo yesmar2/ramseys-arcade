@@ -275,7 +275,11 @@ function RaceCard({
  * medal on the picture, do we even need the time on it?": no, the race's start card has the times). The tile is
  * the way straight in; once it's run, it opens the daily's page.
  */
-function RaceTile({ p, day }: { p: Punch; day: string }) {
+function RaceTile({ p, day, standing }: { p: Punch; day: string; standing: DayStanding | null | undefined }) {
+  // Your place on the day's board once you've raced it, "2nd of 4", beside the name (Ramsey, 2026-11-09: "it'd be
+  // nice to have your rank for the days races on the home page again"). A daily just for fun places nobody.
+  const you = isRankedGame(p.slug) && p.done ? standing?.you : null
+  const place = you && standing ? { words: `${ordinal(you.place)} of ${standing.players}`, first: you.place === 1 } : null
   const held = p.medal ?? null
   const next = isRaceGame(p.slug) && p.paceMs != null ? nextMedal(p.slug, p.paceMs, held, p.platinumMs) : null
   const badge = held ?? next?.medal ?? null
@@ -314,9 +318,17 @@ function RaceTile({ p, day }: { p: Punch; day: string }) {
             </span>
           ) : null}
         </span>
-        <span className="home-races__name">
-          {p.title}
-          {said ? <span className="visually-hidden">, {said}</span> : null}
+        <span className="home-races__line">
+          <span className="home-races__name">
+            {p.title}
+            {said ? <span className="visually-hidden">, {said}</span> : null}
+          </span>
+          {place ? (
+            <span className={`home-races__place${place.first ? ' home-races__place--first' : ''}`}>
+              <span className="visually-hidden">, </span>
+              {place.words}
+            </span>
+          ) : null}
         </span>
       </a>
     </li>
@@ -331,7 +343,16 @@ function RaceTile({ p, day }: { p: Punch; day: string }) {
 export function HomeRaces() {
   const viewer = useAccountId()
   const ticket = useTicket(viewer)
-  const { day, punches, total } = ticket
+  const { day, punches, done, total } = ticket
+  const { signedIn } = useAuth()
+  const me = normalizePlayerName(usePlayerName())
+  // Your place on each ranked race's day: asked for again as you punch another, since it moves.
+  const standings = useDayStandings(
+    punches.map((p) => p.slug).filter((slug) => isRankedGame(slug)),
+    day,
+    signedIn ? me : '',
+    done,
+  )
   if (!total) return null
   // No date or streak beside the title: on a phone the title wrapped for them (Ramsey, 2026-11-05). The Dailies
   // page keeps both.
@@ -348,7 +369,7 @@ export function HomeRaces() {
       </div>
       <ul className="home-races__row" style={{ '--n': total } as CSSProperties}>
         {punches.map((p) => (
-          <RaceTile key={p.key} p={p} day={day} />
+          <RaceTile key={p.key} p={p} day={day} standing={standings ? standings.get(p.slug) : undefined} />
         ))}
       </ul>
     </section>
