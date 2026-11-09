@@ -335,9 +335,10 @@ export type HuntSpot = { anchor: HuntAnchor; pose: HuntPose; at: number }
  * How many places the day's bug hides in at once. Catching it in any one of them is the day's find, and the
  * others go. Ramsey, 2026-11-09, after the hunt proved too hard to find with one: "number 2 works, if that's
  * still not enough places, it can be increased to more later". Raising it keeps the day's earlier places
- * where they were and adds more; lowering it drops the last ones.
+ * where they were and adds more; lowering it drops the last ones. Three at first, five since the same day ("let's
+ * make it 5 places it can be actually").
  */
-export const SPOTS_A_DAY = 3
+export const SPOTS_A_DAY = 5
 
 export type HuntPick = {
   day: string
