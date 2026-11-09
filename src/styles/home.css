@@ -1057,7 +1057,23 @@ html[data-theme="light"] .hb-panel__head .home-section__more {
   min-width: 0;
 }
 
-/* How far along against the leader: a bar, no figure. */
+/* The points at the line's end: a long tag gives way to them. At most 1,000 (ten games at 100). */
+.hb-row__pts {
+  flex: none;
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hb-row__pts small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.65;
+}
+
+/* How far along against the leader: a bar under the name and points. */
 .hb-row__bar {
   display: block;
   height: 5px;

@@ -39,8 +39,10 @@ function spotlightGame(): string | null {
 
 /**
  * The Standings in the canvas's shape (D on the "Home page redesign" canvas): the top four (five on the simple
- * home's rail), or with you further down, the top two (three), then the player just above you and you. Each name has a bar against the leader's, and no points:
- * those stay on the full Standings list, a tap away (Ramsey, 2026-09-29). Under them, who's next up, in words.
+ * home's rail), or with you further down, the top two (three), then the player just above you and you. Each name has
+ * its points at the end of its line and a bar under it against the leader's (Ramsey, 2026-11-09: "should we put the
+ * points in on the home page standings", then "yes, add them", where on 2026-09-29 they stayed on the full list).
+ * Under them, who's next up, in words.
  */
 function Standings({
   board,
@@ -101,8 +103,12 @@ function Standings({
           <span className="hb-row__line">
             <PlayerName className="hb-row__name" name={e.name} avatarId={e.avatarId} />
             {mine ? <span className="hb-row__you">You</span> : null}
+            <span className="hb-row__pts">
+              {e.score.toLocaleString()}
+              <small> pts</small>
+            </span>
           </span>
-          {/* How far along they are against the leader, as a bar: no figure on it. */}
+          {/* How far along they are against the leader, as a bar under the name and points. */}
           <span className="hb-row__bar" aria-hidden="true">
             <span style={{ width: `${leader > 0 ? Math.max(3, Math.min(100, Math.round((e.score / leader) * 100))) : 0}%` }} />
           </span>
