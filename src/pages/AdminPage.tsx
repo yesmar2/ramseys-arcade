@@ -42,7 +42,8 @@ import {
   type RunCheck,
   type TestAlert,
 } from '../lib/admin'
-import { capitalName, HUNT_ANCHORS, huntDay, huntPick, huntTestHref, huntWhere, msUntilNextBug } from '../lib/bugHunt'
+import { capitalName, HUNT_ANCHORS, huntDay, huntPick, huntTestHref, huntWhere, msUntilNextBug, SPOTS_A_DAY } from '../lib/bugHunt'
+import { numberWord } from '../lib/numberWord'
 import { lazyPage } from '../lib/lazyPage'
 import { ApiError } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
@@ -602,30 +603,37 @@ function BugHuntCard() {
         </h2>
       </div>
       <p className="adm-card__sub">
-        Where today’s bug hides, and the week after it. Where the header or the screen’s edge is in its way, it peeks
+        Where today’s bug hides, and the week after it: each day in {numberWord(SPOTS_A_DAY)} places, and a catch in
+        any one is the day’s find. Where the header or the screen’s edge is in its way, it peeks
         out another way than the one listed. Go there is the real hunt: a catch counts for you. Test shows it in the
         same spot in test mode, where a catch doesn’t count. The next bug gets loose at midnight on the boards’ clock,
         in {untilWords(msUntilNextBug())}.
       </p>
       <ul className="adm-list">
         {days.map((pick, i) => (
-          <li key={pick.day} className="adm-row">
+          <li key={pick.day} className="adm-row adm-row--hunt">
             <div className="adm-row__main">
               <b className="adm-row__title">
                 {i === 0 ? 'Today' : huntDayWords.format(new Date(`${pick.day}T12:00:00Z`))} · {capitalName(pick.bug)}
               </b>
-              <span className="adm-row__sub">{huntWhere(pick.anchor, pick.pose)}</span>
             </div>
-            <div className="adm-row__acts">
-              {i === 0 ? (
-                <a className="panel__btn panel__btn--ghost adm-small" href={pick.anchor.href}>
-                  Go there
-                </a>
-              ) : null}
-              <a className="panel__btn panel__btn--ghost adm-small" href={huntTestHref({ anchor: pick.anchor, pose: pick.pose, at: pick.at })}>
-                Test
-              </a>
-            </div>
+            <ul className="adm-hunt-spots">
+              {pick.spots.map((spot) => (
+                <li key={spot.anchor.id} className="adm-hunt-spot">
+                  <span className="adm-row__sub">{huntWhere(spot.anchor, spot.pose)}</span>
+                  <span className="adm-row__acts">
+                    {i === 0 ? (
+                      <a className="panel__btn panel__btn--ghost adm-small" href={spot.anchor.href}>
+                        Go there
+                      </a>
+                    ) : null}
+                    <a className="panel__btn panel__btn--ghost adm-small" href={huntTestHref(spot)}>
+                      Test
+                    </a>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>

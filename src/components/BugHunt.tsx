@@ -12,6 +12,8 @@ import {
   openBugHunt,
   huntDay,
   huntPick,
+  spotAnchor,
+  SPOTS_A_DAY,
   huntSnapshot,
   huntStats,
   huntTestHref,
@@ -25,6 +27,7 @@ import {
   syncHunt,
   type HuntAnchor,
   type HuntPick,
+  type HuntSpot,
   type HuntPose,
   type HuntServer,
   type HuntStats,
@@ -125,6 +128,8 @@ function useHunt(): {
   test: HuntTest | null
   /** How today's bug was peeking out when it was caught here; null when it wasn't, or was caught on another device. */
   caught: HuntPose | null
+  /** Which of today's hiding places it was caught in: the day's first until it's caught. */
+  where: HuntAnchor
 } {
   const snap = useSyncExternalStore(subscribeHunt, huntSnapshot, huntSnapshot)
   const [now, setNow] = useState(() => Date.now())
@@ -141,9 +146,10 @@ function useHunt(): {
   const day = huntDay(now)
   const server = snap.server.day === day ? snap.server : null
   const pose = snap.log.found[day]?.pose
+  const pick = huntPick(day)
   // The set is the month's, so the API's word on it holds past midnight until it next says.
   return {
-    pick: huntPick(day),
+    pick,
     stats: huntStats(day, snap.log, snap.server),
     server,
     msLeft: msUntilNextBug(now),
@@ -151,6 +157,7 @@ function useHunt(): {
     ready: snap.ready,
     test: snap.test,
     caught: isHuntPose(pose) ? pose : null,
+    where: spotAnchor(pick, snap.log.found[day]?.spot),
   }
 }
 
@@ -228,9 +235,9 @@ function fitPose(pose: HuntPose, r: DOMRect, round: number, at: number, header: 
  * mark and measured every frame, so the bug stays put as the page loads,
  * scrolls and reflows around it.
  */
-function useHidingPlace(pick: HuntPick, active: boolean): Placed | null {
+function useHidingPlace(spot: HuntSpot, active: boolean): Placed | null {
   const [placed, setPlaced] = useState<Placed | null>(null)
-  const { anchor, pose, at } = pick
+  const { anchor, pose, at } = spot
   useEffect(() => {
     if (!active) return
     let frame = 0
@@ -333,16 +340,42 @@ function peekBox(p: Placed, at: number): PeekBox {
 }
 
 /**
- * Today's bug, when its hiding place is on this page. It's drawn in a layer
- * of its own, poking out from behind the panel it hides behind: only what's
- * past the panel's edge shows. Every so often it ducks and comes back up,
- * and a tap catches it.
+ * Today's bug, in each of its hiding places that's on this page (a day's are
+ * on pages of their own, so one at most). In test mode, the stand-in instead,
+ * wherever the test puts it.
  */
 function HuntLayer() {
   const { pick, stats, ready, test } = useHunt()
-  // In test mode, a stand-in wherever the test puts it; otherwise today's bug, where today put it.
-  const place: HuntPick = test ? { ...pick, anchor: test.anchor, pose: test.pose, at: test.at } : pick
-  const key = test ? `${test.anchor.id}:${test.pose}:${test.at}` : pick.day
+  if (test) return <HuntPeek pick={pick} spot={test} test foundToday={false} ready />
+  return (
+    <>
+      {pick.spots.map((spot) => (
+        <HuntPeek key={`${pick.day}:${spot.anchor.id}`} pick={pick} spot={spot} test={false} foundToday={stats.foundToday} ready={ready} />
+      ))}
+    </>
+  )
+}
+
+/**
+ * The bug in one hiding place, when it's on this page. It's drawn in a layer
+ * of its own, poking out from behind the panel it hides behind: only what's
+ * past the panel's edge shows. Every so often it ducks and comes back up,
+ * and a tap catches it. Caught here, it's gone from the day's other places too.
+ */
+function HuntPeek({
+  pick,
+  spot,
+  test,
+  foundToday,
+  ready,
+}: {
+  pick: HuntPick
+  spot: HuntSpot
+  test: boolean
+  foundToday: boolean
+  ready: boolean
+}) {
+  const key = test ? `${spot.anchor.id}:${spot.pose}:${spot.at}` : pick.day
   const [phase, setPhase] = useState<'hiding' | 'caught' | 'gone'>('hiding')
   const [shownKey, setShownKey] = useState(key)
   // A new day, or a new test: a bug to hide again.
@@ -351,12 +384,12 @@ function HuntLayer() {
     setPhase('hiding')
   }
   // Signed in, today's bug waits until the account's finds are known, so one already caught never shows.
-  const out = test ? phase !== 'gone' : ready && (phase === 'caught' || (phase === 'hiding' && !stats.foundToday))
-  const placed = useHidingPlace(place, out)
+  const out = test ? phase !== 'gone' : ready && (phase === 'caught' || (phase === 'hiding' && !foundToday))
+  const placed = useHidingPlace(spot, out)
   if (!placed || !out) return null
 
   const name = capitalName(pick.bug)
-  const box = peekBox(placed, place.at)
+  const box = peekBox(placed, spot.at)
   const caught = phase === 'caught'
   const catchIt = (e: MouseEvent) => {
     e.preventDefault()
@@ -374,7 +407,7 @@ function HuntLayer() {
           return
         }
         // Kept with the find: the way it was peeking out here, which the panels say, may not be the day's.
-        recordFind(pick, placed.pose)
+        recordFind(pick, spot, placed.pose)
         window.dispatchEvent(new Event(HUNT_CAUGHT_EVENT))
       },
       still ? 0 : 500,
@@ -700,7 +733,10 @@ export function BugHuntStrip({ compact = false }: { compact?: boolean } = {}) {
         ) : (
           <>
             <p className="hunt-strip__title">{name} got loose on the site</p>
-            <p className="hunt-strip__clue">It could be on any page, with just its head poking out from behind something.</p>
+            <p className="hunt-strip__clue">
+              It’s hiding in {numberWord(SPOTS_A_DAY)} places today, each on a different page, with just its head poking out.
+              Catch it in any one.
+            </p>
             {/* Its place held while the API is asked, so the strip doesn't grow when it answers. */}
             <p className="hunt-strip__count">{count ?? '\u00a0'}</p>
           </>
@@ -721,7 +757,7 @@ export function BugHuntStrip({ compact = false }: { compact?: boolean } = {}) {
 /* ------------------------------------------------------------ panels --- */
 
 function HuntPanel({ onClose }: { onClose: () => void }) {
-  const { pick, stats, server, msLeft, caught } = useHunt()
+  const { pick, stats, server, msLeft, caught, where } = useHunt()
   const count = countWords(server, pick.bug.name, stats)
   const titleId = useId()
   const name = capitalName(pick.bug)
@@ -740,7 +776,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
             {stats.foundToday ? (
               <>
                 <p className="hunt-wanted__line">
-                  {name} was hiding {huntWhere(pick.anchor, caught)}.
+                  {name} was hiding {huntWhere(where, caught)}.
                 </p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
                 {stats.repeat ? (
@@ -756,10 +792,10 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
             ) : (
               <>
                 <p className="hunt-wanted__line">
-                  {name} is hiding somewhere on the site today. It could be on any page, with just its head poking out
-                  from behind something, or round a corner.
+                  {name} is hiding in {numberWord(SPOTS_A_DAY)} places on the site today, each on a different page, with
+                  just its head poking out from behind something, or round a corner.
                 </p>
-                <p className="hunt-wanted__small">Find it and tap it to catch it.</p>
+                <p className="hunt-wanted__small">Find it in any one of them and tap it to catch it.</p>
                 {count ? <p className="hunt-wanted__small">{count}</p> : null}
               </>
             )}
@@ -857,7 +893,7 @@ function HuntTickets({ tickets, onGo }: { tickets: { earned: number; balance: nu
 }
 
 function FoundPanel({ onClose, onWear }: FoundProps) {
-  const { pick, stats, server, msLeft, caught } = useHunt()
+  const { pick, stats, server, msLeft, caught, where } = useHunt()
   const signedIn = Boolean(getSessionToken())
   const titleId = useId()
   const name = capitalName(pick.bug)
@@ -874,9 +910,9 @@ function FoundPanel({ onClose, onWear }: FoundProps) {
           <BugPortrait bugId={pick.bug.id} size={112} pose="cheer" mood="open" className="hunt-wanted__art" />
           <div className="hunt-wanted__text">
             <p className="hunt-wanted__line">
-              {name} was hiding {huntWhere(pick.anchor, caught)}.
+              {name} was hiding {huntWhere(where, caught)}.
             </p>
-            <p className="hunt-wanted__lesson">{pick.anchor.lesson}</p>
+            <p className="hunt-wanted__lesson">{where.lesson}</p>
           </div>
         </div>
         {signedIn && server?.place != null ? (

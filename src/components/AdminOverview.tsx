@@ -95,7 +95,8 @@ function TodayOnTheSite({ siteEvents }: { siteEvents: boolean | null }) {
         <a className="adm-today__tile" href={adminHref('hunt')}>
           <span className="adm-today__label">Bug hunt</span>
           <b>
-            {capitalName(pick.bug)}, {huntWhere(pick.anchor, pick.pose)}
+            {capitalName(pick.bug)}, {huntWhere(pick.spots[0]!.anchor, pick.spots[0]!.pose)}
+            {pick.spots.length > 1 ? `, and ${pick.spots.length - 1} more` : ''}
           </b>
           <span>The next bug in {untilWords(msUntilNextBug())}</span>
         </a>

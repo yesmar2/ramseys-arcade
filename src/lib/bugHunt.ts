@@ -36,10 +36,11 @@ export { HUNT_BUGS, SET_SIZE, setMonth, type HuntBug }
 
 /*
  * The daily bug hunt. Every day one of Find the Bug's wanted bugs gets loose
- * somewhere on the site: on any page, hiding behind a panel, a card or a
- * game's screen with its head poking out over an edge, or peeking round a
- * corner. There are no clues: finding it means knowing your way round, and
- * learning it on the way. Everyone gets the same bug in the same place,
+ * on the site, hiding in a few places at once (SPOTS_A_DAY), each on a page of
+ * its own: behind a panel, a card or a game's screen with its head poking out
+ * over an edge, or peeking round a corner. Catching it in any one of them is
+ * the day's find. There are no clues: finding it means knowing your way round,
+ * and learning it on the way. Everyone gets the same bug in the same places,
  * picked from the date on the boards' clock, and a new one gets loose at
  * midnight there. Catching one says what that corner of the site is for, and
  * fills in the month's set of all ten: the set empties on the 1st, and one
@@ -326,16 +327,33 @@ export function msUntilNextBug(now = Date.now()): number {
   return Math.max(0, (24 * 3600 - (h! * 3600 + m! * 60 + s!)) * 1000)
 }
 
+/** One of the day's hiding places: what the bug hides behind, which way it pokes out, and how far along the edge (0 to 1). */
+export type HuntSpot = { anchor: HuntAnchor; pose: HuntPose; at: number }
+
+/**
+ * How many places the day's bug hides in at once. Catching it in any one of them is the day's find, and the
+ * others go. Ramsey, 2026-11-09, after the hunt proved too hard to find with one: "number 2 works, if that's
+ * still not enough places, it can be increased to more later". Raising it keeps the day's earlier places
+ * where they were and adds more; lowering it drops the last ones.
+ */
+export const SPOTS_A_DAY = 3
+
 export type HuntPick = {
   day: string
   bug: HuntBug
-  /** What it hides behind. */
-  anchor: HuntAnchor
-  /** Which way it pokes out, and how far along the edge (0 to 1). */
-  pose: HuntPose
-  at: number
+  /**
+   * Where it hides today, each on a page of its own. The first is the place a day had when the bug hid in only
+   * one, so that one never moved.
+   */
+  spots: HuntSpot[]
   /** How it looks while it hides: napping or keeping an eye out. */
   mood: 'smile' | 'sleepy' | 'o'
+}
+
+/** The page a hiding place is on, so no two of a day's places share one: a game's panels, board and book are its page. */
+function pageOf(anchor: HuntAnchor): string {
+  const game = /^[gbr]-[a-z]+-(.+)$/.exec(anchor.id)
+  return game ? `game:${game[1]}` : anchor.href
 }
 
 /**
@@ -347,14 +365,34 @@ export function huntPick(day = huntDay()): HuntPick {
   const count = HUNT_ANCHORS.length
   const order = shuffled(HUNT_ANCHORS, `anchors:${Math.floor(n / count)}`)
   const moods = ['smile', 'smile', 'sleepy', 'o'] as const
-  return {
-    day,
-    bug: bugForDay(day),
+  const first: HuntSpot = {
     anchor: order[((n % count) + count) % count]!,
     pose: POSES[hashString(`pose:${day}`) % POSES.length]!,
     at: 0.15 + (hashString(`at:${day}`) % 71) / 100,
-    mood: moods[hashString(`mood:${day}`) % moods.length]!,
   }
+  const spots = [first]
+  const pages = new Set([pageOf(first.anchor)])
+  for (const anchor of shuffled(HUNT_ANCHORS, `spots:${day}`)) {
+    if (spots.length >= SPOTS_A_DAY) break
+    if (pages.has(pageOf(anchor))) continue
+    pages.add(pageOf(anchor))
+    const i = spots.length
+    spots.push({
+      anchor,
+      pose: POSES[hashString(`pose:${day}:${i}`) % POSES.length]!,
+      at: 0.15 + (hashString(`at:${day}:${i}`) % 71) / 100,
+    })
+  }
+  return { day, bug: bugForDay(day), spots, mood: moods[hashString(`mood:${day}`) % moods.length]! }
+}
+
+/** The place a find was made, by its spot's id: one of the day's, else any hiding place, else the day's first. */
+export function spotAnchor(pick: HuntPick, spotId: string | null | undefined): HuntAnchor {
+  return (
+    pick.spots.find((s) => s.anchor.id === spotId)?.anchor ??
+    HUNT_ANCHORS.find((a) => a.id === spotId) ??
+    pick.spots[0]!.anchor
+  )
 }
 
 /* ---------------------------------------------------------- your finds --- */
@@ -632,9 +670,9 @@ export function syncHunt(force = false): Promise<void> {
  * Record today's find, for whoever is here: the account signed in, or this device, with how it was peeking out
  * when it was caught. False when it was already caught today.
  */
-export function recordFind(pick: HuntPick, pose: HuntPose, now = Date.now()): boolean {
+export function recordFind(pick: HuntPick, spot: HuntSpot, pose: HuntPose, now = Date.now()): boolean {
   if (huntLog().found[pick.day]) return false
-  const find: HuntFind = { bug: pick.bug.id, spot: pick.anchor.id, at: now, pose }
+  const find: HuntFind = { bug: pick.bug.id, spot: spot.anchor.id, at: now, pose }
   const token = getSessionToken()
   if (token) {
     const mine = accountLog(token)
@@ -775,7 +813,7 @@ export function subscribeHunt(onChange: () => void): () => void {
  * where today's bug is.
  */
 
-export type HuntTest = { anchor: HuntAnchor; pose: HuntPose; at: number }
+export type HuntTest = HuntSpot
 
 /** A stand-in was caught: the test bar says so, and it comes back to be looked at again. */
 export const HUNT_TEST_CAUGHT_EVENT = 'skermix-bug-hunt-test-caught'
