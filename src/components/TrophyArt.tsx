@@ -159,17 +159,18 @@ export function HuntSetJar({ size = 'md' }: { size?: TrophyArtSize }) {
     <Art tone="hunt" size={size}>
       <rect x="14.5" y="4.5" width="19" height="6.5" rx="2" />
       <path className="trophy-art__fill trophy-art__fill--soft" d="M17 11v2.6c-3.4 2-5.4 5.4-5.4 9.4v13a6 6 0 0 0 6 6h12.8a6 6 0 0 0 6-6V23c0-4-2-7.4-5.4-9.4V11" />
+      {/* A Blip caught in the jar: round, his spark over his head. */}
       {size === 'sm' ? (
         <>
-          <ellipse className="trophy-art__fill" cx="24" cy="25" rx="5" ry="6" />
-          <path d="M24 19v12M19.5 22.5l-3-2M28.5 22.5l3-2M19.5 28l-3 2M28.5 28l3 2" />
+          <circle className="trophy-art__fill" cx="24" cy="27" r="6.5" />
+          <path className="trophy-art__dots" d="M24 17.5h.01" />
         </>
       ) : (
         <>
           <path className="trophy-art__dots" d="M19 7.75h.01M24 7.75h.01M29 7.75h.01" />
-          <ellipse className="trophy-art__fill" cx="24" cy="23.5" rx="4.2" ry="5.2" />
-          <path d="M24 18.3v10.4M20.2 21l-2.8-1.8M27.8 21l2.8-1.8M19.8 24.5h-2.8M28.2 24.5h2.8M20.4 27.6l-2.4 2M27.6 27.6l2.4 2" />
-          <rect className="trophy-art__fill" x="16" y="33" width="16" height="6" rx="1.5" />
+          <circle className="trophy-art__fill" cx="24" cy="25.5" r="6" />
+          <path className="trophy-art__dots" d="M24 16.8h.01M21.9 25h.01M26.1 25h.01" />
+          <rect className="trophy-art__fill" x="16" y="35" width="16" height="4.5" rx="1.5" />
         </>
       )}
     </Art>

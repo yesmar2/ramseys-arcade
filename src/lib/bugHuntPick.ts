@@ -10,28 +10,29 @@ import { hashString, mulberry32 } from './seededRandom'
 export type HuntBug = { id: string; name: string }
 
 /**
- * The bugs in the hunt, by the ids findbug/wanted.ts draws them with: ten of Find the Bug's twelve. The
- * order is part of the pick, and the API's (bugHunt.ts) is the same. Pickle and Tiger stay in Find the Bug
- * only (2026-09-28): peeking out, a top hat and a bobble hat read most like the others'.
+ * The Blips in the hunt, by the ids HuntBlip.tsx draws them with. The order is part of the pick, and the API's
+ * (bugHunt.ts) is the same. They took over from ten of Find the Bug's wanted bugs on 2026-11-09 (Ramsey: "i
+ * wanted this to be the blips not the bugs"), when nobody on production had caught one yet. The hunt's code
+ * still says "bug" for whatever is loose; players see Blips.
  */
 export const HUNT_BUGS: readonly HuntBug[] = [
-  { id: 'bug', name: 'the Bug' },
-  { id: 'skip', name: 'Skip' },
-  { id: 'dotty', name: 'Dotty' },
-  { id: 'rosie', name: 'Rosie' },
-  { id: 'ziggy', name: 'Ziggy' },
-  { id: 'honey', name: 'Honey' },
-  { id: 'buzz', name: 'Buzz' },
-  { id: 'pip', name: 'Pip' },
-  { id: 'hopper', name: 'Hopper' },
-  { id: 'flutter', name: 'Flutter' },
+  { id: 'blip', name: 'Blip' },
+  { id: 'ember', name: 'Ember' },
+  { id: 'frost', name: 'Frost' },
+  { id: 'berry', name: 'Berry' },
+  { id: 'sunny', name: 'Sunny' },
+  { id: 'moss', name: 'Moss' },
+  { id: 'dusk', name: 'Dusk' },
+  { id: 'bolt', name: 'Bolt' },
+  { id: 'pebble', name: 'Pebble' },
+  { id: 'cloud', name: 'Cloud' },
 ]
 
 export const SET_SIZE = HUNT_BUGS.length
 
 const HUNT_IDS: ReadonlySet<string> = new Set(HUNT_BUGS.map((b) => b.id))
 
-/** Whether a bug is in the hunt now: one caught while there were twelve (Pickle, Tiger) isn't. */
+/** Whether a Blip is in the hunt now: a bug caught before the Blips took over isn't. */
 export function isHuntBug(id: string): boolean {
   return HUNT_IDS.has(id)
 }

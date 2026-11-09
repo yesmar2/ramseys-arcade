@@ -60,7 +60,7 @@ function trophyWhen(t: TrophyAward): string {
  * shelf: on anyone else's it stays a secret.
  */
 function trophyHaul(t: TrophyAward, isSelf: boolean): string | null {
-  if (t.period === 'hunt') return `All ${numberWord(SET_SIZE)} bugs`
+  if (t.period === 'hunt') return `All ${numberWord(SET_SIZE)} Blips`
   if (t.period === 'secret') return isSelf ? (secretByNumber(t.periodKey)?.says ?? null) : 'A secret trophy'
   if (t.score <= 0 || t.games <= 0) return null
   return t.games === 1 ? 'on 1 game' : `over ${t.games} games`
@@ -217,7 +217,7 @@ export function TrophyShelf({
     s.events > 0 ? `${s.events} ${s.events === 1 ? 'event' : 'events'} won` : null,
     s.podium > 0 ? `${s.podium} ${s.podium === 1 ? 'podium' : 'podiums'}` : null,
     s.topTen > 0 ? `${s.topTen} top ten` : null,
-    s.sets ? `${s.sets} bug hunt ${s.sets === 1 ? 'set' : 'sets'}` : null,
+    s.sets ? `${s.sets} Blip hunt ${s.sets === 1 ? 'set' : 'sets'}` : null,
     s.secrets ? `${s.secrets} ${s.secrets === 1 ? 'secret' : 'secrets'}` : null,
   ].filter(Boolean)
 
@@ -260,8 +260,8 @@ export function TrophyShelf({
                 <span className="pshelf__name">Catch every bug</span>
                 <span className="pshelf__when">
                   {isSelf
-                    ? `A bug hides somewhere on the site every day. Catch all ${numberWord(SET_SIZE)} in a month.`
-                    : `A full month of the daily bug hunt goes on the shelf.`}
+                    ? `A Blip hides on the site every day. Catch all ${numberWord(SET_SIZE)} in a month.`
+                    : `A full month of the daily Blip hunt goes on the shelf.`}
                 </span>
               </span>
             </li>
@@ -315,7 +315,7 @@ export function TrophyShelf({
             </Section>
           ) : null}
           {sets.length > 0 ? (
-            <Section name="Bug hunt" count={String(sets.length)}>
+            <Section name="Blip hunt" count={String(sets.length)}>
               {sets.map((t) => (
                 <Item key={t.id} trophy={t} isSelf={isSelf} />
               ))}
@@ -357,7 +357,7 @@ export function TrophyShelf({
       )}
       <p className="pshelf__foot">
         The arcade’s top ten each {seasons ? 'week, month and season' : 'week and month'} get a trophy, and so does
-        every event’s winner and every full month of the bug hunt. Some trophies are secret, hidden around the arcade.
+        every event’s winner and every full month of the Blip hunt. Some trophies are secret, hidden around the arcade.
       </p>
     </article>
   )

@@ -93,12 +93,12 @@ function TodayOnTheSite({ siteEvents }: { siteEvents: boolean | null }) {
       </div>
       <div className="adm-today">
         <a className="adm-today__tile" href={adminHref('hunt')}>
-          <span className="adm-today__label">Bug hunt</span>
+          <span className="adm-today__label">Blip hunt</span>
           <b>
             {capitalName(pick.bug)}, {huntWhere(pick.spots[0]!.anchor, pick.spots[0]!.pose)}
             {pick.spots.length > 1 ? `, and ${pick.spots.length - 1} more` : ''}
           </b>
-          <span>The next bug in {untilWords(msUntilNextBug())}</span>
+          <span>The next Blip in {untilWords(msUntilNextBug())}</span>
         </a>
         <a className="adm-today__tile" href={adminHref('season')}>
           <span className="adm-today__label">Season</span>

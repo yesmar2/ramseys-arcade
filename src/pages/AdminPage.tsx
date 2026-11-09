@@ -184,7 +184,7 @@ const NAV: { label?: string; items: NavItem[] }[] = [
         title: 'Pour Book',
         blurb: 'Every day of Half Full’s Today’s Pour: its five glasses, how hard it came out for its weekday, and any day that missed.',
       },
-      { section: 'hunt', label: 'Bug hunt', title: 'Bug hunt' },
+      { section: 'hunt', label: 'Blip hunt', title: 'Blip hunt' },
     ],
   },
   {
@@ -526,7 +526,7 @@ function DailyGamesCard() {
       </div>
       <p className="adm-card__sub">
         The real ones, where your runs count. Each game’s book, in the sidebar, tries any day ahead of players: a hole
-        on trial, a test drive, a past day’s pour and the bug hunt’s test mode keep nothing.
+        on trial, a test drive, a past day’s pour and the Blip hunt’s test mode keep nothing.
       </p>
       <ul className="adm-links">
         <li>
@@ -559,7 +559,7 @@ function DailyGamesCard() {
         </li>
         {HUNT_ANCHORS[0] ? (
           <li>
-            <a href={huntTestHref({ anchor: HUNT_ANCHORS[0], pose: 'top', at: 0.5 })}>Bug hunt · test mode</a>
+            <a href={huntTestHref({ anchor: HUNT_ANCHORS[0], pose: 'top', at: 0.5 })}>Blip hunt · test mode</a>
             <span>step through every hiding place; a catch there doesn’t count</span>
           </li>
         ) : null}
@@ -599,14 +599,14 @@ function BugHuntCard() {
     <section className="adm-card" aria-labelledby="adm-hunt">
       <div className="adm-card__head">
         <h2 className="adm-card__title" id="adm-hunt">
-          Bug hunt
+          Blip hunt
         </h2>
       </div>
       <p className="adm-card__sub">
-        Where today’s bug hides, and the week after it: each day in {numberWord(SPOTS_A_DAY)} places, and a catch in
+        Where today’s Blip hides, and the week after it: each day in {numberWord(SPOTS_A_DAY)} places, and a catch in
         any one is the day’s find. Where the header or the screen’s edge is in its way, it peeks
         out another way than the one listed. Go there is the real hunt: a catch counts for you. Test shows it in the
-        same spot in test mode, where a catch doesn’t count. The next bug gets loose at midnight on the boards’ clock,
+        same spot in test mode, where a catch doesn’t count. The next Blip gets loose at midnight on the boards’ clock,
         in {untilWords(msUntilNextBug())}.
       </p>
       <ul className="adm-list">

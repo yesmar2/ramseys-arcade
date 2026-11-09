@@ -221,16 +221,20 @@ const DRAW: Record<string, () => ReactNode> = {
       <circle cx="56" cy="20" r="4" fill="#16a36a" />
     </>
   ),
+  // The Blip hunt's month (the id kept from when it was a bug hunt): three of its Blips, mint in front.
   'a-bug': () => (
     <>
-      <path d="M22 12 L 16 4 M 42 12 L 48 4 M 16 30 H 6 M 48 30 H 58 M 16 42 L 8 50 M 48 42 L 56 50" stroke="#2f7a3e" strokeWidth="3" strokeLinecap="round" />
-      <ellipse cx="32" cy="36" rx="17" ry="20" fill="#3fa356" />
-      <circle cx="32" cy="16" r="10" fill="#3fa356" />
-      <path d="M32 18 V 56" stroke="#2f7a3e" strokeWidth="2" />
-      <circle cx="28" cy="15" r="2.5" fill="#0c1218" />
-      <circle cx="36" cy="15" r="2.5" fill="#0c1218" />
-      <circle cx="24" cy="34" r="3" fill="#8be08f" />
-      <circle cx="40" cy="44" r="3" fill="#8be08f" />
+      <path d="M14 14 C 17 17 16.5 20 14 22 C 11.5 20 11 17 14 14 Z" fill="#ffb02e" />
+      <circle cx="14" cy="33" r="11" fill="#ff8a4c" />
+      <path d="M50 12 L 47 18 H 50 L 48.5 23 L 53.5 16.5 H 50.5 Z" fill="#ffe14d" />
+      <circle cx="50" cy="33" r="11" fill="#4c8dff" />
+      <circle cx="32" cy="16" r="5" fill="#9ff7e2" opacity="0.55" />
+      <circle cx="32" cy="16" r="2.2" fill="#f2fffb" />
+      <circle cx="32" cy="40" r="15" fill="#34c6a8" />
+      <path d="M20.5 46 A 15 15 0 0 0 43.5 46 A 17 12 0 0 1 20.5 46 Z" fill="#1f9b84" />
+      <ellipse cx="28" cy="39.5" rx="2" ry="3.1" fill="#0f2f2a" />
+      <ellipse cx="36" cy="39.5" rx="2" ry="3.1" fill="#0f2f2a" />
+      <path d="M29.5 45.5 Q 32 47.8 34.5 45.5" fill="none" stroke="#0f2f2a" strokeWidth="1.2" strokeLinecap="round" />
     </>
   ),
   'a-secret': () => (

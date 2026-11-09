@@ -41,7 +41,7 @@ export type Secret = { n: number; key: SecretKey; name: string; says: string }
 
 export const SECRETS: readonly Secret[] = [
   { n: 1, key: 'nightowl', name: 'Night Owl', says: 'Played a run between 3 and 4 in the morning.' },
-  { n: 2, key: 'earlybird', name: 'Early Bird', says: 'Caught the day’s bug before 8 in the morning.' },
+  { n: 2, key: 'earlybird', name: 'Early Bird', says: 'Caught the day’s Blip before 8 in the morning.' },
   { n: 3, key: 'grandtour', name: 'Grand Tour', says: 'Played every game in the arcade in one day.' },
   { n: 8, key: 'holeinone', name: 'Hole in One', says: 'Today’s Hole on the very first try.' },
   { n: 9, key: 'konami', name: 'Up Up Down Down', says: 'Found the old cheat code.' },

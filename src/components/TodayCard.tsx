@@ -101,7 +101,7 @@ function BonusPunches() {
         <li>
           <button type="button" className={`today-bonus${hunt.found ? ' today-bonus--done' : ''}`} onClick={openBugHunt}>
             {hunt.found ? <CheckIcon /> : null}
-            {hunt.found ? `Caught ${hunt.name}` : `Bug hunt · ${hunt.name}`}
+            {hunt.found ? `Caught ${hunt.name}` : `Blip hunt · ${hunt.name}`}
           </button>
         </li>
       </ul>

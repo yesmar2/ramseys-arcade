@@ -56,7 +56,7 @@ function caseWords(kind: TrophyCaseKind, isSelf: boolean): string {
     return secret && isSelf ? secret.name : 'A secret trophy'
   }
   if (kind.period === 'event') return n === 1 ? 'An event won' : `${n} events won`
-  if (kind.period === 'hunt') return n === 1 ? 'A bug hunt month' : `${n} bug hunt months`
+  if (kind.period === 'hunt') return n === 1 ? 'A Blip hunt month' : `${n} Blip hunt months`
   const span = kind.period === 'season' ? 'a season' : kind.period === 'monthly' ? 'a month' : 'a week'
   if (kind.rank > 3) return `Top ten of ${span}${times}`
   return `${ordinal(kind.rank)} of ${span}${times}`

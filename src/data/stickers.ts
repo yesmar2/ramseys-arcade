@@ -58,7 +58,7 @@ export const STICKER_PAGES: readonly StickerPageDef[] = [
       s('a-topten', 'Top ten', 'Top-ten week', 'Finish a week in the arcade’s top ten.'),
       s('a-podium', 'Podium', 'Top three', 'Finish a week or a month in the arcade’s top three.'),
       s('a-champ', 'Champion', '1st of a month', 'Finish a month 1st in the arcade.'),
-      s('a-bug', 'Bug catcher', 'Bug hunt month', 'Catch every bug of a month in the bug hunt.'),
+      s('a-bug', 'Blip catcher', 'Blip hunt month', 'Catch every Blip of a month in the Blip hunt.'),
       s('a-secret', 'Secret keeper', 'A secret', 'Find a secret trophy.'),
     ],
   },

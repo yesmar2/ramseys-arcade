@@ -35,7 +35,8 @@ import { hashString } from './seededRandom'
 export { HUNT_BUGS, SET_SIZE, setMonth, type HuntBug }
 
 /*
- * The daily bug hunt. Every day one of Find the Bug's wanted bugs gets loose
+ * The daily hunt. Every day one of ten Blips (HuntBlip.tsx; until 2026-11-09,
+ * Find the Bug's wanted bugs, which is why the code says "bug") gets loose
  * on the site, hiding in a few places at once (SPOTS_A_DAY), each on a page of
  * its own: behind a panel, a card or a game's screen with its head poking out
  * over an edge, or peeking round a corner. Catching it in any one of them is

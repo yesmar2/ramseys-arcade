@@ -62,7 +62,7 @@ export function flairNote(kind: 'ring' | 'pin', id: AvatarRing | AvatarPin, stat
     case 'crown':
       return best != null ? `Your best month: ${ordinal(best)}` : 'No month in the top ten yet'
     case 'bugnet':
-      return 'No full month of the bug hunt yet'
+      return 'No full month of the Blip hunt yet'
     case 's1':
       return 'Win a ticket in Season 1'
     case 's2':

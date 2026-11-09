@@ -202,7 +202,7 @@ function otherRow(line: LedgerLine): HistoryRow {
   switch (line.reason) {
     case 'hunt': {
       const day = /^\d{4}-\d{2}-\d{2}$/.test(line.ref) ? line.ref : null
-      return { ...row, game: null, icon: 'bug', title: 'Bug hunt', sub: 'the day’s bug', words: day ? `Caught ${bugForDay(day).name}` : 'Caught the day’s bug' }
+      return { ...row, game: null, icon: 'blip', title: 'Blip hunt', sub: 'the day’s Blip', words: day ? `Caught ${bugForDay(day).name}` : 'Caught the day’s Blip' }
     }
     case 'top': {
       const [, day, place] = line.ref.split(':')

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react'
+import { useEffect, useId, useState, useSyncExternalStore, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { navigate, prizesHref } from '../hooks/useHashRoute'
 import {
@@ -37,10 +37,10 @@ import { numberWord } from '../lib/numberWord'
 import { ordinal } from '../lib/profileMath'
 import { getSessionToken } from '../lib/auth'
 import { glide } from '../lib/scrollToPlace'
-import { THEME_EVENT } from '../lib/theme'
 import type { AvatarWear } from './AvatarStudio'
 import { Panel, PanelHead } from './Panel'
 import { TicketGlyph } from './prizes/Ticket'
+import { HuntBlip } from './HuntBlip'
 import { HuntSetJar } from './TrophyArt'
 import '../styles/bughunt.css'
 
@@ -50,69 +50,6 @@ import '../styles/bughunt.css'
  * for a find and for the hunt so far. See lib/bugHunt.ts for how the day and
  * the hiding place are picked.
  */
-
-type PortraitPose = 'sit' | 'wave' | 'stand' | 'cheer'
-type PortraitMood = 'smile' | 'sleepy' | 'o' | 'open'
-
-/**
- * One of Find the Bug's wanted bugs, drawn by the game's own critter code.
- * The drawing is loaded when a portrait first needs it, so the site's first
- * page doesn't carry the game's art.
- */
-export function BugPortrait({
-  bugId,
-  size,
-  pose = 'wave',
-  mood = 'smile',
-  silhouette = false,
-  className,
-}: {
-  bugId: string
-  /** Drawn at this many CSS pixels; the stylesheet may show it at another size. */
-  size: number
-  pose?: PortraitPose
-  mood?: PortraitMood
-  /** A bug not caught yet: its shape in one flat colour, the canvas's CSS `color`. */
-  silhouette?: boolean
-  className?: string
-}) {
-  const ref = useRef<HTMLCanvasElement | null>(null)
-  // An outline takes its colour from the theme, so it's drawn again when that changes.
-  const [themeTick, setThemeTick] = useState(0)
-  useEffect(() => {
-    if (!silhouette) return
-    const redraw = () => setThemeTick((n) => n + 1)
-    window.addEventListener(THEME_EVENT, redraw)
-    return () => window.removeEventListener(THEME_EVENT, redraw)
-  }, [silhouette])
-  useEffect(() => {
-    let live = true
-    void Promise.all([import('../games/findbug/critters'), import('../games/findbug/wanted')]).then(
-      ([critters, wanted]) => {
-        const canvas = ref.current
-        if (!live || !canvas) return
-        const look = (wanted.WANTED.find((w) => w.id === bugId) ?? wanted.CLASSIC).look
-        const px = Math.round(size * Math.min(3, window.devicePixelRatio || 1))
-        canvas.width = px
-        canvas.height = px
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        ctx.clearRect(0, 0, px, px)
-        critters.drawPortraitFitted(ctx, look, px, { pose, mood })
-        if (silhouette) {
-          ctx.globalCompositeOperation = 'source-in'
-          ctx.fillStyle = getComputedStyle(canvas).color
-          ctx.fillRect(0, 0, px, px)
-          ctx.globalCompositeOperation = 'source-over'
-        }
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [bugId, size, pose, mood, silhouette, themeTick])
-  return <canvas ref={ref} className={className} width={size} height={size} aria-hidden="true" />
-}
 
 /* ------------------------------------------------------------ the hunt --- */
 
@@ -433,9 +370,10 @@ function HuntPeek({
           className="hunt-peek__turn"
           style={{ left: box.bugLeft, top: box.bugTop, width: BUG_SIZE, height: BUG_SIZE, transform: `rotate(${box.turn}deg)` }}
         >
-          <BugPortrait
-            bugId={pick.bug.id}
+          <HuntBlip
+            kind={pick.bug.id}
             size={BUG_SIZE}
+            peek
             pose={caught ? 'cheer' : 'wave'}
             mood={caught ? 'open' : pick.mood}
             className="hunt-peek__bug"
@@ -548,9 +486,9 @@ function HuntTestBar({ test }: { test: HuntTest }) {
     })
   }
   return (
-    <div className={`hunt-test${low ? ' hunt-test--low' : ''}`} role="region" aria-label="Bug hunt test">
+    <div className={`hunt-test${low ? ' hunt-test--low' : ''}`} role="region" aria-label="Blip hunt test">
       <div className="hunt-test__head">
-        <span className="hunt-test__kicker">Bug hunt test</span>
+        <span className="hunt-test__kicker">Blip hunt test</span>
         <span className="hunt-test__count">
           {index + 1} of {count}
         </span>
@@ -678,7 +616,7 @@ function Collection({ stats, today, note = true }: { stats: HuntStats; today?: s
           const cls = `hunt-grid__cell${got ? ' hunt-grid__cell--got' : ''}${kept ? ' hunt-grid__cell--kept' : ''}${bug.id === today ? ' hunt-grid__cell--today' : ''}`
           return (
             <li key={bug.id} className={cls} title={kept ? `${name} was caught signed out, so it doesn’t count toward the set` : undefined}>
-              <BugPortrait bugId={bug.id} size={52} silhouette={!got && !kept} className="hunt-grid__art" />
+              <HuntBlip kind={bug.id} size={52} silhouette={!got && !kept} className="hunt-grid__art" />
               <span className="hunt-grid__name">{got || kept ? name : '?'}</span>
               <span className="visually-hidden">{got ? ', caught' : kept ? ', caught signed out, doesn’t count' : 'Not caught yet'}</span>
             </li>
@@ -689,7 +627,7 @@ function Collection({ stats, today, note = true }: { stats: HuntStats; today?: s
         <p className="hunt-set__note">Sign in to put a full set on your shelf: only finds made signed in count toward it.</p>
       ) : uncounted ? (
         <p className="hunt-set__note">
-          Bugs in a dashed ring were caught signed out, so they don’t count. Every bug comes round about three
+          Blips in a dashed ring were caught signed out, so they don’t count. Every Blip comes round about three
           times a month.
         </p>
       ) : null}
@@ -715,14 +653,14 @@ export function BugHuntStrip({ compact = false }: { compact?: boolean } = {}) {
   const count = countWords(server, pick.bug.name, stats)
   // On the simple home's rail, a row: the bug, who's loose (or caught), and your bugs (bughunt.css .hunt-strip--row).
   return (
-    <section className={`hunt-strip${stats.foundToday ? ' hunt-strip--found' : ''}${compact ? ' hunt-strip--row' : ''}`} aria-label="Daily bug hunt">
+    <section className={`hunt-strip${stats.foundToday ? ' hunt-strip--found' : ''}${compact ? ' hunt-strip--row' : ''}`} aria-label="Daily Blip hunt">
       {/* The bug opens your bugs too, for a finger or a mouse. Your bugs, beside it, is the one button the keyboard and
           a screen reader meet: the picture was a second one by the same name. */}
       <span className="hunt-strip__mark" aria-hidden="true" onClick={openBugHunt}>
-        <BugPortrait bugId={pick.bug.id} size={56} pose={stats.foundToday ? 'cheer' : 'wave'} mood={stats.foundToday ? 'smile' : pick.mood} className="hunt-strip__art" />
+        <HuntBlip kind={pick.bug.id} size={56} pose={stats.foundToday ? 'cheer' : 'wave'} mood={stats.foundToday ? 'smile' : pick.mood} className="hunt-strip__art" />
       </span>
       <div className="hunt-strip__text">
-        <p className="hunt-strip__kicker">Daily bug hunt</p>
+        <p className="hunt-strip__kicker">Daily Blip hunt</p>
         {stats.foundToday ? (
           <>
             <p className="hunt-strip__title">You caught {pick.bug.name} today</p>
@@ -744,7 +682,7 @@ export function BugHuntStrip({ compact = false }: { compact?: boolean } = {}) {
       </div>
       <div className="hunt-strip__side">
         <button type="button" className="hunt-btn" onClick={openBugHunt}>
-          Your bugs{' '}
+          Your Blips{' '}
           <span className="hunt-btn__count">
             {stats.set.have.size}/{SET_SIZE}
           </span>
@@ -765,13 +703,13 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
     <Panel onClose={onClose} labelledBy={titleId} className="hunt-panel">
       <PanelHead
         titleId={titleId}
-        kicker="Daily bug hunt"
+        kicker="Daily Blip hunt"
         title={stats.foundToday ? `You caught ${pick.bug.name} today` : `${name} got loose`}
         onClose={onClose}
       />
       <div className="panel__body hunt-panel__body">
         <div className="hunt-wanted">
-          <BugPortrait bugId={pick.bug.id} size={104} pose={stats.foundToday ? 'cheer' : 'wave'} mood="smile" className="hunt-wanted__art" />
+          <HuntBlip kind={pick.bug.id} size={104} pose={stats.foundToday ? 'cheer' : 'wave'} mood="smile" className="hunt-wanted__art" />
           <div className="hunt-wanted__text">
             {stats.foundToday ? (
               <>
@@ -787,7 +725,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
                 {server?.tickets?.day === pick.day ? (
                   <p className="hunt-wanted__small">It paid you {server.tickets.earned} tickets for the prize counter.</p>
                 ) : null}
-                <p className="hunt-wanted__small">The next bug gets loose in {clockWords(msLeft)}.</p>
+                <p className="hunt-wanted__small">The next Blip gets loose in {clockWords(msLeft)}.</p>
               </>
             ) : (
               <>
@@ -804,7 +742,7 @@ function HuntPanel({ onClose }: { onClose: () => void }) {
         <Stats stats={stats} />
         <Collection stats={stats} today={pick.bug.id} />
         <p className="hunt-panel__foot">
-          A new bug gets loose every day at midnight Eastern, somewhere else.{' '}
+          A new Blip gets loose every day at midnight Eastern, somewhere else.{' '}
           {getSessionToken()
             ? `Catch all ${numberWord(SET_SIZE)} in a month and the set goes on your shelf. Each comes round about three times.`
             : 'Sign in and your finds follow you to any device.'}
@@ -850,7 +788,7 @@ function FullSet({ stats, server, onClose, onWear }: { stats: HuntStats; server:
           That’s all {numberWord(SET_SIZE)}!{' '}
           {done.shelved ? `${month}’s full set is on your shelf.` : `Pick a tag and ${month}’s full set goes on your shelf.`}
         </p>
-        {done.pin ? <p className="hunt-full__small">It’s your first, so it comes with a pin: the bug net.</p> : null}
+        {done.pin ? <p className="hunt-full__small">It’s your first, so it comes with a pin: the Blip net.</p> : null}
         {done.pin && onWear ? (
           <button
             type="button"
@@ -903,11 +841,11 @@ function FoundPanel({ onClose, onWear }: FoundProps) {
   const first = stats.total === 1 && !done && !doneHere
   return (
     <Panel onClose={onClose} labelledBy={titleId} className="hunt-panel hunt-panel--found">
-      <PanelHead titleId={titleId} kicker="Daily bug hunt" title={`You found ${pick.bug.name}!`} onClose={onClose} />
+      <PanelHead titleId={titleId} kicker="Daily Blip hunt" title={`You found ${pick.bug.name}!`} onClose={onClose} />
       <div className="panel__body hunt-panel__body">
         <div className="hunt-wanted hunt-wanted--found">
           <span className="hunt-burst" aria-hidden="true" />
-          <BugPortrait bugId={pick.bug.id} size={112} pose="cheer" mood="open" className="hunt-wanted__art" />
+          <HuntBlip kind={pick.bug.id} size={112} pose="cheer" mood="open" className="hunt-wanted__art" />
           <div className="hunt-wanted__text">
             <p className="hunt-wanted__line">
               {name} was hiding {huntWhere(where, caught)}.
@@ -937,7 +875,7 @@ function FoundPanel({ onClose, onWear }: FoundProps) {
             </span>
             <div className="hunt-full__text">
               <p className="hunt-full__line">
-                That’s all {numberWord(SET_SIZE)} of {stats.set.month}’s bugs on this device!
+                That’s all {numberWord(SET_SIZE)} of {stats.set.month}’s Blips on this device!
               </p>
               <p className="hunt-full__small">
                 A set goes on your shelf when it’s caught signed in. Sign in, and your next full set is a trophy.
@@ -947,14 +885,14 @@ function FoundPanel({ onClose, onWear }: FoundProps) {
         ) : null}
         {first ? (
           <p className="hunt-panel__note">
-            Your first bug. There are {numberWord(SET_SIZE)} in {stats.set.month}’s set.
+            Your first Blip. There are {numberWord(SET_SIZE)} in {stats.set.month}’s set.
           </p>
         ) : null}
         {stats.repeat ? <RepeatNote name={name} stats={stats} /> : null}
         <Stats stats={stats} />
         {/* A set just caught in full on this device has said its piece about signing in. */}
         <Collection stats={stats} today={pick.bug.id} note={!doneHere} />
-        <p className="hunt-panel__foot">The next bug gets loose in {clockWords(msLeft)}, somewhere else.</p>
+        <p className="hunt-panel__foot">The next Blip gets loose in {clockWords(msLeft)}, somewhere else.</p>
       </div>
       <div className="panel__actions">
         <button type="button" className="panel__btn" onClick={onClose}>

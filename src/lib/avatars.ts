@@ -208,7 +208,7 @@ export function pinInfo(pin: AvatarPin): { label: string; rule: string } {
     case 'crown':
       return { label: 'Crown', rule: 'Win a month in the arcade' }
     case 'bugnet':
-      return { label: 'Bug net', rule: 'Catch all ten bugs of a month’s bug hunt' }
+      return { label: 'Blip net', rule: 'Catch all ten Blips of a month’s Blip hunt' }
     case 's1':
       return { label: 'Season 1', rule: 'Win a ticket in Season 1, Space Race' }
     case 's2':
