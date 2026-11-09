@@ -1370,6 +1370,275 @@ function drawWorm(ctx: Ctx, c: Critter, facing: number) {
 // ------------------------------------------------------------------ drawing
 
 /** Shadow on the ground under a critter, left behind when it flies. */
+// ------------------------------------------------------- Find the Blip (test)
+
+/*
+ * Find the Blip, on test (Ramsey, 2026-11-09: "might just get rid of the bug look altogether", then, of a
+ * Blip crowd drawn as flat shapes, "it doesn't seem to be as good quality as what we have now for bugs" and
+ * "maybe the other blips should be different shapes"). With `?blips=1` once in the address (kept for the
+ * tab; `?blips=0` ends it), every critter is drawn as a Blip by the same hand as the bugs: the same ink
+ * outline, shading, faces, hats, glasses, things held and poses. Each kind of bug becomes a Blip of its own
+ * shape, in the bug's own colours and pattern, so nothing about who matches whom changes: only the drawing.
+ */
+export const BLIP_LOOK: boolean = (() => {
+  try {
+    if (typeof location === 'undefined' || typeof sessionStorage === 'undefined') return false
+    const asked = new URLSearchParams(location.search).get('blips')
+    if (asked === '1') sessionStorage.setItem('skermix-findbug-blips', '1')
+    if (asked === '0') sessionStorage.removeItem('skermix-findbug-blips')
+    return sessionStorage.getItem('skermix-findbug-blips') === '1'
+  } catch {
+    return false
+  }
+})()
+
+type BlipForm = 'ball' | 'cube' | 'sun' | 'egg' | 'star' | 'heart' | 'cloud' | 'pebble' | 'flame'
+
+/** Which shape each kind of critter takes as a Blip. */
+const BLIP_FORM: Record<Species, BlipForm> = {
+  beetle: 'ball',
+  ant: 'cube',
+  bee: 'sun',
+  grasshopper: 'egg',
+  spider: 'star',
+  butterfly: 'heart',
+  caterpillar: 'cloud',
+  snail: 'pebble',
+  worm: 'flame',
+}
+
+/** The words for each shape, on the wanted card: "Green beetle" reads "Green round Blip". */
+export const BLIP_FORM_WORDS: Record<Species, string> = {
+  beetle: 'round Blip',
+  ant: 'square Blip',
+  bee: 'sunny Blip',
+  grasshopper: 'tall Blip',
+  spider: 'star Blip',
+  butterfly: 'heart Blip',
+  caterpillar: 'cloud Blip',
+  snail: 'pebble Blip',
+  worm: 'flame Blip',
+}
+
+/** Where a shape's body sits: its centre and half sizes (for shading and patterns), top, bottom, face and arms. */
+type BlipFrame = { cx: number; cy: number; rx: number; ry: number; top: number; bottom: number; faceY: number; faceR: number; side: number }
+
+const BLIP_FRAMES: Record<BlipForm, BlipFrame> = {
+  ball: { cx: 0, cy: -0.44, rx: 0.34, ry: 0.34, top: -0.78, bottom: -0.1, faceY: -0.47, faceR: 0.24, side: 0.33 },
+  cube: { cx: 0, cy: -0.45, rx: 0.32, ry: 0.31, top: -0.76, bottom: -0.14, faceY: -0.48, faceR: 0.24, side: 0.32 },
+  sun: { cx: 0, cy: -0.44, rx: 0.29, ry: 0.29, top: -0.73, bottom: -0.15, faceY: -0.46, faceR: 0.22, side: 0.29 },
+  egg: { cx: 0, cy: -0.48, rx: 0.27, ry: 0.38, top: -0.86, bottom: -0.1, faceY: -0.55, faceR: 0.22, side: 0.26 },
+  star: { cx: 0, cy: -0.43, rx: 0.4, ry: 0.4, top: -0.83, bottom: -0.1, faceY: -0.45, faceR: 0.2, side: 0.3 },
+  heart: { cx: 0, cy: -0.46, rx: 0.4, ry: 0.34, top: -0.8, bottom: -0.1, faceY: -0.52, faceR: 0.22, side: 0.36 },
+  cloud: { cx: 0, cy: -0.4, rx: 0.42, ry: 0.3, top: -0.75, bottom: -0.06, faceY: -0.42, faceR: 0.22, side: 0.4 },
+  pebble: { cx: 0, cy: -0.31, rx: 0.42, ry: 0.24, top: -0.55, bottom: -0.07, faceY: -0.33, faceR: 0.19, side: 0.4 },
+  flame: { cx: 0, cy: -0.38, rx: 0.34, ry: 0.3, top: -0.96, bottom: -0.08, faceY: -0.38, faceR: 0.22, side: 0.33 },
+}
+
+/** A cloud Blip's puffs: x, y, r. */
+const PUFFS: readonly (readonly [number, number, number])[] = [
+  [-0.24, -0.33, 0.2],
+  [0.24, -0.33, 0.2],
+  [0, -0.5, 0.25],
+  [-0.08, -0.26, 0.2],
+  [0.12, -0.26, 0.19],
+]
+
+/** A shape's outline, added to the current path; `grow` widens it all round. */
+function blipFormSub(ctx: Ctx, form: BlipForm, grow = 0) {
+  const f = BLIP_FRAMES[form]
+  const g = grow
+  switch (form) {
+    case 'ball':
+    case 'sun':
+    case 'egg':
+    case 'pebble':
+      ellipseSub(ctx, f.cx, f.cy, f.rx + g, f.ry + g)
+      return
+    case 'cube':
+      ctx.roundRect(-f.rx - g, f.top - g, (f.rx + g) * 2, f.bottom - f.top + g * 2, 0.13 + g)
+      return
+    case 'cloud':
+      for (const [x, y, r] of PUFFS) ellipseSub(ctx, x, y, r + g, r + g)
+      return
+    case 'heart':
+      ctx.moveTo(0, -0.1 + g)
+      ctx.bezierCurveTo(-0.5 - g, -0.36, -0.46 - g, -0.84 - g, -0.2, -0.8 - g)
+      ctx.bezierCurveTo(-0.08, -0.79 - g, 0, -0.72 - g, 0, -0.64 - g)
+      ctx.bezierCurveTo(0, -0.72 - g, 0.08, -0.79 - g, 0.2, -0.8 - g)
+      ctx.bezierCurveTo(0.46 + g, -0.84 - g, 0.5 + g, -0.36, 0, -0.1 + g)
+      ctx.closePath()
+      return
+    case 'star': {
+      const outer = f.rx + g
+      const inner = f.rx * 0.62 + g
+      for (let i = 0; i <= 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5
+        const r = i % 2 ? inner : outer
+        const x = f.cx + Math.cos(a) * r
+        const y = f.cy + Math.sin(a) * r * 0.95
+        if (i === 0) {
+          ctx.moveTo(x, y)
+        } else {
+          const am = a - Math.PI / 10
+          const rm = (i % 2 ? outer : inner) * 0.9
+          ctx.quadraticCurveTo(f.cx + Math.cos(am) * rm, f.cy + Math.sin(am) * rm * 0.95, x, y)
+        }
+      }
+      ctx.closePath()
+      return
+    }
+    case 'flame':
+      ctx.moveTo(0.06, -0.96 - g)
+      ctx.bezierCurveTo(0.36 + g, -0.72, 0.44 + g, -0.5, 0.38 + g, -0.32)
+      ctx.bezierCurveTo(0.32 + g, -0.12 + g, 0.16, -0.08 + g, 0, -0.08 + g)
+      ctx.bezierCurveTo(-0.16, -0.08 + g, -0.32 - g, -0.12 + g, -0.38 - g, -0.32)
+      ctx.bezierCurveTo(-0.44 - g, -0.54, -0.26, -0.62, -0.16, -0.8 - g)
+      ctx.bezierCurveTo(-0.08, -0.7, -0.02, -0.68, 0.06, -0.96 - g)
+      ctx.closePath()
+      return
+  }
+}
+
+/** The body: filled, shaded down its lower right, patterned, outlined and glossed. */
+function blipBody(ctx: Ctx, look: Look, form: BlipForm) {
+  const f = BLIP_FRAMES[form]
+  // A cloud is several puffs: its outline goes round all of them as one, by filling ink a little wider first.
+  if (form === 'cloud') {
+    ctx.beginPath()
+    blipFormSub(ctx, form, O * 0.5)
+    ctx.fillStyle = INK
+    ctx.fill()
+  }
+  ctx.save()
+  ctx.beginPath()
+  blipFormSub(ctx, form)
+  ctx.fillStyle = look.body
+  ctx.fill()
+  ctx.clip()
+  // Shade: the whole body darkened, then the body again nudged up and left, leaving a crescent.
+  ctx.fillStyle = SHADE
+  ctx.fillRect(f.cx - 0.6, f.top - 0.1, 1.2, f.bottom - f.top + 0.2)
+  ctx.translate(-0.05, -0.07)
+  ctx.beginPath()
+  blipFormSub(ctx, form)
+  ctx.fillStyle = look.body
+  ctx.fill()
+  ctx.translate(0.05, 0.07)
+  // Its pattern, in the trim colour, across the whole shape.
+  if (look.pattern === 'stripes') {
+    ctx.beginPath()
+    for (let k = 0; k < 3; k++) {
+      const y = f.cy - f.ry * 0.15 + k * f.ry * 0.42
+      ctx.rect(f.cx - 0.6, y, 1.2, f.ry * 0.2)
+    }
+    ctx.fillStyle = look.trim
+    ctx.fill()
+  } else if (look.pattern === 'spots' || look.pattern === 'dots') {
+    const big = look.pattern === 'spots'
+    const pts: Pt[] = big
+      ? [[-0.62, 0.1], [0.58, 0.25], [-0.28, 0.66], [0.32, 0.72], [0.62, -0.25]]
+      : [[-0.6, -0.1], [-0.2, 0.3], [0.62, -0.05], [0.6, 0.35], [-0.4, 0.65], [0.05, 0.75], [0.45, 0.65], [-0.7, 0.4], [0.25, 0.4]]
+    ctx.beginPath()
+    for (const [u, v] of pts) ellipseSub(ctx, f.cx + u * f.rx, f.cy + v * f.ry * 0.9, big ? 0.07 : 0.035, big ? 0.06 : 0.035)
+    ctx.fillStyle = look.trim
+    ctx.fill()
+  }
+  ctx.restore()
+  if (form !== 'cloud') {
+    ctx.beginPath()
+    blipFormSub(ctx, form)
+    ink(ctx)
+  }
+  if (fine) gloss(ctx, f.cx, f.cy, f.rx, f.ry, 0.4)
+}
+
+/** What's on top of the head when there's no hat: a few shapes keep a mark of their own. */
+function blipTop(ctx: Ctx, form: BlipForm) {
+  const f = BLIP_FRAMES[form]
+  if (form === 'ball') {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+    ellipsePath(ctx, 0, f.top - 0.12, 0.08, 0.08)
+    ctx.fill()
+    ellipsePath(ctx, 0, f.top - 0.12, 0.035, 0.035)
+    fillInk(ctx, '#ffffff', O * 0.6)
+  } else if (form === 'egg') {
+    ctx.beginPath()
+    ctx.moveTo(0, f.top + 0.01)
+    ctx.lineTo(0, f.top - 0.08)
+    ink(ctx, O * 1.4)
+    ctx.beginPath()
+    ellipseSub(ctx, -0.07, f.top - 0.1, 0.07, 0.035, -0.5)
+    ellipseSub(ctx, 0.08, f.top - 0.13, 0.08, 0.04, 0.5)
+    fillInk(ctx, '#7bc950', O * 0.7)
+  } else if (form === 'cube') {
+    ctx.beginPath()
+    for (let k = 0; k < 3; k++) {
+      const a = (k * Math.PI) / 3
+      ctx.moveTo(Math.cos(a) * 0.07, f.top - 0.1 + Math.sin(a) * 0.07)
+      ctx.lineTo(-Math.cos(a) * 0.07, f.top - 0.1 - Math.sin(a) * 0.07)
+    }
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = INK
+    ctx.lineWidth = O * 1.6
+    ctx.stroke()
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = O * 0.8
+    ctx.stroke()
+  }
+}
+
+/** A sunny Blip's rays, behind its body. */
+function blipRays(ctx: Ctx, look: Look) {
+  const f = BLIP_FRAMES.sun
+  ctx.beginPath()
+  for (let k = 0; k < 10; k++) {
+    const a = (k * Math.PI) / 5 + Math.PI / 10
+    const c = Math.cos(a)
+    const s = Math.sin(a)
+    const r0 = f.rx * 0.9
+    const r1 = f.rx * 1.42
+    const w = 0.07
+    ctx.moveTo(f.cx + c * r0 - s * w, f.cy + s * r0 + c * w)
+    ctx.lineTo(f.cx + c * r1, f.cy + s * r1)
+    ctx.lineTo(f.cx + c * r0 + s * w, f.cy + s * r0 - c * w)
+    ctx.closePath()
+  }
+  ctx.lineJoin = 'round'
+  fillInk(ctx, look.body, O * 0.8)
+}
+
+function drawBlipCritter(ctx: Ctx, c: Critter, facing: number) {
+  const look = c.look
+  const form = BLIP_FORM[look.species]
+  const f = BLIP_FRAMES[form]
+  const armW = 0.05
+  const face: HeadSpec = { x: 0, y: f.faceY, r: f.faceR }
+  // Hats sit on the top of the shape, sized to it.
+  const hatR = Math.min(0.27, f.rx * 0.82)
+  const crown: HeadSpec = { x: 0, y: f.top + hatR * 0.95, r: hatR }
+
+  if (c.ring) drawRing(ctx, c.ring, 'back')
+  if (!c.ring) drawLegs(ctx, c, 0.12, f.bottom - 0.02, armW)
+  if (form === 'sun') blipRays(ctx, look)
+  blipBody(ctx, look, form)
+  if (c.ring) drawRing(ctx, c.ring, 'front')
+  else if (look.held === 'tube') drawTube(ctx, f.bottom - 0.12, look)
+  if (look.scarf) drawScarf(ctx, f.faceY + f.faceR * 1.25, look.scarf)
+
+  const hands = drawUpperArms(ctx, c, { head: crown, shoulderX: f.side, shoulderY: f.cy + 0.02, armW })
+
+  drawFace(ctx, face, c, facing)
+  if (look.hat === 'none') blipTop(ctx, form)
+  else drawHat(ctx, crown, look, facing)
+
+  if (c.pose === 'carry') {
+    drawCarried(ctx, (hands.left[0] + hands.right[0]) / 2, Math.min(hands.left[1], hands.right[1]) - 0.06, look)
+  } else if (look.held !== 'none' && look.held !== 'tube') {
+    drawHeldUp(ctx, hands.right, look)
+  }
+}
+
 function groundShadow(ctx: Ctx, c: Critter) {
   const wide = c.look.species === 'snail' || c.look.species === 'caterpillar' ? 1.5 : 1
   const fade = 1 / (1 + c.lift * 1.6)
@@ -1390,6 +1659,11 @@ export function drawCritter(ctx: Ctx, c: Critter) {
   if (c.lift > 0) ctx.translate(0, -c.lift)
   const facing = c.facing
 
+  if (BLIP_LOOK) {
+    drawBlipCritter(ctx, c, facing)
+    ctx.restore()
+    return
+  }
   switch (c.look.species) {
     case 'spider':
       drawSpider(ctx, c, facing)
@@ -1417,6 +1691,9 @@ export function faceCentre(c: Critter): { x: number; y: number } {
   const sp = c.look.species
   let fx = 0
   let fy = -0.62
+  if (BLIP_LOOK) {
+    return { x: c.x, y: c.y + (BLIP_FRAMES[BLIP_FORM[sp]].faceY - c.lift) * c.size }
+  }
   if (sp === 'caterpillar') {
     fx = -0.36
     fy = -0.4

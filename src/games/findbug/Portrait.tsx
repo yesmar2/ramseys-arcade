@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { drawPortrait, drawPortraitFitted, type Look } from './critters'
+import { BLIP_LOOK, drawPortrait, drawPortraitFitted, type Look } from './critters'
 
 /**
  * A bug drawn into a small canvas: the whole of it for the scene card, what it holds included, or just
@@ -35,7 +35,8 @@ export function BugPortrait({
       // Head and hat fill the circle; the body drops out of the bottom, and
       // whatever it holds stays on the card rather than crowding the face.
       const h = size * 1.55
-      drawPortrait(ctx, { ...look, held: 'none' }, size / 2, size / 2 + h * 0.2, h, { pose: 'stand' })
+      // A Blip's face sits lower on him than a bug's on its head (critters.ts BLIP_LOOK, on test).
+      drawPortrait(ctx, { ...look, held: 'none' }, size / 2, size / 2 + h * (BLIP_LOOK ? -0.02 : 0.2), h, { pose: 'stand' })
     } else {
       // All of it in view, however far it reaches: antennae, wings, a balloon.
       drawPortraitFitted(ctx, look, size, { pose: 'wave', mood: 'open' })

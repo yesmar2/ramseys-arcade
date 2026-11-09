@@ -46,7 +46,7 @@ import {
   type Camera,
   type Field,
 } from './camera'
-import { faceCentre } from './critters'
+import { BLIP_FORM_WORDS, BLIP_LOOK, faceCentre } from './critters'
 import {
   bugDay,
   dayNumber,
@@ -221,7 +221,7 @@ function SceneCard({
         <BugPortrait look={wanted.look} size={first ? 118 : 104} crop="full" />
       </div>
       <ul className="findbug__traits">
-        <li>{wanted.shell}</li>
+        <li>{BLIP_LOOK ? wanted.shell.replace(wanted.look.species, BLIP_FORM_WORDS[wanted.look.species]) : wanted.shell}</li>
         <li>{wanted.hat}</li>
         <li>{wanted.eyes}</li>
         <li>{wanted.holds}</li>
