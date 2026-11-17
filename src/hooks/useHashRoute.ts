@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getGame, isDailyGame } from '../data/games'
 import { boardPeriodFor } from '../lib/allTime'
 import { takeNewRelease } from '../lib/appUpdate'
+import { BLIP_QUESTIONS_ON } from '../lib/blipQuestionsOn'
 import {
   DEFAULT_PERIOD_EVENT,
   defaultPeriod,
@@ -785,7 +786,8 @@ export function parseUrl(pathname: string, search: string): Route {
   if (path === 'stats') return { name: 'stats' }
   if (path === 'prizes') return { name: 'prizes' }
   if (path === 'prizes/tickets') return { name: 'tickets' }
-  if (path === 'blip') return { name: 'blipQuestions' }
+  // While Blip's questions are hidden, an old link to them is the home page (migrateBlipPath puts its address right).
+  if (path === 'blip') return BLIP_QUESTIONS_ON ? { name: 'blipQuestions' } : { name: 'home' }
   if (path === 'season') return { name: 'season' }
   // Notifications are all the settings there are so far, so /settings is them too.
   if (path === 'settings' || path === 'settings/notifications') return { name: 'notificationSettings' }
@@ -1054,11 +1056,18 @@ function migrateWallPath() {
   window.history.replaceState(window.history.state, '', `${homeHref()}${window.location.search}#games`)
 }
 
-/** The route the current URL means (after any legacy `#/…` fix-up, and `/games` sent to the wall). */
+/** `/blip` while Blip's questions are hidden (lib/blipQuestionsOn.ts): the home page's address, in place. */
+function migrateBlipPath() {
+  if (BLIP_QUESTIONS_ON || currentPath() !== '/blip') return
+  window.history.replaceState(window.history.state, '', homeHref())
+}
+
+/** The route the current URL means (after any legacy `#/…` fix-up, `/games` sent to the wall, and a hidden `/blip` home). */
 export function currentRoute(): Route {
   if (typeof window === 'undefined') return { name: 'home' }
   migrateLegacyHash()
   migrateWallPath()
+  migrateBlipPath()
   return parseUrl(window.location.pathname, window.location.search)
 }
 

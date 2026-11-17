@@ -12,6 +12,7 @@ import {
 import { createPortal } from 'react-dom'
 import { getGame } from '../../data/games'
 import { seasonHref } from '../../hooks/useHashRoute'
+import { BLIP_QUESTIONS_ON } from '../../lib/blipQuestionsOn'
 import { openBlipPoll } from '../../lib/poll'
 import { liveSeason, useSeason } from '../../lib/season'
 import { SEASON_CALENDAR } from '../../lib/seasonCalendar'
@@ -313,13 +314,14 @@ function SkinCardBody({ skin, nameId }: { skin: Skin; nameId: string }) {
       </a>
     )
   } else if (where.kind === 'blip') {
-    from = <span>Blip’s set · {where.answers} answers to his daily question</span>
-    act = (
+    // While his questions are hidden (lib/blipQuestionsOn.ts), the set can only be named.
+    from = BLIP_QUESTIONS_ON ? <span>Blip’s set · {where.answers} answers to his daily question</span> : <span>Blip’s set</span>
+    act = BLIP_QUESTIONS_ON ? (
       <button type="button" className="skin-card__go" onClick={openBlipPoll}>
         Answer Blip’s question
         <Chevron />
       </button>
-    )
+    ) : null
   } else if (where.kind === 'hangar') {
     from = (
       <>

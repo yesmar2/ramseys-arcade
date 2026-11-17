@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
+import { BLIP_QUESTIONS_ON } from './blipQuestionsOn'
 import { api } from './leaderboard'
 import { BLIP_SKINS, type Skin } from './skins'
 import { refreshTickets } from './tickets'
@@ -29,7 +30,8 @@ type State = {
   won: string | null
 }
 
-let state: State = { view: null, status: 'idle', who: null, earned: 0, won: null }
+// While his questions are hidden (lib/blipQuestionsOn.ts) there is never a question: nothing asks, nothing shows.
+let state: State = { view: null, status: BLIP_QUESTIONS_ON ? 'idle' : 'ready', who: null, earned: 0, won: null }
 const listeners = new Set<() => void>()
 
 function set(next: Partial<State>) {
@@ -47,6 +49,7 @@ function session(): string {
 
 /** Ask for today's question, unless it's already here for this session. */
 export function loadPoll(force = false) {
+  if (!BLIP_QUESTIONS_ON) return
   const who = session()
   if (!force && state.who === who && (state.status === 'loading' || state.status === 'ready')) return
   set({ status: 'loading', who, earned: 0, won: null })

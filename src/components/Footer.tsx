@@ -17,6 +17,7 @@ import {
   gameHref,
   levelHref,
 } from '../hooks/useHashRoute'
+import { BLIP_QUESTIONS_ON } from '../lib/blipQuestionsOn'
 import { APP_NAME, CONTACT_EMAIL } from '../lib/brand'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import { groupsIndexHref } from '../lib/groups'
@@ -74,9 +75,11 @@ export function Footer() {
                   All games
                 </a>
               </li>
-              <li>
-                <a href={blipQuestionsHref()}>Blip’s questions</a>
-              </li>
+              {BLIP_QUESTIONS_ON ? (
+                <li>
+                  <a href={blipQuestionsHref()}>Blip’s questions</a>
+                </li>
+              ) : null}
             </ul>
           </div>
 

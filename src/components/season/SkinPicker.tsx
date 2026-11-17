@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { BLIP_QUESTIONS_ON } from '../../lib/blipQuestionsOn'
 import { openBlipPoll } from '../../lib/poll'
 import { liveSeason, useSeason } from '../../lib/season'
 import { glide } from '../../lib/scrollToPlace'
@@ -45,7 +46,8 @@ function useTiles(game: string) {
   const { owned } = useTickets()
   const store = useSeason()
   const season = liveSeason(store)
-  const all = skinsFor(game)
+  // While Blip's questions are hidden (lib/blipQuestionsOn.ts), his set's skins are only the ones already won.
+  const all = skinsFor(game).filter((s) => BLIP_QUESTIONS_ON || s.poll == null || owned.includes(s.id))
   const mine = all.filter((s) => owned.includes(s.id)).sort((a, b) => (b.season ?? 0) - (a.season ?? 0))
   // Only the live season's are still to win: a past season's pass is over, so its skins aren't offered.
   const onPass = season

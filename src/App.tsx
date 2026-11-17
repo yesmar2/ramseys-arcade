@@ -10,6 +10,7 @@ import { defaultPeriod } from './lib/defaultPeriod'
 import { EarlyGate } from './components/EarlyGate'
 import { PageShell } from './components/PageShell'
 import { BlipHello } from './components/BlipHello'
+import { BLIP_QUESTIONS_ON } from './lib/blipQuestionsOn'
 import { useRoute } from './hooks/useHashRoute'
 import { usePageMeta } from './hooks/usePageMeta'
 import {
@@ -210,7 +211,7 @@ function App() {
         <Screen route={route} />
       </Suspense>
       <EasterEggs />
-      <BlipHello onGameScreen={onGameScreen} />
+      {BLIP_QUESTIONS_ON ? <BlipHello onGameScreen={onGameScreen} /> : null}
       <PendingRunsSaver />
       <SeasonDressing />
       <LevelUpMoment />

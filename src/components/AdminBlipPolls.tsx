@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { BLIP_QUESTIONS_ON } from '../lib/blipQuestionsOn'
 import { api } from '../lib/leaderboard'
 import type { PollQuestion } from '../lib/poll'
 
@@ -139,6 +140,9 @@ export function AdminBlipPolls() {
         comes a day sooner; today’s stays put, since its answers may be in. Edit any of them for its day, and an edited one
         can go back to the plan’s. Signed-in players answer once, for 5 tickets.
       </p>
+      {BLIP_QUESTIONS_ON ? null : (
+        <p className="adm-note">Hidden on the site for now (lib/blipQuestionsOn.ts): players don’t see these until it’s turned back on.</p>
+      )}
       {note ? <p className="adm-note">{note}</p> : null}
       {error ? (
         <p className="adm-note">Couldn’t load the questions.</p>
