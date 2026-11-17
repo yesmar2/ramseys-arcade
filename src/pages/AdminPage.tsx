@@ -25,6 +25,7 @@ import {
   fetchFeedbackPush,
   fetchOpenFlags,
   fetchRunCheck,
+  fetchSources,
   FLAG_KINDS,
   grantTickets,
   liftBan,
@@ -40,6 +41,7 @@ import {
   type ErrorAlerts,
   type PushService,
   type RunCheck,
+  type SourceReport,
   type TestAlert,
 } from '../lib/admin'
 import { capitalName, HUNT_ANCHORS, huntDay, huntPick, huntTestHref, huntWhere, msUntilNextBug, SPOTS_A_DAY } from '../lib/bugHunt'
@@ -97,6 +99,7 @@ const NAV: { label?: string; items: NavItem[] }[] = [
     label: 'Players',
     items: [
       { section: 'players', label: 'Who’s playing', title: 'Who’s playing' },
+      { section: 'sources', label: 'Where they came from', title: 'Where players came from' },
       { section: 'tickets', label: 'Tickets', title: 'Tickets' },
       { section: 'bans', label: 'Bans', title: 'Bans' },
       { section: 'runs', label: 'Run check', title: 'Run check' },
@@ -386,6 +389,8 @@ function SectionBody({ section }: { section?: AdminSection }) {
       return <FlagsCard />
     case 'players':
       return <AdminPlayers />
+    case 'sources':
+      return <SourcesCard />
     case 'tickets':
       return <TicketsCard />
     case 'bans':
@@ -1058,6 +1063,71 @@ function RunCheckCard() {
                 <span className="adm-row__sub">
                   {(g.saves - g.withRun).toLocaleString()} of {g.saves.toLocaleString()} saves without a run
                   {g.lastWithout ? ` · the last ${ago(g.lastWithout)}` : ''}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  )
+}
+
+/** "Nov 17" for 20261117. */
+function dayWords(key: number) {
+  const at = new Date(Date.UTC(Math.floor(key / 10_000), Math.floor((key % 10_000) / 100) - 1, key % 100, 12))
+  return at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/** Of `of`, as a whole percent, or nothing when there's nothing to take it of. */
+function percentOf(n: number, of: number) {
+  return of ? ` (${Math.round((n / of) * 100)}%)` : ''
+}
+
+/**
+ * Where players came from (Ramsey, 2026-11-17, before the first paid ad): each tagged link's devices, the last 30
+ * days. A link gets a tag by ending in ?src=<tag> (lib/source.ts), an ad's tag naming the ad.
+ */
+function SourcesCard() {
+  const [report, setReport] = useState<SourceReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const refresh = useCallback(() => {
+    setError(null)
+    fetchSources()
+      .then(setReport)
+      .catch((err) => setError(errorText(err, 'Couldn’t load this')))
+  }, [])
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  return (
+    <section className="adm-card" aria-labelledby="adm-sources">
+      <CardHead title="Where players came from" count={report?.tags.length || null} onRefresh={refresh} />
+      <p className="adm-card__sub" id="adm-sources">
+        A link counts its visitors when it ends with a tag, like blipka.com/games/lander/play?src=rd-lander. For each
+        tag: the devices that came in on it, how many stayed a minute (a fair sign they played), and how many came back
+        on a later day. The last 30 days, counted on the devices themselves: no names, accounts or addresses.
+      </p>
+      {error ? <p className="adm-fail">{error}</p> : null}
+      {report && !report.tags.length ? <p className="adm-note">No tagged visits in the last 30 days.</p> : null}
+      {report?.tags.length ? (
+        <ul className="adm-list">
+          {report.tags.map((tag) => (
+            <li key={tag.src} className="adm-row">
+              <div className="adm-row__main">
+                <b className="adm-row__title">{tag.src}</b>
+                <span className="adm-row__sub">
+                  {tag.totals.arrive.toLocaleString()} came in · {tag.totals.stay.toLocaleString()} stayed a minute
+                  {percentOf(tag.totals.stay, tag.totals.arrive)} · {tag.totals.back.toLocaleString()} came back
+                  {percentOf(tag.totals.back, tag.totals.arrive)}
+                  {tag.totals.day ? `, on ${tag.totals.day.toLocaleString()} later visit${tag.totals.day === 1 ? '' : 's'}` : ''}
+                </span>
+                <span className="adm-row__sub">
+                  {tag.days
+                    .slice(0, 7)
+                    .map((d) => `${dayWords(d.day)}: ${d.counts.arrive} in, ${d.counts.day} back`)
+                    .join(' · ')}
                 </span>
               </div>
             </li>

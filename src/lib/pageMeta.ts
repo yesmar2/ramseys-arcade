@@ -92,6 +92,7 @@ const ADMIN_TITLES: Record<AdminSection, string> = {
   errors: 'Site errors',
   flags: 'Flagged scores',
   players: 'Who’s playing',
+  sources: 'Where players came from',
   tickets: 'Tickets',
   bans: 'Bans',
   runs: 'Run check',

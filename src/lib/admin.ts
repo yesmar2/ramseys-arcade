@@ -264,6 +264,19 @@ export function fetchLaunchNumbers() {
   return api<LaunchNumbers>('/admin/launch-numbers')
 }
 
+/** What a device that came in on a tagged link has said (lib/source.ts): arrived, stayed a minute, came back. */
+export type SourceCounts = { arrive: number; stay: number; back: number; day: number }
+
+/** Every tagged link seen in the last 30 days (the API's sources.ts), the busiest first. Days are YYYYMMDD. */
+export type SourceReport = {
+  since: number
+  tags: { src: string; totals: SourceCounts; days: { day: number; counts: SourceCounts }[]; last: number }[]
+}
+
+export function fetchSources() {
+  return api<SourceReport>('/admin/sources')
+}
+
 export async function fetchClientErrors() {
   return (await api<{ errors: AdminClientError[] }>('/admin/client-errors?limit=100')).errors
 }

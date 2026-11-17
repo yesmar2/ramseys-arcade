@@ -34,9 +34,11 @@ import { bootGate } from './lib/gate'
 import { bootOfflineCopy } from './lib/offlineCopy'
 import { bootAppUpdate, noteNewRelease } from './lib/appUpdate'
 import { bootSetPlatinums } from './lib/setPlatinum'
+import { bootSource } from './lib/source'
 import { SiteErrorBoundary } from './components/SiteErrorBoundary'
 
 bootErrorReports()
+bootSource()
 bootRouter()
 bootTheme()
 bootPwaInstall()

@@ -2,7 +2,7 @@ import { APP_NAME, SITE_HOST } from '../lib/brand'
 import { LegalContact, LegalDocument } from '../components/LegalDocument'
 import { termsHref } from '../hooks/useHashRoute'
 
-const UPDATED = 'October 22, 2026'
+const UPDATED = 'November 17, 2026'
 
 export function PrivacyPage() {
   return (
@@ -52,6 +52,12 @@ export function PrivacyPage() {
           game it was about, whether it went by your share sheet or was copied, and your account if
           you’re signed in. Never who you sent it to or the words with it. It helps us see what
           people pass on.
+        </li>
+        <li>
+          <strong>Where you came from.</strong> Some of our links, like the ones in our ads, end with a
+          short tag. If you arrive on one, your browser remembers the tag and tells our server, with
+          nothing else, when you stay for a minute and when you come back on a later day. We keep
+          only daily counts for each tag, never your account, address or device.
         </li>
         <li>
           <strong>Feedback.</strong> If you send us an idea or tell us something broke, we keep what

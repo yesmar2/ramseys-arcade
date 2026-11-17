@@ -116,6 +116,7 @@ export type AdminSection =
   | 'errors'
   | 'flags'
   | 'players'
+  | 'sources'
   | 'tickets'
   | 'bans'
   | 'runs'
@@ -142,6 +143,7 @@ const ADMIN_SECTIONS: readonly AdminSection[] = [
   'errors',
   'flags',
   'players',
+  'sources',
   'tickets',
   'bans',
   'runs',
