@@ -6,7 +6,7 @@ import { BLIP, BLIP_SPARK_R, blipGlitter, blipSparkOffset, frostColour, frostSpa
 import { heightAt, mulberry32, STREAK_ON, streakLift, type Hills } from './sim'
 
 /** How much bigger than the bird's size the swift is drawn in a run. */
-const SWIFT_SCALE = 1.2
+export const SWIFT_SCALE = 1.2
 
 /** The swift's parts as paths, made once the first bird is drawn (Path2D needs a browser). */
 let shape: { body: Path2D; belly: Path2D; beak: Path2D; up: Path2D; folded: Path2D } | null = null
@@ -30,22 +30,26 @@ const SHAPE_OF = () =>
  * your own best), with whose run it is over it.
  *
  * It draws only with fills and strokes, never shadowBlur, so a phone's canvas keeps up.
+ *
+ * Its parts are `protected`, not `private`, and a few of its numbers exported, for the look on test (vista.ts),
+ * which is this scene with its sky, hills and effects drawn another way: the camera, the birds and the ghost are
+ * these, so a skin flies the same in both.
  */
 
-const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
+export const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
 
 /**
  * A size for words, in whole pixels. The sizes follow the camera's zoom, which moves a little every frame, and
  * a canvas draws the letters of each new size afresh: at whole pixels it draws them once and reuses them.
  */
-const textSize = (px: number) => Math.round(px)
+export const textSize = (px: number) => Math.round(px)
 
 /** Swoop's red, the bird's: the game's accent (data/games.ts). */
-const RED = '#e8564f'
-const BEAK = '#f5b942'
+export const RED = '#e8564f'
+export const BEAK = '#f5b942'
 
 /** The colours of a frame: the theme's, and the day's hills in their colour. */
-type Palette = {
+export type Palette = {
   dark: boolean
   skyTop: string
   skyLow: string
@@ -137,59 +141,59 @@ type Floater = { x: number; y: number; text: string; life: number; good: boolean
 type Dot = { x: number; y: number; life: number; gold: boolean; seed: number; spark?: readonly [number, number] }
 
 /** Where the camera keeps the bird across the screen, and down it. */
-const LEAD = 0.32
-const LOW = 0.6
+export const LEAD = 0.32
+export const LOW = 0.6
 /** The seams under the turf: how deep, in metres, and the one that's a row of blips. */
-const SEAMS = [4.2, 13.5] as const
+export const SEAMS = [4.2, 13.5] as const
 /** About how wide a piece of the ground under the hills is filled, in the canvas's own pixels (drawGround). */
 const HILL_PIECE = 240
 /**
  * The columns the lines along the hills are cut in (drawGround), in the canvas's own pixels: from LINE_NARROWEST
  * to LINE_WIDEST wide, in steps of 4, each piece turning at most LINE_TURN (radians) from the last.
  */
-const LINE_NARROWEST = 8
-const LINE_WIDEST = 32
-const LINE_TURN = 0.07
+export const LINE_NARROWEST = 8
+export const LINE_WIDEST = 32
+export const LINE_TURN = 0.07
 /**
  * A line's pieces are filled together in runs about this wide, in the canvas's own pixels: one shape a run, the
  * same outline. Each fill costs the graphics process a little, and on a 2x screen a frame had 500 to 1,000 pieces,
  * 6 to 7 ms of an 18 ms frame on Ramsey's laptop. Runs this wide cost about a quarter of that; much wider ones cost
  * more again, as a shape costs by the size of its box.
  */
-const LINE_RUN = 256
-const BLIPS_AT = 8.6
-const BLIP_EVERY = 3.2
+export const LINE_RUN = 256
+export const BLIPS_AT = 8.6
+export const BLIP_EVERY = 3.2
 
 export class HillsScene {
-  private readonly canvas: HTMLCanvasElement
-  private readonly ctx: CanvasRenderingContext2D
-  private readonly hills: Hills
-  private readonly font: string
-  private W = 0
-  private H = 0
-  private dpr = 1
+  protected readonly canvas: HTMLCanvasElement
+  protected readonly ctx: CanvasRenderingContext2D
+  protected readonly hills: Hills
+  protected readonly font: string
+  protected W = 0
+  protected H = 0
+  protected dpr = 1
   /**
    * How much of its full size the canvas is (1 at 640 px across or more): a home tile's preview is a fifth of a
    * screen, so the bird, flags and words keep their floors in that share and the tile looks like the game shrunk
    * down, not the bird at a screen's size over little hills (Ramsey, 2026-11-09: "the size of the bird in swoop
    * preview is way too big. it should look like the game"). Every game screen is 640 px or more on its long side.
    */
-  private fit = 1
-  private cam = { x: 0, y: 0, k: 8, snap: true }
-  private C: Palette
-  private sky: HTMLCanvasElement | null = null
+  protected fit = 1
+  protected cam = { x: 0, y: 0, k: 8, snap: true }
+  protected C: Palette
+  protected sky: HTMLCanvasElement | null = null
   /** A blip, painted once for its size and colour and stamped along the row (blipStamp). */
-  private blip: { key: string; canvas: HTMLCanvasElement; r: number; half: number } | null = null
-  private time = 0
-  private squash = 0
-  private bits: Bit[] = []
-  private floaters: Floater[] = []
-  private trail: Dot[] = []
-  private trailAt = 0
+  protected blip: { key: string; canvas: HTMLCanvasElement; r: number; half: number } | null = null
+  protected time = 0
+  protected squash = 0
+  protected bits: Bit[] = []
+  protected floaters: Floater[] = []
+  protected trail: Dot[] = []
+  protected trailAt = 0
   /** How your bird's last landing went, for a skin whose face shows it (Blip's grin, his wince), for a moment. */
-  private mood: { kind: 'happy' | 'ouch'; life: number } | null = null
+  protected mood: { kind: 'happy' | 'ouch'; life: number } | null = null
   /** The run to beat a frame ago, for which way it's headed when the camera rides with it. */
-  private lastGhost: { x: number; y: number } | null = null
+  protected lastGhost: { x: number; y: number } | null = null
 
   constructor(canvas: HTMLCanvasElement, hills: Hills) {
     const ctx = canvas.getContext('2d')
@@ -333,7 +337,7 @@ export class HillsScene {
   /* ---------- the camera ---------- */
 
   /** Further out the faster the bird goes and the higher it flies, so the next hills are always in view. */
-  private follow(x: number, y: number, vx: number, vy: number, dt: number) {
+  protected follow(x: number, y: number, vx: number, vy: number, dt: number) {
     const { cam, W, H } = this
     const speed = Math.hypot(vx, vy)
     const floor = heightAt(this.hills, x)
@@ -357,15 +361,15 @@ export class HillsScene {
     cam.k += (k - cam.k) * (1 - Math.exp(-dt * 1.6))
   }
 
-  private sx(x: number) {
+  protected sx(x: number) {
     return (x - this.cam.x) * this.cam.k + this.W * LEAD
   }
 
-  private sy(y: number) {
+  protected sy(y: number) {
     return this.H * LOW - (y - this.cam.y) * this.cam.k
   }
 
-  private wx(px: number) {
+  protected wx(px: number) {
     return (px - this.W * LEAD) / this.cam.k + this.cam.x
   }
 
@@ -373,13 +377,13 @@ export class HillsScene {
    * True to the hills (1.2 m) where it's big enough to see, never under a floor. A tall phone's camera is out so far
    * that 13 px drew the bird twice its size against the hills; 10 px there keeps it about one and a half times.
    */
-  private birdSize() {
+  protected birdSize() {
     return Math.max((this.H > this.W ? 10 : 13) * this.fit, 1.2 * this.cam.k)
   }
 
   /* ---------- the sky ---------- */
 
-  private paintSky() {
+  protected paintSky() {
     const { W, H, dpr, C } = this
     const c = document.createElement('canvas')
     c.width = Math.max(1, Math.round(W * dpr))
@@ -422,7 +426,7 @@ export class HillsScene {
   }
 
   /** A few clouds by day, drifting, and sliding by a little with the camera. */
-  private drawClouds() {
+  protected drawClouds() {
     const { ctx, C, W, H, cam } = this
     if (C.dark) return
     ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
@@ -445,7 +449,7 @@ export class HillsScene {
   }
 
   /** Hills far off, rolling past slower than the near ones. */
-  private drawFarHills(depth: number, colour: string, scale: number, lift: number) {
+  protected drawFarHills(depth: number, colour: string, scale: number, lift: number) {
     const { ctx, W, H, cam } = this
     ctx.fillStyle = colour
     const shift = cam.x * cam.k * depth
@@ -468,7 +472,7 @@ export class HillsScene {
    * 20 ms frame. Now the lines are bands cut in four-cornered pieces (below), and the ground is filled in pieces a
    * few hundred pixels wide, each only down to the lowest point of its line, with a plain block under it.
    */
-  private drawGround() {
+  protected drawGround() {
     const { ctx, C, W, H, cam } = this
     const k = cam.k
     // The surface across the screen, every few pixels.
@@ -581,7 +585,7 @@ export class HillsScene {
    * A line across the screen (points evenly spaced) in pieces about HILL_PIECE pixels wide. They meet at whole
    * pixels, at points on the line itself, so the pieces of ground filled under them fit together without a seam.
    */
-  private piecesOf(xs: number[], ys: number[]) {
+  protected piecesOf(xs: number[], ys: number[]) {
     const { dpr } = this
     const wide = this.canvas.width
     const count = Math.max(1, Math.round(wide / HILL_PIECE))
@@ -615,7 +619,7 @@ export class HillsScene {
    * Fills from a line down to the bottom of the canvas: the shape between the line and a whole pixel under its
    * lowest point, then a plain block from there down, which costs next to nothing to fill.
    */
-  private fillUnder(xs: number[], ys: number[]) {
+  protected fillUnder(xs: number[], ys: number[]) {
     const { ctx, dpr } = this
     const tall = this.canvas.height / dpr
     let low = -Infinity
@@ -633,7 +637,7 @@ export class HillsScene {
   }
 
   /** A blip as a picture, painted again only when its size moves by a quarter of a pixel, and drawn to size between. */
-  private blipStamp(r: number) {
+  protected blipStamp(r: number) {
     const { dpr, C } = this
     const rs = Math.max(0.25, Math.round(r * dpr * 4) / 4) / dpr
     const key = `${rs}:${dpr}:${C.blip}`
@@ -655,7 +659,7 @@ export class HillsScene {
     return this.blip
   }
 
-  private drawFlags(f: SceneFrame) {
+  protected drawFlags(f: SceneFrame) {
     const { ctx, C, W, cam } = this
     this.hills.flags.forEach((x, i) => {
       const px = this.sx(x)
@@ -716,7 +720,7 @@ export class HillsScene {
    * A bird: a round body leaning along its flight, a tuft on top, a wing that beats in the air and folds in a
    * dive, a beak, an eye that looks where it's going. `ghost` draws the outline only, for a run you race in no skin.
    */
-  private drawBird(
+  protected drawBird(
     x: number,
     y: number,
     angle: number,
@@ -818,7 +822,7 @@ export class HillsScene {
    * The run to beat: the blue bird; a ghost in the skin its run was flown in, lighter, as Lander's ghost is its
    * skin's ship at half strength; or a ghost's outline. With whose run it is over it.
    */
-  private drawGhost(g: GhostPose, f: SceneFrame) {
+  protected drawGhost(g: GhostPose, f: SceneFrame) {
     const { ctx, C, cam } = this
     const size = this.birdSize() * 0.92
     const onHill = Math.abs(g.y - heightAt(this.hills, g.x)) < 0.08
@@ -860,7 +864,7 @@ export class HillsScene {
    * The dots behind your bird; a snow swift leaves frost instead, twinkling, scattered a little; Blip's spark a
    * short wake of glitter, tiny blips that twinkle, drift down and go.
    */
-  private drawTrail(dt: number, skin: string | null | undefined) {
+  protected drawTrail(dt: number, skin: string | null | undefined) {
     const { ctx, C, cam, trail } = this
     const frost = skin === SNOW_SWIFT
     const blip = skin === BLIP
@@ -916,7 +920,7 @@ export class HillsScene {
    * A bird on a streak glows: rings of the beak's gold behind it, breathing, brighter the further the streak
    * has moved the wall of wind up (`lift`, 0 to 1). Fills only, like everything here.
    */
-  private drawGlow(x: number, y: number, angle: number, size: number, lift: number) {
+  protected drawGlow(x: number, y: number, angle: number, size: number, lift: number) {
     const { ctx } = this
     const px = this.sx(x) - Math.sin(angle) * size * SWIFT_LIFT
     const py = this.sy(y) - Math.cos(angle) * size * SWIFT_LIFT
@@ -931,7 +935,7 @@ export class HillsScene {
     ctx.globalAlpha = 1
   }
 
-  private drawBits(dt: number) {
+  protected drawBits(dt: number) {
     const { ctx, C, cam, bits } = this
     for (let i = bits.length - 1; i >= 0; i--) {
       const b = bits[i]!
@@ -960,7 +964,7 @@ export class HillsScene {
     ctx.globalAlpha = 1
   }
 
-  private drawFloaters(dt: number) {
+  protected drawFloaters(dt: number) {
     const { ctx, C, cam, floaters } = this
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -988,7 +992,7 @@ export class HillsScene {
   }
 
   /** Lines of rushing air across the screen once the bird is really moving. */
-  private drawSpeedLines(speed: number) {
+  protected drawSpeedLines(speed: number) {
     const { ctx, C, W, H } = this
     if (speed < 42) return
     const f = clamp((speed - 42) / 25, 0, 1)

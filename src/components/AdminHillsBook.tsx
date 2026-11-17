@@ -3,6 +3,7 @@ import { HillsDrawing } from '../games/swoop/HillsDrawing'
 import { dayOfHills, hillsDay, PLANNED_HILLS } from '../games/swoop/daily'
 import { DAILY_HILLS, type PlannedHills } from '../games/swoop/dailyPlan'
 import { hillsRunHref } from '../games/swoop/links'
+import { flockLook, setFlockLook } from '../games/swoop/newLook'
 import { formatRun } from '../games/swoop/score'
 import { hillsSpan, plannedHills, type Hills } from '../games/swoop/sim'
 import { gamePlayHref } from '../hooks/useHashRoute'
@@ -58,6 +59,8 @@ export function AdminHillsBook() {
   const days = useMemo(() => DAILY_HILLS.map(bookHills), [])
   const [query, setQuery] = useState('')
   const [month, setMonth] = useState<string>('all')
+  // Swoop's look on test, on or off on this device (games/swoop/newLook.ts).
+  const [newLook, setNewLook] = useState(flockLook)
 
   const todays = days.find((d) => d.day === today)
   // Before the first day, the first hills are the ones coming.
@@ -86,6 +89,23 @@ export function AdminHillsBook() {
           </a>
           <p className="tb-feature__next">
             Hills laid like Tiny Wings’: every hill its own size, bigger toward the end, now and then a giant. New ones each load. Not in any day’s hills yet.
+          </p>
+        </div>
+        <div className="tb-feature__acts" style={{ marginTop: '0.8rem', alignItems: 'center' }}>
+          <a
+            className="panel__btn panel__btn--ghost adm-small"
+            href={gamePlayHref(SLUG)}
+            onClick={() => {
+              setFlockLook(!newLook)
+              setNewLook(!newLook)
+            }}
+          >
+            {newLook ? 'Fly with the usual look →' : 'Fly with the new look →'}
+          </a>
+          <p className="tb-feature__next">
+            The new look, on test{newLook ? ' (on, on this device)' : ''}: a sky of the day’s own, far mountains, light and shade on the hills, and a
+            flock that grows with every clean landing in a row and scatters when one isn’t. On this device only, on every day’s hills, until it’s
+            switched back here. The same hills, times and boards either way.
           </p>
         </div>
         {todays ? (

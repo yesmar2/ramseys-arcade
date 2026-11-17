@@ -41,6 +41,7 @@ import { useRaceTag } from '../../lib/raceGhost'
 import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, fitsHills, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
 import { hillsDay, hillsNumber, msUntilNextHills, untilWords } from './daily'
 import { HillsMap } from './map'
+import { flockLook } from './newLook'
 import { onItsDayFact, type ItsDay } from './pastDay'
 import { PastHillsResult, PracticeStartCard } from './PracticeCards'
 import {
@@ -60,9 +61,10 @@ import {
 } from './runs'
 import { HillsScene } from './scene'
 import { cleanWords, formatRun, formatSwoopBoardScore, swoopBoardScore, swoopMsFromBoardScore } from './score'
-import { DT, GHOST_EVERY, GLIDE, GOOD_HANDS, HOLD, makePerson, newBird, slopeAt, step, STREAK_ON, type Bird, type Hills } from './sim'
+import { cleanAngleFor, DT, GHOST_EVERY, GLIDE, GOOD_HANDS, HOLD, makePerson, newBird, slopeAt, step, STREAK_ON, type Bird, type Hills } from './sim'
 import { TestResultCard, TestStartCard } from './TestCards'
 import { TomorrowHills } from './TomorrowHills'
+import { VistaScene } from './vista'
 import { chromeTakesKey, controlTakesKey } from '../keys'
 
 const SLUG = 'swoop'
@@ -79,6 +81,26 @@ const HOLD_KEYS = new Set(['Space', 'ArrowDown', 'KeyS', 'ShiftLeft', 'ShiftRigh
 /** The first few runs on a device, a word at the bottom says when to hold and when to let go. */
 const COACH_RUNS = 3
 const COACH_KEY = 'skermix-swoop-coach'
+/**
+ * In the look on test (newLook.ts): a clean landing that came down within this share of its window is flush
+ * with the slope, and is called "Perfect". It keeps the most speed a landing can, as it always did; this only
+ * says so.
+ */
+const FLUSH = 0.45
+/**
+ * And going by the run you race, or being gone by, is said over the bird: once you're this many metres clear
+ * of it, not in a run's first seconds (everyone leaves the line together), and not again for a moment.
+ */
+const CLEAR_BY = 2.5
+const PASS_FROM = 4
+const PASS_REST = 2.5
+
+/** What's said when you go by the run you race (`ahead`), or it goes by you. */
+function passWords(chasing: Chasing, ahead: boolean): string {
+  if (chasing.who === 'pace') return ahead ? 'Passed the blue bird' : 'The blue bird is ahead'
+  if (chasing.who === 'you') return ahead ? 'Ahead of your best' : 'Behind your best'
+  return ahead ? `Passed ${chasing.name}` : `${chasing.name} is ahead`
+}
 
 /**
  * Whose run the ghost flies: the player one place above you today (`next`, for their place); the board's #1,
@@ -400,6 +422,8 @@ function SwoopDayGame({
   const [noCanvas, setNoCanvas] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [touch] = useState(touchScreen)
+  // The look on test, and its flock, where this device has asked for them (newLook.ts).
+  const [newLook] = useState(flockLook)
   const holderRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLCanvasElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
@@ -668,13 +692,17 @@ function SwoopDayGame({
     holder.append(canvas)
     let scene: HillsScene
     try {
-      scene = new HillsScene(canvas, hills)
+      scene = newLook ? new VistaScene(canvas, hills) : new HillsScene(canvas, hills)
     } catch {
       canvas.remove()
       setNoCanvas(true)
       return
     }
     sceneRef.current = scene
+    // The look on test has more to be told: how flush a clean landing was, and who has gone by whom.
+    const vista = scene instanceof VistaScene ? scene : null
+    /** Whether you're clear ahead of the run you race (or clear behind it), as last seen, and when that was last said. */
+    const pass = { ahead: null as boolean | null, saidAt: -Infinity }
     const sound = new WindSound()
     soundRef.current = sound
     const map = mapRef.current ? new HillsMap(mapRef.current, hills) : null
@@ -817,11 +845,19 @@ function SwoopDayGame({
           // The ghost's path keeps time with the clock.
           if (g.steps % GHOST_EVERY === 0) g.record.push(Math.round(b.x * 100) / 100, Math.round(b.y * 100) / 100, hold ? HOLD : GLIDE)
           const streak = b.streak
+          // How it was flying as it came down, for how flush a landing was.
+          const vx0 = b.vx
+          const vy0 = b.vy
           const ev = step(hills, b, hold)
           g.steps += 1
           if (ev === 'launch') sfx('whoosh')
           else if (ev === 'clean') {
-            scene.landed('clean', b.x, b.y, b.vx, b.streak)
+            if (vista) {
+              const d = slopeAt(hills, b.x)
+              const n = Math.sqrt(1 + d * d)
+              const angle = Math.atan2(Math.abs(vy0 - vx0 * d) / n, Math.max(0.001, (vx0 + vy0 * d) / n))
+              vista.landed('clean', b.x, b.y, b.vx, b.streak, angle < cleanAngleFor(b.peak - b.y) * FLUSH)
+            } else scene.landed('clean', b.x, b.y, b.vx, b.streak)
             sfx('perfect', Math.min(b.streak - 1, 7))
             haptic('boost')
           } else if (ev === 'thump') {
@@ -892,6 +928,28 @@ function SwoopDayGame({
           scene.snap()
         }
       } else ghost = g.ghost.at(g.phase === 'countdown' ? 0 : g.run ? g.run.time + g.clock : b.t)
+      if (vista && live && g.phase === 'flying') {
+        if (b.t < 1) {
+          // Off the line together: nobody has gone by anybody yet.
+          pass.ahead = null
+          pass.saidAt = -Infinity
+        } else {
+          const gap = ghost.done ? 0 : pose.x - ghost.x
+          const now = gap > CLEAR_BY ? true : gap < -CLEAR_BY ? false : null
+          if (now !== null && now !== pass.ahead) {
+            // The first time, and in a run's first seconds, it just notes who's ahead; after that a change is
+            // somebody going by. One that comes straight after another waits its turn, and is said then if it
+            // still holds.
+            if (pass.ahead === null || b.t < PASS_FROM) pass.ahead = now
+            else if (b.t - pass.saidAt >= PASS_REST) {
+              vista.told(passWords(g.chasing, now), now)
+              if (now) sfx('good', 3)
+              pass.saidAt = b.t
+              pass.ahead = now
+            }
+          }
+        }
+      }
       scene.frame(
         {
           mode: g.phase === 'menu' ? 'menu' : g.phase === 'crossed' || g.phase === 'gameover' ? 'done' : 'play',
@@ -1113,6 +1171,8 @@ function SwoopDayGame({
       swoop.name,
       ...r.splits.slice(0, -1).map((at, k) => `F${k + 1} ${formatRun(at)}`),
       cleanWords(r.clean),
+      // In the look on test, the most that followed you at once: the run's longest streak.
+      ...(newLook && r.bestStreak > 0 ? [`flock of ${r.bestStreak}`] : []),
       `top ${Math.round(r.top * 3.6)} km/h`,
     ].join(' · ')
 
