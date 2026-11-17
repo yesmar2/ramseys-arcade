@@ -101,4 +101,26 @@ export class Ghost {
     const n = Math.min(last, i + 2) * S
     return { x, y, a: Math.atan2(g[n + 1]! - y, Math.max(0.01, g[n]! - x)), dive: g[k + 2] === HOLD, done: false }
   }
+
+  /**
+   * When the ghost was `x` metres along the way, in seconds from the go, by the same clock `at` goes by: 0
+   * before its start, its run's time past its end. A bird always moves on, so its samples are in order along the way.
+   */
+  when(x: number): number {
+    const g = this.run.ghost
+    const S = GHOST_STRIDE
+    const last = this.samples - 1
+    if (last < 1 || x <= g[0]!) return 0
+    if (x >= g[last * S]!) return this.run.time
+    let lo = 0
+    let hi = last
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1
+      if (g[mid * S]! <= x) lo = mid
+      else hi = mid
+    }
+    const x0 = g[lo * S]!
+    const x1 = g[hi * S]!
+    return Math.min(this.run.time, (lo + (x1 > x0 ? (x - x0) / (x1 - x0) : 0)) / GHOST_RATE)
+  }
 }

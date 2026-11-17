@@ -1,5 +1,6 @@
 import { keptEpoch, watchKept } from '../keptPictures'
-import { paintSwift, swiftColours, type SwiftStyle } from './swiftPaint'
+import type { BirdDesign } from './birdDesigns'
+import { paintBird, swiftColours, type SwiftStyle } from './swiftPaint'
 
 /*
  * The flock: Swoop's streak, as something you can see and can lose. Every clean landing in a row, another
@@ -23,11 +24,21 @@ const TAU = Math.PI * 2
 /** The followers' colours, in the order they join: the arcade's own, never the blue bird's blue. */
 export const FLOCK_HUES = ['#f5b942', '#e85d9a', '#3ecf8e', '#8a6ad4', '#f2813a', '#fff6e6'] as const
 
-/** How big a follower is, to your bird. */
+/**
+ * A golden bird's colour (golden.ts): caught by a clean landing on its hill, it flies at the front of the flock
+ * and isn't lost when the rest scatter. It has a row of its own on the sheet, after the flock's colours.
+ */
+export const GOLD = '#ffc93a'
+const GOLD_ROW = FLOCK_HUES.length
+
+/** How big a follower is, to your bird, and how much bigger than that a golden one. */
 export const FOLLOWER_SIZE = 0.6
-/** The wingbeat's frames a picture is kept for, and one more for a tuck. */
+const GOLD_SIZE = 1.18
+/** The wingbeat's frames a picture is kept for, one more for a tuck, and one for the glow round a golden bird. */
 const BEATS = 6
 const TUCK = BEATS
+const GLOW = BEATS + 1
+const FRAMES = BEATS + 2
 /**
  * Where a follower flies behind your bird, in bird sizes (your bird's on the screen, which is bigger than life
  * when the camera is far out, so they keep their distance on a phone too). In the air they're a wedge: this many
@@ -63,6 +74,8 @@ type Follower = {
   tuck: boolean
   /** Whether it has been put anywhere yet. */
   placed: boolean
+  /** A golden bird: it flies ahead of the rest and stays when they scatter. */
+  gold: boolean
 }
 
 type Stray = { x: number; y: number; vx: number; vy: number; hue: number; life: number; beat: number }
@@ -154,19 +167,19 @@ export class Flock {
    * scatter, off the way your bird was going (`vx`, `vy`).
    */
   keep(streak: number, vx: number, vy: number) {
-    const have = this.followers.length
-    if (streak < have) {
+    const golden = this.followers.filter((f) => f.gold)
+    if (streak < this.followers.length - golden.length) {
       for (const f of this.followers) {
-        // One that hadn't come in yet has nowhere to scatter from.
-        if (!f.placed) continue
+        // A golden bird stays; one that hadn't come in yet has nowhere to scatter from.
+        if (f.gold || !f.placed) continue
         // Up and back, each its own way.
         const a = Math.PI * (0.32 + Math.random() * 0.56)
         const sp = 9 + Math.random() * 12
         this.strays.push({ x: f.x, y: f.y, vx: vx * 0.45 + Math.cos(a) * sp, vy: Math.max(0, vy) * 0.3 + Math.sin(a) * sp, hue: f.hue, life: 1, beat: f.beat })
       }
-      this.followers.length = 0
+      this.followers = golden
     }
-    while (this.followers.length < streak) {
+    while (this.followers.length - golden.length < streak) {
       this.followers.push({
         x: 0,
         y: 0,
@@ -178,8 +191,30 @@ export class Flock {
         beat: Math.random() * TAU,
         tuck: false,
         placed: false,
+        gold: false,
       })
     }
+  }
+
+  /**
+   * A golden bird, caught: it comes from where it sat on its hill to fly first behind you, after any caught before
+   * it, and it stays whatever becomes of the rest.
+   */
+  gild(x: number, y: number) {
+    const at = this.followers.findIndex((f) => !f.gold)
+    this.followers.splice(at < 0 ? this.followers.length : at, 0, {
+      x,
+      y,
+      a: 0,
+      hue: GOLD_ROW,
+      joined: 1,
+      fromX: 0,
+      fromY: 0,
+      beat: Math.random() * TAU,
+      tuck: false,
+      placed: true,
+      gold: true,
+    })
   }
 
   /**
@@ -251,7 +286,7 @@ export class Flock {
   }
 
   /** The sheet for birds drawn `want` canvas pixels to the swift's unit, on this theme, outlined this way. */
-  private sheetFor(want: number, dark: boolean, style: SwiftStyle): Sheet {
+  private sheetFor(want: number, dark: boolean, style: SwiftStyle, design: BirdDesign): Sheet {
     let unit: number = UNITS[UNITS.length - 1]!
     for (const u of UNITS) {
       if (u >= want) {
@@ -259,13 +294,13 @@ export class Flock {
         break
       }
     }
-    const key = `${unit}|${dark}|${style}|${keptEpoch()}`
+    const key = `${unit}|${dark}|${style}|${design.key}|${keptEpoch()}`
     let sheet = this.sheets.get(key)
     if (sheet) return sheet
     const side = Math.ceil(HALF * 2 * unit)
     const canvas = document.createElement('canvas')
-    canvas.width = side * (BEATS + 1)
-    canvas.height = side * FLOCK_HUES.length
+    canvas.width = side * FRAMES
+    canvas.height = side * (FLOCK_HUES.length + 1)
     watchKept(canvas)
     sheet = { canvas, g: canvas.getContext('2d'), side, unit, painted: new Set() }
     // The oldest goes once there are more than a few.
@@ -278,13 +313,25 @@ export class Flock {
    * Paints a follower on its sheet the first time it's wanted: its colour, at one beat of its wing, or tucked. It's
    * the bird you fly, as the look on test paints it (swiftPaint.ts), without the parts too fine to see at its size.
    */
-  private paint(sheet: Sheet, hue: number, frame: number, dark: boolean, style: SwiftStyle) {
-    const id = hue * (BEATS + 1) + frame
+  private paint(sheet: Sheet, hue: number, frame: number, dark: boolean, style: SwiftStyle, design: BirdDesign) {
+    const id = hue * FRAMES + frame
     if (sheet.painted.has(id)) return
     sheet.painted.add(id)
     const g = sheet.g
     if (!g) return
     const { side, unit } = sheet
+    if (frame === GLOW) {
+      // The glow round a golden bird: gold, fading out to the edge of its square.
+      const cx = frame * side + side / 2
+      const cy = hue * side + side / 2
+      const fade = g.createRadialGradient(cx, cy, 0, cx, cy, side / 2)
+      fade.addColorStop(0, 'rgba(255, 214, 92, 0.85)')
+      fade.addColorStop(0.4, 'rgba(255, 201, 58, 0.34)')
+      fade.addColorStop(1, 'rgba(255, 201, 58, 0)')
+      g.fillStyle = fade
+      g.fillRect(frame * side, hue * side, side, side)
+      return
+    }
     const tucked = frame === TUCK
     g.save()
     g.beginPath()
@@ -294,7 +341,7 @@ export class Flock {
     const stretch = tucked ? 1.12 : 1
     g.scale(unit * stretch, unit / stretch)
     // Its line a little heavier than a pixel: at this size a hairline is lost against the hills.
-    paintSwift(g, swiftColours(FLOCK_HUES[hue]!, dark, style), { flap: (frame / BEATS) * TAU, dive: tucked, ground: false, px1: 1.1 / unit, small: true })
+    paintBird(g, design, swiftColours(hue === GOLD_ROW ? GOLD : FLOCK_HUES[hue]!, dark, style), { flap: (frame / BEATS) * TAU, dive: tucked, ground: false, px1: 1.1 / unit, small: true })
     g.restore()
   }
 
@@ -313,27 +360,31 @@ export class Flock {
     time: number,
     dark: boolean,
     style: SwiftStyle,
+    design: BirdDesign,
   ) {
     if (!this.followers.length && !this.strays.length) return
     // The sheet is painted for a size a few steps apart, and its birds drawn at the size they truly are.
     const unitNow = size * FOLLOWER_SIZE * scale
-    const sheet = this.sheetFor(unitNow * dpr, dark, style)
+    const sheet = this.sheetFor(unitNow * dpr, dark, style, design)
     const { side } = sheet
     const half = HALF * unitNow
-    const stamp = (x: number, y: number, a: number, hue: number, beat: number, tuck: boolean, alpha: number) => {
-      const frame = tuck ? TUCK : Math.floor((((time * 3.4 + beat / TAU) % 1) + 1) * BEATS) % BEATS
-      this.paint(sheet, hue, frame, dark, style)
+    const stamp = (x: number, y: number, a: number, hue: number, beat: number, tuck: boolean, alpha: number, grow = 1, glow = false) => {
+      const frame = glow ? GLOW : tuck ? TUCK : Math.floor((((time * 3.4 + beat / TAU) % 1) + 1) * BEATS) % BEATS
+      this.paint(sheet, hue, frame, dark, style, design)
       const c = Math.cos(a)
       const s = Math.sin(a)
       ctx.setTransform(dpr * c, -dpr * s, dpr * s, dpr * c, dpr * px(x), dpr * py(y))
       ctx.globalAlpha = alpha
-      ctx.drawImage(sheet.canvas, frame * side, hue * side, side, side, -half, -half, half * 2, half * 2)
+      ctx.drawImage(sheet.canvas, frame * side, hue * side, side, side, -half * grow, -half * grow, half * 2 * grow, half * 2 * grow)
     }
     for (const s of this.strays) stamp(s.x, s.y, Math.atan2(s.vy, s.vx), s.hue, s.beat + time * 9, false, Math.min(1, s.life * 1.6))
-    // The last to join are drawn first, so the ones nearest your bird are on top.
+    // The last to join are drawn first, so the ones nearest your bird are on top: the golden ones, each in its glow.
     for (let i = this.followers.length - 1; i >= 0; i--) {
       const f = this.followers[i]!
-      stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, Math.min(1, 0.25 + f.joined * 1.5))
+      if (f.gold) {
+        stamp(f.x, f.y, 0, f.hue, 0, false, 0.6 + 0.15 * Math.sin(time * 4 + f.beat), 1.05, true)
+        stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, 1, GOLD_SIZE)
+      } else stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, Math.min(1, 0.25 + f.joined * 1.5))
     }
     ctx.globalAlpha = 1
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)

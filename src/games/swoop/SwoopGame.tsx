@@ -39,7 +39,8 @@ import { WindSound } from './audio'
 import { GhostPicker } from '../../components/GhostPicker'
 import { useRaceTag } from '../../lib/raceGhost'
 import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, fitsHills, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
-import { hillsDay, hillsNumber, msUntilNextHills, untilWords } from './daily'
+import { hillsDay, hillsNumber, laidNumber, msUntilNextHills, untilWords } from './daily'
+import { downhillAt, goldenBest, goldenHills, keepGoldenBest } from './golden'
 import { HillsMap } from './map'
 import { flockLook } from './newLook'
 import { onItsDayFact, type ItsDay } from './pastDay'
@@ -94,6 +95,14 @@ const FLUSH = 0.45
 const CLEAR_BY = 2.5
 const PASS_FROM = 4
 const PASS_REST = 2.5
+/**
+ * And starting a run again (R, the button, or Again on a card) counts one beat, "Ready", not 3, 2, 1, so another
+ * go is under a second away: Ramsey picked it from the ways to make Swoop more fun, 2026-11-17. A run from the
+ * start card still gets the whole count.
+ */
+const QUICK_COUNT = 0.7
+/** And the gap to the run you race is shown all the way, not only at the flags: this often, in milliseconds. */
+const GAP_EVERY = 100
 
 /** What's said when you go by the run you race (`ahead`), or it goes by you. */
 function passWords(chasing: Chasing, ahead: boolean): string {
@@ -150,6 +159,9 @@ type Game = {
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
+  /** With the look on test: started again, so its count is the short one; and which golden birds it has caught (golden.ts). */
+  quick: boolean
+  golden: boolean[]
   /**
    * The run's result, once it's over the line, and your best here before it. `runId`: past hills' run, asked
    * for as it ended (runSession runIdFor), which their All time board needs.
@@ -164,6 +176,8 @@ type Game = {
     improved: boolean
     before: number | null
     path: number[]
+    /** How many golden birds it brought to the line (the look on test). */
+    golden: number
     /** The skin it was flown in (lib/skins.ts), which its ghost wears. */
     skin?: string
     runId: Promise<string | undefined> | null
@@ -179,15 +193,17 @@ type Ui = {
   count: number
   /** Flags passed. */
   passed: number
+  /** Counting a restart's one beat: "Ready", not a number. */
+  quick: boolean
 }
 
 function countOf(g: Game): number {
-  if (g.phase === 'countdown') return Math.max(1, COUNT_FROM - Math.floor(g.clock / COUNT_STEP))
+  if (g.phase === 'countdown') return g.quick ? 1 : Math.max(1, COUNT_FROM - Math.floor(g.clock / COUNT_STEP))
   if (g.phase === 'flying' && g.bird.t < 0.7) return 0
   return -1
 }
 
-const snapshot = (g: Game): Ui => ({ phase: g.phase, count: countOf(g), passed: g.bird.flag + 1 })
+const snapshot = (g: Game): Ui => ({ phase: g.phase, count: countOf(g), passed: g.bird.flag + 1, quick: g.phase === 'countdown' && g.quick })
 
 /** Your best run over a day's hills: in practice, this tab's (or this device's, from its day); else this device's. */
 function bestOf(day: string, practice: boolean, viewer: string | null | undefined): GhostRun | null {
@@ -282,6 +298,8 @@ function freshGame(swoop: SwoopDay, chase: Chase): Game {
     coast: null,
     ghost: chase.ghost,
     chasing: chase.chasing,
+    quick: false,
+    golden: [],
     run: null,
   }
 }
@@ -324,7 +342,20 @@ function runShareLine(swoop: SwoopDay, time: number, pace: number, clean: number
 }
 
 /** Today's hills and their number, the run their ghost flies (the #1's, your best, or the blue bird's), and when the next hills come. */
-function HillsTiles({ swoop, ghost, chasing, bestMs }: { swoop: SwoopDay; ghost: number; chasing: Chasing; bestMs: number | null }) {
+function HillsTiles({
+  swoop,
+  ghost,
+  chasing,
+  bestMs,
+  golden = null,
+}: {
+  swoop: SwoopDay
+  ghost: number
+  chasing: Chasing
+  bestMs: number | null
+  /** With the look on test: how many golden birds the day has, and the most one run of yours has brought home today. */
+  golden?: { best: number; of: number } | null
+}) {
   const [left, setLeft] = useState(() => msUntilNextHills())
   useEffect(() => {
     const timer = window.setInterval(() => setLeft(msUntilNextHills()), 20_000)
@@ -335,6 +366,18 @@ function HillsTiles({ swoop, ghost, chasing, bestMs }: { swoop: SwoopDay; ghost:
       <div className="game-pause-meta__row swoop-hills">
         <span>Today’s hills · #{swoop.n}</span>
         <strong>{swoop.name}</strong>
+        {golden ? (
+          <em
+            className="swoop-golden"
+            role="img"
+            aria-label={`Golden birds: ${golden.best} of ${golden.of} in your best run today`}
+            title={`Golden birds: ${golden.best} of ${golden.of} in your best run today`}
+          >
+            {Array.from({ length: golden.of }, (_, i) => (
+              <i key={i} className={i < golden.best ? 'is-caught' : undefined} />
+            ))}
+          </em>
+        ) : null}
       </div>
       <div className="game-pause-meta__row">
         <span>{chasingLabel(chasing)}</span>
@@ -424,6 +467,8 @@ function SwoopDayGame({
   const [touch] = useState(touchScreen)
   // The look on test, and its flock, where this device has asked for them (newLook.ts).
   const [newLook] = useState(flockLook)
+  // And with it the day's golden birds: the hills they sit on (golden.ts).
+  const [golden] = useState(() => (newLook ? goldenHills(swoop.hills, swoop.n >= 1 ? laidNumber(swoop) : null) : []))
   const holderRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLCanvasElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
@@ -487,9 +532,10 @@ function SwoopDayGame({
 
   /**
    * The count, and a new run for the boards, chasing the best run there is. The run is whoever's signed in
-   * as it starts, so it waits the moment it takes to know who that is.
+   * as it starts, so it waits the moment it takes to know who that is. `again` is a run started again, which
+   * counts one beat with the look on test (QUICK_COUNT).
    */
-  const start = () => {
+  const start = (again?: unknown) => {
     if (newDay()) return
     const owner = ownerOf(currentAccountId())
     if (owner === undefined) {
@@ -508,6 +554,9 @@ function SwoopDayGame({
     const g = freshGame(swoop, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     g.phase = 'countdown'
     g.owner = owner
+    g.quick = newLook && again === true
+    g.golden = golden.map(() => false)
+    if (g.quick) sfx('tap')
     gameRef.current = g
     sceneRef.current?.snap()
     soundRef.current?.wake()
@@ -544,7 +593,7 @@ function SwoopDayGame({
 
   const restart = () => {
     if (!IN_RUN.has(gameRef.current!.phase) || pausedRef.current || saveOpenRef.current) return
-    start()
+    start(true)
   }
 
   /** At the start card, the run to beat worked out again: it changes at once. Mid-run, a run keeps the ghost it began with. */
@@ -699,8 +748,10 @@ function SwoopDayGame({
       return
     }
     sceneRef.current = scene
-    // The look on test has more to be told: how flush a clean landing was, and who has gone by whom.
+    // The look on test has more to be told: how flush a clean landing was, who has gone by whom, and where the
+    // day's golden birds are.
     const vista = scene instanceof VistaScene ? scene : null
+    vista?.setGolden(golden)
     /** Whether you're clear ahead of the run you race (or clear behind it), as last seen, and when that was last said. */
     const pass = { ahead: null as boolean | null, saidAt: -Infinity }
     const sound = new WindSound()
@@ -792,9 +843,12 @@ function SwoopDayGame({
         improved,
         before: kept?.time ?? null,
         path,
+        golden: g.golden.filter(Boolean).length,
         ...(skin ? { skin } : {}),
         runId: past ? runIdFor(SLUG) : null,
       }
+      // The most golden birds one run has brought home today, for the start card: today's hills only.
+      if (newLook && !practice) keepGoldenBest(g.day, g.run.golden)
       // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
       if (!test) noteCourseBest(SLUG, hillsNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       // On down the flat past the line, for looks.
@@ -809,6 +863,7 @@ function SwoopDayGame({
     let last = performance.now()
     let shown = ''
     let attract = 0
+    let gapAt = 0
 
     const loop = (now: number) => {
       if (!alive) return
@@ -825,7 +880,7 @@ function SwoopDayGame({
       if (live && g.phase === 'countdown') {
         const before = countOf(g)
         g.clock += dt
-        if (g.clock >= COUNT_FROM * COUNT_STEP) {
+        if (g.clock >= (g.quick ? QUICK_COUNT : COUNT_FROM * COUNT_STEP)) {
           g.phase = 'flying'
           g.carry = 0
           sfx('good')
@@ -857,6 +912,13 @@ function SwoopDayGame({
               const n = Math.sqrt(1 + d * d)
               const angle = Math.atan2(Math.abs(vy0 - vx0 * d) / n, Math.max(0.001, (vx0 + vy0 * d) / n))
               vista.landed('clean', b.x, b.y, b.vx, b.streak, angle < cleanAngleFor(b.peak - b.y) * FLUSH)
+              // A clean landing on a golden bird's hill catches it.
+              const at = golden.findIndex((hill) => hill.top === downhillAt(hills, b.x))
+              if (at >= 0 && !g.golden[at]) {
+                g.golden[at] = true
+                vista.goldenCaught(at)
+                sfx('good', 5)
+              }
             } else scene.landed('clean', b.x, b.y, b.vx, b.streak)
             sfx('perfect', Math.min(b.streak - 1, 7))
             haptic('boost')
@@ -929,6 +991,17 @@ function SwoopDayGame({
         }
       } else ghost = g.ghost.at(g.phase === 'countdown' ? 0 : g.run ? g.run.time + g.clock : b.t)
       if (vista && live && g.phase === 'flying') {
+        // The gap to the run you race, all the way: how long ago it was where you are now (or how long it'll be).
+        if (now - gapAt >= GAP_EVERY) {
+          gapAt = now
+          const d = b.t - g.ghost.when(pose.x)
+          const el = splitRef.current
+          if (el) {
+            const text = gapText(d)
+            if (el.textContent !== text) el.textContent = text
+            el.className = gapTone(d) ? `swoop__delta--${gapTone(d)}` : ''
+          }
+        }
         if (b.t < 1) {
           // Off the line together: nobody has gone by anybody yet.
           pass.ahead = null
@@ -968,7 +1041,12 @@ function SwoopDayGame({
         },
         live ? dt : 0,
       )
-      map?.draw(pose.x, pose.y, ghost && g.phase !== 'menu' && !ghost.done ? ghost : null)
+      map?.draw(
+        pose.x,
+        pose.y,
+        ghost && g.phase !== 'menu' && !ghost.done ? ghost : null,
+        golden.length ? golden.filter((_, i) => !g.golden[i]) : undefined,
+      )
       sound.update(Math.hypot(b.vx, b.vy), !b.ground, live && g.phase === 'flying')
       if (clockRef.current) {
         const text = formatRun(g.run ? g.run.time : g.phase === 'flying' ? b.t : 0)
@@ -981,7 +1059,7 @@ function SwoopDayGame({
 
       // The rest of the heads-up changes only when something happens: the count, a flag, the line.
       const next = snapshot(g)
-      const key = `${next.phase}|${next.count}|${next.passed}`
+      const key = `${next.phase}|${next.count}|${next.passed}|${next.quick}`
       if (key !== shown) {
         shown = key
         setUi(next)
@@ -1164,15 +1242,19 @@ function SwoopDayGame({
       </div>
     </>
   ) : (
-    <HillsTiles swoop={swoop} ghost={g.ghost.run.time} chasing={g.chasing} bestMs={apiBest > 0 ? swoopMsFromBoardScore(apiBest) : null} />
+    <HillsTiles
+      swoop={swoop}
+      ghost={g.ghost.run.time}
+      chasing={g.chasing}
+      bestMs={apiBest > 0 ? swoopMsFromBoardScore(apiBest) : null}
+      golden={golden.length ? { best: goldenBest(day), of: golden.length } : null}
+    />
   )
   const splitsText = (r: NonNullable<Game['run']>) =>
     [
       swoop.name,
       ...r.splits.slice(0, -1).map((at, k) => `F${k + 1} ${formatRun(at)}`),
       cleanWords(r.clean),
-      // In the look on test, the most that followed you at once: the run's longest streak.
-      ...(newLook && r.bestStreak > 0 ? [`flock of ${r.bestStreak}`] : []),
       `top ${Math.round(r.top * 3.6)} km/h`,
     ].join(' · ')
 
@@ -1223,7 +1305,7 @@ function SwoopDayGame({
                 <PlayReadoutStats>
                   <PlayStat label="Best" value={bestText} />
                   <PlayStat
-                    label={ui.phase === 'crossed' || ui.phase === 'gameover' ? 'Finish' : ui.passed > 0 ? `Flag ${ui.passed}` : 'Split'}
+                    label={ui.phase === 'crossed' || ui.phase === 'gameover' ? 'Finish' : newLook ? 'Gap' : ui.passed > 0 ? `Flag ${ui.passed}` : 'Split'}
                     value={<span ref={splitRef}>–</span>}
                   />
                   <PlayStat label="km/h" value={<span ref={speedRef}>0</span>} />
@@ -1234,8 +1316,8 @@ function SwoopDayGame({
             <canvas ref={mapRef} className="swoop__map" aria-hidden="true" />
 
             {ui.count >= 0 && !paused ? (
-              <div className={`swoop__count${ui.count === 0 ? ' is-go' : ''}`} role="status">
-                {ui.count === 0 ? 'Go!' : ui.count}
+              <div className={`swoop__count${ui.count === 0 ? ' is-go' : ui.quick ? ' is-ready' : ''}`} role="status">
+                {ui.count === 0 ? 'Go!' : ui.quick ? 'Ready' : ui.count}
               </div>
             ) : null}
 
@@ -1262,7 +1344,7 @@ function SwoopDayGame({
                 past={pastPlay}
                 paused={paused}
                 onResume={resume}
-                onRestart={start}
+                onRestart={() => start(true)}
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noCanvas ? (
@@ -1282,7 +1364,7 @@ function SwoopDayGame({
                     clean={run.clean}
                     best={practiceBestTime ?? run.time}
                     improved={run.improved}
-                    onAgain={start}
+                    onAgain={() => start(true)}
                     onDone={toMenu}
                   />
                 ) : tournament ? (
@@ -1302,7 +1384,7 @@ function SwoopDayGame({
                       pastBoard?.refresh()
                       sendGhost(run, result.name)
                     }}
-                    onAgain={start}
+                    onAgain={() => start(true)}
                   />
                 ) : (
                   <ScoreSaveCard
@@ -1315,7 +1397,7 @@ function SwoopDayGame({
                     shareLine={runShareLine(swoop, run.time, pace, run.clean)}
                     medalPace={paceMsOf(swoop.pace)}
                     medalFormat={formatRun}
-                    kicker={`Today’s Hills #${swoop.n}`}
+                    kicker={golden.length ? `Hills #${swoop.n} · ${run.golden} of ${golden.length} golden birds` : `Today’s Hills #${swoop.n}`}
                     tomorrow={<TomorrowHills day={swoop.day} />}
                     owner={runOwner}
                     onSettled={() => sendGhost(run, playerName)}

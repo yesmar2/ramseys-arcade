@@ -1,14 +1,15 @@
 import { heightAt, hillsSpan, type Hills } from './sim'
 
-/** Swoop's red, the blue bird's blue, the flags' gold. */
+/** Swoop's red, the blue bird's blue, the flags' gold, and a golden bird's (golden.ts). */
 const BIRD = '#e8564f'
 const BLUE = '#4aa8e8'
 const FLAG = '#f5b942'
+const GOLD = '#ffc93a'
 
 /**
  * The map in the corner: the whole way from the start to the line, from the side, drawn once in the theme's
  * ink so it reads on a light tile and a dark one, with its flags; your bird and the run to beat dotted on it
- * each frame.
+ * each frame. With the look on test, the day's golden birds still on their hills are dotted on it too.
  */
 export class HillsMap {
   private readonly canvas: HTMLCanvasElement
@@ -78,7 +79,7 @@ export class HillsMap {
     this.outline = outline
   }
 
-  draw(birdX: number, birdY: number, ghost: { x: number; y: number } | null) {
+  draw(birdX: number, birdY: number, ghost: { x: number; y: number } | null, golden?: readonly { x: number; y: number }[]) {
     this.build()
     const { canvas, outline, fit } = this
     if (!outline || !fit) return
@@ -93,6 +94,13 @@ export class HillsMap {
       g.arc(px, py, r * dpr, 0, Math.PI * 2)
       g.fillStyle = color
       g.fill()
+    }
+    if (golden) {
+      // Each in a dark ring, so gold reads on the flags' gold and on a light tile.
+      for (const bird of golden) {
+        dot(bird.x, bird.y, 'rgba(26, 30, 50, 0.75)', 3.6)
+        dot(bird.x, bird.y, GOLD, 2.5)
+      }
     }
     if (ghost) dot(ghost.x, ghost.y, BLUE, 2.8)
     dot(birdX, birdY, BIRD, 3.4)

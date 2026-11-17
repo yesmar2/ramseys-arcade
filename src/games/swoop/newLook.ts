@@ -1,7 +1,9 @@
 /*
  * Swoop's new look, on test: the hills drawn as a place (vista.ts) and the streak as a flock that follows you
  * (flock.ts). Ramsey, 2026-11-17: "can you try redesigning the swoop game with better graphics and maybe
- * somethign to make it a little more addicting/fun? ... just need something to set it apart".
+ * somethign to make it a little more addicting/fun? ... just need something to set it apart". And, from the
+ * ways to make it more fun he picked the same day: the day's three golden birds to catch (golden.ts), a one-beat
+ * count when a run is started again, and the gap to the run you race shown all the way (SwoopGame.tsx).
  *
  * It's on for a device that has asked for it, on every day's hills, until it asks for the usual look back:
  * the admin's Hills Book has a button for each, and so does the address, `?flock=1` and `?flock=0` on Swoop's

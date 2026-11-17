@@ -2,10 +2,12 @@ import { withAlpha } from '../../lib/color'
 import { keptEpoch } from '../keptPictures'
 import { SWIFT_LIFT } from './birdShape'
 import { AURORA_PHOENIX, BLIP, blipSparkOffset, PENGUIN, skinPainter, SNOW_SWIFT } from './birdSkins'
-import { Flock, FLOCK_HUES } from './flock'
+import { Flock, FLOCK_HUES, GOLD } from './flock'
+import type { GoldenHill } from './golden'
 import { BEAK, BLIP_EVERY, BLIPS_AT, clamp, HillsScene, LINE_NARROWEST, LINE_RUN, LINE_TURN, LINE_WIDEST, RED, SEAMS, SWIFT_SCALE, textSize, type SceneFrame } from './scene'
 import { heightAt, mulberry32, slopeAt, STREAK_ON, streakLift, type Hills } from './sim'
-import { paintSwift, swiftColours, type SwiftColours, type SwiftStyle } from './swiftPaint'
+import { BIRD_DESIGNS, type BirdDesignKey } from './birdDesigns'
+import { paintBird, swiftColours, type SwiftColours, type SwiftStyle } from './swiftPaint'
 import { DECO, decoBox, decoLook, DecoPictures, isSprig, layBuried, layDecos, type Deco } from './vistaProps'
 import {
   CLOUD_SIZE,
@@ -45,7 +47,9 @@ import {
  *
  * And what's new to play for: the flock (flock.ts). Every clean landing in a row, another little swift falls
  * in behind yours; a bad one scatters them. It's the streak the game always had, and the speed it always gave,
- * made into something you can see growing and can lose.
+ * made into something you can see growing and can lose. And the day's three golden birds (golden.ts), each
+ * sitting on a hill of its own, its slope edged in gold: land clean on that hill and it flies with you to the
+ * line, whatever becomes of the rest.
  *
  * It's this scene's parent with its drawing swapped: the camera, the birds, their skins and the ghost are
  * scene.ts's own. Like it, nothing here uses shadowBlur, and what would be a wide shape to fill every frame is
@@ -90,6 +94,8 @@ const SPRIG = 1.5
  * night the dark line turns pale, as scene.ts has it, and reads as a glow round the bird.
  */
 const BIRD_STYLE: SwiftStyle = 'soft'
+/** Which bird is flown (birdDesigns.ts): the swift he picked, until he picks another. */
+const BIRD_DESIGN: BirdDesignKey = 'swift'
 /** How a bird is posed and shown, as scene.ts drawBird takes it. */
 type BirdShown = {
   flap?: number
@@ -152,8 +158,12 @@ export class VistaScene extends HillsScene {
   private decoLevel = 0
   private lookKey: string
   private readonly flock = new Flock()
-  /** How the birds are outlined: BIRD_STYLE, unless a picture of the choices sets another to show it. */
+  /** The day's golden birds' hills (golden.ts), and which of them this run has caught. */
+  private golden: GoldenHill[] = []
+  private caught: boolean[] = []
+  /** How the birds are outlined, and which bird they are: as chosen above, unless a picture of the choices sets another to show it. */
   birdStyle: SwiftStyle = BIRD_STYLE
+  birdDesign: BirdDesignKey = BIRD_DESIGN
   private swifts = new Map<string, SwiftColours>()
   private back: Backdrop | null = null
   /** When the canvas last changed size, by the page's clock: the backdrop is painted again once it has stopped changing. */
@@ -209,6 +219,7 @@ export class VistaScene extends HillsScene {
     this.trace.length = 0
     this.lastCamX = null
     this.shake = 0
+    this.caught.fill(false)
   }
 
   dispose() {
@@ -324,6 +335,29 @@ export class VistaScene extends HillsScene {
     this.say(x, y, 'Flock scattered', false, 1)
   }
 
+  /** The day's golden birds: the hills they sit on. All are back on their hills at every start (snap). */
+  setGolden(hills: GoldenHill[]) {
+    this.golden = hills
+    this.caught = hills.map(() => false)
+  }
+
+  /** A golden bird caught, by a clean landing on its hill: it leaves the hill for the front of the flock, and it says so. */
+  goldenCaught(i: number) {
+    const hill = this.golden[i]
+    if (!hill || this.caught[i]) return
+    this.caught[i] = true
+    this.flock.gild(hill.x, hill.y + 0.8)
+    const have = this.caught.filter(Boolean).length
+    const all = this.golden.length
+    this.say(this.lastBird.x, this.lastBird.y, have < all ? `Golden bird · ${have} of ${all}` : all === 3 ? 'All three golden birds!' : `All ${all} golden birds!`, true, 1)
+    this.sparks.push({ kind: 'ring', x: hill.x, y: hill.y + 0.3, vx: 0, vy: 0, life: 0.6, max: 0.6, size: 5, colour: GOLD, turn: 0, spin: 0 })
+    for (let k = 0; k < 12; k++) {
+      const a = Math.random() * Math.PI
+      const sp = 4 + Math.random() * 8
+      this.sparks.push({ kind: 'spark', x: hill.x, y: hill.y + 0.8, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.6 + Math.random() * 0.5, max: 1.1, size: 0.22 + Math.random() * 0.14, colour: k % 3 ? GOLD : '#ffffff', turn: 0, spin: 0 })
+    }
+  }
+
   /** A word over your bird that isn't about a landing: it has gone by the run it's racing, or been gone by. */
   told(text: string, good: boolean) {
     this.say(this.lastBird.x, this.lastBird.y, text, good, 2)
@@ -396,6 +430,7 @@ export class VistaScene extends HillsScene {
     this.drawDecos(f, flying ? speed : 0)
     this.drawCourse()
     this.drawBanners(f)
+    this.drawGolden(f.calm)
 
     const showBird = f.mode !== 'menu' || f.calm || !g
     const b = f.mode === 'menu' ? { x: 0, y: heightAt(this.hills, 0), vx: 7, vy: 0, ground: true } : f.bird
@@ -413,7 +448,8 @@ export class VistaScene extends HillsScene {
       this.dpr,
       this.time,
       this.C.dark,
-      this.birdStyle,
+      this.styleOf(),
+      BIRD_DESIGNS[this.birdDesign],
     )
     if (showBird) {
       const angle = Math.atan2(b.vy, Math.max(0.01, b.vx))
@@ -719,6 +755,21 @@ export class VistaScene extends HillsScene {
       )
     sheet(sight.shade, dim)
     sheet(sight.light, lit)
+    // A golden bird's hill, while the bird's still on it: its slope edged in gold, from its top to its foot, so
+    // it's plain which slope to land on.
+    for (let i = 0; i < this.golden.length; i++) {
+      const hill = this.golden[i]!
+      if (this.caught[i] || this.sx(hill.to) < -20 || this.sx(hill.from) > W + 20) continue
+      const share = cols.map((x) => {
+        const f = (this.wx(x) - hill.from) / (hill.to - hill.from)
+        return f <= 0 || f >= 1 ? 0 : Math.min(1, f / 0.12, (1 - f) / 0.12)
+      })
+      band(
+        withAlpha(GOLD, 0.55 + 0.2 * Math.sin(this.time * 3 + i)),
+        (c) => mid[c]!,
+        (c) => mid[c]! + across[c]! * 2 * 1.3 * k * share[c]!,
+      )
+    }
     // The edge along the top, and a line of light just under it where the sun is on the slope: it thins away
     // round a top and is gone on a climb.
     line(0, C.edge, Math.max(2.5, 0.42 * k))
@@ -862,10 +913,14 @@ export class VistaScene extends HillsScene {
     ctx.fillText('FINISH', fx, y - tall - 8)
   }
 
-  /** Over the line: confetti off the top of the pole, in the flock's colours. */
+  /** Over the line: confetti off the top of the pole, in the flock's colours, and how many golden birds came home. */
   private cheer() {
     const x = this.hills.finish
     const y = heightAt(this.hills, x) + 7
+    if (this.golden.length) {
+      const have = this.caught.filter(Boolean).length
+      this.say(this.lastBird.x, this.lastBird.y, `${have} of ${this.golden.length} golden birds`, have > 0, 1)
+    }
     for (let i = 0; i < 44; i++) {
       const a = Math.PI * (0.12 + Math.random() * 0.76)
       const sp = 6 + Math.random() * 13
@@ -902,10 +957,11 @@ export class VistaScene extends HillsScene {
     size *= SWIFT_SCALE
     const px = this.sx(x) - Math.sin(angle) * size * SWIFT_LIFT
     const py = this.sy(y) - Math.cos(angle) * size * SWIFT_LIFT
-    const key = `${colour}|${this.birdStyle}`
+    const style = this.styleOf()
+    const key = `${colour}|${style}`
     let look = this.swifts.get(key)
     if (!look) {
-      look = swiftColours(colour, this.C.dark, this.birdStyle)
+      look = swiftColours(colour, this.C.dark, style)
       this.swifts.set(key, look)
     }
     // It blinks now and then: each bird in its own time.
@@ -918,8 +974,53 @@ export class VistaScene extends HillsScene {
     const stretch = dive ? 1.12 : 1
     const sq = 1 - squish * 0.22
     ctx.scale((size * stretch) / Math.sqrt(sq), (size * sq) / stretch)
-    paintSwift(ctx, look, { flap, dive, ground: folded, px1: 1 / size, mood, blink })
+    paintBird(ctx, BIRD_DESIGNS[this.birdDesign], look, { flap, dive, ground: folded, px1: 1 / size, mood, blink })
     ctx.restore()
+  }
+
+  /** How the bird in use is outlined: a bird folded from paper is always a cut-out. */
+  private styleOf(): SwiftStyle {
+    return BIRD_DESIGNS[this.birdDesign].paper ? 'paper' : this.birdStyle
+  }
+
+  /**
+   * The golden birds still on their hills: each sitting on its slope in a glow, hopping, with a few stars turning
+   * round it. One that's been caught is with the flock (flock.ts gild).
+   */
+  private drawGolden(calm: boolean) {
+    const { ctx, W } = this
+    if (!this.golden.length) return
+    const glow = this.backdrop().glow.canvas
+    for (let i = 0; i < this.golden.length; i++) {
+      if (this.caught[i]) continue
+      const hill = this.golden[i]!
+      const px = this.sx(hill.x)
+      if (px < -90 || px > W + 90) continue
+      const size = this.birdSize() * 1.08
+      const hop = calm ? 0 : Math.abs(Math.sin(this.time * 2.6 + i * 1.7)) * 0.26
+      const angle = Math.atan(slopeAt(this.hills, hill.x))
+      const py = this.sy(hill.y + hop) - size * SWIFT_SCALE * SWIFT_LIFT
+      const r = size * 3.8
+      ctx.globalAlpha = 0.78 + (calm ? 0 : 0.2 * Math.sin(this.time * 3 + i))
+      ctx.drawImage(glow, px - r, py - r, r * 2, r * 2)
+      ctx.globalAlpha = 1
+      this.drawBird(hill.x, hill.y + hop, angle, size, GOLD, { folded: true })
+      if (calm) continue
+      ctx.fillStyle = '#fff6cf'
+      for (let k = 0; k < 4; k++) {
+        const a = this.time * 1.1 + k * 1.571 + i
+        const s = size * (0.26 + 0.12 * Math.sin(this.time * 6 + k * 1.7))
+        const tx = px + Math.cos(a) * size * 2.5
+        const ty = py + Math.sin(a) * size * 1.7
+        ctx.beginPath()
+        ctx.moveTo(tx, ty - s * 1.6)
+        ctx.lineTo(tx + s * 0.45, ty)
+        ctx.lineTo(tx, ty + s * 1.6)
+        ctx.lineTo(tx - s * 0.45, ty)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
   }
 
   /* ---------- the bird's company ---------- */

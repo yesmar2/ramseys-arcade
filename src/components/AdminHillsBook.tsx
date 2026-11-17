@@ -104,8 +104,9 @@ export function AdminHillsBook() {
           </a>
           <p className="tb-feature__next">
             The new look, on test{newLook ? ' (on, on this device)' : ''}: a sky of the day’s own, far mountains, light and shade on the hills, and a
-            flock that grows with every clean landing in a row and scatters when one isn’t. On this device only, on every day’s hills, until it’s
-            switched back here. The same hills, times and boards either way.
+            flock that grows with every clean landing in a row and scatters when one isn’t. With it, three golden birds a day to catch, each by a
+            clean landing on its hill; a one-beat count when a run is started again; and the gap to the bird you race shown all the way. On this
+            device only, on every day’s hills, until it’s switched back here. The same hills, times and boards either way.
           </p>
         </div>
         {todays ? (

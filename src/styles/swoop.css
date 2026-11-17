@@ -144,6 +144,11 @@ html[data-theme='dark'] .swoop--fullscreen {
     0 0 3px rgba(7, 5, 15, 0.9);
 }
 
+/* A restart's short count, with the look on test: a word, not a number, so smaller. */
+.swoop__count.is-ready {
+  font-size: clamp(2.6rem, 10vw, 4.4rem);
+}
+
 .swoop__toast {
   position: absolute;
   top: calc(var(--readout-middle) + 2.4rem);
@@ -251,6 +256,30 @@ html[data-theme='dark'] .swoop--fullscreen {
 /* Today's hills, by name, across the card's figures. */
 .game-card .swoop-hills {
   grid-column: 1 / -1;
+  position: relative;
+}
+
+/* With the look on test: the day's golden birds at the tile's end, the ones your best run today brought home filled in. */
+.swoop-golden {
+  position: absolute;
+  top: 50%;
+  right: 0.9rem;
+  display: inline-flex;
+  gap: 0.32rem;
+  transform: translateY(-50%);
+}
+
+.swoop-golden i {
+  width: 0.72rem;
+  height: 0.72rem;
+  box-sizing: border-box;
+  border: 2px solid #e0a91e;
+  border-radius: 50%;
+}
+
+.swoop-golden i.is-caught {
+  border-color: #ffc93a;
+  background: #ffc93a;
 }
 
 /*
