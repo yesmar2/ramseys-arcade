@@ -64,6 +64,24 @@ function standingWords(board: TodayBoard | null): string {
   return 'Nobody has flown it yet: the first run sets the bar.'
 }
 
+/** Today's Cave over Lander's screen on its page (GameHubHero), where its card was: its number and name. */
+export function TodayName() {
+  const lander = landerDay(useCaveDay())
+  return (
+    <>
+      Today&rsquo;s Cave #{lander.n} · {lander.name}
+    </>
+  )
+}
+
+/** Signed out, the run this device keeps today, under Play on Lander's screen. */
+export function TodayKept() {
+  const day = useCaveDay()
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
+  return kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null
+}
+
 /** Today's Cave as a card: the cave, that it counts, how the day stands, the clock to the next, Past caves and Fly. */
 export function TodaysCaveCard() {
   const day = useCaveDay()

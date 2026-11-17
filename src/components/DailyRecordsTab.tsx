@@ -30,6 +30,7 @@ import {
 import { BOARD_NAMES, dailyWords } from '../lib/dailyWords'
 import { useHeldHeight } from '../lib/heldShape'
 import { LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame } from '../lib/leaderboard'
+import { possessive } from '../lib/possessive'
 import { useHoleRecordsAsked } from '../lib/pastHoles'
 import { isRaceGame } from '../lib/raceMedals'
 import { ordinal } from '../lib/scoreboard'
@@ -749,7 +750,7 @@ function RecordsBody({
         <InfoIcon />
         <span>
           Looking for 1st today, a past day’s places or this week’s? Those are boards, not records:{' '}
-          <a href={dailyTabHref(slug)}>today’s board is on the Today tab</a>
+          <a href={dailyTabHref(slug)}>today’s board is on {possessive(name)} page</a>
           {boards ? ', ' : ' and '}
           <a href={dailyTabHref(slug, 'past')}>
             each past day’s {BOARD_NAMES.ranked} board is on {words.pastTab}

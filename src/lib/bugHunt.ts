@@ -101,7 +101,7 @@ export type HuntAnchor = {
 
 const GAME_PAGE_LESSON = 'Every game has a page of its own: its board, its records, the events it’s in and how to play.'
 const GAME_PEEKS_LESSON = 'A game’s page has the top of its board and a few of its records side by side. Each opens in full.'
-const DAILY_TABS_LESSON = 'A daily’s page has three tabs: today’s, its past days to play again, and its records.'
+const DAILY_PEEKS_LESSON = 'A daily’s page has the top of today’s board beside its records. Its past days are a tap away, to play again.'
 const SHELF_LESSON = 'Under every game is a row of games like it: the same kind of play, a tap away.'
 const BOARD_NOTE_LESSON = 'The line over a board says what it counts: each player’s best run, and when the board closes.'
 const BOARD_LESSON = 'Every game has a board of its own: each player’s best run this week, this month and all time.'
@@ -109,12 +109,11 @@ const DAILY_BOARD_LESSON =
   'A daily’s board has today’s runs, and each player’s days added up for the week and the month: the better each day, the more it adds.'
 const BOOK_LESSON = 'Record books keep feats inside a game, like the fastest wave cleared or the longest chain.'
 const DAILY_RECORDS_LESSON =
-  'A daily’s Records tab keeps the records made over many days, like the most days played in a row and the most days won.'
+  'A daily’s records are the ones made over many days, like the most days played in a row and the most days won.'
 // A daily just for fun (data/games.ts Game.ranked): its page's own cards, where a ranked daily has its boards.
 const FUN_DAYS_LESSON = 'A daily that’s just for fun keeps your own days on its page: how many, how many in a row, and your best.'
 const FUN_TODAY_LESSON = 'Once you’ve played, its page shows how today went for you, part by part.'
-const FUN_CARD_LESSON = 'Today’s card says what today’s is, how long it has left, and how you did.'
-const FUN_TABS_LESSON = 'A daily’s page has its days in tabs: today’s, and the past ones to play again as practice.'
+const FUN_CLOCK_LESSON = 'A daily’s screen says what today’s is and how long it has left: a new one comes at midnight, New York time.'
 const FUN_PAST_LESSON = 'Every past day of a daily can be played again, as practice: nothing is saved.'
 const ABOUT_LESSON = 'Original games, no ads, no install: About is the whole idea in one page.'
 const GROUPS_LESSON = 'Make a group, share its link, and everyone in it gets boards of their own.'
@@ -224,26 +223,31 @@ function gameAnchors(): HuntAnchor[] {
     )
     if (boards.includes(slug) && !isRankedGame(slug)) {
       // A daily just for fun has no board: its ids keep their places in the list (so the days' shuffled
-      // order stays as it was) and hide on its page's own cards instead.
+      // order stays as it was) and hide on its page's own cards instead; since 2026-11-17, where its Today card and
+      // tabs were, on the clock on its screen and the games like it (GameHubPage).
       out.push(
         { id: `g-board-${slug}`, href, page, thing: 'the card of your days', lesson: FUN_DAYS_LESSON },
         { id: `g-stand-${slug}`, href, page, thing: 'the card about how today went', lesson: FUN_TODAY_LESSON },
-        { id: `b-head-${slug}`, href, page, thing: 'today’s card', lesson: FUN_CARD_LESSON },
-        { id: `b-board-${slug}`, href, page, thing: 'the tabs', lesson: FUN_TABS_LESSON },
+        { id: `b-head-${slug}`, href, page, thing: 'the clock on its screen', lesson: FUN_CLOCK_LESSON },
+        { id: `b-board-${slug}`, href, page, thing: 'the games like it', lesson: SHELF_LESSON },
       )
     } else if (boards.includes(slug)) {
       const boardHref = gameBoardHref(slug as LeaderboardGame, 'weekly')
       // A daily's boards are the day's, the week's and the month's: none for all time (lib/allTime.ts).
       const boardLesson = game.daily ? DAILY_BOARD_LESSON : BOARD_LESSON
-      // A daily's tabs, or another game's records beside its board (since 2026-11-17, where its tabs were), and the
-      // games like it hold the first two; with neither, the games like it and the line over the board (GameHubPage).
+      // The records beside its board (since 2026-11-17, where its tabs were) and the games like it hold the first
+      // two; with no records, the games like it and the line over the board (GameHubPage).
       const tabs = Boolean(game.daily) || books.includes(slug)
       out.push(
-        game.daily
-          ? { id: `g-board-${slug}`, href, page, thing: 'the tabs', lesson: DAILY_TABS_LESSON }
-          : tabs
-            ? { id: `g-board-${slug}`, href, page, thing: 'the records beside its board', lesson: GAME_PEEKS_LESSON }
-            : { id: `g-board-${slug}`, href, page, thing: 'the games like it', lesson: SHELF_LESSON },
+        tabs
+          ? {
+              id: `g-board-${slug}`,
+              href,
+              page,
+              thing: 'the records beside its board',
+              lesson: game.daily ? DAILY_PEEKS_LESSON : GAME_PEEKS_LESSON,
+            }
+          : { id: `g-board-${slug}`, href, page, thing: 'the games like it', lesson: SHELF_LESSON },
         tabs
           ? { id: `g-stand-${slug}`, href, page, thing: 'the games like it', lesson: SHELF_LESSON }
           : { id: `g-stand-${slug}`, href, page, thing: 'the line over its board', lesson: BOARD_NOTE_LESSON },
@@ -251,8 +255,8 @@ function gameAnchors(): HuntAnchor[] {
         { id: `b-board-${slug}`, href: boardHref, page, thing: 'its board', lesson: boardLesson },
       )
     }
-    // A daily has no book of its own: its records are its page's Records tab. Same id, same place in
-    // the list, so the days' shuffled order stays as it was.
+    // A daily has no book of its own: its records open in full on its page. Same id, same place in the list, so
+    // the days' shuffled order stays as it was.
     if (books.includes(slug)) {
       out.push(
         game.daily && !isRankedGame(slug)
@@ -268,14 +272,14 @@ function gameAnchors(): HuntAnchor[] {
           ? {
               id: `r-head-${slug}`,
               href: dailyTabHref(slug, 'records'),
-              page: `on ${possessive(game.name)} Records tab`,
+              page: `on ${possessive(game.name)} records`,
               thing: 'the top of its records',
               lesson: DAILY_RECORDS_LESSON,
             }
           : {
               id: `r-head-${slug}`,
               href: recordsHref(slug),
-              page: `on ${possessive(game.name)} Records tab`,
+              page: `on ${possessive(game.name)} records`,
               thing: 'the top of its records',
               lesson: BOOK_LESSON,
             },

@@ -64,6 +64,24 @@ function standingWords(board: TodayBoard | null): string {
   return 'Nobody has swooped them yet: the first run sets the bar.'
 }
 
+/** Today's Hills over Swoop's screen on its page (GameHubHero), where its card was: their number and name. */
+export function TodayName() {
+  const swoop = swoopDay(useHillsDay())
+  return (
+    <>
+      Today&rsquo;s Hills #{swoop.n} · {swoop.name}
+    </>
+  )
+}
+
+/** Signed out, the run this device keeps today, under Play on Swoop's screen. */
+export function TodayKept() {
+  const day = useHillsDay()
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
+  return kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null
+}
+
 /** Today's Hills as a card: the hills, that they count, how the day stands, the clock to the next, Past hills and Swoop. */
 export function TodaysHillsCard() {
   const day = useHillsDay()

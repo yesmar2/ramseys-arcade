@@ -85,6 +85,12 @@ function WantedFaces({ wanted }: { wanted: readonly WantedBug[] }) {
   )
 }
 
+/** Today's Wanted over Find the Bug's screen on its page (GameHubHero), where its card was: its number. */
+export function TodayName() {
+  const { day } = useTodaysWanted()
+  return <>Today&rsquo;s Wanted #{dayNumber(day)}</>
+}
+
 /** Today's Wanted as a card: the day's bugs, that it counts, how it stands, the clock to the next, Past days, and Play or Share. */
 export function TodaysWantedCard() {
   const { day, wanted, run, board } = useTodaysWanted()
@@ -154,7 +160,7 @@ const SCENE_LIMIT_MS = 60_000
  * run from another device shows its time.
  */
 export function TodaysWantedByScene() {
-  const { wanted, run, board } = useTodaysWanted()
+  const { day, wanted, run, board } = useTodaysWanted()
   const href = gamePlayHref(SLUG)
   const result = run?.result
   const times = result?.times
@@ -177,6 +183,8 @@ export function TodaysWantedByScene() {
             )
           })}
         </ul>
+        {/* Its share (it was on Today's card till 2026-11-17). */}
+        {result ? <ShareDay day={day} result={result} className="evp-btn evp-btn--small yd__go" /> : null}
         <p className="yd__foot">
           Your quickest find today: {wanted[quickest]?.name}, in {formatFindbugMs(times[quickest]!)}. New bugs are wanted at
           midnight.

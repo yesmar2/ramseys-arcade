@@ -3,7 +3,7 @@ import { useHeldHeight } from '../lib/heldShape'
 import { Suspense, useState, type CSSProperties, type ReactNode } from 'react'
 import { gamePlayableOn, getGame, isDailyGame } from '../data/games'
 import { useGameBoard } from '../hooks/useGameBoard'
-import { gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
+import { fullBoardHref, gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
 import { usePlayerName } from '../hooks/usePlayerName'
 import { inkOn, readableFill } from '../lib/color'
 import { useDeviceType } from '../lib/device'
@@ -605,25 +605,41 @@ function ChevronDown() {
  * and no runs under the names: the full board has those. The menu sets the site's period, as the boards' tabs do,
  * without leaving the page.
  */
-export function BoardPeek({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
+export function BoardPeek({
+  slug,
+  period,
+  onPeriod,
+  place,
+}: {
+  slug: LeaderboardGame
+  period: LeaderboardPeriod
+  /** A daily's page keeps the board's period itself (today unless picked): the site's isn't a daily's. */
+  onPeriod?: (period: LeaderboardPeriod) => void
+  /** Its id, where a link to the board lands (BOARD_PLACE): a daily's today, whose board is its page's. */
+  place?: string
+}) {
   const you = normalizePlayerName(usePlayerName())
   const groupId = useActiveGroup()
   const scope = useScope()
   const data = useGameBoard(slug, period, you, groupId)
   // The Season's name comes with the season (lib/scoreboard.ts periodCopy): drawn again when it does.
   useSeason()
-  const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, useSeasonTab() || period === 'season')
+  const daily = isDailyGame(slug)
+  const periods = periodTabs(daily ? DAILY_PERIODS : VISIBLE_LEADERBOARD_PERIODS, useSeasonTab() || period === 'season')
   const copy = periodCopy(period, Date.now(), Boolean(groupId))
   const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
+  // A daily's week and month are its day points (PointsBoard): more is better, whatever its own board counts.
+  const points = isDayPointsBoard(slug, period)
+  const figure = (score: number) => (points ? formatDayPoints(score) : formatLeaderboardScore(slug, score))
   const best = data.top[0]?.best.score ?? 0
   const yourRow = data.top.find((p) => p.name === you) ?? data.around?.find((p) => p.name === you)
   const below = yourRow && yourRow.place > PEEK_ROWS ? yourRow : null
   const above = placeAbove(data, yourRow)
   const yourLine =
     yourRow && above
-      ? formatLeaderboardScore(slug, above.best.score) === formatLeaderboardScore(slug, yourRow.best.score)
+      ? figure(above.best.score) === figure(yourRow.best.score)
         ? `tied with ${above.name}`
-        : `${gapFigure(slug, above.best.score, yourRow.best.score)} behind ${above.name}`
+        : `${points ? formatDayPoints(above.best.score - yourRow.best.score) : gapFigure(slug, above.best.score, yourRow.best.score)} behind ${above.name}`
       : ''
   // While it loads it holds the height it had last time, so the records beside it and the games under it stay put.
   const held = useHeldHeight<HTMLElement>(`gb-peek-${slug}-${period}-${you ? 'in' : 'out'}`, data.loading)
@@ -640,15 +656,16 @@ export function BoardPeek({ slug, period }: { slug: LeaderboardGame; period: Lea
       player={p}
       you={you}
       period={period}
-      figure={formatLeaderboardScore(slug, p.best.score)}
+      figure={figure(p.best.score)}
       sub={p.name === yourRow?.name ? yourLine : ''}
-      share={boardShare(slug, p.best.score, best)}
+      share={points ? (best > 0 ? Math.min(1, Math.max(0, p.best.score / best)) : 0) : boardShare(slug, p.best.score, best)}
     />
   )
   const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
   return (
     <section
       ref={held.ref}
+      id={place}
       className="gh-card gh-peek sb-scope gb-board--bars"
       style={style}
       aria-labelledby="gh-peek-board"
@@ -661,7 +678,14 @@ export function BoardPeek({ slug, period }: { slug: LeaderboardGame; period: Lea
         </h2>
         <label className="gh-pick">
           <span className="visually-hidden">Period</span>
-          <select value={period} onChange={(e) => setDefaultPeriod(e.target.value as LeaderboardPeriod)}>
+          <select
+            value={period}
+            onChange={(e) => {
+              const next = e.target.value as LeaderboardPeriod
+              if (onPeriod) onPeriod(next)
+              else setDefaultPeriod(next)
+            }}
+          >
             {periods.map((p) => (
               <option key={p} value={p}>
                 {PERIOD_LABELS[p]}
@@ -693,8 +717,8 @@ export function BoardPeek({ slug, period }: { slug: LeaderboardGame; period: Lea
             {scope.id ? `${scope.nobody} is` : 'Nobody’s'} on it {copy.noun ? copy.phrase : 'yet'}.
           </p>
           <p className="gh-peek__empty-text">Any run takes first.</p>
-          {/* Early in a week or a month the board is bare: all time has the runs to aim at. */}
-          {period !== 'all' ? (
+          {/* Early in a week or a month the board is bare: all time has the runs to aim at (a daily has none). */}
+          {period !== 'all' && !daily ? (
             <button type="button" className="gh-peek__wider" onClick={() => setDefaultPeriod('all')}>
               Show all time
             </button>
@@ -715,7 +739,7 @@ export function BoardPeek({ slug, period }: { slug: LeaderboardGame; period: Lea
       )}
       {/* There while the board comes too, so nothing under it moves when it lands. */}
       {data.loading || data.field > 0 ? (
-        <a className="gh-peek__all" href={gameBoardHref(slug, period)}>
+        <a className="gh-peek__all" href={fullBoardHref(slug, period)}>
           Full board
           <ChevronDown />
         </a>

@@ -63,6 +63,24 @@ function standingWords(board: TodayBoard | null): string {
   return 'Nobody has run it yet: the first run sets the bar.'
 }
 
+/** Today's Gauntlet over Wobble Run's screen on its page (GameHubHero), where its card was: its number and name. */
+export function TodayName() {
+  const gauntlet = dailyGauntlet(useGauntletDay())
+  return (
+    <>
+      Today&rsquo;s Gauntlet #{gauntlet.n} · {gauntlet.name}
+    </>
+  )
+}
+
+/** Signed out, the run this device keeps today, under Play on Wobble Run's screen. */
+export function TodayKept() {
+  const day = useGauntletDay()
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
+  return kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null
+}
+
 /** Today's Gauntlet as a card: its rounds, that it counts, how the day stands, the clock to the next, Past gauntlets and Run. */
 export function TodaysGauntletCard() {
   const day = useGauntletDay()

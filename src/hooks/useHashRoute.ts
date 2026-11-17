@@ -265,6 +265,14 @@ export function gameBoardHref(
 }
 
 /**
+ * A board in full on its game's page (GameHubPage): a period's address; a daily's today at `/today`, since its page
+ * itself shows the top of today's board beside its records (B of the "Game page, simpler" canvas, 2026-11-17).
+ */
+export function fullBoardHref(game: LeaderboardGame, period: LeaderboardPeriod = defaultPeriod()) {
+  return isDailyGame(game) && boardPeriodFor(game, period) === 'daily' ? `/games/${gameAddress(game)}/today` : gameBoardHref(game, period)
+}
+
+/**
  * A daily's board on one past day, in full: how the day finished, the board its places counted from
  * (`/leaderboards/<game>/day/<YYYY-MM-DD>`). Today's is the live one, `gameBoardHref(game, 'daily')`.
  */
@@ -688,8 +696,8 @@ export function hrefForRoute(
       // month is a segment of its own (gameBoardHref).
       if (isDailyGame(route.slug)) {
         if (route.tab) return dailyTabHref(route.slug, route.tab)
-        return route.period && route.period !== 'daily' && isLeaderboardGame(route.slug)
-          ? gameBoardHref(route.slug, route.period)
+        return route.period && isLeaderboardGame(route.slug)
+          ? fullBoardHref(route.slug, route.period)
           : dailyTabHref(route.slug, 'today')
       }
       // The records in full keep a period of their own, all time unless asked (recordsHref).
@@ -996,6 +1004,10 @@ export function parseUrl(pathname: string, search: string): Route {
     }
     if (segment === 'records') {
       return isDailyGame(slug) ? { name: 'game', slug, tab: 'records' } : { name: 'game', slug, board: 'records' }
+    }
+    // A daily's board today in full (fullBoardHref): its page itself shows the top of it.
+    if (segment === 'today' && isDailyGame(slug)) {
+      return { name: 'game', slug, period: 'daily' }
     }
     if (segment && isLeaderboardPeriod(segment)) {
       return { name: 'game', slug, period: segment }

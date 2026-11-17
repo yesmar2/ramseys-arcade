@@ -116,6 +116,12 @@ function ShareDay({ plan, run, className }: { plan: DayPlan; run: DayRun; classN
   )
 }
 
+/** Today's Plates over Centroid's screen on its page (GameHubHero), where its card was. */
+export function TodayName() {
+  const { day } = useTodaysPlates()
+  return <>Today&rsquo;s Plates {dayTag(day)}</>
+}
+
 /** Today's Plates as a card: the day's plates, that it counts, how it stands, the clock to the next, Past days, and Play or Share. */
 export function TodaysPlatesCard() {
   const { day, plan, run, judged, board } = useTodaysPlates()
@@ -199,6 +205,8 @@ export function TodaysPlatesByPlate() {
             <YourRow key={i} name={`Plate ${i + 1}`} color={MARK_COLOUR[markFor(score)]} fill={score} value={`${formatPoints(score)} · ${(judged.offs[i]! * 100).toFixed(1)}% off`} />
           ))}
         </ul>
+        {/* Its share (it was on Today's card till 2026-11-17). */}
+        {run ? <ShareDay plan={plan} run={run} className="evp-btn evp-btn--small yd__go" /> : null}
         <p className="yd__foot">
           Your closest today: plate {best + 1}, {formatPoints(judged.scores[best]!)}. New plates come at midnight.
         </p>

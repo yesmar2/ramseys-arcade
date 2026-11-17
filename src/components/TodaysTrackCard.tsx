@@ -133,6 +133,25 @@ export function TodaysTrackCard() {
   )
 }
 
+/** Today's Track over Hot Lap's screen on its page (GameHubHero), where its card was: its number and name. */
+export function TodayName() {
+  const day = useTrackDay()
+  const track = useMemo(() => dailyTrack(day), [day])
+  return (
+    <>
+      Today&rsquo;s Track #{track.n} · {track.name}
+    </>
+  )
+}
+
+/** Signed out, the lap this device keeps today, under Play on Hot Lap's screen. */
+export function TodayKept() {
+  const day = useTrackDay()
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptLap(day, null) : null
+  return kept ? <DeviceRunNote time={formatLap(kept.time)} run="lap" /> : null
+}
+
 /** Today's Track in the home page's On now: the track's number and name, the clock, the day's board. */
 export function TodaysTrackOnNow() {
   const day = useTrackDay()

@@ -377,6 +377,108 @@ html[data-theme='light'] .gh-stage {
   justify-self: end;
 }
 
+/* A daily's today, over its name: "Today's Track #33 · Glacier Circuit". */
+.gh-stage__today {
+  min-height: 1.2em;
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--gh-accent) 62%, #ffffff);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* The clock, after the name: only on a phone (below). */
+.gh-stage__left {
+  display: none;
+}
+
+/* Its clock to the next, a pill along the top before How to play and share. */
+.gh-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 3.1rem;
+  box-sizing: border-box;
+  padding: 0 1.1rem 0 0.95rem;
+  border-radius: 999px;
+  background: rgba(6, 12, 16, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f3f7fa;
+  font-size: 0.92rem;
+  font-weight: 750;
+  white-space: nowrap;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.gh-clock svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  color: color-mix(in srgb, var(--gh-accent) 62%, #ffffff);
+}
+
+/* Its past courses beside Play: a pill light on the dark, as tall as Play. */
+.gh-past {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.6rem;
+  box-sizing: border-box;
+  padding: 0 1.3rem 0 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(6, 12, 16, 0.62);
+  color: #f3f7fa;
+  font-size: 1.02rem;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.gh-past svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: none;
+}
+
+.gh-past:hover,
+.gh-past:focus-visible {
+  border-color: color-mix(in srgb, var(--gh-accent) 70%, transparent);
+  background: rgba(6, 12, 16, 0.84);
+}
+
+/* A racing daily's run kept on this device, across under Play, light on the dark. */
+.gh-stage__kept {
+  display: contents;
+}
+
+.gh-stage__kept > * {
+  grid-column: 1 / -1;
+  max-width: 40rem;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.4;
+  color: rgba(231, 238, 243, 0.88);
+}
+
+.gh-stage__kept button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: color-mix(in srgb, var(--gh-accent) 62%, #ffffff);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .gh-play {
   display: inline-flex;
   align-items: center;
@@ -1226,6 +1328,40 @@ a.gh-rec__link:focus-visible {
     height: 3.3rem;
   }
 
+  /* A daily: the clock goes after its course's name, and Past keeps only its calendar, so Play has the row. */
+  .gh-clock {
+    display: none;
+  }
+
+  .gh-stage__left {
+    display: inline;
+  }
+
+  .gh-stage__today {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+  }
+
+  .gh-past {
+    flex: none;
+    width: 3.3rem;
+    min-height: 3.3rem;
+    padding: 0;
+  }
+
+  .gh-past__words {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .gh-stage__kept > * {
+    font-size: 0.82rem;
+  }
+
   .gh-stage .skin-chip {
     height: 2.75rem;
     padding-right: 0.8rem;
@@ -1272,9 +1408,9 @@ a.gh-rec__link:focus-visible {
   }
 }
 
-/* ---------- a daily's page: a shorter screen, its tabs (dailyTabs.css), and the Today tab ---------- */
+/* ---------- a daily's page: a shorter screen, then today ---------- */
 
-/* The screen keeps to one band, so the tabs under it are in view. */
+/* The screen keeps to one band, so today's board and records under it are in view. */
 .gh-stage.gh-stage--daily {
   min-height: clamp(22rem, 32vw, 30rem);
 }
@@ -1283,10 +1419,11 @@ a.gh-rec__link:focus-visible {
   font-size: clamp(2.8rem, 5vw, 4.6rem);
 }
 
+/* On a phone as tall as any game's: today's name over its own takes a line or two more. */
 @media (max-width: 40rem) {
   .gh-stage.gh-stage--daily {
     min-height: 0;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 5 / 6;
   }
 }
 

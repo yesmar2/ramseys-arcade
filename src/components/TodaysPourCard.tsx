@@ -119,6 +119,12 @@ function ShareDay({ plan, run, className }: { plan: DayPlan; run: DayRun; classN
   )
 }
 
+/** Today's Pour over Half Full's screen on its page (GameHubHero), where its card was. */
+export function TodayName() {
+  const { day } = useTodaysPour()
+  return <>Today&rsquo;s Pour {dayTag(day)}</>
+}
+
 /** Today's Pour as a card: the day's glasses, that it counts, how it stands, the clock to the next, Past days, and Pour or Share. */
 export function TodaysPourCard() {
   const { day, plan, run, judged, board } = useTodaysPour()
@@ -218,6 +224,8 @@ export function TodaysPourByGlass() {
             />
           ))}
         </ul>
+        {/* Its share (it was on Today's card till 2026-11-17). */}
+        {run ? <ShareDay plan={plan} run={run} className="evp-btn evp-btn--small yd__go" /> : null}
         <p className="yd__foot">
           Your closest today: {names[closest]}, {formatOff(results[closest]!.percent)} off half. New glasses come at midnight.
         </p>

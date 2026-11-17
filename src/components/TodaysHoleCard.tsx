@@ -113,6 +113,16 @@ function standing(progress: DayProgress | null, server: DailyServer | null): str
   return everyoneWords(server)
 }
 
+/** Today's Hole over Ace Chase's screen on its page (GameHubHero), where its card was: its number and name. */
+export function TodayName() {
+  const { hole } = useTodaysHole()
+  return (
+    <>
+      Today&rsquo;s Hole #{hole.n} · {hole.def.name}
+    </>
+  )
+}
+
 /** Today's Hole as a card: the hole, that it counts, how it's going, the clock to the next, Past holes, and Play or Share. */
 export function TodaysHoleCard() {
   const { hole, progress, server } = useTodaysHole()
@@ -198,7 +208,7 @@ function TryMarks({ pattern }: { pattern: string }) {
  * your own: a result from another device shows its tries.
  */
 export function TodaysHoleByTry() {
-  const { progress, server } = useTodaysHole()
+  const { hole, progress, server } = useTodaysHole()
   const href = gamePlayHref(SLUG)
   const result = dayResult(progress, server?.you)
   const inPlay = !result && progress && progress.tries > 0 ? patternOf(progress.shots) : null
@@ -215,7 +225,10 @@ export function TodaysHoleByTry() {
             <YourRow key={e.code} name={e.name} color={e.colour} fill={(100 * e.n) / pattern.length} value={String(e.n)} />
           ))}
         </ul>
-        {result ? null : (
+        {/* Done: its share, with the tries' pattern, which only a run here has (it was on Today's card till 2026-11-17). */}
+        {result?.pattern ? (
+          <ShareButton hole={hole} tries={result.tries} pattern={result.pattern} className="evp-btn evp-btn--small yd__go" />
+        ) : result ? null : (
           <a className="evp-btn evp-btn--small yd__go" href={href}>
             Carry on
           </a>

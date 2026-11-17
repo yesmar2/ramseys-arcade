@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { comingWords, deviceRequirementLabel, isComingSoon, isRankedGame, type Game } from '../data/games'
 import { gameHref, gamePlayHref } from '../hooks/useHashRoute'
@@ -9,13 +9,15 @@ import { inkOn, readableFill } from '../lib/color'
 import { dailyWords } from '../lib/dailyWords'
 import { hasDayPreview, hasGamePreview } from '../lib/gamePreviews'
 import { archiveDayWords } from '../lib/archive'
+import { msUntilNextHole } from '../lib/dailyHole'
 import { earlyFrom, earlyStage, launchDayOf } from '../lib/earlyAccess'
 import { useScope } from '../lib/groups'
 import type { LeaderboardEntry } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { boardDay } from '../lib/rankHow'
 import { ChaseButton } from './Chase'
-import { PlayIcon } from './chromeIcons'
+import { CalendarIcon, PlayIcon, TimerIcon } from './chromeIcons'
+import { EventCountdown } from './EventCountdown'
 import { GameHubHowTo } from './GameHubHowTo'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
@@ -51,19 +53,23 @@ const HUD_EDGES: Readonly<Partial<Record<string, { top?: boolean; low?: boolean 
  * "Phone or desk · Free to play". On a phone, once the page has scrolled past Play, Play follows along above the
  * tab bar.
  *
- * A daily's Play starts today's course, and its screen shows who is 1st today.
+ * A daily's Play starts today's course, and its screen shows who is 1st today; over its name, today's course by name,
+ * with the clock to the next along the top and its past courses beside Play (`today`), where its Today card was.
  */
 export function GameHubHero({
   game,
   accent,
   canPlay,
   highScore,
+  today,
 }: {
   game: Game
   accent: string
   canPlay: boolean
   /** The game's all-time best run, for its screen: null when nobody has one, undefined while it isn't known. */
   highScore: LeaderboardEntry | null | undefined
+  /** A daily's today: its course by name, a run kept on this device, its past courses, and a hunt place on its clock. */
+  today?: { name: ReactNode; kept: ReactNode; pastHref: string; pastLabel: string; clockHunt?: string }
 }) {
   const playHref = gamePlayHref(game.slug)
   // The boards' group, when they show one: the high score on the screen is then the group's.
@@ -179,6 +185,13 @@ export function GameHubHero({
             </p>
           ) : null}
           <span className="gh-stage__tools">
+            {/* A daily's clock to its next course, at midnight on the boards' clock, as every daily's is. */}
+            {today ? (
+              <span className="gh-clock" data-hunt={today.clockHunt}>
+                <TimerIcon />
+                <EventCountdown endsAt={Date.now() + msUntilNextHole()} />
+              </span>
+            ) : null}
             <GameHubHowTo game={game} className="gh-round" iconOnly />
             <ShareBoardButton
               className="gh-round gh-share"
@@ -193,6 +206,16 @@ export function GameHubHero({
         <div className="gh-stage__low">
           <div className="gh-stage__title">
             {kicker ? <span className="gh-stage__tag">{kicker}</span> : null}
+            {today?.name ? (
+              <p className="gh-stage__today">
+                {today.name}
+                {/* On a phone the clock is here, as the top row has no room for it. */}
+                <span className="gh-stage__left">
+                  {' · '}
+                  <EventCountdown endsAt={Date.now() + msUntilNextHole()} />
+                </span>
+              </p>
+            ) : null}
             <h1 id="gh-title" className="gh-stage__name">
               {game.name}
             </h1>
@@ -218,10 +241,20 @@ export function GameHubHero({
                   </a>
                   {/* A record to chase in the run, picked here and carried to the play page (lib/chase.ts). */}
                   <ChaseButton slug={game.slug} href={playHref} className="gh-round gh-chase" iconOnly />
+                  {/* A daily's past courses, to play again: "Past tracks". */}
+                  {today ? (
+                    <a className="gh-past" href={today.pastHref}>
+                      <CalendarIcon />
+                      {/* On a phone the words go, for Play's room: the calendar, named. */}
+                      <span className="gh-past__words">{today.pastLabel}</span>
+                    </a>
+                  ) : null}
                 </>
               )}
             </div>
           ) : null}
+          {/* A racing daily's run this device keeps signed out: on no board till a sign-in (TodaysCardParts DeviceRunNote). */}
+          {today?.kept ? <div className="gh-stage__kept">{today.kept}</div> : null}
           {!canPlay ? (
             <p className="gh-stage__hint">
               {game.comingSoon

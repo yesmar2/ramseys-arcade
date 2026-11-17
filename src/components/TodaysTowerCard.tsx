@@ -64,6 +64,24 @@ function standingWords(board: TodayBoard | null): string {
   return 'Nobody has climbed it yet: the first run sets the bar.'
 }
 
+/** Today's Tower over Sling's screen on its page (GameHubHero), where its card was: its number and name. */
+export function TodayName() {
+  const sling = slingDay(useTowerDay())
+  return (
+    <>
+      Today&rsquo;s Tower #{sling.n} · {sling.name}
+    </>
+  )
+}
+
+/** Signed out, the run this device keeps today, under Play on Sling's screen. */
+export function TodayKept() {
+  const day = useTowerDay()
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
+  return kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null
+}
+
 /** Today's Tower as a card: the tower, that it counts, how the day stands, the clock to the next, Past towers and Sling. */
 export function TodaysTowerCard() {
   const day = useTowerDay()

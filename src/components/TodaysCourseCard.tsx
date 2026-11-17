@@ -64,6 +64,24 @@ function standingWords(board: TodayBoard | null): string {
   return 'Nobody has rolled it yet: the first run sets the bar.'
 }
 
+/** Today's Course over Marble Run's screen on its page (GameHubHero), where its card was: its number and name. */
+export function TodayName() {
+  const marble = marbleDay(useCourseDay())
+  return (
+    <>
+      Today&rsquo;s Course #{marble.n} · {marble.name}
+    </>
+  )
+}
+
+/** Signed out, the run this device keeps today, under Play on Marble Run's screen. */
+export function TodayKept() {
+  const day = useCourseDay()
+  const viewer = useAccountId()
+  const kept = viewer === null ? keptRun(day, null) : null
+  return kept ? <DeviceRunNote time={formatRun(kept.time)} /> : null
+}
+
 /** Today's Course as a card: the course, that it counts, how the day stands, the clock to the next, Past courses and Roll. */
 export function TodaysCourseCard() {
   const day = useCourseDay()
