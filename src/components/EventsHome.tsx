@@ -1,42 +1,28 @@
-import type { CSSProperties, ReactNode } from 'react'
-import { rankHref, tournamentCreateHref, tournamentHref, tournamentPlayHref } from '../hooks/useHashRoute'
-import { inkOn, readableFill } from '../lib/color'
-import { useDefaultPeriod } from '../lib/defaultPeriod'
-import {
-  eventDay,
-  eventSpan,
-  gameList,
-  gameName,
-  ordinal,
-  standingsTable,
-  trophyField,
-  trophyGiven,
-  type ResultLine,
-  type SkipLesson,
-} from '../lib/eventPages'
+import { useId, useState, type CSSProperties, type ReactNode } from 'react'
+import { navigate, tournamentCreateHref } from '../hooks/useHashRoute'
+import { usePendingInvites } from '../hooks/usePendingInvites'
+import { eventSpan, ordinal, type ResultLine } from '../lib/eventPages'
+import { inviteTargetHref } from '../lib/invites'
 import { normalizePlayerName } from '../lib/leaderboard'
-import type { PlanLimits } from '../lib/plans'
 import {
   eventKind,
   formatEventCountdown,
   hasNoEnd,
   joinedRosterLabel,
   lobbyClosed,
-  type TournamentDetail,
   type TournamentSummary,
-  eventScoreText,
 } from '../lib/tournaments'
-import { EventArt, eventAccent } from './EventCard'
-import { EventScreen } from './EventScreen'
-import { PlayerAvatar } from './PlayerAvatar'
+import { CloseIcon, InviteIcon } from './chromeIcons'
+import { EventArt } from './EventCard'
+import { Panel, PanelHead } from './Panel'
+import { InfoIcon } from './pastIcons'
 import { openSiteMenu } from './siteNav'
 
-/* The events page's pieces: this week's Triple up top, today's event, last week's winner, your own, how it all works, and what has finished. */
-
-function accentStyle(games: string[]): CSSProperties {
-  const accent = eventAccent(games)
-  return { '--e': accent, '--e-ink': inkOn(accent), '--e-fill': readableFill(accent) } as CSSProperties
-}
+/*
+ * The events page as one list (Ramsey's pick A from the "Events page, calmer" canvas, 2026-11-17: "Build A",
+ * after "less wording ... the site is just too busy"): a heading with an ⓘ and New event, invites as rows,
+ * what's live, then what's done. How events work lives behind the ⓘ, not on the page.
+ */
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -116,13 +102,6 @@ const ThreeIcon = () => (
     <rect x="16" y="4" width="5" height="16" rx="1.5" />
   </Icon>
 )
-const MedalIcon = () => (
-  <Icon>
-    <path d="M8 3l4 6.2L16 3" />
-    <circle cx="12" cy="15" r="5.6" />
-    <path d="M10.9 13.6l1.3-1v5" />
-  </Icon>
-)
 const PlusIcon = () => (
   <Icon>
     <path d="M12 5v14" />
@@ -148,366 +127,164 @@ export function EventArtBox({ games, size }: { games: string[]; size: string }) 
   )
 }
 
-function triesWords(t: TournamentSummary): string {
-  const n = t.rules.maxAttempts
-  if (!n) return 'Unlimited tries'
-  return n === 1 ? 'One try a game' : `${n} tries a game`
+/** New event: the maker, or, with no session at all, the way in (a session whose account isn't known yet gets the maker). */
+function NewEvent({ signedOut }: { signedOut: boolean }) {
+  const inner = (
+    <>
+      <PlusIcon />
+      New<span className="evh-new__more"> event</span>
+    </>
+  )
+  return signedOut ? (
+    <button type="button" className="evp-btn evh-new" aria-label="New event" onClick={openSiteMenu}>
+      {inner}
+    </button>
+  ) : (
+    <a className="evp-btn evh-new" aria-label="New event" href={tournamentCreateHref()}>
+      {inner}
+    </a>
+  )
 }
 
-function playersWords(t: TournamentSummary): string {
-  if (t.playerCount === 0) return 'Nobody’s in yet'
-  return `${t.playerCount} ${t.playerCount === 1 ? 'player' : 'players'} in`
-}
-
-/** This week's Triple, with its games on their screens, ready to play. */
-export function WeeklyHero({ t, joined }: { t: TournamentSummary; joined: boolean }) {
-  const you = joined && t.yourPlace != null
+/** The page's heading: its name, the ⓘ for how events work, and New event. Also the day's Blip's hiding place here (bugHunt.ts events-how). */
+export function EventsHead({ signedOut, onHow }: { signedOut: boolean; onHow: () => void }) {
   return (
-    <section className="evp-hero evp-wash" style={accentStyle(t.games)} aria-labelledby="evp-weekly-title">
-      <div className="evp-hero__text">
-        <p className="evp-kick evp-kick--live">
-          <span className="evp-dot" aria-hidden="true" />
-          Live · The Weekly Triple · {eventSpan(t)}
-        </p>
-        <h1 id="evp-weekly-title" className="evp-hero__title">
-          {gameList(t.games)}
-        </h1>
-        <p className="evp-hero__lede">
-          Play all {t.games.length === 3 ? 'three' : t.games.length} by Sunday night. Do well on every one: the best
-          all-round player takes the week, and its trophy with {trophyField(t)} or more players.
-        </p>
-        <p className="evp-metas">
-          <span className="evp-meta">
-            <ClockIcon />
-            {formatEventCountdown(t.endsAt)}
-          </span>
-          <span className="evp-meta">
-            <PeopleIcon />
-            {playersWords(t)}
-          </span>
-          <span className="evp-meta">
-            <RepeatIcon />
-            {triesWords(t)}
-          </span>
-        </p>
-        {you ? (
-          <p className="evp-hero__you">
-            You’re <b>{ordinal(t.yourPlace!)}</b>.
-          </p>
-        ) : null}
-        <div className="evp-acts">
-          <a className="evp-btn" href={tournamentHref(t.id)}>
-            {joined ? 'Keep playing' : 'Join the Triple'}
-          </a>
-          <a className="evp-btn evp-btn--ghost" href={`${tournamentHref(t.id)}#evp-how`}>
-            How it works
-          </a>
-        </div>
-      </div>
-      <ul className="evp-hero__games" aria-label={`This week’s ${t.games.length} games`}>
-        {t.games.map((slug) => (
-          <li key={slug} className="evp-hero__game">
-            <EventScreen slug={slug} href={tournamentPlayHref(t.id, slug)} label={`Play ${gameName(slug)} for the Triple`} />
-            <span className="evp-hero__game-name">{gameName(slug)}</span>
-          </li>
-        ))}
-      </ul>
+    <div className="evh-head" data-hunt="events-how">
+      <h1 className="evh-title">Events</h1>
+      <button type="button" className="evh-info" aria-label="How events work" onClick={onHow}>
+        <InfoIcon />
+      </button>
+      <NewEvent signedOut={signedOut} />
+    </div>
+  )
+}
+
+/** Event invites waiting for you, a row each: what it is, who asked, Join or no. */
+export function EventInvites() {
+  const { invites, error, busyId, accept, decline } = usePendingInvites()
+  const rows = invites.filter((i) => i.kind === 'tournament')
+  if (rows.length === 0 && !error) return null
+  return (
+    <section className="evh-invites" aria-label="Event invites">
+      {error ? <p className="tour-note tour-note--error">{error}</p> : null}
+      {rows.length > 0 ? (
+        <ul className="evh-invites__list">
+          {rows.map((invite) => {
+            const busy = busyId === invite.id
+            return (
+              <li key={invite.id} className="evh-invite">
+                <span className="evh-invite__mark" aria-hidden="true">
+                  <InviteIcon />
+                </span>
+                <span className="evh-invite__text">
+                  <b>{invite.targetName}</b>
+                  {invite.fromName ? <span>from {invite.fromName}</span> : null}
+                </span>
+                <button
+                  type="button"
+                  className="evp-btn evp-btn--small"
+                  disabled={busy}
+                  onClick={() => {
+                    void accept(invite.id).then((result) => {
+                      if (result) navigate(inviteTargetHref(invite))
+                    })
+                  }}
+                >
+                  {busy ? '…' : 'Join'}
+                </button>
+                <button
+                  type="button"
+                  className="evh-invite__no"
+                  aria-label={`Decline ${invite.targetName}`}
+                  disabled={busy}
+                  onClick={() => void decline(invite.id)}
+                >
+                  <CloseIcon />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
     </section>
   )
 }
 
-/** Today's event: the game on a screen, the clock, and who leads. */
-export function DailyCard({ t }: { t: TournamentSummary }) {
-  const slug = t.games[0] ?? ''
-  const leader = t.podium?.[0]
-  return (
-    <section className="evp-card evp-daily" style={accentStyle(t.games)} aria-labelledby="evp-daily-title">
-      <div className="evp-daily__screen">
-        <EventScreen slug={slug} href={tournamentPlayHref(t.id, slug)} label={`Play today’s ${gameName(slug)}`} />
-        <span className="evp-tag evp-tag--today">
-          <span className="evp-dot" aria-hidden="true" />
-          Today
-        </span>
-      </div>
-      <div className="evp-daily__text">
-        <h2 id="evp-daily-title" className="evp-card__title">
-          {t.title}
-        </h2>
-        <p className="evp-card__copy">
-          The best score by midnight takes the day, and a trophy with {trophyField(t)} or more players.{' '}
-          {leader
-            ? `${leader.name} leads${leader.score != null ? ` with ${leader.score.toLocaleString()}` : ''}.`
-            : 'Nobody has played yet, so any run leads.'}
-        </p>
-      </div>
-      <div className="evp-daily__foot">
-        <span className="evp-meta">
-          <ClockIcon />
-          {formatEventCountdown(t.endsAt)}
-        </span>
-        <a className="evp-btn evp-btn--small" href={tournamentPlayHref(t.id, slug)}>
-          Play {gameName(slug)}
-        </a>
-      </div>
-    </section>
-  )
+type Lead = { text: string; tone: 'p1' | 'p2' | 'p3' | 'place' | 'go' | 'quiet' }
+
+function clockWords(t: TournamentSummary): string {
+  return hasNoEnd(t) ? 'Until everyone finishes' : formatEventCountdown(t.endsAt)
 }
 
-/** Today's One Shot: its game on a screen, one try each, the clock, and who leads. */
-export function OneShotCard({ t }: { t: TournamentSummary }) {
-  const slug = t.games[0] ?? ''
-  const leader = t.podium?.[0]
-  // Placed means the try is taken: the standings are where to go next.
-  const placed = t.yourPlace != null
-  const href = placed ? tournamentHref(t.id) : tournamentPlayHref(t.id, slug)
-  return (
-    <section className="evp-card evp-daily evp-oneshot" style={accentStyle(t.games)} aria-labelledby="evp-oneshot-title">
-      <div className="evp-daily__screen">
-        <EventScreen slug={slug} href={href} label={placed ? `The One Shot’s standings` : `Take your One Shot at ${gameName(slug)}`} />
-        <span className="evp-tag evp-tag--today">
-          <span className="evp-dot" aria-hidden="true" />
-          One try
-        </span>
-      </div>
-      <div className="evp-daily__text">
-        <h2 id="evp-oneshot-title" className="evp-card__title">
-          {t.title}
-        </h2>
-        <p className="evp-card__copy">
-          One try each, and it counts the moment you start.{' '}
-          {placed
-            ? `Yours placed ${ordinal(t.yourPlace!)}.`
-            : leader
-              ? `${leader.name} leads${leader.score != null ? ` with ${leader.score.toLocaleString()}` : ''}.`
-              : 'Nobody has taken theirs yet.'}
-        </p>
-      </div>
-      <div className="evp-daily__foot">
-        <span className="evp-meta">
-          <ClockIcon />
-          {formatEventCountdown(t.endsAt)}
-        </span>
-        <a className="evp-btn evp-btn--small" href={href}>
-          {placed ? 'Standings' : 'Take your shot'}
-        </a>
-      </div>
-    </section>
-  )
+/** A live event's one line: where you stand (or what's yours to do) first, then the clock. */
+function liveLine(t: TournamentSummary, me: string, joined: boolean): { lead: Lead | null; rest: string } {
+  if (eventKind(t) === 'bracket') {
+    if (t.status === 'upcoming') return { lead: { text: 'Filling', tone: 'quiet' }, rest: `${joinedRosterLabel(t)} in` }
+    const round = t.nextDeadlineAt != null && t.nextDeadlineAt > 0 ? formatEventCountdown(t.nextDeadlineAt) : ''
+    const match = me ? (t.openMatches ?? []).find((m) => normalizePlayerName(m.a) === me || normalizePlayerName(m.b) === me) : null
+    if (match) {
+      const other = normalizePlayerName(match.a) === me ? match.b : match.a
+      return { lead: { text: `vs ${other}`, tone: 'go' }, rest: round }
+    }
+    return { lead: null, rest: round ? `Bracket · ${round}` : 'Bracket' }
+  }
+  if (t.status === 'upcoming') return { lead: null, rest: `Starts in ${formatEventCountdown(t.startsAt).replace(/ left$/, '')}` }
+  const place = t.yourPlace
+  if (place != null) {
+    const tone = place === 1 ? 'p1' : place === 2 ? 'p2' : place === 3 ? 'p3' : 'place'
+    return { lead: { text: ordinal(place), tone }, rest: clockWords(t) }
+  }
+  if (joined) return { lead: { text: 'Not played', tone: 'go' }, rest: clockWords(t) }
+  return { lead: null, rest: `${t.playerCount} in · ${clockWords(t)}` }
 }
 
-/** Last week's Triple: who won it, the podium, and the lesson it left. */
-export function LastWeekCard({
-  t,
-  detail,
-  lesson,
+/** What's on: a row each, its art, its name, and one line. */
+export function LiveList({
+  events,
   me,
-}: {
-  t: TournamentSummary
-  detail: TournamentDetail | null
-  lesson: SkipLesson | null
-  me: string
-}) {
-  const winner = t.winner ?? t.podium?.[0]?.name ?? ''
-  const mine = Boolean(me) && normalizePlayerName(winner) === normalizePlayerName(me)
-  const avatars = new Map((detail ? standingsTable(detail, '') : []).map((r) => [r.name, r.avatarId]))
-  // Whether the week's trophy was given (lib/eventPages trophyGiven): known once its standings have come.
-  const trophy = detail && detail.id === t.id ? trophyGiven(detail) : null
-  const podium = (t.podium ?? []).slice(0, 3)
-  const order = [podium[1], podium[0], podium[2]].filter(Boolean)
-  // A player's card opens at the period you picked.
-  const period = useDefaultPeriod()
-  return (
-    <section className="evp-card evp-last" style={accentStyle(t.games)} aria-labelledby="evp-last-title">
-      <div className="evp-last__head">
-        <span className="evp-trophy" aria-hidden="true">
-          <TrophyIcon />
-        </span>
-        <div>
-          <h2 id="evp-last-title" className="evp-card__title">
-            {mine ? 'You won last week’s Triple' : `${winner} won last week’s Triple`}
-          </h2>
-          <p className="evp-card__copy">
-            {gameList(t.games)}
-            {mine && trophy
-              ? '. The trophy is on your player card.'
-              : mine && trophy === false
-                ? `. No trophy this time: it takes ${trophyField(t)} or more players.`
-                : `, from ${t.playerCount} players.`}
-          </p>
-        </div>
-      </div>
-      {order.length ? (
-        <ol className="evp-podium evp-podium--small" aria-label="Podium">
-          {order.map((p) => (
-            <li key={p!.name} className={`evp-podium__step evp-podium__step--${p!.place}`}>
-              <a className="evp-podium__who" href={rankHref(p!.name, period)}>
-                <PlayerAvatar name={p!.name} avatarId={avatars.get(normalizePlayerName(p!.name))} size="md" />
-                <span className="evp-podium__name">{p!.name}</span>
-                {/* A one-game event's score; an all-round one's podium is names and places. */}
-                {p!.score != null ? <span className="evp-podium__pts">{eventScoreText(t.games, p!.score)}</span> : null}
-              </a>
-              <span className="evp-podium__block">{ordinal(p!.place)}</span>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      {lesson ? (
-        <p className="evp-lesson">
-          <b>Every game counts.</b> {lesson.name} won {lesson.won.length === 1 ? gameName(lesson.won[0]) : `${lesson.won.length} of the ${t.games.length} games`}{' '}
-          and finished {ordinal(lesson.place)}, with nothing from {gameList(lesson.skipped)}.
-        </p>
-      ) : null}
-      <a className="evp-more" href={tournamentHref(t.id)}>
-        Final standings
-        <ChevronIcon />
-      </a>
-    </section>
-  )
-}
-
-/** Making your own: what it is, a way to start one, and the ones you already have. */
-export function OwnEventsCard({
-  signedIn,
-  signedOut,
-  mine,
-  limits,
+  isJoined,
   linkFor,
 }: {
-  signedIn: boolean
-  /** No session at all: a session whose account isn't known yet gets the way in, never Sign in. */
-  signedOut: boolean
-  mine: TournamentSummary[]
-  limits: PlanLimits
+  events: TournamentSummary[]
+  me: string
+  isJoined: (t: TournamentSummary) => boolean
   linkFor: (t: TournamentSummary) => string
 }) {
   return (
-    <section className="evp-card evp-own" aria-labelledby="evp-own-title">
-      <span className="evp-own__mark" aria-hidden="true">
-        <PeopleIcon />
-      </span>
-      <div className="evp-own__text">
-        <h2 id="evp-own-title" className="evp-card__title">
-          Run your own
-        </h2>
-        <p className="evp-card__copy">
-          Pick up to five games, top scores or a bracket, and invite friends by their tag. Only the people you invite can
-          see it.
-        </p>
-      </div>
-      <ul className="evp-own__list">
-        <li>
-          <ListIcon />
-          Top scores: everyone posts runs, the best wins
-        </li>
-        <li>
-          <BracketIcon />
-          Bracket: head to head, a round at a time
-        </li>
-        <li>
-          <LockIcon />
-          Invite only, for an hour or a week
-        </li>
-      </ul>
-      {signedOut ? (
-        <button type="button" className="evp-btn evp-btn--ink" onClick={openSiteMenu}>
-          Sign in to make one
-        </button>
-      ) : (
-        <a className="evp-btn evp-btn--ink" href={tournamentCreateHref()}>
-          <PlusIcon />
-          Create an event
-        </a>
-      )}
-      {signedIn ? (
-        <div className="evp-own__yours">
-          <p className="evp-cap">Yours</p>
-          {mine.length ? (
-            <ul className="evp-own__events">
-              {mine.slice(0, 4).map((t) => (
-                <li key={t.id}>
-                  <a className="evp-own__event" href={linkFor(t)}>
-                    <EventArtBox games={t.games} size="2.4rem" />
-                    <span className="evp-own__event-text">
-                      <span className="evp-own__event-title">{t.title}</span>
-                      <span className="evp-own__event-sub">{ownStatus(t)}</span>
-                    </span>
-                    <ChevronIcon />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="evp-card__copy">
-              Nothing running. Free accounts run {limits.activeEvents === 1 ? 'one event' : `${limits.activeEvents} events`} at a
-              time, for up to {limits.maxDraw} players.
-            </p>
-          )}
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
-function ownStatus(t: TournamentSummary): string {
-  if (lobbyClosed(t)) return `Didn’t fill: ${joinedRosterLabel(t)} joined`
-  if (t.status === 'ended') return t.winner ? `${t.winner} won` : 'Ended'
-  if (eventKind(t) === 'bracket' && t.status === 'upcoming') {
-    const cap = t.rules.maxPlayers ?? 0
-    return cap ? `${t.playerCount} of ${cap} seats taken` : 'Filling'
-  }
-  if (hasNoEnd(t)) return `${t.playerCount} in · until everyone finishes`
-  return `${t.playerCount} in · ${formatEventCountdown(t.endsAt)}`
-}
-
-/*
- * The arcade's own events, while they run (the API's siteEvents.ts), then your own, and what a win takes:
- * a trophy needs a field to beat (the API's TROPHY_FIELD_OFFICIAL and TROPHY_FIELD_HOSTED).
- */
-const HOW_SITE: [() => ReactNode, string, string][] = [
-  [SunIcon, 'Today’s event', 'One game, all day. The best score by midnight takes it.'],
-  [OneIcon, 'The One Shot', 'Another game, one try each, all day. It counts the moment you start.'],
-  [ThreeIcon, 'The Weekly Triple', 'Three games, Monday to Sunday. Do well on all three to win.'],
-]
-const HOW_OWN: [() => ReactNode, string, string][] = [
-  [LockIcon, 'Your own', 'Invite only. Top scores or a bracket, for an hour or a week.'],
-]
-
-export function HowEventsWork({ siteEvents = true }: { siteEvents?: boolean } = {}) {
-  const how: [() => ReactNode, string, string][] = [
-    ...(siteEvents ? HOW_SITE : []),
-    ...HOW_OWN,
-    [
-      MedalIcon,
-      'Trophies',
-      siteEvents
-        ? 'Win an event and its trophy goes on your player card: against two or more in your own, four or more in the arcade’s.'
-        : 'Win an event against two or more players and its trophy goes on your player card.',
-    ],
-  ]
-  return (
-    <section className="evp-card evp-how-all" aria-labelledby="evp-how-all-title" data-hunt="events-how">
-      <h2 id="evp-how-all-title" className="evp-card__title">
-        How events work
+    <section className="evh-section" aria-labelledby="evh-live">
+      <h2 id="evh-live" className="evh-label">
+        Live <span className="evh-count">{events.length}</span>
       </h2>
-      <ul className="evp-how-all__list">
-        {how.map(([IconFor, title, text]) => (
-          <li key={title}>
-            <span className="evp-how-all__mark" aria-hidden="true">
-              <IconFor />
-            </span>
-            <span className="evp-how-all__text">
-              <b>{title}</b>
-              <span>{text}</span>
-            </span>
-          </li>
-        ))}
+      <ul className="evp-card evh-rows">
+        {events.map((t) => {
+          const { lead, rest } = liveLine(t, me, isJoined(t))
+          return (
+            <li key={t.id}>
+              <a className="evh-row" href={linkFor(t)}>
+                <EventArtBox games={t.games} size="3.4rem" />
+                <span className="evh-row__text">
+                  <span className="evh-row__name">{t.title}</span>
+                  <span className="evh-row__sub">
+                    {lead ? <b className={`evh-lead evh-lead--${lead.tone}`}>{lead.text}</b> : null}
+                    {lead && rest ? ' · ' : null}
+                    {rest}
+                  </span>
+                </span>
+                <ChevronIcon />
+              </a>
+            </li>
+          )
+        })}
       </ul>
     </section>
   )
 }
 
-/** Finished events: the ones people played, a row each; the ones nobody did, together. */
-export function ResultsList({
+/** How many finished events show before "Show more". */
+const DONE_SHOWN = 5
+
+/** Finished events: a row each with who won; the ones nobody played gathered into one quiet row. */
+export function DoneList({
   lines,
   me,
   linkFor,
@@ -516,71 +293,136 @@ export function ResultsList({
   me: string
   linkFor: (t: TournamentSummary) => string
 }) {
+  const [all, setAll] = useState(false)
   const you = normalizePlayerName(me)
+  const shown = all ? lines : lines.slice(0, DONE_SHOWN)
+  const more = lines.length - shown.length
   return (
-    <section className="evp-results" aria-labelledby="evp-results-title">
-      <h2 id="evp-results-title" className="evp-section-title">
-        Results
+    <section className="evh-section" aria-labelledby="evh-done">
+      <h2 id="evh-done" className="evh-label">
+        Done
       </h2>
-      <ul className="evp-card evp-results__list">
-        {lines.map((line) => {
+      <ul className="evp-card evh-rows evh-rows--done">
+        {shown.map((line) => {
           if (line.kind === 'quiet') {
             const games = [...new Set(line.events.flatMap((t) => t.games))].slice(0, 3)
             return (
-              <li key="quiet" className="evp-result evp-result--quiet">
-                <EventArtBox games={games} size="2.6rem" />
-                <span className="evp-result__text">
-                  <span className="evp-result__title">
-                    {line.events.length === 1
-                      ? `${line.events[0].title}: nobody played`
-                      : `${line.events.length} events nobody played`}
+              <li key="quiet" className="evh-row evh-row--quiet">
+                <EventArtBox games={games} size="3.4rem" />
+                <span className="evh-row__text">
+                  <span className="evh-row__name">
+                    {line.events.length === 1 ? line.events[0].title : `${line.events.length} events`}
                   </span>
-                  <span className="evp-result__sub">
-                    {line.events
-                      .slice(0, 4)
-                      .map((t) => `${t.games.map(gameName).join(', ')} on ${eventDay(t)}`)
-                      .join(' · ')}
-                  </span>
+                  <span className="evh-row__sub">Nobody played</span>
                 </span>
               </li>
             )
           }
           const t = line.t
           const winner = t.winner ?? t.podium?.[0]?.name ?? null
-          const top = t.podium?.[0]
           const mine = Boolean(you) && winner != null && normalizePlayerName(winner) === you
-          const placed = !mine && t.yourPlace != null ? `You ${ordinal(t.yourPlace)}` : null
           return (
             <li key={t.id}>
-              <a className="evp-result" href={linkFor(t)}>
-                <EventArtBox games={t.games} size="2.6rem" />
-                <span className="evp-result__text">
-                  <span className="evp-result__title">{t.title}</span>
-                  <span className="evp-result__sub">
-                    {lobbyClosed(t) ? (
-                      `${eventSpan(t)} · ${joinedRosterLabel(t)} joined · didn’t fill`
-                    ) : (
-                      <>
-                        {eventSpan(t)} · {t.playerCount} played
-                        {placed ? ` · ${placed}` : ''}
-                      </>
-                    )}
-                  </span>
+              <a className="evh-row" href={linkFor(t)}>
+                <EventArtBox games={t.games} size="3.4rem" />
+                <span className="evh-row__text">
+                  <span className="evh-row__name">{t.title}</span>
+                  <span className="evh-row__sub">{eventSpan(t)}</span>
                 </span>
-                {mine ? <span className="evp-won">You won</span> : null}
-                {winner ? (
-                  <span className="evp-result__winner">
+                {lobbyClosed(t) ? (
+                  <span className="evh-row__end">Didn’t fill</span>
+                ) : mine ? (
+                  <span className="evh-won">
                     <TrophyIcon />
-                    <b>{winner}</b>
-                    {/* A one-game event's winning score; an all-round one's winner is enough. */}
-                    {top?.score != null ? <span className="evp-result__score">{eventScoreText(t.games, top.score)}</span> : null}
+                    You won
                   </span>
-                ) : null}
+                ) : winner ? (
+                  <span className="evh-winner">
+                    <TrophyIcon />
+                    {winner}
+                  </span>
+                ) : (
+                  <span className="evh-row__end">No winner</span>
+                )}
+                <ChevronIcon />
               </a>
             </li>
           )
         })}
       </ul>
+      {more > 0 ? (
+        <button type="button" className="evh-more" onClick={() => setAll(true)}>
+          Show {more} more
+        </button>
+      ) : null}
     </section>
+  )
+}
+
+/** Nothing on for you: three games fanned out, three words, and the way to make one. */
+export function EventsEmpty({ signedOut }: { signedOut: boolean }) {
+  return (
+    <section className="evp-card evh-empty" aria-labelledby="evh-empty-title">
+      <span className="evh-fan" aria-hidden="true">
+        <span className="evh-fan__card evh-fan__card--l">
+          <EventArtBox games={['snake']} size="6.5rem" />
+        </span>
+        <span className="evh-fan__card evh-fan__card--r">
+          <EventArtBox games={['frenzy']} size="6.5rem" />
+        </span>
+        <span className="evh-fan__card evh-fan__card--m">
+          <EventArtBox games={['pop']} size="7rem" />
+        </span>
+      </span>
+      <h2 id="evh-empty-title" className="evh-empty__title">
+        Play your friends
+      </h2>
+      <NewEvent signedOut={signedOut} />
+    </section>
+  )
+}
+
+/*
+ * How events work, from the ⓘ: a line each, a few words apiece. The arcade's own events join in while they run
+ * (the API's siteEvents.ts), and a trophy needs a field to beat (the API's TROPHY_FIELD_OFFICIAL and
+ * TROPHY_FIELD_HOSTED: 5 and 3 players).
+ */
+export function HowEventsModal({ siteEvents, onClose }: { siteEvents: boolean; onClose: () => void }) {
+  const titleId = useId()
+  const lines: [string, ReactNode, string][] = [
+    ...(siteEvents
+      ? ([
+          ['Today’s event', <SunIcon key="sun" />, 'One game, all day'],
+          ['One Shot', <OneIcon key="one" />, 'One try each'],
+          ['Weekly Triple', <ThreeIcon key="three" />, 'Three games, all week'],
+        ] as [string, ReactNode, string][])
+      : []),
+    ['Top scores', <ListIcon key="list" />, 'Best run wins'],
+    ['Bracket', <BracketIcon key="bracket" />, 'Head to head, round by round'],
+    ['Invite only', <LockIcon key="lock" />, 'Only people you invite see it'],
+    ['Trophy', <TrophyIcon key="trophy" />, siteEvents ? 'Beat 2 or more in yours, 4 or more in the arcade’s' : 'Beat 2 or more players'],
+  ]
+  return (
+    <Panel labelledBy={titleId} onClose={onClose} className="evh-how">
+      <PanelHead titleId={titleId} title="How events work" icon={<InfoIcon />} onClose={onClose} />
+      <div className="panel__body">
+        <ul className="evh-how__lines">
+          {lines.map(([title, icon, text]) => (
+            <li key={title} className="evh-how__line">
+              <span className={`evh-how__mark${title === 'Trophy' ? ' evh-how__mark--gold' : ''}`}>{icon}</span>
+              <span className="evh-how__text">
+                <b>{title}</b>
+                <span>{text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="panel__actions">
+        <button type="button" className="panel__btn" onClick={onClose}>
+          Got it
+        </button>
+      </div>
+    </Panel>
   )
 }

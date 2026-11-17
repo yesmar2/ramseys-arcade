@@ -182,10 +182,11 @@ const SITE_ANCHORS: HuntAnchor[] = ([
     lesson: 'Latest in ink is the newest names written into any record book.',
   },
   {
+    // How events work went behind the page's ⓘ (2026-11-17); its place in the list is the Events heading now.
     id: 'events-how',
     page: 'on the Events page',
-    thing: 'How events work',
-    lesson: 'Events are tournaments: today’s event, the Weekly Triple, and ones you make for friends. The winner’s cup stays on their shelf.',
+    thing: 'the Events heading',
+    lesson: 'Events are tournaments you make for friends: top scores or a bracket. The winner’s cup stays on their shelf.',
   },
   { id: 'groups-start', page: 'on the Groups page', thing: 'the card for starting a group', lesson: GROUPS_LESSON },
   {

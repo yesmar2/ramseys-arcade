@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { BracketWinCelebration } from '../components/BracketWinCelebration'
 import { EventBracket } from '../components/EventBracket'
-import { EventArt, EventKicker, EventLiveCard, eventAccent, eventPhase } from '../components/EventCard'
+import { EventKicker, eventAccent } from '../components/EventCard'
 import { EventClock } from '../components/EventClock'
 import {
   EventGames,
@@ -15,20 +15,11 @@ import {
   WinnerCard,
   type GameCardState,
 } from '../components/EventDetail'
-import {
-  DailyCard,
-  HowEventsWork,
-  LastWeekCard,
-  OneShotCard,
-  OwnEventsCard,
-  ResultsList,
-  WeeklyHero,
-} from '../components/EventsHome'
+import { DoneList, EventInvites, EventsEmpty, EventsHead, HowEventsModal, LiveList } from '../components/EventsHome'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { ListRow, ListSplit } from '../components/ListRow'
 import { PageBanner } from '../components/PageBanner'
 import { PageShell } from '../components/PageShell'
-import { PendingInvitesStrip } from '../components/PendingInvitesStrip'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 import { PushAsk } from '../components/PushAsk'
 import { ShareBoardButton } from '../components/ShareBoardButton'
@@ -40,7 +31,6 @@ import { useLiveEvents } from '../hooks/useLiveEvents'
 import { usePlayerName } from '../hooks/usePlayerName'
 import {
   rankHref,
-  tournamentCreateHref,
   tournamentHref,
   tournamentPlayHref,
   tournamentsHref,
@@ -799,27 +789,26 @@ function SingleStandings({ detail, displayName }: { detail: TournamentDetail; di
 /* List page                                                               */
 /* ====================================================================== */
 
-/**
- * The events page. This week's Triple leads, its games ready to play; then
- * today's event, last week's winner and the lesson that week left, and your
- * own events; how events work; and the results, with the ones nobody played
- * gathered into a line.
- */
-/** The banner's picture: the games of the events listed, or, with none to show, a few that make good events. */
-function bannerGames(items: TournamentSummary[]): string[] {
-  const games = [...new Set(items.flatMap((t) => t.games))].slice(0, 4)
-  return games.length ? games : ['snake', 'pop', 'putt', 'crosswalk']
+/** When a live event next wants something: a bracket's round, else its end; one still filling or yet to start goes last. */
+function liveOrder(t: TournamentSummary): number {
+  if (t.status === 'upcoming') return Number.MAX_SAFE_INTEGER
+  if (eventKind(t) === 'bracket' && t.nextDeadlineAt != null && t.nextDeadlineAt > 0) return t.nextDeadlineAt
+  return hasNoEnd(t) ? Number.MAX_SAFE_INTEGER - 1 : t.endsAt
 }
 
+/**
+ * The events page, as one list (EventsHome.tsx): the heading with its ⓘ and New event, invites, what's live
+ * (the arcade's own events while they run, then yours), and what's done. With nothing live, a card to make one.
+ */
 export function TournamentsPage() {
-  const { account, limits, signedOut } = useAuth()
+  const { account, signedOut } = useAuth()
   const playerName = usePlayerName()
   const me = normalizePlayerName(playerName || getLastPlayerName())
   const [items, setItems] = useState<TournamentSummary[]>([])
   const [mine, setMine] = useState<TournamentSummary[]>([])
-  const [lastDetail, setLastDetail] = useState<TournamentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [how, setHow] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -849,25 +838,8 @@ export function TournamentsPage() {
   }, [me, account])
 
   const lineup = useMemo(() => eventsLineup(items), [items])
-  const lastId = lineup.lastWeekly?.id ?? null
   // The arcade's own events are listed only while they run (the API's siteEvents.ts): none listed, they're paused.
   const siteEvents = items.some((t) => t.official)
-
-  // Last week's standings, for the podium's faces and the lesson the week left.
-  useEffect(() => {
-    if (!lastId) return
-    let cancelled = false
-    getTournament(lastId)
-      .then((d) => {
-        if (!cancelled) setLastDetail(d)
-      })
-      .catch(() => {
-        /* the card reads fine without it */
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [lastId])
 
   // Server roster membership first; local join memory / score place as fallback.
   const joinedIds = new Set(getJoinedTournamentIds())
@@ -880,85 +852,39 @@ export function TournamentsPage() {
       (a, b) => b.endsAt - a.endsAt,
     ),
   )
-  const others = lineup.others.filter((t) => !mine.some((m) => m.id === t.id))
-  const lesson = lastDetail && lastDetail.id === lastId ? skipLesson(lastDetail) : null
+  // The arcade's own first while they run, then the rest, each once, soonest due first.
+  const live = [
+    ...new Map(
+      [lineup.weekly, lineup.daily, lineup.oneShot, ...lineup.others, ...mine.filter((t) => t.status !== 'ended')]
+        .filter((t): t is TournamentSummary => t != null)
+        .map((t) => [t.id, t]),
+    ).values(),
+  ].sort((a, b) => Number(b.official) - Number(a.official) || liveOrder(a) - liveOrder(b))
 
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
-      <div className="evp">
+      <div className="evp evh">
+        <EventsHead signedOut={signedOut} onHow={() => setHow(true)} />
         {loading ? (
-          <div className="evp-loading" aria-busy="true">
-            <span className="evp-loading__hero" />
-            <span className="evp-loading__row">
-              <span />
-              <span />
-              <span />
-            </span>
+          <div className="evp-card evh-skel" aria-busy="true" aria-label="Loading events">
+            <span />
+            <span />
+            <span />
           </div>
         ) : error ? (
-          <>
-            <PageBanner ariaLabel="Events" title="Events" blurb="Events you run for your friends, and the ones you’re invited to." />
-            <p className="lb-empty">Couldn’t load events. Check your connection and try again.</p>
-          </>
+          <p className="lb-empty">Couldn’t load events. Check your connection and try again.</p>
         ) : (
           <>
-            {lineup.weekly ? (
-              <WeeklyHero t={lineup.weekly} joined={isJoined(lineup.weekly)} />
+            <EventInvites />
+            {live.length > 0 ? (
+              <LiveList events={live} me={me} isJoined={isJoined} linkFor={linkFor} />
             ) : (
-              <PageBanner
-                ariaLabel="Events"
-                title="Events"
-                blurb={
-                  siteEvents
-                    ? 'Today’s event, a One Shot, a Weekly Triple, and events you make for your friends. Join one, post a score, and see where you land.'
-                    : 'Run an event for your friends, your family or the group chat: top scores over an hour or a week, or a bracket. Only the people you invite can see it. The day’s games are on the Dailies.'
-                }
-                actions={
-                  account ? (
-                    <a className="home-banner__cta" href={tournamentCreateHref()}>
-                      Create an event
-                    </a>
-                  ) : undefined
-                }
-                art={<EventArt games={bannerGames(items)} />}
-              />
+              <EventsEmpty signedOut={signedOut} />
             )}
-
-            <PendingInvitesStrip kind="tournament" />
-
-            {/*
-             * The arcade's own events, while they run (the API's siteEvents.ts), then your own. The day's dailies
-             * aren't repeated here: they have the Dailies page, and they made this page seven screens long on a phone.
-             */}
-            <div className="evp-trio">
-              {lineup.daily ? <DailyCard t={lineup.daily} /> : null}
-              {lineup.oneShot ? <OneShotCard t={lineup.oneShot} /> : null}
-              {lineup.lastWeekly ? (
-                <LastWeekCard t={lineup.lastWeekly} detail={lastDetail} lesson={lesson} me={me} />
-              ) : null}
-              <OwnEventsCard signedIn={Boolean(account)} signedOut={signedOut} mine={mine} limits={limits} linkFor={linkFor} />
-            </div>
-
-            {others.length > 0 ? (
-              <section className="evl evp-others" aria-labelledby="evp-others-title">
-                <h2 id="evp-others-title" className="evp-section-title">
-                  {others.some((t) => eventPhase(t) === 'live') ? 'Also on' : 'Coming up'}
-                </h2>
-                <ul className="evl__grid">
-                  {others.map((t) => (
-                    <li key={t.id}>
-                      <EventLiveCard t={t} href={linkFor(t)} joined={isJoined(t)} />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            <HowEventsWork siteEvents={siteEvents} />
-
-            {results.length > 0 ? <ResultsList lines={results} me={me} linkFor={linkFor} /> : null}
+            {results.length > 0 ? <DoneList lines={results} me={me} linkFor={linkFor} /> : null}
           </>
         )}
+        {how ? <HowEventsModal siteEvents={siteEvents} onClose={() => setHow(false)} /> : null}
       </div>
     </PageShell>
   )
