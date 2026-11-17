@@ -20,8 +20,10 @@ import {
   recordBrief,
   recordGap,
   recordGroups,
+  recordKind,
   recordValue,
   type RecordGroup,
+  type RecordKind,
 } from '../lib/recordBook'
 import type { RecordSummary } from '../lib/records'
 import { ordinal } from '../lib/scoreboard'
@@ -416,6 +418,104 @@ function ListSkeleton({ shape, anon }: { shape: Shape; anon: boolean }) {
         </div>
       ))}
     </div>
+  )
+}
+
+/** How many records a game's page shows beside its board (RecordsPeek). */
+const PEEK_RECORDS = 3
+
+/** The game's own feats first, then its clock, then the streaks every book has. */
+const PEEK_ORDER: readonly RecordKind[] = ['run', 'clock', 'streaks', 'course']
+
+/** The records beside the board: held ones before open ones, each in PEEK_ORDER. */
+function peekRecords(records: RecordSummary[]): RecordSummary[] {
+  const byKind = (held: boolean) => PEEK_ORDER.flatMap((kind) => records.filter((r) => recordKind(r) === kind && Boolean(r.top) === held))
+  return [...byKind(true), ...byKind(false)].slice(0, PEEK_RECORDS)
+}
+
+/**
+ * A few of a game's records, beside its board on its page (B of the "Game page, simpler" canvas; Ramsey,
+ * 2026-11-17: "Build B"): each its name, its number and who holds it, yours in gold; then the rest a tap away, at
+ * the records' own address (GameHubPage). All time, as the records open.
+ */
+export function RecordsPeek({ game }: { game: string }) {
+  const you = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
+  const data = useRecordBook(game, 'all', you, groupId)
+  const held = useHeldHeight<HTMLElement>(`records-peek-${game}`, data.loading)
+  const meta = getGame(game)
+  if (!meta) return null
+  const accent = resolveGameAccent(game, meta.accent)
+  const records = bookRecords(game, data.records)
+  const shown = peekRecords(records)
+  const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
+  return (
+    <section
+      ref={held.ref}
+      className="gh-card gh-peek gh-peek--records sb-scope"
+      style={{ '--gb-accent': accent, '--gb-accent-ink': inkOn(accent), ...held.style } as CSSProperties}
+      aria-labelledby="gh-peek-records"
+      aria-busy={data.loading || undefined}
+      // A blip hunt hiding place, where the page's tabs were (lib/bugHunt.ts).
+      data-hunt={`g-board-${game}`}
+    >
+      <div className="gh-peek__head">
+        <h2 id="gh-peek-records" className="gh-peek__title">
+          Records
+        </h2>
+      </div>
+      {data.loading ? (
+        <ol className="gh-recs" aria-hidden="true">
+          {Array.from({ length: PEEK_RECORDS }, (_, i) => (
+            <li key={i} className="gh-rec">
+              <span className="gh-rec__link">
+                <span className="gh-rec__what">{line('7rem')}</span>
+                <span className="gh-rec__num">{line('3rem')}</span>
+                <span className="gh-rec__who">
+                  <span className="pmark pmark--empty gh-rec__mark" />
+                  {line('4.5rem')}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : data.error ? (
+        <div className="gh-peek__empty">
+          <p className="gh-peek__empty-title">Couldn’t load the records.</p>
+        </div>
+      ) : !shown.length ? (
+        <div className="gh-peek__empty">
+          <p className="gh-peek__empty-title">{groupBoardEmptyTitle('No records yet')}.</p>
+        </div>
+      ) : (
+        <ol className="gh-recs">
+          {shown.map((record) => {
+            const top = record.top
+            const name = top ? normalizePlayerName(top.name) : ''
+            const mine = Boolean(you) && name === you
+            return (
+              <li key={record.id} className={`gh-rec${mine ? ' gh-rec--yours' : ''}${top ? '' : ' gh-rec--open'}`}>
+                <a className="gh-rec__link" href={recordHref(game, record.id, 'all')}>
+                  <span className="gh-rec__what">{record.label}</span>
+                  <span className="gh-rec__num">{top ? recordBrief(record, top.score) : '–'}</span>
+                  <span className="gh-rec__who">
+                    {top ? <PlayerMark name={name} avatarId={top.avatarId} className="gh-rec__mark" /> : null}
+                    <span className="gh-rec__tag">{top ? <PlayerName name={name} avatarId={top.avatarId} /> : 'Be the first'}</span>
+                  </span>
+                </a>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+      {/* There while the records come, so nothing under it moves; the count once they're in. */}
+      <a className="gh-peek__all" href={recordsHref(game)}>
+        {records.length > PEEK_RECORDS ? `All ${records.length} records` : 'All records'}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </a>
+    </section>
   )
 }
 

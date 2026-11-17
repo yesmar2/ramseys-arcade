@@ -100,7 +100,7 @@ export type HuntAnchor = {
 }
 
 const GAME_PAGE_LESSON = 'Every game has a page of its own: its board, its records, the events it’s in and how to play.'
-const GAME_TABS_LESSON = 'A game’s page keeps its board and its records under two tabs: Board and Records.'
+const GAME_PEEKS_LESSON = 'A game’s page has the top of its board and a few of its records side by side. Each opens in full.'
 const DAILY_TABS_LESSON = 'A daily’s page has three tabs: today’s, its past days to play again, and its records.'
 const SHELF_LESSON = 'Under every game is a row of games like it: the same kind of play, a tap away.'
 const BOARD_NOTE_LESSON = 'The line over a board says what it counts: each player’s best run, and when the board closes.'
@@ -235,13 +235,15 @@ function gameAnchors(): HuntAnchor[] {
       const boardHref = gameBoardHref(slug as LeaderboardGame, 'weekly')
       // A daily's boards are the day's, the week's and the month's: none for all time (lib/allTime.ts).
       const boardLesson = game.daily ? DAILY_BOARD_LESSON : BOARD_LESSON
-      // With tabs (a daily's, or another game's with records), the tabs and the games like it hold the first
-      // two; with none, the games like it and the line over the board (GameHubPage).
+      // A daily's tabs, or another game's records beside its board (since 2026-11-17, where its tabs were), and the
+      // games like it hold the first two; with neither, the games like it and the line over the board (GameHubPage).
       const tabs = Boolean(game.daily) || books.includes(slug)
       out.push(
-        tabs
-          ? { id: `g-board-${slug}`, href, page, thing: 'the tabs', lesson: game.daily ? DAILY_TABS_LESSON : GAME_TABS_LESSON }
-          : { id: `g-board-${slug}`, href, page, thing: 'the games like it', lesson: SHELF_LESSON },
+        game.daily
+          ? { id: `g-board-${slug}`, href, page, thing: 'the tabs', lesson: DAILY_TABS_LESSON }
+          : tabs
+            ? { id: `g-board-${slug}`, href, page, thing: 'the records beside its board', lesson: GAME_PEEKS_LESSON }
+            : { id: `g-board-${slug}`, href, page, thing: 'the games like it', lesson: SHELF_LESSON },
         tabs
           ? { id: `g-stand-${slug}`, href, page, thing: 'the games like it', lesson: SHELF_LESSON }
           : { id: `g-stand-${slug}`, href, page, thing: 'the line over its board', lesson: BOARD_NOTE_LESSON },

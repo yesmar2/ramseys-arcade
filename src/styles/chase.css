@@ -38,13 +38,7 @@
   filter: brightness(1.15);
 }
 
-/* Where Play takes a row of its own (hub.css), Chase takes the next, a little shorter. */
-@media (max-width: 56rem) {
-  .gh-hero__acts .gh-chase {
-    flex: 1 1 100%;
-    min-height: 3.2rem;
-  }
-}
+/* On a game's screen it's a round flag beside Play (hub.css .gh-stage .gh-round, .gh-chase). */
 
 /* ---------- the sheet ---------- */
 

@@ -692,8 +692,11 @@ export function hrefForRoute(
           ? gameBoardHref(route.slug, route.period)
           : dailyTabHref(route.slug, 'today')
       }
-      // The Records tab keeps a period of its own, all time unless asked (recordsHref).
+      // The records in full keep a period of their own, all time unless asked (recordsHref).
       if (route.board === 'records') return appendGroupQuery(recordsHref(route.slug, route.period ?? 'all'))
+      // The game's own address stays as it is: its board and records side by side, on the site's period (GameHubPage,
+      // B of the "Game page, simpler" canvas, 2026-11-17). A period's address is its board in full, and follows it.
+      if (!route.period) return appendGroupQuery(gameHref(route.slug))
       return appendGroupQuery(gameHubHref(route.slug, period))
     case 'gamePlay': {
       const play = route.track

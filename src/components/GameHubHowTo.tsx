@@ -13,7 +13,16 @@ import { WhatCounts } from './WhatCounts'
  * or as practice. It was a section of the page until Ramsey found it "ugly and hard to read" there and asked
  * for it in a modal, opened when wanted (2026-09-30).
  */
-export function GameHubHowTo({ game, className }: { game: Game; className?: string }) {
+export function GameHubHowTo({
+  game,
+  className,
+  iconOnly = false,
+}: {
+  game: Game
+  className?: string
+  /** A round "?" with the words as its name: on a game's screen. */
+  iconOnly?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const titleId = useId()
   // Its Tickets part is the API's: asked for with the page, so the panel opens whole.
@@ -23,8 +32,24 @@ export function GameHubHowTo({ game, className }: { game: Game; className?: stri
   if (!howToPlayFor(game.slug)) return null
   return (
     <>
-      <button type="button" className={className} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
-        How to play
+      <button
+        type="button"
+        className={className}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={iconOnly ? 'How to play' : undefined}
+        title={iconOnly ? 'How to play' : undefined}
+        onClick={() => setOpen(true)}
+      >
+        {iconOnly ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.5" />
+            <path d="M9.5 9.2a2.6 2.6 0 0 1 5 1c0 1.8-2.5 2.2-2.5 3.8" />
+            <path d="M12 17.2h.01" />
+          </svg>
+        ) : (
+          'How to play'
+        )}
       </button>
       {open ? (
         <Panel wide labelledBy={titleId} onClose={() => setOpen(false)} style={gameAccentStyle(game.slug)}>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { comingWords, deviceRequirementLabel, isComingSoon, isRankedGame, TAG_LABELS, type Game } from '../data/games'
-import { gameHref, gamePlayHref, homeHref } from '../hooks/useHashRoute'
+import { comingWords, deviceRequirementLabel, isComingSoon, isRankedGame, type Game } from '../data/games'
+import { gameHref, gamePlayHref } from '../hooks/useHashRoute'
 import { useAuth } from '../hooks/useAuth'
 import { useIsAdmin } from '../lib/admin'
 import { APP_NAME } from '../lib/brand'
@@ -15,12 +15,13 @@ import type { LeaderboardEntry } from '../lib/leaderboard'
 import { formatLeaderboardScore } from '../lib/leaderboardFormat'
 import { boardDay } from '../lib/rankHow'
 import { ChaseButton } from './Chase'
-import { DevicesIcon, PlayIcon } from './chromeIcons'
+import { PlayIcon } from './chromeIcons'
 import { GameHubHowTo } from './GameHubHowTo'
 import { GamePreview } from './GamePreview'
 import { GameThumbArt } from './GameThumbArt'
+import { PlayerMark } from './PlayerMark'
 import { useSpotlight } from '../lib/season'
-import { SkinPicker } from './season/SkinPicker'
+import { SkinChip } from './season/SkinPicker'
 import { SpotlightCard } from './season/SeasonSpotlight'
 import { ShareBoardButton } from './ShareBoardButton'
 
@@ -31,8 +32,8 @@ function dailyPlayLabel(slug: string): string {
 
 /**
  * The games whose screen draws its own HUD where the hero writes over it: along the top, under the high score
- * (Pileup's Hold and Next, Bop's bezel), and along the bottom, under Press start (Frenzy's lives, bar and chain,
- * and on a phone Pileup's pieces up next and Bop's Spin). Their game plays clear of what's written over it (hub.css
+ * (Pileup's Hold and Next, Bop's bezel), and along the bottom, under the name and Play (Frenzy's lives, bar and
+ * chain, and on a phone Pileup's pieces up next and Bop's Spin). Their game plays clear of the screen's edges (hub.css
  * .gh-screen--hud-top, .gh-screen--hud-low), so the two never land on each other.
  */
 const HUD_EDGES: Readonly<Partial<Record<string, { top?: boolean; low?: boolean }>>> = {
@@ -42,13 +43,15 @@ const HUD_EDGES: Readonly<Partial<Record<string, { top?: boolean; low?: boolean 
 }
 
 /**
- * The top of a game's page: its name and a way to play, beside its screen,
- * where the game plays itself the way the cabinet by an arcade's door runs its
- * demo, under the high score and whose it is. On a phone, once the page has
- * scrolled past Play, Play follows along above the tab bar.
+ * The top of a game's page: its screen, across the page, where the game plays itself the way the cabinet by an
+ * arcade's door runs its demo; and on it, the high score and whose it is, How to play and share along the top, and
+ * the game's name and Play along the bottom, with the look you play in. B of the "Game page, simpler" canvas
+ * (Ramsey, 2026-11-17: "it's too much text and i want it simplified", then "Build B"): the words beside the
+ * screen were breadcrumbs, tags, a blurb, four labelled buttons, a row of five skins with two lines each, and
+ * "Phone or desk · Free to play". On a phone, once the page has scrolled past Play, Play follows along above the
+ * tab bar.
  *
- * A daily's is shorter, with its tabs under it: Play starts today's course,
- * the screen shows who is 1st today, and its records are a tab of their own.
+ * A daily's Play starts today's course, and its screen shows who is 1st today.
  */
 export function GameHubHero({
   game,
@@ -69,7 +72,7 @@ export function GameHubHero({
   const [pastPlay, setPastPlay] = useState(false)
   const [playInSight, setPlayInSight] = useState(false)
 
-  // Play follows the page once the one in the banner has scrolled up out of sight.
+  // Play follows the page once the one on the screen has scrolled up out of sight.
   useEffect(() => {
     const cta = ctaRef.current
     if (!cta) return
@@ -108,8 +111,6 @@ export function GameHubHero({
   }, [canPlay, playHref])
   const floating = pastPlay && !playInSight
 
-  const tags = (game.tags ?? []).map((tag) => TAG_LABELS[tag])
-  const where = `${deviceRequirementLabel(game) ?? 'Phone or desk'} · Free to play`
   const kicker = isComingSoon(game) ? comingWords(game) : game.inDevelopment ? 'New' : null
   // A new game before its launch day (lib/earlyAccess.ts): when everyone plays it, and Plus members' week first.
   const launch = launchDayOf(game.slug)
@@ -133,84 +134,102 @@ export function GameHubHero({
   // the track driven, the course rolled, the cave flown, the hills flown. With only its thumb, a racing daily's
   // screen was a small picture in the middle of a dark one (Ramsey, 2026-10-07: "the game image is very small").
   const plays = hasGamePreview(game.slug) || (daily && hasDayPreview(game.slug))
-  // A day's track, course, cave and hills are drawn dark in either theme: the high score over them stays dark too.
-  const night = daily && hasDayPreview(game.slug)
-  // The high score is written over the screen's top for a ranked game, Press start over its bottom when it plays here.
+  // The high score is written over the screen's top for a ranked game, the name and Play over its bottom.
   const hud = plays ? HUD_EDGES[game.slug] : undefined
   const screenClass = ['gh-screen', hud?.top && ranked ? 'gh-screen--hud-top' : '', hud?.low && canPlay ? 'gh-screen--hud-low' : '']
     .filter(Boolean)
     .join(' ')
 
   return (
-    <section
-      className={`gh-hero${daily ? ' gh-hero--daily' : ''}${night ? ' gh-hero--night' : ''}`}
-      aria-labelledby="gh-title"
-      data-hunt={`g-hero-${game.slug}`}
-    >
-      <div className="gh-hero__text">
-        <nav className="gh-crumbs" aria-label="Breadcrumb">
-          {/* The games are the home page's wall, down the page: the link lands on it. */}
-          <a href={`${homeHref()}#games`}>Games</a>
-          <span aria-hidden="true">›</span>
-          <span aria-current="page">{game.name}</span>
-        </nav>
-        <div className="gh-hero__main">
-          {tags.length > 0 || kicker || spotlight ? (
-            <p className="gh-tags">
-              {kicker ? <span className="gh-tag gh-tag--note">{kicker}</span> : null}
-              {tags.map((tag, i) => (
-                <span key={tag} className={`gh-tag${i === 0 ? ' gh-tag--lead' : ''}`}>
-                  {tag}
-                </span>
-              ))}
-              {spotlight ? <span className="gh-tag season-tag">Season spotlight</span> : null}
+    <>
+      <section className={`gh-stage${daily ? ' gh-stage--daily' : ''}`} aria-labelledby="gh-title" data-hunt={`g-hero-${game.slug}`}>
+        {/* The game on its screen (a daily's, today), the whole of the card: its thumb until the first frame is down. */}
+        <a
+          className={screenClass}
+          href={canPlay && !soon ? playHref : gameHref(game.slug)}
+          tabIndex={-1}
+          aria-hidden="true"
+          data-hunt={`g-screen-${game.slug}`}
+        >
+          <span className="gh-screen__thumb">
+            <GameThumbArt slug={game.slug} accent={accent} />
+          </span>
+          {plays ? <GamePreview slug={game.slug} day={daily ? boardDay() : undefined} className="gh-screen__game" autoplay /> : null}
+        </a>
+        {/* Dark under the words, whatever the game draws there, so they read in either theme. */}
+        <span className="gh-stage__shade" aria-hidden="true" />
+
+        <div className="gh-stage__top">
+          {/* A daily just for fun has no 1st: nobody is placed (data/games.ts Game.ranked). */}
+          {ranked ? (
+            <p className="gh-hi">
+              {highScore ? <PlayerMark name={highScore.name} avatarId={highScore.avatarId} className="gh-hi__mark" /> : null}
+              <span className="gh-hi__what">
+                {daily ? '1st today' : 'Hi score'}
+                {group ? ` · ${group}` : ''}
+              </span>
+              {/* The score as the boards print it, its units lower case (54.759s). Open only when nobody has one:
+                  a board on its way, or one that couldn't be read, is a dash. */}
+              {highScore ? (
+                <b className="gh-hi__score">{formatLeaderboardScore(game.slug, highScore.score)}</b>
+              ) : (
+                <b>{highScore === null ? 'Open' : '–'}</b>
+              )}
+              {highScore ? <span className="gh-hi__who">{highScore.name}</span> : null}
             </p>
           ) : null}
-          <h1 id="gh-title" className="gh-hero__name">
-            {game.name}
-          </h1>
-          <p className="gh-hero__blurb">{game.description}</p>
-          <div className="gh-hero__acts">
-            {soon ? (
-              <p className="gh-soon">
-                <span className="gh-soon__cal" aria-hidden="true">
-                  <span>{soonMonth}</span>
-                  <b>{Number(soon.slice(8))}</b>
-                </span>
-                <span className="gh-soon__words">
-                  <b>Coming {archiveDayWords(soon)}</b>
-                  <span>{toGo === 1 ? 'Tomorrow' : `${toGo} days to go`}</span>
-                </span>
-              </p>
-            ) : canPlay ? (
-              <>
-                <a ref={ctaRef} className="gh-play" href={playHref}>
-                  <PlayIcon />
-                  {playLabel}
-                </a>
-                {/* A record to chase in the run, picked here and carried to the play page (lib/chase.ts). */}
-                <ChaseButton slug={game.slug} href={playHref} className="gh-chase" />
-              </>
-            ) : null}
-            <GameHubHowTo game={game} className="gh-ghost" />
+          <span className="gh-stage__tools">
+            <GameHubHowTo game={game} className="gh-round" iconOnly />
             <ShareBoardButton
-              className="gh-share"
+              className="gh-round gh-share"
               label={
                 ranked ? `Think you can beat me at ${game.name}? Prove it on ${APP_NAME}.` : `Try today’s ${game.name} on ${APP_NAME}.`
               }
               url={gameHref(game.slug)}
             />
+          </span>
+        </div>
+
+        <div className="gh-stage__low">
+          <div className="gh-stage__title">
+            {kicker ? <span className="gh-stage__tag">{kicker}</span> : null}
+            <h1 id="gh-title" className="gh-stage__name">
+              {game.name}
+            </h1>
           </div>
-          <SkinPicker game={game.slug} />
-          {spotlight ? <SpotlightCard slug={game.slug} name={game.name} /> : null}
+          {soon || canPlay ? (
+            <div className="gh-stage__acts">
+              {soon ? (
+                <p className="gh-soon">
+                  <span className="gh-soon__cal" aria-hidden="true">
+                    <span>{soonMonth}</span>
+                    <b>{Number(soon.slice(8))}</b>
+                  </span>
+                  <span className="gh-soon__words">
+                    <b>Coming {archiveDayWords(soon)}</b>
+                    <span>{toGo === 1 ? 'Tomorrow' : `${toGo} days to go`}</span>
+                  </span>
+                </p>
+              ) : (
+                <>
+                  <a ref={ctaRef} className="gh-play" href={playHref}>
+                    <PlayIcon />
+                    {playLabel}
+                  </a>
+                  {/* A record to chase in the run, picked here and carried to the play page (lib/chase.ts). */}
+                  <ChaseButton slug={game.slug} href={playHref} className="gh-round gh-chase" iconOnly />
+                </>
+              )}
+            </div>
+          ) : null}
           {!canPlay ? (
-            <p className="gh-hero__hint">
+            <p className="gh-stage__hint">
               {game.comingSoon
                 ? 'Coming soon. The screen shows what it will be.'
                 : (deviceRequirementLabel(game) ?? `${game.name} isn’t available on this device.`)}
             </p>
           ) : soon ? (
-            <p className="gh-hero__hint">
+            <p className="gh-stage__hint">
               {earlyStage(game.slug) === 'early'
                 ? 'Plus members are playing it now, a week early.'
                 : `Plus members play it a week early, from ${archiveDayWords(earlyFrom(soon))}.`}
@@ -224,46 +243,13 @@ export function GameHubHero({
               ) : null}
             </p>
           ) : launchLine ? (
-            <p className="gh-hero__hint">{launchLine}</p>
+            <p className="gh-stage__hint">{launchLine}</p>
           ) : null}
+          <SkinChip game={game.slug} className="gh-stage__skin" />
         </div>
-        <p className="gh-hero__where">
-          <DevicesIcon />
-          {where}
-        </p>
-      </div>
+      </section>
 
-      {/* The game on its screen (a daily's, today): its thumb until the first frame is down. */}
-      <a
-        className={screenClass}
-        href={canPlay && !soon ? playHref : gameHref(game.slug)}
-        tabIndex={-1}
-        aria-hidden="true"
-        data-hunt={`g-screen-${game.slug}`}
-      >
-        <span className="gh-screen__thumb">
-          <GameThumbArt slug={game.slug} accent={accent} />
-        </span>
-        {plays ? <GamePreview slug={game.slug} day={daily ? boardDay() : undefined} className="gh-screen__game" autoplay /> : null}
-        {/* A daily just for fun has no 1st: nobody is placed (data/games.ts Game.ranked). */}
-        {ranked ? (
-          <span className="gh-screen__top">
-            <span className="gh-screen__hi">
-              {daily ? '1st today' : 'Hi score'}
-              {group ? ` · ${group}` : ''}
-              {/* The score as the boards print it, its units lower case (54.759s). Open only when nobody has one:
-                  a board on its way, or one that couldn't be read, is a dash. */}
-              {highScore ? (
-                <b className="gh-screen__score">{formatLeaderboardScore(game.slug, highScore.score)}</b>
-              ) : (
-                <b>{highScore === null ? 'Open' : '–'}</b>
-              )}
-            </span>
-            {highScore ? <span className="gh-screen__who">{highScore.name}</span> : null}
-          </span>
-        ) : null}
-        {canPlay && !soon ? <span className="gh-screen__start">Press start</span> : null}
-      </a>
+      {spotlight ? <SpotlightCard slug={game.slug} name={game.name} /> : null}
 
       {canPlay && !soon && typeof document !== 'undefined'
         ? createPortal(
@@ -280,6 +266,6 @@ export function GameHubHero({
             document.body,
           )
         : null}
-    </section>
+    </>
   )
 }

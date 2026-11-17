@@ -1,8 +1,7 @@
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { isRankedGame } from '../data/games'
-import { BOARD_PLACE, dailyTabHref, gameBoardHref, RECORDS_PLACE, recordsHref } from '../hooks/useHashRoute'
+import { dailyTabHref, RECORDS_PLACE } from '../hooks/useHashRoute'
 import { dailyWords, type DailyTab } from '../lib/dailyWords'
-import type { LeaderboardGame, LeaderboardPeriod } from '../lib/leaderboard'
 import '../styles/dailyTabs.css'
 
 /*
@@ -11,8 +10,8 @@ import '../styles/dailyTabs.css'
  * phone they are one segmented control. They stand in for the header's week and month: a daily's page is
  * always today's.
  *
- * Every other game with records has the same bar with its Board and its Records (GameTabs; Ramsey picked B of
- * the "Game page: board and records" canvas, 2026-10-11), in place of a board page and a record book.
+ * Every other game with records had the same bar with its Board and its Records (GameTabs) until B of the "Game
+ * page, simpler" canvas (2026-11-17) put the two side by side on its page, with no tabs (GameHubPage).
  */
 
 const TodayIcon = () => (
@@ -26,12 +25,6 @@ const PastIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
     <path d="M3.5 10h17M8 3v4M16 3v4" />
-  </svg>
-)
-
-const BoardIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M5 20V11M12 20V5M19 20v-6" />
   </svg>
 )
 
@@ -114,51 +107,6 @@ export function DailyTabs({
           {day} · a new {words.course} comes at midnight, New York time
         </span>
       </p>
-    </div>
-  )
-}
-
-/**
- * A game's tabs, under its hero: its board for a period (the page itself) and its records, each a real link with
- * its own address. The board keeps the site's period; the records, their own (all time unless asked).
- */
-export function GameTabs({
-  slug,
-  gameName,
-  tab,
-  boardPeriod,
-  recordsPeriod,
-  ref,
-}: {
-  slug: LeaderboardGame
-  gameName: string
-  tab: 'board' | 'records'
-  boardPeriod: LeaderboardPeriod
-  recordsPeriod: LeaderboardPeriod
-  /** The bar, for the page to scroll to when the tab changes. */
-  ref?: Ref<HTMLDivElement>
-}) {
-  const tabs: { key: 'board' | 'records'; label: string; href: string; icon: ReactNode }[] = [
-    { key: 'board', label: 'Board', href: gameBoardHref(slug, boardPeriod), icon: <BoardIcon /> },
-    { key: 'records', label: 'Records', href: recordsHref(slug, recordsPeriod), icon: <RecordsIcon /> },
-  ]
-  return (
-    // A bug hunt hiding place: "its page's tabs" (lib/bugHunt.ts). It's where a link to the board or the records
-    // lands, whichever tab is open (BOARD_PLACE, RECORDS_PLACE: useHashRoute).
-    <div
-      id={tab === 'board' ? BOARD_PLACE : RECORDS_PLACE}
-      className="dtabs dtabs--two dtabs--game"
-      ref={ref}
-      data-hunt={`g-board-${slug}`}
-    >
-      <nav className="dtabs__list" aria-label={`${gameName} pages`}>
-        {tabs.map((t) => (
-          <a key={t.key} className="dtabs__tab" href={t.href} aria-current={t.key === tab ? 'page' : undefined}>
-            {t.icon}
-            {t.label}
-          </a>
-        ))}
-      </nav>
     </div>
   )
 }

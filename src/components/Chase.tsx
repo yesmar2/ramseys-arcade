@@ -253,14 +253,31 @@ function FlagIcon() {
 }
 
 /** Chase a record, beside Play on a game's page. */
-export function ChaseButton({ slug, href, className }: { slug: string; href: string; className?: string }) {
+export function ChaseButton({
+  slug,
+  href,
+  className,
+  iconOnly = false,
+}: {
+  slug: string
+  href: string
+  className?: string
+  /** Just the flag, its words its name: beside Play on a game's screen. */
+  iconOnly?: boolean
+}) {
   const [open, setOpen] = useState(false)
   if (!canChase(slug)) return null
   return (
     <>
-      <button type="button" className={className} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className={className}
+        aria-label={iconOnly ? 'Chase a record' : undefined}
+        title={iconOnly ? 'Chase a record' : undefined}
+        onClick={() => setOpen(true)}
+      >
         <FlagIcon />
-        Chase a record
+        {iconOnly ? null : 'Chase a record'}
       </button>
       {open ? <ChaseSheet slug={slug} href={href} onClose={() => setOpen(false)} /> : null}
     </>

@@ -195,6 +195,55 @@ export function SkinPicker({ game }: { game: string }) {
   )
 }
 
+/**
+ * The look in use, as one chip on a game's screen (B of the "Game page, simpler" canvas, Ramsey 2026-11-17: "Build
+ * B"): its picture and name, opening the whole garage to change it. The row of tiles was five pictures and ten
+ * words on every game's page; this is one.
+ */
+export function SkinChip({ game, className = '' }: { game: string; className?: string }) {
+  const chosen = useChosenSkin(game)
+  const { yours, onPass, fromBlip, inShop, season, noun, any } = useTiles(game)
+  const [open, setOpen] = useState(false)
+  const toWin = [...onPass, ...fromBlip, ...inShop]
+  if (!any || (yours.length === 1 && !toWin.length)) return null
+  // A skin chosen that this device no longer owns plays as the usual look (lib/skins.ts), so the chip says so too.
+  const on = yours.find((t): t is Extract<Tile, { kind: 'mine' }> => t.kind === 'mine' && t.skin.id === chosen)?.skin ?? null
+  const name = on ? on.name : 'Usual'
+  const title = `Your ${noun}`
+  return (
+    <>
+      <button
+        type="button"
+        className={`skin-chip${className ? ` ${className}` : ''}`}
+        aria-haspopup="dialog"
+        aria-label={`${title}: ${name}. Change`}
+        onClick={() => setOpen(true)}
+      >
+        <span className="skin-chip__art" aria-hidden="true">
+          {on ? <RewardArt reward={{ kind: 'skin', id: on.id, name: on.name }} size={40} /> : <GameThumbArt slug={game} />}
+        </span>
+        <span className="skin-chip__name">{name}</span>
+        <svg className="skin-chip__open" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open ? (
+        <Garage
+          game={game}
+          title={title}
+          yours={yours}
+          onPass={onPass}
+          fromBlip={fromBlip}
+          inShop={inShop}
+          seasonName={season?.name ?? null}
+          chosen={chosen}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
+    </>
+  )
+}
+
 /** The whole garage: every look the player has, then every one still to win, in groups. */
 function Garage({
   game,

@@ -1,8 +1,7 @@
 /*
- * A game's page (GameHubPage): its name and Play beside its screen, where it
- * plays itself, across the page; then where you stand, the period's board, the
- * record book and any event it is in, side by side; how to play; the games most
- * like it. Everything wears the game's colour, --gh-accent, with --gh-ink on it.
+ * A game's page (GameHubPage): its screen across the page, where it plays itself, with its name and Play on it;
+ * then the top of its board beside a few of its records (each opening in full in their place), any event it is
+ * in, and the games most like it. Everything wears the game's colour, --gh-accent, with --gh-ink on it.
  */
 
 .gh-rail {
@@ -85,132 +84,297 @@ html[data-theme='light'] .gh {
   gap: 0.8rem;
 }
 
-/* ---------- the hero: the game, across the page ---------- */
+/* ---------- the stage: the game across the page, its name and Play on it ---------- */
 
 /*
- * The words, a little over half the card, and the game across the rest of it, out to its edges (.gh-screen), as on
- * a daily's page. Across the page on every game's (Ramsey, 2026-10-07: "the hero on the game hubs for non-daily games
- * should be full width now"); its board and its records went under it, in tabs (GameHubPage). The words had 28.6rem,
- * where only three skins showed: "the left side should be wider, and the preview not as wide".
+ * B of the "Game page, simpler" canvas (Ramsey, 2026-11-17: "it's too much text", then "Build B"): the game plays
+ * across the whole card, out to its edges, and everything else is written over it in the dark: the high score and
+ * How to play and share along the top, the name, Play and the look you play in along the bottom. A game that draws
+ * a board of its own size (Snake, Pileup, Pop) keeps it in the middle, with the words beside it. The words are
+ * light in either theme, over the shade the card lays under them.
  */
-.gh-hero {
+.gh-stage {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  align-items: stretch;
-  min-height: 32rem;
+  isolation: isolate;
+  min-height: clamp(26rem, 38vw, 35rem);
   box-sizing: border-box;
   border-radius: 1.9rem;
-  /* The hero's own colour, which its screen fades into (below). */
-  --gh-hero-bg: color-mix(in srgb, var(--gh-accent) 20%, var(--surface));
-  background: var(--gh-hero-bg);
   border: 1px solid color-mix(in srgb, var(--gh-accent) 40%, transparent);
+  background: #0b1116;
   box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
 
-html[data-theme='light'] .gh-hero {
-  --gh-hero-bg: color-mix(in srgb, var(--gh-accent) 15%, var(--surface));
+html[data-theme='light'] .gh-stage {
+  background: #dfeef6;
 }
 
-.gh-hero__text {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 1.25rem;
-  min-width: 0;
-  padding: 1.6rem 1.2rem 1.6rem 2.4rem;
+/* Under the top row, a little dark, so its pills read over a game drawn light. */
+.gh-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 7rem;
+  background: linear-gradient(rgba(6, 11, 15, 0.5), transparent);
+  pointer-events: none;
 }
 
-.gh-crumbs {
+/* Under the name and Play, darker: the bottom of the card, fading up into the game. */
+.gh-stage__shade {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  height: 64%;
+  background: linear-gradient(0deg, rgba(6, 11, 15, 0.92), rgba(6, 11, 15, 0.62) 40%, transparent);
+  pointer-events: none;
+}
+
+/* The screen: the whole card, a link to play (the words over it are links and buttons of their own). */
+.gh-screen {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.gh-screen__thumb {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.gh-screen__thumb .inline-thumb {
+  --inline-thumb-size: 8.5rem;
+}
+
+.gh-screen__game {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.gh-screen__game.game-preview--ready {
+  opacity: 1;
+}
+
+/*
+ * A game whose screen draws its own HUD where the card writes over it (GameHubHero HUD_EDGES) plays clear of the
+ * card's edges, in bands of the screen's own, its edge fading into each band.
+ */
+.gh-screen--hud-top {
+  --gh-hud-top: 4.4rem;
+  --gh-hud-top-fade: 0.75rem;
+}
+
+.gh-screen--hud-low {
+  --gh-hud-low: 2.25rem;
+  --gh-hud-low-fade: 0.75rem;
+}
+
+.gh-screen--hud-top .gh-screen__game,
+.gh-screen--hud-low .gh-screen__game {
+  top: var(--gh-hud-top, 0rem);
+  height: calc(100% - var(--gh-hud-top, 0rem) - var(--gh-hud-low, 0rem));
+  -webkit-mask-image: linear-gradient(transparent, #000 var(--gh-hud-top-fade, 0rem), #000 calc(100% - var(--gh-hud-low-fade, 0rem)), transparent);
+  mask-image: linear-gradient(transparent, #000 var(--gh-hud-top-fade, 0rem), #000 calc(100% - var(--gh-hud-low-fade, 0rem)), transparent);
+}
+
+/* The top row: the high score on the left, How to play and share on the right. */
+.gh-stage__top {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.2rem;
+  right: 1.2rem;
+  z-index: 2;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.gh-stage__top > * {
+  pointer-events: auto;
+}
+
+.gh-hi {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  height: 3.1rem;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0 1.15rem;
+  border-radius: 999px;
+  background: rgba(6, 12, 16, 0.72);
+  color: #e7eef3;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.gh-hi__mark {
+  --pmark: 2.3rem;
+  flex: none;
+  margin-left: -0.75rem;
+}
+
+.gh-hi__what {
+  flex: none;
+}
+
+.gh-hi b {
+  flex: none;
+  font-size: 1.08rem;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--gh-accent) 78%, #ffffff);
+}
+
+/* A run's score keeps the boards' lower case units (54.759s) under the row's capitals. */
+.gh-hi__score {
+  text-transform: none;
+}
+
+.gh-hi__who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.08em;
+  color: rgba(231, 238, 243, 0.86);
+}
+
+.gh-stage__tools {
+  display: flex;
+  flex: none;
   gap: 0.5rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--muted);
+  margin-left: auto;
 }
 
-.gh-crumbs a {
-  color: inherit;
-  text-decoration: none;
+/* The round buttons on the screen: How to play, share, and Chase a record beside Play. */
+.gh-stage .gh-round {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.1rem;
+  height: 3.1rem;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(6, 12, 16, 0.62);
+  color: #f3f7fa;
+  font: inherit;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
-.gh-crumbs a:hover,
-.gh-crumbs a:focus-visible {
-  color: var(--ink);
+.gh-stage .gh-round svg,
+.gh-stage .gh-round .lb-share__icon {
+  width: 1.3rem;
+  height: 1.3rem;
+  display: block;
 }
 
-.gh-crumbs [aria-current] {
-  color: var(--ink);
+.gh-stage .gh-round:hover,
+.gh-stage .gh-round:focus-visible {
+  background: rgba(6, 12, 16, 0.84);
+  border-color: color-mix(in srgb, var(--gh-accent) 70%, transparent);
+  color: #ffffff;
 }
 
-.gh-hero__main {
+/* Chase is as tall as Play beside it. */
+.gh-stage .gh-chase {
+  width: 3.6rem;
+  height: 3.6rem;
+}
+
+/* The bottom: the name over Play (and Chase), the look you play in at the right. */
+.gh-stage__low {
+  position: absolute;
+  left: 2.2rem;
+  right: 1.6rem;
+  bottom: 1.8rem;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title .'
+    'acts skin';
+  align-items: end;
+  gap: 1rem 1.2rem;
+  pointer-events: none;
+}
+
+.gh-stage__low > * {
+  pointer-events: auto;
+}
+
+.gh-stage__title {
+  grid-area: title;
   display: flex;
   flex-direction: column;
-  gap: 1.05rem;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
-.gh-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 0;
-}
-
-.gh-tag {
+.gh-stage__tag {
   display: inline-flex;
   align-items: center;
   height: 1.65rem;
   padding: 0 0.7rem;
   border-radius: 999px;
-  background: rgba(var(--ink-rgb), 0.07);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--gh-accent) 32%, rgba(6, 12, 16, 0.7));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent) 60%, transparent);
+  color: #ffffff;
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-/*
- * On a game's warm or green tint the dark theme's grey fell under 4.5:1 (4.2 on Hot Lap’s, 4.4 on Half Full’s with a quarter): a third nearer the ink.
- * The plain tags only: the lead, the note and the season's keep their own colours.
- */
-html[data-theme='dark'] .gh-tag:not(.gh-tag--lead):not(.gh-tag--note):not(.season-tag) {
-  color: color-mix(in srgb, var(--muted) 65%, var(--ink));
-}
-
-.gh-tag--lead,
-.gh-tag--note {
-  background: color-mix(in srgb, var(--gh-accent) 16%, transparent);
-  color: var(--gh-accent-ink);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gh-accent) 42%, transparent);
-}
-
-.gh-hero__name {
+.gh-stage__name {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(3rem, 6vw, 5.25rem);
+  font-size: clamp(3rem, 6.2vw, 5.6rem);
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 0.92;
+  color: #ffffff;
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.4);
   overflow-wrap: anywhere;
 }
 
-.gh-hero__blurb {
-  margin: 0;
-  font-size: clamp(1.1rem, 1.6vw, 1.38rem);
-  font-weight: 600;
-  line-height: 1.35;
-  text-wrap: balance;
-}
-
-.gh-hero__acts {
+.gh-stage__acts {
+  grid-area: acts;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem;
-  margin-top: 0.3rem;
+}
+
+.gh-stage__hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: rgba(231, 238, 243, 0.84);
+}
+
+.gh-stage__skin {
+  grid-area: skin;
+  justify-self: end;
 }
 
 .gh-play {
@@ -291,7 +455,7 @@ html[data-theme='dark'] .gh-tag:not(.gh-tag--lead):not(.gh-tag--note):not(.seaso
 }
 
 .gh-soon__admin {
-  color: var(--gh-accent-ink);
+  color: color-mix(in srgb, var(--gh-accent) 70%, #ffffff);
   font-weight: 800;
 }
 
@@ -308,6 +472,7 @@ html[data-theme='dark'] .gh-tag:not(.gh-tag--lead):not(.gh-tag--note):not(.seaso
   filter: brightness(1.05);
 }
 
+/* The site's other pill (runReel.css follows these two). */
 .gh-ghost {
   cursor: pointer;
   font-family: inherit;
@@ -332,209 +497,355 @@ html[data-theme='dark'] .gh-tag:not(.gh-tag--lead):not(.gh-tag--note):not(.seaso
   border-color: color-mix(in srgb, var(--gh-accent) 55%, transparent);
 }
 
-.gh-hero .gh-share {
-  width: 3.1rem;
-  height: 3.1rem;
-  background: var(--surface);
+/* ---------- the board and the records, side by side ---------- */
+
+/*
+ * The top of the board (GameBoard BoardPeek) beside a few records (RecordBookView RecordsPeek), the same height,
+ * each ending in its way to the rest. Narrower, one over the other.
+ */
+.gh-peeks {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 1rem;
 }
 
-.gh-hero__hint {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 650;
-  color: var(--muted);
+.gh-peek {
+  gap: 0.7rem;
+  padding: 1.1rem 1.15rem 1.15rem;
 }
 
-.gh-hero__where {
+.gh-peek__head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--muted);
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 2.6rem;
+  padding-left: 0.3rem;
 }
 
-.gh-hero__where svg {
-  width: 1.05rem;
-  height: 1.05rem;
+.gh-peek__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* A group's boards: its name after the title. */
+.gh-peek__scope {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body, inherit);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gh-accent-ink);
+}
+
+/* The period: the site's, in a menu, a pill like the boards' tabs. */
+.gh-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   flex: none;
 }
 
-/*
- * The screen: the game playing itself across the right of the card, top to bottom and out to its edges, faded into
- * the card's colour where it meets the words, as the home page's banner has it (Ramsey picked it for the daily
- * pages, B of the "Daily hero preview" canvas, then asked for it on every game's, 2026-10-07). The high score is
- * over it, and Press start breathes in the corner.
- */
-.gh-screen {
-  position: relative;
-  display: block;
-  width: 100%;
-  min-height: 21rem;
-  overflow: hidden;
-  background: #0b1116;
+.gh-pick select {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2.6rem;
+  margin: 0;
+  padding: 0 2.3rem 0 1rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 750;
+  cursor: pointer;
 }
 
-html[data-theme='light'] .gh-screen {
-  background: #dfeef6;
+.gh-pick select:hover {
+  border-color: color-mix(in srgb, var(--gh-accent) 55%, transparent);
 }
 
-/* The card's colour over the game's near edge, so it runs into the words; the high score and Press start over it. */
-.gh-screen::after {
-  content: '';
+.gh-pick select:focus-visible {
+  outline: 2px solid var(--gh-accent);
+  outline-offset: 2px;
+}
+
+.gh-pick option {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.gh-pick svg {
   position: absolute;
-  inset: 0 auto 0 0;
-  z-index: 1;
-  width: 34%;
-  background: linear-gradient(90deg, var(--gh-hero-bg), transparent);
+  right: 0.85rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted);
   pointer-events: none;
 }
 
-.gh-screen__thumb {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
+/* Its rows: the board's own (boards.css), the player and their best on a line and the bar under them, at any width. */
+.gh-peek .gb-rows {
+  gap: 0.2rem;
 }
 
-.gh-screen__thumb .inline-thumb {
-  --inline-thumb-size: 8.5rem;
+.gh-peek .gb-row--bar .gb-row__link {
+  grid-template-columns: 2.6rem 2.2rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    'ord mark who best'
+    'ord mark bar bar';
+  gap: 0.35rem 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.45rem 0.6rem;
 }
 
-.gh-screen__game {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  transition: opacity 0.6s ease;
+.gh-peek .gb-row--bar .gb-row__ord {
+  grid-area: ord;
+  font-size: 0.8rem;
 }
 
-.gh-screen__game.game-preview--ready {
-  opacity: 1;
+.gh-peek .gb-row--bar .gb-row__mark {
+  --pmark: 2.1rem;
+  grid-area: mark;
 }
 
-/* Clear of the fade, its edge softened. */
-.gh-screen__top {
-  position: absolute;
-  top: 0;
-  left: 18%;
-  right: 0;
-  z-index: 2;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem 1rem 1.7rem;
-  background: linear-gradient(rgba(6, 12, 16, 0.74), transparent);
-  color: #e7eef3;
-  font-size: 0.76rem;
+.gh-peek .gb-row--bar .gb-row__who {
+  grid-area: who;
+}
+
+.gh-peek .gb-row--bar .gb-row__bar {
+  grid-area: bar;
+  height: 0.5rem;
+}
+
+.gh-peek .gb-row--bar .gb-row__best {
+  grid-area: best;
+  font-size: 1.1rem;
+}
+
+/* Only yours says something under the name (how far behind the place above you are). */
+.gh-peek .gb-row__runs:empty {
+  display: none;
+}
+
+/* You, further down: a gap, then your row. */
+.gh-peek__gap {
+  padding: 0.05rem 0;
+  color: var(--muted);
   font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 1rem);
-  mask-image: linear-gradient(90deg, transparent, #000 1rem);
+  letter-spacing: 0.3em;
+  line-height: 1;
+  text-align: center;
 }
 
-/* Light over a game drawn light, as most are in the light theme; a day's game is dark in either (GameHubHero night). */
-html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__top {
-  background: linear-gradient(rgba(255, 255, 255, 0.88), transparent);
-  color: #1a2b3c;
+/* A bare period: in the middle of the card, with a way to all time's runs. */
+.gh-peek__empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  margin: auto 0;
+  padding: 1.5rem 0.5rem;
+  text-align: center;
 }
 
-/* A group's name can follow Hi score, and one with no spaces breaks anywhere rather than push the holder off the screen. */
-.gh-screen__hi {
+.gh-peek__wider {
+  margin-top: 0.6rem;
+  min-height: 2.6rem;
+  padding: 0 1.2rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.05);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.gh-peek__wider:hover,
+.gh-peek__wider:focus-visible {
+  border-color: color-mix(in srgb, var(--gh-accent) 55%, transparent);
+}
+
+.gh-peek__empty-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.gh-peek__empty-text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Full board, All records: at the foot of each, the two in line across the cards. */
+.gh-peek__all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.9rem;
+  margin-top: auto;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.04);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.gh-peek__all svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted);
+}
+
+.gh-peek__all:hover,
+.gh-peek__all:focus-visible {
+  border-color: color-mix(in srgb, var(--gh-accent) 55%, transparent);
+}
+
+/* A record: what it is over its number, who holds it at the right; yours in gold. */
+.gh-recs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gh-rec__link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'what who'
+    'num who';
+  align-items: center;
+  gap: 0.15rem 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 1.1rem;
+  background: rgba(var(--ink-rgb), 0.045);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.gh-rec__link:hover,
+a.gh-rec__link:focus-visible {
+  border-color: color-mix(in srgb, var(--gb-accent, var(--gh-accent)) 50%, transparent);
+}
+
+.gh-rec__what {
+  grid-area: what;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.gh-screen__hi b {
-  margin-left: 0.45rem;
-  font-size: 1rem;
-  letter-spacing: 0.04em;
-  color: color-mix(in srgb, var(--gh-accent) 85%, #ffffff);
+.gh-rec__num {
+  grid-area: num;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
-html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
-  color: color-mix(in srgb, var(--gh-accent) 58%, #10281c);
-}
-
-/* A run's score keeps the boards' lower case units (54.759s) under the strip's capitals. */
-.gh-screen__score {
-  text-transform: none;
-}
-
-/*
- * A game whose screen draws its own HUD where the hero writes over it (GameHubHero HUD_EDGES) plays clear of what's
- * written, in bands of the screen's own: under the high score along the top, over Press start along the bottom, its
- * edge fading into each band.
- */
-.gh-screen--hud-top {
-  --gh-hud-top: 2.5rem;
-  --gh-hud-top-fade: 0.75rem;
-}
-
-.gh-screen--hud-low {
-  --gh-hud-low: 2.25rem;
-  --gh-hud-low-fade: 0.75rem;
-}
-
-.gh-screen--hud-top .gh-screen__game,
-.gh-screen--hud-low .gh-screen__game {
-  top: var(--gh-hud-top, 0rem);
-  height: calc(100% - var(--gh-hud-top, 0rem) - var(--gh-hud-low, 0rem));
-  -webkit-mask-image: linear-gradient(transparent, #000 var(--gh-hud-top-fade, 0rem), #000 calc(100% - var(--gh-hud-low-fade, 0rem)), transparent);
-  mask-image: linear-gradient(transparent, #000 var(--gh-hud-top-fade, 0rem), #000 calc(100% - var(--gh-hud-low-fade, 0rem)), transparent);
-}
-
-.gh-screen__who {
-  letter-spacing: 0.08em;
-}
-
-.gh-screen__start {
-  position: absolute;
-  right: 1.4rem;
-  bottom: 1.2rem;
-  z-index: 2;
-  display: inline-flex;
+.gh-rec__who {
+  grid-area: who;
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  height: 2rem;
-  padding: 0 0.9rem;
-  border-radius: 999px;
-  background: rgba(6, 12, 16, 0.78);
-  color: #e7eef3;
-  font-size: 0.68rem;
+  min-width: 0;
+  max-width: 11rem;
+  font-size: 0.92rem;
   font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gh-rec__mark {
+  --pmark: 2rem;
+  flex: none;
+}
+
+.gh-rec__tag {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  pointer-events: none;
 }
 
-.gh-screen__start::before {
-  content: '';
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  background: var(--gh-accent);
+.gh-rec--open .gh-rec__num,
+.gh-rec--open .gh-rec__tag {
+  color: var(--muted);
 }
 
-.gh-screen__game.game-preview--ready ~ .gh-screen__start {
-  animation: gh-breathe 2.4s ease-in-out infinite;
+.gh-rec--yours .gh-rec__link {
+  border-color: color-mix(in srgb, var(--sb-gold, #f5c451) 45%, transparent);
+  background: color-mix(in srgb, var(--sb-gold, #f5c451) 13%, transparent);
 }
 
-@keyframes gh-breathe {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+.gh-rec--yours .gh-rec__num {
+  color: var(--sb-gold-ink, #b8860b);
+}
+
+/* ---------- the board or the records in full ---------- */
+
+.gh-full {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+/* Back to the two side by side. */
+.gh-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 2.6rem;
+  box-sizing: border-box;
+  padding: 0 1.15rem 0 0.75rem;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.gh-back svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.gh-back:hover,
+.gh-back:focus-visible {
+  border-color: color-mix(in srgb, var(--gh-accent) 55%, transparent);
 }
 
 /*
@@ -755,6 +1066,17 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+/* Each its picture and its name, as the home page's games are (homeSimple.css, which only the home page loads). */
+.gh-shelf .wall-tile--plain .wall-tile__scores,
+.gh-shelf .wall-tile--plain .wall-tile__kind,
+.gh-shelf .wall-tile--plain .wall-tile__lines {
+  display: none;
+}
+
+.gh-shelf .wall-tile--plain .wall-tile__info {
+  padding-bottom: 0.15rem;
+}
+
 /* ---------- Play, following along on a phone ---------- */
 
 .gh-float {
@@ -767,59 +1089,15 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
   .gh .gh-shelf__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-
-  /* A narrower desk gives the words more of the card, so Play and the rest keep to a line and the skins show. */
-  .gh-hero {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  }
 }
 
-/* The game goes across the top, out to the card's edges, fading into the words and Play under it. */
 @media (max-width: 56rem) {
-  .gh-hero {
+  .gh-peeks {
     grid-template-columns: minmax(0, 1fr);
-    min-height: 0;
-    border-radius: 1.75rem;
-  }
-
-  .gh-screen {
-    order: -1;
-    aspect-ratio: 10 / 7;
-    min-height: 0;
-  }
-
-  .gh-screen::after {
-    inset: auto 0 0;
-    width: auto;
-    height: 36%;
-    background: linear-gradient(0deg, var(--gh-hero-bg), transparent);
-  }
-
-  .gh-screen__top {
-    left: 0;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .gh-hero__text {
-    gap: 0.9rem;
-    padding: 0.4rem 1.3rem 1.3rem;
-  }
-
-  .gh-hero__main {
-    gap: 0.85rem;
-  }
-
-  .gh-hero__acts .gh-play {
-    flex: 1 1 100%;
-  }
-
-  .gh-hero__acts .gh-ghost {
-    flex: 1;
   }
 }
 
-/* A phone: the header's tab bar is along the bottom, and Play rides above it once the banner's is gone. */
+/* A phone: the header's tab bar is along the bottom, and Play rides above it once the screen's is gone. */
 @media (max-width: 900px) {
   .gh-float {
     position: fixed;
@@ -866,7 +1144,99 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
   }
 }
 
+/*
+ * A phone: the screen a little taller than wide, the name with the look you play in beside it, and Play across
+ * the card under them, Chase beside it.
+ */
 @media (max-width: 40rem) {
+  .gh-stage {
+    min-height: 0;
+    aspect-ratio: 5 / 6;
+    max-height: 34rem;
+    border-radius: 1.5rem;
+  }
+
+  .gh-stage::before {
+    height: 5rem;
+  }
+
+  .gh-stage__top {
+    top: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .gh-hi {
+    height: 2.6rem;
+    gap: 0.45rem;
+    padding: 0 0.9rem;
+    font-size: 0.64rem;
+    letter-spacing: 0.11em;
+  }
+
+  .gh-hi__mark {
+    --pmark: 2rem;
+    margin-left: -0.6rem;
+  }
+
+  .gh-hi b {
+    font-size: 0.95rem;
+  }
+
+  .gh-stage .gh-round {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
+  .gh-stage .gh-round svg,
+  .gh-stage .gh-round .lb-share__icon {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  .gh-stage__low {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    grid-template-areas:
+      'title skin'
+      'acts acts';
+    gap: 0.85rem 0.75rem;
+  }
+
+  .gh-stage__name {
+    font-size: clamp(2.3rem, 12vw, 3rem);
+  }
+
+  .gh-stage__acts {
+    flex-wrap: nowrap;
+  }
+
+  .gh-stage__acts .gh-play {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 3.3rem;
+    padding: 0 1.1rem 0 0.95rem;
+    font-size: 1.05rem;
+  }
+
+  .gh-stage .gh-chase {
+    width: 3.3rem;
+    height: 3.3rem;
+  }
+
+  .gh-stage .skin-chip {
+    height: 2.75rem;
+    padding-right: 0.8rem;
+    font-size: 0.88rem;
+  }
+
+  .gh-stage .skin-chip__art {
+    width: 2.15rem;
+    height: 2.15rem;
+  }
+
   /*
    * The games most like it run in a line that scrolls, out to the screen's edges. A scrolling line clips at its
    * edges, so it keeps room over the tiles for the lift a focused one takes.
@@ -896,43 +1266,28 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
 
 @media (prefers-reduced-motion: reduce) {
   .gh-float,
-  .gh-play {
+  .gh-play,
+  .gh-stage .gh-round {
     transition: none;
   }
+}
 
-  .gh-screen__game.game-preview--ready ~ .gh-screen__start {
-    animation: none;
+/* ---------- a daily's page: a shorter screen, its tabs (dailyTabs.css), and the Today tab ---------- */
+
+/* The screen keeps to one band, so the tabs under it are in view. */
+.gh-stage.gh-stage--daily {
+  min-height: clamp(22rem, 32vw, 30rem);
+}
+
+.gh-stage--daily .gh-stage__name {
+  font-size: clamp(2.8rem, 5vw, 4.6rem);
+}
+
+@media (max-width: 40rem) {
+  .gh-stage.gh-stage--daily {
+    min-height: 0;
+    aspect-ratio: 1 / 1;
   }
-}
-
-/* ---------- a daily's page: a shorter hero, its tabs (dailyTabs.css), and the Today tab ---------- */
-
-/*
- * The hero keeps to one band, so the tabs under it are in view, its game across the right of the card as every
- * game's is (.gh-screen), about half of it: Ramsey asked for that on the daily pages first ("should we just do the
- * preview on the whole card with the fade effect like it does on the home page heros?"). Before, the game had a
- * screen of its own inside the card, which he found small, then "still kinda small" at 44% of the hero.
- */
-.gh-hero.gh-hero--daily {
-  min-height: 0;
-}
-
-.gh-hero--daily .gh-hero__text {
-  gap: 1rem;
-  padding: 1.4rem 1.2rem 1.4rem 2.2rem;
-}
-
-.gh-hero--daily .gh-hero__main {
-  gap: 0.8rem;
-}
-
-.gh-hero--daily .gh-hero__name {
-  font-size: clamp(2.6rem, 4.6vw, 4rem);
-}
-
-.gh-hero--daily .gh-hero__blurb {
-  max-width: 40rem;
-  font-size: clamp(1rem, 1.3vw, 1.15rem);
 }
 
 /*
@@ -979,88 +1334,4 @@ html[data-theme='light'] .gh-hero:not(.gh-hero--night) .gh-screen__hi b {
   min-height: 24rem;
   border-radius: 1.5rem;
   background: rgba(var(--ink-rgb), 0.03);
-}
-
-/*
- * Narrower, the game goes across the top as every game's does, only sixteen by nine and no taller than 15rem, so
- * the tabs stay near (B of the "Daily hero preview" canvas, for a phone too).
- */
-@media (max-width: 56rem) {
-  .gh-hero.gh-hero--daily {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .gh-hero--daily .gh-screen {
-    aspect-ratio: 16 / 9;
-    max-height: 15rem;
-  }
-
-  .gh-hero--daily .gh-hero__text {
-    padding: 0.4rem 1.4rem 1.3rem;
-  }
-
-  /* Play, How to play and share keep to one line across the card: share alone under Play only makes it taller. */
-  .gh-hero--daily .gh-hero__acts {
-    flex-wrap: nowrap;
-  }
-
-  .gh-hero--daily .gh-hero__acts .gh-play {
-    flex: 1 1 auto;
-  }
-}
-
-/* A phone: the game across the top as above, then the words, Play, and the rest of the hero under it. */
-@media (max-width: 40rem) {
-  .gh-hero.gh-hero--daily {
-    border-radius: 1.5rem;
-  }
-
-  .gh-hero--daily .gh-hero__text {
-    gap: 0.8rem;
-    padding: 0.3rem 1.1rem 1.1rem;
-  }
-
-  .gh-hero--daily .gh-hero__main {
-    gap: 0.7rem;
-  }
-
-  .gh-hero--daily .gh-crumbs {
-    font-size: 0.8rem;
-  }
-
-  .gh-hero--daily .gh-tags {
-    gap: 0.35rem;
-  }
-
-  .gh-hero--daily .gh-tag {
-    height: 1.45rem;
-    padding: 0 0.55rem;
-    font-size: 0.62rem;
-  }
-
-  .gh-hero--daily .gh-hero__name {
-    font-size: 2.5rem;
-  }
-
-  .gh-hero--daily .gh-hero__blurb {
-    font-size: 1rem;
-  }
-
-  /* Play across the hero, How to play and share under it: the three don't fit on one line. */
-  .gh-hero--daily .gh-hero__acts {
-    flex-wrap: wrap;
-    margin-top: 0.2rem;
-  }
-
-  .gh-hero--daily .gh-hero__acts .gh-play {
-    flex: 1 1 100%;
-    min-height: 3.2rem;
-    padding: 0 1.1rem 0 0.95rem;
-    font-size: 1.02rem;
-  }
-
-  .gh-hero--daily .skin-pick,
-  .gh-hero--daily .season-spotcard {
-    margin-top: 0.2rem;
-  }
 }

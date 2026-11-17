@@ -10,8 +10,10 @@ import { useDeviceType } from '../lib/device'
 import { boardShare, gapFigure, playersNote, type BoardPlayer } from '../lib/gameBoard'
 import { lazyPage } from '../lib/lazyPage'
 import { useActiveGroup, useScope } from '../lib/groups'
+import { setDefaultPeriod } from '../lib/defaultPeriod'
 import {
   normalizePlayerName,
+  PERIOD_LABELS,
   VISIBLE_LEADERBOARD_PERIODS,
   type LeaderboardEntry,
   type LeaderboardGame,
@@ -580,6 +582,145 @@ export function GamePageBoard({
         <Board key={`${slug}-${period}`} slug={slug} period={period} copy={copy} data={data} you={you} title={title} noteHunt={noteHunt} />
       )}
     </div>
+  )
+}
+
+/* ---------- the top of it, beside the records ---------- */
+
+/** The players the board beside a game's records opens with (BoardPeek). */
+const PEEK_ROWS = 5
+
+function ChevronDown() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
+/**
+ * The top of a game's board, beside its records on its page (B of the "Game page, simpler" canvas; Ramsey,
+ * 2026-11-17: "Build B"): the period in a menu, the first five players with their bars, and you under them when
+ * you're further down; then the full board a tap away, at its period's own address (GameHubPage). No count, no note
+ * and no runs under the names: the full board has those. The menu sets the site's period, as the boards' tabs do,
+ * without leaving the page.
+ */
+export function BoardPeek({ slug, period }: { slug: LeaderboardGame; period: LeaderboardPeriod }) {
+  const you = normalizePlayerName(usePlayerName())
+  const groupId = useActiveGroup()
+  const scope = useScope()
+  const data = useGameBoard(slug, period, you, groupId)
+  // The Season's name comes with the season (lib/scoreboard.ts periodCopy): drawn again when it does.
+  useSeason()
+  const periods = periodTabs(VISIBLE_LEADERBOARD_PERIODS, useSeasonTab() || period === 'season')
+  const copy = periodCopy(period, Date.now(), Boolean(groupId))
+  const accent = resolveGameAccent(slug, getGame(slug)?.accent ?? '#2eb8a0')
+  const best = data.top[0]?.best.score ?? 0
+  const yourRow = data.top.find((p) => p.name === you) ?? data.around?.find((p) => p.name === you)
+  const below = yourRow && yourRow.place > PEEK_ROWS ? yourRow : null
+  const above = placeAbove(data, yourRow)
+  const yourLine =
+    yourRow && above
+      ? formatLeaderboardScore(slug, above.best.score) === formatLeaderboardScore(slug, yourRow.best.score)
+        ? `tied with ${above.name}`
+        : `${gapFigure(slug, above.best.score, yourRow.best.score)} behind ${above.name}`
+      : ''
+  // While it loads it holds the height it had last time, so the records beside it and the games under it stay put.
+  const held = useHeldHeight<HTMLElement>(`gb-peek-${slug}-${period}-${you ? 'in' : 'out'}`, data.loading)
+  const style = {
+    '--gb-accent': accent,
+    '--gb-accent-ink': inkOn(accent),
+    '--gb-fill': readableFill(accent),
+    ...held.style,
+  } as CSSProperties
+  const row = (p: BoardPlayer) => (
+    <PlayerRow
+      key={p.name}
+      slug={slug}
+      player={p}
+      you={you}
+      period={period}
+      figure={formatLeaderboardScore(slug, p.best.score)}
+      sub={p.name === yourRow?.name ? yourLine : ''}
+      share={boardShare(slug, p.best.score, best)}
+    />
+  )
+  const line = (w: string) => <span className="skel-line" style={{ '--skel-w': w } as CSSProperties} />
+  return (
+    <section
+      ref={held.ref}
+      className="gh-card gh-peek sb-scope gb-board--bars"
+      style={style}
+      aria-labelledby="gh-peek-board"
+      aria-busy={data.loading || undefined}
+    >
+      <div className="gh-peek__head">
+        <h2 id="gh-peek-board" className="gh-peek__title">
+          Board
+          {scope.id ? <span className="gh-peek__scope">{scope.name}</span> : null}
+        </h2>
+        <label className="gh-pick">
+          <span className="visually-hidden">Period</span>
+          <select value={period} onChange={(e) => setDefaultPeriod(e.target.value as LeaderboardPeriod)}>
+            {periods.map((p) => (
+              <option key={p} value={p}>
+                {PERIOD_LABELS[p]}
+              </option>
+            ))}
+          </select>
+          <ChevronDown />
+        </label>
+      </div>
+      {data.loading ? (
+        <ol className="gb-rows" aria-hidden="true">
+          {Array.from({ length: PEEK_ROWS }, (_, i) => (
+            <li key={i} className="gb-row gb-row--bar">
+              <div className="gb-row__link">
+                <span className="gb-row__ord">{line('1.6rem')}</span>
+                <span className="pmark pmark--empty gb-row__mark" />
+                <span className="gb-row__who">{line('6rem')}</span>
+                <span className="gb-row__bar" />
+                <span className="gb-row__best">{line('3.5rem')}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : data.error ? (
+        <BoardFailed retry={data.retry} />
+      ) : !data.field ? (
+        <div className="gh-peek__empty">
+          <p className="gh-peek__empty-title">
+            {scope.id ? `${scope.nobody} is` : 'Nobody’s'} on it {copy.noun ? copy.phrase : 'yet'}.
+          </p>
+          <p className="gh-peek__empty-text">Any run takes first.</p>
+          {/* Early in a week or a month the board is bare: all time has the runs to aim at. */}
+          {period !== 'all' ? (
+            <button type="button" className="gh-peek__wider" onClick={() => setDefaultPeriod('all')}>
+              Show all time
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <ol className="gb-rows">
+          {data.top.slice(0, PEEK_ROWS).map(row)}
+          {below ? (
+            <>
+              <li className="gh-peek__gap" aria-hidden="true">
+                ⋯
+              </li>
+              {row(below)}
+            </>
+          ) : null}
+        </ol>
+      )}
+      {/* There while the board comes too, so nothing under it moves when it lands. */}
+      {data.loading || data.field > 0 ? (
+        <a className="gh-peek__all" href={gameBoardHref(slug, period)}>
+          Full board
+          <ChevronDown />
+        </a>
+      ) : null}
+    </section>
   )
 }
 

@@ -1,16 +1,17 @@
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ChevronRightIcon } from '../components/chromeIcons'
 import { DailiesBar } from '../components/DailiesBar'
-import { DailyTabs, GameTabs } from '../components/DailyTabs'
-import { GamePageBoard } from '../components/GameBoard'
+import { DailyTabs } from '../components/DailyTabs'
+import { BoardPeek, GamePageBoard } from '../components/GameBoard'
 import { GameHubEvents } from '../components/GameHubEvents'
 import { GameHubHero } from '../components/GameHubHero'
 import { WallTile } from '../components/GameWall'
 import { PageShell } from '../components/PageShell'
+import { RecordBookView, RecordsPeek } from '../components/RecordBookView'
 import { gamePlayableOn, getGame, isRankedGame, wallGames } from '../data/games'
 import { useBoardLeaders } from '../hooks/useBoardLeaders'
 import { useHubEvents, useHubHighScore } from '../hooks/useGameHub'
-import { BOARD_PLACE, dailyTabHref, homeHref, navigate, periodFromRoute, RECORDS_PLACE, useRoute } from '../hooks/useHashRoute'
+import { BOARD_PLACE, dailyTabHref, gameHref, homeHref, navigate, periodFromRoute, RECORDS_PLACE, useRoute } from '../hooks/useHashRoute'
 import { scrollToPlace, stillComing } from '../lib/scrollToPlace'
 import { boardPeriodFor } from '../lib/allTime'
 import { usePlayerBests } from '../hooks/usePlayerBests'
@@ -23,6 +24,7 @@ import { moreLike } from '../lib/gameHub'
 import { useGlobalRank } from '../lib/globalRank'
 import { useActiveGroup } from '../lib/groups'
 import { lazyPage } from '../lib/lazyPage'
+import { possessive } from '../lib/possessive'
 import { coerceVisiblePeriod, LEADERBOARD_GAMES, normalizePlayerName, type LeaderboardGame, type LeaderboardPeriod } from '../lib/leaderboard'
 import { gameHasRecords } from '../lib/records'
 import { resolveGameAccent, THEME_EVENT } from '../lib/theme'
@@ -74,8 +76,6 @@ const TODAY_PARTS: Partial<Record<string, typeof TodaysHoleByTry>> = {
 /** A daily's other two tabs, each in a chunk of its own with the plans it reads. */
 const DailyPastTab = lazyPage(() => import('../components/DailyPastTab').then((m) => m.DailyPastTab))
 const DailyRecordsTab = lazyPage(() => import('../components/DailyRecordsTab').then((m) => m.DailyRecordsTab))
-/** Another game's Records tab, its record book, the same way. */
-const RecordsTab = lazyPage(() => import('../components/RecordBookView').then((m) => m.RecordBookView))
 
 function isBoardGame(slug: string): slug is LeaderboardGame {
   return (LEADERBOARD_GAMES as readonly string[]).includes(slug)
@@ -93,10 +93,12 @@ type GameHubPageProps = {
 
 /**
  * A game's page, and its only one (Ramsey picked B of the "Game page: board and records" canvas, 2026-10-11: no
- * board page and no record book of its own). Up top and across the page, its name and Play beside its screen,
- * where it plays itself under the high score. Then its tabs, Board and Records: the period's board in full, and
- * any event it is in; or its records, each a brass plaque. Then the games most like it. A game with no records
- * has no tabs, just its board.
+ * board page and no record book of its own). Up top and across the page, its screen, where it plays itself under
+ * the high score, with its name and Play on it. Since B of the "Game page, simpler" canvas (Ramsey, 2026-11-17:
+ * "it's too much text and i want it simplified", then "Build B"), no tabs: the top of the board and a few records
+ * side by side, then any event it is in, then the games most like it. Each opens in full in their place, at the
+ * addresses the tabs had: the board at its period's (`/games/<slug>/<period>`), the records at theirs
+ * (`/games/<slug>/records`), each with a way back. A game with no records has just its board, in full.
  *
  * A daily's page is today's, with tabs under its hero: Today (today's card
  * across the page, then its board in full, its week and month a tap away),
@@ -113,21 +115,29 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   // A daily just for fun has no records tab: an old link to it is its Today tab.
   const tab: DailyTab = daily ? (tabFromRoute === 'records' && !ranked ? 'today' : (tabFromRoute ?? 'today')) : 'today'
   const boardSlug = isBoardGame(slug) ? slug : null
-  // Another game's tabs, Board and Records, when it keeps records.
-  const gameTabs = !daily && boardSlug !== null && gameHasRecords(slug)
-  const gameTab: 'board' | 'records' = gameTabs && boardFromRoute === 'records' ? 'records' : 'board'
   const routePeriod = periodFromRoute(route)
-  // The board's period: the site's, or the address's on the Board tab. A daily's board is today's on its page,
+  // Another game, when it keeps records: its board and records side by side, each a tap from in full.
+  const withRecords = !daily && boardSlug !== null && gameHasRecords(slug)
+  // What the page shows under its screen: the two side by side (its own address), the board in full (a period's),
+  // or the records in full (theirs). A game with no records has its board in full at either.
+  const gameView: 'both' | 'board' | 'records' = !withRecords
+    ? 'board'
+    : boardFromRoute === 'records'
+      ? 'records'
+      : routePeriod
+        ? 'board'
+        : 'both'
+  // The board's period: the site's, or the address's on the full board. A daily's board is today's on its page,
   // its week or month when the address says (gameBoardHref), whatever the site's period.
   const boardPeriod: LeaderboardPeriod = daily
     ? routePeriod && routePeriod !== 'daily'
       ? boardPeriodFor(slug, routePeriod)
       : 'daily'
-    : gameTab === 'board'
-      ? (routePeriod ?? storedPeriod)
-      : storedPeriod
-  // The Records tab's period is its own: all time unless the address asks (recordsHref).
-  const recordsPeriod: LeaderboardPeriod = gameTab === 'records' && routePeriod ? coerceVisiblePeriod(routePeriod) : 'all'
+    : gameView === 'records'
+      ? storedPeriod
+      : (routePeriod ?? storedPeriod)
+  // The records' period is their own: all time unless the address asks (recordsHref).
+  const recordsPeriod: LeaderboardPeriod = gameView === 'records' && routePeriod ? coerceVisiblePeriod(routePeriod) : 'all'
   // The games below show their bests and leaders for the day on a daily's page, else for the board's period.
   const period: LeaderboardPeriod = daily ? 'daily' : boardPeriod
   const device = useDeviceType()
@@ -143,8 +153,9 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   const { byGame } = useGlobalRank()
   const { leaders, failed: leadersFailed } = useBoardLeaders(period)
   const [, setThemeTick] = useState(0)
+  // A daily's tabs, or what another game shows under its screen: brought into view when it changes (below).
   const tabsRef = useRef<HTMLDivElement>(null)
-  const tabKey = daily ? tab : gameTab
+  const tabKey = daily ? tab : gameView
   const shownTab = useRef(tabKey)
 
   // The game's colour is picked for the theme, so a theme change repaints the page.
@@ -172,22 +183,16 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
     }
   }, [daily, ranked, slug])
 
-  // So is another game's Records tab, so it opens on its own loading rows rather than a blank that it then
-  // pushes the games under it down from (pages load in place).
-  useEffect(() => {
-    if (gameTabs) void RecordsTab.preload()
-  }, [gameTabs])
-
   // An old link to the records tab of a daily just for fun lands on its Today tab.
   useEffect(() => {
     if (!daily || ranked || tabFromRoute !== 'records') return
     navigate(dailyTabHref(slug, 'today'), { replace: true })
   }, [daily, ranked, tabFromRoute, slug])
 
-  // A new tab keeps the hero and brings the tabs up to the top, unless they're already in the top half
-  // of the screen with the tab under them in view. A past course's row, when one is named, lands itself. So does
-  // the board or the records when a link on this page names them (#board, #records: "its board" on a daily's
-  // Records tab): the app's own landing on a link's place is for a new page, and a tab is the same page.
+  // A new tab, or the board or records opened in full (or closed again), keeps the screen and brings what changed up
+  // to the top, unless it's already in the top half of the screen. A past course's row, when one is named, lands
+  // itself. So does the board or the records when a link on this page names them (#board, #records: "its board" on
+  // a daily's Records tab): the app's own landing on a link's place is for a new page, and a tab is the same page.
   useEffect(() => {
     if (shownTab.current === tabKey) return
     shownTab.current = tabKey
@@ -225,9 +230,9 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
 
   const hero = <GameHubHero game={game} accent={accent} canPlay={canPlay} highScore={highScore} />
   const eventsCard = events.length > 0 ? <GameHubEvents gameName={game.name} events={events} /> : null
-  // Bug hunt hiding places (lib/bugHunt.ts): with tabs, they hold "its page's tabs" and the games like it hold
-  // the other; with none, the games like it hold the first and the line over the board the other.
-  const shelfHunt = daily ? (ranked ? `g-stand-${game.slug}` : undefined) : gameTabs ? `g-stand-${game.slug}` : `g-board-${game.slug}`
+  // Blip hunt hiding places (lib/bugHunt.ts): with records, the records beside the board hold one and the games like
+  // it the other; with none, the games like it hold the first and the line over the board the other.
+  const shelfHunt = daily ? (ranked ? `g-stand-${game.slug}` : undefined) : withRecords ? `g-stand-${game.slug}` : `g-board-${game.slug}`
   const shelfSection =
     more.length > 0 ? (
       <section className="gh-shelf" aria-labelledby="gh-shelf-title" data-hunt={shelfHunt}>
@@ -241,6 +246,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
           </a>
         </div>
         <ul className="wall__grid gh-shelf__grid">
+          {/* Each its picture and name (plain), as on the home page: its scores are a tap away, on its page. */}
           {more.map((g, i) => (
             <WallTile
               key={g.slug}
@@ -252,6 +258,7 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
               asking={!leadersFailed}
               newFlag={false}
               preview
+              plain
             />
           ))}
         </ul>
@@ -314,31 +321,43 @@ export function GameHubPage({ slug, board: boardFromRoute, tab: tabFromRoute }: 
   return (
     <PageShell innerClassName="gh-rail">
       <div className="gh" style={style}>
-        {/* The hero across the page, as a daily's is; then the tabs, Board and Records, and the one that's open. */}
+        {/* The screen across the page, as a daily's is; then the board and the records, side by side or one in full. */}
         {hero}
-        {gameTabs && boardSlug ? (
-          <GameTabs slug={boardSlug} gameName={game.name} tab={gameTab} boardPeriod={boardPeriod} recordsPeriod={recordsPeriod} ref={tabsRef} />
-        ) : null}
-
-        {gameTab === 'records' ? (
-          <Suspense fallback={<div className="gh-tab-wait" aria-busy="true" />}>
-            <RecordsTab game={game.slug} period={recordsPeriod} />
-          </Suspense>
+        {gameView === 'both' && boardSlug ? (
+          <div className="gh-peeks" ref={tabsRef}>
+            <BoardPeek slug={boardSlug} period={boardPeriod} />
+            <RecordsPeek game={game.slug} />
+          </div>
         ) : (
-          <>
-            {boardSlug ? (
+          // In full, with a way back to the two side by side; it's where a link to the board or the records lands.
+          <div
+            className="gh-full"
+            ref={tabsRef}
+            id={withRecords ? (gameView === 'records' ? RECORDS_PLACE : BOARD_PLACE) : undefined}
+          >
+            {withRecords ? (
+              <a className="gh-back" href={gameHref(game.slug)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m15 6-6 6 6 6" />
+                </svg>
+                Back<span className="visually-hidden"> to {possessive(game.name)} page</span>
+              </a>
+            ) : null}
+            {gameView === 'records' ? (
+              <RecordBookView game={game.slug} period={recordsPeriod} />
+            ) : boardSlug ? (
               <GamePageBoard
                 slug={boardSlug}
                 period={boardPeriod}
-                noteHunt={gameTabs ? undefined : `g-stand-${game.slug}`}
-                // With tabs, the tabs are where a link to the board lands; with none, the board itself.
-                place={gameTabs ? undefined : BOARD_PLACE}
+                noteHunt={withRecords ? undefined : `g-stand-${game.slug}`}
+                // With records, the full view is where a link to the board lands; with none, the board itself.
+                place={withRecords ? undefined : BOARD_PLACE}
                 onRetry={askScoreAgain}
               />
             ) : null}
-            {eventsCard}
-          </>
+          </div>
         )}
+        {gameView !== 'records' ? eventsCard : null}
 
         {shelfSection}
       </div>
