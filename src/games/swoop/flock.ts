@@ -1,6 +1,5 @@
-import { mixColor } from '../../lib/color'
 import { keptEpoch, watchKept } from '../keptPictures'
-import { SWIFT_BEAK, SWIFT_BEAT, SWIFT_BELLY, SWIFT_BODY, SWIFT_EYE, SWIFT_WING_FOLDED, SWIFT_WING_ROOT, SWIFT_WING_UP } from './birdShape'
+import { paintSwift, swiftColours, type SwiftStyle } from './swiftPaint'
 
 /*
  * The flock: Swoop's streak, as something you can see and can lose. Every clean landing in a row, another
@@ -70,16 +69,6 @@ type Stray = { x: number; y: number; vx: number; vy: number; hue: number; life: 
 
 /** Where the leader was, each frame: how far it had come along its own path by then. */
 type Step = { s: number; x: number; y: number; hold: boolean }
-
-let paths: { body: Path2D; belly: Path2D; beak: Path2D; up: Path2D; folded: Path2D } | null = null
-const PATHS = () =>
-  (paths ??= {
-    body: new Path2D(SWIFT_BODY),
-    belly: new Path2D(SWIFT_BELLY),
-    beak: new Path2D(SWIFT_BEAK),
-    up: new Path2D(SWIFT_WING_UP),
-    folded: new Path2D(SWIFT_WING_FOLDED),
-  })
 
 /** A follower's picture: half its side in the swift's units, so a wing at any beat stays inside. */
 const HALF = 2.7
@@ -261,8 +250,8 @@ export class Flock {
     }
   }
 
-  /** The sheet for birds drawn `want` canvas pixels to the swift's unit, on this theme. */
-  private sheetFor(want: number, dark: boolean): Sheet {
+  /** The sheet for birds drawn `want` canvas pixels to the swift's unit, on this theme, outlined this way. */
+  private sheetFor(want: number, dark: boolean, style: SwiftStyle): Sheet {
     let unit: number = UNITS[UNITS.length - 1]!
     for (const u of UNITS) {
       if (u >= want) {
@@ -270,7 +259,7 @@ export class Flock {
         break
       }
     }
-    const key = `${unit}|${dark}|${keptEpoch()}`
+    const key = `${unit}|${dark}|${style}|${keptEpoch()}`
     let sheet = this.sheets.get(key)
     if (sheet) return sheet
     const side = Math.ceil(HALF * 2 * unit)
@@ -285,16 +274,17 @@ export class Flock {
     return sheet
   }
 
-  /** Paints a follower on its sheet the first time it's wanted: its colour, at one beat of its wing, or tucked. */
-  private paint(sheet: Sheet, hue: number, frame: number, dark: boolean) {
+  /**
+   * Paints a follower on its sheet the first time it's wanted: its colour, at one beat of its wing, or tucked. It's
+   * the bird you fly, as the look on test paints it (swiftPaint.ts), without the parts too fine to see at its size.
+   */
+  private paint(sheet: Sheet, hue: number, frame: number, dark: boolean, style: SwiftStyle) {
     const id = hue * (BEATS + 1) + frame
     if (sheet.painted.has(id)) return
     sheet.painted.add(id)
     const g = sheet.g
     if (!g) return
     const { side, unit } = sheet
-    const P = PATHS()
-    const colour = FLOCK_HUES[hue]!
     const tucked = frame === TUCK
     g.save()
     g.beginPath()
@@ -303,33 +293,8 @@ export class Flock {
     g.translate(frame * side + side / 2, hue * side + side / 2)
     const stretch = tucked ? 1.12 : 1
     g.scale(unit * stretch, unit / stretch)
-    g.lineJoin = 'round'
-    g.strokeStyle = dark ? mixColor(colour, '#0b1030', 0.72) : '#1a2b3c'
-    g.lineWidth = Math.max(1.6 / unit, 0.13)
-    g.fillStyle = colour
-    g.fill(P.body)
-    g.stroke(P.body)
-    g.fillStyle = 'rgba(255, 255, 255, 0.5)'
-    g.fill(P.belly)
-    g.fillStyle = hue === 0 ? '#f2813a' : '#f5b942'
-    g.fill(P.beak)
-    g.save()
-    if (!tucked) {
-      const [rx, ry] = SWIFT_WING_ROOT
-      g.translate(rx, ry)
-      g.rotate((0.5 - 0.5 * Math.sin((frame / BEATS) * TAU)) * SWIFT_BEAT)
-      g.translate(-rx, -ry)
-    }
-    const wing = tucked ? P.folded : P.up
-    g.fillStyle = mixColor(colour, '#000000', 0.2)
-    g.fill(wing)
-    g.stroke(wing)
-    g.restore()
-    const e = SWIFT_EYE
-    g.fillStyle = '#1a2b3c'
-    g.beginPath()
-    g.arc(e.px - 0.02, e.y, e.pr * 1.25, 0, TAU)
-    g.fill()
+    // Its line a little heavier than a pixel: at this size a hairline is lost against the hills.
+    paintSwift(g, swiftColours(FLOCK_HUES[hue]!, dark, style), { flap: (frame / BEATS) * TAU, dive: tucked, ground: false, px1: 1.1 / unit, small: true })
     g.restore()
   }
 
@@ -347,16 +312,17 @@ export class Flock {
     dpr: number,
     time: number,
     dark: boolean,
+    style: SwiftStyle,
   ) {
     if (!this.followers.length && !this.strays.length) return
     // The sheet is painted for a size a few steps apart, and its birds drawn at the size they truly are.
     const unitNow = size * FOLLOWER_SIZE * scale
-    const sheet = this.sheetFor(unitNow * dpr, dark)
+    const sheet = this.sheetFor(unitNow * dpr, dark, style)
     const { side } = sheet
     const half = HALF * unitNow
     const stamp = (x: number, y: number, a: number, hue: number, beat: number, tuck: boolean, alpha: number) => {
       const frame = tuck ? TUCK : Math.floor((((time * 3.4 + beat / TAU) % 1) + 1) * BEATS) % BEATS
-      this.paint(sheet, hue, frame, dark)
+      this.paint(sheet, hue, frame, dark, style)
       const c = Math.cos(a)
       const s = Math.sin(a)
       ctx.setTransform(dpr * c, -dpr * s, dpr * s, dpr * c, dpr * px(x), dpr * py(y))

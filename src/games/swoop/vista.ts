@@ -1,10 +1,11 @@
 import { withAlpha } from '../../lib/color'
 import { keptEpoch } from '../keptPictures'
 import { SWIFT_LIFT } from './birdShape'
-import { AURORA_PHOENIX, BLIP, blipSparkOffset, PENGUIN, SNOW_SWIFT } from './birdSkins'
+import { AURORA_PHOENIX, BLIP, blipSparkOffset, PENGUIN, skinPainter, SNOW_SWIFT } from './birdSkins'
 import { Flock, FLOCK_HUES } from './flock'
 import { BEAK, BLIP_EVERY, BLIPS_AT, clamp, HillsScene, LINE_NARROWEST, LINE_RUN, LINE_TURN, LINE_WIDEST, RED, SEAMS, SWIFT_SCALE, textSize, type SceneFrame } from './scene'
 import { heightAt, mulberry32, slopeAt, STREAK_ON, streakLift, type Hills } from './sim'
+import { paintSwift, swiftColours, type SwiftColours, type SwiftStyle } from './swiftPaint'
 import { DECO, decoBox, decoLook, DecoPictures, isSprig, layBuried, layDecos, type Deco } from './vistaProps'
 import {
   CLOUD_SIZE,
@@ -82,6 +83,24 @@ const RIBBON = 0.5
 const RIBBON_WIDE = 0.42
 /** How much bigger than life the grass and the flowers are drawn: storybook size, so they're seen from the air. */
 const SPRIG = 1.5
+/**
+ * How the birds are outlined (swiftPaint.ts has the three ways): in a deeper shade of their own colour. Nothing
+ * else in this look has the site's dark line round it, and at the bird's size in a run a line of its own colour
+ * still marks it off from the hills, by day and by night, where no line at all leaves the flock as blobs. By
+ * night the dark line turns pale, as scene.ts has it, and reads as a glow round the bird.
+ */
+const BIRD_STYLE: SwiftStyle = 'soft'
+/** How a bird is posed and shown, as scene.ts drawBird takes it. */
+type BirdShown = {
+  flap?: number
+  dive?: boolean
+  folded?: boolean
+  squish?: number
+  alpha?: number
+  ghost?: boolean
+  skin?: string | null
+  mood?: 'happy' | 'ouch' | null
+}
 /** How long a thump shakes the view, in seconds, and how far, in metres. */
 const SHAKE = 0.3
 const SHAKE_FAR = 0.42
@@ -133,6 +152,9 @@ export class VistaScene extends HillsScene {
   private decoLevel = 0
   private lookKey: string
   private readonly flock = new Flock()
+  /** How the birds are outlined: BIRD_STYLE, unless a picture of the choices sets another to show it. */
+  birdStyle: SwiftStyle = BIRD_STYLE
+  private swifts = new Map<string, SwiftColours>()
   private back: Backdrop | null = null
   /** When the canvas last changed size, by the page's clock: the backdrop is painted again once it has stopped changing. */
   private sizedAt = -Infinity
@@ -176,6 +198,7 @@ export class VistaScene extends HillsScene {
     this.decoPics.relook(decoLook(this.hills.hue, this.C.dark), this.lookKey)
     this.back = null
     this.labelPics.clear()
+    this.swifts.clear()
   }
 
   snap() {
@@ -390,6 +413,7 @@ export class VistaScene extends HillsScene {
       this.dpr,
       this.time,
       this.C.dark,
+      this.birdStyle,
     )
     if (showBird) {
       const angle = Math.atan2(b.vy, Math.max(0.01, b.vx))
@@ -859,6 +883,43 @@ export class VistaScene extends HillsScene {
         spin: (Math.random() - 0.5) * 22,
       })
     }
+  }
+
+  /* ---------- the birds ---------- */
+
+  /**
+   * A bird, painted for this look (swiftPaint.ts): yours, and the blue bird. Placed, turned, stretched in a dive
+   * and squashed on a landing just as scene.ts places its own, so it's the same bird in the same spot. A skin
+   * paints itself and a ghost with no skin is its outline, both as scene.ts draws them.
+   */
+  protected drawBird(x: number, y: number, angle: number, size: number, colour: string, shown: BirdShown = {}) {
+    if (shown.ghost || skinPainter(shown.skin)) {
+      super.drawBird(x, y, angle, size, colour, shown)
+      return
+    }
+    const { ctx } = this
+    const { flap = 0, dive = false, folded = false, squish = 0, alpha = 1, mood = null } = shown
+    size *= SWIFT_SCALE
+    const px = this.sx(x) - Math.sin(angle) * size * SWIFT_LIFT
+    const py = this.sy(y) - Math.cos(angle) * size * SWIFT_LIFT
+    const key = `${colour}|${this.birdStyle}`
+    let look = this.swifts.get(key)
+    if (!look) {
+      look = swiftColours(colour, this.C.dark, this.birdStyle)
+      this.swifts.set(key, look)
+    }
+    // It blinks now and then: each bird in its own time.
+    const t = this.time + colour.length * 0.53
+    const blink = t % 3.3 < 0.11 || (t + 1.4) % 5.9 < 0.1
+    ctx.save()
+    ctx.globalAlpha = alpha
+    ctx.translate(px, py)
+    ctx.rotate(-angle)
+    const stretch = dive ? 1.12 : 1
+    const sq = 1 - squish * 0.22
+    ctx.scale((size * stretch) / Math.sqrt(sq), (size * sq) / stretch)
+    paintSwift(ctx, look, { flap, dive, ground: folded, px1: 1 / size, mood, blink })
+    ctx.restore()
   }
 
   /* ---------- the bird's company ---------- */
