@@ -1,21 +1,30 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { BracketWinCelebration } from '../components/BracketWinCelebration'
 import { EventBracket } from '../components/EventBracket'
-import { EventKicker, eventAccent } from '../components/EventCard'
-import { EventClock } from '../components/EventClock'
+import { eventAccent } from '../components/EventCard'
+import { EventCountdown } from '../components/EventCountdown'
 import {
-  EventGames,
-  EventPodium,
-  GameBests,
-  HowItScores,
+  EventGameTiles,
+  EventWinner,
+  HowEventModal,
   LobbyClosedCard,
   NextEventCard,
+  PlaceTable,
   StandingsEmpty,
-  StandingsTable,
-  WinnerCard,
   type GameCardState,
 } from '../components/EventDetail'
-import { DoneList, EventInvites, EventsEmpty, EventsHead, HowEventsModal, LiveList } from '../components/EventsHome'
+import {
+  ClockIcon,
+  DoneList,
+  EventInvites,
+  EventsEmpty,
+  EventsHead,
+  HowEventsModal,
+  LiveList,
+  PeopleIcon,
+} from '../components/EventsHome'
+import { Panel, PanelHead } from '../components/Panel'
+import { InfoIcon } from '../components/pastIcons'
 import { InviteByTagForm } from '../components/InviteByTagForm'
 import { ListRow, ListSplit } from '../components/ListRow'
 import { PageBanner } from '../components/PageBanner'
@@ -40,11 +49,8 @@ import { APP_NAME } from '../lib/brand'
 import { inkOn } from '../lib/color'
 import { useDefaultPeriod } from '../lib/defaultPeriod'
 import {
-  endsWords,
-  eventSpan,
+  eventDay,
   eventsLineup,
-  gameName,
-  ordinal,
   resultLines,
   skipLesson,
   standingsTable,
@@ -61,7 +67,6 @@ import {
   eventKind,
   finalBracketMatch,
   formatEventCountdown,
-  formatRulesSummary,
   getJoinedTournamentIds,
   getTournament,
   getTournamentInvite,
@@ -120,41 +125,6 @@ function scoredStandings(
         b.score - a.score ||
         normalizePlayerName(a.row.name).localeCompare(normalizePlayerName(b.row.name)),
     )
-}
-
-/** Rank of the current player in the same order the event standings show. */
-function yourStandingPlace(detail: TournamentDetail, displayName: string): number | null {
-  const youName = normalizePlayerName(displayName)
-  if (!youName) return null
-
-  if (detail.games.length === 1) {
-    const scored = scoredStandings(detail)
-    const idx = scored.findIndex(({ row }) => normalizePlayerName(row.name) === youName)
-    return idx >= 0 ? (scored[idx]!.row.place ?? idx + 1) : null
-  }
-
-  const idx = detail.standings.findIndex((row) => normalizePlayerName(row.name) === youName)
-  return idx >= 0 ? (detail.standings[idx]!.place ?? idx + 1) : null
-}
-
-/**
- * The current player's headline number, formatted the way the board shows it.
- * An all-round event has none: the place says it.
- */
-function yourStandingScore(detail: TournamentDetail, displayName: string): string | null {
-  const youName = normalizePlayerName(displayName)
-  if (!youName) return null
-  if (detail.games.length === 1) {
-    const hit = scoredStandings(detail).find(
-      ({ row }) => normalizePlayerName(row.name) === youName,
-    )
-    return hit ? eventScoreText(detail.games, hit.score) : null
-  }
-  if (detail.format === 'place-points') return null
-  const row = detail.standings.find((r) => normalizePlayerName(r.name) === youName)
-  if (!row) return null
-  const total = detail.games.reduce((sum, g) => sum + (row.byGame[g]?.score ?? 0), 0)
-  return total.toLocaleString()
 }
 
 /** Who won, once it is over: the API's word first, else the top of the board. */
@@ -339,24 +309,6 @@ function heroAction(
   }
 }
 
-/** The line under an event's name: its games, when it runs, and who's in. */
-function eventSub(detail: TournamentDetail): string {
-  const bracket = eventKind(detail) === 'bracket'
-  return [
-    detail.games.map(gameName).join(' · '),
-    detail.official ? eventSpan(detail) : formatRulesSummary(detail).replace(/\.$/, ''),
-    bracket
-      ? null
-      : detail.playerCount === 0
-        ? detail.status === 'ended'
-          ? 'Nobody played'
-          : 'Nobody in yet'
-        : `${detail.playerCount} ${detail.playerCount === 1 ? 'player' : 'players'}`,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-}
-
 /** "Semifinals": the winners-bracket round still being played, or null once the losers bracket is in play too. */
 function currentRoundName(detail: TournamentDetail): string | null {
   const matches = detail.bracket?.matches ?? []
@@ -366,129 +318,142 @@ function currentRoundName(detail: TournamentDetail): string | null {
   return bracketRoundLabel(Math.min(...open.map((m) => m.round)), maxRound)
 }
 
-/** The right side of the banner: the clock while it runs, the winner once it's over. */
-function BannerSide({ detail, displayName }: { detail: TournamentDetail; displayName: string }) {
+function Svg({ children }: { children: ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+const BackIcon = () => (
+  <Svg>
+    <path d="M15 6l-6 6 6 6" />
+  </Svg>
+)
+const FlagIcon = () => (
+  <Svg>
+    <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+  </Svg>
+)
+const RoundIcon = () => (
+  <Svg>
+    <path d="M3 5h5v5H3M3 14h5v5H3M8 7.5h4v9H8M12 12h6" />
+  </Svg>
+)
+const InvitePlayerIcon = () => (
+  <Svg>
+    <circle cx="10" cy="8" r="3.4" />
+    <path d="M3.5 20c0-3.4 2.9-5.7 6.5-5.7 1.5 0 2.9.4 4 1.1M18 13v7M14.5 16.5h7" />
+  </Svg>
+)
+const LinkIcon = () => (
+  <Svg>
+    <path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2" />
+  </Svg>
+)
+
+function playersWords(n: number): string {
+  return `${n} ${n === 1 ? 'player' : 'players'}`
+}
+
+/** The event in two chips: how long it has (or when it ended, or its round), and who's in. */
+function EventChips({ detail }: { detail: TournamentDetail }) {
   const bracket = eventKind(detail) === 'bracket'
+  const cap = detail.rules.maxPlayers
+  const chips: { key: string; icon: ReactNode; text: ReactNode }[] = []
   if (lobbyClosed(detail)) {
-    const cap = detail.rules.maxPlayers
-    return (
-      <div className="evp-banner__side">
-        <p className="evp-cap">Closed</p>
-        <p className="evp-banner__state">It didn’t fill</p>
-        {cap ? (
-          <p className="evp-banner__side-note">
-            {detail.playerCount} of {cap} seats taken
-          </p>
-        ) : null}
-      </div>
-    )
-  }
-  if (detail.status === 'ended') {
-    const winner = eventWinner(detail)
-    if (!winner) {
-      return (
-        <div className="evp-banner__side">
-          <p className="evp-cap">Ended</p>
-          <p className="evp-banner__state">{bracket ? 'No winner: the rounds went unplayed' : 'No winner: nobody played'}</p>
-        </div>
-      )
+    chips.push({ key: 'end', icon: <FlagIcon />, text: 'Didn’t fill' })
+    chips.push({ key: 'who', icon: <PeopleIcon />, text: cap ? `${detail.playerCount} of ${cap} joined` : playersWords(detail.playerCount) })
+  } else if (detail.status === 'ended') {
+    // The day it ended, on the arcade's clock: eventDay reads a start, so it's handed the last minute.
+    chips.push({ key: 'end', icon: <FlagIcon />, text: `Ended ${eventDay({ startsAt: detail.endsAt - 60_000 })}` })
+    chips.push({ key: 'who', icon: <PeopleIcon />, text: detail.playerCount ? playersWords(detail.playerCount) : 'Nobody played' })
+  } else if (bracket && (detail.status === 'upcoming' || !detail.bracket?.lockedAt)) {
+    // Until the last seat fills there is no draw, only seats, and a week for them to fill (the API closes it then).
+    chips.push({ key: 'who', icon: <PeopleIcon />, text: cap ? `${detail.playerCount} of ${cap} in` : playersWords(detail.playerCount) })
+    if (detail.lobbyClosesAt != null && seatsLeft(detail)) {
+      chips.push({ key: 'clock', icon: <ClockIcon />, text: <EventCountdown endsAt={detail.lobbyClosesAt} /> })
     }
-    const rows = bracket ? [] : standingsTable(detail, displayName)
-    const top = rows[0]
-    const single = detail.games.length === 1 && !bracket ? scoredStandings(detail)[0] : null
-    // All-round, the names say it: its totals are only places added up. Scores keep theirs.
-    const allRound = detail.format === 'place-points' && !single
-    // Only who played: without a number beside them, a name that never posted a run would read as beaten.
-    // The viewer is "you" here, as everywhere else on the page.
-    const runnersUp = rows
-      .filter((r) => r.cells.some((c) => c.score != null))
-      .slice(1, 3)
-      .map((r) => {
-        const who = r.you ? 'you' : r.name
-        return allRound ? who : `${who} on ${eventScoreText(detail.games, r.total)}`
-      })
-      .join(' and ')
-    return (
-      <div className="evp-banner__side">
-        <WinnerCard
-          winner={normalizePlayerName(winner)}
-          avatarId={top?.avatarId ?? single?.row.avatarId}
-          total={single ? single.score : top && !allRound ? top.total : null}
-          games={detail.games}
-          mine={normalizePlayerName(winner) === normalizePlayerName(displayName)}
-          runnersUp={runnersUp ? `Ahead of ${runnersUp}` : null}
-          trophy={trophyGiven(detail)}
-          trophyAt={trophyField(detail)}
-        />
-      </div>
-    )
-  }
-  if (bracket) {
-    // Until the last seat fills there is no draw, only seats.
-    if (detail.status === 'upcoming' || !detail.bracket?.lockedAt) {
-      const left = seatsLeft(detail)
-      const cap = detail.rules.maxPlayers
-      return (
-        <div className="evp-banner__side">
-          <p className="evp-cap">The draw</p>
-          <p className="evp-banner__state">{left ? `When ${left} more ${left === 1 ? 'joins' : 'join'}` : 'When the roster fills'}</p>
-          {cap ? (
-            <p className="evp-banner__side-note">
-              {detail.playerCount} of {cap} seats taken
-            </p>
-          ) : null}
-          {/* The API closes a lobby a week after it was made, so one empty seat can't hold it open. */}
-          {left && detail.lobbyClosesAt != null ? (
-            <p className="evp-banner__side-note">{endsWords(detail.lobbyClosesAt, true, 'Closes')} unless it fills</p>
-          ) : null}
-        </div>
-      )
-    }
-    const round = currentRoundName(detail)
-    return detail.nextDeadlineAt ? (
-      <div className="evp-banner__side">
-        <p className="evp-cap">{round ? `${round} ${/finals$/.test(round) ? 'end' : 'ends'} in` : 'This round ends in'}</p>
-        <EventClock endsAt={detail.nextDeadlineAt} />
-      </div>
-    ) : (
-      <div className="evp-banner__side">
-        <p className="evp-cap">Now playing</p>
-        <p className="evp-banner__state">{round ?? 'The next round'}</p>
-      </div>
-    )
-  }
-  if (detail.status === 'upcoming') {
-    return (
-      <div className="evp-banner__side">
-        <p className="evp-cap">Starts in</p>
-        <EventClock endsAt={detail.startsAt} />
-      </div>
-    )
-  }
-  if (isUnlimitedDuration(detail.rules)) {
-    // Every seat counts, filled or not, so "everyone" alone would read as done once all who joined have played.
-    const cap = detail.rules.maxPlayers
-    const done = (attemptsPerGameMax(detail) ?? 1) > 1 ? 'used their tries' : 'played'
-    return (
-      <div className="evp-banner__side">
-        <p className="evp-cap">Runs</p>
-        <p className="evp-banner__state">
-          {!cap ? `Until everyone has ${done}` : cap === 2 ? `Until both have ${done}` : `Until all ${cap} have ${done}`}
-        </p>
-        {/* The API stops it a week after it starts, so an empty seat can't hold it open. */}
-        {hasNoEnd(detail) ? null : <p className="evp-banner__side-note">{endsWords(detail.endsAt, true)} at the latest</p>}
-      </div>
-    )
+  } else if (bracket) {
+    chips.push({ key: 'round', icon: <RoundIcon />, text: currentRoundName(detail) ?? 'Now playing' })
+    if (detail.nextDeadlineAt) chips.push({ key: 'clock', icon: <ClockIcon />, text: <EventCountdown endsAt={detail.nextDeadlineAt} /> })
+  } else {
+    chips.push({
+      key: 'clock',
+      icon: <ClockIcon />,
+      text:
+        detail.status === 'upcoming' ? (
+          `Starts in ${formatEventCountdown(detail.startsAt).replace(/ left$/, '')}`
+        ) : isUnlimitedDuration(detail.rules) ? (
+          'Until everyone finishes'
+        ) : (
+          <EventCountdown endsAt={detail.endsAt} />
+        ),
+    })
+    chips.push({ key: 'who', icon: <PeopleIcon />, text: detail.playerCount ? playersWords(detail.playerCount) : 'Nobody in yet' })
   }
   return (
-    <div className="evp-banner__side">
-      <p className="evp-cap">{endsWords(detail.endsAt)}</p>
-      <EventClock endsAt={detail.endsAt} />
+    <ul className="evx-chips" aria-label="About this event">
+      {chips.map((c) => (
+        <li key={c.key} className="evx-chip">
+          {c.icon}
+          {c.text}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** The heading: back to Events, the event's name, its ⓘ, Share, and Invite for whoever may invite. */
+function EventHead({
+  detail,
+  shareUrl,
+  onHow,
+  onInvite,
+}: {
+  detail: TournamentDetail
+  /** Null where a shared link would let nobody in. */
+  shareUrl: string | null
+  onHow: () => void
+  onInvite: (() => void) | null
+}) {
+  return (
+    <div className="evx-top">
+      <a className="evx-back" href={tournamentsHref()}>
+        <BackIcon />
+        Events
+      </a>
+      <div className="evh-head evx-head">
+        <h1 id="evp-event-title" className="evh-title">
+          {detail.title}
+        </h1>
+        <button type="button" className="evh-info" aria-label="How it works" onClick={onHow}>
+          <InfoIcon />
+        </button>
+        {shareUrl ? (
+          <ShareBoardButton
+            className="evx-share"
+            label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
+            url={shareUrl}
+          />
+        ) : null}
+        {onInvite ? (
+          <button type="button" className="evp-btn evp-btn--ghost evx-invite" aria-label="Invite players" onClick={onInvite}>
+            <InvitePlayerIcon />
+            <span className="evx-invite__word">Invite</span>
+          </button>
+        ) : null}
+      </div>
+      <EventChips detail={detail} />
     </div>
   )
 }
 
-function EventBanner({
+/**
+ * What's yours to do that the games' tiles don't say: join, Play a bracket's match, a bracket's word on where
+ * you are, or why you can't. A scores event's Play is its tiles (EventGameTiles), and its place your row.
+ */
+function EventActions({
   detail,
   joined,
   displayName,
@@ -498,9 +463,6 @@ function EventBanner({
   joinNote,
   onJoin,
   justJoined,
-  shareUrl,
-  copyInvite,
-  copiedInvite,
 }: {
   detail: TournamentDetail
   joined: boolean
@@ -512,101 +474,135 @@ function EventBanner({
   onJoin: () => void
   /** Joined with the button just now: a bracket's matches run on a clock, so alerts are offered. */
   justJoined: boolean
-  /** Null where a shared link would let nobody in. */
-  shareUrl: string | null
-  copyInvite: (() => void) | null
-  copiedInvite: boolean
 }) {
+  if (detail.status === 'ended') return null
   const bracket = eventKind(detail) === 'bracket'
   const action = heroAction(detail, joined, displayName, playInvite)
-  const open = detail.status !== 'ended'
-  const place = joined && !bracket ? yourStandingPlace(detail, displayName) : null
-  const score = place != null ? yourStandingScore(detail, displayName) : null
+  const link = bracket && action?.kind === 'link' ? action : null
+  const text = bracket && action?.kind === 'text' ? action : null
+  const full = !joined && eventFull
+  // A bracket takes a seat to play; a scores event can be played straight from a tile, so joining is the lesser button there.
+  const join = !joined && !full && Boolean(displayName) && (action?.kind === 'join' || !bracket)
+  const needsTag = !joined && !displayName
+  // Before the draw the bracket's own card says how many it waits for; the row needn't say it again.
+  const sub = link?.sub ?? (detail.bracket?.lockedAt ? text?.sub : null) ?? null
+  const alerts = bracket && joined && justJoined
+  if (!link && !text && !join && !full && !needsTag && !joinNote && !alerts) return null
   const joinLabel = `Join${detail.cadence === 'weekly' ? ' the Triple' : ''} as ${displayName}`
-
-  const wantsJoinGhost =
-    open && !joined && !bracket && !eventFull && Boolean(displayName) && action?.kind !== 'join'
-  const needsTag = open && !joined && !displayName
-
   return (
-    <section className="evp-banner evp-wash" aria-labelledby="evp-event-title">
-      <div className="evp-banner__bar">
-        <nav className="evp-crumbs" aria-label="Breadcrumb">
-          <a href={tournamentsHref()}>Events</a>
-          <span aria-hidden="true">›</span>
-          <span aria-current="page">{detail.official && detail.status === 'ended' ? `${detail.title}, ${eventSpan(detail).split(' to ')[0]}` : detail.title}</span>
-        </nav>
-        <span className="evp-banner__tools">
-          {copyInvite ? (
-            <button type="button" className="evp-btn evp-btn--ghost evp-btn--small" onClick={copyInvite}>
-              {copiedInvite ? 'Copied' : 'Copy invite'}
-            </button>
-          ) : null}
-          {shareUrl ? (
-            <ShareBoardButton
-              className="evp-share"
-              label={`You're invited: ${detail.title} on ${APP_NAME}. Don't ghost the lobby.`}
-              url={shareUrl}
-            />
-          ) : null}
-        </span>
-      </div>
-      <div className="evp-banner__main">
-        <p className="evp-kick evp-kick--event">
-          <EventKicker t={detail} joined={joined} bare />
-        </p>
-        <h1 id="evp-event-title" className="evp-banner__title">
-          {detail.title}
-        </h1>
-        <p className="evp-banner__sub">{eventSub(detail)}</p>
-        {place != null && !(place === 1 && !open) ? (
-          <p className="evp-banner__you">
-            {open ? 'You’re' : 'You finished'} <b>{ordinal(place)}</b>
-            {score ? ` · ${score}` : ''}
-          </p>
-        ) : joined && !bracket && open ? (
-          <p className="evp-banner__you">You’re in, with nothing posted yet.</p>
-        ) : null}
-        {action || wantsJoinGhost || needsTag || joinNote ? (
-          <div className="evp-acts">
-            {action?.kind === 'link' ? (
-              <a className="evp-btn evp-btn--big" href={action.href}>
-                {action.label}
-              </a>
-            ) : action?.kind === 'join' ? (
-              eventFull ? (
-                <span className="evp-banner__state">This event is full</span>
-              ) : displayName ? (
-                <button type="button" className="evp-btn evp-btn--big" disabled={busy} onClick={onJoin}>
-                  {busy ? 'Joining…' : joinLabel}
-                </button>
-              ) : null
-            ) : action?.kind === 'text' ? (
-              <span className="evp-banner__state">{action.label}</span>
-            ) : null}
-            {wantsJoinGhost ? (
-              <button type="button" className="evp-btn evp-btn--ghost" disabled={busy} onClick={onJoin}>
-                {busy ? 'Joining…' : joinLabel}
-              </button>
-            ) : null}
-            {needsTag ? (
-              <button type="button" className="evp-btn evp-btn--big" onClick={openSiteMenu}>
-                Pick a gamer tag to join
-              </button>
-            ) : null}
-            {action && action.kind !== 'join' && action.sub ? <span className="evp-banner__hint">{action.sub}</span> : null}
-            {joinNote ? <span className="evp-banner__hint evp-banner__hint--error">{joinNote}</span> : null}
-          </div>
-        ) : null}
-        {needsTag ? (
-          <p className="evp-banner__hint">Sign in and pick a tag: it’s how the standings know your runs.</p>
-        ) : null}
-        {bracket && joined && justJoined && open ? <PushAsk reason="match" className="push-ask--in-banner" /> : null}
-      </div>
-      <BannerSide detail={detail} displayName={displayName} />
-    </section>
+    <div className="evx-acts">
+      {link ? (
+        <a className="evp-btn evp-btn--big" href={link.href}>
+          {link.label}
+        </a>
+      ) : null}
+      {text ? <span className="evx-state">{text.label}</span> : null}
+      {join ? (
+        <button
+          type="button"
+          className={`evp-btn${action?.kind === 'join' ? ' evp-btn--big' : ' evp-btn--ghost'}`}
+          disabled={busy}
+          onClick={onJoin}
+        >
+          {busy ? 'Joining…' : joinLabel}
+        </button>
+      ) : null}
+      {full ? <span className="evx-state">This event is full</span> : null}
+      {needsTag ? (
+        <button type="button" className="evp-btn evp-btn--big" onClick={openSiteMenu}>
+          Pick a gamer tag to join
+        </button>
+      ) : null}
+      {sub ? <span className="evx-hint">{sub}</span> : null}
+      {joinNote ? <span className="evx-hint evx-hint--error">{joinNote}</span> : null}
+      {alerts ? <PushAsk reason="match" className="push-ask--in-banner" /> : null}
+    </div>
   )
 }
+
+/**
+ * Invite players, from the heading's Invite: by tag, by link, who's still to answer, and for the host, who may
+ * invite. A Panel is drawn outside the page, so it carries the event's colours itself.
+ */
+function InviteSheet({
+  detail,
+  busy,
+  note,
+  copied,
+  onCopy,
+  onMembersInvite,
+  onClose,
+  style,
+}: {
+  detail: TournamentDetail
+  busy: boolean
+  /** Why the last change didn't take. */
+  note: string | null
+  copied: boolean
+  onCopy: () => void
+  onMembersInvite: (on: boolean) => void
+  onClose: () => void
+  style: CSSProperties
+}) {
+  const titleId = useId()
+  const left = seatsLeft(detail)
+  return (
+    <Panel
+      labelledBy={titleId}
+      onClose={onClose}
+      scrimCloses={false}
+      // The older invite pieces (events.css .inv, .ev-people) read these, which .evp sets on the page.
+      style={
+        {
+          ...style,
+          '--ev-pad': '0rem',
+          '--ev-line': 'rgba(var(--ink-rgb), 0.09)',
+          '--ev-card': 'var(--surface)',
+          '--ev-radius': '1.2rem',
+        } as CSSProperties
+      }
+      className="evx-sheet"
+    >
+      <PanelHead
+        titleId={titleId}
+        title="Invite players"
+        kicker={left != null ? `${left} ${left === 1 ? 'seat' : 'seats'} left` : undefined}
+        icon={<InvitePlayerIcon />}
+        onClose={onClose}
+      />
+      <div className="panel__body">
+        <InviteByTagForm kind="tournament" targetId={detail.id} disabled={busy} excludeNames={detail.players.map((p) => p.name)} />
+        <button type="button" className="evp-btn evp-btn--ghost evx-copy" onClick={onCopy}>
+          <LinkIcon />
+          {copied ? 'Copied' : 'Copy invite link'}
+        </button>
+        <SentInvites tournamentId={detail.id} roster={detail.playerCount} />
+        {detail.isHost ? (
+          <div className="evp-who-invites">
+            <span className="evp-cap">Who can invite</span>
+            <div className="site-seg" role="group" aria-label="Who can invite">
+              <button type="button" aria-pressed={!detail.membersInvite} disabled={busy} onClick={() => onMembersInvite(false)}>
+                Just me
+              </button>
+              <button type="button" aria-pressed={Boolean(detail.membersInvite)} disabled={busy} onClick={() => onMembersInvite(true)}>
+                Everyone in it
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="evp-who-invites__note">The host has let everyone in the event invite.</p>
+        )}
+        {note ? <p className="evx-hint evx-hint--error">{note}</p> : null}
+      </div>
+      <div className="panel__actions">
+        <button type="button" className="panel__btn" onClick={onClose}>
+          Done
+        </button>
+      </div>
+    </Panel>
+  )
+}
+
 
 /* ====================================================================== */
 /* Invites and roster                                                      */
@@ -758,29 +754,22 @@ function SingleStandings({ detail, displayName }: { detail: TournamentDetail; di
     )
   }
   return (
-    <section className="evp-card evp-single" aria-labelledby="evp-single-title">
-      <div className="evp-card__head">
-        <h2 id="evp-single-title" className="evp-card__title">
-          {ended ? 'Final scores' : 'Leaders'}
-          <span className="evp-card__count">
-            {count.toLocaleString()} {count === 1 ? 'player' : 'players'}
-          </span>
-        </h2>
+    <section className="evh-section" aria-labelledby="evx-standings">
+      <h2 id="evx-standings" className="evh-label">
+        {ended ? 'Final' : 'Standings'} <span className="evh-count">{count.toLocaleString()}</span>
+      </h2>
+      <div className="evp-card evx-single">
+        <ol className="lst">
+          {pinned ? (
+            <>
+              {item(pinned, true)}
+              <ListSplit>Top {top.length}</ListSplit>
+            </>
+          ) : null}
+          {top.map((entry) => item(entry))}
+        </ol>
+        {below > 0 ? <p className="evx-below">+{below.toLocaleString()} more</p> : null}
       </div>
-      <ol className="lst">
-        {pinned ? (
-          <>
-            {item(pinned, true)}
-            <ListSplit>Top {top.length}</ListSplit>
-          </>
-        ) : null}
-        {top.map((entry) => item(entry))}
-      </ol>
-      {below > 0 ? (
-        <p className="evp-card__copy">
-          {below.toLocaleString()} more {below === 1 ? 'player' : 'players'} below them.
-        </p>
-      ) : null}
     </section>
   )
 }
@@ -938,6 +927,9 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   const [joinNote, setJoinNote] = useState<string | null>(null)
   const [copiedInvite, setCopiedInvite] = useState(false)
   const [previous, setPrevious] = useState<TournamentDetail | null>(null)
+  /** The ⓘ's How it works, and the heading's Invite sheet. */
+  const [how, setHow] = useState(false)
+  const [inviting, setInviting] = useState(false)
 
   const displayName = normalizePlayerName(playerName)
   // The tab says which event, once it's here (and only this one: another's stays up while this one loads).
@@ -1147,6 +1139,8 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
     const multi = detail.games.length > 1
     const rows = bracket || !multi ? [] : standingsTable(detail, displayName)
     const singleCount = bracket || multi ? 0 : scoredStandings(detail).length
+    const max = attemptsPerGameMax(detail)
+    const youRow = joined ? detail.standings.find((row) => normalizePlayerName(row.name) === displayName) : undefined
     const games: GameCardState[] =
       bracket || ended
         ? []
@@ -1155,7 +1149,8 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
               detail.status === 'upcoming' ? 'Not started yet' : playAttemptsLabel(detail, slug, joined, displayName)
             const locked = detail.status === 'upcoming' || (joined && status === 'No tries left')
             const course = detail.course != null ? eventCourseTitle(slug, detail.course) : undefined
-            return { slug, href: locked ? null : tournamentPlayHref(detail.id, slug, playInvite), status, course }
+            const left = max == null ? null : Math.max(0, max - (youRow?.byGame[slug]?.attemptsUsed ?? 0))
+            return { slug, href: locked ? null : tournamentPlayHref(detail.id, slug, playInvite), status, course, max, left }
           })
     const lesson = ended ? skipLesson(detail) : previous ? skipLesson(previous) : null
     const next = ended
@@ -1175,22 +1170,47 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
         : null
     const filling = bracket && !detail.bracket?.lockedAt
 
+    // Who won, once it's over: their score when a score decided it (an all-round win and a bracket's are the name).
+    const winnerName = ended && !lobbyClosed(detail) ? eventWinner(detail) : null
+    let winner: ReactNode = null
+    if (winnerName) {
+      const single = detail.games.length === 1 && !bracket ? scoredStandings(detail)[0] : null
+      const top = rows[0]
+      const allRound = detail.format === 'place-points' && !single
+      const total = bracket ? null : single ? single.score : top && !allRound ? top.total : null
+      const name = normalizePlayerName(winnerName)
+      const avatarId =
+        single?.row.avatarId ?? top?.avatarId ?? detail.players.find((p) => normalizePlayerName(p.name) === name)?.avatarId
+      winner = (
+        <EventWinner
+          winner={name}
+          avatarId={avatarId}
+          score={total == null ? null : eventScoreText(detail.games, total)}
+          mine={name === normalizePlayerName(displayName)}
+          trophy={trophyGiven(detail)}
+          trophyAt={trophyField(detail)}
+        />
+      )
+    }
+    const accentStyle = {
+      '--e': accent,
+      '--e-ink': inkOn(accent),
+      '--event-accent': accent,
+      '--event-ink': inkOn(accent),
+      '--board-accent': accent,
+      '--tile-accent': accent,
+      '--thumb-accent': accent,
+    } as CSSProperties
+
     body = (
-      <div
-        className="evp evp--event"
-        style={
-          {
-            '--e': accent,
-            '--e-ink': inkOn(accent),
-            '--event-accent': accent,
-            '--event-ink': inkOn(accent),
-            '--board-accent': accent,
-            '--tile-accent': accent,
-            '--thumb-accent': accent,
-          } as CSSProperties
-        }
-      >
-        <EventBanner
+      <div className="evp evp--event evh evx" style={accentStyle}>
+        <EventHead
+          detail={detail}
+          shareUrl={shareUrl}
+          onHow={() => setHow(true)}
+          onInvite={canInvite ? () => setInviting(true) : null}
+        />
+        <EventActions
           detail={detail}
           joined={joined}
           displayName={displayName}
@@ -1200,95 +1220,46 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
           joinNote={joinNote}
           onJoin={() => void onJoin()}
           justJoined={justJoined}
-          shareUrl={shareUrl}
-          copyInvite={canInvite ? () => void copyInviteLink() : null}
-          copiedInvite={copiedInvite}
         />
-
-        {/* Several games get a row of their own; one sits beside the standings, where it doesn't leave a row mostly empty. */}
-        {games.length > 1 ? <EventGames games={games} /> : null}
-
-        <div className="evp-split">
-          <div className="evp-split__main">
-            {bracket && lobbyClosed(detail) ? (
-              <LobbyClosedCard detail={detail} />
-            ) : bracket ? (
-              <EventBracket detail={detail} displayName={displayName} className="ev-card ev-card--bracket" />
-            ) : multi ? (
-              rows.length ? (
-                <>
-                  {ended ? <EventPodium rows={rows} detail={detail} /> : null}
-                  <StandingsTable detail={detail} rows={rows} limit={ended ? 10 : 25} />
-                </>
-              ) : (
-                <StandingsEmpty detail={detail} />
-              )
-            ) : singleCount ? (
-              <SingleStandings detail={detail} displayName={displayName} />
-            ) : (
-              <StandingsEmpty detail={detail} />
-            )}
-            {/*
-             * The win moment, a portal shown once per win: a bracket's as its
-             * matches are won, any other event's once it has a winner, so
-             * nobody "wins" an event that ended with no runs in it.
-             */}
-            {bracket || eventWinner(detail) ? <BracketWinCelebration detail={detail} displayName={displayName} /> : null}
-          </div>
-
-          <aside className="evp-split__side" aria-label="About this event">
-            {games.length === 1 ? <EventGames games={games} /> : null}
-            {canInvite ? (
-              <section className="ev-card evp-side-card" aria-label="Invite players">
-                <div className="ev-card__head">
-                  <h2 className="ev-card__title">Invite players</h2>
-                  <p className="ev-card__note">
-                    {(() => {
-                      const left = seatsLeft(detail)
-                      return left != null ? `${left} ${left === 1 ? 'seat' : 'seats'} left` : 'Invite only'
-                    })()}
-                  </p>
-                </div>
-                {detail.isHost ? (
-                  <div className="evp-who-invites">
-                    <span className="evp-cap">Who can invite</span>
-                    <div className="site-seg" role="group" aria-label="Who can invite">
-                      <button
-                        type="button"
-                        aria-pressed={!detail.membersInvite}
-                        disabled={busy}
-                        onClick={() => void onMembersInvite(false)}
-                      >
-                        Just me
-                      </button>
-                      <button
-                        type="button"
-                        aria-pressed={Boolean(detail.membersInvite)}
-                        disabled={busy}
-                        onClick={() => void onMembersInvite(true)}
-                      >
-                        Everyone in it
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="evp-who-invites__note">The host has let everyone in the event invite.</p>
-                )}
-                <InviteByTagForm
-                  kind="tournament"
-                  targetId={id}
-                  disabled={busy}
-                  excludeNames={detail.players.map((p) => p.name)}
-                />
-                <SentInvites tournamentId={id} roster={detail.playerCount} />
-              </section>
-            ) : null}
-            {filling ? <EventRoster detail={detail} displayName={displayName} /> : null}
-            {!bracket && ended && multi ? <GameBests detail={detail} /> : null}
-            {bracket || !ended || !multi ? <HowItScores detail={detail} lesson={lesson} me={displayName} /> : null}
-            {next ? <NextEventCard t={next} /> : null}
-          </aside>
-        </div>
+        {winner}
+        {games.length ? <EventGameTiles games={games} /> : null}
+        {/* A bracket keeps its own drawing (Ramsey, 2026-11-17: "i don't want brackets to really change"). */}
+        {bracket && lobbyClosed(detail) ? (
+          <LobbyClosedCard detail={detail} />
+        ) : bracket ? (
+          <EventBracket detail={detail} displayName={displayName} className="ev-card ev-card--bracket" />
+        ) : multi ? (
+          rows.length ? (
+            <PlaceTable detail={detail} rows={rows} limit={ended ? 10 : 25} />
+          ) : (
+            <StandingsEmpty detail={detail} />
+          )
+        ) : singleCount ? (
+          <SingleStandings detail={detail} displayName={displayName} />
+        ) : (
+          <StandingsEmpty detail={detail} />
+        )}
+        {filling ? <EventRoster detail={detail} displayName={displayName} /> : null}
+        {/*
+         * The win moment, a portal shown once per win: a bracket's as its
+         * matches are won, any other event's once it has a winner, so
+         * nobody "wins" an event that ended with no runs in it.
+         */}
+        {bracket || eventWinner(detail) ? <BracketWinCelebration detail={detail} displayName={displayName} /> : null}
+        {next ? <NextEventCard t={next} /> : null}
+        {how ? <HowEventModal detail={detail} lesson={lesson} me={displayName} onClose={() => setHow(false)} /> : null}
+        {inviting && canInvite ? (
+          <InviteSheet
+            detail={detail}
+            busy={busy}
+            note={joinNote}
+            copied={copiedInvite}
+            onCopy={() => void copyInviteLink()}
+            onMembersInvite={(on) => void onMembersInvite(on)}
+            onClose={() => setInviting(false)}
+            style={accentStyle}
+          />
+        ) : null}
       </div>
     )
   }
@@ -1296,8 +1267,13 @@ export function TournamentDetailPage({ id, invite }: { id: string; invite?: stri
   return (
     <PageShell innerClassName="lb-page__inner lb-page__inner--events">
       {loading ? (
-        <div className="evp-loading" aria-busy="true">
-          <span className="evp-loading__hero" />
+        <div className="evp evh evx" aria-busy="true" aria-label="Loading the event">
+          <span className="evx-skel-title" />
+          <div className="evp-card evh-skel">
+            <span />
+            <span />
+            <span />
+          </div>
         </div>
       ) : needsInvite ? (
         <>

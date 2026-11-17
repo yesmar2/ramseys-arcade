@@ -317,11 +317,6 @@ a.evp-screen:focus-visible .evp-screen__play {
   color: var(--e-ink);
 }
 
-/* One event's banner: where you stand. */
-.evp-banner__you b {
-  color: color-mix(in srgb, var(--e) 70%, var(--ink));
-}
-
 /* ---------- a daily game's Today card (Todays*Card.tsx) ---------- */
 
 .evp-daily {
@@ -424,165 +419,7 @@ a.evp-screen:focus-visible .evp-screen__play {
   height: 1rem;
 }
 
-/* ---------- podium ---------- */
-
-.evp-podium {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: end;
-  gap: 0.75rem;
-}
-
-.evp-podium__step {
-  --medal: var(--bronze);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.evp-podium__step--1 {
-  --medal: var(--gold);
-}
-
-.evp-podium__step--2 {
-  --medal: var(--silver);
-}
-
-.evp-podium__who {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  max-width: 100%;
-  color: inherit;
-  text-decoration: none;
-}
-
-/* The disc goes round the character, not into it. */
-.evp-podium__who .player-avatar {
-  box-sizing: content-box;
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0.45rem;
-  border-radius: 50%;
-  background: rgba(var(--ink-rgb), 0.07);
-}
-
-.evp-podium__step--1 .evp-podium__who .player-avatar {
-  width: 3.3rem;
-  height: 3.3rem;
-}
-
-.evp-podium--small .evp-podium__who .player-avatar {
-  width: 1.9rem;
-  height: 1.9rem;
-  padding: 0.35rem;
-}
-
-.evp-podium--small .evp-podium__step--1 .evp-podium__who .player-avatar {
-  width: 2.4rem;
-  height: 2.4rem;
-}
-
-.evp-podium__name {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.evp-podium__pts {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.evp-podium__block {
-  display: grid;
-  place-items: center;
-  align-self: stretch;
-  height: 4.5rem;
-  border-radius: 1rem 1rem 0.4rem 0.4rem;
-  background: color-mix(in srgb, var(--e) 13%, var(--surface));
-  box-shadow: inset 0 3px 0 var(--medal);
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--medal);
-}
-
-.evp-podium__step--1 .evp-podium__block {
-  height: 7rem;
-  background: color-mix(in srgb, var(--e) 22%, var(--surface));
-}
-
-.evp-podium__step--2 .evp-podium__block {
-  height: 5.6rem;
-}
-
-.evp-podium--small .evp-podium__block {
-  height: 3.3rem;
-  font-size: 1.25rem;
-}
-
-.evp-podium--small .evp-podium__step--1 .evp-podium__block {
-  height: 4.8rem;
-}
-
-.evp-podium--small .evp-podium__step--2 .evp-podium__block {
-  height: 4rem;
-}
-
-.evp-podium__games {
-  font-size: 0.74rem;
-  font-weight: 650;
-  line-height: 1.35;
-  text-align: center;
-  color: var(--muted);
-}
-
-.evp-podium-card {
-  padding: 1.6rem 2.4rem 1.4rem;
-}
-
-.evp-podium__tie {
-  margin: 1rem 0 0;
-  font-size: 0.8rem;
-  font-weight: 650;
-  text-align: center;
-  color: var(--muted);
-}
-
-/* ---------- one event: the banner ---------- */
-
-.evp-banner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'bar bar'
-    'main side';
-  align-items: end;
-  gap: 1rem 2rem;
-  padding: 1.5rem 2.5rem 2.2rem 2.7rem;
-  border-radius: 1.9rem;
-  box-shadow: var(--shadow-soft);
-}
-
-.evp-banner__bar {
-  grid-area: bar;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
+/* ---------- making one: its breadcrumb ---------- */
 
 .evp-crumbs {
   display: flex;
@@ -607,420 +444,17 @@ a.evp-screen:focus-visible .evp-screen__play {
   color: var(--ink);
 }
 
-.evp-banner__tools {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+/* ---------- one event: a closed bracket's card, the roster, invites and what's next ---------- */
 
-.evp-banner__main {
-  grid-area: main;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  min-width: 0;
-}
-
-.evp-banner__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(2.6rem, 5vw, 4.5rem);
-  font-weight: 800;
-  letter-spacing: -0.045em;
-  line-height: 0.95;
-  overflow-wrap: anywhere;
-}
-
-.evp-banner__sub {
-  margin: 0;
-  font-size: 1.12rem;
-  font-weight: 650;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-.evp-banner__you {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.evp-banner__state {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 800;
-}
-
-.evp-banner__hint {
-  margin: 0;
-  font-size: 0.86rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-.evp-banner__hint--error {
-  color: #e0655a;
-}
-
-.evp-banner__side {
-  grid-area: side;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.55rem;
-}
-
-.evp-share.lb-share {
-  width: 2.6rem;
-  height: 2.6rem;
-}
-
-/* ---------- the clock ---------- */
-
-.evp-clock {
-  display: flex;
-  gap: 0.55rem;
-}
-
-.evp-clock__unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-  min-width: 4.1rem;
-}
-
-.evp-clock__unit b {
-  font-family: var(--font-display);
-  font-size: 3.3rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.evp-clock__unit span {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* ---------- the winner ---------- */
-
-.evp-winner {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.9rem 1.4rem 0.9rem 0.9rem;
-  border-radius: 1.4rem;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.1);
-}
-
-.evp-winner__mark {
-  position: relative;
-  flex: none;
-}
-
-.evp-winner__cup {
-  position: absolute;
-  right: -0.35rem;
-  bottom: -0.35rem;
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  background: #f5c542;
-  color: #2a1d00;
-  box-shadow: 0 0 0 3px var(--surface);
-}
-
-.evp-winner__cup svg {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
-.evp-winner__text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.evp-winner__text b {
-  font-family: var(--font-display);
-  font-size: 1.55rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.evp-winner__text span {
-  font-size: 0.88rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-/* ---------- one event: the games ---------- */
-
-.evp-games {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.evp-games--1 {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.evp-games--2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.evp-game {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  padding: 0.75rem 0.75rem 1rem;
-}
-
-.evp-game .evp-screen {
-  aspect-ratio: 16 / 8.4;
-}
-
-.evp-game__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.7rem;
-  padding: 0 0.3rem;
-}
-
-.evp-game__text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.evp-game__name {
-  font-size: 1.15rem;
-  font-weight: 800;
-}
-
-.evp-game__status {
-  font-size: 0.82rem;
-  font-weight: 650;
-  color: var(--muted);
-}
-
-/* ---------- one event: standings and the side ---------- */
-
-.evp-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 24rem;
-  gap: 1rem;
-  align-items: start;
-}
-
-.evp-split__main,
-.evp-split__side {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
-}
-
-.evp-table,
-.evp-single {
+.evp-table {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 1.35rem 1rem 1rem;
 }
 
-.evp-table .evp-card__head,
-.evp-single .evp-card__head {
+.evp-table .evp-card__head {
   padding: 0 0.4rem 0.3rem;
-}
-
-.evp-table__rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.evp-table__row {
-  display: grid;
-  grid-template-columns: 2.2rem minmax(0, 1fr) repeat(var(--games, 3), 5.4rem) 4.8rem;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 3.4rem;
-  padding: 0 0.75rem;
-  border-radius: 0.9rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.evp-table__rows > .evp-table__row:nth-child(even) {
-  background: rgba(var(--ink-rgb), 0.035);
-}
-
-.evp-table__row--head {
-  min-height: 2rem;
-  padding-bottom: 0.3rem;
-}
-
-.evp-table__rows > .evp-table__row--you {
-  background: color-mix(in srgb, var(--e) 13%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--e) 40%, transparent);
-}
-
-.evp-table__row--gap {
-  margin-top: 0.7rem;
-}
-
-.evp-table__place {
-  text-align: center;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--muted);
-}
-
-.evp-table__row--p1 .evp-table__place {
-  color: var(--gold);
-}
-
-.evp-table__row--p2 .evp-table__place {
-  color: var(--silver);
-}
-
-.evp-table__row--p3 .evp-table__place {
-  color: var(--bronze);
-}
-
-.evp-table__who {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.evp-table__who .player-avatar {
-  flex: none;
-}
-
-.evp-table__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.98rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.evp-you {
-  flex: none;
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-  background: var(--e);
-  color: var(--e-ink);
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-/* A long name takes two lines rather than losing its end. */
-.evp-table__game {
-  align-self: end;
-  line-height: 1.3;
-  text-align: center;
-  overflow-wrap: anywhere;
-}
-
-.evp-table__total {
-  text-align: right;
-  font-size: 1.15rem;
-  font-weight: 800;
-}
-
-.evp-table__row--head .evp-table__total {
-  align-self: end;
-  font-size: 0.68rem;
-}
-
-.evp-table__total small {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-/* An all-round event has no total column: the order and each game's place say it. */
-.evp-table--all-round .evp-table__row {
-  grid-template-columns: 2.2rem minmax(0, 1fr) repeat(var(--games, 3), 5.4rem);
-}
-
-.evp-table__cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-}
-
-.evp-table__cell-game {
-  display: none;
-  --inline-thumb-size: 1.35rem;
-}
-
-.evp-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.1;
-}
-
-.evp-cell b {
-  font-size: 0.95rem;
-  font-weight: 800;
-}
-
-.evp-cell small {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.evp-cell--won b,
-.evp-cell--won small {
-  color: var(--gold);
-}
-
-.evp-cell--skipped {
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.evp-table__all summary {
-  list-style: none;
-  padding: 0.6rem 0.75rem;
-  font-size: 0.88rem;
-  font-weight: 750;
-  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
-  cursor: pointer;
-}
-
-.evp-table__all summary::-webkit-details-marker {
-  display: none;
 }
 
 .evp-empty {
@@ -1065,18 +499,7 @@ a.evp-screen:focus-visible .evp-screen__play {
   color: var(--muted);
 }
 
-.evp-scores,
-.evp-bests {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.4rem;
-}
-
 /* The events page's "How it works" lands here (#evp-how), as clear of the top as the site's other sections. */
-.evp-scores {
-  scroll-margin-top: calc(var(--header-h) + 1.5rem);
-}
 
 .evp-steps {
   list-style: none;
@@ -1107,43 +530,6 @@ a.evp-screen:focus-visible .evp-screen__play {
   color: var(--ink);
   font-size: 0.8rem;
   font-weight: 800;
-}
-
-.evp-bests__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.evp-bests__list li {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-}
-
-.evp-bests__art {
-  --inline-thumb-size: 2.5rem;
-}
-
-.evp-bests__text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.evp-bests__text b {
-  font-size: 0.95rem;
-  font-weight: 800;
-}
-
-.evp-bests__text span {
-  font-size: 0.82rem;
-  font-weight: 650;
-  color: var(--muted);
 }
 
 .evp-next {
@@ -1206,13 +592,6 @@ a.evp-screen:focus-visible .evp-screen__play {
   font-weight: 800;
 }
 
-.evp-banner__side-note {
-  margin: 0;
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
 /* ---------- loading ---------- */
 
 .evp-loading {
@@ -1250,167 +629,15 @@ a.evp-screen:focus-visible .evp-screen__play {
   }
 }
 
-/* ---------- a narrower desk ---------- */
-
-@media (max-width: 1180px) {
-
-  /*
-   * One column. The side column's pieces join the flow after the standings,
-   * except a lone game's card, which goes first so Play stays near the top.
-   */
-  .evp-split {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .evp-split__side {
-    display: contents;
-  }
-
-  .evp-split__side > .evp-games {
-    order: -1;
-  }
-}
-
 /* ---------- a phone, or a tablet held upright ---------- */
 
 @media (max-width: 900px) {
-
-  .evp-banner {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      'bar'
-      'main'
-      'side';
-    align-items: stretch;
-    gap: 1rem;
-    padding: 1.1rem 1.2rem 1.4rem;
-    border-radius: 1.6rem;
-  }
-
-  .evp-banner__side {
-    align-items: flex-start;
-  }
-
-  .evp-banner .evp-acts .evp-btn--big {
-    flex: 1;
-  }
-
-  .evp-clock__unit {
-    min-width: 3.1rem;
-  }
-
-  .evp-clock__unit b {
-    font-size: 2.35rem;
-  }
-
-  .evp-games,
-  .evp-games--1,
-  .evp-games--2 {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .evp-podium-card {
-    padding: 1.2rem 1rem 1rem;
-  }
-
-  .evp-podium__step--1 .evp-podium__block {
-    height: 5rem;
-  }
-
-  .evp-podium__step--2 .evp-podium__block {
-    height: 4.2rem;
-  }
-
-  .evp-podium__block {
-    height: 3.5rem;
-    font-size: 1.3rem;
-  }
-
-  .evp-podium__games {
-    display: none;
-  }
-
-  .evp-table,
-  .evp-single {
+  .evp-table {
     padding: 1.1rem 0.5rem 0.6rem;
-  }
-
-  .evp-table__row--head {
-    display: none;
-  }
-
-  /* A row a player: place, name and total on top, and each game's place under the name. */
-  .evp-table__row {
-    grid-template-columns: 1.6rem repeat(var(--games, 3), max-content) minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    column-gap: 0.7rem;
-    row-gap: 0.25rem;
-    padding: 0.55rem 0.6rem;
-  }
-
-  .evp-table__place {
-    grid-row: 1 / 3;
-    grid-column: 1;
-  }
-
-  .evp-table__who {
-    grid-row: 1;
-    grid-column: 2 / -2;
-  }
-
-  .evp-table__total {
-    grid-row: 1 / 3;
-    grid-column: -2;
-  }
-
-  .evp-table__cell {
-    grid-row: 2;
-    justify-content: flex-start;
-    gap: 0.3rem;
-  }
-
-  .evp-table__cell-game {
-    display: block;
-  }
-
-  .evp-table__who .player-avatar {
-    width: 1.9rem;
-    height: 1.9rem;
-  }
-
-  /* Each game's score over its place, narrow enough for three in a row. */
-  .evp-cell {
-    align-items: flex-start;
-  }
-
-  .evp-cell b {
-    font-size: 0.86rem;
-  }
-
-  .evp-cell small {
-    font-size: 0.72rem;
-  }
-
-  /* No total on the right, so the name runs to the edge. */
-  .evp-table--all-round .evp-table__row {
-    grid-template-columns: 1.6rem repeat(var(--games, 3), max-content) minmax(0, 1fr);
-  }
-
-  .evp-table--all-round .evp-table__who {
-    grid-column: 2 / -1;
   }
 
   .evp-loading__row {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 560px) {
-
-  .evp-banner__title {
-    font-size: 2.7rem;
   }
 }
 
@@ -2158,5 +1385,587 @@ html[data-theme='light'] .evh-won {
 @media (prefers-reduced-motion: reduce) {
   .evh-skel span {
     animation: none;
+  }
+}
+
+/* ---------- one event (TournamentDetailPage + EventDetail; A from the canvas's "One event" page, 2026-11-17) ---------- */
+
+.evx-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.evx-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  align-self: flex-start;
+  min-height: 2rem;
+  margin-bottom: -0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.evx-back:hover,
+.evx-back:focus-visible {
+  color: var(--ink);
+}
+
+.evx-back svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.evx-head {
+  align-items: flex-start;
+  padding-top: 0;
+}
+
+.evx-head .evh-title {
+  padding-top: 0.15rem;
+  overflow-wrap: anywhere;
+}
+
+.evx-share.lb-share {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.evx-invite {
+  flex: none;
+  min-height: 2.75rem;
+  padding: 0 1.1rem;
+}
+
+.evx-invite svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.evx-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.evx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.95rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.evx-chip svg {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+}
+
+.evx-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+}
+
+.evx-state {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.evx-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.evx-hint--error {
+  color: color-mix(in srgb, #e5484d 75%, var(--ink));
+}
+
+/* The games: a tile each, its screen with Play on it, its name, and its tries as dots. */
+.evx-games {
+  list-style: none;
+  margin: 0;
+  padding: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.evx-games--1 {
+  grid-template-columns: minmax(0, 22rem);
+}
+
+.evx-games--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.evx-game {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.evx-game__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.2rem;
+}
+
+.evx-game__line b {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evx-dots {
+  flex: none;
+  display: inline-flex;
+  gap: 0.25rem;
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+}
+
+.evx-dots i {
+  display: block;
+  width: 0.6rem;
+  height: 0.6rem;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.evx-dots i.is-on {
+  background: currentColor;
+}
+
+.evx-tries {
+  flex: none;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.evx-tries--any {
+  font-size: 1.1rem;
+}
+
+/* The standings: a row a player, a place for each game under its picture. */
+.evx-table,
+.evx-single {
+  padding: 0.35rem;
+}
+
+.evx-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.evx-rows > li + li {
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+
+.evx-row {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) repeat(var(--games, 3), 3.1rem);
+  align-items: center;
+  column-gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 1rem;
+}
+
+.evx-table--total .evx-row {
+  grid-template-columns: 1.6rem minmax(0, 1fr) repeat(var(--games, 3), 3.1rem) minmax(4.5rem, auto);
+}
+
+.evx-row--head {
+  padding-top: 0.55rem;
+  padding-bottom: 0.15rem;
+}
+
+.evx-head-game {
+  justify-self: center;
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.evx-head-game > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.evx-row--you {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.evx-row--gap {
+  margin-top: 0.35rem;
+}
+
+.evx-pos {
+  text-align: center;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.evx-pos--1 {
+  color: color-mix(in srgb, var(--gold) 80%, var(--ink));
+}
+
+.evx-pos--2 {
+  color: color-mix(in srgb, var(--silver) 80%, var(--ink));
+}
+
+.evx-pos--3 {
+  color: color-mix(in srgb, var(--bronze) 80%, var(--ink));
+}
+
+.evx-who {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  color: inherit;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.evx-who:hover .evx-name,
+.evx-who:focus-visible .evx-name {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.evx-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evx-you {
+  flex: none;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #03211b;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.evx-pl {
+  justify-self: center;
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.75rem;
+  height: 1.6rem;
+  box-sizing: border-box;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.evx-pl--1 {
+  background: color-mix(in srgb, var(--gold) 22%, transparent);
+  color: color-mix(in srgb, var(--gold) 80%, var(--ink));
+}
+
+.evx-pl--2 {
+  background: color-mix(in srgb, var(--silver) 20%, transparent);
+  color: color-mix(in srgb, var(--silver) 80%, var(--ink));
+}
+
+.evx-pl--3 {
+  background: color-mix(in srgb, var(--bronze) 20%, transparent);
+  color: color-mix(in srgb, var(--bronze) 80%, var(--ink));
+}
+
+.evx-pl--none {
+  background: none;
+  color: var(--muted);
+}
+
+.evx-total {
+  justify-self: end;
+  font-size: 0.92rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.evx-all summary {
+  padding: 0.7rem 0.75rem;
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+  cursor: pointer;
+}
+
+.evx-below {
+  margin: 0;
+  padding: 0.45rem 0.75rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.evx-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1.1rem 1.2rem;
+}
+
+.evx-empty p {
+  margin: 0;
+  font-weight: 750;
+}
+
+.evx-empty__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: rgba(var(--ink-rgb), 0.07);
+  color: var(--gold);
+}
+
+.evx-empty__mark svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Who won. */
+.evx-winner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 1rem;
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--gold) 30%, transparent);
+}
+
+.evx-winner__cup {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--gold) 20%, transparent);
+  color: color-mix(in srgb, var(--gold) 80%, var(--ink));
+}
+
+.evx-winner__cup--none {
+  display: none;
+}
+
+.evx-winner__cup svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.evx-winner__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.evx-winner__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.evx-winner__text b {
+  overflow: hidden;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evx-winner__text span {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.evx-winner__score {
+  flex: none;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: color-mix(in srgb, var(--gold) 80%, var(--ink));
+}
+
+html[data-theme='light'] .evx-pos--1,
+html[data-theme='light'] .evx-pl--1,
+html[data-theme='light'] .evx-winner__score,
+html[data-theme='light'] .evx-winner__cup {
+  color: color-mix(in srgb, var(--gold) 58%, var(--ink));
+}
+
+/* On a light card the silver and bronze places need more ink to reach 4.5:1. */
+html[data-theme='light'] .evx-pl--2 {
+  color: color-mix(in srgb, var(--silver) 62%, var(--ink));
+}
+
+html[data-theme='light'] .evx-pl--3 {
+  color: color-mix(in srgb, var(--bronze) 66%, var(--ink));
+}
+
+/* The ⓘ's steps are sentences, not titles. */
+.evx-step {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.evx-lesson {
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  border-radius: 1rem;
+  background: rgba(var(--ink-rgb), 0.06);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.evx-lesson b {
+  color: var(--ink);
+}
+
+/* The Invite sheet. */
+.evx-sheet .panel__body {
+  gap: 1rem;
+  padding-bottom: 0.4rem;
+}
+
+.evx-copy {
+  align-self: stretch;
+}
+
+.evx-copy svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* Loading: the heading's place, then the rows'. */
+.evx-skel-title {
+  display: block;
+  width: min(24rem, 70%);
+  height: 2.6rem;
+  margin-top: 2.6rem;
+  border-radius: 0.8rem;
+  background: rgba(var(--ink-rgb), 0.07);
+}
+
+@media (max-width: 36rem) {
+  .evx-games {
+    padding: 0.6rem;
+    gap: 0.6rem;
+  }
+
+  .evx-games--1 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Three across, a screen is too small for the word: Play is its round mark. */
+  .evx-games--3 .evp-screen__play {
+    left: auto;
+    right: 0.4rem;
+    bottom: 0.4rem;
+    justify-content: center;
+    width: 1.9rem;
+    gap: 0;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .evx-game__line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  .evx-game__line b {
+    max-width: 100%;
+    font-size: 0.88rem;
+  }
+
+  .evx-games--1 .evx-game__line,
+  .evx-games--2 .evx-game__line {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .evx-row,
+  .evx-table--total .evx-row {
+    grid-template-columns: 1.2rem minmax(0, 1fr) repeat(var(--games, 3), 2.45rem);
+    column-gap: 0.4rem;
+    padding: 0.55rem 0.5rem;
+  }
+
+  .evx-table--total .evx-row {
+    grid-template-columns: 1.2rem minmax(0, 1fr) repeat(var(--games, 3), 2.45rem) auto;
+  }
+
+  .evx-pl {
+    min-width: 2.35rem;
+    padding: 0 0.25rem;
+    font-size: 0.72rem;
+  }
+
+  .evx-who {
+    gap: 0.45rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .evx-invite {
+    width: 2.75rem;
+    padding: 0;
+  }
+
+  .evx-invite__word {
+    display: none;
   }
 }
