@@ -1,6 +1,6 @@
 import { SkinMark } from './season/SkinMark'
 import { useHeldHeight } from '../lib/heldShape'
-import { Suspense, useState, type CSSProperties, type ReactNode } from 'react'
+import { Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { gamePlayableOn, getGame, isDailyGame } from '../data/games'
 import { useGameBoard } from '../hooks/useGameBoard'
 import { fullBoardHref, gameBoardHref, gamePlayHref, rankHref } from '../hooks/useHashRoute'
@@ -9,6 +9,7 @@ import { inkOn, readableFill } from '../lib/color'
 import { useDeviceType } from '../lib/device'
 import { boardShare, gapFigure, playersNote, type BoardPlayer } from '../lib/gameBoard'
 import { lazyPage } from '../lib/lazyPage'
+import { glide } from '../lib/scrollToPlace'
 import { useActiveGroup, useScope } from '../lib/groups'
 import { setDefaultPeriod } from '../lib/defaultPeriod'
 import {
@@ -598,6 +599,116 @@ function ChevronDown() {
   )
 }
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </svg>
+  )
+}
+
+/**
+ * The board's period, as a chip that opens a short list under it: the site's own menu (BoardsAmong's chip and
+ * popover, chrome.css .site-scope), the one you're on ticked. Not a native select (Ramsey, 2026-11-17: "drop down in
+ * the standings card on game hub looks like it's native select when clicking on it"), which opened the phone's own
+ * picker. It closes on a pick, a click elsewhere, Esc (focus back on the chip) and Tab past its last choice.
+ */
+function PeriodMenu({
+  period,
+  periods,
+  onPick,
+}: {
+  period: LeaderboardPeriod
+  periods: LeaderboardPeriod[]
+  onPick: (period: LeaderboardPeriod) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
+
+  // Opened low on a phone, its foot can be under the tab bar (or past the screen's): the page comes up to show it.
+  useEffect(() => {
+    const pop = popRef.current
+    if (!open || !pop) return
+    const bar = document.querySelector('.site-tabs')?.getBoundingClientRect()
+    const floor = bar && bar.height > 0 && bar.top < window.innerHeight ? bar.top : window.innerHeight
+    const over = pop.getBoundingClientRect().bottom + 12 - floor
+    if (over > 0) window.scrollBy({ top: over, behavior: glide() })
+  }, [open])
+
+  useEffect(() => {
+    const menu = ref.current
+    if (!open || !menu) return
+    // A click, not a press: a finger scrolling the page leaves it open.
+    const onClick = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      btnRef.current?.focus()
+    }
+    window.addEventListener('click', onClick, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('click', onClick, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div
+      ref={ref}
+      className="site-scope gh-pick"
+      onBlur={(e) => {
+        if (open && e.relatedTarget && !ref.current?.contains(e.relatedTarget as Node)) setOpen(false)
+      }}
+    >
+      <button
+        ref={btnRef}
+        type="button"
+        className="site-scope__btn gh-pick__btn"
+        aria-label={`Board: ${PERIOD_LABELS[period]}. Change`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((was) => !was)}
+      >
+        {PERIOD_LABELS[period]}
+        <ChevronDown />
+      </button>
+      {open ? (
+        <div ref={popRef} className="site-scope__pop gh-pick__pop" role="dialog" aria-label="Which board">
+          <ul className="site-scope__groups">
+            {periods.map((p) => (
+              <li key={p}>
+                <button
+                  type="button"
+                  className="site-scope__option"
+                  aria-pressed={p === period}
+                  onClick={() => {
+                    setOpen(false)
+                    if (p !== period) onPick(p)
+                  }}
+                >
+                  <span className="site-scope__option-text">
+                    <span className="site-scope__option-name">{PERIOD_LABELS[p]}</span>
+                  </span>
+                  {p === period ? (
+                    <span className="site-scope__check">
+                      <CheckIcon />
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 /**
  * The top of a game's board, beside its records on its page (B of the "Game page, simpler" canvas; Ramsey,
  * 2026-11-17: "Build B"): the period in a menu, the first five players with their bars, and you under them when
@@ -676,24 +787,7 @@ export function BoardPeek({
           Board
           {scope.id ? <span className="gh-peek__scope">{scope.name}</span> : null}
         </h2>
-        <label className="gh-pick">
-          <span className="visually-hidden">Period</span>
-          <select
-            value={period}
-            onChange={(e) => {
-              const next = e.target.value as LeaderboardPeriod
-              if (onPeriod) onPeriod(next)
-              else setDefaultPeriod(next)
-            }}
-          >
-            {periods.map((p) => (
-              <option key={p} value={p}>
-                {PERIOD_LABELS[p]}
-              </option>
-            ))}
-          </select>
-          <ChevronDown />
-        </label>
+        <PeriodMenu period={period} periods={periods} onPick={(next) => (onPeriod ? onPeriod(next) : setDefaultPeriod(next))} />
       </div>
       {data.loading ? (
         <ol className="gb-rows" aria-hidden="true">
