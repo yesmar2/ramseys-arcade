@@ -2,9 +2,9 @@ import { withAlpha } from '../../lib/color'
 import { keptEpoch } from '../keptPictures'
 import { SWIFT_LIFT } from './birdShape'
 import { AURORA_PHOENIX, BLIP, blipSparkOffset, PENGUIN, skinPainter, SNOW_SWIFT } from './birdSkins'
-import { Flock, FLOCK_HUES, GOLD } from './flock'
-import { paintFeather, paintKite, paintNest } from './catches'
-import { CATCH, CATCH_WORDS, type CatchKind, type GoldenHill } from './golden'
+import { Flock, FLOCK_HUES } from './flock'
+import { CATCH, GOLD, type GoldenHill } from './golden'
+import { paintKite } from './kite'
 import { BEAK, BLIP_EVERY, BLIPS_AT, clamp, HillsScene, LINE_NARROWEST, LINE_RUN, LINE_TURN, LINE_WIDEST, RED, SEAMS, SWIFT_SCALE, textSize, type SceneFrame } from './scene'
 import { heightAt, mulberry32, slopeAt, STREAK_ON, streakLift, type Hills } from './sim'
 import { BIRD_DESIGNS, type BirdDesignKey } from './birdDesigns'
@@ -46,11 +46,10 @@ import {
  * - A ribbon behind a bird in the air in place of the dots, dust and petals where it lands, a ring of light
  *   under a clean landing, flags that fly, bunting at the line and confetti over it.
  *
- * And what's new to play for: the flock (flock.ts). Every clean landing in a row, another little swift falls
- * in behind yours; a bad one scatters them. It's the streak the game always had, and the speed it always gave,
- * made into something you can see growing and can lose. And the day's three kites (golden.ts; catches.ts has
- * what else they could be), each pegged to a hill of its own, its slope edged in gold: land clean on that hill
- * and it flies with you to the line, whatever becomes of the rest.
+ * And what's new to play for: the flock (flock.ts). Every clean landing, another little bird falls in behind
+ * yours, and they stay until you thump into a hill, which scatters them: something you can see growing and can
+ * lose. And the day's three kites (golden.ts, kite.ts), each pegged to a hill of its own, its slope edged in
+ * gold: land clean on that hill and its kite flies with you to the line, whatever becomes of the flock.
  *
  * It's this scene's parent with its drawing swapped: the camera, the birds, their skins and the ghost are
  * scene.ts's own. Like it, nothing here uses shadowBlur, and what would be a wide shape to fill every frame is
@@ -173,11 +172,17 @@ export class VistaScene extends HillsScene {
   private decoLevel = 0
   private lookKey: string
   private readonly flock = new Flock()
-  /** The day's golden hills (golden.ts), and which of them this run has caught what waits there. */
+  /**
+   * How many fly behind your bird: one for every clean landing since the last thump. It was the sim's streak,
+   * which any landing that isn't clean ends, and Ramsey, 2026-11-18: "can we keep the small birds on behind the
+   * bird as long as it's not a thump?" The streak, and the speed it gives, are as they were.
+   */
+  private flockSize = 0
+  /** Whether a thump has just scattered the flock and said so, since the last frame: a streak ending with it isn't said too. */
+  private scattered = false
+  /** The day's golden hills (golden.ts), and which of them this run has caught the kite of. */
   private golden: GoldenHill[] = []
   private caught: boolean[] = []
-  /** What waits there (golden.ts CATCH), unless a picture of the choices sets another to show it. */
-  catchKind: CatchKind = CATCH
   /** The kites caught, flying behind your bird on their strings, in the order they were caught: where each is. */
   private kites: { seed: number; x: number; y: number }[] = []
   /** Whether to say how a catch is made, over the first hill that has one: for a device that has never made one. */
@@ -236,6 +241,8 @@ export class VistaScene extends HillsScene {
   snap() {
     super.snap()
     this.flock.reset()
+    this.flockSize = 0
+    this.scattered = false
     this.sparks.length = 0
     this.labels.length = 0
     this.trace.length = 0
@@ -261,14 +268,16 @@ export class VistaScene extends HillsScene {
 
   /**
    * Down on the hill. A clean landing lights a ring under the bird, throws up sparks and petals and says so
-   * (`flush` for one that came down right along the slope: "Perfect"); a thump kicks up dust and turf and
-   * shakes the view; any landing squashes the bird a little.
+   * (`flush` for one that came down right along the slope: "Perfect"), and brings one more to the flock; a thump
+   * kicks up dust and turf, shakes the view and scatters the flock; any landing squashes the bird a little. A
+   * landing that's neither leaves the flock as it is. `streak` is the sim's, for what a clean landing says.
    */
   landed(kind: 'clean' | 'thump' | 'land', x: number, y: number, vx: number, streak: number, flush = false) {
     this.mood = kind === 'clean' ? { kind: 'happy', life: 0.8 } : kind === 'thump' ? { kind: 'ouch', life: 0.55 } : null
     const C = this.C
     if (kind === 'clean') {
       this.squash = 1
+      this.flockSize += 1
       const word = flush ? 'Perfect' : 'Clean'
       const text = streak === STREAK_ON ? `${word} ×${streak} · faster` : streak > 1 ? `${word} ×${streak}` : `${word}!`
       this.say(x, y, text, true)
@@ -315,6 +324,12 @@ export class VistaScene extends HillsScene {
     if (kind === 'thump') {
       this.say(x, y, 'Thump', false)
       this.shake = SHAKE
+      // What the flock doesn't stay for (the flock sees its size gone, a frame on, and flies off).
+      if (this.flockSize > 0) {
+        this.flockSize = 0
+        this.scattered = true
+        this.say(x, y, 'Flock scattered', false, 1)
+      }
     }
     for (let i = 0, n = kind === 'thump' ? 9 : 4; i < n; i++) {
       const a = Math.PI * (0.5 + Math.random() * 0.45)
@@ -354,14 +369,18 @@ export class VistaScene extends HillsScene {
     }
   }
 
-  /** A streak ended: the flock goes (it sees that for itself, from the streak), and it says so. */
+  /**
+   * A streak of three or more ended, and the speed it gave with it: said, as the usual look says it, unless the
+   * thump that ended it has just said the flock's gone, which is the worse news. A landing that's merely not
+   * clean ends the streak and leaves the flock.
+   */
   streakOver(x: number, y: number) {
-    this.say(x, y, 'Flock scattered', false, 1)
+    if (!this.scattered) this.say(x, y, 'Streak over', false, 1)
   }
 
   /**
-   * The day's golden hills, each with something to catch on it; all are back on their hills at every start (snap).
-   * `teach` says how a catch is made over the first of them, once a run.
+   * The day's golden hills, each with a kite to catch; all are back on their hills at every start (snap).
+   * `teach` says how one is caught over the first of them, once a run.
    */
   setGolden(hills: GoldenHill[], teach = false) {
     this.golden = hills
@@ -369,22 +388,16 @@ export class VistaScene extends HillsScene {
     this.teach = teach
   }
 
-  /**
-   * One caught, by a clean landing on its hill: a kite comes off its peg to fly behind you; a bird, a feather or
-   * a fledgling leaves the hill for the front of the flock. And it says so.
-   */
+  /** A kite caught, by a clean landing on its hill: it comes off its peg to fly behind you, and it says so. */
   goldenCaught(i: number) {
     const hill = this.golden[i]
     if (!hill || this.caught[i]) return
     this.caught[i] = true
-    if (this.catchKind === 'kite') {
-      const [x, y] = this.kiteOver(hill, i, false)
-      this.kites.push({ seed: i, x, y })
-    } else this.flock.gild(hill.x, hill.y + 0.8)
+    const [x, y] = this.kiteOver(hill, i, false)
+    this.kites.push({ seed: i, x, y })
     const have = this.caught.filter(Boolean).length
     const all = this.golden.length
-    const words = CATCH_WORDS[this.catchKind]
-    this.say(this.lastBird.x, this.lastBird.y, have < all ? `${words.one} · ${have} of ${all}` : all === 3 ? `All three ${words.many}!` : `All ${all} ${words.many}!`, true, 1)
+    this.say(this.lastBird.x, this.lastBird.y, have < all ? `${CATCH.one} · ${have} of ${all}` : all === 3 ? `All three ${CATCH.many}!` : `All ${all} ${CATCH.many}!`, true, 1)
     this.sparks.push({ kind: 'ring', x: hill.x, y: hill.y + 0.3, vx: 0, vy: 0, life: 0.6, max: 0.6, size: 5, colour: GOLD, turn: 0, spin: 0 })
     for (let k = 0; k < 12; k++) {
       const a = Math.random() * Math.PI
@@ -424,11 +437,11 @@ export class VistaScene extends HillsScene {
     // Over the line: confetti, once.
     if (f.mode === 'done' && this.lastMode === 'play') this.cheer()
     this.lastMode = f.mode
+    this.scattered = false
     if (flying) {
       this.lastBird = { x: f.bird.x, y: f.bird.y }
-      this.flock.gilt = this.catchKind === 'feather' || this.catchKind === 'chick' ? this.catchKind : 'bird'
       this.flock.lead(f.bird.x, f.bird.y, f.hold)
-      this.flock.keep(f.streak ?? 0, f.bird.vx, f.bird.vy)
+      this.flock.keep(this.flockSize, f.bird.vx, f.bird.vy)
       this.flyKites(f.bird.x, f.bird.y, dt)
       this.flock.update(dt, speed, (x) => heightAt(this.hills, x), this.birdSize() / this.cam.k, f.bird.y - heightAt(this.hills, f.bird.x))
       if (dt > 0) {
@@ -437,6 +450,7 @@ export class VistaScene extends HillsScene {
       }
     } else {
       if (this.flock.size) this.flock.reset()
+      this.flockSize = 0
       this.trace.length = 0
       this.kites.length = 0
     }
@@ -795,7 +809,7 @@ export class VistaScene extends HillsScene {
       )
     sheet(sight.shade, dim)
     sheet(sight.light, lit)
-    // A golden bird's hill, while the bird's still on it: its slope edged in gold, from its top to its foot, so
+    // A golden hill, while its kite's still pegged to it: its slope edged in gold, from its top to its foot, so
     // it's plain which slope to land on.
     for (let i = 0; i < this.golden.length; i++) {
       const hill = this.golden[i]!
@@ -953,13 +967,13 @@ export class VistaScene extends HillsScene {
     ctx.fillText('FINISH', fx, y - tall - 8)
   }
 
-  /** Over the line: confetti off the top of the pole, in the flock's colours, and how many of the day's catches came home. */
+  /** Over the line: confetti off the top of the pole, in the flock's colours, and how many of the day's kites came home. */
   private cheer() {
     const x = this.hills.finish
     const y = heightAt(this.hills, x) + 7
     if (this.golden.length) {
       const have = this.caught.filter(Boolean).length
-      this.say(this.lastBird.x, this.lastBird.y, `${have} of ${this.golden.length} ${CATCH_WORDS[this.catchKind].many}`, have > 0, 1)
+      this.say(this.lastBird.x, this.lastBird.y, `${have} of ${this.golden.length} ${CATCH.many}`, have > 0, 1)
     }
     for (let i = 0; i < 44; i++) {
       const a = Math.PI * (0.12 + Math.random() * 0.76)
@@ -1024,88 +1038,41 @@ export class VistaScene extends HillsScene {
   }
 
   /**
-   * What waits on each golden hill that hasn't been caught: a kite, on its string over its peg; or, on the slope in
-   * a glow with a few stars turning round it, a golden bird, a feather stood in the turf, or a fledgling in its
-   * nest (catches.ts). Over the first of them, on a device that has never made a catch, how one is made.
+   * The kites still on their hills: each on its string over its peg, in a glow. Over the first of them, on a
+   * device that has never caught one, how one is caught.
    */
   private drawGolden(calm: boolean) {
     const { ctx, W } = this
     if (!this.golden.length) return
     const glow = this.backdrop().glow.canvas
-    const kind = this.catchKind
+    const unit = this.kiteUnit()
     for (let i = 0; i < this.golden.length; i++) {
       if (this.caught[i]) continue
       const hill = this.golden[i]!
       const px = this.sx(hill.x)
-      if (px < -110 || px > W + 110) continue
-      const size = this.birdSize() * 1.08
+      // A kite flies upwind of its peg and its tail streams further that way: it's in view well before its peg is.
+      if (px < -60 || px > W + 30 + unit * 7) continue
       if (this.teach && !this.taught && px < W * 0.88) {
         this.taught = true
-        // Over the thing itself, clear of it: a kite's high over its peg, a feather stands tall, the others sit low.
-        const unit = size * SWIFT_SCALE
-        const kite = Math.max(this.cam.k, 6.5 * this.fit) * KITE_SIZE
-        const [x, y, lift] =
-          kind === 'kite' ? [hill.x - 2, hill.y + KITE_HIGH + 0.7, kite * 1.7 + 6] : [hill.x, hill.y, unit * (kind === 'feather' ? 4.3 : 3) + 8]
-        this.say(x, y, 'Land clean on the gold slope', true, 0, { lift, pace: TEACH_PACE })
+        // Over the kite, clear of it at its highest.
+        this.say(hill.x - 2, hill.y + KITE_HIGH + 0.7, 'Land clean on the gold slope', true, 0, { lift: unit * 1.7 + 6, pace: TEACH_PACE })
       }
-      if (kind === 'kite') {
-        const [kx, ky] = this.kiteOver(hill, i, calm)
-        // Its peg, in the slope.
-        const peg = Math.max(5, 0.55 * this.cam.k)
-        ctx.fillStyle = withAlpha(this.C.ink, 0.8)
-        ctx.fillRect(px - 1.25, this.sy(hill.y) - peg, 2.5, peg)
-        const r = size * 3.4
-        ctx.globalAlpha = 0.55
-        ctx.drawImage(glow, this.sx(kx) - r, this.sy(ky) - r, r * 2, r * 2)
-        ctx.globalAlpha = 1
-        this.drawKite(kx, ky, hill.x, hill.y + 0.5, i, calm)
-        continue
-      }
-      const hop = calm || kind !== 'bird' ? 0 : Math.abs(Math.sin(this.time * 2.6 + i * 1.7)) * 0.26
-      const angle = Math.atan(slopeAt(this.hills, hill.x))
-      const py = this.sy(hill.y + hop) - size * SWIFT_SCALE * SWIFT_LIFT
-      const r = size * 3.8
-      ctx.globalAlpha = 0.78 + (calm ? 0 : 0.2 * Math.sin(this.time * 3 + i))
-      ctx.drawImage(glow, px - r, py - r, r * 2, r * 2)
+      const [kx, ky] = this.kiteOver(hill, i, calm)
+      // Its peg, in the slope.
+      const peg = Math.max(5, 0.55 * this.cam.k)
+      ctx.fillStyle = withAlpha(this.C.ink, 0.8)
+      ctx.fillRect(px - 1.25, this.sy(hill.y) - peg, 2.5, peg)
+      const r = this.birdSize() * 3.7
+      ctx.globalAlpha = 0.55
+      ctx.drawImage(glow, this.sx(kx) - r, this.sy(ky) - r, r * 2, r * 2)
       ctx.globalAlpha = 1
-      if (kind === 'bird') this.drawBird(hill.x, hill.y + hop, angle, size, GOLD, { folded: true })
-      else {
-        const unit = size * SWIFT_SCALE
-        const gy = this.sy(hill.y)
-        ctx.save()
-        if (kind === 'feather') {
-          // Stood in the turf by its quill and bending with the wind: its frame turned so its right end is down.
-          const turn = Math.PI / 2 - 0.24 - (calm ? 0 : Math.sin(this.time * 1.8 + i * 2) * 0.16)
-          const tall = unit * 1.15
-          ctx.translate(px - Math.cos(turn) * tall * 1.62, gy - Math.sin(turn) * tall * 1.62)
-          ctx.rotate(turn)
-          ctx.scale(tall, tall)
-          paintFeather(ctx, 1.5 / tall)
-        } else {
-          // The nest sits on the slope, tipped a little with it; the chick bobs up, and cheeps.
-          ctx.translate(px, gy + unit * 0.1)
-          ctx.rotate(-angle * 0.6)
-          ctx.scale(unit, unit)
-          paintNest(ctx, calm ? 0.5 : 0.5 + 0.5 * Math.sin(this.time * 3.2 + i), !calm && Math.sin(this.time * 5 + i * 2.3) > 0.2, 1.5 / unit)
-        }
-        ctx.restore()
-      }
-      if (calm) continue
-      ctx.fillStyle = '#fff6cf'
-      for (let k = 0; k < 4; k++) {
-        const a = this.time * 1.1 + k * 1.571 + i
-        const s = size * (0.26 + 0.12 * Math.sin(this.time * 6 + k * 1.7))
-        const tx = px + Math.cos(a) * size * 2.5
-        const ty = py + Math.sin(a) * size * 1.7
-        ctx.beginPath()
-        ctx.moveTo(tx, ty - s * 1.6)
-        ctx.lineTo(tx + s * 0.45, ty)
-        ctx.lineTo(tx, ty + s * 1.6)
-        ctx.lineTo(tx - s * 0.45, ty)
-        ctx.closePath()
-        ctx.fill()
-      }
+      this.drawKite(kx, ky, hill.x, hill.y + 0.5, i, calm)
     }
+  }
+
+  /** A kite's unit on the screen, in pixels: bigger than life, and never too small to make out on a phone. */
+  private kiteUnit() {
+    return Math.max(this.cam.k, 6.5 * this.fit) * KITE_SIZE
   }
 
   /** Where a kite flies while it waits: over its peg, a little upwind of it, drifting and bobbing. */
@@ -1133,7 +1100,7 @@ export class VistaScene extends HillsScene {
   /** A kite at a spot, on its string from where it's held (its peg, or your bird): the string sagging, the kite leaning into the wind. */
   private drawKite(x: number, y: number, heldX: number, heldY: number, seed: number, calm: boolean) {
     const { ctx, dpr, C } = this
-    const m = Math.max(this.cam.k, 6.5 * this.fit) * KITE_SIZE
+    const m = this.kiteUnit()
     const px = this.sx(x)
     const py = this.sy(y)
     const hx = this.sx(heldX)

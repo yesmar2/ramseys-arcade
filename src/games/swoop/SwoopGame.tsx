@@ -40,7 +40,7 @@ import { GhostPicker } from '../../components/GhostPicker'
 import { useRaceTag } from '../../lib/raceGhost'
 import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, fitsHills, sendBoardGhost, standIn, type BoardGhost, type NextGhost } from './boardGhost'
 import { hillsDay, hillsNumber, laidNumber, msUntilNextHills, untilWords } from './daily'
-import { CATCH_WORDS, catchKind, catchTitle, downhillAt, everCaught, goldenBest, goldenHills, keepGoldenBest, noteCaught } from './golden'
+import { CATCH, downhillAt, everCaught, goldenBest, goldenHills, keepGoldenBest, noteCaught } from './golden'
 import { HillsMap } from './map'
 import { flockLook } from './newLook'
 import { onItsDayFact, type ItsDay } from './pastDay'
@@ -159,7 +159,7 @@ type Game = {
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
-  /** With the look on test: started again, so its count is the short one; and which of the day's three catches it has made (golden.ts). */
+  /** With the look on test: started again, so its count is the short one; and which of the day's three kites it has caught (golden.ts). */
   quick: boolean
   golden: boolean[]
   /**
@@ -176,7 +176,7 @@ type Game = {
     improved: boolean
     before: number | null
     path: number[]
-    /** How many of the day's catches it brought to the line (the look on test). */
+    /** How many of the day's kites it brought to the line (the look on test). */
     golden: number
     /** The skin it was flown in (lib/skins.ts), which its ghost wears. */
     skin?: string
@@ -353,8 +353,8 @@ function HillsTiles({
   ghost: number
   chasing: Chasing
   bestMs: number | null
-  /** With the look on test: how many catches the day has, the most one run of yours has brought home today, and what they're called ("Kites"). */
-  golden?: { best: number; of: number; name: string } | null
+  /** With the look on test: how many kites the day has, and the most one run of yours has brought home today. */
+  golden?: { best: number; of: number } | null
 }) {
   const [left, setLeft] = useState(() => msUntilNextHills())
   useEffect(() => {
@@ -370,8 +370,8 @@ function HillsTiles({
           <em
             className="swoop-golden"
             role="img"
-            aria-label={`${golden.name}: ${golden.best} of ${golden.of} in your best run today`}
-            title={`${golden.name}: ${golden.best} of ${golden.of} in your best run today`}
+            aria-label={`${CATCH.title}: ${golden.best} of ${golden.of} in your best run today`}
+            title={`${CATCH.title}: ${golden.best} of ${golden.of} in your best run today`}
           >
             {Array.from({ length: golden.of }, (_, i) => (
               <i key={i} className={i < golden.best ? 'is-caught' : undefined} />
@@ -467,10 +467,8 @@ function SwoopDayGame({
   const [touch] = useState(touchScreen)
   // The look on test, and its flock, where this device has asked for them (newLook.ts).
   const [newLook] = useState(flockLook)
-  // And with it the day's three catches: the golden hills they wait on (golden.ts).
+  // And with it the day's three kites: the golden hills they're pegged to (golden.ts).
   const [golden] = useState(() => (newLook ? goldenHills(swoop.hills, swoop.n >= 1 ? laidNumber(swoop) : null) : []))
-  // What waits on them, on this device (golden.ts): kites, unless another's being tried from the Hills Book.
-  const [caught] = useState(catchKind)
   const holderRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLCanvasElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
@@ -751,12 +749,9 @@ function SwoopDayGame({
     }
     sceneRef.current = scene
     // The look on test has more to be told: how flush a clean landing was, who has gone by whom, and where the
-    // day's three catches wait.
+    // day's three kites are.
     const vista = scene instanceof VistaScene ? scene : null
-    if (vista) {
-      vista.catchKind = caught
-      vista.setGolden(golden, !everCaught())
-    }
+    vista?.setGolden(golden, !everCaught())
     /** Whether you're clear ahead of the run you race (or clear behind it), as last seen, and when that was last said. */
     const pass = { ahead: null as boolean | null, saidAt: -Infinity }
     const sound = new WindSound()
@@ -852,7 +847,7 @@ function SwoopDayGame({
         ...(skin ? { skin } : {}),
         runId: past ? runIdFor(SLUG) : null,
       }
-      // The most catches one run has brought home today, for the start card: today's hills only.
+      // The most kites one run has brought home today, for the start card: today's hills only.
       if (newLook && !practice) keepGoldenBest(g.day, g.run.golden)
       // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
       if (!test) noteCourseBest(SLUG, hillsNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
@@ -917,7 +912,7 @@ function SwoopDayGame({
               const n = Math.sqrt(1 + d * d)
               const angle = Math.atan2(Math.abs(vy0 - vx0 * d) / n, Math.max(0.001, (vx0 + vy0 * d) / n))
               vista.landed('clean', b.x, b.y, b.vx, b.streak, angle < cleanAngleFor(b.peak - b.y) * FLUSH)
-              // A clean landing on a golden hill catches what waits on it.
+              // A clean landing on a golden hill catches its kite.
               const at = golden.findIndex((hill) => hill.top === downhillAt(hills, b.x))
               if (at >= 0 && !g.golden[at]) {
                 g.golden[at] = true
@@ -1253,7 +1248,7 @@ function SwoopDayGame({
       ghost={g.ghost.run.time}
       chasing={g.chasing}
       bestMs={apiBest > 0 ? swoopMsFromBoardScore(apiBest) : null}
-      golden={golden.length ? { best: goldenBest(day), of: golden.length, name: catchTitle(caught) } : null}
+      golden={golden.length ? { best: goldenBest(day), of: golden.length } : null}
     />
   )
   const splitsText = (r: NonNullable<Game['run']>) =>
@@ -1403,7 +1398,7 @@ function SwoopDayGame({
                     shareLine={runShareLine(swoop, run.time, pace, run.clean)}
                     medalPace={paceMsOf(swoop.pace)}
                     medalFormat={formatRun}
-                    kicker={golden.length ? `Hills #${swoop.n} · ${run.golden} of ${golden.length} ${CATCH_WORDS[caught].many}` : `Today’s Hills #${swoop.n}`}
+                    kicker={golden.length ? `Hills #${swoop.n} · ${run.golden} of ${golden.length} ${CATCH.many}` : `Today’s Hills #${swoop.n}`}
                     tomorrow={<TomorrowHills day={swoop.day} />}
                     owner={runOwner}
                     onSettled={() => sendGhost(run, playerName)}

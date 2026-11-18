@@ -1,18 +1,21 @@
 import { keptEpoch, watchKept } from '../keptPictures'
 import type { BirdDesign } from './birdDesigns'
-import { paintChick, paintFeather } from './catches'
 import { paintBird, swiftColours, type SwiftStyle } from './swiftPaint'
 
 /*
- * The flock: Swoop's streak, as something you can see and can lose. Every clean landing in a row, another
- * little swift comes down out of the sky and falls in behind your bird; they follow its every swoop and tuck
- * their wings a moment after it does, a wave down the line. From three, the wind lets a bird on a streak go
- * faster (sim.ts capFor): the flock is that streak, so the more of them behind you, the faster you're let fly.
- * Land one badly and they scatter.
+ * The flock: Swoop's clean landings, as something you can see and can lose. Every clean landing, another little
+ * bird comes down out of the sky and falls in behind yours; they follow its every swoop and tuck their wings a
+ * moment after it does, a wave down the line. Thump into a hill and they scatter.
  *
- * Nothing here changes how the game plays or how a run is timed: the flock is as big as the streak the sim
- * already keeps (Bird.streak), and it's drawn only. Ramsey, 2026-11-17, of Swoop: "it's fun already in my
- * opinion and there are other games out there like it, just need something to set it apart".
+ * It began as the streak the sim keeps (Bird.streak: clean landings in a row, which from three lets the bird go
+ * faster), so any landing that wasn't clean lost them all. Ramsey, 2026-11-18, once he'd flown it: "can we keep
+ * the small birds on behind the bird as long as it's not a thump?" So a landing that's merely not clean still
+ * costs the streak and its speed, as it always has, and the flock stays: only a thump scatters it. The scene
+ * counts (vista.ts): a bird for every clean landing since the last thump.
+ *
+ * Nothing here changes how the game plays or how a run is timed: the flock is drawn only. Ramsey, 2026-11-17, of
+ * Swoop: "it's fun already in my opinion and there are other games out there like it, just need something to set
+ * it apart".
  *
  * Each follower is a picture, painted once for its colour, wingbeat and size, turned and stamped where it
  * flies. They're all on one sheet, a colour a row and a beat of the wing a column, because a frame is charged
@@ -25,21 +28,12 @@ const TAU = Math.PI * 2
 /** The followers' colours, in the order they join: the arcade's own, never the blue bird's blue. */
 export const FLOCK_HUES = ['#f5b942', '#e85d9a', '#3ecf8e', '#8a6ad4', '#f2813a', '#fff6e6'] as const
 
-/**
- * A golden bird's colour (golden.ts): caught by a clean landing on its hill, it flies at the front of the flock
- * and isn't lost when the rest scatter. It has a row of its own on the sheet, after the flock's colours.
- */
-export const GOLD = '#ffc93a'
-const GOLD_ROW = FLOCK_HUES.length
-
-/** How big a follower is, to your bird, and how much bigger than that a golden one. */
+/** How big a follower is, to your bird. */
 export const FOLLOWER_SIZE = 0.6
-const GOLD_SIZE = 1.18
-/** The wingbeat's frames a picture is kept for, one more for a tuck, and one for the glow round a golden bird. */
+/** The wingbeat's frames a picture is kept for, and one more for a tuck. */
 const BEATS = 6
 const TUCK = BEATS
-const GLOW = BEATS + 1
-const FRAMES = BEATS + 2
+const FRAMES = BEATS + 1
 /**
  * Where a follower flies behind your bird, in bird sizes (your bird's on the screen, which is bigger than life
  * when the camera is far out, so they keep their distance on a phone too). In the air they're a wedge: this many
@@ -75,8 +69,6 @@ type Follower = {
   tuck: boolean
   /** Whether it has been put anywhere yet. */
   placed: boolean
-  /** A golden bird: it flies ahead of the rest and stays when they scatter. */
-  gold: boolean
 }
 
 type Stray = { x: number; y: number; vx: number; vy: number; hue: number; life: number; beat: number }
@@ -104,11 +96,6 @@ export class Flock {
   private reach = 30
   /** The sheets painted so far, by size and theme: the last few are kept, for a camera going in and out. */
   private sheets = new Map<string, Sheet>()
-  /**
-   * What a caught thing that flies with the flock is painted as (golden.ts CatchKind): a golden bird, a golden
-   * feather streaming from your tail, or a fledgling. (A kite isn't of the flock: vista.ts flies it.)
-   */
-  gilt: 'bird' | 'feather' | 'chick' = 'bird'
 
   get size() {
     return this.followers.length
@@ -169,23 +156,22 @@ export class Flock {
   }
 
   /**
-   * The flock is kept as big as the streak: one more clean landing and another joins; a streak lost and they all
-   * scatter, off the way your bird was going (`vx`, `vy`).
+   * The flock is kept as big as it's told to be (`count`: vista.ts has what it counts): one more and another
+   * joins; fewer and they all scatter, off the way your bird was going (`vx`, `vy`).
    */
-  keep(streak: number, vx: number, vy: number) {
-    const golden = this.followers.filter((f) => f.gold)
-    if (streak < this.followers.length - golden.length) {
+  keep(count: number, vx: number, vy: number) {
+    if (count < this.followers.length) {
       for (const f of this.followers) {
-        // A golden bird stays; one that hadn't come in yet has nowhere to scatter from.
-        if (f.gold || !f.placed) continue
+        // One that hadn't come in yet has nowhere to scatter from.
+        if (!f.placed) continue
         // Up and back, each its own way.
         const a = Math.PI * (0.32 + Math.random() * 0.56)
         const sp = 9 + Math.random() * 12
         this.strays.push({ x: f.x, y: f.y, vx: vx * 0.45 + Math.cos(a) * sp, vy: Math.max(0, vy) * 0.3 + Math.sin(a) * sp, hue: f.hue, life: 1, beat: f.beat })
       }
-      this.followers = golden
+      this.followers.length = 0
     }
-    while (this.followers.length - golden.length < streak) {
+    while (this.followers.length < count) {
       this.followers.push({
         x: 0,
         y: 0,
@@ -197,30 +183,8 @@ export class Flock {
         beat: Math.random() * TAU,
         tuck: false,
         placed: false,
-        gold: false,
       })
     }
-  }
-
-  /**
-   * A golden bird, caught: it comes from where it sat on its hill to fly first behind you, after any caught before
-   * it, and it stays whatever becomes of the rest.
-   */
-  gild(x: number, y: number) {
-    const at = this.followers.findIndex((f) => !f.gold)
-    this.followers.splice(at < 0 ? this.followers.length : at, 0, {
-      x,
-      y,
-      a: 0,
-      hue: GOLD_ROW,
-      joined: 1,
-      fromX: 0,
-      fromY: 0,
-      beat: Math.random() * TAU,
-      tuck: false,
-      placed: true,
-      gold: true,
-    })
   }
 
   /**
@@ -241,19 +205,17 @@ export class Flock {
       const inWedge = (FIRST_ROW + row * ROW + Math.abs(lane) * 0.45) * (1 + fast * 0.8)
       const file = i % FILES
       const inLine = (FIRST_ROW + Math.floor(i / FILES) * RANK + file * 0.5) * (1 + fast * 0.3)
-      // A feather isn't of the wedge: it streams straight back from your tail, one behind another.
-      const streams = f.gold && this.gilt === 'feather'
-      const back = streams ? (2.2 + i * 1.5) * size : (inLine + (inWedge - inLine) * w) * size
+      const back = (inLine + (inWedge - inLine) * w) * size
       if (back > reach) reach = back
       const at = this.behind(back)
       // Out to its side of the wedge, across the way it's headed.
-      const out = streams ? 0 : lane * LANE * (1 + row * 0.1) * size * w
+      const out = lane * LANE * (1 + row * 0.1) * size * w
       let tx = at.x - Math.sin(at.a) * out
       let ty = at.y + Math.cos(at.a) * out
       // Nobody flies through the ground: low over it, each file above the last; coming down in the wedge, the
       // ones under it come up and over.
       const order = lane === 0 ? 0 : lane > 0 ? lane * 2 - 1 : -lane * 2
-      const floor = groundAt(tx) + (streams ? 0.5 : 0.42 + file * FILE * (1 - w) + order * 0.5 * w) * size
+      const floor = groundAt(tx) + (0.42 + file * FILE * (1 - w) + order * 0.5 * w) * size
       if (ty < floor) ty = floor
       if (f.joined < 1) {
         f.joined = Math.min(1, f.joined + dt / JOIN)
@@ -302,13 +264,13 @@ export class Flock {
         break
       }
     }
-    const key = `${unit}|${dark}|${style}|${design.key}|${this.gilt}|${keptEpoch()}`
+    const key = `${unit}|${dark}|${style}|${design.key}|${keptEpoch()}`
     let sheet = this.sheets.get(key)
     if (sheet) return sheet
     const side = Math.ceil(HALF * 2 * unit)
     const canvas = document.createElement('canvas')
     canvas.width = side * FRAMES
-    canvas.height = side * (FLOCK_HUES.length + 1)
+    canvas.height = side * FLOCK_HUES.length
     watchKept(canvas)
     sheet = { canvas, g: canvas.getContext('2d'), side, unit, painted: new Set() }
     // The oldest goes once there are more than a few.
@@ -328,18 +290,6 @@ export class Flock {
     const g = sheet.g
     if (!g) return
     const { side, unit } = sheet
-    if (frame === GLOW) {
-      // The glow round a golden bird: gold, fading out to the edge of its square.
-      const cx = frame * side + side / 2
-      const cy = hue * side + side / 2
-      const fade = g.createRadialGradient(cx, cy, 0, cx, cy, side / 2)
-      fade.addColorStop(0, 'rgba(255, 214, 92, 0.85)')
-      fade.addColorStop(0.4, 'rgba(255, 201, 58, 0.34)')
-      fade.addColorStop(1, 'rgba(255, 201, 58, 0)')
-      g.fillStyle = fade
-      g.fillRect(frame * side, hue * side, side, side)
-      return
-    }
     const tucked = frame === TUCK
     g.save()
     g.beginPath()
@@ -349,9 +299,7 @@ export class Flock {
     const stretch = tucked ? 1.12 : 1
     g.scale(unit * stretch, unit / stretch)
     // Its line a little heavier than a pixel: at this size a hairline is lost against the hills.
-    if (hue === GOLD_ROW && this.gilt === 'feather') paintFeather(g, 1.1 / unit)
-    else if (hue === GOLD_ROW && this.gilt === 'chick') paintChick(g, (frame / BEATS) * TAU, tucked, 1.1 / unit)
-    else paintBird(g, design, swiftColours(hue === GOLD_ROW ? GOLD : FLOCK_HUES[hue]!, dark, style), { flap: (frame / BEATS) * TAU, dive: tucked, ground: false, px1: 1.1 / unit, small: true })
+    paintBird(g, design, swiftColours(FLOCK_HUES[hue]!, dark, style), { flap: (frame / BEATS) * TAU, dive: tucked, ground: false, px1: 1.1 / unit, small: true })
     g.restore()
   }
 
@@ -378,26 +326,20 @@ export class Flock {
     const sheet = this.sheetFor(unitNow * dpr, dark, style, design)
     const { side } = sheet
     const half = HALF * unitNow
-    const stamp = (x: number, y: number, a: number, hue: number, beat: number, tuck: boolean, alpha: number, grow = 1, glow = false) => {
-      const frame = glow ? GLOW : tuck ? TUCK : Math.floor((((time * 3.4 + beat / TAU) % 1) + 1) * BEATS) % BEATS
+    const stamp = (x: number, y: number, a: number, hue: number, beat: number, tuck: boolean, alpha: number) => {
+      const frame = tuck ? TUCK : Math.floor((((time * 3.4 + beat / TAU) % 1) + 1) * BEATS) % BEATS
       this.paint(sheet, hue, frame, dark, style, design)
       const c = Math.cos(a)
       const s = Math.sin(a)
       ctx.setTransform(dpr * c, -dpr * s, dpr * s, dpr * c, dpr * px(x), dpr * py(y))
       ctx.globalAlpha = alpha
-      ctx.drawImage(sheet.canvas, frame * side, hue * side, side, side, -half * grow, -half * grow, half * 2 * grow, half * 2 * grow)
+      ctx.drawImage(sheet.canvas, frame * side, hue * side, side, side, -half, -half, half * 2, half * 2)
     }
     for (const s of this.strays) stamp(s.x, s.y, Math.atan2(s.vy, s.vx), s.hue, s.beat + time * 9, false, Math.min(1, s.life * 1.6))
-    // The last to join are drawn first, so the ones nearest your bird are on top: the golden ones, each in its glow.
+    // The last to join are drawn first, so the ones nearest your bird are on top.
     for (let i = this.followers.length - 1; i >= 0; i--) {
       const f = this.followers[i]!
-      if (f.gold) {
-        stamp(f.x, f.y, 0, f.hue, 0, false, 0.6 + 0.15 * Math.sin(time * 4 + f.beat), 1.05, true)
-        // A feather flutters as it streams; a fledgling beats its stubs twice as fast as a bird its wings.
-        if (this.gilt === 'feather') stamp(f.x, f.y, f.a + Math.sin(time * 7 + f.beat) * 0.2, f.hue, 0, false, 1, 1.3)
-        else if (this.gilt === 'chick') stamp(f.x, f.y, f.a, f.hue, f.beat + time * 9, f.tuck, 1, 1.05)
-        else stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, 1, GOLD_SIZE)
-      } else stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, Math.min(1, 0.25 + f.joined * 1.5))
+      stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, Math.min(1, 0.25 + f.joined * 1.5))
     }
     ctx.globalAlpha = 1
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)

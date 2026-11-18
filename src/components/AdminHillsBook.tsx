@@ -3,7 +3,6 @@ import { HillsDrawing } from '../games/swoop/HillsDrawing'
 import { dayOfHills, hillsDay, PLANNED_HILLS } from '../games/swoop/daily'
 import { DAILY_HILLS, type PlannedHills } from '../games/swoop/dailyPlan'
 import { hillsRunHref } from '../games/swoop/links'
-import { CATCH_KINDS, CATCH_WORDS, catchKind, catchTitle, setCatchKind } from '../games/swoop/golden'
 import { flockLook, setFlockLook } from '../games/swoop/newLook'
 import { formatRun } from '../games/swoop/score'
 import { hillsSpan, plannedHills, type Hills } from '../games/swoop/sim'
@@ -62,8 +61,6 @@ export function AdminHillsBook() {
   const [month, setMonth] = useState<string>('all')
   // Swoop's look on test, on or off on this device (games/swoop/newLook.ts).
   const [newLook, setNewLook] = useState(flockLook)
-  // And what waits on its three golden hills, while one is being chosen (games/swoop/golden.ts).
-  const [caught, setCaught] = useState(catchKind)
 
   const todays = days.find((d) => d.day === today)
   // Before the first day, the first hills are the ones coming.
@@ -107,32 +104,11 @@ export function AdminHillsBook() {
           </a>
           <p className="tb-feature__next">
             The new look, on test{newLook ? ' (on, on this device)' : ''}: a sky of the day’s own, far mountains, light and shade on the hills, and a
-            flock that grows with every clean landing in a row and scatters when one isn’t. With it, three {CATCH_WORDS[caught].many} a day to catch, each by a
+            flock that grows with every clean landing and scatters when you thump into a hill. With it, three kites a day to catch, each by a
             clean landing on its hill; a one-beat count when a run is started again; and the gap to the bird you race shown all the way. On this
             device only, on every day’s hills, until it’s switched back here. The same hills, times and boards either way.
           </p>
         </div>
-        {newLook ? (
-          <div className="tb-feature__acts" style={{ marginTop: '0.6rem', alignItems: 'center' }}>
-            <div className="chips" role="group" aria-label="What to catch">
-              {CATCH_KINDS.map((kind) => (
-                <button
-                  key={kind}
-                  type="button"
-                  className={`chips__item${caught === kind ? ' chips__item--active' : ''}`}
-                  aria-pressed={caught === kind}
-                  onClick={() => {
-                    setCatchKind(kind)
-                    setCaught(kind)
-                  }}
-                >
-                  {catchTitle(kind)}
-                </button>
-              ))}
-            </div>
-            <p className="tb-feature__next">What waits on the three golden hills, to try each before one is chosen. On this device only.</p>
-          </div>
-        ) : null}
         {todays ? (
           <div className="tb-feature">
             <HillsDrawing hills={todays.hills} className="hlb-map" />

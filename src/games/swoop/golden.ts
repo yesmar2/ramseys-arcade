@@ -2,15 +2,15 @@ import { GOLDEN_HILLS } from './goldenPlan'
 import { heightAt, type Hills } from './sim'
 
 /*
- * Swoop's three catches a day, in the look on test (newLook.ts): golden birds at first, kites now (CATCH, below),
- * each waiting on a golden hill of its own, the same hills for everyone. One clean landing on its hill catches it,
- * and it comes with you to the line whatever happens after, where the flock scatters at the first bad landing. A run ends with none, one, two or all
+ * Swoop's three kites a day, in the look on test (newLook.ts): each pegged to a golden hill of its own, the same
+ * hills for everyone. One clean landing on its hill catches it, and it comes with you to the line whatever happens
+ * after, where the flock scatters at a thump. A run ends with none, one, two or all
  * three, so there's something to fly for besides the time, at any level: the game's bot players, flying 36 days of
  * hills, caught at least one in 29% of runs flying like a newcomer, 56% getting the hang of it, 89% flying well,
  * and all three in 14% of good runs and 25% of very good ones. Ramsey, 2026-11-17, asked what else would make the
- * game more fun, and picked this from the list.
+ * game more fun, and picked this from the list. (They were golden birds then: kite.ts has how they became kites.)
  *
- * Nothing about a run's time changes: a clean landing is a clean landing wherever it is. Which hills they sit on
+ * Nothing about a run's time changes: a clean landing is a clean landing wherever it is. Which hills they're on
  * is planned (scripts/swoop-golden.mjs writes goldenPlan.ts): downhills where good players do land clean, one in
  * each third of the way.
  */
@@ -18,60 +18,16 @@ import { heightAt, type Hills } from './sim'
 /** How many a day has. */
 export const GOLDEN = 3
 
-/** What it is that waits on each hill to be caught (catches.ts paints them): a golden bird at first. */
-export type CatchKind = 'bird' | 'kite' | 'feather' | 'chick'
+/** What's caught there (kite.ts paints it): as the word over a catch says it, as a count does, and as a heading does. */
+export const CATCH = { one: 'Kite', many: 'kites', title: 'Kites' } as const
 
-/**
- * Which it is, on test: a kite, pegged to its hill and flying over it. It was a golden bird sitting on the slope,
- * and Ramsey, 2026-11-18: "maybe golden bird is the wrong thing to catch. it's weird that it's just sitting there,
- * what else could we use for that". A kite has a reason to be there, is seen from two hills off, and, caught, flies
- * behind you on its string, so how many you have is plain all the way. The feather and the fledgling are the other
- * two he was shown; the bird is kept to compare.
- */
-export const CATCH: CatchKind = 'kite'
+/** The gold of a golden hill's edge, and of the light when its kite is caught. */
+export const GOLD = '#ffc93a'
 
-/** What each is called: one, as the word over a catch says it, and several, as a count does. */
-export const CATCH_WORDS: Record<CatchKind, { one: string; many: string }> = {
-  bird: { one: 'Golden bird', many: 'golden birds' },
-  kite: { one: 'Kite', many: 'kites' },
-  feather: { one: 'Golden feather', many: 'golden feathers' },
-  chick: { one: 'Fledgling', many: 'fledglings' },
-}
-
-/** A kind's name as a heading has it: "Kites". */
-export const catchTitle = (kind: CatchKind) => CATCH_WORDS[kind].many.charAt(0).toUpperCase() + CATCH_WORDS[kind].many.slice(1)
-
-/** All of them, in the order the admin's Hills Book offers them while one is being chosen. */
-export const CATCH_KINDS: readonly CatchKind[] = ['kite', 'feather', 'chick', 'bird']
-
-const CATCH_KEY = 'skermix-swoop-catch'
-
-/**
- * Which it is on this device: CATCH, unless another was picked in the admin's Hills Book, where each can be flown
- * before one is chosen. A picture tells how a thing looks, not how it is to fly at.
- */
-export function catchKind(): CatchKind {
-  try {
-    const kept = localStorage.getItem(CATCH_KEY)
-    return CATCH_KINDS.find((kind) => kind === kept) ?? CATCH
-  } catch {
-    return CATCH
-  }
-}
-
-export function setCatchKind(kind: CatchKind) {
-  try {
-    if (kind === CATCH) localStorage.removeItem(CATCH_KEY)
-    else localStorage.setItem(CATCH_KEY, kind)
-  } catch {
-    /* a private window keeps nothing: it's the usual one there */
-  }
-}
-
-/** A golden hill: the index of its top in the hills' list, where its downhill runs from and to, and where on it the thing to catch waits. */
+/** A golden hill: the index of its top in the hills' list, where its downhill runs from and to, and where on it its kite is pegged. */
 export type GoldenHill = { top: number; from: number; to: number; x: number; y: number }
 
-/** How far down its hill the thing to catch waits, as a share of the downhill. */
+/** How far down its hill a kite is pegged, as a share of the downhill. */
 const PERCH = 0.42
 
 /** The downhill a spot is on, as the index of its top in the hills' list (sim.ts Hills.xs); -1 on a climb, or off either end. */
@@ -131,7 +87,7 @@ export function goldenHills(hills: Hills, laid: number | null): GoldenHill[] {
   })
 }
 
-/* ---------- whether this device has ever made a catch: until it has, the first golden hill of a run says how ---------- */
+/* ---------- whether this device has ever caught a kite: until it has, the first golden hill of a run says how ---------- */
 
 const KNOWN = 'skermix-swoop-golden-known'
 
@@ -155,7 +111,7 @@ export function noteCaught() {
 
 const KEY = 'skermix-swoop-golden'
 
-/** The most catches this device has brought to the line in one run over a day's hills. */
+/** The most kites this device has brought to the line in one run over a day's hills. */
 export function goldenBest(day: string): number {
   try {
     const kept = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { day?: string; best?: number } | null
