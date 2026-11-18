@@ -1,5 +1,6 @@
 import { keptEpoch, watchKept } from '../keptPictures'
 import type { BirdDesign } from './birdDesigns'
+import { paintChick, paintFeather } from './catches'
 import { paintBird, swiftColours, type SwiftStyle } from './swiftPaint'
 
 /*
@@ -103,6 +104,11 @@ export class Flock {
   private reach = 30
   /** The sheets painted so far, by size and theme: the last few are kept, for a camera going in and out. */
   private sheets = new Map<string, Sheet>()
+  /**
+   * What a caught thing that flies with the flock is painted as (golden.ts CatchKind): a golden bird, a golden
+   * feather streaming from your tail, or a fledgling. (A kite isn't of the flock: vista.ts flies it.)
+   */
+  gilt: 'bird' | 'feather' | 'chick' = 'bird'
 
   get size() {
     return this.followers.length
@@ -235,17 +241,19 @@ export class Flock {
       const inWedge = (FIRST_ROW + row * ROW + Math.abs(lane) * 0.45) * (1 + fast * 0.8)
       const file = i % FILES
       const inLine = (FIRST_ROW + Math.floor(i / FILES) * RANK + file * 0.5) * (1 + fast * 0.3)
-      const back = (inLine + (inWedge - inLine) * w) * size
+      // A feather isn't of the wedge: it streams straight back from your tail, one behind another.
+      const streams = f.gold && this.gilt === 'feather'
+      const back = streams ? (2.2 + i * 1.5) * size : (inLine + (inWedge - inLine) * w) * size
       if (back > reach) reach = back
       const at = this.behind(back)
       // Out to its side of the wedge, across the way it's headed.
-      const out = lane * LANE * (1 + row * 0.1) * size * w
+      const out = streams ? 0 : lane * LANE * (1 + row * 0.1) * size * w
       let tx = at.x - Math.sin(at.a) * out
       let ty = at.y + Math.cos(at.a) * out
       // Nobody flies through the ground: low over it, each file above the last; coming down in the wedge, the
       // ones under it come up and over.
       const order = lane === 0 ? 0 : lane > 0 ? lane * 2 - 1 : -lane * 2
-      const floor = groundAt(tx) + (0.42 + file * FILE * (1 - w) + order * 0.5 * w) * size
+      const floor = groundAt(tx) + (streams ? 0.5 : 0.42 + file * FILE * (1 - w) + order * 0.5 * w) * size
       if (ty < floor) ty = floor
       if (f.joined < 1) {
         f.joined = Math.min(1, f.joined + dt / JOIN)
@@ -294,7 +302,7 @@ export class Flock {
         break
       }
     }
-    const key = `${unit}|${dark}|${style}|${design.key}|${keptEpoch()}`
+    const key = `${unit}|${dark}|${style}|${design.key}|${this.gilt}|${keptEpoch()}`
     let sheet = this.sheets.get(key)
     if (sheet) return sheet
     const side = Math.ceil(HALF * 2 * unit)
@@ -341,7 +349,9 @@ export class Flock {
     const stretch = tucked ? 1.12 : 1
     g.scale(unit * stretch, unit / stretch)
     // Its line a little heavier than a pixel: at this size a hairline is lost against the hills.
-    paintBird(g, design, swiftColours(hue === GOLD_ROW ? GOLD : FLOCK_HUES[hue]!, dark, style), { flap: (frame / BEATS) * TAU, dive: tucked, ground: false, px1: 1.1 / unit, small: true })
+    if (hue === GOLD_ROW && this.gilt === 'feather') paintFeather(g, 1.1 / unit)
+    else if (hue === GOLD_ROW && this.gilt === 'chick') paintChick(g, (frame / BEATS) * TAU, tucked, 1.1 / unit)
+    else paintBird(g, design, swiftColours(hue === GOLD_ROW ? GOLD : FLOCK_HUES[hue]!, dark, style), { flap: (frame / BEATS) * TAU, dive: tucked, ground: false, px1: 1.1 / unit, small: true })
     g.restore()
   }
 
@@ -383,7 +393,10 @@ export class Flock {
       const f = this.followers[i]!
       if (f.gold) {
         stamp(f.x, f.y, 0, f.hue, 0, false, 0.6 + 0.15 * Math.sin(time * 4 + f.beat), 1.05, true)
-        stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, 1, GOLD_SIZE)
+        // A feather flutters as it streams; a fledgling beats its stubs twice as fast as a bird its wings.
+        if (this.gilt === 'feather') stamp(f.x, f.y, f.a + Math.sin(time * 7 + f.beat) * 0.2, f.hue, 0, false, 1, 1.3)
+        else if (this.gilt === 'chick') stamp(f.x, f.y, f.a, f.hue, f.beat + time * 9, f.tuck, 1, 1.05)
+        else stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, 1, GOLD_SIZE)
       } else stamp(f.x, f.y, f.a, f.hue, f.beat, f.tuck, Math.min(1, 0.25 + f.joined * 1.5))
     }
     ctx.globalAlpha = 1

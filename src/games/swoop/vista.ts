@@ -3,7 +3,8 @@ import { keptEpoch } from '../keptPictures'
 import { SWIFT_LIFT } from './birdShape'
 import { AURORA_PHOENIX, BLIP, blipSparkOffset, PENGUIN, skinPainter, SNOW_SWIFT } from './birdSkins'
 import { Flock, FLOCK_HUES, GOLD } from './flock'
-import type { GoldenHill } from './golden'
+import { paintFeather, paintKite, paintNest } from './catches'
+import { CATCH, CATCH_WORDS, type CatchKind, type GoldenHill } from './golden'
 import { BEAK, BLIP_EVERY, BLIPS_AT, clamp, HillsScene, LINE_NARROWEST, LINE_RUN, LINE_TURN, LINE_WIDEST, RED, SEAMS, SWIFT_SCALE, textSize, type SceneFrame } from './scene'
 import { heightAt, mulberry32, slopeAt, STREAK_ON, streakLift, type Hills } from './sim'
 import { BIRD_DESIGNS, type BirdDesignKey } from './birdDesigns'
@@ -47,9 +48,9 @@ import {
  *
  * And what's new to play for: the flock (flock.ts). Every clean landing in a row, another little swift falls
  * in behind yours; a bad one scatters them. It's the streak the game always had, and the speed it always gave,
- * made into something you can see growing and can lose. And the day's three golden birds (golden.ts), each
- * sitting on a hill of its own, its slope edged in gold: land clean on that hill and it flies with you to the
- * line, whatever becomes of the rest.
+ * made into something you can see growing and can lose. And the day's three kites (golden.ts; catches.ts has
+ * what else they could be), each pegged to a hill of its own, its slope edged in gold: land clean on that hill
+ * and it flies with you to the line, whatever becomes of the rest.
  *
  * It's this scene's parent with its drawing swapped: the camera, the birds, their skins and the ghost are
  * scene.ts's own. Like it, nothing here uses shadowBlur, and what would be a wide shape to fill every frame is
@@ -94,8 +95,14 @@ const SPRIG = 1.5
  * night the dark line turns pale, as scene.ts has it, and reads as a glow round the bird.
  */
 const BIRD_STYLE: SwiftStyle = 'soft'
-/** Which bird is flown (birdDesigns.ts): the swift he picked, until he picks another. */
-const BIRD_DESIGN: BirdDesignKey = 'swift'
+/**
+ * Which bird is flown (birdDesigns.ts): the swallow. It was the swift he picked on 2026-10-06; shown it repainted
+ * beside a swallow, a kingfisher and a paper bird, he said of the swallow, 2026-11-18: "B works".
+ */
+const BIRD_DESIGN: BirdDesignKey = 'swallow'
+/** How high over its peg a kite flies, in metres, and how much bigger than life it's drawn: seen from two hills off. */
+const KITE_HIGH = 11.5
+const KITE_SIZE = 1.5
 /** How a bird is posed and shown, as scene.ts drawBird takes it. */
 type BirdShown = {
   flap?: number
@@ -142,8 +149,16 @@ type Spark = {
   spin: number
 }
 
-/** A word over a landing, as a picture, so it can pop without its letters being drawn afresh every frame. */
-type Label = { x: number; y: number; pic: Picture; life: number; row: number }
+/**
+ * A word over a landing, as a picture, so it can pop without its letters being drawn afresh every frame. `held`
+ * keeps one where it's put, and for longer: so many pixels over its spot, not rising, its life run down at `pace`.
+ */
+type Label = { x: number; y: number; pic: Picture; life: number; row: number; held?: { lift: number; pace: number } }
+/** How fast a word over a landing goes, in lives a second; and the line that says how a catch is made, which has to be read. */
+const LABEL_PACE = 1.05
+const TEACH_PACE = 0.42
+/** No held word is put higher than this, in pixels from the top: under the clock. */
+const LABEL_TOP = 62
 
 /** Where the bird was, for the ribbon: when, and how much it was in the air. */
 type Trace = { x: number; y: number; t: number; air: boolean }
@@ -158,9 +173,16 @@ export class VistaScene extends HillsScene {
   private decoLevel = 0
   private lookKey: string
   private readonly flock = new Flock()
-  /** The day's golden birds' hills (golden.ts), and which of them this run has caught. */
+  /** The day's golden hills (golden.ts), and which of them this run has caught what waits there. */
   private golden: GoldenHill[] = []
   private caught: boolean[] = []
+  /** What waits there (golden.ts CATCH), unless a picture of the choices sets another to show it. */
+  catchKind: CatchKind = CATCH
+  /** The kites caught, flying behind your bird on their strings, in the order they were caught: where each is. */
+  private kites: { seed: number; x: number; y: number }[] = []
+  /** Whether to say how a catch is made, over the first hill that has one: for a device that has never made one. */
+  private teach = false
+  private taught = false
   /** How the birds are outlined, and which bird they are: as chosen above, unless a picture of the choices sets another to show it. */
   birdStyle: SwiftStyle = BIRD_STYLE
   birdDesign: BirdDesignKey = BIRD_DESIGN
@@ -220,6 +242,8 @@ export class VistaScene extends HillsScene {
     this.lastCamX = null
     this.shake = 0
     this.caught.fill(false)
+    this.kites.length = 0
+    this.taught = false
   }
 
   dispose() {
@@ -335,21 +359,32 @@ export class VistaScene extends HillsScene {
     this.say(x, y, 'Flock scattered', false, 1)
   }
 
-  /** The day's golden birds: the hills they sit on. All are back on their hills at every start (snap). */
-  setGolden(hills: GoldenHill[]) {
+  /**
+   * The day's golden hills, each with something to catch on it; all are back on their hills at every start (snap).
+   * `teach` says how a catch is made over the first of them, once a run.
+   */
+  setGolden(hills: GoldenHill[], teach = false) {
     this.golden = hills
     this.caught = hills.map(() => false)
+    this.teach = teach
   }
 
-  /** A golden bird caught, by a clean landing on its hill: it leaves the hill for the front of the flock, and it says so. */
+  /**
+   * One caught, by a clean landing on its hill: a kite comes off its peg to fly behind you; a bird, a feather or
+   * a fledgling leaves the hill for the front of the flock. And it says so.
+   */
   goldenCaught(i: number) {
     const hill = this.golden[i]
     if (!hill || this.caught[i]) return
     this.caught[i] = true
-    this.flock.gild(hill.x, hill.y + 0.8)
+    if (this.catchKind === 'kite') {
+      const [x, y] = this.kiteOver(hill, i, false)
+      this.kites.push({ seed: i, x, y })
+    } else this.flock.gild(hill.x, hill.y + 0.8)
     const have = this.caught.filter(Boolean).length
     const all = this.golden.length
-    this.say(this.lastBird.x, this.lastBird.y, have < all ? `Golden bird · ${have} of ${all}` : all === 3 ? 'All three golden birds!' : `All ${all} golden birds!`, true, 1)
+    const words = CATCH_WORDS[this.catchKind]
+    this.say(this.lastBird.x, this.lastBird.y, have < all ? `${words.one} · ${have} of ${all}` : all === 3 ? `All three ${words.many}!` : `All ${all} ${words.many}!`, true, 1)
     this.sparks.push({ kind: 'ring', x: hill.x, y: hill.y + 0.3, vx: 0, vy: 0, life: 0.6, max: 0.6, size: 5, colour: GOLD, turn: 0, spin: 0 })
     for (let k = 0; k < 12; k++) {
       const a = Math.random() * Math.PI
@@ -391,8 +426,10 @@ export class VistaScene extends HillsScene {
     this.lastMode = f.mode
     if (flying) {
       this.lastBird = { x: f.bird.x, y: f.bird.y }
+      this.flock.gilt = this.catchKind === 'feather' || this.catchKind === 'chick' ? this.catchKind : 'bird'
       this.flock.lead(f.bird.x, f.bird.y, f.hold)
       this.flock.keep(f.streak ?? 0, f.bird.vx, f.bird.vy)
+      this.flyKites(f.bird.x, f.bird.y, dt)
       this.flock.update(dt, speed, (x) => heightAt(this.hills, x), this.birdSize() / this.cam.k, f.bird.y - heightAt(this.hills, f.bird.x))
       if (dt > 0) {
         this.trace.push({ x: f.bird.x, y: f.bird.y, t: this.time, air: f.mode === 'play' && !f.bird.ground })
@@ -401,6 +438,7 @@ export class VistaScene extends HillsScene {
     } else {
       if (this.flock.size) this.flock.reset()
       this.trace.length = 0
+      this.kites.length = 0
     }
 
     // The snow swift's frost and Blip's glitter are their own (scene.ts drawTrail); every other bird has the ribbon.
@@ -451,6 +489,8 @@ export class VistaScene extends HillsScene {
       this.styleOf(),
       BIRD_DESIGNS[this.birdDesign],
     )
+    // The kites you've caught, each on its string from your bird: under the bird, so the strings start behind it.
+    if (flying) for (const kite of this.kites) this.drawKite(kite.x, kite.y, b.x, b.y + (this.birdSize() / this.cam.k) * 0.6, kite.seed, f.calm)
     if (showBird) {
       const angle = Math.atan2(b.vy, Math.max(0.01, b.vx))
       if (lift > 0) this.drawHalo(b.x, b.y, angle, lift)
@@ -913,13 +953,13 @@ export class VistaScene extends HillsScene {
     ctx.fillText('FINISH', fx, y - tall - 8)
   }
 
-  /** Over the line: confetti off the top of the pole, in the flock's colours, and how many golden birds came home. */
+  /** Over the line: confetti off the top of the pole, in the flock's colours, and how many of the day's catches came home. */
   private cheer() {
     const x = this.hills.finish
     const y = heightAt(this.hills, x) + 7
     if (this.golden.length) {
       const have = this.caught.filter(Boolean).length
-      this.say(this.lastBird.x, this.lastBird.y, `${have} of ${this.golden.length} golden birds`, have > 0, 1)
+      this.say(this.lastBird.x, this.lastBird.y, `${have} of ${this.golden.length} ${CATCH_WORDS[this.catchKind].many}`, have > 0, 1)
     }
     for (let i = 0; i < 44; i++) {
       const a = Math.PI * (0.12 + Math.random() * 0.76)
@@ -984,27 +1024,72 @@ export class VistaScene extends HillsScene {
   }
 
   /**
-   * The golden birds still on their hills: each sitting on its slope in a glow, hopping, with a few stars turning
-   * round it. One that's been caught is with the flock (flock.ts gild).
+   * What waits on each golden hill that hasn't been caught: a kite, on its string over its peg; or, on the slope in
+   * a glow with a few stars turning round it, a golden bird, a feather stood in the turf, or a fledgling in its
+   * nest (catches.ts). Over the first of them, on a device that has never made a catch, how one is made.
    */
   private drawGolden(calm: boolean) {
     const { ctx, W } = this
     if (!this.golden.length) return
     const glow = this.backdrop().glow.canvas
+    const kind = this.catchKind
     for (let i = 0; i < this.golden.length; i++) {
       if (this.caught[i]) continue
       const hill = this.golden[i]!
       const px = this.sx(hill.x)
-      if (px < -90 || px > W + 90) continue
+      if (px < -110 || px > W + 110) continue
       const size = this.birdSize() * 1.08
-      const hop = calm ? 0 : Math.abs(Math.sin(this.time * 2.6 + i * 1.7)) * 0.26
+      if (this.teach && !this.taught && px < W * 0.88) {
+        this.taught = true
+        // Over the thing itself, clear of it: a kite's high over its peg, a feather stands tall, the others sit low.
+        const unit = size * SWIFT_SCALE
+        const kite = Math.max(this.cam.k, 6.5 * this.fit) * KITE_SIZE
+        const [x, y, lift] =
+          kind === 'kite' ? [hill.x - 2, hill.y + KITE_HIGH + 0.7, kite * 1.7 + 6] : [hill.x, hill.y, unit * (kind === 'feather' ? 4.3 : 3) + 8]
+        this.say(x, y, 'Land clean on the gold slope', true, 0, { lift, pace: TEACH_PACE })
+      }
+      if (kind === 'kite') {
+        const [kx, ky] = this.kiteOver(hill, i, calm)
+        // Its peg, in the slope.
+        const peg = Math.max(5, 0.55 * this.cam.k)
+        ctx.fillStyle = withAlpha(this.C.ink, 0.8)
+        ctx.fillRect(px - 1.25, this.sy(hill.y) - peg, 2.5, peg)
+        const r = size * 3.4
+        ctx.globalAlpha = 0.55
+        ctx.drawImage(glow, this.sx(kx) - r, this.sy(ky) - r, r * 2, r * 2)
+        ctx.globalAlpha = 1
+        this.drawKite(kx, ky, hill.x, hill.y + 0.5, i, calm)
+        continue
+      }
+      const hop = calm || kind !== 'bird' ? 0 : Math.abs(Math.sin(this.time * 2.6 + i * 1.7)) * 0.26
       const angle = Math.atan(slopeAt(this.hills, hill.x))
       const py = this.sy(hill.y + hop) - size * SWIFT_SCALE * SWIFT_LIFT
       const r = size * 3.8
       ctx.globalAlpha = 0.78 + (calm ? 0 : 0.2 * Math.sin(this.time * 3 + i))
       ctx.drawImage(glow, px - r, py - r, r * 2, r * 2)
       ctx.globalAlpha = 1
-      this.drawBird(hill.x, hill.y + hop, angle, size, GOLD, { folded: true })
+      if (kind === 'bird') this.drawBird(hill.x, hill.y + hop, angle, size, GOLD, { folded: true })
+      else {
+        const unit = size * SWIFT_SCALE
+        const gy = this.sy(hill.y)
+        ctx.save()
+        if (kind === 'feather') {
+          // Stood in the turf by its quill and bending with the wind: its frame turned so its right end is down.
+          const turn = Math.PI / 2 - 0.24 - (calm ? 0 : Math.sin(this.time * 1.8 + i * 2) * 0.16)
+          const tall = unit * 1.15
+          ctx.translate(px - Math.cos(turn) * tall * 1.62, gy - Math.sin(turn) * tall * 1.62)
+          ctx.rotate(turn)
+          ctx.scale(tall, tall)
+          paintFeather(ctx, 1.5 / tall)
+        } else {
+          // The nest sits on the slope, tipped a little with it; the chick bobs up, and cheeps.
+          ctx.translate(px, gy + unit * 0.1)
+          ctx.rotate(-angle * 0.6)
+          ctx.scale(unit, unit)
+          paintNest(ctx, calm ? 0.5 : 0.5 + 0.5 * Math.sin(this.time * 3.2 + i), !calm && Math.sin(this.time * 5 + i * 2.3) > 0.2, 1.5 / unit)
+        }
+        ctx.restore()
+      }
       if (calm) continue
       ctx.fillStyle = '#fff6cf'
       for (let k = 0; k < 4; k++) {
@@ -1021,6 +1106,50 @@ export class VistaScene extends HillsScene {
         ctx.fill()
       }
     }
+  }
+
+  /** Where a kite flies while it waits: over its peg, a little upwind of it, drifting and bobbing. */
+  private kiteOver(hill: GoldenHill, i: number, calm: boolean): [number, number] {
+    const t = calm ? 0 : this.time
+    return [hill.x - 2 + Math.sin(t * 0.8 + i * 2) * 1.4, hill.y + KITE_HIGH + Math.sin(t * 1.3 + i) * 0.7]
+  }
+
+  /**
+   * The kites you've caught, a frame on: each makes for its place behind and above your bird, the first caught
+   * the nearest, and lags as a kite on a string does, so they stream out behind the faster you go.
+   */
+  private flyKites(x: number, y: number, dt: number) {
+    if (!this.kites.length) return
+    const s = this.birdSize() / this.cam.k
+    const ease = 1 - Math.exp(-dt * 10)
+    this.kites.forEach((kite, j) => {
+      const tx = x - (2.6 + j * 1.8) * s + Math.sin(this.time * 0.9 + kite.seed * 2) * 0.5 * s
+      const ty = y + (4.2 + j * 1.5) * s + Math.sin(this.time * 1.4 + kite.seed) * 0.35 * s
+      kite.x += (tx - kite.x) * ease
+      kite.y += (ty - kite.y) * ease
+    })
+  }
+
+  /** A kite at a spot, on its string from where it's held (its peg, or your bird): the string sagging, the kite leaning into the wind. */
+  private drawKite(x: number, y: number, heldX: number, heldY: number, seed: number, calm: boolean) {
+    const { ctx, dpr, C } = this
+    const m = Math.max(this.cam.k, 6.5 * this.fit) * KITE_SIZE
+    const px = this.sx(x)
+    const py = this.sy(y)
+    const hx = this.sx(heldX)
+    const hy = this.sy(heldY)
+    ctx.strokeStyle = C.dark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(26, 43, 60, 0.6)'
+    ctx.lineWidth = 1.3
+    ctx.beginPath()
+    ctx.moveTo(hx, hy)
+    ctx.quadraticCurveTo(hx + (px - hx) * 0.62, hy + (py - hy) * 0.3, px, py)
+    ctx.stroke()
+    const lean = 0.5 + (calm ? 0 : Math.sin(this.time * 2.3 + seed * 1.9) * 0.12)
+    const c = Math.cos(lean) * m
+    const s = Math.sin(lean) * m
+    ctx.setTransform(dpr * c, dpr * s, -dpr * s, dpr * c, dpr * px, dpr * py)
+    paintKite(ctx, calm ? 0 : this.time, seed, 1.3 / m)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
 
   /* ---------- the bird's company ---------- */
@@ -1208,7 +1337,7 @@ export class VistaScene extends HillsScene {
   }
 
   /** A word over a spot on the hills: on `row` 1 or 2 it sits a line or two above another said at once. */
-  private say(x: number, y: number, text: string, good: boolean, row = 0) {
+  private say(x: number, y: number, text: string, good: boolean, row = 0, held?: Label['held']) {
     const { C, cam } = this
     const size = textSize(clamp(1.7 * cam.k, 17 * this.fit, 34))
     const colour = good ? C.good : C.bad
@@ -1233,25 +1362,31 @@ export class VistaScene extends HillsScene {
       if (this.labelPics.size > 40) this.labelPics.clear()
       this.labelPics.set(key, pic)
     }
-    this.labels.push({ x, y, pic, life: 1, row })
+    this.labels.push({ x, y, pic, life: 1, row, held })
   }
 
   private drawLabels(dt: number) {
     const { ctx, labels } = this
     for (let i = labels.length - 1; i >= 0; i--) {
       const l = labels[i]!
-      l.life -= dt * 1.05
+      l.life -= dt * (l.held ? l.held.pace : LABEL_PACE)
+      // A held word is about something ahead: once your bird's at it, it's been said.
+      if (l.held && l.life > 0.2 && this.sx(l.x) < this.W * 0.28) l.life = 0.2
       if (l.life <= 0) {
         labels.splice(i, 1)
         continue
       }
       const t = 1 - l.life
-      // It pops: up from small, a little past its size, and back.
-      const pop = t < 0.1 ? 0.55 + (t / 0.1) * 0.62 : t < 0.2 ? 1.17 - ((t - 0.1) / 0.1) * 0.17 : 1
+      // It pops: up from small, a little past its size, and back; as quick a pop for one that's held longer.
+      const beat = l.held ? (t * LABEL_PACE) / l.held.pace : t
+      const pop = beat < 0.1 ? 0.55 + (beat / 0.1) * 0.62 : beat < 0.2 ? 1.17 - ((beat - 0.1) / 0.1) * 0.17 : 1
       const w = l.pic.w * pop
       const h = l.pic.h * pop
-      const px = this.sx(l.x)
-      const py = this.sy(l.y) - this.birdSize() * 2.7 - t * 42 - l.row * l.pic.h * 0.82
+      // Kept on the screen, whatever's said off its edge: a held word is about something ahead.
+      const px = l.held ? clamp(this.sx(l.x), l.pic.w / 2 + 6, this.W - l.pic.w / 2 - 6) : this.sx(l.x)
+      const py = l.held
+        ? Math.max(this.sy(l.y) - l.held.lift - l.pic.h / 2, LABEL_TOP + l.pic.h / 2)
+        : this.sy(l.y) - this.birdSize() * 2.7 - t * 42 - l.row * l.pic.h * 0.82
       ctx.globalAlpha = clamp(l.life * 2.4, 0, 1)
       ctx.drawImage(l.pic.canvas, px - w / 2, py - h / 2, w, h)
     }
