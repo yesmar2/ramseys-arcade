@@ -88,6 +88,8 @@ type ScoreSaveProps = {
   previousBest?: number
   /** Prize tickets the run picked up on the way (Crosswalk's), paid with the save. */
   pickups?: number
+  /** Swoop: how many of the day's kites the run brought to the line, paid with the save. */
+  kites?: number
   /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
   pace?: number
   /** Half Full: the day's five pours, which the API scores the day from (the `score` is only what's shown). */
@@ -171,6 +173,7 @@ export function ScoreSaveCard({
   subtitle,
   previousBest,
   pickups,
+  kites,
   pace,
   pours,
   plates,
@@ -243,6 +246,8 @@ export function ScoreSaveCard({
   // Read when the save goes out; the run's count doesn't change once it's over.
   const pickupsRef = useRef(pickups)
   pickupsRef.current = pickups
+  const kitesRef = useRef(kites)
+  kitesRef.current = kites
   const paceRef = useRef(pace)
   paceRef.current = pace
   const poursRef = useRef(pours)
@@ -402,6 +407,7 @@ export function ScoreSaveCard({
         challengeId: against?.id,
         run,
         pickups: pickupsRef.current,
+        kites: kitesRef.current,
         pace: paceRef.current,
         pours: poursRef.current,
         plates: platesRef.current,
@@ -511,6 +517,7 @@ export function ScoreSaveCard({
         challengeId: facingRef.current?.id,
         run: runRef.current ?? runIdFor(gameSlug),
         pickups: pickupsRef.current,
+        kites: kitesRef.current,
         pace: paceRef.current,
         pours: poursRef.current,
         plates: platesRef.current,

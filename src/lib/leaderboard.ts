@@ -831,6 +831,8 @@ export async function addLeaderboardScore(
     run?: Promise<string | undefined>
     /** Prize tickets the run picked up on the way (Crosswalk's), paid with it. */
     pickups?: number
+    /** Swoop: how many of the day's three kites the run brought to the line, paid on a ladder of their own. */
+    kites?: number
     /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
     pace?: number
     /** Half Full: the day and its five locked levels, which the API scores the day from. */
@@ -898,6 +900,7 @@ export async function addLeaderboardScore(
       ...runFields(runId),
       ...(opts.challengeId ? { challengeId: opts.challengeId } : {}),
       ...(opts.pickups ? { pickups: Math.floor(opts.pickups) } : {}),
+      ...(opts.kites ? { kites: Math.min(3, Math.floor(opts.kites)) } : {}),
       ...(opts.pace ? { pace: Math.round(opts.pace) } : {}),
       ...(opts.pours ? { pours: opts.pours } : {}),
       ...(opts.plates ? { plates: opts.plates } : {}),

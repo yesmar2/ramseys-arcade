@@ -370,8 +370,8 @@ function HillsTiles({
           <em
             className="swoop-golden"
             role="img"
-            aria-label={`${CATCH.title}: ${golden.best} of ${golden.of} in your best run today`}
-            title={`${CATCH.title}: ${golden.best} of ${golden.of} in your best run today`}
+            aria-label={`${CATCH.title}: ${golden.best} of ${golden.of} in your best run today. A saved run’s kites pay tickets.`}
+            title={`${CATCH.title}: ${golden.best} of ${golden.of} in your best run today. A saved run’s kites pay tickets.`}
           >
             {Array.from({ length: golden.of }, (_, i) => (
               <i key={i} className={i < golden.best ? 'is-caught' : undefined} />
@@ -1395,6 +1395,7 @@ function SwoopDayGame({
                     subtitle={splitsText(run)}
                     previousBest={Math.max(previousBestRef.current, apiBest)}
                     pace={Math.round(pace * 1000)}
+                    kites={run.golden}
                     shareLine={runShareLine(swoop, run.time, pace, run.clean)}
                     medalPace={paceMsOf(swoop.pace)}
                     medalFormat={formatRun}

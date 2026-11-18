@@ -15,8 +15,8 @@ import { skinById } from './skins'
  * tickets" (2026-10-05) and picked the ledger of three mocks.
  *
  * The API sends the ledger's rows as they are; this says each in words. A
- * saved run pays in several rows (its step, a new best, pickups, a first go,
- * a day on a streak), which carry the run, so they show as one line with a
+ * saved run pays in several rows (its step, a new best, pickups, Swoop's kites,
+ * a first go, a day on a streak), which carry the run, so they show as one line with a
  * part for each. Rows from before the API kept that are a line apiece.
  */
 
@@ -27,6 +27,8 @@ export type TicketDetail = {
   stepAt?: number | null
   label?: string
   before?: number
+  /** Swoop: how many kites the run brought to the line. */
+  kites?: number
 }
 
 export type LedgerLine = {
@@ -119,7 +121,7 @@ export type HistoryRow = {
 }
 
 /** A run's parts in the order its report says them. */
-const RUN_ORDER = ['run', 'best', 'pickup', 'first', 'streak']
+const RUN_ORDER = ['run', 'best', 'pickup', 'kite', 'first', 'streak']
 
 /** What a past course of a daily is called, by its number. */
 const COURSE_NOUN: Record<string, string> = { hotlap: 'track', marblerun: 'course', lander: 'cave', acechase: 'hole', wobblerun: 'gauntlet' }
@@ -149,6 +151,10 @@ function partWords(line: LedgerLine, game: string): string {
       return 'a new best'
     case 'pickup':
       return 'picked up'
+    case 'kite': {
+      const n = line.detail?.kites
+      return n == null ? 'kites' : n >= 3 ? 'all three kites' : n === 1 ? 'a kite' : `${n} kites`
+    }
     case 'first':
       return 'a first go'
     case 'streak':

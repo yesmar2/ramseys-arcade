@@ -49,6 +49,11 @@ export function nextWords(next: LadderStep, game: string): string {
   return `${next.tickets} for ${next.label}${figure ? ` (${formatLeaderboardScore(game, next.at)})` : ''}`
 }
 
+/** Swoop's kites, as many as the run brought to the line: "a kite", "2 kites", "all three kites". */
+function kiteWords(count: number | undefined): string {
+  return count == null ? 'kites' : count >= 3 ? 'all three kites' : count === 1 ? 'a kite' : `${count} kites`
+}
+
 /** One of the save's ticket lines in words: "3 for beating the blue car", "2 for another day on your streak". */
 function lineWords(paid: RunTickets, line: RunTickets['lines'][number], game: string): string {
   switch (line.reason) {
@@ -61,6 +66,9 @@ function lineWords(paid: RunTickets, line: RunTickets['lines'][number], game: st
       return `${line.amount} for a new best`
     case 'pickup':
       return `${line.amount} picked up`
+    case 'kite':
+      // Paid once a day by the most brought home: a run that brings more is paid the difference.
+      return `${line.amount} for ${kiteWords(paid.kites)}`
     case 'first':
       return `${line.amount} for your first go at ${getGame(game)?.name ?? 'this game'}`
     case 'streak':
@@ -85,6 +93,10 @@ export function lineLabel(paid: RunTickets, line: RunTickets['lines'][number], g
       return 'A new best'
     case 'pickup':
       return 'Picked up on the way'
+    case 'kite': {
+      const what = kiteWords(paid.kites)
+      return what.charAt(0).toUpperCase() + what.slice(1)
+    }
     case 'first':
       return `Your first go at ${getGame(game)?.name ?? 'this game'}`
     case 'streak':

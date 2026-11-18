@@ -10,6 +10,10 @@ import { heightAt, type Hills } from './sim'
  * and all three in 14% of good runs and 25% of very good ones. Ramsey, 2026-11-17, asked what else would make the
  * game more fun, and picked this from the list. (They were golden birds then: kite.ts has how they became kites.)
  *
+ * And they pay: a saved run's count goes with its save, and the API pays it tickets on a ladder of its own (its
+ * tickets.ts KITE_TICKETS: 2 a kite, 10 for all three), once a day as the day's best count climbs, like a medal.
+ * Ramsey, 2026-11-18: "say you get the kites, what good do they do for a user?", and then "Yes, pay tickets".
+ *
  * Nothing about a run's time changes: a clean landing is a clean landing wherever it is. Which hills they're on
  * is planned (scripts/swoop-golden.mjs writes goldenPlan.ts): downhills where good players do land clean, one in
  * each third of the way.

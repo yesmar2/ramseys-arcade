@@ -931,6 +931,8 @@ type SaveInput = {
   run: Promise<string | undefined>
   /** Prize tickets the run picked up on the way (Crosswalk's). */
   pickups?: number
+  /** Swoop: the day's kites the run brought to the line. */
+  kites?: number
   /** Hot Lap: the day's blue car, in milliseconds. */
   pace?: number
   /** Half Full: the day's five pours, which the API scores the day from. */
@@ -963,7 +965,7 @@ export function saveRunForReport(input: SaveInput): Promise<RunFacts> {
   return promise
 }
 
-async function saveAndRead({ slug, name, score, period, standingsPeriod = period, priorBest, challengeId, run, pickups, pace, pours, plates }: SaveInput): Promise<RunFacts> {
+async function saveAndRead({ slug, name, score, period, standingsPeriod = period, priorBest, challengeId, run, pickups, kites, pace, pours, plates }: SaveInput): Promise<RunFacts> {
   const me = normalizePlayerName(name)
   // A daily just for fun places nobody (data/games.ts Game.ranked): no standings or board to read around it.
   const ranked = isRankedGame(slug)
@@ -986,7 +988,7 @@ async function saveAndRead({ slug, name, score, period, standingsPeriod = period
     : [null, null, null]
   const priorPlace = prior?.place ?? null
   // The skin the game drew the player in: the one chosen for it, if they own it (lib/skins.ts).
-  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, pace, pours, plates, skin: chosenSkin(slug) })
+  const saved = await addLeaderboardScore(slug, me, score, { challengeId, run, pickups, kites, pace, pours, plates, skin: chosenSkin(slug) })
   noteTicketsPaid(saved.tickets)
   noteSeasonRun(saved.season)
   for (const hit of saved.streakRecords ?? []) {
