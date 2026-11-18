@@ -2,7 +2,7 @@ import { mixColor } from '../../lib/color'
 import { SWIFT, type BirdDesign, type Patch, type Tone } from './birdDesigns'
 
 /*
- * How a bird is painted in Swoop's look on test (vista.ts). Ramsey, 2026-11-17, once the new hills were flying:
+ * How a bird is painted in Swoop's new look (vista.ts). Ramsey, 2026-11-17, once the new hills were flying:
  * "can we redesign the birds too, to match new look?" The bird is whichever of birdDesigns.ts is chosen (the
  * swift he picked on 2026-10-06, unless he picks another): the same outline, size and place on the hill as
  * ever, so it flies, dives and lands exactly as it did. What's new is the painting, to sit in a world that has

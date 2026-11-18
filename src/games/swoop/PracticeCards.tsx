@@ -10,6 +10,7 @@ import type { PastFact } from '../../lib/pastPlay'
 import { boardTime, paceMsOf } from '../../lib/raceMedals'
 import type { TrackBoard, TrackLapResult } from '../../lib/trackBoards'
 import { dailyHills, FIRST_DAY, hillsDay, hillsNumber } from './daily'
+import { CATCH } from './golden'
 import type { SwoopDay } from './runs'
 import { cleanWords, formatSwoopBoardScore } from './score'
 
@@ -93,11 +94,22 @@ export function PracticeStartCard({
   )
 }
 
-/** "You beat the blue bird by 1.20s, with 6 clean landings." */
-function birdWords(time: number, pace: number, clean: number): string {
+/** How many of a day's kites a run brought to the line, and how many the day has (golden.ts). */
+type Kites = { caught: number; of: number }
+
+/** "no kites", "2 of 3 kites", "all three kites". */
+const kiteWords = ({ caught, of }: Kites) =>
+  caught <= 0 ? `no ${CATCH.many}` : caught < of ? `${caught} of ${of} ${CATCH.many}` : of === 3 ? `all three ${CATCH.many}` : of === 1 ? `the ${CATCH.one.toLowerCase()}` : `all ${of} ${CATCH.many}`
+
+/**
+ * "You beat the blue bird by 1.20s, with 6 clean landings and 2 of 3 kites." The kites are said for hills that
+ * have them, the ones flown in the new look on their day (newLook.ts): on past hills they're for the catching
+ * alone, since only today's pay.
+ */
+function birdWords(time: number, pace: number, clean: number, kites: Kites | null): string {
   const gap = time - pace
   const against = Math.abs(gap) < 0.005 ? 'Tied with the blue bird' : gap < 0 ? `You beat the blue bird by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue bird`
-  return `${against}, with ${cleanWords(clean)}.`
+  return `${against}, with ${cleanWords(clean)}${kites ? ` and ${kiteWords(kites)}` : ''}.`
 }
 
 /**
@@ -109,6 +121,7 @@ export function PastHillsResult({
   time,
   score,
   clean,
+  kites = null,
   pace,
   run,
   board,
@@ -121,6 +134,8 @@ export function PastHillsResult({
   /** The run as the board keeps it. */
   score: number
   clean: number
+  /** The kites it brought to the line, on hills that have them. */
+  kites?: Kites | null
   pace: number
   /** The run it was flown in. */
   run: Promise<string | undefined> | null
@@ -141,7 +156,7 @@ export function PastHillsResult({
       kicker={`Past hills #${swoop.n} · ${swoop.name}`}
       figure={boardTime(SLUG, time)}
       score={score}
-      pace={birdWords(time, pace, clean)}
+      pace={birdWords(time, pace, clean, kites)}
       fmt={formatSwoopBoardScore}
       gap={gapWords}
       run={run}

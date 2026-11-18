@@ -2,7 +2,7 @@ import { mixColor } from '../../lib/color'
 import { watchKept } from '../keptPictures'
 
 /*
- * What's behind the hills in Swoop's look on test (vista.ts): a sky for the day, clouds, and three ranges of
+ * What's behind the hills in Swoop's new look (vista.ts): a sky for the day, clouds, and three ranges of
  * far country, each painted once as a picture and slid past every frame after. A picture is the cheapest thing
  * this game can draw (a frame copies it in one go, where a shape the width of the screen is filled slowly:
  * see scene.ts drawGround's notes), so the far country can have mountains with snow on them, lines of trees

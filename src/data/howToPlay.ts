@@ -1,3 +1,4 @@
+import { NEW_LOOK_FROM_WORDS } from '../games/swoop/newLook'
 import { BOARD_NAMES } from '../lib/dailyWords'
 import { blueOf, medalPercent, type RaceGame } from '../lib/raceMedals'
 
@@ -453,9 +454,11 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
-      { what: 'Land along a slope', pts: 'keeps your speed', sub: 'a clean landing adds a little' },
+      { what: 'Land along a slope', pts: 'keeps your speed', sub: 'a clean landing adds a little, and a bird to your flock' },
       { what: 'Clean landings in a row', pts: 'faster and faster', sub: 'from 3 in a row, until one isn’t clean' },
-      { what: 'Land into a hill', pts: 'costs speed', sub: 'up to 40% of it' },
+      { what: 'Land into a hill', pts: 'costs speed', sub: 'up to 40% of it, and it scatters your flock' },
+      // The API's tickets.ts KITE_TICKETS: 2, 4 and 10 for one, two and all three, once a day by the most caught.
+      { what: 'Land clean on a gold slope', pts: 'catches its kite', sub: 'three a day: 2 tickets each, 10 for all three, once a day' },
       { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('swoop') },
     ],
     ends: 'Over the finish line. Fly it as often as you like.',
@@ -469,7 +472,8 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       {
         what: 'Past hills',
         kind: 'board',
-        sub: `Your best run goes on that course’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
+        // Kites are paid on today's hills alone, and the hills before the new look's first day have none (newLook.ts).
+        sub: `Your best run goes on that course’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once. Kites pay on today’s hills only, and hills from before ${NEW_LOOK_FROM_WORDS} have no flock or kites.`,
       },
     ],
   },

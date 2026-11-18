@@ -3,7 +3,7 @@ import { keptEpoch, watchKept } from '../keptPictures'
 import { heightAt, mulberry32, type Hills } from './sim'
 
 /*
- * What grows along the day's hills in Swoop's look on test (vista.ts): trees, bushes, rocks, tufts of grass and
+ * What grows along the day's hills in Swoop's new look (vista.ts): trees, bushes, rocks, tufts of grass and
  * flowers, each in its own place for the day, the same on every device. They stand just behind the hills'
  * edge, their feet under it, so the line the bird lands on is never covered: the ground is drawn over their
  * feet. Each is a little picture, painted once for its size on the screen and stamped where it stands, which

@@ -29,11 +29,11 @@ import {
 } from './vistaSky'
 
 /*
- * Swoop's look on test: the same hills, the same bird and the same run, drawn as a place. Ramsey, 2026-11-17:
+ * Swoop's new look: the same hills, the same bird and the same run, drawn as a place. Ramsey, 2026-11-17:
  * "can you try redesigning the swoop game with better graphics and maybe somethign to make it a little more
  * addicting/fun? it's fun already in my opinion and there are other games out there like it, just need
- * something to set it apart". It's on only where it's been asked for (newLook.ts); everywhere else Swoop is
- * drawn by scene.ts, as it was.
+ * something to set it apart". It's how the hills are drawn from its first day on, for everyone (newLook.ts);
+ * the days before that are drawn by scene.ts, as they were.
  *
  * What's new to look at:
  * - A sky of the day's own (vistaSky.ts): a golden afternoon, a clear noon or a misty morning in the light

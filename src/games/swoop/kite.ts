@@ -1,5 +1,5 @@
 /*
- * The kite that waits on each of the day's three golden hills, in Swoop's look on test (golden.ts, vista.ts):
+ * The kite that waits on each of the day's three golden hills, in Swoop's new look (golden.ts, vista.ts):
  * pegged to the slope and flying over it, where it's seen from two hills off. Caught, it comes off its peg and
  * flies behind your bird on its string, so how many you have is plain at a glance, on a phone too.
  *

@@ -1,7 +1,7 @@
 import { SWIFT_BEAK, SWIFT_BEAT, SWIFT_BODY, SWIFT_EYE, SWIFT_WING_FOLDED, SWIFT_WING_ROOT, SWIFT_WING_UP } from './birdShape'
 
 /*
- * The birds Swoop's look on test can fly (swiftPaint.ts paints whichever is chosen: vista.ts BIRD_DESIGN). The
+ * The birds Swoop's new look can fly (swiftPaint.ts paints whichever is chosen: vista.ts BIRD_DESIGN). The
  * swift is the bird Ramsey picked on 2026-10-06, repainted; the others are here to choose between, since he asked
  * of the repainted swift, 2026-11-17: "i'd like to see other options for bird redesign too".
  *

@@ -31,9 +31,12 @@ const SHAPE_OF = () =>
  *
  * It draws only with fills and strokes, never shadowBlur, so a phone's canvas keeps up.
  *
- * Its parts are `protected`, not `private`, and a few of its numbers exported, for the look on test (vista.ts),
+ * Its parts are `protected`, not `private`, and a few of its numbers exported, for the new look (vista.ts),
  * which is this scene with its sky, hills and effects drawn another way: the camera, the birds and the ghost are
  * these, so a skin flies the same in both.
+ *
+ * Since the new look became everyone's, what's drawn here by itself is the hills from before its first day
+ * (newLook.ts), which keep the look they were flown in: so this drawing stays, and has to keep working.
  */
 
 export const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)

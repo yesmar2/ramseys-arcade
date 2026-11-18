@@ -83,7 +83,7 @@ const HOLD_KEYS = new Set(['Space', 'ArrowDown', 'KeyS', 'ShiftLeft', 'ShiftRigh
 const COACH_RUNS = 3
 const COACH_KEY = 'skermix-swoop-coach'
 /**
- * In the look on test (newLook.ts): a clean landing that came down within this share of its window is flush
+ * In the new look (newLook.ts): a clean landing that came down within this share of its window is flush
  * with the slope, and is called "Perfect". It keeps the most speed a landing can, as it always did; this only
  * says so.
  */
@@ -159,7 +159,7 @@ type Game = {
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
-  /** With the look on test: started again, so its count is the short one; and which of the day's three kites it has caught (golden.ts). */
+  /** With the new look: started again, so its count is the short one; and which of the day's three kites it has caught (golden.ts). */
   quick: boolean
   golden: boolean[]
   /**
@@ -176,7 +176,7 @@ type Game = {
     improved: boolean
     before: number | null
     path: number[]
-    /** How many of the day's kites it brought to the line (the look on test). */
+    /** How many of the day's kites it brought to the line (the new look). */
     golden: number
     /** The skin it was flown in (lib/skins.ts), which its ghost wears. */
     skin?: string
@@ -353,7 +353,7 @@ function HillsTiles({
   ghost: number
   chasing: Chasing
   bestMs: number | null
-  /** With the look on test: how many kites the day has, and the most one run of yours has brought home today. */
+  /** With the new look: how many kites the day has, and the most one run of yours has brought home today. */
   golden?: { best: number; of: number } | null
 }) {
   const [left, setLeft] = useState(() => msUntilNextHills())
@@ -465,9 +465,9 @@ function SwoopDayGame({
   const [noCanvas, setNoCanvas] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [touch] = useState(touchScreen)
-  // The look on test, and its flock, where this device has asked for them, on hills whose day hasn't gone: a
-  // past day's keep the look they were flown in (newLook.ts newLookFor).
-  const [newLook] = useState(() => newLookFor(day, hillsDay()))
+  // The new look, and its flock, on the hills from its first day on: the ones before it keep the game they were
+  // flown in (newLook.ts newLookFor).
+  const [newLook] = useState(() => newLookFor(day))
   // And with it the day's three kites: the golden hills they're pegged to (golden.ts).
   const [golden] = useState(() => (newLook ? goldenHills(swoop.hills, swoop.n >= 1 ? laidNumber(swoop) : null) : []))
   const holderRef = useRef<HTMLDivElement>(null)
@@ -534,7 +534,7 @@ function SwoopDayGame({
   /**
    * The count, and a new run for the boards, chasing the best run there is. The run is whoever's signed in
    * as it starts, so it waits the moment it takes to know who that is. `again` is a run started again, which
-   * counts one beat with the look on test (QUICK_COUNT).
+   * counts one beat with the new look (QUICK_COUNT).
    */
   const start = (again?: unknown) => {
     if (newDay()) return
@@ -749,7 +749,7 @@ function SwoopDayGame({
       return
     }
     sceneRef.current = scene
-    // The look on test has more to be told: how flush a clean landing was, who has gone by whom, and where the
+    // The new look has more to be told: how flush a clean landing was, who has gone by whom, and where the
     // day's three kites are.
     const vista = scene instanceof VistaScene ? scene : null
     vista?.setGolden(golden, !everCaught())
@@ -1378,6 +1378,7 @@ function SwoopDayGame({
                     time={run.time}
                     score={run.score}
                     clean={run.clean}
+                    kites={golden.length ? { caught: run.golden, of: golden.length } : null}
                     pace={pace}
                     run={run.runId}
                     board={board}

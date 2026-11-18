@@ -281,7 +281,7 @@ export class Flock {
 
   /**
    * Paints a follower on its sheet the first time it's wanted: its colour, at one beat of its wing, or tucked. It's
-   * the bird you fly, as the look on test paints it (swiftPaint.ts), without the parts too fine to see at its size.
+   * the bird you fly, as the new look paints it (swiftPaint.ts), without the parts too fine to see at its size.
    */
   private paint(sheet: Sheet, hue: number, frame: number, dark: boolean, style: SwiftStyle, design: BirdDesign) {
     const id = hue * FRAMES + frame

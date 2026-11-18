@@ -2,7 +2,7 @@ import { GOLDEN_HILLS } from './goldenPlan'
 import { heightAt, type Hills } from './sim'
 
 /*
- * Swoop's three kites a day, in the look on test (newLook.ts): each pegged to a golden hill of its own, the same
+ * Swoop's three kites a day, in the new look (newLook.ts): each pegged to a golden hill of its own, the same
  * hills for everyone. One clean landing on its hill catches it, and it comes with you to the line whatever happens
  * after, where the flock scatters at a thump. A run ends with none, one, two or all
  * three, so there's something to fly for besides the time, at any level: the game's bot players, flying 36 days of
@@ -18,8 +18,9 @@ import { heightAt, type Hills } from './sim'
  * is planned (scripts/swoop-golden.mjs writes goldenPlan.ts): downhills where good players do land clean, one in
  * each third of the way.
  *
- * A past day's hills have none, though the plan has three for every day: a day that's gone is flown as it was on
- * its day (newLook.ts newLookFor; Ramsey, 2026-11-18: "Keep old days old").
+ * The hills before the new look's first day have none, though the plan has three for every day: those days are
+ * flown as they were (newLook.ts newLookFor; Ramsey, 2026-11-18: "Keep old days old"). A past day from then on
+ * still has its three, for the catching: they pay nothing there, since only a run on today's hills is paid.
  */
 
 /** How many a day has. */

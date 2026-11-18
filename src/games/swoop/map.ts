@@ -9,7 +9,7 @@ const GOLD = '#ffc93a'
 /**
  * The map in the corner: the whole way from the start to the line, from the side, drawn once in the theme's
  * ink so it reads on a light tile and a dark one, with its flags; your bird and the run to beat dotted on it
- * each frame. With the look on test, the day's kites still on their hills are dotted on it too.
+ * each frame. With the new look, the day's kites still on their hills are dotted on it too.
  */
 export class HillsMap {
   private readonly canvas: HTMLCanvasElement

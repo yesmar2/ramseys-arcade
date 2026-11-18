@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { HillsDrawing } from '../games/swoop/HillsDrawing'
-import { dayOfHills, hillsDay, PLANNED_HILLS } from '../games/swoop/daily'
+import { dayOfHills, hillsDay, hillsNumber, PLANNED_HILLS } from '../games/swoop/daily'
 import { DAILY_HILLS, type PlannedHills } from '../games/swoop/dailyPlan'
 import { hillsRunHref } from '../games/swoop/links'
-import { flockLook, setFlockLook } from '../games/swoop/newLook'
+import { NEW_LOOK_FROM } from '../games/swoop/newLook'
 import { formatRun } from '../games/swoop/score'
 import { hillsSpan, plannedHills, type Hills } from '../games/swoop/sim'
 import { gamePlayHref } from '../hooks/useHashRoute'
@@ -59,8 +59,6 @@ export function AdminHillsBook() {
   const days = useMemo(() => DAILY_HILLS.map(bookHills), [])
   const [query, setQuery] = useState('')
   const [month, setMonth] = useState<string>('all')
-  // Swoop's look on test, on or off on this device (games/swoop/newLook.ts).
-  const [newLook, setNewLook] = useState(flockLook)
 
   const todays = days.find((d) => d.day === today)
   // Before the first day, the first hills are the ones coming.
@@ -91,25 +89,12 @@ export function AdminHillsBook() {
             Hills laid like Tiny Wings’: every hill its own size, bigger toward the end, now and then a giant. New ones each load. Not in any day’s hills yet.
           </p>
         </div>
-        <div className="tb-feature__acts" style={{ marginTop: '0.8rem', alignItems: 'center' }}>
-          <a
-            className="panel__btn panel__btn--ghost adm-small"
-            href={gamePlayHref(SLUG)}
-            onClick={() => {
-              setFlockLook(!newLook)
-              setNewLook(!newLook)
-            }}
-          >
-            {newLook ? 'Fly with the usual look →' : 'Fly with the new look →'}
-          </a>
-          <p className="tb-feature__next">
-            The new look, on test{newLook ? ' (on, on this device)' : ''}: a sky of the day’s own, far mountains, light and shade on the hills, and a
-            flock that grows with every clean landing and scatters when you thump into a hill. With it, three kites a day to catch, each by a
-            clean landing on its hill; a one-beat count when a run is started again; and the gap to the bird you race shown all the way. On this
-            device only, on today’s hills and a test run of some still to come, until it’s switched back here: a past day’s hills keep the
-            usual look, with no flock and no kites. The same hills, times and boards either way.
-          </p>
-        </div>
+        <p className="adm-card__sub">
+          From #{hillsNumber(NEW_LOOK_FROM)} on ({dayWords(NEW_LOOK_FROM)}), a day’s hills are flown in the new look by everyone: a sky of the
+          day’s own, far mountains, light and shade on the hills, a flock that grows with every clean landing and scatters when you thump into
+          a hill, three kites to catch that pay tickets on their day, a one-beat count when a run is started again, and the gap to the bird you
+          race shown all the way. The hills before it keep the usual look for good, with no flock and no kites.
+        </p>
         {todays ? (
           <div className="tb-feature">
             <HillsDrawing hills={todays.hills} className="hlb-map" />
