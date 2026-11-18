@@ -17,6 +17,9 @@ import { heightAt, type Hills } from './sim'
  * Nothing about a run's time changes: a clean landing is a clean landing wherever it is. Which hills they're on
  * is planned (scripts/swoop-golden.mjs writes goldenPlan.ts): downhills where good players do land clean, one in
  * each third of the way.
+ *
+ * A past day's hills have none, though the plan has three for every day: a day that's gone is flown as it was on
+ * its day (newLook.ts newLookFor; Ramsey, 2026-11-18: "Keep old days old").
  */
 
 /** How many a day has. */

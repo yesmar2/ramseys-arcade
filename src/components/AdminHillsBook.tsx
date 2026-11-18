@@ -106,7 +106,8 @@ export function AdminHillsBook() {
             The new look, on test{newLook ? ' (on, on this device)' : ''}: a sky of the day’s own, far mountains, light and shade on the hills, and a
             flock that grows with every clean landing and scatters when you thump into a hill. With it, three kites a day to catch, each by a
             clean landing on its hill; a one-beat count when a run is started again; and the gap to the bird you race shown all the way. On this
-            device only, on every day’s hills, until it’s switched back here. The same hills, times and boards either way.
+            device only, on today’s hills and a test run of some still to come, until it’s switched back here: a past day’s hills keep the
+            usual look, with no flock and no kites. The same hills, times and boards either way.
           </p>
         </div>
         {todays ? (

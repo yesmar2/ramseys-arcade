@@ -42,7 +42,7 @@ import { fetchBoardGhost, fetchNextGhost, fetchPlayerGhost, fitsHills, sendBoard
 import { hillsDay, hillsNumber, laidNumber, msUntilNextHills, untilWords } from './daily'
 import { CATCH, downhillAt, everCaught, goldenBest, goldenHills, keepGoldenBest, noteCaught } from './golden'
 import { HillsMap } from './map'
-import { flockLook } from './newLook'
+import { newLookFor } from './newLook'
 import { onItsDayFact, type ItsDay } from './pastDay'
 import { PastHillsResult, PracticeStartCard } from './PracticeCards'
 import {
@@ -465,8 +465,9 @@ function SwoopDayGame({
   const [noCanvas, setNoCanvas] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [touch] = useState(touchScreen)
-  // The look on test, and its flock, where this device has asked for them (newLook.ts).
-  const [newLook] = useState(flockLook)
+  // The look on test, and its flock, where this device has asked for them, on hills whose day hasn't gone: a
+  // past day's keep the look they were flown in (newLook.ts newLookFor).
+  const [newLook] = useState(() => newLookFor(day, hillsDay()))
   // And with it the day's three kites: the golden hills they're pegged to (golden.ts).
   const [golden] = useState(() => (newLook ? goldenHills(swoop.hills, swoop.n >= 1 ? laidNumber(swoop) : null) : []))
   const holderRef = useRef<HTMLDivElement>(null)
