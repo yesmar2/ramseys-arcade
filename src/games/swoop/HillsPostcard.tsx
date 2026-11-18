@@ -1,20 +1,47 @@
 import { useId, useMemo } from 'react'
 import { mixColor } from '../../lib/color'
+import { useDarkTheme } from '../../lib/useDarkTheme'
 import { BirdMark } from './BirdMark'
 import { SWIFT_LIFT } from './birdShape'
 import { hillsColours, hillsView } from './hillsPicture'
+import { newLookFor } from './newLook'
 import type { Hills } from './sim'
+import { dayPictureSvg } from './vistaPicture'
+
+type Props = { hills: Hills; w?: number; h?: number; className?: string }
 
 /**
- * A day's hills as a postcard: the biggest hill close in, as Swoop draws its hills at dusk (hillsPicture.ts).
- * It shows the sky and its stars, far hills rolling, and the near hills in the day's colour with their turf,
- * seams and blips. Your bird is just off the top with its trail, and the blue bird is coming up the slope
- * behind. It's the home row's picture of the day, and since 2026-10-06 the picture on Today's Hills, the past
- * hills' cards and the tomorrow tease too. Ramsey picked A from the "Pellets + Swoop pictures" canvas: the
- * whole way from the side (HillsDrawing.tsx, still the Hills Book's) is 50 times longer than it is tall, so a
- * card only ever showed it as a squiggle. `w` by `h` is its own shape; it covers any box it's put in.
+ * A day's hills as a postcard: the home row's picture of the day, and the picture on Today's Hills, the past
+ * hills' cards and the tomorrow tease. `day` is the day the hills are, which says how they're drawn: as they
+ * were flown (newLook.ts). `w` by `h` is its own shape; it covers any box it's put in.
+ *
+ * The hills from the new look's first day on are drawn in it (vistaPicture.ts): the hill the day's first kite is
+ * on, your bird off its top with the flock behind and the kite ahead, under the day's own sky, by day on the
+ * light theme and by night on the dark, as the game is. Ramsey picked that, "B, flock and kite", from three
+ * ways shown on the home page's own row (2026-11-18).
+ *
+ * The hills before it keep the postcard they had: their biggest hill close in at dusk (hillsPicture.ts), the old
+ * swift off the top with its dotted trail and the blue bird coming up the slope behind. Ramsey picked that one,
+ * A, from the "Pellets + Swoop pictures" canvas (2026-10-06): the whole way from the side (HillsDrawing.tsx,
+ * still the Hills Book's) is 50 times longer than it is tall, so a card only ever showed it as a squiggle.
  */
-export function HillsPostcard({ hills, w = 480, h = 360, className }: { hills: Hills; w?: number; h?: number; className?: string }) {
+export function HillsPostcard({ day, ...props }: Props & { day: string }) {
+  return newLookFor(day) ? <VistaPostcard {...props} /> : <DuskPostcard {...props} />
+}
+
+/**
+ * A picture's SVG as an address an <img> can show. Only what an address can't hold is escaped (and its double
+ * quotes made single ones), which leaves it about the size it was: escaped whole, it's half as long again.
+ */
+const svgAddress = (svg: string) => `data:image/svg+xml;charset=utf-8,${svg.replace(/"/g, "'").replace(/[#%<>]/g, encodeURIComponent)}`
+
+function VistaPostcard({ hills, w = 480, h = 360, className }: Props) {
+  const dark = useDarkTheme()
+  const src = useMemo(() => svgAddress(dayPictureSvg(hills, w, h, dark)), [hills, w, h, dark])
+  return <img className={className} src={src} width={w} height={h} alt={`${hills.name}: a kite on its hill`} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
+}
+
+function DuskPostcard({ hills, w = 480, h = 360, className }: Props) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '')
   const view = useMemo(() => hillsView(hills, w, h), [hills, w, h])
   const C = hillsColours(hills.hue)

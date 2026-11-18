@@ -235,7 +235,8 @@ function caveSvg(cave, { picW, picH }) {
 }
 
 /**
- * The hills as their postcard (Swoop's HillsPostcard.tsx), in a picture's box: the day's biggest hill close in at
+ * The hills from before Swoop's new look as their postcard (HillsPostcard.tsx's, for those days: the ones since
+ * are vistaPicture.ts's own), in a picture's box: the day's biggest hill close in at
  * dusk, the sky and its stars, far hills rolling, the near ones in the day's colour with their turf, seams and blips,
  * your bird just off the top with its trail and the blue bird on the slope behind. The whole way from the side is
  * fifty times longer than it is tall, so in a panel it was a spiky line: the drawing Ramsey turned down for the
@@ -500,9 +501,12 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { plannedCave } = await server.ssrLoadModule('/src/games/lander/sim.ts')
   const { dailyHills, laidNumber: hillsLaid } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
   const { plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
-  // The hills' picture is their postcard's, from its layout (no engine): the biggest hill close in.
+  // The hills' picture is their postcard's (no engine), drawn as the day was flown: from the new look's first day
+  // on, the hill the day's first kite is on (vistaPicture.ts); before it, the biggest hill close in at dusk.
   const { hillsColours, hillsView } = await server.ssrLoadModule('/src/games/swoop/hillsPicture.ts')
   const birdShape = await server.ssrLoadModule('/src/games/swoop/birdShape.ts')
+  const { dayPictureSvg } = await server.ssrLoadModule('/src/games/swoop/vistaPicture.ts')
+  const { newLookFor } = await server.ssrLoadModule('/src/games/swoop/newLook.ts')
   // The gauntlet's picture is its rounds to the Blip star, from the plan's round code: no engine needed.
   const { dailyGauntlet } = await server.ssrLoadModule('/src/games/wobblerun/daily.ts')
   const { gauntletSvg } = await server.ssrLoadModule('/src/games/wobblerun/gauntletPicture.ts')
@@ -572,8 +576,11 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
       if (live.has('hills')) {
         const daily = dailyHills(day)
         const hills = plannedHills(hillsLaid(daily), daily.attempt)
-        const view = hillsView(hills, size.picW, size.picH)
-        info.hills = { n: daily.n, name: daily.name, picture: svgUrl(hillsSvg(view, hillsColours(hills.hue), birdShape, mixColor, size)) }
+        // By night, the new look's: the card is dark, as the site is by default and every picture on it is.
+        const picture = newLookFor(day)
+          ? dayPictureSvg(hills, size.picW, size.picH, true)
+          : hillsSvg(hillsView(hills, size.picW, size.picH), hillsColours(hills.hue), birdShape, mixColor, size)
+        info.hills = { n: daily.n, name: daily.name, picture: svgUrl(picture) }
       }
       if (live.has('gauntlet')) {
         const daily = dailyGauntlet(day)

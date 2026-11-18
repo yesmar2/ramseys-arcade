@@ -3,10 +3,11 @@ import { SWIFT_LIFT } from './birdShape'
 import { heightAt, mulberry32, slopeAt, type Hills } from './sim'
 
 /*
- * A day's hills as a picture, for their card on the home page's Dailies row: close in on the day's biggest
- * top, drawn the way the game draws its hills at dusk (scene.ts): the sky with its stars and moon, far hills,
- * the near ones in the day's colour with their turf, seams and row of blips, and your bird just off the top,
- * flying, its dotted trail behind it, with the blue bird coming up the slope after it.
+ * A day's hills as a picture, as it was before Swoop's new look, and still is for the days from before it
+ * (HillsPostcard.tsx; the days since are vistaPicture.ts's): close in on the day's biggest top, drawn the way
+ * the game drew its hills at dusk (scene.ts): the sky with its stars and moon, far hills, the near ones in the
+ * day's colour with their turf, seams and row of blips, and your bird just off the top, flying, its dotted
+ * trail behind it, with the blue bird coming up the slope after it.
  */
 
 /** The game's own colours at dusk (scene.ts paletteFor), here so the picture needs no engine. */

@@ -1,9 +1,10 @@
 import { SWIFT_BEAK, SWIFT_BELLY, SWIFT_BODY, SWIFT_EYE, SWIFT_WING_FOLDED, SWIFT_WING_UP } from './birdShape'
 
 /**
- * A Swoop bird in SVG, as the game draws one (scene.ts drawBird): the swift (birdShape.ts), a unit across its
- * body and facing right, its wing raised in flight or folded on the hill. The pictures (HillsPostcard.tsx,
- * components/GameArt.tsx) place it with a transform; one sitting on a hill sits SWIFT_LIFT over it.
+ * A Swoop bird in SVG, as the game drew one before its new look (scene.ts drawBird): the swift (birdShape.ts), a
+ * unit across its body and facing right, its wing raised in flight or folded on the hill. The postcard of a day
+ * from before the new look (HillsPostcard.tsx) places it with a transform; one sitting on a hill sits SWIFT_LIFT
+ * over it. The pictures since draw the swallow themselves (vistaPicture.ts).
  */
 export function BirdMark({ fill, line, wingUp = false }: { fill: string; line: string; wingUp?: boolean }) {
   const wing = wingUp ? SWIFT_WING_UP : SWIFT_WING_FOLDED

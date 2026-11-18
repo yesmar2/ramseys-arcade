@@ -1,6 +1,7 @@
 /*
- * Swoop's hills from the side on Today's Hills (TodaysHillsCard.tsx): the day's biggest hill at dusk, its postcard
- * (HillsPostcard.tsx), covering the screen. The same in either theme.
+ * Swoop's hills from the side on Today's Hills (TodaysHillsCard.tsx): the day's postcard (HillsPostcard.tsx),
+ * covering the screen. Since the new look it's the hill the day's first kite is on, by day on the light theme and
+ * by night on the dark; the dark under it shows only until the picture is in.
  */
 .evp-screen.tch__screen {
   background: #0a0e29;

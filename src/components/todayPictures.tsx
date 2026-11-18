@@ -228,9 +228,9 @@ function CavePicture({ day }: { day: string }) {
   )
 }
 
-/** The day's biggest hill close in, the hills' postcard (swoop/HillsPostcard.tsx). */
+/** The day's hills close in, their postcard (swoop/HillsPostcard.tsx): the hill its first kite is on, since the new look. */
 function HillsPicture({ day }: { day: string }) {
-  return <HillsPostcard hills={swoopDay(day).hills} w={W} h={H} />
+  return <HillsPostcard hills={swoopDay(day).hills} day={day} w={W} h={H} />
 }
 
 /** A stretch of the day's tower at dusk, its postcard (sling/TowerPostcard.tsx). */

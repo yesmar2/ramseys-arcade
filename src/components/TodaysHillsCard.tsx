@@ -98,7 +98,7 @@ export function TodaysHillsCard() {
     <section className="evp-card evp-daily tch" style={style} aria-labelledby="tch-title">
       <div className="evp-daily__screen">
         <a className="evp-screen tch__screen" href={href} aria-label={`Swoop Today’s Hills #${swoop.n}, ${swoop.name}`}>
-          <HillsPostcard hills={swoop.hills} w={640} h={360} className="tch-plan" />
+          <HillsPostcard hills={swoop.hills} day={day} w={640} h={360} className="tch-plan" />
           <span className="evp-screen__play" aria-hidden="true">
             <PlayIcon />
             Swoop
