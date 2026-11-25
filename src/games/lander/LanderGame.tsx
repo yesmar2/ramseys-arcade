@@ -59,7 +59,7 @@ import {
 } from './runs'
 import { CaveScene } from './scene'
 import { gapAt, progressAt, reachTimes } from './gap'
-import { LamplightScene } from './lamplight'
+import { LamplightScene, MOTH_EVERY } from './lamplight'
 import { keepLanternBest, lanternBest, lanternKnown, lanternsOf, LIGHT_REACH, noteLanternLit } from './lanterns'
 import { newLookFor } from './newLook'
 import { useSkinInto } from '../../lib/skins'
@@ -99,13 +99,7 @@ const COUNT_STEP = 0.8
  * this cave, and the long count is in the way of trying again. A run from the start card keeps its three.
  */
 const QUICK_COUNT = 0.7
-/**
- * With the new look, a moth comes to your lamp for each stretch of this many metres of cave flown without
- * touching rock (a cave is 400 to 500 m, so ten or twelve in all). A touch starts the stretch again; a crash
- * scatters them.
- */
-const MOTH_EVERY = 40
-/** How many times a device is told what the moths are: the first few that join. */
+/** How many times a device is told what the moths are (lamplight.ts MOTH_EVERY): the first few that join. */
 const MOTHS_TOLD = 3
 const MOTHS_TOLD_KEY = 'skermix-lander-moths-told'
 /** Down on the pad, a moment to see the time before the card comes. */

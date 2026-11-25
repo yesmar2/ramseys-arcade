@@ -1,5 +1,8 @@
 import type { GamePreviewRun } from '../../lib/gamePreviews'
 import { chosenSkin } from '../../lib/skins'
+import { LamplightScene, MOTH_EVERY } from './lamplight'
+import { lanternsOf } from './lanterns'
+import { newLookFor } from './newLook'
 import { Ghost, landerDay, paceOf, type GhostPose } from './runs'
 import { CaveScene } from './scene'
 
@@ -8,6 +11,10 @@ import { CaveScene } from './scene'
  * blue ship's run (runs.ts paceOf), flown as your own ship is, by the game's own renderer (scene.ts), the
  * camera riding with it, its flame and sparks, the gates turning green as it passes them, down onto the
  * pad. It rests there a moment, then flies the cave again from the top. Nothing is heard, and nothing kept.
+ *
+ * A day flown in the new look (newLook.ts) is played in it here too (lamplight.ts): the cave by lamplight, the
+ * day's lanterns hanging in it, and the moths coming to the lamp as they would for a run that touched nothing,
+ * which the blue ship's is. Its line is out of every lantern's ring, so it lights none: they're there to see.
  */
 
 /** How long the ship sits on the pad before it flies the cave again, in seconds. */
@@ -15,6 +22,7 @@ const REST = 2.2
 
 export function createDayPreview(day: string): GamePreviewRun {
   const { cave } = landerDay(day)
+  const newLook = newLookFor(day)
   let ghost: Ghost | null = null
   let scene: CaveScene | null = null
   let t = 0
@@ -27,7 +35,11 @@ export function createDayPreview(day: string): GamePreviewRun {
       // a day) and the scene wait until the card first plays: a page whose card is never hovered does neither.
       if (!scene) {
         if (dt <= 0) return
-        scene = new CaveScene(ctx.canvas, cave)
+        if (newLook) {
+          const lit = new LamplightScene(ctx.canvas, cave)
+          lit.setLanterns(lanternsOf(cave))
+          scene = lit
+        } else scene = new CaveScene(ctx.canvas, cave)
         scene.snap()
       }
       const run = (ghost ??= new Ghost(paceOf(day)))
@@ -51,6 +63,8 @@ export function createDayPreview(day: string): GamePreviewRun {
       const splits = run.run.splits
       let gate = -1
       while (gate + 1 < splits.length && splits[gate + 1]! <= t) gate++
+      // A moth for each stretch of the way, as near as its share of the flight says how far it's come.
+      const flown = run.run.time > 0 ? Math.min(1, t / run.run.time) : 0
       scene.frame(
         {
           mode: pose.done ? 'done' : 'play',
@@ -66,6 +80,8 @@ export function createDayPreview(day: string): GamePreviewRun {
           skin: chosenSkin('lander'),
           // The cave's moving things where they were as the blue ship flew it.
           t: pose.done ? run.run.time : t,
+          moths: newLook ? Math.floor((flown * cave.length) / MOTH_EVERY) : 0,
+          lanterns: 0,
         },
         dt,
       )

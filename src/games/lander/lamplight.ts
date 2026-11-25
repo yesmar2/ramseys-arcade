@@ -90,9 +90,9 @@ const pod = (P: PodColours): SkinArt => ({
   ] satisfies ArtShape[],
 })
 
-const POD = pod({ body: '#fff3e4', shade: '#e6cfbb', line: '#2a2140', glass: '#2b3a67', glint: '#cfeaff', trim: '#8a5cff', metal: '#514a66', lamp: '#ffd166', foot: '#3a3150' })
+export const POD = pod({ body: '#fff3e4', shade: '#e6cfbb', line: '#2a2140', glass: '#2b3a67', glint: '#cfeaff', trim: '#8a5cff', metal: '#514a66', lamp: '#ffd166', foot: '#3a3150' })
 /** The blue ship's, and your own best's: the same pod in the ghost's colour. */
-const POD_BLUE = pod({ body: '#9fe0ff', shade: '#6cbdf0', line: '#1b4a7a', glass: '#1d477e', glint: '#e4f7ff', trim: '#46e4ff', metal: '#3a7fb8', lamp: '#e4f7ff', foot: '#2e6fa8' })
+export const POD_BLUE = pod({ body: '#9fe0ff', shade: '#6cbdf0', line: '#1b4a7a', glass: '#1d477e', glint: '#e4f7ff', trim: '#46e4ff', metal: '#3a7fb8', lamp: '#e4f7ff', foot: '#2e6fa8' })
 const POD_AMBER = pod({ body: '#ffe1a0', shade: '#f2bd62', line: '#6b4310', glass: '#7a4f14', glint: '#fff4d6', trim: '#f5b942', metal: '#b98632', lamp: '#fff4d6', foot: '#9a6a1e' })
 
 /* ------------------------------------------------------------------ the kept pictures --- */
@@ -415,12 +415,12 @@ class Sheet {
 }
 
 /** A thing grown from the rock, laid once for the cave: where, which way up, which stamp, how big, which way round. */
-type Laid = { x: number; y: number; turn: number; kind: Grown; pick: number; size: number; flip: boolean }
+export type Laid = { x: number; y: number; turn: number; kind: Grown; pick: number; size: number; flip: boolean }
 
 /** How often a wall's point grows something. */
 const LUSH = 0.4
 
-function layProps(cave: Cave): Laid[] {
+export function layProps(cave: Cave): Laid[] {
   const laid: Laid[] = []
   const lab = cave.lab
   const tryAt = (x: number, y: number, ux: number, uy: number, hint: number, seed: number) => {
@@ -465,6 +465,12 @@ function layProps(cave: Cave): Laid[] {
 
 /* ------------------------------------------------------------------ the moths --- */
 
+/**
+ * A moth comes to the lamp for each stretch of this many metres of cave flown without touching rock (a cave is
+ * 400 to 500 m, so ten or twelve in all). A touch starts the stretch again; a crash scatters them. The game
+ * counts them (LanderGame.tsx); this draws what it's told.
+ */
+export const MOTH_EVERY = 40
 /** No more than this many are drawn, however clean the run. */
 export const MOTHS_SHOWN = 12
 
