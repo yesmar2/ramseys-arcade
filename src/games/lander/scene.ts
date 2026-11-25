@@ -88,10 +88,10 @@ const GLOW = [
 const PIECE = 6
 
 /** A wall in view: each of its points on the screen, and the way into the rock from it, a metre long on the screen. */
-type Wall = { x: number[]; y: number[]; ux: number[]; uy: number[] }
+export type Wall = { x: number[]; y: number[]; ux: number[]; uy: number[] }
 
 /** The cave in view, on the screen: its tunnels (two walls each, the air between), round ends and rooms. */
-type CaveShape = {
+export type CaveShape = {
   tunnels: [Wall, Wall][]
   /** The cave's own tunnel's ends are lit round; the test cave's shortcut's aren't. */
   ends: { x: number; y: number; r: number; lit: boolean }[]
@@ -125,6 +125,8 @@ export type SceneFrame = {
   t?: number
   /** The skin the ghost's run was flown in: everyone who races it sees it in that. */
   ghostSkin?: string | null
+  /** The new look's moths at your lamp just now (lamplight.ts); the usual look draws none. */
+  moths?: number
 }
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; hot: boolean }
@@ -142,30 +144,51 @@ const HOPPER_SCALE = FOOT / 26
 const OUTLINE = [SHIP.nose, SHIP.wing, SHIP.notch, [-SHIP.wing[0], SHIP.wing[1]]] as const
 
 export class CaveScene {
-  private readonly canvas: HTMLCanvasElement
-  private readonly ctx: CanvasRenderingContext2D
-  private readonly cave: Cave
-  private readonly fleck: CanvasPattern | null
-  private readonly font: string
-  private W = 0
-  private H = 0
-  private dpr = 1
-  private cam = { x: 0, y: 0, k: 20, snap: true }
-  private sparks: Spark[] = []
-  private shards: Shard[] = []
-  private wreckFor = 0
-  private time = 0
+  protected readonly canvas: HTMLCanvasElement
+  protected readonly ctx: CanvasRenderingContext2D
+  protected readonly cave: Cave
+  protected readonly fleck: CanvasPattern | null
+  protected readonly font: string
+  protected W = 0
+  protected H = 0
+  protected dpr = 1
+  protected cam = { x: 0, y: 0, k: 20, snap: true }
+  protected sparks: Spark[] = []
+  protected shards: Shard[] = []
+  protected wreckFor = 0
+  protected time = 0
   /** The easter egg's breach, once the cave's is known (breakout.ts breachOf), with its stars and its cracks. */
-  private breach: Breach | null = null
-  private stars: Star[] = []
+  protected breach: Breach | null = null
+  protected stars: Star[] = []
   /** Each crack, from the wall into the rock, as points in the breach's frame (out, along). */
-  private cracks: [number, number][][] = []
-  private rubble: Rubble[] = []
+  protected cracks: [number, number][][] = []
+  protected rubble: Rubble[] = []
   /** When your ship set down on the moon this run, for its flag going up. */
-  private planted = false
-  private plantedAt = -1
+  protected planted = false
+  protected plantedAt = -1
   /** The moment the test cave's moving things are drawn at: the run's clock (SceneFrame t). */
-  private now = 0
+  protected now = 0
+  /**
+   * The colours a second painter of the cave changes (lamplight.ts): the rock and the air, where the way out
+   * and its rubble are drawn against them, and the cave's moving things. Here, as they've always been.
+   */
+  protected tone = {
+    rock: C.rock as string,
+    air: C.air as string,
+    block: '#3a3150',
+    stripe: '#f5b942',
+    blockEdge: '#f5b942',
+    bar: '#4a1d3a',
+    barEdge: '#f07a8a',
+    barLight: '#ffd166',
+    barDot: 'rgba(240, 122, 138, 0.8)',
+    hub: '#2a2140',
+    nozzle: '#2a2140',
+    nozzleCold: 'rgba(140, 120, 190, 0.5)',
+    piston: ['#2a2140', '#5a4d7a'] as readonly [string, string],
+    pistonRing: 'rgba(255, 179, 71, 0.5)',
+    slab: '#3a3150',
+  }
 
   constructor(canvas: HTMLCanvasElement, cave: Cave) {
     const ctx = canvas.getContext('2d')
@@ -319,6 +342,7 @@ export class CaveScene {
     this.planted = Boolean(f.out?.planted)
     this.drawBreach(f)
     this.drawRubble(dt)
+    this.underShips(f, dt)
     // At the start card a ghost that isn't flying (one whose path isn't known yet) would sit on your ship: it waits unseen.
     const ghostShown = f.ghost && !f.ghost.wrecked && !(f.mode === 'menu' && f.ghost.done)
     if (f.ghost && ghostShown) this.drawGhost(f.ghost, f.ghostTag, f.ghostMine, f.mode !== 'done' && !f.ghost.done, f.ghostSkin ?? null)
@@ -335,9 +359,13 @@ export class CaveScene {
     this.rubble.length = 0
   }
 
+  /** Between the cave and the ships: nothing here; a second painter's light and followers (lamplight.ts). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected underShips(_f: SceneFrame, _dt: number) {}
+
   /* ---------- the camera ---------- */
 
-  private follow(x: number, y: number, vx: number, vy: number, dt: number) {
+  protected follow(x: number, y: number, vx: number, vy: number, dt: number) {
     const { cam, W, H } = this
     const tx = x + clamp(vx * 0.35, -9, 9)
     const ty = y + clamp(vy * 0.35, -9, 9)
@@ -356,29 +384,29 @@ export class CaveScene {
     cam.k += (k - cam.k) * (1 - Math.exp(-dt * 1.5))
   }
 
-  private sx(x: number) {
+  protected sx(x: number) {
     return (x - this.cam.x) * this.cam.k + this.W / 2
   }
 
-  private sy(y: number) {
+  protected sy(y: number) {
     return this.H / 2 - (y - this.cam.y) * this.cam.k
   }
 
   /* ---------- the cave ---------- */
 
-  private wallRgb(y: number) {
+  protected wallRgb(y: number) {
     const box = this.cave.box
     const f = clamp((box[3] - y) / (box[3] - box[2]), 0, 1)
     return C.wallTop.map((v, i) => Math.round(lerp(v, C.wallDeep[i]!, f)))
   }
 
-  private wallColor(y: number, alpha: number) {
+  protected wallColor(y: number, alpha: number) {
     const c = this.wallRgb(y)
     return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`
   }
 
   /** The nodes whose circles reach into view, as one span of indices (the cave never folds back into view far off). */
-  private spanInView(): [number, number] {
+  protected spanInView(): [number, number] {
     const { cam, W, H } = this
     const hw = W / 2 / cam.k + 14
     const hh = H / 2 / cam.k + 14
@@ -397,7 +425,7 @@ export class CaveScene {
   }
 
   /** One tunnel's two walls, from node `lo` to `hi`: a line down each side, `r` out from the middle. */
-  private wallsOf(N: readonly CaveNode[], lo: number, hi: number): [Wall, Wall] {
+  protected wallsOf(N: readonly CaveNode[], lo: number, hi: number): [Wall, Wall] {
     const { cam } = this
     const left: Wall = { x: [], y: [], ux: [], uy: [] }
     const right: Wall = { x: [], y: [], ux: [], uy: [] }
@@ -421,7 +449,7 @@ export class CaveScene {
   }
 
   /** The cave in view: the tunnel's two walls, its round ends where it opens into the rooms, and the rooms. */
-  private caveShape(span: [number, number]): CaveShape {
+  protected caveShape(span: [number, number]): CaveShape {
     const { cave, cam, W, H } = this
     const N = cave.nodes
     const shape: CaveShape = { tunnels: [], ends: [], rooms: [] }
@@ -446,7 +474,7 @@ export class CaveScene {
   }
 
   /** Whether a piece reaching `reach` pixels round its points shows on the screen. */
-  private pieceShows(w: Wall, i: number, j: number, reach: number) {
+  protected pieceShows(w: Wall, i: number, j: number, reach: number) {
     let x0 = Infinity
     let x1 = -Infinity
     let y0 = Infinity
@@ -464,7 +492,7 @@ export class CaveScene {
    * A band along a wall, from `d0` to `d1` metres out into the rock, in the fill already set, a few stretches at
    * a time (PIECE). Each piece runs one stretch into the next, so they join without a seam.
    */
-  private band(w: Wall, d0: number, d1: number) {
+  protected band(w: Wall, d0: number, d1: number) {
     const { ctx } = this
     const n = w.x.length
     const reach = Math.max(Math.abs(d0), Math.abs(d1)) * this.cam.k + 2
@@ -479,7 +507,7 @@ export class CaveScene {
   }
 
   /** A tunnel's air, between its two walls, in the fill already set, a few stretches at a time. */
-  private tunnelAir([left, right]: [Wall, Wall]) {
+  protected tunnelAir([left, right]: [Wall, Wall]) {
     const { ctx } = this
     const n = left.x.length
     for (let i = 0; i < n - 1; i += PIECE) {
@@ -493,7 +521,7 @@ export class CaveScene {
   }
 
   /** The air in view as one shape, for the test cave's things to be cut to. */
-  private airPath(shape: CaveShape) {
+  protected airPath(shape: CaveShape) {
     const air = new Path2D()
     for (const [left, right] of shape.tunnels) {
       const n = left.x.length
@@ -514,7 +542,7 @@ export class CaveScene {
    * or across it at y = `c`. The grid's lines are drawn only there, rather than cut to the air's shape, which is
    * slow on a laptop's graphics chip.
    */
-  private airAlong(shape: CaveShape, c: number, down: boolean): number[] {
+  protected airAlong(shape: CaveShape, c: number, down: boolean): number[] {
     const spans: [number, number][] = []
     const cut: number[] = []
     for (const [left, right] of shape.tunnels) {
@@ -552,7 +580,7 @@ export class CaveScene {
     return out
   }
 
-  private drawCave(f: SceneFrame) {
+  protected drawCave(f: SceneFrame) {
     const { ctx, cam, W, H, cave } = this
     // The rock.
     ctx.fillStyle = C.rock
@@ -664,7 +692,7 @@ export class CaveScene {
   }
 
   /** Flecks in the rock, staying put with it. */
-  private drawFleck() {
+  protected drawFleck() {
     const { ctx, cam, W, H } = this
     if (!this.fleck) return
     ctx.save()
@@ -676,7 +704,7 @@ export class CaveScene {
     ctx.restore()
   }
 
-  private drawGates(f: SceneFrame) {
+  protected drawGates(f: SceneFrame) {
     const { ctx, cam, cave } = this
     ctx.save()
     ctx.lineCap = 'round'
@@ -714,7 +742,7 @@ export class CaveScene {
     ctx.restore()
   }
 
-  private drawPads() {
+  protected drawPads() {
     const { ctx, cam } = this
     const lift = this.cave.lab?.lift
     for (const pad of this.cave.pads) {
@@ -755,12 +783,12 @@ export class CaveScene {
   /* ---------- the way out (breakout.ts) ---------- */
 
   /** A point in the breach's frame (how far out through the wall, how far along it), on the screen. */
-  private atBreach(b: Breach, out: number, along: number): [number, number] {
+  protected atBreach(b: Breach, out: number, along: number): [number, number] {
     return [this.sx(b.x + b.ux * out - b.uy * along), this.sy(b.y + b.uy * out + b.ux * along)]
   }
 
   /** The breach, when it's in view: the cracked patch, or, broken through, the way out and the space past it. */
-  private drawBreach(f: SceneFrame) {
+  protected drawBreach(f: SceneFrame) {
     const b = this.breach
     if (!b) return
     const { cam, W, H } = this
@@ -776,7 +804,7 @@ export class CaveScene {
    * The patch, whole: cracks running from the wall into the rock, with starlight showing in them, faint, the
    * egg's clue. Every knock opens more of them.
    */
-  private drawCracks(b: Breach, knocks: number) {
+  protected drawCracks(b: Breach, knocks: number) {
     const { ctx, cam } = this
     const shown = Math.min(this.cracks.length, 3 + Math.round((knocks / KNOCKS) * 4))
     ctx.save()
@@ -814,7 +842,7 @@ export class CaveScene {
    * Broken through: the way out through the wall, lit at its sides, and the space past it, stars to its edge,
    * where it fades into the dark, the Earth far off, the rock face of the cave behind, and the moon.
    */
-  private drawSpace(b: Breach) {
+  protected drawSpace(b: Breach) {
     const { ctx, cam } = this
     const R = b.far + 3
     const space = new Path2D()
@@ -829,7 +857,7 @@ export class CaveScene {
     const deep = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * cam.k)
     deep.addColorStop(0, C.space)
     deep.addColorStop(0.72, C.space)
-    deep.addColorStop(1, C.rock)
+    deep.addColorStop(1, this.tone.rock)
     ctx.fillStyle = deep
     ctx.fill(space)
 
@@ -900,7 +928,7 @@ export class CaveScene {
     ]
     const [ix, iy] = this.atBreach(b, 0, 0)
     const through = ctx.createLinearGradient(ix, iy, cx, cy)
-    through.addColorStop(0, C.air)
+    through.addColorStop(0, this.tone.air)
     through.addColorStop(1, C.space)
     ctx.fillStyle = through
     ctx.beginPath()
@@ -922,7 +950,7 @@ export class CaveScene {
   }
 
   /** The moon: grey, cratered, its top cut flat with a pad on it, and a flag on it once your ship's been down. */
-  private drawMoon(b: Breach) {
+  protected drawMoon(b: Breach) {
     const { ctx, cam } = this
     const mx = this.sx(b.moon.x)
     const my = this.sy(b.moon.y)
@@ -1009,7 +1037,7 @@ export class CaveScene {
   }
 
   /** The broken patch's chunks, tumbling and falling, fading as they go. */
-  private drawRubble(dt: number) {
+  protected drawRubble(dt: number) {
     const { ctx, cam, rubble } = this
     if (!rubble.length) return
     ctx.save()
@@ -1029,7 +1057,7 @@ export class CaveScene {
       ctx.translate(this.sx(p.x), this.sy(p.y))
       ctx.rotate(p.a)
       const s = p.size * cam.k
-      ctx.fillStyle = C.rock
+      ctx.fillStyle = this.tone.rock
       ctx.strokeStyle = this.wallColor(p.y, 0.8)
       ctx.lineWidth = Math.max(1, 0.04 * cam.k)
       ctx.beginPath()
@@ -1047,7 +1075,7 @@ export class CaveScene {
 
   /* ---------- the ships ---------- */
 
-  private traceShip(x: number, y: number, a: number) {
+  protected traceShip(x: number, y: number, a: number) {
     const { ctx } = this
     ctx.beginPath()
     OUTLINE.forEach(([px, py], i) => {
@@ -1058,7 +1086,7 @@ export class CaveScene {
     ctx.closePath()
   }
 
-  private drawFlame(x: number, y: number, a: number, level: number, colors: readonly [string, string]) {
+  protected drawFlame(x: number, y: number, a: number, level: number, colors: readonly [string, string]) {
     if (level <= 0.02) return
     const { ctx } = this
     const f = 0.75 + Math.random() * 0.45
@@ -1085,7 +1113,7 @@ export class CaveScene {
     }
   }
 
-  private drawShip(x: number, y: number, a: number, level: number, skin: string | null) {
+  protected drawShip(x: number, y: number, a: number, level: number, skin: string | null) {
     const { ctx, cam } = this
     const art = skin ? LANDER_ART[skin] : undefined
     if (art) {
@@ -1121,7 +1149,7 @@ export class CaveScene {
    * (lib/skinArt.ts): its feet on the hull's feet, its dome over the nose. The hull is still what meets the
    * rock, and every point of it is on the drawing, so it lands and crashes as the usual ship does.
    */
-  private drawSkinShip(x: number, y: number, a: number, art: SkinArt, alpha = 1) {
+  protected drawSkinShip(x: number, y: number, a: number, art: SkinArt, alpha = 1) {
     const { ctx, cam } = this
     const k = cam.k * HOPPER_SCALE
     ctx.save()
@@ -1135,7 +1163,7 @@ export class CaveScene {
     ctx.restore()
   }
 
-  private drawGhost(g: GhostPose, name: string, mine: boolean, flying: boolean, skin: string | null) {
+  protected drawGhost(g: GhostPose, name: string, mine: boolean, flying: boolean, skin: string | null) {
     const { ctx, cam } = this
     const color = mine ? C.mine : C.ghost
     if (flying && g.engine) this.drawFlame(g.x, g.y, g.a, 0.8, ['rgba(70, 228, 255, 0.35)', 'rgba(200, 248, 255, 0.45)'])
@@ -1144,17 +1172,7 @@ export class CaveScene {
     if (art) {
       // In the skin it was flown in, faded as a ghost is, so it never reads as a second ship of yours.
       this.drawSkinShip(g.x, g.y, g.a, art, 0.5)
-    } else {
-      this.traceShip(g.x, g.y, g.a)
-      ctx.fillStyle = mine ? 'rgba(245, 185, 66, 0.12)' : 'rgba(70, 228, 255, 0.12)'
-      ctx.fill()
-      ctx.lineJoin = 'round'
-      ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
-      ctx.strokeStyle = color
-      ctx.globalAlpha = 0.9
-      ctx.stroke()
-      ctx.globalAlpha = 1
-    }
+    } else this.plainGhost(g, mine)
     // Whose run it is, on a dark pill over it.
     ctx.font = `700 ${Math.round(Math.max(11, 0.62 * cam.k))}px ${this.font}`
     ctx.textAlign = 'center'
@@ -1173,9 +1191,23 @@ export class CaveScene {
     ctx.restore()
   }
 
+  /** A ghost flown in no skin: the usual ship's outline, in the ghost's colour. */
+  protected plainGhost(g: GhostPose, mine: boolean) {
+    const { ctx, cam } = this
+    this.traceShip(g.x, g.y, g.a)
+    ctx.fillStyle = mine ? 'rgba(245, 185, 66, 0.12)' : 'rgba(70, 228, 255, 0.12)'
+    ctx.fill()
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
+    ctx.strokeStyle = mine ? C.mine : C.ghost
+    ctx.globalAlpha = 0.9
+    ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+
   /* ---------- sparks, the wreck, the landing guide ---------- */
 
-  private spark(ship: SceneFrame['ship']) {
+  protected spark(ship: SceneFrame['ship']) {
     const [nx, ny] = toWorld(ship, 0, -0.55)
     const back = ship.a + Math.PI + (Math.random() - 0.5) * 0.5
     const sp = 6 + Math.random() * 6
@@ -1190,7 +1222,7 @@ export class CaveScene {
     })
   }
 
-  private drawSparks(dt: number) {
+  protected drawSparks(dt: number) {
     const { ctx, cam, sparks } = this
     for (let i = sparks.length - 1; i >= 0; i--) {
       const p = sparks[i]!
@@ -1211,7 +1243,7 @@ export class CaveScene {
     }
   }
 
-  private drawShards(dt: number) {
+  protected drawShards(dt: number) {
     const { ctx, cam } = this
     this.wreckFor = Math.max(0, this.wreckFor - dt)
     ctx.save()
@@ -1241,7 +1273,7 @@ export class CaveScene {
    * molten layer lying along the floor, its top rolling a little, glowing up into the air with embers rising
    * off it. It's drawn over the air, and only where there's air: the rock under it stays rock.
    */
-  private drawLava(air: () => Path2D) {
+  protected drawLava(air: () => Path2D) {
     const { ctx, cam } = this
     const lava = this.cave.lab?.lava
     if (!lava?.length) return
@@ -1278,7 +1310,7 @@ export class CaveScene {
   }
 
   /** Embers rising off the lava from x0 to x1, flickering out as they go. */
-  private embers(x0: number, x1: number, surface: number) {
+  protected embers(x0: number, x1: number, surface: number) {
     const { ctx, cam } = this
     const rnd = mulberry32(Math.round(Math.abs(x0) * 31) >>> 0)
     for (let i = 0; i < 26; i++) {
@@ -1296,7 +1328,7 @@ export class CaveScene {
   }
 
   /** In the air: water with a moving surface and bubbles, the low-gravity bubble's shimmer, and the vents' steam. */
-  private drawLabAir(air: () => Path2D) {
+  protected drawLabAir(air: () => Path2D) {
     const lab = this.cave.lab
     if (!lab) return
     const { ctx, cam, W, H } = this
@@ -1401,9 +1433,9 @@ export class CaveScene {
       ctx.save()
       ctx.translate(ox, oy)
       ctx.rotate(-v.dir + Math.PI / 2)
-      ctx.fillStyle = '#2a2140'
+      ctx.fillStyle = this.tone.nozzle
       ctx.fillRect(-v.wide * 0.275 * cam.k, -0.15 * cam.k, v.wide * 0.55 * cam.k, 0.5 * cam.k)
-      ctx.fillStyle = blow > 0 ? `rgba(255, 190, 120, ${(0.4 + 0.5 * blow).toFixed(3)})` : 'rgba(140, 120, 190, 0.5)'
+      ctx.fillStyle = blow > 0 ? `rgba(255, 190, 120, ${(0.4 + 0.5 * blow).toFixed(3)})` : this.tone.nozzleCold
       for (let i = -2; i <= 2; i++) ctx.fillRect((i * 0.5 - 0.1) * cam.k, -0.1 * cam.k, 0.2 * cam.k, 0.38 * cam.k)
       ctx.restore()
       // Steam: puffs rising along the jet, thick while it blows, wisps between.
@@ -1429,7 +1461,7 @@ export class CaveScene {
   }
 
   /** The things that move and crash a ship: the crushers, in hazard stripes, and the turning bar. */
-  private drawLabSolids() {
+  protected drawLabSolids() {
     const lab = this.cave.lab
     if (!lab) return
     const { ctx, cam, W, H } = this
@@ -1443,14 +1475,14 @@ export class CaveScene {
       ctx.save()
       ctx.beginPath()
       ctx.rect(x0, y0, w, h)
-      ctx.fillStyle = '#3a3150'
+      ctx.fillStyle = this.tone.block
       ctx.fill()
       ctx.clip()
       // Hazard stripes across its business end, the end that shuts.
       const down = c.by < c.ay
       const endY = down ? y0 + h : y0
       const toward = down ? 1 : -1
-      ctx.fillStyle = '#f5b942'
+      ctx.fillStyle = this.tone.stripe
       for (let i = -6; i < 14; i++) {
         const sx = x0 + i * 0.9 * cam.k
         ctx.beginPath()
@@ -1462,7 +1494,7 @@ export class CaveScene {
         ctx.fill()
       }
       ctx.restore()
-      ctx.strokeStyle = '#f5b942'
+      ctx.strokeStyle = this.tone.blockEdge
       ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
       ctx.strokeRect(x0, y0, w, h)
     }
@@ -1478,9 +1510,9 @@ export class CaveScene {
       ctx.rotate(-a)
       ctx.beginPath()
       ctx.roundRect(-L, -T / 2, 2 * L, T, T / 2)
-      ctx.fillStyle = '#4a1d3a'
+      ctx.fillStyle = this.tone.bar
       ctx.fill()
-      ctx.strokeStyle = '#f07a8a'
+      ctx.strokeStyle = this.tone.barEdge
       ctx.lineWidth = Math.max(1.5, 0.12 * cam.k)
       ctx.stroke()
       // Lights along it, so its turning reads at a glance.
@@ -1488,21 +1520,21 @@ export class CaveScene {
         if (i === 0) continue
         ctx.beginPath()
         ctx.arc((i / 3.4) * L, 0, Math.max(1.5, 0.12 * cam.k), 0, Math.PI * 2)
-        ctx.fillStyle = Math.abs(i) === 3 ? '#ffd166' : 'rgba(240, 122, 138, 0.8)'
+        ctx.fillStyle = Math.abs(i) === 3 ? this.tone.barLight : this.tone.barDot
         ctx.fill()
       }
       ctx.restore()
       ctx.beginPath()
       ctx.arc(cx, cy, Math.max(4, 0.7 * cam.k), 0, Math.PI * 2)
-      ctx.fillStyle = '#2a2140'
+      ctx.fillStyle = this.tone.hub
       ctx.fill()
-      ctx.strokeStyle = '#f07a8a'
+      ctx.strokeStyle = this.tone.barEdge
       ctx.stroke()
     }
   }
 
   /** The lift under the landing pad: a piston from the room's floor up to the pad's slab. */
-  private drawPiston(x0: number, x1: number, top: number, floor: number) {
+  protected drawPiston(x0: number, x1: number, top: number, floor: number) {
     const { ctx, cam } = this
     const px0 = this.sx(x0 + 1.2)
     const px1 = this.sx(x1 - 1.2)
@@ -1510,12 +1542,12 @@ export class CaveScene {
     const y1 = this.sy(floor)
     if (y1 > y0) {
       const metal = ctx.createLinearGradient(px0, 0, px1, 0)
-      metal.addColorStop(0, '#2a2140')
-      metal.addColorStop(0.5, '#5a4d7a')
-      metal.addColorStop(1, '#2a2140')
+      metal.addColorStop(0, this.tone.piston[0])
+      metal.addColorStop(0.5, this.tone.piston[1])
+      metal.addColorStop(1, this.tone.piston[0])
       ctx.fillStyle = metal
       ctx.fillRect(px0, y0, px1 - px0, y1 - y0)
-      ctx.strokeStyle = 'rgba(255, 179, 71, 0.5)'
+      ctx.strokeStyle = this.tone.pistonRing
       ctx.lineWidth = Math.max(1, 0.06 * cam.k)
       for (let y = y0 + 0.6 * cam.k; y < y1; y += 0.8 * cam.k) {
         ctx.beginPath()
@@ -1525,12 +1557,12 @@ export class CaveScene {
       }
     }
     // The slab the pad sits on.
-    ctx.fillStyle = '#3a3150'
+    ctx.fillStyle = this.tone.slab
     ctx.fillRect(this.sx(x0), this.sy(top), (x1 - x0) * cam.k, 0.5 * cam.k)
   }
 
   /** Near the pad: how fast you're coming down, green once it's slow enough and level enough to land. */
-  private drawLandingGuide(ship: SceneFrame['ship']) {
+  protected drawLandingGuide(ship: SceneFrame['ship']) {
     const { ctx, cam } = this
     const pad = this.cave.pads[1]
     const lift = this.cave.lab?.lift ? liftAt(this.cave.lab.lift, this.now) : null

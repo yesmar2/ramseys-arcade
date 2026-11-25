@@ -3,6 +3,7 @@ import { CaveDrawing } from '../games/lander/CaveDrawing'
 import { caveDay, dayOfCave, PLANNED_CAVES } from '../games/lander/daily'
 import { DAILY_CAVES, type PlannedCave } from '../games/lander/dailyPlan'
 import { caveRunHref } from '../games/lander/links'
+import { lampLook, setLampLook } from '../games/lander/newLook'
 import { formatRun } from '../games/lander/score'
 import { caveDepth, caveThings, plannedCave, type Cave, type Stretch } from '../games/lander/sim'
 import { gamePlayHref } from '../hooks/useHashRoute'
@@ -69,6 +70,8 @@ export function AdminCaveBook() {
   const caves = useMemo(() => DAILY_CAVES.map(bookCave), [])
   const [query, setQuery] = useState('')
   const [month, setMonth] = useState<string>('all')
+  // Lander's look on test, on or off on this device (games/lander/newLook.ts).
+  const [newLook, setNewLook] = useState(lampLook)
 
   const todays = caves.find((c) => c.day === today)
   // Before the first day, the first cave is the one coming.
@@ -96,6 +99,25 @@ export function AdminCaveBook() {
             Test cave: new obstacles →
           </a>
           <span>Steam vents, crushers, a turning bar, water, low gravity, lava, a shortcut and a pad on a lift, all in one cave. Not in any day’s cave yet.</span>
+        </p>
+        <p className="vb-lab">
+          <a
+            className="panel__btn panel__btn--ghost adm-small"
+            href={gamePlayHref(SLUG)}
+            onClick={() => {
+              setLampLook(!newLook)
+              setNewLook(!newLook)
+            }}
+          >
+            {newLook ? 'Fly with the usual look →' : 'Fly with the new look →'}
+          </a>
+          <span>
+            The new look, on test{newLook ? ' (on, on this device)' : ''}: the cave by lamplight, a little lander with a lamp in place of the arrow,
+            and moths that come to the lamp while you fly without touching rock and scatter when you crash. With it, a one-beat count when a run is
+            started again, and the gap to the ship you race shown all the way down. On this device only, for today’s cave, a test flight of one
+            still to come and the test cave, until it’s switched back here; a past day’s cave keeps the usual look. The same caves, times and
+            boards either way.
+          </span>
         </p>
         {todays ? (
           <div className="tb-feature">

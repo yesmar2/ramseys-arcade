@@ -129,6 +129,11 @@ html[data-theme='dark'] .lander--fullscreen {
   pointer-events: none;
 }
 
+/* The one beat of a run started again, with the new look: a word, so smaller than the numbers. */
+.lander__count.is-ready {
+  font-size: clamp(2.6rem, 10vw, 4.4rem);
+}
+
 .lander__count.is-go {
   color: #3ecf8e;
   text-shadow:

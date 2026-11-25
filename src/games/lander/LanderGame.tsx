@@ -58,6 +58,9 @@ import {
   type LanderDay,
 } from './runs'
 import { CaveScene } from './scene'
+import { gapAt, progressAt, reachTimes } from './gap'
+import { LamplightScene } from './lamplight'
+import { newLookFor } from './newLook'
 import { useSkinInto } from '../../lib/skins'
 import { crashWords, formatLanderBoardScore, formatRun, landerBoardScore, landerMsFromBoardScore } from './score'
 import { MedalRow } from '../../components/RaceMedal'
@@ -90,6 +93,20 @@ const IN_RUN = new Set<Phase>(['countdown', 'flying', 'wrecked'])
 /** The count: 3, 2, 1 a little under a second apart, then go. */
 const COUNT_FROM = 3
 const COUNT_STEP = 0.8
+/**
+ * With the new look (newLook.ts), a run started again from inside one counts a single beat: you've just flown
+ * this cave, and the long count is in the way of trying again. A run from the start card keeps its three.
+ */
+const QUICK_COUNT = 0.7
+/**
+ * With the new look, a moth comes to your lamp for each stretch of this many metres of cave flown without
+ * touching rock (a cave is 400 to 500 m, so ten or twelve in all). A touch starts the stretch again; a crash
+ * scatters them.
+ */
+const MOTH_EVERY = 40
+/** How many times a device is told what the moths are: the first few that join. */
+const MOTHS_TOLD = 3
+const MOTHS_TOLD_KEY = 'skermix-lander-moths-told'
 /** Down on the pad, a moment to see the time before the card comes. */
 const CARD_AFTER = 1.1
 /** How far a finger drags from where it landed before the stick does anything, and for a full engine, in CSS pixels. */
@@ -161,6 +178,13 @@ type Game = {
   bumpAt: number
   /** This run's ship has set down on the moon past the cave's broken wall: the easter egg's found. */
   stepped: boolean
+  /** The new look's quick count: this run was started again from inside one (QUICK_COUNT). */
+  quick: boolean
+  /** The new look's moths at the lamp, and how far down the cave the stretch being flown clean began (MOTH_EVERY). */
+  moths: number
+  cleanFrom: number
+  /** The run's clock when the gap to the raced run was last shown (gap.ts). */
+  gapShown: number
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
@@ -190,15 +214,17 @@ type Ui = {
   /** Gates passed. */
   passed: number
   crashes: number
+  /** Counting the one beat of a run started again: "Ready", not a number. */
+  quick: boolean
 }
 
 function countOf(g: Game): number {
-  if (g.phase === 'countdown') return Math.max(1, COUNT_FROM - Math.floor(g.clock / COUNT_STEP))
+  if (g.phase === 'countdown') return g.quick ? 1 : Math.max(1, COUNT_FROM - Math.floor(g.clock / COUNT_STEP))
   if (g.phase === 'flying' && g.t < 0.7) return 0
   return -1
 }
 
-const snapshot = (g: Game): Ui => ({ phase: g.phase, count: countOf(g), passed: g.ship.gate + 1, crashes: g.crashes })
+const snapshot = (g: Game): Ui => ({ phase: g.phase, count: countOf(g), passed: g.ship.gate + 1, crashes: g.crashes, quick: g.phase === 'countdown' && g.quick })
 
 /** Your best run down a day's cave: in practice, this tab's (or this device's, from its day); else this device's. */
 function bestOf(day: string, practice: boolean, viewer: string | null | undefined): GhostRun | null {
@@ -297,6 +323,10 @@ function freshGame(lander: LanderDay, chase: Chase): Game {
     crashes: 0,
     bumpAt: -1,
     stepped: false,
+    quick: false,
+    moths: 0,
+    cleanFrom: 0,
+    gapShown: -1,
     ghost: chase.ghost,
     chasing: chase.chasing,
     run: null,
@@ -410,6 +440,21 @@ function LanderDayGame({
   const playerName = normalizePlayerName(usePlayerName())
   const lander = landerDay(day)
   const pace = lander.pace
+  // The new look, on test (newLook.ts), read once as the game opens: the cave by lamplight, the moths, the one-beat
+  // count on a run started again, and the gap shown all the way down. Never for a cave from a day that's gone.
+  const [newLook] = useState(() => newLookFor(day))
+  /** When the run being raced was first each metre down the cave (gap.ts), for the gap shown as you fly. */
+  const reachRef = useRef<Float32Array | null>(null)
+  // The gap is shown all the way down where there's a run to race: not in the test cave.
+  const liveGap = newLook && !lab
+  /** How many times this device has been told what the moths are (MOTHS_TOLD). */
+  const [mothsTold] = useState(() => {
+    try {
+      return { current: Number(localStorage.getItem(MOTHS_TOLD_KEY)) || 0 }
+    } catch {
+      return { current: 0 }
+    }
+  })
   const past = pastBoard !== null && !test
   const board = pastBoard?.board ?? null
   /** The board's #1 as last told (boardGhost.ts), and the tag you play under, for whose the ghost is. */
@@ -490,9 +535,10 @@ function LanderDayGame({
 
   /**
    * The count, and a new run for the boards, chasing the best run there is. The run is whoever's signed in
-   * as it starts, so it waits the moment it takes to know who that is.
+   * as it starts, so it waits the moment it takes to know who that is. `again`: started from inside a run, or
+   * from its result, which counts one beat with the new look (QUICK_COUNT).
    */
-  const start = () => {
+  const start = (again?: boolean) => {
     if (newDay()) return
     const owner = ownerOf(currentAccountId())
     if (owner === undefined) {
@@ -511,6 +557,10 @@ function LanderDayGame({
     const g = freshGame(lander, chaseFor(day, practice, topRef.current, nameRef.current, nextRef.current, pickedRef.current))
     g.phase = 'countdown'
     g.owner = owner
+    g.quick = newLook && again === true
+    // The gap as you fly needs the raced run's path: a ghost still waiting for its own has none, nor has the test cave.
+    reachRef.current = newLook && !lab ? reachTimes(lander.cave, g.ghost) : null
+    if (g.quick) sfx('tap')
     gameRef.current = g
     sceneRef.current?.snap()
     soundRef.current?.wake()
@@ -537,7 +587,7 @@ function LanderDayGame({
 
   const restart = () => {
     if (!IN_RUN.has(gameRef.current!.phase) || pausedRef.current || saveOpenRef.current) return
-    start()
+    start(true)
   }
 
   /** At the start card, the run to beat worked out again: it changes at once. Mid-run, a run keeps the ghost it began with. */
@@ -686,7 +736,7 @@ function LanderDayGame({
     holder.append(canvas)
     let scene: CaveScene
     try {
-      scene = new CaveScene(canvas, cave)
+      scene = newLook ? new LamplightScene(canvas, cave) : new CaveScene(canvas, cave)
     } catch {
       canvas.remove()
       setNoCanvas(true)
@@ -786,7 +836,7 @@ function LanderDayGame({
       if (live && g.phase === 'countdown') {
         const before = countOf(g)
         g.clock += dt
-        if (g.clock >= COUNT_FROM * COUNT_STEP) {
+        if (g.clock >= (g.quick ? QUICK_COUNT : COUNT_FROM * COUNT_STEP)) {
           g.phase = 'flying'
           g.carry = 0
           sfx('good')
@@ -806,6 +856,8 @@ function LanderDayGame({
               respawn(lander.cave, s)
               g.last = { x: s.x, y: s.y, a: s.a }
               g.phase = 'flying'
+              // The next moth's stretch starts from the gate the ship is back at.
+              g.cleanFrom = progressAt(lander.cave, s.x, s.y, s.hint)
               scene.snap()
             }
             continue
@@ -827,6 +879,8 @@ function LanderDayGame({
             g.phase = 'wrecked'
             g.wreckFor = CRASH_FOR
             g.throttle = 0
+            // The moths scatter: the scene sees there are none and lets the ones it had go.
+            g.moths = 0
             if (ev === 'crash') scene.crash(s, CRASH_FOR)
             const back = s.gate < 0 ? 'the start' : s.gate === lander.cave.gates.length - 1 ? 'the landing room' : `gate ${s.gate + 1}`
             sayRef.current(`${ev === 'lost' ? 'Lost in space' : 'Crashed'} · back to ${back}`, 1.6)
@@ -841,6 +895,8 @@ function LanderDayGame({
               haptic('hit')
             }
             g.bumpAt = g.t
+            // A touch of the rock: the stretch a moth would come for starts again from here.
+            g.cleanFrom = progressAt(lander.cave, s.x, s.y, s.hint)
             // The cracked patch knocked: it cracks a little more.
             if (ev === 'knock') crackSound()
           } else if (ev === 'breach') {
@@ -871,6 +927,37 @@ function LanderDayGame({
             const d = splitShown(g, ev.gate)
             sayRef.current(`${gateName(lander, ev.gate)} · ${d == null ? formatRun(g.t) : gapText(d)}`)
             sfx('good', d != null && d < 0 ? 2 : 0)
+          }
+          if (newLook && g.phase === 'flying') {
+            // A stretch flown without a touch: a moth comes to the lamp. The first few a device sees are named.
+            const at = progressAt(lander.cave, s.x, s.y, s.hint)
+            if (at - g.cleanFrom >= MOTH_EVERY) {
+              g.cleanFrom += MOTH_EVERY
+              g.moths += 1
+              sfx('tap', Math.min(7, g.moths))
+              if (mothsTold.current < MOTHS_TOLD) {
+                mothsTold.current += 1
+                try {
+                  localStorage.setItem(MOTHS_TOLD_KEY, String(mothsTold.current))
+                } catch {
+                  /* nothing kept: it's told again next time */
+                }
+                sayRef.current('A moth at your lamp · fly clean and more come', 2.4)
+              }
+            }
+            // The gap to the run you race, ten times a second.
+            const reach = reachRef.current
+            if (reach && g.t - g.gapShown >= 0.1) {
+              g.gapShown = g.t
+              const el = splitRef.current
+              if (el) {
+                const d = gapAt(reach, at, g.t)
+                const text = gapText(d)
+                if (el.textContent !== text) el.textContent = text
+                const tone = gapTone(d) ? `lander__delta--${gapTone(d)}` : ''
+                if (el.className !== tone) el.className = tone
+              }
+            }
           }
         }
       }
@@ -922,6 +1009,7 @@ function LanderDayGame({
           calm,
           skin: skinRef.current,
           ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
+          moths: g.moths,
           out,
           // Where the test cave's moving things are: the run's moment, or at the card, the card's.
           t: g.phase === 'menu' ? attract : g.phase === 'countdown' ? 0 : g.t,
@@ -937,7 +1025,7 @@ function LanderDayGame({
 
       // The rest of the heads-up changes only when something happens: the count, a gate, a crash.
       const next = snapshot(g)
-      const key = `${next.phase}|${next.count}|${next.passed}|${next.crashes}`
+      const key = `${next.phase}|${next.count}|${next.passed}|${next.crashes}|${next.quick}`
       if (key !== shown) {
         shown = key
         setUi(next)
@@ -1204,7 +1292,9 @@ function LanderDayGame({
                     label={
                       ui.phase === 'landed' || ui.phase === 'gameover'
                         ? 'Finish'
-                        : lastGate < 0
+                        : liveGap && inRun
+                          ? 'Gap'
+                          : lastGate < 0
                           ? 'Split'
                           : lastGate === lander.cave.gates.length - 1
                             ? 'Room'
@@ -1220,8 +1310,8 @@ function LanderDayGame({
             <canvas ref={mapRef} className="lander__map" aria-hidden="true" />
 
             {ui.count >= 0 && !paused ? (
-              <div className={`lander__count${ui.count === 0 ? ' is-go' : ''}`} role="status">
-                {ui.count === 0 ? 'Go!' : ui.count}
+              <div className={`lander__count${ui.count === 0 ? ' is-go' : ui.quick ? ' is-ready' : ''}`} role="status">
+                {ui.count === 0 ? 'Go!' : ui.quick ? 'Ready' : ui.count}
               </div>
             ) : null}
 
@@ -1251,7 +1341,7 @@ function LanderDayGame({
                 past={pastPlay}
                 paused={paused}
                 onResume={resume}
-                onRestart={start}
+                onRestart={() => start(true)}
                 extraMeta={extra}
               />
               {showroom && !saveOpen && !paused && !noCanvas ? (
@@ -1272,7 +1362,7 @@ function LanderDayGame({
                     crashes={run.crashes}
                     best={practiceBestTime ?? run.time}
                     improved={run.improved}
-                    onAgain={start}
+                    onAgain={() => start(true)}
                     onDone={toMenu}
                   />
                 ) : test ? (
@@ -1282,7 +1372,7 @@ function LanderDayGame({
                     crashes={run.crashes}
                     best={practiceBestTime ?? run.time}
                     improved={run.improved}
-                    onAgain={start}
+                    onAgain={() => start(true)}
                     onDone={toMenu}
                   />
                 ) : tournament ? (
@@ -1302,7 +1392,7 @@ function LanderDayGame({
                       pastBoard?.refresh()
                       sendGhost(run, result.name)
                     }}
-                    onAgain={start}
+                    onAgain={() => start(true)}
                   />
                 ) : (
                   <ScoreSaveCard
