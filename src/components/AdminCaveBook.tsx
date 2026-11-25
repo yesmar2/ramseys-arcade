@@ -113,8 +113,9 @@ export function AdminCaveBook() {
           </a>
           <span>
             The new look, on test{newLook ? ' (on, on this device)' : ''}: the cave by lamplight, a little lander with a lamp in place of the arrow,
-            and moths that come to the lamp while you fly without touching rock and scatter when you crash. With it, a one-beat count when a run is
-            started again, and the gap to the ship you race shown all the way down. On this device only, for today’s cave, a test flight of one
+            and moths that come to the lamp while you fly without touching rock and scatter when you crash. With it, three lanterns a day to light,
+            each by flying into its gold ring (2 tickets each, 10 for all three, once a day); a one-beat count when a run is started again; and the
+            gap to the ship you race shown all the way down. On this device only, for today’s cave, a test flight of one
             still to come and the test cave, until it’s switched back here; a past day’s cave keeps the usual look. The same caves, times and
             boards either way.
           </span>

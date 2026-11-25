@@ -127,6 +127,8 @@ export type SceneFrame = {
   ghostSkin?: string | null
   /** The new look's moths at your lamp just now (lamplight.ts); the usual look draws none. */
   moths?: number
+  /** The new look's lanterns lit so far this run (lanterns.ts): the first is bit 0, the second bit 1, and so on. */
+  lanterns?: number
 }
 
 type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; hot: boolean }

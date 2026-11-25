@@ -4,6 +4,8 @@ import type { Cave } from './sim'
 const SHIP = '#ff9f45'
 const GHOST = '#46e4ff'
 const GATE = '#f5b942'
+/** The new look's lanterns (lanterns.ts). */
+const LANTERN = '#ffd166'
 
 /**
  * The map in the corner: the whole cave from the side, drawn once in the theme's ink so it reads on a light
@@ -84,7 +86,8 @@ export class CaveMap {
     this.outline = outline
   }
 
-  draw(shipX: number, shipY: number, ghost: { x: number; y: number } | null) {
+  /** `lanterns`, with the new look: the day's lanterns, gold on the map, and which are lit (a bit each). */
+  draw(shipX: number, shipY: number, ghost: { x: number; y: number } | null, lanterns: readonly { x: number; y: number }[] = [], lit = 0) {
     this.build()
     const { canvas, outline, fit } = this
     if (!outline || !fit) return
@@ -100,6 +103,18 @@ export class CaveMap {
       g.fillStyle = color
       g.fill()
     }
+    lanterns.forEach((l, i) => {
+      // Lit, a full gold dot; still to light, a ring.
+      if ((lit >> i) & 1) dot(l.x, l.y, LANTERN, 2.6)
+      else {
+        const [px, py] = fit(l.x, l.y)
+        g.beginPath()
+        g.arc(px, py, 2.4 * dpr, 0, Math.PI * 2)
+        g.strokeStyle = LANTERN
+        g.lineWidth = 1.2 * dpr
+        g.stroke()
+      }
+    })
     if (ghost) dot(ghost.x, ghost.y, GHOST, 3)
     dot(shipX, shipY, SHIP, 3.8)
   }

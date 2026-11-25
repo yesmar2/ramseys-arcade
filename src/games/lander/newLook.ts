@@ -5,8 +5,9 @@ import { caveDay } from './daily'
  * lamp in place of the arrow, and moths that gather to the lamp while you fly clean. Ramsey, 2026-11-25, a
  * week after Swoop's new look went live: "can we apply same redesign ideas for lander?", and, shown three
  * looks drawn on real caves beside the game as it is (Lamplight, Glow cave, Storybook): "ok, let's do A
- * actually". With it come a one-beat count when a run is started again and the gap to the ship you race
- * shown all the way down (LanderGame.tsx), as Swoop has them.
+ * actually". With it come three lanterns a day to light, which pay tickets as Swoop's kites do (lanterns.ts;
+ * his "yes, lanterns" the same day), a one-beat count when a run is started again and the gap to the ship you
+ * race shown all the way down (LanderGame.tsx), as Swoop has them.
  *
  * It's on for a device that has asked for it, until it asks for the usual look back: the admin's Cave Book has
  * a button for each, and so does the address, `?lamp=1` and `?lamp=0` on Lander's page (for a phone, or a

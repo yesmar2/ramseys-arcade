@@ -29,6 +29,8 @@ export type TicketDetail = {
   before?: number
   /** Swoop: how many kites the run brought to the line. */
   kites?: number
+  /** Lander: how many lanterns the run lit and brought home. */
+  lanterns?: number
 }
 
 export type LedgerLine = {
@@ -121,7 +123,7 @@ export type HistoryRow = {
 }
 
 /** A run's parts in the order its report says them. */
-const RUN_ORDER = ['run', 'best', 'pickup', 'kite', 'first', 'streak']
+const RUN_ORDER = ['run', 'best', 'pickup', 'kite', 'lantern', 'first', 'streak']
 
 /** What a past course of a daily is called, by its number. */
 const COURSE_NOUN: Record<string, string> = { hotlap: 'track', marblerun: 'course', lander: 'cave', acechase: 'hole', wobblerun: 'gauntlet' }
@@ -154,6 +156,10 @@ function partWords(line: LedgerLine, game: string): string {
     case 'kite': {
       const n = line.detail?.kites
       return n == null ? 'kites' : n >= 3 ? 'all three kites' : n === 1 ? 'a kite' : `${n} kites`
+    }
+    case 'lantern': {
+      const n = line.detail?.lanterns
+      return n == null ? 'lanterns' : n >= 3 ? 'all three lanterns' : n === 1 ? 'a lantern' : `${n} lanterns`
     }
     case 'first':
       return 'a first go'

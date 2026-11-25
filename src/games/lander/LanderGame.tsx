@@ -60,6 +60,7 @@ import {
 import { CaveScene } from './scene'
 import { gapAt, progressAt, reachTimes } from './gap'
 import { LamplightScene } from './lamplight'
+import { keepLanternBest, lanternBest, lanternKnown, lanternsOf, LIGHT_REACH, noteLanternLit } from './lanterns'
 import { newLookFor } from './newLook'
 import { useSkinInto } from '../../lib/skins'
 import { crashWords, formatLanderBoardScore, formatRun, landerBoardScore, landerMsFromBoardScore } from './score'
@@ -185,6 +186,9 @@ type Game = {
   cleanFrom: number
   /** The run's clock when the gap to the raced run was last shown (gap.ts). */
   gapShown: number
+  /** The new look's lanterns lit so far this run (lanterns.ts), a bit each; and whether this run has said how to light one. */
+  lit: number
+  lanternTold: boolean
   /** The run being chased, and whose it is. */
   ghost: Ghost
   chasing: Chasing
@@ -201,8 +205,13 @@ type Game = {
     before: number | null
     path: number[]
     runId: Promise<string | undefined> | null
+    /** The new look's lanterns it lit and brought home. */
+    lanterns: number
   } | null
 }
+
+/** How many lanterns a run has lit, from its bits. */
+const litCount = (lit: number) => (lit & 1) + ((lit >> 1) & 1) + ((lit >> 2) & 1)
 
 /** A past cave's All time board (lib/trackBoards.ts), and asking for it again once a flight is saved. */
 type PastBoard = { board: TrackBoard | null; refresh: () => void }
@@ -327,6 +336,8 @@ function freshGame(lander: LanderDay, chase: Chase): Game {
     moths: 0,
     cleanFrom: 0,
     gapShown: -1,
+    lit: 0,
+    lanternTold: false,
     ghost: chase.ghost,
     chasing: chase.chasing,
     run: null,
@@ -357,7 +368,20 @@ function runShareLine(lander: LanderDay, time: number, pace: number, crashes: nu
 }
 
 /** Today's cave and its number, the run its ghost flies (the #1's, your best, or the blue ship's), and when the next cave comes. */
-function CaveTiles({ lander, ghost, chasing, bestMs }: { lander: LanderDay; ghost: number; chasing: Chasing; bestMs: number | null }) {
+function CaveTiles({
+  lander,
+  ghost,
+  chasing,
+  bestMs,
+  lanterns,
+}: {
+  lander: LanderDay
+  ghost: number
+  chasing: Chasing
+  bestMs: number | null
+  /** With the new look: the most lanterns a run has brought home today on this device, of how many there are. */
+  lanterns: { best: number; of: number } | null
+}) {
   const [left, setLeft] = useState(() => msUntilNextCave())
   useEffect(() => {
     const timer = window.setInterval(() => setLeft(msUntilNextCave()), 20_000)
@@ -374,6 +398,14 @@ function CaveTiles({ lander, ghost, chasing, bestMs }: { lander: LanderDay; ghos
         <strong>{boardTime('lander', ghost)}</strong>
       </div>
       <MedalRow game="lander" paceMs={paceMsOf(lander.pace)} bestMs={bestMs} />
+      {lanterns ? (
+        <div className="game-pause-meta__row">
+          <span>Lanterns lit today</span>
+          <strong>
+            {lanterns.best} of {lanterns.of}
+          </strong>
+        </div>
+      ) : null}
       <div className="game-pause-meta__row">
         <span>Next cave</span>
         <strong>{untilWords(left)}</strong>
@@ -447,6 +479,8 @@ function LanderDayGame({
   const reachRef = useRef<Float32Array | null>(null)
   // The gap is shown all the way down where there's a run to race: not in the test cave.
   const liveGap = newLook && !lab
+  // The day's three lanterns (lanterns.ts), with the new look: lit by flying into their rings, kept for the run.
+  const [lanterns] = useState(() => (newLook ? lanternsOf(lander.cave) : []))
   /** How many times this device has been told what the moths are (MOTHS_TOLD). */
   const [mothsTold] = useState(() => {
     try {
@@ -743,6 +777,7 @@ function LanderDayGame({
       return
     }
     sceneRef.current = scene
+    if (scene instanceof LamplightScene) scene.setLanterns(lanterns)
     const sound = new EngineSound()
     soundRef.current = sound
     const map = mapRef.current ? new CaveMap(mapRef.current, cave) : null
@@ -808,7 +843,10 @@ function LanderDayGame({
         before: kept?.time ?? null,
         path,
         runId: past ? runIdFor(SLUG) : null,
+        lanterns: litCount(g.lit),
       }
+      // The day's best count of lanterns, for the start card: today's cave only, as only it pays for them.
+      if (!practice && !test) keepLanternBest(g.day, litCount(g.lit))
       // Your best on this course, for your medals on its past card (lib/courseBests.ts): any run but a test's.
       if (!lab && !test) noteCourseBest(SLUG, caveNumber(g.day), Math.round(time * 1000), runIdFor(SLUG))
       sfx(improved ? 'perfect' : 'good')
@@ -945,6 +983,22 @@ function LanderDayGame({
                 sayRef.current('A moth at your lamp · fly clean and more come', 2.4)
               }
             }
+            // A lantern is lit by the ship's middle coming inside its ring, and stays lit for the run.
+            lanterns.forEach((l, i) => {
+              if ((g.lit >> i) & 1) return
+              const away = Math.hypot(s.x - l.x, s.y - l.y)
+              if (away <= LIGHT_REACH) {
+                g.lit |= 1 << i
+                noteLanternLit()
+                sfx('good', 3 + litCount(g.lit))
+                haptic('boost')
+                sayRef.current(litCount(g.lit) >= lanterns.length ? `All ${lanterns.length} lanterns lit` : `Lantern lit · ${litCount(g.lit)} of ${lanterns.length}`, 1.8)
+              } else if (away < 13 && !g.lanternTold && !lanternKnown()) {
+                // Coming up on one, on a device that has never lit one: how it's done, once a run.
+                g.lanternTold = true
+                sayRef.current('Fly into the gold ring to light the lantern', 2.8)
+              }
+            })
             // The gap to the run you race, ten times a second.
             const reach = reachRef.current
             if (reach && g.t - g.gapShown >= 0.1) {
@@ -1010,13 +1064,14 @@ function LanderDayGame({
           skin: skinRef.current,
           ghostSkin: g.chasing.who === 'pace' ? null : (g.chasing.skin ?? null),
           moths: g.moths,
+          lanterns: g.lit,
           out,
           // Where the test cave's moving things are: the run's moment, or at the card, the card's.
           t: g.phase === 'menu' ? attract : g.phase === 'countdown' ? 0 : g.t,
         },
         live ? dt : 0,
       )
-      map?.draw(pose.x, pose.y, ghost && !ghost.wrecked && g.phase !== 'menu' ? ghost : null)
+      map?.draw(pose.x, pose.y, ghost && !ghost.wrecked && g.phase !== 'menu' ? ghost : null, lanterns, g.phase === 'menu' ? 0 : g.lit)
       sound.update(g.throttle, live && g.phase === 'flying')
       if (clockRef.current) {
         const text = formatRun(g.run ? g.run.time : g.phase === 'flying' || g.phase === 'wrecked' ? g.t : 0)
@@ -1242,7 +1297,13 @@ function LanderDayGame({
       </div>
     </>
   ) : (
-    <CaveTiles lander={lander} ghost={g.ghost.run.time} chasing={g.chasing} bestMs={apiBest > 0 ? landerMsFromBoardScore(apiBest) : null} />
+    <CaveTiles
+      lander={lander}
+      ghost={g.ghost.run.time}
+      chasing={g.chasing}
+      bestMs={apiBest > 0 ? landerMsFromBoardScore(apiBest) : null}
+      lanterns={lanterns.length > 0 && !practice ? { best: lanternBest(lander.day), of: lanterns.length } : null}
+    />
   )
   const splitsText = (r: NonNullable<Game['run']>) =>
     [lander.name, ...r.splits.slice(0, -1).map((at, k) => `${k === lander.cave.gates.length - 1 ? 'Room' : `G${k + 1}`} ${formatRun(at)}`), crashWords(r.crashes)].join(' · ')
@@ -1405,7 +1466,8 @@ function LanderDayGame({
                     shareLine={runShareLine(lander, run.time, pace, run.crashes)}
                     medalPace={paceMsOf(lander.pace)}
                     medalFormat={formatRun}
-                    kicker={`Today’s Cave #${lander.n}`}
+                    kicker={lanterns.length ? `Cave #${lander.n} · ${run.lanterns} of ${lanterns.length} lanterns` : `Today’s Cave #${lander.n}`}
+                    lanterns={run.lanterns}
                     tomorrow={<TomorrowCave day={lander.day} />}
                     owner={runOwner}
                     onSettled={() => sendGhost(run, playerName)}

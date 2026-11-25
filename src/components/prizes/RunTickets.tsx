@@ -54,6 +54,11 @@ function kiteWords(count: number | undefined): string {
   return count == null ? 'kites' : count >= 3 ? 'all three kites' : count === 1 ? 'a kite' : `${count} kites`
 }
 
+/** Lander's lanterns, as many as the run lit and brought home: "a lantern", "2 lanterns", "all three lanterns". */
+function lanternWords(count: number | undefined): string {
+  return count == null ? 'lanterns' : count >= 3 ? 'all three lanterns' : count === 1 ? 'a lantern' : `${count} lanterns`
+}
+
 /** One of the save's ticket lines in words: "3 for beating the blue car", "2 for another day on your streak". */
 function lineWords(paid: RunTickets, line: RunTickets['lines'][number], game: string): string {
   switch (line.reason) {
@@ -69,6 +74,8 @@ function lineWords(paid: RunTickets, line: RunTickets['lines'][number], game: st
     case 'kite':
       // Paid once a day by the most brought home: a run that brings more is paid the difference.
       return `${line.amount} for ${kiteWords(paid.kites)}`
+    case 'lantern':
+      return `${line.amount} for ${lanternWords(paid.lanterns)}`
     case 'first':
       return `${line.amount} for your first go at ${getGame(game)?.name ?? 'this game'}`
     case 'streak':
@@ -95,6 +102,10 @@ export function lineLabel(paid: RunTickets, line: RunTickets['lines'][number], g
       return 'Picked up on the way'
     case 'kite': {
       const what = kiteWords(paid.kites)
+      return what.charAt(0).toUpperCase() + what.slice(1)
+    }
+    case 'lantern': {
+      const what = lanternWords(paid.lanterns)
       return what.charAt(0).toUpperCase() + what.slice(1)
     }
     case 'first':

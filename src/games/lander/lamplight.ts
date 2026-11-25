@@ -1,8 +1,9 @@
-import { LANDER_ART, type ArtShape, type SkinArt } from '../../lib/skinArt'
+import { drawSkinArt, LANDER_ART, type ArtShape, type SkinArt } from '../../lib/skinArt'
 import { keptEpoch, watchKept } from '../keptPictures'
+import { LIGHT_REACH, type Lantern } from './lanterns'
 import type { GhostPose } from './runs'
 import { CaveScene, type CaveShape, type SceneFrame } from './scene'
-import { inAir, liftAt, mulberry32, type Cave } from './sim'
+import { FOOT, G, inAir, liftAt, mulberry32, type Cave } from './sim'
 
 /*
  * Lander by lamplight: the cave painted as a place, on test (newLook.ts). Ramsey's pick of three looks shown
@@ -198,7 +199,10 @@ const PROP_H = 72
 /** A grown thing's foot, on the wall's line: this far up its cell, so its root is in the rock. */
 const PROP_FOOT = 62
 
-type StampName = 'lampOn' | 'lampOff' | 'padOn' | 'moth0' | 'moth1' | 'lamp'
+type StampName = 'lampOn' | 'lampOff' | 'padOn' | 'moth0' | 'moth1' | 'lamp' | 'lanternOn' | 'lanternOff'
+
+/** A lantern is drawn half as big again as its metre, so a phone shows it. */
+const LANTERN_DRAWN = 1.5
 
 function paintProp(g: CanvasRenderingContext2D, kind: Grown, rnd: () => number) {
   // The wall's line is y = 0 here, and up (−y) is out into the air; a metre is PROP_F.
@@ -296,6 +300,35 @@ function paintGateLamp(g: CanvasRenderingContext2D, f: number, lit: boolean) {
   g.stroke()
 }
 
+/** One of the day's lanterns, its own middle at the cell's: dark, or lit with its light round it. */
+function paintLantern(g: CanvasRenderingContext2D, f: number, lit: boolean) {
+  const k = f * LANTERN_DRAWN
+  if (lit) halo(g, 0, 0, 2.2 * f, [255, 180, 90], 0.5)
+  const frame = 'rgb(112, 78, 46)'
+  g.fillStyle = frame
+  g.beginPath()
+  g.moveTo(-0.3 * k, -0.3 * k)
+  g.lineTo(0, -0.52 * k)
+  g.lineTo(0.3 * k, -0.3 * k)
+  g.closePath()
+  g.fill()
+  g.beginPath()
+  g.roundRect(-0.24 * k, -0.3 * k, 0.48 * k, 0.6 * k, 0.1 * k)
+  g.fillStyle = lit ? 'rgb(255, 214, 130)' : 'rgb(70, 58, 62)'
+  g.fill()
+  g.strokeStyle = frame
+  g.lineWidth = Math.max(1, 0.06 * k)
+  g.stroke()
+  if (lit) {
+    g.fillStyle = '#fffbe8'
+    g.beginPath()
+    g.ellipse(0, 0.02 * k, 0.09 * k, 0.16 * k, 0, 0, TAU)
+    g.fill()
+  }
+  g.fillStyle = frame
+  g.fillRect(-0.3 * k, 0.28 * k, 0.6 * k, 0.1 * k)
+}
+
 function paintMoth(g: CanvasRenderingContext2D, f: number, open: number) {
   halo(g, 0, 0, 1.15 * f, [255, 200, 120], 0.5)
   const s = 0.34 * f
@@ -328,7 +361,7 @@ class Sheet {
     if (key === this.key) return
     this.key = key
     const count = Object.values(VARIANTS).reduce((a, b) => a + b, 0)
-    this.canvas.width = Math.max(count * PROP_W, 700)
+    this.canvas.width = Math.max(count * PROP_W, 900)
     this.canvas.height = PROP_H + 256
     const g = this.canvas.getContext('2d')
     if (!g) return
@@ -374,6 +407,8 @@ class Sheet {
     })
     put('moth0', 96, 96, 40, 48, 48, () => paintMoth(g, 40, 1))
     put('moth1', 96, 96, 40, 48, 48, () => paintMoth(g, 40, 0.25))
+    put('lanternOff', 48, 68, 40, 24, 34, () => paintLantern(g, 40, false))
+    put('lanternOn', 180, 180, 40, 90, 90, () => paintLantern(g, 40, true))
     // The ship's lamp: warm light, 10.5 m out, laid over the frame as light.
     put('lamp', 252, 252, 12, 126, 126, () => halo(g, 0, 0, 126, [255, 186, 104], 0.36))
   }
@@ -436,6 +471,17 @@ export const MOTHS_SHOWN = 12
 type Moth = { x: number; y: number; born: number; phase: number; placed: boolean }
 type Stray = { x: number; y: number; vx: number; vy: number; life: number; phase: number }
 
+/* ------------------------------------------------------------------ the wreck --- */
+
+/**
+ * A piece of a wrecked ship: the slice of its picture between two angles round its middle (from its nose,
+ * clockwise), where the slice's own middle is in the cave and on the board, and how it's tumbling.
+ */
+type Chunk = { x: number; y: number; vx: number; vy: number; turn: number; spin: number; from: number; to: number; bx: number; by: number }
+/** The middle a ship's picture is sliced round, on its board; and a board's unit in metres (its feet are the hull's). */
+const WRECK_MIDDLE = [50, 50] as const
+const BOARD = FOOT / 26
+
 /* ------------------------------------------------------------------ the scene --- */
 
 export class LamplightScene extends CaveScene {
@@ -451,6 +497,13 @@ export class LamplightScene extends CaveScene {
   private strays: Stray[] = []
   /** Where the ship has been, lately: x, y and the moment, three numbers a frame, for the moths to follow. */
   private trail: number[] = []
+  /** The day's lanterns (lanterns.ts), which are lit as the last frame had them, and the moment each was lit. */
+  private lanterns: Lantern[] = []
+  private lit = 0
+  private litAt: number[] = []
+  /** The skin the ship was last drawn in, for its wreck; and the wreck: the ship's own picture, in pieces. */
+  private skinNow: string | null = null
+  private wreck: { art: SkinArt; a: number; left: number; chunks: Chunk[] } | null = null
 
   constructor(canvas: HTMLCanvasElement, cave: Cave) {
     super(canvas, cave)
@@ -480,6 +533,51 @@ export class LamplightScene extends CaveScene {
     super.snap()
     this.trail.length = 0
     for (const m of this.moths) m.placed = false
+  }
+
+  /** The day's lanterns, to hang in the cave. */
+  setLanterns(lanterns: readonly Lantern[]) {
+    this.lanterns = [...lanterns]
+    this.lit = 0
+    this.litAt = lanterns.map(() => -1)
+  }
+
+  /**
+   * The ship comes apart: its own picture in five pieces, each a slice of it from its middle out, thrown the
+   * way it lies and tumbling. scene.ts's sparks fly with them; its four white lines were the arrow's edges.
+   */
+  crash(ship: { x: number; y: number; a: number; vx: number; vy: number }, wreckFor: number) {
+    super.crash(ship, wreckFor)
+    const art = (this.skinNow ? LANDER_ART[this.skinNow] : undefined) ?? POD
+    const cuts = [-0.5, 0.75, 1.9, 3.15, 4.45, TAU - 0.5]
+    const chunks: Chunk[] = []
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const from = cuts[i]!
+      const to = cuts[i + 1]!
+      const mid = (from + to) / 2
+      // The slice's own middle on the board, and where that is in the cave: the nose is up the board.
+      const bx = WRECK_MIDDLE[0] + Math.sin(mid) * 15
+      const by = WRECK_MIDDLE[1] - Math.cos(mid) * 15
+      const px = (bx - 50) * BOARD
+      const py = (60 - by) * BOARD
+      const cos = Math.cos(ship.a)
+      const sin = Math.sin(ship.a)
+      const out = ship.a + mid
+      const speed = 3 + Math.random() * 4.5
+      chunks.push({
+        x: ship.x + px * cos + py * sin,
+        y: ship.y - px * sin + py * cos,
+        vx: ship.vx * 0.3 + Math.sin(out) * speed,
+        vy: ship.vy * 0.3 + Math.cos(out) * speed,
+        turn: 0,
+        spin: (Math.random() - 0.5) * 9,
+        from,
+        to,
+        bx,
+        by,
+      })
+    }
+    this.wreck = { art, a: ship.a, left: wreckFor, chunks }
   }
 
   dispose() {
@@ -644,6 +742,8 @@ export class LamplightScene extends CaveScene {
     }
 
     this.drawProps()
+    this.drawLanterns(f)
+    this.skinNow = f.skin ?? null
     // The line the things drawn next have always had from the walls (scene.ts): the turning bar's hub is ringed in it.
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
@@ -670,6 +770,92 @@ export class LamplightScene extends CaveScene {
       ctx.drawImage(sheet, c.x, c.y, c.w, c.h, -c.ax, -c.ay, c.w, c.h)
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+
+  /**
+   * The day's lanterns: each on its chain from the rock, swinging a little, dark with a gold ring round it
+   * until the ship has been inside the ring, then lit for the rest of the run.
+   */
+  private drawLanterns(f: SceneFrame) {
+    if (!this.lanterns.length) return
+    const { ctx, cam, W, H } = this
+    const k = cam.k
+    const lit = f.mode === 'menu' ? 0 : (f.lanterns ?? 0)
+    const far = (LIGHT_REACH + 3) * k
+    this.lanterns.forEach((l, i) => {
+      const on = ((lit >> i) & 1) === 1
+      if (on && this.litAt[i]! < 0) this.litAt[i] = this.time
+      if (!on) this.litAt[i] = -1
+      const x = this.sx(l.x)
+      const y = this.sy(l.y)
+      const ax = this.sx(l.ax)
+      const ay = this.sy(l.ay)
+      if (Math.max(x, ax) < -far || Math.min(x, ax) > W + far || Math.max(y, ay) < -far || Math.min(y, ay) > H + far) return
+      const sway = Math.sin(this.time * 1.3 + i * 2.1) * 0.1 * k
+      ctx.strokeStyle = 'rgba(206, 170, 120, 0.8)'
+      ctx.lineWidth = Math.max(1.2, 0.06 * k)
+      ctx.setLineDash([0.16 * k, 0.11 * k])
+      ctx.beginPath()
+      ctx.moveTo(ax, ay)
+      ctx.lineTo(x + sway, y - 0.72 * k)
+      ctx.stroke()
+      if (!on) {
+        // The ring to fly into: where the ship's middle lights it.
+        ctx.strokeStyle = 'rgba(255, 209, 102, 0.9)'
+        ctx.lineWidth = Math.max(1.5, 0.08 * k)
+        ctx.setLineDash([0.42 * k, 0.3 * k])
+        ctx.lineDashOffset = -this.time * 0.5 * k
+        ctx.beginPath()
+        ctx.arc(x, y, LIGHT_REACH * k, 0, TAU)
+        ctx.stroke()
+        ctx.lineDashOffset = 0
+      }
+      ctx.setLineDash([])
+      const since = on ? this.time - this.litAt[i]! : 1
+      if (since < 0.45) {
+        // Just lit: its ring goes out from it, and fades.
+        const u = since / 0.45
+        ctx.strokeStyle = `rgba(255, 224, 150, ${(1 - u).toFixed(3)})`
+        ctx.lineWidth = Math.max(2, 0.14 * k * (1 - u))
+        ctx.beginPath()
+        ctx.arc(x, y, LIGHT_REACH * k * (1 + 0.55 * u), 0, TAU)
+        ctx.stroke()
+      }
+      this.stamp(on ? 'lanternOn' : 'lanternOff', x + sway, y)
+    })
+    this.lit = lit
+  }
+
+  /** The wreck: the ship's own picture in pieces (crash), each tumbling as it falls, fading with the wreck. */
+  protected drawShards(dt: number) {
+    const w = this.wreck
+    if (!w) return
+    const { ctx, cam } = this
+    w.left = Math.max(0, w.left - dt)
+    const kk = cam.k * BOARD
+    for (const c of w.chunks) {
+      c.vy -= G * dt
+      c.x += c.vx * dt
+      c.y += c.vy * dt
+      c.turn += c.spin * dt
+      ctx.save()
+      ctx.globalAlpha = clamp(w.left / 0.6, 0, 1)
+      ctx.translate(this.sx(c.x), this.sy(c.y))
+      ctx.rotate(w.a + c.turn)
+      ctx.scale(kk, kk)
+      ctx.translate(-c.bx, -c.by)
+      // Its slice of the board, from the middle out past the picture's edge.
+      ctx.beginPath()
+      ctx.moveTo(WRECK_MIDDLE[0], WRECK_MIDDLE[1])
+      for (let q = 0; q <= 6; q++) {
+        const t = c.from + ((c.to - c.from) * q) / 6
+        ctx.lineTo(WRECK_MIDDLE[0] + Math.sin(t) * 70, WRECK_MIDDLE[1] - Math.cos(t) * 70)
+      }
+      ctx.closePath()
+      ctx.clip()
+      drawSkinArt(ctx, w.art.body, 1.2 / kk)
+      ctx.restore()
+    }
   }
 
   /** A gate: a rope of lamps across the cave, dark until you're through it, then lit; its number on a tag. */
@@ -816,6 +1002,19 @@ export class LamplightScene extends CaveScene {
       const size = 1 + 0.025 * Math.sin(this.time * 7.3) + 0.015 * Math.sin(this.time * 12.1)
       ctx.globalCompositeOperation = 'lighter'
       this.stamp('lamp', this.sx(sx), this.sy(sy + 0.6), size)
+      ctx.globalCompositeOperation = 'source-over'
+    }
+    // A lit lantern warms the cave round it too, half as far as the ship's lamp.
+    if (this.lit) {
+      const reach = 6 * this.cam.k
+      ctx.globalCompositeOperation = 'lighter'
+      this.lanterns.forEach((l, i) => {
+        if (!((this.lit >> i) & 1)) return
+        const x = this.sx(l.x)
+        const y = this.sy(l.y)
+        if (x < -reach || x > this.W + reach || y < -reach || y > this.H + reach) return
+        this.stamp('lamp', x, y, 0.5)
+      })
       ctx.globalCompositeOperation = 'source-over'
     }
     // Dust in the lamplight: specks hanging in the air near the ship, each where it always is.

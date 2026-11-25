@@ -90,6 +90,8 @@ type ScoreSaveProps = {
   pickups?: number
   /** Swoop: how many of the day's kites the run brought to the line, paid with the save. */
   kites?: number
+  /** Lander: how many of the day's lanterns the run lit and brought home, paid with the save. */
+  lanterns?: number
   /** Hot Lap: the day's blue car, in milliseconds, which its ticket ladder goes by. */
   pace?: number
   /** Half Full: the day's five pours, which the API scores the day from (the `score` is only what's shown). */
@@ -174,6 +176,7 @@ export function ScoreSaveCard({
   previousBest,
   pickups,
   kites,
+  lanterns,
   pace,
   pours,
   plates,
@@ -248,6 +251,8 @@ export function ScoreSaveCard({
   pickupsRef.current = pickups
   const kitesRef = useRef(kites)
   kitesRef.current = kites
+  const lanternsRef = useRef(lanterns)
+  lanternsRef.current = lanterns
   const paceRef = useRef(pace)
   paceRef.current = pace
   const poursRef = useRef(pours)
@@ -408,6 +413,7 @@ export function ScoreSaveCard({
         run,
         pickups: pickupsRef.current,
         kites: kitesRef.current,
+        lanterns: lanternsRef.current,
         pace: paceRef.current,
         pours: poursRef.current,
         plates: platesRef.current,
@@ -518,6 +524,7 @@ export function ScoreSaveCard({
         run: runRef.current ?? runIdFor(gameSlug),
         pickups: pickupsRef.current,
         kites: kitesRef.current,
+        lanterns: lanternsRef.current,
         pace: paceRef.current,
         pours: poursRef.current,
         plates: platesRef.current,
