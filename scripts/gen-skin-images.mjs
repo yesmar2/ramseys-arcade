@@ -13,8 +13,12 @@ import { createServer } from 'vite'
 
 const SIZE = 256
 
+// A cache folder of its own: with the site's (node_modules/.vite), this would clear out the bundled
+// dependencies a dev server running in the same folder is serving, and break its pages until it's restarted.
 const server = await createServer({
   configFile: false,
+  cacheDir: 'node_modules/.vite-scripts',
+  optimizeDeps: { noDiscovery: true, include: [] },
   logLevel: 'error',
   appType: 'custom',
   esbuild: { jsx: 'automatic' },
