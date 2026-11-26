@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { CaveDrawing } from '../../games/lander/CaveDrawing'
 import { caveDay, caveNumber, dailyCave, FIRST_DAY } from '../../games/lander/daily'
+import { newLookFor } from '../../games/lander/newLook'
 import { landerDay } from '../../games/lander/runs'
 import { gamePlayHref } from '../../hooks/useHashRoute'
 import { usePastViewer, type PastSource } from '../../lib/dailyPast'
@@ -16,10 +17,11 @@ const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
 // The name is the plan's, so a card has it without digging its cave.
 export const title = (day: string) => `#${caveNumber(day)} ${dailyCave(day).name}`
 
-// A cave runs tall: the drawing keeps its shape on the dark of the rock round it (dailyPast.css).
+// A cave runs tall: the drawing keeps its shape on the dark of the rock round it (dailyPast.css). A day that's
+// gone keeps the look it was flown in; an event's card can show today's, which has the new one where that's on.
 export const art = (day: string) => (
   <span className="dp-art__ground dp-art__ground--cave">
-    <CaveDrawing cave={landerDay(day).cave} />
+    <CaveDrawing cave={landerDay(day).cave} lamp={newLookFor(day)} />
   </span>
 )
 

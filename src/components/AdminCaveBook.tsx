@@ -116,13 +116,14 @@ export function AdminCaveBook() {
             and moths that come to the lamp while you fly without touching rock and scatter when you crash. With it, three lanterns a day to light,
             each by flying into its gold ring (2 tickets each, 10 for all three, once a day); a one-beat count when a run is started again; and the
             gap to the ship you race shown all the way down. On this device only, for today’s cave, a test flight of one
-            still to come and the test cave, until it’s switched back here; a past day’s cave keeps the usual look. The same caves, times and
+            still to come and the test cave, until it’s switched back here; a past day’s cave keeps the usual look. Lander’s pictures follow it on
+            this device too: the day’s picture on the home page, the small game picture, and the caves drawn here. The same caves, times and
             boards either way.
           </span>
         </p>
         {todays ? (
           <div className="tb-feature">
-            <CaveDrawing cave={todays.cave} className="vb-map" aspect={1} />
+            <CaveDrawing cave={todays.cave} lamp={newLook} className="vb-map" aspect={1} />
             <div className="tb-feature__text">
               <span className="hb-badge">Today · #{todays.n}</span>
               <h3 className="tb-feature__name">{todays.name}</h3>
@@ -199,7 +200,7 @@ export function AdminCaveBook() {
             </h3>
             <div className="tb-grid">
               {group.caves.map((cave) => (
-                <CaveTile key={cave.n} cave={cave} today={today} />
+                <CaveTile key={cave.n} cave={cave} today={today} newLook={newLook} />
               ))}
             </div>
           </section>
@@ -212,7 +213,8 @@ export function AdminCaveBook() {
   )
 }
 
-function CaveTile({ cave, today }: { cave: BookCave; today: string }) {
+/** A cave in the book. `newLook`: this device has the new look on, so a cave not yet gone is drawn in it. */
+function CaveTile({ cave, today, newLook }: { cave: BookCave; today: string; newLook: boolean }) {
   const isToday = cave.day === today
   const past = cave.day < today
   return (
@@ -222,7 +224,7 @@ function CaveTile({ cave, today }: { cave: BookCave; today: string }) {
       aria-label={`#${cave.n} ${cave.name}, ${dayWords(cave.day)}: ${past ? 'fly it as practice' : 'test fly it'}`}
     >
       <div className="tb-tile__map">
-        <CaveDrawing cave={cave.cave} className="vb-map" aspect={1} />
+        <CaveDrawing cave={cave.cave} lamp={newLook && !past} className="vb-map" aspect={1} />
         <span className="tb-tag">{isToday ? `Today · #${cave.n}` : `#${cave.n}`}</span>
       </div>
       <div className="tb-tile__body">

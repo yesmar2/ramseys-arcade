@@ -15,9 +15,13 @@ import { createServer } from 'vite'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'src/assets/art')
 
+// A cache folder of its own: with the site's (node_modules/.vite), this would clear out the bundled
+// dependencies a dev server running in the same folder is serving, and break its pages until it's restarted.
 const server = await createServer({
   root,
   configFile: false,
+  cacheDir: join(root, 'node_modules/.vite-scripts'),
+  optimizeDeps: { noDiscovery: true, include: [] },
   logLevel: 'error',
   appType: 'custom',
   server: { middlewareMode: true, hmr: false, watch: null },

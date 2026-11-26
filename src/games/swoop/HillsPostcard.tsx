@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react'
 import { mixColor } from '../../lib/color'
+import { svgAddress } from '../../lib/svgAddress'
 import { useDarkTheme } from '../../lib/useDarkTheme'
 import { BirdMark } from './BirdMark'
 import { SWIFT_LIFT } from './birdShape'
@@ -28,12 +29,6 @@ type Props = { hills: Hills; w?: number; h?: number; className?: string }
 export function HillsPostcard({ day, ...props }: Props & { day: string }) {
   return newLookFor(day) ? <VistaPostcard {...props} /> : <DuskPostcard {...props} />
 }
-
-/**
- * A picture's SVG as an address an <img> can show. Only what an address can't hold is escaped (and its double
- * quotes made single ones), which leaves it about the size it was: escaped whole, it's half as long again.
- */
-const svgAddress = (svg: string) => `data:image/svg+xml;charset=utf-8,${svg.replace(/"/g, "'").replace(/[#%<>]/g, encodeURIComponent)}`
 
 function VistaPostcard({ hills, w = 480, h = 360, className }: Props) {
   const dark = useDarkTheme()

@@ -1,7 +1,9 @@
 import { useId, type ReactNode } from 'react'
+import landerLamp from '../assets/art/lander-lamp.svg'
 import swoopDay from '../assets/art/swoop-day.svg'
 import swoopNight from '../assets/art/swoop-night.svg'
 import { PALETTE } from '../data/games'
+import { useLampLook } from '../games/lander/lampSwitch'
 import { BUG_INK, bugParts, type BugName, type BugPose } from '../games/mazeBugs'
 import { mixColor } from '../lib/color'
 import { useDarkTheme } from '../lib/useDarkTheme'
@@ -1541,12 +1543,36 @@ const LANDER_SPARKS: Array<[number, number, number, number]> = [
 ]
 
 /**
+ * Lander: by lamplight on a device that has its new look on (games/lander/lampSwitch.ts), the arrow in its
+ * violet cave everywhere else, until the look is everyone's.
+ */
+function Lander({ id }: { id: Id }) {
+  return useLampLook() ? <LanderByLamplight /> : <LanderTouchdown id={id} />
+}
+
+/**
+ * Lander's new look: the pod close in by a lantern it has just lit, its moths behind it. It's the game's own
+ * picture of itself (games/lander/lampPicture.ts gameArtSvg, drawn from the shapes and colours the game is
+ * drawn from), kept as a file so this needs none of that: `node scripts/lander-art.mjs` writes it again when
+ * the look changes. Under it, the rock's own colour until the file is in. Ramsey, 2026-11-26, of the pictures
+ * shown to match the look: "B, the lantern", and this for the small one.
+ */
+function LanderByLamplight() {
+  return (
+    <>
+      <rect x="-1" y="-1" width="42" height="32" fill="#3a2729" />
+      <image href={landerLamp} width="40" height="30" preserveAspectRatio="xMidYMid slice" />
+    </>
+  )
+}
+
+/**
  * Lander touching down, close up in the landing room: your ship big over the pad on its column of amber
  * flame, sparks thrown off the pad, the room's walls (a bump in each, as the caves have) at the picture's
  * edges, so the icon is all ship and pad. The shaft comes in through the ceiling at the right, its gate passed
  * (green), the blue ship's cyan ghost just through it.
  */
-function Lander({ id }: { id: Id }) {
+function LanderTouchdown({ id }: { id: Id }) {
   const air =
     'M22 -1 H30.6 V2.4 C30.6 4 31.6 4.8 33.4 5.2 C35.4 5.6 36.6 6.6 36.6 8.6 V13.6 C36.6 14.8 35.4 15.2 35.4 16.6 C35.4 18 36.8 18.4 36.8 19.8 V31 H3.2 V21.6 C3.2 20.2 4.6 19.8 4.6 18.4 C4.6 17 3.2 16.6 3.2 15.4 V8.6 C3.2 6.4 4.6 5.4 7 5.2 C11 4.8 17.6 5.4 20 4.8 C21.4 4.4 22 3.4 22 2.2 Z'
   const ship = 'M0 -1.35 L0.925 0.925 L0 0.375 L-0.925 0.925 Z'

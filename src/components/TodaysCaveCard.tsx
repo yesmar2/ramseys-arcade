@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { getGame } from '../data/games'
 import { CaveDrawing } from '../games/lander/CaveDrawing'
 import { caveDay, nextCaveAt } from '../games/lander/daily'
+import { newLookFor } from '../games/lander/newLook'
 import { landerDay } from '../games/lander/runs'
 import { keptRun } from '../games/lander/runStore'
 import { formatRun } from '../games/lander/score'
@@ -98,7 +99,7 @@ export function TodaysCaveCard() {
     <section className="evp-card evp-daily tcv" style={style} aria-labelledby="tcv-title">
       <div className="evp-daily__screen">
         <a className="evp-screen tcv__screen" href={href} aria-label={`Fly Today’s Cave #${lander.n}, ${lander.name}`}>
-          <CaveDrawing cave={lander.cave} className="tcv-plan" />
+          <CaveDrawing cave={lander.cave} lamp={newLookFor(day)} className="tcv-plan" />
           <span className="evp-screen__play" aria-hidden="true">
             <PlayIcon />
             Fly

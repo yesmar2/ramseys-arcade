@@ -6,6 +6,8 @@ import { dayPlan } from '../games/halffull/plan'
 import { pourPlanSvg } from '../games/halffull/planSvg'
 import { dailyTrack } from '../games/hotlap/daily'
 import { CAVE_COLOURS, caveView } from '../games/lander/cavePicture'
+import { dayPictureSvg } from '../games/lander/lampPicture'
+import { newLookFor } from '../games/lander/newLook'
 import { landerDay } from '../games/lander/runs'
 import { slingDay } from '../games/sling/runs'
 import { TowerPostcard } from '../games/sling/TowerPostcard'
@@ -16,6 +18,7 @@ import { GauntletDrawing } from '../games/wobblerun/GauntletDrawing'
 import { buildTrack } from '../games/hotlap/sim'
 import { trackPlan } from '../games/hotlap/trackPlan'
 import { todaysHole } from '../lib/dailyHole'
+import { svgAddress } from '../lib/svgAddress'
 import type { TodayKey } from '../lib/today'
 import { dayPlan as platePlan } from '../games/dead-center/plan'
 import { PlatesPicture } from './TodaysPlatesCard'
@@ -25,7 +28,7 @@ import { GameArt } from './GameArt'
  * Each daily's own picture of the day, for the home page's Today row (HomeToday.tsx): the hole from above, the
  * track in its neon, who's wanted and the glasses on the shelf (empty: nothing gives half away), drawn as the
  * day's share card draws them (scripts/today-cards.mjs); the cave's landing room as Lander draws a cave, with
- * the ship coming down; the hills' biggest top close in; the gauntlet's rounds to the Blip star; and Marble Run's own
+ * the ship coming down (one of its lanterns by lamplight, in Lander's new look); the hills' biggest top close in; the gauntlet's rounds to the Blip star; and Marble Run's own
  * picture, the marble on its glowing road, which Ramsey liked best (2026-10-04). Each fills a 4:3 box. They come in a chunk of their own, with the plans and sims they're drawn
  * from, after the row.
  */
@@ -119,11 +122,28 @@ function CoursePicture() {
 const HULL = 'M0 -1.35 L0.925 0.925 L0 0.375 L-0.925 0.925 Z'
 
 /**
+ * The day's cave, as its day is flown (lander/newLook.ts): by lamplight where Lander has its new look, the
+ * landing room in the game's violet where it hasn't.
+ */
+function CavePicture({ day }: { day: string }) {
+  return newLookFor(day) ? <LanternPicture day={day} /> : <RoomPicture day={day} />
+}
+
+/**
+ * One of the day's lanterns, just lit, the pod and its moths by it (lander/lampPicture.ts): the day's picture
+ * in Lander's new look. Ramsey picked it, "B, the lantern", from three ways shown in this row (2026-11-26).
+ */
+function LanternPicture({ day }: { day: string }) {
+  const src = useMemo(() => svgAddress(dayPictureSvg(landerDay(day).cave, W, H)), [day])
+  return <img src={src} alt="" />
+}
+
+/**
  * The cave's landing room close in, as the game draws a cave (cavePicture.ts): walls lit by depth with their
  * light spilling into the rock, the air's grid, the gates passed, the pad's light rising, and your ship coming
  * down onto the pad on its flame, sparks off the pad, the blue ship just through the door.
  */
-function CavePicture({ day }: { day: string }) {
+function RoomPicture({ day }: { day: string }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '')
   const view = useMemo(() => caveView(landerDay(day).cave, W, H), [day])
   const C = CAVE_COLOURS

@@ -1,4 +1,5 @@
 import { caveDay } from './daily'
+import { keepLamp, lampKept } from './lampSwitch'
 
 /*
  * Lander's new look, on test: the cave painted as a place by lamplight (lamplight.ts), a little lander with a
@@ -17,18 +18,16 @@ import { caveDay } from './daily'
  * A day keeps the game it was flown in, as Swoop's does (swoop/newLook.ts; his "Keep old days old" there): a
  * cave from a day that's gone is the usual game whatever the switch says. The look is for today's cave, a
  * test flight of one still to come, and the test cave.
+ *
+ * Lander's pictures follow the same rule, so a device sees one Lander: the day's picture on the home page
+ * (lampPicture.ts), the cave's outline on its cards (CaveDrawing.tsx `lamp`) and the card's preview
+ * (preview.ts) by `newLookFor(day)`; the small game picture (components/GameArt.tsx), which is no day's, by
+ * the switch alone (lampSwitch.ts). The address can ask from any page that draws one of them.
  */
 
-const KEY = 'skermix-lander-lamp'
-
-/** The new look on for this device, or off again. */
+/** The new look on for this device, or off again (lampSwitch.ts keeps it, and tells the pictures that follow it). */
 export function setLampLook(on: boolean) {
-  try {
-    if (on) localStorage.setItem(KEY, '1')
-    else localStorage.removeItem(KEY)
-  } catch {
-    /* a private window keeps nothing: the usual look */
-  }
+  keepLamp(on)
 }
 
 /** `?lamp=` as an address has it: '1', '0', or null. */
@@ -59,7 +58,7 @@ export function lampLook(): boolean {
     }
     if (asked === '1') setLampLook(true)
     if (asked === '0') setLampLook(false)
-    return localStorage.getItem(KEY) === '1'
+    return lampKept()
   } catch {
     return false
   }
