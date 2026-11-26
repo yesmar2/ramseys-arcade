@@ -1,3 +1,4 @@
+import { NEW_LOOK_FROM_WORDS as LANDER_NEW_LOOK_FROM_WORDS } from '../games/lander/newLook'
 import { NEW_LOOK_FROM_WORDS } from '../games/swoop/newLook'
 import { BOARD_NAMES } from '../lib/dailyWords'
 import { blueOf, medalPercent, type RaceGame } from '../lib/raceMedals'
@@ -407,8 +408,12 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
     ],
     scores: [
       { what: 'Your score', pts: 'your best run today', sub: 'fastest wins the day' },
+      // A moth for every 40 m flown without touching rock (the game's lamplight.ts MOTH_EVERY): for show, as Swoop's flock is.
+      { what: 'Fly clean', pts: 'moths gather', sub: 'one at your lamp for every 40 m without touching rock' },
       { what: 'Bump the rock', pts: 'nothing', sub: 'a gentle knock bounces you off' },
-      { what: 'Hit the rock hard', pts: 'the time it takes', sub: 'back to the last gate, clock running' },
+      { what: 'Hit the rock hard', pts: 'the time it takes', sub: 'back to the last gate, clock running, and your moths scatter' },
+      // The API's tickets.ts KITE_TICKETS, as Swoop's kites: 2, 4 and 10 for one, two and all three, once a day by the most lit.
+      { what: 'Fly into a gold ring', pts: 'lights its lantern', sub: 'three a day: 2 tickets each, 10 for all three, once a day' },
       { what: 'Medals', pts: 'bronze to platinum', sub: medalLine('lander') },
     ],
     ends: 'Down on the landing pad, slowly and level. Fly it as often as you like.',
@@ -422,7 +427,8 @@ export const HOW_TO_PLAY: Record<string, HowToPlay> = {
       {
         what: 'A past cave',
         kind: 'board',
-        sub: `Your best flight goes on that cave’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once.`,
+        // Lanterns are paid on today's cave alone, and the caves before the new look's first day have none (lander/newLook.ts).
+        sub: `Your best flight goes on that cave’s ${BOARD_NAMES.allTime} board, not your rank. Taking its record pays 15 tickets, once. Lanterns pay on today’s cave only, and caves from before ${LANDER_NEW_LOOK_FROM_WORDS} have no moths or lanterns.`,
       },
     ],
   },

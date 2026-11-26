@@ -2,7 +2,7 @@ import { LANTERN_PLAN } from './lanternPlan.ts'
 import { inAir, mulberry32, type Cave } from './sim.ts'
 
 /*
- * Lander's lanterns, with the new look on test (newLook.ts): three a day, each hanging in the cave beside the
+ * Lander's lanterns, in the caves of the new look (newLook.ts): three a day, each hanging in the cave beside the
  * blue ship's line and out of its reach, on a chain from the roof over it or, down a shaft, on a rope from the
  * wall. Fly your ship into a lantern's gold ring and it's lit, and stays lit for the run, crashes and all; the
  * run's count of them is what it brings home when it lands. They are Swoop's kites, for a cave

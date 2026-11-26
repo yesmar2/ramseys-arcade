@@ -466,8 +466,8 @@ function LanderDayGame({
   const playerName = normalizePlayerName(usePlayerName())
   const lander = landerDay(day)
   const pace = lander.pace
-  // The new look, on test (newLook.ts), read once as the game opens: the cave by lamplight, the moths, the one-beat
-  // count on a run started again, and the gap shown all the way down. Never for a cave from a day that's gone.
+  // The new look (newLook.ts), by the cave's day: the cave by lamplight, the moths, the lanterns, the one-beat count
+  // on a run started again, and the gap shown all the way down. Never for a cave from before its first day.
   const [newLook] = useState(() => newLookFor(day))
   /** When the run being raced was first each metre down the cave (gap.ts), for the gap shown as you fly. */
   const reachRef = useRef<Float32Array | null>(null)
@@ -1439,6 +1439,7 @@ function LanderDayGame({
                     time={run.time}
                     score={run.score}
                     crashes={run.crashes}
+                    lanterns={lanterns.length ? { lit: run.lanterns, of: lanterns.length } : null}
                     pace={pace}
                     run={run.runId}
                     board={board}

@@ -93,11 +93,22 @@ export function PracticeStartCard({
   )
 }
 
-/** "You beat the blue ship by 1.20s, with no crashes." */
-function shipWords(time: number, pace: number, crashes: number): string {
+/** How many of a cave's lanterns a run lit and brought home, and how many the cave has (lanterns.ts). */
+type Lanterns = { lit: number; of: number }
+
+/** "no lanterns", "2 of 3 lanterns", "all three lanterns". */
+const lanternWords = ({ lit, of }: Lanterns) =>
+  lit <= 0 ? 'no lanterns' : lit < of ? `${lit} of ${of} lanterns` : of === 3 ? 'all three lanterns' : of === 1 ? 'the lantern' : `all ${of} lanterns`
+
+/**
+ * "You beat the blue ship by 1.20s, with no crashes and 2 of 3 lanterns." The lanterns are said for a cave that
+ * has them, one flown in the new look on its day (newLook.ts): on a past cave they're for the lighting alone,
+ * since only today's pay.
+ */
+function shipWords(time: number, pace: number, crashes: number, lanterns: Lanterns | null): string {
   const gap = time - pace
   const against = Math.abs(gap) < 0.005 ? 'Tied with the blue ship' : gap < 0 ? `You beat the blue ship by ${(-gap).toFixed(2)}s` : `${gap.toFixed(2)}s behind the blue ship`
-  return `${against}, with ${crashWords(crashes)}.`
+  return `${against}, with ${crashWords(crashes)}${lanterns ? ` and ${lanternWords(lanterns)}` : ''}.`
 }
 
 /**
@@ -109,6 +120,7 @@ export function PastCaveResult({
   time,
   score,
   crashes,
+  lanterns = null,
   pace,
   run,
   board,
@@ -121,6 +133,8 @@ export function PastCaveResult({
   /** The flight as the board keeps it. */
   score: number
   crashes: number
+  /** The lanterns it lit and brought home, in a cave that has them. */
+  lanterns?: Lanterns | null
   pace: number
   /** The run it was flown in. */
   run: Promise<string | undefined> | null
@@ -141,7 +155,7 @@ export function PastCaveResult({
       kicker={`Past cave #${lander.n} · ${lander.name}`}
       figure={boardTime(SLUG, time)}
       score={score}
-      pace={shipWords(time, pace, crashes)}
+      pace={shipWords(time, pace, crashes, lanterns)}
       fmt={formatLanderBoardScore}
       gap={gapWords}
       run={run}

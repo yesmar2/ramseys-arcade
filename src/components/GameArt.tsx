@@ -3,7 +3,6 @@ import landerLamp from '../assets/art/lander-lamp.svg'
 import swoopDay from '../assets/art/swoop-day.svg'
 import swoopNight from '../assets/art/swoop-night.svg'
 import { PALETTE } from '../data/games'
-import { useLampLook } from '../games/lander/lampSwitch'
 import { BUG_INK, bugParts, type BugName, type BugPose } from '../games/mazeBugs'
 import { mixColor } from '../lib/color'
 import { useDarkTheme } from '../lib/useDarkTheme'
@@ -1514,131 +1513,19 @@ function MarbleRun({ id }: { id: Id }) {
   )
 }
 
-/** The landing room's grid of air, a line every 2 m. */
-const LANDER_GRID = [
-  ...Array.from({ length: 21 }, (_, i) => `M${i * 2} -1 V31`),
-  ...Array.from({ length: 15 }, (_, i) => `M-1 ${1 + i * 2} H41`),
-].join(' ')
-
-/** Sparks thrown off the pad either side of the flame: x, y, size, opacity. */
-const LANDER_SPARKS: Array<[number, number, number, number]> = [
-  [16.21, 25.27, 0.31, 0.74],
-  [23.05, 25.64, 0.29, 0.68],
-  [13.04, 25.13, 0.2, 0.51],
-  [21.2, 24.27, 0.35, 0.81],
-  [17.12, 25.3, 0.35, 0.8],
-  [26.06, 25.63, 0.18, 0.48],
-  [15.41, 25.23, 0.29, 0.68],
-  [24.2, 25.02, 0.25, 0.61],
-  [15.19, 25.08, 0.28, 0.67],
-  [25.24, 25.44, 0.21, 0.53],
-  [16.97, 24.3, 0.34, 0.79],
-  [25.96, 25.78, 0.19, 0.48],
-  [15.78, 25.55, 0.3, 0.71],
-  [24.6, 25.73, 0.23, 0.58],
-  [15.4, 24.38, 0.28, 0.68],
-  [26.2, 25.37, 0.18, 0.47],
-  [11.35, 25.82, 0.14, 0.39],
-  [23.12, 24.61, 0.28, 0.68],
-]
-
 /**
- * Lander: by lamplight on a device that has its new look on (games/lander/lampSwitch.ts), the arrow in its
- * violet cave everywhere else, until the look is everyone's.
+ * Lander: the pod close in by a lantern it has just lit, its moths behind it. It’s the game’s own picture of
+ * itself (games/lander/lampPicture.ts gameArtSvg, drawn from the shapes and colours the game is drawn from),
+ * kept as a file so this needs none of that: `node scripts/lander-art.mjs` writes it again when the look
+ * changes. Under it, the rock’s own colour until the file is in. It was the arrow touching down in its violet
+ * cave, drawn here, until the new look was everyone’s (Ramsey, 2026-11-26: "Yes, for everyone"; and of the
+ * pictures shown to match the look, "B, the lantern", with this for the small one).
  */
-function Lander({ id }: { id: Id }) {
-  return useLampLook() ? <LanderByLamplight /> : <LanderTouchdown id={id} />
-}
-
-/**
- * Lander's new look: the pod close in by a lantern it has just lit, its moths behind it. It's the game's own
- * picture of itself (games/lander/lampPicture.ts gameArtSvg, drawn from the shapes and colours the game is
- * drawn from), kept as a file so this needs none of that: `node scripts/lander-art.mjs` writes it again when
- * the look changes. Under it, the rock's own colour until the file is in. Ramsey, 2026-11-26, of the pictures
- * shown to match the look: "B, the lantern", and this for the small one.
- */
-function LanderByLamplight() {
+function Lander() {
   return (
     <>
       <rect x="-1" y="-1" width="42" height="32" fill="#3a2729" />
       <image href={landerLamp} width="40" height="30" preserveAspectRatio="xMidYMid slice" />
-    </>
-  )
-}
-
-/**
- * Lander touching down, close up in the landing room: your ship big over the pad on its column of amber
- * flame, sparks thrown off the pad, the room's walls (a bump in each, as the caves have) at the picture's
- * edges, so the icon is all ship and pad. The shaft comes in through the ceiling at the right, its gate passed
- * (green), the blue ship's cyan ghost just through it.
- */
-function LanderTouchdown({ id }: { id: Id }) {
-  const air =
-    'M22 -1 H30.6 V2.4 C30.6 4 31.6 4.8 33.4 5.2 C35.4 5.6 36.6 6.6 36.6 8.6 V13.6 C36.6 14.8 35.4 15.2 35.4 16.6 C35.4 18 36.8 18.4 36.8 19.8 V31 H3.2 V21.6 C3.2 20.2 4.6 19.8 4.6 18.4 C4.6 17 3.2 16.6 3.2 15.4 V8.6 C3.2 6.4 4.6 5.4 7 5.2 C11 4.8 17.6 5.4 20 4.8 C21.4 4.4 22 3.4 22 2.2 Z'
-  const ship = 'M0 -1.35 L0.925 0.925 L0 0.375 L-0.925 0.925 Z'
-  return (
-    <>
-      <defs>
-        <linearGradient id={id('wall')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#8a5cff" />
-          <stop offset="1" stopColor="#ff4fd8" />
-        </linearGradient>
-        <clipPath id={id('air')}>
-          <path d={air} />
-        </clipPath>
-        <linearGradient id={id('wash')} x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="#ffb347" stopOpacity="0.45" />
-          <stop offset="1" stopColor="#ffb347" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <rect x="-1" y="-1" width="42" height="32" fill="#0b0716" />
-      <Stars
-        points={[
-          [2.2, 1.8, 0.16, 0.3],
-          [6.6, 3.4, 0.14, 0.25],
-          [11.4, 1.2, 0.17, 0.3],
-          [16.2, 3.2, 0.14, 0.25],
-          [20.2, 1, 0.15, 0.3],
-          [34.6, 2, 0.16, 0.3],
-          [38.6, 4.2, 0.14, 0.25],
-          [38.4, 11.6, 0.16, 0.3],
-          [39, 25.2, 0.15, 0.25],
-          [1.4, 12.4, 0.16, 0.3],
-          [1.8, 24.6, 0.14, 0.25],
-        ]}
-        colour="#7a5ac8"
-      />
-      {/* The walls' light spilling into the rock, the lit edge, then the air and its grid. */}
-      <path d={air} fill="none" stroke={`url(#${id('wall')})`} strokeWidth="2.6" strokeLinejoin="round" opacity="0.16" />
-      <path d={air} fill="none" stroke={`url(#${id('wall')})`} strokeWidth="1.3" strokeLinejoin="round" opacity="0.3" />
-      <path d={air} fill="#150d29" stroke={`url(#${id('wall')})`} strokeWidth="0.42" strokeLinejoin="round" />
-      <path d={LANDER_GRID} clipPath={`url(#${id('air')})`} {...line('#8a5cff', 0.1, 0.22)} />
-      {/* The gate up the shaft, passed: green. */}
-      <path d="M22.2 1.2 L30.4 1.2" {...line('#3ecf8e', 0.32)} strokeDasharray="0.9 0.7" />
-      <circle cx="22.2" cy="1.2" r="0.42" fill="#3ecf8e" />
-      <circle cx="30.4" cy="1.2" r="0.42" fill="#3ecf8e" />
-      {/* The blue ship's ghost, just through it. */}
-      <g transform="translate(27.6 7.4) rotate(18) scale(1.6)">
-        <path d={ship} fill="#46e4ff" fillOpacity="0.14" stroke="#46e4ff" strokeWidth="0.19" strokeLinejoin="round" />
-      </g>
-      {/* The landing pad, its light rising, its lights running toward its middle. */}
-      <rect x="12.4" y="22.2" width="14" height="4.2" fill={`url(#${id('wash')})`} />
-      <rect x="12.4" y="26.4" width="14" height="0.65" rx="0.2" fill="#ffb347" />
-      {[13.3, 16.35, 19.4, 22.45, 25.5].map((x, i) => (
-        <circle key={x} cx={x} cy="25.9" r="0.24" fill={i === 2 ? '#fff4d6' : '#ffb347'} opacity={i === 2 ? 1 : 0.55} />
-      ))}
-      {/* Your ship, coming down onto the pad on its flame. */}
-      <Glow id={id} name="burn" cx={19.4} cy={24.8} r={7.4} colour="#ff9f45" strength={0.5} />
-      <g transform="translate(19.4 14.4) rotate(-5) scale(4.5)">
-        <path d="M-0.46 0.42 L0 2.25 L0.46 0.42 Z" fill="#ff8c32" opacity="0.92" />
-        <path d="M-0.24 0.42 L0 1.43 L0.24 0.42 Z" fill="#ffecaa" />
-        <path d={ship} fill="#ff9f45" fillOpacity="0.2" stroke="#ff9f45" strokeOpacity="0.28" strokeWidth="0.18" strokeLinejoin="round" />
-        <path d={ship} fill="#1a1030" fillOpacity="0.55" stroke="#fff3e4" strokeWidth="0.071" strokeLinejoin="round" />
-        <circle cx="0" cy="-0.35" r="0.17" fill="#fff3e4" />
-      </g>
-      {LANDER_SPARKS.map(([x, y, size, opacity]) => (
-        <rect key={`${x}-${y}`} x={x} y={y} width={size} height={size} fill="#ffc46a" opacity={opacity} />
-      ))}
     </>
   )
 }

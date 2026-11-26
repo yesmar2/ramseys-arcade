@@ -7,7 +7,7 @@ import { CaveScene, type CaveShape, type SceneFrame } from './scene'
 import { FOOT, G, liftAt, mulberry32, type Cave } from './sim'
 
 /*
- * Lander by lamplight: the cave painted as a place, on test (newLook.ts). Ramsey's pick of three looks shown
+ * Lander by lamplight: the cave painted as a place, everyone's from its first day on (newLook.ts). Ramsey's pick of three looks shown
  * drawn on real caves beside the game as it is (2026-11-25, "ok, let's do A actually"): warm rock in layers,
  * lit from the tunnel so it's brightest at the wall, dark blue air with the cave's far columns standing in
  * it, things growing from the rock, a rope of lamps across each gate that lights as you pass, timber pads,

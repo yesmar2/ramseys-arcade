@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { CaveDrawing } from '../games/lander/CaveDrawing'
-import { caveDay, dayOfCave, PLANNED_CAVES } from '../games/lander/daily'
+import { caveDay, caveNumber, dayOfCave, PLANNED_CAVES } from '../games/lander/daily'
 import { DAILY_CAVES, type PlannedCave } from '../games/lander/dailyPlan'
 import { caveRunHref } from '../games/lander/links'
-import { lampLook, setLampLook } from '../games/lander/newLook'
+import { NEW_LOOK_FROM, newLookFor } from '../games/lander/newLook'
 import { formatRun } from '../games/lander/score'
 import { caveDepth, caveThings, plannedCave, type Cave, type Stretch } from '../games/lander/sim'
 import { gamePlayHref } from '../hooks/useHashRoute'
@@ -70,8 +70,6 @@ export function AdminCaveBook() {
   const caves = useMemo(() => DAILY_CAVES.map(bookCave), [])
   const [query, setQuery] = useState('')
   const [month, setMonth] = useState<string>('all')
-  // Lander's look on test, on or off on this device (games/lander/newLook.ts).
-  const [newLook, setNewLook] = useState(lampLook)
 
   const todays = caves.find((c) => c.day === today)
   // Before the first day, the first cave is the one coming.
@@ -100,30 +98,16 @@ export function AdminCaveBook() {
           </a>
           <span>Steam vents, crushers, a turning bar, water, low gravity, lava, a shortcut and a pad on a lift, all in one cave. Not in any day’s cave yet.</span>
         </p>
-        <p className="vb-lab">
-          <a
-            className="panel__btn panel__btn--ghost adm-small"
-            href={gamePlayHref(SLUG)}
-            onClick={() => {
-              setLampLook(!newLook)
-              setNewLook(!newLook)
-            }}
-          >
-            {newLook ? 'Fly with the usual look →' : 'Fly with the new look →'}
-          </a>
-          <span>
-            The new look, on test{newLook ? ' (on, on this device)' : ''}: the cave by lamplight, a little lander with a lamp in place of the arrow,
-            and moths that come to the lamp while you fly without touching rock and scatter when you crash. With it, three lanterns a day to light,
-            each by flying into its gold ring (2 tickets each, 10 for all three, once a day); a one-beat count when a run is started again; and the
-            gap to the ship you race shown all the way down. On this device only, for today’s cave, a test flight of one
-            still to come and the test cave, until it’s switched back here; a past day’s cave keeps the usual look. Lander’s pictures follow it on
-            this device too: the day’s picture on the home page, the small game picture, and the caves drawn here. The same caves, times and
-            boards either way.
-          </span>
+        <p className="adm-card__sub">
+          From #{caveNumber(NEW_LOOK_FROM)} on ({dayWords(NEW_LOOK_FROM)}), a day’s cave is flown in the new look by everyone: the cave by
+          lamplight, a little lander with a lamp in place of the arrow, moths that come to the lamp while you fly without touching rock and
+          scatter when you crash, three lanterns to light that pay tickets on their day (2 each, 10 for all three), a one-beat count when a run
+          is started again, and the gap to the ship you race shown all the way down. The caves before it keep the usual look for good, with
+          no moths and no lanterns; the test cave has the new one.
         </p>
         {todays ? (
           <div className="tb-feature">
-            <CaveDrawing cave={todays.cave} lamp={newLook} className="vb-map" aspect={1} />
+            <CaveDrawing cave={todays.cave} lamp={newLookFor(todays.day)} className="vb-map" aspect={1} />
             <div className="tb-feature__text">
               <span className="hb-badge">Today · #{todays.n}</span>
               <h3 className="tb-feature__name">{todays.name}</h3>
@@ -200,7 +184,7 @@ export function AdminCaveBook() {
             </h3>
             <div className="tb-grid">
               {group.caves.map((cave) => (
-                <CaveTile key={cave.n} cave={cave} today={today} newLook={newLook} />
+                <CaveTile key={cave.n} cave={cave} today={today} />
               ))}
             </div>
           </section>
@@ -213,8 +197,7 @@ export function AdminCaveBook() {
   )
 }
 
-/** A cave in the book. `newLook`: this device has the new look on, so a cave not yet gone is drawn in it. */
-function CaveTile({ cave, today, newLook }: { cave: BookCave; today: string; newLook: boolean }) {
+function CaveTile({ cave, today }: { cave: BookCave; today: string }) {
   const isToday = cave.day === today
   const past = cave.day < today
   return (
@@ -224,7 +207,7 @@ function CaveTile({ cave, today, newLook }: { cave: BookCave; today: string; new
       aria-label={`#${cave.n} ${cave.name}, ${dayWords(cave.day)}: ${past ? 'fly it as practice' : 'test fly it'}`}
     >
       <div className="tb-tile__map">
-        <CaveDrawing cave={cave.cave} lamp={newLook && !past} className="vb-map" aspect={1} />
+        <CaveDrawing cave={cave.cave} lamp={newLookFor(cave.day)} className="vb-map" aspect={1} />
         <span className="tb-tag">{isToday ? `Today · #${cave.n}` : `#${cave.n}`}</span>
       </div>
       <div className="tb-tile__body">

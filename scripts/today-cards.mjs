@@ -186,7 +186,8 @@ function courseSvg(course, point, { picW, picH }) {
 }
 
 /**
- * The cave from the side as Lander draws it (its CaveDrawing.tsx), in a picture's box: its air dark between
+ * The cave of a day from before Lander's new look (the days since are lampPicture.ts's own), from the side as
+ * Lander drew it then (its CaveDrawing.tsx), in a picture's box: its air dark between
  * walls lit violet near the top and magenta deep down, on the rock's dark, the pads in amber. `cave` is the
  * game's sim.ts dig.
  */
@@ -499,6 +500,11 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
   const { plannedCourse, point } = await server.ssrLoadModule('/src/games/marblerun/sim.ts')
   const { dailyCave, laidNumber: caveLaid } = await server.ssrLoadModule('/src/games/lander/daily.ts')
   const { plannedCave } = await server.ssrLoadModule('/src/games/lander/sim.ts')
+  // The cave's picture is drawn as the day was flown: from Lander's new look's first day on, one of the day's
+  // lanterns just lit, the pod by it (lampPicture.ts, the home page's picture of the day); before it, the cave
+  // from the side.
+  const { dayPictureSvg: caveDayPicture } = await server.ssrLoadModule('/src/games/lander/lampPicture.ts')
+  const { newLookFor: caveNewLook } = await server.ssrLoadModule('/src/games/lander/newLook.ts')
   const { dailyHills, laidNumber: hillsLaid } = await server.ssrLoadModule('/src/games/swoop/daily.ts')
   const { plannedHills } = await server.ssrLoadModule('/src/games/swoop/sim.ts')
   // The hills' picture is their postcard's (no engine), drawn as the day was flown: from the new look's first day
@@ -570,8 +576,11 @@ export async function writeTodayCards({ server, dist, pageHtml, outFile, appName
       }
       if (live.has('cave')) {
         const daily = dailyCave(day)
-        const cave = plannedCave(caveLaid(daily), daily.attempt)
-        info.cave = { n: daily.n, name: daily.name, picture: svgUrl(caveSvg(cave, size)) }
+        // The new look's picture hangs the day's lanterns, so its cave is dug as the game digs it, timing and all.
+        const picture = caveNewLook(day)
+          ? caveDayPicture(plannedCave(caveLaid(daily), daily.attempt, daily.timing), size.picW, size.picH)
+          : caveSvg(plannedCave(caveLaid(daily), daily.attempt), size)
+        info.cave = { n: daily.n, name: daily.name, picture: svgUrl(picture) }
       }
       if (live.has('hills')) {
         const daily = dailyHills(day)

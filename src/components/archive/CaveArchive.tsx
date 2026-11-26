@@ -17,8 +17,9 @@ const playHref = (day: string) => `${gamePlayHref(SLUG)}?day=${day}`
 // The name is the plan's, so a card has it without digging its cave.
 export const title = (day: string) => `#${caveNumber(day)} ${dailyCave(day).name}`
 
-// A cave runs tall: the drawing keeps its shape on the dark of the rock round it (dailyPast.css). A day that's
-// gone keeps the look it was flown in; an event's card can show today's, which has the new one where that's on.
+// A cave runs tall: the drawing keeps its shape, with rock round it to the box's edges (dailyPast.css, and the
+// drawing's own for the new look). It's drawn as its day was flown (lander/newLook.ts): by lamplight from the
+// new look's first day on, in the game's violet before it.
 export const art = (day: string) => (
   <span className="dp-art__ground dp-art__ground--cave">
     <CaveDrawing cave={landerDay(day).cave} lamp={newLookFor(day)} />

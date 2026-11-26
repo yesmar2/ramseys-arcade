@@ -452,13 +452,13 @@ export function PrizeCounterPage() {
             Fair pay
           </span>
           {/* The API's tickets.ts and ticketLadders.ts: said of the dailies as a kind, never by name, as they come and go;
-              but for Swoop's kites (KITE_TICKETS), which only it has and which aren't counted in the day's 200. */}
+              but for Swoop's kites and Lander's lanterns (KITE_TICKETS, both), which only they have and which aren't counted in the day's 200. */}
           <p>
             A run pays by the score it reaches, like an arcade machine: 1 ticket, then 3, 5, 7 and 10 at the scores each game’s How to play
             shows. A new best pays 5 more, and Crosswalk one for each ticket picked up. A daily pays your best of the day once instead, up to 15,
             and the ranked dailies’ top three each day get 10, 6 and 3 more after midnight. Runs pay up to 200 tickets a day, bests and pickups
             included. A first go at a game, a day on a streak, {event}the day’s bug, a top-three day, taking a past course’s record, Swoop’s kites
-            (2 each, 10 for all three, once a day) and a Dailies streak milestone still pay after that.
+            and Lander’s lanterns (2 each, 10 for all three, once a day) and a Dailies streak milestone still pay after that.
           </p>
         </div>
       </section>

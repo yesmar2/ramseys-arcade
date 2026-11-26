@@ -122,8 +122,8 @@ function CoursePicture() {
 const HULL = 'M0 -1.35 L0.925 0.925 L0 0.375 L-0.925 0.925 Z'
 
 /**
- * The day's cave, as its day is flown (lander/newLook.ts): by lamplight where Lander has its new look, the
- * landing room in the game's violet where it hasn't.
+ * The day's cave, as its day is flown (lander/newLook.ts): by lamplight from the new look's first day on, the
+ * landing room in the game's violet for a day before it (a past day's ticket on the Dailies page shows one).
  */
 function CavePicture({ day }: { day: string }) {
   return newLookFor(day) ? <LanternPicture day={day} /> : <RoomPicture day={day} />
