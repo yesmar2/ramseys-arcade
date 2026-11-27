@@ -8,9 +8,10 @@
  * way down (LanderGame.tsx), as Swoop has them. Nothing about a run changes with it: the same cave, the same
  * flying, the same time on the same board.
  *
- * It was on test for a day, on a device that asked for it (a button in the admin's Cave Book, `?lamp=1` in
+ * It was on test for two days, on a device that asked for it (a button in the admin's Cave Book, `?lamp=1` in
  * the address), and is everyone's since Ramsey, 2026-11-26, to "Make Lander's new look everyone's, from
- * today's cave on?": "Yes, for everyone".
+ * today's cave on?": "Yes, for everyone". It reached the live site the day after, on his "Ship it"
+ * (2026-11-27), so its first day is that day's cave: the one before it was flown the usual way by everyone.
  *
  * From a first day, not on every day's cave, as Swoop's is (swoop/newLook.ts; his "Keep old days old" there):
  * a day keeps the game it was flown in, for good. The caves before NEW_LOOK_FROM are the usual painting
@@ -24,13 +25,13 @@
  */
 
 /**
- * The first day whose cave everyone flies in the new look, as YYYY-MM-DD: Cave #42. It has to be the day the
- * look reached the live site, or the days between would be drawn new though they were flown the usual way:
- * if this ships later than the day it names, make it the day it ships. Once it's live, it never moves.
+ * The first day whose cave everyone flies in the new look, as YYYY-MM-DD: Cave #43. It's the day the look
+ * reached the live site; were it an earlier one, the days between would be drawn new though they were flown the
+ * usual way. Now that it's live, it never moves.
  */
-export const NEW_LOOK_FROM = '2026-11-26'
+export const NEW_LOOK_FROM = '2026-11-27'
 
-/** That day as a sentence says it, "November 26, 2026": How to play says which past caves have no moths or lanterns. */
+/** That day as a sentence says it, "November 27, 2026": How to play says which past caves have no moths or lanterns. */
 export const NEW_LOOK_FROM_WORDS = (() => {
   const [y, m, d] = NEW_LOOK_FROM.split('-').map(Number)
   return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
